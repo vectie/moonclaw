@@ -1,18 +1,18 @@
 import {
-  "moonbitlang/maria/internal/pathx",
-  "moonbitlang/maria/internal/fsx",
-  "moonbitlang/maria/internal/uuid",
-  "moonbitlang/maria/clock",
-  "moonbitlang/maria/tool",
+  "moonbitlang/moonclaw/internal/pathx",
+  "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/clock",
+  "moonbitlang/moonclaw/tool",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/maria/internal/mock",
-  "moonbitlang/maria/agent",
-  "moonbitlang/maria/model",
-  "moonbitlang/maria/event",
-  "moonbitlang/maria/ai",
+  "moonbitlang/moonclaw/internal/mock",
+  "moonbitlang/moonclaw/agent",
+  "moonbitlang/moonclaw/model",
+  "moonbitlang/moonclaw/event",
+  "moonbitlang/moonclaw/ai",
 } for "test"

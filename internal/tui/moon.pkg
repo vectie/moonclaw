@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/stdio",
+  "moonbitlang/moonclaw/internal/tty",
+  "moonbitlang/moonclaw/internal/readline/unicode/width" @unicode/width,
+  "moonbitlang/core/buffer",
+}

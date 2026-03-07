@@ -1,15 +1,15 @@
 import {
   "moonbitlang/async",
-  "moonbitlang/maria/internal/os",
-  "moonbitlang/maria/internal/backtrace",
-  "moonbitlang/maria/internal/fsx",
-  "moonbitlang/maria/internal/pathx",
-  "moonbitlang/maria/internal/git",
+  "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/moonclaw/internal/backtrace",
+  "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/pathx",
+  "moonbitlang/moonclaw/internal/git",
   "moonbitlang/x/time",
   "moonbitlang/regexp",
-  "moonbitlang/maria/event",
-  "moonbitlang/maria/ai",
-  "moonbitlang/maria/clock",
+  "moonbitlang/moonclaw/event",
+  "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw/clock",
   "moonbitlang/core/cmp",
   "moonbitlang/core/json",
   "moonbitlang/core/strconv",
@@ -17,11 +17,11 @@ import {
 }
 
 import {
-  "moonbitlang/maria/internal/mock",
-  "moonbitlang/maria/internal/pino",
+  "moonbitlang/moonclaw/internal/mock",
+  "moonbitlang/moonclaw/internal/pino",
 } for "wbtest"
 
 options(
   "is-main": true,
-  overrides: [ "moonbitlang/maria/internal/abort" ],
+  overrides: [ "moonbitlang/moonclaw/internal/abort" ],
 )

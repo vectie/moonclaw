@@ -1,6 +1,6 @@
-import { setupMariaProcess } from "@maria/core/lib/node/maria-setup.js";
-import { getApi } from "@maria/core/lib/node/maria-util.js";
-import { TaskOverview } from "@maria/core/lib/types.js";
+import { setupmoonclawProcess } from "@moonclaw/core/lib/node/moonclaw-setup.js";
+import { getApi } from "@moonclaw/core/lib/node/moonclaw-util.js";
+import { TaskOverview } from "@moonclaw/core/lib/types.js";
 import { get } from "./global-state";
 
 export class DaemonService {
@@ -11,16 +11,16 @@ export class DaemonService {
   static async instance() {
     if (!this._instance) {
       const context = get("context")!;
-      const mariaPath = context.asAbsolutePath(`bin/${process.platform}/maria`);
-      const [_, error] = await setupMariaProcess(mariaPath);
+      const moonclawPath = context.asAbsolutePath(`bin/${process.platform}/moonclaw`);
+      const [_, error] = await setupmoonclawProcess(moonclawPath);
       if (error) {
         // TODO: Handle error properly
-        throw new Error("Failed to setup Maria process: " + error.message);
+        throw new Error("Failed to setup moonclaw process: " + error.message);
       }
       const [api, apiError] = await getApi();
       if (apiError) {
         // TODO: Handle error properly
-        throw new Error("Failed to get Maria API: " + apiError.message);
+        throw new Error("Failed to get moonclaw API: " + apiError.message);
       }
       this._instance = new DaemonService(api);
     }

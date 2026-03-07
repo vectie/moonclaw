@@ -1,5 +1,5 @@
-import { setupMariaProcess } from "@maria/core/lib/node/maria-setup.js";
-import { getApi, shutdown } from "@maria/core/lib/node/maria-util.js";
+import { setupmoonclawProcess } from "@moonclaw/core/lib/node/moonclaw-setup.js";
+import { getApi, shutdown } from "@moonclaw/core/lib/node/moonclaw-util.js";
 import {
   app,
   BrowserWindow,
@@ -30,7 +30,7 @@ function createWindow() {
   });
 
   // and load the index.html of the app.
-  if (process.env.MARIA_DEV) {
+  if (process.env.moonclaw_DEV) {
     mainWindow.loadURL(`http://localhost:5173`);
     // Open the DevTools.
     mainWindow.webContents.openDevTools();
@@ -39,24 +39,24 @@ function createWindow() {
   }
 }
 
-async function setupMaria() {
+async function setupmoonclaw() {
   const shellEnv = await getResolvedShellEnv();
-  const mariaPath = process.env.MARIA_DEV
+  const moonclawPath = process.env.moonclaw_DEV
     ? path.join(
         __dirname,
         "../../../../target/native/release/build/cmd/main/main.exe",
       )
-    : path.join(__dirname, "../bin/maria");
-  return await setupMariaProcess(mariaPath, shellEnv);
+    : path.join(__dirname, "../bin/moonclaw");
+  return await setupmoonclawProcess(moonclawPath, shellEnv);
 }
 
-async function shutdownMariaDaemon() {
+async function shutdownmoonclawDaemon() {
   await shutdown();
 }
 
 const onReady = async () => {
   // TODO: dont await the promise, we will show a loading screen in the renderer
-  const [_, error] = await setupMaria();
+  const [_, error] = await setupmoonclaw();
   if (error) {
     dialog.showErrorBox("Error", error.message);
     app.exit(1);
@@ -106,13 +106,13 @@ ipcMain.handle("get-url", async () => {
   return url;
 });
 
-ipcMain.handle("maria-ready", async () => {
-  await setupMaria();
+ipcMain.handle("moonclaw-ready", async () => {
+  await setupmoonclaw();
 });
 
 ipcMain.handle("reload-app", async () => {
   app.relaunch();
-  await shutdownMariaDaemon();
+  await shutdownmoonclawDaemon();
   app.exit();
 });
 

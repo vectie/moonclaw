@@ -33,7 +33,7 @@ async test "skill" (t : @test.Test) {
         #|  }
         #|}
       ),
-      ".moonagent": {
+      ".moonclaw": {
         "skills": {
           "moonbit-query-documentation": {
             "SKILL.md": (

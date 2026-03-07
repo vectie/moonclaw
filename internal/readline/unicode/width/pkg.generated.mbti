@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/readline/unicode/width"
+package "moonbitlang/moonclaw/internal/readline/unicode/width"
 
 // Values
 pub fn char(Char, cjk? : Bool) -> Int?

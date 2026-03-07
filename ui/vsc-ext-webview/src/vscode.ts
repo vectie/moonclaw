@@ -1,4 +1,4 @@
-import type { VscodeApi } from "@maria/core/lib/types.js";
+import type { VscodeApi } from "@moonclaw/core/lib/types.js";
 import type * as comlink from "comlink";
 import * as endpoint from "../../vsc-common/endpoint";
 

@@ -1,10 +1,10 @@
 ///|
-/// Runtime container that binds the Maria agent, HTTP server, and broadcast
+/// Runtime container that binds the moonclaw agent, HTTP server, and broadcast
 /// machinery needed to expose the API surface described in `README.md`.
 struct Server {
   uuid : @uuid.Generator
-  /// Long-lived Maria runtime plus agent state machine.
-  maria : @maria.Maria
+  /// Long-lived moonclaw runtime plus agent state machine.
+  moonclaw : @moonclaw.Moonclaw
   /// SSE fan-out used to push events to every connected client.
   broadcast : @broadcast.Broadcast[@event.Event]
   /// Incoming message queue; each entry carries a reply channel to report
@@ -12,7 +12,7 @@ struct Server {
   message_queue : @aqueue.Queue[
     (CreateMessageRequest, @aqueue.Queue[(@uuid.Uuid, Bool)]),
   ]
-  /// Handle to the currently running Maria task (when any) so we can cancel or
+  /// Handle to the currently running moonclaw task (when any) so we can cancel or
   /// report busy/idle status.
   mut task : @async.Task[Unit]?
   /// Directory served as static assets (usually `cmd/server`).
@@ -37,7 +37,7 @@ pub fn Server::port(self : Server) -> Int {
 }
 
 ///|
-/// Boots Maria, wires the SSE broadcast pipeline, optionally registers with a
+/// Boots moonclaw, wires the SSE broadcast pipeline, optionally registers with a
 /// daemon, and binds an `@httpx.Server`. The returned handle is ready to
 /// `start()`.
 pub async fn Server::new(
@@ -60,21 +60,21 @@ pub async fn Server::new(
   guard @model.load(home~, name?=model) is Some(model) else {
     fail("Failed to load model '\{model}' from cwd '\{cwd}'")
   }
-  let maria = if resume_id is Some(resume_id) {
-    @maria.Maria::resume_(model~, resume_id, web_search~)
+  let moonclaw = if resume_id is Some(resume_id) {
+    @moonclaw.Moonclaw::resume_(model~, resume_id, web_search~)
   } else {
-    @maria.Maria::new(name?, model~, cwd?, web_search~)
+    @moonclaw.Moonclaw::new(name?, model~, cwd?, web_search~)
   }
-  maria.agent.add_listener((event : @event.Event) => broadcast.put(event))
+  moonclaw.agent.add_listener((event : @event.Event) => broadcast.put(event))
   let http_server = @httpx.Server::new("[::]", port, reuse_addr=true)
   let port = http_server.port()
   if register is Some(register) {
     register.register(
       port~,
-      new_id=maria.agent.id(),
-      web_search=maria.agent.web_search,
-      cwd=maria.agent.cwd,
-      model=maria.agent.model.name,
+      new_id=moonclaw.agent.id(),
+      web_search=moonclaw.agent.web_search,
+      cwd=moonclaw.agent.cwd,
+      model=moonclaw.agent.model.name,
     )
     |> ignore()
   } else {
@@ -87,7 +87,7 @@ pub async fn Server::new(
   }
   Server::{
     uuid,
-    maria,
+    moonclaw,
     broadcast,
     message_queue: @aqueue.new(kind=Unbounded),
     task: None,
@@ -119,9 +119,9 @@ async fn Server::serve_http(self : Server) -> Unit {
           (Get, "/v1/status") =>
             w.send_json(code=200, {
               "status": self.status(),
-              "web_search": self.maria.agent.web_search,
+              "web_search": self.moonclaw.agent.web_search,
             })
-          (Post, "/v1/cancel") => self.cancel_maria(w)
+          (Post, "/v1/cancel") => self.cancel_moonclaw(w)
           (Get, "/v1/queued-messages") => self.get_queued_messages(w)
           (Get, "/v1/events") => self.get_events(w)
           (Post, "/v1/external-event/cancel") => self.send_cancellation_event(w)
@@ -175,13 +175,13 @@ async fn Server::serve_http(self : Server) -> Unit {
 }
 
 ///|
-/// Background worker that drains the inbound queue, kicks off the Maria agent,
+/// Background worker that drains the inbound queue, kicks off the moonclaw agent,
 /// and mirrors failures into the broadcast stream.
-async fn Server::start_maria(self : Server) -> Unit {
+async fn Server::start_moonclaw(self : Server) -> Unit {
   while true {
     @async.with_task_group(group => {
       let (msg, idq) = self.message_queue.get()
-      let id = self.maria.agent.queue_message(
+      let id = self.moonclaw.agent.queue_message(
         msg.message,
         web_search?=msg.web_search,
       )
@@ -189,7 +189,7 @@ async fn Server::start_maria(self : Server) -> Unit {
         () => {
           while true {
             let (msg, idq) = self.message_queue.get()
-            let id = self.maria.agent.queue_message(
+            let id = self.moonclaw.agent.queue_message(
               msg.message,
               web_search?=msg.web_search,
             )
@@ -201,10 +201,10 @@ async fn Server::start_maria(self : Server) -> Unit {
       idq.put((id, false))
       let task = group.spawn(
         () => {
-          logger.info("Starting Maria task...")
-          self.maria.agent.start() catch {
+          logger.info("Starting moonclaw task...")
+          self.moonclaw.agent.start() catch {
             error => {
-              logger.error("Maria task failed: \{error}")
+              logger.error("moonclaw task failed: \{error}")
               if !@async.is_being_cancelled() {
                 self.broadcast.put(
                   @event.Event::new(id=self.uuid.v4(), Failed(error.to_json())),
@@ -245,31 +245,34 @@ async fn @httpx.ResponseWriter::send_json(
 ///|
 /// Cancels the running agent (if any) and returns the pending queue back to
 /// the client so UIs can decide what to do next.
-async fn Server::cancel_maria(self : Server, w : @httpx.ResponseWriter) -> Unit {
+async fn Server::cancel_moonclaw(
+  self : Server,
+  w : @httpx.ResponseWriter,
+) -> Unit {
   guard self.task is Some(task) else {
     w.send_json(code=404, {
       "error": { "code": -1, "message": "No running task to cancel." },
     })
   }
   task.cancel()
-  let pms = self.maria.agent.clear_inputs()
+  let pms = self.moonclaw.agent.clear_inputs()
   w.send_json(code=200, { "pending_messages": pms.to_json() })
 }
 
 ///|
-/// Runs the HTTP server alongside the background Maria worker until the
+/// Runs the HTTP server alongside the background moonclaw worker until the
 /// process is cancelled.
 pub async fn Server::start(self : Server) -> Unit {
   @async.with_task_group(group => {
-    group.spawn_bg(() => self.start_maria(), allow_failure=true)
+    group.spawn_bg(() => self.start_moonclaw(), allow_failure=true)
     self.serve_http()
   })
 }
 
 ///|
 pub(all) enum ServerStreamEvent {
-  MariaQueuedMessagesSynchronized(Array[@agent.QueuedMessage])
-  Maria(@event.Event)
+  MoonclawQueuedMessagesSynchronized(Array[@agent.QueuedMessage])
+  Moonclaw(@event.Event)
 }
 
 ///|
@@ -279,9 +282,11 @@ pub impl @httpx.FromEvent for ServerStreamEvent with from_event(
   let { event, data } = event
   let data = @json.parse(data)
   match event {
-    Some("maria.queued_messages.synchronized") =>
-      ServerStreamEvent::MariaQueuedMessagesSynchronized(@json.from_json(data))
-    Some("maria") => ServerStreamEvent::Maria(@json.from_json(data))
+    Some("moonclaw.queued_messages.synchronized") =>
+      ServerStreamEvent::MoonclawQueuedMessagesSynchronized(
+        @json.from_json(data),
+      )
+    Some("moonclaw") => ServerStreamEvent::Moonclaw(@json.from_json(data))
     _ => fail("unrecognized event type: \{event}")
   }
 }
@@ -291,31 +296,35 @@ pub impl @httpx.ToEvent for ServerStreamEvent with to_event(
   self : ServerStreamEvent,
 ) -> @httpx.Event {
   match self {
-    ServerStreamEvent::MariaQueuedMessagesSynchronized(queued_messages) =>
+    ServerStreamEvent::MoonclawQueuedMessagesSynchronized(queued_messages) =>
       @httpx.Event::new(
-        event="maria.queued_messages.synchronized",
+        event="moonclaw.queued_messages.synchronized",
         data=queued_messages.to_json().stringify(),
       )
-    ServerStreamEvent::Maria(event) =>
-      @httpx.Event::new(event="maria", data=event.to_json().stringify())
+    ServerStreamEvent::Moonclaw(event) =>
+      @httpx.Event::new(event="moonclaw", data=event.to_json().stringify())
   }
 }
 
 ///|
-/// Streams Maria lifecycle events plus queue synchronization messages over
+/// Streams moonclaw lifecycle events plus queue synchronization messages over
 /// Server-Sent Events.
 async fn Server::get_events(self : Server, w : @httpx.ResponseWriter) -> Unit {
   let w = @httpx.EventStreamWriter::new(w)
   w.write_header(200)
-  w.write(MariaQueuedMessagesSynchronized(self.maria.agent.queued_messages()))
+  w.write(
+    MoonclawQueuedMessagesSynchronized(self.moonclaw.agent.queued_messages()),
+  )
   self.broadcast.listen_forever(event => {
     if event.desc is (TokenCounted(_) | ContextPruned(_)) {
       return
     }
-    w.write(Maria(event))
+    w.write(Moonclaw(event))
     if event.desc is (MessageQueued(_) | MessageUnqueued(_)) {
       w.write(
-        MariaQueuedMessagesSynchronized(self.maria.agent.queued_messages()),
+        MoonclawQueuedMessagesSynchronized(
+          self.moonclaw.agent.queued_messages(),
+        ),
       )
     }
   })
@@ -327,7 +336,7 @@ async fn Server::get_queued_messages(
   self : Server,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let queued_messages : Array[Json] = self.maria.agent
+  let queued_messages : Array[Json] = self.moonclaw.agent
     .queued_messages()
     .map(m => { "id": m.id, "message": m.message.to_openai() })
   w.send_json(code=200, queued_messages.to_json())
@@ -336,7 +345,7 @@ async fn Server::get_queued_messages(
 ///|
 /// Lists the registered tools and whether each one is currently enabled.
 async fn Server::get_tools(self : Server, w : @httpx.ResponseWriter) -> Unit {
-  let tools = self.maria.agent.tools()
+  let tools = self.moonclaw.agent.tools()
   let tools_json : Map[String, Json] = {}
   for name, tool in tools {
     tools_json[name] = { "enabled": tool.enabled() }
@@ -350,7 +359,7 @@ async fn Server::get_system_prompt(
   self : Server,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let res : Json = match self.maria.agent.system_prompt() {
+  let res : Json = match self.moonclaw.agent.system_prompt() {
     Some(sys) => sys.to_json()
     None => Json::null()
   }
@@ -378,7 +387,7 @@ async fn Server::send_external_event(
       "error": "Missing 'type' field in request body",
     })
   }
-  let queue = self.maria.agent.external_events()
+  let queue = self.moonclaw.agent.external_events()
   match event_type {
     "Cancelled" => queue.send(@event.Cancelled)
     "UserMessage" => {
@@ -416,7 +425,7 @@ async fn Server::send_user_message_event(
       "error": "Missing 'message' field in request body",
     })
   }
-  self.maria.agent.external_events().send(UserMessage(message))
+  self.moonclaw.agent.external_events().send(UserMessage(message))
   w.send_json(code=200, { "success": true })
 }
 
@@ -427,6 +436,6 @@ async fn Server::send_cancellation_event(
   self : Server,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  self.maria.agent.external_events().send(Cancelled)
+  self.moonclaw.agent.external_events().send(Cancelled)
   w.send_json(code=200, { "success": true })
 }

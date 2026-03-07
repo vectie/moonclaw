@@ -19,7 +19,7 @@ pub async fn Manager::new(
 ) -> Manager {
   let cache = @lru.cache(max_size=100)
   let conversations = home
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("conversations")
   if !@fsx.exists(conversations) {
     @fsx.make_directory(conversations, recursive=true, exists_ok=true)
@@ -33,7 +33,7 @@ pub async fn Manager::load(self : Manager, id : @uuid.Uuid) -> Conversation? {
     return Some(id)
   }
   let path = self.home
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("conversations")
     |> @pathx.join("\{id}.json")
   if !@fsx.exists(path) {
@@ -58,7 +58,7 @@ pub async fn Manager::load(self : Manager, id : @uuid.Uuid) -> Conversation? {
 ///|
 pub async fn Manager::save(self : Manager, conversation : Conversation) -> Unit {
   let path = self.home
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("conversations")
     |> @pathx.join("\{conversation.id}.json")
   let dir = @pathx.dirname(path)
@@ -70,7 +70,7 @@ pub async fn Manager::save(self : Manager, conversation : Conversation) -> Unit 
 ///|
 pub async fn Manager::list(self : Manager) -> Array[@uuid.Uuid] {
   let path = self.home
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("conversations")
   let entries = @fsx.list_directory(path)
   let ids = []

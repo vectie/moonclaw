@@ -4,5 +4,5 @@ import {
 }
 
 import {
-  "moonbitlang/maria/internal/rand",
+  "moonbitlang/moonclaw/internal/rand",
 } for "test"

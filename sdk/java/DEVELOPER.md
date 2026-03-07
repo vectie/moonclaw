@@ -1,10 +1,10 @@
-# Maria Java SDK - Developer Notes
+# moonclaw Java SDK - Developer Notes
 
 ## Architecture Overview
 
 The Java SDK follows the same pattern as the Python and Node.js SDKs:
 
-1. **Executable Bundling**: The Maria native executable is bundled in the JAR's resources
+1. **Executable Bundling**: The moonclaw native executable is bundled in the JAR's resources
 2. **Process Management**: The SDK spawns the executable as a subprocess
 3. **JSON-RPC Communication**: Communication happens via stdout using JSON-RPC format
 4. **Event Streaming**: Events are streamed line-by-line and parsed as they arrive
@@ -13,8 +13,8 @@ The Java SDK follows the same pattern as the Python and Node.js SDKs:
 
 ```plaintext
 sdk/java/
-├── src/main/java/com/moonbit/maria/
-│   ├── Maria.java          # Main SDK class
+├── src/main/java/com/moonbit/moonclaw/
+│   ├── moonclaw.java          # Main SDK class
 │   └── Notification.java   # Event type definitions
 ├── src/main/resources/bin/
 │   └── <platform>.exe      # Platform-specific executables
@@ -27,7 +27,7 @@ sdk/java/
 
 ## Key Components
 
-### Maria.java
+### moonclaw.java
 
 The main class that:
 
@@ -68,7 +68,7 @@ Before building, bundle the executable:
 
 ```bash
 # From repository root
-python scripts/bundle_maria_java.py
+python scripts/bundle_moonclaw_java.py
 ```
 
 This copies `target/native/release/build/sdk.exe` to the appropriate location in the Java SDK.
@@ -114,7 +114,7 @@ Currently relies on manual testing via the examples. Future improvements:
 
 ### "Executable not found"
 
-The executable must be bundled before building. Run `bundle_maria_java.py` first.
+The executable must be bundled before building. Run `bundle_moonclaw_java.py` first.
 
 ### "Permission denied"
 

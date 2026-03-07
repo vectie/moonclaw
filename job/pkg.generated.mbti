@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/job"
+package "moonbitlang/moonclaw/job"
 
 import {
   "moonbitlang/core/json",

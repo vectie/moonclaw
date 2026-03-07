@@ -19,8 +19,12 @@ pub struct Model {
 ///|
 pub(all) enum Provider {
   OpenAI
+  Anthropic
   CodexOAuth
   Copilot
+  Qwen
+  Kimi
+  KimiCoding
 } derive(Eq, Show)
 
 ///|
@@ -394,5 +398,143 @@ pub fn copilot_model(
     model_type=SaaS(Copilot),
     safe_zone_tokens=name.safe_zone_tokens(),
     refresh_token=github_token, // Store github_token as refresh_token for refreshing
+  )
+}
+
+///|
+pub(all) enum QwenModels {
+  Qwen3CoderPlus
+  Qwen3CoderFlash
+  Qwen3_235B_A22B
+  Qwen3_32B
+  QwenMax
+  QwenPlus
+  QwenTurbo
+  QwenLong
+}
+
+///|
+pub impl Show for QwenModels with output(self : QwenModels, logger : &Logger) -> Unit {
+  match self {
+    Qwen3CoderPlus => logger.write_string("qwen3-coder-plus")
+    Qwen3CoderFlash => logger.write_string("qwen3-coder-flash")
+    Qwen3_235B_A22B => logger.write_string("qwen3-235b-a22b")
+    Qwen3_32B => logger.write_string("qwen3-32b")
+    QwenMax => logger.write_string("qwen-max")
+    QwenPlus => logger.write_string("qwen-plus")
+    QwenTurbo => logger.write_string("qwen-turbo")
+    QwenLong => logger.write_string("qwen-long")
+  }
+}
+
+///|
+fn QwenModels::safe_zone_tokens(self : QwenModels) -> Int {
+  match self {
+    Qwen3CoderPlus => 128_000
+    Qwen3CoderFlash => 128_000
+    Qwen3_235B_A22B => 128_000
+    Qwen3_32B => 128_000
+    QwenMax => 32_000
+    QwenPlus => 128_000
+    QwenTurbo => 128_000
+    QwenLong => 1_000_000
+  }
+}
+
+///|
+pub fn qwen_model(
+  api_key~ : String,
+  name? : QwenModels = Qwen3CoderPlus,
+) -> Model {
+  Model::new(
+    api_key~,
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    name=name.to_string(),
+    model_name=name.to_string(),
+    model_type=SaaS(Qwen),
+    safe_zone_tokens=name.safe_zone_tokens(),
+  )
+}
+
+///|
+pub(all) enum KimiModels {
+  KimiK2_0905
+  KimiK2P5
+  MoonshotV1_8k
+  MoonshotV1_32k
+  MoonshotV1_128k
+}
+
+///|
+pub impl Show for KimiModels with output(self : KimiModels, logger : &Logger) -> Unit {
+  match self {
+    KimiK2_0905 => logger.write_string("kimi-k2-0905")
+    KimiK2P5 => logger.write_string("kimi-k2.5")
+    MoonshotV1_8k => logger.write_string("moonshot-v1-8k")
+    MoonshotV1_32k => logger.write_string("moonshot-v1-32k")
+    MoonshotV1_128k => logger.write_string("moonshot-v1-128k")
+  }
+}
+
+///|
+fn KimiModels::safe_zone_tokens(self : KimiModels) -> Int {
+  match self {
+    KimiK2_0905 => 262_144
+    KimiK2P5 => 262_144
+    MoonshotV1_8k => 8_000
+    MoonshotV1_32k => 32_000
+    MoonshotV1_128k => 128_000
+  }
+}
+
+///|
+pub fn kimi_model(api_key~ : String, name? : KimiModels = KimiK2P5) -> Model {
+  Model::new(
+    api_key~,
+    base_url="https://api.moonshot.cn/v1",
+    name=name.to_string(),
+    model_name=name.to_string(),
+    model_type=SaaS(Kimi),
+    safe_zone_tokens=name.safe_zone_tokens(),
+  )
+}
+
+///|
+pub(all) enum KimiCodingModels {
+  K2P5
+  K2_0905
+}
+
+///|
+pub impl Show for KimiCodingModels with output(
+  self : KimiCodingModels,
+  logger : &Logger,
+) -> Unit {
+  match self {
+    K2P5 => logger.write_string("k2p5")
+    K2_0905 => logger.write_string("k2-0905")
+  }
+}
+
+///|
+fn KimiCodingModels::safe_zone_tokens(self : KimiCodingModels) -> Int {
+  match self {
+    K2P5 => 262_144
+    K2_0905 => 262_144
+  }
+}
+
+///|
+pub fn kimi_coding_model(
+  api_key~ : String,
+  name? : KimiCodingModels = K2P5,
+) -> Model {
+  Model::new(
+    api_key~,
+    base_url="https://api.moonshot.cn/v1",
+    name=name.to_string(),
+    model_name=name.to_string(),
+    model_type=SaaS(KimiCoding),
+    safe_zone_tokens=name.safe_zone_tokens(),
   )
 }

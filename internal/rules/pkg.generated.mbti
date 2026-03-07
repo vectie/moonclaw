@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/rules"
+package "moonbitlang/moonclaw/internal/rules"
 
 import {
-  "moonbitlang/maria/ai",
-  "moonbitlang/maria/internal/pino",
+  "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw/internal/pino",
 }
 
 // Values

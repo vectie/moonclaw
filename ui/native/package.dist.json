@@ -1,8 +1,8 @@
 {
   "$schema": "https://www.schemastore.org/package",
-  "name": "maria",
-  "productName": "Maria",
+  "name": "moonclaw",
+  "productName": "moonclaw",
   "version": "0.0.1",
-  "description": "Electron app for Maria",
+  "description": "Electron app for moonclaw",
   "main": "./main/main.js"
 }

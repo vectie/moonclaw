@@ -1,4 +1,4 @@
 import {
   "moonbitlang/async",
-  "moonbitlang/maria/internal/mock",
+  "moonbitlang/moonclaw/internal/mock",
 } for "wbtest"

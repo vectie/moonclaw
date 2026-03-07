@@ -10,6 +10,7 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
   let mut web_search : Bool = false
   let mut log_file : String? = None
   let mut resume_id : @uuid.Uuid? = None
+  let mut use_tui : Bool = false
   loop args {
     ["--prompt" | "-p", value, .. rest] => {
       prompt = Some(value)
@@ -37,12 +38,22 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
       resume_id = Some(value)
       continue rest
     }
+    ["--tui", .. rest] => {
+      use_tui = true
+      continue rest
+    }
     [unknown, ..] => raise @argument.InvalidArgument(unknown)
     [] => break
   }
+
+  if use_tui {
+    @tui.tui_interactive(args)
+    return
+  }
+
   let logger = match log_file {
     Some(log_file) =>
-      Some(@pino.logger("maria", @pino.Transport::file(log_file)))
+      Some(@pino.logger("moonclaw", @pino.Transport::file(log_file)))
     None => None
   }
   guard @model.load(name?=model) is Some(model) else {
@@ -50,12 +61,12 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
     return
   }
   @async.with_task_group(group => {
-    let maria = if resume_id is Some(id) {
-      @maria.Maria::resume_(model~, id, web_search~, logger?)
+    let moonclaw = if resume_id is Some(id) {
+      @moonclaw.Moonclaw::resume_(model~, id, web_search~, logger?)
     } else {
-      @maria.Maria::new(model~, web_search~, logger?)
+      @moonclaw.Moonclaw::new(model~, web_search~, logger?)
     }
-    maria.agent.add_listener(event => {
+    moonclaw.agent.add_listener(event => {
       match event.desc {
         AssistantMessage(content, ..) =>
           if !content.is_blank() {
@@ -83,10 +94,10 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
       }
     })
     async fn clear_inputs_and_prompt(
-      maria : @maria.Maria,
+      moonclaw : @moonclaw.Moonclaw,
       rl : @readline.Interface,
     ) -> Unit {
-      let qms = maria.agent.clear_inputs()
+      let qms = moonclaw.agent.clear_inputs()
       for qm in qms {
         rl.set_prompt("$ ")
         rl.set_line(@encoding/utf8.encode(qm.message.content()))
@@ -103,7 +114,7 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
           @readline.CtrlC =>
             if task is Some(round) {
               round.cancel()
-              clear_inputs_and_prompt(maria, rl)
+              clear_inputs_and_prompt(moonclaw, rl)
             } else {
               // Clear the current input line
               println("")
@@ -121,10 +132,10 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
       println("$ \{prompt}")
       let round = group.spawn(
         () => {
-          maria.start(prompt~) catch {
+          moonclaw.start(prompt~) catch {
             error => {
               println("! \{error}")
-              clear_inputs_and_prompt(maria, rl)
+              clear_inputs_and_prompt(moonclaw, rl)
             }
           }
         },
@@ -144,10 +155,10 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
       let prompt = rl.read_line()
       let round = group.spawn(
         () => {
-          maria.start(prompt~) catch {
+          moonclaw.start(prompt~) catch {
             error => {
               println("! \{error}")
-              clear_inputs_and_prompt(maria, rl)
+              clear_inputs_and_prompt(moonclaw, rl)
             }
           }
         },

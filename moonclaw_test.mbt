@@ -1,28 +1,28 @@
 ///|
-async test "maria/resume" (t : @test.Test) {
+async test "moonclaw/resume" (t : @test.Test) {
   @mock.run(t, mock => {
     let cwd = mock.cwd
     let model = mock.model(name=ClaudeHaiku4_5)
     let id = {
-      let maria = @maria.Maria::new(
+      let moonclaw = @moonclaw.Moonclaw::new(
         model~,
         home=cwd.path(),
         cwd=cwd.path(),
         user_message="Hello, please call me Mr. Rabbit.",
       )
-      defer maria.close()
-      let id = maria.agent.id()
-      maria.start()
+      defer moonclaw.close()
+      let id = moonclaw.agent.id()
+      moonclaw.start()
       id
     }
     let mut result = None
-    let maria = @maria.resume_(
+    let moonclaw = @moonclaw.resume_(
       model~,
       home=cwd.path(),
       id,
       user_message="What is my name? Please use the <submit_user_name/> tool to submit my name.",
     )
-    maria.agent.add_tool(
+    moonclaw.agent.add_tool(
       @tool.new(
         name="submit_user_name",
         description="Submit the user's name.",
@@ -40,7 +40,7 @@ async test "maria/resume" (t : @test.Test) {
         }),
       ),
     )
-    maria.start()
+    moonclaw.start()
     json_inspect(
       result is Some(content) && content.contains("Rabbit"),
       content=true,

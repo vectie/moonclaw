@@ -2,15 +2,15 @@
 
 ## Code Agent Safety Trade-off
 
-`maria` is in the early stages of development, so it doesn't provide any safety
+`moonclaw` is in the early stages of development, so it doesn't provide any safety
 mechanisms yet. We recommend users use the following strategies to protect end
 users.
 
-1. Run `maria` in a sandbox, e.g., a Docker container, VM, or restricted
+1. Run `moonclaw` in a sandbox, e.g., a Docker container, VM, or restricted
    environment.
 2. Use a version control system to protect the user codebase or other important
    files.
-3. `maria` itself provides simple path privilege check. (currently **not
+3. `moonclaw` itself provides simple path privilege check. (currently **not
    supported** yet)
 
 ## Internal Packages Design Principles

@@ -1,5 +1,5 @@
 ///|
-/// Long-lived supervisor that exposes Maria's REST API and fans out requests
+/// Long-lived supervisor that exposes moonclaw's REST API and fans out requests
 /// to per-workspace tasks. `Daemon` owns the HTTP server, process manager, and
 /// bookkeeping maps for active tasks.
 struct Daemon {
@@ -46,7 +46,7 @@ priv struct PendingCodexAuth {
 
 ///|
 /// Constructs a daemon instance, validates the executable path, optionally
-/// acquires the `~/.moonagent/daemon.json` lock, and binds the HTTP server.
+/// acquires the `~/.moonclaw/daemon.json` lock, and binds the HTTP server.
 /// Returns `None` when another daemon already holds the lock.
 pub async fn Daemon::new(
   uuid? : @uuid.Generator,
@@ -72,7 +72,7 @@ pub async fn Daemon::new(
     // Grab daemon lock file
     guard lock_daemon_file(home~) is Some(info_file) else {
       logger.info(
-        "Another Maria daemon is already running for home '\{home}'. Exiting.",
+        "Another moonclaw daemon is already running for home '\{home}'. Exiting.",
       )
       return None
     }

@@ -1,141 +1,205 @@
 # Event Package
 
-The `event` package provides a comprehensive event system for the Maria AI agent framework. It implements an event-driven architecture that enables components to communicate through well-defined events during the agent's conversation lifecycle.
+The event package defines the event system used throughout the agent lifecycle for tracking and responding to state changes.
 
-## Architecture Overview
+## Core Types
 
-The package consists of three main components:
+### `Event`
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Agent Runtime                            │
-│                                                                 │
-│  ┌──────────────────┐     emit()     ┌───────────────────────┐ │
-│  │                  │ ──────────────▶│                       │ │
-│  │  Agent/Tools     │                │    EventTarget        │ │
-│  │                  │                │  (Event Dispatcher)   │ │
-│  └──────────────────┘                │                       │ │
-│                                      │  ┌─────────────────┐  │ │
-│                                      │  │  Listener 1     │  │ │
-│                                      │  │  Listener 2     │  │ │
-│                                      │  │  ...            │  │ │
-│                                      │  └─────────────────┘  │ │
-│                                      └───────────────────────┘ │
-│                                                                 │
-│  ┌──────────────────┐    poll()      ┌───────────────────────┐ │
-│  │                  │ ◀──────────────│                       │ │
-│  │  Agent           │                │  ExternalEventQueue   │ │
-│  │                  │     send()     │  (External Input)     │ │
-│  └──────────────────┘ ◀──────────────│                       │ │
-│                          (from env)  └───────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 1. Event (Enum)
-
-The `Event` enum represents all possible events that can occur during an agent's conversation lifecycle. Events are emitted by the agent runtime and can be observed by registered listeners.
-
-**Lifecycle Events:**
-- `PreConversation` / `PostConversation` - Conversation boundaries
-- `ModelLoaded` - When a model is loaded
-
-**Message Events:**
-- `MessageAdded` - When a message is added to the conversation
-- `MessageQueued` / `MessageUnqueued` - Message queue operations
-
-**Tool Events:**
-- `ToolAdded` - When a tool is registered with the agent
-- `PreToolCall` / `PostToolCall` - Tool execution boundaries
-
-**Processing Events:**
-- `TokenCounted` - Token counting for context management
-- `ContextPruned` - When context pruning is performed
-- `RequestCompleted` - When an LLM request completes
-
-**External Events:**
-- `ExternalEventReceived` - External event processing
-- `Cancelled` - User Cancel
-- `TodoUpdated` - Todo list updates
-
-### 2. EventTarget
-
-The `EventTarget` is the central event dispatcher that:
-- Maintains an unbounded async queue of events
-- Supports multiple listeners via `add_listener()`
-- Processes events asynchronously via `start()`
-- Provides `flush()` for immediate processing and `close()` for graceful shutdown
-
-### 3. ExternalEventQueue
-
-The `ExternalEventQueue` provides a mechanism for external sources (environment, IDE, user) to send events to the agent:
-- `Diagnostics` - IDE diagnostics (errors, warnings)
-- `Cancelled` - User wants to cancel the operation
-- `UserMessage` - User sends an immediate message
-
-## Conversation Lifecycle
-
-A typical conversation follows this event sequence:
-
-```
-MessageAdded (system)     ─┐
-MessageAdded (user)        │ Initial setup
-                          ─┘
-PreConversation           ─── Conversation starts
-  │
-  ├─▶ ExternalEventReceived (if any)
-  │   TokenCounted
-  │   ContextPruned
-  │   RequestCompleted
-  │     │
-  │     ├─▶ PreToolCall
-  │     │   PostToolCall
-  │     │   MessageAdded (tool)
-  │     │
-  │     └─▶ (loop back if more tool calls)
-  │
-  └─▶ (loop until conversation complete)
-        │
-PostConversation          ─── Conversation ends
-```
-
-## Usage Patterns
-
-### Listening to Events
+The main event structure with metadata.
 
 ```moonbit nocheck
-let emitter = EventTarget::new()
+///|
+pub struct Event {
+  id : @uuid.Uuid
+  created : @clock.Timestamp
+  desc : EventDesc
+} derive(Eq, Show)
+```
 
-// Register a listener
-emitter.add_listener(async fn(event) {
-  match event {
-    PostToolCall(tool_call, result~, rendered~) => 
-      // Handle tool completion
-    RequestCompleted(usage~, message~) => 
-      // Handle LLM response
+### `EventDesc`
+
+Enumeration of all possible event types in the agent lifecycle.
+
+```moonbit nocheck
+///|
+pub(all) enum EventDesc {
+  ModelLoaded(name~ : String)
+  PreConversation
+  PostConversation
+  SystemPromptSet(String?)
+  MessageUnqueued(id~ : @uuid.Uuid)
+  MessageQueued(id~ : @uuid.Uuid)
+  ToolAdded(@tool.ToolDesc)
+  PreToolCall(@ai.ToolCall)
+  PostToolCall(@ai.ToolCall, result~ : Result[Json, Json], rendered~ : String)
+  TokenCounted(Int)
+  ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
+  AssistantMessage(
+    usage~ : @ai.Usage?,
+    tool_calls~ : Array[@ai.ToolCall],
+    String
+  )
+  UserMessage(String)
+  Cancelled
+  Failed(Json)
+  Pruned(id~ : @uuid.Uuid)
+}
+```
+
+## Event Categories
+
+### Lifecycle Events
+
+| Event | Description |
+|-------|-------------|
+| `ModelLoaded` | AI model has been loaded |
+| `PreConversation` | Conversation is starting |
+| `PostConversation` | Conversation has ended |
+| `Cancelled` | Agent was cancelled |
+| `Failed` | An error occurred |
+
+### Message Events
+
+| Event | Description |
+|-------|-------------|
+| `SystemPromptSet` | System prompt was set/cleared |
+| `MessageQueued` | Message added to pending queue |
+| `MessageUnqueued` | Message moved to processing |
+| `UserMessage` | User or tool message content |
+| `AssistantMessage` | Response from AI model |
+
+### Tool Events
+
+| Event | Description |
+|-------|-------------|
+| `ToolAdded` | Tool registered with agent |
+| `PreToolCall` | Before tool execution |
+| `PostToolCall` | After tool execution (with result) |
+
+### Context Management Events
+
+| Event | Description |
+|-------|-------------|
+| `TokenCounted` | Token count calculated |
+| `ContextPruned` | Context trimmed for budget |
+| `Pruned` | Specific event pruned from history |
+
+## Key APIs
+
+### Event Creation
+
+```moonbit nocheck
+pub fn Event::new(
+  id~ : @uuid.Uuid,
+  created? : @clock.Timestamp,
+  desc : EventDesc,
+) -> Event
+```
+
+### Event Classification
+
+```moonbit nocheck
+// Is this an incoming/external event?
+pub fn Event::is_incoming(self : Event) -> Bool
+
+// Does this event end the conversation?
+pub fn Event::is_stopping(self : Event) -> Bool
+
+// Does this event start the conversation?
+pub fn Event::is_starting(self : Event) -> Bool
+
+// Is this a cancellation event?
+pub fn Event::is_cancellation(self : Event) -> Bool
+```
+
+## EventTarget
+
+A type for emitting events to listeners.
+
+```moonbit nocheck
+type EventTarget
+
+pub fn EventTarget::new(
+  uuid? : @uuid.Generator,
+  clock? : &@clock.Clock
+) -> Self raise
+
+pub fn EventTarget::emit(Self, EventDesc, id? : @uuid.Uuid) -> Unit
+pub fn EventTarget::add_listener(Self, async (Event) -> Unit) -> Unit
+pub async fn EventTarget::start(Self) -> Unit
+pub async fn EventTarget::flush(Self) -> Unit
+```
+
+## ExternalEventQueue
+
+A queue for receiving external events from the environment.
+
+```moonbit nocheck
+type ExternalEventQueue
+
+pub fn ExternalEventQueue::new() -> Self raise
+pub fn ExternalEventQueue::poll(Self) -> Array[Event]
+pub fn ExternalEventQueue::send(Self, EventDesc) -> Unit
+```
+
+## Typical Event Flow
+
+```
+ModelLoaded
+    │
+    ▼
+SystemPromptSet
+    │
+    ▼
+MessageQueued ──► MessageUnqueued ──► UserMessage
+    │
+    ▼
+PreConversation
+    │
+    ▼
+TokenCounted
+    │
+    ▼
+ContextPruned (if needed)
+    │
+    ▼
+AssistantMessage
+    │
+    ├──► PreToolCall ──► PostToolCall ──► UserMessage (tool result)
+    │                                    │
+    │                                    └──► (loop back for more tool calls)
+    │
+    ▼
+PostConversation
+```
+
+## Usage Example
+
+```moonbit nocheck
+// Create event target
+let target = @event.EventTarget::new()
+
+// Add listener
+target.add_listener(fn(event) {
+  match event.desc {
+    AssistantMessage(content, ..) => println("AI: \{content}")
+    PostToolCall(tc, result~, ..) => println("Tool \{tc.name}: \{result}")
     _ => ()
   }
 })
 
-// Start the event loop (typically in a background task)
-emitter.start()
+// Start processing events
+target.start()
+
+// Emit events
+target.emit(UserMessage("Hello!"))
+target.emit(AssistantMessage(usage=None, tool_calls=[], "Hi there!"))
 ```
 
-### Handling External Events
+## Dependencies
 
-```moonbit nocheck
-let external_queue = ExternalEventQueue::new()
-
-// From environment (e.g., IDE integration)
-external_queue.send(Diagnostics(diagnostics))
-external_queue.send(Cancelled)
-
-// From agent (polling)
-let events = external_queue.poll()
-for event in events {
-  // Process external events
-}
-```
-
-## JSON Serialization
-
-All events implement `ToJson` for logging and debugging purposes. Sensitive information (like API keys) is redacted in the JSON output.
+- `ai`: Message and tool call types
+- `tool`: Tool descriptor types
+- `uuid`: Unique identifiers
+- `clock`: Timestamps

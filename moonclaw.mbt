@@ -1,8 +1,8 @@
 ///|
-/// Maria is the main AI coding agent that provides intelligent assistance
+/// moonclaw is the main AI coding agent that provides intelligent assistance
 /// for software development tasks. It integrates various tools for file management,
 /// command execution, and code analysis.
-pub struct Maria {
+pub struct Moonclaw {
   logger : @pino.Logger
   agent : @agent.Agent
 }
@@ -28,7 +28,7 @@ fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
 }
 
 ///|
-/// Creates a new Maria agent instance.
+/// Creates a new moonclaw agent instance.
 ///
 /// Parameters:
 /// - logger: Optional logger for recording agent activities (defaults to file-based logger)
@@ -37,20 +37,20 @@ fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
 /// - user_message: Optional initial user message to start the conversation
 /// - web_search: Whether to enable web search capabilities (defaults to false)
 ///
-/// Returns a configured Maria instance ready to assist with coding tasks.
+/// Returns a configured moonclaw instance ready to assist with coding tasks.
 #as_free_fn
-pub async fn Maria::new(
+pub async fn Moonclaw::new(
   name? : String,
   logger? : @pino.Logger = @pino.logger(
-    "maria",
-    try! @pino.Transport::parse("file:.moonagent/log.jsonl"),
+    "moonclaw",
+    try! @pino.Transport::parse("file:.moonclaw/log.jsonl"),
   ),
   model~ : @model.Model,
   home? : String,
   cwd? : String,
   user_message? : String,
   web_search? : Bool = false,
-) -> Maria {
+) -> Moonclaw {
   let cwd = match cwd {
     Some(cwd) => cwd
     None => @os.cwd()
@@ -73,14 +73,14 @@ pub async fn Maria::new(
 }
 
 ///|
-/// Closes the Maria agent and releases associated resources.
+/// Closes the moonclaw agent and releases associated resources.
 /// Should be called when the agent is no longer needed (using `defer` ideally).
-pub fn Maria::close(self : Maria) -> Unit {
+pub fn Moonclaw::close(self : Moonclaw) -> Unit {
   self.agent.close()
 }
 
 ///|
-/// Starts the Maria agent and begins processing tasks.
+/// Starts the moonclaw agent and begins processing tasks.
 ///
 /// Parameters:
 ///
@@ -88,7 +88,7 @@ pub fn Maria::close(self : Maria) -> Unit {
 ///
 /// The agent will process messages from its queue and respond to user requests,
 /// and stops when there are no more messages to process.
-pub async fn Maria::start(self : Maria, prompt? : String) -> Unit {
+pub async fn Moonclaw::start(self : Moonclaw, prompt? : String) -> Unit {
   if prompt is Some(prompt) {
     let user_message = @ai.user_message(content=prompt)
     self.agent.queue_message(user_message) |> ignore()
@@ -97,7 +97,7 @@ pub async fn Maria::start(self : Maria, prompt? : String) -> Unit {
 }
 
 ///|
-/// Resumes a previously saved Maria agent session.
+/// Resumes a previously saved moonclaw agent session.
 ///
 /// Parameters:
 /// - logger: Optional logger for recording agent activities (defaults to file-based logger)
@@ -107,20 +107,20 @@ pub async fn Maria::start(self : Maria, prompt? : String) -> Unit {
 /// - user_message: Optional user message to add to the resumed conversation
 /// - web_search: Whether to enable web search capabilities (defaults to false)
 ///
-/// Returns a Maria instance with the conversation history restored.
+/// Returns a moonclaw instance with the conversation history restored.
 /// Fails if the conversation with the given id cannot be found.
 #as_free_fn
-pub async fn Maria::resume_(
+pub async fn Moonclaw::resume_(
   logger? : @pino.Logger = @pino.logger(
-    "maria",
-    try! @pino.Transport::parse("file:.moonagent/log.jsonl"),
+    "moonclaw",
+    try! @pino.Transport::parse("file:.moonclaw/log.jsonl"),
   ),
   model~ : @model.Model,
   home? : String,
   id : @uuid.Uuid,
   user_message? : String,
   web_search? : Bool,
-) -> Maria {
+) -> Moonclaw {
   let home = match home {
     Some(home) => home
     None => @os.home()

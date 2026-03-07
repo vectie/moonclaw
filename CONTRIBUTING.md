@@ -1,14 +1,14 @@
-# Contributing to Maria
+# Contributing to moonclaw
 
-Thank you for your interest in contributing to **Maria**! This guide will help you get started with the project.
+Thank you for your interest in contributing to **moonclaw**! This guide will help you get started with the project.
 
 ## What is MoonBit?
 
-[MoonBit](https://www.moonbitlang.com) is a modern programming language designed for cloud-native and WebAssembly applications. Maria is built entirely in MoonBit, leveraging its async capabilities through [moonbitlang/async](https://github.com/moonbitlang/async).
+[MoonBit](https://www.moonbitlang.com) is a modern programming language designed for cloud-native and WebAssembly applications. moonclaw is built entirely in MoonBit, leveraging its async capabilities through [moonbitlang/async](https://github.com/moonbitlang/async).
 
 ### Installing the MoonBit Toolchain
 
-To contribute to Maria, you'll need to install the MoonBit toolchain:
+To contribute to moonclaw, you'll need to install the MoonBit toolchain:
 
 1. Visit the [MoonBit Home Page](https://www.moonbitlang.com) for installation instructions
 2. Refer to the [MoonBit Documentation](https://docs.moonbitlang.com/en/latest/) for detailed usage guides
@@ -19,7 +19,7 @@ After installation, verify your setup:
 moon version --all
 ```
 
-### Using Maria
+### Using moonclaw
 
 ```bash
 # Set up your API key
@@ -28,7 +28,7 @@ export OPENROUTER_API_KEY=<your_api_key>  # or OPENAI_API_KEY
 # Update dependencies
 moon update
 
-# Run Maria
+# Run moonclaw
 moon run cmd/main
 ```
 
@@ -39,8 +39,8 @@ We follow the standard fork-and-pull request workflow:
 1. **Fork the repository** on GitHub
 2. **Clone your fork** locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/maria.git
-   cd maria
+   git clone https://github.com/YOUR_USERNAME/moonclaw.git
+   cd moonclaw
    git submodule update --init --recursive
    ```
 
@@ -67,7 +67,7 @@ We follow the standard fork-and-pull request workflow:
    git push origin my-feature-branch
    ```
 
-7. Open a pull request against the `main` branch of `moonbitlang/maria`
+7. Open a pull request against the `main` branch of `moonbitlang/moonclaw`
 
 ### CI Requirements
 
@@ -96,7 +96,7 @@ git config --global user.email "your.email@example.com"
 
 ### Mock Testing with `internal/mock`
 
-Maria uses a sophisticated mock harness for testing that provides isolated, deterministic test environments. This is essential for testing asynchronous code that interacts with the filesystem and other side effects.
+moonclaw uses a sophisticated mock harness for testing that provides isolated, deterministic test environments. This is essential for testing asynchronous code that interacts with the filesystem and other side effects.
 
 #### Key Features:
 - **Isolated workspace**: Each test runs in a temporary package layout
@@ -180,7 +180,7 @@ Check out issues tagged with:
 - **`help-wanted`**: Issues that are ready for community contributions
 - **`good-first-issue`**: Beginner-friendly issues
 
-Browse the [issue tracker](https://github.com/moonbitlang/maria/issues) and look for these labels to find issues that match your interests and skill level.
+Browse the [issue tracker](https://github.com/moonbitlang/moonclaw/issues) and look for these labels to find issues that match your interests and skill level.
 
 ### Areas to Contribute
 
@@ -217,4 +217,4 @@ Browse the [issue tracker](https://github.com/moonbitlang/maria/issues) and look
 - **Issues**: Ask questions in GitHub issues
 - **Pull Requests**: Don't hesitate to ask for help in your PR if you're stuck
 
-Thank you for contributing to Maria! 🚀
+Thank you for contributing to moonclaw! 🚀

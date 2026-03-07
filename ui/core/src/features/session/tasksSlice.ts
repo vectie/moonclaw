@@ -6,7 +6,7 @@ import type {
   TaskOverview,
   Todo,
   TodoTool,
-} from "@maria/core/lib/types.ts";
+} from "@moonclaw/core/lib/types.ts";
 import { type PayloadAction, createSelector } from "@reduxjs/toolkit";
 import { createAppSlice } from "../../app/createAppSlice";
 import type { RootState } from "../../app/store";

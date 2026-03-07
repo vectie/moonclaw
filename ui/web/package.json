@@ -1,5 +1,5 @@
 {
-  "name": "maria-ui",
+  "name": "moonclaw-ui",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@icons-pack/react-simple-icons": "^13.8.0",
-    "@maria/core": "workspace:^",
+    "@moonclaw/core": "workspace:^",
     "@reduxjs/toolkit": "^2.10.1",
     "@tailwindcss/vite": "^4.1.17",
     "comlink": "^4.4.2",

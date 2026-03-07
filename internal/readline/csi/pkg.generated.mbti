@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/readline/csi"
+package "moonbitlang/moonclaw/internal/readline/csi"
 
 // Values
 pub const ClearLine : Bytes = \x1b[2K

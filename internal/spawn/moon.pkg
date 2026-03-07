@@ -1,17 +1,17 @@
 import {
   "moonbitlang/async/process",
   "moonbitlang/async/io",
-  "moonbitlang/maria/internal/errno",
+  "moonbitlang/moonclaw/internal/errno",
   "moonbitlang/async/aqueue",
   "moonbitlang/async",
-  "moonbitlang/maria/clock",
+  "moonbitlang/moonclaw/clock",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
-  "moonbitlang/maria/internal/mock",
+  "moonbitlang/moonclaw/internal/mock",
 } for "test"
 
 options(

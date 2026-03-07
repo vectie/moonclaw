@@ -1,6 +1,6 @@
-# Maria Java Examples
+# moonclaw Java Examples
 
-This folder contains example programs showing how to use the Maria Java SDK.
+This folder contains example programs showing how to use the moonclaw Java SDK.
 
 ## Quick Start
 
@@ -13,7 +13,7 @@ mvn compile exec:java
 
 ## What's Inside
 
-- `Main.java` - A simple example that talks to Maria
+- `Main.java` - A simple example that talks to moonclaw
 - `pom.xml` - Maven configuration (tells Maven how to build the project)
 
 ## Modifying the Example
@@ -21,7 +21,7 @@ mvn compile exec:java
 Open `Main.java` and change this line:
 
 ```java
-for (Notification event : maria.start("Hello?")) {
+for (Notification event : moonclaw.start("Hello?")) {
 ```
 
 Replace `"Hello?"` with your own question or task!

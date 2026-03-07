@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/spawn"
+package "moonbitlang/moonclaw/internal/spawn"
 
 import {
-  "moonbitlang/maria/internal/errno",
+  "moonbitlang/moonclaw/internal/errno",
 }
 
 // Values

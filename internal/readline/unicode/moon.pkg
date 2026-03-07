@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/maria/internal/readline/unicode/width" @unicode/width,
+  "moonbitlang/moonclaw/internal/readline/unicode/width" @unicode/width,
   "moonbitlang/core/json",
 }
 

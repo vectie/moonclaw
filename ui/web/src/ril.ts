@@ -1,5 +1,5 @@
-import * as ral from "@maria/core/lib/ral.ts";
-import type { WebRAL } from "@maria/core/lib/types.js";
+import * as ral from "@moonclaw/core/lib/ral.ts";
+import type { WebRAL } from "@moonclaw/core/lib/types.js";
 
 const _ril: WebRAL = {
   platform: "web",

@@ -1,6 +1,6 @@
 # Mock Utilities
 
-This package contains the mock harness used by Maria's test suite. It exposes
+This package contains the mock harness used by moonclaw's test suite. It exposes
 helpers that spin up a temporary project workspace with deterministic
 infrastructure so asynchronous tests can interact with the filesystem and other
 side effects without touching the developer's machine.

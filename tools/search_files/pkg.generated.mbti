@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/tools/search_files"
+package "moonbitlang/moonclaw/tools/search_files"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/maria/tool",
+  "moonbitlang/moonclaw/tool",
 }
 
 // Values

@@ -1,10 +1,10 @@
 import {
-  "moonbitlang/maria/internal/tiktoken",
-  "moonbitlang/maria/internal/openai",
-  "moonbitlang/maria/internal/pino",
+  "moonbitlang/moonclaw/internal/tiktoken",
+  "moonbitlang/moonclaw/internal/openai",
+  "moonbitlang/moonclaw/internal/pino",
 }
 
 import {
-  "moonbitlang/maria/internal/mock",
+  "moonbitlang/moonclaw/internal/mock",
   "moonbitlang/async",
 } for "wbtest"

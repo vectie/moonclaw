@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/openai"
+package "moonbitlang/moonclaw/internal/openai"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/maria/internal/pino",
-  "moonbitlang/maria/internal/schema",
-  "moonbitlang/maria/model",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/schema",
+  "moonbitlang/moonclaw/model",
 }
 
 // Values
@@ -52,6 +52,89 @@ pub fn[T : ToChatCompletionMessageParamContent] user_message(content~ : T, name?
 // Errors
 
 // Types and methods
+pub struct AnthropicBlock {
+  type_ : String
+  text : String?
+}
+pub impl ToJson for AnthropicBlock
+
+pub enum AnthropicContent {
+  Text(String)
+  Blocks(Array[AnthropicBlock])
+}
+pub impl ToJson for AnthropicContent
+
+pub struct AnthropicContentBlock {
+  type_ : String
+  text : String?
+  name : String?
+  input : Json?
+  id : String?
+}
+pub impl Show for AnthropicContentBlock
+pub impl @json.FromJson for AnthropicContentBlock
+
+pub struct AnthropicDelta {
+  type_ : String?
+  text : String?
+  stop_reason : String?
+}
+pub impl Show for AnthropicDelta
+pub impl @json.FromJson for AnthropicDelta
+
+pub struct AnthropicMessage {
+  role : String
+  content : AnthropicContent
+}
+pub impl ToJson for AnthropicMessage
+
+pub struct AnthropicRequest {
+  model : String
+  max_tokens : Int
+  messages : Array[AnthropicMessage]
+  system : String?
+  tools : Array[AnthropicTool]?
+  stream : Bool?
+}
+pub impl ToJson for AnthropicRequest
+
+pub struct AnthropicResponse {
+  id : String
+  type_ : String
+  role : String
+  content : Array[AnthropicContentBlock]
+  model : String
+  stop_reason : String?
+  stop_sequence : String?
+  usage : AnthropicUsage
+}
+pub impl Show for AnthropicResponse
+pub impl @json.FromJson for AnthropicResponse
+
+pub struct AnthropicStreamEvent {
+  type_ : String
+  index : Int?
+  delta : AnthropicDelta?
+  content_block : AnthropicContentBlock?
+  message : AnthropicResponse?
+}
+pub impl Show for AnthropicStreamEvent
+pub impl @json.FromJson for AnthropicStreamEvent
+
+pub struct AnthropicTool {
+  name : String
+  description : String?
+  input_schema : Json
+}
+pub impl ToJson for AnthropicTool
+
+pub struct AnthropicUsage {
+  input_tokens : Int
+  output_tokens : Int
+}
+pub impl Show for AnthropicUsage
+pub impl @json.FromJson for AnthropicUsage
+
 pub(all) enum CacheControl {
   Ephemeral
 }

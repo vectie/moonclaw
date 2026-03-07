@@ -3,7 +3,7 @@ async test "Loader::apply" (t : @test.Test) {
   @mock.run(t, mock => {
     let home = mock.cwd
     @mock.with_home(home, () => {
-      let home_rules = home.add_directory(".moonagent").add_directory("rules")
+      let home_rules = home.add_directory(".moonclaw").add_directory("rules")
       home_rules.add_files({
         "a.md": (
           #|---
@@ -24,7 +24,7 @@ async test "Loader::apply" (t : @test.Test) {
       })
       let project = home.add_directory("project")
       let project_rules = project
-        .add_directory(".moonagent")
+        .add_directory(".moonclaw")
         .add_directory("rules")
       project_rules.add_files({
         "c.md": (

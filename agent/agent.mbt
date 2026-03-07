@@ -346,7 +346,7 @@ pub async fn Agent::start(agent : Agent) -> Unit {
 /// * `model` : The AI model to use for generating responses and handling tool calls.
 /// * `rand` : Optional random number generator. If not provided, uses ChaCha8.
 /// * `uuid` : Optional UUID generator. If not provided, creates one using the random generator.
-/// * `logger` : Optional logger instance. Defaults to file logger at `.moonagent/log.jsonl`.
+/// * `logger` : Optional logger instance. Defaults to file logger at `.moonclaw/log.jsonl`.
 /// * `cwd` : The current working directory that will be used as the base path for tool operations.
 /// * `system_message` : Optional system prompt to set at initialization.
 /// * `user_message` : Optional initial user message to send immediately after initialization.
@@ -366,7 +366,7 @@ pub async fn new(
   uuid? : @uuid.Generator,
   logger? : @pino.Logger = @pino.logger(
     "agent",
-    try! @pino.Transport::parse("file:.moonagent/log.jsonl"),
+    try! @pino.Transport::parse("file:.moonclaw/log.jsonl"),
   ),
   system_message? : String,
   user_message? : String,
@@ -456,7 +456,7 @@ pub async fn new(
 /// * `uuid` : Optional UUID generator for creating unique identifiers. If not
 ///   provided, uses ChaCha8.
 /// * `logger` : Optional logger instance for recording agent activities.
-///   Defaults to file logger at `.moonagent/log.jsonl`.
+///   Defaults to file logger at `.moonclaw/log.jsonl`.
 /// * `home` : Optional home directory path. If not provided, uses the OS home
 ///   directory.
 /// * `user_message` : Optional initial user message to send immediately after

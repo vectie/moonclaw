@@ -1,16 +1,17 @@
 import {
-  "moonbitlang/maria/internal/backtrace",
+  "moonbitlang/moonclaw/internal/backtrace",
   "moonbitlang/async",
-  "moonbitlang/maria/internal/os",
-  "moonbitlang/maria/cmd/main/conversation",
-  "moonbitlang/maria/cmd/main/interactive",
-  "moonbitlang/maria/cmd/main/exec",
-  "moonbitlang/maria/cmd/server",
-  "moonbitlang/maria/cmd/daemon",
-  "moonbitlang/maria/internal/buildinfo",
+  "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/moonclaw/cmd/main/conversation",
+  "moonbitlang/moonclaw/cmd/main/interactive",
+  "moonbitlang/moonclaw/cmd/main/exec",
+  "moonbitlang/moonclaw/cmd/main/tui",
+  "moonbitlang/moonclaw/cmd/server",
+  "moonbitlang/moonclaw/cmd/daemon",
+  "moonbitlang/moonclaw/internal/buildinfo",
 }
 
 options(
   "is-main": true,
-  overrides: [ "moonbitlang/maria/internal/abort" ],
+  overrides: [ "moonbitlang/moonclaw/internal/abort" ],
 )

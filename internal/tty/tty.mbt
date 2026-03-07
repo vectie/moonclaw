@@ -1,5 +1,5 @@
 ///|
-extern "c" fn tty_is_a_tty(fd : Int) -> Int = "moonbit_maria_tty_is_a_tty"
+extern "c" fn tty_is_a_tty(fd : Int) -> Int = "moonbit_moonclaw_tty_is_a_tty"
 
 ///|
 #callsite(autofill(loc))
@@ -20,7 +20,7 @@ pub fn isatty(fd : Int, loc~ : SourceLoc) -> Bool raise {
 
 ///|
 #borrow(size)
-extern "c" fn tty_get_win_size(size : FixedArray[Int]) -> Int = "moonbit_maria_tty_get_win_size"
+extern "c" fn tty_get_win_size(size : FixedArray[Int]) -> Int = "moonbit_moonclaw_tty_get_win_size"
 
 ///|
 pub struct Size {
@@ -39,7 +39,7 @@ pub fn window_size() -> Size raise {
 }
 
 ///|
-extern "c" fn tty_set_raw_mode(fd : Int) -> Int = "moonbit_maria_tty_set_raw_mode"
+extern "c" fn tty_set_raw_mode(fd : Int) -> Int = "moonbit_moonclaw_tty_set_raw_mode"
 
 ///|
 pub fn set_raw_mode(fd : Int) -> Unit raise {

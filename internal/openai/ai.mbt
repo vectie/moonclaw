@@ -23,10 +23,10 @@ pub async fn chat(
   logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
   extra_body? : Map[String, Json] = {},
 ) -> ChatCompletion {
-  // Dispatch based on model type
   match model.model_type {
     SaaS(CodexOAuth) => chat_codex(model~, request, logger~)
     SaaS(Copilot) => chat_copilot(model~, request, logger~)
+    SaaS(Anthropic) => chat_anthropic(model~, request, logger~)
     _ => chat_openai(model~, request, logger~, extra_body~)
   }
 }
@@ -59,6 +59,7 @@ async fn chat_openai(
         "Authorization": "Bearer \{model.api_key}",
         "Content-Type": "application/json",
         "Connection": "close",
+        "User-Agent": "openclaw",
       })
       defer client.close()
       let body = request.to_json()
@@ -91,6 +92,73 @@ async fn chat_openai(
         let json = @json.parse(body)
         let chat_completion : ChatCompletion = @json.from_json(json)
         logger.debug("ResponseReceived", data={
+          "model": { "name": model.model_name, "base_url": model.base_url },
+          "response_code": response.code,
+          "response_body": chat_completion,
+        })
+        chat_completion
+      }
+    },
+  )
+}
+
+///|
+async fn chat_anthropic(
+  model~ : @model.Model,
+  request : Request,
+  logger~ : @pino.Logger,
+) -> ChatCompletion {
+  @async.retry(
+    ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
+    max_retry=5,
+    fatal_error=error => {
+      match error {
+        HttpError(code=403, ..) => true
+        _ => false
+      }
+    },
+    () => {
+      logger.debug("AnthropicRequestSent", data={
+        "model": { "name": model.model_name, "base_url": model.base_url },
+        "request": request,
+      })
+      let anthropic_request = convert_to_anthropic_request(model~, request~)
+      let url = "\{model.base_url}/v1/messages"
+      let uri = Uri::parse(url)
+      let client = @http.Client::new("\{uri.schema}://\{uri.host}", headers={
+        "x-api-key": model.api_key,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+        "Connection": "close",
+      })
+      defer client.close()
+      let body = anthropic_request.to_json()
+      let response = client.post(uri.path, body)
+      guard response.code is (200..=299) else {
+        raise HttpError(code=response.code, body=client.read_all().text())
+      }
+      if request.stream is Some(true) {
+        let reader = ChunkReader::new(client)
+        let builder = ChatCompletionBuilder::new()
+        while reader.read() is Some(chunk) {
+          logger.debug("AnthropicChunkReceived", data={ "chunk": chunk })
+          builder.add_chunk(chunk)
+        }
+        let chat_completion = builder.to_chat_completion()
+        logger.debug("AnthropicResponseReceived", data={
+          "model": { "name": model.model_name, "base_url": model.base_url },
+          "response_code": response.code,
+          "response_body": chat_completion,
+        })
+        chat_completion
+      } else {
+        let body = client.read_all().text()
+        let json = @json.parse(body)
+        let anthropic_response : AnthropicResponse = @json.from_json(json)
+        let chat_completion = anthropic_response_to_chat_completion(
+          anthropic_response,
+        )
+        logger.debug("AnthropicResponseReceived", data={
           "model": { "name": model.model_name, "base_url": model.base_url },
           "response_code": response.code,
           "response_body": chat_completion,
@@ -731,4 +799,99 @@ pub async fn[T : Structural] data(model~ : @model.Model, prompt~ : String) -> T 
     fail("No content in completion message")
   }
   content |> @json.parse() |> @json.from_json()
+}
+
+///|
+fn convert_to_anthropic_request(
+  model~ : @model.Model,
+  request~ : Request,
+) -> AnthropicRequest {
+  let mut system : String? = None
+  let anthropic_messages : Array[AnthropicMessage] = []
+  for msg in request.messages {
+    match msg {
+      System(sys_msg) => {
+        let content = extract_text_content(sys_msg.content)
+        system = Some(content)
+      }
+      User(user_msg) => {
+        let content = extract_text_content(user_msg.content)
+        anthropic_messages.push({ role: "user", content: Text(content) })
+      }
+      Assistant(assistant_msg) => {
+        let content = extract_text_content(assistant_msg.content)
+        anthropic_messages.push({ role: "assistant", content: Text(content) })
+      }
+      Tool(tool_msg) => {
+        let content = extract_text_content(tool_msg.content)
+        anthropic_messages.push({
+          role: "user",
+          content: Blocks([{ type_: "tool_result", text: Some(content) }]),
+        })
+      }
+    }
+  }
+  let tools : Array[AnthropicTool]? = if request.tools.is_empty() {
+    None
+  } else {
+    Some(
+      request.tools.map(fn(tool) {
+        match tool {
+          Function(func_def) =>
+            {
+              name: func_def.name,
+              description: Some(func_def.description),
+              input_schema: func_def.parameters,
+            }
+        }
+      }),
+    )
+  }
+  let max_tokens = match request.max_tokens {
+    Some(tokens) => tokens
+    None => 4096
+  }
+  {
+    model: model.model_name,
+    max_tokens,
+    messages: anthropic_messages,
+    system,
+    tools,
+    stream: request.stream,
+  }
+}
+
+///|
+fn anthropic_response_to_chat_completion(
+  response : AnthropicResponse,
+) -> ChatCompletion {
+  let mut content : String? = None
+  let tool_calls : Array[ChatCompletionMessageToolCall] = []
+  for block in response.content {
+    match block.type_ {
+      "text" => if block.text is Some(text) { content = Some(text) }
+      "tool_use" =>
+        if block.id is Some(id) && block.name is Some(name) {
+          let args = match block.input {
+            Some(input) => input.stringify()
+            None => "{}"
+          }
+          tool_calls.push(tool_call(id~, name~, arguments=args))
+        }
+      _ => continue
+    }
+  }
+  let finish_reason = if tool_calls.is_empty() { Stop } else { ToolCalls }
+  ChatCompletion::new(
+    id=response.id,
+    choices=[
+      ChatCompletionChoice::new(
+        index=0,
+        message=ChatCompletionMessage::new(content?, tool_calls~),
+        finish_reason~,
+      ),
+    ],
+    created=0,
+    model=response.model,
+  )
 }

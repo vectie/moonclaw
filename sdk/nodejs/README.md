@@ -1,18 +1,18 @@
-# maria-nodejs
+# moonclaw-nodejs
 
-Async Node.js/TypeScript bindings for the bundled `sdk.exe` Maria agent. The package wraps the
-CLI executable with a small JSON-RPC client and exposes a high-level `Maria`
+Async Node.js/TypeScript bindings for the bundled `sdk.exe` moonclaw agent. The package wraps the
+CLI executable with a small JSON-RPC client and exposes a high-level `moonclaw`
 class for streaming assistant responses.
 
 ## Quick start
 
 ```typescript
-import { Maria } from "maria";
+import { moonclaw } from "moonclaw";
 
 async function main() {
-  const maria = new Maria();
+  const moonclaw = new moonclaw();
   
-  for await (const event of maria.start("Hello, Maria!")) {
+  for await (const event of moonclaw.start("Hello, moonclaw!")) {
     console.log(event);
   }
 }
@@ -26,7 +26,7 @@ calls emitted by the executable.
 ## Installation
 
 ```bash
-npm install maria
+npm install moonclaw
 ```
 
 ## Requirements

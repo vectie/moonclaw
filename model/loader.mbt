@@ -3,6 +3,7 @@ struct Loader {
   home : StringView
   cwd : StringView
   models : Array[Model]
+  providers : Map[String, ProviderConfig]
 }
 
 ///|
@@ -20,7 +21,7 @@ struct Loader {
 /// Populate the loader's in-memory model cache by reading project and
 /// user model configuration files.
 ///
-/// The loader looks for `.moonagent/models/models.json` inside the
+/// The loader looks for `.moonclaw/models/models.json` inside the
 /// current working directory first, then the user's home directory. If
 /// either file exists, the models defined there are appended to the
 /// loader's cache.
@@ -33,7 +34,7 @@ pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
     Some(cwd) => cwd
     None => @os.cwd()
   }
-  let loader = Loader::{ home, cwd, models: [] }
+  let loader = Loader::{ home, cwd, models: [], providers: Map::new() }
   loader.load()
   loader
 }
@@ -41,26 +42,334 @@ pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
 ///|
 async fn Loader::load(self : Loader) -> Unit {
   self.models.clear()
+  self.providers.clear()
+
   async fn load_from_path(path : StringView) -> Array[Model] {
-    let text = @fsx.read_file(path)
-    let json = @json.parse(text)
-    @json.from_json(json)
+    let text = @fsx.read_file(path) catch { _ => return [] }
+    let json = @json.parse(text) catch { _ => return [] }
+    guard json is Array(_) else { return [] }
+    @json.from_json(json) catch {
+      _ => []
+    }
+  }
+
+  async fn load_providers_from_path(
+    path : StringView,
+  ) -> Map[String, ProviderConfig] {
+    let text = @fsx.read_file(path) catch { _ => return Map::new() }
+    let json = @json.parse(text) catch { _ => return Map::new() }
+    guard json is Object(obj) else { return Map::new() }
+    if obj.get("providers") is Some(_) {
+      let providers_file : ProvidersFile = @json.from_json(json) catch {
+        _ => return Map::new()
+      }
+      providers_file.providers
+    } else {
+      Map::new()
+    }
   }
 
   let project = self.cwd
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("models")
     |> @pathx.join("models.json")
   if @fsx.exists(project) {
     self.models.append(load_from_path(project))
+    let providers = load_providers_from_path(project)
+    for name, config in providers {
+      self.providers.set(name, config)
+    }
   }
   let user = self.home
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("models")
     |> @pathx.join("models.json")
   if @fsx.exists(user) {
     self.models.append(load_from_path(user))
+    let providers = load_providers_from_path(user)
+    for name, config in providers {
+      self.providers.set(name, config)
+    }
   }
+}
+
+///|
+async fn Loader::load_moonclaw_api_key(self : Loader) -> String? {
+  async fn load_from_path(path : String) -> String? {
+    if not(@fsx.exists(path)) {
+      return None
+    }
+    let text = @fsx.read_file(path) catch { _ => return None }
+    let json = @json.parse(text) catch { _ => return None }
+    guard json is Object(obj) else { return None }
+    if obj.get("api_key") is Some(api_key_json) {
+      guard api_key_json is String(api_key) else { return None }
+      return Some(api_key)
+    }
+    if obj.get("env") is Some(env_json) {
+      guard env_json is Object(env) else { return None }
+      if env.get("OPEN_ROUTER_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+      if env.get("OPENROUTER_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+      if env.get("QWEN_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+    }
+    None
+  }
+  let project = self.cwd
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(project) is Some(api_key) {
+    logger.info("Loaded API key from project .moonclaw/moonclaw.json")
+    return Some(api_key)
+  }
+  let user = self.home
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(user) is Some(api_key) {
+    logger.info("Loaded API key from user .moonclaw/moonclaw.json")
+    return Some(api_key)
+  }
+  None
+}
+
+///|
+async fn Loader::load_qwen_api_key(self : Loader) -> String? {
+  async fn load_from_path(path : String) -> String? {
+    if not(@fsx.exists(path)) {
+      return None
+    }
+    let text = @fsx.read_file(path) catch { _ => return None }
+    let json = @json.parse(text) catch { _ => return None }
+    guard json is Object(obj) else { return None }
+    if obj.get("qwen_api_key") is Some(api_key_json) {
+      guard api_key_json is String(api_key) else { return None }
+      return Some(api_key)
+    }
+    if obj.get("env") is Some(env_json) {
+      guard env_json is Object(env) else { return None }
+      if env.get("QWEN_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+      if env.get("DASHSCOPE_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+    }
+    None
+  }
+  let project = self.cwd
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(project) is Some(api_key) {
+    logger.info("Loaded Qwen API key from project .moonclaw/moonclaw.json")
+    return Some(api_key)
+  }
+  let user = self.home
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(user) is Some(api_key) {
+    logger.info("Loaded Qwen API key from user .moonclaw/moonclaw.json")
+    return Some(api_key)
+  }
+  if @os.getenv("QWEN_API_KEY") is Some(api_key) {
+    return Some(api_key)
+  }
+  if @os.getenv("DASHSCOPE_API_KEY") is Some(api_key) {
+    return Some(api_key)
+  }
+  None
+}
+
+///|
+async fn Loader::load_kimi_api_key(self : Loader) -> String? {
+  async fn load_from_path(path : String) -> String? {
+    if not(@fsx.exists(path)) {
+      return None
+    }
+    let text = @fsx.read_file(path) catch { _ => return None }
+    let json = @json.parse(text) catch { _ => return None }
+    guard json is Object(obj) else { return None }
+    if obj.get("kimi_api_key") is Some(api_key_json) {
+      guard api_key_json is String(api_key) else { return None }
+      return Some(api_key)
+    }
+    if obj.get("env") is Some(env_json) {
+      guard env_json is Object(env) else { return None }
+      if env.get("KIMI_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+      if env.get("MOONSHOT_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+    }
+    None
+  }
+  let project = self.cwd
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(project) is Some(api_key) {
+    logger.info("Loaded Kimi API key from project .moonclaw/moonclaw.json")
+    return Some(api_key)
+  }
+  let user = self.home
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(user) is Some(api_key) {
+    logger.info("Loaded Kimi API key from user .moonclaw/moonclaw.json")
+    return Some(api_key)
+  }
+  if @os.getenv("KIMI_API_KEY") is Some(api_key) {
+    return Some(api_key)
+  }
+  if @os.getenv("MOONSHOT_API_KEY") is Some(api_key) {
+    return Some(api_key)
+  }
+  None
+}
+
+///|
+async fn Loader::load_kimi_coding_api_key(self : Loader) -> String? {
+  async fn load_from_path(path : String) -> String? {
+    if not(@fsx.exists(path)) {
+      return None
+    }
+    let text = @fsx.read_file(path) catch { _ => return None }
+    let json = @json.parse(text) catch { _ => return None }
+    guard json is Object(obj) else { return None }
+    if obj.get("kimi_coding_api_key") is Some(api_key_json) {
+      guard api_key_json is String(api_key) else { return None }
+      return Some(api_key)
+    }
+    if obj.get("env") is Some(env_json) {
+      guard env_json is Object(env) else { return None }
+      if env.get("KIMI_CODING_API_KEY") is Some(api_key_json) {
+        guard api_key_json is String(api_key) else { return None }
+        return Some(api_key)
+      }
+    }
+    None
+  }
+  let project = self.cwd
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(project) is Some(api_key) {
+    logger.info(
+      "Loaded Kimi Coding API key from project .moonclaw/moonclaw.json",
+    )
+    return Some(api_key)
+  }
+  let user = self.home
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("moonclaw.json")
+  if load_from_path(user) is Some(api_key) {
+    logger.info("Loaded Kimi Coding API key from user .moonclaw/moonclaw.json")
+    return Some(api_key)
+  }
+  if @os.getenv("KIMI_CODING_API_KEY") is Some(api_key) {
+    return Some(api_key)
+  }
+  None
+}
+
+///|
+async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
+  let (target_provider, model_id) = if name.contains("/") {
+    let parts = name.split("/").to_array()
+    let provider_name = parts.get(0).unwrap_or("").to_string()
+    let id = parts.get(1).unwrap_or(name).to_string()
+    (Some(provider_name), id)
+  } else {
+    (None, name)
+  }
+  for provider_name, config in self.providers {
+    if target_provider is Some(target) && provider_name != target {
+      continue
+    }
+    for model_config in config.models {
+      if model_config.id == model_id {
+        let api_key = match config.apiKey {
+          Some(key) => key
+          None => return None
+        }
+        let base_url = match config.baseUrl {
+          Some(url) => url
+          None => return None
+        }
+        let safe_zone_tokens = match model_config.contextWindow {
+          Some(window) => window
+          None => 128_000
+        }
+        let model_type = match config.api {
+          Some("anthropic-messages") => SaaS(Anthropic)
+          Some("openai") => SaaS(OpenAI)
+          Some("openai-completions") => SaaS(OpenAI)
+          _ => SaaS(OpenAI)
+        }
+        logger.info(
+          "Loaded model '\{model_id}' from provider '\{provider_name}'",
+        )
+        let model = Model::new(
+          api_key~,
+          base_url~,
+          name~,
+          model_name=model_config.id,
+          model_type~,
+          safe_zone_tokens~,
+        )
+        return Some(model)
+      }
+    }
+  }
+  None
+}
+
+///|
+async fn Loader::load_first_provider_model(self : Loader) -> Model? {
+  for provider_name, config in self.providers {
+    let api_key = match config.apiKey {
+      Some(key) => key
+      None => continue
+    }
+    let base_url = match config.baseUrl {
+      Some(url) => url
+      None => continue
+    }
+    if config.models.get(0) is Some(model_config) {
+      let safe_zone_tokens = match model_config.contextWindow {
+        Some(window) => window
+        None => 128_000
+      }
+      let model_type = match config.api {
+        Some("anthropic-messages") => SaaS(Anthropic)
+        Some("openai") => SaaS(OpenAI)
+        _ => SaaS(OpenAI)
+      }
+      logger.info(
+        "Auto-detected model '\{model_config.id}' from provider '\{provider_name}'",
+      )
+      let model = Model::new(
+        api_key~,
+        base_url~,
+        name=model_config.id,
+        model_name=model_config.id,
+        model_type~,
+        safe_zone_tokens~,
+      )
+      return Some(model)
+    }
+  }
+  None
 }
 
 ///|
@@ -77,11 +386,25 @@ async fn Loader::load(self : Loader) -> Unit {
 /// model is available.
 pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
   self.load()
+  if name is Some(model_name) {
+    if self.load_from_providers(model_name) is Some(model) {
+      return Some(model)
+    }
+  }
   if name is Some(model_name) && model_name.has_prefix("codex/") {
     return self.load_codex_model(model_name, allow_auto_login=true)
   }
   if name is Some(model_name) && model_name.has_prefix("copilot/") {
     return self.load_copilot_model(model_name, allow_auto_login=true)
+  }
+  if name is Some(model_name) && model_name.has_prefix("qwen/") {
+    return self.load_qwen_model(model_name)
+  }
+  if name is Some(model_name) && model_name.has_prefix("kimi/") {
+    return self.load_kimi_model(model_name)
+  }
+  if name is Some(model_name) && model_name.has_prefix("kimi-coding/") {
+    return self.load_kimi_coding_model(model_name)
   }
   let model = if name is Some(name) {
     for model in self.models {
@@ -102,6 +425,18 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
     return self.load_openrouter_model(Some(model_name))
   }
   logger.info("No model specified, auto-detecting...")
+  if self.load_first_provider_model() is Some(model) {
+    return Some(model)
+  }
+  if self.load_qwen_model("qwen/qwen3-coder-plus") is Some(model) {
+    return Some(model)
+  }
+  if self.load_kimi_model("kimi/kimi-k2.5") is Some(model) {
+    return Some(model)
+  }
+  if self.load_kimi_coding_model("kimi-coding/k2p5") is Some(model) {
+    return Some(model)
+  }
   if self.load_openrouter_model(None) is Some(model) {
     return Some(model)
   }
@@ -117,15 +452,16 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
     return Some(model)
   }
   logger.error(
-    "No API key found. Set OPENROUTER_API_KEY/OPENAI_API_KEY environment variable or use a codex/ or copilot/ model to authenticate via OAuth.",
+    "No API key found. Set QWEN_API_KEY/KIMI_API_KEY/KIMI_CODING_API_KEY/OPENROUTER_API_KEY/OPENAI_API_KEY environment variable or use a codex/ or copilot/ model to authenticate via OAuth.",
   )
   None
 }
 
 ///|
 async fn Loader::load_openrouter_model(self : Loader, name : String?) -> Model? {
-  let _ = self
-  let api_key = if @os.getenv("OPENROUTER_API_KEY") is Some(api_key) {
+  let api_key = if self.load_moonclaw_api_key() is Some(api_key) {
+    Some(api_key)
+  } else if @os.getenv("OPENROUTER_API_KEY") is Some(api_key) {
     Some(api_key)
   } else if @os.getenv("OPENAI_API_KEY") is Some(api_key) {
     Some(api_key)
@@ -269,6 +605,93 @@ async fn Loader::load_copilot_model(
     copilot_token=credentials.copilot_token,
     github_token=credentials.github_token,
     name=selected_model,
+  )
+  Some(model)
+}
+
+///|
+async fn Loader::load_qwen_model(self : Loader, name : String) -> Model? {
+  let api_key = self.load_qwen_api_key()
+  guard api_key is Some(api_key) else { return None }
+  let base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  let (model_name, safe_zone_tokens) = match name {
+    "qwen/qwen3-coder-plus" => ("qwen3-coder-plus", 128_000)
+    "qwen/qwen3-coder-flash" => ("qwen3-coder-flash", 128_000)
+    "qwen/qwen3-235b-a22b" => ("qwen3-235b-a22b", 128_000)
+    "qwen/qwen3-32b" => ("qwen3-32b", 128_000)
+    "qwen/qwen-max" => ("qwen-max", 32_000)
+    "qwen/qwen-plus" => ("qwen-plus", 128_000)
+    "qwen/qwen-turbo" => ("qwen-turbo", 128_000)
+    "qwen/qwen-long" => ("qwen-long", 1_000_000)
+    _ => {
+      let model_name = name.strip_prefix("qwen/").unwrap_or(name).to_string()
+      (model_name, 128_000)
+    }
+  }
+  logger.info("Using Qwen model '\{model_name}'")
+  let model = Model::new(
+    api_key~,
+    base_url~,
+    name=model_name,
+    model_name~,
+    model_type=SaaS(Qwen),
+    safe_zone_tokens~,
+  )
+  Some(model)
+}
+
+///|
+async fn Loader::load_kimi_model(self : Loader, name : String) -> Model? {
+  let api_key = self.load_kimi_api_key()
+  guard api_key is Some(api_key) else { return None }
+  let base_url = "https://api.moonshot.cn/v1"
+  let (model_name, safe_zone_tokens) = match name {
+    "kimi/kimi-k2-0905" => ("kimi-k2-0905", 262_144)
+    "kimi/kimi-k2.5" => ("kimi-k2.5", 262_144)
+    "kimi/moonshot-v1-8k" => ("moonshot-v1-8k", 8_000)
+    "kimi/moonshot-v1-32k" => ("moonshot-v1-32k", 32_000)
+    "kimi/moonshot-v1-128k" => ("moonshot-v1-128k", 128_000)
+    _ => {
+      let model_name = name.strip_prefix("kimi/").unwrap_or(name).to_string()
+      (model_name, 128_000)
+    }
+  }
+  logger.info("Using Kimi model '\{model_name}'")
+  let model = Model::new(
+    api_key~,
+    base_url~,
+    name=model_name,
+    model_name~,
+    model_type=SaaS(Kimi),
+    safe_zone_tokens~,
+  )
+  Some(model)
+}
+
+///|
+async fn Loader::load_kimi_coding_model(self : Loader, name : String) -> Model? {
+  let api_key = self.load_kimi_coding_api_key()
+  guard api_key is Some(api_key) else { return None }
+  let base_url = "https://api.moonshot.cn/v1"
+  let (model_name, safe_zone_tokens) = match name {
+    "kimi-coding/k2p5" => ("kimi-k2.5", 262_144)
+    "kimi-coding/k2-0905" => ("kimi-k2-0905", 262_144)
+    _ => {
+      let model_name = name
+        .strip_prefix("kimi-coding/")
+        .unwrap_or(name)
+        .to_string()
+      (model_name, 262_144)
+    }
+  }
+  logger.info("Using Kimi Coding model '\{model_name}'")
+  let model = Model::new(
+    api_key~,
+    base_url~,
+    name=model_name,
+    model_name~,
+    model_type=SaaS(KimiCoding),
+    safe_zone_tokens~,
   )
   Some(model)
 }

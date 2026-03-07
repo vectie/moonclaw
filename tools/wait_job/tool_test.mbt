@@ -20,7 +20,7 @@ async test "wait_job" (t : @test.Test) {
       mock.show(output),
       content=(
         #|Job 0 completed with exit code 0
-        #|Stdout ((mock:cwd)/.moonagent/jobs/0/stdout):
+        #|Stdout ((mock:cwd)/.moonclaw/jobs/0/stdout):
         #|Hello, World!
         #|
         #|Stderr:

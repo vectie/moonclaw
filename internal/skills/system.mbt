@@ -2,17 +2,17 @@
 /// System skills installer.
 ///
 /// System skills are embedded at build time and installed into
-/// `~/.moonagent/skills/.system`. They are loaded with lower priority than
+/// `~/.moonclaw/skills/.system`. They are loaded with lower priority than
 /// user/repo skills, so local skills can override by name.
 const SYSTEM_SKILLS_DIR_NAME = ".system"
 
 ///|
-const SYSTEM_SKILLS_MARKER_FILENAME = ".maria-system-skills.marker"
+const SYSTEM_SKILLS_MARKER_FILENAME = ".moonclaw-system-skills.marker"
 
 ///|
 fn system_skills_root(home : String) -> String {
   home
-  |> @pathx.join(".moonagent")
+  |> @pathx.join(".moonclaw")
   |> @pathx.join("skills")
   |> @pathx.join(SYSTEM_SKILLS_DIR_NAME)
 }

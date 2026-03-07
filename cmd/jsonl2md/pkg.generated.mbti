@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/cmd/jsonl2md"
+package "moonbitlang/moonclaw/cmd/jsonl2md"
 
 // Values
 

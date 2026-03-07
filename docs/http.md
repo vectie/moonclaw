@@ -66,7 +66,7 @@ Response:
 The React UI uses `useNewTaskMutation` to create tasks. The mutation builds the
 request body from the initial chat input (`message`), hard‑codes the model
 identifier, and optionally includes `cwd` and `web_search`. In MoonBit,
-`Daemon::create_task` decodes this JSON, spins up a per‑task Maria `Server`
+`Daemon::create_task` decodes this JSON, spins up a per‑task moonclaw `Server`
 process, registers it in `by_id`/`by_cwd`, and returns the freshly created
 task’s overview as `{ "task": TaskOverview }`. The returned object is then fed
 back into the UI task list via RTK Query cache invalidation and the SSE
@@ -142,8 +142,8 @@ Response:
   matched by the `(method_, ["", "v1", "task", id, .. paths])` arm and forwarded
   by `Daemon::forward_to_task` as a proxied request to `POST /v1/cancel` on the
   per‑task server. Inside the task process, `Server::serve_http` routes
-  `/v1/cancel` to `Server::cancel_maria`, which checks for an active Maria task,
-  calls `task.cancel()`, clears pending inputs via `maria.agent.clear_inputs()`,
+  `/v1/cancel` to `Server::cancel_moonclaw`, which checks for an active moonclaw task,
+  calls `task.cancel()`, clears pending inputs via `moonclaw.agent.clear_inputs()`,
   and responds with any `pending_messages` that were dropped.
 
 ## `GET /events` (SSE)
@@ -201,7 +201,7 @@ respectively and used to keep the task list in sync.
 ## `GET /task/:id/events` (SSE)
 
 For each active task view, the UI opens an `EventSource` on
-`${BASE_URL}/task/:id/events` and subscribes to the event type `"maria"`.
+`${BASE_URL}/task/:id/events` and subscribes to the event type `"moonclaw"`.
 
 Each event payload is JSON that matches the `TaskEvent` union described in the
 next section. The UI de‑duplicates events using their numeric `id` and uses the
@@ -211,7 +211,7 @@ event sequence to render the conversation timeline.
 
   In the UI, `useTaskEventsQuery` uses `onCacheEntryAdded` to open an
   `EventSource` to `/task/:id/events` for each active task view. Incoming events
-  of type `"maria"` are parsed as `TaskEvent` and fed into `pushEventForTask` or
+  of type `"moonclaw"` are parsed as `TaskEvent` and fed into `pushEventForTask` or
   `removeFromInputQueueForTask`, which updates the per‑task event timeline and
   queued‑message state.
 
@@ -221,10 +221,10 @@ event sequence to render the conversation timeline.
 
   On the daemon side, requests to `/task/:id/events` are again routed through
   [`Daemon::forward_to_task`](../cmd/daemon/daemon.mbt#L640), which proxies them
-  to [`GET /v1/events`](../cmd/server/server.mbt#L166) on the per‑task Maria
+  to [`GET /v1/events`](../cmd/server/server.mbt#L166) on the per‑task moonclaw
   `Server`. There, [`Server::get_events`](../cmd/server/server.mbt#L324) sends
   an initial
-  [`maria.queued_messages.synchronized`](../cmd/server/server.mbt#L331) event
+  [`moonclaw.queued_messages.synchronized`](../cmd/server/server.mbt#L331) event
   followed by an SSE stream of `OutgoingEvent` values (filtered to hide some
-  low‑level tokens and subagent tool events) under the `maria` event name. These
+  low‑level tokens and subagent tool events) under the `moonclaw` event name. These
   `OutgoingEvent` payloads are exactly what the UI’s `TaskEvent` union models.

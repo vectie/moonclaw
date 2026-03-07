@@ -1,8 +1,8 @@
 import {
-  "moonbitlang/maria/internal/os",
-  "moonbitlang/maria/internal/pathx",
-  "moonbitlang/maria/internal/fsx",
-  "moonbitlang/maria/internal/spawn",
+  "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/moonclaw/internal/pathx",
+  "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/async/http",
   "moonbitlang/async",
   "moonbitlang/core/json",

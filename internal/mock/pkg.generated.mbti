@@ -1,14 +1,14 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/mock"
+package "moonbitlang/moonclaw/internal/mock"
 
 import {
   "moonbitlang/async",
   "moonbitlang/core/random",
   "moonbitlang/core/test",
-  "moonbitlang/maria/clock",
-  "moonbitlang/maria/internal/pino",
-  "moonbitlang/maria/internal/uuid",
-  "moonbitlang/maria/model",
+  "moonbitlang/moonclaw/clock",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/model",
 }
 
 // Values

@@ -53,11 +53,16 @@ async fn ExecOptions::run(self : ExecOptions, cwd~ : String) -> Unit {
     fail("Log file \{self.log_file} already exists")
   }
   let logger = @pino.logger(
-    "maria_exec",
+    "moonclaw_exec",
     try! @pino.Transport::parse("file:\{self.log_file}"),
   )
-  let maria = @maria.Maria::new(logger~, model~, cwd~, user_message=prompt)
-  maria.start() catch {
+  let moonclaw = @moonclaw.Moonclaw::new(
+    logger~,
+    model~,
+    cwd~,
+    user_message=prompt,
+  )
+  moonclaw.start() catch {
     error => {
       logger.error("ExecFailed", data={ "error": error.to_string() })
       raise error

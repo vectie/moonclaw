@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/schema"
+package "moonbitlang/moonclaw/internal/schema"
 
 // Values
 pub fn array(Schema) -> Schema

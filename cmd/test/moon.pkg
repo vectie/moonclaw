@@ -1,14 +1,14 @@
 import {
-  "moonbitlang/maria/internal/os",
+  "moonbitlang/moonclaw/internal/os",
   "moonbitlang/async",
-  "moonbitlang/maria/internal/fsx",
-  "moonbitlang/maria/internal/pino",
-  "moonbitlang/maria",
-  "moonbitlang/maria/internal/backtrace",
-  "moonbitlang/maria/model",
+  "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw",
+  "moonbitlang/moonclaw/internal/backtrace",
+  "moonbitlang/moonclaw/model",
 }
 
 options(
   "is-main": true,
-  overrides: [ "moonbitlang/maria/internal/abort" ],
+  overrides: [ "moonbitlang/moonclaw/internal/abort" ],
 )

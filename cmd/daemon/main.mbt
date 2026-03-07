@@ -53,8 +53,8 @@ impl @json.FromJson for DaemonInfo with from_json(
 }
 
 ///|
-/// Spawns (and optionally detaches) a Maria daemon process and waits until the
-/// child writes `~/.moonagent/daemon.json`. Returns the PID recorded in that
+/// Spawns (and optionally detaches) a moonclaw daemon process and waits until the
+/// child writes `~/.moonclaw/daemon.json`. Returns the PID recorded in that
 /// file, which can belong to the new child or an already running daemon.
 pub async fn detach(
   exec_path? : String,
@@ -79,7 +79,7 @@ pub async fn detach(
     for {
       try {
         let info_file = @fs.open(
-          home |> @pathx.join(".moonagent") |> @pathx.join("daemon.json"),
+          home |> @pathx.join(".moonclaw") |> @pathx.join("daemon.json"),
           mode=ReadOnly,
         )
         defer info_file.close()
@@ -158,7 +158,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   }
   if to_detach {
     let pid = detach(exec_path?, port~, serve~)
-    logger.info("Detached Maria daemon with PID \{pid}.")
+    logger.info("Detached moonclaw daemon with PID \{pid}.")
   } else {
     let home = @os.home()
     let exec_path = if exec_path is Some(exec_path) {

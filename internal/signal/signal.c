@@ -3,7 +3,7 @@
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_signal_sigtstp(void) {
+moonbit_moonclaw_signal_sigtstp(void) {
 #ifdef SIGTSTP
   return SIGTSTP;
 #else
@@ -13,7 +13,7 @@ moonbit_maria_signal_sigtstp(void) {
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_signal_sigterm(void) {
+moonbit_moonclaw_signal_sigterm(void) {
 #ifdef SIGTERM
   return SIGTERM;
 #else
@@ -23,7 +23,7 @@ moonbit_maria_signal_sigterm(void) {
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_signal_sigkill(void) {
+moonbit_moonclaw_signal_sigkill(void) {
 #ifdef SIGKILL
   return SIGKILL;
 #else

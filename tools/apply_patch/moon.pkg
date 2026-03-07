@@ -1,6 +1,6 @@
 import {
-  "moonbitlang/maria/tool",
-  "moonbitlang/maria/internal/fsx",
-  "moonbitlang/maria/internal/pathx",
+  "moonbitlang/moonclaw/tool",
+  "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/core/json",
 }

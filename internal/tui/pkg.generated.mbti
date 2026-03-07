@@ -1,0 +1,600 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/internal/tui"
+
+import {
+  "moonbitlang/async/stdio",
+}
+
+// Values
+pub const AltScreen : String = "\x1b[?1049h"
+
+pub const Blink : String = "\x1b[5m"
+
+pub const Bold : String = "\x1b[1m"
+
+pub const ClearLine : String = "\x1b[2K"
+
+pub const ClearLineLeft : String = "\x1b[1K"
+
+pub const ClearLineRight : String = "\x1b[K"
+
+pub const ClearScreen : String = "\x1b[2J"
+
+pub const ClearScreenDown : String = "\x1b[J"
+
+pub const ClearScreenUp : String = "\x1b[1J"
+
+pub const CursorDown : String = "\x1b[B"
+
+pub const CursorHide : String = "\x1b[?25l"
+
+pub const CursorHome : String = "\x1b[H"
+
+pub const CursorLeft : String = "\x1b[D"
+
+pub const CursorRestore : String = "\x1b[u"
+
+pub const CursorRight : String = "\x1b[C"
+
+pub const CursorSave : String = "\x1b[s"
+
+pub const CursorShow : String = "\x1b[?25h"
+
+pub const CursorUp : String = "\x1b[A"
+
+pub const Dim : String = "\x1b[2m"
+
+pub const DisableBracketedPaste : String = "\x1b[?2004l"
+
+pub const DisableMouse : String = "\x1b[?1000l"
+
+pub const DisableMouseDrag : String = "\x1b[?1002l"
+
+pub const DisableMouseMove : String = "\x1b[?1003l"
+
+pub const EnableBracketedPaste : String = "\x1b[?2004h"
+
+pub const EnableMouse : String = "\x1b[?1000h"
+
+pub const EnableMouseDrag : String = "\x1b[?1002h"
+
+pub const EnableMouseMove : String = "\x1b[?1003h"
+
+pub const Hidden : String = "\x1b[8m"
+
+pub const Italic : String = "\x1b[3m"
+
+pub const MainScreen : String = "\x1b[?1049l"
+
+pub const Reset : String = "\x1b[0m"
+
+pub const Reverse : String = "\x1b[7m"
+
+pub const Strikethrough : String = "\x1b[9m"
+
+pub const Underline : String = "\x1b[4m"
+
+pub fn bold(String) -> String
+
+pub fn colorize(String, Color) -> String
+
+pub fn cursor_down(Int) -> String
+
+pub fn cursor_left(Int) -> String
+
+pub fn cursor_right(Int) -> String
+
+pub fn cursor_to(Int, Int) -> String
+
+pub fn cursor_to_col(Int) -> String
+
+pub fn cursor_up(Int) -> String
+
+pub fn dim(String) -> String
+
+pub fn erase_lines(Int) -> String
+
+pub fn italic(String) -> String
+
+pub fn key_to_string(Key) -> String
+
+pub fn parse_command(String) -> (String, String)
+
+pub fn parse_key(BytesView) -> Key
+
+pub fn scroll_down(Int) -> String
+
+pub fn scroll_up(Int) -> String
+
+pub fn styled(String, fg? : Color, bg? : Color, styles? : Array[StyleCode]) -> String
+
+pub fn underline(String) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct AssistantMessage {
+  mut text : String
+  mut lines : Array[StringView]
+  mut is_streaming : Bool
+}
+pub fn AssistantMessage::get_preferred_height(Self, Int) -> Int
+pub fn AssistantMessage::is_streaming(Self) -> Bool
+pub fn AssistantMessage::new(String) -> Self
+pub async fn AssistantMessage::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn AssistantMessage::set_streaming(Self, Bool) -> Unit
+pub fn AssistantMessage::set_text(Self, String) -> Unit
+pub fn AssistantMessage::text(Self) -> String
+
+pub(all) struct Box {
+  title : String
+  mut content : String
+  border_style : TextStyle
+  content_style : TextStyle
+  mut expanded : Bool
+}
+pub fn Box::get_preferred_height(Self, Int) -> Int
+pub fn Box::new(String, String) -> Self
+pub async fn Box::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn Box::set_content(Self, String) -> Unit
+pub fn Box::set_expanded(Self, Bool) -> Unit
+
+pub(all) struct ChatLog {
+  mut components : Array[MessageComponent]
+  mut tool_by_id : Map[String, Int]
+  mut streaming_by_id : Map[String, Int]
+  mut tools_expanded : Bool
+  max_components : Int
+}
+pub fn ChatLog::add_system(Self, String) -> Unit
+pub fn ChatLog::add_user(Self, String) -> Unit
+pub fn ChatLog::clear_all(Self) -> Unit
+pub fn ChatLog::drop_assistant(Self, run_id? : String) -> Unit
+pub fn ChatLog::finalize_assistant(Self, String, run_id? : String) -> Unit
+pub fn ChatLog::get_preferred_height(Self, Int) -> Int
+pub fn ChatLog::new() -> Self
+pub async fn ChatLog::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn ChatLog::set_tools_expanded(Self, Bool) -> Unit
+pub fn ChatLog::start_assistant(Self, String, run_id? : String) -> AssistantMessage
+pub fn ChatLog::start_tool(Self, String, String, String) -> ToolExecution
+pub fn ChatLog::update_assistant(Self, String, run_id? : String) -> Unit
+pub fn ChatLog::update_tool_args(Self, String, String) -> Unit
+pub fn ChatLog::update_tool_result(Self, String, String, is_error? : Bool) -> Unit
+pub fn ChatLog::with_max_components(Int) -> Self
+
+pub(all) enum Color {
+  Black
+  Red
+  Green
+  Yellow
+  Blue
+  Magenta
+  Cyan
+  White
+  BrightBlack
+  BrightRed
+  BrightGreen
+  BrightYellow
+  BrightBlue
+  BrightMagenta
+  BrightCyan
+  BrightWhite
+  Rgb(Int, Int, Int)
+}
+pub fn Color::bg(Self) -> String
+pub fn Color::fg(Self) -> String
+
+pub(all) struct CommandRegistry {
+  commands : Map[String, SlashCommand]
+}
+pub fn CommandRegistry::execute(Self, TUI, String) -> Bool
+pub fn CommandRegistry::get(Self, String) -> SlashCommand?
+pub fn CommandRegistry::help_text(Self) -> String
+pub fn CommandRegistry::list(Self) -> Array[SlashCommand]
+pub fn CommandRegistry::new() -> Self
+pub fn CommandRegistry::register(Self, SlashCommand) -> Unit
+
+pub enum Component {
+  TextComponent(Text)
+  ContainerComponent(Container)
+  EditorComponent(Editor)
+  LoaderComponent(Loader)
+  SpacerComponent(Spacer)
+  BoxComponent(Box)
+}
+pub fn Component::get_preferred_height(Self, Int) -> Int
+pub fn Component::handle_key(Self, Key) -> Bool
+pub fn Component::is_focusable(Self) -> Bool
+pub async fn Component::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+
+pub(all) struct Container {
+  children : Array[Component]
+  direction : Direction
+  mut focused_index : Int
+}
+pub fn Container::add_child(Self, Component) -> Unit
+pub fn Container::child_count(Self) -> Int
+pub fn Container::clear(Self) -> Unit
+pub fn Container::focus_next(Self) -> Unit
+pub fn Container::focus_prev(Self) -> Unit
+pub fn Container::get_child(Self, Int) -> Component?
+pub fn Container::get_focused_child(Self) -> Component?
+pub fn Container::get_preferred_height(Self, Int) -> Int
+pub fn Container::new(direction? : Direction) -> Self
+pub fn Container::remove_child(Self, Int) -> Unit
+pub async fn Container::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+
+pub enum Direction {
+  Vertical
+  Horizontal
+}
+
+pub(all) struct Editor {
+  mut text : String
+  mut cursor : Int
+  history : Array[String]
+  mut history_index : Int
+  mut placeholder : String
+  multiline : Bool
+  mut on_submit : ((String) -> Unit)?
+  mut on_change : ((String) -> Unit)?
+  mut on_escape : (() -> Unit)?
+  mut on_ctrl_c : (() -> Unit)?
+  mut on_ctrl_d : (() -> Unit)?
+  mut prompt : String
+  style : TextStyle
+}
+pub fn Editor::add_to_history(Self, String) -> Unit
+pub fn Editor::clear(Self) -> Unit
+pub fn Editor::get_preferred_height(Self, Int) -> Int
+pub fn Editor::handle_key(Self, Key) -> Bool
+pub fn Editor::new() -> Self
+pub async fn Editor::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn Editor::set_on_change(Self, (String) -> Unit) -> Unit
+pub fn Editor::set_on_ctrl_c(Self, () -> Unit) -> Unit
+pub fn Editor::set_on_ctrl_d(Self, () -> Unit) -> Unit
+pub fn Editor::set_on_escape(Self, () -> Unit) -> Unit
+pub fn Editor::set_on_submit(Self, (String) -> Unit) -> Unit
+pub fn Editor::set_text(Self, String) -> Unit
+pub fn Editor::text(Self) -> String
+pub fn Editor::with_placeholder(String) -> Self
+pub fn Editor::with_prompt(String) -> Self
+
+pub enum Key {
+  Char(Char)
+  Enter
+  Backspace
+  Delete
+  Up
+  Down
+  Left
+  Right
+  Home
+  End
+  PageUp
+  PageDown
+  Tab
+  ShiftTab
+  Escape
+  F1
+  F2
+  F3
+  F4
+  F5
+  F6
+  F7
+  F8
+  F9
+  F10
+  F11
+  F12
+  Ctrl(Char)
+  Alt(Char)
+  PasteStart
+  PasteEnd
+  Unknown
+}
+pub fn Key::is_alt(Self) -> Bool
+pub fn Key::is_ctrl(Self) -> Bool
+pub fn Key::is_navigation(Self) -> Bool
+pub fn Key::is_printable(Self) -> Bool
+pub fn Key::to_char(Self) -> Char?
+
+pub(all) struct Loader {
+  frames : Array[String]
+  mut current : Int
+  mut message : String
+  mut running : Bool
+  style : TextStyle
+}
+pub fn Loader::get_preferred_height(Self, Int) -> Int
+pub fn Loader::handle_key(Self, Key) -> Bool
+pub fn Loader::is_running(Self) -> Bool
+pub fn Loader::message(Self) -> String
+pub fn Loader::new() -> Self
+pub async fn Loader::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn Loader::set_message(Self, String) -> Unit
+pub fn Loader::start(Self) -> Unit
+pub fn Loader::stop(Self) -> Unit
+pub fn Loader::tick(Self) -> Unit
+pub fn Loader::with_frames(Array[String]) -> Self
+pub fn Loader::with_message(String) -> Self
+
+pub enum MessageComponent {
+  UserMsg(UserMessage)
+  AssistantMsg(AssistantMessage)
+  SystemMsg(SystemMessage)
+  ToolExec(ToolExecution)
+  SpacerComp(Spacer)
+}
+pub fn MessageComponent::get_preferred_height(Self, Int) -> Int
+pub async fn MessageComponent::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+
+pub struct SlashCommand {
+  name : String
+  description : String
+  mut handler : ((TUI, String) -> Unit)?
+}
+pub fn SlashCommand::description(Self) -> String
+pub fn SlashCommand::execute(Self, TUI, String) -> Unit
+pub fn SlashCommand::name(Self) -> String
+pub fn SlashCommand::new(String, String) -> Self
+pub fn SlashCommand::with_handler(Self, (TUI, String) -> Unit) -> Self
+
+pub(all) struct Spacer {
+  height : Int
+}
+pub fn Spacer::get_preferred_height(Self, Int) -> Int
+pub fn Spacer::new(height? : Int) -> Self
+pub async fn Spacer::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+
+pub enum StyleCode {
+  StyleReset
+  StyleBold
+  StyleDim
+  StyleItalic
+  StyleUnderline
+  StyleBlink
+  StyleReverse
+  StyleHidden
+  StyleStrikethrough
+}
+pub fn StyleCode::code(Self) -> String
+
+pub(all) struct SystemMessage {
+  mut text : String
+}
+pub fn SystemMessage::get_preferred_height(Self, Int) -> Int
+pub fn SystemMessage::new(String) -> Self
+pub async fn SystemMessage::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn SystemMessage::set_text(Self, String) -> Unit
+pub fn SystemMessage::text(Self) -> String
+
+pub(all) struct TUI {
+  terminal : Terminal
+  mut chat_log : ChatLog
+  mut editor : Editor
+  mut status_loader : Loader
+  mut status_text : Text
+  mut header : Text
+  mut footer : Text
+  mut state : TuiState
+  mut running : Bool
+  mut on_submit : ((String) -> Unit)?
+  mut on_command : ((String) -> Unit)?
+  mut on_escape : (() -> Unit)?
+  mut on_ctrl_c : (() -> Unit)?
+  mut on_ctrl_d : (() -> Unit)?
+  mut on_ctrl_o : (() -> Unit)?
+}
+pub fn TUI::chat_log(Self) -> ChatLog
+pub fn TUI::editor(Self) -> Editor
+pub fn TUI::handle_key(Self, Key) -> Bool
+pub fn TUI::is_running(Self) -> Bool
+pub fn TUI::new() -> Self raise
+pub async fn TUI::render(Self) -> Unit
+pub fn TUI::request_render(Self) -> Unit
+pub async fn TUI::run_event_loop(Self) -> Unit
+pub fn TUI::set_on_command(Self, (String) -> Unit) -> Unit
+pub fn TUI::set_on_ctrl_c(Self, () -> Unit) -> Unit
+pub fn TUI::set_on_ctrl_d(Self, () -> Unit) -> Unit
+pub fn TUI::set_on_ctrl_o(Self, () -> Unit) -> Unit
+pub fn TUI::set_on_escape(Self, () -> Unit) -> Unit
+pub fn TUI::set_on_submit(Self, (String) -> Unit) -> Unit
+pub async fn TUI::start(Self) -> Unit
+pub fn TUI::state(Self) -> TuiState
+pub async fn TUI::stop(Self) -> Unit
+pub fn TUI::submit(Self, String) -> Unit
+pub fn TUI::terminal(Self) -> Terminal
+pub fn TUI::update_footer(Self) -> Unit
+pub fn TUI::update_header(Self) -> Unit
+pub fn TUI::update_status(Self) -> Unit
+
+pub(all) struct Terminal {
+  input : @stdio.Input
+  output : @stdio.Output
+  mut width : Int
+  mut height : Int
+  mut cursor_x : Int
+  mut cursor_y : Int
+  mut running : Bool
+  mut in_alt_screen : Bool
+}
+pub async fn Terminal::clear_line(Self) -> Unit
+pub async fn Terminal::clear_screen(Self) -> Unit
+pub async fn Terminal::clear_screen_down(Self) -> Unit
+pub async fn Terminal::disable_bracketed_paste(Self) -> Unit
+pub async fn Terminal::enable_bracketed_paste(Self) -> Unit
+pub async fn Terminal::enter_alt_screen(Self) -> Unit
+pub async fn Terminal::exit_alt_screen(Self) -> Unit
+pub async fn Terminal::flush(Self) -> Unit
+pub fn Terminal::height(Self) -> Int
+pub async fn Terminal::hide_cursor(Self) -> Unit
+pub fn Terminal::is_running(Self) -> Bool
+pub async fn Terminal::move_down(Self, Int) -> Unit
+pub async fn Terminal::move_left(Self, Int) -> Unit
+pub async fn Terminal::move_right(Self, Int) -> Unit
+pub async fn Terminal::move_to(Self, Int, Int) -> Unit
+pub async fn Terminal::move_to_col(Self, Int) -> Unit
+pub async fn Terminal::move_up(Self, Int) -> Unit
+pub fn Terminal::new() -> Self raise
+pub async fn Terminal::restore_cursor(Self) -> Unit
+pub async fn Terminal::save_cursor(Self) -> Unit
+pub async fn Terminal::show_cursor(Self) -> Unit
+pub fn Terminal::size(Self) -> (Int, Int)
+pub async fn Terminal::start(Self) -> Unit
+pub async fn Terminal::stop(Self) -> Unit
+pub fn Terminal::update_size(Self) -> Unit raise
+pub fn Terminal::width(Self) -> Int
+pub fn Terminal::with_io(input~ : @stdio.Input, output~ : @stdio.Output) -> Self raise
+pub async fn Terminal::write(Self, String) -> Unit
+pub async fn Terminal::write_at(Self, Int, Int, String) -> Unit
+pub async fn Terminal::write_line(Self, String) -> Unit
+
+pub(all) struct Text {
+  mut content : String
+  mut lines : Array[String]
+  mut style : TextStyle
+}
+pub fn Text::apply_style(Self, String) -> String
+pub fn Text::get_preferred_height(Self, Int) -> Int
+pub fn Text::line_count(Self) -> Int
+pub fn Text::new(String) -> Self
+pub async fn Text::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn Text::set_style(Self, TextStyle) -> Unit
+pub fn Text::set_text(Self, String) -> Unit
+pub fn Text::text(Self) -> String
+pub fn Text::with_style(String, TextStyle) -> Self
+
+pub struct TextStyle {
+  fg : Color?
+  bg : Color?
+  bold : Bool
+  dim : Bool
+  italic : Bool
+  underline : Bool
+}
+pub fn TextStyle::bold(Self) -> Self
+pub fn TextStyle::default() -> Self
+pub fn TextStyle::dim(Self) -> Self
+pub fn TextStyle::italic(Self) -> Self
+pub fn TextStyle::underline(Self) -> Self
+pub fn TextStyle::with_bg(Self, Color) -> Self
+pub fn TextStyle::with_fg(Self, Color) -> Self
+
+pub(all) struct Theme {
+  text : Color
+  dim : Color
+  accent : Color
+  accent_soft : Color
+  border : Color
+  user_bg : Color
+  user_text : Color
+  system_text : Color
+  tool_pending_bg : Color
+  tool_success_bg : Color
+  tool_error_bg : Color
+  tool_title : Color
+  tool_output : Color
+  quote : Color
+  quote_border : Color
+  code : Color
+  code_block_bg : Color
+  code_border : Color
+  link : Color
+  error : Color
+  success : Color
+}
+pub fn Theme::accent_soft_style(Self, String) -> String
+pub fn Theme::accent_style(Self, String) -> String
+pub fn Theme::bold(Self, String) -> String
+pub fn Theme::bold_accent(Self, String) -> String
+pub fn Theme::bold_accent_soft(Self, String) -> String
+pub fn Theme::border_style(Self, String) -> String
+pub fn Theme::code_style(Self, String) -> String
+pub fn Theme::default() -> Self
+pub fn Theme::dim_style(Self, String) -> String
+pub fn Theme::error_style(Self, String) -> String
+pub fn Theme::header(Self, String) -> String
+pub fn Theme::italic(Self, String) -> String
+pub fn Theme::link_style(Self, String) -> String
+pub fn Theme::quote_style(Self, String) -> String
+pub fn Theme::success_style(Self, String) -> String
+pub fn Theme::system(Self, String) -> String
+pub fn Theme::text_style(Self, String) -> String
+pub fn Theme::tool_output_style(Self, String) -> String
+pub fn Theme::tool_title_style(Self, String) -> String
+pub fn Theme::underline(Self, String) -> String
+pub fn Theme::user_style(Self, String) -> String
+
+pub(all) struct ToolExecution {
+  tool_name : String
+  mut args : String
+  mut result : String
+  mut status : ToolStatus
+  mut expanded : Bool
+  mut start_time : Int
+}
+pub fn ToolExecution::args(Self) -> String
+pub fn ToolExecution::get_preferred_height(Self, Int) -> Int
+pub fn ToolExecution::new(String, String) -> Self
+pub async fn ToolExecution::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn ToolExecution::result(Self) -> String
+pub fn ToolExecution::set_args(Self, String) -> Unit
+pub fn ToolExecution::set_expanded(Self, Bool) -> Unit
+pub fn ToolExecution::set_partial_result(Self, String) -> Unit
+pub fn ToolExecution::set_result(Self, String, is_error? : Bool) -> Unit
+pub fn ToolExecution::set_start_time(Self, Int) -> Unit
+pub fn ToolExecution::set_status(Self, ToolStatus) -> Unit
+pub fn ToolExecution::status(Self) -> ToolStatus
+pub fn ToolExecution::tool_name(Self) -> String
+
+pub enum ToolStatus {
+  Pending
+  Running
+  Success
+  Error
+}
+
+pub(all) struct TuiState {
+  mut connection_status : String
+  mut activity_status : String
+  mut model : String
+  mut agent_id : String
+  mut session_key : String
+  mut tools_expanded : Bool
+  mut show_thinking : Bool
+  mut last_ctrl_c_at : Int
+}
+pub fn TuiState::activity_status(Self) -> String
+pub fn TuiState::agent_id(Self) -> String
+pub fn TuiState::connection_status(Self) -> String
+pub fn TuiState::last_ctrl_c_at(Self) -> Int
+pub fn TuiState::model(Self) -> String
+pub fn TuiState::new() -> Self
+pub fn TuiState::session_key(Self) -> String
+pub fn TuiState::set_activity_status(Self, String) -> Unit
+pub fn TuiState::set_agent_id(Self, String) -> Unit
+pub fn TuiState::set_connection_status(Self, String) -> Unit
+pub fn TuiState::set_model(Self, String) -> Unit
+pub fn TuiState::set_session_key(Self, String) -> Unit
+pub fn TuiState::show_thinking(Self) -> Bool
+pub fn TuiState::toggle_show_thinking(Self) -> Bool
+pub fn TuiState::toggle_tools_expanded(Self) -> Bool
+pub fn TuiState::tools_expanded(Self) -> Bool
+pub fn TuiState::update_last_ctrl_c(Self, Int) -> Unit
+
+pub(all) struct UserMessage {
+  mut text : String
+  mut lines : Array[StringView]
+}
+pub fn UserMessage::get_preferred_height(Self, Int) -> Int
+pub fn UserMessage::new(String) -> Self
+pub async fn UserMessage::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn UserMessage::set_text(Self, String) -> Unit
+pub fn UserMessage::text(Self) -> String
+
+// Type aliases
+
+// Traits
+

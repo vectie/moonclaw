@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/pathx"
+package "moonbitlang/moonclaw/internal/pathx"
 
 // Values
 pub fn basename(StringView) -> StringView

@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/tools/apply_patch"
+package "moonbitlang/moonclaw/tools/apply_patch"
 
 import {
-  "moonbitlang/maria/tool",
+  "moonbitlang/moonclaw/tool",
 }
 
 // Values

@@ -41,13 +41,13 @@ pub impl ToJson for ChatCompletionMessageParam with to_json(
       Json::object(json)
     }
     Assistant(param) => {
-      let json : Map[String, Json] = {
-        "role": "assistant",
-        "tool_calls": param.tool_calls,
-      }
+      let json : Map[String, Json] = { "role": "assistant" }
       content_parts_to_json(param.content, json)
       if param.name is Some(name) {
         json["name"] = Json::string(name)
+      }
+      if !param.tool_calls.is_empty() {
+        json["tool_calls"] = param.tool_calls.to_json()
       }
       Json::object(json)
     }

@@ -3,7 +3,7 @@
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_fsx_lock_file(int32_t fd) {
+moonbit_moonclaw_fsx_lock_file(int32_t fd) {
   struct flock fl;
   fl.l_type = F_WRLCK;
   fl.l_whence = SEEK_SET;
@@ -15,7 +15,7 @@ moonbit_maria_fsx_lock_file(int32_t fd) {
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_fsx_get_lock_owner(int32_t fd) {
+moonbit_moonclaw_fsx_get_lock_owner(int32_t fd) {
   struct flock fl;
   fl.l_type = F_WRLCK; // or F_RDLCK, doesn't matter for F_GETLK
   fl.l_whence = SEEK_SET;

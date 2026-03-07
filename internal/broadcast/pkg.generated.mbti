@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/broadcast"
+package "moonbitlang/moonclaw/internal/broadcast"
 
 import {
   "moonbitlang/async",

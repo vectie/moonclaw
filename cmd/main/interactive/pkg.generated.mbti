@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/cmd/main/interactive"
+package "moonbitlang/moonclaw/cmd/main/interactive"
 
 // Values
 pub async fn interactive(ArrayView[String]) -> Unit

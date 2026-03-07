@@ -1,6 +1,6 @@
 ///|
 #borrow(buf)
-extern "c" fn rand_bytes(buf : Bytes) -> Int = "moonbit_maria_rand_bytes"
+extern "c" fn rand_bytes(buf : Bytes) -> Int = "moonbit_moonclaw_rand_bytes"
 
 ///|
 pub fn bytes(n : Int) -> Bytes raise @errno.Errno {

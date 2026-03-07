@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/oauth/codex"
+package "moonbitlang/moonclaw/oauth/codex"
 
 import {
   "moonbitlang/core/json",

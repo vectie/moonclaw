@@ -23,7 +23,7 @@ async fn Daemon::load_stopped(self : Daemon) -> Unit {
     }
     let broadcast : @broadcast.Broadcast[@server.ServerStreamEvent] = @broadcast.Broadcast::new()
     for event in conversation.events() {
-      broadcast.put(Maria(event))
+      broadcast.put(Moonclaw(event))
     }
     let task : Stopped = {
       name: Some(conversation.name()),

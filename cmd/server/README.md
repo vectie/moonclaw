@@ -1,6 +1,6 @@
-# Maria HTTP Server
+# moonclaw HTTP Server
 
-`cmd/server` hosts the lightweight HTTP server that sits in front of the Maria
+`cmd/server` hosts the lightweight HTTP server that sits in front of the moonclaw
 agent. It exposes REST and SSE endpoints for queueing messages, observing agent
 progress, tweaking runtime features (tools, prompts, web search), and managing
 local MoonBit modules. A tiny HTML/JS playground (`index.html`, `script.js`)
@@ -34,7 +34,7 @@ registering flags (`--register-*`) when wiring into a daemon.
 - `GET /v1/queued-messages` → Returns the serialized queue
   `[ { "id": ..., "message": { ... } }, ... ]`.
 - `GET /v1/events` → Server-Sent Events stream. Every connection receives a
-  `maria.queued_messages.synchronized` snapshot followed by `event: maria`
+  `moonclaw.queued_messages.synchronized` snapshot followed by `event: moonclaw`
   payloads for agent milestones (queued, unqueued, completion, etc.). Tool and
   verbose token events are filtered so frontends only receive user-relevant
   updates.

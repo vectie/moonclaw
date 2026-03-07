@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/signal"
+package "moonbitlang/moonclaw/internal/signal"
 
 // Values
 pub let sigkill : Int

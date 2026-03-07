@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/cmd/internal/test_utils"
+package "moonbitlang/moonclaw/cmd/internal/test_utils"
 
 import {
   "moonbitlang/async/http",
-  "moonbitlang/maria/event",
-  "moonbitlang/maria/internal/httpx",
+  "moonbitlang/moonclaw/event",
+  "moonbitlang/moonclaw/internal/httpx",
 }
 
 // Values
@@ -18,8 +18,8 @@ pub fn redact_events(Array[ServerEvent]) -> Array[ServerEvent]
 
 // Types and methods
 pub(all) enum ServerEvent {
-  MariaQueuedMessagesSynchronized(Array[Json])
-  Maria(@event.Event)
+  MoonclawQueuedMessagesSynchronized(Array[Json])
+  Moonclaw(@event.Event)
 }
 pub async fn ServerEvent::collect_events(@http.Client, stop_at_cancel? : Bool) -> Array[Self]
 pub impl ToJson for ServerEvent

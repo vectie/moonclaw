@@ -7,6 +7,6 @@ import {
 }
 
 import {
-  "moonbitlang/maria/internal/mock",
+  "moonbitlang/moonclaw/internal/mock",
   "moonbitlang/async",
 } for "test"

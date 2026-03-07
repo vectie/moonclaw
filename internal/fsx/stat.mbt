@@ -6,11 +6,11 @@
 struct Stat(Bytes)
 
 ///|
-extern "c" fn fs_stat_sizeof() -> Int = "moonbit_maria_fs_stat_sizeof"
+extern "c" fn fs_stat_sizeof() -> Int = "moonbit_moonclaw_fs_stat_sizeof"
 
 ///|
 #borrow(path, stat)
-extern "c" fn fs_stat_sync(path : Bytes, stat : FixedArray[Byte]) -> Int = "moonbit_maria_fs_stat_sync"
+extern "c" fn fs_stat_sync(path : Bytes, stat : FixedArray[Byte]) -> Int = "moonbit_moonclaw_fs_stat_sync"
 
 ///|
 /// Retrieve file metadata for `path`.
@@ -29,7 +29,7 @@ pub fn stat(path : StringView) -> Stat raise {
 
 ///|
 #borrow(stat)
-extern "c" fn fs_stat_get_mtime(stat : Bytes) -> Int64 = "moonbit_maria_fs_stat_get_mtime"
+extern "c" fn fs_stat_get_mtime(stat : Bytes) -> Int64 = "moonbit_moonclaw_fs_stat_get_mtime"
 
 ///|
 /// Get the modification time (`mtime`) from this `Stat`.
@@ -39,7 +39,7 @@ pub fn Stat::mtime(self : Stat) -> Int64 {
 
 ///|
 #borrow(stat)
-extern "c" fn fs_stat_get_atime(stat : Bytes) -> Int64 = "moonbit_maria_fs_stat_get_atime"
+extern "c" fn fs_stat_get_atime(stat : Bytes) -> Int64 = "moonbit_moonclaw_fs_stat_get_atime"
 
 ///|
 /// Get the access time (`atime`) from this `Stat`.

@@ -11,7 +11,7 @@ async test "Loader" (t : @test.Test) {
     )
     let models = [model]
     let models_file = mock.cwd
-      .add_directory(".moonagent")
+      .add_directory(".moonclaw")
       .add_directory("models")
       .add_file("models.json")
     models_file.write_string(models.to_json().stringify(indent=2))
@@ -56,7 +56,7 @@ async test "load" (t : @test.Test) {
     )
     let models = [model]
     let models_file = mock.cwd
-      .add_directory(".moonagent")
+      .add_directory(".moonclaw")
       .add_directory("models")
       .add_file("models.json")
     models_file.write_string(models.to_json().stringify(indent=2))
@@ -103,7 +103,7 @@ async test "removes-old-models" (t : @test.Test) {
       safe_zone_tokens=100000,
     )
     let models_file = mock.cwd
-      .add_directory(".moonagent")
+      .add_directory(".moonclaw")
       .add_directory("models")
       .add_file("models.json")
     let models = [old_model]

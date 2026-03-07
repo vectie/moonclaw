@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria"
+package "moonbitlang/moonclaw"
 
 import {
-  "moonbitlang/maria/agent",
-  "moonbitlang/maria/internal/pino",
-  "moonbitlang/maria/internal/uuid",
-  "moonbitlang/maria/model",
+  "moonbitlang/moonclaw/agent",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/model",
 }
 
 // Values
@@ -13,16 +13,16 @@ import {
 // Errors
 
 // Types and methods
-pub struct Maria {
+pub struct Moonclaw {
   logger : @pino.Logger
   agent : @agent.Agent
 }
-pub fn Maria::close(Self) -> Unit
+pub fn Moonclaw::close(Self) -> Unit
 #as_free_fn
-pub async fn Maria::new(name? : String, logger? : @pino.Logger, model~ : @model.Model, home? : String, cwd? : String, user_message? : String, web_search? : Bool) -> Self
+pub async fn Moonclaw::new(name? : String, logger? : @pino.Logger, model~ : @model.Model, home? : String, cwd? : String, user_message? : String, web_search? : Bool) -> Self
 #as_free_fn
-pub async fn Maria::resume_(logger? : @pino.Logger, model~ : @model.Model, home? : String, @uuid.Uuid, user_message? : String, web_search? : Bool) -> Self
-pub async fn Maria::start(Self, prompt? : String) -> Unit
+pub async fn Moonclaw::resume_(logger? : @pino.Logger, model~ : @model.Model, home? : String, @uuid.Uuid, user_message? : String, web_search? : Bool) -> Self
+pub async fn Moonclaw::start(Self, prompt? : String) -> Unit
 
 // Type aliases
 

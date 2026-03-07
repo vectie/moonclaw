@@ -1,6 +1,6 @@
 # test
 
-Runner for a single prompt against Maria, producing a JSONL activity log you can later inspect or convert to Markdown.
+Runner for a single prompt against moonclaw, producing a JSONL activity log you can later inspect or convert to Markdown.
 
 ## Usage
 
@@ -9,8 +9,8 @@ moon run cmd/test -- --prompt-file <prompt-file> [--log-file <log-file>]
 ```
 
 Arguments:
-- `--prompt-file <path>`: Required. Path to a text/markdown file containing the initial prompt fed to Maria.
-- `--log-file <path>`: Optional. Destination for the JSONL log. If omitted, a file named `maria_test_log_<timestamp>.jsonl` is created in the current working directory. The timestamp uses the system clock and is formatted as a plain date time (e.g. `2025-10-21T04:42:38`).
+- `--prompt-file <path>`: Required. Path to a text/markdown file containing the initial prompt fed to moonclaw.
+- `--log-file <path>`: Optional. Destination for the JSONL log. If omitted, a file named `moonclaw_test_log_<timestamp>.jsonl` is created in the current working directory. The timestamp uses the system clock and is formatted as a plain date time (e.g. `2025-10-21T04:42:38`).
 
 Exit codes: This tool prints errors for invalid arguments and exits early; it does not currently set specialized non‑zero codes beyond the runtime defaults.
 
@@ -29,7 +29,7 @@ Run the test:
 
 ```bash
 moon run cmd/test -- --prompt-file prompt.md
-# Produces: maria_test_log_2025-10-21T04:42:38.jsonl (name will vary)
+# Produces: moonclaw_test_log_2025-10-21T04:42:38.jsonl (name will vary)
 ```
 
 Specify a custom log file:
@@ -50,7 +50,7 @@ The log file is line‑delimited JSON (JSONL). Each non‑blank line is one even
 Use the companion tool in `cmd/jsonl2md`:
 
 ```bash
-moon run cmd/jsonl2md -- maria_test_log_2025-10-21T04:42:38.jsonl --output session.md
+moon run cmd/jsonl2md -- moonclaw_test_log_2025-10-21T04:42:38.jsonl --output session.md
 ```
 
 If `--output` is omitted, `jsonl2md` writes `<input-stem>.md` next to the source file.

@@ -3,7 +3,7 @@
 The `internal/fsx` package provides small, focused helpers on top of
 `moonbitlang/async/fs` and related modules. It offers a higher-level
 API for common filesystem tasks that are frequently needed inside
-maria’s agents and tooling.
+moonclaw’s agents and tooling.
 
 ## Features
 
@@ -49,5 +49,5 @@ maria’s agents and tooling.
 
 ## Notes
 
-This package is internal to maria and is optimized for clarity and
+This package is internal to moonclaw and is optimized for clarity and
 convenience over providing a full general-purpose filesystem API.

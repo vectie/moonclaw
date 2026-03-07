@@ -36,4 +36,4 @@ undefined
 
 If API user expect handle all failed cases and edge cases explicitly, which user could write a new path library raise error. If user always ignore error then re-raise error automatically, but this developer experience is not good.
 
-maria is LLM code agent, so LLM could self-justify to solve some edge cases, report issues to end user.if LLM tools can't generate correct path, just return original path, LLM could report more end user friendly message.
+moonclaw is LLM code agent, so LLM could self-justify to solve some edge cases, report issues to end user.if LLM tools can't generate correct path, just return original path, LLM could report more end user friendly message.

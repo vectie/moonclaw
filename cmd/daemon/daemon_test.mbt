@@ -39,7 +39,7 @@ async fn DaemonEvent::collect_events(s : @http.Client) -> Array[DaemonEvent] {
 ///|
 async fn configure_models(mock : @mock.Context) -> Unit {
   mock.cwd
-  .add_directory(".moonagent")
+  .add_directory(".moonclaw")
   .add_directory("models")
   .add_file("models.json")
   .write_json([
@@ -292,7 +292,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
       let pop_ids : Array[@uuid.Uuid] = []
       let events = @test_utils.ServerEvent::collect_events(s)
       for event in events {
-        if event is Maria(event) && event.desc is MessageUnqueued(id~) {
+        if event is Moonclaw(event) && event.desc is MessageUnqueued(id~) {
           pop_ids.push(id)
         }
       }
@@ -307,7 +307,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
         ),
         content=[
           [
-            "Maria",
+            "moonclaw",
             {
               "id": "00000000-0000-0000-0000-000000000000",
               "created": 0,
@@ -318,7 +318,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
             },
           ],
           [
-            "Maria",
+            "moonclaw",
             {
               "id": "00000000-0000-0000-0000-000000000000",
               "created": 0,
@@ -329,7 +329,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
             },
           ],
           [
-            "Maria",
+            "moonclaw",
             {
               "id": "00000000-0000-0000-0000-000000000000",
               "created": 0,
@@ -348,7 +348,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
         ),
         content=[
           [
-            "Maria",
+            "moonclaw",
             {
               "id": "00000000-0000-0000-0000-000000000000",
               "created": 0,
@@ -359,7 +359,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
             },
           ],
           [
-            "Maria",
+            "moonclaw",
             {
               "id": "00000000-0000-0000-0000-000000000000",
               "created": 0,
@@ -370,7 +370,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
             },
           ],
           [
-            "Maria",
+            "moonclaw",
             {
               "id": "00000000-0000-0000-0000-000000000000",
               "created": 0,
@@ -382,7 +382,7 @@ async test "POST /v1/task/{id}/message" (t : @test.Test) {
       json_inspect(
         @test_utils.redact_events(events)
         .filter(e => {
-          guard e is MariaQueuedMessagesSynchronized(msgs) else { false }
+          guard e is MoonclawQueuedMessagesSynchronized(msgs) else { false }
           msgs
           .filter(msg => {
             msg is { "message": { "content": "How are you?", .. }, .. }
@@ -561,7 +561,9 @@ async test "POST /v1/task/{id}/cancel" (t : @test.Test) {
       json_inspect(r.code, content=200)
       let events = collector.wait()
       json_inspect(
-        events.filter(event => event is Maria({ desc: Cancelled, .. })).length() >
+        events
+        .filter(event => event is Moonclaw({ desc: Cancelled, .. }))
+        .length() >
         0,
         content=true,
       )
@@ -622,7 +624,7 @@ async test "POST /v1/task/{id} with web_search" (t : @test.Test) {
       let events = collector.wait()
       let content = events
         .filter_map(e => {
-          if e is Maria({ desc: AssistantMessage(content, ..), .. }) {
+          if e is Moonclaw({ desc: AssistantMessage(content, ..), .. }) {
             Some(content)
           } else {
             None

@@ -1,4 +1,4 @@
 import {
-  "moonbitlang/maria/internal/openai",
+  "moonbitlang/moonclaw/internal/openai",
   "moonbitlang/core/json",
 }

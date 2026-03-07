@@ -37,7 +37,7 @@ pub async fn generate_git_diff(
   modified~ : String,
   line_number? : Bool = false,
 ) -> String {
-  @fsx.with_temporary_directory("maria-git-diff-XXXXXXX", tmpdir => {
+  @fsx.with_temporary_directory("moonclaw-git-diff-XXXXXXX", tmpdir => {
     let original_path = @pathx.join(tmpdir, "original")
     @fsx.write_to_file(original_path, original)
     let modified_path = @pathx.join(tmpdir, "modified")

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/pino"
+package "moonbitlang/moonclaw/internal/pino"
 
 import {
   "moonbitlang/async/aqueue",

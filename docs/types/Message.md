@@ -174,7 +174,7 @@ These message objects are then wrapped by higher-level event envelopes that
 the UI listens to over SSE:
 
 ```jsonc
-// From /task/:id/events (SSE "maria" event)
+// From /task/:id/events (SSE "moonclaw" event)
 {
   "msg": "MessageAdded",
   "message": { /* one of the message shapes above */ }
@@ -188,7 +188,7 @@ the UI listens to over SSE:
 ```
 
 Queued messages surfaced via
-`maria.queued_messages.synchronized`/`GET /v1/queued_messages` follow the same
+`moonclaw.queued_messages.synchronized`/`GET /v1/queued_messages` follow the same
 pattern, but wrapped with an `id` field:
 
 ```jsonc

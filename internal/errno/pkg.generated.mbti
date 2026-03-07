@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/errno"
+package "moonbitlang/moonclaw/internal/errno"
 
 // Values
 pub let eacces : Int

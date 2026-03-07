@@ -1,5 +1,5 @@
 ///|
-extern "c" fn signal_sigtstp() -> Int = "moonbit_maria_signal_sigtstp"
+extern "c" fn signal_sigtstp() -> Int = "moonbit_moonclaw_signal_sigtstp"
 
 ///|
 fn check_signal_value(value : Int, name : String) -> Int {
@@ -13,13 +13,13 @@ fn check_signal_value(value : Int, name : String) -> Int {
 pub let sigtstp : Int = check_signal_value(signal_sigtstp(), "SIGTSTP")
 
 ///|
-extern "c" fn signal_sigterm() -> Int = "moonbit_maria_signal_sigterm"
+extern "c" fn signal_sigterm() -> Int = "moonbit_moonclaw_signal_sigterm"
 
 ///|
 pub let sigterm : Int = check_signal_value(signal_sigterm(), "SIGTERM")
 
 ///|
-extern "c" fn signal_sigkill() -> Int = "moonbit_maria_signal_sigkill"
+extern "c" fn signal_sigkill() -> Int = "moonbit_moonclaw_signal_sigkill"
 
 ///|
 pub let sigkill : Int = check_signal_value(signal_sigkill(), "SIGKILL")

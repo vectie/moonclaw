@@ -633,7 +633,7 @@ async test "todo_write/create/<task>" (t : @test.Test) {
     let result = @todo.new_tool(todo_list).call({
       "action": "create",
       "content": (
-        #|<task>Examine reference repository structure at .moonagent/repos/ini</task>
+        #|<task>Examine reference repository structure at .moonclaw/repos/ini</task>
         #|<task>Examine current MoonBit project structure</task>
         #|<task>Analyze source files in ini repository</task>
         #|<task>Plan migration strategy preserving original structure</task>
@@ -649,7 +649,7 @@ async test "todo_write/create/<task>" (t : @test.Test) {
         {
           "todos": [
             {
-              "content": "Examine reference repository structure at .moonagent/repos/ini",
+              "content": "Examine reference repository structure at .moonclaw/repos/ini",
               "created_at": "Tick:3",
               "id": "ac8a366d",
               "priority": "Medium",
@@ -708,7 +708,7 @@ async test "todo_write/create/<task>" (t : @test.Test) {
           "message": "Created 7 new todo items",
           "updated_todos": [
             {
-              "content": "Examine reference repository structure at .moonagent/repos/ini",
+              "content": "Examine reference repository structure at .moonclaw/repos/ini",
               "created_at": "Tick:3",
               "id": "ac8a366d",
               "priority": "Medium",
@@ -777,7 +777,7 @@ async test "todo_write/create/<task>" (t : @test.Test) {
         #|✅ Operation completed: Created 7 new todo items
         #|
         #|📝 Newly created todos:
-        #|  🟡 ⏳ [ac8a366d] Examine reference repository structure at .moonagent/repos/ini
+        #|  🟡 ⏳ [ac8a366d] Examine reference repository structure at .moonclaw/repos/ini
         #|  🟡 ⏳ [1ea1417c] Examine current MoonBit project structure
         #|  🟡 ⏳ [f378dd8d] Analyze source files in ini repository
         #|  🟡 ⏳ [42858c8d] Plan migration strategy preserving original structure

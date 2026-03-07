@@ -515,7 +515,7 @@ async test "load-model-name" (t : @test.Test) {
     )
     let models = [model]
     let models_file = mock.cwd
-      .add_directory(".moonagent")
+      .add_directory(".moonclaw")
       .add_directory("models")
       .add_file("models.json")
     models_file.write_string(models.to_json().stringify(indent=2))

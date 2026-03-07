@@ -8,6 +8,7 @@ async fn main {
     ["server", .. rest] => @server.start(rest)
     ["daemon", .. rest] => @daemon.start(rest)
     ["exec", .. rest] => @exec.exec(rest)
+    ["tui", .. rest] => @tui.tui_interactive(rest)
     ["version"] => println(@buildinfo.version)
     [.. rest] => @interactive.interactive(rest)
   }

@@ -1,4 +1,4 @@
-import { WebviewApi } from "@maria/core/lib/types.js";
+import { WebviewApi } from "@moonclaw/core/lib/types.js";
 import type * as comlink from "comlink";
 import type * as vscode from "vscode";
 

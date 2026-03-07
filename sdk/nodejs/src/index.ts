@@ -11,7 +11,7 @@ function getSystem(): string {
   return `${platformName}-${archName}`;
 }
 
-export class Maria {
+export class moonclaw {
   async *start(prompt: string): AsyncGenerator<Notification, void, unknown> {
     const system = getSystem();
 
@@ -24,7 +24,7 @@ export class Maria {
     });
 
     if (!process.stdout) {
-      throw new Error("Failed to spawn Maria process: stdout is null");
+      throw new Error("Failed to spawn moonclaw process: stdout is null");
     }
 
     const rl = createInterface({
@@ -48,7 +48,7 @@ export class Maria {
     });
 
     if (exitCode !== 0) {
-      throw new Error(`Maria process failed with exit code: ${exitCode}`);
+      throw new Error(`moonclaw process failed with exit code: ${exitCode}`);
     }
   }
 }

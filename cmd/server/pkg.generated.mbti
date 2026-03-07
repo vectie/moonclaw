@@ -1,13 +1,13 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/cmd/server"
+package "moonbitlang/moonclaw/cmd/server"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/maria/agent",
-  "moonbitlang/maria/ai",
-  "moonbitlang/maria/event",
-  "moonbitlang/maria/internal/httpx",
-  "moonbitlang/maria/internal/uuid",
+  "moonbitlang/moonclaw/agent",
+  "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw/event",
+  "moonbitlang/moonclaw/internal/httpx",
+  "moonbitlang/moonclaw/internal/uuid",
 }
 
 // Values
@@ -53,8 +53,8 @@ pub fn Server::port(Self) -> Int
 pub async fn Server::start(Self) -> Unit
 
 pub(all) enum ServerStreamEvent {
-  MariaQueuedMessagesSynchronized(Array[@agent.QueuedMessage])
-  Maria(@event.Event)
+  MoonclawQueuedMessagesSynchronized(Array[@agent.QueuedMessage])
+  Moonclaw(@event.Event)
 }
 pub impl @httpx.FromEvent for ServerStreamEvent
 pub impl @httpx.ToEvent for ServerStreamEvent

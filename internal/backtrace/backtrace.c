@@ -6,7 +6,7 @@
 
 MOONBIT_FFI_EXPORT
 moonbit_bytes_t *
-moonbit_maria_backtrace(int32_t n) {
+moonbit_moonclaw_backtrace(int32_t n) {
   void **addresses = malloc(sizeof(void *) * n);
   int size = backtrace(addresses, n);
   char **symbols = backtrace_symbols(addresses, size);

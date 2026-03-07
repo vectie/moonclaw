@@ -32,10 +32,10 @@ async fn Loader::load_rules_from_directory(
 ///|
 pub async fn Loader::load(self : Loader) -> Unit {
   let global_path = @os.home()
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("rules")
   self.load_rules_from_directory(global_path, source=Global)
-  let local_path = self.cwd |> @pathx.join(".moonagent") |> @pathx.join("rules")
+  let local_path = self.cwd |> @pathx.join(".moonclaw") |> @pathx.join("rules")
   self.load_rules_from_directory(local_path, source=Local)
 }
 
@@ -152,7 +152,7 @@ fn Loader::format(self : Loader) -> String {
     (
       $|# Project Rules
       $|
-      $|Loaded \{self.rules.length()} rules from .moonagent/rules directory:
+      $|Loaded \{self.rules.length()} rules from .moonclaw/rules directory:
       $|
     ),
   )

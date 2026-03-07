@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/readline"
+package "moonbitlang/moonclaw/internal/readline"
 
 import {
   "moonbitlang/async/stdio",

@@ -5,7 +5,7 @@
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_fs_mkdtemp(moonbit_bytes_t template) {
+moonbit_moonclaw_fs_mkdtemp(moonbit_bytes_t template) {
   errno = 0;
   if (mkdtemp((char *)template)) {
     return 0;

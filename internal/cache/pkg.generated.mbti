@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/cache"
+package "moonbitlang/moonclaw/internal/cache"
 
 import {
-  "moonbitlang/maria/internal/openai",
+  "moonbitlang/moonclaw/internal/openai",
 }
 
 // Values

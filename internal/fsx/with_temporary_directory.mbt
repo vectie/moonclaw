@@ -4,7 +4,7 @@
 /// This is a thin wrapper around the platform `mkdtemp` implementation
 /// and is not exposed directly to callers.
 #borrow(template)
-extern "c" fn fs_mkdtemp(template : FixedArray[Byte]) -> Int = "moonbit_maria_fs_mkdtemp"
+extern "c" fn fs_mkdtemp(template : FixedArray[Byte]) -> Int = "moonbit_moonclaw_fs_mkdtemp"
 
 ///|
 /// Create a temporary directory based on the provided byte template.

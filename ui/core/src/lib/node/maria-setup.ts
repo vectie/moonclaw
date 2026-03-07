@@ -1,31 +1,31 @@
 import cp from "child_process";
 import type { ResultTuple } from "../types";
 
-let setupMariaPromise: Promise<ResultTuple<undefined>> | undefined = undefined;
+let setupmoonclawPromise: Promise<ResultTuple<undefined>> | undefined = undefined;
 
-export async function setupMariaProcess(
-  mariaPath: string,
+export async function setupmoonclawProcess(
+  moonclawPath: string,
   env?: NodeJS.ProcessEnv,
 ) {
-  if (setupMariaPromise) {
-    return await setupMariaPromise;
+  if (setupmoonclawPromise) {
+    return await setupmoonclawPromise;
   }
-  setupMariaPromise = doSetupMariaProcess(mariaPath, env ?? process.env);
-  return await setupMariaPromise;
+  setupmoonclawPromise = doSetupmoonclawProcess(moonclawPath, env ?? process.env);
+  return await setupmoonclawPromise;
 }
 
-async function doSetupMariaProcess(
-  mariaPath: string,
+async function doSetupmoonclawProcess(
+  moonclawPath: string,
   env: NodeJS.ProcessEnv,
 ): Promise<ResultTuple<undefined>> {
   const exitCode = await new Promise<number | null>((resolve, reject) => {
-    const maria = cp.spawn(mariaPath, ["daemon", "--port", "0", "--detach"], {
+    const moonclaw = cp.spawn(moonclawPath, ["daemon", "--port", "0", "--detach"], {
       stdio: "ignore",
       env,
     });
 
-    maria.on("error", reject);
-    maria.on("exit", (code) => {
+    moonclaw.on("error", reject);
+    moonclaw.on("exit", (code) => {
       resolve(code);
     });
   });
@@ -42,7 +42,7 @@ async function doSetupMariaProcess(
         ),
       ];
     }
-    return [undefined, new Error(`Maria daemon exited with code ${exitCode}`)];
+    return [undefined, new Error(`moonclaw daemon exited with code ${exitCode}`)];
   }
   return [undefined, undefined];
 }

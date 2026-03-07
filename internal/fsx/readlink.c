@@ -4,7 +4,7 @@
 
 MOONBIT_FFI_EXPORT
 int64_t
-moonbit_maria_fs_readlink(
+moonbit_moonclaw_fs_readlink(
   moonbit_bytes_t path,
   moonbit_bytes_t buf,
   uint64_t bufsize

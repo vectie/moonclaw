@@ -1,5 +1,5 @@
 ///|
-/// Request to create a new Maria task.
+/// Request to create a new moonclaw task.
 priv struct CreateTaskRequest {
   /// Human-readable name for the task. If not provided, this field
   /// will be `None`.
@@ -65,7 +65,7 @@ impl @json.FromJson for CreateTaskRequest with from_json(
 }
 
 ///|
-/// Creates a new Maria task from a JSON request, spawning a server process and
+/// Creates a new moonclaw task from a JSON request, spawning a server process and
 /// optionally sending an initial message.
 ///
 /// This method handles the complete lifecycle of task creation: parses the
@@ -184,11 +184,11 @@ impl ToJson for CreateTaskResponse with to_json(self : CreateTaskResponse) -> Js
 }
 
 ///|
-/// Validates or creates a working directory for a Maria task.
+/// Validates or creates a working directory for a moonclaw task.
 ///
 /// If `cwd` is `None`, creates a temporary directory in the system's temporary
 /// directory with a unique name following the pattern
-/// "maria-server-task-XXXXXX". If `cwd` is provided, validates that the
+/// "moonclaw-server-task-XXXXXX". If `cwd` is provided, validates that the
 /// specified directory exists.
 ///
 /// Parameters:
@@ -205,7 +205,7 @@ impl ToJson for CreateTaskResponse with to_json(self : CreateTaskResponse) -> Js
 /// * 404 Not Found: If the specified `cwd` path does not exist
 async fn check_working_directory(cwd : String?) -> String {
   guard cwd is Some(cwd) else {
-    @fsx.mkdtemp(@pathx.join(@os.tmpdir(), "maria-server-task-XXXXXX")) catch {
+    @fsx.mkdtemp(@pathx.join(@os.tmpdir(), "moonclaw-server-task-XXXXXX")) catch {
       error =>
         raise json_error(500, "Internal Server Error", {
           "error": {

@@ -16,7 +16,7 @@ impl @json.FromJson for PostSystemPromptRequest with from_json(
 }
 
 ///|
-/// Updates Maria's system prompt in-place. Passing `null` clears the prompt so
+/// Updates moonclaw's system prompt in-place. Passing `null` clears the prompt so
 /// subsequent conversations fall back to the built-in default text.
 async fn Server::set_system_prompt(
   self : Server,
@@ -33,6 +33,6 @@ async fn Server::set_system_prompt(
         },
       })
   }
-  self.maria.agent.set_system_prompt(req.0)
+  self.moonclaw.agent.set_system_prompt(req.0)
   w.send_json(code=200, {})
 }

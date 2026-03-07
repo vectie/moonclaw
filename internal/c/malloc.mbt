@@ -4,7 +4,7 @@
 /// `c_malloc` allocates `size` bytes of raw memory and returns a pointer to
 /// uninitialized storage. The returned memory must eventually be freed via
 /// `c_free` (or `free`).
-extern "c" fn c_malloc(size : UInt64) -> Pointer[Unit] = "moonbit_maria_c_malloc"
+extern "c" fn c_malloc(size : UInt64) -> Pointer[Unit] = "moonbit_moonclaw_c_malloc"
 
 ///|
 /// Allocates `size` bytes of memory and casts it to `Pointer[T]`.
@@ -18,7 +18,7 @@ pub fn[T] malloc(size : UInt64) -> Pointer[T] {
 
 ///|
 /// Low-level wrapper around the C `free` function.
-extern "c" fn c_free(ptr : Pointer[Unit]) = "moonbit_maria_c_free"
+extern "c" fn c_free(ptr : Pointer[Unit]) = "moonbit_moonclaw_c_free"
 
 ///|
 /// Releases memory previously allocated with `malloc` / `c_malloc`.

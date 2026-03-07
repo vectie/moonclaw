@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/yamd"
+package "moonbitlang/moonclaw/internal/yamd"
 
 import {
   "moonbit-community/yaml",

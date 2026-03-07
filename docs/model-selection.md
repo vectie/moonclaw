@@ -1,6 +1,6 @@
 # Model Selection
 
-Maria supports three model providers, each with different authentication methods and available models. This document explains how to select models and the fallback behavior when no model is explicitly specified.
+moonclaw supports three model providers, each with different authentication methods and available models. This document explains how to select models and the fallback behavior when no model is explicitly specified.
 
 ## Model Providers
 
@@ -34,7 +34,7 @@ Any other model name will be passed through to OpenRouter with a default 128K co
 
 ### 2. Codex OAuth (ChatGPT Plus/Pro)
 
-**Authentication**: Browser-based OAuth flow (credentials stored in `~/.moonagent/codex-credentials.json`)
+**Authentication**: Browser-based OAuth flow (credentials stored in `~/.moonclaw/codex-credentials.json`)
 
 **Usage**: Use the `codex/` prefix (e.g., `-m codex/gpt-5.2`)
 
@@ -44,11 +44,11 @@ Any other model name will be passed through to OpenRouter with a default 128K co
 |------------|----------------|
 | `codex/gpt-5.2` | 400K |
 
-When you specify a `codex/` model and no credentials are found, Maria will automatically open a browser for OAuth authentication.
+When you specify a `codex/` model and no credentials are found, moonclaw will automatically open a browser for OAuth authentication.
 
 ### 3. GitHub Copilot
 
-**Authentication**: GitHub Device Code flow (credentials stored in `~/.moonagent/copilot-credentials.json`)
+**Authentication**: GitHub Device Code flow (credentials stored in `~/.moonclaw/copilot-credentials.json`)
 
 **Usage**: Use the `copilot/` prefix (e.g., `-m copilot/claude-opus-4.5`)
 
@@ -97,14 +97,14 @@ When you specify a `codex/` model and no credentials are found, Maria will autom
 |------------|----------------|
 | `copilot/grok-code-fast-1` | 256K |
 
-When you specify a `copilot/` model and no credentials are found, Maria will automatically guide you through the GitHub Device Code authentication flow.
+When you specify a `copilot/` model and no credentials are found, moonclaw will automatically guide you through the GitHub Device Code authentication flow.
 
 ## Configuration File
 
-You can also define custom models in a configuration file. Maria looks for models in:
+You can also define custom models in a configuration file. moonclaw looks for models in:
 
-1. `<project>/.moonagent/models/models.json` (project-specific)
-2. `~/.moonagent/models/models.json` (user-wide)
+1. `<project>/.moonclaw/models/models.json` (project-specific)
+2. `~/.moonclaw/models/models.json` (user-wide)
 
 Example configuration:
 
@@ -123,7 +123,7 @@ Example configuration:
 
 ## Fallback Rules
 
-When no model is explicitly specified (`-m` flag omitted), Maria attempts to find an available model in the following order:
+When no model is explicitly specified (`-m` flag omitted), moonclaw attempts to find an available model in the following order:
 
 ```
 1. Check configuration files
@@ -133,26 +133,26 @@ When no model is explicitly specified (`-m` flag omitted), Maria attempts to fin
    └─ If OPENROUTER_API_KEY or OPENAI_API_KEY is set → use anthropic/claude-sonnet-4.5
 
 3. Check Codex OAuth credentials (without auto-login)
-   └─ If ~/.moonagent/codex-credentials.json exists and valid → use codex/gpt-5.2
+   └─ If ~/.moonclaw/codex-credentials.json exists and valid → use codex/gpt-5.2
 
 4. Check Copilot credentials (without auto-login)
-   └─ If ~/.moonagent/copilot-credentials.json exists and valid → use copilot/claude-sonnet-4.5
+   └─ If ~/.moonclaw/copilot-credentials.json exists and valid → use copilot/claude-sonnet-4.5
 
 5. No model available
    └─ Display error message and exit
 ```
 
-**Important**: During fallback, Maria will **not** automatically open a browser for OAuth authentication. Auto-login only occurs when you explicitly request a `codex/` or `copilot/` model.
+**Important**: During fallback, moonclaw will **not** automatically open a browser for OAuth authentication. Auto-login only occurs when you explicitly request a `codex/` or `copilot/` model.
 
 ## Examples
 
 ```bash
 # Use a specific OpenRouter model
-maria -m anthropic/claude-opus-4.5
+moonclaw -m anthropic/claude-opus-4.5
 
 # Use Codex OAuth (will prompt for login if needed)
-maria -m codex/gpt-5.2
+moonclaw -m codex/gpt-5.2
 
 # Use GitHub Copilot (will prompt for login if needed)
-maria -m copilot/claude-sonnet-4.5
+moonclaw -m copilot/claude-sonnet-4.5
 ```

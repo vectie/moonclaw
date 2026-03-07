@@ -3,7 +3,7 @@ import {
   type DaemonTaskSyncEvent,
   type TaskEvent,
   type TaskOverview,
-} from "@maria/core/lib/types.ts";
+} from "@moonclaw/core/lib/types.ts";
 import {
   createApi,
   fetchBaseQuery,
@@ -153,7 +153,7 @@ export const apiSlice = createApi({
           // wait for the initial query to resolve before proceeding
           await cacheDataLoaded;
 
-          source.addEventListener("maria", (event: MessageEvent<string>) => {
+          source.addEventListener("moonclaw", (event: MessageEvent<string>) => {
             const taskEvent = JSON.parse(event.data) as TaskEvent;
             const data = taskEvent.desc;
             switch (data.msg) {

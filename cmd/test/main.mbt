@@ -20,13 +20,18 @@ async fn generate(
     fail("Log file \{log_file} already exists")
   }
   let logger = @pino.logger(
-    "maria_test",
+    "moonclaw_test",
     try! @pino.Transport::parse("file:\{log_file}"),
   )
-  let maria = @maria.Maria::new(logger~, model~, cwd~, user_message=prompt)
-  maria.start() catch {
+  let moonclaw = @moonclaw.Moonclaw::new(
+    logger~,
+    model~,
+    cwd~,
+    user_message=prompt,
+  )
+  moonclaw.start() catch {
     error => {
-      logger.error("MariaFailed", data={ "error": error.to_string() })
+      logger.error("moonclawFailed", data={ "error": error.to_string() })
       raise error
     }
   }

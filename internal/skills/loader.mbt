@@ -2,10 +2,10 @@
 /// Skill loader that manages and loads skills from both global and local
 /// directories.
 ///
-/// The loader searches for skills in `.moonagent/skills` directories:
+/// The loader searches for skills in `.moonclaw/skills` directories:
 ///
-/// - System skills: `~/.moonagent/skills/.system`
-/// - Global skills: `~/.moonagent/skills`
+/// - System skills: `~/.moonclaw/skills/.system`
+/// - Global skills: `~/.moonclaw/skills`
 /// - Local skills: starting from the current working directory and walking up
 ///   through parent directories.
 ///
@@ -143,7 +143,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
   let system_path = system_skills_root(self.home)
   self.load_skills_from_directory(system_path)
   let global_path = self.home
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("skills")
   self.load_skills_from_directory(global_path)
 
@@ -189,7 +189,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
     None =>
       // Not in a git repo: load from cwd and home.
       //
-      // Note: global skills (`home/.moonagent/skills`) are already loaded above,
+      // Note: global skills (`home/.moonclaw/skills`) are already loaded above,
       // so we only need to add `cwd` here (and only if it differs from home) to
       // avoid loading the same directory twice.
       if cwd_norm != home_norm {
@@ -197,7 +197,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
       }
   }
   for dir in dirs.rev() {
-    let local_path = dir |> @pathx.join(".moonagent") |> @pathx.join("skills")
+    let local_path = dir |> @pathx.join(".moonclaw") |> @pathx.join("skills")
     self.load_skills_from_directory(local_path)
   }
 }

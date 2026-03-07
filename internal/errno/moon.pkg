@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/maria/internal/c",
+  "moonbitlang/moonclaw/internal/c",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
 }
 

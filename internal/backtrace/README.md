@@ -1,4 +1,4 @@
-# `moonbitlang/maria/backtrace`
+# `moonbitlang/moonclaw/backtrace`
 
 Backtrace library using
 [backtrace(3)](https://man7.org/linux/man-pages/man3/backtrace.3.html).

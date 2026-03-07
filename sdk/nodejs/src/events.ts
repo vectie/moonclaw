@@ -10,7 +10,7 @@ export interface RequestCompletedParams {
 }
 
 export interface RequestCompleted {
-  method: "maria.agent.request_completed";
+  method: "moonclaw.agent.request_completed";
   params: RequestCompletedParams;
 }
 
@@ -21,7 +21,7 @@ export interface PostToolCallParams {
 }
 
 export interface PostToolCall {
-  method: "maria.agent.post_tool_call";
+  method: "moonclaw.agent.post_tool_call";
   params: PostToolCallParams;
 }
 

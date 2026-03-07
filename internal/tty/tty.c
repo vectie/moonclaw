@@ -10,13 +10,13 @@
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_tty_is_a_tty(int32_t fd) {
+moonbit_moonclaw_tty_is_a_tty(int32_t fd) {
   return isatty(fd);
 }
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_tty_get_win_size(int32_t *size) {
+moonbit_moonclaw_tty_get_win_size(int32_t *size) {
   struct winsize ws;
   int result = ioctl(STDIN_FILENO, TIOCGWINSZ, &ws);
   if (result == -1) {
@@ -29,7 +29,7 @@ moonbit_maria_tty_get_win_size(int32_t *size) {
 
 MOONBIT_FFI_EXPORT
 int32_t
-moonbit_maria_tty_set_raw_mode(int32_t fd) {
+moonbit_moonclaw_tty_set_raw_mode(int32_t fd) {
   int32_t flags = fcntl(fd, F_GETFL);
   flags |= O_NONBLOCK;
   if (fcntl(fd, F_SETFL, flags) == -1) {

@@ -203,7 +203,7 @@ export type VSCWebviewRAL = {
 export type ElectronAPI = {
   selectDirectory: () => Promise<OpenDialogReturnValue>;
   getUrl: () => Promise<string>;
-  mariaReady: () => Promise<void>;
+  moonclawReady: () => Promise<void>;
   reloadApp: () => Promise<void>;
   openPathInFileExplorer: (path: string) => Promise<void>;
 };

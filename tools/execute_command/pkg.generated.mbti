@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/tools/execute_command"
+package "moonbitlang/moonclaw/tools/execute_command"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/maria/job",
-  "moonbitlang/maria/tool",
+  "moonbitlang/moonclaw/job",
+  "moonbitlang/moonclaw/tool",
 }
 
 // Values

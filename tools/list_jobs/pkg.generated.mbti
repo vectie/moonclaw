@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/tools/list_jobs"
+package "moonbitlang/moonclaw/tools/list_jobs"
 
 import {
-  "moonbitlang/maria/job",
-  "moonbitlang/maria/tool",
+  "moonbitlang/moonclaw/job",
+  "moonbitlang/moonclaw/tool",
 }
 
 // Values

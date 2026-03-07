@@ -92,7 +92,7 @@ pub async fn Manager::spawn(
   }
   let id = self.new_id()
   let jobs_dir = self.cwd
-    |> @pathx.join(".moonagent")
+    |> @pathx.join(".moonclaw")
     |> @pathx.join("jobs")
     |> @pathx.join("\{id.0}")
   @fsx.make_directory(jobs_dir, recursive=true, exists_ok=true)

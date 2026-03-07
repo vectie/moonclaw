@@ -1,13 +1,13 @@
 import {
-  "moonbitlang/maria/tool",
-  "moonbitlang/maria/internal/spawn",
-  "moonbitlang/maria/internal/pathx",
-  "moonbitlang/maria/job",
+  "moonbitlang/moonclaw/tool",
+  "moonbitlang/moonclaw/internal/spawn",
+  "moonbitlang/moonclaw/internal/pathx",
+  "moonbitlang/moonclaw/job",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/maria/internal/mock",
+  "moonbitlang/moonclaw/internal/mock",
 } for "test"

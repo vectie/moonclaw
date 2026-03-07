@@ -4,7 +4,7 @@ async test "Loader::load" (t : @test.Test) {
     let home = mock.cwd
     @mock.with_home(home, () => {
       home.add_json_tree({
-        ".moonagent": {
+        ".moonclaw": {
           "rules": {
             "a.md": (
               #|---
@@ -25,7 +25,7 @@ async test "Loader::load" (t : @test.Test) {
           },
         },
         "project": {
-          ".moonagent": {
+          ".moonclaw": {
             "rules": {
               "c.md": (
                 #|---
@@ -47,7 +47,7 @@ async test "Loader::load" (t : @test.Test) {
         content=(
           #|# Project Rules
           #|
-          #|Loaded 3 rules from .moonagent/rules directory:
+          #|Loaded 3 rules from .moonclaw/rules directory:
           #|
           #|## a
           #|

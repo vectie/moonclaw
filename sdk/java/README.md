@@ -1,12 +1,12 @@
-# Maria Java SDK 🚀
+# moonclaw Java SDK 🚀
 
 > "Like having a really smart robot helper, but in Java!"
 
-This is the Java version of Maria - an AI agent that can help you with tasks. Don't worry if you've never used Java before, this guide explains everything!
+This is the Java version of moonclaw - an AI agent that can help you with tasks. Don't worry if you've never used Java before, this guide explains everything!
 
 ## 🎯 What is This?
 
-Maria is an AI assistant. This Java SDK lets you talk to Maria from your Java programs. Think of it like a toy robot that you can give commands to, and it does things for you!
+moonclaw is an AI assistant. This Java SDK lets you talk to moonclaw from your Java programs. Think of it like a toy robot that you can give commands to, and it does things for you!
 
 ## 📦 What You Need First
 
@@ -14,7 +14,7 @@ Before we start, you need to install some things on your computer. Think of thes
 
 ### 1. Install Java (The Language)
 
-Java is like the language Maria speaks. You need version 17 or newer.
+Java is like the language moonclaw speaks. You need version 17 or newer.
 
 **On macOS (your computer):**
 
@@ -49,14 +49,14 @@ mvn -version
 
 You should see some text about Maven version. Success! 🎉
 
-## 🚀 How to Use Maria (The Easy Way)
+## 🚀 How to Use moonclaw (The Easy Way)
 
 ### Step 1: Try the Example
 
 We made a simple example for you! Let's run it:
 
 ```bash
-# First, install the maria-java library
+# First, install the moonclaw-java library
 mvn clean install
 
 # Go to the examples folder
@@ -66,4 +66,4 @@ cd ./examples
 mvn compile exec:java
 ```
 
-That's it! You just talked to Maria! 🎊
+That's it! You just talked to moonclaw! 🎊

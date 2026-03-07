@@ -1,9 +1,9 @@
 import {
-  "moonbitlang/maria/event",
+  "moonbitlang/moonclaw/event",
   "moonbitlang/async/http",
-  "moonbitlang/maria/ai",
-  "moonbitlang/maria/internal/uuid",
-  "moonbitlang/maria/internal/httpx",
-  "moonbitlang/maria/clock",
+  "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/internal/httpx",
+  "moonbitlang/moonclaw/clock",
   "moonbitlang/core/json",
 }

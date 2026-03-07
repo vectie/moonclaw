@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/fsx"
+package "moonbitlang/moonclaw/internal/fsx"
 
 import {
   "moonbitlang/async/fs",

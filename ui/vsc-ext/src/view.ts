@@ -3,7 +3,7 @@ import {
   CompletionItemKind,
   VscodeApi,
   WebviewApi,
-} from "@maria/core/lib/types.js";
+} from "@moonclaw/core/lib/types.js";
 import * as comlink from "comlink";
 import * as path from "path";
 import * as vscode from "vscode";

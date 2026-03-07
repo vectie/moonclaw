@@ -5,14 +5,16 @@ pub impl @json.FromJson for Model with from_json(
 ) -> Model {
   guard json is Object(json) else {
     raise @json.JsonDecodeError(
-      (json_path, "@moonbitlang/maria/model.Model::from_json: expected object"),
+      (
+        json_path, "@moonbitlang/moonclaw/model.Model::from_json: expected object",
+      ),
     )
   }
   let name : String = {
     guard json.get("name") is Some(name) else {
       raise @json.JsonDecodeError(
         (
-          json_path, "@moonbitlang/maria/model.Model::from_json: missing 'name' field",
+          json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'name' field",
         ),
       )
     }
@@ -22,7 +24,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("model_name") is Some(model_name) else {
       raise @json.JsonDecodeError(
         (
-          json_path, "@moonbitlang/maria/model.Model::from_json: missing 'model_name' field",
+          json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'model_name' field",
         ),
       )
     }
@@ -32,7 +34,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("model_type") is Some(model_type) else {
       raise @json.JsonDecodeError(
         (
-          json_path, "@moonbitlang/maria/model.Model::from_json: missing 'model_type' field",
+          json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'model_type' field",
         ),
       )
     }
@@ -46,8 +48,12 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("base_url") is Some(base_url) else {
       match model_type {
         SaaS(OpenAI) => "https://api.openai.com/v1"
+        SaaS(Anthropic) => "https://api.anthropic.com"
         SaaS(CodexOAuth) => "https://chatgpt.com/backend-api"
         SaaS(Copilot) => "https://api.githubcopilot.com"
+        SaaS(Qwen) => "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        SaaS(Kimi) => "https://api.moonshot.cn/v1"
+        SaaS(KimiCoding) => "https://api.moonshot.cn/v1"
       }
     }
     @json.from_json(base_url, path=json_path.add_key("base_url"))
@@ -60,7 +66,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("safe_zone_tokens") is Some(safe_zone_tokens) else {
       // raise @json.JsonDecodeError(
       //   (
-      //     json_path, "@moonbitlang/maria/model.Model::from_json: missing 'safe_zone_tokens' field",
+      //     json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'safe_zone_tokens' field",
       //   ),
       // )
       128_000
@@ -133,25 +139,31 @@ pub impl @json.FromJson for Type with from_json(
 ) -> Type {
   guard json is String(json) else {
     raise @json.JsonDecodeError(
-      (json_path, "@moonbitlang/maria/model.Type::from_json: expected string"),
+      (
+        json_path, "@moonbitlang/moonclaw/model.Type::from_json: expected string",
+      ),
     )
   }
   match json {
     "saas/openai" => Type::SaaS(Provider::OpenAI)
+    "saas/anthropic" => Type::SaaS(Provider::Anthropic)
     "saas/codex_oauth" => Type::SaaS(Provider::CodexOAuth)
     "saas/copilot" => Type::SaaS(Provider::Copilot)
+    "saas/qwen" => Type::SaaS(Provider::Qwen)
+    "saas/kimi" => Type::SaaS(Provider::Kimi)
+    "saas/kimi_coding" => Type::SaaS(Provider::KimiCoding)
     [.. "saas/", .. provider] =>
       raise @json.JsonDecodeError(
         (
           json_path,
-          "@moonbitlang/maria/model.Type::from_json: unsupported SaaS provider '\{provider}'",
+          "@moonbitlang/moonclaw/model.Type::from_json: unsupported SaaS provider '\{provider}'",
         ),
       )
     _ =>
       raise @json.JsonDecodeError(
         (
           json_path,
-          "@moonbitlang/maria/model.Type::from_json: unknown model type '\{json}'",
+          "@moonbitlang/moonclaw/model.Type::from_json: unknown model type '\{json}'",
         ),
       )
   }
@@ -161,7 +173,11 @@ pub impl @json.FromJson for Type with from_json(
 pub impl ToJson for Type with to_json(self) {
   match self {
     SaaS(OpenAI) => "saas/openai"
+    SaaS(Anthropic) => "saas/anthropic"
     SaaS(CodexOAuth) => "saas/codex_oauth"
     SaaS(Copilot) => "saas/copilot"
+    SaaS(Qwen) => "saas/qwen"
+    SaaS(Kimi) => "saas/kimi"
+    SaaS(KimiCoding) => "saas/kimi_coding"
   }
 }

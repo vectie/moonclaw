@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/assets"
+package "moonbitlang/moonclaw/internal/assets"
 
 import {
-  "moonbitlang/maria/internal/pino",
+  "moonbitlang/moonclaw/internal/pino",
 }
 
 // Values

@@ -1,9 +1,9 @@
 import {
-  "moonbitlang/maria/internal/pathx",
-  "moonbitlang/maria/internal/spawn",
-  "moonbitlang/maria/internal/fsx",
+  "moonbitlang/moonclaw/internal/pathx",
+  "moonbitlang/moonclaw/internal/spawn",
+  "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/async",
-  "moonbitlang/maria/internal/mock",
+  "moonbitlang/moonclaw/internal/mock",
   "moonbitlang/core/cmp",
   "moonbitlang/core/json",
   "moonbitlang/core/strconv",
@@ -11,6 +11,6 @@ import {
 }
 
 import {
-  "moonbitlang/maria/internal/mock",
-  "moonbitlang/maria/internal/os",
+  "moonbitlang/moonclaw/internal/mock",
+  "moonbitlang/moonclaw/internal/os",
 } for "test"

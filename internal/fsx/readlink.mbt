@@ -8,7 +8,7 @@ extern "c" fn fs_readlink(
   path : Bytes,
   buf : FixedArray[Byte],
   bufsize : UInt64,
-) -> Int64 = "moonbit_maria_fs_readlink"
+) -> Int64 = "moonbit_moonclaw_fs_readlink"
 
 ///|
 /// Read the target path of the symbolic link at `path`.

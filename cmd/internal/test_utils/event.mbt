@@ -1,7 +1,7 @@
 ///|
 pub(all) enum ServerEvent {
-  MariaQueuedMessagesSynchronized(Array[Json])
-  Maria(@event.Event)
+  MoonclawQueuedMessagesSynchronized(Array[Json])
+  Moonclaw(@event.Event)
 } derive(ToJson)
 
 ///|
@@ -9,9 +9,9 @@ pub impl @httpx.FromEvent for ServerEvent with from_event(event : @httpx.Event) 
   let { event, data } = event
   let data = @json.parse(data)
   match event {
-    Some("maria.queued_messages.synchronized") =>
-      ServerEvent::MariaQueuedMessagesSynchronized(@json.from_json(data))
-    Some("maria") => ServerEvent::Maria(@json.from_json(data))
+    Some("moonclaw.queued_messages.synchronized") =>
+      ServerEvent::MoonclawQueuedMessagesSynchronized(@json.from_json(data))
+    Some("moonclaw") => ServerEvent::Moonclaw(@json.from_json(data))
     _ => fail("unrecognized event type: \{event}")
   }
 }
@@ -22,7 +22,7 @@ pub async fn ServerEvent::collect_events(
   stop_at_cancel? : Bool = true,
 ) -> Array[ServerEvent] {
   collect_events(s, stop_at=event => {
-    if event is Maria(event) {
+    if event is Moonclaw(event) {
       if event.is_stopping() {
         return true
       }
@@ -58,7 +58,7 @@ pub async fn[T : @httpx.FromEvent] collect_events(
 pub fn redact_events(events : Array[ServerEvent]) -> Array[ServerEvent] {
   events.map(event => {
     match event {
-      MariaQueuedMessagesSynchronized(ms) => {
+      MoonclawQueuedMessagesSynchronized(ms) => {
         for m in ms {
           if m is Object({ "id": String(_), .. } as message) {
             message["id"] = "<redacted>"
@@ -66,7 +66,7 @@ pub fn redact_events(events : Array[ServerEvent]) -> Array[ServerEvent] {
         }
         return event
       }
-      Maria(event) => {
+      Moonclaw(event) => {
         let desc : @event.EventDesc = match event.desc {
           UserMessage(_) => UserMessage("<redacted>")
           SystemPromptSet(Some(_)) => SystemPromptSet(Some("<redacted>"))
@@ -84,7 +84,7 @@ pub fn redact_events(events : Array[ServerEvent]) -> Array[ServerEvent] {
             )
           event => event
         }
-        return Maria(
+        return Moonclaw(
           @event.Event::new(
             id=@uuid.nil,
             created=@clock.Timestamp::from_ms(0),
@@ -103,14 +103,14 @@ pub fn extract_events_for_message(
   content~ : String,
 ) -> Array[ServerEvent] {
   events.filter(e => {
-    if e is Maria({ desc: UserMessage(msg), .. }) && msg == content {
+    if e is Moonclaw({ desc: UserMessage(msg), .. }) && msg == content {
       return true
     }
-    if e is Maria({ desc: MessageQueued(id=msg_id), .. }) &&
+    if e is Moonclaw({ desc: MessageQueued(id=msg_id), .. }) &&
       msg_id.to_string() == id {
       return true
     }
-    if e is Maria({ desc: MessageUnqueued(id=msg_id), .. }) &&
+    if e is Moonclaw({ desc: MessageUnqueued(id=msg_id), .. }) &&
       msg_id.to_string() == id {
       return true
     }

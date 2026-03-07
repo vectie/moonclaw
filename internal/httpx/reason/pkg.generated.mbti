@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/httpx/reason"
+package "moonbitlang/moonclaw/internal/httpx/reason"
 
 // Values
 pub const Accepted : String = "Accepted"

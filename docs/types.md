@@ -1,6 +1,6 @@
 # Core Types
 
-This document describes the JSON / TypeScript types that the Maria UI uses
+This document describes the JSON / TypeScript types that the moonclaw UI uses
 to talk to the daemon and to host environments (web, VS Code, Electron).
 
 - [`Message`](types/Message.md)

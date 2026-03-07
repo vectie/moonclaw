@@ -111,7 +111,7 @@ test "relative" {
   json_inspect(@pathx.relative("a/b/c", "a/b/d"), content="../d")
   json_inspect(@pathx.relative("a/b/c", "a/d/e"), content="../../d/e")
   json_inspect(@pathx.relative("a/b/c", "d/e/f"), content="../../../d/e/f")
-  // json_inspect(@pathx.relative("../a", "b"), content="../maria/b")
+  // json_inspect(@pathx.relative("../a", "b"), content="../moonclaw/b")
   json_inspect(@pathx.relative("a", "../b"), content="../../b")
   json_inspect(@pathx.relative("/a/b/c", "/a/b/c"), content=".")
   json_inspect(@pathx.relative("/a/b/c", "/a/b/d"), content="../d")

@@ -10,11 +10,11 @@ async test "Manager::spawn" (t : @test.Test) {
     json_inspect(mock.json(job.cwd), content="(mock:cwd)")
     json_inspect(
       mock.json(job.stdout),
-      content="(mock:cwd)/.moonagent/jobs/0/stdout",
+      content="(mock:cwd)/.moonclaw/jobs/0/stdout",
     )
     json_inspect(
       mock.json(job.stderr),
-      content="(mock:cwd)/.moonagent/jobs/0/stderr",
+      content="(mock:cwd)/.moonclaw/jobs/0/stderr",
     )
   })
 }

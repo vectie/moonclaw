@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/c"
+package "moonbitlang/moonclaw/internal/c"
 
 // Values
 pub fn[T] exit(Int) -> T

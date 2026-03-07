@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/httpx/status"
+package "moonbitlang/moonclaw/internal/httpx/status"
 
 // Values
 pub const Accepted : Int = 202

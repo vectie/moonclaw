@@ -1,8 +1,8 @@
 {
   "name": "native",
-  "productName": "Maria",
+  "productName": "moonclaw",
   "version": "1.0.0",
-  "description": "Electron app for Maria",
+  "description": "Electron app for moonclaw",
   "main": "dist/main/main.js",
   "scripts": {
     "watch:main": "cd ./src/main && node ./build.js --watch",
@@ -13,7 +13,7 @@
     "build:renderer": "vite -c vite.renderer.config.ts build",
     "watch": "run-p watch:*",
     "build": "run-p build:*",
-    "dev": "MARIA_DEV=true electron .",
+    "dev": "moonclaw_DEV=true electron .",
     "preview": "pnpm build && cd ./dist && electron .",
     "package": "node ./script/package.js",
     "check": "tsc -b -noEmit",
@@ -38,7 +38,7 @@
     "vite": "^7.2.2"
   },
   "dependencies": {
-    "@maria/core": "workspace:^",
+    "@moonclaw/core": "workspace:^",
     "electron-squirrel-startup": "^1.0.1",
     "lucide-react": "^0.553.0",
     "react": "^19.2.0",

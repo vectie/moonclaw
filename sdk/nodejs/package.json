@@ -1,7 +1,7 @@
 {
-  "name": "maria",
+  "name": "moonclaw",
   "version": "0.1.0",
-  "description": "Node.js bindings for the Maria agent executable.",
+  "description": "Node.js bindings for the moonclaw agent executable.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,7 @@
     "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "maria",
+    "moonclaw",
     "agent",
     "ai",
     "assistant"
@@ -26,10 +26,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/moonbitlang/maria.git",
+    "url": "https://github.com/moonbitlang/moonclaw.git",
     "directory": "sdk/nodejs"
   },
-  "homepage": "https://github.com/moonbitlang/maria",
+  "homepage": "https://github.com/moonbitlang/moonclaw",
   "engines": {
     "node": ">=18.0.0"
   },

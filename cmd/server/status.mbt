@@ -17,7 +17,7 @@ pub impl @json.FromJson for Status with from_json(json, path) {
   guard json is String(s) else {
     raise @json.JsonDecodeError(
       (
-        path, "@moonbitlang/maria/cmd/server.Status::from_json: expected string representation",
+        path, "@moonbitlang/moonclaw/cmd/server.Status::from_json: expected string representation",
       ),
     )
   }
@@ -28,7 +28,7 @@ pub impl @json.FromJson for Status with from_json(json, path) {
       raise @json.JsonDecodeError(
         (
           path,
-          "@moonbitlang/maria/cmd/server.Status::from_json: unknown status '\{s}'",
+          "@moonbitlang/moonclaw/cmd/server.Status::from_json: unknown status '\{s}'",
         ),
       )
   }

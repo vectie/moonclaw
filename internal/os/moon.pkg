@@ -1,6 +1,6 @@
 import {
-  "moonbitlang/maria/internal/errno",
-  "moonbitlang/maria/internal/c",
+  "moonbitlang/moonclaw/internal/errno",
+  "moonbitlang/moonclaw/internal/c",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/env",
   "moonbitlang/core/json",
@@ -9,9 +9,9 @@ import {
 }
 
 import {
-  "moonbitlang/maria/internal/spawn",
+  "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/async",
-  "moonbitlang/maria/internal/mock",
+  "moonbitlang/moonclaw/internal/mock",
 } for "test"
 
 options(

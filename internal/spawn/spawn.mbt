@@ -149,13 +149,13 @@ pub async fn spawn(
 }
 
 ///|
-pub extern "c" fn getpid() -> Int = "moonbit_maria_process_getpid"
+pub extern "c" fn getpid() -> Int = "moonbit_moonclaw_process_getpid"
 
 ///|
-pub extern "c" fn getppid() -> Int = "moonbit_maria_process_getppid"
+pub extern "c" fn getppid() -> Int = "moonbit_moonclaw_process_getppid"
 
 ///|
-extern "c" fn process_kill(pid : Int, sig : Int) -> Int = "moonbit_maria_process_kill"
+extern "c" fn process_kill(pid : Int, sig : Int) -> Int = "moonbit_moonclaw_process_kill"
 
 ///|
 pub fn kill(pid : Int, sig : Int) -> Unit raise @errno.Errno {

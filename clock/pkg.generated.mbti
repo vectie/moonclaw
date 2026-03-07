@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/clock"
+package "moonbitlang/moonclaw/clock"
 
 import {
   "moonbitlang/core/json",

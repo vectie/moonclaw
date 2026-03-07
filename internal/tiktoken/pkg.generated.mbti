@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/tiktoken"
+package "moonbitlang/moonclaw/internal/tiktoken"
 
 // Values
 pub fn cl100k_base() -> Encoding raise

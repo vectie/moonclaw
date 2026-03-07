@@ -1,0 +1,15 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/cmd/main/tui"
+
+// Values
+pub async fn tui_interactive(ArrayView[String]) -> Unit
+
+// Errors
+
+// Types and methods
+type TuiState
+
+// Type aliases
+
+// Traits
+

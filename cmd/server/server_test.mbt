@@ -33,7 +33,7 @@ async fn configure_models(mock : @mock.Context) -> Unit {
     },
   ]
   mock.cwd.add_json_tree({
-    ".moonagent": { "models": { "models.json": json.stringify() } },
+    ".moonclaw": { "models": { "models.json": json.stringify() } },
   })
 }
 
@@ -110,7 +110,7 @@ async test "POST /v1/message" (t : @test.Test) {
     json_inspect(b.json(), content={ "status": "idle", "web_search": false })
     let (r, b) = @httpx.post_json(
       "http://localhost:\{server.port()}/v1/message",
-      { "message": { "role": "user", "content": "Hello, Maria!" } },
+      { "message": { "role": "user", "content": "Hello, moonclaw!" } },
     )
     json_inspect(r.code, content=200)
     let b = b.json()
@@ -155,7 +155,7 @@ async test "GET /v1/events" (t : @test.Test) {
     })
     let (_, b) = @httpx.post_json(
       "http://localhost:\{server.port()}/v1/message",
-      { "message": { "role": "user", "content": "Hello, Maria!" } },
+      { "message": { "role": "user", "content": "Hello, moonclaw!" } },
     )
     let b = b.json()
     guard b is { "id": String(msg0_id), .. } else {
@@ -163,7 +163,7 @@ async test "GET /v1/events" (t : @test.Test) {
     }
     let (_, b) = @httpx.post_json(
       "http://localhost:\{server.port()}/v1/message",
-      { "message": { "role": "user", "content": "Hello again, Maria!" } },
+      { "message": { "role": "user", "content": "Hello again, moonclaw!" } },
     )
     let b = b.json()
     guard b is { "id": String(msg1_id), .. } else {
@@ -175,12 +175,12 @@ async test "GET /v1/events" (t : @test.Test) {
         @test_utils.extract_events_for_message(
           events,
           id=msg0_id,
-          content="Hello, Maria!",
+          content="Hello, moonclaw!",
         ),
       ),
       content=[
         [
-          "Maria",
+          "moonclaw",
           {
             "id": "00000000-0000-0000-0000-000000000000",
             "created": 0,
@@ -191,7 +191,7 @@ async test "GET /v1/events" (t : @test.Test) {
           },
         ],
         [
-          "Maria",
+          "moonclaw",
           {
             "id": "00000000-0000-0000-0000-000000000000",
             "created": 0,
@@ -202,7 +202,7 @@ async test "GET /v1/events" (t : @test.Test) {
           },
         ],
         [
-          "Maria",
+          "moonclaw",
           {
             "id": "00000000-0000-0000-0000-000000000000",
             "created": 0,
@@ -216,12 +216,12 @@ async test "GET /v1/events" (t : @test.Test) {
         @test_utils.extract_events_for_message(
           events,
           id=msg1_id,
-          content="Hello again, Maria!",
+          content="Hello again, moonclaw!",
         ),
       ),
       content=[
         [
-          "Maria",
+          "moonclaw",
           {
             "id": "00000000-0000-0000-0000-000000000000",
             "created": 0,
@@ -232,7 +232,7 @@ async test "GET /v1/events" (t : @test.Test) {
           },
         ],
         [
-          "Maria",
+          "moonclaw",
           {
             "id": "00000000-0000-0000-0000-000000000000",
             "created": 0,
@@ -243,7 +243,7 @@ async test "GET /v1/events" (t : @test.Test) {
           },
         ],
         [
-          "Maria",
+          "moonclaw",
           {
             "id": "00000000-0000-0000-0000-000000000000",
             "created": 0,
@@ -316,7 +316,7 @@ async test "POST /v1/cancel" (t : @test.Test) {
       json_inspect(b.json(), content={ "status": "idle", "web_search": false })
       let (r, b) = @httpx.post_json(
         "http://localhost:\{server.port()}/v1/message",
-        { "message": { "role": "user", "content": "Hello, Maria!" } },
+        { "message": { "role": "user", "content": "Hello, moonclaw!" } },
       )
       json_inspect(r.code, content=200)
       let b = b.json()
@@ -358,20 +358,20 @@ async test "POST /v1/cancel" (t : @test.Test) {
       json_inspect(
         events
         .filter(e => {
-          e is Maria(event) &&
+          e is Moonclaw(event) &&
           event.desc is UserMessage(msg) &&
           msg == "This message will be popped on cancellation"
         })
         .length(),
         content=0,
       )
-      // There is a MariaCancelled event
+      // There is a moonclawCancelled event
       json_inspect(
-        events.filter(e => e is Maria(event) && event.desc is Cancelled)
+        events.filter(e => e is Moonclaw(event) && event.desc is Cancelled)
         |> @test_utils.redact_events(),
         content=[
           [
-            "Maria",
+            "moonclaw",
             {
               "id": "00000000-0000-0000-0000-000000000000",
               "created": 0,
@@ -382,7 +382,7 @@ async test "POST /v1/cancel" (t : @test.Test) {
       )
       // Should be able to send another message after cancellation
       let _ = @httpx.post_json("http://localhost:\{server.port()}/v1/message", {
-        "message": { "role": "user", "content": "Hello again, Maria!" },
+        "message": { "role": "user", "content": "Hello again, moonclaw!" },
       })
       let (r, s) = @http.get_stream(
         "http://localhost:\{server.port()}/v1/events",
@@ -421,7 +421,7 @@ async test "web_search" (t : @test.Test) {
     json_inspect(
       events
       .filter(e => {
-        e is @test_utils.Maria(event) &&
+        e is @test_utils.Moonclaw(event) &&
         event.desc is AssistantMessage(content, ..) &&
         (content.contains("2022") || content.contains("2023"))
       })
@@ -504,7 +504,7 @@ async test "GET /v1/external-event/user-message" (t : @test.Test) {
     json_inspect(b.json(), content={ "status": "idle", "web_search": false })
     let (r, b) = @httpx.post_json(
       "http://localhost:\{server.port()}/v1/external-event/user-message",
-      { "message": "Hello, Maria!" },
+      { "message": "Hello, moonclaw!" },
     )
     json_inspect(r.code, content=200)
     json_inspect(b.json(), content={ "success": true })
@@ -571,12 +571,14 @@ async test "GET /v1/external-event/cancel" (t : @test.Test) {
     let events = collector.wait()
     json_inspect(
       events
-      .filter(e => e is Maria(event) && event.desc is MessageUnqueued(_))
+      .filter(e => e is Moonclaw(event) && event.desc is MessageUnqueued(_))
       .length(),
       content=1,
     )
     json_inspect(
-      events.filter(e => e is Maria(event) && event.desc is Cancelled).length(),
+      events
+      .filter(e => e is Moonclaw(event) && event.desc is Cancelled)
+      .length(),
       content=1,
     )
   })

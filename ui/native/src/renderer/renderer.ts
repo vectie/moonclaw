@@ -26,7 +26,7 @@
  * ```
  */
 
-import type { ElectronAPI } from "@maria/core/lib/types.ts";
+import type { ElectronAPI } from "@moonclaw/core/lib/types.ts";
 
 declare global {
   interface Window {

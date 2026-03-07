@@ -224,7 +224,7 @@ test "recover_diagnostics" {
       #|Fixing syntax errors in the JSON parser implementation
       #|
       #|
-      #|**File Path:** /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/maria-test-VIaQeK5/json_parser/json.mbt
+      #|**File Path:** /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/moonclaw-test-VIaQeK5/json_parser/json.mbt
       #|
       #|
       #|**Current Syntax Errors:**
@@ -271,7 +271,7 @@ test "recover_diagnostics" {
       #|## Tool call argument: <read_file>
       #|
       #|<path>
-      #|  /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/maria-test-VIaQeK5/json_parser/json.mbt
+      #|  /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/moonclaw-test-VIaQeK5/json_parser/json.mbt
       #|</path>
       #|
       #|# 3 Tool call result: <read_file>
@@ -766,7 +766,7 @@ test "recover_diagnostics" {
       #|Fixing syntax errors in the JSON parser implementation
       #|
       #|
-      #|**File Path:** /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/maria-test-VIaQeK5/json_parser/json.mbt
+      #|**File Path:** /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/moonclaw-test-VIaQeK5/json_parser/json.mbt
       #|
       #|
       #|**Current Syntax Errors:**
@@ -845,7 +845,7 @@ test "recover_diagnostics" {
       #|## Tool call argument: <read_file>
       #|
       #|<path>
-      #|  /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/maria-test-VIaQeK5/json_parser/json.mbt
+      #|  /var/folders/jb/64x3jtc51qbfk3y1m9f3yvyc0000gn/T/moonclaw-test-VIaQeK5/json_parser/json.mbt
       #|</path>
       #|
       #|# 3 Tool call result: <read_file>

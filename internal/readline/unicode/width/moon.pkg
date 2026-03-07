@@ -4,6 +4,6 @@ import {
 }
 
 import {
-  "moonbitlang/maria/internal/fsx",
+  "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/async",
 } for "test"

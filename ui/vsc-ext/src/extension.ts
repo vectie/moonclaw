@@ -8,7 +8,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   if (cwd === undefined) {
     throw new Error(
-      "No workspace folder found. Please open a folder in VSCode to use Maria.",
+      "No workspace folder found. Please open a folder in VSCode to use moonclaw.",
     );
   }
 

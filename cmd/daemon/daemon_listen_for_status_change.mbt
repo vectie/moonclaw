@@ -2,7 +2,7 @@
 /// Subscribes to a task's event stream and updates daemon-visible status.
 ///
 /// Connects to the task's `GET /v1/events` SSE endpoint and reacts to
-/// `maria` events:
+/// `moonclaw` events:
 ///
 /// - When the task emits a cancellation or stopping event → marks `Idle`.
 /// - When the task emits a starting event → marks `Busy`.
@@ -33,7 +33,7 @@ async fn Daemon::listen_for_status_change(
   let eb = @httpx.EventStreamReader::new(eb)
   while eb.read() is Some((event : @server.ServerStreamEvent)) {
     task.broadcast.put(event)
-    if event is Maria(event) {
+    if event is Moonclaw(event) {
       if event.is_stopping() || event.is_cancellation() {
         logger.info("Task \{task.id} is now idle.")
         task.status = Idle

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/model"
+package "moonbitlang/moonclaw/model"
 
 import {
   "moonbitlang/core/json",
@@ -10,9 +10,15 @@ pub fn codex_oauth_model(access_token~ : String, account_id~ : String, refresh_t
 
 pub fn copilot_model(copilot_token~ : String, github_token~ : String, name? : CopilotModels) -> Model
 
+pub fn kimi_coding_model(api_key~ : String, name? : KimiCodingModels) -> Model
+
+pub fn kimi_model(api_key~ : String, name? : KimiModels) -> Model
+
 pub async fn load(home? : StringView, cwd? : StringView, name? : String) -> Model?
 
 pub fn open_router_model(api_key~ : String, name? : CommonModels) -> Model
+
+pub fn qwen_model(api_key~ : String, name? : QwenModels) -> Model
 
 // Errors
 
@@ -72,6 +78,31 @@ pub(all) enum CopilotModels {
 }
 pub impl Show for CopilotModels
 
+pub struct CostConfig {
+  input : Double?
+  output : Double?
+  cacheRead : Double?
+  cacheWrite : Double?
+}
+pub impl Show for CostConfig
+pub impl ToJson for CostConfig
+pub impl @json.FromJson for CostConfig
+
+pub(all) enum KimiCodingModels {
+  K2P5
+  K2_0905
+}
+pub impl Show for KimiCodingModels
+
+pub(all) enum KimiModels {
+  KimiK2_0905
+  KimiK2P5
+  MoonshotV1_8k
+  MoonshotV1_32k
+  MoonshotV1_128k
+}
+pub impl Show for KimiModels
+
 type Loader
 pub async fn Loader::get_model(Self, name? : String) -> Model?
 pub async fn Loader::models(Self) -> ArrayView[Model]
@@ -99,13 +130,59 @@ pub impl Show for Model
 pub impl ToJson for Model
 pub impl @json.FromJson for Model
 
+pub struct ModelConfig {
+  id : String
+  name : String?
+  reasoning : Bool?
+  input : Array[String]?
+  cost : CostConfig?
+  contextWindow : Int?
+  maxTokens : Int?
+}
+pub impl Show for ModelConfig
+pub impl ToJson for ModelConfig
+pub impl @json.FromJson for ModelConfig
+
 pub(all) enum Provider {
   OpenAI
+  Anthropic
   CodexOAuth
   Copilot
+  Qwen
+  Kimi
+  KimiCoding
 }
 pub impl Eq for Provider
 pub impl Show for Provider
+
+pub struct ProviderConfig {
+  baseUrl : String?
+  api : String?
+  models : Array[ModelConfig]
+  apiKey : String?
+}
+pub impl Show for ProviderConfig
+pub impl ToJson for ProviderConfig
+pub impl @json.FromJson for ProviderConfig
+
+pub struct ProvidersFile {
+  providers : Map[String, ProviderConfig]
+}
+pub impl Show for ProvidersFile
+pub impl ToJson for ProvidersFile
+pub impl @json.FromJson for ProvidersFile
+
+pub(all) enum QwenModels {
+  Qwen3CoderPlus
+  Qwen3CoderFlash
+  Qwen3_235B_A22B
+  Qwen3_32B
+  QwenMax
+  QwenPlus
+  QwenTurbo
+  QwenLong
+}
+pub impl Show for QwenModels
 
 pub(all) enum Type {
   SaaS(Provider)

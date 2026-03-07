@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/internal/rand"
+package "moonbitlang/moonclaw/internal/rand"
 
 import {
   "moonbitlang/core/random",
-  "moonbitlang/maria/internal/errno",
+  "moonbitlang/moonclaw/internal/errno",
 }
 
 // Values

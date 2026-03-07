@@ -1,17 +1,17 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/maria/agent"
+package "moonbitlang/moonclaw/agent"
 
 import {
   "moonbitlang/core/json",
   "moonbitlang/core/set",
-  "moonbitlang/maria/ai",
-  "moonbitlang/maria/event",
-  "moonbitlang/maria/internal/broadcast",
-  "moonbitlang/maria/internal/conversation",
-  "moonbitlang/maria/internal/pino",
-  "moonbitlang/maria/internal/uuid",
-  "moonbitlang/maria/model",
-  "moonbitlang/maria/tool",
+  "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw/event",
+  "moonbitlang/moonclaw/internal/broadcast",
+  "moonbitlang/moonclaw/internal/conversation",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/model",
+  "moonbitlang/moonclaw/tool",
 }
 
 // Values

@@ -48,7 +48,7 @@ async test "load" (t : @test.Test) {
       },
     ]
     let _ = home
-      .add_directory(".moonagent")
+      .add_directory(".moonclaw")
       .add_directory("models")
       .add_file(
         "models.json",
@@ -84,7 +84,7 @@ async test "load" (t : @test.Test) {
       },
     ]
     let _ = project
-      .add_directory(".moonagent")
+      .add_directory(".moonclaw")
       .add_directory("models")
       .add_file(
         "models.json",
