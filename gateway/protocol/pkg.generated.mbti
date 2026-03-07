@@ -1,0 +1,275 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/gateway/protocol"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub const DEFAULT_PORT : Int = 18123
+
+pub const HANDSHAKE_TIMEOUT_MS : Int = 30000
+
+pub const MAX_BUFFERED_BYTES : Int = 16777216
+
+pub const MAX_PAYLOAD_BYTES : Int = 10485760
+
+pub const PROTOCOL_VERSION : Int = 1
+
+pub const TICK_INTERVAL_MS : Int = 30000
+
+// Errors
+
+// Types and methods
+pub(all) struct AgentAcceptedPayload {
+  run_id : String
+  status : String
+  accepted_at : Int
+}
+pub impl Show for AgentAcceptedPayload
+pub impl ToJson for AgentAcceptedPayload
+pub impl @json.FromJson for AgentAcceptedPayload
+
+pub(all) struct AgentEventPayload {
+  run_id : String
+  kind : String
+  delta : String?
+  content : String?
+  usage : Json?
+}
+pub impl Show for AgentEventPayload
+pub impl ToJson for AgentEventPayload
+pub impl @json.FromJson for AgentEventPayload
+
+pub(all) struct AgentParams {
+  message : String
+  session_key : String?
+  cwd : String?
+  model : String?
+  provider : String?
+  run_id : String?
+  idempotency_key : String?
+}
+pub impl Show for AgentParams
+pub impl ToJson for AgentParams
+pub impl @json.FromJson for AgentParams
+
+pub(all) struct AgentResultPayload {
+  run_id : String
+  status : String
+  result : Json?
+  error : ErrorShape?
+}
+pub impl Show for AgentResultPayload
+pub impl ToJson for AgentResultPayload
+pub impl @json.FromJson for AgentResultPayload
+
+pub(all) struct AuthCredentials {
+  token : String?
+  password : String?
+}
+pub impl Show for AuthCredentials
+pub impl ToJson for AuthCredentials
+pub impl @json.FromJson for AuthCredentials
+
+pub(all) struct ChallengePayload {
+  nonce : String
+  ts : Int
+}
+pub impl Show for ChallengePayload
+pub impl ToJson for ChallengePayload
+pub impl @json.FromJson for ChallengePayload
+
+pub(all) struct ClientInfo {
+  id : String
+  display_name : String?
+  version : String?
+  platform : String?
+  mode : ClientMode
+}
+pub impl Show for ClientInfo
+pub impl ToJson for ClientInfo
+pub impl @json.FromJson for ClientInfo
+
+pub(all) enum ClientMode {
+  Cli
+  Backend
+  Webchat
+  Probe
+}
+pub impl Eq for ClientMode
+pub impl Show for ClientMode
+pub impl ToJson for ClientMode
+pub impl @json.FromJson for ClientMode
+
+pub(all) enum ClientRole {
+  Operator
+  Node
+}
+pub impl Eq for ClientRole
+pub impl Show for ClientRole
+pub impl ToJson for ClientRole
+pub impl @json.FromJson for ClientRole
+
+pub(all) struct ConfigGetPayload {
+  config : Json
+}
+pub impl Show for ConfigGetPayload
+pub impl ToJson for ConfigGetPayload
+pub impl @json.FromJson for ConfigGetPayload
+
+pub(all) struct ConfigSetParams {
+  config : Json
+}
+pub impl Show for ConfigSetParams
+pub impl ToJson for ConfigSetParams
+pub impl @json.FromJson for ConfigSetParams
+
+pub(all) struct ConnectParams {
+  min_protocol : Int
+  max_protocol : Int
+  client : ClientInfo
+  auth : AuthCredentials
+  role : ClientRole
+  scopes : Array[String]?
+}
+pub impl Show for ConnectParams
+pub impl ToJson for ConnectParams
+pub impl @json.FromJson for ConnectParams
+
+pub(all) struct ErrorShape {
+  code : String
+  message : String
+  details : Json?
+  retryable : Bool?
+  retry_after_ms : Int?
+}
+pub impl Show for ErrorShape
+pub impl ToJson for ErrorShape
+pub impl @json.FromJson for ErrorShape
+
+pub(all) struct EventFrame {
+  event : String
+  payload : Json?
+  seq : Int?
+  state_version : StateVersion?
+}
+pub impl Show for EventFrame
+pub impl ToJson for EventFrame
+pub impl @json.FromJson for EventFrame
+
+pub(all) struct Features {
+  methods : Array[String]
+  events : Array[String]
+}
+pub impl Show for Features
+pub impl ToJson for Features
+pub impl @json.FromJson for Features
+
+pub(all) enum Frame {
+  Req(Request)
+  Res(Response)
+  Event(EventFrame)
+}
+pub impl Show for Frame
+pub impl ToJson for Frame
+pub impl @json.FromJson for Frame
+
+pub(all) struct HealthPayload {
+  status : String
+  uptime_ms : Int
+  active_sessions : Int
+  pending_requests : Int
+}
+pub impl Show for HealthPayload
+pub impl ToJson for HealthPayload
+pub impl @json.FromJson for HealthPayload
+
+pub(all) struct HelloOk {
+  protocol : Int
+  server : ServerInfo
+  features : Features
+  snapshot : Snapshot
+  policy : Policy
+}
+pub impl Show for HelloOk
+pub impl ToJson for HelloOk
+pub impl @json.FromJson for HelloOk
+
+pub(all) struct Policy {
+  max_payload : Int
+  max_buffered_bytes : Int
+  tick_interval_ms : Int
+}
+pub impl Show for Policy
+pub impl ToJson for Policy
+pub impl @json.FromJson for Policy
+
+pub(all) struct Request {
+  id : String
+  method : String
+  params : Json?
+}
+pub impl Show for Request
+pub impl ToJson for Request
+pub impl @json.FromJson for Request
+
+pub(all) struct Response {
+  id : String
+  ok : Bool
+  payload : Json?
+  error : ErrorShape?
+}
+pub impl Show for Response
+pub impl ToJson for Response
+pub impl @json.FromJson for Response
+
+pub(all) struct ServerInfo {
+  version : String
+  commit : String?
+  host : String?
+  conn_id : String
+}
+pub impl Show for ServerInfo
+pub impl ToJson for ServerInfo
+pub impl @json.FromJson for ServerInfo
+
+pub(all) struct SessionInfo {
+  session_id : String
+  updated_at : Int
+  channel : String?
+  model_override : String?
+  provider_override : String?
+}
+pub impl Show for SessionInfo
+pub impl ToJson for SessionInfo
+pub impl @json.FromJson for SessionInfo
+
+pub(all) struct SessionsListPayload {
+  sessions : Array[SessionInfo]
+}
+pub impl Show for SessionsListPayload
+pub impl ToJson for SessionsListPayload
+pub impl @json.FromJson for SessionsListPayload
+
+pub(all) struct Snapshot {
+  presence : Json?
+  health : Json?
+  state_version : StateVersion?
+}
+pub impl Show for Snapshot
+pub impl ToJson for Snapshot
+pub impl @json.FromJson for Snapshot
+
+pub struct StateVersion {
+  presence : Int?
+  health : Int?
+}
+pub impl Show for StateVersion
+pub impl ToJson for StateVersion
+pub impl @json.FromJson for StateVersion
+
+// Type aliases
+
+// Traits
+

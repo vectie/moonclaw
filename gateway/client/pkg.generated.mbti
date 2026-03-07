@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/gateway/client"
+
+import {
+  "moonbitlang/async/http",
+  "moonbitlang/moonclaw/gateway/protocol",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/uuid",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Client {
+  base_url : String
+  token : String?
+  http : @http.Client
+  uuid : @uuid.Generator
+  logger : @pino.Logger
+  mut connected : Bool
+}
+pub async fn Client::agent(Self, message~ : String, session_key? : String, cwd? : String, model? : String, run_id? : String) -> Result[@protocol.AgentAcceptedPayload, String]
+pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
+pub async fn Client::health(Self) -> Result[@protocol.HealthPayload, String]
+pub async fn Client::list_sessions(Self) -> Result[@protocol.SessionsListPayload, String]
+pub async fn Client::new(ClientConfig) -> Self
+pub async fn Client::wait_agent(Self, run_id~ : String, timeout_ms? : Int) -> Result[Json, String]
+
+pub(all) struct ClientConfig {
+  base_url : String
+  token : String?
+  client_id : String?
+  client_mode : @protocol.ClientMode
+}
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,18 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/strconv",
+  "moonbitlang/async",
+  "moonbitlang/moonclaw/gateway/server",
+  "moonbitlang/moonclaw/gateway/client",
+  "moonbitlang/moonclaw/gateway/protocol",
+  "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/internal/rand",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/buildinfo",
+  "moonbitlang/moonclaw/internal/backtrace",
+}
+
+options(
+  "is-main": true,
+)

@@ -110,12 +110,14 @@ pub fn styled(String, fg? : Color, bg? : Color, styles? : Array[StyleCode]) -> S
 
 pub fn underline(String) -> String
 
+pub fn wrap_text(String, Int) -> Array[String]
+
 // Errors
 
 // Types and methods
 pub(all) struct AssistantMessage {
   mut text : String
-  mut lines : Array[StringView]
+  mut lines : Array[String]
   mut is_streaming : Bool
 }
 pub fn AssistantMessage::get_preferred_height(Self, Int) -> Int
@@ -144,16 +146,21 @@ pub(all) struct ChatLog {
   mut tool_by_id : Map[String, Int]
   mut streaming_by_id : Map[String, Int]
   mut tools_expanded : Bool
+  mut scroll_offset : Int
   max_components : Int
 }
-pub fn ChatLog::add_system(Self, String) -> Unit
-pub fn ChatLog::add_user(Self, String) -> Unit
+pub fn ChatLog::add_system(Self, String, Int, Int) -> Unit
+pub fn ChatLog::add_user(Self, String, Int, Int) -> Unit
 pub fn ChatLog::clear_all(Self) -> Unit
 pub fn ChatLog::drop_assistant(Self, run_id? : String) -> Unit
 pub fn ChatLog::finalize_assistant(Self, String, run_id? : String) -> Unit
+pub fn ChatLog::finalize_current_assistant(Self, run_id? : String) -> Unit
 pub fn ChatLog::get_preferred_height(Self, Int) -> Int
 pub fn ChatLog::new() -> Self
 pub async fn ChatLog::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub fn ChatLog::scroll_down(Self, Int, Int, Int) -> Unit
+pub fn ChatLog::scroll_to_bottom(Self, Int, Int) -> Unit
+pub fn ChatLog::scroll_up(Self, Int) -> Unit
 pub fn ChatLog::set_tools_expanded(Self, Bool) -> Unit
 pub fn ChatLog::start_assistant(Self, String, run_id? : String) -> AssistantMessage
 pub fn ChatLog::start_tool(Self, String, String, String) -> ToolExecution
@@ -386,6 +393,7 @@ pub(all) struct TUI {
   mut on_ctrl_c : (() -> Unit)?
   mut on_ctrl_d : (() -> Unit)?
   mut on_ctrl_o : (() -> Unit)?
+  mut render_needed : Bool
 }
 pub fn TUI::chat_log(Self) -> ChatLog
 pub fn TUI::editor(Self) -> Editor
@@ -586,7 +594,7 @@ pub fn TuiState::update_last_ctrl_c(Self, Int) -> Unit
 
 pub(all) struct UserMessage {
   mut text : String
-  mut lines : Array[StringView]
+  mut lines : Array[String]
 }
 pub fn UserMessage::get_preferred_height(Self, Int) -> Int
 pub fn UserMessage::new(String) -> Self

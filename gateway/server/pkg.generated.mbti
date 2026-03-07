@@ -1,0 +1,131 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/gateway/server"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/channel",
+  "moonbitlang/moonclaw/clock",
+  "moonbitlang/moonclaw/gateway/protocol",
+  "moonbitlang/moonclaw/internal/broadcast",
+  "moonbitlang/moonclaw/internal/httpx",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/model",
+}
+
+// Values
+
+// Errors
+type HttpError
+
+// Types and methods
+pub(all) struct AgentRequest {
+  prompt : String
+  channel : String?
+  session_key : String?
+  cwd : String?
+  model : String?
+  tools : Array[String]?
+  system_prompt : String?
+}
+pub impl Show for AgentRequest
+pub impl ToJson for AgentRequest
+pub impl @json.FromJson for AgentRequest
+
+pub(all) struct AgentResponse {
+  run_id : String
+  status : String
+  output : Array[String]
+  result : Json?
+  error : ErrorInfo?
+}
+pub impl Show for AgentResponse
+pub impl ToJson for AgentResponse
+pub impl @json.FromJson for AgentResponse
+
+type AgentRun
+pub impl Show for AgentRun
+pub impl ToJson for AgentRun
+pub impl @json.FromJson for AgentRun
+
+type AuthConfig
+
+pub struct ChannelManager {
+  registry : @channel.ChannelRegistry
+}
+pub fn ChannelManager::configure_channel(Self, String, @channel.ChannelConfig) -> Result[Unit, @channel.ChannelError]
+pub fn ChannelManager::get_channel_dock(Self, String) -> @channel.ChannelDock?
+pub fn ChannelManager::list_channels(Self) -> Array[@channel.ChannelDock]
+pub fn ChannelManager::new(@pino.Logger) -> Self
+pub fn ChannelManager::register_channel(Self, &@channel.Channel) -> Unit
+pub fn ChannelManager::send_message(Self, String, String, @channel.Message, String?) -> Result[@channel.SendResult, @channel.ChannelError]
+pub fn ChannelManager::start_channel(Self, String, String, Json) -> Result[Unit, @channel.ChannelError]
+pub fn ChannelManager::stop_channel(Self, String, String) -> Result[Unit, @channel.ChannelError]
+
+type DedupeCache
+pub fn DedupeCache::clear_expired(Self, Int) -> Unit
+pub fn DedupeCache::get(Self, String) -> DedupeEntry?
+pub fn DedupeCache::set(Self, String, DedupeEntry) -> Unit
+
+type DedupeEntry
+
+pub(all) struct ErrorInfo {
+  code : String
+  message : String
+}
+pub impl Show for ErrorInfo
+pub impl ToJson for ErrorInfo
+pub impl @json.FromJson for ErrorInfo
+
+pub struct Gateway {
+  clock : &@clock.Clock
+  uuid : @uuid.Generator
+  httpx : @httpx.Server
+  port : Int
+  events : @broadcast.Broadcast[GatewayEvent]
+  auth : AuthConfig
+  sessions : SessionManager
+  dedupe : DedupeCache
+  logger : @pino.Logger
+  home : String
+  cwd : String
+  models : @model.Loader
+  mut started_at : Int
+  mut pending_requests : Int
+  agent_runs : Map[String, AgentRun]
+  shutdown_requested : Bool
+  agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
+  channel_manager : ChannelManager
+  extension_registry : @channel.ExtensionRegistry
+}
+pub fn Gateway::auth_token(Self) -> String?
+pub async fn Gateway::handle_request(Self, @httpx.RequestReader, @httpx.ResponseWriter) -> Unit
+pub async fn Gateway::new(uuid? : @uuid.Generator, port? : Int, cwd? : StringView, home? : StringView, auth? : AuthConfig) -> Self
+pub fn Gateway::port(Self) -> Int
+pub fn Gateway::register_extension(Self, &@channel.ChannelExtension) -> Unit raise
+pub fn Gateway::request_shutdown(Self) -> Unit
+pub async fn Gateway::start(Self) -> Unit
+pub fn Gateway::unregister_extension(Self, String) -> Unit
+
+type GatewayEvent
+
+pub struct GatewayMessageHandler {
+  gateway_url : String
+  gateway_token : String
+  logger : @pino.Logger
+}
+pub fn GatewayMessageHandler::new(gateway_url~ : String, gateway_token~ : String, logger~ : @pino.Logger) -> Self
+
+type SessionEntry
+
+type SessionManager
+pub fn SessionManager::count(Self) -> Int
+pub fn SessionManager::get(Self, String) -> SessionEntry?
+pub fn SessionManager::get_or_create(Self, session_key~ : String, cwd~ : String) -> SessionEntry
+pub fn SessionManager::list(Self) -> Array[SessionEntry]
+pub fn SessionManager::reset(Self, String) -> Bool
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,6 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/core/strconv",
+  "moonbitlang/moonclaw/channel",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
+}

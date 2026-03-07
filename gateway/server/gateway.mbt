@@ -1,0 +1,93 @@
+///|
+suberror HttpError {
+  HttpError(code~ : Int, reason~ : String, body~ : String)
+}
+
+///|
+fn json_error(code : Int, reason : String, body : Json) -> HttpError {
+  HttpError(code~, reason~, body=body.stringify())
+}
+
+///|
+pub struct Gateway {
+  clock : &@clock.Clock
+  uuid : @uuid.Generator
+  httpx : @httpx.Server
+  port : Int
+  events : @broadcast.Broadcast[GatewayEvent]
+  auth : AuthConfig
+  sessions : SessionManager
+  dedupe : DedupeCache
+  logger : @pino.Logger
+  home : String
+  cwd : String
+  models : @model.Loader
+  mut started_at : Int
+  mut pending_requests : Int
+  agent_runs : Map[String, AgentRun]
+  shutdown_requested : Bool
+  agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
+  channel_manager : ChannelManager
+  extension_registry : @channel.ExtensionRegistry
+}
+
+///|
+struct AgentRun {
+  run_id : String
+  session_key : String
+  status : String
+  created_at : Int
+  completed_at : Int?
+  result : Json?
+  error : @protocol.ErrorShape?
+} derive(ToJson, FromJson, Show)
+
+///|
+struct AuthConfig {
+  token : String?
+  password : String?
+}
+
+///|
+struct SessionManager {
+  sessions : Map[String, SessionEntry]
+  session_dir : String
+}
+
+///|
+struct SessionEntry {
+  session_id : String
+  updated_at : Int
+  channel : String?
+  model_override : String?
+  provider_override : String?
+  cwd : String?
+}
+
+///|
+struct DedupeCache {
+  entries : Map[String, DedupeEntry]
+  ttl_ms : Int
+}
+
+///|
+struct DedupeEntry {
+  ts : Int
+  ok : Bool
+  payload : Json?
+  error : @protocol.ErrorShape?
+}
+
+///|
+enum GatewayEvent {
+  Tick(Int)
+  Shutdown
+  SessionChanged(String)
+  AgentStarted(String)
+  AgentCompleted(String)
+}
+
+///|
+pub fn Gateway::request_shutdown(self : Gateway) -> Unit {
+  self.events.put(GatewayEvent::Shutdown)
+}

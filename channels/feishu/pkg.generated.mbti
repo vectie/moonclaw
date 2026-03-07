@@ -1,0 +1,128 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/channels/feishu"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/channel",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct FeishuAccessTokenResponse {
+  code : Int
+  msg : String
+  tenant_access_token : String?
+  app_access_token : String?
+  expire : Int?
+}
+pub impl Show for FeishuAccessTokenResponse
+pub impl ToJson for FeishuAccessTokenResponse
+pub impl @json.FromJson for FeishuAccessTokenResponse
+
+pub struct FeishuAccountConfig {
+  app_id : String
+  app_secret : String
+  domain : String
+  connection_mode : String
+  dm_policy : String
+  bot_name : String?
+  webhook_url : String?
+  verify_token : String?
+  encryption_key : String?
+  enabled : Bool
+}
+pub impl Show for FeishuAccountConfig
+pub impl ToJson for FeishuAccountConfig
+pub impl @json.FromJson for FeishuAccountConfig
+
+pub struct FeishuChannel {
+  // private fields
+}
+pub fn FeishuChannel::new() -> Self
+pub fn FeishuChannel::set_message_handler(Self, &@channel.MessageHandler) -> Unit
+
+type FeishuChannelState
+
+pub struct FeishuClient {
+  config : FeishuAccountConfig
+}
+pub fn FeishuClient::new(FeishuAccountConfig) -> Self
+pub fn FeishuClient::send_text_message(Self, String, String) -> Result[@channel.SendResult, @channel.ChannelError]
+
+pub struct FeishuEvent {
+  schema : String
+  header : FeishuEventHeader
+  event : Json
+  token : String?
+}
+pub impl Show for FeishuEvent
+pub impl ToJson for FeishuEvent
+pub impl @json.FromJson for FeishuEvent
+
+pub struct FeishuEventHeader {
+  event_id : String
+  event_type : String
+  create_time : String
+  token : String?
+  app_id : String
+  tenant_key : String?
+  resource_id : String?
+  user_list : Array[String]?
+}
+pub impl Show for FeishuEventHeader
+pub impl ToJson for FeishuEventHeader
+pub impl @json.FromJson for FeishuEventHeader
+
+pub struct FeishuMessage {
+  message_id : String
+  chat_type : String
+  message_type : String
+  content : String
+  create_time : String
+  chat_id : String
+  msg_root_id : String?
+  msg_parent_id : String?
+  from_user_id : String?
+  tenant_key : String?
+}
+pub impl Show for FeishuMessage
+pub impl ToJson for FeishuMessage
+pub impl @json.FromJson for FeishuMessage
+
+pub struct FeishuMessageData {
+  message_id : String
+}
+pub impl Show for FeishuMessageData
+pub impl ToJson for FeishuMessageData
+pub impl @json.FromJson for FeishuMessageData
+
+pub struct FeishuSendMessageRequest {
+  receive_id : String
+  msg_type : String
+  content : String
+}
+pub impl Show for FeishuSendMessageRequest
+pub impl ToJson for FeishuSendMessageRequest
+pub impl @json.FromJson for FeishuSendMessageRequest
+
+pub struct FeishuSendMessageResponse {
+  code : Int
+  msg : String
+  data : FeishuMessageData?
+}
+pub impl Show for FeishuSendMessageResponse
+pub impl ToJson for FeishuSendMessageResponse
+pub impl @json.FromJson for FeishuSendMessageResponse
+
+// Type aliases
+pub type FeishuConnectionMode = String
+
+pub type FeishuDmPolicy = String
+
+pub type FeishuDomain = String
+
+// Traits
+

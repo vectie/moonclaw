@@ -1,0 +1,398 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/channel"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn default_capabilities() -> ChannelCapabilities
+
+pub fn default_config() -> ChannelConfig
+
+// Errors
+pub suberror ExtensionError {
+  ExtensionError(message~ : String)
+}
+
+// Types and methods
+pub(all) struct Attachment {
+  id : String
+  mime_type : String
+  url : String
+  filename : String?
+  size : Int?
+}
+pub impl Show for Attachment
+pub impl ToJson for Attachment
+pub impl @json.FromJson for Attachment
+
+pub(all) struct ChannelCapabilities {
+  chat_types : Array[ChatType]
+  polls : Bool
+  reactions : Bool
+  edit : Bool
+  unsend : Bool
+  reply : Bool
+  effects : Bool
+  group_management : Bool
+  threads : Bool
+  media : Bool
+  native_commands : Bool
+  block_streaming : Bool
+}
+pub impl Show for ChannelCapabilities
+pub impl ToJson for ChannelCapabilities
+pub impl @json.FromJson for ChannelCapabilities
+
+pub(all) struct ChannelConfig {
+  enabled : Bool
+  accounts : Map[String, Json]
+  global_settings : Json
+}
+pub impl Show for ChannelConfig
+pub impl ToJson for ChannelConfig
+pub impl @json.FromJson for ChannelConfig
+
+pub(all) struct ChannelDock {
+  id : String
+  meta : ChannelMeta
+  capabilities : ChannelCapabilities
+  is_configured : Bool
+  is_running : Bool
+  account_ids : Array[String]
+  outbound : OutboundConfig?
+  streaming : StreamingConfig?
+}
+pub impl Show for ChannelDock
+pub impl ToJson for ChannelDock
+pub impl @json.FromJson for ChannelDock
+
+pub(all) struct ChannelDockConfig {
+  outbound : OutboundAdapter?
+  threading : ThreadingAdapter?
+  mentions : MentionAdapter?
+  streaming : StreamingAdapter?
+  security : SecurityAdapter?
+}
+pub fn ChannelDockConfig::default_for_channel(String) -> Self
+pub fn ChannelDockConfig::new(outbound? : OutboundAdapter?, threading? : ThreadingAdapter?, mentions? : MentionAdapter?, streaming? : StreamingAdapter?, security? : SecurityAdapter?) -> Self
+pub impl Show for ChannelDockConfig
+pub impl ToJson for ChannelDockConfig
+pub impl @json.FromJson for ChannelDockConfig
+
+type ChannelEntry
+
+pub(all) enum ChannelError {
+  NotConfigured(message~ : String)
+  ConnectionFailed(message~ : String)
+  SendMessageFailed(message~ : String)
+  InvalidRecipient(message~ : String)
+  RateLimited(message~ : String, retry_after_ms~ : Int?)
+  Unknown(message~ : String)
+}
+pub impl Show for ChannelError
+pub impl ToJson for ChannelError
+pub impl @json.FromJson for ChannelError
+
+pub(all) struct ChannelEvent {
+  channel : String
+  account_id : String
+  event_type : String
+  payload : Json
+  timestamp : Int
+}
+pub impl Show for ChannelEvent
+pub impl ToJson for ChannelEvent
+pub impl @json.FromJson for ChannelEvent
+
+pub(all) enum ChannelEventType {
+  MessageReceived
+  MessageSent
+  MessageUpdated
+  MessageDeleted
+  ReactionAdded
+  ReactionRemoved
+  UserJoined
+  UserLeft
+  TypingStarted
+  TypingStopped
+  Custom(String)
+}
+
+pub(all) struct ChannelMeta {
+  id : String
+  label : String
+  selection_label : String
+  docs_path : String
+  docs_label : String?
+  blurb : String
+  order : Int?
+  aliases : Array[String]
+}
+pub impl Show for ChannelMeta
+pub impl ToJson for ChannelMeta
+pub impl @json.FromJson for ChannelMeta
+
+pub struct ChannelRegistry {
+  // private fields
+}
+pub fn ChannelRegistry::configure(Self, String, ChannelConfig) -> Result[Unit, ChannelError]
+pub fn ChannelRegistry::get(Self, String) -> &Channel?
+pub fn ChannelRegistry::get_dock(Self, String) -> ChannelDock?
+pub fn ChannelRegistry::get_entry(Self, String) -> ChannelEntry?
+pub fn ChannelRegistry::list_channels(Self) -> Array[ChannelDock]
+pub fn ChannelRegistry::new() -> Self
+pub fn ChannelRegistry::register(Self, &Channel) -> Unit
+pub fn ChannelRegistry::start(Self, String, String, Json) -> Result[Unit, ChannelError]
+pub fn ChannelRegistry::stop(Self, String, String) -> Result[Unit, ChannelError]
+
+pub(all) enum ChatType {
+  Direct
+  Group
+  Channel
+  Thread
+}
+pub impl Show for ChatType
+pub impl ToJson for ChatType
+pub impl @json.FromJson for ChatType
+
+pub(all) struct ExtensionContext {
+  gateway_url : String
+  gateway_token : String?
+  home_dir : String
+  cwd : String
+  logger : LoggerFuncs?
+}
+pub fn ExtensionContext::cwd(Self) -> String
+pub fn ExtensionContext::gateway_token(Self) -> String?
+pub fn ExtensionContext::gateway_url(Self) -> String
+pub fn ExtensionContext::home_dir(Self) -> String
+pub fn ExtensionContext::logger(Self) -> LoggerFuncs?
+pub fn ExtensionContext::new(gateway_url~ : String, gateway_token? : String?, home_dir~ : String, cwd~ : String, logger? : LoggerFuncs?) -> Self
+
+pub(all) struct ExtensionInfo {
+  channel_id : String
+  webhook_path : String
+  supports_websocket : Bool
+  allowed_methods : Array[String]
+  dock_config : ChannelDockConfig
+}
+pub fn ExtensionInfo::allowed_methods(Self) -> Array[String]
+pub fn ExtensionInfo::channel_id(Self) -> String
+pub fn ExtensionInfo::dock_config(Self) -> ChannelDockConfig
+pub fn ExtensionInfo::supports_websocket(Self) -> Bool
+pub fn ExtensionInfo::webhook_path(Self) -> String
+
+pub(all) struct ExtensionMeta {
+  name : String
+  version : String
+  description : String
+  author : String?
+  webhook_path : String
+  supported_events : Array[String]
+}
+pub fn ExtensionMeta::new(name~ : String, version~ : String, description~ : String, author? : String, webhook_path~ : String, supported_events? : Array[String]) -> Self
+
+pub struct ExtensionRegistry {
+  mut message_handler : &MessageHandler?
+  mut context : ExtensionContext?
+  // private fields
+}
+pub fn ExtensionRegistry::get(Self, String) -> &ChannelExtension?
+pub fn ExtensionRegistry::get_by_path(Self, String) -> &ChannelExtension?
+pub fn ExtensionRegistry::get_dock_config(Self, String) -> ChannelDockConfig?
+pub fn ExtensionRegistry::get_message_handler(Self) -> &MessageHandler?
+pub fn ExtensionRegistry::get_webhook_paths(Self) -> Array[String]
+pub fn ExtensionRegistry::handle_webhook(Self, String, ExtensionRequest) -> ExtensionResponse raise
+pub fn ExtensionRegistry::has_path(Self, String) -> Bool
+pub fn ExtensionRegistry::list_dock_configs(Self) -> Map[String, ChannelDockConfig]
+pub fn ExtensionRegistry::list_extensions(Self) -> Array[ExtensionInfo]
+pub fn ExtensionRegistry::new() -> Self
+pub fn ExtensionRegistry::register(Self, &ChannelExtension) -> Unit raise
+pub fn ExtensionRegistry::register_with_context(Self, &ChannelExtension, ExtensionContext) -> Unit raise
+pub fn ExtensionRegistry::set_context(Self, ExtensionContext) -> Unit
+pub fn ExtensionRegistry::set_message_handler(Self, &MessageHandler) -> Unit
+pub fn ExtensionRegistry::unregister(Self, String) -> Unit
+
+pub(all) struct ExtensionRequest {
+  http_method : String
+  path : String
+  headers : Map[String, String]
+  body : Bytes
+  query_params : Map[String, String]
+}
+pub fn ExtensionRequest::body(Self) -> Bytes
+pub fn ExtensionRequest::header(Self, String) -> String?
+pub fn ExtensionRequest::headers(Self) -> Map[String, String]
+pub fn ExtensionRequest::http_method(Self) -> String
+pub fn ExtensionRequest::json(Self) -> Json raise
+pub fn ExtensionRequest::new(http_method~ : String, path~ : String, headers~ : Map[String, String], body~ : Bytes, query_params? : Map[String, String]) -> Self
+pub fn ExtensionRequest::path(Self) -> String
+pub fn ExtensionRequest::query_param(Self, String) -> String?
+pub fn ExtensionRequest::query_params(Self) -> Map[String, String]
+
+pub(all) struct ExtensionResponse {
+  status_code : Int
+  headers : Map[String, String]
+  body : Bytes
+}
+pub fn ExtensionResponse::bad_request(message? : String) -> Self
+pub fn ExtensionResponse::body(Self) -> Bytes
+pub fn ExtensionResponse::headers(Self) -> Map[String, String]
+pub fn ExtensionResponse::internal_error(message? : String) -> Self
+pub fn ExtensionResponse::json(Json, status_code? : Int) -> Self
+pub fn ExtensionResponse::new(status_code? : Int, headers? : Map[String, String], body? : Bytes) -> Self
+pub fn ExtensionResponse::no_content() -> Self
+pub fn ExtensionResponse::not_found() -> Self
+pub fn ExtensionResponse::ok() -> Self
+pub fn ExtensionResponse::status_code(Self) -> Int
+pub fn ExtensionResponse::text(String, status_code? : Int) -> Self
+pub fn ExtensionResponse::unauthorized(message? : String) -> Self
+
+pub(all) struct LoggerFuncs {
+  info : (String) -> Unit
+  warn : (String) -> Unit
+  error : (String) -> Unit
+  debug : (String) -> Unit
+}
+pub fn LoggerFuncs::new(info~ : (String) -> Unit, warn~ : (String) -> Unit, error~ : (String) -> Unit, debug~ : (String) -> Unit) -> Self
+
+pub(all) struct MentionAdapter {
+  strip_patterns : Array[String]
+  mention_prefix : String?
+  mention_suffix : String?
+}
+pub fn MentionAdapter::new(strip_patterns? : Array[String], mention_prefix? : String?, mention_suffix? : String?) -> Self
+pub impl Show for MentionAdapter
+pub impl ToJson for MentionAdapter
+pub impl @json.FromJson for MentionAdapter
+
+pub(all) struct Message {
+  id : String
+  channel : String
+  from : String
+  to : String
+  content : String
+  content_type : String
+  timestamp : Int
+  thread_id : String?
+  reply_to : String?
+  attachments : Array[Attachment]
+}
+pub impl Show for Message
+pub impl ToJson for Message
+pub impl @json.FromJson for Message
+
+pub(all) struct OutboundAdapter {
+  text_chunk_limit : Int
+  delivery_mode : String
+  chunker_mode : String
+}
+pub fn OutboundAdapter::new(text_chunk_limit? : Int, delivery_mode? : String, chunker_mode? : String) -> Self
+pub impl Show for OutboundAdapter
+pub impl ToJson for OutboundAdapter
+pub impl @json.FromJson for OutboundAdapter
+
+pub(all) struct OutboundConfig {
+  delivery_mode : String
+  chunker_mode : String
+  text_chunk_limit : Int
+}
+pub impl Show for OutboundConfig
+pub impl ToJson for OutboundConfig
+pub impl @json.FromJson for OutboundConfig
+
+pub(all) struct SecurityAdapter {
+  dm_policy : String
+  allow_from : Array[String]
+  require_mention_in_groups : Bool
+}
+pub fn SecurityAdapter::new(dm_policy? : String, allow_from? : Array[String], require_mention_in_groups? : Bool) -> Self
+pub impl Show for SecurityAdapter
+pub impl ToJson for SecurityAdapter
+pub impl @json.FromJson for SecurityAdapter
+
+pub(all) struct SendResult {
+  channel : String
+  message_id : String
+  timestamp : Int
+  status : String
+}
+pub impl Show for SendResult
+pub impl ToJson for SendResult
+pub impl @json.FromJson for SendResult
+
+pub(all) struct StreamingAdapter {
+  enabled : Bool
+  chunk_size : Int
+  chunk_delay_ms : Int
+  min_chars : Int?
+  idle_ms : Int?
+}
+pub fn StreamingAdapter::new(enabled? : Bool, chunk_size? : Int, chunk_delay_ms? : Int, min_chars? : Int?, idle_ms? : Int?) -> Self
+pub impl Show for StreamingAdapter
+pub impl ToJson for StreamingAdapter
+pub impl @json.FromJson for StreamingAdapter
+
+pub(all) struct StreamingConfig {
+  enabled : Bool
+  chunk_size : Int
+  chunk_delay_ms : Int
+}
+pub impl Show for StreamingConfig
+pub impl ToJson for StreamingConfig
+pub impl @json.FromJson for StreamingConfig
+
+pub(all) struct ThreadingAdapter {
+  reply_to_mode : String
+  supports_threads : Bool
+  thread_id_key : String?
+}
+pub fn ThreadingAdapter::new(reply_to_mode? : String, supports_threads? : Bool, thread_id_key? : String?) -> Self
+pub impl Show for ThreadingAdapter
+pub impl ToJson for ThreadingAdapter
+pub impl @json.FromJson for ThreadingAdapter
+
+pub(all) struct WebSocketConnection {
+  id : String
+  send : (Bytes) -> Unit
+  close : () -> Unit
+}
+pub fn WebSocketConnection::close(Self) -> Unit
+pub fn WebSocketConnection::id(Self) -> String
+pub fn WebSocketConnection::new(id~ : String, send~ : (Bytes) -> Unit, close~ : () -> Unit) -> Self
+pub fn WebSocketConnection::send(Self, Bytes) -> Unit
+
+// Type aliases
+pub type ChannelId = String
+
+// Traits
+pub(open) trait Channel {
+  id(Self) -> String
+  meta(Self) -> ChannelMeta
+  capabilities(Self) -> ChannelCapabilities
+  configure(Self, ChannelConfig) -> Unit
+  start(Self, String, Json) -> Result[Unit, ChannelError]
+  stop(Self, String) -> Result[Unit, ChannelError]
+  send(Self, String, Message, String?) -> Result[SendResult, ChannelError]
+  handle_event(Self, ChannelEvent) -> Unit
+  is_running(Self, String) -> Bool
+}
+
+pub(open) trait ChannelExtension : Channel {
+  webhook_path(Self) -> String
+  handle_webhook(Self, ExtensionRequest) -> ExtensionResponse raise
+  supports_websocket(Self) -> Bool
+  handle_websocket(Self, WebSocketConnection) -> Unit
+  allowed_methods(Self) -> Array[String]
+  dock_config(Self) -> ChannelDockConfig
+  on_register(Self, ExtensionContext) -> Unit
+  on_unregister(Self) -> Unit
+}
+
+pub(open) trait MessageHandler {
+  handle_message(Self, String, String, Message) -> Message raise
+  async handle_event(Self, String, String, ChannelEvent) -> Unit
+}
+

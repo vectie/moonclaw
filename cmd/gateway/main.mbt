@@ -1,0 +1,216 @@
+///|
+pub async fn start(args : ArrayView[String]) -> Unit {
+  let arr = args.to_array()
+  match arr[1:] {
+    ["start", ..] => start_gateway(arr)
+    ["connect", ..] => connect_gateway(arr)
+    ["agent", ..] => run_agent(arr)
+    ["health", ..] => check_health(arr)
+    ["help"] | ["--help"] | ["-h"] => print_help()
+    ["version"] | ["--version"] | ["-v"] => println(@buildinfo.version)
+    _ => print_help()
+  }
+}
+
+///|
+async fn main {
+  @backtrace.initialize()
+  let args = @os.args()
+  start(args)
+}
+
+///|
+fn print_help() -> Unit {
+  println("MoonClaw Gateway - Long-running AI agent service")
+  println("")
+  println("Usage: moonclaw gateway <command> [options]")
+  println("")
+  println("Commands:")
+  println("  start     Start the gateway server")
+  println("  connect   Connect to a running gateway")
+  println("  agent     Send an agent request to the gateway")
+  println("  health    Check gateway health")
+  println("  version   Show version")
+  println("  help      Show this help message")
+  println("")
+  println("Start options:")
+  println("  --port <port>      Port to listen on (default: 18789)")
+  println("  --cwd <dir>        Working directory (default: current)")
+  println("  --home <dir>       Home directory (default: ~/.moonclaw)")
+  println("")
+  println("Connect options:")
+  println("  --url <url>        Gateway URL (default: http://localhost:18789)")
+  println("  --token <token>    Auth token")
+  println("")
+  println("Agent options:")
+  println("  --url <url>        Gateway URL (default: http://localhost:18789)")
+  println("  --token <token>    Auth token")
+  println("  --message <msg>    Message to send (required)")
+  println("  --session <key>    Session key for conversation continuity")
+  println("  --model <name>     Model to use")
+  println("  --cwd <dir>        Working directory")
+  println("  --wait             Wait for completion")
+  println("  --timeout <ms>     Timeout for waiting (default: 60000)")
+}
+
+///|
+async fn start_gateway(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let port = parse_int_arg(args, "--port", default=@protocol.DEFAULT_PORT)
+  let cwd = parse_string_arg(args, "--cwd")
+  let home = parse_string_arg(args, "--home")
+  logger.info("Starting MoonClaw Gateway on port \{port}")
+  let gateway = match (cwd, home) {
+    (Some(c), Some(h)) => @server.Gateway::new(port~, cwd=c[:], home=h[:])
+    (Some(c), None) => @server.Gateway::new(port~, cwd=c[:])
+    (None, Some(h)) => @server.Gateway::new(port~, home=h[:])
+    (None, None) => @server.Gateway::new(port~)
+  }
+  logger.info("Gateway started on port \{gateway.port()}")
+  gateway.start()
+}
+
+///|
+async fn connect_gateway(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let url = parse_string_arg(args, "--url")
+  let url = match url {
+    Some(u) => u
+    None => "http://localhost:\{@protocol.DEFAULT_PORT}"
+  }
+  let token = parse_string_arg(args, "--token")
+  let config = @client.ClientConfig::{
+    base_url: url,
+    token,
+    client_id: None,
+    client_mode: @protocol.ClientMode::Cli,
+  }
+  let client = @client.Client::new(config)
+  let result = client.connect()
+  match result {
+    Err(e) => logger.error("Connection failed: \{e}")
+    Ok(hello) => {
+      logger.info("Connected to gateway v\{hello.server.version}")
+      logger.info("Protocol version: \{hello.protocol}")
+      let methods = hello.features.methods.join(", ")
+      logger.info("Available methods: \{methods}")
+    }
+  }
+}
+
+///|
+async fn run_agent(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let url = parse_string_arg(args, "--url")
+  let url = match url {
+    Some(u) => u
+    None => "http://localhost:\{@protocol.DEFAULT_PORT}"
+  }
+  let token = parse_string_arg(args, "--token")
+  let message = parse_string_arg(args, "--message")
+  let message = match message {
+    Some(m) => m
+    None => {
+      logger.error("--message is required")
+      return
+    }
+  }
+  let session_key = parse_string_arg(args, "--session")
+  let cwd = parse_string_arg(args, "--cwd")
+  let model = parse_string_arg(args, "--model")
+  let wait = args.contains("--wait")
+  let timeout = parse_int_arg(args, "--timeout", default=60000)
+  let config = @client.ClientConfig::{
+    base_url: url,
+    token,
+    client_id: None,
+    client_mode: @protocol.ClientMode::Cli,
+  }
+  let client = @client.Client::new(config)
+  let connect_result = client.connect()
+  match connect_result {
+    Err(e) => {
+      logger.error("Connection failed: \{e}")
+      return
+    }
+    Ok(_) => ()
+  }
+  let agent_result = client.agent(message~, session_key?, cwd?, model?)
+  match agent_result {
+    Err(e) => {
+      logger.error("Agent request failed: \{e}")
+      return
+    }
+    Ok(accepted) => {
+      logger.info("Agent request accepted: \{accepted.run_id}")
+      if wait {
+        logger.info("Waiting for completion...")
+        let wait_result = client.wait_agent(
+          run_id=accepted.run_id,
+          timeout_ms=timeout,
+        )
+        match wait_result {
+          Err(e) => logger.error("Wait failed: \{e}")
+          Ok(payload) => {
+            logger.info("Agent completed")
+            println(payload.stringify())
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+async fn check_health(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let url = parse_string_arg(args, "--url")
+  let url = match url {
+    Some(u) => u
+    None => "http://localhost:\{@protocol.DEFAULT_PORT}"
+  }
+  let token = parse_string_arg(args, "--token")
+  let config = @client.ClientConfig::{
+    base_url: url,
+    token,
+    client_id: None,
+    client_mode: @protocol.ClientMode::Probe,
+  }
+  let client = @client.Client::new(config)
+  let result = client.health()
+  match result {
+    Err(e) => logger.error("Health check failed: \{e}")
+    Ok(health) => {
+      println("Status: \{health.status}")
+      println("Uptime: \{health.uptime_ms}ms")
+      println("Active sessions: \{health.active_sessions}")
+      println("Pending requests: \{health.pending_requests}")
+    }
+  }
+}
+
+///|
+fn parse_string_arg(args : Array[String], name : String) -> String? {
+  let mut i = 0
+  while i < args.length() {
+    if args[i] == name && i + 1 < args.length() {
+      return Some(args[i + 1])
+    }
+    i = i + 1
+  }
+  None
+}
+
+///|
+fn parse_int_arg(args : Array[String], name : String, default~ : Int) -> Int {
+  match parse_string_arg(args, name) {
+    Some(s) => {
+      let result : Result[Int, Error] = try? @strconv.parse_int(s[:], base=10)
+      match result {
+        Ok(n) => n
+        Err(_) => default
+      }
+    }
+    None => default
+  }
+}

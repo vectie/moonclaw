@@ -1,0 +1,166 @@
+///|
+pub async fn Gateway::new(
+  uuid? : @uuid.Generator,
+  port? : Int = @protocol.DEFAULT_PORT,
+  cwd? : StringView,
+  home? : StringView,
+  auth? : AuthConfig,
+) -> Gateway {
+  let home = match home {
+    None => @os.home()
+    Some(home) => home.to_string()
+  }
+  let cwd = match cwd {
+    Some(cwd) => cwd.to_string()
+    None => @os.cwd()
+  }
+  let uuid = match uuid {
+    Some(uuid) => uuid
+    None => @uuid.generator(@rand.chacha8())
+  }
+  let httpx_server = @httpx.Server::new("[::1]", port, reuse_addr=true)
+  let actual_port = httpx_server.port()
+  let gateway_dir = @path.Path(home).join(@path.Path("gateway")).to_string()
+  let session_dir = @path.Path(gateway_dir)
+    .join(@path.Path("sessions"))
+    .to_string()
+  @fsx.make_directory(session_dir, recursive=true) catch {
+    _ => ()
+  }
+  let auth = match auth {
+    Some(auth) => auth
+    None => {
+      let token_file = @path.Path(gateway_dir)
+        .join(@path.Path("token"))
+        .to_string()
+      let token_result : Result[String, Error] = try? @fsx.read_file(token_file)
+      let token = match token_result {
+        Ok(content) => Some(content.trim().to_string())
+        Err(_) => {
+          let new_token = generate_token(uuid~)
+          @fsx.make_directory(gateway_dir, recursive=true) catch {
+            _ => ()
+          }
+          @fsx.write_to_file(token_file, new_token)
+          Some(new_token)
+        }
+      }
+      AuthConfig::{ token, password: None }
+    }
+  }
+  let channel_manager = ChannelManager::new(
+    @pino.logger("channel_manager", @pino.Transport::console()),
+  )
+  let extension_registry = @channel.ExtensionRegistry::new()
+  Gateway::{
+    clock: @clock.epoch,
+    uuid,
+    httpx: httpx_server,
+    port: actual_port,
+    events: @broadcast.Broadcast::new(),
+    auth,
+    sessions: SessionManager::{ sessions: {}, session_dir },
+    dedupe: DedupeCache::{ entries: {}, ttl_ms: 60000 },
+    logger: @pino.logger("gateway", @pino.Transport::console()),
+    home,
+    cwd,
+    models: @model.Loader::new(home~, cwd~),
+    started_at: 0,
+    pending_requests: 0,
+    agent_runs: {},
+    shutdown_requested: false,
+    agent_events: @broadcast.Broadcast::new(),
+    channel_manager,
+    extension_registry,
+  }
+}
+
+///|
+pub fn Gateway::port(self : Gateway) -> Int {
+  self.port
+}
+
+///|
+pub fn Gateway::auth_token(self : Gateway) -> String? {
+  self.auth.token
+}
+
+///|
+pub fn Gateway::register_extension(
+  self : Gateway,
+  extension : &@channel.ChannelExtension,
+) -> Unit raise {
+  let context = @channel.ExtensionContext::new(
+    gateway_url="http://localhost:\{self.port}",
+    gateway_token=self.auth.token,
+    home_dir=self.home,
+    cwd=self.cwd,
+    logger=None,
+  )
+  self.extension_registry.register_with_context(extension, context)
+  self.channel_manager.register_channel(extension)
+}
+
+///|
+pub fn Gateway::unregister_extension(
+  self : Gateway,
+  channel_id : String,
+) -> Unit {
+  self.extension_registry.unregister(channel_id)
+}
+
+///|
+fn generate_token(uuid~ : @uuid.Generator) -> String raise {
+  let random_bytes = @rand.bytes(32)
+  @base64.encode(random_bytes)
+}
+
+///|
+pub async fn Gateway::start(self : Gateway) -> Unit {
+  self.started_at = current_time_ms()
+  self.logger.info("Gateway server starting on port \{self.port}")
+  self.logger.info("Visit http://localhost:\{self.port}/")
+  if self.auth.token is Some(token) {
+    self.logger.info("Auth token: \{token}")
+  }
+  @async.with_task_group(group => {
+    let session = self.events.spawn_in(group)
+    let agent_session = self.agent_events.spawn_in(group)
+    group.spawn_bg(() => self.run_tick_interval())
+    group.spawn_bg(() => {
+      self.httpx.serve(@httpx.cors((r, w) => self.handle_request(r, w)))
+    })
+    group.spawn_bg(() => {
+      self.events.listen_forever(include_history=false, event => {
+        match event {
+          Shutdown => {
+            self.logger.info("Shutdown requested, stopping gateway...")
+            self.httpx.close()
+            session.stop()
+            agent_session.stop()
+            group.return_immediately(())
+          }
+          _ => ()
+        }
+      })
+    })
+  })
+}
+
+///|
+async fn Gateway::run_tick_interval(self : Gateway) -> Unit {
+  let tick_interval_ms = @protocol.TICK_INTERVAL_MS
+  let mut tick_count = 0
+  for {
+    @async.sleep(tick_interval_ms)
+    tick_count = tick_count + 1
+    self.events.put(GatewayEvent::Tick(tick_count))
+    self.dedupe.clear_expired(current_time_ms())
+  }
+}
+
+///|
+fn current_time_ms() -> Int {
+  let ts = @clock.epoch.now()
+  ts.ms().to_int()
+}
