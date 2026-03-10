@@ -72,6 +72,9 @@ pub async fn Gateway::new(
     agent_events: @broadcast.Broadcast::new(),
     channel_manager,
     extension_registry,
+    mailbox_manager: mailbox_manager(),
+    coordinator: coordinator(uuid~),
+    pipeline_manager: pipeline_manager(uuid~),
   }
 }
 
@@ -160,7 +163,7 @@ async fn Gateway::run_tick_interval(self : Gateway) -> Unit {
 }
 
 ///|
-fn current_time_ms() -> Int {
+pub fn current_time_ms() -> Int {
   let ts = @clock.epoch.now()
   ts.ms().to_int()
 }

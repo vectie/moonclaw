@@ -29,6 +29,9 @@ pub struct Gateway {
   agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
   channel_manager : ChannelManager
   extension_registry : @channel.ExtensionRegistry
+  mailbox_manager : MailboxManager
+  coordinator : Coordinator
+  pipeline_manager : PipelineManager
 }
 
 ///|

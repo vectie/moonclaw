@@ -14,34 +14,90 @@ import {
 }
 
 // Values
+pub fn advance_stage_params(stage_name~ : String, result~ : Json) -> AdvanceStageParams
+
+pub fn agent_mailbox(agent_id~ : String, config? : AgentMailboxConfig, timestamp? : Int) -> AgentMailbox
+
+pub fn agent_mailbox_config(max_size? : Int, timeout_ms? : Int) -> AgentMailboxConfig
+
+pub fn agent_message(uuid~ : @uuid.Generator, from_agent~ : String, to_agent? : String, topic~ : String, payload~ : Json, timestamp~ : Int) -> AgentMessage
+
+pub fn coordination_task(coordination_id~ : String, parent_agent~ : String, subtasks~ : Array[SubTask], metadata? : Map[String, Json]) -> CoordinationTask
+
+pub fn coordinator(uuid~ : @uuid.Generator, max_concurrent? : Int) -> Coordinator
+
+pub fn create_coordination_params(parent_agent~ : String, subtasks~ : Array[SubTaskParams], metadata? : Map[String, Json]) -> CreateCoordinationParams
+
+pub fn create_pipeline_params(name~ : String, stages~ : Array[PipelineStageParams], metadata? : Map[String, Json]) -> CreatePipelineParams
+
+pub fn current_time_ms() -> Int
+
+pub fn fail_stage_params(stage_name~ : String, error~ : String) -> FailStageParams
+
+pub fn mailbox_manager(config? : AgentMailboxConfig) -> MailboxManager
+
+pub fn pipeline(pipeline_id~ : String, name~ : String, stages~ : Array[PipelineStage], metadata? : Map[String, Json]) -> Pipeline
+
+pub fn pipeline_manager(uuid~ : @uuid.Generator) -> PipelineManager
+
+pub fn pipeline_stage(name~ : String, message~ : String, model? : String?, cwd? : String?, input_template? : String?) -> PipelineStage
+
+pub fn pipeline_stage_params(name~ : String, message~ : String, model? : String, cwd? : String, input_template? : String) -> PipelineStageParams
+
+pub fn sub_task(task_id~ : String, message~ : String, model? : String, cwd? : String) -> SubTask
+
+pub fn sub_task_params(task_id~ : String, message~ : String, model? : String, cwd? : String) -> SubTaskParams
+
+pub fn update_subtask_params(status~ : CoordinationStatus, result? : Json, error? : String) -> UpdateSubTaskParams
 
 // Errors
 type HttpError
 
 // Types and methods
-pub(all) struct AgentRequest {
-  prompt : String
-  channel : String?
-  session_key : String?
-  cwd : String?
-  model : String?
-  tools : Array[String]?
-  system_prompt : String?
+pub struct AdvanceStageParams {
+  stage_name : String
+  result : Json
 }
-pub impl Show for AgentRequest
-pub impl ToJson for AgentRequest
-pub impl @json.FromJson for AgentRequest
+pub impl ToJson for AdvanceStageParams
+pub impl @json.FromJson for AdvanceStageParams
 
-pub(all) struct AgentResponse {
-  run_id : String
-  status : String
-  output : Array[String]
-  result : Json?
-  error : ErrorInfo?
+pub struct AgentMailbox {
+  agent_id : String
+  config : AgentMailboxConfig
+  created_at : Int
+  mut last_read_at : Int?
+  mut message_count : Int
+  // private fields
 }
-pub impl Show for AgentResponse
-pub impl ToJson for AgentResponse
-pub impl @json.FromJson for AgentResponse
+pub fn AgentMailbox::close(Self) -> Unit
+pub async fn AgentMailbox::get(Self) -> AgentMessage
+pub fn AgentMailbox::message_count(Self) -> Int
+pub async fn AgentMailbox::put(Self, AgentMessage) -> Unit
+pub fn AgentMailbox::to_json(Self) -> Json
+pub fn AgentMailbox::try_get(Self) -> AgentMessage?
+pub fn AgentMailbox::try_put(Self, AgentMessage) -> Bool
+
+pub struct AgentMailboxConfig {
+  max_size : Int
+  timeout_ms : Int
+}
+pub impl Show for AgentMailboxConfig
+pub impl ToJson for AgentMailboxConfig
+pub impl @json.FromJson for AgentMailboxConfig
+
+pub struct AgentMessage {
+  message_id : String
+  from_agent : String
+  to_agent : String?
+  topic : String
+  payload : Json
+  timestamp : Int
+}
+pub fn AgentMessage::is_broadcast(Self) -> Bool
+pub fn AgentMessage::is_directed(Self, String) -> Bool
+pub impl Show for AgentMessage
+pub impl ToJson for AgentMessage
+pub impl @json.FromJson for AgentMessage
 
 type AgentRun
 pub impl Show for AgentRun
@@ -62,6 +118,87 @@ pub fn ChannelManager::send_message(Self, String, String, @channel.Message, Stri
 pub fn ChannelManager::start_channel(Self, String, String, Json) -> Result[Unit, @channel.ChannelError]
 pub fn ChannelManager::stop_channel(Self, String, String) -> Result[Unit, @channel.ChannelError]
 
+pub enum CoordinationStatus {
+  Pending
+  Running
+  Completed
+  Failed
+  Cancelled
+}
+pub impl Eq for CoordinationStatus
+pub impl Show for CoordinationStatus
+pub impl ToJson for CoordinationStatus
+pub impl @json.FromJson for CoordinationStatus
+
+pub struct CoordinationTask {
+  coordination_id : String
+  parent_agent : String
+  subtasks : Array[SubTask]
+  status : CoordinationStatus
+  results : Map[String, Json]
+  created_at : Int
+  started_at : Int?
+  completed_at : Int?
+  metadata : Map[String, Json]
+}
+pub fn CoordinationTask::aggregate_results(Self) -> Json
+pub fn CoordinationTask::all_subtasks_done(Self) -> Bool
+pub fn CoordinationTask::cancel(Self) -> Self
+pub fn CoordinationTask::complete(Self) -> Self
+pub fn CoordinationTask::completed_count(Self) -> Int
+pub fn CoordinationTask::fail(Self) -> Self
+pub fn CoordinationTask::failed_count(Self) -> Int
+pub fn CoordinationTask::has_failures(Self) -> Bool
+pub fn CoordinationTask::is_done(Self) -> Bool
+pub fn CoordinationTask::pending_count(Self) -> Int
+pub fn CoordinationTask::start(Self) -> Self
+pub fn CoordinationTask::update_subtask(Self, String, CoordinationStatus, result? : Json?, error? : String?) -> Self
+pub impl Show for CoordinationTask
+pub impl ToJson for CoordinationTask
+pub impl @json.FromJson for CoordinationTask
+
+pub struct Coordinator {
+  uuid : @uuid.Generator
+  tasks : Map[String, CoordinationTask]
+  max_concurrent : Int
+}
+pub fn Coordinator::active_count(Self) -> Int
+pub fn Coordinator::can_accept_more(Self) -> Bool
+pub fn Coordinator::cancel_task(Self, String) -> CoordinationTask?
+pub fn Coordinator::create(Self, parent_agent~ : String, subtasks~ : Array[SubTask], metadata? : Map[String, Json]) -> CoordinationTask
+pub fn Coordinator::get(Self, String) -> CoordinationTask?
+pub fn Coordinator::get_pending_subtasks(Self, String) -> Array[SubTask]
+pub fn Coordinator::list(Self) -> Array[CoordinationTask]
+pub fn Coordinator::list_by_parent(Self, String) -> Array[CoordinationTask]
+pub fn Coordinator::list_by_status(Self, CoordinationStatus) -> Array[CoordinationTask]
+pub fn Coordinator::remove(Self, String) -> CoordinationTask?
+pub fn Coordinator::size(Self) -> Int
+pub fn Coordinator::start_task(Self, String) -> CoordinationTask?
+pub fn Coordinator::to_json(Self) -> Json
+pub fn Coordinator::update_subtask_status(Self, String, String, CoordinationStatus, result? : Json?, error? : String?) -> CoordinationTask?
+
+pub struct CreateCoordinationParams {
+  parent_agent : String
+  subtasks : Array[SubTaskParams]
+  metadata : Map[String, Json]
+}
+pub impl ToJson for CreateCoordinationParams
+pub impl @json.FromJson for CreateCoordinationParams
+
+pub struct CreateMailboxParams {
+  agent_id : String
+}
+pub impl ToJson for CreateMailboxParams
+pub impl @json.FromJson for CreateMailboxParams
+
+pub struct CreatePipelineParams {
+  name : String
+  stages : Array[PipelineStageParams]
+  metadata : Map[String, Json]
+}
+pub impl ToJson for CreatePipelineParams
+pub impl @json.FromJson for CreatePipelineParams
+
 type DedupeCache
 pub fn DedupeCache::clear_expired(Self, Int) -> Unit
 pub fn DedupeCache::get(Self, String) -> DedupeEntry?
@@ -69,13 +206,12 @@ pub fn DedupeCache::set(Self, String, DedupeEntry) -> Unit
 
 type DedupeEntry
 
-pub(all) struct ErrorInfo {
-  code : String
-  message : String
+pub struct FailStageParams {
+  stage_name : String
+  error : String
 }
-pub impl Show for ErrorInfo
-pub impl ToJson for ErrorInfo
-pub impl @json.FromJson for ErrorInfo
+pub impl ToJson for FailStageParams
+pub impl @json.FromJson for FailStageParams
 
 pub struct Gateway {
   clock : &@clock.Clock
@@ -97,6 +233,9 @@ pub struct Gateway {
   agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
   channel_manager : ChannelManager
   extension_registry : @channel.ExtensionRegistry
+  mailbox_manager : MailboxManager
+  coordinator : Coordinator
+  pipeline_manager : PipelineManager
 }
 pub fn Gateway::auth_token(Self) -> String?
 pub async fn Gateway::handle_request(Self, @httpx.RequestReader, @httpx.ResponseWriter) -> Unit
@@ -109,12 +248,116 @@ pub fn Gateway::unregister_extension(Self, String) -> Unit
 
 type GatewayEvent
 
-pub struct GatewayMessageHandler {
-  gateway_url : String
-  gateway_token : String
-  logger : @pino.Logger
+pub struct MailboxManager {
+  config : AgentMailboxConfig
+  // private fields
 }
-pub fn GatewayMessageHandler::new(gateway_url~ : String, gateway_token~ : String, logger~ : @pino.Logger) -> Self
+pub fn MailboxManager::create(Self, String, timestamp? : Int) -> AgentMailbox
+pub async fn MailboxManager::deliver(Self, AgentMessage) -> Unit
+pub fn MailboxManager::deliver_sync(Self, AgentMessage) -> Int
+pub fn MailboxManager::get(Self, String) -> AgentMailbox?
+pub fn MailboxManager::has(Self, String) -> Bool
+pub fn MailboxManager::list(Self) -> Array[String]
+pub fn MailboxManager::remove(Self, String) -> AgentMailbox?
+pub fn MailboxManager::size(Self) -> Int
+pub fn MailboxManager::to_json(Self) -> Json
+
+pub struct Pipeline {
+  pipeline_id : String
+  name : String
+  stages : Array[PipelineStage]
+  current_stage : Int
+  status : PipelineStatus
+  results : Map[String, Json]
+  created_at : Int
+  started_at : Int?
+  completed_at : Int?
+  metadata : Map[String, Json]
+}
+pub fn Pipeline::advance_stage(Self, String, Json) -> Self
+pub fn Pipeline::cancel(Self) -> Self
+pub fn Pipeline::complete(Self) -> Self
+pub fn Pipeline::completed_stages(Self) -> Int
+pub fn Pipeline::current_stage_info(Self) -> PipelineStage?
+pub fn Pipeline::fail(Self) -> Self
+pub fn Pipeline::fail_stage(Self, String, String) -> Self
+pub fn Pipeline::get_next_task(Self) -> (String, String)?
+pub fn Pipeline::is_done(Self) -> Bool
+pub fn Pipeline::progress(Self) -> Double
+pub fn Pipeline::start(Self) -> Self
+pub fn Pipeline::total_stages(Self) -> Int
+pub impl Show for Pipeline
+pub impl ToJson for Pipeline
+pub impl @json.FromJson for Pipeline
+
+pub struct PipelineManager {
+  uuid : @uuid.Generator
+  pipelines : Map[String, Pipeline]
+}
+pub fn PipelineManager::advance_stage(Self, String, String, Json) -> Pipeline?
+pub fn PipelineManager::cancel_pipeline(Self, String) -> Pipeline?
+pub fn PipelineManager::create(Self, name~ : String, stages~ : Array[PipelineStage], metadata? : Map[String, Json]) -> Pipeline
+pub fn PipelineManager::fail_stage(Self, String, String, String) -> Pipeline?
+pub fn PipelineManager::get(Self, String) -> Pipeline?
+pub fn PipelineManager::list(Self) -> Array[Pipeline]
+pub fn PipelineManager::list_by_status(Self, PipelineStatus) -> Array[Pipeline]
+pub fn PipelineManager::remove(Self, String) -> Pipeline?
+pub fn PipelineManager::running_count(Self) -> Int
+pub fn PipelineManager::size(Self) -> Int
+pub fn PipelineManager::start_pipeline(Self, String) -> Pipeline?
+pub fn PipelineManager::to_json(Self) -> Json
+
+pub struct PipelineStage {
+  name : String
+  message : String
+  model : String?
+  cwd : String?
+  input_template : String?
+  status : PipelineStatus
+  result : Json?
+  error : String?
+  started_at : Int?
+  completed_at : Int?
+}
+pub fn PipelineStage::complete(Self, Json) -> Self
+pub fn PipelineStage::fail(Self, String) -> Self
+pub fn PipelineStage::is_done(Self) -> Bool
+pub fn PipelineStage::resolve_input(Self, Map[String, Json]) -> String
+pub fn PipelineStage::start(Self) -> Self
+pub impl Show for PipelineStage
+pub impl ToJson for PipelineStage
+pub impl @json.FromJson for PipelineStage
+
+pub struct PipelineStageParams {
+  name : String
+  message : String
+  model : String?
+  cwd : String?
+  input_template : String?
+}
+pub impl ToJson for PipelineStageParams
+pub impl @json.FromJson for PipelineStageParams
+
+pub enum PipelineStatus {
+  Pending
+  Running
+  Completed
+  Failed
+  Cancelled
+}
+pub impl Eq for PipelineStatus
+pub impl Show for PipelineStatus
+pub impl ToJson for PipelineStatus
+pub impl @json.FromJson for PipelineStatus
+
+pub struct SendMessageParams {
+  from_agent : String
+  to_agent : String?
+  topic : String
+  payload : Json
+}
+pub impl ToJson for SendMessageParams
+pub impl @json.FromJson for SendMessageParams
 
 type SessionEntry
 
@@ -124,6 +367,43 @@ pub fn SessionManager::get(Self, String) -> SessionEntry?
 pub fn SessionManager::get_or_create(Self, session_key~ : String, cwd~ : String) -> SessionEntry
 pub fn SessionManager::list(Self) -> Array[SessionEntry]
 pub fn SessionManager::reset(Self, String) -> Bool
+
+pub struct SubTask {
+  task_id : String
+  message : String
+  model : String?
+  cwd : String?
+  status : CoordinationStatus
+  result : Json?
+  error : String?
+  created_at : Int
+  started_at : Int?
+  completed_at : Int?
+}
+pub fn SubTask::complete(Self, Json) -> Self
+pub fn SubTask::fail(Self, String) -> Self
+pub fn SubTask::is_done(Self) -> Bool
+pub fn SubTask::start(Self) -> Self
+pub impl Show for SubTask
+pub impl ToJson for SubTask
+pub impl @json.FromJson for SubTask
+
+pub struct SubTaskParams {
+  task_id : String
+  message : String
+  model : String?
+  cwd : String?
+}
+pub impl ToJson for SubTaskParams
+pub impl @json.FromJson for SubTaskParams
+
+pub struct UpdateSubTaskParams {
+  status : CoordinationStatus
+  result : Json?
+  error : String?
+}
+pub impl ToJson for UpdateSubTaskParams
+pub impl @json.FromJson for UpdateSubTaskParams
 
 // Type aliases
 

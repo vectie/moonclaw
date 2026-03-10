@@ -20,6 +20,40 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "extensions", extension_id]) =>
         self.handle_get_extension(r, w)
       (Post, ["", "v1", "agent"]) => self.handle_agent(r, w)
+      (Post, ["", "v1", "agent", "message"]) => self.handle_agent_message(r, w)
+      (Get, ["", "v1", "agent", agent_id, "messages"]) =>
+        self.handle_get_messages(r, w, agent_id)
+      (Post, ["", "v1", "mailbox"]) => self.handle_create_mailbox(r, w)
+      (Delete, ["", "v1", "mailbox", mailbox_id]) =>
+        self.handle_delete_mailbox(r, w, mailbox_id)
+      (Get, ["", "v1", "mailboxes"]) => self.handle_list_mailboxes(r, w)
+      (Post, ["", "v1", "coordination"]) =>
+        self.handle_create_coordination(r, w)
+      (Get, ["", "v1", "coordination"]) => self.handle_list_coordinations(r, w)
+      (Get, ["", "v1", "coordination", coordination_id]) =>
+        self.handle_get_coordination(r, w, coordination_id)
+      (Post, ["", "v1", "coordination", coordination_id, "start"]) =>
+        self.handle_start_coordination(r, w, coordination_id)
+      (Post, ["", "v1", "coordination", coordination_id, "cancel"]) =>
+        self.handle_cancel_coordination(r, w, coordination_id)
+      (Post, ["", "v1", "coordination", coordination_id, "subtask", task_id]) =>
+        self.handle_update_subtask(r, w, coordination_id, task_id)
+      (Get, ["", "v1", "coordination", coordination_id, "results"]) =>
+        self.handle_coordination_results(r, w, coordination_id)
+      (Post, ["", "v1", "pipeline"]) => self.handle_create_pipeline(r, w)
+      (Get, ["", "v1", "pipeline"]) => self.handle_list_pipelines(r, w)
+      (Get, ["", "v1", "pipeline", pipeline_id]) =>
+        self.handle_get_pipeline(r, w, pipeline_id)
+      (Post, ["", "v1", "pipeline", pipeline_id, "start"]) =>
+        self.handle_start_pipeline(r, w, pipeline_id)
+      (Post, ["", "v1", "pipeline", pipeline_id, "cancel"]) =>
+        self.handle_cancel_pipeline(r, w, pipeline_id)
+      (Post, ["", "v1", "pipeline", pipeline_id, "advance"]) =>
+        self.handle_advance_pipeline_stage(r, w, pipeline_id)
+      (Post, ["", "v1", "pipeline", pipeline_id, "fail"]) =>
+        self.handle_fail_pipeline_stage(r, w, pipeline_id)
+      (Get, ["", "v1", "pipeline", pipeline_id, "next"]) =>
+        self.handle_pipeline_next_task(r, w, pipeline_id)
       (Post, ["", "v1", "rpc"]) => self.handle_rpc(r, w)
       (Post, ["", "v1", "shutdown"]) => self.handle_shutdown_request(r, w)
       // Webhook routes for channel extensions
