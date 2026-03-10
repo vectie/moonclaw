@@ -143,6 +143,14 @@ async fn Gateway::handle_start_coordination(
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {
+  if !self.coordinator.can_accept_more() {
+    raise json_error(429, "TooManyRequests", {
+      "error": {
+        "code": "coordination_limit_reached",
+        "message": "Coordinator is at max_concurrent capacity",
+      },
+    })
+  }
   let task = match self.coordinator.start_task(coordination_id.to_string()) {
     Some(t) => t
     None =>
@@ -156,6 +164,12 @@ async fn Gateway::handle_start_coordination(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(task.to_json().stringify())
+  @async.with_task_group(group => {
+    group.spawn_bg(
+      () => self.run_coordination(coordination_id.to_string()),
+      no_wait=true,
+    )
+  })
 }
 
 ///|
@@ -212,6 +226,24 @@ async fn Gateway::handle_update_subtask(
           "message": "Invalid update params: \{e}",
         },
       })
+  }
+  let existing = match self.coordinator.get(coordination_id.to_string()) {
+    Some(task) => task
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "coordination_not_found",
+          "message": "Coordination not found: \{coordination_id}",
+        },
+      })
+  }
+  if !existing.has_subtask(task_id.to_string()) {
+    raise json_error(404, "NotFound", {
+      "error": {
+        "code": "subtask_not_found",
+        "message": "Subtask not found: \{coordination_id}/\{task_id}",
+      },
+    })
   }
   let task = match
     self.coordinator.update_subtask_status(

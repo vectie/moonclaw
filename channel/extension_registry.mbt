@@ -172,11 +172,11 @@ pub fn ExtensionRegistry::get_message_handler(
 
 ///|
 /// Handle a webhook request by path
-pub fn ExtensionRegistry::handle_webhook(
+pub async fn ExtensionRegistry::handle_webhook(
   self : ExtensionRegistry,
   path : String,
   request : ExtensionRequest,
-) -> ExtensionResponse raise {
+) -> ExtensionResponse {
   match self.get_by_path(path) {
     Some(extension) => extension.handle_webhook(request)
     None =>

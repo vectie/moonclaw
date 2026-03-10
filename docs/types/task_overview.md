@@ -31,7 +31,7 @@ MoonBit:
   }
   ```
 
-- `@server.Status`: See [Status](../../types/Status.md).
+- `@server.Status`: See [Status](status.md).
 
 JSON:
 

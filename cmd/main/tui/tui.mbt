@@ -70,6 +70,9 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
     }
 
     let state = TuiState::{ should_exit: false }
+    tui.state().set_model(moonclaw.agent.model.name)
+    tui.state().set_agent_id(moonclaw.agent.id().to_string())
+    tui.state().set_session_key(moonclaw.agent.id().to_string())
 
     tui.set_on_submit(fn(text : String) {
       if text.starts_with("/") {
@@ -85,13 +88,18 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       tui.request_render()
     })
 
-    tui.set_on_ctrl_c(fn() { () })
+    tui.set_on_ctrl_c(fn() {
+      state.should_exit = true
+      tui.state().set_activity_status("stopping")
+      tui.request_render()
+    })
 
     tui.set_on_ctrl_d(fn() { state.should_exit = true })
 
     tui.set_on_ctrl_o(fn() {
-      let expanded = tui.chat_log().tools_expanded
-      tui.chat_log().set_tools_expanded(!expanded)
+      let expanded = tui.state().toggle_tools_expanded()
+      tui.chat_log().set_tools_expanded(expanded)
+      tui.request_render()
     })
 
     moonclaw.agent.add_listener(event => {
@@ -156,6 +164,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
 
     group.spawn_bg(() => {
       tui.state().set_connection_status("connected")
+      tui.request_render()
       while !state.should_exit {
         moonclaw.agent.start() catch {
           error => println("Error: \{error}")

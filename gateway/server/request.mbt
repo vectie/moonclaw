@@ -16,6 +16,12 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "runs", run_id]) => self.handle_get_run(r, w)
       (Get, ["", "v1", "channels"]) => self.handle_list_channels(r, w)
       (Get, ["", "v1", "channels", channel_id]) => self.handle_get_channel(r, w)
+      (Post, ["", "v1", "channels", channel_id, "configure"]) =>
+        self.handle_configure_channel(r, w, channel_id.to_string())
+      (Post, ["", "v1", "channels", channel_id, "start"]) =>
+        self.handle_start_channel(r, w, channel_id.to_string())
+      (Post, ["", "v1", "channels", channel_id, "stop"]) =>
+        self.handle_stop_channel(r, w, channel_id.to_string())
       (Get, ["", "v1", "extensions"]) => self.handle_list_extensions(r, w)
       (Get, ["", "v1", "extensions", extension_id]) =>
         self.handle_get_extension(r, w)
@@ -92,8 +98,9 @@ async fn Gateway::handle_index(
     "endpoints": [
       "GET /health - Health check", "GET /v1/events - SSE event stream", "GET /v1/runs - List agent runs",
       "GET /v1/runs/{id} - Get agent run status", "GET /v1/channels - List channels",
-      "GET /v1/channels/{id} - Get channel info", "POST /v1/agent - Submit agent task",
-      "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
+      "GET /v1/channels/{id} - Get channel info", "POST /v1/channels/{id}/configure - Configure channel accounts",
+      "POST /v1/channels/{id}/start - Start a channel account", "POST /v1/channels/{id}/stop - Stop a channel account",
+      "POST /v1/agent - Submit agent task", "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
     ],
   }
   w.write(info.stringify())

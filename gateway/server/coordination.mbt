@@ -142,7 +142,7 @@ pub fn CoordinationTask::is_done(self : CoordinationTask) -> Bool {
 
 ///|
 pub fn CoordinationTask::pending_count(self : CoordinationTask) -> Int {
-  self.subtasks.iter().filter(fn(t) { !t.is_done() }).count()
+  self.subtasks.iter().filter(fn(t) { t.status is Pending }).count()
 }
 
 ///|
@@ -153,6 +153,14 @@ pub fn CoordinationTask::completed_count(self : CoordinationTask) -> Int {
 ///|
 pub fn CoordinationTask::failed_count(self : CoordinationTask) -> Int {
   self.subtasks.iter().filter(fn(t) { t.status is Failed }).count()
+}
+
+///|
+pub fn CoordinationTask::has_subtask(
+  self : CoordinationTask,
+  task_id : String,
+) -> Bool {
+  self.subtasks.iter().any(fn(t) { t.task_id == task_id })
 }
 
 ///|

@@ -8,6 +8,7 @@ This directory contains command-line entry points for the Moonclaw application.
 |---------|-------------|
 | `main` | Main CLI entry point |
 | `daemon` | Background daemon server |
+| `gateway` | HTTP/RPC gateway with channels and orchestration |
 | `server` | HTTP server for AI interactions |
 | `jsonl2md` | Convert JSONL logs to Markdown |
 | `test` | Test utilities |
@@ -52,6 +53,43 @@ moonclaw tui
 - Real-time message display
 - Command input with history
 - Status indicators
+- Tool execution folding via `Ctrl+O`
+- Clean exit via `Ctrl+C` / `Ctrl+D`
+- Live model / agent / session header state
+
+Current architecture:
+
+```text
+moonclaw tui
+  -> load model
+  -> create or resume Moonclaw
+  -> construct internal TUI
+  -> wire callbacks
+  -> listen to agent events
+  -> run local event loop
+```
+
+#### `gateway`
+
+Launch the long-running gateway service or interact with it.
+
+```bash
+moonclaw gateway start
+moonclaw gateway connect
+moonclaw gateway agent --message "Hello" --wait
+moonclaw gateway health
+```
+
+Current capabilities behind the gateway:
+
+- agent execution and waiting
+- session management
+- SSE events
+- channel and extension registry
+- Feishu webhook ingress
+- agent mailboxes
+- coordination tasks
+- pipelines
 
 #### `interactive`
 

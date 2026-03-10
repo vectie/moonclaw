@@ -132,6 +132,13 @@ async fn Gateway::handle_request_frame(
     "config.get" => self.handle_config_get_method(request, w)
     "config.set" => self.handle_config_set_method(request, w)
     "health" => self.handle_health_method(request, w)
+    "runs.list" => self.handle_runs_list_method(request, w)
+    "runs.get" => self.handle_runs_get_method(request, w)
+    "channels.list" => self.handle_channels_list(request, w)
+    "channels.get" => self.handle_channels_get(request, w)
+    "channels.configure" => self.handle_channels_configure(request, w)
+    "channels.start" => self.handle_channels_start(request, w)
+    "channels.stop" => self.handle_channels_stop(request, w)
     _ =>
       self.send_response(w, @protocol.Response::{
         id: request.id,

@@ -36,7 +36,7 @@ MoonBit:
   } derive(ToJson, FromJson, Eq)
   ```
 
-- `Item`: See [Todo](../types/Todo.md).
+- `Item`: See [Todo](../types/todo.md).
 
 JSON encoding:
 

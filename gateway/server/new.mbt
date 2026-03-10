@@ -52,7 +52,7 @@ pub async fn Gateway::new(
     @pino.logger("channel_manager", @pino.Transport::console()),
   )
   let extension_registry = @channel.ExtensionRegistry::new()
-  Gateway::{
+  let gateway = Gateway::{
     clock: @clock.epoch,
     uuid,
     httpx: httpx_server,
@@ -76,6 +76,16 @@ pub async fn Gateway::new(
     coordinator: coordinator(uuid~),
     pipeline_manager: pipeline_manager(uuid~),
   }
+  let feishu_channel = @feishu.FeishuChannel::new()
+  let handler : &@channel.MessageHandler = gateway
+  feishu_channel.set_message_handler(handler)
+  feishu_channel.with_extension(extension => {
+    gateway.register_extension(extension)
+  }) catch {
+    error =>
+      gateway.logger.warn("Failed to register Feishu extension: \{error}")
+  }
+  gateway
 }
 
 ///|
@@ -154,7 +164,7 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
 async fn Gateway::run_tick_interval(self : Gateway) -> Unit {
   let tick_interval_ms = @protocol.TICK_INTERVAL_MS
   let mut tick_count = 0
-  for {
+  for ;; {
     @async.sleep(tick_interval_ms)
     tick_count = tick_count + 1
     self.events.put(GatewayEvent::Tick(tick_count))

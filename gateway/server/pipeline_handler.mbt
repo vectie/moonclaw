@@ -170,6 +170,12 @@ async fn Gateway::handle_start_pipeline(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(p.to_json().stringify())
+  @async.with_task_group(group => {
+    group.spawn_bg(
+      () => self.run_pipeline(pipeline_id.to_string()),
+      no_wait=true,
+    )
+  })
 }
 
 ///|
@@ -226,6 +232,24 @@ async fn Gateway::handle_advance_pipeline_stage(
         },
       })
   }
+  let existing = match self.pipeline_manager.get(pipeline_id.to_string()) {
+    Some(pipeline) => pipeline
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "pipeline_not_found",
+          "message": "Pipeline not found: \{pipeline_id}",
+        },
+      })
+  }
+  if !existing.has_current_stage(params.stage_name) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": "invalid_stage_transition",
+        "message": "Current pipeline stage does not match: \{params.stage_name}",
+      },
+    })
+  }
   let p = match
     self.pipeline_manager.advance_stage(
       pipeline_id.to_string(),
@@ -277,6 +301,24 @@ async fn Gateway::handle_fail_pipeline_stage(
           "message": "Invalid fail params: \{e}",
         },
       })
+  }
+  let existing = match self.pipeline_manager.get(pipeline_id.to_string()) {
+    Some(pipeline) => pipeline
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "pipeline_not_found",
+          "message": "Pipeline not found: \{pipeline_id}",
+        },
+      })
+  }
+  if !existing.has_current_stage(params.stage_name) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": "invalid_stage_transition",
+        "message": "Current pipeline stage does not match: \{params.stage_name}",
+      },
+    })
   }
   let p = match
     self.pipeline_manager.fail_stage(

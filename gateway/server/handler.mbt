@@ -174,8 +174,15 @@ async fn Gateway::execute_agent(
     home=self.home,
   )
 
+  let mut final_content = ""
+
   agent.event_target.add_listener(event => {
     let event_json = event.to_json()
+    match event.desc {
+      AssistantMessage(content, ..) if !content.is_blank() =>
+        final_content = content
+      _ => ()
+    }
     match event_json {
       Object(obj) => {
         let kind = match obj.get("desc") {
@@ -214,6 +221,8 @@ async fn Gateway::execute_agent(
       "status": "completed",
       "session_key": session_key,
       "model": model_name,
+      "content": final_content,
+      "conversation_id": agent.id().to_string(),
       "completed_at": completed_at,
     }),
     error: None,
@@ -224,6 +233,8 @@ async fn Gateway::execute_agent(
     "status": "completed",
     "session_key": session_key,
     "model": model_name,
+    "content": final_content,
+    "conversation_id": agent.id().to_string(),
     "completed_at": completed_at,
   })
 }

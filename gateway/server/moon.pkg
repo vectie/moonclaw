@@ -21,6 +21,8 @@ import {
   "moonbitlang/moonclaw/agent",
   "moonbitlang/moonclaw/model",
   "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw",
   "moonbitlang/x/path",
   "moonbitlang/moonclaw/channel" @channel,
+  "moonbitlang/moonclaw/channels/feishu" @feishu,
 }

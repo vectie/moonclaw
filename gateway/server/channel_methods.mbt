@@ -1,4 +1,118 @@
 ///|
+fn parse_json_body(body : Bytes) -> Result[Json, @protocol.ErrorShape] {
+  let text : String = @encoding/utf8.decode(body) catch {
+    _ =>
+      return Err(@protocol.ErrorShape::{
+        code: "invalid_utf8",
+        message: "Invalid UTF-8 in request body",
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      })
+  }
+  let json = @json.parse(text) catch {
+    e =>
+      return Err(@protocol.ErrorShape::{
+        code: "parse_error",
+        message: "Invalid JSON: \{e}",
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      })
+  }
+  Ok(json)
+}
+
+///|
+fn parse_http_channel_configure_params(
+  channel_id : String,
+  json : Json,
+) -> Result[@protocol.Request, @protocol.ErrorShape] {
+  match json {
+    Object(obj) =>
+      Ok(@protocol.Request::{
+        id: "http:channels.configure:\{channel_id}",
+        method: "channels.configure",
+        params: Some({ "channel_id": channel_id, "config": obj }),
+      })
+    _ =>
+      Err(@protocol.ErrorShape::{
+        code: "invalid_params",
+        message: "Channel configure body must be a JSON object",
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      })
+  }
+}
+
+///|
+fn parse_http_channel_start_params(
+  channel_id : String,
+  json : Json,
+) -> Result[@protocol.Request, @protocol.ErrorShape] {
+  match json {
+    Object({ "account_id": String(account_id), "config": config, .. }) =>
+      Ok(@protocol.Request::{
+        id: "http:channels.start:\{channel_id}:\{account_id}",
+        method: "channels.start",
+        params: Some({
+          "channel_id": channel_id,
+          "account_id": account_id,
+          "config": config,
+        }),
+      })
+    Object(_) =>
+      Err(@protocol.ErrorShape::{
+        code: "invalid_params",
+        message: "Channel start body must include account_id and config",
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      })
+    _ =>
+      Err(@protocol.ErrorShape::{
+        code: "invalid_params",
+        message: "Channel start body must be a JSON object",
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      })
+  }
+}
+
+///|
+fn parse_http_channel_stop_params(
+  channel_id : String,
+  json : Json,
+) -> Result[@protocol.Request, @protocol.ErrorShape] {
+  match json {
+    Object({ "account_id": String(account_id), .. }) =>
+      Ok(@protocol.Request::{
+        id: "http:channels.stop:\{channel_id}:\{account_id}",
+        method: "channels.stop",
+        params: Some({ "channel_id": channel_id, "account_id": account_id }),
+      })
+    Object(_) =>
+      Err(@protocol.ErrorShape::{
+        code: "invalid_params",
+        message: "Channel stop body must include account_id",
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      })
+    _ =>
+      Err(@protocol.ErrorShape::{
+        code: "invalid_params",
+        message: "Channel stop body must be a JSON object",
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      })
+  }
+}
+
+///|
 async fn Gateway::handle_channels_list(
   self : Gateway,
   request : @protocol.Request,
@@ -36,16 +150,33 @@ async fn Gateway::handle_channels_get(
       })
   }
 
-  let channel_id : String = match @json.from_json(params) {
-    Ok(id) => id
-    Err(e) =>
+  let channel_id : String = match params {
+    String(id) => id
+    Object(obj) =>
+      match obj.get("channel_id") {
+        Some(String(id)) => id
+        _ =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "missing_channel_id",
+              message: "Missing channel_id in params",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    _ =>
       return self.send_response(w, @protocol.Response::{
         id: request.id,
         ok: false,
         payload: None,
         error: Some(@protocol.ErrorShape::{
           code: "invalid_params",
-          message: "Invalid channel_id: \{e}",
+          message: "Invalid channel lookup parameters",
           details: None,
           retryable: None,
           retry_after_ms: None,
@@ -359,4 +490,67 @@ async fn Gateway::handle_channels_stop(
         }),
       })
   }
+}
+
+///|
+async fn Gateway::handle_configure_channel(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+  channel_id : String,
+) -> Unit {
+  let body = r.body.read_all().binary()
+  let json = match parse_json_body(body) {
+    Ok(json) => json
+    Err(error) =>
+      raise json_error(400, "BadRequest", { "error": error.to_json() })
+  }
+  let request = match parse_http_channel_configure_params(channel_id, json) {
+    Ok(request) => request
+    Err(error) =>
+      raise json_error(400, "BadRequest", { "error": error.to_json() })
+  }
+  self.handle_channels_configure(request, w)
+}
+
+///|
+async fn Gateway::handle_start_channel(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+  channel_id : String,
+) -> Unit {
+  let body = r.body.read_all().binary()
+  let json = match parse_json_body(body) {
+    Ok(json) => json
+    Err(error) =>
+      raise json_error(400, "BadRequest", { "error": error.to_json() })
+  }
+  let request = match parse_http_channel_start_params(channel_id, json) {
+    Ok(request) => request
+    Err(error) =>
+      raise json_error(400, "BadRequest", { "error": error.to_json() })
+  }
+  self.handle_channels_start(request, w)
+}
+
+///|
+async fn Gateway::handle_stop_channel(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+  channel_id : String,
+) -> Unit {
+  let body = r.body.read_all().binary()
+  let json = match parse_json_body(body) {
+    Ok(json) => json
+    Err(error) =>
+      raise json_error(400, "BadRequest", { "error": error.to_json() })
+  }
+  let request = match parse_http_channel_stop_params(channel_id, json) {
+    Ok(request) => request
+    Err(error) =>
+      raise json_error(400, "BadRequest", { "error": error.to_json() })
+  }
+  self.handle_channels_stop(request, w)
 }

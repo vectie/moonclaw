@@ -97,7 +97,7 @@ pub fn PipelineStage::resolve_input(
         let value = prev_results.get(key)
         match value {
           Some(json) => {
-            let placeholder = "$\{key}.output"
+            let placeholder = "${" + key + "}.output"
             result = result.replace(old=placeholder, new=json.stringify())
           }
           None => ()
@@ -146,7 +146,19 @@ pub fn pipeline(
 
 ///|
 pub fn Pipeline::start(self : Pipeline) -> Pipeline {
-  { ..self, status: Running, started_at: Some(current_time_ms()) }
+  let started_stages = self.stages.mapi(fn(i, stage) {
+    if i == self.current_stage {
+      stage.start()
+    } else {
+      stage
+    }
+  })
+  {
+    ..self,
+    stages: started_stages,
+    status: Running,
+    started_at: Some(current_time_ms()),
+  }
 }
 
 ///|
@@ -184,6 +196,17 @@ pub fn Pipeline::current_stage_info(self : Pipeline) -> PipelineStage? {
 }
 
 ///|
+pub fn Pipeline::has_current_stage(
+  self : Pipeline,
+  stage_name : String,
+) -> Bool {
+  match self.current_stage_info() {
+    Some(stage) => stage.name == stage_name
+    None => false
+  }
+}
+
+///|
 pub fn Pipeline::advance_stage(
   self : Pipeline,
   stage_name : String,
@@ -192,6 +215,8 @@ pub fn Pipeline::advance_stage(
   let new_stages = self.stages.mapi(fn(i, s) {
     if i == self.current_stage && s.name == stage_name {
       s.complete(result)
+    } else if i == self.current_stage + 1 {
+      s.start()
     } else {
       s
     }

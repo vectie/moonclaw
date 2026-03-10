@@ -53,6 +53,14 @@ pub fn FeishuChannel::set_message_handler(
 }
 
 ///|
+pub fn FeishuChannel::with_extension(
+  self : FeishuChannel,
+  apply : (&@channel.ChannelExtension) -> Unit raise,
+) -> Unit raise {
+  apply(self)
+}
+
+///|
 impl @channel.Channel for FeishuChannel with id(self : FeishuChannel) -> @channel.ChannelId {
   "feishu"
 }
@@ -250,7 +258,7 @@ impl @channel.ChannelExtension for FeishuChannel with handle_webhook(
 }
 
 ///|
-fn FeishuChannel::handle_feishu_message(
+async fn FeishuChannel::handle_feishu_message(
   self : FeishuChannel,
   json : Json,
 ) -> @channel.ExtensionResponse {
@@ -276,12 +284,15 @@ fn FeishuChannel::handle_feishu_message(
   }
 
   let content = match event_data {
-    { "content": String(c), .. } => c
+    { "content": String(c), .. } => parse_feishu_text_content(c)
     _ =>
       return @channel.ExtensionResponse::bad_request(message="Missing content")
   }
 
   let from_user_id = match event_data {
+    { "sender": { "sender_id": { "open_id": String(uid), .. }, .. }, .. } => uid
+    { "sender": { "sender_id": { "user_id": String(uid), .. }, .. }, .. } => uid
+    { "sender_id": { "open_id": String(uid), .. }, .. } => uid
     { "sender_id": { "user_id": String(uid), .. }, .. } => uid
     _ =>
       return @channel.ExtensionResponse::bad_request(
@@ -317,13 +328,14 @@ fn FeishuChannel::handle_feishu_message(
   // Process through message handler if available
   match self.state.message_handler {
     Some(handler) => {
-      let account_id = "default" // TODO: Extract from event
+      let account_id = self.resolve_account_id().unwrap_or("default")
       try {
         let response_message = handler.handle_message(
           "feishu", account_id, message,
         )
         // Send response back through Feishu
-        match self.send(response_message.from, response_message, None) {
+        match
+          self.send(response_message.to, response_message, Some(account_id)) {
           Ok(_) => @channel.ExtensionResponse::ok()
           Err(e) =>
             @channel.ExtensionResponse::internal_error(
@@ -389,5 +401,38 @@ impl @channel.ChannelExtension for FeishuChannel with on_unregister(
 ) -> Unit {
   for account_id in self.state.running.keys() {
     ignore(self.stop(account_id.to_string()))
+  }
+}
+
+///|
+fn parse_feishu_text_content(raw : String) -> String {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok({ "text": String(text), .. }) => text
+    Ok(json) => json.stringify()
+    Err(_) => raw
+  }
+}
+
+///|
+fn FeishuChannel::resolve_account_id(self : FeishuChannel) -> String? {
+  let running_ids = self.state.running
+    .keys()
+    .filter(fn(account_id) {
+      match self.state.running.get(account_id) {
+        Some(true) => true
+        _ => false
+      }
+    })
+    .to_array()
+  match running_ids {
+    [account_id] => Some(account_id)
+    [account_id, ..] => Some(account_id)
+    [] =>
+      if self.state.feishu_configs.contains("default") {
+        Some("default")
+      } else {
+        self.state.feishu_configs.keys().to_array().get(0)
+      }
   }
 }

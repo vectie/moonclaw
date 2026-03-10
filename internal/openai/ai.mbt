@@ -476,7 +476,7 @@ fn ResponseStreamEventReader::new(
 async fn ResponseStreamEventReader::read(
   self : ResponseStreamEventReader,
 ) -> ResponseStreamEvent? {
-  for {
+  for ;; {
     guard self.0.read_until("\n") is Some(line) else { return None }
     guard line is [.. "data: ", .. rest] else { continue }
     let data = rest.trim().to_string()
@@ -630,7 +630,7 @@ fn ChunkReader::new(reader : &@io.Reader) -> ChunkReader {
 
 ///|
 async fn ChunkReader::read(self : ChunkReader) -> ChatCompletionChunk? {
-  for {
+  for ;; {
     guard self.0.read_until("\n") is Some(line) else { return None }
     guard line is [.. "data: ", .. rest] else { continue }
     if rest.trim() == "[DONE]" {

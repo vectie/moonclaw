@@ -505,8 +505,8 @@ curl -X POST http://localhost:18789/v1/pipeline \
     "name": "code-review-pipeline",
     "stages": [
       {"name": "read", "message": "读取文件 main.py"},
-      {"name": "analyze", "message": "分析代码质量", "input_template": "$read.output"},
-      {"name": "report", "message": "生成报告", "input_template": "$analyze.output"}
+      {"name": "analyze", "message": "分析代码质量", "input_template": "${read}.output"},
+      {"name": "report", "message": "生成报告", "input_template": "${analyze}.output"}
     ]
   }'
 ```
@@ -534,7 +534,7 @@ curl -X POST http://localhost:18789/v1/pipeline \
       "message": "分析代码质量",
       "model": null,
       "cwd": null,
-      "input_template": "$read.output",
+      "input_template": "${read}.output",
       "status": "Pending",
       "result": null,
       "error": null,
@@ -546,7 +546,7 @@ curl -X POST http://localhost:18789/v1/pipeline \
       "message": "生成报告",
       "model": null,
       "cwd": null,
-      "input_template": "$analyze.output",
+      "input_template": "${analyze}.output",
       "status": "Pending",
       "result": null,
       "error": null,
@@ -649,7 +649,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/advance \
     {
       "name": "analyze",
       "status": "Pending",
-      "input_template": "$read.output",
+      "input_template": "${read}.output",
       ...
     },
     {
@@ -678,7 +678,7 @@ curl http://localhost:18789/v1/pipeline/uuid-pipeline-1/next
 {
   "has_next": true,
   "stage_name": "analyze",
-  "input": "分析代码质量",  // 注意：模板 $read.output 应该被替换
+  "input": "分析代码质量",  // 注意：模板 ${read}.output 应该被替换
   "progress": 0.3333333333333333
 }
 ```
@@ -898,8 +898,8 @@ curl -X POST http://localhost:18789/v1/pipeline \
     "name": "multi-agent-pipeline",
     "stages": [
       {"name": "read", "message": "读取文件"},
-      {"name": "analyze", "message": "分析代码", "input_template": "$read.output"},
-      {"name": "report", "message": "生成报告", "input_template": "$analyze.output"}
+      {"name": "analyze", "message": "分析代码", "input_template": "${read}.output"},
+      {"name": "report", "message": "生成报告", "input_template": "${analyze}.output"}
     ]
   }'
 

@@ -1,189 +1,334 @@
-# MoonClaw Gateway Usage Guide
+# MoonClaw Gateway Usage
 
-## Quick Start
+This guide matches the current implementation in `cmd/gateway` and `gateway/server`.
 
-### Starting the Gateway
+## What the Gateway Is
+
+The gateway is a long-running HTTP/RPC service that:
+
+- accepts agent execution requests
+- keeps lightweight session state by `session_key`
+- exposes SSE for agent events
+- exposes mailbox, coordination, and pipeline APIs
+- hosts channel extensions such as Feishu webhooks
+
+Default address:
+
+```text
+http://localhost:18789
+```
+
+## CLI Commands
+
+Implemented subcommands in `cmd/gateway/main.mbt`:
 
 ```bash
-# Start the gateway server (runs in foreground)
+moonclaw gateway start [--port PORT] [--cwd DIR] [--home DIR]
+moonclaw gateway connect [--url URL] [--token TOKEN]
+moonclaw gateway agent --message "..." [--session KEY] [--cwd DIR] [--model NAME] [--wait] [--timeout MS]
+moonclaw gateway health [--url URL] [--token TOKEN]
+moonclaw gateway help
+moonclaw gateway version
+```
+
+There is no built-in `status` or `detach` subcommand today.
+
+## Service Startup Call Chain
+
+```text
 moonclaw gateway start
-
-# Start with custom port
-moonclaw gateway start --port 18790
-
-# Start with custom home directory
-moonclaw gateway start --home ~/.my-moonclaw
+  -> cmd/gateway/main.mbt::start_gateway
+    -> Gateway::new(...)
+      -> build http server
+      -> create session/dedupe/mailbox/coordinator/pipeline managers
+      -> register Feishu extension
+    -> Gateway::start()
+      -> serve HTTP requests
+      -> run tick loop
+      -> listen for shutdown event
 ```
 
-The gateway will start and listen on `http://localhost:18789` by default.
+## Basic Usage
 
-### Checking Gateway Status
+### Start the gateway
 
 ```bash
-# Check if gateway is running and healthy
+moonclaw gateway start
+moonclaw gateway start --port 19000
+moonclaw gateway start --cwd /path/to/project --home ~/.moonclaw
+```
+
+### Health check
+
+```bash
 moonclaw gateway health
-
-# Example output:
-# Status: ok
-# Uptime: 1h 23m
-# Active sessions: 5
-# Pending requests: 0
 ```
 
-### Running an Agent Task
+### Connect using RPC handshake
 
 ```bash
-# Send a message to the gateway and wait for completion
-moonclaw gateway agent --message "Hello, can you help me with a task?" --wait
-
-# Send with specific model
-moonclaw gateway agent --message "Analyze this code" --model qwen-max --wait
-
-# Send with session continuity (conversation history)
-moonclaw gateway agent --message "Continue from last time" --session my-conversation --wait
-```
-
-### Connecting to Gateway
-
-```bash
-# Test connection to gateway
 moonclaw gateway connect
-
-# Example output:
-# Connected to gateway v0.1.0
-# Protocol version: 1
-# Available methods: connect, agent, agent.wait, sessions.list, health
+moonclaw gateway connect --url http://localhost:19000
 ```
 
-## Architecture Overview
-
-The MoonClaw Gateway follows a **long-running service architecture** similar to OpenClaw:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                  MoonClaw Gateway                        │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │              HTTP Server (port 18789)             │  │
-│  │  /v1/health    - Health check endpoint           │  │
-│  │  /v1/agent     - Run agent task                  │  │
-│  │  /v1/sessions  - List/reset sessions             │  │
-│  │  /v1/rpc       - JSON-RPC endpoint               │  │
-│  └──────────────────────────────────────────────────┘  │
-│                            │                            │
-│  ┌────────────────────────▼──────────────────────────┐  │
-│  │           RPC Method Handlers                     │  │
-│  │  connect | agent | agent.wait | sessions.list    │  │
-│  └────────────────────────┬──────────────────────────┘  │
-│                           │                             │
-│  ┌────────────────────────▼──────────────────────────┐  │
-│  │           Agent Execution Engine                   │  │
-│  │  - Spawns agent instances on demand               │  │
-│  │  - Manages conversation history                   │  │
-│  │  - Handles tool execution                         │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Key Features
-
-1. **Long-Running Service**: Gateway stays running in the background, ready to handle requests
-2. **Agent Spawning**: Spawns agent instances on-demand to handle tasks
-3. **Session Management**: Maintains conversation history across requests
-4. **Idempotency**: Dedupe cache prevents duplicate agent runs
-5. **Health Monitoring**: Built-in health checks and status reporting
-
-## API Reference
-
-### Health Endpoint
+### Submit an agent run
 
 ```bash
-curl http://localhost:18789/v1/health
+moonclaw gateway agent --message "Review this repository" --wait
+moonclaw gateway agent --message "Continue" --session repo-review --wait
+moonclaw gateway agent --message "Use a specific model" --model default --wait
 ```
 
-Response:
+## HTTP and RPC Surfaces
+
+### Direct HTTP endpoints
+
+| Endpoint | Method | Meaning |
+|---|---|---|
+| `/` | `GET` | service info |
+| `/health` | `GET` | health payload |
+| `/v1/events` | `GET` | SSE event stream |
+| `/v1/runs` | `GET` | list runs |
+| `/v1/runs/{id}` | `GET` | get run payload |
+| `/v1/agent` | `POST` | accept an agent request |
+| `/v1/rpc` | `POST` | JSON-RPC entrypoint |
+| `/v1/shutdown` | `POST` | graceful shutdown |
+
+### Channel and extension endpoints
+
+| Endpoint | Method | Meaning |
+|---|---|---|
+| `/v1/channels` | `GET` | list registered channels |
+| `/v1/channels/{id}` | `GET` | get one channel |
+| `/v1/channels/{id}/configure` | `POST` | configure one channel |
+| `/v1/channels/{id}/start` | `POST` | start one channel account |
+| `/v1/channels/{id}/stop` | `POST` | stop one channel account |
+| `/v1/extensions` | `GET` | list registered extensions |
+| `/v1/extensions/{id}` | `GET` | get one extension |
+| `/webhook/{channel_id}/...` | `GET/POST` | extension webhook ingress |
+
+### Mailbox and orchestration endpoints
+
+| Endpoint | Method | Meaning |
+|---|---|---|
+| `/v1/agent/message` | `POST` | send mailbox message |
+| `/v1/agent/{agent_id}/messages` | `GET` | poll mailbox |
+| `/v1/mailbox` | `POST` | create mailbox |
+| `/v1/mailbox/{id}` | `DELETE` | delete mailbox |
+| `/v1/mailboxes` | `GET` | list mailboxes |
+| `/v1/coordination...` | mixed | coordination lifecycle |
+| `/v1/pipeline...` | mixed | pipeline lifecycle |
+
+### RPC methods
+
+Handled by `gateway/server/rpc.mbt` and `gateway/server/methods.mbt`.
+
+Implemented methods:
+
+- `connect`
+- `agent`
+- `agent.wait`
+- `sessions.list`
+- `sessions.reset`
+- `config.get`
+- `config.set`
+- `health`
+- `runs.list`
+- `runs.get`
+- `channels.list`
+- `channels.get`
+- `channels.configure`
+- `channels.start`
+- `channels.stop`
+
+## Agent Request Flow
+
+### CLI path
+
+```text
+moonclaw gateway agent --message ...
+  -> gateway/client/Client::connect()
+  -> POST /v1/rpc method=connect
+  -> gateway/client/Client::agent(...)
+  -> POST /v1/rpc method=agent
+  -> optional gateway/client/Client::wait_agent(...)
+  -> POST /v1/rpc method=agent.wait
+```
+
+### Server path
+
+```text
+agent method or POST /v1/agent
+  -> parse AgentParams
+  -> assign run_id
+  -> check dedupe cache
+  -> return accepted response
+  -> background execute_agent_async(...)
+  -> execute_agent(...)
+    -> resolve session/model/cwd
+    -> create or resume conversation
+    -> attach event listener
+    -> run agent
+    -> store final payload and dedupe entry
+```
+
+Final payload fields:
+
 ```json
 {
-  "status": "ok",
-  "uptime_ms": 3600000,
-  "active_sessions": 5,
-  "pending_requests": 0
+  "run_id": "...",
+  "status": "completed",
+  "session_key": "...",
+  "model": "...",
+  "content": "...",
+  "conversation_id": "...",
+  "completed_at": 0
 }
 ```
 
-### Agent Endpoint
+## Session Model
+
+The gateway keeps lightweight in-memory session entries:
+
+- `session_id`
+- `updated_at`
+- `channel`
+- `model_override`
+- `provider_override`
+- `cwd`
+
+For direct agent usage, `session_key` is supplied by the caller.
+
+For channel-triggered usage, the gateway derives a session key from channel/account/chat/thread.
+
+## SSE Event Flow
+
+`GET /v1/events` opens an `EventStreamWriter` and listens to `agent_events`.
+
+Current event stream purpose:
+
+- broadcast agent lifecycle data to external observers
+- expose serialized agent events as they occur during a run
+
+## Mailbox Flow
+
+Mailbox support is a simple in-memory message layer for agent-to-agent coordination:
+
+```text
+POST /v1/mailbox
+  -> create mailbox for agent_id
+
+POST /v1/agent/message
+  -> build AgentMessage
+  -> deliver to target mailbox or broadcast to all other mailboxes
+
+GET /v1/agent/{id}/messages
+  -> non-blocking single-message poll
+```
+
+This is not durable and should be treated as process-local state.
+
+## Coordination Flow
+
+### Create
 
 ```bash
-curl -X POST http://localhost:18789/v1/agent \
+curl -X POST http://localhost:18789/v1/coordination \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "Hello, world!",
-    "session_key": "my-session",
-    "model": "qwen-max"
+    "parent_agent": "coord-1",
+    "subtasks": [
+      {"task_id": "a", "message": "inspect file a"},
+      {"task_id": "b", "message": "inspect file b"}
+    ]
   }'
 ```
 
-Response (immediate ack):
-```json
-{
-  "run_id": "uuid-here",
-  "status": "accepted",
-  "accepted_at": 1234567890
-}
-```
-
-### Sessions List
+### Start
 
 ```bash
-curl http://localhost:18789/v1/sessions
+curl -X POST http://localhost:18789/v1/coordination/<id>/start
 ```
 
-## Comparison with OpenClaw
+Server flow:
 
-| Feature | OpenClaw | MoonClaw Gateway |
-|---------|----------|------------------|
-| Protocol | WebSocket + HTTP | HTTP + JSON-RPC |
-| Agent Execution | Embedded Pi agent | MoonBit agent |
-| Status Command | `openclaw status` | `moonclaw gateway health` |
-| Config | YAML/JSON | Environment + files |
-| Channels | WhatsApp, Discord, etc. | HTTP API only (for now) |
+```text
+start
+  -> Coordinator::start_task
+  -> spawn_bg(no_wait=true, run_coordination)
+  -> each pending subtask executes via execute_agent
+  -> subtask completion/failure updates parent task
+  -> parent finalizes when all subtasks are done
+```
 
-## Troubleshooting
+Important behavior:
 
-### Gateway Won't Start
+- `429 coordination_limit_reached` when `max_concurrent` is exhausted
+- `404 subtask_not_found` for invalid subtask updates
+- late async writes are blocked if the task is no longer runnable
+
+## Pipeline Flow
+
+### Create
 
 ```bash
-# Check if port is already in use
-lsof -i :18789
-
-# Check logs
-moonclaw gateway start 2>&1 | head -50
+curl -X POST http://localhost:18789/v1/pipeline \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "code-review",
+    "stages": [
+      {"name": "read", "message": "read repository"},
+      {"name": "analyze", "message": "analyze repository", "input_template": "${read}.output"},
+      {"name": "report", "message": "write report", "input_template": "${analyze}.output"}
+    ]
+  }'
 ```
 
-### Agent Requests Timeout
+### Start
 
 ```bash
-# Increase timeout
-moonclaw gateway agent --message "..." --wait --timeout 120000
-
-# Check gateway health
-moonclaw gateway health
+curl -X POST http://localhost:18789/v1/pipeline/<id>/start
 ```
 
-### Session Issues
+Server flow:
 
-```bash
-# List active sessions
-curl http://localhost:18789/v1/sessions
-
-# Reset a session
-curl -X POST http://localhost:18789/v1/sessions/my-session/reset
+```text
+start
+  -> PipelineManager::start_pipeline
+  -> mark first stage Running
+  -> spawn_bg(no_wait=true, run_pipeline)
+  -> resolve input_template using prior results
+  -> execute current stage
+  -> advance to next stage or fail pipeline
 ```
 
-## Next Steps
+Important behavior:
 
-1. **Start the gateway**: `moonclaw gateway start`
-2. **Test connection**: `moonclaw gateway connect`
-3. **Run your first agent**: `moonclaw gateway agent --message "Hello!" --wait`
-4. **Monitor health**: `moonclaw gateway health`
+- template syntax is `${stage}.output`
+- manual `advance` / `fail` validate current stage and return `409` on mismatch
+- next stage becomes `Running` automatically on advance
+- late async writes are blocked if the pipeline is no longer runnable
 
-For more advanced usage, see the [Gateway Architecture Reference](./OPENCLAW_REFERENCE.md).
+## Feishu Integration
+
+The gateway auto-registers the Feishu extension at construction time.
+
+Ingress flow:
+
+```text
+POST /webhook/feishu
+  -> ExtensionRegistry::handle_webhook
+  -> FeishuChannel::handle_webhook
+  -> FeishuChannel::handle_feishu_message
+  -> Gateway::handle_message (MessageHandler impl)
+  -> Moonclaw run
+  -> FeishuChannel::send reply
+```
+
+Current Feishu support is webhook-based text messaging. It is not yet a full OpenClaw-compatible channel runtime.
+
+## Known Gaps
+
+- many gateway package warnings remain, though the core package compiles and targeted orchestration tests pass
+- no built-in daemon-style background supervisor features exist in `cmd/gateway`
+- mailbox/orchestration state is in-memory only

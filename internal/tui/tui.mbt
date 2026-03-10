@@ -143,9 +143,6 @@ pub fn TUI::update_status(self : TUI) -> Unit {
 pub async fn TUI::start(self : TUI) -> Unit {
   self.terminal.start()
   self.running = true
-  self.update_header()
-  self.update_footer()
-  self.update_status()
   self.render()
 }
 
@@ -167,6 +164,9 @@ pub fn TUI::request_render(self : TUI) -> Unit {
 
 ///|
 pub async fn TUI::render(self : TUI) -> Unit {
+  self.update_header()
+  self.update_footer()
+  self.update_status()
   let (width, height) = self.terminal.size()
   self.terminal.clear_screen()
   let header_height = 1

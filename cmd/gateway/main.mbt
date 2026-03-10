@@ -1,7 +1,7 @@
 ///|
 pub async fn start(args : ArrayView[String]) -> Unit {
   let arr = args.to_array()
-  match arr[1:] {
+  match arr[:] {
     ["start", ..] => start_gateway(arr)
     ["connect", ..] => connect_gateway(arr)
     ["agent", ..] => run_agent(arr)

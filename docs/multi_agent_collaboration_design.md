@@ -1,266 +1,252 @@
-# 多 Agent 协作设计方案
+# Multi-Agent Collaboration in MoonClaw Gateway
 
-## 一、当前能力分析
+This document describes what is implemented today in `gateway/server`, and what the current boundaries are.
 
-### 1.1 已有功能
+## Implemented Building Blocks
 
-| 功能 | 实现位置 | 说明 |
-|------|---------|------|
-| 异步执行 | `handler.mbt::handle_agent` | 返回 202 Accepted，后台执行 |
-| 并发执行 | `@async.spawn_bg` | 多个 Agent 可同时运行 |
-| 状态追踪 | `agent_runs: Map[String, AgentRun]` | 记录所有运行状态 |
-| 事件流 | `agent_events: Broadcast` | SSE 订阅所有 Agent 事件 |
-| 幂等性 | `dedupe: DedupeCache` | 防止重复执行 |
+### 1. Mailboxes
 
-### 1.2 缺失功能
+Files:
 
-| 功能 | 说明 | 优先级 |
-|------|------|--------|
-| Agent 间通信 | Agent 之间发送/接收消息 | 高 |
-| 任务协调 | 主 Agent 分配任务给子 Agent | 高 |
-| 结果汇总 | 收集多个 Agent 的结果 | 高 |
-| 并发限制 | 最大并发数控制 | 中 |
-| 优先级队列 | 任务优先级排序 | 低 |
+- `gateway/server/mailbox.mbt`
+- `gateway/server/message.mbt`
+- `gateway/server/message_handler.mbt`
 
-## 二、多 Agent 协作场景设计
+Implemented behavior:
 
-### 2.1 场景一：并行任务执行
+- create mailbox per `agent_id`
+- send directed message to one mailbox
+- broadcast message to all mailboxes except the sender
+- poll one pending message non-blockingly
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Gateway                               │
-│                                                              │
-│  POST /v1/agent  ──────────────────────────────────────────┐│
-│  { "message": "分析这三个文件", "files": ["a.py", "b.py", "c.py"] }
-│                                                             ││
-│                              ▼                              ││
-│  ┌─────────────────────────────────────────────────────┐   ││
-│  │              Coordinator Agent                       │   ││
-│  │  1. 解析任务：拆分为 3 个子任务                       │   ││
-│  │  2. 创建 3 个子 Agent                                │   ││
-│  │  3. 分配任务                                         │   ││
-│  │  4. 等待结果                                         │   ││
-│  │  5. 汇总结果                                         │   ││
-│  └─────────────────────────────────────────────────────┘   ││
-│                              │                              ││
-│              ┌───────────────┼───────────────┐             ││
-│              ▼               ▼               ▼             ││
-│        ┌─────────┐     ┌─────────┐     ┌─────────┐        ││
-│        │ Agent A │     │ Agent B │     │ Agent C │        ││
-│        │ 分析a.py│     │ 分析b.py│     │ 分析c.py│        ││
-│        └─────────┘     └─────────┘     └─────────┘        ││
-│              │               │               │             ││
-│              └───────────────┼───────────────┘             ││
-│                              ▼                              ││
-│                    汇总结果返回                             ││
-└─────────────────────────────────────────────────────────────┘
-```
+This is the current communication substrate between agents.
 
-### 2.2 场景二：流水线处理
+### 2. Coordination Tasks
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Gateway                               │
-│                                                              │
-│  POST /v1/pipeline                                          │
-│  {                                                          │
-│    "stages": [                                              │
-│      { "agent": "reader", "input": "read file" },          │
-│      { "agent": "analyzer", "input": "$stage1.output" },   │
-│      { "agent": "writer", "input": "$stage2.output" }      │
-│    ]                                                        │
-│  }                                                          │
-│                                                              │
-│  ┌──────────┐     ┌──────────┐     ┌──────────┐           │
-│  │  Reader  │ ──▶ │ Analyzer │ ──▶ │  Writer  │           │
-│  │  Agent   │     │  Agent   │     │  Agent   │           │
-│  └──────────┘     └──────────┘     └──────────┘           │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+Files:
+
+- `gateway/server/coordination.mbt`
+- `gateway/server/coordinator.mbt`
+- `gateway/server/coordination_handler.mbt`
+- `gateway/server/orchestration_runner.mbt`
+
+Implemented behavior:
+
+- create a parent coordination task with multiple subtasks
+- start the coordination asynchronously
+- run each pending subtask via `execute_agent(...)`
+- collect subtask results into `results`
+- finalize parent coordination as `Completed` or `Failed`
+
+### 3. Pipelines
+
+Files:
+
+- `gateway/server/pipeline.mbt`
+- `gateway/server/pipeline_manager.mbt`
+- `gateway/server/pipeline_handler.mbt`
+- `gateway/server/orchestration_runner.mbt`
+
+Implemented behavior:
+
+- create named sequential stages
+- start pipeline asynchronously
+- mark the first stage `Running`
+- substitute `${stage}.output` placeholders from prior results
+- execute each stage via `execute_agent(...)`
+- auto-advance to the next stage
+- fail the pipeline on stage failure
+
+## Data Flow
+
+## Mailbox message flow
+
+```text
+client / orchestrator
+  -> POST /v1/mailbox
+    -> mailbox_manager.create(agent_id)
+
+sender
+  -> POST /v1/agent/message
+    -> Gateway::handle_agent_message
+      -> build AgentMessage
+      -> mailbox_manager.deliver_sync
+
+receiver
+  -> GET /v1/agent/{agent_id}/messages
+    -> mailbox.try_get()
 ```
 
-### 2.3 场景三：Agent 间通信
+Notes:
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Gateway                               │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │              Agent Communication Bus                 │   │
-│  │                                                      │   │
-│  │   Agent A ◄────────────────────────► Agent B        │   │
-│  │      │                                │              │   │
-│  │      │         Message Queue          │              │   │
-│  │      │    ┌──────────────────┐        │              │   │
-│  │      └───▶│  topic: "chat"   │◀───────┘              │   │
-│  │           │  topic: "tasks"  │                       │   │
-│  │           │  topic: "results"│                       │   │
-│  │           └──────────────────┘                       │   │
-│  │                    │                                 │   │
-│  │                    ▼                                 │   │
-│  │              Agent C (订阅所有)                       │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
+- the mailbox is process-local only
+- there is no persistence, ack, retry, or replay
+- `GET /messages` returns at most one message per call today
 
-## 三、实现方案
+## Coordination execution flow
 
-### 3.1 新增数据结构
+```text
+POST /v1/coordination
+  -> create CoordinationTask
+  -> subtasks start as Pending
 
-```moonbit
-// Agent 通信消息
-pub struct AgentMessage {
-  from_agent : String
-  to_agent : String?
-  topic : String
-  payload : Json
-  timestamp : Int
-} derive(ToJson, FromJson)
+POST /v1/coordination/{id}/start
+  -> Coordinator::start_task
+  -> parent status becomes Running
+  -> spawn_bg(no_wait=true, run_coordination)
 
-// Agent 邮箱
-pub struct AgentMailbox {
-  agent_id : String
-  messages : @aqueue.Queue[AgentMessage]
-}
+Gateway::run_coordination
+  -> get_pending_subtasks
+  -> per subtask:
+     -> verify task is still runnable
+     -> update_subtask_status(..., Running)
+     -> execute_agent(...)
+     -> if still runnable:
+        -> update_subtask_status(..., Completed/Failed)
 
-// 协调任务
-pub struct CoordinationTask {
-  task_id : String
-  parent_agent : String
-  child_agents : Array[String]
-  status : String
-  results : Map[String, Json]
-  created_at : Int
-  completed_at : Int?
-} derive(ToJson, FromJson)
-
-// 流水线
-pub struct Pipeline {
-  pipeline_id : String
-  stages : Array[PipelineStage]
-  current_stage : Int
-  status : String
-  results : Array[Json]
-} derive(ToJson, FromJson)
-
-pub struct PipelineStage {
-  name : String
-  agent_config : AgentConfig
-  input_template : String
-} derive(ToJson, FromJson)
+Coordinator::update_subtask_status
+  -> update one subtask
+  -> refresh result map
+  -> if all subtasks done:
+     -> finalize parent as Completed or Failed
 ```
 
-### 3.2 Gateway 扩展
+### Coordination status semantics
 
-```moonbit
-pub struct Gateway {
-  // ... 现有字段 ...
-  
-  // 新增：Agent 通信
-  mailboxes : Map[String, AgentMailbox]
-  message_bus : @broadcast.Broadcast[AgentMessage]
-  
-  // 新增：协调管理
-  coordinations : Map[String, CoordinationTask]
-  pipelines : Map[String, Pipeline]
-  
-  // 新增：并发控制
-  max_concurrent_agents : Int
-  active_agents : Int
-}
+`CoordinationStatus` values:
+
+- `Pending`
+- `Running`
+- `Completed`
+- `Failed`
+- `Cancelled`
+
+Current rules:
+
+- `pending_count()` counts only `Pending`
+- starting may return `429 coordination_limit_reached`
+- invalid subtask update returns `404 subtask_not_found`
+- late background completions do not overwrite a cancelled/stale task
+
+## Pipeline execution flow
+
+```text
+POST /v1/pipeline
+  -> create Pipeline
+  -> all stages start as Pending
+
+POST /v1/pipeline/{id}/start
+  -> PipelineManager::start_pipeline
+  -> stage 0 becomes Running
+  -> spawn_bg(no_wait=true, run_pipeline)
+
+Gateway::run_pipeline
+  -> fetch current stage
+  -> verify pipeline is still runnable
+  -> resolve_input(prev_results)
+  -> build AgentParams
+  -> execute_agent(...)
+  -> if success and still current:
+       advance_stage(...)
+     else if failure and still current:
+       fail_stage(...)
 ```
 
-### 3.3 新增 API 端点
+### Pipeline status semantics
 
-```
-POST /v1/agent/message     # Agent 发送消息
-GET  /v1/agent/:id/messages # Agent 接收消息
+`PipelineStatus` values:
 
-POST /v1/coordinate         # 创建协调任务
-GET  /v1/coordinate/:id     # 获取协调状态
+- `Pending`
+- `Running`
+- `Completed`
+- `Failed`
+- `Cancelled`
 
-POST /v1/pipeline           # 创建流水线
-GET  /v1/pipeline/:id       # 获取流水线状态
-```
+Current rules:
 
-## 四、实现步骤
+- `Pipeline::start()` marks current stage `Running`
+- `advance_stage()` completes the current stage and starts the next stage
+- last successful stage completes the pipeline
+- invalid manual `advance` / `fail` returns `409 invalid_stage_transition`
+- late background completions do not overwrite cancelled/stale pipeline state
 
-### 阶段一：Agent 间通信（1 周）
+## API Reference
 
-1. 实现 `AgentMailbox` 和 `AgentMessage`
-2. 在 Gateway 中添加 `message_bus`
-3. 实现 `/v1/agent/message` 端点
-4. Agent 可以订阅/发布消息
+### Mailboxes
 
-### 阶段二：协调任务（1 周）
-
-1. 实现 `CoordinationTask`
-2. 添加任务分配逻辑
-3. 实现结果汇总
-4. 添加 `/v1/coordinate` 端点
-
-### 阶段三：流水线（1 周）
-
-1. 实现 `Pipeline` 和 `PipelineStage`
-2. 实现阶段间数据传递
-3. 添加 `/v1/pipeline` 端点
-4. 支持模板变量替换
-
-## 五、测试场景
-
-### 5.1 并行分析测试
-
-```bash
-# 启动 Gateway
-moon run cmd/main -- gateway start --port 18789
-
-# 发送并行任务
-curl -X POST http://localhost:18789/v1/coordinate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task_id": "analyze-1",
-    "type": "parallel",
-    "subtasks": [
-      {"message": "分析文件 a.py", "model": "qwen/qwen3-coder-plus"},
-      {"message": "分析文件 b.py", "model": "qwen/qwen3-coder-plus"},
-      {"message": "分析文件 c.py", "model": "qwen/qwen3-coder-plus"}
-    ]
-  }'
-
-# 获取结果
-curl http://localhost:18789/v1/coordinate/analyze-1
+```text
+POST   /v1/mailbox
+DELETE /v1/mailbox/{mailbox_id}
+GET    /v1/mailboxes
+POST   /v1/agent/message
+GET    /v1/agent/{agent_id}/messages
 ```
 
-### 5.2 流水线测试
+### Coordination
 
-```bash
-# 创建流水线
-curl -X POST http://localhost:18789/v1/pipeline \
-  -H "Content-Type: application/json" \
-  -d '{
-    "pipeline_id": "code-review-1",
-    "stages": [
-      {"name": "read", "message": "读取文件 main.py"},
-      {"name": "analyze", "message": "分析代码质量: $read.output"},
-      {"name": "report", "message": "生成报告: $analyze.output"}
-    ]
-  }'
-
-# 获取流水线状态
-curl http://localhost:18789/v1/pipeline/code-review-1
+```text
+POST /v1/coordination
+GET  /v1/coordination
+GET  /v1/coordination/{id}
+POST /v1/coordination/{id}/start
+POST /v1/coordination/{id}/cancel
+POST /v1/coordination/{id}/subtask/{task_id}
+GET  /v1/coordination/{id}/results
 ```
 
-## 六、文件结构
+### Pipeline
 
+```text
+POST /v1/pipeline
+GET  /v1/pipeline
+GET  /v1/pipeline/{id}
+POST /v1/pipeline/{id}/start
+POST /v1/pipeline/{id}/cancel
+POST /v1/pipeline/{id}/advance
+POST /v1/pipeline/{id}/fail
+GET  /v1/pipeline/{id}/next
 ```
-gateway/server/
-├── gateway.mbt           # 主结构（扩展）
-├── handler.mbt           # HTTP 处理器（扩展）
-├── methods.mbt           # RPC 方法（扩展）
-├── mailbox.mbt           # 新增：Agent 邮箱
-├── message_bus.mbt       # 新增：消息总线
-├── coordinator.mbt       # 新增：任务协调
-├── pipeline.mbt          # 新增：流水线
-└── concurrency.mbt       # 新增：并发控制
+
+## Call Chain Details
+
+### Shared execution primitive
+
+Both coordination subtasks and pipeline stages converge on the same internal path:
+
+```text
+orchestrator
+  -> Gateway::execute_agent(run_id, AgentParams)
+    -> SessionManager::get_or_create
+    -> @model.load(...)
+    -> @agent.new(...)
+    -> attach event listener
+    -> agent.start()
+    -> produce Json result payload
 ```
+
+That means:
+
+- all orchestration uses the same model loading rules as direct gateway agent runs
+- all orchestration stores the same result shape with `content` and `conversation_id`
+- orchestration is not a separate runtime; it is a thin scheduler around normal agent execution
+
+## Tested Behavior
+
+Whitebox tests in `gateway/server/orchestration_wbtest.mbt` currently cover:
+
+- coordination completion after all subtasks succeed
+- coordination failure after one subtask fails
+- pipeline template substitution
+- pipeline stage advancement and final completion
+
+## Current Gaps
+
+Not implemented yet:
+
+- durable mailbox storage
+- blocking mailbox wait / streaming mailbox API
+- parent/child agent identity graph
+- priority queues
+- partial retry policy for failed subtasks/stages
+- external scheduler / lane system
+- rich orchestration event stream beyond the existing gateway agent events

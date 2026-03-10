@@ -149,6 +149,7 @@ pub fn CoordinationTask::completed_count(Self) -> Int
 pub fn CoordinationTask::fail(Self) -> Self
 pub fn CoordinationTask::failed_count(Self) -> Int
 pub fn CoordinationTask::has_failures(Self) -> Bool
+pub fn CoordinationTask::has_subtask(Self, String) -> Bool
 pub fn CoordinationTask::is_done(Self) -> Bool
 pub fn CoordinationTask::pending_count(Self) -> Int
 pub fn CoordinationTask::start(Self) -> Self
@@ -282,6 +283,7 @@ pub fn Pipeline::current_stage_info(Self) -> PipelineStage?
 pub fn Pipeline::fail(Self) -> Self
 pub fn Pipeline::fail_stage(Self, String, String) -> Self
 pub fn Pipeline::get_next_task(Self) -> (String, String)?
+pub fn Pipeline::has_current_stage(Self, String) -> Bool
 pub fn Pipeline::is_done(Self) -> Bool
 pub fn Pipeline::progress(Self) -> Double
 pub fn Pipeline::start(Self) -> Self

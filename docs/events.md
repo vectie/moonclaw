@@ -58,10 +58,10 @@ re‑rendering the same event twice on the UI. See
 
 Below are the individual variants and their semantics.
 
-- [`MessageAddedEvent`](events/MessageAdded.md)
-- [`RequestCompletedEvent`](events/RequestCompleted.md)
-- [`PostConversationEvent`](events/PostConversation.md)
-- [`PostToolCallEvent`](events/PostToolCall.md)
-- [`PreToolCallEvent`](events/PreToolCall.md)
-- [`MessageUnqueuedEvent`](events/MessageUnqueued.md)
-- [`TodoUpdatedEvent`](events/TodoUpdated.md)
+- [`MessageAddedEvent`](events/message_added.md)
+- [`RequestCompletedEvent`](events/request_completed.md)
+- [`PostConversationEvent`](events/post_conversation.md)
+- [`PostToolCallEvent`](events/post_tool_call.md)
+- [`PreToolCallEvent`](events/pre_tool_call.md)
+- [`MessageUnqueuedEvent`](events/message_unqueued.md)
+- [`TodoUpdatedEvent`](events/todo_updated.md)

@@ -78,7 +78,7 @@ pub(open) trait ChannelExtension: Channel {
 
   /// Handles incoming webhook requests from external services
   /// Returns a response to be sent back to the caller
-  handle_webhook(Self, request : ExtensionRequest) -> ExtensionResponse raise
+  async handle_webhook(Self, request : ExtensionRequest) -> ExtensionResponse
 
   /// Returns true if this extension supports WebSocket connections
   supports_websocket(Self) -> Bool
@@ -345,12 +345,12 @@ pub fn ExtensionMeta::new(
 pub(open) trait MessageHandler {
   /// Process an incoming message from a channel
   /// Returns the response message to send back
-  handle_message(
+  async handle_message(
     Self,
     channel_id : String,
     account_id : String,
     message : Message,
-  ) -> Message raise
+  ) -> Message
 
   /// Handle a message that doesn't need a response (fire-and-forget)
   async handle_event(

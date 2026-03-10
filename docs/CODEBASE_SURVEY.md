@@ -298,14 +298,20 @@ pub struct Gateway {
 
 ```
 GET  /                      → Index with API info
+GET  /health                → Health check
 GET  /v1/events             → SSE event stream
-GET  /v1/health             → Health check
+GET  /v1/runs               → List runs
 POST /v1/rpc                → RPC endpoint (frame-based)
 POST /v1/agent              → Agent execution endpoint
-GET  /v1/sessions           → List sessions
-POST /v1/sessions/{id}/reset → Reset session
-GET  /v1/config             → Get config
-POST /v1/config             → Set config
+GET  /v1/channels           → List channels
+GET  /v1/channels/{id}      → Get channel details
+POST /v1/channels/{id}/configure → Configure channel accounts
+POST /v1/channels/{id}/start     → Start a channel account
+POST /v1/channels/{id}/stop      → Stop a channel account
+GET  /v1/extensions         → List extensions
+POST /v1/mailbox            → Create mailbox
+POST /v1/coordination       → Create coordination task
+POST /v1/pipeline           → Create pipeline
 POST /v1/shutdown           → Shutdown gateway
 ```
 
