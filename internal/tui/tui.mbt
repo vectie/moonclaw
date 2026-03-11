@@ -27,6 +27,12 @@ pub(all) struct TUI {
 }
 
 ///|
+const EditorRenderIntervalMs : Int64 = 16L
+
+///|
+const BodyRenderIntervalMs : Int64 = 90L
+
+///|
 fn spaces(count : Int) -> String {
   let mut result = ""
   for _ in 0..<count.max(0) {
@@ -326,7 +332,12 @@ async fn TUI::render_if_due(self : TUI, force? : Bool = false) -> Unit {
     return
   }
   let now = @async.now()
-  if force || now - self.last_render_at >= 33L {
+  let min_interval = if force {
+    EditorRenderIntervalMs
+  } else {
+    BodyRenderIntervalMs
+  }
+  if force || now - self.last_render_at >= min_interval {
     self.render()
   }
 }

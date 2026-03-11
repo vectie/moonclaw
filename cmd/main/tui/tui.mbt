@@ -6,6 +6,9 @@ priv struct TuiState {
 }
 
 ///|
+const StreamFlushIntervalMs : Int = 120
+
+///|
 async fn println(msg : String) -> Unit {
   @stdio.stdout.write("\{msg}\n")
 }
@@ -218,7 +221,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
         if state.stream_dirty {
           flush_pending_stream(tui, state)
         }
-        @async.sleep(80)
+        @async.sleep(StreamFlushIntervalMs)
       }
     })
 
