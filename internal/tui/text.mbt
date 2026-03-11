@@ -104,7 +104,7 @@ pub fn Text::get_preferred_height(self : Text, _width : Int) -> Int {
 ///|
 pub async fn Text::render(
   self : Text,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,
@@ -210,7 +210,7 @@ pub fn Spacer::get_preferred_height(self : Spacer, _width : Int) -> Int {
 ///|
 pub async fn Spacer::render(
   self : Spacer,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,
@@ -275,7 +275,7 @@ pub fn Box::get_preferred_height(self : Box, width : Int) -> Int {
 ///|
 pub async fn Box::render(
   self : Box,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,

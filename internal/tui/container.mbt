@@ -103,7 +103,7 @@ pub fn Container::focus_prev(self : Container) -> Unit {
 ///|
 pub async fn Container::render(
   self : Container,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,
@@ -137,7 +137,7 @@ pub async fn Container::render(
 ///|
 pub async fn Component::render(
   self : Component,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,

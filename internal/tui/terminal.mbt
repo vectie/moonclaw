@@ -137,6 +137,11 @@ pub async fn Terminal::write(self : Terminal, text : String) -> Unit {
 }
 
 ///|
+pub async fn Terminal::write_bytes(self : Terminal, bytes : Bytes) -> Unit {
+  self.output.write(bytes)
+}
+
+///|
 pub async fn Terminal::write_line(self : Terminal, text : String) -> Unit {
   self.output.write("\{text}\n")
   self.cursor_y += 1

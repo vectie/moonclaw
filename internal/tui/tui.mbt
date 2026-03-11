@@ -198,7 +198,7 @@ pub async fn TUI::render(self : TUI) -> Unit {
     status_height -
     editor_height
   self.chat_log.normalize_scroll(width, chat_height.max(1))
-  let output = @stdio.stdout
+  let output = RenderOutput::new()
   self.header.render(output, 0, 0, width, header_height)
   self.chat_log.render(output, 0, header_height, width, chat_height.max(1))
   self.status_text.render(
@@ -216,6 +216,7 @@ pub async fn TUI::render(self : TUI) -> Unit {
     footer_height,
   )
   self.editor.render(output, 0, height - editor_height, width, editor_height)
+  self.terminal.write_bytes(output.to_bytes())
   self.terminal.flush()
   self.last_render_at = @async.now()
   self.render_needed = false

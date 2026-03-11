@@ -3,6 +3,7 @@ package "moonbitlang/moonclaw/internal/tui"
 
 import {
   "moonbitlang/async/stdio",
+  "moonbitlang/core/buffer",
 }
 
 // Values
@@ -122,7 +123,7 @@ pub(all) struct AssistantMessage {
 pub fn AssistantMessage::get_preferred_height(Self, Int) -> Int
 pub fn AssistantMessage::is_streaming(Self) -> Bool
 pub fn AssistantMessage::new(String) -> Self
-pub async fn AssistantMessage::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn AssistantMessage::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn AssistantMessage::set_streaming(Self, Bool) -> Unit
 pub fn AssistantMessage::set_text(Self, String) -> Unit
 pub fn AssistantMessage::text(Self) -> String
@@ -136,7 +137,7 @@ pub(all) struct Box {
 }
 pub fn Box::get_preferred_height(Self, Int) -> Int
 pub fn Box::new(String, String) -> Self
-pub async fn Box::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn Box::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn Box::set_content(Self, String) -> Unit
 pub fn Box::set_expanded(Self, Bool) -> Unit
 
@@ -159,7 +160,7 @@ pub fn ChatLog::get_preferred_height(Self, Int) -> Int
 pub fn ChatLog::maybe_scroll_to_bottom(Self, Int, Int) -> Unit
 pub fn ChatLog::new() -> Self
 pub fn ChatLog::normalize_scroll(Self, Int, Int) -> Unit
-pub async fn ChatLog::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn ChatLog::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn ChatLog::scroll_down(Self, Int, Int, Int) -> Unit
 pub fn ChatLog::scroll_to_bottom(Self, Int, Int) -> Unit
 pub fn ChatLog::scroll_up(Self, Int) -> Unit
@@ -214,7 +215,7 @@ pub enum Component {
 pub fn Component::get_preferred_height(Self, Int) -> Int
 pub fn Component::handle_key(Self, Key) -> Bool
 pub fn Component::is_focusable(Self) -> Bool
-pub async fn Component::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn Component::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 
 pub(all) struct Container {
   children : Array[Component]
@@ -231,7 +232,7 @@ pub fn Container::get_focused_child(Self) -> Component?
 pub fn Container::get_preferred_height(Self, Int) -> Int
 pub fn Container::new(direction? : Direction) -> Self
 pub fn Container::remove_child(Self, Int) -> Unit
-pub async fn Container::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn Container::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 
 pub enum Direction {
   Vertical
@@ -258,7 +259,7 @@ pub fn Editor::clear(Self) -> Unit
 pub fn Editor::get_preferred_height(Self, Int) -> Int
 pub fn Editor::handle_key(Self, Key) -> Bool
 pub fn Editor::new() -> Self
-pub async fn Editor::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn Editor::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn Editor::set_on_change(Self, (String) -> Unit) -> Unit
 pub fn Editor::set_on_ctrl_c(Self, () -> Unit) -> Unit
 pub fn Editor::set_on_ctrl_d(Self, () -> Unit) -> Unit
@@ -321,7 +322,7 @@ pub fn Loader::handle_key(Self, Key) -> Bool
 pub fn Loader::is_running(Self) -> Bool
 pub fn Loader::message(Self) -> String
 pub fn Loader::new() -> Self
-pub async fn Loader::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn Loader::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn Loader::set_message(Self, String) -> Unit
 pub fn Loader::start(Self) -> Unit
 pub fn Loader::stop(Self) -> Unit
@@ -337,7 +338,15 @@ pub enum MessageComponent {
   SpacerComp(Spacer)
 }
 pub fn MessageComponent::get_preferred_height(Self, Int) -> Int
-pub async fn MessageComponent::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn MessageComponent::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
+
+pub(all) struct RenderOutput {
+  buffer : @buffer.Buffer
+}
+pub fn RenderOutput::new() -> Self
+pub fn RenderOutput::to_bytes(Self) -> Bytes
+pub fn RenderOutput::write(Self, String) -> Unit
+pub fn RenderOutput::write_bytes(Self, Bytes) -> Unit
 
 pub struct SlashCommand {
   name : String
@@ -355,7 +364,7 @@ pub(all) struct Spacer {
 }
 pub fn Spacer::get_preferred_height(Self, Int) -> Int
 pub fn Spacer::new(height? : Int) -> Self
-pub async fn Spacer::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn Spacer::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 
 pub enum StyleCode {
   StyleReset
@@ -375,7 +384,7 @@ pub(all) struct SystemMessage {
 }
 pub fn SystemMessage::get_preferred_height(Self, Int) -> Int
 pub fn SystemMessage::new(String) -> Self
-pub async fn SystemMessage::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn SystemMessage::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn SystemMessage::set_text(Self, String) -> Unit
 pub fn SystemMessage::text(Self) -> String
 
@@ -464,6 +473,7 @@ pub fn Terminal::width(Self) -> Int
 pub fn Terminal::with_io(input~ : @stdio.Input, output~ : @stdio.Output) -> Self raise
 pub async fn Terminal::write(Self, String) -> Unit
 pub async fn Terminal::write_at(Self, Int, Int, String) -> Unit
+pub async fn Terminal::write_bytes(Self, Bytes) -> Unit
 pub async fn Terminal::write_line(Self, String) -> Unit
 
 pub(all) struct Text {
@@ -475,7 +485,7 @@ pub fn Text::apply_style(Self, String) -> String
 pub fn Text::get_preferred_height(Self, Int) -> Int
 pub fn Text::line_count(Self) -> Int
 pub fn Text::new(String) -> Self
-pub async fn Text::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn Text::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn Text::set_style(Self, TextStyle) -> Unit
 pub fn Text::set_text(Self, String) -> Unit
 pub fn Text::text(Self) -> String
@@ -553,7 +563,7 @@ pub(all) struct ToolExecution {
 pub fn ToolExecution::args(Self) -> String
 pub fn ToolExecution::get_preferred_height(Self, Int) -> Int
 pub fn ToolExecution::new(String, String) -> Self
-pub async fn ToolExecution::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn ToolExecution::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn ToolExecution::result(Self) -> String
 pub fn ToolExecution::set_args(Self, String) -> Unit
 pub fn ToolExecution::set_expanded(Self, Bool) -> Unit
@@ -607,7 +617,7 @@ pub(all) struct UserMessage {
 }
 pub fn UserMessage::get_preferred_height(Self, Int) -> Int
 pub fn UserMessage::new(String) -> Self
-pub async fn UserMessage::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
+pub async fn UserMessage::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn UserMessage::set_text(Self, String) -> Unit
 pub fn UserMessage::text(Self) -> String
 

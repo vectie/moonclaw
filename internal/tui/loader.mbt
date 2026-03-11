@@ -82,7 +82,7 @@ pub fn Loader::get_preferred_height(self : Loader, _width : Int) -> Int {
 ///|
 pub async fn Loader::render(
   self : Loader,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,

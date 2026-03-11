@@ -130,7 +130,7 @@ pub fn ToolExecution::get_preferred_height(
 ///|
 pub async fn ToolExecution::render(
   self : ToolExecution,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,

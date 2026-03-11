@@ -30,7 +30,7 @@ pub fn UserMessage::get_preferred_height(
 ///|
 pub async fn UserMessage::render(
   self : UserMessage,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,

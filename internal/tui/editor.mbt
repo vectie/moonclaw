@@ -150,7 +150,7 @@ pub fn Editor::get_preferred_height(self : Editor, _width : Int) -> Int {
 ///|
 pub async fn Editor::render(
   self : Editor,
-  output : @stdio.Output,
+  output : RenderOutput,
   x : Int,
   y : Int,
   width : Int,
