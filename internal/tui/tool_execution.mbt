@@ -93,6 +93,11 @@ pub fn ToolExecution::status(self : ToolExecution) -> ToolStatus {
 }
 
 ///|
+pub fn ToolExecution::expanded(self : ToolExecution) -> Bool {
+  self.expanded
+}
+
+///|
 pub fn ToolExecution::get_preferred_height(
   self : ToolExecution,
   width : Int,

@@ -87,6 +87,21 @@ pub fn Editor::text(self : Editor) -> String {
 }
 
 ///|
+pub fn Editor::cursor(self : Editor) -> Int {
+  self.cursor
+}
+
+///|
+pub fn Editor::prompt_text(self : Editor) -> String {
+  self.prompt
+}
+
+///|
+pub fn Editor::placeholder_text(self : Editor) -> String {
+  self.placeholder
+}
+
+///|
 pub fn Editor::clear(self : Editor) -> Unit {
   self.text = ""
   self.cursor = 0

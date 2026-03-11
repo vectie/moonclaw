@@ -23,6 +23,70 @@ pub(all) struct TUI {
 }
 
 ///|
+fn spaces(count : Int) -> String {
+  let mut result = ""
+  for _ in 0..<count.max(0) {
+    result = "\{result} "
+  }
+  result
+}
+
+///|
+fn frame_line(text : String, width : Int) -> String {
+  "\{truncate_to_width(text, width.max(0))}\{spaces(width.max(0) - @unicode/width.string(text).min(width.max(0)))}"
+}
+
+///|
+fn editor_frame_line(editor : Editor, width : Int) -> (String, Int) {
+  let prompt_text = editor.prompt_text()
+  let prompt = colorize(prompt_text, Color::BrightGreen)
+  let display_text = if editor.text().length() == 0 {
+    dim(editor.placeholder_text())
+  } else {
+    editor.text()
+  }
+  let prompt_width = @unicode/width.string(prompt_text)
+  let available_width = (width - prompt_width).max(0)
+  let visible_text = truncate_to_width(display_text, available_width)
+  let line = "\{prompt}\{visible_text}"
+  let cursor_col = (prompt_width +
+  @unicode/width.string(try! editor.text()[:editor.cursor()]).min(
+    available_width,
+  )).min(width.max(0))
+  (frame_line(line, width), cursor_col)
+}
+
+///|
+fn TUI::build_frame(
+  self : TUI,
+  width : Int,
+  height : Int,
+) -> (String, Int, Int) {
+  let header_height = 1
+  let footer_height = 1
+  let status_height = 1
+  let editor_height = 1
+  let chat_height = height -
+    header_height -
+    footer_height -
+    status_height -
+    editor_height
+  let chat_lines = self.chat_log.visible_lines(width, chat_height.max(1))
+  let lines : Array[String] = [frame_line(self.header.text(), width)]
+  for line in chat_lines {
+    lines.push(frame_line(line, width))
+  }
+  lines.push(frame_line(self.status_text.text(), width))
+  lines.push(frame_line(self.footer.text(), width))
+  let (editor_line, cursor_col) = editor_frame_line(self.editor, width)
+  lines.push(editor_line)
+  while lines.length() < height {
+    lines.push(spaces(width))
+  }
+  (lines.join("\n"), cursor_col, height - 1)
+}
+
+///|
 pub fn TUI::new() -> TUI raise {
   let terminal = Terminal::new()
   let chat_log = ChatLog::new()
@@ -180,42 +244,21 @@ pub async fn TUI::render(self : TUI) -> Unit {
   self.update_status()
   let (width, height) = self.terminal.size()
   let resized = width != self.last_width || height != self.last_height
-  if self.needs_full_redraw || resized {
-    self.terminal.clear_screen()
-    self.needs_full_redraw = false
-  } else {
-    self.terminal.move_to(0, 0)
-  }
   self.last_width = width
   self.last_height = height
-  let header_height = 1
-  let footer_height = 1
-  let status_height = 1
-  let editor_height = 1
-  let chat_height = height -
-    header_height -
-    footer_height -
-    status_height -
-    editor_height
+  let chat_height = height - 4
   self.chat_log.normalize_scroll(width, chat_height.max(1))
+  let (frame, cursor_col, cursor_row) = self.build_frame(width, height.max(1))
   let output = RenderOutput::new()
-  self.header.render(output, 0, 0, width, header_height)
-  self.chat_log.render(output, 0, header_height, width, chat_height.max(1))
-  self.status_text.render(
-    output,
-    0,
-    header_height + chat_height,
-    width,
-    status_height,
-  )
-  self.footer.render(
-    output,
-    0,
-    height - footer_height - editor_height,
-    width,
-    footer_height,
-  )
-  self.editor.render(output, 0, height - editor_height, width, editor_height)
+  output.write(CursorHide)
+  output.write(CursorHome)
+  if self.needs_full_redraw || resized {
+    output.write(ClearScreenDown)
+    self.needs_full_redraw = false
+  }
+  output.write(frame)
+  output.write(cursor_to(cursor_col, cursor_row))
+  output.write(CursorShow)
   self.terminal.write_bytes(output.to_bytes())
   self.terminal.flush()
   self.last_render_at = @async.now()

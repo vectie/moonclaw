@@ -170,6 +170,7 @@ pub fn ChatLog::start_tool(Self, String, String, String) -> ToolExecution
 pub fn ChatLog::update_assistant(Self, String, run_id? : String) -> Unit
 pub fn ChatLog::update_tool_args(Self, String, String) -> Unit
 pub fn ChatLog::update_tool_result(Self, String, String, is_error? : Bool) -> Unit
+pub fn ChatLog::visible_lines(Self, Int, Int) -> Array[String]
 pub fn ChatLog::with_max_components(Int) -> Self
 
 pub(all) enum Color {
@@ -256,9 +257,12 @@ pub(all) struct Editor {
 }
 pub fn Editor::add_to_history(Self, String) -> Unit
 pub fn Editor::clear(Self) -> Unit
+pub fn Editor::cursor(Self) -> Int
 pub fn Editor::get_preferred_height(Self, Int) -> Int
 pub fn Editor::handle_key(Self, Key) -> Bool
 pub fn Editor::new() -> Self
+pub fn Editor::placeholder_text(Self) -> String
+pub fn Editor::prompt_text(Self) -> String
 pub async fn Editor::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit
 pub fn Editor::set_on_change(Self, (String) -> Unit) -> Unit
 pub fn Editor::set_on_ctrl_c(Self, () -> Unit) -> Unit
@@ -561,6 +565,7 @@ pub(all) struct ToolExecution {
   mut start_time : Int
 }
 pub fn ToolExecution::args(Self) -> String
+pub fn ToolExecution::expanded(Self) -> Bool
 pub fn ToolExecution::get_preferred_height(Self, Int) -> Int
 pub fn ToolExecution::new(String, String) -> Self
 pub async fn ToolExecution::render(Self, RenderOutput, Int, Int, Int, Int) -> Unit

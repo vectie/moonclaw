@@ -426,3 +426,138 @@ pub async fn ChatLog::render(
     }
   }
 }
+
+///|
+fn render_component_lines(
+  component : MessageComponent,
+  width : Int,
+) -> Array[String] {
+  let theme = Theme::default()
+  match component {
+    UserMsg(m) => {
+      let lines = [theme.user_style(" You ")]
+      let inner_width = (width - 4).max(1)
+      for line in wrap_text(m.text(), inner_width) {
+        lines.push("  \{theme.text_style(line)}")
+      }
+      lines.push("")
+      lines
+    }
+    AssistantMsg(m) => {
+      let assistant_title = theme.accent_style(" Assistant")
+      let streaming_suffix = theme.dim_style(" (streaming...)")
+      let header = if m.is_streaming() {
+        "\{assistant_title}\{streaming_suffix}"
+      } else {
+        assistant_title
+      }
+      let lines : Array[String] = [header]
+      let inner_width = (width - 2).max(1)
+      for line in wrap_text(m.text(), inner_width) {
+        lines.push(" \{theme.text_style(line)}")
+      }
+      if lines.length() < 2 {
+        lines.push("")
+      }
+      lines
+    }
+    SystemMsg(m) => {
+      let text_lines = m
+        .text()
+        .split("\n")
+        .map(fn(v) { v.to_string() })
+        .collect()
+      let system_prefix = theme.system(" System: ")
+      let system_text = theme.dim_style(m.text())
+      let lines : Array[String] = ["\{system_prefix}\{system_text}"]
+      for line in text_lines {
+        lines.push(theme.dim_style(line))
+      }
+      lines
+    }
+    ToolExec(t) => {
+      let status_icon = match t.status() {
+        Pending => theme.dim_style("○")
+        Running => theme.accent_style("◐")
+        Success => theme.success_style("●")
+        Error => theme.error_style("✗")
+      }
+      let expand_hint = if t.expanded() { " [collapse]" } else { " [expand]" }
+      let lines : Array[String] = [
+        "\{status_icon} \{theme.tool_title_style(t.tool_name())}\{theme.dim_style(expand_hint)}",
+      ]
+      if !t.expanded() {
+        let preview = truncate_to_width(t.args(), (width - 20).max(1))
+        if preview.length() > 0 {
+          lines[0] = "\{lines[0]} \{theme.dim_style(preview)}"
+        }
+        return lines
+      }
+      lines.push(theme.dim_style("  Args:"))
+      let inner_width = (width - 4).max(1)
+      for line in t.args().split("\n") {
+        for wrapped in wrap_text(line.to_string(), inner_width) {
+          lines.push("  \{theme.tool_output_style(wrapped)}")
+        }
+      }
+      if t.result().length() > 0 {
+        lines.push(theme.dim_style("  Result:"))
+        let is_error = match t.status() {
+          Error => true
+          _ => false
+        }
+        for line in t.result().split("\n") {
+          for wrapped in wrap_text(line.to_string(), inner_width) {
+            let styled = if is_error {
+              theme.error_style(wrapped)
+            } else {
+              theme.tool_output_style(wrapped)
+            }
+            lines.push("  \{styled}")
+          }
+        }
+      }
+      lines
+    }
+    SpacerComp(s) => {
+      let lines : Array[String] = []
+      for _ in 0..<s.get_preferred_height(width) {
+        lines.push("")
+      }
+      lines
+    }
+  }
+}
+
+///|
+pub fn ChatLog::visible_lines(
+  self : ChatLog,
+  width : Int,
+  height : Int,
+) -> Array[String] {
+  let visible : Array[String] = []
+  let mut consumed = 0
+  for component in self.components {
+    let lines = render_component_lines(component, width)
+    let next_consumed = consumed + lines.length()
+    if next_consumed <= self.scroll_offset {
+      consumed = next_consumed
+      continue
+    }
+    let start = (self.scroll_offset - consumed).max(0)
+    for i in start..<lines.length() {
+      if visible.length() >= height {
+        return visible
+      }
+      visible.push(lines[i])
+    }
+    consumed = next_consumed
+    if visible.length() >= height {
+      return visible
+    }
+  }
+  while visible.length() < height {
+    visible.push("")
+  }
+  visible
+}
