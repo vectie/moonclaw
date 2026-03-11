@@ -171,39 +171,21 @@ pub fn wrap_text(text : String, max_width : Int) -> Array[String] {
     if @unicode/width.string(line) <= max_width {
       lines.push(line)
     } else {
-      let mut remaining = line
-      while @unicode/width.string(remaining) > max_width &&
-            remaining.length() > 0 {
-        let mut current_width = 0
-        let mut break_pos = 0
-        for i in 0..<remaining.length() {
-          match remaining.get_char(i) {
-            Some(c) => {
-              let c_width = @unicode/width.char(c).unwrap_or(1)
-              if current_width + c_width > max_width {
-                break
-              }
-              current_width += c_width
-              break_pos = i + 1
-            }
-            None => break
-          }
+      let mut current = ""
+      let mut current_width = 0
+      for c in line {
+        let c_width = @unicode/width.char(c).unwrap_or(1)
+        if current_width > 0 && current_width + c_width > max_width {
+          lines.push(current)
+          current = c.to_string()
+          current_width = c_width
+        } else {
+          current = "\{current}\{c}"
+          current_width += c_width
         }
-        // If we couldn't fit any characters, force at least 1 character
-        if break_pos == 0 {
-          break_pos = 1
-        }
-        lines.push(try! remaining[:break_pos].to_string())
-        let new_remaining = try! remaining[break_pos:].to_string()
-        // Safety check: ensure we're making progress
-        if new_remaining.length() >= remaining.length() {
-          // This shouldn't happen, but break to avoid infinite loop
-          break
-        }
-        remaining = new_remaining
       }
-      if remaining.length() > 0 {
-        lines.push(remaining)
+      if current.length() > 0 {
+        lines.push(current)
       }
     }
   }
