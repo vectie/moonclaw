@@ -81,6 +81,25 @@ fn write_repainted_lines(
 }
 
 ///|
+fn write_changed_lines(
+  output : RenderOutput,
+  start_row : Int,
+  current_lines : Array[String],
+  previous_lines : Array[String],
+) -> Unit {
+  let line_count = current_lines.length().max(previous_lines.length())
+  for i in 0..<line_count {
+    let current = current_lines.get(i).or("")
+    let previous = previous_lines.get(i).or("")
+    if current != previous {
+      output.write(cursor_to(0, start_row + i))
+      output.write(ClearLineRight)
+      output.write(current)
+    }
+  }
+}
+
+///|
 fn TUI::build_frame(
   self : TUI,
   width : Int,
@@ -303,8 +322,16 @@ pub async fn TUI::render(self : TUI) -> Unit {
       .split("\n")
       .map(fn(v) { v.to_string() })
       .collect()
+    let previous_body_lines = self.last_body_frame
+      .split("\n")
+      .map(fn(v) { v.to_string() })
+      .collect()
     output.write(CursorHide)
-    write_repainted_lines(output, 0, body_lines)
+    if self.needs_full_redraw || resized {
+      write_repainted_lines(output, 0, body_lines)
+    } else {
+      write_changed_lines(output, 0, body_lines, previous_body_lines)
+    }
     output.write(cursor_to(0, cursor_row))
     output.write(ClearLineRight)
     output.write(editor_line)
@@ -435,7 +462,7 @@ pub async fn TUI::run_event_loop(self : TUI) -> Unit {
           let key = parse_key(bytes[:])
           ignore(self.handle_key(key))
           match key {
-            Enter => self.render_if_due()
+            Enter => self.render_if_due(force=true)
             _ => self.render_if_due(force=true)
           }
         } else if self.render_needed {
