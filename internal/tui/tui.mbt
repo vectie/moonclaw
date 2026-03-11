@@ -250,7 +250,6 @@ pub async fn TUI::render(self : TUI) -> Unit {
   self.chat_log.normalize_scroll(width, chat_height.max(1))
   let (frame, cursor_col, cursor_row) = self.build_frame(width, height.max(1))
   let output = RenderOutput::new()
-  output.write(CursorHide)
   output.write(CursorHome)
   if self.needs_full_redraw || resized {
     output.write(ClearScreenDown)
@@ -258,7 +257,6 @@ pub async fn TUI::render(self : TUI) -> Unit {
   }
   output.write(frame)
   output.write(cursor_to(cursor_col, cursor_row))
-  output.write(CursorShow)
   self.terminal.write_bytes(output.to_bytes())
   self.terminal.flush()
   self.last_render_at = @async.now()

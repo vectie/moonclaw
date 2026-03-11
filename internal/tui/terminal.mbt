@@ -76,7 +76,6 @@ pub async fn Terminal::start(self : Terminal) -> Unit {
   @tty.set_raw_mode(self.input.fd())
   self.running = true
   self.enter_alt_screen()
-  self.hide_cursor()
   self.clear_screen()
 }
 
