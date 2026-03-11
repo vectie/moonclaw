@@ -109,7 +109,11 @@ pub fn scroll_up(Int) -> String
 
 pub fn styled(String, fg? : Color, bg? : Color, styles? : Array[StyleCode]) -> String
 
+pub fn truncate_styled(String, Int) -> String
+
 pub fn underline(String) -> String
+
+pub fn visible_width(String) -> Int
 
 pub fn wrap_text(String, Int) -> Array[String]
 
@@ -413,6 +417,10 @@ pub(all) struct TUI {
   mut last_width : Int
   mut last_height : Int
   mut needs_full_redraw : Bool
+  mut last_body_frame : String
+  mut last_editor_line : String
+  mut last_cursor_col : Int
+  mut last_cursor_row : Int
 }
 pub fn TUI::chat_log(Self) -> ChatLog
 pub fn TUI::editor(Self) -> Editor

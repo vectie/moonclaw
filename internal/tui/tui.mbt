@@ -38,7 +38,7 @@ fn spaces(count : Int) -> String {
 ///|
 fn frame_line(text : String, width : Int) -> String {
   let truncated = truncate_styled(text, width.max(0))
-  "\{truncated}\{spaces(width.max(0) - visible_width(truncated).min(width.max(0)))}"
+  "\{truncated}\{spaces((width.max(0) - visible_width(truncated)).max(0))}"
 }
 
 ///|
@@ -52,7 +52,7 @@ fn editor_frame_line(editor : Editor, width : Int) -> (String, Int) {
   }
   let prompt_width = @unicode/width.string(prompt_text)
   let available_width = (width - prompt_width).max(0)
-  let visible_text = truncate_to_width(display_text, available_width)
+  let visible_text = truncate_styled(display_text, available_width)
   let line = "\{prompt}\{visible_text}"
   let cursor_col = (prompt_width +
   @unicode/width.string(try! editor.text()[:editor.cursor()]).min(
@@ -277,12 +277,12 @@ pub async fn TUI::render(self : TUI) -> Unit {
     body_frame == self.last_body_frame
   if body_unchanged {
     output.write(cursor_to(0, cursor_row))
+    output.write(ClearLineRight)
     output.write(editor_line)
   } else {
+    output.write(CursorHide)
     output.write(CursorHome)
-    if self.needs_full_redraw || resized {
-      output.write(ClearScreenDown)
-    }
+    output.write(ClearScreenDown)
     output.write(body_frame)
     output.write("\n")
     output.write(editor_line)
@@ -291,6 +291,9 @@ pub async fn TUI::render(self : TUI) -> Unit {
     self.needs_full_redraw = false
   }
   output.write(cursor_to(cursor_col, cursor_row))
+  if !body_unchanged {
+    output.write(CursorShow)
+  }
   self.terminal.write_bytes(output.to_bytes())
   self.terminal.flush()
   self.last_body_frame = body_frame
