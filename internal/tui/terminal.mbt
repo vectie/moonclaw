@@ -11,6 +11,34 @@ pub(all) struct Terminal {
 }
 
 ///|
+async fn write_string_with_retry(output : @stdio.Output, text : String) -> Unit {
+  while true {
+    output.write(text) catch {
+      @os_error.OSError(errno, ..) if errno == @errno.eagain => {
+        @async.sleep(5)
+        continue
+      }
+      error => raise error
+    }
+    return
+  }
+}
+
+///|
+async fn write_bytes_with_retry(output : @stdio.Output, bytes : Bytes) -> Unit {
+  while true {
+    output.write(bytes) catch {
+      @os_error.OSError(errno, ..) if errno == @errno.eagain => {
+        @async.sleep(5)
+        continue
+      }
+      error => raise error
+    }
+    return
+  }
+}
+
+///|
 pub fn Terminal::new() -> Terminal raise {
   let size = @tty.window_size()
   Terminal::{
@@ -61,89 +89,89 @@ pub async fn Terminal::stop(self : Terminal) -> Unit {
 
 ///|
 pub async fn Terminal::enter_alt_screen(self : Terminal) -> Unit {
-  self.output.write(AltScreen)
+  write_string_with_retry(self.output, AltScreen)
   self.in_alt_screen = true
 }
 
 ///|
 pub async fn Terminal::exit_alt_screen(self : Terminal) -> Unit {
-  self.output.write(MainScreen)
+  write_string_with_retry(self.output, MainScreen)
   self.in_alt_screen = false
 }
 
 ///|
 pub async fn Terminal::clear_screen(self : Terminal) -> Unit {
-  self.output.write(ClearScreen)
-  self.output.write(CursorHome)
+  write_string_with_retry(self.output, ClearScreen)
+  write_string_with_retry(self.output, CursorHome)
   self.cursor_x = 0
   self.cursor_y = 0
 }
 
 ///|
 pub async fn Terminal::clear_line(self : Terminal) -> Unit {
-  self.output.write(ClearLine)
+  write_string_with_retry(self.output, ClearLine)
 }
 
 ///|
 pub async fn Terminal::hide_cursor(self : Terminal) -> Unit {
-  self.output.write(CursorHide)
+  write_string_with_retry(self.output, CursorHide)
 }
 
 ///|
 pub async fn Terminal::show_cursor(self : Terminal) -> Unit {
-  self.output.write(CursorShow)
+  write_string_with_retry(self.output, CursorShow)
 }
 
 ///|
 pub async fn Terminal::move_to(self : Terminal, col : Int, row : Int) -> Unit {
-  self.output.write(cursor_to(col, row))
+  write_string_with_retry(self.output, cursor_to(col, row))
   self.cursor_x = col
   self.cursor_y = row
 }
 
 ///|
 pub async fn Terminal::move_to_col(self : Terminal, col : Int) -> Unit {
-  self.output.write(cursor_to_col(col))
+  write_string_with_retry(self.output, cursor_to_col(col))
   self.cursor_x = col
 }
 
 ///|
 pub async fn Terminal::move_up(self : Terminal, n : Int) -> Unit {
-  self.output.write(cursor_up(n))
+  write_string_with_retry(self.output, cursor_up(n))
   self.cursor_y = self.cursor_y - n
 }
 
 ///|
 pub async fn Terminal::move_down(self : Terminal, n : Int) -> Unit {
-  self.output.write(cursor_down(n))
+  write_string_with_retry(self.output, cursor_down(n))
   self.cursor_y = self.cursor_y + n
 }
 
 ///|
 pub async fn Terminal::move_left(self : Terminal, n : Int) -> Unit {
-  self.output.write(cursor_left(n))
+  write_string_with_retry(self.output, cursor_left(n))
   self.cursor_x = self.cursor_x - n
 }
 
 ///|
 pub async fn Terminal::move_right(self : Terminal, n : Int) -> Unit {
-  self.output.write(cursor_right(n))
+  write_string_with_retry(self.output, cursor_right(n))
   self.cursor_x = self.cursor_x + n
 }
 
 ///|
 pub async fn Terminal::write(self : Terminal, text : String) -> Unit {
-  self.output.write(text)
+  write_string_with_retry(self.output, text)
 }
 
 ///|
 pub async fn Terminal::write_bytes(self : Terminal, bytes : Bytes) -> Unit {
-  self.output.write(bytes)
+  write_bytes_with_retry(self.output, bytes)
 }
 
 ///|
 pub async fn Terminal::write_line(self : Terminal, text : String) -> Unit {
-  self.output.write("\{text}\n")
+  write_string_with_retry(self.output, "\{text}\n")
   self.cursor_y += 1
   self.cursor_x = 0
 }
@@ -161,7 +189,7 @@ pub async fn Terminal::write_at(
 
 ///|
 pub async fn Terminal::flush(self : Terminal) -> Unit {
-  self.output.write("")
+  write_string_with_retry(self.output, "")
 }
 
 ///|
@@ -193,25 +221,25 @@ pub fn Terminal::is_running(self : Terminal) -> Bool {
 
 ///|
 pub async fn Terminal::enable_bracketed_paste(self : Terminal) -> Unit {
-  self.output.write(EnableBracketedPaste)
+  write_string_with_retry(self.output, EnableBracketedPaste)
 }
 
 ///|
 pub async fn Terminal::disable_bracketed_paste(self : Terminal) -> Unit {
-  self.output.write(DisableBracketedPaste)
+  write_string_with_retry(self.output, DisableBracketedPaste)
 }
 
 ///|
 pub async fn Terminal::save_cursor(self : Terminal) -> Unit {
-  self.output.write(CursorSave)
+  write_string_with_retry(self.output, CursorSave)
 }
 
 ///|
 pub async fn Terminal::restore_cursor(self : Terminal) -> Unit {
-  self.output.write(CursorRestore)
+  write_string_with_retry(self.output, CursorRestore)
 }
 
 ///|
 pub async fn Terminal::clear_screen_down(self : Terminal) -> Unit {
-  self.output.write(ClearScreenDown)
+  write_string_with_retry(self.output, ClearScreenDown)
 }

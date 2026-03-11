@@ -1,7 +1,10 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/stdio",
+  "moonbitlang/async/os_error",
+  "moonbitlang/moonclaw/internal/errno",
   "moonbitlang/moonclaw/internal/tty",
   "moonbitlang/moonclaw/internal/readline/unicode/width" @unicode/width,
   "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
 }
