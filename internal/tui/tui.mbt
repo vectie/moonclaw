@@ -37,7 +37,8 @@ fn spaces(count : Int) -> String {
 
 ///|
 fn frame_line(text : String, width : Int) -> String {
-  "\{truncate_to_width(text, width.max(0))}\{spaces(width.max(0) - @unicode/width.string(text).min(width.max(0)))}"
+  let truncated = truncate_styled(text, width.max(0))
+  "\{truncated}\{spaces(width.max(0) - visible_width(truncated).min(width.max(0)))}"
 }
 
 ///|
@@ -403,7 +404,10 @@ pub async fn TUI::run_event_loop(self : TUI) -> Unit {
         if bytes.length() > 0 {
           let key = parse_key(bytes[:])
           ignore(self.handle_key(key))
-          self.render_if_due(force=true)
+          match key {
+            Enter => self.render_if_due()
+            _ => self.render_if_due(force=true)
+          }
         } else if self.render_needed {
           self.render_if_due()
         }

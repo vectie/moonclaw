@@ -314,3 +314,56 @@ pub fn italic(text : String) -> String {
 pub fn underline(text : String) -> String {
   "\{Underline}\{text}\{Reset}"
 }
+
+///|
+pub fn visible_width(text : String) -> Int {
+  let mut width = 0
+  let mut in_escape = false
+  for c in text {
+    if in_escape {
+      let code = c.to_int()
+      if code >= 0x40 && code <= 0x7E {
+        in_escape = false
+      }
+      continue
+    }
+    if c == '\u{1b}' {
+      in_escape = true
+      continue
+    }
+    width += @unicode/width.char(c).unwrap_or(1)
+  }
+  width
+}
+
+///|
+pub fn truncate_styled(text : String, max_width : Int) -> String {
+  if max_width <= 0 {
+    return ""
+  }
+  let mut width = 0
+  let mut in_escape = false
+  let mut result = ""
+  for c in text {
+    if in_escape {
+      result = "\{result}\{c}"
+      let code = c.to_int()
+      if code >= 0x40 && code <= 0x7E {
+        in_escape = false
+      }
+      continue
+    }
+    if c == '\u{1b}' {
+      in_escape = true
+      result = "\{result}\{c}"
+      continue
+    }
+    let c_width = @unicode/width.char(c).unwrap_or(1)
+    if width + c_width > max_width {
+      break
+    }
+    result = "\{result}\{c}"
+    width += c_width
+  }
+  "\{result}\{Reset}"
+}

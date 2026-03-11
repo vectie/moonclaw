@@ -92,7 +92,6 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
         tui.state().set_activity_status("message queued")
         moonclaw.agent.queue_message(@ai.user_message(content=text)) |> ignore()
       }
-      tui.editor().clear()
       tui.request_render()
     })
 
