@@ -62,6 +62,19 @@ fn editor_frame_line(editor : Editor, width : Int) -> (String, Int) {
 }
 
 ///|
+fn write_repainted_lines(
+  output : RenderOutput,
+  start_row : Int,
+  lines : Array[String],
+) -> Unit {
+  for i in 0..<lines.length() {
+    output.write(cursor_to(0, start_row + i))
+    output.write(ClearLineRight)
+    output.write(lines[i])
+  }
+}
+
+///|
 fn TUI::build_frame(
   self : TUI,
   width : Int,
@@ -280,11 +293,14 @@ pub async fn TUI::render(self : TUI) -> Unit {
     output.write(ClearLineRight)
     output.write(editor_line)
   } else {
+    let body_lines = body_frame
+      .split("\n")
+      .map(fn(v) { v.to_string() })
+      .collect()
     output.write(CursorHide)
-    output.write(CursorHome)
-    output.write(ClearScreenDown)
-    output.write(body_frame)
-    output.write("\n")
+    write_repainted_lines(output, 0, body_lines)
+    output.write(cursor_to(0, cursor_row))
+    output.write(ClearLineRight)
     output.write(editor_line)
   }
   if !body_unchanged {
