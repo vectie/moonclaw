@@ -16,6 +16,10 @@ pub(all) struct TUI {
   mut on_ctrl_d : (() -> Unit)?
   mut on_ctrl_o : (() -> Unit)?
   mut render_needed : Bool
+  mut last_render_at : Int64
+  mut last_width : Int
+  mut last_height : Int
+  mut needs_full_redraw : Bool
 }
 
 ///|
@@ -45,6 +49,10 @@ pub fn TUI::new() -> TUI raise {
     on_ctrl_d: None,
     on_ctrl_o: None,
     render_needed: false,
+    last_render_at: 0,
+    last_width: 0,
+    last_height: 0,
+    needs_full_redraw: true,
   }
   tui.editor.set_on_submit(fn(text : String) { tui.submit(text) })
   tui
@@ -176,7 +184,15 @@ pub async fn TUI::render(self : TUI) -> Unit {
   self.update_footer()
   self.update_status()
   let (width, height) = self.terminal.size()
-  self.terminal.clear_screen()
+  let resized = width != self.last_width || height != self.last_height
+  if self.needs_full_redraw || resized {
+    self.terminal.clear_screen()
+    self.needs_full_redraw = false
+  } else {
+    self.terminal.move_to(0, 0)
+  }
+  self.last_width = width
+  self.last_height = height
   let header_height = 1
   let footer_height = 1
   let status_height = 1
@@ -216,6 +232,19 @@ pub async fn TUI::render(self : TUI) -> Unit {
   )
   self.editor.render(output, 0, height - editor_height, width, editor_height)
   self.terminal.flush()
+  self.last_render_at = @async.now()
+  self.render_needed = false
+}
+
+///|
+async fn TUI::render_if_due(self : TUI, force? : Bool = false) -> Unit {
+  if !self.render_needed {
+    return
+  }
+  let now = @async.now()
+  if force || now - self.last_render_at >= 33L {
+    self.render()
+  }
 }
 
 ///|
@@ -310,16 +339,13 @@ pub async fn TUI::run_event_loop(self : TUI) -> Unit {
         if bytes.length() > 0 {
           let key = parse_key(bytes[:])
           ignore(self.handle_key(key))
-          self.render()
-          self.render_needed = false
+          self.render_if_due(force=true)
         } else if self.render_needed {
-          self.render()
-          self.render_needed = false
+          self.render_if_due()
         }
       Err(_) => {
         if self.render_needed {
-          self.render()
-          self.render_needed = false
+          self.render_if_due()
         }
         @async.sleep(10)
       }

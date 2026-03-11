@@ -396,6 +396,10 @@ pub(all) struct TUI {
   mut on_ctrl_d : (() -> Unit)?
   mut on_ctrl_o : (() -> Unit)?
   mut render_needed : Bool
+  mut last_render_at : Int64
+  mut last_width : Int
+  mut last_height : Int
+  mut needs_full_redraw : Bool
 }
 pub fn TUI::chat_log(Self) -> ChatLog
 pub fn TUI::editor(Self) -> Editor
