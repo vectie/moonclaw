@@ -84,17 +84,18 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
     tui.state().set_session_key(moonclaw.agent.id().to_string())
 
     tui.set_on_submit(fn(text : String) {
-      if text.has_prefix("/") {
-        let (cmd, args) = @tui.parse_command(text)
-        handle_command(tui, moonclaw, cmd, args, state)
-      } else {
-        let (width, height) = tui.terminal().size()
-        let chat_height = height - 4 // Account for header, footer, and editor
-        tui.chat_log().add_user(text, width, chat_height)
-        tui.state().set_busy(true)
-        tui.state().set_activity_status("message queued")
-        moonclaw.agent.queue_message(@ai.user_message(content=text)) |> ignore()
-      }
+      let (width, height) = tui.terminal().size()
+      let chat_height = height - 4 // Account for header, footer, and editor
+      tui.chat_log().add_user(text, width, chat_height)
+      tui.state().set_busy(true)
+      tui.state().set_activity_status("message queued")
+      moonclaw.agent.queue_message(@ai.user_message(content=text)) |> ignore()
+      tui.request_render()
+    })
+
+    tui.set_on_command(fn(text : String) {
+      let (cmd, args) = @tui.parse_command(text)
+      handle_command(tui, moonclaw, cmd, args, state)
       tui.request_render()
     })
 
