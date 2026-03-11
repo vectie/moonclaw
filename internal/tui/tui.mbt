@@ -121,9 +121,7 @@ pub fn TUI::update_footer(self : TUI) -> Unit {
 ///|
 pub fn TUI::update_status(self : TUI) -> Unit {
   let theme = Theme::default()
-  let busy_states = ["sending", "waiting", "streaming", "running"]
-  let is_busy = busy_states.contains(self.state.activity_status())
-  if is_busy {
+  if self.state.is_busy() {
     self.status_loader.start()
     self.status_loader.set_message(
       "\{self.state.activity_status()} | \{self.state.connection_status()}",
@@ -163,7 +161,17 @@ pub fn TUI::request_render(self : TUI) -> Unit {
 }
 
 ///|
+pub fn TUI::scroll_chat_to_bottom(self : TUI) -> Unit {
+  let (width, height) = self.terminal.size()
+  let chat_height = height - 4
+  self.chat_log.maybe_scroll_to_bottom(width, chat_height)
+}
+
+///|
 pub async fn TUI::render(self : TUI) -> Unit {
+  self.terminal.update_size() catch {
+    _ => ()
+  }
   self.update_header()
   self.update_footer()
   self.update_status()
@@ -178,6 +186,7 @@ pub async fn TUI::render(self : TUI) -> Unit {
     footer_height -
     status_height -
     editor_height
+  self.chat_log.normalize_scroll(width, chat_height.max(1))
   let output = @stdio.stdout
   self.header.render(output, 0, 0, width, header_height)
   self.chat_log.render(output, 0, header_height, width, chat_height.max(1))
@@ -250,7 +259,6 @@ pub fn TUI::handle_key(self : TUI, key : Key) -> Bool {
     }
     PageUp => {
       let (_, height) = self.terminal.size()
-      let chat_height = height - 4
       self.chat_log.scroll_up(height - 2)
       self.render_needed = true
       true
@@ -293,6 +301,9 @@ pub fn TUI::submit(self : TUI, text : String) -> Unit {
 ///|
 pub async fn TUI::run_event_loop(self : TUI) -> Unit {
   while self.running {
+    self.terminal.update_size() catch {
+      _ => ()
+    }
     let result : Result[Bytes, Error] = try? self.terminal.input.read_exactly(1)
     match result {
       Ok(bytes) =>

@@ -117,7 +117,6 @@ pub fn wrap_text(String, Int) -> Array[String]
 // Types and methods
 pub(all) struct AssistantMessage {
   mut text : String
-  mut lines : Array[String]
   mut is_streaming : Bool
 }
 pub fn AssistantMessage::get_preferred_height(Self, Int) -> Int
@@ -146,6 +145,7 @@ pub(all) struct ChatLog {
   mut tool_by_id : Map[String, Int]
   mut streaming_by_id : Map[String, Int]
   mut tools_expanded : Bool
+  mut follow_output : Bool
   mut scroll_offset : Int
   max_components : Int
 }
@@ -156,7 +156,9 @@ pub fn ChatLog::drop_assistant(Self, run_id? : String) -> Unit
 pub fn ChatLog::finalize_assistant(Self, String, run_id? : String) -> Unit
 pub fn ChatLog::finalize_current_assistant(Self, run_id? : String) -> Unit
 pub fn ChatLog::get_preferred_height(Self, Int) -> Int
+pub fn ChatLog::maybe_scroll_to_bottom(Self, Int, Int) -> Unit
 pub fn ChatLog::new() -> Self
+pub fn ChatLog::normalize_scroll(Self, Int, Int) -> Unit
 pub async fn ChatLog::render(Self, @stdio.Output, Int, Int, Int, Int) -> Unit
 pub fn ChatLog::scroll_down(Self, Int, Int, Int) -> Unit
 pub fn ChatLog::scroll_to_bottom(Self, Int, Int) -> Unit
@@ -403,6 +405,7 @@ pub fn TUI::new() -> Self raise
 pub async fn TUI::render(Self) -> Unit
 pub fn TUI::request_render(Self) -> Unit
 pub async fn TUI::run_event_loop(Self) -> Unit
+pub fn TUI::scroll_chat_to_bottom(Self) -> Unit
 pub fn TUI::set_on_command(Self, (String) -> Unit) -> Unit
 pub fn TUI::set_on_ctrl_c(Self, () -> Unit) -> Unit
 pub fn TUI::set_on_ctrl_d(Self, () -> Unit) -> Unit
@@ -567,6 +570,7 @@ pub enum ToolStatus {
 pub(all) struct TuiState {
   mut connection_status : String
   mut activity_status : String
+  mut busy : Bool
   mut model : String
   mut agent_id : String
   mut session_key : String
@@ -577,12 +581,14 @@ pub(all) struct TuiState {
 pub fn TuiState::activity_status(Self) -> String
 pub fn TuiState::agent_id(Self) -> String
 pub fn TuiState::connection_status(Self) -> String
+pub fn TuiState::is_busy(Self) -> Bool
 pub fn TuiState::last_ctrl_c_at(Self) -> Int
 pub fn TuiState::model(Self) -> String
 pub fn TuiState::new() -> Self
 pub fn TuiState::session_key(Self) -> String
 pub fn TuiState::set_activity_status(Self, String) -> Unit
 pub fn TuiState::set_agent_id(Self, String) -> Unit
+pub fn TuiState::set_busy(Self, Bool) -> Unit
 pub fn TuiState::set_connection_status(Self, String) -> Unit
 pub fn TuiState::set_model(Self, String) -> Unit
 pub fn TuiState::set_session_key(Self, String) -> Unit
@@ -594,7 +600,6 @@ pub fn TuiState::update_last_ctrl_c(Self, Int) -> Unit
 
 pub(all) struct UserMessage {
   mut text : String
-  mut lines : Array[String]
 }
 pub fn UserMessage::get_preferred_height(Self, Int) -> Int
 pub fn UserMessage::new(String) -> Self

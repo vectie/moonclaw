@@ -2,6 +2,7 @@
 pub(all) struct TuiState {
   mut connection_status : String
   mut activity_status : String
+  mut busy : Bool
   mut model : String
   mut agent_id : String
   mut session_key : String
@@ -15,6 +16,7 @@ pub fn TuiState::new() -> TuiState {
   TuiState::{
     connection_status: "connecting",
     activity_status: "idle",
+    busy: false,
     model: "unknown",
     agent_id: "default",
     session_key: "default",
@@ -35,6 +37,11 @@ pub fn TuiState::set_connection_status(
 ///|
 pub fn TuiState::set_activity_status(self : TuiState, status : String) -> Unit {
   self.activity_status = status
+}
+
+///|
+pub fn TuiState::set_busy(self : TuiState, busy : Bool) -> Unit {
+  self.busy = busy
 }
 
 ///|
@@ -72,6 +79,11 @@ pub fn TuiState::connection_status(self : TuiState) -> String {
 ///|
 pub fn TuiState::activity_status(self : TuiState) -> String {
   self.activity_status
+}
+
+///|
+pub fn TuiState::is_busy(self : TuiState) -> Bool {
+  self.busy
 }
 
 ///|

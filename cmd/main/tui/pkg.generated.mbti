@@ -7,7 +7,6 @@ pub async fn tui_interactive(ArrayView[String]) -> Unit
 // Errors
 
 // Types and methods
-type TuiState
 
 // Type aliases
 

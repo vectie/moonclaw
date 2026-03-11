@@ -1,5 +1,5 @@
 ///|
-struct TuiState {
+priv struct TuiState {
   mut should_exit : Bool
 }
 
@@ -75,13 +75,15 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
     tui.state().set_session_key(moonclaw.agent.id().to_string())
 
     tui.set_on_submit(fn(text : String) {
-      if text.starts_with("/") {
+      if text.has_prefix("/") {
         let (cmd, args) = @tui.parse_command(text)
         handle_command(tui, moonclaw, cmd, args, state)
       } else {
         let (width, height) = tui.terminal().size()
         let chat_height = height - 4 // Account for header, footer, and editor
         tui.chat_log().add_user(text, width, chat_height)
+        tui.state().set_busy(true)
+        tui.state().set_activity_status("message queued")
         moonclaw.agent.queue_message(@ai.user_message(content=text)) |> ignore()
       }
       tui.editor().clear()
@@ -104,25 +106,41 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
 
     moonclaw.agent.add_listener(event => {
       match event.desc {
-        MessageQueued(_) => tui.state().set_activity_status("message queued")
-        PreConversation =>
+        MessageQueued(_) => {
+          tui.state().set_busy(true)
+          tui.state().set_activity_status("message queued")
+          tui.request_render()
+        }
+        PreConversation => {
+          tui.state().set_busy(true)
           tui.state().set_activity_status("starting conversation")
-        TokenCounted(count) =>
+          tui.request_render()
+        }
+        TokenCounted(count) => {
+          tui.state().set_busy(true)
           tui.state().set_activity_status("tokens: \{count}")
-        ContextPruned(origin_token_count~, pruned_token_count~) =>
+          tui.request_render()
+        }
+        ContextPruned(origin_token_count~, pruned_token_count~) => {
+          tui.state().set_busy(true)
           tui
           .state()
           .set_activity_status(
             "context pruned: \{origin_token_count} -> \{pruned_token_count}",
           )
+          tui.request_render()
+        }
         AssistantMessage(content, ..) => {
+          tui.state().set_busy(true)
           tui.state().set_activity_status("receiving response")
           if !content.is_blank() {
             tui.chat_log().update_assistant(content)
+            tui.scroll_chat_to_bottom()
             tui.request_render()
           }
         }
         PreToolCall(tool_call) => {
+          tui.state().set_busy(true)
           tui.state().set_activity_status("calling tool: \{tool_call.name}")
           ignore(
             tui
@@ -133,26 +151,39 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
               tool_call.arguments.unwrap_or(""),
             ),
           )
+          tui.scroll_chat_to_bottom()
           tui.request_render()
         }
-        PostToolCall(tool_call, result~, rendered~, ..) => {
+        PostToolCall(tool_call, result~, rendered~) => {
+          tui.state().set_busy(true)
           tui.state().set_activity_status("tool done: \{tool_call.name}")
           let is_error = match result {
             Err(_) => true
             Ok(_) => false
           }
           tui.chat_log().update_tool_result(tool_call.id, rendered, is_error~)
+          tui.scroll_chat_to_bottom()
           tui.request_render()
         }
         PostConversation => {
+          tui.state().set_busy(false)
           tui.state().set_activity_status("idle")
           // Mark the streaming assistant as done so the next one starts fresh
           // Don't pass empty text, just finalize with current content
           tui.chat_log().finalize_current_assistant()
+          tui.scroll_chat_to_bottom()
           tui.request_render()
         }
-        Failed(err) => tui.state().set_activity_status("failed: \{err}")
-        Cancelled => tui.state().set_activity_status("cancelled")
+        Failed(err) => {
+          tui.state().set_busy(false)
+          tui.state().set_activity_status("failed: \{err}")
+          tui.request_render()
+        }
+        Cancelled => {
+          tui.state().set_busy(false)
+          tui.state().set_activity_status("cancelled")
+          tui.request_render()
+        }
         _ => ()
       }
     })
@@ -177,6 +208,8 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       let (width, height) = tui.terminal().size()
       let chat_height = height - 4
       tui.chat_log().add_user(prompt, width, chat_height)
+      tui.state().set_busy(true)
+      tui.state().set_activity_status("message queued")
       moonclaw.agent.queue_message(@ai.user_message(content=prompt)) |> ignore()
     }
 
@@ -197,7 +230,7 @@ fn handle_command(
   tui : @tui.TUI,
   moonclaw : @moonclaw.Moonclaw,
   cmd : String,
-  args : String,
+  _args : String,
   state : TuiState,
 ) -> Unit {
   let (width, height) = tui.terminal().size()

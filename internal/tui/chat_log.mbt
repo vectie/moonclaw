@@ -45,6 +45,7 @@ pub(all) struct ChatLog {
   mut tool_by_id : Map[String, Int]
   mut streaming_by_id : Map[String, Int]
   mut tools_expanded : Bool
+  mut follow_output : Bool
   mut scroll_offset : Int // Line offset, not component index
   max_components : Int
 }
@@ -56,6 +57,7 @@ pub fn ChatLog::new() -> ChatLog {
     tool_by_id: {},
     streaming_by_id: {},
     tools_expanded: false,
+    follow_output: true,
     scroll_offset: 0,
     max_components: 180,
   }
@@ -68,6 +70,7 @@ pub fn ChatLog::with_max_components(max : Int) -> ChatLog {
     tool_by_id: {},
     streaming_by_id: {},
     tools_expanded: false,
+    follow_output: true,
     scroll_offset: 0,
     max_components: max.max(20),
   }
@@ -106,6 +109,8 @@ pub fn ChatLog::clear_all(self : ChatLog) -> Unit {
   self.components.clear()
   self.tool_by_id.clear()
   self.streaming_by_id.clear()
+  self.follow_output = true
+  self.scroll_offset = 0
 }
 
 ///|
@@ -323,11 +328,13 @@ pub fn ChatLog::scroll_to_bottom(
   } else {
     self.scroll_offset = 0
   }
+  self.follow_output = true
 }
 
 ///|
 pub fn ChatLog::scroll_up(self : ChatLog, lines : Int) -> Unit {
   self.scroll_offset = (self.scroll_offset - lines).max(0)
+  self.follow_output = false
 }
 
 ///|
@@ -340,6 +347,32 @@ pub fn ChatLog::scroll_down(
   let total_height = self.get_preferred_height(width)
   let max_scroll = (total_height - viewport_height).max(0)
   self.scroll_offset = (self.scroll_offset + lines).min(max_scroll)
+  self.follow_output = self.scroll_offset >= max_scroll
+}
+
+///|
+pub fn ChatLog::maybe_scroll_to_bottom(
+  self : ChatLog,
+  width : Int,
+  viewport_height : Int,
+) -> Unit {
+  if self.follow_output {
+    self.scroll_to_bottom(width, viewport_height)
+  }
+}
+
+///|
+pub fn ChatLog::normalize_scroll(
+  self : ChatLog,
+  width : Int,
+  viewport_height : Int,
+) -> Unit {
+  let max_scroll = (self.get_preferred_height(width) - viewport_height).max(0)
+  if self.follow_output {
+    self.scroll_offset = max_scroll
+  } else {
+    self.scroll_offset = self.scroll_offset.min(max_scroll)
+  }
 }
 
 ///|
