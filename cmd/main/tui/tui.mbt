@@ -105,7 +105,27 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       tui.request_render()
     })
 
-    tui.set_on_ctrl_d(fn() { state.should_exit = true })
+    tui.set_on_ctrl_d(fn() {
+      state.should_exit = true
+      tui.state().set_activity_status("stopping")
+      tui.request_render()
+    })
+
+    tui
+    .editor()
+    .set_on_ctrl_c(fn() {
+      state.should_exit = true
+      tui.state().set_activity_status("stopping")
+      tui.request_render()
+    })
+
+    tui
+    .editor()
+    .set_on_ctrl_d(fn() {
+      state.should_exit = true
+      tui.state().set_activity_status("stopping")
+      tui.request_render()
+    })
 
     tui.set_on_ctrl_o(fn() {
       let expanded = tui.state().toggle_tools_expanded()

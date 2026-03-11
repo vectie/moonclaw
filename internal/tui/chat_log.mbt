@@ -468,10 +468,14 @@ fn render_component_lines(
         .map(fn(v) { v.to_string() })
         .collect()
       let system_prefix = theme.system(" System: ")
-      let system_text = theme.dim_style(m.text())
-      let lines : Array[String] = ["\{system_prefix}\{system_text}"]
-      for line in text_lines {
-        lines.push(theme.dim_style(line))
+      let lines : Array[String] = []
+      if text_lines.length() == 0 {
+        lines.push(system_prefix)
+        return lines
+      }
+      lines.push("\{system_prefix}\{theme.dim_style(text_lines[0])}")
+      for i in 1..<text_lines.length() {
+        lines.push(theme.dim_style(text_lines[i]))
       }
       lines
     }
