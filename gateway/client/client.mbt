@@ -17,6 +17,34 @@ pub(all) struct ClientConfig {
 }
 
 ///|
+pub(all) struct RunInfo {
+  run_id : String
+  session_key : String
+  status : String
+  created_at : Int
+  completed_at : Int?
+  result : Json?
+  error : @protocol.ErrorShape?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct RunsListPayload {
+  runs : Array[RunInfo]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct ChannelsListPayload {
+  channels : Array[@channel.ChannelDock]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct ChannelMutationPayload {
+  status : String
+  channel_id : String
+  account_id : String?
+} derive(ToJson, FromJson, Show)
+
+///|
 pub async fn Client::new(config : ClientConfig) -> Client {
   let uuid = @uuid.generator(@rand.chacha8())
   Client::{
@@ -53,26 +81,16 @@ pub async fn Client::connect(
     params: Some(connect_params.to_json()),
   }
   let response = self.send_rpc(request)
-  match response {
-    Err(e) => Err(e)
-    Ok(res) =>
-      if !res.ok {
-        match res.error {
-          Some(error) => Err(error.message)
-          None => Err("Connection failed with unknown error")
-        }
-      } else {
-        match res.payload {
-          Some(payload) => {
-            let hello = @json.from_json(payload) catch {
-              e => return Err("Failed to parse hello response: \{e}")
-            }
-            self.connected = true
-            Ok(hello)
-          }
-          None => Err("Missing hello response payload")
-        }
-      }
+  let hello : Result[@protocol.HelloOk, String] = decode_ok_payload(
+    response, "Connection failed with unknown error", "Missing hello response payload",
+    "Failed to parse hello response",
+  )
+  match hello {
+    Ok(hello) => {
+      self.connected = true
+      Ok(hello)
+    }
+    Err(error) => Err(error)
   }
 }
 
@@ -100,26 +118,10 @@ pub async fn Client::agent(
     params: Some(params.to_json()),
   }
   let response = self.send_rpc(request)
-  match response {
-    Err(e) => Err(e)
-    Ok(res) =>
-      if !res.ok {
-        match res.error {
-          Some(error) => Err(error.message)
-          None => Err("Agent request failed with unknown error")
-        }
-      } else {
-        match res.payload {
-          Some(payload) => {
-            let accepted = @json.from_json(payload) catch {
-              e => return Err("Failed to parse agent accepted response: \{e}")
-            }
-            Ok(accepted)
-          }
-          None => Err("Missing agent accepted response payload")
-        }
-      }
-  }
+  decode_ok_payload(
+    response, "Agent request failed with unknown error", "Missing agent accepted response payload",
+    "Failed to parse agent accepted response",
+  )
 }
 
 ///|
@@ -134,21 +136,10 @@ pub async fn Client::wait_agent(
     params: Some({ "run_id": run_id, "timeout_ms": timeout_ms }),
   }
   let response = self.send_rpc(request)
-  match response {
-    Err(e) => Err(e)
-    Ok(res) =>
-      if !res.ok {
-        match res.error {
-          Some(error) => Err(error.message)
-          None => Err("Agent wait failed with unknown error")
-        }
-      } else {
-        match res.payload {
-          Some(payload) => Ok(payload)
-          None => Err("Missing agent wait response payload")
-        }
-      }
-  }
+  decode_ok_payload(
+    response, "Agent wait failed with unknown error", "Missing agent wait response payload",
+    "Failed to parse agent wait response",
+  )
 }
 
 ///|
@@ -161,26 +152,10 @@ pub async fn Client::list_sessions(
     params: None,
   }
   let response = self.send_rpc(request)
-  match response {
-    Err(e) => Err(e)
-    Ok(res) =>
-      if !res.ok {
-        match res.error {
-          Some(error) => Err(error.message)
-          None => Err("Sessions list failed with unknown error")
-        }
-      } else {
-        match res.payload {
-          Some(payload) => {
-            let sessions = @json.from_json(payload) catch {
-              e => return Err("Failed to parse sessions response: \{e}")
-            }
-            Ok(sessions)
-          }
-          None => Err("Missing sessions response payload")
-        }
-      }
-  }
+  decode_ok_payload(
+    response, "Sessions list failed with unknown error", "Missing sessions response payload",
+    "Failed to parse sessions response",
+  )
 }
 
 ///|
@@ -193,26 +168,142 @@ pub async fn Client::health(
     params: None,
   }
   let response = self.send_rpc(request)
-  match response {
-    Err(e) => Err(e)
-    Ok(res) =>
-      if !res.ok {
-        match res.error {
-          Some(error) => Err(error.message)
-          None => Err("Health check failed with unknown error")
-        }
-      } else {
-        match res.payload {
-          Some(payload) => {
-            let health = @json.from_json(payload) catch {
-              e => return Err("Failed to parse health response: \{e}")
-            }
-            Ok(health)
-          }
-          None => Err("Missing health response payload")
-        }
-      }
+  decode_ok_payload(
+    response, "Health check failed with unknown error", "Missing health response payload",
+    "Failed to parse health response",
+  )
+}
+
+///|
+pub async fn Client::list_runs(
+  self : Client,
+) -> Result[RunsListPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "runs.list",
+    params: None,
   }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Runs list failed with unknown error",
+    "Missing runs response payload",
+    "Failed to parse runs response",
+  )
+}
+
+///|
+pub async fn Client::get_run(
+  self : Client,
+  run_id~ : String,
+) -> Result[RunInfo, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "runs.get",
+    params: Some({ "run_id": run_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Run lookup failed with unknown error",
+    "Missing run response payload",
+    "Failed to parse run response",
+  )
+}
+
+///|
+pub async fn Client::list_channels(
+  self : Client,
+) -> Result[ChannelsListPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "channels.list",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Channels list failed with unknown error",
+    "Missing channels response payload",
+    "Failed to parse channels response",
+  )
+}
+
+///|
+pub async fn Client::get_channel(
+  self : Client,
+  channel_id~ : String,
+) -> Result[@channel.ChannelDock, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "channels.get",
+    params: Some({ "channel_id": channel_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Channel lookup failed with unknown error",
+    "Missing channel response payload",
+    "Failed to parse channel response",
+  )
+}
+
+///|
+pub async fn Client::configure_channel(
+  self : Client,
+  channel_id~ : String,
+  config : @channel.ChannelConfig,
+) -> Result[ChannelMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "channels.configure",
+    params: Some({ "channel_id": channel_id, "config": config.to_json() }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Channel configure failed with unknown error",
+    "Missing channel configure payload",
+    "Failed to parse channel configure response",
+  )
+}
+
+///|
+pub async fn Client::start_channel(
+  self : Client,
+  channel_id~ : String,
+  account_id~ : String,
+  config : Json,
+) -> Result[ChannelMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "channels.start",
+    params: Some({
+      "channel_id": channel_id,
+      "account_id": account_id,
+      "config": config,
+    }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Channel start failed with unknown error",
+    "Missing channel start payload",
+    "Failed to parse channel start response",
+  )
+}
+
+///|
+pub async fn Client::stop_channel(
+  self : Client,
+  channel_id~ : String,
+  account_id~ : String,
+) -> Result[ChannelMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "channels.stop",
+    params: Some({ "channel_id": channel_id, "account_id": account_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Channel stop failed with unknown error",
+    "Missing channel stop payload",
+    "Failed to parse channel stop response",
+  )
 }
 
 ///|
@@ -231,7 +322,7 @@ async fn Client::send_rpc(
   }
   let _ = self.http.post(
     "/v1/rpc",
-    frame.stringify().to_bytes(),
+    @encoding/utf8.encode(frame.stringify()),
     extra_headers~,
   )
   let body = self.http.read_all().binary()
@@ -262,4 +353,33 @@ async fn Client::send_rpc(
     payload: obj.get("payload"),
     error,
   })
+}
+
+///|
+fn[T : @json.FromJson] decode_ok_payload(
+  response : Result[@protocol.Response, String],
+  default_error : String,
+  missing_payload_error : String,
+  parse_error_prefix : String,
+) -> Result[T, String] {
+  match response {
+    Err(error) => Err(error)
+    Ok(res) =>
+      if !res.ok {
+        match res.error {
+          Some(error) => Err(error.message)
+          None => Err(default_error)
+        }
+      } else {
+        match res.payload {
+          Some(payload) => {
+            let parsed : T = @json.from_json(payload) catch {
+              error => return Err("\{parse_error_prefix}: \{error}")
+            }
+            Ok(parsed)
+          }
+          None => Err(missing_payload_error)
+        }
+      }
+  }
 }

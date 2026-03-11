@@ -44,7 +44,7 @@ fn Gateway::subtask_agent_params(
 ) -> @protocol.AgentParams {
   @protocol.AgentParams::{
     message: task.message,
-    session_key: Some("coord:\{coordination_id}:\{task.task_id}"),
+    session_key: Some(coordination_session_key(coordination_id, task.task_id)),
     cwd: task.cwd,
     model: task.model,
     provider: None,
@@ -64,7 +64,7 @@ fn Gateway::pipeline_stage_agent_params(
 ) -> @protocol.AgentParams {
   @protocol.AgentParams::{
     message: input,
-    session_key: Some("pipeline:\{pipeline_id}:\{stage_name}"),
+    session_key: Some(pipeline_stage_session_key(pipeline_id, stage_name)),
     cwd,
     model,
     provider: None,

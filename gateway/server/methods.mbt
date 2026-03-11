@@ -477,7 +477,7 @@ async fn Gateway::handle_sessions_reset_method(
         }),
       })
   }
-  let removed = self.sessions.reset(session_id)
+  let removed = self.sessions.reset_and_save(session_id)
   let result : Json = { "reset": removed }
   self.send_response(w, @protocol.Response::{
     id: request.id,

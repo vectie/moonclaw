@@ -1,20 +1,5 @@
 ///|
-fn Gateway::channel_session_key(
-  self : Gateway,
-  channel_id : String,
-  account_id : String,
-  message : @channel.Message,
-) -> String {
-  let thread = message.thread_id.unwrap_or("")
-  if thread.is_blank() {
-    "\{channel_id}:\{account_id}:\{message.to}"
-  } else {
-    "\{channel_id}:\{account_id}:\{message.to}:\{thread}"
-  }
-}
-
-///|
-fn Gateway::store_channel_session(
+async fn Gateway::store_channel_session(
   self : Gateway,
   session_key : String,
   conversation_id : String,
@@ -22,14 +7,14 @@ fn Gateway::store_channel_session(
   cwd : String,
   model_name : String,
 ) -> Unit {
-  self.sessions.sessions[session_key] = SessionEntry::{
+  self.sessions.save_entry(session_key, SessionEntry::{
     session_id: conversation_id,
     updated_at: current_time_ms(),
     channel: Some(channel_id),
     model_override: Some(model_name),
     provider_override: None,
     cwd: Some(cwd),
-  }
+  })
 }
 
 ///|
@@ -78,7 +63,7 @@ impl @channel.MessageHandler for Gateway with handle_message(
   account_id : String,
   message : @channel.Message,
 ) -> @channel.Message raise {
-  let session_key = self.channel_session_key(channel_id, account_id, message)
+  let session_key = message_session_key(channel_id, account_id, message)
   let session = self.sessions.get(session_key)
   let cwd = match session {
     Some(entry) => entry.cwd.unwrap_or(self.cwd)

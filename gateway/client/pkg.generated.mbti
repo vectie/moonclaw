@@ -3,6 +3,8 @@ package "moonbitlang/moonclaw/gateway/client"
 
 import {
   "moonbitlang/async/http",
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/channel",
   "moonbitlang/moonclaw/gateway/protocol",
   "moonbitlang/moonclaw/internal/pino",
   "moonbitlang/moonclaw/internal/uuid",
@@ -13,6 +15,22 @@ import {
 // Errors
 
 // Types and methods
+pub(all) struct ChannelMutationPayload {
+  status : String
+  channel_id : String
+  account_id : String?
+}
+pub impl Show for ChannelMutationPayload
+pub impl ToJson for ChannelMutationPayload
+pub impl @json.FromJson for ChannelMutationPayload
+
+pub(all) struct ChannelsListPayload {
+  channels : Array[@channel.ChannelDock]
+}
+pub impl Show for ChannelsListPayload
+pub impl ToJson for ChannelsListPayload
+pub impl @json.FromJson for ChannelsListPayload
+
 pub struct Client {
   base_url : String
   token : String?
@@ -22,10 +40,17 @@ pub struct Client {
   mut connected : Bool
 }
 pub async fn Client::agent(Self, message~ : String, session_key? : String, cwd? : String, model? : String, run_id? : String) -> Result[@protocol.AgentAcceptedPayload, String]
+pub async fn Client::configure_channel(Self, channel_id~ : String, @channel.ChannelConfig) -> Result[ChannelMutationPayload, String]
 pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
+pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]
+pub async fn Client::get_run(Self, run_id~ : String) -> Result[RunInfo, String]
 pub async fn Client::health(Self) -> Result[@protocol.HealthPayload, String]
+pub async fn Client::list_channels(Self) -> Result[ChannelsListPayload, String]
+pub async fn Client::list_runs(Self) -> Result[RunsListPayload, String]
 pub async fn Client::list_sessions(Self) -> Result[@protocol.SessionsListPayload, String]
 pub async fn Client::new(ClientConfig) -> Self
+pub async fn Client::start_channel(Self, channel_id~ : String, account_id~ : String, Json) -> Result[ChannelMutationPayload, String]
+pub async fn Client::stop_channel(Self, channel_id~ : String, account_id~ : String) -> Result[ChannelMutationPayload, String]
 pub async fn Client::wait_agent(Self, run_id~ : String, timeout_ms? : Int) -> Result[Json, String]
 
 pub(all) struct ClientConfig {
@@ -34,6 +59,26 @@ pub(all) struct ClientConfig {
   client_id : String?
   client_mode : @protocol.ClientMode
 }
+
+pub(all) struct RunInfo {
+  run_id : String
+  session_key : String
+  status : String
+  created_at : Int
+  completed_at : Int?
+  result : Json?
+  error : @protocol.ErrorShape?
+}
+pub impl Show for RunInfo
+pub impl ToJson for RunInfo
+pub impl @json.FromJson for RunInfo
+
+pub(all) struct RunsListPayload {
+  runs : Array[RunInfo]
+}
+pub impl Show for RunsListPayload
+pub impl ToJson for RunsListPayload
+pub impl @json.FromJson for RunsListPayload
 
 // Type aliases
 

@@ -114,11 +114,16 @@ async fn Gateway::execute_agent(
     Some(cwd) => cwd
     None => self.cwd
   }
-  let session_key = match params.session_key {
-    Some(key) => key
-    None => run_id
-  }
+  let session_key = direct_session_key(params.session_key, run_id)
   let session = self.sessions.get_or_create(session_key~, cwd~)
+  self.sessions.save_entry(session_key, SessionEntry::{
+    session_id: session.session_id,
+    updated_at: current_time_ms(),
+    channel: session.channel,
+    model_override: session.model_override,
+    provider_override: session.provider_override,
+    cwd: Some(cwd),
+  })
   let model_name = match params.model {
     Some(m) => m
     None =>
@@ -161,6 +166,14 @@ async fn Gateway::execute_agent(
         result: None,
         error: Some(error_shape),
       }
+      self.sessions.save_entry(session_key, SessionEntry::{
+        session_id: session.session_id,
+        updated_at: current_time_ms(),
+        channel: session.channel,
+        model_override: Some(model_name),
+        provider_override: session.provider_override,
+        cwd: Some(cwd),
+      })
       return Err(error_shape)
     }
   }
@@ -210,6 +223,7 @@ async fn Gateway::execute_agent(
   agent.close()
 
   let completed_at = current_time_ms()
+  let conversation_id = agent.id().to_string()
   self.agent_runs[run_id] = AgentRun::{
     run_id,
     session_key,
@@ -222,11 +236,19 @@ async fn Gateway::execute_agent(
       "session_key": session_key,
       "model": model_name,
       "content": final_content,
-      "conversation_id": agent.id().to_string(),
+      "conversation_id": conversation_id,
       "completed_at": completed_at,
     }),
     error: None,
   }
+  self.sessions.save_entry(session_key, SessionEntry::{
+    session_id: conversation_id,
+    updated_at: completed_at,
+    channel: session.channel,
+    model_override: Some(model_name),
+    provider_override: session.provider_override,
+    cwd: Some(cwd),
+  })
   self.events.put(GatewayEvent::SessionChanged(run_id))
   Ok({
     "run_id": run_id,
@@ -234,7 +256,7 @@ async fn Gateway::execute_agent(
     "session_key": session_key,
     "model": model_name,
     "content": final_content,
-    "conversation_id": agent.id().to_string(),
+    "conversation_id": conversation_id,
     "completed_at": completed_at,
   })
 }

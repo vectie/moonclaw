@@ -282,13 +282,15 @@ async fn Gateway::handle_channels_configure(
   }
 
   match self.channel_manager.configure_channel(channel_id, channel_config) {
-    Ok(_) =>
+    Ok(_) => {
+      self.channel_state.save_config(channel_id, channel_config)
       self.send_response(w, @protocol.Response::{
         id: request.id,
         ok: true,
         payload: Some({ "status": "configured", "channel_id": channel_id }),
         error: None,
       })
+    }
     Err(e) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,
@@ -380,7 +382,10 @@ async fn Gateway::handle_channels_start(
   }
 
   match self.channel_manager.start_channel(channel_id, account_id, config) {
-    Ok(_) =>
+    Ok(_) => {
+      self.channel_state.save_account_runtime(
+        channel_id, account_id, config, true,
+      )
       self.send_response(w, @protocol.Response::{
         id: request.id,
         ok: true,
@@ -391,6 +396,7 @@ async fn Gateway::handle_channels_start(
         }),
         error: None,
       })
+    }
     Err(e) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,
@@ -465,7 +471,8 @@ async fn Gateway::handle_channels_stop(
   }
 
   match self.channel_manager.stop_channel(channel_id, account_id) {
-    Ok(_) =>
+    Ok(_) => {
+      self.channel_state.save_account_runtime(channel_id, account_id, {}, false)
       self.send_response(w, @protocol.Response::{
         id: request.id,
         ok: true,
@@ -476,6 +483,7 @@ async fn Gateway::handle_channels_stop(
         }),
         error: None,
       })
+    }
     Err(e) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,

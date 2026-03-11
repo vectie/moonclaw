@@ -24,6 +24,9 @@ pub async fn Gateway::new(
   let session_dir = @path.Path(gateway_dir)
     .join(@path.Path("sessions"))
     .to_string()
+  let channel_state_file = @path.Path(gateway_dir)
+    .join(@path.Path("channels.json"))
+    .to_string()
   @fsx.make_directory(session_dir, recursive=true) catch {
     _ => ()
   }
@@ -75,6 +78,13 @@ pub async fn Gateway::new(
     mailbox_manager: mailbox_manager(),
     coordinator: coordinator(uuid~),
     pipeline_manager: pipeline_manager(uuid~),
+    channel_state: ChannelStateStore::{ path: channel_state_file, states: {} },
+  }
+  gateway.sessions.load() catch {
+    error => gateway.logger.warn("Failed to load gateway sessions: \{error}")
+  }
+  gateway.channel_state.load() catch {
+    error => gateway.logger.warn("Failed to load channel state: \{error}")
   }
   let feishu_channel = @feishu.FeishuChannel::new()
   let handler : &@channel.MessageHandler = gateway
@@ -84,6 +94,9 @@ pub async fn Gateway::new(
   }) catch {
     error =>
       gateway.logger.warn("Failed to register Feishu extension: \{error}")
+  }
+  gateway.restore_channel_runtime() catch {
+    error => gateway.logger.warn("Failed to restore channel runtime: \{error}")
   }
   gateway
 }

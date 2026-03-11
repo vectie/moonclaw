@@ -1,16 +1,11 @@
 import {
   "moonbitlang/core/json",
-  "moonbitlang/async",
   "moonbitlang/async/http",
-  "moonbitlang/async/io",
-  "moonbitlang/core/deque",
-  "moonbitlang/x/encoding",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
+  "moonbitlang/moonclaw/channel",
   "moonbitlang/moonclaw/gateway/protocol",
-  "moonbitlang/moonclaw/internal/httpx",
   "moonbitlang/moonclaw/internal/uuid",
   "moonbitlang/moonclaw/internal/rand",
   "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/clock",
   "moonbitlang/moonclaw/internal/buildinfo",
-  "moonbitlang/moonclaw/internal/os",
 }

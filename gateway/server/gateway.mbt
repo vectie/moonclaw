@@ -32,6 +32,7 @@ pub struct Gateway {
   mailbox_manager : MailboxManager
   coordinator : Coordinator
   pipeline_manager : PipelineManager
+  channel_state : ChannelStateStore
 }
 
 ///|
@@ -65,7 +66,7 @@ struct SessionEntry {
   model_override : String?
   provider_override : String?
   cwd : String?
-}
+} derive(ToJson, FromJson, Show)
 
 ///|
 struct DedupeCache {
@@ -79,6 +80,26 @@ struct DedupeEntry {
   ok : Bool
   payload : Json?
   error : @protocol.ErrorShape?
+}
+
+///|
+struct PersistedChannelAccount {
+  account_id : String
+  config : Json
+  auto_start : Bool
+} derive(ToJson, FromJson, Show)
+
+///|
+struct PersistedChannelState {
+  channel_id : String
+  config : @channel.ChannelConfig
+  accounts : Array[PersistedChannelAccount]
+} derive(ToJson, FromJson, Show)
+
+///|
+struct ChannelStateStore {
+  path : String
+  states : Map[String, PersistedChannelState]
 }
 
 ///|

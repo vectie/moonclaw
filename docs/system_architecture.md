@@ -62,7 +62,29 @@ The shared unit is `@moonclaw.Moonclaw`:
 | `coordinator` | coordination tasks and subtask state |
 | `pipeline_manager` | pipeline definitions and stage state |
 
-`gateway/server/new.mbt` creates the gateway and auto-registers the Feishu extension during startup.
+`gateway/server/new.mbt` creates the gateway, loads persisted state, auto-registers the Feishu extension, and restores enabled channel runtime.
+
+## Gateway Persistent State
+
+The gateway keeps two JSON-backed state files under `home/gateway/`:
+
+| File | Owner | Purpose |
+|---|---|---|
+| `gateway/sessions/sessions.json` | `SessionManager` | session key -> conversation/model/provider/cwd state |
+| `gateway/channels.json` | `ChannelStateStore` | channel config plus per-account runtime intent |
+
+Startup sequence:
+
+```text
+Gateway::new(...)
+  -> create gateway/session directories
+  -> sessions.load()
+  -> channel_state.load()
+  -> register Feishu extension
+  -> restore_channel_runtime()
+```
+
+That means a restart now preserves direct-run conversation continuity, channel-triggered conversation continuity, channel config, and which channel accounts should auto-start again.
 
 ## Gateway HTTP Surface
 
@@ -189,6 +211,57 @@ The final run payload currently includes:
 - `conversation_id`
 - `completed_at`
 
+## Session Routing and Write-Back Flow
+
+Session-key derivation is centralized in `gateway/server/session_route.mbt`.
+
+### Direct runs
+
+```text
+Client / HTTP agent request
+  -> direct_session_key(session_key?, run_id)
+  -> sessions.get_or_create(...)
+  -> execute agent
+  -> sessions.save_entry(session_key, SessionEntry{ conversation_id, model, cwd, ... })
+```
+
+Rules:
+
+- if the caller supplies `session_key`, that key is used
+- otherwise the gateway falls back to `run_id`
+- the final conversation id is written back into the persistent session store
+
+### Channel-triggered runs
+
+```text
+Webhook message
+  -> message_session_key(channel_id, account_id, message)
+  -> sessions.get(session_key)
+  -> resume existing conversation if present
+  -> else create new Moonclaw session
+  -> execute agent
+  -> store_channel_session(...)
+  -> sessions.save_entry(...)
+```
+
+Current channel key format:
+
+```text
+{channel_id}:{account_id}:{chat_id}
+{channel_id}:{account_id}:{chat_id}:{thread_id}
+```
+
+### Orchestration runs
+
+Background multi-agent work also gets stable derived keys:
+
+```text
+coordination_session_key(coordination_id, task_id)
+pipeline_stage_session_key(pipeline_id, stage_name)
+```
+
+That keeps orchestration runs in separate conversation lanes instead of sharing generic session ids.
+
 ## TUI Call Chain
 
 ```text
@@ -240,6 +313,42 @@ Session continuity is keyed by:
 or
 {channel_id}:{account_id}:{chat_id}:{thread_id}
 ```
+
+## Channel Config and Runtime Restore Flow
+
+Channel lifecycle now has both a durable write path and a startup restore path.
+
+Write path:
+
+```text
+channels.configure
+  -> ChannelManager.configure_channel(...)
+  -> ChannelStateStore.save_config(...)
+
+channels.start
+  -> ChannelManager.start_channel(...)
+  -> ChannelStateStore.save_account_runtime(..., auto_start=true)
+
+channels.stop
+  -> ChannelManager.stop_channel(...)
+  -> ChannelStateStore.save_account_runtime(..., auto_start=false)
+```
+
+Restore path:
+
+```text
+Gateway::restore_channel_runtime
+  -> ChannelStateStore.list_states()
+  -> ChannelManager.restore_states(...)
+    -> configure all persisted channels
+    -> start only accounts with auto_start=true
+```
+
+Important runtime behavior:
+
+- removing an account from channel config prunes its persisted runtime entry
+- stopping a channel account keeps the config but disables auto-start
+- restart restores channel configuration first, then only runnable accounts
 
 ## Mailbox Message Flow
 

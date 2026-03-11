@@ -114,9 +114,17 @@ pub fn ChannelManager::get_channel_dock(Self, String) -> @channel.ChannelDock?
 pub fn ChannelManager::list_channels(Self) -> Array[@channel.ChannelDock]
 pub fn ChannelManager::new(@pino.Logger) -> Self
 pub fn ChannelManager::register_channel(Self, &@channel.Channel) -> Unit
+pub async fn ChannelManager::restore_states(Self, @pino.Logger, Array[PersistedChannelState]) -> Unit
 pub fn ChannelManager::send_message(Self, String, String, @channel.Message, String?) -> Result[@channel.SendResult, @channel.ChannelError]
 pub fn ChannelManager::start_channel(Self, String, String, Json) -> Result[Unit, @channel.ChannelError]
 pub fn ChannelManager::stop_channel(Self, String, String) -> Result[Unit, @channel.ChannelError]
+
+type ChannelStateStore
+pub fn ChannelStateStore::list_states(Self) -> Array[PersistedChannelState]
+pub async fn ChannelStateStore::load(Self) -> Unit
+pub async fn ChannelStateStore::save(Self) -> Unit
+pub async fn ChannelStateStore::save_account_runtime(Self, String, String, Json, Bool) -> Unit
+pub async fn ChannelStateStore::save_config(Self, String, @channel.ChannelConfig) -> Unit
 
 pub enum CoordinationStatus {
   Pending
@@ -237,6 +245,7 @@ pub struct Gateway {
   mailbox_manager : MailboxManager
   coordinator : Coordinator
   pipeline_manager : PipelineManager
+  channel_state : ChannelStateStore
 }
 pub fn Gateway::auth_token(Self) -> String?
 pub async fn Gateway::handle_request(Self, @httpx.RequestReader, @httpx.ResponseWriter) -> Unit
@@ -244,6 +253,7 @@ pub async fn Gateway::new(uuid? : @uuid.Generator, port? : Int, cwd? : StringVie
 pub fn Gateway::port(Self) -> Int
 pub fn Gateway::register_extension(Self, &@channel.ChannelExtension) -> Unit raise
 pub fn Gateway::request_shutdown(Self) -> Unit
+pub async fn Gateway::restore_channel_runtime(Self) -> Unit
 pub async fn Gateway::start(Self) -> Unit
 pub fn Gateway::unregister_extension(Self, String) -> Unit
 
@@ -262,6 +272,21 @@ pub fn MailboxManager::list(Self) -> Array[String]
 pub fn MailboxManager::remove(Self, String) -> AgentMailbox?
 pub fn MailboxManager::size(Self) -> Int
 pub fn MailboxManager::to_json(Self) -> Json
+
+type PersistedChannelAccount
+pub impl Show for PersistedChannelAccount
+pub impl ToJson for PersistedChannelAccount
+pub impl @json.FromJson for PersistedChannelAccount
+
+type PersistedChannelState
+pub impl Show for PersistedChannelState
+pub impl ToJson for PersistedChannelState
+pub impl @json.FromJson for PersistedChannelState
+
+type PersistedSession
+pub impl Show for PersistedSession
+pub impl ToJson for PersistedSession
+pub impl @json.FromJson for PersistedSession
 
 pub struct Pipeline {
   pipeline_id : String
@@ -362,13 +387,20 @@ pub impl ToJson for SendMessageParams
 pub impl @json.FromJson for SendMessageParams
 
 type SessionEntry
+pub impl Show for SessionEntry
+pub impl ToJson for SessionEntry
+pub impl @json.FromJson for SessionEntry
 
 type SessionManager
 pub fn SessionManager::count(Self) -> Int
 pub fn SessionManager::get(Self, String) -> SessionEntry?
 pub fn SessionManager::get_or_create(Self, session_key~ : String, cwd~ : String) -> SessionEntry
 pub fn SessionManager::list(Self) -> Array[SessionEntry]
+pub async fn SessionManager::load(Self) -> Unit
 pub fn SessionManager::reset(Self, String) -> Bool
+pub async fn SessionManager::reset_and_save(Self, String) -> Bool
+pub async fn SessionManager::save(Self) -> Unit
+pub async fn SessionManager::save_entry(Self, String, SessionEntry) -> Unit
 
 pub struct SubTask {
   task_id : String

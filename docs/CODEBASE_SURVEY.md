@@ -216,8 +216,9 @@ The new gateway service provides a long-running backend service that can spawn a
 
 1. **Frame-based Protocol** - Request/Response/Event frames
 2. **Two-stage Async Responses** - Accept immediately, execute in background
-3. **Session Management** - With dedupe cache for idempotency
-4. **Challenge-Response Auth** - Token-based authentication
+3. **Session Management** - With persisted JSON-backed session state plus dedupe cache
+4. **Channel Runtime Persistence** - Persistent channel config and auto-start intent
+5. **Challenge-Response Auth** - Token-based authentication
 
 ### Gateway Protocol (`gateway/protocol/`)
 

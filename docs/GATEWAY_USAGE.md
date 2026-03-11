@@ -7,10 +7,11 @@ This guide matches the current implementation in `cmd/gateway` and `gateway/serv
 The gateway is a long-running HTTP/RPC service that:
 
 - accepts agent execution requests
-- keeps lightweight session state by `session_key`
+- persists lightweight session state by `session_key`
 - exposes SSE for agent events
 - exposes mailbox, coordination, and pipeline APIs
 - hosts channel extensions such as Feishu webhooks
+- persists channel configuration and channel account runtime intent
 
 Default address:
 
@@ -26,6 +27,13 @@ Implemented subcommands in `cmd/gateway/main.mbt`:
 moonclaw gateway start [--port PORT] [--cwd DIR] [--home DIR]
 moonclaw gateway connect [--url URL] [--token TOKEN]
 moonclaw gateway agent --message "..." [--session KEY] [--cwd DIR] [--model NAME] [--wait] [--timeout MS]
+moonclaw gateway runs [--url URL] [--token TOKEN]
+moonclaw gateway run --id RUN_ID [--url URL] [--token TOKEN]
+moonclaw gateway channels [--url URL] [--token TOKEN]
+moonclaw gateway channel --id CHANNEL_ID [--url URL] [--token TOKEN]
+moonclaw gateway channel-configure --id CHANNEL_ID --config-json '{...}' [--url URL] [--token TOKEN]
+moonclaw gateway channel-start --id CHANNEL_ID --account ACCOUNT_ID --config-json '{...}' [--url URL] [--token TOKEN]
+moonclaw gateway channel-stop --id CHANNEL_ID --account ACCOUNT_ID [--url URL] [--token TOKEN]
 moonclaw gateway health [--url URL] [--token TOKEN]
 moonclaw gateway help
 moonclaw gateway version
@@ -41,7 +49,10 @@ moonclaw gateway start
     -> Gateway::new(...)
       -> build http server
       -> create session/dedupe/mailbox/coordinator/pipeline managers
+      -> load `gateway/sessions/sessions.json`
+      -> load `gateway/channels.json`
       -> register Feishu extension
+      -> restore enabled channel accounts
     -> Gateway::start()
       -> serve HTTP requests
       -> run tick loop
@@ -77,6 +88,30 @@ moonclaw gateway connect --url http://localhost:19000
 moonclaw gateway agent --message "Review this repository" --wait
 moonclaw gateway agent --message "Continue" --session repo-review --wait
 moonclaw gateway agent --message "Use a specific model" --model default --wait
+```
+
+### Inspect runs and channels
+
+```bash
+moonclaw gateway runs
+moonclaw gateway run --id run-123
+moonclaw gateway channels
+moonclaw gateway channel --id feishu
+```
+
+### Configure and control channel runtime
+
+```bash
+moonclaw gateway channel-configure \
+  --id feishu \
+  --config-json '{"enabled":true,"accounts":{"default":{"app_id":"...","app_secret":"...","domain":"feishu","connection_mode":"webhook","dm_policy":"pairing","enabled":true}},"global_settings":{}}'
+
+moonclaw gateway channel-start \
+  --id feishu \
+  --account default \
+  --config-json '{"app_id":"...","app_secret":"...","domain":"feishu","connection_mode":"webhook","dm_policy":"pairing","enabled":true}'
+
+moonclaw gateway channel-stop --id feishu --account default
 ```
 
 ## HTTP and RPC Surfaces
@@ -188,7 +223,7 @@ Final payload fields:
 
 ## Session Model
 
-The gateway keeps lightweight in-memory session entries:
+The gateway keeps lightweight persisted session entries in `home/gateway/sessions/sessions.json`:
 
 - `session_id`
 - `updated_at`
@@ -200,6 +235,61 @@ The gateway keeps lightweight in-memory session entries:
 For direct agent usage, `session_key` is supplied by the caller.
 
 For channel-triggered usage, the gateway derives a session key from channel/account/chat/thread.
+
+Current routing helpers:
+
+- direct runs: `direct_session_key(session_key?, run_id)`
+- channel messages: `message_session_key(channel_id, account_id, message)`
+- coordination subtasks: `coordination_session_key(coordination_id, task_id)`
+- pipeline stages: `pipeline_stage_session_key(pipeline_id, stage_name)`
+
+Direct write-back flow:
+
+```text
+agent request
+  -> resolve direct session key
+  -> sessions.get_or_create(...)
+  -> execute agent
+  -> save_entry(...conversation_id/model/cwd...)
+```
+
+Channel write-back flow:
+
+```text
+webhook message
+  -> derive channel session key
+  -> lookup prior SessionEntry
+  -> resume or create Moonclaw conversation
+  -> execute agent
+  -> save_entry(...conversation_id/channel/cwd...)
+```
+
+## Channel Runtime Persistence
+
+Channel config and runtime intent are stored in `home/gateway/channels.json`.
+
+Persisted data includes:
+
+- channel config
+- account-specific runtime config
+- whether that account should auto-start after restart
+
+Restore flow:
+
+```text
+Gateway::new
+  -> channel_state.load()
+  -> register extensions/channels
+  -> restore_channel_runtime()
+    -> configure all persisted channels
+    -> start only accounts with auto_start=true
+```
+
+Operational consequence:
+
+- `channel-start` makes that account restart with the gateway
+- `channel-stop` keeps the config but disables auto-start for that account
+- removing an account from channel config prunes its persisted runtime entry
 
 ## SSE Event Flow
 
