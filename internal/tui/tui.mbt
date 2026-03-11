@@ -20,6 +20,9 @@ pub(all) struct TUI {
   mut last_width : Int
   mut last_height : Int
   mut needs_full_redraw : Bool
+  mut last_frame : String
+  mut last_cursor_col : Int
+  mut last_cursor_row : Int
 }
 
 ///|
@@ -117,6 +120,9 @@ pub fn TUI::new() -> TUI raise {
     last_width: 0,
     last_height: 0,
     needs_full_redraw: true,
+    last_frame: "",
+    last_cursor_col: -1,
+    last_cursor_row: -1,
   }
   tui.editor.set_on_submit(fn(text : String) { tui.submit(text) })
   tui
@@ -249,6 +255,16 @@ pub async fn TUI::render(self : TUI) -> Unit {
   let chat_height = height - 4
   self.chat_log.normalize_scroll(width, chat_height.max(1))
   let (frame, cursor_col, cursor_row) = self.build_frame(width, height.max(1))
+  let frame_unchanged = !self.needs_full_redraw &&
+    !resized &&
+    frame == self.last_frame &&
+    cursor_col == self.last_cursor_col &&
+    cursor_row == self.last_cursor_row
+  if frame_unchanged {
+    self.last_render_at = @async.now()
+    self.render_needed = false
+    return
+  }
   let output = RenderOutput::new()
   output.write(CursorHome)
   if self.needs_full_redraw || resized {
@@ -259,6 +275,9 @@ pub async fn TUI::render(self : TUI) -> Unit {
   output.write(cursor_to(cursor_col, cursor_row))
   self.terminal.write_bytes(output.to_bytes())
   self.terminal.flush()
+  self.last_frame = frame
+  self.last_cursor_col = cursor_col
+  self.last_cursor_row = cursor_row
   self.last_render_at = @async.now()
   self.render_needed = false
 }
