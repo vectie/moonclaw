@@ -20,7 +20,8 @@ pub(all) struct TUI {
   mut last_width : Int
   mut last_height : Int
   mut needs_full_redraw : Bool
-  mut last_frame : String
+  mut last_body_frame : String
+  mut last_editor_line : String
   mut last_cursor_col : Int
   mut last_cursor_row : Int
 }
@@ -64,7 +65,7 @@ fn TUI::build_frame(
   self : TUI,
   width : Int,
   height : Int,
-) -> (String, Int, Int) {
+) -> (String, String, Int, Int) {
   let header_height = 1
   let footer_height = 1
   let status_height = 1
@@ -75,18 +76,17 @@ fn TUI::build_frame(
     status_height -
     editor_height
   let chat_lines = self.chat_log.visible_lines(width, chat_height.max(1))
-  let lines : Array[String] = [frame_line(self.header.text(), width)]
+  let body_lines : Array[String] = [frame_line(self.header.text(), width)]
   for line in chat_lines {
-    lines.push(frame_line(line, width))
+    body_lines.push(frame_line(line, width))
   }
-  lines.push(frame_line(self.status_text.text(), width))
-  lines.push(frame_line(self.footer.text(), width))
+  body_lines.push(frame_line(self.status_text.text(), width))
+  body_lines.push(frame_line(self.footer.text(), width))
   let (editor_line, cursor_col) = editor_frame_line(self.editor, width)
-  lines.push(editor_line)
-  while lines.length() < height {
-    lines.push(spaces(width))
+  while body_lines.length() < height - 1 {
+    body_lines.push(spaces(width))
   }
-  (lines.join("\n"), cursor_col, height - 1)
+  (body_lines.join("\n"), editor_line, cursor_col, height - 1)
 }
 
 ///|
@@ -120,7 +120,8 @@ pub fn TUI::new() -> TUI raise {
     last_width: 0,
     last_height: 0,
     needs_full_redraw: true,
-    last_frame: "",
+    last_body_frame: "",
+    last_editor_line: "",
     last_cursor_col: -1,
     last_cursor_row: -1,
   }
@@ -254,10 +255,14 @@ pub async fn TUI::render(self : TUI) -> Unit {
   self.last_height = height
   let chat_height = height - 4
   self.chat_log.normalize_scroll(width, chat_height.max(1))
-  let (frame, cursor_col, cursor_row) = self.build_frame(width, height.max(1))
+  let (body_frame, editor_line, cursor_col, cursor_row) = self.build_frame(
+    width,
+    height.max(1),
+  )
   let frame_unchanged = !self.needs_full_redraw &&
     !resized &&
-    frame == self.last_frame &&
+    body_frame == self.last_body_frame &&
+    editor_line == self.last_editor_line &&
     cursor_col == self.last_cursor_col &&
     cursor_row == self.last_cursor_row
   if frame_unchanged {
@@ -266,16 +271,29 @@ pub async fn TUI::render(self : TUI) -> Unit {
     return
   }
   let output = RenderOutput::new()
-  output.write(CursorHome)
-  if self.needs_full_redraw || resized {
-    output.write(ClearScreenDown)
+  let body_unchanged = !self.needs_full_redraw &&
+    !resized &&
+    body_frame == self.last_body_frame
+  if body_unchanged {
+    output.write(cursor_to(0, cursor_row))
+    output.write(editor_line)
+  } else {
+    output.write(CursorHome)
+    if self.needs_full_redraw || resized {
+      output.write(ClearScreenDown)
+    }
+    output.write(body_frame)
+    output.write("\n")
+    output.write(editor_line)
+  }
+  if !body_unchanged {
     self.needs_full_redraw = false
   }
-  output.write(frame)
   output.write(cursor_to(cursor_col, cursor_row))
   self.terminal.write_bytes(output.to_bytes())
   self.terminal.flush()
-  self.last_frame = frame
+  self.last_body_frame = body_frame
+  self.last_editor_line = editor_line
   self.last_cursor_col = cursor_col
   self.last_cursor_row = cursor_row
   self.last_render_at = @async.now()
