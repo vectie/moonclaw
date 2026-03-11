@@ -129,20 +129,15 @@ pub fn TUI::update_footer(self : TUI) -> Unit {
 ///|
 pub fn TUI::update_status(self : TUI) -> Unit {
   let theme = Theme::default()
-  if self.state.is_busy() {
-    self.status_loader.start()
-    self.status_loader.set_message(
-      "\{self.state.activity_status()} | \{self.state.connection_status()}",
-    )
+  let state = if self.state.is_busy() { "working" } else { "idle" }
+  let activity = if self.state.activity_status().length() > 0 {
+    self.state.activity_status()
   } else {
-    self.status_loader.stop()
-    let text = if self.state.activity_status().length() > 0 {
-      "\{self.state.connection_status()} | \{self.state.activity_status()}"
-    } else {
-      self.state.connection_status()
-    }
-    self.status_text.set_text(theme.dim_style(text))
+    "idle"
   }
+  let text = "[\{state}] \{activity} | \{self.state.connection_status()}"
+  self.status_loader.stop()
+  self.status_text.set_text(theme.dim_style(text))
 }
 
 ///|
@@ -206,23 +201,13 @@ pub async fn TUI::render(self : TUI) -> Unit {
   let output = @stdio.stdout
   self.header.render(output, 0, 0, width, header_height)
   self.chat_log.render(output, 0, header_height, width, chat_height.max(1))
-  if self.status_loader.is_running() {
-    self.status_loader.render(
-      output,
-      0,
-      header_height + chat_height,
-      width,
-      status_height,
-    )
-  } else {
-    self.status_text.render(
-      output,
-      0,
-      header_height + chat_height,
-      width,
-      status_height,
-    )
-  }
+  self.status_text.render(
+    output,
+    0,
+    header_height + chat_height,
+    width,
+    status_height,
+  )
   self.footer.render(
     output,
     0,

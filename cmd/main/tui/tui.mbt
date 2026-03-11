@@ -1,6 +1,8 @@
 ///|
 priv struct TuiState {
   mut should_exit : Bool
+  mut pending_assistant_text : String?
+  mut stream_dirty : Bool
 }
 
 ///|
@@ -69,7 +71,11 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       }
     }
 
-    let state = TuiState::{ should_exit: false }
+    let state = TuiState::{
+      should_exit: false,
+      pending_assistant_text: None,
+      stream_dirty: false,
+    }
     tui.state().set_model(moonclaw.agent.model.name)
     tui.state().set_agent_id(moonclaw.agent.id().to_string())
     tui.state().set_session_key(moonclaw.agent.id().to_string())
@@ -134,12 +140,12 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
           tui.state().set_busy(true)
           tui.state().set_activity_status("receiving response")
           if !content.is_blank() {
-            tui.chat_log().update_assistant(content)
-            tui.scroll_chat_to_bottom()
-            tui.request_render()
+            state.pending_assistant_text = Some(content)
+            state.stream_dirty = true
           }
         }
         PreToolCall(tool_call) => {
+          flush_pending_stream(tui, state)
           tui.state().set_busy(true)
           tui.state().set_activity_status("calling tool: \{tool_call.name}")
           ignore(
@@ -155,6 +161,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
           tui.request_render()
         }
         PostToolCall(tool_call, result~, rendered~) => {
+          flush_pending_stream(tui, state)
           tui.state().set_busy(true)
           tui.state().set_activity_status("tool done: \{tool_call.name}")
           let is_error = match result {
@@ -166,6 +173,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
           tui.request_render()
         }
         PostConversation => {
+          flush_pending_stream(tui, state)
           tui.state().set_busy(false)
           tui.state().set_activity_status("idle")
           // Mark the streaming assistant as done so the next one starts fresh
@@ -175,11 +183,13 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
           tui.request_render()
         }
         Failed(err) => {
+          flush_pending_stream(tui, state)
           tui.state().set_busy(false)
           tui.state().set_activity_status("failed: \{err}")
           tui.request_render()
         }
         Cancelled => {
+          flush_pending_stream(tui, state)
           tui.state().set_busy(false)
           tui.state().set_activity_status("cancelled")
           tui.request_render()
@@ -204,6 +214,15 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       }
     })
 
+    group.spawn_bg(() => {
+      while !state.should_exit {
+        if state.stream_dirty {
+          flush_pending_stream(tui, state)
+        }
+        @async.sleep(80)
+      }
+    })
+
     if prompt is Some(prompt) {
       let (width, height) = tui.terminal().size()
       let chat_height = height - 4
@@ -223,6 +242,17 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
 
     moonclaw.close()
   })
+}
+
+///|
+fn flush_pending_stream(tui : @tui.TUI, state : TuiState) -> Unit {
+  if state.pending_assistant_text is Some(content) {
+    tui.chat_log().update_assistant(content)
+    tui.scroll_chat_to_bottom()
+    tui.request_render()
+  }
+  state.pending_assistant_text = None
+  state.stream_dirty = false
 }
 
 ///|
