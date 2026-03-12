@@ -752,6 +752,15 @@ fn parse_feishu_message_content(raw : String, message_type : String) -> String? 
     "text" => Some(parse_feishu_text_content(raw))
     "post" => parse_feishu_post_content(raw)
     "interactive" => parse_feishu_interactive_content(raw)
+    "image" => parse_feishu_image_content(raw)
+    "file" => parse_feishu_file_content(raw)
+    "media" => parse_feishu_file_content(raw)
+    "audio" => parse_feishu_audio_content(raw)
+    "video" => parse_feishu_video_content(raw)
+    "sticker" => Some("[sticker]")
+    "share_chat" => parse_feishu_share_chat_content(raw)
+    "share_user" => parse_feishu_share_user_content(raw)
+    "merge_forward" => Some("<forwarded_messages/>")
     _ => None
   }
 }
@@ -871,6 +880,66 @@ fn parse_feishu_interactive_content(raw : String) -> String? {
       Some(parts.join("\n"))
     }
     Err(_) => Some("<card>\n[interactive card]\n</card>")
+  }
+}
+
+///|
+fn parse_feishu_image_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok({ "image_key": String(image_key), .. }) if !image_key.is_blank() =>
+      Some("![image](\{image_key})")
+    _ => Some("[image]")
+  }
+}
+
+///|
+fn parse_feishu_file_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok({ "file_name": String(file_name), "file_key": String(file_key), .. }) =>
+      Some("[file] \{file_name} (\{file_key})")
+    Ok({ "file_name": String(file_name), .. }) => Some("[file] \{file_name}")
+    Ok({ "file_key": String(file_key), .. }) => Some("[file] \{file_key}")
+    _ => Some("[file]")
+  }
+}
+
+///|
+fn parse_feishu_audio_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok({ "file_key": String(file_key), .. }) => Some("[audio] \{file_key}")
+    _ => Some("[audio]")
+  }
+}
+
+///|
+fn parse_feishu_video_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok({ "file_key": String(file_key), .. }) => Some("[video] \{file_key}")
+    _ => Some("[video]")
+  }
+}
+
+///|
+fn parse_feishu_share_chat_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok({ "chat_name": String(chat_name), .. }) =>
+      Some("[shared chat] \{chat_name}")
+    _ => Some("[shared chat]")
+  }
+}
+
+///|
+fn parse_feishu_share_user_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok({ "user_name": String(user_name), .. }) =>
+      Some("[shared user] \{user_name}")
+    _ => Some("[shared user]")
   }
 }
 

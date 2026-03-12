@@ -303,6 +303,48 @@ async test "Feishu webhook accepts interactive card messages and normalizes them
 }
 
 ///|
+async test "Feishu webhook accepts image messages and normalizes them to text" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let response = channel.handle_webhook(
+    feishu_message_request_with_type(
+      "event-image",
+      "message-image",
+      "image",
+      Json::object({ "image_key": "img_123" }).stringify(),
+      @clock.epoch.now().ms().to_string(),
+    ),
+  )
+
+  inspect(response.status_code(), content="500")
+  json_inspect(handler.handled_message_ids, content=["message-image"])
+}
+
+///|
+async test "Feishu webhook accepts file messages and normalizes them to text" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let response = channel.handle_webhook(
+    feishu_message_request_with_type(
+      "event-file",
+      "message-file",
+      "file",
+      Json::object({ "file_name": "report.pdf", "file_key": "file_123" }).stringify(),
+      @clock.epoch.now().ms().to_string(),
+    ),
+  )
+
+  inspect(response.status_code(), content="500")
+  json_inspect(handler.handled_message_ids, content=["message-file"])
+}
+
+///|
 async test "Feishu webhook ignores reaction events when lookup context is unavailable" {
   let channel = FeishuChannel::new()
   channel.configure(feishu_test_config())
