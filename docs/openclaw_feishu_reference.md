@@ -178,7 +178,6 @@ The following are now true in code:
 
 MoonClaw does not yet implement the broader OpenClaw Feishu surface such as:
 
-- websocket connection mode
 - stronger webhook security verification
 - richer account configuration and status probes
 - advanced outbound targeting helpers
@@ -191,7 +190,7 @@ MoonClaw does not yet implement the broader OpenClaw Feishu surface such as:
 Today, MoonClaw Feishu should be understood as:
 
 ```text
-webhook adapter + message normalization + gateway callback + text reply transport
+webhook adapter + websocket monitor adapter + message normalization + gateway callback + text reply transport
 ```
 
 It is not yet:
@@ -199,3 +198,10 @@ It is not yet:
 ```text
 full OpenClaw-style multi-adapter Feishu runtime
 ```
+
+Current websocket-mode contract in MoonClaw:
+
+- set `connection_mode = "websocket"`
+- provide `websocket_url`
+- optional `websocket_headers` are forwarded into the generic gateway websocket connector
+- the connection is supervised by the shared extension websocket runtime and delivered through the same Feishu monitor event handlers used by manual websocket attachments

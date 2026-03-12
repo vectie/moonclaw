@@ -20,18 +20,30 @@ async test "WebSocketClientRuntimeManager reconnects closed clients and stops re
           connect_calls = connect_calls + 1
           let connection_id = "conn-\{connect_calls}"
           let mut on_close : (() -> Unit)? = None
+          let closed = Ref::new(false)
           close_hooks.push(fn() {
+            closed.val = true
             match on_close {
               Some(handler) => handler()
               None => ()
             }
           })
           Ok(
-            WebSocketConnection::new(
-              id=connection_id,
-              send=fn(_) {  },
-              close=fn() { closed_ids.push(connection_id) },
-              on_close=fn(handler) { on_close = Some(handler) },
+            WebSocketManagedConnection::new(
+              connection=WebSocketConnection::new(
+                id=connection_id,
+                send=fn(_) {  },
+                close=fn() { closed_ids.push(connection_id) },
+                on_close=fn(handler) { on_close = Some(handler) },
+              ),
+              wait_until_closed=async fn() {
+                for ;; {
+                  if closed.val {
+                    return
+                  }
+                  @async.sleep(10)
+                }
+              },
             ),
           )
         },

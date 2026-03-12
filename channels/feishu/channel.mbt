@@ -63,6 +63,8 @@ fn get_feishu_config(config : Json) -> FeishuAccountConfig {
         reaction_notifications: Some("own"),
         bot_name: None,
         webhook_url: None,
+        websocket_url: None,
+        websocket_headers: None,
         verify_token: None,
         encryption_key: None,
         enabled: false,
@@ -790,18 +792,35 @@ fn feishu_websocket_dial_request(
   account_id : String,
   config : FeishuAccountConfig,
 ) -> @channel.WebSocketDialRequest {
+  let metadata = match config.websocket_url {
+    Some(url) if !url.is_blank() =>
+      Json::object({
+        "account_id": account_id,
+        "app_id": config.app_id,
+        "app_secret": config.app_secret,
+        "domain": config.domain,
+        "url": url,
+        "headers": config.websocket_headers.to_json(),
+        "verify_token": config.verify_token.to_json(),
+        "encryption_key": config.encryption_key.to_json(),
+        "bot_name": config.bot_name.to_json(),
+      })
+    _ =>
+      Json::object({
+        "account_id": account_id,
+        "app_id": config.app_id,
+        "app_secret": config.app_secret,
+        "domain": config.domain,
+        "headers": config.websocket_headers.to_json(),
+        "verify_token": config.verify_token.to_json(),
+        "encryption_key": config.encryption_key.to_json(),
+        "bot_name": config.bot_name.to_json(),
+      })
+  }
   @channel.WebSocketDialRequest::new(
     client_id=feishu_runtime_client_id(account_id),
     protocol="feishu",
-    metadata=Json::object({
-      "account_id": account_id,
-      "app_id": config.app_id,
-      "app_secret": config.app_secret,
-      "domain": config.domain,
-      "verify_token": config.verify_token.to_json(),
-      "encryption_key": config.encryption_key.to_json(),
-      "bot_name": config.bot_name.to_json(),
-    }),
+    metadata~,
   )
 }
 
@@ -830,6 +849,19 @@ fn FeishuChannel::ensure_websocket_runtime_client(
     Some(context) =>
       match (context.websocket_runtime(), context.websocket_connector()) {
         (Some(runtime), Some(connector)) => {
+          match config.websocket_url {
+            Some(url) if !url.is_blank() => ()
+            _ => {
+              match context.logger() {
+                Some(logger) =>
+                  (logger.warn)(
+                    "Feishu websocket account \{account_id} is enabled but websocket_url is missing",
+                  )
+                None => ()
+              }
+              return
+            }
+          }
           let request = feishu_websocket_dial_request(account_id, config)
           runtime.upsert(
             @channel.WebSocketClientRegistration::new(

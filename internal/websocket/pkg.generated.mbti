@@ -1,0 +1,68 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/internal/websocket"
+
+import {
+  "moonbitlang/async/aqueue",
+  "moonbitlang/core/ref",
+}
+
+// Values
+
+// Errors
+pub suberror WebSocketClientError {
+  ConnectFailed(String)
+  SendFailed(String)
+  ReceiveFailed(String)
+}
+pub impl Show for WebSocketClientError
+
+// Types and methods
+pub struct Client {
+  conn : @moonbitlang/async/websocket.Conn
+  outbox : @aqueue.Queue[ClientCommand]
+  mut on_message : (async (Message) -> Unit)?
+  mut on_close : (() -> Unit)?
+  closed : @ref.Ref[Bool]
+}
+pub fn Client::close(Self) -> Unit
+pub async fn Client::connect(ClientConfig) -> Self
+pub fn Client::is_closed(Self) -> Bool
+pub async fn Client::run(Self) -> Unit
+pub fn Client::send_binary(Self, Bytes) -> Unit
+pub fn Client::send_json(Self, Json) -> Unit
+pub fn Client::send_text(Self, String) -> Unit
+pub fn Client::set_on_close(Self, () -> Unit) -> Unit
+pub fn Client::set_on_message(Self, async (Message) -> Unit) -> Unit
+
+type ClientCommand
+
+pub struct ClientConfig {
+  url : String
+  headers : Map[String, String]
+}
+pub fn ClientConfig::new(url~ : String, headers? : Map[String, String]) -> Self
+pub impl Eq for ClientConfig
+pub impl Show for ClientConfig
+
+pub struct Message {
+  kind : MessageKind
+  data : Bytes
+}
+pub fn Message::data(Self) -> Bytes
+pub fn Message::kind(Self) -> MessageKind
+pub fn Message::new(kind~ : MessageKind, data~ : Bytes) -> Self
+pub fn Message::text(Self) -> String raise
+pub impl Eq for Message
+pub impl Show for Message
+
+pub(all) enum MessageKind {
+  Text
+  Binary
+}
+pub impl Eq for MessageKind
+pub impl Show for MessageKind
+
+// Type aliases
+
+// Traits
+

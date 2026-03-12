@@ -127,6 +127,7 @@ pub fn Gateway::register_extension(
     home_dir=self.home,
     cwd=self.cwd,
     logger=None,
+    websocket_connector=Some(gateway_websocket_connector()),
     websocket_runtime=Some(self.extension_websocket_runtime),
   )
   self.extension_registry.register_with_context(extension, context)

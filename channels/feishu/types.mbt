@@ -20,6 +20,8 @@ pub struct FeishuAccountConfig {
   reaction_notifications : FeishuReactionNotifications?
   bot_name : String?
   webhook_url : String?
+  websocket_url : String?
+  websocket_headers : Map[String, String]?
   verify_token : String?
   encryption_key : String?
   enabled : Bool

@@ -114,6 +114,14 @@ moonclaw gateway channel-start \
 moonclaw gateway channel-stop --id feishu --account default
 ```
 
+For websocket-mode Feishu accounts, use `connection_mode = "websocket"` and provide `websocket_url`. Optional handshake headers can be supplied with `websocket_headers`.
+
+```bash
+moonclaw gateway channel-configure \
+  --id feishu \
+  --config-json '{"enabled":true,"accounts":{"monitor":{"app_id":"...","app_secret":"...","domain":"feishu","connection_mode":"websocket","websocket_url":"wss://example.invalid/feishu/ws","websocket_headers":{"Authorization":"Bearer ..."},"dm_policy":"pairing","enabled":true}},"global_settings":{}}'
+```
+
 ## HTTP and RPC Surfaces
 
 ### Direct HTTP endpoints

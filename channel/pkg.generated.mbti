@@ -360,18 +360,18 @@ pub impl ToJson for ThreadingAdapter
 pub impl @json.FromJson for ThreadingAdapter
 
 pub(all) struct WebSocketClientConnector {
-  connect : async (WebSocketDialRequest) -> Result[WebSocketConnection, String]
+  connect : async (WebSocketDialRequest) -> Result[WebSocketManagedConnection, String]
 }
-pub async fn WebSocketClientConnector::connect(Self, WebSocketDialRequest) -> Result[WebSocketConnection, String]
-pub fn WebSocketClientConnector::new(connect~ : async (WebSocketDialRequest) -> Result[WebSocketConnection, String]) -> Self
+pub async fn WebSocketClientConnector::connect(Self, WebSocketDialRequest) -> Result[WebSocketManagedConnection, String]
+pub fn WebSocketClientConnector::new(connect~ : async (WebSocketDialRequest) -> Result[WebSocketManagedConnection, String]) -> Self
 
 pub(all) struct WebSocketClientRegistration {
   spec : WebSocketClientSpec
-  connect : async () -> Result[WebSocketConnection, String]
+  connect : async () -> Result[WebSocketManagedConnection, String]
   on_connect : (WebSocketConnection) -> Unit
   logger : LoggerFuncs?
 }
-pub fn WebSocketClientRegistration::new(spec~ : WebSocketClientSpec, connect~ : async () -> Result[WebSocketConnection, String], on_connect~ : (WebSocketConnection) -> Unit, logger? : LoggerFuncs?) -> Self
+pub fn WebSocketClientRegistration::new(spec~ : WebSocketClientSpec, connect~ : async () -> Result[WebSocketManagedConnection, String], on_connect~ : (WebSocketConnection) -> Unit, logger? : LoggerFuncs?) -> Self
 
 pub(all) struct WebSocketClientRuntime {
   commands : @aqueue.Queue[WebSocketClientRuntimeCommand]
@@ -422,6 +422,14 @@ pub fn WebSocketDialRequest::client_id(Self) -> String
 pub fn WebSocketDialRequest::metadata(Self) -> Json
 pub fn WebSocketDialRequest::new(client_id~ : String, protocol~ : String, metadata? : Json) -> Self
 pub fn WebSocketDialRequest::protocol(Self) -> String
+
+pub(all) struct WebSocketManagedConnection {
+  connection : WebSocketConnection
+  wait_until_closed : async () -> Unit
+}
+pub fn WebSocketManagedConnection::connection(Self) -> WebSocketConnection
+pub fn WebSocketManagedConnection::new(connection~ : WebSocketConnection, wait_until_closed? : async () -> Unit) -> Self
+pub async fn WebSocketManagedConnection::wait_until_closed(Self) -> Unit
 
 // Type aliases
 pub type ChannelId = String

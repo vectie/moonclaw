@@ -388,12 +388,18 @@ pub fn WebSocketDialRequest::metadata(self : WebSocketDialRequest) -> Json {
 
 ///|
 pub(all) struct WebSocketClientConnector {
-  connect : async (WebSocketDialRequest) -> Result[WebSocketConnection, String]
+  connect : async (WebSocketDialRequest) -> Result[
+    WebSocketManagedConnection,
+    String,
+  ]
 }
 
 ///|
 pub fn WebSocketClientConnector::new(
-  connect~ : async (WebSocketDialRequest) -> Result[WebSocketConnection, String],
+  connect~ : async (WebSocketDialRequest) -> Result[
+    WebSocketManagedConnection,
+    String,
+  ],
 ) -> WebSocketClientConnector {
   WebSocketClientConnector::{ connect, }
 }
@@ -402,8 +408,40 @@ pub fn WebSocketClientConnector::new(
 pub async fn WebSocketClientConnector::connect(
   self : WebSocketClientConnector,
   request : WebSocketDialRequest,
-) -> Result[WebSocketConnection, String] {
+) -> Result[WebSocketManagedConnection, String] {
   (self.connect)(request)
+}
+
+///|
+pub(all) struct WebSocketManagedConnection {
+  connection : WebSocketConnection
+  wait_until_closed : async () -> Unit
+}
+
+///|
+pub fn WebSocketManagedConnection::new(
+  connection~ : WebSocketConnection,
+  wait_until_closed? : async () -> Unit = async fn() {
+    for ;; {
+      @async.sleep(100)
+    }
+  },
+) -> WebSocketManagedConnection {
+  WebSocketManagedConnection::{ connection, wait_until_closed }
+}
+
+///|
+pub fn WebSocketManagedConnection::connection(
+  self : WebSocketManagedConnection,
+) -> WebSocketConnection {
+  self.connection
+}
+
+///|
+pub async fn WebSocketManagedConnection::wait_until_closed(
+  self : WebSocketManagedConnection,
+) -> Unit {
+  (self.wait_until_closed)()
 }
 
 ///|
@@ -450,7 +488,7 @@ pub fn WebSocketClientSpec::reconnect_delay_ms(
 ///|
 pub(all) struct WebSocketClientRegistration {
   spec : WebSocketClientSpec
-  connect : async () -> Result[WebSocketConnection, String]
+  connect : async () -> Result[WebSocketManagedConnection, String]
   on_connect : (WebSocketConnection) -> Unit
   logger : LoggerFuncs?
 }
@@ -458,7 +496,7 @@ pub(all) struct WebSocketClientRegistration {
 ///|
 pub fn WebSocketClientRegistration::new(
   spec~ : WebSocketClientSpec,
-  connect~ : async () -> Result[WebSocketConnection, String],
+  connect~ : async () -> Result[WebSocketManagedConnection, String],
   on_connect~ : (WebSocketConnection) -> Unit,
   logger? : LoggerFuncs? = None,
 ) -> WebSocketClientRegistration {
@@ -550,7 +588,8 @@ async fn run_websocket_client(
   let logger = registration.logger
   while !control.stopped {
     match (registration.connect)() {
-      Ok(connection) => {
+      Ok(managed) => {
+        let connection = managed.connection()
         control.connection = Some(connection)
         let closed = Ref::new(false)
         connection.on_close(fn() {
@@ -558,13 +597,17 @@ async fn run_websocket_client(
           control.connection = None
         })
         (registration.on_connect)(connection)
-        while !control.stopped && !closed.val {
-          @async.sleep(100)
+        managed.wait_until_closed() catch {
+          _ => ()
         }
         if control.stopped {
           connection.close()
           control.connection = None
           break
+        }
+        if !closed.val {
+          closed.val = true
+          control.connection = None
         }
       }
       Err(error) =>

@@ -1,5 +1,6 @@
 import {
   "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/async",
   "moonbitlang/async/aqueue",
   "moonbitlang/async/http",
@@ -14,6 +15,7 @@ import {
   "moonbitlang/moonclaw/internal/rand",
   "moonbitlang/moonclaw/internal/pino",
   "moonbitlang/moonclaw/internal/broadcast",
+  "moonbitlang/moonclaw/internal/websocket" @internal/websocket,
   "moonbitlang/moonclaw/clock",
   "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/moonclaw/internal/os",

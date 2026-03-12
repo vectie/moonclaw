@@ -835,6 +835,8 @@ async test "Feishu websocket runtime starts websocket accounts through extension
         "app_secret": "secret-ws",
         "domain": "feishu",
         "connection_mode": "websocket",
+        "websocket_url": "ws://127.0.0.1:18080/feishu",
+        "websocket_headers": { "Authorization": "Bearer test-token" },
         "dm_policy": "pairing",
         "verify_token": "verify-ws",
         "enabled": true,
@@ -850,15 +852,31 @@ async test "Feishu websocket runtime starts websocket accounts through extension
   let connector = @channel.WebSocketClientConnector::new(connect=fn(request) {
     inspect(request.protocol(), content="feishu")
     inspect(request.client_id(), content="feishu:websocket")
+    inspect(
+      request
+      .metadata()
+      .stringify()
+      .contains("\"url\":\"ws://127.0.0.1:18080/feishu\""),
+      content="true",
+    )
+    inspect(
+      request
+      .metadata()
+      .stringify()
+      .contains("\"Authorization\":\"Bearer test-token\""),
+      content="true",
+    )
     Ok(
-      @channel.WebSocketConnection::new(
-        id="runtime-monitor",
-        send=fn(bytes) {
-          let text = @encoding/utf8.decode(bytes) catch { _ => "" }
-          sent.push(text)
-        },
-        close=fn() {  },
-        on_message=fn(handler) { inbound = Some(handler) },
+      @channel.WebSocketManagedConnection::new(
+        connection=@channel.WebSocketConnection::new(
+          id="runtime-monitor",
+          send=fn(bytes) {
+            let text = @encoding/utf8.decode(bytes) catch { _ => "" }
+            sent.push(text)
+          },
+          close=fn() {  },
+          on_message=fn(handler) { inbound = Some(handler) },
+        ),
       ),
     )
   })
@@ -881,6 +899,8 @@ async test "Feishu websocket runtime starts websocket accounts through extension
         "app_secret": "secret-ws",
         "domain": "feishu",
         "connection_mode": "websocket",
+        "websocket_url": "ws://127.0.0.1:18080/feishu",
+        "websocket_headers": { "Authorization": "Bearer test-token" },
         "dm_policy": "pairing",
         "verify_token": "verify-ws",
         "enabled": true,
@@ -928,6 +948,71 @@ async test "Feishu websocket runtime starts websocket accounts through extension
     }
     @async.sleep(50)
     inspect(handler.handled_message_ids[0], content="message-runtime-monitor")
+    runtime.stop_all()
+    group.return_immediately(())
+  })
+}
+
+///|
+async test "Feishu websocket runtime skips websocket accounts without websocket_url" {
+  let manager = @channel.WebSocketClientRuntimeManager::new()
+  let runtime = manager.controller()
+  let channel = FeishuChannel::new()
+  channel.configure(@channel.ChannelConfig::{
+    enabled: true,
+    accounts: {
+      "websocket": {
+        "app_id": "app-ws",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "verify_token": "verify-ws",
+        "enabled": true,
+      },
+    },
+    global_settings: {},
+  })
+
+  let connect_calls : Array[String] = []
+  let connector = @channel.WebSocketClientConnector::new(connect=fn(request) {
+    connect_calls.push(request.client_id())
+    Ok(
+      @channel.WebSocketManagedConnection::new(
+        connection=@channel.WebSocketConnection::new(
+          id="unexpected",
+          send=fn(_) {  },
+          close=fn() {  },
+        ),
+      ),
+    )
+  })
+
+  @async.with_task_group(group => {
+    group.spawn_bg(() => manager.start(), no_wait=true, allow_failure=true)
+    channel.on_register(
+      @channel.ExtensionContext::new(
+        gateway_url="http://localhost:18789",
+        home_dir="/tmp",
+        cwd="/tmp",
+        websocket_connector=Some(connector),
+        websocket_runtime=Some(runtime),
+      ),
+    )
+    let _ = channel.start(
+      "websocket",
+      Json::object({
+        "app_id": "app-ws",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "verify_token": "verify-ws",
+        "enabled": true,
+      }),
+    )
+    @async.sleep(50)
+    inspect(connect_calls.length(), content="0")
     runtime.stop_all()
     group.return_immediately(())
   })
