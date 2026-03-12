@@ -562,3 +562,48 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
     content="<forwarded_messages>\n[1000] ou_first:\n    first\n[2000] ou_nested:\n    <forwarded_messages>\n    [3000] ou_child:\n        nested\n    </forwarded_messages>\n</forwarded_messages>",
   )
 }
+
+///|
+test "Feishu merge_forward formatter prefers resolved sender names over raw ids" {
+  let rendered = format_merge_forward_items(
+    "root",
+    [
+      FeishuMessageLookupItem::{
+        message_id: "root",
+        chat_id: "chat-test",
+        chat_type: Some("group"),
+        create_time: Some("0"),
+        thread_id: None,
+        upper_message_id: None,
+        msg_type: Some("merge_forward"),
+        body: Some(FeishuMessageLookupBody::{ content: Some("{}") }),
+        sender: Some(FeishuMessageLookupSender::{
+          id: Some("ou_root"),
+          sender_type: Some("user"),
+        }),
+      },
+      FeishuMessageLookupItem::{
+        message_id: "text-1",
+        chat_id: "chat-test",
+        chat_type: Some("group"),
+        create_time: Some("1000"),
+        thread_id: None,
+        upper_message_id: None,
+        msg_type: Some("text"),
+        body: Some(FeishuMessageLookupBody::{
+          content: Some(Json::object({ "text": "hello" }).stringify()),
+        }),
+        sender: Some(FeishuMessageLookupSender::{
+          id: Some("ou_sender"),
+          sender_type: Some("user"),
+        }),
+      },
+    ],
+    sender_names={ "ou_sender": "Alice" },
+  )
+
+  inspect(
+    rendered,
+    content="<forwarded_messages>\n[1000] Alice:\n    hello\n</forwarded_messages>",
+  )
+}

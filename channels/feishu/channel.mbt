@@ -1061,7 +1061,13 @@ async fn FeishuChannel::parse_merge_forward_content(
     Some(client) =>
       match client.get_message_items(message_id) {
         Ok(items) if !items.is_empty() =>
-          Some(format_merge_forward_items(message_id, items))
+          Some(
+            format_merge_forward_items(
+              message_id,
+              items,
+              sender_names=self.resolve_forward_sender_names(client, items),
+            ),
+          )
         _ => Some("<forwarded_messages/>")
       }
     None => Some("<forwarded_messages/>")
@@ -1072,6 +1078,7 @@ async fn FeishuChannel::parse_merge_forward_content(
 fn format_merge_forward_items(
   root_message_id : String,
   items : Array[FeishuMessageLookupItem],
+  sender_names? : Map[String, String] = {},
 ) -> String {
   let children : Map[String, Array[FeishuMessageLookupItem]] = {}
   for item in items {
@@ -1086,7 +1093,9 @@ fn format_merge_forward_items(
     siblings.push(item)
     children[parent_id] = siblings
   }
-  let rendered = format_merge_forward_tree(root_message_id, children)
+  let rendered = format_merge_forward_tree(
+    root_message_id, children, sender_names,
+  )
   if rendered.is_blank() {
     "<forwarded_messages/>"
   } else {
@@ -1098,6 +1107,7 @@ fn format_merge_forward_items(
 fn format_merge_forward_tree(
   parent_id : String,
   children : Map[String, Array[FeishuMessageLookupItem]],
+  sender_names : Map[String, String],
 ) -> String {
   let items = match children.get(parent_id) {
     Some(items) => items
@@ -1105,14 +1115,15 @@ fn format_merge_forward_tree(
   }
   let parts = []
   for item in items {
-    let sender = match item.sender {
-      Some(sender) => sender.id.unwrap_or("unknown")
-      None => "unknown"
-    }
+    let sender = resolve_merge_forward_sender_name(item, sender_names)
     let timestamp = item.create_time.unwrap_or("unknown")
     let content = match item.msg_type.unwrap_or("text") {
       "merge_forward" => {
-        let nested = format_merge_forward_tree(item.message_id, children)
+        let nested = format_merge_forward_tree(
+          item.message_id,
+          children,
+          sender_names,
+        )
         if nested.is_blank() {
           "<forwarded_messages/>"
         } else {
@@ -1132,6 +1143,54 @@ fn format_merge_forward_tree(
     parts.push("[\{timestamp}] \{sender}:\n\{indented}")
   }
   parts.join("\n")
+}
+
+///|
+async fn FeishuChannel::resolve_forward_sender_names(
+  self : FeishuChannel,
+  client : FeishuClient,
+  items : Array[FeishuMessageLookupItem],
+) -> Map[String, String] {
+  ignore(self)
+  let sender_names : Map[String, String] = {}
+  let seen : Map[String, Bool] = {}
+  for item in items {
+    match item.sender {
+      Some(sender) =>
+        match sender {
+          { id: Some(sender_id), sender_type: Some("user") } =>
+            if !sender_id.is_blank() {
+              match seen.get(sender_id) {
+                Some(true) => ()
+                _ => {
+                  seen[sender_id] = true
+                  match client.get_user_display_name(sender_id) {
+                    Ok(Some(name)) if !name.is_blank() =>
+                      sender_names[sender_id] = name
+                    _ => ()
+                  }
+                }
+              }
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  sender_names
+}
+
+///|
+fn resolve_merge_forward_sender_name(
+  item : FeishuMessageLookupItem,
+  sender_names : Map[String, String],
+) -> String {
+  match item.sender {
+    Some({ id: Some(sender_id), sender_type: Some("user") }) =>
+      sender_names.get(sender_id).unwrap_or(sender_id)
+    Some({ id: Some(sender_id), sender_type: _ }) => sender_id
+    _ => "unknown"
+  }
 }
 
 ///|

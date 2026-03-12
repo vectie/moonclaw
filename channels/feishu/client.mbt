@@ -188,6 +188,79 @@ async fn parse_lookup_items_response(
 }
 
 ///|
+async fn parse_user_lookup_response(
+  response : @http.Response,
+  client : @http.Client,
+) -> Result[String?, @channel.ChannelError] {
+  let body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::ConnectionFailed(
+            message="Failed to read Feishu user lookup response body: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu user lookup API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Invalid Feishu user lookup response: \{body_text}",
+        ),
+      )
+  }
+  let parsed : FeishuUserLookupResponse = @json.from_json(response_json) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to decode Feishu user lookup response: \{body_text}",
+        ),
+      )
+  }
+  if parsed.code != 0 {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu user lookup failed: \{parsed.msg}",
+      ),
+    )
+  }
+  let user = parsed.data.bind(fn(data) { data.user })
+  Ok(
+    user
+    .map(fn(user) {
+      let primary = user.name.unwrap_or("")
+      if !primary.is_blank() {
+        primary
+      } else {
+        let display = user.display_name.unwrap_or("")
+        if !display.is_blank() {
+          display
+        } else {
+          let nickname = user.nickname.unwrap_or("")
+          if !nickname.is_blank() {
+            nickname
+          } else {
+            let english_name = user.en_name.unwrap_or("")
+            if !english_name.is_blank() {
+              english_name
+            } else {
+              ""
+            }
+          }
+        }
+      }
+    })
+    .bind(fn(name) { if name.is_blank() { None } else { Some(name) } }),
+  )
+}
+
+///|
 async fn FeishuClient::load_tenant_access_token(
   self : FeishuClient,
 ) -> Result[String, @channel.ChannelError] {
@@ -378,4 +451,40 @@ pub async fn FeishuClient::get_message_items(
       )
   }
   parse_lookup_items_response(response, client)
+}
+
+///|
+pub async fn FeishuClient::get_user_display_name(
+  self : FeishuClient,
+  open_id : String,
+) -> Result[String?, @channel.ChannelError] {
+  let token = match self.load_tenant_access_token() {
+    Ok(token) => token
+    Err(error) => return Err(error)
+  }
+  let base_url = feishu_base_url(self.config.domain)
+  let client = @http.Client::new(base_url, headers={
+    "Authorization": "Bearer \{token}",
+    "Connection": "close",
+  }) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to create Feishu HTTP client: \{error}",
+        ),
+      )
+  }
+  defer client.close()
+
+  let response = client.get(
+    "/open-apis/contact/v3/users/\{open_id}?user_id_type=open_id",
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to fetch Feishu user: \{error}",
+        ),
+      )
+  }
+  parse_user_lookup_response(response, client)
 }

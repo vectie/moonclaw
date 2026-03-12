@@ -53,6 +53,7 @@ pub struct FeishuClient {
 }
 pub async fn FeishuClient::get_message(Self, String) -> Result[FeishuMessageLookupItem?, @channel.ChannelError]
 pub async fn FeishuClient::get_message_items(Self, String) -> Result[Array[FeishuMessageLookupItem], @channel.ChannelError]
+pub async fn FeishuClient::get_user_display_name(Self, String) -> Result[String?, @channel.ChannelError]
 pub fn FeishuClient::new(FeishuAccountConfig) -> Self
 pub async fn FeishuClient::send_text_message(Self, String, String, reply_to? : String?, reply_in_thread? : Bool) -> Result[@channel.SendResult, @channel.ChannelError]
 
@@ -166,6 +167,33 @@ pub struct FeishuSendMessageResponse {
 pub impl Show for FeishuSendMessageResponse
 pub impl ToJson for FeishuSendMessageResponse
 pub impl @json.FromJson for FeishuSendMessageResponse
+
+pub struct FeishuUser {
+  open_id : String?
+  name : String?
+  display_name : String?
+  nickname : String?
+  en_name : String?
+}
+pub impl Show for FeishuUser
+pub impl ToJson for FeishuUser
+pub impl @json.FromJson for FeishuUser
+
+pub struct FeishuUserLookupData {
+  user : FeishuUser?
+}
+pub impl Show for FeishuUserLookupData
+pub impl ToJson for FeishuUserLookupData
+pub impl @json.FromJson for FeishuUserLookupData
+
+pub struct FeishuUserLookupResponse {
+  code : Int
+  msg : String
+  data : FeishuUserLookupData?
+}
+pub impl Show for FeishuUserLookupResponse
+pub impl ToJson for FeishuUserLookupResponse
+pub impl @json.FromJson for FeishuUserLookupResponse
 
 type QueuedFeishuMessage
 

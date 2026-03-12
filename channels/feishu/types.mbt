@@ -115,6 +115,27 @@ pub struct FeishuMessageLookupSender {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub struct FeishuUserLookupResponse {
+  code : Int
+  msg : String
+  data : FeishuUserLookupData?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuUserLookupData {
+  user : FeishuUser?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuUser {
+  open_id : String?
+  name : String?
+  display_name : String?
+  nickname : String?
+  en_name : String?
+} derive(ToJson, FromJson, Show)
+
+///|
 pub struct FeishuAccessTokenResponse {
   code : Int
   msg : String
