@@ -54,6 +54,7 @@ pub struct FeishuClient {
 pub async fn FeishuClient::get_message(Self, String) -> Result[FeishuMessageLookupItem?, @channel.ChannelError]
 pub async fn FeishuClient::get_message_items(Self, String) -> Result[Array[FeishuMessageLookupItem], @channel.ChannelError]
 pub async fn FeishuClient::get_user_display_name(Self, String) -> Result[String?, @channel.ChannelError]
+pub async fn FeishuClient::get_user_display_names(Self, Array[String]) -> Result[Map[String, String], @channel.ChannelError]
 pub fn FeishuClient::new(FeishuAccountConfig) -> Self
 pub async fn FeishuClient::send_text_message(Self, String, String, reply_to? : String?, reply_in_thread? : Bool) -> Result[@channel.SendResult, @channel.ChannelError]
 
@@ -178,6 +179,22 @@ pub struct FeishuUser {
 pub impl Show for FeishuUser
 pub impl ToJson for FeishuUser
 pub impl @json.FromJson for FeishuUser
+
+pub struct FeishuUserBatchLookupData {
+  items : Array[FeishuUser]
+}
+pub impl Show for FeishuUserBatchLookupData
+pub impl ToJson for FeishuUserBatchLookupData
+pub impl @json.FromJson for FeishuUserBatchLookupData
+
+pub struct FeishuUserBatchLookupResponse {
+  code : Int
+  msg : String
+  data : FeishuUserBatchLookupData?
+}
+pub impl Show for FeishuUserBatchLookupResponse
+pub impl ToJson for FeishuUserBatchLookupResponse
+pub impl @json.FromJson for FeishuUserBatchLookupResponse
 
 pub struct FeishuUserLookupData {
   user : FeishuUser?

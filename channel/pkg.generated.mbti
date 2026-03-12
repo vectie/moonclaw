@@ -358,10 +358,14 @@ pub(all) struct WebSocketConnection {
   id : String
   send : (Bytes) -> Unit
   close : () -> Unit
+  on_message : (async (Bytes) -> Unit) -> Unit
+  on_close : (() -> Unit) -> Unit
 }
 pub fn WebSocketConnection::close(Self) -> Unit
 pub fn WebSocketConnection::id(Self) -> String
-pub fn WebSocketConnection::new(id~ : String, send~ : (Bytes) -> Unit, close~ : () -> Unit) -> Self
+pub fn WebSocketConnection::new(id~ : String, send~ : (Bytes) -> Unit, close~ : () -> Unit, on_message? : (async (Bytes) -> Unit) -> Unit, on_close? : (() -> Unit) -> Unit) -> Self
+pub fn WebSocketConnection::on_close(Self, () -> Unit) -> Unit
+pub fn WebSocketConnection::on_message(Self, async (Bytes) -> Unit) -> Unit
 pub fn WebSocketConnection::send(Self, Bytes) -> Unit
 
 // Type aliases

@@ -280,6 +280,8 @@ pub(all) struct WebSocketConnection {
   id : String
   send : (Bytes) -> Unit
   close : () -> Unit
+  on_message : (async (Bytes) -> Unit) -> Unit
+  on_close : (() -> Unit) -> Unit
 }
 
 ///|
@@ -287,8 +289,10 @@ pub fn WebSocketConnection::new(
   id~ : String,
   send~ : (Bytes) -> Unit,
   close~ : () -> Unit,
+  on_message? : (async (Bytes) -> Unit) -> Unit = fn(_) {  },
+  on_close? : (() -> Unit) -> Unit = fn(_) {  },
 ) -> WebSocketConnection {
-  WebSocketConnection::{ id, send, close }
+  WebSocketConnection::{ id, send, close, on_message, on_close }
 }
 
 ///|
@@ -307,6 +311,22 @@ pub fn WebSocketConnection::send(
 ///|
 pub fn WebSocketConnection::close(self : WebSocketConnection) -> Unit {
   (self.close)()
+}
+
+///|
+pub fn WebSocketConnection::on_message(
+  self : WebSocketConnection,
+  handler : async (Bytes) -> Unit,
+) -> Unit {
+  (self.on_message)(handler)
+}
+
+///|
+pub fn WebSocketConnection::on_close(
+  self : WebSocketConnection,
+  handler : () -> Unit,
+) -> Unit {
+  (self.on_close)(handler)
 }
 
 ///|

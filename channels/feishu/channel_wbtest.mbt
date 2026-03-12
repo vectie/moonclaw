@@ -607,3 +607,217 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
     content="<forwarded_messages>\n[1000] Alice:\n    hello\n</forwarded_messages>",
   )
 }
+
+///|
+test "Feishu forward sender helpers deduplicate ids and use account scoped cache keys" {
+  let sender_ids = collect_forward_sender_ids([
+    FeishuMessageLookupItem::{
+      message_id: "a",
+      chat_id: "chat-test",
+      chat_type: Some("group"),
+      create_time: Some("1"),
+      thread_id: None,
+      upper_message_id: None,
+      msg_type: Some("text"),
+      body: None,
+      sender: Some(FeishuMessageLookupSender::{
+        id: Some("ou_sender"),
+        sender_type: Some("user"),
+      }),
+    },
+    FeishuMessageLookupItem::{
+      message_id: "b",
+      chat_id: "chat-test",
+      chat_type: Some("group"),
+      create_time: Some("2"),
+      thread_id: None,
+      upper_message_id: None,
+      msg_type: Some("text"),
+      body: None,
+      sender: Some(FeishuMessageLookupSender::{
+        id: Some("ou_sender"),
+        sender_type: Some("user"),
+      }),
+    },
+    FeishuMessageLookupItem::{
+      message_id: "c",
+      chat_id: "chat-test",
+      chat_type: Some("group"),
+      create_time: Some("3"),
+      thread_id: None,
+      upper_message_id: None,
+      msg_type: Some("text"),
+      body: None,
+      sender: Some(FeishuMessageLookupSender::{
+        id: Some("bot-id"),
+        sender_type: Some("app"),
+      }),
+    },
+  ])
+
+  json_inspect(sender_ids, content=["ou_sender"])
+
+  let channel = FeishuChannel::new()
+  channel.cache_user_name("account-a", "ou_sender", "Alice")
+  channel.cache_user_name("account-b", "ou_sender", "Bob")
+  inspect(
+    channel.cached_user_name("account-a", "ou_sender"),
+    content="Some(\"Alice\")",
+  )
+  inspect(
+    channel.cached_user_name("account-b", "ou_sender"),
+    content="Some(\"Bob\")",
+  )
+}
+
+///|
+test "Feishu websocket monitor support follows configured websocket accounts" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  inspect(channel.supports_websocket(), content="false")
+
+  channel.configure(@channel.ChannelConfig::{
+    enabled: true,
+    accounts: {
+      "websocket": {
+        "app_id": "app-ws",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "enabled": true,
+      },
+    },
+    global_settings: {},
+  })
+  inspect(channel.supports_websocket(), content="true")
+  json_inspect(channel.websocket_monitor_accounts(), content=["websocket"])
+}
+
+///|
+async test "Feishu websocket monitor connections receive ready and status updates" {
+  let channel = FeishuChannel::new()
+  channel.configure(@channel.ChannelConfig::{
+    enabled: true,
+    accounts: {
+      "websocket": {
+        "app_id": "app-ws",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "enabled": true,
+      },
+    },
+    global_settings: {},
+  })
+
+  let sent : Array[String] = []
+  let close_calls : Array[Int] = []
+  let mut inbound : (async (Bytes) -> Unit)? = None
+  let mut on_close : (() -> Unit)? = None
+  let conn = @channel.WebSocketConnection::new(
+    id="monitor-1",
+    send=fn(bytes) {
+      let text = @encoding/utf8.decode(bytes) catch { _ => "" }
+      sent.push(text)
+    },
+    close=fn() { close_calls.push(1) },
+    on_message=fn(handler) { inbound = Some(handler) },
+    on_close=fn(handler) { on_close = Some(handler) },
+  )
+
+  channel.handle_websocket(conn)
+  inspect(sent.length(), content="1")
+  inspect(sent[0].contains("\"type\":\"feishu.monitor.ready\""), content="true")
+  inspect(sent[0].contains("\"account_id\":\"websocket\""), content="true")
+
+  let _ = channel.start(
+    "websocket",
+    Json::object({
+      "app_id": "app-ws",
+      "app_secret": "secret-ws",
+      "domain": "feishu",
+      "connection_mode": "websocket",
+      "dm_policy": "pairing",
+      "enabled": true,
+    }),
+  )
+  inspect(sent.length(), content="2")
+  inspect(
+    sent[1].contains("\"type\":\"feishu.monitor.status\""),
+    content="true",
+  )
+  inspect(sent[1].contains("\"running\":true"), content="true")
+
+  channel.on_unregister()
+  inspect(close_calls.length(), content="1")
+  match on_close {
+    Some(handler) => handler()
+    None => ()
+  }
+  inspect(channel.state.active_monitor_connections.is_empty(), content="true")
+}
+
+///|
+async test "Feishu websocket monitor routes inbound message events and ping frames" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let sent : Array[String] = []
+  let mut inbound : (async (Bytes) -> Unit)? = None
+  let conn = @channel.WebSocketConnection::new(
+    id="monitor-inbound",
+    send=fn(bytes) {
+      let text = @encoding/utf8.decode(bytes) catch { _ => "" }
+      sent.push(text)
+    },
+    close=fn() {  },
+    on_message=fn(handler) { inbound = Some(handler) },
+  )
+
+  channel.handle_websocket(conn)
+  match inbound {
+    Some(handle_frame) => {
+      handle_frame(@encoding/utf8.encode("{\"type\":\"ping\"}"))
+      handle_frame(
+        @encoding/utf8.encode(
+          Json::object({
+            "header": {
+              "event_id": "monitor-message",
+              "event_type": "im.message.receive_v1",
+              "app_id": "app-test",
+              "token": "verify-test",
+            },
+            "event": {
+              "sender": {
+                "sender_id": {
+                  "open_id": "ou_sender",
+                  "user_id": "user_sender",
+                },
+              },
+              "message": {
+                "message_id": "message-monitor",
+                "message_type": "text",
+                "chat_id": "chat-test",
+                "chat_type": "p2p",
+                "create_time": @clock.epoch.now().ms().to_string(),
+                "content": Json::object({ "text": "hello from ws" }).stringify(),
+              },
+            },
+            "token": "verify-test",
+          }).stringify(),
+        ),
+      )
+    }
+    None => abort("expected inbound websocket handler")
+  }
+
+  inspect(handler.handled_message_ids.length(), content="1")
+  inspect(handler.handled_message_ids[0], content="message-monitor")
+  inspect(sent[1].contains("\"type\":\"pong\""), content="true")
+  inspect(sent[2].contains("\"type\":\"feishu.monitor.error\""), content="true")
+  inspect(sent[2].contains("\"code\":\"event_rejected\""), content="true")
+}

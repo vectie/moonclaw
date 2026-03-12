@@ -45,6 +45,31 @@ fn build_text_content(text : String) -> Json {
 }
 
 ///|
+fn pick_feishu_user_name(user : FeishuUser) -> String {
+  let primary = user.name.unwrap_or("")
+  if !primary.is_blank() {
+    primary
+  } else {
+    let display = user.display_name.unwrap_or("")
+    if !display.is_blank() {
+      display
+    } else {
+      let nickname = user.nickname.unwrap_or("")
+      if !nickname.is_blank() {
+        nickname
+      } else {
+        let english_name = user.en_name.unwrap_or("")
+        if !english_name.is_blank() {
+          english_name
+        } else {
+          ""
+        }
+      }
+    }
+  }
+}
+
+///|
 async fn parse_send_response(
   response : @http.Response,
   client : @http.Client,
@@ -233,31 +258,63 @@ async fn parse_user_lookup_response(
   let user = parsed.data.bind(fn(data) { data.user })
   Ok(
     user
-    .map(fn(user) {
-      let primary = user.name.unwrap_or("")
-      if !primary.is_blank() {
-        primary
-      } else {
-        let display = user.display_name.unwrap_or("")
-        if !display.is_blank() {
-          display
-        } else {
-          let nickname = user.nickname.unwrap_or("")
-          if !nickname.is_blank() {
-            nickname
-          } else {
-            let english_name = user.en_name.unwrap_or("")
-            if !english_name.is_blank() {
-              english_name
-            } else {
-              ""
-            }
-          }
-        }
-      }
-    })
+    .map(pick_feishu_user_name)
     .bind(fn(name) { if name.is_blank() { None } else { Some(name) } }),
   )
+}
+
+///|
+async fn parse_user_batch_lookup_response(
+  response : @http.Response,
+  client : @http.Client,
+) -> Result[Map[String, String], @channel.ChannelError] {
+  let body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::ConnectionFailed(
+            message="Failed to read Feishu user batch lookup response body: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu user batch lookup API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Invalid Feishu user batch lookup response: \{body_text}",
+        ),
+      )
+  }
+  let parsed : FeishuUserBatchLookupResponse = @json.from_json(response_json) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to decode Feishu user batch lookup response: \{body_text}",
+        ),
+      )
+  }
+  if parsed.code != 0 {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu user batch lookup failed: \{parsed.msg}",
+      ),
+    )
+  }
+  let resolved : Map[String, String] = {}
+  for user in parsed.data.map(fn(data) { data.items }).unwrap_or([]) {
+    let open_id = user.open_id.unwrap_or("")
+    let name = pick_feishu_user_name(user)
+    if !open_id.is_blank() && !name.is_blank() {
+      resolved[open_id] = name
+    }
+  }
+  Ok(resolved)
 }
 
 ///|
@@ -487,4 +544,59 @@ pub async fn FeishuClient::get_user_display_name(
       )
   }
   parse_user_lookup_response(response, client)
+}
+
+///|
+pub async fn FeishuClient::get_user_display_names(
+  self : FeishuClient,
+  open_ids : Array[String],
+) -> Result[Map[String, String], @channel.ChannelError] {
+  if open_ids.is_empty() {
+    return Ok({})
+  }
+  let token = match self.load_tenant_access_token() {
+    Ok(token) => token
+    Err(error) => return Err(error)
+  }
+  let base_url = feishu_base_url(self.config.domain)
+  let client = @http.Client::new(base_url, headers={
+    "Authorization": "Bearer \{token}",
+    "Connection": "close",
+  }) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to create Feishu HTTP client: \{error}",
+        ),
+      )
+  }
+  defer client.close()
+
+  let resolved : Map[String, String] = {}
+  let total = open_ids.length()
+  let mut start = 0
+  while start < total {
+    let end = if start + 50 < total { start + 50 } else { total }
+    let chunk = open_ids[start:end]
+    let joined_ids = chunk.join(",")
+    let response = client.get(
+      "/open-apis/contact/v3/users/batch?user_id_type=open_id&user_ids=\{joined_ids}",
+    ) catch {
+      error =>
+        return Err(
+          @channel.ChannelError::ConnectionFailed(
+            message="Failed to fetch Feishu users: \{error}",
+          ),
+        )
+    }
+    match parse_user_batch_lookup_response(response, client) {
+      Ok(names) =>
+        for open_id, name in names {
+          resolved[open_id] = name
+        }
+      Err(error) => return Err(error)
+    }
+    start = end
+  }
+  Ok(resolved)
 }

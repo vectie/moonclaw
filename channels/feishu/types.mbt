@@ -127,6 +127,18 @@ pub struct FeishuUserLookupData {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub struct FeishuUserBatchLookupResponse {
+  code : Int
+  msg : String
+  data : FeishuUserBatchLookupData?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuUserBatchLookupData {
+  items : Array[FeishuUser]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub struct FeishuUser {
   open_id : String?
   name : String?

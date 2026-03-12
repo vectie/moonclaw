@@ -4,6 +4,8 @@ struct FeishuChannelState {
   mut feishu_configs : Map[String, FeishuAccountConfig]
   clients : Map[String, FeishuClient]
   running : Map[String, Bool]
+  mut user_name_cache : Map[String, String]
+  mut active_monitor_connections : Map[String, @channel.WebSocketConnection]
   recent_event_ids : Array[String]
   recent_message_ids : Array[String]
   pending_messages : Map[String, Array[QueuedFeishuMessage]]
@@ -35,6 +37,8 @@ pub fn FeishuChannel::new() -> FeishuChannel {
       feishu_configs: {},
       clients: {},
       running: {},
+      user_name_cache: {},
+      active_monitor_connections: {},
       recent_event_ids: [],
       recent_message_ids: [],
       pending_messages: {},
@@ -124,6 +128,7 @@ impl @channel.Channel for FeishuChannel with configure(
 ) -> Unit {
   self.state.config = config
   self.state.feishu_configs = {}
+  self.state.user_name_cache = {}
   self.state.recent_event_ids.clear()
   self.state.recent_message_ids.clear()
   self.state.pending_messages.clear()
@@ -149,6 +154,7 @@ impl @channel.Channel for FeishuChannel with start(
   let client = FeishuClient::new(feishu_config)
   self.state.clients[account_id] = client
   self.state.running[account_id] = true
+  self.broadcast_monitor_status()
 
   Ok(())
 }
@@ -160,6 +166,7 @@ impl @channel.Channel for FeishuChannel with stop(
 ) -> Result[Unit, @channel.ChannelError] {
   self.state.clients.remove(account_id)
   self.state.running[account_id] = false
+  self.broadcast_monitor_status()
   Ok(())
 }
 
@@ -696,7 +703,7 @@ async fn FeishuChannel::handle_card_action_event(
 impl @channel.ChannelExtension for FeishuChannel with supports_websocket(
   self : FeishuChannel,
 ) -> Bool {
-  false
+  !self.websocket_monitor_accounts().is_empty()
 }
 
 ///|
@@ -704,7 +711,23 @@ impl @channel.ChannelExtension for FeishuChannel with handle_websocket(
   self : FeishuChannel,
   conn : @channel.WebSocketConnection,
 ) -> Unit {
-
+  self.state.active_monitor_connections[conn.id()] = conn
+  conn.on_message(bytes => self.handle_monitor_frame(conn.id(), bytes))
+  conn.on_close(fn() { self.remove_monitor_connection(conn.id()) })
+  conn.send(
+    @encoding/utf8.encode(
+      Json::object({
+        "type": "feishu.monitor.ready",
+        "channel": "feishu",
+        "supports_websocket": self.supports_websocket().to_json(),
+        "accounts": Json::array(
+          self
+          .websocket_monitor_accounts()
+          .map(fn(account_id) { self.websocket_account_status_json(account_id) }),
+        ),
+      }).stringify(),
+    ),
+  )
 }
 
 ///|
@@ -736,6 +759,10 @@ impl @channel.ChannelExtension for FeishuChannel with on_register(
 impl @channel.ChannelExtension for FeishuChannel with on_unregister(
   self : FeishuChannel,
 ) -> Unit {
+  for _, conn in self.state.active_monitor_connections {
+    conn.close()
+  }
+  self.state.active_monitor_connections = {}
   for account_id in self.state.running.keys() {
     self.state.clients.remove(account_id)
     self.state.running[account_id] = false
@@ -1065,7 +1092,9 @@ async fn FeishuChannel::parse_merge_forward_content(
             format_merge_forward_items(
               message_id,
               items,
-              sender_names=self.resolve_forward_sender_names(client, items),
+              sender_names=self.resolve_forward_sender_names(
+                client, account_id, items,
+              ),
             ),
           )
         _ => Some("<forwarded_messages/>")
@@ -1149,32 +1178,30 @@ fn format_merge_forward_tree(
 async fn FeishuChannel::resolve_forward_sender_names(
   self : FeishuChannel,
   client : FeishuClient,
+  account_id : String,
   items : Array[FeishuMessageLookupItem],
 ) -> Map[String, String] {
-  ignore(self)
   let sender_names : Map[String, String] = {}
-  let seen : Map[String, Bool] = {}
-  for item in items {
-    match item.sender {
-      Some(sender) =>
-        match sender {
-          { id: Some(sender_id), sender_type: Some("user") } =>
-            if !sender_id.is_blank() {
-              match seen.get(sender_id) {
-                Some(true) => ()
-                _ => {
-                  seen[sender_id] = true
-                  match client.get_user_display_name(sender_id) {
-                    Ok(Some(name)) if !name.is_blank() =>
-                      sender_names[sender_id] = name
-                    _ => ()
-                  }
-                }
-              }
-            }
-          _ => ()
+  let sender_ids = collect_forward_sender_ids(items)
+  let missing_sender_ids = []
+  for sender_id in sender_ids {
+    match self.cached_user_name(account_id, sender_id) {
+      Some(name) if !name.is_blank() => sender_names[sender_id] = name
+      Some(_) => ()
+      None => missing_sender_ids.push(sender_id)
+    }
+  }
+  if !missing_sender_ids.is_empty() {
+    match client.get_user_display_names(missing_sender_ids) {
+      Ok(resolved_names) =>
+        for sender_id in missing_sender_ids {
+          let resolved_name = resolved_names.get(sender_id).unwrap_or("")
+          self.cache_user_name(account_id, sender_id, resolved_name)
+          if !resolved_name.is_blank() {
+            sender_names[sender_id] = resolved_name
+          }
         }
-      _ => ()
+      Err(_) => ()
     }
   }
   sender_names
@@ -1194,8 +1221,232 @@ fn resolve_merge_forward_sender_name(
 }
 
 ///|
+fn collect_forward_sender_ids(
+  items : Array[FeishuMessageLookupItem],
+) -> Array[String] {
+  let sender_ids = []
+  let seen : Map[String, Bool] = {}
+  for item in items {
+    match item.sender {
+      Some({ id: Some(sender_id), sender_type: Some("user") }) =>
+        if !sender_id.is_blank() {
+          match seen.get(sender_id) {
+            Some(true) => ()
+            _ => {
+              seen[sender_id] = true
+              sender_ids.push(sender_id)
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  sender_ids
+}
+
+///|
+fn feishu_user_cache_key(account_id : String, open_id : String) -> String {
+  "\{account_id}:\{open_id}"
+}
+
+///|
+fn FeishuChannel::cached_user_name(
+  self : FeishuChannel,
+  account_id : String,
+  open_id : String,
+) -> String? {
+  self.state.user_name_cache.get(feishu_user_cache_key(account_id, open_id))
+}
+
+///|
+fn FeishuChannel::cache_user_name(
+  self : FeishuChannel,
+  account_id : String,
+  open_id : String,
+  name : String,
+) -> Unit {
+  self.state.user_name_cache[feishu_user_cache_key(account_id, open_id)] = name
+}
+
+///|
 fn indent_text(text : String, prefix : String) -> String {
   text.split("\n").map(fn(line) { "\{prefix}\{line}" }).join("\n")
+}
+
+///|
+fn FeishuChannel::websocket_account_status_json(
+  self : FeishuChannel,
+  account_id : String,
+) -> Json {
+  let connection_mode = match self.state.feishu_configs.get(account_id) {
+    Some(config) => config.connection_mode
+    None => "webhook"
+  }
+  Json::object({
+    "account_id": account_id,
+    "connection_mode": connection_mode,
+    "running": self.is_running(account_id).to_json(),
+  })
+}
+
+///|
+fn FeishuChannel::websocket_monitor_accounts(
+  self : FeishuChannel,
+) -> Array[String] {
+  self.state.feishu_configs
+  .keys()
+  .filter(fn(account_id) {
+    match self.state.feishu_configs.get(account_id) {
+      Some(config) => config.connection_mode == "websocket" && config.enabled
+      None => false
+    }
+  })
+  .to_array()
+}
+
+///|
+fn FeishuChannel::remove_monitor_connection(
+  self : FeishuChannel,
+  connection_id : String,
+) -> Unit {
+  self.state.active_monitor_connections.remove(connection_id)
+}
+
+///|
+fn FeishuChannel::broadcast_monitor_status(self : FeishuChannel) -> Unit {
+  if self.state.active_monitor_connections.is_empty() {
+    return
+  }
+  let payload = @encoding/utf8.encode(
+    Json::object({
+      "type": "feishu.monitor.status",
+      "channel": "feishu",
+      "accounts": Json::array(
+        self
+        .websocket_monitor_accounts()
+        .map(fn(account_id) { self.websocket_account_status_json(account_id) }),
+      ),
+    }).stringify(),
+  )
+  for _, conn in self.state.active_monitor_connections {
+    conn.send(payload)
+  }
+}
+
+///|
+async fn FeishuChannel::handle_monitor_frame(
+  self : FeishuChannel,
+  connection_id : String,
+  bytes : Bytes,
+) -> Unit {
+  let text = match (try? @encoding/utf8.decode(bytes)) {
+    Ok(text) => text
+    Err(_) => {
+      self.send_monitor_error(
+        connection_id, "invalid_utf8", "Invalid UTF-8 monitor frame",
+      )
+      return
+    }
+  }
+  let json : Json = match (try? @json.parse(text)) {
+    Ok(json) => json
+    Err(_) => {
+      self.send_monitor_error(
+        connection_id, "invalid_json", "Invalid JSON monitor frame",
+      )
+      return
+    }
+  }
+  match json {
+    { "type": String("ping"), .. } =>
+      self.send_monitor_frame(connection_id, {
+        "type": "pong",
+        "channel": "feishu",
+      })
+    { "type": String("feishu.event"), "event": event_json, .. } =>
+      self.handle_monitor_event_frame(connection_id, event_json)
+    event_json => self.handle_monitor_event_frame(connection_id, event_json)
+  }
+}
+
+///|
+async fn FeishuChannel::handle_monitor_event_frame(
+  self : FeishuChannel,
+  connection_id : String,
+  event_json : Json,
+) -> Unit {
+  let response = match event_json {
+    { "header": { "event_type": String("im.message.receive_v1"), .. }, .. } =>
+      self.handle_feishu_message(event_json)
+    {
+      "header": { "event_type": String("im.message.reaction.created_v1"), .. },
+      ..
+    } => self.handle_reaction_event(event_json)
+    {
+      "header": { "event_type": String("im.chat.member.bot.added_v1"), .. },
+      ..
+    } => self.handle_bot_membership_event(event_json, "added")
+    {
+      "header": { "event_type": String("im.chat.member.bot.deleted_v1"), .. },
+      ..
+    } => self.handle_bot_membership_event(event_json, "removed")
+    {
+      "header": { "event_type": String("im.chat.member.bot.removed_v1"), .. },
+      ..
+    } => self.handle_bot_membership_event(event_json, "removed")
+    { "header": { "event_type": String("card.action.trigger"), .. }, .. } =>
+      self.handle_card_action_event(event_json)
+    { "header": { "event_type": String(other), .. }, .. } =>
+      @channel.ExtensionResponse::bad_request(
+        message="Unsupported Feishu monitor event: \{other}",
+      )
+    _ =>
+      @channel.ExtensionResponse::bad_request(
+        message="Missing Feishu monitor event_type",
+      )
+  }
+  let body_text = @encoding/utf8.decode(response.body()) catch { _ => "" }
+  if response.status_code() is (200..=299) {
+    self.send_monitor_frame(connection_id, {
+      "type": "feishu.monitor.ack",
+      "status": "ok",
+      "status_code": response.status_code(),
+      "body": body_text,
+    })
+  } else {
+    self.send_monitor_error(
+      connection_id,
+      "event_rejected",
+      body_text,
+      status_code=response.status_code(),
+    )
+  }
+}
+
+///|
+fn FeishuChannel::send_monitor_frame(
+  self : FeishuChannel,
+  connection_id : String,
+  payload : Json,
+) -> Unit {
+  match self.state.active_monitor_connections.get(connection_id) {
+    Some(conn) => conn.send(@encoding/utf8.encode(payload.stringify()))
+    None => ()
+  }
+}
+
+///|
+fn FeishuChannel::send_monitor_error(
+  self : FeishuChannel,
+  connection_id : String,
+  code : String,
+  message : String,
+  status_code? : Int = 400,
+) -> Unit {
+  self.send_monitor_frame(connection_id, {
+    "type": "feishu.monitor.error",
+    "error": { "code": code, "message": message, "status_code": status_code },
+  })
 }
 
 ///|
