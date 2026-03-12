@@ -52,6 +52,7 @@ pub struct FeishuClient {
   config : FeishuAccountConfig
 }
 pub async fn FeishuClient::get_message(Self, String) -> Result[FeishuMessageLookupItem?, @channel.ChannelError]
+pub async fn FeishuClient::get_message_items(Self, String) -> Result[Array[FeishuMessageLookupItem], @channel.ChannelError]
 pub fn FeishuClient::new(FeishuAccountConfig) -> Self
 pub async fn FeishuClient::send_text_message(Self, String, String, reply_to? : String?, reply_in_thread? : Bool) -> Result[@channel.SendResult, @channel.ChannelError]
 
@@ -122,6 +123,7 @@ pub struct FeishuMessageLookupItem {
   chat_type : String?
   create_time : String?
   thread_id : String?
+  upper_message_id : String?
   msg_type : String?
   body : FeishuMessageLookupBody?
   sender : FeishuMessageLookupSender?

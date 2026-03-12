@@ -491,3 +491,74 @@ test "Feishu reaction helpers ignore unsupported operators and enforce own-messa
     content="false",
   )
 }
+
+///|
+test "Feishu merge_forward formatter expands nested forwarded messages in place" {
+  let rendered = format_merge_forward_items("root", [
+    FeishuMessageLookupItem::{
+      message_id: "root",
+      chat_id: "chat-test",
+      chat_type: Some("group"),
+      create_time: Some("0"),
+      thread_id: None,
+      upper_message_id: None,
+      msg_type: Some("merge_forward"),
+      body: Some(FeishuMessageLookupBody::{ content: Some("{}") }),
+      sender: Some(FeishuMessageLookupSender::{
+        id: Some("ou_root"),
+        sender_type: Some("user"),
+      }),
+    },
+    FeishuMessageLookupItem::{
+      message_id: "text-1",
+      chat_id: "chat-test",
+      chat_type: Some("group"),
+      create_time: Some("1000"),
+      thread_id: None,
+      upper_message_id: None,
+      msg_type: Some("text"),
+      body: Some(FeishuMessageLookupBody::{
+        content: Some(Json::object({ "text": "first" }).stringify()),
+      }),
+      sender: Some(FeishuMessageLookupSender::{
+        id: Some("ou_first"),
+        sender_type: Some("user"),
+      }),
+    },
+    FeishuMessageLookupItem::{
+      message_id: "nested-root",
+      chat_id: "chat-test",
+      chat_type: Some("group"),
+      create_time: Some("2000"),
+      thread_id: None,
+      upper_message_id: None,
+      msg_type: Some("merge_forward"),
+      body: Some(FeishuMessageLookupBody::{ content: Some("{}") }),
+      sender: Some(FeishuMessageLookupSender::{
+        id: Some("ou_nested"),
+        sender_type: Some("user"),
+      }),
+    },
+    FeishuMessageLookupItem::{
+      message_id: "text-2",
+      chat_id: "chat-test",
+      chat_type: Some("group"),
+      create_time: Some("3000"),
+      thread_id: None,
+      upper_message_id: Some("nested-root"),
+      msg_type: Some("text"),
+      body: Some(FeishuMessageLookupBody::{
+        content: Some(Json::object({ "text": "nested" }).stringify()),
+      }),
+      sender: Some(FeishuMessageLookupSender::{
+        id: Some("ou_child"),
+        sender_type: Some("user"),
+      }),
+    },
+  ])
+
+  inspect(
+    rendered,
+    content="<forwarded_messages>\n[1000] ou_first:\n    first\n[2000] ou_nested:\n    <forwarded_messages>\n    [3000] ou_child:\n        nested\n    </forwarded_messages>\n</forwarded_messages>",
+  )
+}

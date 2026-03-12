@@ -97,6 +97,7 @@ pub struct FeishuMessageLookupItem {
   chat_type : String?
   create_time : String?
   thread_id : String?
+  upper_message_id : String?
   msg_type : String?
   body : FeishuMessageLookupBody?
   sender : FeishuMessageLookupSender?

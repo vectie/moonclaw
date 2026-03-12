@@ -352,15 +352,6 @@ async fn FeishuChannel::handle_feishu_message(
     _ => "text"
   }
 
-  let content = match message_data {
-    { "content": String(c), .. } =>
-      parse_feishu_message_content(c, message_type)
-    _ => None
-  }
-  guard content is Some(content) else {
-    return @channel.ExtensionResponse::ok()
-  }
-
   let from_user_id = match sender_data {
     Some({ "sender_id": { "open_id": String(uid), .. }, .. }) => uid
     Some({ "sender_id": { "user_id": String(uid), .. }, .. }) => uid
@@ -409,6 +400,15 @@ async fn FeishuChannel::handle_feishu_message(
     return @channel.ExtensionResponse::bad_request(
       message="Feishu verify_token mismatch",
     )
+  }
+
+  let content = match message_data {
+    { "content": String(c), .. } =>
+      self.parse_event_message_content(c, message_type, account_id, message_id)
+    _ => None
+  }
+  guard content is Some(content) else {
+    return @channel.ExtensionResponse::ok()
   }
 
   // Create channel message
@@ -772,6 +772,20 @@ fn parse_feishu_message_content(raw : String, message_type : String) -> String? 
 }
 
 ///|
+async fn FeishuChannel::parse_event_message_content(
+  self : FeishuChannel,
+  raw : String,
+  message_type : String,
+  account_id : String,
+  message_id : String,
+) -> String? {
+  match message_type {
+    "merge_forward" => self.parse_merge_forward_content(account_id, message_id)
+    _ => parse_feishu_message_content(raw, message_type)
+  }
+}
+
+///|
 fn parse_feishu_attachments(
   raw : String,
   message_type : String,
@@ -1035,6 +1049,94 @@ fn parse_feishu_share_user_content(raw : String) -> String? {
       Some("[shared user] \{user_name}")
     _ => Some("[shared user]")
   }
+}
+
+///|
+async fn FeishuChannel::parse_merge_forward_content(
+  self : FeishuChannel,
+  account_id : String,
+  message_id : String,
+) -> String? {
+  match self.state.clients.get(account_id) {
+    Some(client) =>
+      match client.get_message_items(message_id) {
+        Ok(items) if !items.is_empty() =>
+          Some(format_merge_forward_items(message_id, items))
+        _ => Some("<forwarded_messages/>")
+      }
+    None => Some("<forwarded_messages/>")
+  }
+}
+
+///|
+fn format_merge_forward_items(
+  root_message_id : String,
+  items : Array[FeishuMessageLookupItem],
+) -> String {
+  let children : Map[String, Array[FeishuMessageLookupItem]] = {}
+  for item in items {
+    if item.message_id == root_message_id && item.upper_message_id is None {
+      continue
+    }
+    let parent_id = item.upper_message_id.unwrap_or(root_message_id)
+    let siblings = match children.get(parent_id) {
+      Some(siblings) => siblings
+      None => []
+    }
+    siblings.push(item)
+    children[parent_id] = siblings
+  }
+  let rendered = format_merge_forward_tree(root_message_id, children)
+  if rendered.is_blank() {
+    "<forwarded_messages/>"
+  } else {
+    "<forwarded_messages>\n\{rendered}\n</forwarded_messages>"
+  }
+}
+
+///|
+fn format_merge_forward_tree(
+  parent_id : String,
+  children : Map[String, Array[FeishuMessageLookupItem]],
+) -> String {
+  let items = match children.get(parent_id) {
+    Some(items) => items
+    None => return ""
+  }
+  let parts = []
+  for item in items {
+    let sender = match item.sender {
+      Some(sender) => sender.id.unwrap_or("unknown")
+      None => "unknown"
+    }
+    let timestamp = item.create_time.unwrap_or("unknown")
+    let content = match item.msg_type.unwrap_or("text") {
+      "merge_forward" => {
+        let nested = format_merge_forward_tree(item.message_id, children)
+        if nested.is_blank() {
+          "<forwarded_messages/>"
+        } else {
+          "<forwarded_messages>\n\{nested}\n</forwarded_messages>"
+        }
+      }
+      message_type =>
+        parse_feishu_message_content(
+          match item.body {
+            Some(body) => body.content.unwrap_or("{}")
+            None => "{}"
+          },
+          message_type,
+        ).unwrap_or("[unsupported]")
+    }
+    let indented = indent_text(content, "    ")
+    parts.push("[\{timestamp}] \{sender}:\n\{indented}")
+  }
+  parts.join("\n")
+}
+
+///|
+fn indent_text(text : String, prefix : String) -> String {
+  text.split("\n").map(fn(line) { "\{prefix}\{line}" }).join("\n")
 }
 
 ///|
