@@ -422,7 +422,13 @@ async fn FeishuChannel::handle_feishu_message(
     timestamp,
     thread_id,
     reply_to: None,
-    attachments: [],
+    attachments: parse_feishu_attachments(
+      match message_data {
+        { "content": String(raw_content), .. } => raw_content
+        _ => ""
+      },
+      message_type,
+    ),
   }
 
   // Process through message handler if available
@@ -762,6 +768,94 @@ fn parse_feishu_message_content(raw : String, message_type : String) -> String? 
     "share_user" => parse_feishu_share_user_content(raw)
     "merge_forward" => Some("<forwarded_messages/>")
     _ => None
+  }
+}
+
+///|
+fn parse_feishu_attachments(
+  raw : String,
+  message_type : String,
+) -> Array[@channel.Attachment] {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok(json) => build_feishu_attachments(json, message_type)
+    Err(_) => []
+  }
+}
+
+///|
+fn build_feishu_attachments(
+  json : Json,
+  message_type : String,
+) -> Array[@channel.Attachment] {
+  match message_type {
+    "image" =>
+      match json {
+        { "image_key": String(image_key), .. } if !image_key.is_blank() =>
+          [
+            @channel.Attachment::{
+              id: image_key,
+              mime_type: "image/*",
+              url: "feishu://image/\{image_key}",
+              filename: None,
+              size: None,
+            },
+          ]
+        _ => []
+      }
+    "file" | "media" =>
+      match json {
+        { "file_key": String(file_key), "file_name": String(file_name), .. } =>
+          [
+            @channel.Attachment::{
+              id: file_key,
+              mime_type: "application/octet-stream",
+              url: "feishu://file/\{file_key}",
+              filename: Some(file_name),
+              size: None,
+            },
+          ]
+        { "file_key": String(file_key), .. } =>
+          [
+            @channel.Attachment::{
+              id: file_key,
+              mime_type: "application/octet-stream",
+              url: "feishu://file/\{file_key}",
+              filename: None,
+              size: None,
+            },
+          ]
+        _ => []
+      }
+    "audio" =>
+      match json {
+        { "file_key": String(file_key), .. } =>
+          [
+            @channel.Attachment::{
+              id: file_key,
+              mime_type: "audio/*",
+              url: "feishu://audio/\{file_key}",
+              filename: None,
+              size: None,
+            },
+          ]
+        _ => []
+      }
+    "video" =>
+      match json {
+        { "file_key": String(file_key), .. } =>
+          [
+            @channel.Attachment::{
+              id: file_key,
+              mime_type: "video/*",
+              url: "feishu://video/\{file_key}",
+              filename: None,
+              size: None,
+            },
+          ]
+        _ => []
+      }
+    _ => []
   }
 }
 

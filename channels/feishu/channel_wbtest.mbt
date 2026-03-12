@@ -1,12 +1,17 @@
 ///|
 struct RecordingHandler {
   handled_message_ids : Array[String]
+  attachment_counts : Array[Int]
   event_types : Array[String]
 }
 
 ///|
 fn RecordingHandler::new() -> RecordingHandler {
-  RecordingHandler::{ handled_message_ids: [], event_types: [] }
+  RecordingHandler::{
+    handled_message_ids: [],
+    attachment_counts: [],
+    event_types: [],
+  }
 }
 
 ///|
@@ -19,6 +24,7 @@ impl @channel.MessageHandler for RecordingHandler with handle_message(
   ignore(channel_id)
   ignore(account_id)
   self.handled_message_ids.push(message.id)
+  self.attachment_counts.push(message.attachments.length())
   @channel.Message::{
     id: "reply-\{message.id}",
     channel: message.channel,
@@ -321,6 +327,7 @@ async test "Feishu webhook accepts image messages and normalizes them to text" {
 
   inspect(response.status_code(), content="500")
   json_inspect(handler.handled_message_ids, content=["message-image"])
+  json_inspect(handler.attachment_counts, content=[1])
 }
 
 ///|
@@ -342,6 +349,7 @@ async test "Feishu webhook accepts file messages and normalizes them to text" {
 
   inspect(response.status_code(), content="500")
   json_inspect(handler.handled_message_ids, content=["message-file"])
+  json_inspect(handler.attachment_counts, content=[1])
 }
 
 ///|
