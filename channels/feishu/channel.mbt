@@ -274,8 +274,14 @@ impl @channel.ChannelExtension for FeishuChannel with handle_webhook(
       if event_type == "im.chat.member.bot.added_v1" {
         return self.handle_bot_membership_event(json, "added")
       }
+      if event_type == "im.chat.member.bot.deleted_v1" {
+        return self.handle_bot_membership_event(json, "removed")
+      }
       if event_type == "im.chat.member.bot.removed_v1" {
         return self.handle_bot_membership_event(json, "removed")
+      }
+      if event_type == "card.action.trigger" {
+        return self.handle_card_action_event(json)
       }
 
       // For other events, just acknowledge
@@ -621,6 +627,62 @@ async fn FeishuChannel::handle_bot_membership_event(
       @channel.ExtensionResponse::ok()
     }
     None => @channel.ExtensionResponse::ok()
+  }
+}
+
+///|
+async fn FeishuChannel::handle_card_action_event(
+  self : FeishuChannel,
+  json : Json,
+) -> @channel.ExtensionResponse {
+  let event_data = match json {
+    { "event": event, .. } => event
+    _ =>
+      return @channel.ExtensionResponse::bad_request(
+        message="Missing event data",
+      )
+  }
+  let event_id = match json {
+    { "header": { "event_id": String(event_id), .. }, .. } => Some(event_id)
+    _ => None
+  }
+  if self.is_duplicate_event(event_id) {
+    return @channel.ExtensionResponse::json({
+      "toast": { "type": "info", "content": "Action already processed" },
+    })
+  }
+
+  let app_id = match json {
+    { "header": { "app_id": String(app_id), .. }, .. } => Some(app_id)
+    _ => None
+  }
+  let account_id = match self.resolve_account_id_for_event(app_id, json) {
+    Some(account_id) => account_id
+    None =>
+      return @channel.ExtensionResponse::bad_request(
+        message="No matching Feishu account configured for card action event",
+      )
+  }
+  if !self.verify_request_token(account_id, json) {
+    return @channel.ExtensionResponse::bad_request(
+      message="Feishu verify_token mismatch",
+    )
+  }
+
+  match self.state.message_handler {
+    Some(handler) => {
+      handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+        channel: "feishu",
+        account_id,
+        event_type: "card.action",
+        payload: event_data,
+        timestamp: 0,
+      })
+      @channel.ExtensionResponse::json({
+        "toast": { "type": "success", "content": "Action received" },
+      })
+    }
+    None => @channel.ExtensionResponse::json({})
   }
 }
 

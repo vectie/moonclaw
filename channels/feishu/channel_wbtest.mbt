@@ -237,10 +237,45 @@ async test "Feishu webhook forwards bot membership events through the channel ev
       "operator_id": { "open_id": "ou_operator" },
     }),
   )
+  let deleted = channel.handle_webhook(
+    feishu_event_request("im.chat.member.bot.deleted_v1", "event-bot-deleted", {
+      "chat_id": "chat-test",
+      "operator_id": { "open_id": "ou_operator" },
+    }),
+  )
 
   inspect(added.status_code(), content="200")
   inspect(removed.status_code(), content="200")
-  json_inspect(handler.event_types, content=["bot.added", "bot.removed"])
+  inspect(deleted.status_code(), content="200")
+  json_inspect(handler.event_types, content=[
+    "bot.added", "bot.removed", "bot.removed",
+  ])
+}
+
+///|
+async test "Feishu webhook forwards card actions and returns a Feishu-compatible ack" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let response = channel.handle_webhook(
+    feishu_event_request("card.action.trigger", "event-card", {
+      "open_message_id": "om_123",
+      "open_chat_id": "oc_123",
+      "operator": { "open_id": "ou_operator" },
+      "action": { "value": { "intent": "approve" } },
+    }),
+  )
+
+  inspect(response.status_code(), content="200")
+  inspect(
+    @encoding/utf8.decode(response.body()) catch {
+      _ => ""
+    },
+    content="{\"toast\":{\"type\":\"success\",\"content\":\"Action received\"}}",
+  )
+  json_inspect(handler.event_types, content=["card.action"])
 }
 
 ///|
