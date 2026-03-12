@@ -429,6 +429,7 @@ pub fn TUI::is_running(Self) -> Bool
 pub fn TUI::new() -> Self raise
 pub async fn TUI::render(Self) -> Unit
 pub fn TUI::request_render(Self) -> Unit
+pub fn TUI::request_stop(Self) -> Unit
 pub async fn TUI::run_event_loop(Self) -> Unit
 pub fn TUI::scroll_chat_to_bottom(Self) -> Unit
 pub fn TUI::set_on_command(Self, (String) -> Unit) -> Unit

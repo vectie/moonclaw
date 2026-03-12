@@ -264,6 +264,11 @@ pub async fn TUI::stop(self : TUI) -> Unit {
 }
 
 ///|
+pub fn TUI::request_stop(self : TUI) -> Unit {
+  self.running = false
+}
+
+///|
 pub fn TUI::is_running(self : TUI) -> Bool {
   self.running
 }

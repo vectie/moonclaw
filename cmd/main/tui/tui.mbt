@@ -101,12 +101,14 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
 
     tui.set_on_ctrl_c(fn() {
       state.should_exit = true
+      tui.request_stop()
       tui.state().set_activity_status("stopping")
       tui.request_render()
     })
 
     tui.set_on_ctrl_d(fn() {
       state.should_exit = true
+      tui.request_stop()
       tui.state().set_activity_status("stopping")
       tui.request_render()
     })
@@ -115,6 +117,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
     .editor()
     .set_on_ctrl_c(fn() {
       state.should_exit = true
+      tui.request_stop()
       tui.state().set_activity_status("stopping")
       tui.request_render()
     })
@@ -123,6 +126,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
     .editor()
     .set_on_ctrl_d(fn() {
       state.should_exit = true
+      tui.request_stop()
       tui.state().set_activity_status("stopping")
       tui.request_render()
     })
@@ -298,7 +302,10 @@ fn handle_command(
       let model_info = "Current model: \{moonclaw.agent.model.name}"
       tui.chat_log().add_system(model_info, width, chat_height)
     }
-    "exit" => state.should_exit = true
+    "exit" => {
+      state.should_exit = true
+      tui.request_stop()
+    }
     _ => {
       let error_msg = "Unknown command: /\{cmd}"
       tui.chat_log().add_system(error_msg, width, chat_height)
