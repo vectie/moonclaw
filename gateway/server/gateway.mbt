@@ -25,6 +25,7 @@ pub struct Gateway {
   mut started_at : Int
   mut pending_requests : Int
   agent_runs : Map[String, AgentRun]
+  active_channel_sessions : Map[String, @event.ExternalEventQueue]
   shutdown_requested : Bool
   agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
   channel_manager : ChannelManager

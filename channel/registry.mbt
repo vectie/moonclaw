@@ -64,7 +64,7 @@ pub fn ChannelRegistry::configure(
 }
 
 ///|
-pub fn ChannelRegistry::start(
+pub async fn ChannelRegistry::start(
   self : ChannelRegistry,
   id : ChannelId,
   account_id : String,
@@ -86,7 +86,7 @@ pub fn ChannelRegistry::start(
 }
 
 ///|
-pub fn ChannelRegistry::stop(
+pub async fn ChannelRegistry::stop(
   self : ChannelRegistry,
   id : ChannelId,
   account_id : String,

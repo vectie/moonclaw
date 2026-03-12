@@ -27,7 +27,7 @@ pub fn ChannelManager::configure_channel(
 }
 
 ///|
-pub fn ChannelManager::start_channel(
+pub async fn ChannelManager::start_channel(
   self : ChannelManager,
   id : @channel.ChannelId,
   account_id : String,
@@ -37,7 +37,7 @@ pub fn ChannelManager::start_channel(
 }
 
 ///|
-pub fn ChannelManager::stop_channel(
+pub async fn ChannelManager::stop_channel(
   self : ChannelManager,
   id : @channel.ChannelId,
   account_id : String,
@@ -61,7 +61,7 @@ pub fn ChannelManager::get_channel_dock(
 }
 
 ///|
-pub fn ChannelManager::send_message(
+pub async fn ChannelManager::send_message(
   self : ChannelManager,
   channel_id : @channel.ChannelId,
   to : String,

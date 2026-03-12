@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/moonclaw/channel",
   "moonbitlang/moonclaw/clock",
+  "moonbitlang/moonclaw/event",
   "moonbitlang/moonclaw/gateway/protocol",
   "moonbitlang/moonclaw/internal/broadcast",
   "moonbitlang/moonclaw/internal/httpx",
@@ -115,9 +116,9 @@ pub fn ChannelManager::list_channels(Self) -> Array[@channel.ChannelDock]
 pub fn ChannelManager::new(@pino.Logger) -> Self
 pub fn ChannelManager::register_channel(Self, &@channel.Channel) -> Unit
 pub async fn ChannelManager::restore_states(Self, @pino.Logger, Array[PersistedChannelState]) -> Unit
-pub fn ChannelManager::send_message(Self, String, String, @channel.Message, String?) -> Result[@channel.SendResult, @channel.ChannelError]
-pub fn ChannelManager::start_channel(Self, String, String, Json) -> Result[Unit, @channel.ChannelError]
-pub fn ChannelManager::stop_channel(Self, String, String) -> Result[Unit, @channel.ChannelError]
+pub async fn ChannelManager::send_message(Self, String, String, @channel.Message, String?) -> Result[@channel.SendResult, @channel.ChannelError]
+pub async fn ChannelManager::start_channel(Self, String, String, Json) -> Result[Unit, @channel.ChannelError]
+pub async fn ChannelManager::stop_channel(Self, String, String) -> Result[Unit, @channel.ChannelError]
 
 type ChannelStateStore
 pub fn ChannelStateStore::list_states(Self) -> Array[PersistedChannelState]
@@ -238,6 +239,7 @@ pub struct Gateway {
   mut started_at : Int
   mut pending_requests : Int
   agent_runs : Map[String, AgentRun]
+  active_channel_sessions : Map[String, @event.ExternalEventQueue]
   shutdown_requested : Bool
   agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
   channel_manager : ChannelManager

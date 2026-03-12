@@ -138,9 +138,12 @@ pub(open) trait Channel {
   meta(Self) -> ChannelMeta
   capabilities(Self) -> ChannelCapabilities
   configure(Self, ChannelConfig) -> Unit
-  start(Self, account_id : String, config : Json) -> Result[Unit, ChannelError]
-  stop(Self, account_id : String) -> Result[Unit, ChannelError]
-  send(Self, to : String, message : Message, account_id : String?) -> Result[
+  async start(Self, account_id : String, config : Json) -> Result[
+    Unit,
+    ChannelError,
+  ]
+  async stop(Self, account_id : String) -> Result[Unit, ChannelError]
+  async send(Self, to : String, message : Message, account_id : String?) -> Result[
     SendResult,
     ChannelError,
   ]

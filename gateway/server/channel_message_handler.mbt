@@ -1,4 +1,35 @@
 ///|
+fn Gateway::register_active_channel_session(
+  self : Gateway,
+  session_key : String,
+  queue : @event.ExternalEventQueue,
+) -> Unit {
+  self.active_channel_sessions[session_key] = queue
+}
+
+///|
+fn Gateway::clear_active_channel_session(
+  self : Gateway,
+  session_key : String,
+) -> Unit {
+  self.active_channel_sessions.remove(session_key) |> ignore()
+}
+
+///|
+fn Gateway::cancel_active_channel_session(
+  self : Gateway,
+  session_key : String,
+) -> Bool {
+  match self.active_channel_sessions.get(session_key) {
+    Some(queue) => {
+      queue.send(@event.Cancelled)
+      true
+    }
+    None => false
+  }
+}
+
+///|
 async fn Gateway::store_channel_session(
   self : Gateway,
   session_key : String,
@@ -84,6 +115,11 @@ impl @channel.MessageHandler for Gateway with handle_message(
     cwd,
     message.content,
   )
+  self.register_active_channel_session(
+    session_key,
+    moonclaw.agent.external_events(),
+  )
+  defer self.clear_active_channel_session(session_key)
   moonclaw.agent.event_target.add_listener(event => {
     match event.desc {
       AssistantMessage(content, ..) if !content.is_blank() =>
@@ -128,5 +164,21 @@ impl @channel.MessageHandler for Gateway with handle_event(
   account_id : String,
   event : @channel.ChannelEvent,
 ) -> Unit {
-
+  match event.event_type {
+    "cancel" => {
+      let chat_id = match event.payload {
+        { "chat_id": String(chat_id), .. } => chat_id
+        _ => return
+      }
+      let thread_id = match event.payload {
+        { "thread_id": String(thread_id), .. } => Some(thread_id)
+        _ => None
+      }
+      let session_key = channel_session_key(
+        channel_id, account_id, chat_id, thread_id,
+      )
+      ignore(self.cancel_active_channel_session(session_key))
+    }
+    _ => ()
+  }
 }

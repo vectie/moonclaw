@@ -4,7 +4,22 @@ struct FeishuChannelState {
   mut feishu_configs : Map[String, FeishuAccountConfig]
   clients : Map[String, FeishuClient]
   running : Map[String, Bool]
+  recent_event_ids : Array[String]
+  recent_message_ids : Array[String]
+  pending_messages : Map[String, Array[QueuedFeishuMessage]]
+  processing_keys : Map[String, Bool]
   mut message_handler : &@channel.MessageHandler?
+}
+
+///|
+struct QueuedFeishuMessage {
+  account_id : String
+  chat_id : String
+  thread_id : String?
+  message_id : String
+  content : String
+  timestamp : Int
+  message : @channel.Message
 }
 
 ///|
@@ -20,6 +35,10 @@ pub fn FeishuChannel::new() -> FeishuChannel {
       feishu_configs: {},
       clients: {},
       running: {},
+      recent_event_ids: [],
+      recent_message_ids: [],
+      pending_messages: {},
+      processing_keys: {},
       message_handler: None,
     },
   }
@@ -92,8 +111,8 @@ impl @channel.Channel for FeishuChannel with capabilities(self : FeishuChannel) 
     group_management: false,
     threads: true,
     media: true,
-    native_commands: false,
-    block_streaming: false,
+    native_commands: true,
+    block_streaming: true,
   }
 }
 
@@ -104,6 +123,10 @@ impl @channel.Channel for FeishuChannel with configure(
 ) -> Unit {
   self.state.config = config
   self.state.feishu_configs = {}
+  self.state.recent_event_ids.clear()
+  self.state.recent_message_ids.clear()
+  self.state.pending_messages.clear()
+  self.state.processing_keys.clear()
   for account_id, account_config in config.accounts {
     self.state.feishu_configs[account_id] = get_feishu_config(account_config)
   }
@@ -171,7 +194,16 @@ impl @channel.Channel for FeishuChannel with send(
   }
 
   match self.state.clients.get(actual_account_id) {
-    Some(client) => client.send_text_message(to, message.content)
+    Some(client) =>
+      client.send_text_message(
+        to,
+        message.content,
+        reply_to=message.reply_to,
+        reply_in_thread=match message.thread_id {
+          Some(_) => true
+          None => false
+        },
+      )
     None =>
       Err(
         @channel.ChannelError::NotConfigured(
@@ -218,6 +250,10 @@ impl @channel.ChannelExtension for FeishuChannel with handle_webhook(
 
   match request.http_method() {
     "POST" => {
+      if self.is_url_verification_request(json) {
+        return self.handle_url_verification(json)
+      }
+
       // Parse Feishu event
       let event_type = match json {
         { "header": { "event_type": String(event_type), .. }, .. } => event_type
@@ -227,21 +263,18 @@ impl @channel.ChannelExtension for FeishuChannel with handle_webhook(
           )
       }
 
-      // Handle URL verification challenge
-      if event_type == "url_verification" {
-        let challenge = match json {
-          { "challenge": String(challenge), .. } => challenge
-          _ =>
-            return @channel.ExtensionResponse::bad_request(
-              message="Missing challenge in verification request",
-            )
-        }
-        return @channel.ExtensionResponse::json({ "challenge": challenge })
-      }
-
       // Handle message received event
       if event_type == "im.message.receive_v1" {
         return self.handle_feishu_message(json)
+      }
+      if event_type == "im.message.reaction.created_v1" {
+        return self.handle_reaction_event(json)
+      }
+      if event_type == "im.chat.member.bot.added_v1" {
+        return self.handle_bot_membership_event(json, "added")
+      }
+      if event_type == "im.chat.member.bot.removed_v1" {
+        return self.handle_bot_membership_event(json, "removed")
       }
 
       // For other events, just acknowledge
@@ -270,45 +303,105 @@ async fn FeishuChannel::handle_feishu_message(
       )
   }
 
-  let message_id = match event_data {
+  let event_id = match json {
+    { "header": { "event_id": String(event_id), .. }, .. } => Some(event_id)
+    _ => None
+  }
+  if self.is_duplicate_event(event_id) {
+    return @channel.ExtensionResponse::ok()
+  }
+
+  let app_id = match json {
+    { "header": { "app_id": String(app_id), .. }, .. } => Some(app_id)
+    _ => None
+  }
+
+  let message_data = match event_data {
+    { "message": message, .. } => message
+    _ =>
+      return @channel.ExtensionResponse::bad_request(
+        message="Missing message payload",
+      )
+  }
+
+  let sender_data = match event_data {
+    { "sender": sender, .. } => Some(sender)
+    _ => None
+  }
+
+  let message_id = match message_data {
     { "message_id": String(id), .. } => id
     _ =>
       return @channel.ExtensionResponse::bad_request(
         message="Missing message_id",
       )
   }
-
-  let chat_type = match event_data {
-    { "chat_type": String(ct), .. } => ct
-    _ => "personal"
+  if self.is_duplicate_message_id(message_id) {
+    return @channel.ExtensionResponse::ok()
   }
 
-  let content = match event_data {
+  let message_type = match message_data {
+    { "message_type": String(message_type), .. } => message_type
+    _ => "text"
+  }
+  if message_type != "text" {
+    return @channel.ExtensionResponse::ok()
+  }
+
+  let content = match message_data {
     { "content": String(c), .. } => parse_feishu_text_content(c)
     _ =>
       return @channel.ExtensionResponse::bad_request(message="Missing content")
   }
 
-  let from_user_id = match event_data {
-    { "sender": { "sender_id": { "open_id": String(uid), .. }, .. }, .. } => uid
-    { "sender": { "sender_id": { "user_id": String(uid), .. }, .. }, .. } => uid
-    { "sender_id": { "open_id": String(uid), .. }, .. } => uid
-    { "sender_id": { "user_id": String(uid), .. }, .. } => uid
+  let from_user_id = match sender_data {
+    Some({ "sender_id": { "open_id": String(uid), .. }, .. }) => uid
+    Some({ "sender_id": { "user_id": String(uid), .. }, .. }) => uid
+    Some({ "sender_id": { "union_id": String(uid), .. }, .. }) => uid
     _ =>
       return @channel.ExtensionResponse::bad_request(
         message="Missing sender_id",
       )
   }
 
-  let chat_id = match event_data {
+  let chat_id = match message_data {
     { "chat_id": String(cid), .. } => cid
     _ =>
       return @channel.ExtensionResponse::bad_request(message="Missing chat_id")
   }
 
-  let timestamp = match event_data {
-    { "create_time": String(ts), .. } => @strconv.parse_int(ts) catch { _ => 0 }
+  let timestamp_ms = match message_data {
+    { "create_time": String(ts), .. } =>
+      @strconv.parse_int64(ts) catch {
+        _ => 0
+      }
     _ => 0
+  }
+  if is_expired_message(timestamp_ms) {
+    return @channel.ExtensionResponse::ok()
+  }
+  let timestamp = timestamp_ms.to_int()
+
+  let thread_id = match message_data {
+    { "thread_id": String(thread_id), .. } => Some(thread_id)
+    { "msg_parent_id": String(parent_id), "message_id": String(mid), .. } if parent_id !=
+      mid => Some(parent_id)
+    { "msg_root_id": String(root_id), .. } => Some(root_id)
+    _ => None
+  }
+
+  let account_id = match self.resolve_account_id_for_event(app_id, json) {
+    Some(account_id) => account_id
+    None =>
+      return @channel.ExtensionResponse::bad_request(
+        message="No matching Feishu account configured for event",
+      )
+  }
+
+  if !self.verify_request_token(account_id, json) {
+    return @channel.ExtensionResponse::bad_request(
+      message="Feishu verify_token mismatch",
+    )
   }
 
   // Create channel message
@@ -320,38 +413,162 @@ async fn FeishuChannel::handle_feishu_message(
     content,
     content_type: "text",
     timestamp,
-    thread_id: None,
+    thread_id,
     reply_to: None,
     attachments: [],
   }
 
   // Process through message handler if available
   match self.state.message_handler {
-    Some(handler) => {
-      let account_id = self.resolve_account_id().unwrap_or("default")
-      try {
-        let response_message = handler.handle_message(
-          "feishu", account_id, message,
-        )
-        // Send response back through Feishu
-        match
-          self.send(response_message.to, response_message, Some(account_id)) {
-          Ok(_) => @channel.ExtensionResponse::ok()
-          Err(e) =>
-            @channel.ExtensionResponse::internal_error(
-              message="Failed to send response: \{e}",
-            )
+    Some(handler) =>
+      if is_abort_text(content) {
+        handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+          channel: "feishu",
+          account_id,
+          event_type: "cancel",
+          payload: {
+            "chat_id": chat_id,
+            "thread_id": thread_id.to_json(),
+            "message_id": message_id,
+            "content": content,
+          },
+          timestamp,
+        })
+        @channel.ExtensionResponse::ok()
+      } else {
+        let queue_key = feishu_queue_key(account_id, chat_id, thread_id)
+        self.enqueue_message(queue_key, QueuedFeishuMessage::{
+          account_id,
+          chat_id,
+          thread_id,
+          message_id,
+          content,
+          timestamp,
+          message,
+        })
+        if self.is_processing_queue(queue_key) {
+          @channel.ExtensionResponse::ok()
+        } else {
+          self.set_processing_queue(queue_key, true)
+          defer self.finish_processing_queue(queue_key)
+          self.process_queued_messages(queue_key, handler)
         }
-      } catch {
-        e =>
-          @channel.ExtensionResponse::internal_error(
-            message="Error processing message: \{e}",
-          )
       }
-    }
     None =>
       // No handler, just acknowledge
       @channel.ExtensionResponse::ok()
+  }
+}
+
+///|
+async fn FeishuChannel::handle_reaction_event(
+  self : FeishuChannel,
+  json : Json,
+) -> @channel.ExtensionResponse {
+  let event_data = match json {
+    { "event": event, .. } => event
+    _ =>
+      return @channel.ExtensionResponse::bad_request(
+        message="Missing event data",
+      )
+  }
+  let event_id = match json {
+    { "header": { "event_id": String(event_id), .. }, .. } => Some(event_id)
+    _ => None
+  }
+  if self.is_duplicate_event(event_id) {
+    return @channel.ExtensionResponse::ok()
+  }
+
+  let app_id = match json {
+    { "header": { "app_id": String(app_id), .. }, .. } => Some(app_id)
+    _ => None
+  }
+  let account_id = match self.resolve_account_id_for_event(app_id, json) {
+    Some(account_id) => account_id
+    None =>
+      return @channel.ExtensionResponse::bad_request(
+        message="No matching Feishu account configured for reaction event",
+      )
+  }
+  if !self.verify_request_token(account_id, json) {
+    return @channel.ExtensionResponse::bad_request(
+      message="Feishu verify_token mismatch",
+    )
+  }
+
+  match self.state.message_handler {
+    Some(handler) => {
+      let timestamp = match event_data {
+        { "action_time": String(ts), .. } =>
+          @strconv.parse_int(ts) catch {
+            _ => 0
+          }
+        _ => 0
+      }
+      handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+        channel: "feishu",
+        account_id,
+        event_type: "reaction.added",
+        payload: event_data,
+        timestamp,
+      })
+      @channel.ExtensionResponse::ok()
+    }
+    None => @channel.ExtensionResponse::ok()
+  }
+}
+
+///|
+async fn FeishuChannel::handle_bot_membership_event(
+  self : FeishuChannel,
+  json : Json,
+  action : String,
+) -> @channel.ExtensionResponse {
+  let event_data = match json {
+    { "event": event, .. } => event
+    _ =>
+      return @channel.ExtensionResponse::bad_request(
+        message="Missing event data",
+      )
+  }
+  let event_id = match json {
+    { "header": { "event_id": String(event_id), .. }, .. } => Some(event_id)
+    _ => None
+  }
+  if self.is_duplicate_event(event_id) {
+    return @channel.ExtensionResponse::ok()
+  }
+
+  let app_id = match json {
+    { "header": { "app_id": String(app_id), .. }, .. } => Some(app_id)
+    _ => None
+  }
+  let account_id = match self.resolve_account_id_for_event(app_id, json) {
+    Some(account_id) => account_id
+    None =>
+      return @channel.ExtensionResponse::bad_request(
+        message="No matching Feishu account configured for membership event",
+      )
+  }
+  if !self.verify_request_token(account_id, json) {
+    return @channel.ExtensionResponse::bad_request(
+      message="Feishu verify_token mismatch",
+    )
+  }
+
+  match self.state.message_handler {
+    Some(handler) => {
+      handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+        channel: "feishu",
+        account_id,
+        event_type: "bot.\{action}",
+        payload: event_data,
+        timestamp: 0,
+      })
+      @channel.ExtensionResponse::ok()
+    }
+    None => @channel.ExtensionResponse::ok()
   }
 }
 
@@ -400,7 +617,8 @@ impl @channel.ChannelExtension for FeishuChannel with on_unregister(
   self : FeishuChannel,
 ) -> Unit {
   for account_id in self.state.running.keys() {
-    ignore(self.stop(account_id.to_string()))
+    self.state.clients.remove(account_id)
+    self.state.running[account_id] = false
   }
 }
 
@@ -408,7 +626,7 @@ impl @channel.ChannelExtension for FeishuChannel with on_unregister(
 fn parse_feishu_text_content(raw : String) -> String {
   let parsed : Result[Json, Error] = try? @json.parse(raw)
   match parsed {
-    Ok({ "text": String(text), .. }) => text
+    Ok({ "text": String(text), .. }) => strip_feishu_mentions(text)
     Ok(json) => json.stringify()
     Err(_) => raw
   }
@@ -434,5 +652,294 @@ fn FeishuChannel::resolve_account_id(self : FeishuChannel) -> String? {
       } else {
         self.state.feishu_configs.keys().to_array().get(0)
       }
+  }
+}
+
+///|
+fn strip_feishu_mentions(text : String) -> String {
+  let parts = text.split(" ").map(fn(part) { part.to_string() }).collect()
+  parts
+  .filter(fn(part) { !part.has_prefix("@_user_") })
+  .join(" ")
+  .trim()
+  .to_string()
+}
+
+///|
+fn feishu_queue_key(
+  account_id : String,
+  chat_id : String,
+  thread_id : String?,
+) -> String {
+  match thread_id {
+    Some(thread_id) if !thread_id.is_blank() =>
+      "\{account_id}:\{chat_id}:thread:\{thread_id}"
+    _ => "\{account_id}:\{chat_id}"
+  }
+}
+
+///|
+fn abort_triggers() -> Array[String] {
+  [
+    "stop", "esc", "abort", "wait", "exit", "interrupt", "halt", "stopp", "please stop",
+    "stop please", "stop action", "stop current action", "stop run", "stop current run",
+    "stop agent", "stop the agent", "停止", "やめて", "止めて",
+  ]
+}
+
+///|
+fn normalize_abort_text(text : String) -> String {
+  text
+  .trim()
+  .to_lower()
+  .replace(old="'", new="")
+  .replace(old="`", new="")
+  .replace(old=",", new=" ")
+  .replace(old=".", new=" ")
+  .replace(old="!", new=" ")
+  .replace(old="?", new=" ")
+  .split(" ")
+  .map(fn(part) { part.to_string() })
+  .filter(fn(part) { !part.is_blank() })
+  .join(" ")
+}
+
+///|
+fn is_abort_text(text : String) -> Bool {
+  let normalized = normalize_abort_text(text)
+  normalized == "/stop" || abort_triggers().contains(normalized)
+}
+
+///|
+fn is_expired_message(timestamp : Int64) -> Bool {
+  if timestamp <= 0 {
+    false
+  } else {
+    @clock.epoch.now().ms() - timestamp > 15 * 60 * 1000
+  }
+}
+
+///|
+fn FeishuChannel::enqueue_message(
+  self : FeishuChannel,
+  queue_key : String,
+  message : QueuedFeishuMessage,
+) -> Unit {
+  let queue = match self.state.pending_messages.get(queue_key) {
+    Some(queue) => queue
+    None => []
+  }
+  queue.push(message)
+  self.state.pending_messages[queue_key] = queue
+}
+
+///|
+fn FeishuChannel::dequeue_message(
+  self : FeishuChannel,
+  queue_key : String,
+) -> QueuedFeishuMessage? {
+  match self.state.pending_messages.get(queue_key) {
+    Some(queue) if !queue.is_empty() => {
+      let next = queue[0]
+      let remaining = queue[1:].to_array()
+      if remaining.is_empty() {
+        self.state.pending_messages.remove(queue_key) |> ignore()
+      } else {
+        self.state.pending_messages[queue_key] = remaining
+      }
+      Some(next)
+    }
+    _ => None
+  }
+}
+
+///|
+fn FeishuChannel::is_processing_queue(
+  self : FeishuChannel,
+  queue_key : String,
+) -> Bool {
+  match self.state.processing_keys.get(queue_key) {
+    Some(true) => true
+    _ => false
+  }
+}
+
+///|
+fn FeishuChannel::set_processing_queue(
+  self : FeishuChannel,
+  queue_key : String,
+  processing : Bool,
+) -> Unit {
+  self.state.processing_keys[queue_key] = processing
+}
+
+///|
+fn FeishuChannel::finish_processing_queue(
+  self : FeishuChannel,
+  queue_key : String,
+) -> Unit {
+  self.state.processing_keys.remove(queue_key) |> ignore()
+}
+
+///|
+async fn FeishuChannel::process_queued_messages(
+  self : FeishuChannel,
+  queue_key : String,
+  handler : &@channel.MessageHandler,
+) -> @channel.ExtensionResponse {
+  let mut last_response = @channel.ExtensionResponse::ok()
+  while self.dequeue_message(queue_key) is Some(queued) {
+    try {
+      let response_message = handler.handle_message(
+        "feishu",
+        queued.account_id,
+        queued.message,
+      )
+      match
+        self.send(
+          response_message.to,
+          response_message,
+          Some(queued.account_id),
+        ) {
+        Ok(_) => last_response = @channel.ExtensionResponse::ok()
+        Err(e) =>
+          last_response = @channel.ExtensionResponse::internal_error(
+            message="Failed to send response: \{e}",
+          )
+      }
+    } catch {
+      e =>
+        last_response = @channel.ExtensionResponse::internal_error(
+          message="Error processing message: \{e}",
+        )
+    }
+  }
+  last_response
+}
+
+///|
+fn FeishuChannel::remember_message_id(
+  self : FeishuChannel,
+  message_id : String,
+) -> Unit {
+  self.state.recent_message_ids.push(message_id)
+  if self.state.recent_message_ids.length() > 256 {
+    ignore(self.state.recent_message_ids.remove(0))
+  }
+}
+
+///|
+fn FeishuChannel::remember_event_id(
+  self : FeishuChannel,
+  event_id : String,
+) -> Unit {
+  self.state.recent_event_ids.push(event_id)
+  if self.state.recent_event_ids.length() > 256 {
+    ignore(self.state.recent_event_ids.remove(0))
+  }
+}
+
+///|
+fn FeishuChannel::is_duplicate_event(
+  self : FeishuChannel,
+  event_id : String?,
+) -> Bool {
+  match event_id {
+    Some(event_id) =>
+      if self.state.recent_event_ids.contains(event_id) {
+        true
+      } else {
+        self.remember_event_id(event_id)
+        false
+      }
+    None => false
+  }
+}
+
+///|
+fn FeishuChannel::is_duplicate_message_id(
+  self : FeishuChannel,
+  message_id : String,
+) -> Bool {
+  if self.state.recent_message_ids.contains(message_id) {
+    true
+  } else {
+    self.remember_message_id(message_id)
+    false
+  }
+}
+
+///|
+fn FeishuChannel::resolve_account_id_for_event(
+  self : FeishuChannel,
+  app_id : String?,
+  _json : Json,
+) -> String? {
+  match app_id {
+    Some(app_id) => {
+      for account_id, config in self.state.feishu_configs {
+        if config.app_id == app_id {
+          return Some(account_id)
+        }
+      }
+      None
+    }
+    None => self.resolve_account_id()
+  }
+}
+
+///|
+fn FeishuChannel::verify_request_token(
+  self : FeishuChannel,
+  account_id : String,
+  json : Json,
+) -> Bool {
+  let expected = match self.state.feishu_configs.get(account_id) {
+    Some(config) => config.verify_token
+    None => None
+  }
+  match expected {
+    Some(token) if token.length() > 0 =>
+      match json {
+        { "token": String(actual), .. } => actual == token
+        { "header": { "token": String(actual), .. }, .. } => actual == token
+        _ => false
+      }
+    _ => true
+  }
+}
+
+///|
+fn FeishuChannel::is_url_verification_request(
+  self : FeishuChannel,
+  json : Json,
+) -> Bool {
+  match json {
+    { "type": String(kind), "challenge": String(_), .. } =>
+      kind == "url_verification"
+    _ => false
+  }
+}
+
+///|
+fn FeishuChannel::handle_url_verification(
+  self : FeishuChannel,
+  json : Json,
+) -> @channel.ExtensionResponse {
+  let account_id = self
+    .resolve_account_id_for_event(None, json)
+    .unwrap_or("default")
+  if !self.verify_request_token(account_id, json) {
+    return @channel.ExtensionResponse::bad_request(
+      message="Feishu verify_token mismatch",
+    )
+  }
+  match json {
+    { "challenge": String(challenge), .. } =>
+      @channel.ExtensionResponse::json({ "challenge": challenge })
+    _ =>
+      @channel.ExtensionResponse::bad_request(
+        message="Missing challenge in verification request",
+      )
   }
 }

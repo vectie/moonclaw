@@ -144,8 +144,8 @@ pub fn ChannelRegistry::get_entry(Self, String) -> ChannelEntry?
 pub fn ChannelRegistry::list_channels(Self) -> Array[ChannelDock]
 pub fn ChannelRegistry::new() -> Self
 pub fn ChannelRegistry::register(Self, &Channel) -> Unit
-pub fn ChannelRegistry::start(Self, String, String, Json) -> Result[Unit, ChannelError]
-pub fn ChannelRegistry::stop(Self, String, String) -> Result[Unit, ChannelError]
+pub async fn ChannelRegistry::start(Self, String, String, Json) -> Result[Unit, ChannelError]
+pub async fn ChannelRegistry::stop(Self, String, String) -> Result[Unit, ChannelError]
 
 pub(all) enum ChatType {
   Direct
@@ -204,7 +204,7 @@ pub fn ExtensionRegistry::get_by_path(Self, String) -> &ChannelExtension?
 pub fn ExtensionRegistry::get_dock_config(Self, String) -> ChannelDockConfig?
 pub fn ExtensionRegistry::get_message_handler(Self) -> &MessageHandler?
 pub fn ExtensionRegistry::get_webhook_paths(Self) -> Array[String]
-pub fn ExtensionRegistry::handle_webhook(Self, String, ExtensionRequest) -> ExtensionResponse raise
+pub async fn ExtensionRegistry::handle_webhook(Self, String, ExtensionRequest) -> ExtensionResponse
 pub fn ExtensionRegistry::has_path(Self, String) -> Bool
 pub fn ExtensionRegistry::list_dock_configs(Self) -> Map[String, ChannelDockConfig]
 pub fn ExtensionRegistry::list_extensions(Self) -> Array[ExtensionInfo]
@@ -373,16 +373,16 @@ pub(open) trait Channel {
   meta(Self) -> ChannelMeta
   capabilities(Self) -> ChannelCapabilities
   configure(Self, ChannelConfig) -> Unit
-  start(Self, String, Json) -> Result[Unit, ChannelError]
-  stop(Self, String) -> Result[Unit, ChannelError]
-  send(Self, String, Message, String?) -> Result[SendResult, ChannelError]
+  async start(Self, String, Json) -> Result[Unit, ChannelError]
+  async stop(Self, String) -> Result[Unit, ChannelError]
+  async send(Self, String, Message, String?) -> Result[SendResult, ChannelError]
   handle_event(Self, ChannelEvent) -> Unit
   is_running(Self, String) -> Bool
 }
 
 pub(open) trait ChannelExtension : Channel {
   webhook_path(Self) -> String
-  handle_webhook(Self, ExtensionRequest) -> ExtensionResponse raise
+  async handle_webhook(Self, ExtensionRequest) -> ExtensionResponse
   supports_websocket(Self) -> Bool
   handle_websocket(Self, WebSocketConnection) -> Unit
   allowed_methods(Self) -> Array[String]
@@ -392,7 +392,7 @@ pub(open) trait ChannelExtension : Channel {
 }
 
 pub(open) trait MessageHandler {
-  handle_message(Self, String, String, Message) -> Message raise
+  async handle_message(Self, String, String, Message) -> Message
   async handle_event(Self, String, String, ChannelEvent) -> Unit
 }
 

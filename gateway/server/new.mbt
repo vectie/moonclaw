@@ -71,6 +71,7 @@ pub async fn Gateway::new(
     started_at: 0,
     pending_requests: 0,
     agent_runs: {},
+    active_channel_sessions: {},
     shutdown_requested: false,
     agent_events: @broadcast.Broadcast::new(),
     channel_manager,
