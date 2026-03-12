@@ -108,6 +108,45 @@ fn feishu_message_request(
 }
 
 ///|
+fn feishu_message_request_with_type(
+  event_id : String,
+  message_id : String,
+  message_type : String,
+  content : String,
+  create_time : String,
+) -> @channel.ExtensionRequest {
+  let payload : Json = {
+    "schema": "2.0",
+    "header": {
+      "event_id": event_id,
+      "event_type": "im.message.receive_v1",
+      "app_id": "app-test",
+      "token": "verify-test",
+    },
+    "event": {
+      "sender": {
+        "sender_id": { "open_id": "ou_sender", "user_id": "user_sender" },
+      },
+      "message": {
+        "message_id": message_id,
+        "message_type": message_type,
+        "chat_id": "chat-test",
+        "chat_type": "p2p",
+        "create_time": create_time,
+        "content": content,
+      },
+    },
+    "token": "verify-test",
+  }
+  @channel.ExtensionRequest::new(
+    http_method="POST",
+    path="/webhook/feishu",
+    headers={ "content-type": "application/json" },
+    body=@encoding/utf8.encode(payload.stringify()),
+  )
+}
+
+///|
 fn feishu_event_request(
   event_type : String,
   event_id : String,
@@ -195,6 +234,72 @@ async test "Feishu webhook ignores stale replayed messages" {
   inspect(response.status_code(), content="200")
   inspect(handler.handled_message_ids.length(), content="0")
   inspect(channel.state.pending_messages.length(), content="0")
+}
+
+///|
+async test "Feishu webhook accepts post messages and normalizes them to text" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let response = channel.handle_webhook(
+    feishu_message_request_with_type(
+      "event-post",
+      "message-post",
+      "post",
+      Json::object({
+        "zh_cn": Json::object({
+          "title": "日报",
+          "content": Json::array([
+            Json::array([
+              Json::object({ "tag": "text", "text": "进度更新 " }),
+              Json::object({
+                "tag": "a",
+                "text": "详情",
+                "href": "https://example.com",
+              }),
+            ]),
+          ]),
+        }),
+      }).stringify(),
+      @clock.epoch.now().ms().to_string(),
+    ),
+  )
+
+  inspect(response.status_code(), content="500")
+  json_inspect(handler.handled_message_ids, content=["message-post"])
+}
+
+///|
+async test "Feishu webhook accepts interactive card messages and normalizes them to text" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let response = channel.handle_webhook(
+    feishu_message_request_with_type(
+      "event-card-message",
+      "message-card",
+      "interactive",
+      Json::object({
+        "header": Json::object({
+          "title": Json::object({ "content": "审批卡片" }),
+        }),
+        "elements": Json::array([
+          Json::object({
+            "tag": "div",
+            "text": Json::object({ "content": "请确认本次操作" }),
+          }),
+        ]),
+      }).stringify(),
+      @clock.epoch.now().ms().to_string(),
+    ),
+  )
+
+  inspect(response.status_code(), content="500")
+  json_inspect(handler.handled_message_ids, content=["message-card"])
 }
 
 ///|

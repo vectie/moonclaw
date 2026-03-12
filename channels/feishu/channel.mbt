@@ -351,14 +351,14 @@ async fn FeishuChannel::handle_feishu_message(
     { "message_type": String(message_type), .. } => message_type
     _ => "text"
   }
-  if message_type != "text" {
-    return @channel.ExtensionResponse::ok()
-  }
 
   let content = match message_data {
-    { "content": String(c), .. } => parse_feishu_text_content(c)
-    _ =>
-      return @channel.ExtensionResponse::bad_request(message="Missing content")
+    { "content": String(c), .. } =>
+      parse_feishu_message_content(c, message_type)
+    _ => None
+  }
+  guard content is Some(content) else {
+    return @channel.ExtensionResponse::ok()
   }
 
   let from_user_id = match sender_data {
@@ -418,7 +418,7 @@ async fn FeishuChannel::handle_feishu_message(
     from: from_user_id,
     to: chat_id,
     content,
-    content_type: "text",
+    content_type: message_type,
     timestamp,
     thread_id,
     reply_to: None,
@@ -743,6 +743,172 @@ fn parse_feishu_text_content(raw : String) -> String {
     Ok({ "text": String(text), .. }) => strip_feishu_mentions(text)
     Ok(json) => json.stringify()
     Err(_) => raw
+  }
+}
+
+///|
+fn parse_feishu_message_content(raw : String, message_type : String) -> String? {
+  match message_type {
+    "text" => Some(parse_feishu_text_content(raw))
+    "post" => parse_feishu_post_content(raw)
+    "interactive" => parse_feishu_interactive_content(raw)
+    _ => None
+  }
+}
+
+///|
+fn parse_feishu_post_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok(json) => {
+      let post = unwrap_feishu_post(json)
+      match post {
+        Some(post) => {
+          let title = match post {
+            { "title": String(title), .. } if !title.is_blank() =>
+              Some("**\{title}**")
+            _ => None
+          }
+          let body = match post {
+            { "content": Array(content), .. } =>
+              content
+              .map(render_feishu_post_paragraph)
+              .filter(fn(line) { !line.is_blank() })
+              .join("\n")
+            _ => ""
+          }
+          let pieces = []
+          match title {
+            Some(title) => pieces.push(title)
+            None => ()
+          }
+          if !body.is_blank() {
+            pieces.push(body)
+          }
+          let rendered = pieces.join("\n\n").trim().to_string()
+          if rendered.is_blank() {
+            Some("[rich text message]")
+          } else {
+            Some(rendered)
+          }
+        }
+        None => Some("[rich text message]")
+      }
+    }
+    Err(_) => Some("[rich text message]")
+  }
+}
+
+///|
+fn unwrap_feishu_post(json : Json) -> Json? {
+  match json {
+    { "title": _, .. } | { "content": _, .. } => Some(json)
+    Object(obj) => {
+      for locale in ["zh_cn", "en_us", "ja_jp"] {
+        match obj.get(locale) {
+          Some(value) => return Some(value)
+          None => ()
+        }
+      }
+      let values = obj.values().to_array()
+      values.get(0)
+    }
+    _ => None
+  }
+}
+
+///|
+fn render_feishu_post_paragraph(paragraph : Json) -> String {
+  match paragraph {
+    Array(elements) =>
+      elements.map(render_feishu_post_element).join("").trim().to_string()
+    _ => ""
+  }
+}
+
+///|
+fn render_feishu_post_element(element : Json) -> String {
+  match element {
+    { "tag": String("text"), "text": String(text), .. } => text
+    { "tag": String("a"), "text": String(text), "href": String(href), .. } =>
+      "[\{text}](\{href})"
+    { "tag": String("a"), "href": String(href), .. } => href
+    { "tag": String("at"), "user_name": String(name), .. } => "@\{name}"
+    { "tag": String("at"), "user_id": String("all"), .. } => "@all"
+    { "tag": String("img"), "image_key": String(key), .. } => "![image](\{key})"
+    { "tag": String("media"), "file_key": String(key), .. } => "<file:\{key}>"
+    {
+      "tag": String("code_block"),
+      "text": String(text),
+      "language": String(language),
+      ..
+    } => "\n```\{language}\n\{text}\n```\n"
+    { "tag": String("code_block"), "text": String(text), .. } =>
+      "\n```\n\{text}\n```\n"
+    { "tag": String("hr"), .. } => "\n---\n"
+    { "text": String(text), .. } => text
+    _ => ""
+  }
+}
+
+///|
+fn parse_feishu_interactive_content(raw : String) -> String? {
+  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  match parsed {
+    Ok(json) => {
+      let title = extract_feishu_card_title(json)
+      let summary = extract_feishu_card_summary(json)
+      let parts = []
+      if !title.is_blank() {
+        parts.push("<card title=\"\{title}\">")
+      } else {
+        parts.push("<card>")
+      }
+      if !summary.is_blank() {
+        parts.push(summary)
+      }
+      parts.push("</card>")
+      Some(parts.join("\n"))
+    }
+    Err(_) => Some("<card>\n[interactive card]\n</card>")
+  }
+}
+
+///|
+fn extract_feishu_card_title(json : Json) -> String {
+  match json {
+    { "header": { "title": { "content": String(content), .. }, .. }, .. } =>
+      content
+    { "header": { "title": String(content), .. }, .. } => content
+    { "title": String(content), .. } => content
+    _ => ""
+  }
+}
+
+///|
+fn extract_feishu_card_summary(json : Json) -> String {
+  let lines = []
+  collect_feishu_card_text(json, lines)
+  lines.filter(fn(line) { !line.is_blank() }).join("\n").trim().to_string()
+}
+
+///|
+fn collect_feishu_card_text(json : Json, lines : Array[String]) -> Unit {
+  match json {
+    { "content": String(content), .. } if !content.is_blank() =>
+      lines.push(content)
+    { "text": String(text), .. } if !text.is_blank() => lines.push(text)
+    { "label": String(label), .. } if !label.is_blank() => lines.push(label)
+    { "name": String(name), .. } if !name.is_blank() => lines.push(name)
+    Array(values) =>
+      for value in values {
+        collect_feishu_card_text(value, lines)
+      }
+    Object(obj) =>
+      for _, value in obj {
+        collect_feishu_card_text(value, lines)
+      }
+    _ => ()
   }
 }
 
