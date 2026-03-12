@@ -30,6 +30,8 @@ pub(all) struct ExtensionContext {
   home_dir : String
   cwd : String
   logger : LoggerFuncs?
+  websocket_connector : WebSocketClientConnector?
+  websocket_runtime : WebSocketClientRuntime?
 }
 
 ///|
@@ -39,8 +41,18 @@ pub fn ExtensionContext::new(
   home_dir~ : String,
   cwd~ : String,
   logger? : LoggerFuncs? = None,
+  websocket_connector? : WebSocketClientConnector? = None,
+  websocket_runtime? : WebSocketClientRuntime? = None,
 ) -> ExtensionContext {
-  ExtensionContext::{ gateway_url, gateway_token, home_dir, cwd, logger }
+  ExtensionContext::{
+    gateway_url,
+    gateway_token,
+    home_dir,
+    cwd,
+    logger,
+    websocket_connector,
+    websocket_runtime,
+  }
 }
 
 ///|
@@ -66,6 +78,20 @@ pub fn ExtensionContext::cwd(self : ExtensionContext) -> String {
 ///|
 pub fn ExtensionContext::logger(self : ExtensionContext) -> LoggerFuncs? {
   self.logger
+}
+
+///|
+pub fn ExtensionContext::websocket_connector(
+  self : ExtensionContext,
+) -> WebSocketClientConnector? {
+  self.websocket_connector
+}
+
+///|
+pub fn ExtensionContext::websocket_runtime(
+  self : ExtensionContext,
+) -> WebSocketClientRuntime? {
+  self.websocket_runtime
 }
 
 ///|
@@ -327,6 +353,278 @@ pub fn WebSocketConnection::on_close(
   handler : () -> Unit,
 ) -> Unit {
   (self.on_close)(handler)
+}
+
+///|
+pub(all) struct WebSocketDialRequest {
+  client_id : String
+  protocol : String
+  metadata : Json
+}
+
+///|
+pub fn WebSocketDialRequest::new(
+  client_id~ : String,
+  protocol~ : String,
+  metadata? : Json = Json::object({}),
+) -> WebSocketDialRequest {
+  WebSocketDialRequest::{ client_id, protocol, metadata }
+}
+
+///|
+pub fn WebSocketDialRequest::client_id(self : WebSocketDialRequest) -> String {
+  self.client_id
+}
+
+///|
+pub fn WebSocketDialRequest::protocol(self : WebSocketDialRequest) -> String {
+  self.protocol
+}
+
+///|
+pub fn WebSocketDialRequest::metadata(self : WebSocketDialRequest) -> Json {
+  self.metadata
+}
+
+///|
+pub(all) struct WebSocketClientConnector {
+  connect : async (WebSocketDialRequest) -> Result[WebSocketConnection, String]
+}
+
+///|
+pub fn WebSocketClientConnector::new(
+  connect~ : async (WebSocketDialRequest) -> Result[WebSocketConnection, String],
+) -> WebSocketClientConnector {
+  WebSocketClientConnector::{ connect, }
+}
+
+///|
+pub async fn WebSocketClientConnector::connect(
+  self : WebSocketClientConnector,
+  request : WebSocketDialRequest,
+) -> Result[WebSocketConnection, String] {
+  (self.connect)(request)
+}
+
+///|
+pub(all) struct WebSocketClientSpec {
+  client_id : String
+  label : String
+  reconnect_delay_ms : Int
+}
+
+///|
+pub fn WebSocketClientSpec::new(
+  client_id~ : String,
+  label? : String = "",
+  reconnect_delay_ms? : Int = 2_000,
+) -> WebSocketClientSpec {
+  WebSocketClientSpec::{
+    client_id,
+    label: if label.is_blank() {
+      client_id
+    } else {
+      label
+    },
+    reconnect_delay_ms,
+  }
+}
+
+///|
+pub fn WebSocketClientSpec::client_id(self : WebSocketClientSpec) -> String {
+  self.client_id
+}
+
+///|
+pub fn WebSocketClientSpec::label(self : WebSocketClientSpec) -> String {
+  self.label
+}
+
+///|
+pub fn WebSocketClientSpec::reconnect_delay_ms(
+  self : WebSocketClientSpec,
+) -> Int {
+  self.reconnect_delay_ms
+}
+
+///|
+pub(all) struct WebSocketClientRegistration {
+  spec : WebSocketClientSpec
+  connect : async () -> Result[WebSocketConnection, String]
+  on_connect : (WebSocketConnection) -> Unit
+  logger : LoggerFuncs?
+}
+
+///|
+pub fn WebSocketClientRegistration::new(
+  spec~ : WebSocketClientSpec,
+  connect~ : async () -> Result[WebSocketConnection, String],
+  on_connect~ : (WebSocketConnection) -> Unit,
+  logger? : LoggerFuncs? = None,
+) -> WebSocketClientRegistration {
+  WebSocketClientRegistration::{ spec, connect, on_connect, logger }
+}
+
+///|
+enum WebSocketClientRuntimeCommand {
+  Upsert(WebSocketClientRegistration)
+  Remove(String)
+  StopAll
+}
+
+///|
+priv struct WebSocketClientRuntimeControl {
+  mut stopped : Bool
+  mut connection : WebSocketConnection?
+}
+
+///|
+pub(all) struct WebSocketClientRuntimeManager {
+  commands : @aqueue.Queue[WebSocketClientRuntimeCommand]
+}
+
+///|
+pub fn WebSocketClientRuntimeManager::new() -> WebSocketClientRuntimeManager {
+  WebSocketClientRuntimeManager::{
+    commands: @aqueue.Queue::new(kind=Unbounded),
+  }
+}
+
+///|
+pub(all) struct WebSocketClientRuntime {
+  commands : @aqueue.Queue[WebSocketClientRuntimeCommand]
+}
+
+///|
+pub fn WebSocketClientRuntimeManager::controller(
+  self : WebSocketClientRuntimeManager,
+) -> WebSocketClientRuntime {
+  WebSocketClientRuntime::{ commands: self.commands }
+}
+
+///|
+pub fn WebSocketClientRuntime::upsert(
+  self : WebSocketClientRuntime,
+  registration : WebSocketClientRegistration,
+) -> Unit {
+  ignore(self.commands.try_put(Upsert(registration))) catch {
+    _ => ()
+  }
+}
+
+///|
+pub fn WebSocketClientRuntime::remove(
+  self : WebSocketClientRuntime,
+  client_id : String,
+) -> Unit {
+  ignore(self.commands.try_put(Remove(client_id))) catch {
+    _ => ()
+  }
+}
+
+///|
+pub fn WebSocketClientRuntime::stop_all(self : WebSocketClientRuntime) -> Unit {
+  ignore(self.commands.try_put(StopAll)) catch {
+    _ => ()
+  }
+}
+
+///|
+fn stop_websocket_client(control : WebSocketClientRuntimeControl) -> Unit {
+  control.stopped = true
+  match control.connection {
+    Some(connection) => {
+      connection.close()
+      control.connection = None
+    }
+    None => ()
+  }
+}
+
+///|
+async fn run_websocket_client(
+  control : WebSocketClientRuntimeControl,
+  registration : WebSocketClientRegistration,
+) -> Unit {
+  let spec = registration.spec
+  let logger = registration.logger
+  while !control.stopped {
+    match (registration.connect)() {
+      Ok(connection) => {
+        control.connection = Some(connection)
+        let closed = Ref::new(false)
+        connection.on_close(fn() {
+          closed.val = true
+          control.connection = None
+        })
+        (registration.on_connect)(connection)
+        while !control.stopped && !closed.val {
+          @async.sleep(100)
+        }
+        if control.stopped {
+          connection.close()
+          control.connection = None
+          break
+        }
+      }
+      Err(error) =>
+        match logger {
+          Some(logger) =>
+            (logger.warn)(
+              "WebSocket client \{spec.label()} connect failed: \{error}",
+            )
+          None => ()
+        }
+    }
+    if control.stopped {
+      break
+    }
+    @async.sleep(spec.reconnect_delay_ms())
+  }
+}
+
+///|
+pub async fn WebSocketClientRuntimeManager::start(
+  self : WebSocketClientRuntimeManager,
+) -> Unit {
+  let active : Map[String, WebSocketClientRuntimeControl] = {}
+  @async.with_task_group(group => {
+    while true {
+      match self.commands.get() {
+        Upsert(registration) => {
+          let client_id = registration.spec.client_id()
+          match active.get(client_id) {
+            Some(control) => stop_websocket_client(control)
+            None => ()
+          }
+          let control = WebSocketClientRuntimeControl::{
+            stopped: false,
+            connection: None,
+          }
+          active[client_id] = control
+          group.spawn_bg(
+            () => run_websocket_client(control, registration),
+            no_wait=true,
+            allow_failure=true,
+          )
+        }
+        Remove(client_id) =>
+          match active.get(client_id) {
+            Some(control) => {
+              stop_websocket_client(control)
+              active.remove(client_id)
+            }
+            None => ()
+          }
+        StopAll => {
+          for _, control in active {
+            stop_websocket_client(control)
+          }
+          active.clear()
+        }
+      }
+    }
+  })
 }
 
 ///|

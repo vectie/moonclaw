@@ -6,6 +6,7 @@ struct FeishuChannelState {
   running : Map[String, Bool]
   mut user_name_cache : Map[String, String]
   mut active_monitor_connections : Map[String, @channel.WebSocketConnection]
+  mut extension_context : @channel.ExtensionContext?
   recent_event_ids : Array[String]
   recent_message_ids : Array[String]
   pending_messages : Map[String, Array[QueuedFeishuMessage]]
@@ -39,6 +40,7 @@ pub fn FeishuChannel::new() -> FeishuChannel {
       running: {},
       user_name_cache: {},
       active_monitor_connections: {},
+      extension_context: None,
       recent_event_ids: [],
       recent_message_ids: [],
       pending_messages: {},
@@ -154,6 +156,9 @@ impl @channel.Channel for FeishuChannel with start(
   let client = FeishuClient::new(feishu_config)
   self.state.clients[account_id] = client
   self.state.running[account_id] = true
+  if feishu_config.connection_mode == "websocket" {
+    self.ensure_websocket_runtime_client(account_id, feishu_config)
+  }
   self.broadcast_monitor_status()
 
   Ok(())
@@ -164,6 +169,7 @@ impl @channel.Channel for FeishuChannel with stop(
   self : FeishuChannel,
   account_id : String,
 ) -> Result[Unit, @channel.ChannelError] {
+  self.stop_websocket_runtime_client(account_id)
   self.state.clients.remove(account_id)
   self.state.running[account_id] = false
   self.broadcast_monitor_status()
@@ -749,6 +755,7 @@ impl @channel.ChannelExtension for FeishuChannel with on_register(
   self : FeishuChannel,
   context : @channel.ExtensionContext,
 ) -> Unit {
+  self.state.extension_context = Some(context)
   match context.logger() {
     Some(logger) => (logger.info)("Feishu channel extension registered")
     None => ()
@@ -759,13 +766,95 @@ impl @channel.ChannelExtension for FeishuChannel with on_register(
 impl @channel.ChannelExtension for FeishuChannel with on_unregister(
   self : FeishuChannel,
 ) -> Unit {
+  for account_id in self.state.feishu_configs.keys() {
+    self.stop_websocket_runtime_client(account_id)
+  }
   for _, conn in self.state.active_monitor_connections {
     conn.close()
   }
   self.state.active_monitor_connections = {}
+  self.state.extension_context = None
   for account_id in self.state.running.keys() {
     self.state.clients.remove(account_id)
     self.state.running[account_id] = false
+  }
+}
+
+///|
+fn feishu_runtime_client_id(account_id : String) -> String {
+  "feishu:\{account_id}"
+}
+
+///|
+fn feishu_websocket_dial_request(
+  account_id : String,
+  config : FeishuAccountConfig,
+) -> @channel.WebSocketDialRequest {
+  @channel.WebSocketDialRequest::new(
+    client_id=feishu_runtime_client_id(account_id),
+    protocol="feishu",
+    metadata=Json::object({
+      "account_id": account_id,
+      "app_id": config.app_id,
+      "app_secret": config.app_secret,
+      "domain": config.domain,
+      "verify_token": config.verify_token.to_json(),
+      "encryption_key": config.encryption_key.to_json(),
+      "bot_name": config.bot_name.to_json(),
+    }),
+  )
+}
+
+///|
+fn FeishuChannel::stop_websocket_runtime_client(
+  self : FeishuChannel,
+  account_id : String,
+) -> Unit {
+  match self.state.extension_context {
+    Some(context) =>
+      match context.websocket_runtime() {
+        Some(runtime) => runtime.remove(feishu_runtime_client_id(account_id))
+        None => ()
+      }
+    None => ()
+  }
+}
+
+///|
+fn FeishuChannel::ensure_websocket_runtime_client(
+  self : FeishuChannel,
+  account_id : String,
+  config : FeishuAccountConfig,
+) -> Unit {
+  match self.state.extension_context {
+    Some(context) =>
+      match (context.websocket_runtime(), context.websocket_connector()) {
+        (Some(runtime), Some(connector)) => {
+          let request = feishu_websocket_dial_request(account_id, config)
+          runtime.upsert(
+            @channel.WebSocketClientRegistration::new(
+              spec=@channel.WebSocketClientSpec::new(
+                client_id=feishu_runtime_client_id(account_id),
+                label="Feishu[\{account_id}]",
+                reconnect_delay_ms=2_000,
+              ),
+              connect=() => connector.connect(request),
+              on_connect=fn(conn) { self.handle_websocket(conn) },
+              logger=context.logger(),
+            ),
+          )
+        }
+        (Some(_), None) =>
+          match context.logger() {
+            Some(logger) =>
+              (logger.warn)(
+                "Feishu websocket account \{account_id} is enabled but no websocket connector is available",
+              )
+            None => ()
+          }
+        _ => ()
+      }
+    None => ()
   }
 }
 

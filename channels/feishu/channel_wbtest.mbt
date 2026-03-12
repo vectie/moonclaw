@@ -821,3 +821,114 @@ async test "Feishu websocket monitor routes inbound message events and ping fram
   inspect(sent[2].contains("\"type\":\"feishu.monitor.error\""), content="true")
   inspect(sent[2].contains("\"code\":\"event_rejected\""), content="true")
 }
+
+///|
+async test "Feishu websocket runtime starts websocket accounts through extension context" {
+  let manager = @channel.WebSocketClientRuntimeManager::new()
+  let runtime = manager.controller()
+  let channel = FeishuChannel::new()
+  channel.configure(@channel.ChannelConfig::{
+    enabled: true,
+    accounts: {
+      "websocket": {
+        "app_id": "app-ws",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "verify_token": "verify-ws",
+        "enabled": true,
+      },
+    },
+    global_settings: {},
+  })
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let sent : Array[String] = []
+  let mut inbound : (async (Bytes) -> Unit)? = None
+  let connector = @channel.WebSocketClientConnector::new(connect=fn(request) {
+    inspect(request.protocol(), content="feishu")
+    inspect(request.client_id(), content="feishu:websocket")
+    Ok(
+      @channel.WebSocketConnection::new(
+        id="runtime-monitor",
+        send=fn(bytes) {
+          let text = @encoding/utf8.decode(bytes) catch { _ => "" }
+          sent.push(text)
+        },
+        close=fn() {  },
+        on_message=fn(handler) { inbound = Some(handler) },
+      ),
+    )
+  })
+
+  @async.with_task_group(group => {
+    group.spawn_bg(() => manager.start(), no_wait=true, allow_failure=true)
+    channel.on_register(
+      @channel.ExtensionContext::new(
+        gateway_url="http://localhost:18789",
+        home_dir="/tmp",
+        cwd="/tmp",
+        websocket_connector=Some(connector),
+        websocket_runtime=Some(runtime),
+      ),
+    )
+    let _ = channel.start(
+      "websocket",
+      Json::object({
+        "app_id": "app-ws",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "verify_token": "verify-ws",
+        "enabled": true,
+      }),
+    )
+    @async.sleep(50)
+
+    inspect(sent.length() >= 1, content="true")
+    inspect(
+      sent[0].contains("\"type\":\"feishu.monitor.ready\""),
+      content="true",
+    )
+    match inbound {
+      Some(handle_frame) =>
+        handle_frame(
+          @encoding/utf8.encode(
+            Json::object({
+              "header": {
+                "event_id": "runtime-monitor-message",
+                "event_type": "im.message.receive_v1",
+                "app_id": "app-ws",
+                "token": "verify-ws",
+              },
+              "event": {
+                "sender": {
+                  "sender_id": {
+                    "open_id": "ou_sender",
+                    "user_id": "user_sender",
+                  },
+                },
+                "message": {
+                  "message_id": "message-runtime-monitor",
+                  "message_type": "text",
+                  "chat_id": "chat-test",
+                  "chat_type": "p2p",
+                  "create_time": @clock.epoch.now().ms().to_string(),
+                  "content": Json::object({ "text": "hello from runtime ws" }).stringify(),
+                },
+              },
+              "token": "verify-ws",
+            }).stringify(),
+          ),
+        )
+      None => abort("expected runtime websocket inbound handler")
+    }
+    @async.sleep(50)
+    inspect(handler.handled_message_ids[0], content="message-runtime-monitor")
+    runtime.stop_all()
+    group.return_immediately(())
+  })
+}

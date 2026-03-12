@@ -55,6 +55,8 @@ pub async fn Gateway::new(
     @pino.logger("channel_manager", @pino.Transport::console()),
   )
   let extension_registry = @channel.ExtensionRegistry::new()
+  let extension_websocket_runtime_manager = @channel.WebSocketClientRuntimeManager::new()
+  let extension_websocket_runtime = extension_websocket_runtime_manager.controller()
   let gateway = Gateway::{
     clock: @clock.epoch,
     uuid,
@@ -76,6 +78,8 @@ pub async fn Gateway::new(
     agent_events: @broadcast.Broadcast::new(),
     channel_manager,
     extension_registry,
+    extension_websocket_runtime_manager,
+    extension_websocket_runtime,
     mailbox_manager: mailbox_manager(),
     coordinator: coordinator(uuid~),
     pipeline_manager: pipeline_manager(uuid~),
@@ -123,6 +127,7 @@ pub fn Gateway::register_extension(
     home_dir=self.home,
     cwd=self.cwd,
     logger=None,
+    websocket_runtime=Some(self.extension_websocket_runtime),
   )
   self.extension_registry.register_with_context(extension, context)
   self.channel_manager.register_channel(extension)
@@ -154,6 +159,11 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     let session = self.events.spawn_in(group)
     let agent_session = self.agent_events.spawn_in(group)
     group.spawn_bg(() => self.run_tick_interval())
+    group.spawn_bg(
+      () => self.extension_websocket_runtime_manager.start(),
+      no_wait=true,
+      allow_failure=true,
+    )
     group.spawn_bg(() => {
       self.httpx.serve(@httpx.cors((r, w) => self.handle_request(r, w)))
     })
@@ -162,6 +172,7 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
         match event {
           Shutdown => {
             self.logger.info("Shutdown requested, stopping gateway...")
+            self.extension_websocket_runtime.stop_all()
             self.httpx.close()
             session.stop()
             agent_session.stop()

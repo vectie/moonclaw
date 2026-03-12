@@ -2,6 +2,7 @@
 package "moonbitlang/moonclaw/channel"
 
 import {
+  "moonbitlang/async/aqueue",
   "moonbitlang/core/json",
 }
 
@@ -163,13 +164,17 @@ pub(all) struct ExtensionContext {
   home_dir : String
   cwd : String
   logger : LoggerFuncs?
+  websocket_connector : WebSocketClientConnector?
+  websocket_runtime : WebSocketClientRuntime?
 }
 pub fn ExtensionContext::cwd(Self) -> String
 pub fn ExtensionContext::gateway_token(Self) -> String?
 pub fn ExtensionContext::gateway_url(Self) -> String
 pub fn ExtensionContext::home_dir(Self) -> String
 pub fn ExtensionContext::logger(Self) -> LoggerFuncs?
-pub fn ExtensionContext::new(gateway_url~ : String, gateway_token? : String?, home_dir~ : String, cwd~ : String, logger? : LoggerFuncs?) -> Self
+pub fn ExtensionContext::new(gateway_url~ : String, gateway_token? : String?, home_dir~ : String, cwd~ : String, logger? : LoggerFuncs?, websocket_connector? : WebSocketClientConnector?, websocket_runtime? : WebSocketClientRuntime?) -> Self
+pub fn ExtensionContext::websocket_connector(Self) -> WebSocketClientConnector?
+pub fn ExtensionContext::websocket_runtime(Self) -> WebSocketClientRuntime?
 
 pub(all) struct ExtensionInfo {
   channel_id : String
@@ -354,6 +359,46 @@ pub impl Show for ThreadingAdapter
 pub impl ToJson for ThreadingAdapter
 pub impl @json.FromJson for ThreadingAdapter
 
+pub(all) struct WebSocketClientConnector {
+  connect : async (WebSocketDialRequest) -> Result[WebSocketConnection, String]
+}
+pub async fn WebSocketClientConnector::connect(Self, WebSocketDialRequest) -> Result[WebSocketConnection, String]
+pub fn WebSocketClientConnector::new(connect~ : async (WebSocketDialRequest) -> Result[WebSocketConnection, String]) -> Self
+
+pub(all) struct WebSocketClientRegistration {
+  spec : WebSocketClientSpec
+  connect : async () -> Result[WebSocketConnection, String]
+  on_connect : (WebSocketConnection) -> Unit
+  logger : LoggerFuncs?
+}
+pub fn WebSocketClientRegistration::new(spec~ : WebSocketClientSpec, connect~ : async () -> Result[WebSocketConnection, String], on_connect~ : (WebSocketConnection) -> Unit, logger? : LoggerFuncs?) -> Self
+
+pub(all) struct WebSocketClientRuntime {
+  commands : @aqueue.Queue[WebSocketClientRuntimeCommand]
+}
+pub fn WebSocketClientRuntime::remove(Self, String) -> Unit
+pub fn WebSocketClientRuntime::stop_all(Self) -> Unit
+pub fn WebSocketClientRuntime::upsert(Self, WebSocketClientRegistration) -> Unit
+
+type WebSocketClientRuntimeCommand
+
+pub(all) struct WebSocketClientRuntimeManager {
+  commands : @aqueue.Queue[WebSocketClientRuntimeCommand]
+}
+pub fn WebSocketClientRuntimeManager::controller(Self) -> WebSocketClientRuntime
+pub fn WebSocketClientRuntimeManager::new() -> Self
+pub async fn WebSocketClientRuntimeManager::start(Self) -> Unit
+
+pub(all) struct WebSocketClientSpec {
+  client_id : String
+  label : String
+  reconnect_delay_ms : Int
+}
+pub fn WebSocketClientSpec::client_id(Self) -> String
+pub fn WebSocketClientSpec::label(Self) -> String
+pub fn WebSocketClientSpec::new(client_id~ : String, label? : String, reconnect_delay_ms? : Int) -> Self
+pub fn WebSocketClientSpec::reconnect_delay_ms(Self) -> Int
+
 pub(all) struct WebSocketConnection {
   id : String
   send : (Bytes) -> Unit
@@ -367,6 +412,16 @@ pub fn WebSocketConnection::new(id~ : String, send~ : (Bytes) -> Unit, close~ : 
 pub fn WebSocketConnection::on_close(Self, () -> Unit) -> Unit
 pub fn WebSocketConnection::on_message(Self, async (Bytes) -> Unit) -> Unit
 pub fn WebSocketConnection::send(Self, Bytes) -> Unit
+
+pub(all) struct WebSocketDialRequest {
+  client_id : String
+  protocol : String
+  metadata : Json
+}
+pub fn WebSocketDialRequest::client_id(Self) -> String
+pub fn WebSocketDialRequest::metadata(Self) -> Json
+pub fn WebSocketDialRequest::new(client_id~ : String, protocol~ : String, metadata? : Json) -> Self
+pub fn WebSocketDialRequest::protocol(Self) -> String
 
 // Type aliases
 pub type ChannelId = String
