@@ -54,6 +54,7 @@ fn get_feishu_config(config : Json) -> FeishuAccountConfig {
         domain: "feishu",
         connection_mode: "webhook",
         dm_policy: "pairing",
+        reaction_notifications: Some("own"),
         bot_name: None,
         webhook_url: None,
         verify_token: None,
@@ -499,6 +500,44 @@ async fn FeishuChannel::handle_reaction_event(
 
   match self.state.message_handler {
     Some(handler) => {
+      let message_id = match event_data {
+        { "message_id": String(message_id), .. } => message_id
+        _ =>
+          return @channel.ExtensionResponse::bad_request(
+            message="Missing reaction message_id",
+          )
+      }
+      let operator_open_id = match event_data {
+        { "user_id": { "open_id": String(open_id), .. }, .. } => Some(open_id)
+        _ => None
+      }
+      let operator_type = match event_data {
+        { "operator_type": String(operator_type), .. } => Some(operator_type)
+        _ => None
+      }
+      let emoji_type = match event_data {
+        { "reaction_type": { "emoji_type": String(emoji_type), .. }, .. } =>
+          Some(emoji_type)
+        _ => None
+      }
+      if self.should_ignore_reaction_event(
+          operator_type, operator_open_id, emoji_type,
+        ) {
+        return @channel.ExtensionResponse::ok()
+      }
+      let notifications = self.reaction_notifications_mode(account_id)
+      if notifications == "off" {
+        return @channel.ExtensionResponse::ok()
+      }
+      let lookup = match self.lookup_reaction_message(account_id, message_id) {
+        Ok(Some(lookup)) => lookup
+        Ok(None) => return @channel.ExtensionResponse::ok()
+        Err(_) => return @channel.ExtensionResponse::ok()
+      }
+      if notifications == "own" &&
+        !is_own_reaction_target(lookup, self.feishu_app_id(account_id)) {
+        return @channel.ExtensionResponse::ok()
+      }
       let timestamp = match event_data {
         { "action_time": String(ts), .. } =>
           @strconv.parse_int(ts) catch {
@@ -510,7 +549,20 @@ async fn FeishuChannel::handle_reaction_event(
         channel: "feishu",
         account_id,
         event_type: "reaction.added",
-        payload: event_data,
+        payload: {
+          "message_id": message_id,
+          "chat_id": lookup.chat_id,
+          "chat_type": lookup.chat_type.to_json(),
+          "thread_id": lookup.thread_id.to_json(),
+          "operator_open_id": operator_open_id.to_json(),
+          "operator_type": operator_type.to_json(),
+          "emoji_type": emoji_type.to_json(),
+          "content": lookup.content.to_json(),
+          "content_type": lookup.content_type.to_json(),
+          "target_sender_id": lookup.sender_id.to_json(),
+          "target_sender_type": lookup.sender_type.to_json(),
+          "raw_event": event_data,
+        },
         timestamp,
       })
       @channel.ExtensionResponse::ok()
@@ -666,6 +718,17 @@ fn strip_feishu_mentions(text : String) -> String {
 }
 
 ///|
+struct ResolvedReactionTarget {
+  chat_id : String
+  chat_type : String?
+  thread_id : String?
+  content : String?
+  content_type : String?
+  sender_id : String?
+  sender_type : String?
+}
+
+///|
 fn feishu_queue_key(
   account_id : String,
   chat_id : String,
@@ -708,6 +771,113 @@ fn normalize_abort_text(text : String) -> String {
 fn is_abort_text(text : String) -> Bool {
   let normalized = normalize_abort_text(text)
   normalized == "/stop" || abort_triggers().contains(normalized)
+}
+
+///|
+fn FeishuChannel::reaction_notifications_mode(
+  self : FeishuChannel,
+  account_id : String,
+) -> String {
+  match self.state.feishu_configs.get(account_id) {
+    Some(config) => config.reaction_notifications.unwrap_or("own")
+    None => "own"
+  }
+}
+
+///|
+fn FeishuChannel::feishu_app_id(
+  self : FeishuChannel,
+  account_id : String,
+) -> String {
+  match self.state.feishu_configs.get(account_id) {
+    Some(config) => config.app_id
+    None => ""
+  }
+}
+
+///|
+fn FeishuChannel::should_ignore_reaction_event(
+  self : FeishuChannel,
+  operator_type : String?,
+  operator_open_id : String?,
+  emoji_type : String?,
+) -> Bool {
+  ignore(self)
+  match operator_type {
+    Some("app") => true
+    _ =>
+      match emoji_type {
+        Some("Typing") => true
+        _ =>
+          match operator_open_id {
+            Some(open_id) => open_id.is_blank()
+            None => true
+          }
+      }
+  }
+}
+
+///|
+async fn FeishuChannel::lookup_reaction_message(
+  self : FeishuChannel,
+  account_id : String,
+  message_id : String,
+) -> Result[ResolvedReactionTarget?, @channel.ChannelError] {
+  match self.state.clients.get(account_id) {
+    Some(client) =>
+      match client.get_message(message_id) {
+        Ok(Some(item)) =>
+          Ok(
+            Some(ResolvedReactionTarget::{
+              chat_id: item.chat_id,
+              chat_type: item.chat_type,
+              thread_id: item.thread_id,
+              content: parse_lookup_content(item),
+              content_type: item.msg_type,
+              sender_id: match item.sender {
+                Some(sender) => sender.id
+                None => None
+              },
+              sender_type: match item.sender {
+                Some(sender) => sender.sender_type
+                None => None
+              },
+            }),
+          )
+        Ok(None) => Ok(None)
+        Err(error) => Err(error)
+      }
+    None =>
+      Err(
+        @channel.ChannelError::NotConfigured(
+          message="Client not initialized for account: \{account_id}",
+        ),
+      )
+  }
+}
+
+///|
+fn parse_lookup_content(item : FeishuMessageLookupItem) -> String? {
+  match item.body {
+    Some(body) =>
+      match body.content {
+        Some(content) => Some(parse_feishu_text_content(content))
+        None => None
+      }
+    None => None
+  }
+}
+
+///|
+fn is_own_reaction_target(
+  target : ResolvedReactionTarget,
+  app_id : String,
+) -> Bool {
+  if app_id.is_blank() {
+    false
+  } else {
+    target.sender_type == Some("app") && target.sender_id == Some(app_id)
+  }
 }
 
 ///|

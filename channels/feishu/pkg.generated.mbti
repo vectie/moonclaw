@@ -28,6 +28,7 @@ pub struct FeishuAccountConfig {
   domain : String
   connection_mode : String
   dm_policy : String
+  reaction_notifications : String?
   bot_name : String?
   webhook_url : String?
   verify_token : String?
@@ -50,6 +51,7 @@ type FeishuChannelState
 pub struct FeishuClient {
   config : FeishuAccountConfig
 }
+pub async fn FeishuClient::get_message(Self, String) -> Result[FeishuMessageLookupItem?, @channel.ChannelError]
 pub fn FeishuClient::new(FeishuAccountConfig) -> Self
 pub async fn FeishuClient::send_text_message(Self, String, String, reply_to? : String?, reply_in_thread? : Bool) -> Result[@channel.SendResult, @channel.ChannelError]
 
@@ -100,6 +102,51 @@ pub impl Show for FeishuMessageData
 pub impl ToJson for FeishuMessageData
 pub impl @json.FromJson for FeishuMessageData
 
+pub struct FeishuMessageLookupBody {
+  content : String?
+}
+pub impl Show for FeishuMessageLookupBody
+pub impl ToJson for FeishuMessageLookupBody
+pub impl @json.FromJson for FeishuMessageLookupBody
+
+pub struct FeishuMessageLookupData {
+  items : Array[FeishuMessageLookupItem]
+}
+pub impl Show for FeishuMessageLookupData
+pub impl ToJson for FeishuMessageLookupData
+pub impl @json.FromJson for FeishuMessageLookupData
+
+pub struct FeishuMessageLookupItem {
+  message_id : String
+  chat_id : String
+  chat_type : String?
+  create_time : String?
+  thread_id : String?
+  msg_type : String?
+  body : FeishuMessageLookupBody?
+  sender : FeishuMessageLookupSender?
+}
+pub impl Show for FeishuMessageLookupItem
+pub impl ToJson for FeishuMessageLookupItem
+pub impl @json.FromJson for FeishuMessageLookupItem
+
+pub struct FeishuMessageLookupResponse {
+  code : Int
+  msg : String
+  data : FeishuMessageLookupData?
+}
+pub impl Show for FeishuMessageLookupResponse
+pub impl ToJson for FeishuMessageLookupResponse
+pub impl @json.FromJson for FeishuMessageLookupResponse
+
+pub struct FeishuMessageLookupSender {
+  id : String?
+  sender_type : String?
+}
+pub impl Show for FeishuMessageLookupSender
+pub impl ToJson for FeishuMessageLookupSender
+pub impl @json.FromJson for FeishuMessageLookupSender
+
 pub struct FeishuSendMessageRequest {
   receive_id : String
   msg_type : String
@@ -120,12 +167,16 @@ pub impl @json.FromJson for FeishuSendMessageResponse
 
 type QueuedFeishuMessage
 
+type ResolvedReactionTarget
+
 // Type aliases
 pub type FeishuConnectionMode = String
 
 pub type FeishuDmPolicy = String
 
 pub type FeishuDomain = String
+
+pub type FeishuReactionNotifications = String
 
 // Traits
 

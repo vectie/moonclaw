@@ -8,12 +8,16 @@ pub type FeishuConnectionMode = String
 pub type FeishuDmPolicy = String
 
 ///|
+pub type FeishuReactionNotifications = String
+
+///|
 pub struct FeishuAccountConfig {
   app_id : String
   app_secret : String
   domain : FeishuDomain
   connection_mode : FeishuConnectionMode
   dm_policy : FeishuDmPolicy
+  reaction_notifications : FeishuReactionNotifications?
   bot_name : String?
   webhook_url : String?
   verify_token : String?
@@ -72,6 +76,41 @@ pub struct FeishuSendMessageResponse {
 ///|
 pub struct FeishuMessageData {
   message_id : String
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuMessageLookupResponse {
+  code : Int
+  msg : String
+  data : FeishuMessageLookupData?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuMessageLookupData {
+  items : Array[FeishuMessageLookupItem]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuMessageLookupItem {
+  message_id : String
+  chat_id : String
+  chat_type : String?
+  create_time : String?
+  thread_id : String?
+  msg_type : String?
+  body : FeishuMessageLookupBody?
+  sender : FeishuMessageLookupSender?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuMessageLookupBody {
+  content : String?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuMessageLookupSender {
+  id : String?
+  sender_type : String?
 } derive(ToJson, FromJson, Show)
 
 ///|

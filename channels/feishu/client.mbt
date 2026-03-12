@@ -96,6 +96,52 @@ async fn parse_send_response(
 }
 
 ///|
+async fn parse_lookup_response(
+  response : @http.Response,
+  client : @http.Client,
+) -> Result[FeishuMessageLookupItem?, @channel.ChannelError] {
+  let body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::ConnectionFailed(
+            message="Failed to read Feishu lookup response body: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu lookup API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Invalid Feishu lookup response: \{body_text}",
+        ),
+      )
+  }
+  let parsed : FeishuMessageLookupResponse = @json.from_json(response_json) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to decode Feishu lookup response: \{body_text}",
+        ),
+      )
+  }
+  if parsed.code != 0 {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu lookup failed: \{parsed.msg}",
+      ),
+    )
+  }
+  Ok(parsed.data.map(fn(data) { data.items.get(0) }).flatten())
+}
+
+///|
 async fn FeishuClient::load_tenant_access_token(
   self : FeishuClient,
 ) -> Result[String, @channel.ChannelError] {
@@ -214,4 +260,40 @@ pub async fn FeishuClient::send_text_message(
   }
 
   parse_send_response(response, client)
+}
+
+///|
+pub async fn FeishuClient::get_message(
+  self : FeishuClient,
+  message_id : String,
+) -> Result[FeishuMessageLookupItem?, @channel.ChannelError] {
+  let token = match self.load_tenant_access_token() {
+    Ok(token) => token
+    Err(error) => return Err(error)
+  }
+  let base_url = feishu_base_url(self.config.domain)
+  let client = @http.Client::new(base_url, headers={
+    "Authorization": "Bearer \{token}",
+    "Connection": "close",
+  }) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to create Feishu HTTP client: \{error}",
+        ),
+      )
+  }
+  defer client.close()
+
+  let response = client.get(
+    "/open-apis/im/v1/messages/mget?message_ids=\{message_id}&user_id_type=open_id&card_msg_content_type=raw_card_content",
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to fetch Feishu message: \{error}",
+        ),
+      )
+  }
+  parse_lookup_response(response, client)
 }

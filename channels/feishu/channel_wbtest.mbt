@@ -53,6 +53,7 @@ fn feishu_test_account_config() -> Json {
     "domain": "feishu",
     "connection_mode": "webhook",
     "dm_policy": "pairing",
+    "reaction_notifications": "own",
     "verify_token": "verify-test",
     "enabled": true,
   }
@@ -197,7 +198,7 @@ async test "Feishu webhook ignores stale replayed messages" {
 }
 
 ///|
-async test "Feishu webhook forwards reaction events through the channel event handler" {
+async test "Feishu webhook ignores reaction events when lookup context is unavailable" {
   let channel = FeishuChannel::new()
   channel.configure(feishu_test_config())
   let handler = RecordingHandler::new()
@@ -213,7 +214,7 @@ async test "Feishu webhook forwards reaction events through the channel event ha
   )
 
   inspect(response.status_code(), content="200")
-  json_inspect(handler.event_types, content=["reaction.added"])
+  inspect(handler.event_types.length(), content="0")
   inspect(handler.handled_message_ids.length(), content="0")
 }
 
@@ -240,4 +241,63 @@ async test "Feishu webhook forwards bot membership events through the channel ev
   inspect(added.status_code(), content="200")
   inspect(removed.status_code(), content="200")
   json_inspect(handler.event_types, content=["bot.added", "bot.removed"])
+}
+
+///|
+test "Feishu reaction helpers ignore unsupported operators and enforce own-message target matching" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+
+  inspect(channel.reaction_notifications_mode("default"), content="own")
+  inspect(
+    channel.should_ignore_reaction_event(
+      Some("app"),
+      Some("ou_app"),
+      Some("THUMBSUP"),
+    ),
+    content="true",
+  )
+  inspect(
+    channel.should_ignore_reaction_event(None, Some("ou_user"), Some("Typing")),
+    content="true",
+  )
+  inspect(
+    channel.should_ignore_reaction_event(
+      None,
+      Some("ou_user"),
+      Some("THUMBSUP"),
+    ),
+    content="false",
+  )
+
+  inspect(
+    is_own_reaction_target(
+      ResolvedReactionTarget::{
+        chat_id: "chat-test",
+        chat_type: Some("group"),
+        thread_id: None,
+        content: Some("hello"),
+        content_type: Some("text"),
+        sender_id: Some("app-test"),
+        sender_type: Some("app"),
+      },
+      "app-test",
+    ),
+    content="true",
+  )
+  inspect(
+    is_own_reaction_target(
+      ResolvedReactionTarget::{
+        chat_id: "chat-test",
+        chat_type: Some("group"),
+        thread_id: None,
+        content: Some("hello"),
+        content_type: Some("text"),
+        sender_id: Some("ou_user"),
+        sender_type: Some("user"),
+      },
+      "app-test",
+    ),
+    content="false",
+  )
 }
