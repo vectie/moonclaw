@@ -60,6 +60,46 @@ async test "bootstrap_channel_states_from_moonclaw_config normalizes camelCase f
 }
 
 ///|
+async test "bootstrap_channel_states_from_moonclaw_config reads moonclaw root home" {
+  @fsx.with_temporary_directory("gateway-bootstrap-root-home-XXXXXX", dir => {
+    let config_path = @path.Path(dir)
+      .join(@path.Path("moonclaw.json"))
+      .to_string()
+    @fsx.write_to_file(
+      config_path,
+      Json::object({
+        "channels": {
+          "feishu": {
+            "enabled": true,
+            "appId": "root_app",
+            "appSecret": "root_secret",
+            "domain": "feishu",
+            "connectionMode": "websocket",
+          },
+        },
+      }).stringify(),
+    )
+
+    let states = bootstrap_channel_states_from_moonclaw_config(
+      dir, "/tmp/no-project",
+    )
+    inspect(states.length(), content="1")
+    inspect(
+      states[0].accounts[0].config
+      .stringify()
+      .contains("\"connection_mode\":\"websocket\""),
+      content="true",
+    )
+    inspect(
+      states[0].accounts[0].config
+      .stringify()
+      .contains("\"app_id\":\"root_app\""),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "bootstrap_channel_states_from_moonclaw_config merges base and account overrides" {
   @fsx.with_temporary_directory("gateway-bootstrap-accounts-XXXXXX", dir => {
     let home_config_dir = @path.Path(dir)

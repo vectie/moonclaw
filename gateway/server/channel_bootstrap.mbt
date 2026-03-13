@@ -4,16 +4,25 @@ async fn moonclaw_config_json(home : String, cwd : String) -> Json? {
     .join(@path.Path(".moonclaw"))
     .join(@path.Path("moonclaw.json"))
     .to_string()
+  let home_root_path = @path.Path(home)
+    .join(@path.Path("moonclaw.json"))
+    .to_string()
   let user_path = @path.Path(home)
     .join(@path.Path(".moonclaw"))
     .join(@path.Path("moonclaw.json"))
     .to_string()
 
-  let user_json = if @fsx.exists(user_path) {
-    let text = @fsx.read_file(user_path) catch { _ => return None }
+  let home_root_json = if @fsx.exists(home_root_path) {
+    let text = @fsx.read_file(home_root_path) catch { _ => return None }
     Some(@json.parse(text) catch { _ => return None })
   } else {
     None
+  }
+  let user_json = if @fsx.exists(user_path) {
+    let text = @fsx.read_file(user_path) catch { _ => return home_root_json }
+    Some(@json.parse(text) catch { _ => return home_root_json })
+  } else {
+    home_root_json
   }
   let project_json = if @fsx.exists(project_path) {
     let text = @fsx.read_file(project_path) catch { _ => return user_json }
