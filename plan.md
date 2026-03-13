@@ -53,13 +53,13 @@ Mark a task complete only after implementation, validation, docs, and required t
 
 ## Phase 1: Generic Job Data Model
 
-- [ ] Add `JobDefinition` types: id, kind, config, enabled, schedule, trigger policy
-- [ ] Add `JobRun` types: run id, job id, trigger, status, timestamps, summary
-- [ ] Add `JobStepRun` types: step id, status, timings, logs, metrics, retry state
-- [ ] Add `ArtifactRecord` types: artifact id, run id, type, path, metadata, scope
+- [x] Add `JobDefinition` types: id, kind, config, enabled, schedule, trigger policy
+- [x] Add `JobRun` types: run id, job id, trigger, status, timestamps, summary
+- [x] Add `JobStepRun` types: step id, status, timings, logs, metrics, retry state
+- [x] Add `ArtifactRecord` types: artifact id, run id, type, path, metadata, scope
 - [ ] Add `WorkflowDefinition` types: step graph, retry policy, output bindings
-- [ ] Add job storage package for definitions, runs, step state, artifacts, and indexes
-- [ ] Add tests for persistence, reload, status transitions, and disk layout
+- [x] Add job storage package for definitions, runs, step state, artifacts, and indexes
+- [x] Add tests for persistence, reload, status transitions, and disk layout
 
 Deliverable:
 - a durable generic job model on disk

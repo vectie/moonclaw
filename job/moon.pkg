@@ -10,3 +10,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/moonclaw/internal/mock",
 } for "test"
+
+import {
+  "moonbitlang/async",
+} for "wbtest"

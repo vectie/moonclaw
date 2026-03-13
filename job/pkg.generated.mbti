@@ -13,6 +13,30 @@ pub suberror InvalidJobId {
 }
 
 // Types and methods
+pub(all) struct ArtifactRecord {
+  id : String
+  run_id : String
+  job_id : String
+  artifact_type : String
+  path : String
+  metadata : Json
+  created_at : Int
+  scope : Array[String]
+}
+pub impl Show for ArtifactRecord
+pub impl ToJson for ArtifactRecord
+pub impl @json.FromJson for ArtifactRecord
+
+type ArtifactsIndexFile
+pub impl Show for ArtifactsIndexFile
+pub impl ToJson for ArtifactsIndexFile
+pub impl @json.FromJson for ArtifactsIndexFile
+
+type DefinitionsIndexFile
+pub impl Show for DefinitionsIndexFile
+pub impl ToJson for DefinitionsIndexFile
+pub impl @json.FromJson for DefinitionsIndexFile
+
 pub(all) struct Id(Int)
 #deprecated
 pub fn Id::inner(Self) -> Int
@@ -36,6 +60,51 @@ pub fn Job::status(Self) -> Int?
 pub async fn Job::wait(Self) -> Int
 pub impl ToJson for Job
 
+pub(all) struct JobDefinition {
+  id : String
+  kind : String
+  enabled : Bool
+  config : Json
+  schedule : SchedulePolicy?
+  workflow_id : String?
+  created_at : Int
+  updated_at : Int
+  tags : Array[String]
+}
+pub impl Show for JobDefinition
+pub impl ToJson for JobDefinition
+pub impl @json.FromJson for JobDefinition
+
+pub(all) struct JobRun {
+  id : String
+  job_id : String
+  trigger : TriggerSource
+  status : RunStatus
+  started_at : Int?
+  completed_at : Int?
+  summary : String?
+  error : String?
+}
+pub impl Show for JobRun
+pub impl ToJson for JobRun
+pub impl @json.FromJson for JobRun
+
+pub(all) struct JobStepRun {
+  id : String
+  run_id : String
+  step_id : String
+  status : RunStatus
+  started_at : Int?
+  completed_at : Int?
+  metrics : Json
+  logs : Array[String]
+  retry_count : Int
+  error : String?
+}
+pub impl Show for JobStepRun
+pub impl ToJson for JobStepRun
+pub impl @json.FromJson for JobStepRun
+
 pub struct Manager {
   cwd : String
   // private fields
@@ -46,6 +115,96 @@ pub fn Manager::new(cwd~ : String) -> Self
 pub async fn Manager::spawn(Self, name~ : String, description? : String, command~ : String, cwd? : String) -> Job
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int
+
+pub(all) struct RetryPolicy {
+  max_attempts : Int
+  backoff_ms : Int?
+}
+pub impl Show for RetryPolicy
+pub impl ToJson for RetryPolicy
+pub impl @json.FromJson for RetryPolicy
+
+pub(all) enum RunStatus {
+  Pending
+  Running
+  Succeeded
+  Failed
+  Cancelled
+}
+pub impl Show for RunStatus
+pub impl ToJson for RunStatus
+pub impl @json.FromJson for RunStatus
+
+type RunsIndexFile
+pub impl Show for RunsIndexFile
+pub impl ToJson for RunsIndexFile
+pub impl @json.FromJson for RunsIndexFile
+
+pub(all) struct SchedulePolicy {
+  kind : String
+  interval_minutes : Int?
+  timezone : String?
+}
+pub impl Show for SchedulePolicy
+pub impl ToJson for SchedulePolicy
+pub impl @json.FromJson for SchedulePolicy
+
+pub struct SystemStore {
+  root : String
+  definitions : Map[String, JobDefinition]
+  workflows : Map[String, WorkflowDefinition]
+  runs : Map[String, JobRun]
+  steps : Map[String, JobStepRun]
+  artifacts : Map[String, ArtifactRecord]
+}
+pub fn SystemStore::get_artifact(Self, String) -> ArtifactRecord?
+pub fn SystemStore::get_definition(Self, String) -> JobDefinition?
+pub fn SystemStore::get_run(Self, String) -> JobRun?
+pub fn SystemStore::get_step_run(Self, String, String) -> JobStepRun?
+pub fn SystemStore::get_workflow(Self, String) -> WorkflowDefinition?
+pub fn SystemStore::list_artifacts(Self, run_id? : String) -> Array[ArtifactRecord]
+pub fn SystemStore::list_definitions(Self) -> Array[JobDefinition]
+pub fn SystemStore::list_runs(Self) -> Array[JobRun]
+pub fn SystemStore::list_step_runs(Self, String) -> Array[JobStepRun]
+pub fn SystemStore::list_workflows(Self) -> Array[WorkflowDefinition]
+pub async fn SystemStore::load(Self) -> Unit
+pub fn SystemStore::new(root~ : String) -> Self
+pub async fn SystemStore::save_artifact(Self, ArtifactRecord) -> Unit
+pub async fn SystemStore::save_definition(Self, JobDefinition) -> Unit
+pub async fn SystemStore::save_run(Self, JobRun) -> Unit
+pub async fn SystemStore::save_step_run(Self, JobStepRun) -> Unit
+pub async fn SystemStore::save_workflow(Self, WorkflowDefinition) -> Unit
+
+pub(all) enum TriggerSource {
+  Manual
+  Scheduled
+  Webhook
+  Recovery
+  Custom(String)
+}
+pub impl Show for TriggerSource
+pub impl ToJson for TriggerSource
+pub impl @json.FromJson for TriggerSource
+
+pub(all) struct WorkflowDefinition {
+  id : String
+  kind : String
+  steps : Array[WorkflowStepDefinition]
+  output_bindings : Array[String]
+}
+pub impl Show for WorkflowDefinition
+pub impl ToJson for WorkflowDefinition
+pub impl @json.FromJson for WorkflowDefinition
+
+pub(all) struct WorkflowStepDefinition {
+  id : String
+  kind : String
+  config : Json
+  retry_policy : RetryPolicy?
+}
+pub impl Show for WorkflowStepDefinition
+pub impl ToJson for WorkflowStepDefinition
+pub impl @json.FromJson for WorkflowStepDefinition
 
 // Type aliases
 
