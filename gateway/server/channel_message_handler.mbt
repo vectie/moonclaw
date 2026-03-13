@@ -30,6 +30,17 @@ fn Gateway::cancel_active_channel_session(
 }
 
 ///|
+async fn Gateway::force_cancel_active_channel_session(
+  self : Gateway,
+  session_key : String,
+) -> Bool {
+  let cancelled = self.cancel_active_channel_session(session_key)
+  ignore(self.sessions.reset_and_save(session_key))
+  self.clear_active_channel_session(session_key)
+  cancelled
+}
+
+///|
 async fn Gateway::store_channel_session(
   self : Gateway,
   session_key : String,
@@ -178,6 +189,20 @@ impl @channel.MessageHandler for Gateway with handle_event(
         channel_id, account_id, chat_id, thread_id,
       )
       ignore(self.cancel_active_channel_session(session_key))
+    }
+    "force_cancel" => {
+      let chat_id = match event.payload {
+        { "chat_id": String(chat_id), .. } => chat_id
+        _ => return
+      }
+      let thread_id = match event.payload {
+        { "thread_id": String(thread_id), .. } => Some(thread_id)
+        _ => None
+      }
+      let session_key = channel_session_key(
+        channel_id, account_id, chat_id, thread_id,
+      )
+      ignore(self.force_cancel_active_channel_session(session_key))
     }
     _ => ()
   }

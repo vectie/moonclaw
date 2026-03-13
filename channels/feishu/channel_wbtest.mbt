@@ -218,6 +218,59 @@ async test "Feishu webhook routes abort text to cancel events without invoking m
 }
 
 ///|
+async test "Feishu webhook routes force-stop text to force_cancel events without invoking message handling" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_test_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let response = channel.handle_webhook(
+    feishu_message_request(
+      "event-force-abort",
+      "message-force-abort",
+      "/force-stop",
+      @clock.epoch.now().ms().to_string(),
+    ),
+  )
+
+  inspect(response.status_code(), content="200")
+  inspect(handler.handled_message_ids.length(), content="0")
+  json_inspect(handler.event_types, content=["force_cancel"])
+}
+
+///|
+test "Feishu queue cancel clears pending work and marks active queue for stop" {
+  let channel = FeishuChannel::new()
+  let queue_key = feishu_queue_key("default", "chat-1", None)
+  channel.enqueue_message(queue_key, QueuedFeishuMessage::{
+    account_id: "default",
+    chat_id: "chat-1",
+    thread_id: None,
+    message_id: "msg-1",
+    content: "first",
+    timestamp: 1,
+    message: @channel.Message::{
+      id: "msg-1",
+      channel: "feishu",
+      from: "user",
+      to: "chat-1",
+      content: "first",
+      content_type: "text",
+      timestamp: 1,
+      thread_id: None,
+      reply_to: None,
+      attachments: [],
+    },
+  })
+  channel.set_processing_queue(queue_key, true)
+
+  channel.request_queue_cancel(queue_key)
+
+  inspect(channel.dequeue_message(queue_key) is None, content="true")
+  inspect(channel.is_queue_cancelled(queue_key), content="true")
+}
+
+///|
 async test "Feishu webhook deduplicates duplicate message ids before handler execution" {
   let channel = FeishuChannel::new()
   channel.configure(feishu_test_config())

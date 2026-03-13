@@ -11,6 +11,7 @@ struct FeishuChannelState {
   recent_message_ids : Array[String]
   pending_messages : Map[String, Array[QueuedFeishuMessage]]
   processing_keys : Map[String, Bool]
+  cancelled_queues : Map[String, Bool]
   mut websocket_chunks : Map[String, FeishuWebSocketChunkState]
   mut message_handler : &@channel.MessageHandler?
 }
@@ -46,6 +47,7 @@ pub fn FeishuChannel::new() -> FeishuChannel {
       recent_message_ids: [],
       pending_messages: {},
       processing_keys: {},
+      cancelled_queues: {},
       websocket_chunks: {},
       message_handler: None,
     },
@@ -204,6 +206,7 @@ impl @channel.Channel for FeishuChannel with configure(
   self.state.recent_message_ids.clear()
   self.state.pending_messages.clear()
   self.state.processing_keys.clear()
+  self.state.cancelled_queues.clear()
   self.state.websocket_chunks.clear()
   for account_id, account_config in config.accounts {
     self.state.feishu_configs[account_id] = get_feishu_config(account_config)
@@ -524,10 +527,24 @@ async fn FeishuChannel::handle_feishu_message(
   match self.state.message_handler {
     Some(handler) =>
       if is_abort_text(content) {
+        let queue_key = feishu_queue_key(account_id, chat_id, thread_id)
+        let force = is_force_abort_text(content)
+        self.request_queue_cancel(queue_key)
+        self.send_cancel_acknowledgement(
+          account_id,
+          chat_id,
+          message_id,
+          thread_id,
+          force~,
+        )
         handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
           channel: "feishu",
           account_id,
-          event_type: "cancel",
+          event_type: if force {
+            "force_cancel"
+          } else {
+            "cancel"
+          },
           payload: {
             "chat_id": chat_id,
             "thread_id": thread_id.to_json(),
@@ -1952,6 +1969,14 @@ fn abort_triggers() -> Array[String] {
 }
 
 ///|
+fn force_abort_triggers() -> Array[String] {
+  [
+    "/force-stop", "force stop", "force-stop", "hard stop", "hard-stop", "kill run",
+    "kill agent", "kill conversation", "强制停止",
+  ]
+}
+
+///|
 fn normalize_abort_text(text : String) -> String {
   text
   .trim()
@@ -1971,7 +1996,15 @@ fn normalize_abort_text(text : String) -> String {
 ///|
 fn is_abort_text(text : String) -> Bool {
   let normalized = normalize_abort_text(text)
-  normalized == "/stop" || abort_triggers().contains(normalized)
+  normalized == "/stop" ||
+  is_force_abort_text(text) ||
+  abort_triggers().contains(normalized)
+}
+
+///|
+fn is_force_abort_text(text : String) -> Bool {
+  let normalized = normalize_abort_text(text)
+  force_abort_triggers().contains(normalized)
 }
 
 ///|
@@ -2105,6 +2138,11 @@ fn FeishuChannel::enqueue_message(
 }
 
 ///|
+fn FeishuChannel::clear_queue(self : FeishuChannel, queue_key : String) -> Unit {
+  self.state.pending_messages.remove(queue_key) |> ignore()
+}
+
+///|
 fn FeishuChannel::dequeue_message(
   self : FeishuChannel,
   queue_key : String,
@@ -2122,6 +2160,38 @@ fn FeishuChannel::dequeue_message(
     }
     _ => None
   }
+}
+
+///|
+fn FeishuChannel::request_queue_cancel(
+  self : FeishuChannel,
+  queue_key : String,
+) -> Unit {
+  self.clear_queue(queue_key)
+  if self.is_processing_queue(queue_key) {
+    self.state.cancelled_queues[queue_key] = true
+  } else {
+    self.state.cancelled_queues.remove(queue_key) |> ignore()
+  }
+}
+
+///|
+fn FeishuChannel::is_queue_cancelled(
+  self : FeishuChannel,
+  queue_key : String,
+) -> Bool {
+  match self.state.cancelled_queues.get(queue_key) {
+    Some(true) => true
+    _ => false
+  }
+}
+
+///|
+fn FeishuChannel::clear_queue_cancel(
+  self : FeishuChannel,
+  queue_key : String,
+) -> Unit {
+  self.state.cancelled_queues.remove(queue_key) |> ignore()
 }
 
 ///|
@@ -2159,7 +2229,12 @@ async fn FeishuChannel::process_queued_messages(
   handler : &@channel.MessageHandler,
 ) -> @channel.ExtensionResponse {
   let mut last_response = @channel.ExtensionResponse::ok()
-  while self.dequeue_message(queue_key) is Some(queued) {
+  while true {
+    if self.is_queue_cancelled(queue_key) {
+      self.clear_queue_cancel(queue_key)
+      break
+    }
+    guard self.dequeue_message(queue_key) is Some(queued) else { break }
     try {
       let response_message = handler.handle_message(
         "feishu",
@@ -2186,6 +2261,40 @@ async fn FeishuChannel::process_queued_messages(
     }
   }
   last_response
+}
+
+///|
+async fn FeishuChannel::send_cancel_acknowledgement(
+  self : FeishuChannel,
+  account_id : String,
+  chat_id : String,
+  message_id : String,
+  thread_id : String?,
+  force~ : Bool,
+) -> Unit {
+  let text = if force {
+    "Force stop requested. I will stop this conversation and reset the current session."
+  } else {
+    "Stop requested. I will stop the current conversation after the current step."
+  }
+  match self.state.clients.get(account_id) {
+    Some(client) =>
+      match
+        client.send_text_message(
+          chat_id,
+          text,
+          reply_to=Some(message_id),
+          reply_in_thread=match thread_id {
+            Some(_) => true
+            None => false
+          },
+        ) {
+        Ok(_) => ()
+        Err(error) =>
+          self.log_warn("Failed to send Feishu stop acknowledgement: \{error}")
+      }
+    None => ()
+  }
 }
 
 ///|
