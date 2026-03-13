@@ -71,7 +71,7 @@ Deliverable:
 - [x] Add periodic scheduler for due jobs
 - [x] Add checkpoint persistence per job definition
 - [x] Prevent duplicate concurrent runs for the same job when policy forbids it
-- [ ] Add retry and backoff policies at runtime level
+- [x] Add retry and backoff policies at runtime level
 - [x] Add status inspection for active and recent runs
 - [x] Add tests for scheduling, checkpoint recovery, and duplicate-run suppression
 

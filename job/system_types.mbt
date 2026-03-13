@@ -52,6 +52,7 @@ pub(all) struct JobDefinition {
   enabled : Bool
   config : Json
   schedule : SchedulePolicy?
+  retry_policy : RetryPolicy?
   workflow_id : String?
   created_at : Int
   updated_at : Int
@@ -64,6 +65,8 @@ pub(all) struct JobRun {
   job_id : String
   trigger : TriggerSource
   status : RunStatus
+  attempt : Int
+  retry_of : String?
   started_at : Int?
   completed_at : Int?
   summary : String?

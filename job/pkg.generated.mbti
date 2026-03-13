@@ -39,6 +39,9 @@ pub(all) struct CheckpointRecord {
   last_completed_at : Int?
   last_success_at : Int?
   last_run_id : String?
+  retry_attempts : Int
+  next_retry_at : Int?
+  retry_source_run_id : String?
 }
 pub impl Show for CheckpointRecord
 pub impl ToJson for CheckpointRecord
@@ -89,6 +92,7 @@ pub(all) struct JobDefinition {
   enabled : Bool
   config : Json
   schedule : SchedulePolicy?
+  retry_policy : RetryPolicy?
   workflow_id : String?
   created_at : Int
   updated_at : Int
@@ -103,6 +107,8 @@ pub(all) struct JobRun {
   job_id : String
   trigger : TriggerSource
   status : RunStatus
+  attempt : Int
+  retry_of : String?
   started_at : Int?
   completed_at : Int?
   summary : String?
@@ -186,6 +192,7 @@ pub async fn RuntimeManager::register_workflow(Self, WorkflowDefinition) -> Unit
 pub fn RuntimeManager::store(Self) -> SystemStore
 pub async fn RuntimeManager::trigger_definition(Self, String, String, TriggerSource, Int) -> Result[JobRun, String]
 pub async fn RuntimeManager::trigger_due_definitions(Self, Int, () -> String) -> Array[JobRun]
+pub async fn RuntimeManager::trigger_retry_run(Self, String, String, Int) -> Result[JobRun, String]
 
 pub(all) struct SchedulePolicy {
   kind : String

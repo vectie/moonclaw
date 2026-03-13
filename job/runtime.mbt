@@ -6,6 +6,9 @@ pub(all) struct CheckpointRecord {
   last_completed_at : Int?
   last_success_at : Int?
   last_run_id : String?
+  retry_attempts : Int
+  next_retry_at : Int?
+  retry_source_run_id : String?
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -178,6 +181,8 @@ pub async fn RuntimeManager::create_run(
     job_id,
     trigger,
     status: Pending,
+    attempt: 1,
+    retry_of: None,
     started_at: None,
     completed_at: None,
     summary: None,
@@ -199,6 +204,9 @@ pub async fn RuntimeManager::create_run(
         last_completed_at: None,
         last_success_at: None,
         last_run_id: Some(run_id),
+        retry_attempts: 0,
+        next_retry_at: None,
+        retry_source_run_id: None,
       }
   }
   self.checkpoints.save_checkpoint(checkpoint)
@@ -233,10 +241,57 @@ pub async fn RuntimeManager::mark_run_started(
         last_completed_at: None,
         last_success_at: None,
         last_run_id: Some(updated.id),
+        retry_attempts: 0,
+        next_retry_at: None,
+        retry_source_run_id: None,
       }
   }
   self.checkpoints.save_checkpoint(checkpoint)
   Some(updated)
+}
+
+///|
+fn RuntimeManager::definition_retry_policy(
+  self : RuntimeManager,
+  job_id : String,
+) -> RetryPolicy? {
+  self.store
+  .get_definition(job_id)
+  .bind(fn(definition) { definition.retry_policy })
+}
+
+///|
+fn RuntimeManager::clear_retry_state(
+  checkpoint : CheckpointRecord,
+) -> CheckpointRecord {
+  CheckpointRecord::{
+    ..checkpoint,
+    retry_attempts: 0,
+    next_retry_at: None,
+    retry_source_run_id: None,
+  }
+}
+
+///|
+fn RuntimeManager::with_failure_retry_state(
+  self : RuntimeManager,
+  run : JobRun,
+  checkpoint : CheckpointRecord,
+  now_ms : Int,
+) -> CheckpointRecord {
+  match self.definition_retry_policy(run.job_id) {
+    Some(policy) if policy.max_attempts > checkpoint.retry_attempts => {
+      let next_attempt = checkpoint.retry_attempts + 1
+      let delay_ms = policy.backoff_ms.unwrap_or(0)
+      CheckpointRecord::{
+        ..checkpoint,
+        retry_attempts: next_attempt,
+        next_retry_at: Some(now_ms + delay_ms),
+        retry_source_run_id: Some(run.id),
+      }
+    }
+    _ => RuntimeManager::clear_retry_state(checkpoint)
+  }
 }
 
 ///|
@@ -268,8 +323,8 @@ async fn RuntimeManager::finish_run_with_status(
   self.store.save_run(updated)
   self.active_runs.remove(updated.job_id) |> ignore()
   let checkpoint = match self.checkpoints.get(updated.job_id) {
-    Some(existing) =>
-      CheckpointRecord::{
+    Some(existing) => {
+      let base = CheckpointRecord::{
         ..existing,
         last_completed_at: Some(now_ms),
         last_success_at: match status {
@@ -278,8 +333,14 @@ async fn RuntimeManager::finish_run_with_status(
         },
         last_run_id: Some(updated.id),
       }
-    None =>
-      CheckpointRecord::{
+      match status {
+        Failed => self.with_failure_retry_state(updated, base, now_ms)
+        Succeeded | Cancelled => RuntimeManager::clear_retry_state(base)
+        Pending | Running => base
+      }
+    }
+    None => {
+      let base = CheckpointRecord::{
         job_id: updated.job_id,
         last_triggered_at: updated.started_at,
         last_started_at: updated.started_at,
@@ -289,7 +350,16 @@ async fn RuntimeManager::finish_run_with_status(
           _ => None
         },
         last_run_id: Some(updated.id),
+        retry_attempts: 0,
+        next_retry_at: None,
+        retry_source_run_id: None,
       }
+      match status {
+        Failed => self.with_failure_retry_state(updated, base, now_ms)
+        Succeeded | Cancelled => RuntimeManager::clear_retry_state(base)
+        Pending | Running => base
+      }
+    }
   }
   self.checkpoints.save_checkpoint(checkpoint)
   Some(updated)
@@ -356,13 +426,81 @@ pub async fn RuntimeManager::trigger_definition(
 }
 
 ///|
+pub async fn RuntimeManager::trigger_retry_run(
+  self : RuntimeManager,
+  run_id : String,
+  job_id : String,
+  now_ms : Int,
+) -> Result[JobRun, String] {
+  if self.is_job_active(job_id) {
+    return Err("Job \{job_id} already has an active run")
+  }
+  let definition = match self.store.get_definition(job_id) {
+    Some(definition) => definition
+    None => return Err("Unknown job definition: \{job_id}")
+  }
+  let checkpoint = match self.checkpoints.get(job_id) {
+    Some(checkpoint) => checkpoint
+    None => return Err("No checkpoint found for retryable job: \{job_id}")
+  }
+  guard definition.retry_policy is Some(_) else {
+    return Err("Job \{job_id} has no retry policy")
+  }
+  guard checkpoint.next_retry_at is Some(next_retry_at) &&
+    next_retry_at <= now_ms else {
+    return Err("Job \{job_id} is not due for retry")
+  }
+  let run = JobRun::{
+    id: run_id,
+    job_id,
+    trigger: TriggerSource::Recovery,
+    status: Pending,
+    attempt: checkpoint.retry_attempts + 1,
+    retry_of: checkpoint.retry_source_run_id,
+    started_at: None,
+    completed_at: None,
+    summary: None,
+    error: None,
+  }
+  self.store.save_run(run)
+  self.checkpoints.save_checkpoint(CheckpointRecord::{
+    ..checkpoint,
+    last_triggered_at: Some(now_ms),
+    last_run_id: Some(run_id),
+    next_retry_at: None,
+  })
+  Ok(run)
+}
+
+///|
 pub async fn RuntimeManager::trigger_due_definitions(
   self : RuntimeManager,
   now_ms : Int,
   next_run_id : () -> String,
 ) -> Array[JobRun] {
   let created : Array[JobRun] = []
+  let scheduled_job_ids : Map[String, Unit] = {}
+  for checkpoint in self.checkpoints.list() {
+    if scheduled_job_ids.contains(checkpoint.job_id) ||
+      self.is_job_active(checkpoint.job_id) {
+      continue
+    }
+    match checkpoint.next_retry_at {
+      Some(next_retry_at) if next_retry_at <= now_ms =>
+        match self.trigger_retry_run(next_run_id(), checkpoint.job_id, now_ms) {
+          Ok(run) => {
+            created.push(run)
+            scheduled_job_ids.set(run.job_id, ())
+          }
+          Err(_) => ()
+        }
+      _ => ()
+    }
+  }
   for definition in self.due_definitions(now_ms) {
+    if scheduled_job_ids.contains(definition.id) {
+      continue
+    }
     match
       self.create_run(
         next_run_id(),
@@ -431,6 +569,13 @@ pub fn RuntimeManager::due_definitions(
     }
     let interval_ms = interval_minutes * 60 * 1000
     let checkpoint = self.checkpoints.get(definition.id)
+    let retry_pending = match checkpoint {
+      Some(checkpoint) => checkpoint.next_retry_at is Some(_)
+      None => false
+    }
+    if retry_pending {
+      continue
+    }
     let last_mark = match checkpoint {
       Some(checkpoint) =>
         checkpoint.last_triggered_at.unwrap_or(

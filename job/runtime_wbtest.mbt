@@ -5,6 +5,10 @@ fn runtime_definition(
     interval_minutes: Some(60),
     timezone: Some("Asia/Shanghai"),
   }),
+  retry_policy? : RetryPolicy? = Some(RetryPolicy::{
+    max_attempts: 2,
+    backoff_ms: Some(100),
+  }),
 ) -> JobDefinition {
   JobDefinition::{
     id: "job-1",
@@ -12,6 +16,7 @@ fn runtime_definition(
     enabled: true,
     config: { "query": "agents" },
     schedule,
+    retry_policy,
     workflow_id: None,
     created_at: 1,
     updated_at: 1,
@@ -32,6 +37,7 @@ async test "RuntimeManager persists checkpoints and prevents duplicate active ru
       Err(error) => fail(error)
     }
     inspect(run.status.to_json().stringify(), content="\"Pending\"")
+    inspect(run.attempt, content="1")
     ignore(manager.mark_run_started("run-1", 120))
     inspect(manager.is_job_active("job-1"), content="true")
     inspect(
@@ -142,6 +148,53 @@ async test "RuntimeManager triggers due runs and exposes active and recent statu
       .map(fn(run) { "\{run.id}:\{run.status.to_json().stringify()}" })
       .join(","),
       content="run-scheduled-1:\"Succeeded\"",
+    )
+  })
+}
+
+///|
+async test "RuntimeManager schedules retry runs with backoff and resets retry state on success" {
+  @fsx.with_temporary_directory("job-runtime-retry-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let manager = RuntimeManager::new(root~)
+    manager.register_definition(runtime_definition())
+
+    ignore(manager.create_run("run-1", "job-1", TriggerSource::Manual, 100))
+    ignore(manager.mark_run_started("run-1", 110))
+    ignore(manager.mark_run_failed("run-1", 200, "tool failed"))
+
+    let checkpoint_after_failure = match manager.checkpoints().get("job-1") {
+      Some(checkpoint) => checkpoint
+      None => fail("expected retry checkpoint")
+    }
+    inspect(checkpoint_after_failure.retry_attempts, content="1")
+    inspect(checkpoint_after_failure.next_retry_at.unwrap_or(0), content="300")
+    inspect(
+      checkpoint_after_failure.retry_source_run_id.unwrap_or(""),
+      content="run-1",
+    )
+
+    let before_due = manager.trigger_due_definitions(299, fn() { "run-2" })
+    inspect(before_due.length(), content="0")
+
+    let retries = manager.trigger_due_definitions(300, fn() { "run-2" })
+    inspect(retries.length(), content="1")
+    inspect(retries[0].trigger.to_json().stringify(), content="\"Recovery\"")
+    inspect(retries[0].attempt, content="2")
+    inspect(retries[0].retry_of.unwrap_or(""), content="run-1")
+
+    ignore(manager.mark_run_started("run-2", 310))
+    ignore(manager.mark_run_succeeded("run-2", 320, summary=Some("recovered")))
+
+    let checkpoint_after_success = match manager.checkpoints().get("job-1") {
+      Some(checkpoint) => checkpoint
+      None => fail("expected checkpoint after success")
+    }
+    inspect(checkpoint_after_success.retry_attempts, content="0")
+    inspect(checkpoint_after_success.next_retry_at is None, content="true")
+    inspect(
+      checkpoint_after_success.retry_source_run_id is None,
+      content="true",
     )
   })
 }
