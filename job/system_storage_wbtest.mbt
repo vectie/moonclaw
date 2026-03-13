@@ -85,12 +85,17 @@ fn sample_artifact(root : String) -> ArtifactRecord {
     run_id: "run-1",
     job_id: "research.topic.sync",
     artifact_type: "paper.meta",
+    logical_key: Some("paper:2501.01234v1"),
+    version: 1,
+    status: ArtifactStatus::Active,
     path: root
     |> @pathx.join("artifacts")
     |> @pathx.join("artifact-1")
     |> @pathx.join("meta.json"),
+    content_type: "application/json",
     metadata: { "paper_id": "2501.01234v1" },
     created_at: 13,
+    archived_at: None,
     scope: ["research", "paper:2501.01234v1"],
   }
 }

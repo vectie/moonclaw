@@ -90,13 +90,119 @@ pub(all) struct JobStepRun {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) enum ArtifactStatus {
+  Active
+  Archived
+} derive(ToJson, FromJson, Show, Eq)
+
+///|
 pub(all) struct ArtifactRecord {
   id : String
   run_id : String
   job_id : String
   artifact_type : String
+  logical_key : String?
+  version : Int
+  status : ArtifactStatus
   path : String
+  content_type : String
   metadata : Json
   created_at : Int
+  archived_at : Int?
   scope : Array[String]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct ArtifactQuery {
+  job_id : String?
+  run_id : String?
+  artifact_type : String?
+  logical_key : String?
+  scope : String?
+  status : ArtifactStatus?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub fn ArtifactQuery::new(
+  job_id? : String? = None,
+  run_id? : String? = None,
+  artifact_type? : String? = None,
+  logical_key? : String? = None,
+  scope? : String? = None,
+  status? : ArtifactStatus? = None,
+) -> ArtifactQuery {
+  ArtifactQuery::{ job_id, run_id, artifact_type, logical_key, scope, status }
+}
+
+///|
+pub(all) struct ArtifactWriteRequest {
+  run_id : String
+  job_id : String
+  artifact_type : String
+  logical_key : String?
+  content_type : String
+  file_name : String?
+  metadata : Json
+  scope : Array[String]
+  content : String
+  append_only : Bool
+} derive(ToJson, FromJson, Show)
+
+///|
+pub fn ArtifactWriteRequest::new(
+  run_id~ : String,
+  job_id~ : String,
+  artifact_type~ : String,
+  content~ : String,
+  logical_key? : String? = None,
+  content_type? : String = "text/plain",
+  file_name? : String? = None,
+  metadata? : Json = {},
+  scope? : Array[String] = [],
+  append_only? : Bool = true,
+) -> ArtifactWriteRequest {
+  ArtifactWriteRequest::{
+    run_id,
+    job_id,
+    artifact_type,
+    logical_key,
+    content_type,
+    file_name,
+    metadata,
+    scope,
+    content,
+    append_only,
+  }
+}
+
+///|
+pub(all) struct ArtifactRetentionPolicy {
+  artifact_type : String?
+  scope : String?
+  keep_latest : Int?
+  max_age_ms : Int?
+  archive_before_delete : Bool
+} derive(ToJson, FromJson, Show)
+
+///|
+pub fn ArtifactRetentionPolicy::new(
+  artifact_type? : String? = None,
+  scope? : String? = None,
+  keep_latest? : Int? = None,
+  max_age_ms? : Int? = None,
+  archive_before_delete? : Bool = true,
+) -> ArtifactRetentionPolicy {
+  ArtifactRetentionPolicy::{
+    artifact_type,
+    scope,
+    keep_latest,
+    max_age_ms,
+    archive_before_delete,
+  }
+}
+
+///|
+pub(all) struct ArtifactCleanupReport {
+  archived_ids : Array[String]
+  deleted_ids : Array[String]
 } derive(ToJson, FromJson, Show)

@@ -134,6 +134,8 @@ async fn Gateway::handle_request_frame(
     "health" => self.handle_health_method(request, w)
     "runs.list" => self.handle_runs_list_method(request, w)
     "runs.get" => self.handle_runs_get_method(request, w)
+    "artifacts.list" => self.handle_artifacts_list_method(request, w)
+    "artifacts.get" => self.handle_artifacts_get_method(request, w)
     "channels.list" => self.handle_channels_list(request, w)
     "channels.get" => self.handle_channels_get(request, w)
     "channels.configure" => self.handle_channels_configure(request, w)

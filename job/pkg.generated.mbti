@@ -13,19 +13,94 @@ pub suberror InvalidJobId {
 }
 
 // Types and methods
+pub(all) struct ArtifactCleanupReport {
+  archived_ids : Array[String]
+  deleted_ids : Array[String]
+}
+pub impl Show for ArtifactCleanupReport
+pub impl ToJson for ArtifactCleanupReport
+pub impl @json.FromJson for ArtifactCleanupReport
+
+pub(all) struct ArtifactQuery {
+  job_id : String?
+  run_id : String?
+  artifact_type : String?
+  logical_key : String?
+  scope : String?
+  status : ArtifactStatus?
+}
+pub fn ArtifactQuery::new(job_id? : String?, run_id? : String?, artifact_type? : String?, logical_key? : String?, scope? : String?, status? : ArtifactStatus?) -> Self
+pub impl Show for ArtifactQuery
+pub impl ToJson for ArtifactQuery
+pub impl @json.FromJson for ArtifactQuery
+
 pub(all) struct ArtifactRecord {
   id : String
   run_id : String
   job_id : String
   artifact_type : String
+  logical_key : String?
+  version : Int
+  status : ArtifactStatus
   path : String
+  content_type : String
   metadata : Json
   created_at : Int
+  archived_at : Int?
   scope : Array[String]
 }
 pub impl Show for ArtifactRecord
 pub impl ToJson for ArtifactRecord
 pub impl @json.FromJson for ArtifactRecord
+
+pub(all) struct ArtifactRetentionPolicy {
+  artifact_type : String?
+  scope : String?
+  keep_latest : Int?
+  max_age_ms : Int?
+  archive_before_delete : Bool
+}
+pub fn ArtifactRetentionPolicy::new(artifact_type? : String?, scope? : String?, keep_latest? : Int?, max_age_ms? : Int?, archive_before_delete? : Bool) -> Self
+pub impl Show for ArtifactRetentionPolicy
+pub impl ToJson for ArtifactRetentionPolicy
+pub impl @json.FromJson for ArtifactRetentionPolicy
+
+pub(all) enum ArtifactStatus {
+  Active
+  Archived
+}
+pub impl Eq for ArtifactStatus
+pub impl Show for ArtifactStatus
+pub impl ToJson for ArtifactStatus
+pub impl @json.FromJson for ArtifactStatus
+
+pub struct ArtifactStore {
+  store : SystemStore
+}
+pub async fn ArtifactStore::apply_retention(Self, ArtifactRetentionPolicy, Int) -> ArtifactCleanupReport
+pub async fn ArtifactStore::archive(Self, String, Int) -> ArtifactRecord?
+pub fn ArtifactStore::get(Self, String) -> ArtifactRecord?
+pub fn ArtifactStore::list(Self, query? : ArtifactQuery) -> Array[ArtifactRecord]
+pub fn ArtifactStore::new(store~ : SystemStore) -> Self
+pub async fn ArtifactStore::read_text(Self, String) -> String?
+pub async fn ArtifactStore::write(Self, ArtifactWriteRequest, String, Int) -> ArtifactRecord
+
+pub(all) struct ArtifactWriteRequest {
+  run_id : String
+  job_id : String
+  artifact_type : String
+  logical_key : String?
+  content_type : String
+  file_name : String?
+  metadata : Json
+  scope : Array[String]
+  content : String
+  append_only : Bool
+}
+pub fn ArtifactWriteRequest::new(run_id~ : String, job_id~ : String, artifact_type~ : String, content~ : String, logical_key? : String?, content_type? : String, file_name? : String?, metadata? : Json, scope? : Array[String], append_only? : Bool) -> Self
+pub impl Show for ArtifactWriteRequest
+pub impl ToJson for ArtifactWriteRequest
+pub impl @json.FromJson for ArtifactWriteRequest
 
 type ArtifactsIndexFile
 pub impl Show for ArtifactsIndexFile
@@ -213,6 +288,9 @@ pub struct SystemStore {
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
 }
+pub fn SystemStore::artifact_content_file(Self, String, file_name? : String) -> String
+pub fn SystemStore::artifact_dir(Self, String) -> String
+pub async fn SystemStore::delete_artifact(Self, String) -> Bool
 pub fn SystemStore::get_artifact(Self, String) -> ArtifactRecord?
 pub fn SystemStore::get_definition(Self, String) -> JobDefinition?
 pub fn SystemStore::get_run(Self, String) -> JobRun?

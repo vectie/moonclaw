@@ -92,12 +92,12 @@ Deliverable:
 
 ## Phase 4: Artifact Storage and Management
 
-- [ ] Add artifact writer/reader package
-- [ ] Add artifact indexing by job, run, type, and logical scope
-- [ ] Add append-only artifact history where appropriate
-- [ ] Add retention, archive, and cleanup policies
-- [ ] Add artifact listing/get APIs in gateway
-- [ ] Add tests for artifact indexing, retrieval, and cleanup safety
+- [x] Add artifact writer/reader package
+- [x] Add artifact indexing by job, run, type, and logical scope
+- [x] Add append-only artifact history where appropriate
+- [x] Add retention, archive, and cleanup policies
+- [x] Add artifact listing/get APIs in gateway
+- [x] Add tests for artifact indexing, retrieval, and cleanup safety
 
 Deliverable:
 - job outputs are durable and queryable as first-class artifacts
@@ -204,7 +204,7 @@ Deliverable:
 - [ ] run and step transition tests
 - [ ] scheduler and checkpoint recovery tests
 - [x] workflow retry/cancel/force-cancel tests
-- [ ] artifact indexing and retrieval tests
+- [x] artifact indexing and retrieval tests
 - [ ] chat over artifacts tests
 - [ ] AI analysis workflow persistence tests
 - [ ] research/arXiv integration tests
@@ -214,7 +214,7 @@ Deliverable:
 - [ ] Finish Phase 1 before any research-specific implementation
 - [ ] Finish Phase 2 before adding scheduled research sync
 - [x] Finish Phase 3 before adding analysis workflows
-- [ ] Finish Phase 4 before artifact chat
+- [x] Finish Phase 4 before artifact chat
 - [ ] Finish Phase 5 before research ask UX
 - [ ] Finish Phase 8 before TUI/channel research polish
 

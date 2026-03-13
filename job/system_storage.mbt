@@ -81,10 +81,24 @@ fn SystemStore::artifact_record_file(
   self : SystemStore,
   artifact_id : String,
 ) -> String {
-  self.root
-  |> @pathx.join("artifacts")
-  |> @pathx.join(artifact_id)
-  |> @pathx.join("record.json")
+  self.artifact_dir(artifact_id) |> @pathx.join("record.json")
+}
+
+///|
+pub fn SystemStore::artifact_dir(
+  self : SystemStore,
+  artifact_id : String,
+) -> String {
+  self.root |> @pathx.join("artifacts") |> @pathx.join(artifact_id)
+}
+
+///|
+pub fn SystemStore::artifact_content_file(
+  self : SystemStore,
+  artifact_id : String,
+  file_name? : String = "content.bin",
+) -> String {
+  self.artifact_dir(artifact_id) |> @pathx.join(file_name)
 }
 
 ///|
@@ -252,9 +266,7 @@ pub async fn SystemStore::save_artifact(
 ) -> Unit {
   self.ensure_directories()
   self.artifacts.set(artifact.id, artifact)
-  let artifact_dir = self.root
-    |> @pathx.join("artifacts")
-    |> @pathx.join(artifact.id)
+  let artifact_dir = self.artifact_dir(artifact.id)
   @fsx.make_directory(artifact_dir, recursive=true) catch {
     _ => ()
   }
@@ -263,6 +275,31 @@ pub async fn SystemStore::save_artifact(
     artifact.to_json().stringify(),
   )
   self.save_artifacts_index()
+}
+
+///|
+pub async fn SystemStore::delete_artifact(
+  self : SystemStore,
+  artifact_id : String,
+) -> Bool {
+  let artifact = match self.artifacts.get(artifact_id) {
+    Some(artifact) => artifact
+    None => return false
+  }
+  self.artifacts.remove(artifact_id) |> ignore()
+  if @fsx.exists(self.artifact_record_file(artifact_id)) {
+    @fsx.remove(self.artifact_record_file(artifact_id))
+  }
+  if @fsx.exists(artifact.path) {
+    @fsx.remove(artifact.path)
+  }
+  if @fsx.exists(self.artifact_dir(artifact_id)) {
+    @fsx.remove(self.artifact_dir(artifact_id)) catch {
+      _ => ()
+    }
+  }
+  self.save_artifacts_index()
+  true
 }
 
 ///|

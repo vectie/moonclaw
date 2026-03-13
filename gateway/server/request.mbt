@@ -14,6 +14,9 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
       (Get, ["", "v1", "runs"]) => self.handle_list_runs(r, w)
       (Get, ["", "v1", "runs", run_id]) => self.handle_get_run(r, w)
+      (Get, ["", "v1", "artifacts"]) => self.handle_list_artifacts(r, w)
+      (Get, ["", "v1", "artifacts", artifact_id]) =>
+        self.handle_get_artifact(r, w)
       (Get, ["", "v1", "channels"]) => self.handle_list_channels(r, w)
       (Get, ["", "v1", "channels", channel_id]) => self.handle_get_channel(r, w)
       (Post, ["", "v1", "channels", channel_id, "configure"]) =>

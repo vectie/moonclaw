@@ -2,8 +2,8 @@
 fn supported_rpc_methods() -> Array[String] {
   [
     "connect", "agent", "agent.wait", "sessions.list", "sessions.reset", "config.get",
-    "config.set", "health", "runs.list", "runs.get", "channels.list", "channels.get",
-    "channels.configure", "channels.start", "channels.stop",
+    "config.set", "health", "runs.list", "runs.get", "artifacts.list", "artifacts.get",
+    "channels.list", "channels.get", "channels.configure", "channels.start", "channels.stop",
   ]
 }
 
@@ -217,6 +217,112 @@ async fn Gateway::handle_runs_get_method(
         error: Some(@protocol.ErrorShape::{
           code: "run_not_found",
           message: "Run not found: \{run_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_artifacts_list_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let query = match request.params {
+    Some(params) =>
+      match @json.from_json(params) {
+        Ok(query) => query
+        Err(_) => @job.ArtifactQuery::new()
+      }
+    None => @job.ArtifactQuery::new()
+  }
+  let artifacts = @job.ArtifactStore::new(store=self.jobs.store()).list(query~)
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({ "artifacts": artifacts.map(artifact => artifact.to_json()) }),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_artifacts_get_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params = match request.params {
+    Some(params) => params
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing artifact lookup parameters",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let artifact_id = match params {
+    String(id) => id
+    Object(obj) =>
+      match obj.get("artifact_id") {
+        Some(String(id)) => id
+        _ =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "missing_artifact_id",
+              message: "Missing artifact_id in params",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    _ =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "invalid_params",
+          message: "Invalid artifact lookup parameters",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let artifacts = @job.ArtifactStore::new(store=self.jobs.store())
+  match artifacts.get(artifact_id) {
+    Some(artifact) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some({
+          "artifact": artifact.to_json(),
+          "content": artifacts.read_text(artifact_id),
+        }),
+        error: None,
+      })
+    None =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "artifact_not_found",
+          message: "Artifact not found: \{artifact_id}",
           details: None,
           retryable: None,
           retry_after_ms: None,

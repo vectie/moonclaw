@@ -323,3 +323,56 @@ async fn Gateway::handle_list_runs(
   let result : Json = { "runs": runs.map(run => run.to_json()) }
   w.write(result.stringify())
 }
+
+///|
+async fn Gateway::handle_list_artifacts(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let artifacts = @job.ArtifactStore::new(store=self.jobs.store()).list()
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  let result : Json = {
+    "artifacts": artifacts.map(artifact => artifact.to_json()),
+  }
+  w.write(result.stringify())
+}
+
+///|
+async fn Gateway::handle_get_artifact(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let artifact_id = match paths {
+    ["", "v1", "artifacts", id] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_artifact_id",
+          "message": "Missing artifact_id in path",
+        },
+      })
+  }
+  let artifacts = @job.ArtifactStore::new(store=self.jobs.store())
+  match artifacts.get(artifact_id) {
+    Some(artifact) => {
+      w.header().set("Content-Type", "application/json")
+      w.write_header(200)
+      let result : Json = {
+        "artifact": artifact.to_json(),
+        "content": artifacts.read_text(artifact_id),
+      }
+      w.write(result.stringify())
+    }
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "artifact_not_found",
+          "message": "Artifact not found: \{artifact_id}",
+        },
+      })
+  }
+}
