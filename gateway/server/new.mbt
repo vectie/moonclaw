@@ -132,7 +132,14 @@ pub fn Gateway::register_extension(
     gateway_token=self.auth.token,
     home_dir=self.home,
     cwd=self.cwd,
-    logger=None,
+    logger=Some(
+      @channel.LoggerFuncs::new(
+        info=message => println("[gateway][info] \{message}"),
+        warn=message => println("[gateway][warn] \{message}"),
+        error=message => println("[gateway][error] \{message}"),
+        debug=message => println("[gateway][debug] \{message}"),
+      ),
+    ),
     websocket_connector=Some(gateway_websocket_connector()),
     websocket_runtime=Some(self.extension_websocket_runtime),
   )

@@ -227,6 +227,7 @@ impl @channel.Channel for FeishuChannel with start(
   self.state.clients[account_id] = client
   self.state.running[account_id] = true
   if feishu_config.connection_mode == "websocket" {
+    self.log_info("Starting Feishu websocket runtime for account \{account_id}")
     self.ensure_websocket_runtime_client(account_id, feishu_config)
   }
   self.broadcast_monitor_status()
@@ -901,6 +902,30 @@ fn FeishuChannel::stop_websocket_runtime_client(
 }
 
 ///|
+fn FeishuChannel::log_info(self : FeishuChannel, message : String) -> Unit {
+  match self.state.extension_context {
+    Some(context) =>
+      match context.logger() {
+        Some(logger) => (logger.info)(message)
+        None => ()
+      }
+    None => ()
+  }
+}
+
+///|
+fn FeishuChannel::log_warn(self : FeishuChannel, message : String) -> Unit {
+  match self.state.extension_context {
+    Some(context) =>
+      match context.logger() {
+        Some(logger) => (logger.warn)(message)
+        None => ()
+      }
+    None => ()
+  }
+}
+
+///|
 async fn FeishuChannel::resolve_websocket_endpoint(
   self : FeishuChannel,
   config : FeishuAccountConfig,
@@ -919,6 +944,9 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
     Some(context) =>
       match (context.websocket_runtime(), context.websocket_connector()) {
         (Some(runtime), Some(connector)) => {
+          self.log_info(
+            "Resolving Feishu websocket endpoint for account \{account_id}",
+          )
           let endpoint = match config.websocket_url {
             Some(url) if !url.is_blank() =>
               Ok(FeishuWebSocketEndpointData::{ url, client_config: None })
@@ -927,16 +955,15 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
           let endpoint = match endpoint {
             Ok(endpoint) => endpoint
             Err(error) => {
-              match context.logger() {
-                Some(logger) =>
-                  (logger.warn)(
-                    "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{error}",
-                  )
-                None => ()
-              }
+              self.log_warn(
+                "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{error}",
+              )
               return
             }
           }
+          self.log_info(
+            "Registering Feishu websocket client for account \{account_id} -> \{endpoint.url}",
+          )
           let request = feishu_websocket_dial_request(
             account_id,
             endpoint.url,
@@ -951,6 +978,9 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
               ),
               connect=() => connector.connect(request),
               on_connect=fn(conn) {
+                self.log_info(
+                  "Feishu websocket connected for account \{account_id} as \{conn.id()}",
+                )
                 self.bind_platform_websocket(account_id, conn)
               },
               logger=context.logger(),
@@ -958,13 +988,9 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
           )
         }
         (Some(_), None) =>
-          match context.logger() {
-            Some(logger) =>
-              (logger.warn)(
-                "Feishu websocket account \{account_id} is enabled but no websocket connector is available",
-              )
-            None => ()
-          }
+          self.log_warn(
+            "Feishu websocket account \{account_id} is enabled but no websocket connector is available",
+          )
         _ => ()
       }
     None => ()
@@ -1766,6 +1792,7 @@ fn FeishuChannel::bind_platform_websocket(
     self.handle_platform_websocket_frame(account_id, conn, bytes)
   })
   conn.on_close(fn() {
+    self.log_warn("Feishu websocket closed for account \{account_id}")
     for key in self.state.websocket_chunks.keys().to_array() {
       if key.has_prefix("\{account_id}:") {
         self.state.websocket_chunks.remove(key)
