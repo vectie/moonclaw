@@ -40,6 +40,49 @@ pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
 }
 
 ///|
+fn moonclaw_root_config_path(root : StringView) -> String {
+  root |> @pathx.join("moonclaw.json")
+}
+
+///|
+fn moonclaw_nested_config_path(root : StringView) -> String {
+  root |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json")
+}
+
+///|
+fn moonclaw_root_models_path(root : StringView) -> String {
+  root |> @pathx.join("models") |> @pathx.join("models.json")
+}
+
+///|
+fn moonclaw_nested_models_path(root : StringView) -> String {
+  root
+  |> @pathx.join(".moonclaw")
+  |> @pathx.join("models")
+  |> @pathx.join("models.json")
+}
+
+///|
+fn moonclaw_config_paths(root : StringView) -> Array[String] {
+  [moonclaw_root_config_path(root), moonclaw_nested_config_path(root)]
+}
+
+///|
+fn moonclaw_models_paths(root : StringView) -> Array[String] {
+  [moonclaw_root_models_path(root), moonclaw_nested_models_path(root)]
+}
+
+///|
+fn merge_providers(
+  into : Map[String, ProviderConfig],
+  providers : Map[String, ProviderConfig],
+) -> Unit {
+  for name, config in providers {
+    into.set(name, config)
+  }
+}
+
+///|
 async fn Loader::load(self : Loader) -> Unit {
   self.models.clear()
   self.providers.clear()
@@ -69,26 +112,42 @@ async fn Loader::load(self : Loader) -> Unit {
     }
   }
 
-  let project = self.cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("models")
-    |> @pathx.join("models.json")
-  if @fsx.exists(project) {
-    self.models.append(load_from_path(project))
-    let providers = load_providers_from_path(project)
-    for name, config in providers {
-      self.providers.set(name, config)
+  async fn load_providers_from_moonclaw_config(
+    path : StringView,
+  ) -> Map[String, ProviderConfig] {
+    let text = @fsx.read_file(path) catch { _ => return Map::new() }
+    let json = @json.parse(text) catch { _ => return Map::new() }
+    guard json is Object(obj) else { return Map::new() }
+    guard obj.get("models") is Some(models_json) else { return Map::new() }
+    guard models_json is Object(models_obj) else { return Map::new() }
+    guard models_obj.get("providers") is Some(providers_json) else {
+      return Map::new()
+    }
+    @json.from_json(providers_json) catch {
+      _ => Map::new()
     }
   }
-  let user = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("models")
-    |> @pathx.join("models.json")
-  if @fsx.exists(user) {
-    self.models.append(load_from_path(user))
-    let providers = load_providers_from_path(user)
-    for name, config in providers {
-      self.providers.set(name, config)
+
+  for path in moonclaw_models_paths(self.cwd) {
+    if @fsx.exists(path) {
+      self.models.append(load_from_path(path))
+      merge_providers(self.providers, load_providers_from_path(path))
+    }
+  }
+  for path in moonclaw_models_paths(self.home) {
+    if @fsx.exists(path) {
+      self.models.append(load_from_path(path))
+      merge_providers(self.providers, load_providers_from_path(path))
+    }
+  }
+  for path in moonclaw_config_paths(self.cwd) {
+    if @fsx.exists(path) {
+      merge_providers(self.providers, load_providers_from_moonclaw_config(path))
+    }
+  }
+  for path in moonclaw_config_paths(self.home) {
+    if @fsx.exists(path) {
+      merge_providers(self.providers, load_providers_from_moonclaw_config(path))
     }
   }
 }
@@ -123,19 +182,17 @@ async fn Loader::load_moonclaw_api_key(self : Loader) -> String? {
     }
     None
   }
-  let project = self.cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(project) is Some(api_key) {
-    logger.info("Loaded API key from project .moonclaw/moonclaw.json")
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.cwd) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded API key from project MoonClaw config")
+      return Some(api_key)
+    }
   }
-  let user = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(user) is Some(api_key) {
-    logger.info("Loaded API key from user .moonclaw/moonclaw.json")
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.home) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded API key from user MoonClaw config")
+      return Some(api_key)
+    }
   }
   None
 }
@@ -166,19 +223,17 @@ async fn Loader::load_qwen_api_key(self : Loader) -> String? {
     }
     None
   }
-  let project = self.cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(project) is Some(api_key) {
-    logger.info("Loaded Qwen API key from project .moonclaw/moonclaw.json")
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.cwd) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded Qwen API key from project MoonClaw config")
+      return Some(api_key)
+    }
   }
-  let user = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(user) is Some(api_key) {
-    logger.info("Loaded Qwen API key from user .moonclaw/moonclaw.json")
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.home) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded Qwen API key from user MoonClaw config")
+      return Some(api_key)
+    }
   }
   if @os.getenv("QWEN_API_KEY") is Some(api_key) {
     return Some(api_key)
@@ -215,19 +270,17 @@ async fn Loader::load_kimi_api_key(self : Loader) -> String? {
     }
     None
   }
-  let project = self.cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(project) is Some(api_key) {
-    logger.info("Loaded Kimi API key from project .moonclaw/moonclaw.json")
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.cwd) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded Kimi API key from project MoonClaw config")
+      return Some(api_key)
+    }
   }
-  let user = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(user) is Some(api_key) {
-    logger.info("Loaded Kimi API key from user .moonclaw/moonclaw.json")
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.home) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded Kimi API key from user MoonClaw config")
+      return Some(api_key)
+    }
   }
   if @os.getenv("KIMI_API_KEY") is Some(api_key) {
     return Some(api_key)
@@ -260,21 +313,17 @@ async fn Loader::load_kimi_coding_api_key(self : Loader) -> String? {
     }
     None
   }
-  let project = self.cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(project) is Some(api_key) {
-    logger.info(
-      "Loaded Kimi Coding API key from project .moonclaw/moonclaw.json",
-    )
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.cwd) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded Kimi Coding API key from project MoonClaw config")
+      return Some(api_key)
+    }
   }
-  let user = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("moonclaw.json")
-  if load_from_path(user) is Some(api_key) {
-    logger.info("Loaded Kimi Coding API key from user .moonclaw/moonclaw.json")
-    return Some(api_key)
+  for path in moonclaw_config_paths(self.home) {
+    if load_from_path(path) is Some(api_key) {
+      logger.info("Loaded Kimi Coding API key from user MoonClaw config")
+      return Some(api_key)
+    }
   }
   if @os.getenv("KIMI_CODING_API_KEY") is Some(api_key) {
     return Some(api_key)
@@ -391,6 +440,21 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
       return Some(model)
     }
   }
+  let configured_model = if name is Some(name) {
+    for model in self.models {
+      if model.name == name {
+        logger.info("Loaded model '\{name}' from configuration")
+        break Some(model)
+      }
+    } nobreak {
+      None
+    }
+  } else {
+    self.models.get(0)
+  }
+  if configured_model is Some(model) {
+    return Some(model)
+  }
   if name is Some(model_name) && model_name.has_prefix("codex/") {
     return self.load_codex_model(model_name, allow_auto_login=true)
   }
@@ -405,21 +469,6 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
   }
   if name is Some(model_name) && model_name.has_prefix("kimi-coding/") {
     return self.load_kimi_coding_model(model_name)
-  }
-  let model = if name is Some(name) {
-    for model in self.models {
-      if model.name == name {
-        logger.info("Loaded model '\{name}' from configuration")
-        break Some(model)
-      }
-    } nobreak {
-      None
-    }
-  } else {
-    self.models.get(0)
-  }
-  if model is Some(model) {
-    return Some(model)
   }
   if name is Some(model_name) {
     return self.load_openrouter_model(Some(model_name))

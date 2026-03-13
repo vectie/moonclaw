@@ -135,3 +135,43 @@ async test "load" (t : @test.Test) {
     ])
   })
 }
+
+///|
+async test "load providers from moonclaw root config" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let home = mock.cwd
+    let project = home.add_directory("project")
+    let config : Json = {
+      "models": {
+        "providers": {
+          "bailian": {
+            "baseUrl": "https://coding.dashscope.aliyuncs.com/v1",
+            "apiKey": "sk-bailian",
+            "api": "openai-completions",
+            "models": [
+              {
+                "id": "qwen3.5-plus",
+                "name": "qwen3.5-plus",
+                "contextWindow": 1000000,
+              },
+            ],
+          },
+        },
+      },
+    }
+    let _ = home.add_file("moonclaw.json", content=config.stringify(indent=2))
+    let loader = Loader::new(home=home.path(), cwd=project.path())
+    json_inspect(mock.json(loader.get_model(name="bailian/qwen3.5-plus")), content=[
+      {
+        "name": "bailian/qwen3.5-plus",
+        "model_name": "qwen3.5-plus",
+        "model_type": "saas/openai",
+        "api_key": "sk-bailian",
+        "base_url": "https://coding.dashscope.aliyuncs.com/v1",
+        "safe_zone_tokens": 1000000,
+        "supports_anthropic_prompt_caching": false,
+        "supports_apply_patch": false,
+      },
+    ])
+  })
+}
