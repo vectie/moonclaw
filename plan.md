@@ -1,200 +1,231 @@
-# Research Tool Plan
+# Job System Plan
 
-This plan tracks the work to extend MoonClaw into a paper research system with two core capabilities:
+This plan tracks the work to turn MoonClaw into a general job platform.
 
-- fetch and manage important arXiv papers for chosen topics, both manually and on a schedule
-- answer questions about papers in chat, or automatically analyze them with MoonClaw using configured skills and workflows
+`research` should be the first built-in job family, not the root abstraction.
+The platform should support durable scheduled/manual jobs, artifact management on disk, workflow execution, and chat over job outputs.
 
-Mark a task complete only after implementation, validation, and any required docs/tests for that slice are done.
+Mark a task complete only after implementation, validation, docs, and required tests for that slice are done.
 
 ## Product Goals
 
-- make paper ingestion durable and disk-first
-- make topic tracking explicit and manageable through gateway and CLI
-- make paper Q&A grounded in stored paper content with citations
-- make automatic analysis reusable through workflows instead of one-off prompts
-- keep the runtime under `gateway`, not `daemon`
+- make MoonClaw a durable job runtime under `gateway`
+- support both manual and scheduled jobs
+- persist job definitions, runs, checkpoints, and artifacts on disk
+- support chat and AI analysis over job artifacts
+- make `research` the first well-formed job family built on the generic platform
 
 ## Architecture Decisions
 
-- research runtime lives under `gateway`
-- papers and metadata are persisted under `~/.moonclaw/research`
-- fetched source metadata, extracted text, chunks, and analyses are stored separately
-- research chat answers should be cited by default
-- embeddings are optional later work, not a v1 dependency
+- the long-lived runtime remains `gateway`, not `daemon`
+- job definitions, runs, artifacts, and checkpoints are disk-first
+- workflows should be generic and reusable across job families
+- chat should operate over job artifact scopes, not only over papers
+- `research` should be implemented as job definitions and workflows on top of the platform
+
+## Core Concepts
+
+- `JobDefinition`
+  durable job config, schedule, trigger policy, enabled state
+- `JobRun`
+  one execution of a job, with trigger source and status
+- `JobStepRun`
+  one workflow step execution within a run
+- `ArtifactRecord`
+  persistent output from a run, with type, path, metadata, and scope
+- `WorkflowDefinition`
+  reusable multi-step execution template
+- `ChatBinding`
+  binds chat queries to one or more artifact scopes
 
 ## Disk Layout
 
-- `~/.moonclaw/research/topics.json`
-- `~/.moonclaw/research/index/papers.json`
-- `~/.moonclaw/research/index/topic/<topic_id>.json`
-- `~/.moonclaw/research/papers/<paper_key>/meta.json`
-- `~/.moonclaw/research/papers/<paper_key>/paper.pdf`
-- `~/.moonclaw/research/papers/<paper_key>/paper.txt`
-- `~/.moonclaw/research/papers/<paper_key>/chunks.json`
-- `~/.moonclaw/research/papers/<paper_key>/analyses/<workflow>/<timestamp>.json`
+- `~/.moonclaw/jobs/definitions.json`
+- `~/.moonclaw/jobs/runs/<run_id>/meta.json`
+- `~/.moonclaw/jobs/runs/<run_id>/steps/<step_id>.json`
+- `~/.moonclaw/jobs/runs/<run_id>/artifacts/<artifact_id>.json`
+- `~/.moonclaw/jobs/artifacts/<artifact_key>/...`
+- `~/.moonclaw/jobs/index/jobs.json`
+- `~/.moonclaw/jobs/index/runs.json`
+- `~/.moonclaw/jobs/index/artifacts.json`
+- `~/.moonclaw/jobs/checkpoints/<job_id>.json`
+- `~/.moonclaw/jobs/chat_bindings.json`
 
-`paper_key` should be a stable normalized arXiv id plus version.
+## Phase 1: Generic Job Data Model
 
-## Phase 1: Research Data Model
-
-- [ ] Add research topic types: topic id, query, categories, enabled flag, fetch policy, analysis policy
-- [ ] Add paper metadata types: arXiv id, version, title, authors, abstract, categories, published/updated timestamps
-- [ ] Add paper asset/state types: file paths, fetched/parsed/analyzed timestamps, status, tags, notes
-- [ ] Add research storage package for loading and saving topics, papers, and indexes
-- [ ] Add tests for storage persistence, reload, dedupe keys, and version handling
-
-Deliverable:
-- durable topic and paper registry on disk
-
-## Phase 2: arXiv Fetching
-
-- [ ] Add arXiv client package for search by query and fetch by arXiv id
-- [ ] Add manual fetch for one paper id
-- [ ] Add manual fetch for one configured topic
-- [ ] Download and store PDF plus source metadata
-- [ ] Dedupe by arXiv id and version
-- [ ] Detect updated paper versions without corrupting old assets
-- [ ] Add tests for search/feed parsing and version update behavior
+- [ ] Add `JobDefinition` types: id, kind, config, enabled, schedule, trigger policy
+- [ ] Add `JobRun` types: run id, job id, trigger, status, timestamps, summary
+- [ ] Add `JobStepRun` types: step id, status, timings, logs, metrics, retry state
+- [ ] Add `ArtifactRecord` types: artifact id, run id, type, path, metadata, scope
+- [ ] Add `WorkflowDefinition` types: step graph, retry policy, output bindings
+- [ ] Add job storage package for definitions, runs, step state, artifacts, and indexes
+- [ ] Add tests for persistence, reload, status transitions, and disk layout
 
 Deliverable:
-- manual paper/topic fetch into persistent storage
+- a durable generic job model on disk
 
-## Phase 3: Parsing and Normalization
+## Phase 2: Job Runtime and Scheduler
 
-- [ ] Add PDF-to-text extraction pipeline
-- [ ] Normalize extracted text for whitespace, headers, and page breaks
-- [ ] Detect major sections when possible
-- [ ] Chunk paper text into stable retrieval units
-- [ ] Persist `paper.txt` and `chunks.json`
-- [ ] Add tests for extraction fallback, chunk generation, and stable chunk ids
-
-Deliverable:
-- stored papers are readable and chunked for retrieval
-
-## Phase 4: Topic and Paper Management Surface
-
-- [ ] Add topic CRUD operations in gateway service
-- [ ] Add paper list/get operations in gateway service
-- [ ] Add paper tagging, notes, and state markers such as starred/read/irrelevant
-- [ ] Add CLI commands for topic and paper management
-- [ ] Add RPC/HTTP surface for topic and paper management
-- [ ] Document the research storage and management flow
-
-Gateway RPC target surface:
-- `research.topics.list`
-- `research.topics.create`
-- `research.topics.update`
-- `research.topics.fetch`
-- `research.papers.list`
-- `research.papers.get`
-- `research.papers.fetch`
+- [ ] Add generic job runtime manager under `gateway`
+- [ ] Add manual trigger path for one job definition
+- [ ] Add periodic scheduler for due jobs
+- [ ] Add checkpoint persistence per job definition
+- [ ] Prevent duplicate concurrent runs for the same job when policy forbids it
+- [ ] Add retry and backoff policies at runtime level
+- [ ] Add status inspection for active and recent runs
+- [ ] Add tests for scheduling, checkpoint recovery, and duplicate-run suppression
 
 Deliverable:
-- topics and papers are manageable without touching raw files
+- gateway can run generic jobs continuously in the background
 
-## Phase 5: Research Chat and Q&A
+## Phase 3: Workflow Execution Engine
 
-- [ ] Add research retrieval service for paper-scoped, topic-scoped, and corpus-scoped lookup
-- [ ] Add context assembler that builds grounded prompt context from retrieved chunks
-- [ ] Add cited answer format with paper id, section, and page/chunk references when available
-- [ ] Add gateway research chat API
-- [ ] Add CLI command for paper/topic question answering
-- [ ] Add tests for retrieval scope resolution and citation-bearing answers
-
-Suggested user-facing commands:
-- `/paper ask <paper_id> <question>`
-- `/topic ask <topic_id> <question>`
-- `moonclaw research ask --paper <paper_id> --question "..."`
+- [ ] Add workflow execution engine for multi-step jobs
+- [ ] Add step input/output passing between workflow steps
+- [ ] Add step-level retry and failure semantics
+- [ ] Add workflow cancellation and force-stop semantics
+- [ ] Add structured logs and step summaries
+- [ ] Add tests for workflow progression, failure, retry, and cancellation
 
 Deliverable:
-- users can ask questions about stored papers via chat/CLI and get grounded answers
+- jobs can be composed from reusable workflow steps
 
-## Phase 6: Automatic Analysis Workflows
+## Phase 4: Artifact Storage and Management
 
-- [ ] Add workflow definitions for paper analysis
-- [ ] Add per-topic and per-paper workflow trigger configuration
-- [ ] Add analysis runner that invokes MoonClaw with selected model, tools, and skills
-- [ ] Persist structured analysis results and readable output artifacts
-- [ ] Add built-in starter workflows:
-- [ ] structured summary
-- [ ] novelty extraction
-- [ ] methodology critique
-- [ ] reproduction checklist
-- [ ] implementation ideas
-- [ ] Add tests for workflow persistence and rerun/skip behavior
+- [ ] Add artifact writer/reader package
+- [ ] Add artifact indexing by job, run, type, and logical scope
+- [ ] Add append-only artifact history where appropriate
+- [ ] Add retention, archive, and cleanup policies
+- [ ] Add artifact listing/get APIs in gateway
+- [ ] Add tests for artifact indexing, retrieval, and cleanup safety
 
 Deliverable:
-- papers can be automatically analyzed by reusable AI workflows
+- job outputs are durable and queryable as first-class artifacts
 
-## Phase 7: Scheduler and Background Runtime
+## Phase 5: Chat Over Job Artifacts
 
-- [ ] Add research scheduler inside `gateway`
-- [ ] Persist per-topic fetch checkpoints
-- [ ] Add periodic topic fetch execution
-- [ ] Add parse job queue for newly fetched papers
-- [ ] Add analysis job queue for configured workflows
-- [ ] Prevent duplicate concurrent runs for the same topic or paper
-- [ ] Add status inspection for scheduled fetch/parse/analyze jobs
-- [ ] Add tests for checkpoint recovery and duplicate-run suppression
+- [ ] Add chat binding model from job outputs to chat scopes
+- [ ] Add retrieval service over artifacts
+- [ ] Add context assembler for grounded chat answers from artifacts
+- [ ] Add cited answer format referencing artifact source and location
+- [ ] Add gateway/CLI chat API for job-bound questions
+- [ ] Add tests for scope resolution, retrieval, and citation behavior
 
 Deliverable:
-- gateway can run paper tracking continuously in the background
+- users can ask questions about job outputs through chat
 
-## Phase 8: TUI and Channel UX
+## Phase 6: AI Analysis Workflows
 
-- [ ] Add TUI topic list and paper list views
-- [ ] Add paper detail and analysis result views
-- [ ] Add TUI paper question mode
-- [ ] Add slash commands for research chat in channel/TUI flows
-- [ ] Ensure cited answer formatting remains readable in Feishu/TUI
-
-Deliverable:
-- research features are accessible in the main UI and chat surfaces
-
-## Phase 9: Retrieval Quality Improvements
-
-- [ ] Add section-aware ranking
-- [ ] Add metadata filters such as date/category/topic/tag
-- [ ] Add optional corpus-wide ranking improvements
-- [ ] Evaluate whether embeddings are necessary after baseline retrieval is working
+- [ ] Add generic AI analysis workflow support
+- [ ] Allow workflow steps to invoke MoonClaw with chosen model, tools, and skills
+- [ ] Persist structured analysis outputs and readable reports as artifacts
+- [ ] Add workflow-level cost, timeout, and skip policies
+- [ ] Add tests for analysis workflow execution and persistence
 
 Deliverable:
-- better answer quality without changing the core storage model
+- any job family can attach AI analysis steps to its workflows
 
-## Phase 10: Safety, Cost, and Operations
+## Phase 7: Gateway API and CLI Surface
 
-- [ ] Add per-topic fetch limits
-- [ ] Add per-workflow model/time/cost budgets
-- [ ] Skip already analyzed same-version papers unless forced
-- [ ] Add malformed-PDF and extraction failure quarantine states
-- [ ] Add operator docs for running research tracking under gateway
+- [ ] Add gateway RPC for job definitions, runs, artifacts, and chat
+- [ ] Add HTTP surface for the same operations
+- [ ] Add CLI commands for job list/create/update/run/inspect
+- [ ] Add CLI commands for artifact list/get and job-bound ask
+- [ ] Document the operator flow for running jobs under gateway
+
+Suggested RPC surface:
+- `jobs.list`
+- `jobs.get`
+- `jobs.create`
+- `jobs.update`
+- `jobs.run`
+- `jobs.cancel`
+- `jobs.force_cancel`
+- `runs.list`
+- `runs.get`
+- `artifacts.list`
+- `artifacts.get`
+- `jobs.ask`
 
 Deliverable:
-- research runtime is controllable and safe to operate continuously
+- the generic job system is controllable through the existing MoonClaw surfaces
+
+## Phase 8: Research as the First Built-in Job Family
+
+- [ ] Add `research.topic.sync` job definition kind
+- [ ] Add `research.paper.fetch` job definition kind
+- [ ] Add `research.paper.parse` job definition kind
+- [ ] Add `research.paper.analyze` job definition kind
+- [ ] Add `research.paper.ask` chat binding conventions
+- [ ] Add arXiv client and feed parsing
+- [ ] Add PDF download and paper asset persistence
+- [ ] Add paper text extraction and chunk artifacts
+- [ ] Add research-specific analysis workflows such as summary, novelty, critique, and reproduction checklist
+- [ ] Add tests for arXiv ingestion and paper artifact lifecycle
+
+Deliverable:
+- research works as a concrete job family built on the generic platform
+
+## Phase 9: Research Management UX
+
+- [ ] Add topic-oriented management APIs and CLI on top of generic jobs
+- [ ] Add paper list/detail views from research artifacts
+- [ ] Add paper-scoped and topic-scoped ask commands
+- [ ] Add TUI views for research topics, papers, and analyses
+- [ ] Ensure cited answers render well in TUI and Feishu
+
+Deliverable:
+- research is pleasant to use, not only technically possible
+
+## Phase 10: Quality and Retrieval Improvements
+
+- [ ] Add better ranking over artifacts and chunks
+- [ ] Add metadata filtering by date, kind, topic, tag, and status
+- [ ] Add section-aware retrieval for paper artifacts
+- [ ] Evaluate optional embeddings only after baseline retrieval is stable
+
+Deliverable:
+- better chat quality without changing the core job abstraction
+
+## Phase 11: Safety, Cost, and Operations
+
+- [ ] Add per-job and per-workflow limits
+- [ ] Add model/time/cost guardrails
+- [ ] Add malformed-input quarantine states
+- [ ] Add artifact retention and cleanup protections
+- [ ] Add operator docs for background execution, restart recovery, and observability
+
+Deliverable:
+- the job platform is safe to run continuously
 
 ## Testing Plan
 
-- [ ] arXiv search/feed parsing tests
-- [ ] storage and reload tests
-- [ ] version dedupe/update tests
-- [ ] PDF extraction and chunking tests
-- [ ] gateway API tests for research topic/paper flows
-- [ ] Q&A retrieval and citation tests
-- [ ] workflow execution persistence tests
-- [ ] scheduler checkpoint and recovery tests
+- [ ] job definition persistence tests
+- [ ] run and step transition tests
+- [ ] scheduler and checkpoint recovery tests
+- [ ] workflow retry/cancel/force-cancel tests
+- [ ] artifact indexing and retrieval tests
+- [ ] chat over artifacts tests
+- [ ] AI analysis workflow persistence tests
+- [ ] research/arXiv integration tests
 
 ## Initial Build Order
 
-- [ ] Finish Phase 1 before any gateway research API work
-- [ ] Finish Phase 2 before scheduler work
-- [ ] Finish Phase 3 before paper Q&A
-- [ ] Finish Phase 5 before automatic analysis workflows
-- [ ] Finish Phase 7 before TUI/channel polish
+- [ ] Finish Phase 1 before any research-specific implementation
+- [ ] Finish Phase 2 before adding scheduled research sync
+- [ ] Finish Phase 3 before adding analysis workflows
+- [ ] Finish Phase 4 before artifact chat
+- [ ] Finish Phase 5 before research ask UX
+- [ ] Finish Phase 8 before TUI/channel research polish
+
+## Non-Goals for v1
+
+- [ ] Do not merge `daemon` into the job runtime
+- [ ] Do not make embeddings mandatory
+- [ ] Do not make research-specific storage bypass the generic artifact system
 
 ## Notes
 
-- `gateway` remains the long-lived runtime for this feature
-- `daemon` should not be merged into this plan
-- do not introduce embeddings until the disk model, retrieval flow, and cited answer path are stable
-- keep analyses append-only so results remain auditable over time
+- `research` is the first consumer of the job platform, not a separate architecture
+- future job families should reuse the same scheduler, workflow engine, artifact store, and chat binding model
+- append-only artifacts are preferred when auditability matters
