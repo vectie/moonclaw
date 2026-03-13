@@ -944,7 +944,7 @@ async test "Feishu websocket runtime starts websocket accounts through extension
     group.spawn_bg(() => manager.start(), no_wait=true, allow_failure=true)
     channel.on_register(
       @channel.ExtensionContext::new(
-        gateway_url="http://localhost:18789",
+        gateway_url="http://localhost:18123",
         home_dir="/tmp",
         cwd="/tmp",
         websocket_connector=Some(connector),
@@ -1092,7 +1092,7 @@ async test "Feishu websocket runtime requires websocket_url or platform endpoint
     group.spawn_bg(() => manager.start(), no_wait=true, allow_failure=true)
     channel.on_register(
       @channel.ExtensionContext::new(
-        gateway_url="http://localhost:18789",
+        gateway_url="http://localhost:18123",
         home_dir="/tmp",
         cwd="/tmp",
         websocket_connector=Some(connector),

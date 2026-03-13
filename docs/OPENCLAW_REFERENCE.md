@@ -40,11 +40,11 @@ OpenClaw is a **multi-channel messaging gateway** that enables AI agents to comm
 
 ### WebSocket Server Setup
 
-The gateway uses a WebSocket server (`server.impl.ts`) that listens on a configurable port (default: 18789):
+The gateway uses a WebSocket server (`server.impl.ts`) that listens on a configurable port (default: 18123):
 
 ```typescript
 // Key startup sequence:
-export async function startGatewayServer(port = 18789, opts = {}) {
+export async function startGatewayServer(port = 18123, opts = {}) {
   // 1. Load and validate configuration
   // 2. Bootstrap authentication (generate token if missing)
   // 3. Create HTTP server + WebSocket server

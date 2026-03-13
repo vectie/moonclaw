@@ -473,7 +473,7 @@ It does not currently provide:
 
 These are the most important corrections relative to older drafts:
 
-- gateway default port is `18789`, not `18123`
+- gateway default port is `18123`, not `18123`
 - gateway CLI supports `start`, `connect`, `agent`, `health`, `help`, `version`
 - no built-in `gateway status` subcommand exists
 - no built-in gateway detach/background flag exists

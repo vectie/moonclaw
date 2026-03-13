@@ -16,7 +16,7 @@ The gateway is a long-running HTTP/RPC service that:
 Default address:
 
 ```text
-http://localhost:18789
+http://localhost:18123
 ```
 
 ## CLI Commands
@@ -380,7 +380,7 @@ This is not durable and should be treated as process-local state.
 ### Create
 
 ```bash
-curl -X POST http://localhost:18789/v1/coordination \
+curl -X POST http://localhost:18123/v1/coordination \
   -H "Content-Type: application/json" \
   -d '{
     "parent_agent": "coord-1",
@@ -394,7 +394,7 @@ curl -X POST http://localhost:18789/v1/coordination \
 ### Start
 
 ```bash
-curl -X POST http://localhost:18789/v1/coordination/<id>/start
+curl -X POST http://localhost:18123/v1/coordination/<id>/start
 ```
 
 Server flow:
@@ -419,7 +419,7 @@ Important behavior:
 ### Create
 
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline \
+curl -X POST http://localhost:18123/v1/pipeline \
   -H "Content-Type: application/json" \
   -d '{
     "name": "code-review",
@@ -434,7 +434,7 @@ curl -X POST http://localhost:18789/v1/pipeline \
 ### Start
 
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline/<id>/start
+curl -X POST http://localhost:18123/v1/pipeline/<id>/start
 ```
 
 Server flow:

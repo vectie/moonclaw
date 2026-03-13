@@ -5,8 +5,8 @@
 
 set -e
 
-GATEWAY_URL="${GATEWAY_URL:-http://localhost:18789}"
-GATEWAY_PORT="${GATEWAY_PORT:-18789}"
+GATEWAY_URL="${GATEWAY_URL:-http://localhost:18123}"
+GATEWAY_PORT="${GATEWAY_PORT:-18123}"
 
 echo ""
 echo "🦞 MoonClaw Gateway Status Check"

@@ -467,7 +467,7 @@ distributed/
   "mode": "distributed",
   "gateway": {
     "instances": 10,
-    "port": 18789
+    "port": 18123
   },
   "worker": {
     "instances": 1000,
@@ -507,7 +507,7 @@ distributed/
   "mode": "standalone",
   "gateway": {
     "instances": 1,
-    "port": 18789
+    "port": 18123
   },
   "state_store": "memory",
   "lock_service": "file",

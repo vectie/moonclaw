@@ -90,7 +90,7 @@ Daemon
 
 Older drafts had these wrong:
 
-- gateway default port is `18789`
+- gateway default port is `18123`
 - gateway does not have a built-in `--detach` mode
 - gateway does not have a built-in `status` subcommand
 - gateway is no longer “HTTP API only”; it also exposes channels/extensions/mailboxes/orchestration

@@ -4,10 +4,10 @@
 
 ```bash
 # 启动 Gateway
-moon run cmd/main -- gateway start --port 18789
+moon run cmd/main -- gateway start --port 18123
 
 # 验证 Gateway 启动
-curl http://localhost:18789/health
+curl http://localhost:18123/health
 # 预期: {"status": "ok"}
 ```
 
@@ -19,7 +19,7 @@ curl http://localhost:18789/health
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/mailbox \
+curl -X POST http://localhost:18123/v1/mailbox \
   -H "Content-Type: application/json" \
   -d '{"agent_id": "agent-alice"}'
 ```
@@ -42,8 +42,8 @@ curl -X POST http://localhost:18789/v1/mailbox \
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/mailbox -H "Content-Type: application/json" -d '{"agent_id": "agent-bob"}'
-curl -X POST http://localhost:18789/v1/mailbox -H "Content-Type: application/json" -d '{"agent_id": "agent-carol"}'
+curl -X POST http://localhost:18123/v1/mailbox -H "Content-Type: application/json" -d '{"agent_id": "agent-bob"}'
+curl -X POST http://localhost:18123/v1/mailbox -H "Content-Type: application/json" -d '{"agent_id": "agent-carol"}'
 ```
 
 **预期响应** (201)：类似 1.1
@@ -52,7 +52,7 @@ curl -X POST http://localhost:18789/v1/mailbox -H "Content-Type: application/jso
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/mailboxes
+curl http://localhost:18123/v1/mailboxes
 ```
 
 **预期响应** (200)：
@@ -67,7 +67,7 @@ curl http://localhost:18789/v1/mailboxes
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/agent/message \
+curl -X POST http://localhost:18123/v1/agent/message \
   -H "Content-Type: application/json" \
   -d '{
     "from_agent": "agent-alice",
@@ -89,7 +89,7 @@ curl -X POST http://localhost:18789/v1/agent/message \
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/agent/agent-bob/messages
+curl http://localhost:18123/v1/agent/agent-bob/messages
 ```
 
 **预期响应** (200)：
@@ -113,7 +113,7 @@ curl http://localhost:18789/v1/agent/agent-bob/messages
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/agent/message \
+curl -X POST http://localhost:18123/v1/agent/message \
   -H "Content-Type: application/json" \
   -d '{
     "from_agent": "agent-alice",
@@ -133,17 +133,17 @@ curl -X POST http://localhost:18789/v1/agent/message \
 **验证**：
 ```bash
 # agent-bob 应收到消息
-curl http://localhost:18789/v1/agent/agent-bob/messages
+curl http://localhost:18123/v1/agent/agent-bob/messages
 
 # agent-carol 应收到消息
-curl http://localhost:18789/v1/agent/agent-carol/messages
+curl http://localhost:18123/v1/agent/agent-carol/messages
 ```
 
 ### 1.7 删除邮箱
 
 **请求**：
 ```bash
-curl -X DELETE http://localhost:18789/v1/mailbox/agent-carol
+curl -X DELETE http://localhost:18123/v1/mailbox/agent-carol
 ```
 
 **预期响应** (200)：
@@ -158,7 +158,7 @@ curl -X DELETE http://localhost:18789/v1/mailbox/agent-carol
 
 **重复创建邮箱**：
 ```bash
-curl -X POST http://localhost:18789/v1/mailbox \
+curl -X POST http://localhost:18123/v1/mailbox \
   -H "Content-Type: application/json" \
   -d '{"agent_id": "agent-alice"}'
 ```
@@ -174,7 +174,7 @@ curl -X POST http://localhost:18789/v1/mailbox \
 
 **获取不存在的邮箱消息**：
 ```bash
-curl http://localhost:18789/v1/agent/unknown-agent/messages
+curl http://localhost:18123/v1/agent/unknown-agent/messages
 ```
 **预期响应** (404)：
 ```json
@@ -194,7 +194,7 @@ curl http://localhost:18789/v1/agent/unknown-agent/messages
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/coordination \
+curl -X POST http://localhost:18123/v1/coordination \
   -H "Content-Type: application/json" \
   -d '{
     "parent_agent": "coordinator-1",
@@ -262,7 +262,7 @@ curl -X POST http://localhost:18789/v1/coordination \
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/coordination
+curl http://localhost:18123/v1/coordination
 ```
 
 **预期响应** (200)：
@@ -284,7 +284,7 @@ curl http://localhost:18789/v1/coordination
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/start
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-1/start
 ```
 
 **预期响应** (200)：
@@ -301,7 +301,7 @@ curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/start
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/subtask/task-a \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-1/subtask/task-a \
   -H "Content-Type: application/json" \
   -d '{"status": "Running"}'
 ```
@@ -337,7 +337,7 @@ curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/subtask/task-a 
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/subtask/task-a \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-1/subtask/task-a \
   -H "Content-Type: application/json" \
   -d '{
     "status": "Completed",
@@ -372,12 +372,12 @@ curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/subtask/task-a 
 **请求**：
 ```bash
 # 完成 task-b
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/subtask/task-b \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-1/subtask/task-b \
   -H "Content-Type: application/json" \
   -d '{"status": "Completed", "result": {"analysis": "文件 b.py 包含 200 行代码", "issues": 5}}'
 
 # 完成 task-c
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/subtask/task-c \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-1/subtask/task-c \
   -H "Content-Type: application/json" \
   -d '{"status": "Completed", "result": {"analysis": "文件 c.py 包含 150 行代码", "issues": 2}}'
 ```
@@ -401,7 +401,7 @@ curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/subtask/task-c 
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/coordination/uuid-coord-1/results
+curl http://localhost:18123/v1/coordination/uuid-coord-1/results
 ```
 
 **预期响应** (200)：
@@ -424,7 +424,7 @@ curl http://localhost:18789/v1/coordination/uuid-coord-1/results
 
 **创建新协调任务**：
 ```bash
-curl -X POST http://localhost:18789/v1/coordination \
+curl -X POST http://localhost:18123/v1/coordination \
   -H "Content-Type: application/json" \
   -d '{
     "parent_agent": "coordinator-2",
@@ -438,15 +438,15 @@ curl -X POST http://localhost:18789/v1/coordination \
 **启动并标记一个失败**：
 ```bash
 # 启动
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-2/start
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-2/start
 
 # 完成 task-x
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-2/subtask/task-x \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-2/subtask/task-x \
   -H "Content-Type: application/json" \
   -d '{"status": "Completed", "result": {"data": "success"}}'
 
 # 失败 task-y
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-2/subtask/task-y \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-2/subtask/task-y \
   -H "Content-Type: application/json" \
   -d '{"status": "Failed", "error": "文件不存在"}'
 ```
@@ -478,7 +478,7 @@ curl -X POST http://localhost:18789/v1/coordination/uuid-coord-2/subtask/task-y 
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/cancel
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord-1/cancel
 ```
 
 **预期响应** (200)：
@@ -499,7 +499,7 @@ curl -X POST http://localhost:18789/v1/coordination/uuid-coord-1/cancel
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline \
+curl -X POST http://localhost:18123/v1/pipeline \
   -H "Content-Type: application/json" \
   -d '{
     "name": "code-review-pipeline",
@@ -568,7 +568,7 @@ curl -X POST http://localhost:18789/v1/pipeline \
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/pipeline
+curl http://localhost:18123/v1/pipeline
 ```
 
 **预期响应** (200)：
@@ -591,7 +591,7 @@ curl http://localhost:18789/v1/pipeline
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/start
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-1/start
 ```
 
 **预期响应** (200)：
@@ -608,7 +608,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/start
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/pipeline/uuid-pipeline-1/next
+curl http://localhost:18123/v1/pipeline/uuid-pipeline-1/next
 ```
 
 **预期响应** (200)：
@@ -625,7 +625,7 @@ curl http://localhost:18789/v1/pipeline/uuid-pipeline-1/next
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/advance \
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-1/advance \
   -H "Content-Type: application/json" \
   -d '{
     "stage_name": "read",
@@ -670,7 +670,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/advance \
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/pipeline/uuid-pipeline-1/next
+curl http://localhost:18123/v1/pipeline/uuid-pipeline-1/next
 ```
 
 **预期响应** (200)：
@@ -687,7 +687,7 @@ curl http://localhost:18789/v1/pipeline/uuid-pipeline-1/next
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/advance \
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-1/advance \
   -H "Content-Type: application/json" \
   -d '{
     "stage_name": "analyze",
@@ -713,7 +713,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/advance \
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/advance \
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-1/advance \
   -H "Content-Type: application/json" \
   -d '{
     "stage_name": "report",
@@ -741,7 +741,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/advance \
 
 **请求**：
 ```bash
-curl http://localhost:18789/v1/pipeline/uuid-pipeline-1/next
+curl http://localhost:18123/v1/pipeline/uuid-pipeline-1/next
 ```
 
 **预期响应** (200)：
@@ -756,7 +756,7 @@ curl http://localhost:18789/v1/pipeline/uuid-pipeline-1/next
 
 **创建新流水线**：
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline \
+curl -X POST http://localhost:18123/v1/pipeline \
   -H "Content-Type: application/json" \
   -d '{
     "name": "failing-pipeline",
@@ -770,15 +770,15 @@ curl -X POST http://localhost:18789/v1/pipeline \
 **启动并失败**：
 ```bash
 # 启动
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-2/start
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-2/start
 
 # 推进 step1
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-2/advance \
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-2/advance \
   -H "Content-Type: application/json" \
   -d '{"stage_name": "step1", "result": {"data": "ok"}}'
 
 # 失败 step2
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-2/fail \
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-2/fail \
   -H "Content-Type: application/json" \
   -d '{"stage_name": "step2", "error": "处理失败"}'
 ```
@@ -810,7 +810,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-2/fail \
 
 **请求**：
 ```bash
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/cancel
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline-1/cancel
 ```
 
 **预期响应** (200)：
@@ -833,12 +833,12 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline-1/cancel
 
 ```bash
 # 1. 创建 Agent 邮箱
-curl -X POST http://localhost:18789/v1/mailbox -d '{"agent_id": "main-agent"}'
-curl -X POST http://localhost:18789/v1/mailbox -d '{"agent_id": "worker-1"}'
-curl -X POST http://localhost:18789/v1/mailbox -d '{"agent_id": "worker-2"}'
+curl -X POST http://localhost:18123/v1/mailbox -d '{"agent_id": "main-agent"}'
+curl -X POST http://localhost:18123/v1/mailbox -d '{"agent_id": "worker-1"}'
+curl -X POST http://localhost:18123/v1/mailbox -d '{"agent_id": "worker-2"}'
 
 # 2. 创建协调任务
-curl -X POST http://localhost:18789/v1/coordination \
+curl -X POST http://localhost:18123/v1/coordination \
   -d '{
     "parent_agent": "main-agent",
     "subtasks": [
@@ -848,10 +848,10 @@ curl -X POST http://localhost:18789/v1/coordination \
   }'
 
 # 3. 启动协调任务
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord/start
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord/start
 
 # 4. 主 Agent 发送任务给 worker
-curl -X POST http://localhost:18789/v1/agent/message \
+curl -X POST http://localhost:18123/v1/agent/message \
   -d '{
     "from_agent": "main-agent",
     "to_agent": "worker-1",
@@ -859,7 +859,7 @@ curl -X POST http://localhost:18789/v1/agent/message \
     "payload": {"task_id": "task-1", "message": "分析模块 A"}
   }'
 
-curl -X POST http://localhost:18789/v1/agent/message \
+curl -X POST http://localhost:18123/v1/agent/message \
   -d '{
     "from_agent": "main-agent",
     "to_agent": "worker-2",
@@ -868,18 +868,18 @@ curl -X POST http://localhost:18789/v1/agent/message \
   }'
 
 # 5. Worker 接收任务
-curl http://localhost:18789/v1/agent/worker-1/messages
-curl http://localhost:18789/v1/agent/worker-2/messages
+curl http://localhost:18123/v1/agent/worker-1/messages
+curl http://localhost:18123/v1/agent/worker-2/messages
 
 # 6. Worker 完成任务，更新协调状态
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord/subtask/task-1 \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord/subtask/task-1 \
   -d '{"status": "Completed", "result": {"module": "A", "issues": 0}}'
 
-curl -X POST http://localhost:18789/v1/coordination/uuid-coord/subtask/task-2 \
+curl -X POST http://localhost:18123/v1/coordination/uuid-coord/subtask/task-2 \
   -d '{"status": "Completed", "result": {"module": "B", "issues": 2}}'
 
 # 7. 获取汇总结果
-curl http://localhost:18789/v1/coordination/uuid-coord/results
+curl http://localhost:18123/v1/coordination/uuid-coord/results
 ```
 
 ### 4.2 完整工作流：流水线 + Agent 通信
@@ -888,12 +888,12 @@ curl http://localhost:18789/v1/coordination/uuid-coord/results
 
 ```bash
 # 1. 创建 Agent 邮箱
-curl -X POST http://localhost:18789/v1/mailbox -d '{"agent_id": "reader-agent"}'
-curl -X POST http://localhost:18789/v1/mailbox -d '{"agent_id": "analyzer-agent"}'
-curl -X POST http://localhost:18789/v1/mailbox -d '{"agent_id": "reporter-agent"}'
+curl -X POST http://localhost:18123/v1/mailbox -d '{"agent_id": "reader-agent"}'
+curl -X POST http://localhost:18123/v1/mailbox -d '{"agent_id": "analyzer-agent"}'
+curl -X POST http://localhost:18123/v1/mailbox -d '{"agent_id": "reporter-agent"}'
 
 # 2. 创建流水线
-curl -X POST http://localhost:18789/v1/pipeline \
+curl -X POST http://localhost:18123/v1/pipeline \
   -d '{
     "name": "multi-agent-pipeline",
     "stages": [
@@ -904,13 +904,13 @@ curl -X POST http://localhost:18789/v1/pipeline \
   }'
 
 # 3. 启动流水线
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline/start
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline/start
 
 # 4. 获取第一阶段任务
-curl http://localhost:18789/v1/pipeline/uuid-pipeline/next
+curl http://localhost:18123/v1/pipeline/uuid-pipeline/next
 
 # 5. 通知 reader-agent 执行
-curl -X POST http://localhost:18789/v1/agent/message \
+curl -X POST http://localhost:18123/v1/agent/message \
   -d '{
     "from_agent": "pipeline-orchestrator",
     "to_agent": "reader-agent",
@@ -919,7 +919,7 @@ curl -X POST http://localhost:18789/v1/agent/message \
   }'
 
 # 6. reader-agent 完成后推进流水线
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline/advance \
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline/advance \
   -d '{"stage_name": "read", "result": {"content": "file content..."}}'
 
 # 7. 继续后续阶段...
@@ -932,7 +932,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline/advance \
 ### 5.1 无效 JSON
 
 ```bash
-curl -X POST http://localhost:18789/v1/mailbox \
+curl -X POST http://localhost:18123/v1/mailbox \
   -H "Content-Type: application/json" \
   -d 'invalid json'
 ```
@@ -950,7 +950,7 @@ curl -X POST http://localhost:18789/v1/mailbox \
 ### 5.2 缺少必填字段
 
 ```bash
-curl -X POST http://localhost:18789/v1/mailbox \
+curl -X POST http://localhost:18123/v1/mailbox \
   -H "Content-Type: application/json" \
   -d '{}'
 ```
@@ -968,8 +968,8 @@ curl -X POST http://localhost:18789/v1/mailbox \
 ### 5.3 资源不存在
 
 ```bash
-curl http://localhost:18789/v1/coordination/nonexistent-id
-curl http://localhost:18789/v1/pipeline/nonexistent-id
+curl http://localhost:18123/v1/coordination/nonexistent-id
+curl http://localhost:18123/v1/pipeline/nonexistent-id
 ```
 
 **预期响应** (404)：
@@ -986,7 +986,7 @@ curl http://localhost:18789/v1/pipeline/nonexistent-id
 
 ```bash
 # 尝试推进未启动的流水线
-curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline/advance \
+curl -X POST http://localhost:18123/v1/pipeline/uuid-pipeline/advance \
   -d '{"stage_name": "read", "result": {}}'
 ```
 
@@ -998,7 +998,7 @@ curl -X POST http://localhost:18789/v1/pipeline/uuid-pipeline/advance \
 
 ```bash
 for i in {1..100}; do
-  curl -X POST http://localhost:18789/v1/mailbox -d "{\"agent_id\": \"agent-$i\"}" &
+  curl -X POST http://localhost:18123/v1/mailbox -d "{\"agent_id\": \"agent-$i\"}" &
 done
 wait
 ```
@@ -1007,7 +1007,7 @@ wait
 
 ```bash
 for i in {1..100}; do
-  curl -X POST http://localhost:18789/v1/agent/message \
+  curl -X POST http://localhost:18123/v1/agent/message \
     -d "{\"from_agent\": \"agent-1\", \"to_agent\": \"agent-$i\", \"topic\": \"test\", \"payload\": {}}" &
 done
 wait
@@ -1017,7 +1017,7 @@ wait
 
 ```bash
 for i in {1..10}; do
-  curl -X POST http://localhost:18789/v1/coordination \
+  curl -X POST http://localhost:18123/v1/coordination \
     -d "{\"parent_agent\": \"coordinator-$i\", \"subtasks\": [{\"task_id\": \"t1\", \"message\": \"task\"}]}" &
 done
 wait
