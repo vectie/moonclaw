@@ -128,6 +128,8 @@ pub(all) struct JobStepRun {
   metrics : Json
   logs : Array[String]
   retry_count : Int
+  summary : String?
+  output : Json?
   error : String?
 }
 pub impl Show for JobStepRun
@@ -250,6 +252,36 @@ pub impl Show for WorkflowDefinition
 pub impl ToJson for WorkflowDefinition
 pub impl @json.FromJson for WorkflowDefinition
 
+pub struct WorkflowEngine {
+  runtime : RuntimeManager
+  handlers : Map[String, WorkflowStepHandler]
+}
+pub async fn WorkflowEngine::execute_run(Self, String, () -> Int, initial_input? : Json?, control? : WorkflowExecutionControl) -> Result[WorkflowExecutionResult, String]
+pub fn WorkflowEngine::new(runtime~ : RuntimeManager) -> Self
+pub fn WorkflowEngine::register_handler(Self, WorkflowStepHandler) -> Unit
+
+pub(all) struct WorkflowExecutionControl {
+  should_cancel : () -> Bool
+  should_force_stop : () -> Bool
+}
+pub fn WorkflowExecutionControl::new(should_cancel? : () -> Bool, should_force_stop? : () -> Bool) -> Self
+
+pub(all) struct WorkflowExecutionResult {
+  run : JobRun
+  workflow : WorkflowDefinition
+  outputs : Map[String, Json]
+  steps : Array[JobStepRun]
+}
+
+pub(all) struct WorkflowStepContext {
+  run : JobRun
+  step : WorkflowStepDefinition
+  initial_input : Json?
+  outputs : Map[String, Json]
+}
+pub fn WorkflowStepContext::new(run~ : JobRun, step~ : WorkflowStepDefinition, initial_input? : Json?, outputs? : Map[String, Json]) -> Self
+pub fn WorkflowStepContext::output(Self, String) -> Json?
+
 pub(all) struct WorkflowStepDefinition {
   id : String
   kind : String
@@ -259,6 +291,20 @@ pub(all) struct WorkflowStepDefinition {
 pub impl Show for WorkflowStepDefinition
 pub impl ToJson for WorkflowStepDefinition
 pub impl @json.FromJson for WorkflowStepDefinition
+
+pub(all) struct WorkflowStepHandler {
+  kind : String
+  run : async (WorkflowStepContext) -> Result[WorkflowStepResult, String]
+}
+pub fn WorkflowStepHandler::new(kind~ : String, run~ : async (WorkflowStepContext) -> Result[WorkflowStepResult, String]) -> Self
+
+pub(all) struct WorkflowStepResult {
+  output : Json
+  summary : String?
+  metrics : Json
+  logs : Array[String]
+}
+pub fn WorkflowStepResult::new(output~ : Json, summary? : String?, metrics? : Json, logs? : Array[String]) -> Self
 
 // Type aliases
 

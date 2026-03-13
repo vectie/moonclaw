@@ -84,6 +84,8 @@ pub(all) struct JobStepRun {
   metrics : Json
   logs : Array[String]
   retry_count : Int
+  summary : String?
+  output : Json?
   error : String?
 } derive(ToJson, FromJson, Show)
 

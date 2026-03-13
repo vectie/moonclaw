@@ -57,7 +57,7 @@ Mark a task complete only after implementation, validation, docs, and required t
 - [x] Add `JobRun` types: run id, job id, trigger, status, timestamps, summary
 - [x] Add `JobStepRun` types: step id, status, timings, logs, metrics, retry state
 - [x] Add `ArtifactRecord` types: artifact id, run id, type, path, metadata, scope
-- [ ] Add `WorkflowDefinition` types: step graph, retry policy, output bindings
+- [x] Add `WorkflowDefinition` types: step graph, retry policy, output bindings
 - [x] Add job storage package for definitions, runs, step state, artifacts, and indexes
 - [x] Add tests for persistence, reload, status transitions, and disk layout
 
@@ -80,12 +80,12 @@ Deliverable:
 
 ## Phase 3: Workflow Execution Engine
 
-- [ ] Add workflow execution engine for multi-step jobs
-- [ ] Add step input/output passing between workflow steps
-- [ ] Add step-level retry and failure semantics
-- [ ] Add workflow cancellation and force-stop semantics
-- [ ] Add structured logs and step summaries
-- [ ] Add tests for workflow progression, failure, retry, and cancellation
+- [x] Add workflow execution engine for multi-step jobs
+- [x] Add step input/output passing between workflow steps
+- [x] Add step-level retry and failure semantics
+- [x] Add workflow cancellation and force-stop semantics
+- [x] Add structured logs and step summaries
+- [x] Add tests for workflow progression, failure, retry, and cancellation
 
 Deliverable:
 - jobs can be composed from reusable workflow steps
@@ -203,7 +203,7 @@ Deliverable:
 - [ ] job definition persistence tests
 - [ ] run and step transition tests
 - [ ] scheduler and checkpoint recovery tests
-- [ ] workflow retry/cancel/force-cancel tests
+- [x] workflow retry/cancel/force-cancel tests
 - [ ] artifact indexing and retrieval tests
 - [ ] chat over artifacts tests
 - [ ] AI analysis workflow persistence tests
@@ -213,7 +213,7 @@ Deliverable:
 
 - [ ] Finish Phase 1 before any research-specific implementation
 - [ ] Finish Phase 2 before adding scheduled research sync
-- [ ] Finish Phase 3 before adding analysis workflows
+- [x] Finish Phase 3 before adding analysis workflows
 - [ ] Finish Phase 4 before artifact chat
 - [ ] Finish Phase 5 before research ask UX
 - [ ] Finish Phase 8 before TUI/channel research polish

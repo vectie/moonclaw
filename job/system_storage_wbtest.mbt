@@ -72,6 +72,8 @@ fn sample_step_run() -> JobStepRun {
     metrics: { "paper_count": 4 },
     logs: ["started", "finished"],
     retry_count: 0,
+    summary: Some("fetched"),
+    output: Some({ "papers": 4 }),
     error: None,
   }
 }

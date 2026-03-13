@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/async",
   "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/fsx",
