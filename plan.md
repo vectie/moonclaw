@@ -66,14 +66,14 @@ Deliverable:
 
 ## Phase 2: Job Runtime and Scheduler
 
-- [ ] Add generic job runtime manager under `gateway`
-- [ ] Add manual trigger path for one job definition
-- [ ] Add periodic scheduler for due jobs
-- [ ] Add checkpoint persistence per job definition
-- [ ] Prevent duplicate concurrent runs for the same job when policy forbids it
+- [x] Add generic job runtime manager under `gateway`
+- [x] Add manual trigger path for one job definition
+- [x] Add periodic scheduler for due jobs
+- [x] Add checkpoint persistence per job definition
+- [x] Prevent duplicate concurrent runs for the same job when policy forbids it
 - [ ] Add retry and backoff policies at runtime level
-- [ ] Add status inspection for active and recent runs
-- [ ] Add tests for scheduling, checkpoint recovery, and duplicate-run suppression
+- [x] Add status inspection for active and recent runs
+- [x] Add tests for scheduling, checkpoint recovery, and duplicate-run suppression
 
 Deliverable:
 - gateway can run generic jobs continuously in the background

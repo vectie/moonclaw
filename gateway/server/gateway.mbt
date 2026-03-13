@@ -36,6 +36,7 @@ pub struct Gateway {
   coordinator : Coordinator
   pipeline_manager : PipelineManager
   channel_state : ChannelStateStore
+  jobs : @job.RuntimeManager
 }
 
 ///|
@@ -117,4 +118,15 @@ enum GatewayEvent {
 ///|
 pub fn Gateway::request_shutdown(self : Gateway) -> Unit {
   self.events.put(GatewayEvent::Shutdown)
+}
+
+///|
+pub async fn Gateway::schedule_due_jobs(self : Gateway) -> Array[@job.JobRun] {
+  let runs = self.jobs.trigger_due_definitions(current_time_ms(), fn() {
+    self.uuid.v4().to_string()
+  })
+  for run in runs {
+    self.logger.info("Scheduled job run created: \{run.job_id} -> \{run.id}")
+  }
+  runs
 }

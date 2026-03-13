@@ -32,6 +32,29 @@ pub impl Show for ArtifactsIndexFile
 pub impl ToJson for ArtifactsIndexFile
 pub impl @json.FromJson for ArtifactsIndexFile
 
+pub(all) struct CheckpointRecord {
+  job_id : String
+  last_triggered_at : Int?
+  last_started_at : Int?
+  last_completed_at : Int?
+  last_success_at : Int?
+  last_run_id : String?
+}
+pub impl Show for CheckpointRecord
+pub impl ToJson for CheckpointRecord
+pub impl @json.FromJson for CheckpointRecord
+
+pub struct CheckpointStore {
+  root : String
+  checkpoints : Map[String, CheckpointRecord]
+}
+pub fn CheckpointStore::get(Self, String) -> CheckpointRecord?
+pub fn CheckpointStore::list(Self) -> Array[CheckpointRecord]
+pub async fn CheckpointStore::load(Self) -> Unit
+pub fn CheckpointStore::new(root~ : String) -> Self
+pub async fn CheckpointStore::save(Self) -> Unit
+pub async fn CheckpointStore::save_checkpoint(Self, CheckpointRecord) -> Unit
+
 type DefinitionsIndexFile
 pub impl Show for DefinitionsIndexFile
 pub impl ToJson for DefinitionsIndexFile
@@ -139,6 +162,30 @@ type RunsIndexFile
 pub impl Show for RunsIndexFile
 pub impl ToJson for RunsIndexFile
 pub impl @json.FromJson for RunsIndexFile
+
+pub struct RuntimeManager {
+  store : SystemStore
+  checkpoints : CheckpointStore
+  active_runs : Map[String, String]
+}
+pub fn RuntimeManager::active_run_id(Self, String) -> String?
+pub async fn RuntimeManager::cancel_run(Self, String, Int, summary? : String?) -> JobRun?
+pub fn RuntimeManager::checkpoints(Self) -> CheckpointStore
+pub async fn RuntimeManager::create_run(Self, String, String, TriggerSource, Int) -> Result[JobRun, String]
+pub fn RuntimeManager::due_definitions(Self, Int) -> Array[JobDefinition]
+pub fn RuntimeManager::is_job_active(Self, String) -> Bool
+pub fn RuntimeManager::list_active_runs(Self) -> Array[JobRun]
+pub fn RuntimeManager::list_recent_runs(Self, limit? : Int) -> Array[JobRun]
+pub async fn RuntimeManager::load(Self) -> Unit
+pub async fn RuntimeManager::mark_run_failed(Self, String, Int, String, summary? : String?) -> JobRun?
+pub async fn RuntimeManager::mark_run_started(Self, String, Int) -> JobRun?
+pub async fn RuntimeManager::mark_run_succeeded(Self, String, Int, summary? : String?) -> JobRun?
+pub fn RuntimeManager::new(root~ : String) -> Self
+pub async fn RuntimeManager::register_definition(Self, JobDefinition) -> Unit
+pub async fn RuntimeManager::register_workflow(Self, WorkflowDefinition) -> Unit
+pub fn RuntimeManager::store(Self) -> SystemStore
+pub async fn RuntimeManager::trigger_definition(Self, String, String, TriggerSource, Int) -> Result[JobRun, String]
+pub async fn RuntimeManager::trigger_due_definitions(Self, Int, () -> String) -> Array[JobRun]
 
 pub(all) struct SchedulePolicy {
   kind : String

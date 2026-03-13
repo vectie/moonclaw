@@ -27,6 +27,7 @@ pub async fn Gateway::new(
   let channel_state_file = @path.Path(gateway_dir)
     .join(@path.Path("channels.json"))
     .to_string()
+  let jobs_dir = @path.Path(home).join(@path.Path("jobs")).to_string()
   @fsx.make_directory(session_dir, recursive=true) catch {
     _ => ()
   }
@@ -84,12 +85,16 @@ pub async fn Gateway::new(
     coordinator: coordinator(uuid~),
     pipeline_manager: pipeline_manager(uuid~),
     channel_state: ChannelStateStore::{ path: channel_state_file, states: {} },
+    jobs: @job.RuntimeManager::new(root=jobs_dir),
   }
   gateway.sessions.load() catch {
     error => gateway.logger.warn("Failed to load gateway sessions: \{error}")
   }
   gateway.channel_state.load() catch {
     error => gateway.logger.warn("Failed to load channel state: \{error}")
+  }
+  gateway.jobs.load() catch {
+    error => gateway.logger.warn("Failed to load job runtime state: \{error}")
   }
   gateway.seed_channel_state_from_moonclaw_config() catch {
     error =>
@@ -184,6 +189,14 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     group.spawn_bg(() => {
       self.events.listen_forever(include_history=false, event => {
         match event {
+          Tick(_) => {
+            let _ = self.schedule_due_jobs() catch {
+              error => {
+                self.logger.warn("Failed to schedule due jobs: \{error}")
+                []
+              }
+            }
+          }
           Shutdown => {
             self.logger.info("Shutdown requested, stopping gateway...")
             self.extension_websocket_runtime.stop_all()
