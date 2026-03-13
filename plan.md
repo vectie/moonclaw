@@ -22,3 +22,9 @@ This plan tracks the foundation work needed to bring MoonClaw closer to the refe
 
 - Keep package-level `README` files untouched unless the implementation changes their behavior.
 - Mark a task complete only after code, tests, and validation for that slice are done.
+
+## Feishu Service Integration
+
+- [x] Implement native Feishu credential-driven websocket startup from `appId` / `appSecret`
+- [x] Seed gateway Feishu channel state from `.moonclaw/moonclaw.json`
+- [x] Update docs to clarify `gateway` vs `daemon` and the Feishu service startup path

@@ -11,6 +11,7 @@ struct FeishuChannelState {
   recent_message_ids : Array[String]
   pending_messages : Map[String, Array[QueuedFeishuMessage]]
   processing_keys : Map[String, Bool]
+  mut websocket_chunks : Map[String, FeishuWebSocketChunkState]
   mut message_handler : &@channel.MessageHandler?
 }
 
@@ -45,6 +46,7 @@ pub fn FeishuChannel::new() -> FeishuChannel {
       recent_message_ids: [],
       pending_messages: {},
       processing_keys: {},
+      websocket_chunks: {},
       message_handler: None,
     },
   }
@@ -52,23 +54,88 @@ pub fn FeishuChannel::new() -> FeishuChannel {
 
 ///|
 fn get_feishu_config(config : Json) -> FeishuAccountConfig {
-  @json.from_json(config) catch {
-    _ =>
+  let fallback = FeishuAccountConfig::{
+    app_id: "",
+    app_secret: "",
+    domain: "feishu",
+    connection_mode: "webhook",
+    dm_policy: "pairing",
+    reaction_notifications: Some("own"),
+    bot_name: None,
+    webhook_url: None,
+    websocket_url: None,
+    websocket_headers: None,
+    verify_token: None,
+    encryption_key: None,
+    enabled: false,
+  }
+  match config {
+    { "appId": String(app_id), "appSecret": String(app_secret), .. } =>
       FeishuAccountConfig::{
-        app_id: "",
-        app_secret: "",
-        domain: "feishu",
-        connection_mode: "webhook",
-        dm_policy: "pairing",
-        reaction_notifications: Some("own"),
-        bot_name: None,
-        webhook_url: None,
-        websocket_url: None,
-        websocket_headers: None,
-        verify_token: None,
-        encryption_key: None,
-        enabled: false,
+        app_id,
+        app_secret,
+        domain: match config {
+          { "domain": String(domain), .. } => domain
+          _ => "feishu"
+        },
+        connection_mode: match config {
+          { "connectionMode": String(mode), .. } => mode
+          { "connection_mode": String(mode), .. } => mode
+          _ => "webhook"
+        },
+        dm_policy: match config {
+          { "dmPolicy": String(policy), .. } => policy
+          { "dm_policy": String(policy), .. } => policy
+          _ => "pairing"
+        },
+        reaction_notifications: match config {
+          { "reactionNotifications": String(value), .. } => Some(value)
+          { "reaction_notifications": String(value), .. } => Some(value)
+          _ => Some("own")
+        },
+        bot_name: match config {
+          { "botName": String(value), .. } => Some(value)
+          { "bot_name": String(value), .. } => Some(value)
+          _ => None
+        },
+        webhook_url: match config {
+          { "webhookUrl": String(value), .. } => Some(value)
+          { "webhook_url": String(value), .. } => Some(value)
+          _ => None
+        },
+        websocket_url: match config {
+          { "websocketUrl": String(value), .. } => Some(value)
+          { "websocket_url": String(value), .. } => Some(value)
+          _ => None
+        },
+        websocket_headers: match config {
+          { "websocketHeaders": headers, .. } =>
+            @json.from_json(headers) catch {
+              _ => None
+            }
+          { "websocket_headers": headers, .. } =>
+            @json.from_json(headers) catch {
+              _ => None
+            }
+          _ => None
+        },
+        verify_token: match config {
+          { "verifyToken": String(value), .. } => Some(value)
+          { "verify_token": String(value), .. } => Some(value)
+          _ => None
+        },
+        encryption_key: match config {
+          { "encryptionKey": String(value), .. } => Some(value)
+          { "encryption_key": String(value), .. } => Some(value)
+          _ => None
+        },
+        enabled: match config {
+          { "enabled": True, .. } => true
+          { "enabled": False, .. } => false
+          _ => true
+        },
       }
+    _ => @json.from_json(config) catch { _ => fallback }
   }
 }
 
@@ -137,6 +204,7 @@ impl @channel.Channel for FeishuChannel with configure(
   self.state.recent_message_ids.clear()
   self.state.pending_messages.clear()
   self.state.processing_keys.clear()
+  self.state.websocket_chunks.clear()
   for account_id, account_config in config.accounts {
     self.state.feishu_configs[account_id] = get_feishu_config(account_config)
   }
@@ -174,6 +242,11 @@ impl @channel.Channel for FeishuChannel with stop(
   self.stop_websocket_runtime_client(account_id)
   self.state.clients.remove(account_id)
   self.state.running[account_id] = false
+  for key in self.state.websocket_chunks.keys().to_array() {
+    if key.has_prefix("\{account_id}:") {
+      self.state.websocket_chunks.remove(key)
+    }
+  }
   self.broadcast_monitor_status()
   Ok(())
 }
@@ -775,6 +848,7 @@ impl @channel.ChannelExtension for FeishuChannel with on_unregister(
     conn.close()
   }
   self.state.active_monitor_connections = {}
+  self.state.websocket_chunks = {}
   self.state.extension_context = None
   for account_id in self.state.running.keys() {
     self.state.clients.remove(account_id)
@@ -790,33 +864,20 @@ fn feishu_runtime_client_id(account_id : String) -> String {
 ///|
 fn feishu_websocket_dial_request(
   account_id : String,
+  url : String,
   config : FeishuAccountConfig,
 ) -> @channel.WebSocketDialRequest {
-  let metadata = match config.websocket_url {
-    Some(url) if !url.is_blank() =>
-      Json::object({
-        "account_id": account_id,
-        "app_id": config.app_id,
-        "app_secret": config.app_secret,
-        "domain": config.domain,
-        "url": url,
-        "headers": config.websocket_headers.to_json(),
-        "verify_token": config.verify_token.to_json(),
-        "encryption_key": config.encryption_key.to_json(),
-        "bot_name": config.bot_name.to_json(),
-      })
-    _ =>
-      Json::object({
-        "account_id": account_id,
-        "app_id": config.app_id,
-        "app_secret": config.app_secret,
-        "domain": config.domain,
-        "headers": config.websocket_headers.to_json(),
-        "verify_token": config.verify_token.to_json(),
-        "encryption_key": config.encryption_key.to_json(),
-        "bot_name": config.bot_name.to_json(),
-      })
-  }
+  let metadata = Json::object({
+    "account_id": account_id,
+    "app_id": config.app_id,
+    "app_secret": config.app_secret,
+    "domain": config.domain,
+    "url": url,
+    "headers": config.websocket_headers.to_json(),
+    "verify_token": config.verify_token.to_json(),
+    "encryption_key": config.encryption_key.to_json(),
+    "bot_name": config.bot_name.to_json(),
+  })
   @channel.WebSocketDialRequest::new(
     client_id=feishu_runtime_client_id(account_id),
     protocol="feishu",
@@ -840,7 +901,16 @@ fn FeishuChannel::stop_websocket_runtime_client(
 }
 
 ///|
-fn FeishuChannel::ensure_websocket_runtime_client(
+async fn FeishuChannel::resolve_websocket_endpoint(
+  self : FeishuChannel,
+  config : FeishuAccountConfig,
+) -> Result[FeishuWebSocketEndpointData, @channel.ChannelError] {
+  ignore(self)
+  resolve_websocket_endpoint(config.app_id, config.app_secret, config.domain)
+}
+
+///|
+async fn FeishuChannel::ensure_websocket_runtime_client(
   self : FeishuChannel,
   account_id : String,
   config : FeishuAccountConfig,
@@ -849,20 +919,29 @@ fn FeishuChannel::ensure_websocket_runtime_client(
     Some(context) =>
       match (context.websocket_runtime(), context.websocket_connector()) {
         (Some(runtime), Some(connector)) => {
-          match config.websocket_url {
-            Some(url) if !url.is_blank() => ()
-            _ => {
+          let endpoint = match config.websocket_url {
+            Some(url) if !url.is_blank() =>
+              Ok(FeishuWebSocketEndpointData::{ url, client_config: None })
+            _ => self.resolve_websocket_endpoint(config)
+          }
+          let endpoint = match endpoint {
+            Ok(endpoint) => endpoint
+            Err(error) => {
               match context.logger() {
                 Some(logger) =>
                   (logger.warn)(
-                    "Feishu websocket account \{account_id} is enabled but websocket_url is missing",
+                    "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{error}",
                   )
                 None => ()
               }
               return
             }
           }
-          let request = feishu_websocket_dial_request(account_id, config)
+          let request = feishu_websocket_dial_request(
+            account_id,
+            endpoint.url,
+            config,
+          )
           runtime.upsert(
             @channel.WebSocketClientRegistration::new(
               spec=@channel.WebSocketClientSpec::new(
@@ -871,7 +950,9 @@ fn FeishuChannel::ensure_websocket_runtime_client(
                 reconnect_delay_ms=2_000,
               ),
               connect=() => connector.connect(request),
-              on_connect=fn(conn) { self.handle_websocket(conn) },
+              on_connect=fn(conn) {
+                self.bind_platform_websocket(account_id, conn)
+              },
               logger=context.logger(),
             ),
           )
@@ -1496,36 +1577,7 @@ async fn FeishuChannel::handle_monitor_event_frame(
   connection_id : String,
   event_json : Json,
 ) -> Unit {
-  let response = match event_json {
-    { "header": { "event_type": String("im.message.receive_v1"), .. }, .. } =>
-      self.handle_feishu_message(event_json)
-    {
-      "header": { "event_type": String("im.message.reaction.created_v1"), .. },
-      ..
-    } => self.handle_reaction_event(event_json)
-    {
-      "header": { "event_type": String("im.chat.member.bot.added_v1"), .. },
-      ..
-    } => self.handle_bot_membership_event(event_json, "added")
-    {
-      "header": { "event_type": String("im.chat.member.bot.deleted_v1"), .. },
-      ..
-    } => self.handle_bot_membership_event(event_json, "removed")
-    {
-      "header": { "event_type": String("im.chat.member.bot.removed_v1"), .. },
-      ..
-    } => self.handle_bot_membership_event(event_json, "removed")
-    { "header": { "event_type": String("card.action.trigger"), .. }, .. } =>
-      self.handle_card_action_event(event_json)
-    { "header": { "event_type": String(other), .. }, .. } =>
-      @channel.ExtensionResponse::bad_request(
-        message="Unsupported Feishu monitor event: \{other}",
-      )
-    _ =>
-      @channel.ExtensionResponse::bad_request(
-        message="Missing Feishu monitor event_type",
-      )
-  }
+  let response = self.dispatch_feishu_event_frame(event_json)
   let body_text = @encoding/utf8.decode(response.body()) catch { _ => "" }
   if response.status_code() is (200..=299) {
     self.send_monitor_frame(connection_id, {
@@ -1568,6 +1620,204 @@ fn FeishuChannel::send_monitor_error(
     "type": "feishu.monitor.error",
     "error": { "code": code, "message": message, "status_code": status_code },
   })
+}
+
+///|
+async fn FeishuChannel::dispatch_feishu_event_frame(
+  self : FeishuChannel,
+  event_json : Json,
+) -> @channel.ExtensionResponse {
+  match event_json {
+    { "header": { "event_type": String("im.message.receive_v1"), .. }, .. } =>
+      self.handle_feishu_message(event_json)
+    {
+      "header": { "event_type": String("im.message.reaction.created_v1"), .. },
+      ..
+    } => self.handle_reaction_event(event_json)
+    {
+      "header": { "event_type": String("im.chat.member.bot.added_v1"), .. },
+      ..
+    } => self.handle_bot_membership_event(event_json, "added")
+    {
+      "header": { "event_type": String("im.chat.member.bot.deleted_v1"), .. },
+      ..
+    } => self.handle_bot_membership_event(event_json, "removed")
+    {
+      "header": { "event_type": String("im.chat.member.bot.removed_v1"), .. },
+      ..
+    } => self.handle_bot_membership_event(event_json, "removed")
+    { "header": { "event_type": String("card.action.trigger"), .. }, .. } =>
+      self.handle_card_action_event(event_json)
+    { "header": { "event_type": String(other), .. }, .. } =>
+      @channel.ExtensionResponse::bad_request(
+        message="Unsupported Feishu event: \{other}",
+      )
+    _ =>
+      @channel.ExtensionResponse::bad_request(
+        message="Missing Feishu event_type",
+      )
+  }
+}
+
+///|
+fn platform_chunk_key(account_id : String, message_id : String) -> String {
+  "\{account_id}:\{message_id}"
+}
+
+///|
+fn parse_feishu_ws_header_int(
+  frame : FeishuWebSocketFrame,
+  key : String,
+) -> Int? {
+  match feishu_ws_header(frame, key) {
+    Some(value) => Some(@strconv.parse_int(value) catch { _ => return None })
+    None => None
+  }
+}
+
+///|
+fn FeishuChannel::merge_platform_event_chunks(
+  self : FeishuChannel,
+  account_id : String,
+  frame : FeishuWebSocketFrame,
+) -> Json? {
+  let message_id = match feishu_ws_header(frame, feishu_ws_header_message_id) {
+    Some(value) if !value.is_blank() => value
+    _ => return None
+  }
+  let total = parse_feishu_ws_header_int(frame, feishu_ws_header_sum).unwrap_or(
+    1,
+  )
+  let seq = parse_feishu_ws_header_int(frame, feishu_ws_header_seq).unwrap_or(0)
+  let trace_id = feishu_ws_header(frame, feishu_ws_header_trace_id).unwrap_or(
+    "",
+  )
+  let payload = frame.payload.unwrap_or(b"")
+  if total <= 1 {
+    let text = @encoding/utf8.decode(payload) catch { _ => return None }
+    return Some(@json.parse(text) catch { _ => return None })
+  }
+  let key = platform_chunk_key(account_id, message_id)
+  let chunk_state = match self.state.websocket_chunks.get(key) {
+    Some(existing) => existing
+    None => FeishuWebSocketChunkState::{ total, trace_id, chunks: {} }
+  }
+  chunk_state.chunks[seq] = payload
+  self.state.websocket_chunks[key] = chunk_state
+  if chunk_state.chunks.length() != total {
+    return None
+  }
+  let merged = @buffer.new()
+  for index in 0..<total {
+    match chunk_state.chunks.get(index) {
+      Some(chunk) => merged.write_bytes(chunk)
+      None => return None
+    }
+  }
+  self.state.websocket_chunks.remove(key)
+  let text = @encoding/utf8.decode(merged.to_bytes()) catch { _ => return None }
+  Some(@json.parse(text) catch { _ => return None })
+}
+
+///|
+fn ack_response_payload(response : @channel.ExtensionResponse) -> Bytes {
+  let status_code = if response.status_code() is (200..=299) {
+    200
+  } else {
+    500
+  }
+  let payload : Map[String, Json] = { "code": status_code.to_json() }
+  if status_code == 200 && response.body().length() > 0 {
+    payload["data"] = Json::string(@base64.encode(response.body()))
+  }
+  @encoding/utf8.encode(Json::object(payload).stringify())
+}
+
+///|
+fn ack_event_frame(
+  frame : FeishuWebSocketFrame,
+  response : @channel.ExtensionResponse,
+) -> FeishuWebSocketFrame {
+  let headers = frame.headers.map(fn(header) { header })
+  headers.push(FeishuWebSocketHeader::{
+    key: feishu_ws_header_biz_rt,
+    value: "0",
+  })
+  FeishuWebSocketFrame::{
+    seq_id: frame.seq_id,
+    log_id: frame.log_id,
+    service: frame.service,
+    method_id: frame.method_id,
+    headers,
+    payload_encoding: frame.payload_encoding,
+    payload_type: frame.payload_type,
+    payload: Some(ack_response_payload(response)),
+    log_id_new: frame.log_id_new,
+  }
+}
+
+///|
+fn FeishuChannel::bind_platform_websocket(
+  self : FeishuChannel,
+  account_id : String,
+  conn : @channel.WebSocketConnection,
+) -> Unit {
+  conn.on_message(bytes => {
+    self.handle_platform_websocket_frame(account_id, conn, bytes)
+  })
+  conn.on_close(fn() {
+    for key in self.state.websocket_chunks.keys().to_array() {
+      if key.has_prefix("\{account_id}:") {
+        self.state.websocket_chunks.remove(key)
+      }
+    }
+  })
+}
+
+///|
+async fn FeishuChannel::handle_platform_websocket_frame(
+  self : FeishuChannel,
+  account_id : String,
+  conn : @channel.WebSocketConnection,
+  bytes : Bytes,
+) -> Unit {
+  let frame = match decode_feishu_websocket_frame(bytes) {
+    Ok(frame) => frame
+    Err(_) => return
+  }
+  if frame.method_id == feishu_ws_control_frame &&
+    feishu_ws_header(frame, feishu_ws_header_type) == Some(feishu_ws_type_ping) {
+    conn.send(
+      encode_feishu_websocket_frame(FeishuWebSocketFrame::{
+        seq_id: frame.seq_id,
+        log_id: frame.log_id,
+        service: frame.service,
+        method_id: feishu_ws_control_frame,
+        headers: [
+          FeishuWebSocketHeader::{
+            key: feishu_ws_header_type,
+            value: feishu_ws_type_pong,
+          },
+        ],
+        payload_encoding: frame.payload_encoding,
+        payload_type: frame.payload_type,
+        payload: frame.payload,
+        log_id_new: frame.log_id_new,
+      }),
+    )
+    return
+  }
+  guard frame.method_id == feishu_ws_data_frame else { return }
+  guard feishu_ws_header(frame, feishu_ws_header_type) ==
+    Some(feishu_ws_type_event) else {
+    return
+  }
+  let event_json = match self.merge_platform_event_chunks(account_id, frame) {
+    Some(event_json) => event_json
+    None => return
+  }
+  let response = self.dispatch_feishu_event_frame(event_json)
+  conn.send(encode_feishu_websocket_frame(ack_event_frame(frame, response)))
 }
 
 ///|

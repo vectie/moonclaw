@@ -75,6 +75,25 @@ fn feishu_test_config() -> @channel.ChannelConfig {
 }
 
 ///|
+fn feishu_camelcase_config() -> @channel.ChannelConfig {
+  @channel.ChannelConfig::{
+    enabled: true,
+    accounts: {
+      "default": {
+        "appId": "app-camel",
+        "appSecret": "secret-camel",
+        "domain": "feishu",
+        "connectionMode": "webhook",
+        "dmPolicy": "pairing",
+        "verifyToken": "verify-test",
+        "enabled": true,
+      },
+    },
+    global_settings: {},
+  }
+}
+
+///|
 fn feishu_message_request(
   event_id : String,
   message_id : String,
@@ -225,6 +244,49 @@ async test "Feishu webhook deduplicates duplicate message ids before handler exe
   inspect(first.status_code(), content="500")
   inspect(second.status_code(), content="200")
   json_inspect(handler.handled_message_ids, content=["message-1"])
+}
+
+///|
+async test "Feishu webhook resolves accounts from camelCase appId/appSecret config" {
+  let channel = FeishuChannel::new()
+  channel.configure(feishu_camelcase_config())
+  let handler = RecordingHandler::new()
+  channel.set_message_handler(handler)
+
+  let payload : Json = {
+    "schema": "2.0",
+    "header": {
+      "event_id": "event-camel",
+      "event_type": "im.message.receive_v1",
+      "app_id": "app-camel",
+      "token": "verify-test",
+    },
+    "event": {
+      "sender": {
+        "sender_id": { "open_id": "ou_sender", "user_id": "user_sender" },
+      },
+      "message": {
+        "message_id": "message-camel",
+        "message_type": "text",
+        "chat_id": "chat-test",
+        "chat_type": "p2p",
+        "create_time": @clock.epoch.now().ms().to_string(),
+        "content": Json::object({ "text": "hello camel" }).stringify(),
+      },
+    },
+    "token": "verify-test",
+  }
+  let response = channel.handle_webhook(
+    @channel.ExtensionRequest::new(
+      http_method="POST",
+      path="/webhook/feishu",
+      headers={ "content-type": "application/json" },
+      body=@encoding/utf8.encode(payload.stringify()),
+    ),
+  )
+
+  inspect(response.status_code(), content="500")
+  json_inspect(handler.handled_message_ids, content=["message-camel"])
 }
 
 ///|
@@ -847,7 +909,7 @@ async test "Feishu websocket runtime starts websocket accounts through extension
   let handler = RecordingHandler::new()
   channel.set_message_handler(handler)
 
-  let sent : Array[String] = []
+  let sent : Array[Bytes] = []
   let mut inbound : (async (Bytes) -> Unit)? = None
   let connector = @channel.WebSocketClientConnector::new(connect=fn(request) {
     inspect(request.protocol(), content="feishu")
@@ -870,10 +932,7 @@ async test "Feishu websocket runtime starts websocket accounts through extension
       @channel.WebSocketManagedConnection::new(
         connection=@channel.WebSocketConnection::new(
           id="runtime-monitor",
-          send=fn(bytes) {
-            let text = @encoding/utf8.decode(bytes) catch { _ => "" }
-            sent.push(text)
-          },
+          send=fn(bytes) { sent.push(bytes) },
           close=fn() {  },
           on_message=fn(handler) { inbound = Some(handler) },
         ),
@@ -907,54 +966,96 @@ async test "Feishu websocket runtime starts websocket accounts through extension
       }),
     )
     @async.sleep(50)
-
-    inspect(sent.length() >= 1, content="true")
-    inspect(
-      sent[0].contains("\"type\":\"feishu.monitor.ready\""),
-      content="true",
-    )
     match inbound {
       Some(handle_frame) =>
         handle_frame(
-          @encoding/utf8.encode(
-            Json::object({
-              "header": {
-                "event_id": "runtime-monitor-message",
-                "event_type": "im.message.receive_v1",
-                "app_id": "app-ws",
-                "token": "verify-ws",
+          encode_feishu_websocket_frame(FeishuWebSocketFrame::{
+            seq_id: 1,
+            log_id: 2,
+            service: 3,
+            method_id: feishu_ws_data_frame,
+            headers: [
+              FeishuWebSocketHeader::{
+                key: feishu_ws_header_type,
+                value: feishu_ws_type_event,
               },
-              "event": {
-                "sender": {
-                  "sender_id": {
-                    "open_id": "ou_sender",
-                    "user_id": "user_sender",
+              FeishuWebSocketHeader::{
+                key: feishu_ws_header_message_id,
+                value: "runtime-monitor-message",
+              },
+              FeishuWebSocketHeader::{ key: feishu_ws_header_sum, value: "1" },
+              FeishuWebSocketHeader::{ key: feishu_ws_header_seq, value: "0" },
+              FeishuWebSocketHeader::{
+                key: feishu_ws_header_trace_id,
+                value: "trace-1",
+              },
+            ],
+            payload_encoding: None,
+            payload_type: None,
+            payload: Some(
+              @encoding/utf8.encode(
+                Json::object({
+                  "header": {
+                    "event_id": "runtime-monitor-message",
+                    "event_type": "im.message.receive_v1",
+                    "app_id": "app-ws",
+                    "token": "verify-ws",
                   },
-                },
-                "message": {
-                  "message_id": "message-runtime-monitor",
-                  "message_type": "text",
-                  "chat_id": "chat-test",
-                  "chat_type": "p2p",
-                  "create_time": @clock.epoch.now().ms().to_string(),
-                  "content": Json::object({ "text": "hello from runtime ws" }).stringify(),
-                },
-              },
-              "token": "verify-ws",
-            }).stringify(),
-          ),
+                  "event": {
+                    "sender": {
+                      "sender_id": {
+                        "open_id": "ou_sender",
+                        "user_id": "user_sender",
+                      },
+                    },
+                    "message": {
+                      "message_id": "message-runtime-monitor",
+                      "message_type": "text",
+                      "chat_id": "chat-test",
+                      "chat_type": "p2p",
+                      "create_time": @clock.epoch.now().ms().to_string(),
+                      "content": Json::object({
+                        "text": "hello from runtime ws",
+                      }).stringify(),
+                    },
+                  },
+                  "token": "verify-ws",
+                }).stringify(),
+              ),
+            ),
+            log_id_new: None,
+          }),
         )
       None => abort("expected runtime websocket inbound handler")
     }
     @async.sleep(50)
     inspect(handler.handled_message_ids[0], content="message-runtime-monitor")
+    inspect(sent.length() >= 1, content="true")
+    let ack = sent
+      .map(fn(bytes) { decode_feishu_websocket_frame(bytes) })
+      .filter_map(fn(result) {
+        match result {
+          Ok(frame) if frame.method_id == feishu_ws_data_frame => Some(frame)
+          _ => None
+        }
+      })
+      .get(0)
+      .unwrap()
+    inspect(ack.method_id, content="1")
+    inspect(
+      match ack.payload {
+        Some(payload) => payload.length() > 0
+        None => false
+      },
+      content="true",
+    )
     runtime.stop_all()
     group.return_immediately(())
   })
 }
 
 ///|
-async test "Feishu websocket runtime skips websocket accounts without websocket_url" {
+async test "Feishu websocket runtime requires websocket_url or platform endpoint resolution" {
   let manager = @channel.WebSocketClientRuntimeManager::new()
   let runtime = manager.controller()
   let channel = FeishuChannel::new()
@@ -973,7 +1074,6 @@ async test "Feishu websocket runtime skips websocket accounts without websocket_
     },
     global_settings: {},
   })
-
   let connect_calls : Array[String] = []
   let connector = @channel.WebSocketClientConnector::new(connect=fn(request) {
     connect_calls.push(request.client_id())

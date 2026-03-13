@@ -157,3 +157,24 @@ pub struct FeishuAccessTokenResponse {
   app_access_token : String?
   expire : Int?
 } derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuWebSocketEndpointResponse {
+  code : Int
+  msg : String
+  data : Json?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct FeishuWebSocketEndpointData {
+  url : String
+  client_config : FeishuWebSocketClientConfig?
+} derive(ToJson, Show)
+
+///|
+pub struct FeishuWebSocketClientConfig {
+  ping_interval : Int?
+  reconnect_count : Int?
+  reconnect_interval : Int?
+  reconnect_nonce : Int?
+} derive(ToJson, Show)

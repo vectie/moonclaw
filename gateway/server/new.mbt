@@ -91,6 +91,12 @@ pub async fn Gateway::new(
   gateway.channel_state.load() catch {
     error => gateway.logger.warn("Failed to load channel state: \{error}")
   }
+  gateway.seed_channel_state_from_moonclaw_config() catch {
+    error =>
+      gateway.logger.warn(
+        "Failed to seed channel state from .moonclaw/moonclaw.json: \{error}",
+      )
+  }
   let feishu_channel = @feishu.FeishuChannel::new()
   let handler : &@channel.MessageHandler = gateway
   feishu_channel.set_message_handler(handler)

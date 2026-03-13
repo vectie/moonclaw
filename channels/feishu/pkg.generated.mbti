@@ -7,6 +7,7 @@ import {
 }
 
 // Values
+pub async fn resolve_websocket_endpoint(String, String, String) -> Result[FeishuWebSocketEndpointData, @channel.ChannelError]
 
 // Errors
 
@@ -213,6 +214,31 @@ pub struct FeishuUserLookupResponse {
 pub impl Show for FeishuUserLookupResponse
 pub impl ToJson for FeishuUserLookupResponse
 pub impl @json.FromJson for FeishuUserLookupResponse
+
+pub struct FeishuWebSocketClientConfig {
+  ping_interval : Int?
+  reconnect_count : Int?
+  reconnect_interval : Int?
+  reconnect_nonce : Int?
+}
+pub impl Show for FeishuWebSocketClientConfig
+pub impl ToJson for FeishuWebSocketClientConfig
+
+pub struct FeishuWebSocketEndpointData {
+  url : String
+  client_config : FeishuWebSocketClientConfig?
+}
+pub impl Show for FeishuWebSocketEndpointData
+pub impl ToJson for FeishuWebSocketEndpointData
+
+pub struct FeishuWebSocketEndpointResponse {
+  code : Int
+  msg : String
+  data : Json?
+}
+pub impl Show for FeishuWebSocketEndpointResponse
+pub impl ToJson for FeishuWebSocketEndpointResponse
+pub impl @json.FromJson for FeishuWebSocketEndpointResponse
 
 type QueuedFeishuMessage
 

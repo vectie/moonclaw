@@ -114,13 +114,61 @@ moonclaw gateway channel-start \
 moonclaw gateway channel-stop --id feishu --account default
 ```
 
-For websocket-mode Feishu accounts, use `connection_mode = "websocket"` and provide `websocket_url`. Optional handshake headers can be supplied with `websocket_headers`.
+For websocket-mode Feishu accounts, use `connection_mode = "websocket"`. The gateway now resolves the upstream Feishu websocket endpoint from `app_id` / `app_secret` automatically. `websocket_url` is optional and acts as a manual override. Optional handshake headers can be supplied with `websocket_headers`.
 
 ```bash
 moonclaw gateway channel-configure \
   --id feishu \
-  --config-json '{"enabled":true,"accounts":{"monitor":{"app_id":"...","app_secret":"...","domain":"feishu","connection_mode":"websocket","websocket_url":"wss://example.invalid/feishu/ws","websocket_headers":{"Authorization":"Bearer ..."},"dm_policy":"pairing","enabled":true}},"global_settings":{}}'
+  --config-json '{"enabled":true,"accounts":{"monitor":{"app_id":"...","app_secret":"...","domain":"feishu","connection_mode":"websocket","dm_policy":"pairing","enabled":true}},"global_settings":{}}'
 ```
+
+If you need to force a specific websocket endpoint during testing or proxying, add:
+
+```json
+{
+  "websocket_url": "wss://example.invalid/feishu/ws",
+  "websocket_headers": {
+    "Authorization": "Bearer ..."
+  }
+}
+```
+
+### Bootstrap from `.moonclaw/moonclaw.json`
+
+At startup, the gateway also checks:
+
+- `{cwd}/.moonclaw/moonclaw.json`
+- then `{home}/.moonclaw/moonclaw.json`
+
+It understands the OpenClaw-style Feishu config shape under `channels.feishu`, for example:
+
+```json
+{
+  "channels": {
+    "feishu": {
+      "enabled": true,
+      "appId": "cli_app",
+      "appSecret": "cli_secret",
+      "domain": "feishu",
+      "dmPolicy": "open",
+      "groupPolicy": "open",
+      "allowFrom": ["*"]
+    }
+  }
+}
+```
+
+That shape is normalized into the internal gateway channel state:
+
+- `appId` -> `app_id`
+- `appSecret` -> `app_secret`
+- `dmPolicy` -> `dm_policy`
+- `groupPolicy` -> `global_settings.group_policy`
+- `allowFrom` -> `global_settings.allow_from`
+
+When `channels.feishu.connectionMode` is `"websocket"`, the gateway can start the long-lived Feishu connection from `appId` and `appSecret` alone. A `websocketUrl` entry is optional and only overrides the resolved endpoint.
+
+If no explicit `accounts` map is present, the gateway seeds a `default` Feishu account automatically. Existing `home/gateway/channels.json` state still wins over this bootstrap seed.
 
 ## HTTP and RPC Surfaces
 
@@ -287,6 +335,7 @@ Restore flow:
 ```text
 Gateway::new
   -> channel_state.load()
+  -> seed missing channel state from `.moonclaw/moonclaw.json`
   -> register extensions/channels
   -> restore_channel_runtime()
     -> configure all persisted channels

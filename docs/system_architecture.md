@@ -62,7 +62,7 @@ The shared unit is `@moonclaw.Moonclaw`:
 | `coordinator` | coordination tasks and subtask state |
 | `pipeline_manager` | pipeline definitions and stage state |
 
-`gateway/server/new.mbt` creates the gateway, loads persisted state, auto-registers the Feishu extension, and restores enabled channel runtime.
+`gateway/server/new.mbt` creates the gateway, loads persisted state, seeds missing Feishu channel state from `.moonclaw/moonclaw.json`, auto-registers the Feishu extension, and restores enabled channel runtime.
 
 ## Gateway Persistent State
 
@@ -80,11 +80,18 @@ Gateway::new(...)
   -> create gateway/session directories
   -> sessions.load()
   -> channel_state.load()
+  -> seed missing channel state from `{cwd}/.moonclaw/moonclaw.json`
+  -> fallback seed from `{home}/.moonclaw/moonclaw.json`
   -> register Feishu extension
   -> restore_channel_runtime()
 ```
 
 That means a restart now preserves direct-run conversation continuity, channel-triggered conversation continuity, channel config, and which channel accounts should auto-start again.
+It also means a first gateway start can bootstrap Feishu from the same `.moonclaw/moonclaw.json` file that the local CLI/model loader already uses.
+For Feishu websocket-mode accounts, restore now supports both:
+
+- manual `websocket_url` override
+- native endpoint resolution from `app_id` / `app_secret` via Feishu `/callback/ws/endpoint`
 
 ## Gateway HTTP Surface
 

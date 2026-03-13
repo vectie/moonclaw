@@ -9,6 +9,58 @@ pub fn FeishuClient::new(config : FeishuAccountConfig) -> FeishuClient {
 }
 
 ///|
+fn websocket_endpoint_request_payload(
+  app_id : String,
+  app_secret : String,
+) -> Json {
+  { "AppID": app_id, "AppSecret": app_secret }
+}
+
+///|
+fn parse_feishu_websocket_client_config(
+  json : Json,
+) -> FeishuWebSocketClientConfig? {
+  match json {
+    Object(obj) =>
+      Some(FeishuWebSocketClientConfig::{
+        ping_interval: obj.get("PingInterval").bind(parse_json_int),
+        reconnect_count: obj.get("ReconnectCount").bind(parse_json_int),
+        reconnect_interval: obj.get("ReconnectInterval").bind(parse_json_int),
+        reconnect_nonce: obj.get("ReconnectNonce").bind(parse_json_int),
+      })
+    _ => None
+  }
+}
+
+///|
+fn parse_feishu_websocket_endpoint_data(
+  json : Json,
+) -> FeishuWebSocketEndpointData? {
+  match json {
+    { "URL": String(url), .. } if !url.is_blank() =>
+      Some(FeishuWebSocketEndpointData::{
+        url,
+        client_config: match json {
+          { "ClientConfig": client_config, .. } =>
+            parse_feishu_websocket_client_config(client_config)
+          _ => None
+        },
+      })
+    _ => None
+  }
+}
+
+///|
+fn parse_json_int(json : Json) -> Int? {
+  match json {
+    Number(number, ..) => Some(number.to_int())
+    String(number) =>
+      Some(@strconv.parse_int(number) catch { _ => return None })
+    _ => None
+  }
+}
+
+///|
 fn feishu_base_url(domain : String) -> String {
   match domain {
     "lark" => "https://open.larksuite.com"
@@ -261,6 +313,76 @@ async fn parse_user_lookup_response(
     .map(pick_feishu_user_name)
     .bind(fn(name) { if name.is_blank() { None } else { Some(name) } }),
   )
+}
+
+///|
+pub async fn resolve_websocket_endpoint(
+  app_id : String,
+  app_secret : String,
+  domain : String,
+) -> Result[FeishuWebSocketEndpointData, @channel.ChannelError] {
+  let base_url = feishu_base_url(domain)
+  let (response, data) = @http.post(
+    "\{base_url}/callback/ws/endpoint",
+    websocket_endpoint_request_payload(app_id, app_secret),
+    headers={ "Content-Type": "application/json", "locale": "zh" },
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to fetch Feishu websocket endpoint: \{error}",
+        ),
+      )
+  }
+  let body_text = data.text()
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu websocket endpoint API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Invalid Feishu websocket endpoint response: \{body_text}",
+        ),
+      )
+  }
+  let parsed : FeishuWebSocketEndpointResponse = @json.from_json(response_json) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to decode Feishu websocket endpoint response: \{body_text}",
+        ),
+      )
+  }
+  if parsed.code != 0 {
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu websocket endpoint lookup failed: \{parsed.msg}",
+      ),
+    )
+  }
+  match parsed.data {
+    Some(data) =>
+      match parse_feishu_websocket_endpoint_data(data) {
+        Some(endpoint_data) => Ok(endpoint_data)
+        None =>
+          Err(
+            @channel.ChannelError::ConnectionFailed(
+              message="Feishu websocket endpoint response is missing data.URL",
+            ),
+          )
+      }
+    None =>
+      Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Feishu websocket endpoint response is missing data.URL",
+        ),
+      )
+  }
 }
 
 ///|
