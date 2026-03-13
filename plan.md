@@ -104,12 +104,12 @@ Deliverable:
 
 ## Phase 5: Chat Over Job Artifacts
 
-- [ ] Add chat binding model from job outputs to chat scopes
-- [ ] Add retrieval service over artifacts
-- [ ] Add context assembler for grounded chat answers from artifacts
-- [ ] Add cited answer format referencing artifact source and location
-- [ ] Add gateway/CLI chat API for job-bound questions
-- [ ] Add tests for scope resolution, retrieval, and citation behavior
+- [x] Add chat binding model from job outputs to chat scopes
+- [x] Add retrieval service over artifacts
+- [x] Add context assembler for grounded chat answers from artifacts
+- [x] Add cited answer format referencing artifact source and location
+- [x] Add gateway/CLI chat API for job-bound questions
+- [x] Add tests for scope resolution, retrieval, and citation behavior
 
 Deliverable:
 - users can ask questions about job outputs through chat
@@ -205,7 +205,7 @@ Deliverable:
 - [ ] scheduler and checkpoint recovery tests
 - [x] workflow retry/cancel/force-cancel tests
 - [x] artifact indexing and retrieval tests
-- [ ] chat over artifacts tests
+- [x] chat over artifacts tests
 - [ ] AI analysis workflow persistence tests
 - [ ] research/arXiv integration tests
 
@@ -215,7 +215,7 @@ Deliverable:
 - [ ] Finish Phase 2 before adding scheduled research sync
 - [x] Finish Phase 3 before adding analysis workflows
 - [x] Finish Phase 4 before artifact chat
-- [ ] Finish Phase 5 before research ask UX
+- [x] Finish Phase 5 before research ask UX
 - [ ] Finish Phase 8 before TUI/channel research polish
 
 ## Non-Goals for v1

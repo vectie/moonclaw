@@ -5,6 +5,7 @@ test "supported_rpc_methods advertises the implemented channel and run methods" 
   inspect(methods.contains("runs.get"), content="true")
   inspect(methods.contains("artifacts.list"), content="true")
   inspect(methods.contains("artifacts.get"), content="true")
+  inspect(methods.contains("jobs.ask"), content="true")
   inspect(methods.contains("channels.list"), content="true")
   inspect(methods.contains("channels.get"), content="true")
   inspect(methods.contains("channels.configure"), content="true")

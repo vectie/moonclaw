@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/strconv",
   "moonbitlang/async",
   "moonbitlang/moonclaw/channel",
+  "moonbitlang/moonclaw/job",
   "moonbitlang/moonclaw/gateway/server",
   "moonbitlang/moonclaw/gateway/client",
   "moonbitlang/moonclaw/gateway/protocol",

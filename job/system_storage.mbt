@@ -16,6 +16,11 @@ struct ArtifactsIndexFile {
 } derive(ToJson, FromJson, Show)
 
 ///|
+struct ChatBindingsFile {
+  bindings : Array[ChatBinding]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub struct SystemStore {
   root : String
   definitions : Map[String, JobDefinition]
@@ -23,6 +28,7 @@ pub struct SystemStore {
   runs : Map[String, JobRun]
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
+  chat_bindings : Map[String, ChatBinding]
 }
 
 ///|
@@ -34,6 +40,7 @@ pub fn SystemStore::new(root~ : String) -> SystemStore {
     runs: {},
     steps: {},
     artifacts: {},
+    chat_bindings: {},
   }
 }
 
@@ -50,6 +57,11 @@ fn SystemStore::runs_index_file(self : SystemStore) -> String {
 ///|
 fn SystemStore::artifacts_index_file(self : SystemStore) -> String {
   self.root |> @pathx.join("index") |> @pathx.join("artifacts.json")
+}
+
+///|
+fn SystemStore::chat_bindings_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("chat_bindings.json")
 }
 
 ///|
@@ -143,6 +155,7 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
   clear_map(self.runs)
   clear_map(self.steps)
   clear_map(self.artifacts)
+  clear_map(self.chat_bindings)
 
   if @fsx.exists(self.definitions_file()) {
     let file : DefinitionsIndexFile = load_json_file(
@@ -179,6 +192,16 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
       self.artifacts.set(artifact.id, artifact)
     }
   }
+
+  if @fsx.exists(self.chat_bindings_file()) {
+    let file : ChatBindingsFile = load_json_file(
+      self.chat_bindings_file(),
+      "Failed to load job chat bindings",
+    )
+    for binding in file.bindings {
+      self.chat_bindings.set(binding.id, binding)
+    }
+  }
 }
 
 ///|
@@ -208,6 +231,15 @@ async fn SystemStore::save_artifacts_index(self : SystemStore) -> Unit {
     artifacts: self.artifacts.values().to_array(),
   }
   @fsx.write_to_file(self.artifacts_index_file(), file.to_json().stringify())
+}
+
+///|
+async fn SystemStore::save_chat_bindings(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = ChatBindingsFile::{
+    bindings: self.chat_bindings.values().to_array(),
+  }
+  @fsx.write_to_file(self.chat_bindings_file(), file.to_json().stringify())
 }
 
 ///|
@@ -278,6 +310,15 @@ pub async fn SystemStore::save_artifact(
 }
 
 ///|
+pub async fn SystemStore::save_chat_binding(
+  self : SystemStore,
+  binding : ChatBinding,
+) -> Unit {
+  self.chat_bindings.set(binding.id, binding)
+  self.save_chat_bindings()
+}
+
+///|
 pub async fn SystemStore::delete_artifact(
   self : SystemStore,
   artifact_id : String,
@@ -341,6 +382,14 @@ pub fn SystemStore::get_artifact(
 }
 
 ///|
+pub fn SystemStore::get_chat_binding(
+  self : SystemStore,
+  id : String,
+) -> ChatBinding? {
+  self.chat_bindings.get(id)
+}
+
+///|
 pub fn SystemStore::list_definitions(
   self : SystemStore,
 ) -> Array[JobDefinition] {
@@ -380,4 +429,11 @@ pub fn SystemStore::list_artifacts(
       .to_array()
     None => self.artifacts.values().to_array()
   }
+}
+
+///|
+pub fn SystemStore::list_chat_bindings(
+  self : SystemStore,
+) -> Array[ChatBinding] {
+  self.chat_bindings.values().to_array()
 }

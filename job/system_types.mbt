@@ -206,3 +206,51 @@ pub(all) struct ArtifactCleanupReport {
   archived_ids : Array[String]
   deleted_ids : Array[String]
 } derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct ChatBinding {
+  id : String
+  title : String?
+  artifact_query : ArtifactQuery
+  scope : Array[String]
+  created_at : Int
+  updated_at : Int
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct RetrievalHit {
+  artifact_id : String
+  artifact_type : String
+  logical_key : String?
+  score : Int
+  snippet : String
+  path : String
+  scope : Array[String]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct ChatCitation {
+  artifact_id : String
+  artifact_type : String
+  logical_key : String?
+  snippet : String
+  path : String
+  scope : Array[String]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct ChatAnswer {
+  binding_id : String?
+  question : String
+  answer : String
+  citations : Array[ChatCitation]
+  hits : Array[RetrievalHit]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobAskParams {
+  question : String
+  binding_id : String?
+  artifact_query : ArtifactQuery?
+  max_hits : Int?
+} derive(ToJson, FromJson, Show)

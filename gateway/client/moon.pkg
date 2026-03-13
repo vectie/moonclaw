@@ -3,6 +3,7 @@ import {
   "moonbitlang/async/http",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/moonclaw/channel",
+  "moonbitlang/moonclaw/job",
   "moonbitlang/moonclaw/gateway/protocol",
   "moonbitlang/moonclaw/internal/uuid",
   "moonbitlang/moonclaw/internal/rand",

@@ -3,7 +3,8 @@ fn supported_rpc_methods() -> Array[String] {
   [
     "connect", "agent", "agent.wait", "sessions.list", "sessions.reset", "config.get",
     "config.set", "health", "runs.list", "runs.get", "artifacts.list", "artifacts.get",
-    "channels.list", "channels.get", "channels.configure", "channels.start", "channels.stop",
+    "jobs.ask", "channels.list", "channels.get", "channels.configure", "channels.start",
+    "channels.stop",
   ]
 }
 
@@ -323,6 +324,68 @@ async fn Gateway::handle_artifacts_get_method(
         error: Some(@protocol.ErrorShape::{
           code: "artifact_not_found",
           message: "Artifact not found: \{artifact_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_jobs_ask_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params : @job.JobAskParams = match request.params {
+    Some(params) =>
+      match @json.from_json(params) {
+        Ok(params) => params
+        Err(error) =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "invalid_params",
+              message: "Invalid job ask params: \{error}",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing job ask params",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  match @job.ChatService::new(store=self.jobs.store()).ask(params) {
+    Ok(answer) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some(answer.to_json()),
+        error: None,
+      })
+    Err(error) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "job_ask_failed",
+          message: error,
           details: None,
           retryable: None,
           retry_after_ms: None,

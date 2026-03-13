@@ -8,6 +8,7 @@ import {
   "moonbitlang/moonclaw/gateway/protocol",
   "moonbitlang/moonclaw/internal/pino",
   "moonbitlang/moonclaw/internal/uuid",
+  "moonbitlang/moonclaw/job",
 }
 
 // Values
@@ -40,6 +41,7 @@ pub struct Client {
   mut connected : Bool
 }
 pub async fn Client::agent(Self, message~ : String, session_key? : String, cwd? : String, model? : String, run_id? : String) -> Result[@protocol.AgentAcceptedPayload, String]
+pub async fn Client::ask_job(Self, @job.JobAskParams) -> Result[@job.ChatAnswer, String]
 pub async fn Client::configure_channel(Self, channel_id~ : String, @channel.ChannelConfig) -> Result[ChannelMutationPayload, String]
 pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
 pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]

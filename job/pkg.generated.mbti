@@ -107,6 +107,54 @@ pub impl Show for ArtifactsIndexFile
 pub impl ToJson for ArtifactsIndexFile
 pub impl @json.FromJson for ArtifactsIndexFile
 
+pub(all) struct ChatAnswer {
+  binding_id : String?
+  question : String
+  answer : String
+  citations : Array[ChatCitation]
+  hits : Array[RetrievalHit]
+}
+pub impl Show for ChatAnswer
+pub impl ToJson for ChatAnswer
+pub impl @json.FromJson for ChatAnswer
+
+pub(all) struct ChatBinding {
+  id : String
+  title : String?
+  artifact_query : ArtifactQuery
+  scope : Array[String]
+  created_at : Int
+  updated_at : Int
+}
+pub impl Show for ChatBinding
+pub impl ToJson for ChatBinding
+pub impl @json.FromJson for ChatBinding
+
+type ChatBindingsFile
+pub impl Show for ChatBindingsFile
+pub impl ToJson for ChatBindingsFile
+pub impl @json.FromJson for ChatBindingsFile
+
+pub(all) struct ChatCitation {
+  artifact_id : String
+  artifact_type : String
+  logical_key : String?
+  snippet : String
+  path : String
+  scope : Array[String]
+}
+pub impl Show for ChatCitation
+pub impl ToJson for ChatCitation
+pub impl @json.FromJson for ChatCitation
+
+pub struct ChatService {
+  store : SystemStore
+  artifacts : ArtifactStore
+}
+pub async fn ChatService::ask(Self, JobAskParams) -> Result[ChatAnswer, String]
+pub fn ChatService::new(store~ : SystemStore) -> Self
+pub async fn ChatService::retrieve(Self, String, query? : ArtifactQuery, max_hits? : Int) -> Array[RetrievalHit]
+
 pub(all) struct CheckpointRecord {
   job_id : String
   last_triggered_at : Int?
@@ -160,6 +208,16 @@ pub struct Job {
 pub fn Job::status(Self) -> Int?
 pub async fn Job::wait(Self) -> Int
 pub impl ToJson for Job
+
+pub(all) struct JobAskParams {
+  question : String
+  binding_id : String?
+  artifact_query : ArtifactQuery?
+  max_hits : Int?
+}
+pub impl Show for JobAskParams
+pub impl ToJson for JobAskParams
+pub impl @json.FromJson for JobAskParams
 
 pub(all) struct JobDefinition {
   id : String
@@ -221,6 +279,19 @@ pub fn Manager::new(cwd~ : String) -> Self
 pub async fn Manager::spawn(Self, name~ : String, description? : String, command~ : String, cwd? : String) -> Job
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int
+
+pub(all) struct RetrievalHit {
+  artifact_id : String
+  artifact_type : String
+  logical_key : String?
+  score : Int
+  snippet : String
+  path : String
+  scope : Array[String]
+}
+pub impl Show for RetrievalHit
+pub impl ToJson for RetrievalHit
+pub impl @json.FromJson for RetrievalHit
 
 pub(all) struct RetryPolicy {
   max_attempts : Int
@@ -287,16 +358,19 @@ pub struct SystemStore {
   runs : Map[String, JobRun]
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
+  chat_bindings : Map[String, ChatBinding]
 }
 pub fn SystemStore::artifact_content_file(Self, String, file_name? : String) -> String
 pub fn SystemStore::artifact_dir(Self, String) -> String
 pub async fn SystemStore::delete_artifact(Self, String) -> Bool
 pub fn SystemStore::get_artifact(Self, String) -> ArtifactRecord?
+pub fn SystemStore::get_chat_binding(Self, String) -> ChatBinding?
 pub fn SystemStore::get_definition(Self, String) -> JobDefinition?
 pub fn SystemStore::get_run(Self, String) -> JobRun?
 pub fn SystemStore::get_step_run(Self, String, String) -> JobStepRun?
 pub fn SystemStore::get_workflow(Self, String) -> WorkflowDefinition?
 pub fn SystemStore::list_artifacts(Self, run_id? : String) -> Array[ArtifactRecord]
+pub fn SystemStore::list_chat_bindings(Self) -> Array[ChatBinding]
 pub fn SystemStore::list_definitions(Self) -> Array[JobDefinition]
 pub fn SystemStore::list_runs(Self) -> Array[JobRun]
 pub fn SystemStore::list_step_runs(Self, String) -> Array[JobStepRun]
@@ -304,6 +378,7 @@ pub fn SystemStore::list_workflows(Self) -> Array[WorkflowDefinition]
 pub async fn SystemStore::load(Self) -> Unit
 pub fn SystemStore::new(root~ : String) -> Self
 pub async fn SystemStore::save_artifact(Self, ArtifactRecord) -> Unit
+pub async fn SystemStore::save_chat_binding(Self, ChatBinding) -> Unit
 pub async fn SystemStore::save_definition(Self, JobDefinition) -> Unit
 pub async fn SystemStore::save_run(Self, JobRun) -> Unit
 pub async fn SystemStore::save_step_run(Self, JobStepRun) -> Unit

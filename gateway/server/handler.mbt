@@ -376,3 +376,47 @@ async fn Gateway::handle_get_artifact(
       })
   }
 }
+
+///|
+async fn Gateway::handle_job_ask(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let body = r.body.read_all().binary()
+  let text : String = @encoding/utf8.decode(body) catch {
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "invalid_utf8",
+          "message": "Invalid UTF-8 in request body",
+        },
+      })
+  }
+  let json = @json.parse(text) catch {
+    error =>
+      raise json_error(400, "BadRequest", {
+        "error": { "code": "parse_error", "message": "Invalid JSON: \{error}" },
+      })
+  }
+  let params : @job.JobAskParams = @json.from_json(json) catch {
+    error =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "invalid_params",
+          "message": "Invalid job ask params: \{error}",
+        },
+      })
+  }
+  let answer = match
+    @job.ChatService::new(store=self.jobs.store()).ask(params) {
+    Ok(answer) => answer
+    Err(error) =>
+      raise json_error(400, "BadRequest", {
+        "error": { "code": "job_ask_failed", "message": error },
+      })
+  }
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(answer.to_json().stringify())
+}

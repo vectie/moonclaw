@@ -49,6 +49,39 @@ test "decode_ok_payload parses run and channel payloads" {
     payload: Some({ "channels": [channel_dock.to_json()] }),
     error: None,
   })
+  let ask_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-ask",
+    ok: true,
+    payload: Some(
+      @job.ChatAnswer::{
+        binding_id: Some("binding-paper"),
+        question: "What changed?",
+        answer: "Found 1 relevant artifact(s) for: What changed?",
+        citations: [
+          @job.ChatCitation::{
+            artifact_id: "artifact-1",
+            artifact_type: "paper.summary",
+            logical_key: Some("paper:1"),
+            snippet: "Diffusion transformers improve planning.",
+            path: "/tmp/artifact-1.md",
+            scope: ["research", "paper:1"],
+          },
+        ],
+        hits: [
+          @job.RetrievalHit::{
+            artifact_id: "artifact-1",
+            artifact_type: "paper.summary",
+            logical_key: Some("paper:1"),
+            score: 2,
+            snippet: "Diffusion transformers improve planning.",
+            path: "/tmp/artifact-1.md",
+            scope: ["research", "paper:1"],
+          },
+        ],
+      }.to_json(),
+    ),
+    error: None,
+  })
 
   let runs_result : Result[RunsListPayload, String] = decode_ok_payload(
     runs_response, "default", "missing", "parse failed",
@@ -64,11 +97,20 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let ask_result : Result[@job.ChatAnswer, String] = decode_ok_payload(
+    ask_response, "default", "missing", "parse failed",
+  )
+  let ask : @job.ChatAnswer = match ask_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
 
   inspect(runs.runs.length(), content="1")
   inspect(runs.runs[0].run_id, content="run-1")
   inspect(channels.channels.length(), content="1")
   inspect(channels.channels[0].id, content="feishu")
+  inspect(ask.binding_id.unwrap_or(""), content="binding-paper")
+  inspect(ask.citations.length(), content="1")
 }
 
 ///|

@@ -7,6 +7,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
     ["agent", ..] => run_agent(arr)
     ["runs", ..] => list_runs(arr)
     ["run", ..] => get_run(arr)
+    ["job-ask", ..] => ask_job(arr)
     ["channels", ..] => list_channels(arr)
     ["channel", ..] => get_channel(arr)
     ["channel-configure", ..] => configure_channel(arr)
@@ -38,6 +39,7 @@ fn print_help() -> Unit {
   println("  agent     Send an agent request to the gateway")
   println("  runs      List agent runs")
   println("  run       Get a single run")
+  println("  job-ask   Ask grounded questions over job artifacts")
   println("  channels  List channels")
   println("  channel   Get a single channel")
   println("  channel-configure  Configure a channel from JSON")
@@ -68,6 +70,12 @@ fn print_help() -> Unit {
   println("")
   println("Run options:")
   println("  --id <run_id>      Run id")
+  println("")
+  println("Job ask options:")
+  println("  --question <text>      Question to ask (required)")
+  println("  --binding <id>         Optional persisted chat binding id")
+  println("  --query-json <json>    Optional ArtifactQuery JSON override")
+  println("  --max-hits <n>         Retrieval hit limit (default: 5)")
   println("")
   println("Channel options:")
   println("  --id <channel_id>      Channel id")
@@ -239,6 +247,46 @@ async fn get_run(args : Array[String]) -> Unit {
 }
 
 ///|
+async fn ask_job(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let question = match parse_string_arg(args, "--question") {
+    Some(question) => question
+    None => {
+      logger.error("--question is required")
+      return
+    }
+  }
+  let query = match parse_optional_json_arg(args, "--query-json") {
+    Ok(query) => query
+    Err(error) => {
+      logger.error(error)
+      return
+    }
+  }
+  let artifact_query : @job.ArtifactQuery? = match query {
+    Some(query_json) =>
+      @json.from_json(query_json) catch {
+        error => {
+          logger.error("Invalid artifact query JSON: \{error}")
+          return
+        }
+      }
+    None => None
+  }
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match
+    client.ask_job(@job.JobAskParams::{
+      question,
+      binding_id: parse_string_arg(args, "--binding"),
+      artifact_query,
+      max_hits: Some(parse_int_arg(args, "--max-hits", default=5)),
+    }) {
+    Err(error) => logger.error("Job ask failed: \{error}")
+    Ok(answer) => println(answer.to_json().stringify())
+  }
+}
+
+///|
 async fn list_channels(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
   let client = make_client(args, mode=@protocol.ClientMode::Cli)
@@ -404,5 +452,23 @@ fn parse_json_arg(args : Array[String], name : String) -> Result[Json, String] {
         },
       )
     None => Err("\{name} is required")
+  }
+}
+
+///|
+fn parse_optional_json_arg(
+  args : Array[String],
+  name : String,
+) -> Result[Json?, String] {
+  match parse_string_arg(args, name) {
+    Some(text) =>
+      Ok(
+        Some(
+          @json.parse(text) catch {
+            error => return Err("Invalid JSON for \{name}: \{error}")
+          },
+        ),
+      )
+    None => Ok(None)
   }
 }

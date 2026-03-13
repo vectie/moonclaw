@@ -307,6 +307,24 @@ pub async fn Client::stop_channel(
 }
 
 ///|
+pub async fn Client::ask_job(
+  self : Client,
+  params : @job.JobAskParams,
+) -> Result[@job.ChatAnswer, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.ask",
+    params: Some(params.to_json()),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job ask failed with unknown error",
+    "Missing job ask payload",
+    "Failed to parse job ask response",
+  )
+}
+
+///|
 async fn Client::send_rpc(
   self : Client,
   request : @protocol.Request,
