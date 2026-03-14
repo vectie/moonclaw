@@ -66,6 +66,14 @@ async fn notify_run_finished(
   now_ms : Int,
   send : async (JobNotifyTarget, String) -> Unit,
 ) -> Unit {
+  ignore(
+    capture_successful_run_memories(
+      state.runtime().store(),
+      definition,
+      run,
+      now_ms,
+    ),
+  )
   let target = match
     resolve_job_notify_target(state.runtime().store(), definition) {
     Some(target) => target

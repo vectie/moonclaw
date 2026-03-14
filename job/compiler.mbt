@@ -452,6 +452,7 @@ fn compile_generic_analysis_workflow(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
+      "workspace": cwd,
       "family": family,
       "template": template,
       "required_capabilities": capabilities,
@@ -606,6 +607,7 @@ fn compile_research_workflow(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
+      "workspace": cwd,
       "family": "research",
       "template": template,
       "topic_id": topic_id,
@@ -701,6 +703,7 @@ fn compile_delegated_generic_workflow(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
+      "workspace": cwd,
       "family": family,
       "template": template,
       "required_capabilities": capabilities,
