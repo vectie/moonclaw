@@ -284,6 +284,17 @@ fn Gateway::job_current_step_label(
 }
 
 ///|
+fn Gateway::child_runs_for(
+  self : Gateway,
+  run_id : String,
+) -> Array[@job.JobRun] {
+  self.jobs
+  .store()
+  .list_runs()
+  .filter(fn(run) { run.parent_run_id == Some(run_id) })
+}
+
+///|
 async fn Gateway::job_status_text(
   self : Gateway,
   definition : @job.JobDefinition,
@@ -306,6 +317,15 @@ async fn Gateway::job_status_text(
     .length()
   let current_step = self.job_current_step_label(definition, run.id)
   let elapsed_ms = run_elapsed_ms(run, now_ms)
+  let lineage_line = match (run.parent_run_id, run.parent_step_id) {
+    (Some(parent_run_id), Some(parent_step_id)) =>
+      Some(
+        "Lineage: child of run \{parent_run_id} via step \{parent_step_id} (depth \{run.depth})",
+      )
+    (Some(parent_run_id), None) =>
+      Some("Lineage: child of run \{parent_run_id} (depth \{run.depth})")
+    _ => if run.depth > 0 { Some("Lineage: depth \{run.depth}") } else { None }
+  }
   let family = match definition.config {
     { "family": String(family), .. } => family
     _ => "unknown"
@@ -327,6 +347,32 @@ async fn Gateway::job_status_text(
       .join(", ")
     _ => ""
   }
+  let missing_capabilities = match definition.config {
+    { "missing_capabilities": Array(items), .. } =>
+      items
+      .map(fn(item) {
+        match item {
+          String(text) => text
+          _ => ""
+        }
+      })
+      .filter(fn(text) { !text.is_blank() })
+      .join(", ")
+    _ => ""
+  }
+  let compiler_notes = match definition.config {
+    { "compiler_notes": Array(items), .. } =>
+      items
+      .map(fn(item) {
+        match item {
+          String(text) => text
+          _ => ""
+        }
+      })
+      .filter(fn(text) { !text.is_blank() })
+    _ => []
+  }
+  let compiler_notes_text = compiler_notes.join(" | ")
   let run_events = self.jobs.store().list_run_events(run.id)
   let latest_event = if run_events.is_empty() {
     None
@@ -345,6 +391,15 @@ async fn Gateway::job_status_text(
     Some(summary) if !summary.is_blank() => Some("Summary: \{summary}")
     _ => None
   }
+  let child_runs = self.child_runs_for(run.id)
+  let child_run_line = if child_runs.is_empty() {
+    None
+  } else {
+    let rendered = child_runs
+      .map(fn(child) { "\{child.id}=\{child.status.to_json().stringify()}" })
+      .join(", ")
+    Some("Child runs: \{rendered}")
+  }
   [
     "\{prefix}: \{definition.id}",
     "Run: \{run.id}",
@@ -354,13 +409,25 @@ async fn Gateway::job_status_text(
     "Current step: \{current_step}",
     "Progress: \{done_steps}/\{total_steps}",
     "Elapsed: \{elapsed_ms}ms",
+    lineage_line.unwrap_or(""),
     if capabilities.is_blank() {
       ""
     } else {
       "Capabilities: \{capabilities}"
     },
+    if missing_capabilities.is_blank() {
+      ""
+    } else {
+      "Missing capabilities: \{missing_capabilities}"
+    },
+    if compiler_notes.is_empty() {
+      ""
+    } else {
+      "Compiler notes: \{compiler_notes_text}"
+    },
     summary_line.unwrap_or(""),
     error_line.unwrap_or(""),
+    child_run_line.unwrap_or(""),
     latest_event_line,
     "Use `/job-status \{definition.id}` for a fresh status check.",
   ]
@@ -390,6 +457,7 @@ async fn Gateway::format_active_jobs(
             "run=`\{run.id}`",
             "status=\{run.status.to_json().stringify()}",
             "family=\{family}",
+            "depth=\{run.depth}",
             "step=\{self.job_current_step_label(definition, run.id)}",
           ].join(" "),
         )
@@ -671,6 +739,8 @@ async fn Gateway::handle_confirm_job_command(
   )
   let definition = compilation.definition
   let workflow = compilation.workflow
+  let missing_capabilities_text = compilation.missing_capabilities.join(", ")
+  let compiler_notes_text = compilation.compiler_notes.join(" | ")
   self.jobs.register_definition(definition)
   self.jobs.register_workflow(workflow)
   for binding in compilation.bindings {
@@ -690,6 +760,11 @@ async fn Gateway::handle_confirm_job_command(
   .store()
   .save_job_proposal(@job.JobProposal::{
     ..proposal,
+    suggested_family: Some(compilation.family),
+    suggested_template: Some(compilation.template),
+    required_capabilities: compilation.required_capabilities,
+    missing_capabilities: compilation.missing_capabilities,
+    compiler_notes: compilation.compiler_notes,
     status: @job.JobProposalStatus::Confirmed,
     job_id: Some(definition.id),
     workflow_id: Some(workflow.id),
@@ -704,6 +779,16 @@ async fn Gateway::handle_confirm_job_command(
       "Confirmed proposal `\{proposal_id}`.",
       "Created job `\{definition.id}` and started run `\{run.id}`.",
       "Compiled as `\{compilation.family}` / `\{compilation.template}`.",
+      if compilation.missing_capabilities.is_empty() {
+        ""
+      } else {
+        "Missing capabilities: \{missing_capabilities_text}"
+      },
+      if compilation.compiler_notes.is_empty() {
+        ""
+      } else {
+        "Compiler notes: \{compiler_notes_text}"
+      },
       "Check status with `/job-status \{definition.id}` or `/job-status \{run.id}`.",
       "You will receive start, progress, and completion notifications here.",
     ].join("\n"),

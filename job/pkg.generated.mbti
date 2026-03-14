@@ -23,6 +23,8 @@ pub fn default_paper_text_extractor() -> PaperTextExtractor
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
+pub fn explain_proposal_compilation_hints(JobProposal) -> (String, String, Array[String], Array[String], Array[String])
+
 pub fn infer_proposal_compilation_hints(JobProposal) -> (String, String, Array[String])
 
 pub fn missing_capabilities(Array[String]) -> Array[String]
@@ -30,6 +32,8 @@ pub fn missing_capabilities(Array[String]) -> Array[String]
 pub fn parse_arxiv_feed(String) -> ArxivFeedResult
 
 pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?) -> JobProposal
+
+pub fn preferred_templates_for_capabilities(Array[String]) -> Array[String]
 
 pub fn proposal_as_workflow(JobProposal, Int, String, String) -> (JobDefinition, WorkflowDefinition)
 
@@ -62,6 +66,8 @@ pub fn research_topic_sync_bundle(job_id~ : String, config~ : ResearchTopicSyncC
 pub fn research_topic_sync_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
 pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?) -> JobProposal
+
+pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
 pub fn template_default_skills(String) -> Array[String]
 
@@ -449,6 +455,8 @@ pub(all) struct JobProposal {
   suggested_family : String?
   suggested_template : String?
   required_capabilities : Array[String]
+  missing_capabilities : Array[String]
+  compiler_notes : Array[String]
   status : JobProposalStatus
   steps : Array[JobProposalStep]
   tags : Array[String]
@@ -495,6 +503,9 @@ pub(all) struct JobRun {
   id : String
   job_id : String
   trigger : TriggerSource
+  parent_run_id : String?
+  parent_step_id : String?
+  depth : Int
   status : RunStatus
   attempt : Int
   retry_of : String?
@@ -575,10 +586,16 @@ pub(all) struct ProposalCompilation {
   template : String
   required_capabilities : Array[String]
   missing_capabilities : Array[String]
+  compiler_notes : Array[String]
   definition : JobDefinition
   workflow : WorkflowDefinition
   bindings : Array[ChatBinding]
 }
+
+pub(all) struct ProposalCompiler {
+  run : (JobProposal, Int, String, String) -> ProposalCompilation
+}
+pub fn ProposalCompiler::new(run~ : (JobProposal, Int, String, String) -> ProposalCompilation) -> Self
 
 type ProposalPlanPayload
 pub impl Show for ProposalPlanPayload
@@ -589,6 +606,11 @@ type ProposalPlanStepPayload
 pub impl Show for ProposalPlanStepPayload
 pub impl ToJson for ProposalPlanStepPayload
 pub impl @json.FromJson for ProposalPlanStepPayload
+
+pub(all) struct ProposalPlanner {
+  run : async (String, String, String?) -> JobProposal
+}
+pub fn ProposalPlanner::new(run~ : async (String, String, String?) -> JobProposal) -> Self
 
 pub(all) struct ResearchChunk {
   id : String
@@ -729,7 +751,7 @@ pub struct RuntimeManager {
 pub fn RuntimeManager::active_run_id(Self, String) -> String?
 pub async fn RuntimeManager::cancel_run(Self, String, Int, summary? : String?) -> JobRun?
 pub fn RuntimeManager::checkpoints(Self) -> CheckpointStore
-pub async fn RuntimeManager::create_run(Self, String, String, TriggerSource, Int) -> Result[JobRun, String]
+pub async fn RuntimeManager::create_run(Self, String, String, TriggerSource, Int, parent_run_id? : String?, parent_step_id? : String?, depth? : Int) -> Result[JobRun, String]
 pub fn RuntimeManager::due_definitions(Self, Int) -> Array[JobDefinition]
 pub fn RuntimeManager::is_job_active(Self, String) -> Bool
 pub fn RuntimeManager::list_active_runs(Self) -> Array[JobRun]
@@ -742,7 +764,7 @@ pub fn RuntimeManager::new(root~ : String) -> Self
 pub async fn RuntimeManager::register_definition(Self, JobDefinition) -> Unit
 pub async fn RuntimeManager::register_workflow(Self, WorkflowDefinition) -> Unit
 pub fn RuntimeManager::store(Self) -> SystemStore
-pub async fn RuntimeManager::trigger_definition(Self, String, String, TriggerSource, Int) -> Result[JobRun, String]
+pub async fn RuntimeManager::trigger_definition(Self, String, String, TriggerSource, Int, parent_run_id? : String?, parent_step_id? : String?, depth? : Int) -> Result[JobRun, String]
 pub async fn RuntimeManager::trigger_due_definitions(Self, Int, () -> String) -> Array[JobRun]
 pub async fn RuntimeManager::trigger_retry_run(Self, String, String, Int) -> Result[JobRun, String]
 
@@ -754,6 +776,18 @@ pub(all) struct SchedulePolicy {
 pub impl Show for SchedulePolicy
 pub impl ToJson for SchedulePolicy
 pub impl @json.FromJson for SchedulePolicy
+
+pub(all) struct SubjobStepConfig {
+  request_text : String
+  cwd : String?
+  home : String?
+  include_parent_outputs : Bool
+  max_depth : Int
+}
+pub fn SubjobStepConfig::new(request_text~ : String, cwd? : String?, home? : String?, include_parent_outputs? : Bool, max_depth? : Int) -> Self
+pub impl Show for SubjobStepConfig
+pub impl ToJson for SubjobStepConfig
+pub impl @json.FromJson for SubjobStepConfig
 
 pub struct SystemStore {
   root : String
@@ -860,8 +894,9 @@ pub(all) struct WorkflowStepContext {
   step : WorkflowStepDefinition
   initial_input : Json?
   outputs : Map[String, Json]
+  control : WorkflowExecutionControl
 }
-pub fn WorkflowStepContext::new(run~ : JobRun, step~ : WorkflowStepDefinition, initial_input? : Json?, outputs? : Map[String, Json]) -> Self
+pub fn WorkflowStepContext::new(run~ : JobRun, step~ : WorkflowStepDefinition, initial_input? : Json?, outputs? : Map[String, Json], control? : WorkflowExecutionControl) -> Self
 pub fn WorkflowStepContext::output(Self, String) -> Json?
 
 pub(all) struct WorkflowStepDefinition {

@@ -73,6 +73,13 @@ fn registered_capabilities() -> Array[CapabilityRecord] {
       preferred_template: Some("generic.analysis"),
       fallback_template: Some("generic.analysis"),
     },
+    CapabilityRecord::{
+      id: "workflow.delegate",
+      family: "generic",
+      status: Available,
+      preferred_template: Some("generic.delegated"),
+      fallback_template: Some("generic.analysis"),
+    },
   ]
 }
 
@@ -97,6 +104,25 @@ pub fn capability_available(id : String) -> Bool {
     Some(capability) => capability.status is Available
     None => false
   }
+}
+
+///|
+pub fn preferred_templates_for_capabilities(
+  ids : Array[String],
+) -> Array[String] {
+  let templates : Array[String] = []
+  for id in ids {
+    match capability_record(id) {
+      Some(capability) =>
+        match capability.preferred_template {
+          Some(template) if !template.is_blank() &&
+            !templates.contains(template) => templates.push(template)
+          _ => ()
+        }
+      None => ()
+    }
+  }
+  templates
 }
 
 ///|

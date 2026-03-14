@@ -18,6 +18,7 @@ pub(all) struct WorkflowStepContext {
   step : WorkflowStepDefinition
   initial_input : Json?
   outputs : Map[String, Json]
+  control : WorkflowExecutionControl
 }
 
 ///|
@@ -26,8 +27,9 @@ pub fn WorkflowStepContext::new(
   step~ : WorkflowStepDefinition,
   initial_input? : Json? = None,
   outputs? : Map[String, Json] = {},
+  control? : WorkflowExecutionControl = WorkflowExecutionControl::new(),
 ) -> WorkflowStepContext {
-  WorkflowStepContext::{ run, step, initial_input, outputs }
+  WorkflowStepContext::{ run, step, initial_input, outputs, control }
 }
 
 ///|
@@ -330,6 +332,7 @@ pub async fn WorkflowEngine::execute_run(
         step~,
         initial_input~,
         outputs~,
+        control~,
       )
       match (handler.run)(context) {
         Ok(result) => {

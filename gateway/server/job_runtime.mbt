@@ -19,6 +19,25 @@ fn Gateway::new_workflow_engine(self : Gateway) -> @job.WorkflowEngine {
   let engine = @job.WorkflowEngine::new(runtime=self.jobs)
   engine.register_handler(@job.analysis_step_handler(runtime=self.jobs))
   engine.register_handler(
+    @job.subjob_step_handler(
+      runtime=self.jobs,
+      planner=@job.ProposalPlanner::new(run=async fn(request_text, cwd, home) {
+        @job.plan_job_proposal(
+          self.uuid.v4().to_string(),
+          request_text,
+          current_time_ms(),
+          cwd~,
+          home~,
+        )
+      }),
+      compiler=@job.ProposalCompiler::new(run=fn(proposal, now_ms, cwd, home) {
+        @job.compile_job_proposal(proposal, now_ms, cwd, home)
+      }),
+      engine_factory=fn() { self.new_workflow_engine() },
+      next_run_id=fn() { self.uuid.v4().to_string() },
+    ),
+  )
+  engine.register_handler(
     @job.research_topic_sync_step_handler(runtime=self.jobs),
   )
   engine.register_handler(

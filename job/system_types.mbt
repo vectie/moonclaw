@@ -64,6 +64,9 @@ pub(all) struct JobRun {
   id : String
   job_id : String
   trigger : TriggerSource
+  parent_run_id : String?
+  parent_step_id : String?
+  depth : Int
   status : RunStatus
   attempt : Int
   retry_of : String?
@@ -301,6 +304,8 @@ pub(all) struct JobProposal {
   suggested_family : String?
   suggested_template : String?
   required_capabilities : Array[String]
+  missing_capabilities : Array[String]
+  compiler_notes : Array[String]
   status : JobProposalStatus
   steps : Array[JobProposalStep]
   tags : Array[String]

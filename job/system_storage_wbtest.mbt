@@ -50,6 +50,9 @@ fn sample_run() -> JobRun {
     id: "run-1",
     job_id: "research.topic.sync",
     trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
     status: RunStatus::Running,
     attempt: 1,
     retry_of: None,
@@ -111,6 +114,8 @@ fn sample_proposal() -> JobProposal {
     suggested_family: Some("research"),
     suggested_template: Some("research.topic_watch"),
     required_capabilities: ["research.arxiv_sync", "analysis.summarize"],
+    missing_capabilities: [],
+    compiler_notes: ["Template selected: research.topic_watch"],
     status: JobProposalStatus::Draft,
     steps: [
       JobProposalStep::{

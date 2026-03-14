@@ -169,6 +169,9 @@ pub async fn RuntimeManager::create_run(
   job_id : String,
   trigger : TriggerSource,
   now_ms : Int,
+  parent_run_id? : String? = None,
+  parent_step_id? : String? = None,
+  depth? : Int = 0,
 ) -> Result[JobRun, String] {
   if self.is_job_active(job_id) {
     return Err("Job \{job_id} already has an active run")
@@ -180,6 +183,9 @@ pub async fn RuntimeManager::create_run(
     id: run_id,
     job_id,
     trigger,
+    parent_run_id,
+    parent_step_id,
+    depth,
     status: Pending,
     attempt: 1,
     retry_of: None,
@@ -421,8 +427,19 @@ pub async fn RuntimeManager::trigger_definition(
   job_id : String,
   trigger : TriggerSource,
   now_ms : Int,
+  parent_run_id? : String? = None,
+  parent_step_id? : String? = None,
+  depth? : Int = 0,
 ) -> Result[JobRun, String] {
-  self.create_run(run_id, job_id, trigger, now_ms)
+  self.create_run(
+    run_id,
+    job_id,
+    trigger,
+    now_ms,
+    parent_run_id~,
+    parent_step_id~,
+    depth~,
+  )
 }
 
 ///|
@@ -454,6 +471,9 @@ pub async fn RuntimeManager::trigger_retry_run(
     id: run_id,
     job_id,
     trigger: TriggerSource::Recovery,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
     status: Pending,
     attempt: checkpoint.retry_attempts + 1,
     retry_of: checkpoint.retry_source_run_id,

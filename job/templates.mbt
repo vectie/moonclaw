@@ -34,6 +34,18 @@ fn registered_templates() -> Array[TemplateDefinition] {
       fallback_template: Some("generic.analysis"),
     },
     TemplateDefinition::{
+      id: "research.delegated_review",
+      family: "research",
+      summary: "Research workflow that syncs topic context and delegates deeper subtasks to child workflows.",
+      required_capabilities: [
+        "research.arxiv_sync", "workflow.delegate", "analysis.report",
+      ],
+      default_skills: [
+        "research-paper-summary", "research-novelty-review", "research-report-writer",
+      ],
+      fallback_template: Some("generic.delegated"),
+    },
+    TemplateDefinition::{
       id: "generic.analysis",
       family: "generic",
       summary: "Generic plan/execute/verify/deliver workflow.",
@@ -42,6 +54,16 @@ fn registered_templates() -> Array[TemplateDefinition] {
       ],
       default_skills: [],
       fallback_template: None,
+    },
+    TemplateDefinition::{
+      id: "generic.delegated",
+      family: "generic",
+      summary: "Delegated workflow that expands broad requests into child workflows per subtask.",
+      required_capabilities: [
+        "analysis.plan", "workflow.delegate", "analysis.report",
+      ],
+      default_skills: [],
+      fallback_template: Some("generic.analysis"),
     },
     TemplateDefinition::{
       id: "generic.tool_workflow",

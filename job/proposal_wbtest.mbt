@@ -131,3 +131,22 @@ test "proposal_as_workflow compiles research drafts into research topic workflow
     content="true",
   )
 }
+
+///|
+test "render_job_proposal_for_chat includes compiler notes and missing capabilities" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-7", "Compare each paper and break down subtasks.", 100,
+    ),
+    missing_capabilities: ["workflow.delegate"],
+    compiler_notes: [
+      "Delegation enabled because the request is broad or decomposable.",
+    ],
+  }
+  let rendered = render_job_proposal_for_chat(proposal)
+  inspect(
+    rendered.contains("Missing capabilities: workflow.delegate"),
+    content="true",
+  )
+  inspect(rendered.contains("Compiler notes:"), content="true")
+}

@@ -230,12 +230,14 @@ fn proposal_payload_to_proposal(
     suggested_family: fallback.suggested_family,
     suggested_template: fallback.suggested_template,
     required_capabilities: fallback.required_capabilities,
+    missing_capabilities: fallback.missing_capabilities,
+    compiler_notes: fallback.compiler_notes,
     status: Draft,
     steps,
     tags,
     updated_at: now_ms,
   }
-  let (family, template, capabilities) = infer_proposal_compilation_hints(
+  let (family, template, capabilities, missing, notes) = explain_proposal_compilation_hints(
     hint_source,
   )
   JobProposal::{
@@ -247,6 +249,8 @@ fn proposal_payload_to_proposal(
     suggested_family: Some(family),
     suggested_template: Some(template),
     required_capabilities: capabilities,
+    missing_capabilities: missing,
+    compiler_notes: notes,
     status: Draft,
     steps,
     tags,
@@ -471,7 +475,7 @@ pub fn draft_job_proposal(
   } else {
     "generic.analysis"
   }
-  JobProposal::{
+  let seed = JobProposal::{
     id: proposal_id,
     title: compact_title(request_text),
     request_text,
@@ -481,32 +485,9 @@ pub fn draft_job_proposal(
     revision_history: [],
     suggested_family: Some(family),
     suggested_template: Some(template),
-    required_capabilities: inferred_capabilities_for_proposal(
-      JobProposal::{
-        id: proposal_id,
-        title: compact_title(request_text),
-        request_text,
-        summary: "",
-        revision_history: [],
-        suggested_family: Some(family),
-        suggested_template: Some(template),
-        required_capabilities: [],
-        status: Draft,
-        steps,
-        tags,
-        channel_id,
-        account_id,
-        recipient,
-        thread_id,
-        presented_message_id: None,
-        job_id: None,
-        workflow_id: None,
-        last_run_id: None,
-        created_at: now_ms,
-        updated_at: now_ms,
-      },
-      family,
-    ),
+    required_capabilities: [],
+    missing_capabilities: [],
+    compiler_notes: [],
     status: Draft,
     steps,
     tags,
@@ -520,6 +501,17 @@ pub fn draft_job_proposal(
     last_run_id: None,
     created_at: now_ms,
     updated_at: now_ms,
+  }
+  let (resolved_family, resolved_template, capabilities, missing, notes) = explain_proposal_compilation_hints(
+    seed,
+  )
+  JobProposal::{
+    ..seed,
+    suggested_family: Some(resolved_family),
+    suggested_template: Some(resolved_template),
+    required_capabilities: capabilities,
+    missing_capabilities: missing,
+    compiler_notes: notes,
   }
 }
 
@@ -539,6 +531,7 @@ pub fn render_job_proposal_for_chat(proposal : JobProposal) -> String {
   let family = proposal.suggested_family.unwrap_or("unknown")
   let template = proposal.suggested_template.unwrap_or("unknown")
   let capabilities = proposal.required_capabilities.join(", ")
+  let missing = proposal.missing_capabilities.join(", ")
   let lines = [
     "Job proposal `\{proposal.id}`",
     "",
@@ -553,6 +546,17 @@ pub fn render_job_proposal_for_chat(proposal : JobProposal) -> String {
     lines
   } else {
     [..lines, "Capabilities: \{capabilities}"]
+  }
+  let lines = if proposal.missing_capabilities.is_empty() {
+    lines
+  } else {
+    [..lines, "Missing capabilities: \{missing}"]
+  }
+  let lines = if proposal.compiler_notes.is_empty() {
+    lines
+  } else {
+    let rendered = proposal.compiler_notes.map(fn(note) { "- \{note}" })
+    [..lines, "", "Compiler notes:", ..rendered]
   }
   let lines = [..lines, "", "Planned steps:"]
   let lines = proposal.steps.fold(init=lines, fn(lines, step) {
