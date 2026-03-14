@@ -253,14 +253,26 @@ fn run_elapsed_ms(run : @job.JobRun, now_ms : Int) -> Int {
 }
 
 ///|
-fn Gateway::job_current_step_label(self : Gateway, run_id : String) -> String {
+fn Gateway::job_current_step_label(
+  self : Gateway,
+  definition : @job.JobDefinition,
+  run_id : String,
+) -> String {
   let steps = self.jobs.store().list_step_runs(run_id)
   let running = steps.filter(fn(step) { step.status is @job.RunStatus::Running })
   if !running.is_empty() {
     return running[0].step_id
   }
   if steps.is_empty() {
-    "pending"
+    match definition.workflow_id {
+      Some(workflow_id) =>
+        match self.jobs.store().get_workflow(workflow_id) {
+          Some(workflow) =>
+            workflow.steps.get(0).map(fn(step) { step.id }).unwrap_or("pending")
+          None => "pending"
+        }
+      None => "pending"
+    }
   } else {
     steps.sort_by(fn(left, right) {
       let left_ts = left.completed_at.unwrap_or(left.started_at.unwrap_or(0))
@@ -280,11 +292,19 @@ fn Gateway::job_status_text(
   now_ms : Int,
 ) -> String {
   let steps = self.jobs.store().list_step_runs(run.id)
-  let total_steps = steps.length()
+  let total_steps = match definition.workflow_id {
+    Some(workflow_id) =>
+      self.jobs
+      .store()
+      .get_workflow(workflow_id)
+      .map(fn(workflow) { workflow.steps.length() })
+      .unwrap_or(steps.length())
+    None => steps.length()
+  }
   let done_steps = steps
     .filter(fn(step) { step.status is @job.RunStatus::Succeeded })
     .length()
-  let current_step = self.job_current_step_label(run.id)
+  let current_step = self.job_current_step_label(definition, run.id)
   let elapsed_ms = run_elapsed_ms(run, now_ms)
   [
     "\{prefix}: \{definition.id}",

@@ -91,7 +91,27 @@ async fn Gateway::execute_job_run_async(
     should_cancel=fn() { self.job_should_cancel(run_id) },
     should_force_stop=fn() { self.job_should_force_stop(run_id) },
   )
-  let result = engine.execute_run(run_id, current_time_ms, control~)
+  let result = engine.execute_run(run_id, current_time_ms, control~) catch {
+    error => {
+      let message = "Job run \{run_id} crashed before completion: \{error}"
+      self.logger.warn(message)
+      ignore(
+        self.jobs.mark_run_failed(
+          run_id,
+          current_time_ms(),
+          message,
+          summary=Some("Job execution crashed"),
+        ),
+      )
+      match self.jobs.store().get_run(run_id) {
+        Some(updated_run) =>
+          self.notify_job_run_finished(definition, updated_run)
+        None => ()
+      }
+      self.clear_job_control_requests(run_id)
+      return
+    }
+  }
   match result {
     Ok(result) => {
       self.logger.info(
