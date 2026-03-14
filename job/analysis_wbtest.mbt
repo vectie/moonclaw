@@ -101,6 +101,16 @@ async test "analysis_step_handler persists report and result artifacts" {
 }
 
 ///|
+test "requested_model_name_or_none treats default as auto-detect" {
+  inspect(requested_model_name_or_none("default") is None, content="true")
+  inspect(requested_model_name_or_none("  ") is None, content="true")
+  inspect(
+    requested_model_name_or_none("qwen/qwen3-coder-plus").unwrap_or(""),
+    content="qwen/qwen3-coder-plus",
+  )
+}
+
+///|
 async test "analysis_step_handler skips when matching artifact already exists" {
   @fsx.with_temporary_directory("job-analysis-skip-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

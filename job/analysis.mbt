@@ -134,6 +134,16 @@ fn default_analysis_system_prompt() -> String {
 }
 
 ///|
+fn requested_model_name_or_none(name : String) -> String? {
+  let trimmed = name.trim().to_string()
+  if trimmed.is_blank() || trimmed == "default" {
+    None
+  } else {
+    Some(trimmed)
+  }
+}
+
+///|
 fn setup_analysis_agent(agent : @agent.Agent, cwd : String) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
@@ -259,10 +269,11 @@ fn timeout_error_message(step_id : String, timeout_ms : Int) -> String {
 ///|
 pub fn default_analysis_executor() -> AnalysisExecutor {
   AnalysisExecutor::new(run=async fn(request) {
+    let requested_model = requested_model_name_or_none(request.model_name)
     guard @model.load(
         home?=request.home.map(fn(home) { home[:] }),
         cwd=request.cwd[:],
-        name=request.model_name,
+        name?=requested_model,
       )
       is Some(model) else {
       return Err("Model not found: \{request.model_name}")
@@ -308,7 +319,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
       return Err(error)
     }
     Ok(AnalysisExecution::{
-      model_name: request.model_name,
+      model_name: model.name,
       content: final_content,
       conversation_id: Some(agent.id().to_string()),
       usage: final_usage,
