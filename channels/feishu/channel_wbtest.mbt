@@ -1170,3 +1170,78 @@ async test "Feishu websocket runtime requires websocket_url or platform endpoint
     group.return_immediately(())
   })
 }
+
+///|
+async test "Feishu websocket runtime refreshes resolved endpoint on reconnect" {
+  let manager = @channel.WebSocketClientRuntimeManager::new()
+  let runtime = manager.controller()
+  let channel = FeishuChannel::new()
+  channel.configure(@channel.ChannelConfig::{
+    enabled: true,
+    accounts: {
+      "websocket": {
+        "app_id": "app-ws-refresh",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "verify_token": "verify-ws",
+        "enabled": true,
+      },
+    },
+    global_settings: {},
+  })
+  channel.set_test_websocket_endpoint_sequence("app-ws-refresh", [
+    "ws://127.0.0.1:18080/first", "ws://127.0.0.1:18080/second",
+  ])
+  let dialed_urls : Array[String] = []
+  let connector = @channel.WebSocketClientConnector::new(connect=async fn(
+    request,
+  ) {
+    match request.metadata() {
+      { "url": String(url), .. } => dialed_urls.push(url)
+      _ => ()
+    }
+    Ok(
+      @channel.WebSocketManagedConnection::new(
+        connection=@channel.WebSocketConnection::new(
+          id="refresh-monitor-\{dialed_urls.length()}",
+          send=fn(_) {  },
+          close=fn() {  },
+        ),
+        wait_until_closed=async fn() { @async.sleep(10) },
+      ),
+    )
+  })
+
+  @async.with_task_group(group => {
+    group.spawn_bg(() => manager.start(), no_wait=true, allow_failure=true)
+    channel.on_register(
+      @channel.ExtensionContext::new(
+        gateway_url="http://localhost:18123",
+        home_dir="/tmp",
+        cwd="/tmp",
+        websocket_connector=Some(connector),
+        websocket_runtime=Some(runtime),
+      ),
+    )
+    let _ = channel.start(
+      "websocket",
+      Json::object({
+        "app_id": "app-ws-refresh",
+        "app_secret": "secret-ws",
+        "domain": "feishu",
+        "connection_mode": "websocket",
+        "dm_policy": "pairing",
+        "verify_token": "verify-ws",
+        "enabled": true,
+      }),
+    )
+    @async.sleep(2_250)
+    inspect(dialed_urls.length() >= 2, content="true")
+    inspect(dialed_urls[0], content="ws://127.0.0.1:18080/first")
+    inspect(dialed_urls[1], content="ws://127.0.0.1:18080/second")
+    runtime.stop_all()
+    group.return_immediately(())
+  })
+}

@@ -13,6 +13,7 @@ struct FeishuChannelState {
   processing_keys : Map[String, Bool]
   cancelled_queues : Map[String, Bool]
   mut websocket_chunks : Map[String, FeishuWebSocketChunkState]
+  websocket_endpoint_test_overrides : Map[String, Array[String]]
   mut message_handler : &@channel.MessageHandler?
 }
 
@@ -49,6 +50,7 @@ pub fn FeishuChannel::new() -> FeishuChannel {
       processing_keys: {},
       cancelled_queues: {},
       websocket_chunks: {},
+      websocket_endpoint_test_overrides: {},
       message_handler: None,
     },
   }
@@ -208,6 +210,7 @@ impl @channel.Channel for FeishuChannel with configure(
   self.state.processing_keys.clear()
   self.state.cancelled_queues.clear()
   self.state.websocket_chunks.clear()
+  self.state.websocket_endpoint_test_overrides.clear()
   for account_id, account_config in config.accounts {
     self.state.feishu_configs[account_id] = get_feishu_config(account_config)
   }
@@ -947,8 +950,19 @@ async fn FeishuChannel::resolve_websocket_endpoint(
   self : FeishuChannel,
   config : FeishuAccountConfig,
 ) -> Result[FeishuWebSocketEndpointData, @channel.ChannelError] {
-  ignore(self)
-  resolve_websocket_endpoint(config.app_id, config.app_secret, config.domain)
+  match self.state.websocket_endpoint_test_overrides.get(config.app_id) {
+    Some(urls) if !urls.is_empty() => {
+      let url = urls[0]
+      ignore(urls.remove(0))
+      Ok(FeishuWebSocketEndpointData::{ url, client_config: None })
+    }
+    _ =>
+      resolve_websocket_endpoint(
+        config.app_id,
+        config.app_secret,
+        config.domain,
+      )
+  }
 }
 
 ///|
@@ -960,32 +974,7 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
   match self.state.extension_context {
     Some(context) =>
       match (context.websocket_runtime(), context.websocket_connector()) {
-        (Some(runtime), Some(connector)) => {
-          self.log_info(
-            "Resolving Feishu websocket endpoint for account \{account_id}",
-          )
-          let endpoint = match config.websocket_url {
-            Some(url) if !url.is_blank() =>
-              Ok(FeishuWebSocketEndpointData::{ url, client_config: None })
-            _ => self.resolve_websocket_endpoint(config)
-          }
-          let endpoint = match endpoint {
-            Ok(endpoint) => endpoint
-            Err(error) => {
-              self.log_warn(
-                "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{error}",
-              )
-              return
-            }
-          }
-          self.log_info(
-            "Registering Feishu websocket client for account \{account_id} -> \{endpoint.url}",
-          )
-          let request = feishu_websocket_dial_request(
-            account_id,
-            endpoint.url,
-            config,
-          )
+        (Some(runtime), Some(connector)) =>
           runtime.upsert(
             @channel.WebSocketClientRegistration::new(
               spec=@channel.WebSocketClientSpec::new(
@@ -993,7 +982,34 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
                 label="Feishu[\{account_id}]",
                 reconnect_delay_ms=2_000,
               ),
-              connect=() => connector.connect(request),
+              connect=async fn() {
+                self.log_info(
+                  "Resolving Feishu websocket endpoint for account \{account_id}",
+                )
+                let endpoint = match config.websocket_url {
+                  Some(url) if !url.is_blank() =>
+                    Ok(FeishuWebSocketEndpointData::{ url, client_config: None })
+                  _ => self.resolve_websocket_endpoint(config)
+                }
+                let endpoint = match endpoint {
+                  Ok(endpoint) => endpoint
+                  Err(error) => {
+                    let message = "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{error}"
+                    self.log_warn(message)
+                    return Err(message)
+                  }
+                }
+                self.log_info(
+                  "Registering Feishu websocket client for account \{account_id} -> \{endpoint.url}",
+                )
+                connector.connect(
+                  feishu_websocket_dial_request(
+                    account_id,
+                    endpoint.url,
+                    config,
+                  ),
+                )
+              },
               on_connect=fn(conn) {
                 self.log_info(
                   "Feishu websocket connected for account \{account_id} as \{conn.id()}",
@@ -1003,7 +1019,6 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
               logger=context.logger(),
             ),
           )
-        }
         (Some(_), None) =>
           self.log_warn(
             "Feishu websocket account \{account_id} is enabled but no websocket connector is available",
@@ -1012,6 +1027,15 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
       }
     None => ()
   }
+}
+
+///|
+fn FeishuChannel::set_test_websocket_endpoint_sequence(
+  self : FeishuChannel,
+  app_id : String,
+  urls : Array[String],
+) -> Unit {
+  self.state.websocket_endpoint_test_overrides[app_id] = urls
 }
 
 ///|
