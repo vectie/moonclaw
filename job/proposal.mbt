@@ -222,6 +222,7 @@ fn proposal_payload_to_proposal(
     summary: payload.summary
     .map(fn(text) { text.trim().to_string() })
     .unwrap_or(fallback.summary),
+    revision_history: fallback.revision_history,
     status: Draft,
     steps: normalized_plan_steps(payload, request_text),
     tags: payload.tags.unwrap_or(fallback.tags),
@@ -251,11 +252,20 @@ fn planner_request_prompt(
       let rendered_steps = existing.steps
         .map(fn(step) { "- \{step.id}: \{step.title}" })
         .join("\n")
+      let revision_notes = if existing.revision_history.is_empty() {
+        ""
+      } else {
+        let items = existing.revision_history
+          .map(fn(item) { "- \{item}" })
+          .join("\n")
+        "Previous revision guidance:\n\{items}"
+      }
       [
         ..parts,
         "Existing proposal title: \{existing.title}",
         "Existing proposal summary: \{existing.summary}",
         "Existing proposal steps:\n\{rendered_steps}",
+        revision_notes,
       ]
     }
     None => parts
@@ -380,22 +390,35 @@ pub async fn revise_job_proposal(
   }
   let execution = match (executor.run)(request) {
     Ok(execution) => execution
-    Err(_) => return JobProposal::{ ..proposal, updated_at: now_ms }
+    Err(_) =>
+      return JobProposal::{
+        ..proposal,
+        revision_history: [..proposal.revision_history, revision],
+        updated_at: now_ms,
+      }
   }
   match maybe_parse_payload(execution.content) {
     Some(payload) =>
-      proposal_payload_to_proposal(
-        proposal.id,
-        proposal.request_text,
-        payload,
-        now_ms,
-        proposal.channel_id,
-        proposal.account_id,
-        proposal.recipient,
-        proposal.thread_id,
-        existing=Some(proposal),
-      )
-    None => JobProposal::{ ..proposal, updated_at: now_ms }
+      JobProposal::{
+        ..proposal_payload_to_proposal(
+          proposal.id,
+          proposal.request_text,
+          payload,
+          now_ms,
+          proposal.channel_id,
+          proposal.account_id,
+          proposal.recipient,
+          proposal.thread_id,
+          existing=Some(proposal),
+        ),
+        revision_history: [..proposal.revision_history, revision],
+      }
+    None =>
+      JobProposal::{
+        ..proposal,
+        revision_history: [..proposal.revision_history, revision],
+        updated_at: now_ms,
+      }
   }
 }
 
@@ -424,6 +447,7 @@ pub fn draft_job_proposal(
     summary: [
       "Draft job proposal generated from chat request.", "This proposal will not execute until explicitly confirmed.",
     ].join(" "),
+    revision_history: [],
     status: Draft,
     steps,
     tags: infer_job_tags(request_text),

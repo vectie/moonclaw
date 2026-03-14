@@ -82,4 +82,28 @@ async test "revise_job_proposal updates draft from model JSON" {
   inspect(revised.title, content="Security-focused repo review")
   inspect(revised.steps.length(), content="2")
   inspect(revised.summary.contains("security"), content="true")
+  inspect(
+    revised.revision_history.join("|"),
+    content="Focus on security and deployment risks.",
+  )
+}
+
+///|
+async test "revise_job_proposal carries prior revision history into later revisions" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal("proposal-5", "Review a repository.", 100),
+    revision_history: ["focus on security"],
+  }
+  let revised = revise_job_proposal(
+    proposal,
+    "also cover deployment risks",
+    120,
+    executor=fake_planner_executor(
+      "{\"title\":\"Security and deployment review\",\"summary\":\"Review with both security and deployment focus.\",\"tags\":[\"job\",\"review\"],\"steps\":[{\"id\":\"inspect\",\"title\":\"Inspect code\",\"prompt\":\"Inspect risky code.\",\"kind\":\"job.analysis\"}]}",
+    ),
+  )
+  inspect(
+    revised.revision_history.join("|"),
+    content="focus on security|also cover deployment risks",
+  )
 }

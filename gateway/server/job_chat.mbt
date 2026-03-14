@@ -532,6 +532,7 @@ async fn Gateway::handle_confirm_job_command(
     [
       "Confirmed proposal `\{proposal_id}`.",
       "Created job `\{definition.id}` and started run `\{run.id}`.",
+      "Check status with `/job-status \{definition.id}` or `/job-status \{run.id}`.",
       "You will receive start, progress, and completion notifications here.",
     ].join("\n"),
   )
@@ -624,26 +625,17 @@ fn Gateway::handle_job_status_command(
   channel_id : String,
   account_id : String,
   message : @channel.Message,
-  job_id : String,
+  job_or_run_id : String,
 ) -> @channel.Message {
-  let definition = match self.jobs.store().get_definition(job_id) {
-    Some(definition) => definition
+  let trimmed = job_or_run_id.trim().to_string()
+  let (definition, run) = match self.resolve_job_status_target(trimmed) {
+    Some(resolved) => resolved
     None =>
       return self.job_reply_message(
         channel_id,
         account_id,
         message,
-        "Unknown job id: \{job_id}",
-      )
-  }
-  let run = match self.job_run_for_definition(job_id) {
-    Some(run) => run
-    None =>
-      return self.job_reply_message(
-        channel_id,
-        account_id,
-        message,
-        "No pending or running job found for \{job_id}",
+        "Unknown job or run id: \{trimmed}",
       )
   }
   self.job_reply_message(
@@ -657,6 +649,30 @@ fn Gateway::handle_job_status_command(
       current_time_ms(),
     ),
   )
+}
+
+///|
+fn Gateway::resolve_job_status_target(
+  self : Gateway,
+  job_or_run_id : String,
+) -> (@job.JobDefinition, @job.JobRun)? {
+  let trimmed = job_or_run_id.trim().to_string()
+  match self.jobs.store().get_definition(trimmed) {
+    Some(definition) =>
+      match self.job_run_for_definition(trimmed) {
+        Some(run) => Some((definition, run))
+        None => None
+      }
+    None =>
+      match self.jobs.store().get_run(trimmed) {
+        Some(run) =>
+          match self.jobs.store().get_definition(run.job_id) {
+            Some(definition) => Some((definition, run))
+            None => None
+          }
+        None => None
+      }
+  }
 }
 
 ///|

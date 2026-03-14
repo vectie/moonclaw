@@ -107,6 +107,7 @@ fn sample_proposal() -> JobProposal {
     title: "Track recent agent papers",
     request_text: "Track recent agent papers and summarize findings.",
     summary: "Draft proposal for research tracking.",
+    revision_history: [],
     status: JobProposalStatus::Draft,
     steps: [
       JobProposalStep::{
