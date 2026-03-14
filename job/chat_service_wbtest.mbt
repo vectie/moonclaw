@@ -269,6 +269,9 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
       async fn() { "jobs" },
       async fn(args, force) { "\{args}:\{force}" },
       async fn(_args) { "notify" },
+      async fn(_args) { "remember" },
+      async fn() { "memories" },
+      async fn(_args) { "memory-search" },
     ).unwrap_or(""),
     content="jobs",
   )
@@ -283,7 +286,44 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
       async fn() { "jobs" },
       async fn(args, force) { "\{args}:\{force}" },
       async fn(_args) { "notify" },
+      async fn(_args) { "remember" },
+      async fn() { "memories" },
+      async fn(_args) { "memory-search" },
     ).unwrap_or(""),
     content="run-1:true",
+  )
+  inspect(
+    dispatch_job_chat_action(
+      Some(JobChatAction::Remember("note")),
+      async fn(_args) { "plan" },
+      async fn(_args) { "confirm" },
+      async fn(_args) { "reject" },
+      async fn(_args) { "revise" },
+      async fn(_args) { "status" },
+      async fn() { "jobs" },
+      async fn(args, force) { "\{args}:\{force}" },
+      async fn(_args) { "notify" },
+      async fn(args) { "remember:\{args}" },
+      async fn() { "memories" },
+      async fn(args) { "search:\{args}" },
+    ).unwrap_or(""),
+    content="remember:note",
+  )
+  inspect(
+    dispatch_job_chat_action(
+      Some(JobChatAction::Memories),
+      async fn(_args) { "plan" },
+      async fn(_args) { "confirm" },
+      async fn(_args) { "reject" },
+      async fn(_args) { "revise" },
+      async fn(_args) { "status" },
+      async fn() { "jobs" },
+      async fn(args, force) { "\{args}:\{force}" },
+      async fn(_args) { "notify" },
+      async fn(_args) { "remember" },
+      async fn() { "memories" },
+      async fn(args) { "search:\{args}" },
+    ).unwrap_or(""),
+    content="memories",
   )
 }

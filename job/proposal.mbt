@@ -273,8 +273,14 @@ fn planner_request_prompt(
   request_text : String,
   revision? : String? = None,
   existing? : JobProposal? = None,
+  memory_context? : String? = None,
 ) -> String {
   let parts = ["Create a draft plan for this requested job:", request_text]
+  let parts = match memory_context {
+    Some(memory_context) if !memory_context.trim().to_string().is_blank() =>
+      [..parts, memory_context]
+    _ => parts
+  }
   let parts = match existing {
     Some(existing) => {
       let rendered_steps = existing.steps
@@ -352,12 +358,13 @@ pub async fn plan_job_proposal(
   model? : String? = None,
   cwd? : String = ".",
   home? : String? = None,
+  memory_context? : String? = None,
 ) -> JobProposal {
   let request = AnalysisRequest::{
     job_id: "proposal:\{proposal_id}",
     run_id: "proposal:\{proposal_id}",
     step_id: "planner",
-    prompt: planner_request_prompt(request_text),
+    prompt: planner_request_prompt(request_text, memory_context~),
     model_name: model.unwrap_or("default"),
     cwd,
     home,
@@ -398,6 +405,7 @@ pub async fn revise_job_proposal(
   model? : String? = None,
   cwd? : String = ".",
   home? : String? = None,
+  memory_context? : String? = None,
 ) -> JobProposal {
   let request = AnalysisRequest::{
     job_id: "proposal:\{proposal.id}",
@@ -407,6 +415,7 @@ pub async fn revise_job_proposal(
       proposal.request_text,
       revision=Some(revision),
       existing=Some(proposal),
+      memory_context~,
     ),
     model_name: model.unwrap_or("default"),
     cwd,

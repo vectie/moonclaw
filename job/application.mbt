@@ -50,6 +50,68 @@ pub fn GatewayJobApp::next_id(self : GatewayJobApp) -> String {
 }
 
 ///|
+fn unique_memory_hits(
+  hits : Array[MemorySearchHit],
+  extra : Array[MemorySearchHit],
+  limit : Int,
+) -> Array[MemorySearchHit] {
+  let combined : Array[MemorySearchHit] = []
+  let seen : Map[String, Bool] = {}
+  for hit in hits {
+    if combined.length() >= limit {
+      break
+    }
+    if !seen.contains(hit.memory_id) {
+      seen.set(hit.memory_id, true)
+      combined.push(hit)
+    }
+  }
+  for hit in extra {
+    if combined.length() >= limit {
+      break
+    }
+    if !seen.contains(hit.memory_id) {
+      seen.set(hit.memory_id, true)
+      combined.push(hit)
+    }
+  }
+  combined
+}
+
+///|
+fn GatewayJobApp::planning_memory_context(
+  self : GatewayJobApp,
+  request_text : String,
+  channel_id : String?,
+  account_id : String?,
+  recipient : String?,
+  thread_id : String?,
+) -> String {
+  let memories = MemoryService::new(store=self.runtime().store())
+  let scoped_hits = memories.search(
+    request_text,
+    query=MemoryQuery::new(
+      workspace=Some(self.cwd),
+      channel_id~,
+      account_id~,
+      recipient~,
+      thread_id~,
+      status=Some(MemoryStatus::Active),
+    ),
+    max_hits=4,
+  )
+  let workspace_hits = memories.search(
+    request_text,
+    query=MemoryQuery::new(
+      workspace=Some(self.cwd),
+      status=Some(MemoryStatus::Active),
+    ),
+    max_hits=4,
+  )
+  render_memory_hits_prompt(unique_memory_hits(scoped_hits, workspace_hits, 4))
+}
+
+///|
 pub async fn GatewayJobApp::plan_proposal(
   self : GatewayJobApp,
   request_text : String,
@@ -59,6 +121,9 @@ pub async fn GatewayJobApp::plan_proposal(
   thread_id? : String? = None,
   model? : String? = None,
 ) -> JobProposal {
+  let memory_context = self.planning_memory_context(
+    request_text, channel_id, account_id, recipient, thread_id,
+  )
   plan_job_proposal(
     self.next_id(),
     request_text,
@@ -70,6 +135,7 @@ pub async fn GatewayJobApp::plan_proposal(
     model~,
     cwd=self.cwd,
     home=Some(self.home),
+    memory_context=Some(memory_context),
   )
 }
 
@@ -79,12 +145,20 @@ pub async fn GatewayJobApp::revise_proposal(
   proposal : JobProposal,
   guidance : String,
 ) -> JobProposal {
+  let memory_context = self.planning_memory_context(
+    proposal.request_text,
+    proposal.channel_id,
+    proposal.account_id,
+    proposal.recipient,
+    proposal.thread_id,
+  )
   revise_job_proposal(
     proposal,
     guidance,
     self.now(),
     cwd=self.cwd,
     home=Some(self.home),
+    memory_context=Some(memory_context),
   )
 }
 

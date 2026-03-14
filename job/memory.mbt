@@ -217,3 +217,51 @@ pub fn MemoryService::search(
   }
   hits[:limit].to_array()
 }
+
+///|
+pub fn render_memory_hits_prompt(
+  hits : Array[MemorySearchHit],
+  header? : String = "Relevant long-term memory",
+) -> String {
+  if hits.is_empty() {
+    return ""
+  }
+  let lines = [header + ":"]
+  for hit in hits {
+    let label = hit.title.unwrap_or(hit.kind)
+    let tag_text = hit.tags.join(",")
+    let scope_text = hit.scope.join("/")
+    let tags = if hit.tags.is_empty() { "" } else { " tags=\{tag_text}" }
+    let scope = if hit.scope.is_empty() { "" } else { " scope=\{scope_text}" }
+    lines.push("- [\{hit.memory_id}] \{label}\{tags}\{scope}")
+    lines.push("  \{hit.snippet}")
+  }
+  lines.join("\n")
+}
+
+///|
+pub fn render_memory_records_prompt(
+  records : Array[MemoryRecord],
+  header? : String = "Relevant long-term memory",
+) -> String {
+  if records.is_empty() {
+    return ""
+  }
+  let hits = records.map(fn(record) {
+    MemorySearchHit::{
+      memory_id: record.id,
+      kind: record.kind,
+      title: record.title,
+      score: 0,
+      snippet: memory_snippet(record.content, []),
+      tags: record.tags,
+      scope: record.scope,
+      workspace: record.workspace,
+      channel_id: record.channel_id,
+      account_id: record.account_id,
+      recipient: record.recipient,
+      thread_id: record.thread_id,
+    }
+  })
+  render_memory_hits_prompt(hits, header~)
+}

@@ -114,6 +114,22 @@ fn Gateway::handle_jobs_command(
 }
 
 ///|
+fn channel_memory_query(
+  channel_id : String,
+  account_id : String,
+  recipient : String,
+  thread_id : String?,
+) -> @job.MemoryQuery {
+  @job.MemoryQuery::new(
+    channel_id=Some(channel_id),
+    account_id=Some(account_id),
+    recipient=Some(recipient),
+    thread_id~,
+    status=Some(@job.MemoryStatus::Active),
+  )
+}
+
+///|
 async fn Gateway::handle_job_stop_command(
   self : Gateway,
   channel_id : String,
@@ -143,6 +159,110 @@ async fn Gateway::handle_job_stop_command(
       self.job_reply_message(channel_id, account_id, message, content)
     Err(error) => self.job_reply_message(channel_id, account_id, message, error)
   }
+}
+
+///|
+async fn Gateway::handle_remember_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  args : String,
+) -> @channel.Message {
+  let content = args.trim().to_string()
+  guard !content.is_blank() else {
+    return self.job_reply_message(
+      channel_id,
+      account_id,
+      message,
+      @job.render_remember_usage(),
+    )
+  }
+  let preview_len = if content.length() < 48 { content.length() } else { 48 }
+  let memory = @job.MemoryService::new(store=self.job_runtime().store()).remember(
+    @job.MemoryWriteRequest::new(
+      kind="note",
+      content~,
+      title=Some(content[:preview_len].trim().to_string()),
+      tags=["chat", "remember"],
+      scope=[
+        "channel:\{channel_id}",
+        "channel:\{channel_id}:account:\{account_id}",
+        "recipient:\{message.to}",
+      ],
+      workspace=Some(self.cwd),
+      channel_id=Some(channel_id),
+      account_id=Some(account_id),
+      recipient=Some(message.to),
+      thread_id=message.thread_id,
+    ),
+    self.uuid.v4().to_string(),
+    current_time_ms(),
+  )
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_memory_saved_reply(memory),
+  )
+}
+
+///|
+async fn Gateway::handle_memories_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> @channel.Message {
+  let memories = @job.MemoryService::new(store=self.job_runtime().store()).list(
+    query=channel_memory_query(
+      channel_id,
+      account_id,
+      message.to,
+      message.thread_id,
+    ),
+  )
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_memories_reply(memories),
+  )
+}
+
+///|
+async fn Gateway::handle_memory_search_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  args : String,
+) -> @channel.Message {
+  let question = args.trim().to_string()
+  guard !question.is_blank() else {
+    return self.job_reply_message(
+      channel_id,
+      account_id,
+      message,
+      @job.render_memory_search_usage(),
+    )
+  }
+  let hits = @job.MemoryService::new(store=self.job_runtime().store()).search(
+    question,
+    query=channel_memory_query(
+      channel_id,
+      account_id,
+      message.to,
+      message.thread_id,
+    ),
+    max_hits=5,
+  )
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_memory_search_reply(question, hits),
+  )
 }
 
 ///|
@@ -462,6 +582,13 @@ async fn Gateway::handle_job_chat_command(
     },
     async fn(args) {
       self.handle_job_notify_command(channel_id, account_id, message, args)
+    },
+    async fn(args) {
+      self.handle_remember_command(channel_id, account_id, message, args)
+    },
+    async fn() { self.handle_memories_command(channel_id, account_id, message) },
+    async fn(args) {
+      self.handle_memory_search_command(channel_id, account_id, message, args)
     },
   )
 }

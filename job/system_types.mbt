@@ -386,6 +386,7 @@ pub(all) struct ChatAnswer {
   answer : String
   citations : Array[ChatCitation]
   hits : Array[RetrievalHit]
+  memory_hits : Array[MemorySearchHit]
 } derive(ToJson, FromJson, Show)
 
 ///|

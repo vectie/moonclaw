@@ -154,6 +154,73 @@ async test "analysis_step_handler loads local skill file content into prompt" {
 }
 
 ///|
+async test "analysis_step_handler includes relevant memory context in prompt" {
+  @fsx.with_temporary_directory("job-analysis-memory-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Summarize the parsed paper output.",
+      cwd=Some(dir),
+      artifacts=AnalysisArtifactConfig::new(scope=["research"]),
+    )
+    let engine = analysis_test_engine(root, config)
+    engine.runtime
+    .store()
+    .save_memory(MemoryRecord::{
+      id: "memory-analysis-1",
+      kind: "note",
+      title: Some("research memory"),
+      content: "Remember to highlight benchmark coverage and action-conditioned evaluation.",
+      metadata: {},
+      tags: ["research"],
+      scope: ["research"],
+      workspace: Some(dir),
+      agent_id: None,
+      channel_id: None,
+      account_id: None,
+      recipient: None,
+      thread_id: None,
+      source_artifact_id: None,
+      status: MemoryStatus::Active,
+      created_at: 10,
+      updated_at: 10,
+      archived_at: None,
+    })
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: request.prompt,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    let _ = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    let artifacts = ArtifactStore::new(store=engine.runtime.store())
+    let report_artifact = artifacts.list(
+        query=ArtifactQuery::new(artifact_type=Some("analysis.report")),
+      )[0]
+    let report_text = artifacts.read_text(report_artifact.id).unwrap_or("")
+    inspect(
+      report_text.contains("Relevant long-term memory for this step"),
+      content="true",
+    )
+    inspect(
+      report_text.contains("action-conditioned evaluation"),
+      content="true",
+    )
+  })
+}
+
+///|
 test "requested_model_name_or_none treats default as auto-detect" {
   inspect(requested_model_name_or_none("default") is None, content="true")
   inspect(requested_model_name_or_none("  ") is None, content="true")

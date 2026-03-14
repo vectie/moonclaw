@@ -2,11 +2,16 @@
 pub struct ChatService {
   store : SystemStore
   artifacts : ArtifactStore
+  memories : MemoryService
 }
 
 ///|
 pub fn ChatService::new(store~ : SystemStore) -> ChatService {
-  ChatService::{ artifacts: ArtifactStore::new(store~), store }
+  ChatService::{
+    artifacts: ArtifactStore::new(store~),
+    memories: MemoryService::new(store~),
+    store,
+  }
 }
 
 ///|
@@ -187,15 +192,27 @@ async fn ChatService::retrieve_merged(
 }
 
 ///|
-fn answer_from_hits(question : String, hits : Array[RetrievalHit]) -> String {
-  guard !hits.is_empty() else {
+fn answer_from_hits(
+  question : String,
+  hits : Array[RetrievalHit],
+  memory_hits : Array[MemorySearchHit],
+) -> String {
+  guard !(hits.is_empty() && memory_hits.is_empty()) else {
     return "No matching artifacts found for: \{question}"
   }
-  let lines = ["Found \{hits.length()} relevant artifact(s) for: \{question}"]
+  let lines = [
+    "Found \{hits.length()} relevant artifact(s) and \{memory_hits.length()} memory record(s) for: \{question}",
+  ]
   for index in 0..<hits.length() {
     let hit = hits[index]
     let label = hit.logical_key.unwrap_or(hit.artifact_id)
     lines.push("[\{index + 1}] \{label}: \{hit.snippet}")
+  }
+  let base_index = hits.length()
+  for index in 0..<memory_hits.length() {
+    let hit = memory_hits[index]
+    let label = hit.title.unwrap_or(hit.memory_id)
+    lines.push("[\{base_index + index + 1}] memory \{label}: \{hit.snippet}")
   }
   lines.join("\n")
 }
@@ -219,6 +236,15 @@ pub async fn ChatService::ask(
     binding.map(fn(binding) { binding.artifact_query }),
     params.max_hits.unwrap_or(5),
   )
+  let memory_scope = binding.bind(fn(binding) { binding.scope.get(0) })
+  let memory_hits = self.memories.search(
+    params.question,
+    query=MemoryQuery::new(
+      scope=memory_scope,
+      status=Some(MemoryStatus::Active),
+    ),
+    max_hits=params.max_hits.unwrap_or(5),
+  )
   let citations = hits.map(fn(hit) {
     ChatCitation::{
       artifact_id: hit.artifact_id,
@@ -232,8 +258,9 @@ pub async fn ChatService::ask(
   Ok(ChatAnswer::{
     binding_id: binding.map(fn(binding) { binding.id }),
     question: params.question,
-    answer: answer_from_hits(params.question, hits),
+    answer: answer_from_hits(params.question, hits, memory_hits),
     citations,
     hits,
+    memory_hits,
   })
 }

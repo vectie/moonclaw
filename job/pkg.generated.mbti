@@ -27,7 +27,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn default_paper_text_extractor() -> PaperTextExtractor
 
-pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T) -> T?
+pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
@@ -63,7 +63,7 @@ pub fn parse_reply_thread_job_action(String) -> (String, String)?
 
 pub fn parse_revise_args(String) -> (String, String)?
 
-pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?) -> JobProposal
+pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, memory_context? : String?) -> JobProposal
 
 pub fn preferred_templates_for_capabilities(Array[String]) -> Array[String]
 
@@ -95,9 +95,23 @@ pub fn render_job_stop_usage(Bool) -> String
 
 pub fn render_jobs_command_reply(SystemStore, Array[JobRun]) -> String
 
+pub fn render_memories_reply(Array[MemoryRecord]) -> String
+
+pub fn render_memory_hits_prompt(Array[MemorySearchHit], header? : String) -> String
+
+pub fn render_memory_records_prompt(Array[MemoryRecord], header? : String) -> String
+
+pub fn render_memory_saved_reply(MemoryRecord) -> String
+
+pub fn render_memory_search_reply(String, Array[MemorySearchHit]) -> String
+
+pub fn render_memory_search_usage() -> String
+
 pub fn render_progress_notification(String, String, String) -> String
 
 pub fn render_rejected_job_reply(String) -> String
+
+pub fn render_remember_usage() -> String
 
 pub fn render_revise_usage(Bool) -> String
 
@@ -141,7 +155,7 @@ pub fn resolve_status_target(SystemStore, String, active_run_id? : String?) -> (
 
 pub fn resolve_target_proposal(SystemStore, String, String?) -> JobProposal?
 
-pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?) -> JobProposal
+pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?, memory_context? : String?) -> JobProposal
 
 pub async fn save_confirmed_job_proposal(SystemStore, JobProposal, ProposalCompilation, String, Int) -> Unit
 
@@ -406,6 +420,7 @@ pub(all) struct ChatAnswer {
   answer : String
   citations : Array[ChatCitation]
   hits : Array[RetrievalHit]
+  memory_hits : Array[MemorySearchHit]
 }
 pub impl Show for ChatAnswer
 pub impl ToJson for ChatAnswer
@@ -443,6 +458,7 @@ pub impl @json.FromJson for ChatCitation
 pub struct ChatService {
   store : SystemStore
   artifacts : ArtifactStore
+  memories : MemoryService
 }
 pub async fn ChatService::ask(Self, JobAskParams) -> Result[ChatAnswer, String]
 pub fn ChatService::new(store~ : SystemStore) -> Self
@@ -575,6 +591,9 @@ pub(all) enum JobChatAction {
   JobStop(String)
   JobForceStop(String)
   JobNotify(String)
+  Remember(String)
+  Memories
+  MemorySearch(String)
 }
 pub impl Show for JobChatAction
 

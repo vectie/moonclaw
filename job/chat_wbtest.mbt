@@ -38,6 +38,26 @@ async test "ChatService retrieves active artifacts and returns citations" {
       ),
     )
     ignore(artifacts.archive("artifact-2", 300))
+    store.save_memory(MemoryRecord::{
+      id: "memory-1",
+      kind: "note",
+      title: Some("planning note"),
+      content: "Agent planning should prefer long-context diffusion transformers.",
+      metadata: {},
+      tags: ["research"],
+      scope: ["research"],
+      workspace: None,
+      agent_id: None,
+      channel_id: None,
+      account_id: None,
+      recipient: None,
+      thread_id: None,
+      source_artifact_id: None,
+      status: MemoryStatus::Active,
+      created_at: 150,
+      updated_at: 150,
+      archived_at: None,
+    })
 
     let chat = ChatService::new(store~)
     let result = match
@@ -52,8 +72,10 @@ async test "ChatService retrieves active artifacts and returns citations" {
     }
 
     inspect(result.hits.length(), content="1")
+    inspect(result.memory_hits.length(), content="1")
     inspect(result.citations[0].artifact_id, content="artifact-1")
     inspect(result.answer.contains("artifact(s)"), content="true")
+    inspect(result.answer.contains("memory record(s)"), content="true")
     inspect(result.answer.contains("planning"), content="true")
   })
 }

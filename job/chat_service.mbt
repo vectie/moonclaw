@@ -20,6 +20,9 @@ pub(all) enum JobChatAction {
   JobStop(String)
   JobForceStop(String)
   JobNotify(String)
+  Remember(String)
+  Memories
+  MemorySearch(String)
 } derive(Show)
 
 ///|
@@ -387,6 +390,9 @@ pub fn parse_job_chat_action(
     "/job-stop" => Some(JobChatAction::JobStop(args))
     "/job-force-stop" => Some(JobChatAction::JobForceStop(args))
     "/job-notify" => Some(JobChatAction::JobNotify(args))
+    "/remember" => Some(JobChatAction::Remember(args))
+    "/memories" => Some(JobChatAction::Memories)
+    "/memory-search" => Some(JobChatAction::MemorySearch(args))
     _ => None
   }
 }
@@ -402,6 +408,9 @@ pub async fn[T] dispatch_job_chat_action(
   on_jobs : async () -> T,
   on_stop : async (String, Bool) -> T,
   on_notify : async (String) -> T,
+  on_remember : async (String) -> T,
+  on_memories : async () -> T,
+  on_memory_search : async (String) -> T,
 ) -> T? {
   match action {
     Some(JobChatAction::PlanJob(args)) => Some(on_plan(args))
@@ -413,6 +422,9 @@ pub async fn[T] dispatch_job_chat_action(
     Some(JobChatAction::JobStop(args)) => Some(on_stop(args, false))
     Some(JobChatAction::JobForceStop(args)) => Some(on_stop(args, true))
     Some(JobChatAction::JobNotify(args)) => Some(on_notify(args))
+    Some(JobChatAction::Remember(args)) => Some(on_remember(args))
+    Some(JobChatAction::Memories) => Some(on_memories())
+    Some(JobChatAction::MemorySearch(args)) => Some(on_memory_search(args))
     None => None
   }
 }
@@ -573,4 +585,54 @@ pub fn render_job_notify_usage() -> String {
 ///|
 pub fn render_job_notify_updated(verbosity : NotificationVerbosity) -> String {
   "Job notifications set to \{verbosity.to_json().stringify()} for this chat scope."
+}
+
+///|
+pub fn render_remember_usage() -> String {
+  "Usage: /remember <note>"
+}
+
+///|
+pub fn render_memory_search_usage() -> String {
+  "Usage: /memory-search <question>"
+}
+
+///|
+pub fn render_memory_saved_reply(memory : MemoryRecord) -> String {
+  let title = memory.title.unwrap_or(memory.id)
+  ["Saved memory `\{memory.id}`.", "Kind: \{memory.kind}", "Title: \{title}"].join(
+    "\n",
+  )
+}
+
+///|
+pub fn render_memories_reply(memories : Array[MemoryRecord]) -> String {
+  if memories.is_empty() {
+    return "No active memories for this chat scope."
+  }
+  let lines = ["Memories:"]
+  for memory in memories {
+    lines.push(
+      "- `\{memory.id}` \{memory.title.unwrap_or(memory.kind)} [\{memory.kind}]",
+    )
+  }
+  lines.join("\n")
+}
+
+///|
+pub fn render_memory_search_reply(
+  question : String,
+  hits : Array[MemorySearchHit],
+) -> String {
+  if hits.is_empty() {
+    return "No matching memories found for: \{question}"
+  }
+  let lines = ["Memory matches for: \{question}"]
+  for index in 0..<hits.length() {
+    let hit = hits[index]
+    lines.push(
+      "[\{index + 1}] \{hit.title.unwrap_or(hit.memory_id)}: \{hit.snippet}",
+    )
+  }
+  lines.join("\n")
 }

@@ -246,11 +246,13 @@ fn build_analysis_prompt(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
   skills_prompt : String,
+  memory_prompt : String,
 ) -> String {
   let sections = [
     config.prompt,
     preferred_skills_prompt(config.preferred_skills),
     skills_prompt,
+    memory_prompt,
     "Job id: \{context.run.job_id}",
     "Run id: \{context.run.id}",
     "Step id: \{context.step.id}",
@@ -270,6 +272,68 @@ fn build_analysis_prompt(
     [..sections, "Previous step outputs:\n\{rendered_text}"]
   }
   sections.filter(fn(section) { !section.is_blank() }).join("\n\n")
+}
+
+///|
+fn analysis_memory_query(config : AnalysisStepConfig) -> MemoryQuery {
+  MemoryQuery::new(
+    workspace=config.cwd,
+    scope=config.artifacts.scope.get(0),
+    status=Some(MemoryStatus::Active),
+  )
+}
+
+///|
+fn analysis_memory_search_text(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+) -> String {
+  let sections = [config.prompt]
+  let sections = match context.initial_input {
+    Some(input) => [..sections, input.stringify()]
+    None => sections
+  }
+  if context.outputs.is_empty() {
+    sections.join("\n")
+  } else {
+    let rendered : Array[String] = []
+    for step_id, output in context.outputs {
+      rendered.push("[\{step_id}] \{output.stringify()}")
+    }
+    [..sections, rendered.join("\n")].join("\n")
+  }
+}
+
+///|
+fn analysis_memory_prompt(
+  store : SystemStore,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+) -> String {
+  let memories = MemoryService::new(store~)
+  let query = analysis_memory_query(config)
+  let hits = memories.search(
+    analysis_memory_search_text(context, config),
+    query~,
+    max_hits=4,
+  )
+  if !hits.is_empty() {
+    return render_memory_hits_prompt(
+      hits,
+      header="Relevant long-term memory for this step",
+    )
+  }
+  let fallback = memories.list(query~)
+  fallback.sort_by(fn(left, right) { right.updated_at.compare(left.updated_at) })
+  let fallback = if fallback.length() > 4 {
+    fallback[:4].to_array()
+  } else {
+    fallback
+  }
+  render_memory_records_prompt(
+    fallback,
+    header="Relevant long-term memory for this step",
+  )
 }
 
 ///|
@@ -435,11 +499,14 @@ pub fn analysis_step_handler(
       config.home,
       config.preferred_skills,
     )
+    let memory_prompt = analysis_memory_prompt(store, context, config)
     let request = AnalysisRequest::{
       job_id: context.run.job_id,
       run_id: context.run.id,
       step_id: context.step.id,
-      prompt: build_analysis_prompt(context, config, skills_prompt),
+      prompt: build_analysis_prompt(
+        context, config, skills_prompt, memory_prompt,
+      ),
       model_name: config.model.unwrap_or("default"),
       cwd: config.cwd.unwrap_or("."),
       home: config.home,

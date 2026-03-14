@@ -57,6 +57,27 @@ test "parse_job_chat_action recognizes slash and reply commands" {
     content="run-1",
   )
   inspect(
+    match @job.parse_job_chat_action("/remember save this note", false) {
+      Some(@job.JobChatAction::Remember(args)) => args
+      _ => ""
+    },
+    content="save this note",
+  )
+  inspect(
+    match @job.parse_job_chat_action("/memories", false) {
+      Some(@job.JobChatAction::Memories) => "memories"
+      _ => ""
+    },
+    content="memories",
+  )
+  inspect(
+    match @job.parse_job_chat_action("/memory-search retrieval", false) {
+      Some(@job.JobChatAction::MemorySearch(args)) => args
+      _ => ""
+    },
+    content="retrieval",
+  )
+  inspect(
     match @job.parse_job_chat_action("hello", false) {
       None => true
       _ => false

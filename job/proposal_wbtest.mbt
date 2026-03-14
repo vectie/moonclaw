@@ -68,6 +68,36 @@ async test "plan_job_proposal uses model JSON when available" {
 }
 
 ///|
+async test "plan_job_proposal includes relevant memory context in planner prompt" {
+  let proposal = plan_job_proposal(
+    "proposal-memory-1",
+    "Create a weekly research monitoring job.",
+    100,
+    executor=AnalysisExecutor::new(run=fn(request) {
+      let marker = request.prompt.contains("Relevant long-term memory")
+      let note = request.prompt.contains(
+        "Prefer VLA papers and weekday digests.",
+      )
+      Ok(AnalysisExecution::{
+        model_name: "default",
+        content: if marker && note {
+          "{\"title\":\"Memory-aware plan\",\"summary\":\"Planner used memory context.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Collect\",\"prompt\":\"Collect.\",\"kind\":\"job.analysis\"}]}"
+        } else {
+          "{\"title\":\"Missing memory\",\"summary\":\"Planner missed memory context.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Collect\",\"prompt\":\"Collect.\",\"kind\":\"job.analysis\"}]}"
+        },
+        conversation_id: None,
+        usage: None,
+        metadata: {},
+      })
+    }),
+    memory_context=Some(
+      "Relevant long-term memory:\n- [memory-1] note\n  Prefer VLA papers and weekday digests.",
+    ),
+  )
+  inspect(proposal.title, content="Memory-aware plan")
+}
+
+///|
 async test "revise_job_proposal updates draft from model JSON" {
   let proposal = draft_job_proposal(
     "proposal-4", "Review a repository and produce findings.", 100,
@@ -87,6 +117,39 @@ async test "revise_job_proposal updates draft from model JSON" {
     revised.revision_history.join("|"),
     content="Focus on security and deployment risks.",
   )
+}
+
+///|
+async test "revise_job_proposal includes memory context in revise prompt" {
+  let proposal = draft_job_proposal(
+    "proposal-memory-2", "Review a repository and produce findings.", 100,
+  )
+  let revised = revise_job_proposal(
+    proposal,
+    "Focus on deployment risks.",
+    120,
+    executor=AnalysisExecutor::new(run=fn(request) {
+      let marker = request.prompt.contains("Relevant long-term memory")
+      let note = request.prompt.contains(
+        "Deployment changes need rollback notes.",
+      )
+      Ok(AnalysisExecution::{
+        model_name: "default",
+        content: if marker && note {
+          "{\"title\":\"Memory-aware revise\",\"summary\":\"Revision used memory context.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"inspect\",\"title\":\"Inspect\",\"prompt\":\"Inspect.\",\"kind\":\"job.analysis\"}]}"
+        } else {
+          "{\"title\":\"Missing revise memory\",\"summary\":\"Revision missed memory context.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"inspect\",\"title\":\"Inspect\",\"prompt\":\"Inspect.\",\"kind\":\"job.analysis\"}]}"
+        },
+        conversation_id: None,
+        usage: None,
+        metadata: {},
+      })
+    }),
+    memory_context=Some(
+      "Relevant long-term memory:\n- [memory-2] note\n  Deployment changes need rollback notes.",
+    ),
+  )
+  inspect(revised.title, content="Memory-aware revise")
 }
 
 ///|
