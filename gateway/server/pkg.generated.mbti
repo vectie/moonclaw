@@ -254,6 +254,9 @@ pub struct Gateway {
   jobs : @job.RuntimeManager
   job_cancel_requests : Map[String, Bool]
   job_force_stop_requests : Map[String, Bool]
+  job_status_last_sent_at : Map[String, Int]
+  job_last_notified_event_count : Map[String, Int]
+  job_long_running_warned : Map[String, Bool]
 }
 pub fn Gateway::auth_token(Self) -> String?
 pub async fn Gateway::handle_request(Self, @httpx.RequestReader, @httpx.ResponseWriter) -> Unit
@@ -267,6 +270,9 @@ pub async fn Gateway::start(Self) -> Unit
 pub fn Gateway::unregister_extension(Self, String) -> Unit
 
 type GatewayEvent
+
+type JobNotifyTarget
+pub impl Show for JobNotifyTarget
 
 pub struct MailboxManager {
   config : AgentMailboxConfig

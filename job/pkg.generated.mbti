@@ -13,7 +13,15 @@ pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn default_paper_text_extractor() -> PaperTextExtractor
 
+pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
+
 pub fn parse_arxiv_feed(String) -> ArxivFeedResult
+
+pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?) -> JobProposal
+
+pub fn proposal_as_workflow(JobProposal, Int, String, String) -> (JobDefinition, WorkflowDefinition)
+
+pub fn render_job_proposal_for_chat(JobProposal) -> String
 
 pub fn research_paper_analyze_bundle(job_id~ : String, config~ : ResearchPaperAnalyzeConfig, Int) -> ResearchJobBundle
 
@@ -40,6 +48,8 @@ pub fn research_topic_scope(String) -> String
 pub fn research_topic_sync_bundle(job_id~ : String, config~ : ResearchTopicSyncConfig, Int, schedule? : SchedulePolicy?) -> ResearchJobBundle
 
 pub fn research_topic_sync_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
+
+pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?) -> JobProposal
 
 // Errors
 pub suberror InvalidJobId {
@@ -375,6 +385,69 @@ pub impl Show for JobDefinition
 pub impl ToJson for JobDefinition
 pub impl @json.FromJson for JobDefinition
 
+pub(all) struct JobNotificationPreference {
+  id : String
+  channel_id : String
+  account_id : String
+  recipient : String
+  thread_id : String?
+  verbosity : NotificationVerbosity
+  heartbeat_interval_ms : Int?
+  warn_after_ms : Int?
+  created_at : Int
+  updated_at : Int
+}
+pub impl Show for JobNotificationPreference
+pub impl ToJson for JobNotificationPreference
+pub impl @json.FromJson for JobNotificationPreference
+
+pub(all) struct JobProposal {
+  id : String
+  title : String
+  request_text : String
+  summary : String
+  status : JobProposalStatus
+  steps : Array[JobProposalStep]
+  tags : Array[String]
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  presented_message_id : String?
+  job_id : String?
+  workflow_id : String?
+  last_run_id : String?
+  created_at : Int
+  updated_at : Int
+}
+pub impl Show for JobProposal
+pub impl ToJson for JobProposal
+pub impl @json.FromJson for JobProposal
+
+pub(all) enum JobProposalStatus {
+  Draft
+  Confirmed
+  Rejected
+}
+pub impl Show for JobProposalStatus
+pub impl ToJson for JobProposalStatus
+pub impl @json.FromJson for JobProposalStatus
+
+pub(all) struct JobProposalStep {
+  id : String
+  title : String
+  prompt : String
+  kind : String
+}
+pub impl Show for JobProposalStep
+pub impl ToJson for JobProposalStep
+pub impl @json.FromJson for JobProposalStep
+
+type JobProposalsFile
+pub impl Show for JobProposalsFile
+pub impl ToJson for JobProposalsFile
+pub impl @json.FromJson for JobProposalsFile
+
 pub(all) struct JobRun {
   id : String
   job_id : String
@@ -390,6 +463,20 @@ pub(all) struct JobRun {
 pub impl Show for JobRun
 pub impl ToJson for JobRun
 pub impl @json.FromJson for JobRun
+
+pub(all) struct JobRunEvent {
+  run_id : String
+  job_id : String
+  event_type : String
+  timestamp : Int
+  step_id : String?
+  status : RunStatus?
+  message : String
+  data : Json
+}
+pub impl Show for JobRunEvent
+pub impl ToJson for JobRunEvent
+pub impl @json.FromJson for JobRunEvent
 
 pub(all) struct JobStepRun {
   id : String
@@ -420,12 +507,35 @@ pub async fn Manager::spawn(Self, name~ : String, description? : String, command
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int
 
+type NotificationPreferencesFile
+pub impl Show for NotificationPreferencesFile
+pub impl ToJson for NotificationPreferencesFile
+pub impl @json.FromJson for NotificationPreferencesFile
+
+pub(all) enum NotificationVerbosity {
+  Off
+  Normal
+  Verbose
+}
+pub impl Eq for NotificationVerbosity
+pub impl Show for NotificationVerbosity
+pub impl ToJson for NotificationVerbosity
+pub impl @json.FromJson for NotificationVerbosity
+
 pub(all) struct PaperTextExtractor {
   extract : async (String, ResearchPaper) -> Result[String, String]
 }
 pub fn PaperTextExtractor::new(extract~ : async (String, ResearchPaper) -> Result[String, String]) -> Self
 
-type ParsedUrl
+type ProposalPlanPayload
+pub impl Show for ProposalPlanPayload
+pub impl ToJson for ProposalPlanPayload
+pub impl @json.FromJson for ProposalPlanPayload
+
+type ProposalPlanStepPayload
+pub impl Show for ProposalPlanStepPayload
+pub impl ToJson for ProposalPlanStepPayload
+pub impl @json.FromJson for ProposalPlanStepPayload
 
 pub(all) struct ResearchChunk {
   id : String
@@ -600,27 +710,40 @@ pub struct SystemStore {
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
   chat_bindings : Map[String, ChatBinding]
+  notification_preferences : Map[String, JobNotificationPreference]
+  proposals : Map[String, JobProposal]
 }
+pub async fn SystemStore::append_run_event(Self, JobRunEvent) -> Unit
 pub fn SystemStore::artifact_content_file(Self, String, file_name? : String) -> String
 pub fn SystemStore::artifact_dir(Self, String) -> String
 pub async fn SystemStore::delete_artifact(Self, String) -> Bool
+pub fn SystemStore::find_job_proposal_by_message_id(Self, String) -> JobProposal?
 pub fn SystemStore::get_artifact(Self, String) -> ArtifactRecord?
 pub fn SystemStore::get_chat_binding(Self, String) -> ChatBinding?
 pub fn SystemStore::get_definition(Self, String) -> JobDefinition?
+pub fn SystemStore::get_job_proposal(Self, String) -> JobProposal?
+pub fn SystemStore::get_notification_preference(Self, String) -> JobNotificationPreference?
 pub fn SystemStore::get_run(Self, String) -> JobRun?
 pub fn SystemStore::get_step_run(Self, String, String) -> JobStepRun?
 pub fn SystemStore::get_workflow(Self, String) -> WorkflowDefinition?
 pub fn SystemStore::list_artifacts(Self, run_id? : String) -> Array[ArtifactRecord]
 pub fn SystemStore::list_chat_bindings(Self) -> Array[ChatBinding]
 pub fn SystemStore::list_definitions(Self) -> Array[JobDefinition]
+pub fn SystemStore::list_job_proposals(Self) -> Array[JobProposal]
+pub fn SystemStore::list_notification_preferences(Self) -> Array[JobNotificationPreference]
+pub async fn SystemStore::list_run_events(Self, String) -> Array[JobRunEvent]
 pub fn SystemStore::list_runs(Self) -> Array[JobRun]
 pub fn SystemStore::list_step_runs(Self, String) -> Array[JobStepRun]
 pub fn SystemStore::list_workflows(Self) -> Array[WorkflowDefinition]
 pub async fn SystemStore::load(Self) -> Unit
 pub fn SystemStore::new(root~ : String) -> Self
+pub fn SystemStore::root_dir(Self) -> String
+pub fn SystemStore::run_events_file(Self, String) -> String
 pub async fn SystemStore::save_artifact(Self, ArtifactRecord) -> Unit
 pub async fn SystemStore::save_chat_binding(Self, ChatBinding) -> Unit
 pub async fn SystemStore::save_definition(Self, JobDefinition) -> Unit
+pub async fn SystemStore::save_job_proposal(Self, JobProposal) -> Unit
+pub async fn SystemStore::save_notification_preference(Self, JobNotificationPreference) -> Unit
 pub async fn SystemStore::save_run(Self, JobRun) -> Unit
 pub async fn SystemStore::save_step_run(Self, JobStepRun) -> Unit
 pub async fn SystemStore::save_workflow(Self, WorkflowDefinition) -> Unit

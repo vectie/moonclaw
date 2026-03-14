@@ -12,6 +12,7 @@ The gateway is a long-running HTTP/RPC service that:
 - exposes mailbox, coordination, and pipeline APIs
 - hosts channel extensions such as Feishu webhooks
 - persists channel configuration and channel account runtime intent
+- supports chat-initiated job planning and lifecycle notifications through channel integrations
 
 Default address:
 
@@ -176,6 +177,35 @@ Example job definition shape for a scheduled topic sync:
 ```
 
 Research artifacts are then queryable through the generic artifact APIs and chat surface. The current implementation stores arXiv feed metadata, paper metadata, PDFs, extracted text, chunks, and analysis outputs as first-class job artifacts.
+
+### Feishu chat job flow
+
+When Feishu is configured, jobs can now be drafted and controlled from chat without executing immediately.
+
+Commands:
+
+```text
+/plan-job <description>
+/confirm <proposal_id>
+/reject <proposal_id>
+/revise <proposal_id> <extra guidance>
+/job-status <job_id>
+/job-notify <off|normal|verbose>
+```
+
+Reply-thread shortcuts:
+
+- reply `confirm` to a proposal message
+- reply `reject` to a proposal message
+- reply `revise <extra guidance>` to a proposal message
+
+Behavior:
+
+- `/plan-job` creates a persisted draft proposal and replies with the step plan
+- proposals are not executed until confirmed
+- `/job-notify` changes notification verbosity for the current chat/thread scope
+- `verbose` mode sends step progress messages derived from workflow run events
+- long-running jobs send a warning without interrupting execution
 
 ### Operator flow for jobs
 

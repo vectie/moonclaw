@@ -21,6 +21,16 @@ struct ChatBindingsFile {
 } derive(ToJson, FromJson, Show)
 
 ///|
+struct NotificationPreferencesFile {
+  preferences : Array[JobNotificationPreference]
+} derive(ToJson, FromJson, Show)
+
+///|
+struct JobProposalsFile {
+  proposals : Array[JobProposal]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub struct SystemStore {
   root : String
   definitions : Map[String, JobDefinition]
@@ -29,6 +39,8 @@ pub struct SystemStore {
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
   chat_bindings : Map[String, ChatBinding]
+  notification_preferences : Map[String, JobNotificationPreference]
+  proposals : Map[String, JobProposal]
 }
 
 ///|
@@ -41,7 +53,14 @@ pub fn SystemStore::new(root~ : String) -> SystemStore {
     steps: {},
     artifacts: {},
     chat_bindings: {},
+    notification_preferences: {},
+    proposals: {},
   }
+}
+
+///|
+pub fn SystemStore::root_dir(self : SystemStore) -> String {
+  self.root
 }
 
 ///|
@@ -62,6 +81,16 @@ fn SystemStore::artifacts_index_file(self : SystemStore) -> String {
 ///|
 fn SystemStore::chat_bindings_file(self : SystemStore) -> String {
   self.root |> @pathx.join("chat_bindings.json")
+}
+
+///|
+fn SystemStore::notification_preferences_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("notification_preferences.json")
+}
+
+///|
+fn SystemStore::job_proposals_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("job_proposals.json")
 }
 
 ///|
@@ -86,6 +115,14 @@ fn SystemStore::step_meta_file(
   step_id : String,
 ) -> String {
   self.step_dir(run_id) |> @pathx.join("\{step_id}.json")
+}
+
+///|
+pub fn SystemStore::run_events_file(
+  self : SystemStore,
+  run_id : String,
+) -> String {
+  self.run_dir(run_id) |> @pathx.join("events.jsonl")
 }
 
 ///|
@@ -156,6 +193,8 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
   clear_map(self.steps)
   clear_map(self.artifacts)
   clear_map(self.chat_bindings)
+  clear_map(self.notification_preferences)
+  clear_map(self.proposals)
 
   if @fsx.exists(self.definitions_file()) {
     let file : DefinitionsIndexFile = load_json_file(
@@ -202,6 +241,26 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
       self.chat_bindings.set(binding.id, binding)
     }
   }
+
+  if @fsx.exists(self.notification_preferences_file()) {
+    let file : NotificationPreferencesFile = load_json_file(
+      self.notification_preferences_file(),
+      "Failed to load notification preferences",
+    )
+    for preference in file.preferences {
+      self.notification_preferences.set(preference.id, preference)
+    }
+  }
+
+  if @fsx.exists(self.job_proposals_file()) {
+    let file : JobProposalsFile = load_json_file(
+      self.job_proposals_file(),
+      "Failed to load job proposals",
+    )
+    for proposal in file.proposals {
+      self.proposals.set(proposal.id, proposal)
+    }
+  }
 }
 
 ///|
@@ -240,6 +299,25 @@ async fn SystemStore::save_chat_bindings(self : SystemStore) -> Unit {
     bindings: self.chat_bindings.values().to_array(),
   }
   @fsx.write_to_file(self.chat_bindings_file(), file.to_json().stringify())
+}
+
+///|
+async fn SystemStore::save_notification_preferences(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = NotificationPreferencesFile::{
+    preferences: self.notification_preferences.values().to_array(),
+  }
+  @fsx.write_to_file(
+    self.notification_preferences_file(),
+    file.to_json().stringify(),
+  )
+}
+
+///|
+async fn SystemStore::save_job_proposals(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = JobProposalsFile::{ proposals: self.proposals.values().to_array() }
+  @fsx.write_to_file(self.job_proposals_file(), file.to_json().stringify())
 }
 
 ///|
@@ -319,6 +397,24 @@ pub async fn SystemStore::save_chat_binding(
 }
 
 ///|
+pub async fn SystemStore::save_notification_preference(
+  self : SystemStore,
+  preference : JobNotificationPreference,
+) -> Unit {
+  self.notification_preferences.set(preference.id, preference)
+  self.save_notification_preferences()
+}
+
+///|
+pub async fn SystemStore::save_job_proposal(
+  self : SystemStore,
+  proposal : JobProposal,
+) -> Unit {
+  self.proposals.set(proposal.id, proposal)
+  self.save_job_proposals()
+}
+
+///|
 pub async fn SystemStore::delete_artifact(
   self : SystemStore,
   artifact_id : String,
@@ -390,6 +486,35 @@ pub fn SystemStore::get_chat_binding(
 }
 
 ///|
+pub fn SystemStore::get_notification_preference(
+  self : SystemStore,
+  id : String,
+) -> JobNotificationPreference? {
+  self.notification_preferences.get(id)
+}
+
+///|
+pub fn SystemStore::get_job_proposal(
+  self : SystemStore,
+  id : String,
+) -> JobProposal? {
+  self.proposals.get(id)
+}
+
+///|
+pub fn SystemStore::find_job_proposal_by_message_id(
+  self : SystemStore,
+  message_id : String,
+) -> JobProposal? {
+  for proposal in self.proposals.values() {
+    if proposal.presented_message_id == Some(message_id) {
+      return Some(proposal)
+    }
+  }
+  None
+}
+
+///|
 pub fn SystemStore::list_definitions(
   self : SystemStore,
 ) -> Array[JobDefinition] {
@@ -436,4 +561,55 @@ pub fn SystemStore::list_chat_bindings(
   self : SystemStore,
 ) -> Array[ChatBinding] {
   self.chat_bindings.values().to_array()
+}
+
+///|
+pub fn SystemStore::list_notification_preferences(
+  self : SystemStore,
+) -> Array[JobNotificationPreference] {
+  self.notification_preferences.values().to_array()
+}
+
+///|
+pub fn SystemStore::list_job_proposals(
+  self : SystemStore,
+) -> Array[JobProposal] {
+  self.proposals.values().to_array()
+}
+
+///|
+pub async fn SystemStore::append_run_event(
+  self : SystemStore,
+  event : JobRunEvent,
+) -> Unit {
+  self.ensure_directories()
+  @fsx.make_directory(self.run_dir(event.run_id), recursive=true) catch {
+    _ => ()
+  }
+  let path = self.run_events_file(event.run_id)
+  let existing = if @fsx.exists(path) { @fsx.read_file(path) } else { "" }
+  let line = event.to_json().stringify()
+  let content = if existing.is_blank() { line } else { "\{existing}\n\{line}" }
+  @fsx.write_to_file(path, content)
+}
+
+///|
+pub async fn SystemStore::list_run_events(
+  self : SystemStore,
+  run_id : String,
+) -> Array[JobRunEvent] {
+  let path = self.run_events_file(run_id)
+  guard @fsx.exists(path) else { return [] }
+  let events : Array[JobRunEvent] = []
+  for raw_line in @fsx.read_file(path).split("\n") {
+    let line = raw_line.to_string().trim().to_string()
+    if line.is_blank() {
+      continue
+    }
+    let event : JobRunEvent = @json.from_json(@json.parse(line)) catch {
+      error => fail("Failed to parse run event from \{path}: \{error}")
+    }
+    events.push(event)
+  }
+  events
 }

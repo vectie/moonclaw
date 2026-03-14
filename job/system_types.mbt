@@ -254,3 +254,72 @@ pub(all) struct JobAskParams {
   artifact_query : ArtifactQuery?
   max_hits : Int?
 } derive(ToJson, FromJson, Show)
+
+///|
+pub(all) enum NotificationVerbosity {
+  Off
+  Normal
+  Verbose
+} derive(ToJson, FromJson, Show, Eq)
+
+///|
+pub(all) struct JobNotificationPreference {
+  id : String
+  channel_id : String
+  account_id : String
+  recipient : String
+  thread_id : String?
+  verbosity : NotificationVerbosity
+  heartbeat_interval_ms : Int?
+  warn_after_ms : Int?
+  created_at : Int
+  updated_at : Int
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) enum JobProposalStatus {
+  Draft
+  Confirmed
+  Rejected
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobProposalStep {
+  id : String
+  title : String
+  prompt : String
+  kind : String
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobProposal {
+  id : String
+  title : String
+  request_text : String
+  summary : String
+  status : JobProposalStatus
+  steps : Array[JobProposalStep]
+  tags : Array[String]
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  presented_message_id : String?
+  job_id : String?
+  workflow_id : String?
+  last_run_id : String?
+  created_at : Int
+  updated_at : Int
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobRunEvent {
+  run_id : String
+  job_id : String
+  event_type : String
+  timestamp : Int
+  step_id : String?
+  status : RunStatus?
+  message : String
+  data : Json
+} derive(ToJson, FromJson, Show)

@@ -39,6 +39,9 @@ pub struct Gateway {
   jobs : @job.RuntimeManager
   job_cancel_requests : Map[String, Bool]
   job_force_stop_requests : Map[String, Bool]
+  job_status_last_sent_at : Map[String, Int]
+  job_last_notified_event_count : Map[String, Int]
+  job_long_running_warned : Map[String, Bool]
 }
 
 ///|
@@ -132,4 +135,12 @@ pub async fn Gateway::schedule_due_jobs(self : Gateway) -> Array[@job.JobRun] {
     self.launch_job_run(run.id)
   }
   runs
+}
+
+///|
+fn Gateway::active_job_runs(self : Gateway) -> Array[@job.JobRun] {
+  self.jobs
+  .store()
+  .list_runs()
+  .filter(fn(run) { run.status is @job.RunStatus::Running })
 }

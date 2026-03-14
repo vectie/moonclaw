@@ -105,6 +105,10 @@ impl @channel.MessageHandler for Gateway with handle_message(
   account_id : String,
   message : @channel.Message,
 ) -> @channel.Message raise {
+  if self.handle_job_chat_command(channel_id, account_id, message)
+    is Some(reply) {
+    return reply
+  }
   let session_key = message_session_key(channel_id, account_id, message)
   let session = self.sessions.get(session_key)
   let cwd = match session {

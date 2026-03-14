@@ -257,6 +257,36 @@ Gateway tick loop
   -> WorkflowEngine::execute_run(...)
 ```
 
+### Chat-initiated job path
+
+```text
+Feishu message
+  -> FeishuChannel webhook/websocket ingress
+  -> Gateway::handle_message(...)
+    -> Gateway::handle_job_chat_command(...)
+      -> "/plan-job" -> plan_job_proposal(...)
+      -> persist JobProposal
+      -> reply with rendered draft plan
+  -> user confirms or revises
+    -> explicit slash command or reply-thread shortcut
+    -> resolve proposal by id or proposal message id
+    -> "/confirm" materializes JobDefinition + WorkflowDefinition
+    -> RuntimeManager::trigger_definition(...)
+    -> Gateway::launch_job_run(...)
+```
+
+Notification path for chat-originated jobs:
+
+```text
+WorkflowEngine::log_run_event(...)
+  -> SystemStore::append_run_event(...)
+Gateway tick loop
+  -> maybe_notify_active_jobs()
+    -> read new run events
+    -> send heartbeat / long-running warning
+    -> in verbose mode send step progress messages
+```
+
 ## Research Job Family
 
 `job/research.mbt` is the first concrete job family built on the generic job platform.

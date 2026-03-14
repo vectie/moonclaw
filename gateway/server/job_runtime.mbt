@@ -85,6 +85,7 @@ async fn Gateway::execute_job_run_async(
   }
   self.logger.info("Starting job run \{definition.id} -> \{run_id}")
   self.clear_job_control_requests(run_id)
+  self.notify_job_run_started(definition, run)
   let engine = self.new_workflow_engine()
   let control = @job.WorkflowExecutionControl::new(
     should_cancel=fn() { self.job_should_cancel(run_id) },
@@ -92,12 +93,20 @@ async fn Gateway::execute_job_run_async(
   )
   let result = engine.execute_run(run_id, current_time_ms, control~)
   match result {
-    Ok(result) =>
+    Ok(result) => {
       self.logger.info(
         "Completed job run \{result.run.job_id} -> \{result.run.id} with \{result.steps.length()} step(s)",
       )
-    Err(error) =>
+      self.notify_job_run_finished(definition, result.run)
+    }
+    Err(error) => {
       self.logger.warn("Job run \{run_id} finished with error: \{error}")
+      match self.jobs.store().get_run(run_id) {
+        Some(updated_run) =>
+          self.notify_job_run_finished(definition, updated_run)
+        None => ()
+      }
+    }
   }
   self.clear_job_control_requests(run_id)
 }

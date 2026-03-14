@@ -98,6 +98,31 @@ pub fn WorkflowEngine::register_handler(
 }
 
 ///|
+async fn WorkflowEngine::log_run_event(
+  self : WorkflowEngine,
+  run : JobRun,
+  event_type : String,
+  now_ms : Int,
+  message : String,
+  step_id? : String? = None,
+  status? : RunStatus? = None,
+  data? : Json = {},
+) -> Unit {
+  self.runtime
+  .store()
+  .append_run_event(JobRunEvent::{
+    run_id: run.id,
+    job_id: run.job_id,
+    event_type,
+    timestamp: now_ms,
+    step_id,
+    status,
+    message,
+    data,
+  })
+}
+
+///|
 fn WorkflowEngine::handler_for_step(
   self : WorkflowEngine,
   step : WorkflowStepDefinition,
@@ -185,6 +210,14 @@ pub async fn WorkflowEngine::execute_run(
     Some(run) => run
     None => return Err("Unable to mark run \{run_id} as started")
   }
+  self.log_run_event(
+    started_run,
+    "job.started",
+    now(),
+    "Workflow run started",
+    status=Some(Running),
+    data={ "workflow_id": workflow.id, "workflow_kind": workflow.kind },
+  )
 
   let outputs : Map[String, Json] = {}
   let steps : Array[JobStepRun] = []
@@ -192,6 +225,13 @@ pub async fn WorkflowEngine::execute_run(
   for step in workflow.steps {
     match WorkflowEngine::control_message(control) {
       Some(message) => {
+        self.log_run_event(
+          started_run,
+          "job.cancelled",
+          now(),
+          message,
+          status=Some(Cancelled),
+        )
         ignore(self.runtime.cancel_run(run_id, now(), summary=Some(message)))
         return Err(message)
       }
@@ -202,6 +242,15 @@ pub async fn WorkflowEngine::execute_run(
       Some(handler) => handler
       None => {
         let error = "No workflow step handler registered for kind \{step.kind}"
+        self.log_run_event(
+          started_run,
+          "job.failed",
+          now(),
+          error,
+          step_id=Some(step.id),
+          status=Some(Failed),
+          data={ "step_kind": step.kind },
+        )
         ignore(self.runtime.mark_run_failed(run_id, now(), error))
         return Err(error)
       }
@@ -232,7 +281,23 @@ pub async fn WorkflowEngine::execute_run(
             error=Some(message),
           )
           store.save_step_run(cancelled_step)
+          self.log_run_event(
+            started_run,
+            "step.cancelled",
+            now(),
+            message,
+            step_id=Some(step.id),
+            status=Some(Cancelled),
+            data={ "attempt": attempt },
+          )
           steps.push(cancelled_step)
+          self.log_run_event(
+            started_run,
+            "job.cancelled",
+            now(),
+            message,
+            status=Some(Cancelled),
+          )
           ignore(self.runtime.cancel_run(run_id, now(), summary=Some(message)))
           return Err(message)
         }
@@ -250,6 +315,15 @@ pub async fn WorkflowEngine::execute_run(
         [..step_logs, "attempt \{attempt} started"],
       )
       store.save_step_run(running_step)
+      self.log_run_event(
+        started_run,
+        "step.started",
+        start_ts,
+        "Step \{step.id} started",
+        step_id=Some(step.id),
+        status=Some(Running),
+        data={ "step_kind": step.kind, "attempt": attempt },
+      )
 
       let context = WorkflowStepContext::new(
         run=started_run,
@@ -277,6 +351,15 @@ pub async fn WorkflowEngine::execute_run(
             output=Some(result.output),
           )
           store.save_step_run(completed_step)
+          self.log_run_event(
+            started_run,
+            "step.succeeded",
+            now(),
+            completed_step.summary.unwrap_or("Step \{step.id} succeeded"),
+            step_id=Some(step.id),
+            status=Some(Succeeded),
+            data={ "attempt": attempt, "metrics": result.metrics },
+          )
           outputs.set(step.id, result.output)
           final_step = Some(completed_step)
           break
@@ -299,9 +382,26 @@ pub async fn WorkflowEngine::execute_run(
             error=Some(error),
           )
           store.save_step_run(failed_step)
+          self.log_run_event(
+            started_run,
+            "step.failed",
+            now(),
+            error,
+            step_id=Some(step.id),
+            status=Some(Failed),
+            data={ "attempt": attempt },
+          )
           step_logs = failed_logs
           final_step = Some(failed_step)
           if attempt >= max_attempts {
+            self.log_run_event(
+              started_run,
+              "job.failed",
+              now(),
+              error,
+              step_id=Some(step.id),
+              status=Some(Failed),
+            )
             ignore(
               self.runtime.mark_run_failed(
                 run_id,
@@ -336,5 +436,13 @@ pub async fn WorkflowEngine::execute_run(
     Some(run) => run
     None => return Err("Unable to mark run \{run_id} as succeeded")
   }
+  self.log_run_event(
+    completed_run,
+    "job.completed",
+    now(),
+    "Workflow completed",
+    status=Some(Succeeded),
+    data={ "step_count": steps.length() },
+  )
   Ok(WorkflowExecutionResult::{ run: completed_run, workflow, outputs, steps })
 }

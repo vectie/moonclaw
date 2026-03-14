@@ -88,6 +88,9 @@ pub async fn Gateway::new(
     jobs: @job.RuntimeManager::new(root=jobs_dir),
     job_cancel_requests: {},
     job_force_stop_requests: {},
+    job_status_last_sent_at: {},
+    job_last_notified_event_count: {},
+    job_long_running_warned: {},
   }
   gateway.sessions.load() catch {
     error => gateway.logger.warn("Failed to load gateway sessions: \{error}")
@@ -197,6 +200,12 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
                 self.logger.warn("Failed to schedule due jobs: \{error}")
                 []
               }
+            }
+            self.maybe_notify_active_jobs() catch {
+              error =>
+                self.logger.warn(
+                  "Failed to send job status notifications: \{error}",
+                )
             }
           }
           Shutdown => {

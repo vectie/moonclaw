@@ -166,7 +166,25 @@ Deliverable:
 Deliverable:
 - research works as a concrete job family built on the generic platform
 
-## Phase 9: Research Management UX
+## Phase 9: Chat-Initiated Jobs and Notifications
+
+- [x] Add persisted job proposals for chat-originated job drafts
+- [x] Add `/plan-job` draft generation without execution
+- [x] Add model-backed proposal planning with deterministic fallback
+- [x] Add `/confirm <proposal_id>` to materialize and start a job
+- [x] Add `/reject <proposal_id>` to close a draft without execution
+- [x] Add `/revise <proposal_id> <guidance>` to refine a draft plan
+- [x] Add job event logging under each run
+- [x] Add start, completion, cancellation, heartbeat, and long-running chat notifications
+- [x] Add `/job-status <job_id>` for explicit status inspection from chat
+- [x] Add reply-thread based confirm/revise flow in addition to slash commands
+- [x] Add per-user notification subscription and verbosity controls
+- [x] Add richer step-progress notifications derived from run events
+
+Deliverable:
+- jobs can be drafted, revised, confirmed, and monitored safely from Feishu chat
+
+## Phase 10: Research Management UX
 
 - [ ] Add topic-oriented management APIs and CLI on top of generic jobs
 - [ ] Add paper list/detail views from research artifacts
@@ -177,7 +195,7 @@ Deliverable:
 Deliverable:
 - research is pleasant to use, not only technically possible
 
-## Phase 10: Quality and Retrieval Improvements
+## Phase 11: Quality and Retrieval Improvements
 
 - [ ] Add better ranking over artifacts and chunks
 - [ ] Add metadata filtering by date, kind, topic, tag, and status
@@ -187,7 +205,7 @@ Deliverable:
 Deliverable:
 - better chat quality without changing the core job abstraction
 
-## Phase 11: Safety, Cost, and Operations
+## Phase 12: Safety, Cost, and Operations
 
 - [ ] Add per-job and per-workflow limits
 - [ ] Add model/time/cost guardrails

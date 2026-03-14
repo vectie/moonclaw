@@ -101,6 +101,36 @@ fn sample_artifact(root : String) -> ArtifactRecord {
 }
 
 ///|
+fn sample_proposal() -> JobProposal {
+  JobProposal::{
+    id: "proposal-1",
+    title: "Track recent agent papers",
+    request_text: "Track recent agent papers and summarize findings.",
+    summary: "Draft proposal for research tracking.",
+    status: JobProposalStatus::Draft,
+    steps: [
+      JobProposalStep::{
+        id: "collect",
+        title: "Collect sources",
+        prompt: "Collect relevant papers.",
+        kind: "job.analysis",
+      },
+    ],
+    tags: ["job", "research"],
+    channel_id: Some("feishu"),
+    account_id: Some("default"),
+    recipient: Some("oc_chat_123"),
+    thread_id: None,
+    presented_message_id: Some("message-1"),
+    job_id: None,
+    workflow_id: None,
+    last_run_id: None,
+    created_at: 20,
+    updated_at: 20,
+  }
+}
+
+///|
 async test "SystemStore persists definitions workflows runs steps and artifacts" {
   @fsx.with_temporary_directory("job-system-store-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -217,6 +247,92 @@ async test "SystemStore keeps indexes and per-run files in expected layout" {
         |> @pathx.join("record.json"),
       ),
       content="true",
+    )
+  })
+}
+
+///|
+async test "SystemStore persists job proposals and run events" {
+  @fsx.with_temporary_directory("job-system-proposals-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    let proposal = sample_proposal()
+
+    store.save_job_proposal(proposal)
+    store.append_run_event(JobRunEvent::{
+      run_id: "run-1",
+      job_id: "research.topic.sync",
+      event_type: "job.started",
+      timestamp: 30,
+      step_id: None,
+      status: Some(RunStatus::Running),
+      message: "Run started",
+      data: {},
+    })
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(reloaded.list_job_proposals().length(), content="1")
+    inspect(
+      reloaded
+      .get_job_proposal("proposal-1")
+      .map(fn(p) { p.title })
+      .unwrap_or(""),
+      content="Track recent agent papers",
+    )
+    inspect(
+      reloaded
+      .find_job_proposal_by_message_id("message-1")
+      .map(fn(p) { p.id })
+      .unwrap_or(""),
+      content="proposal-1",
+    )
+    inspect(reloaded.list_run_events("run-1").length(), content="1")
+    inspect(
+      reloaded.list_run_events("run-1")[0].event_type,
+      content="job.started",
+    )
+    inspect(
+      @fsx.exists(
+        root
+        |> @pathx.join("runs")
+        |> @pathx.join("run-1")
+        |> @pathx.join("events.jsonl"),
+      ),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "SystemStore persists notification preferences" {
+  @fsx.with_temporary_directory("job-system-notify-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    store.save_notification_preference(JobNotificationPreference::{
+      id: "feishu:default:oc_chat_123",
+      channel_id: "feishu",
+      account_id: "default",
+      recipient: "oc_chat_123",
+      thread_id: None,
+      verbosity: NotificationVerbosity::Verbose,
+      heartbeat_interval_ms: Some(60_000),
+      warn_after_ms: Some(180_000),
+      created_at: 50,
+      updated_at: 55,
+    })
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(reloaded.list_notification_preferences().length(), content="1")
+    inspect(
+      reloaded
+      .get_notification_preference("feishu:default:oc_chat_123")
+      .map(fn(pref) { pref.verbosity.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Verbose\"",
     )
   })
 }
