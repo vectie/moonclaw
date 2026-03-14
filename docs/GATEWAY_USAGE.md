@@ -2,6 +2,11 @@
 
 This guide matches the current implementation in `cmd/gateway` and `gateway/server`.
 
+Architecture reference:
+
+- [system_architecture.md](/Users/kq/Workspace/mcl/docs/system_architecture.md)
+- [job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md)
+
 ## What the Gateway Is
 
 The gateway is a long-running HTTP/RPC service that:
@@ -206,6 +211,17 @@ Behavior:
 - `/job-notify` changes notification verbosity for the current chat/thread scope
 - `verbose` mode sends step progress messages derived from workflow run events
 - long-running jobs send a warning without interrupting execution
+
+Current message flow:
+
+```text
+Feishu message
+  -> gateway job chat adapter
+  -> job chat parser + dispatcher
+  -> GatewayJobApp planning / confirm / revise / reject
+  -> runtime launch if confirmed
+  -> execution notifications routed back to the same chat/thread
+```
 
 ### Operator flow for jobs
 

@@ -236,6 +236,8 @@ The final run payload currently includes:
 
 The generic job system now runs under the gateway instead of being a passive store.
 
+Detailed job/service boundaries are documented in [job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md).
+
 ### Manual trigger path
 
 ```text
@@ -264,20 +266,30 @@ Feishu message
   -> FeishuChannel webhook/websocket ingress
   -> Gateway::handle_message(...)
     -> Gateway::handle_job_chat_command(...)
-      -> "/plan-job" -> plan_job_proposal(...)
-      -> persist JobProposal
-      -> reply with rendered draft plan
+      -> job.parse_job_chat_action(...)
+      -> job.dispatch_job_chat_action(...)
+        -> "/plan-job" -> GatewayJobApp::plan_proposal(...)
+        -> persist JobProposal
+        -> reply with rendered draft plan
   -> user confirms or revises
     -> explicit slash command or reply-thread shortcut
     -> resolve proposal by id or proposal message id
-    -> "/confirm" materializes JobDefinition + WorkflowDefinition
-    -> RuntimeManager::trigger_definition(...)
-    -> Gateway::launch_job_run(...)
+    -> "/confirm" -> GatewayJobApp::confirm_proposal(...)
+      -> compile proposal
+      -> register definition/workflow
+      -> save bindings
+      -> RuntimeManager::trigger_definition(...)
+      -> Gateway::launch_job_run(...)
+    -> "/revise" -> GatewayJobApp::revise_draft_proposal(...)
 ```
 
 Notification path for chat-originated jobs:
 
 ```text
+execute_run_lifecycle(...)
+  -> execution_notification_hooks(...)
+    -> send start message
+
 WorkflowEngine::log_run_event(...)
   -> SystemStore::append_run_event(...)
 Gateway tick loop
@@ -285,6 +297,38 @@ Gateway tick loop
     -> read new run events
     -> send heartbeat / long-running warning
     -> in verbose mode send step progress messages
+run finishes
+  -> execution_notification_hooks(...)
+    -> send final completion / failure / cancel message
+```
+
+### Current job module boundaries
+
+```text
+gateway/server
+  -> HTTP/RPC/channel adapters
+  -> reply message construction
+  -> background run launch
+  -> channel send integration
+
+job/application.mbt
+  -> proposal planning / confirm / revise / reject
+  -> workflow engine assembly
+
+job/chat_service.mbt
+  -> chat parsing, dispatch, notification policy, reply formatting
+
+job/query_service.mbt
+  -> status/list rendering and target resolution
+
+job/control_service.mbt
+  -> stop/list/status command behavior
+
+job/executor.mbt
+  -> run lifecycle execution and start/finish hook wiring
+
+job/runtime.mbt + job/system_storage.mbt
+  -> persistent job definitions, runs, artifacts, proposals, bindings, events
 ```
 
 ## Research Job Family

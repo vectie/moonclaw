@@ -211,6 +211,144 @@ pub(all) struct ArtifactCleanupReport {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) enum MemoryStatus {
+  Active
+  Archived
+} derive(ToJson, FromJson, Show, Eq)
+
+///|
+pub(all) struct MemoryRecord {
+  id : String
+  kind : String
+  title : String?
+  content : String
+  metadata : Json
+  tags : Array[String]
+  scope : Array[String]
+  workspace : String?
+  agent_id : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  source_artifact_id : String?
+  status : MemoryStatus
+  created_at : Int
+  updated_at : Int
+  archived_at : Int?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct MemoryWriteRequest {
+  kind : String
+  title : String?
+  content : String
+  metadata : Json
+  tags : Array[String]
+  scope : Array[String]
+  workspace : String?
+  agent_id : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  source_artifact_id : String?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub fn MemoryWriteRequest::new(
+  kind~ : String,
+  content~ : String,
+  title? : String? = None,
+  metadata? : Json = {},
+  tags? : Array[String] = [],
+  scope? : Array[String] = [],
+  workspace? : String? = None,
+  agent_id? : String? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  source_artifact_id? : String? = None,
+) -> MemoryWriteRequest {
+  MemoryWriteRequest::{
+    kind,
+    title,
+    content,
+    metadata,
+    tags,
+    scope,
+    workspace,
+    agent_id,
+    channel_id,
+    account_id,
+    recipient,
+    thread_id,
+    source_artifact_id,
+  }
+}
+
+///|
+pub(all) struct MemoryQuery {
+  kind : String?
+  tag : String?
+  scope : String?
+  workspace : String?
+  agent_id : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  source_artifact_id : String?
+  status : MemoryStatus?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub fn MemoryQuery::new(
+  kind? : String? = None,
+  tag? : String? = None,
+  scope? : String? = None,
+  workspace? : String? = None,
+  agent_id? : String? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  source_artifact_id? : String? = None,
+  status? : MemoryStatus? = None,
+) -> MemoryQuery {
+  MemoryQuery::{
+    kind,
+    tag,
+    scope,
+    workspace,
+    agent_id,
+    channel_id,
+    account_id,
+    recipient,
+    thread_id,
+    source_artifact_id,
+    status,
+  }
+}
+
+///|
+pub(all) struct MemorySearchHit {
+  memory_id : String
+  kind : String
+  title : String?
+  score : Int
+  snippet : String
+  tags : Array[String]
+  scope : Array[String]
+  workspace : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct ChatBinding {
   id : String
   title : String?

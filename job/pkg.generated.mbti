@@ -776,6 +776,110 @@ pub async fn Manager::spawn(Self, name~ : String, description? : String, command
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int
 
+type MemoriesFile
+pub impl Show for MemoriesFile
+pub impl ToJson for MemoriesFile
+pub impl @json.FromJson for MemoriesFile
+
+pub(all) struct MemoryQuery {
+  kind : String?
+  tag : String?
+  scope : String?
+  workspace : String?
+  agent_id : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  source_artifact_id : String?
+  status : MemoryStatus?
+}
+pub fn MemoryQuery::new(kind? : String?, tag? : String?, scope? : String?, workspace? : String?, agent_id? : String?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, source_artifact_id? : String?, status? : MemoryStatus?) -> Self
+pub impl Show for MemoryQuery
+pub impl ToJson for MemoryQuery
+pub impl @json.FromJson for MemoryQuery
+
+pub(all) struct MemoryRecord {
+  id : String
+  kind : String
+  title : String?
+  content : String
+  metadata : Json
+  tags : Array[String]
+  scope : Array[String]
+  workspace : String?
+  agent_id : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  source_artifact_id : String?
+  status : MemoryStatus
+  created_at : Int
+  updated_at : Int
+  archived_at : Int?
+}
+pub impl Show for MemoryRecord
+pub impl ToJson for MemoryRecord
+pub impl @json.FromJson for MemoryRecord
+
+pub(all) struct MemorySearchHit {
+  memory_id : String
+  kind : String
+  title : String?
+  score : Int
+  snippet : String
+  tags : Array[String]
+  scope : Array[String]
+  workspace : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+}
+pub impl Show for MemorySearchHit
+pub impl ToJson for MemorySearchHit
+pub impl @json.FromJson for MemorySearchHit
+
+pub struct MemoryService {
+  store : SystemStore
+}
+pub async fn MemoryService::archive(Self, String, Int) -> Bool
+pub fn MemoryService::get(Self, String) -> MemoryRecord?
+pub fn MemoryService::list(Self, query? : MemoryQuery) -> Array[MemoryRecord]
+pub fn MemoryService::new(store~ : SystemStore) -> Self
+pub async fn MemoryService::remember(Self, MemoryWriteRequest, String, Int) -> MemoryRecord
+pub fn MemoryService::search(Self, String, query? : MemoryQuery, max_hits? : Int) -> Array[MemorySearchHit]
+
+pub(all) enum MemoryStatus {
+  Active
+  Archived
+}
+pub impl Eq for MemoryStatus
+pub impl Show for MemoryStatus
+pub impl ToJson for MemoryStatus
+pub impl @json.FromJson for MemoryStatus
+
+pub(all) struct MemoryWriteRequest {
+  kind : String
+  title : String?
+  content : String
+  metadata : Json
+  tags : Array[String]
+  scope : Array[String]
+  workspace : String?
+  agent_id : String?
+  channel_id : String?
+  account_id : String?
+  recipient : String?
+  thread_id : String?
+  source_artifact_id : String?
+}
+pub fn MemoryWriteRequest::new(kind~ : String, content~ : String, title? : String?, metadata? : Json, tags? : Array[String], scope? : Array[String], workspace? : String?, agent_id? : String?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, source_artifact_id? : String?) -> Self
+pub impl Show for MemoryWriteRequest
+pub impl ToJson for MemoryWriteRequest
+pub impl @json.FromJson for MemoryWriteRequest
+
 type NotificationPreferencesFile
 pub impl Show for NotificationPreferencesFile
 pub impl ToJson for NotificationPreferencesFile
@@ -1019,6 +1123,7 @@ pub struct SystemStore {
   runs : Map[String, JobRun]
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
+  memories : Map[String, MemoryRecord]
   chat_bindings : Map[String, ChatBinding]
   notification_preferences : Map[String, JobNotificationPreference]
   proposals : Map[String, JobProposal]
@@ -1032,6 +1137,7 @@ pub fn SystemStore::get_artifact(Self, String) -> ArtifactRecord?
 pub fn SystemStore::get_chat_binding(Self, String) -> ChatBinding?
 pub fn SystemStore::get_definition(Self, String) -> JobDefinition?
 pub fn SystemStore::get_job_proposal(Self, String) -> JobProposal?
+pub fn SystemStore::get_memory(Self, String) -> MemoryRecord?
 pub fn SystemStore::get_notification_preference(Self, String) -> JobNotificationPreference?
 pub fn SystemStore::get_run(Self, String) -> JobRun?
 pub fn SystemStore::get_step_run(Self, String, String) -> JobStepRun?
@@ -1040,6 +1146,7 @@ pub fn SystemStore::list_artifacts(Self, run_id? : String) -> Array[ArtifactReco
 pub fn SystemStore::list_chat_bindings(Self) -> Array[ChatBinding]
 pub fn SystemStore::list_definitions(Self) -> Array[JobDefinition]
 pub fn SystemStore::list_job_proposals(Self) -> Array[JobProposal]
+pub fn SystemStore::list_memories(Self) -> Array[MemoryRecord]
 pub fn SystemStore::list_notification_preferences(Self) -> Array[JobNotificationPreference]
 pub async fn SystemStore::list_run_events(Self, String) -> Array[JobRunEvent]
 pub fn SystemStore::list_runs(Self) -> Array[JobRun]
@@ -1053,6 +1160,7 @@ pub async fn SystemStore::save_artifact(Self, ArtifactRecord) -> Unit
 pub async fn SystemStore::save_chat_binding(Self, ChatBinding) -> Unit
 pub async fn SystemStore::save_definition(Self, JobDefinition) -> Unit
 pub async fn SystemStore::save_job_proposal(Self, JobProposal) -> Unit
+pub async fn SystemStore::save_memory(Self, MemoryRecord) -> Unit
 pub async fn SystemStore::save_notification_preference(Self, JobNotificationPreference) -> Unit
 pub async fn SystemStore::save_run(Self, JobRun) -> Unit
 pub async fn SystemStore::save_step_run(Self, JobStepRun) -> Unit

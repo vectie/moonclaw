@@ -43,6 +43,22 @@ pub(all) struct JobRunsPayload {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct MemoriesListPayload {
+  memories : Array[@job.MemoryRecord]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct MemoryMutationPayload {
+  status : String
+  memory : @job.MemoryRecord
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct MemorySearchPayload {
+  hits : Array[@job.MemorySearchHit]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct JobMutationPayload {
   status : String
   job : @job.JobDefinition?
@@ -350,6 +366,84 @@ pub async fn Client::ask_job(
     "Job ask failed with unknown error",
     "Missing job ask payload",
     "Failed to parse job ask response",
+  )
+}
+
+///|
+pub async fn Client::list_memories(
+  self : Client,
+  query? : @job.MemoryQuery,
+) -> Result[MemoriesListPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "memories.list",
+    params: query.map(fn(query) { query.to_json() }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Memories list failed with unknown error",
+    "Missing memories payload",
+    "Failed to parse memories payload",
+  )
+}
+
+///|
+pub async fn Client::get_memory(
+  self : Client,
+  memory_id~ : String,
+) -> Result[@job.MemoryRecord, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "memories.get",
+    params: Some({ "memory_id": memory_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Memory lookup failed with unknown error",
+    "Missing memory payload",
+    "Failed to parse memory payload",
+  )
+}
+
+///|
+pub async fn Client::create_memory(
+  self : Client,
+  params : @job.MemoryWriteRequest,
+) -> Result[MemoryMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "memories.create",
+    params: Some(params.to_json()),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Memory create failed with unknown error",
+    "Missing memory create payload",
+    "Failed to parse memory create payload",
+  )
+}
+
+///|
+pub async fn Client::search_memories(
+  self : Client,
+  question~ : String,
+  query? : @job.MemoryQuery,
+  max_hits? : Int = 5,
+) -> Result[MemorySearchPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "memories.search",
+    params: Some({
+      "question": question,
+      "query": query.map(fn(query) { query.to_json() }),
+      "max_hits": max_hits,
+    }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Memory search failed with unknown error",
+    "Missing memory search payload",
+    "Failed to parse memory search payload",
   )
 }
 

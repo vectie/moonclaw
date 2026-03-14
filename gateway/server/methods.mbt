@@ -3,9 +3,10 @@ fn supported_rpc_methods() -> Array[String] {
   [
     "connect", "agent", "agent.wait", "sessions.list", "sessions.reset", "config.get",
     "config.set", "health", "runs.list", "runs.get", "artifacts.list", "artifacts.get",
-    "jobs.list", "jobs.get", "jobs.create", "jobs.update", "jobs.run", "jobs.cancel",
-    "jobs.force_cancel", "jobs.runs.list", "jobs.runs.get", "jobs.ask", "channels.list",
-    "channels.get", "channels.configure", "channels.start", "channels.stop",
+    "memories.list", "memories.get", "memories.create", "memories.search", "jobs.list",
+    "jobs.get", "jobs.create", "jobs.update", "jobs.run", "jobs.cancel", "jobs.force_cancel",
+    "jobs.runs.list", "jobs.runs.get", "jobs.ask", "channels.list", "channels.get",
+    "channels.configure", "channels.start", "channels.stop",
   ]
 }
 
@@ -333,6 +334,239 @@ async fn Gateway::handle_artifacts_get_method(
         }),
       })
   }
+}
+
+///|
+async fn Gateway::handle_memories_list_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let query = match request.params {
+    Some(params) =>
+      @json.from_json(params) catch {
+        _ => @job.MemoryQuery::new()
+      }
+    None => @job.MemoryQuery::new()
+  }
+  let memories = @job.MemoryService::new(store=self.job_runtime().store()).list(
+    query~,
+  )
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({ "memories": memories.map(fn(memory) { memory.to_json() }) }),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_memories_get_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params = match request.params {
+    Some(params) => params
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing memory lookup parameters",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let memory_id = match params {
+    String(id) => id
+    Object(obj) =>
+      match obj.get("memory_id") {
+        Some(String(id)) => id
+        _ =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "missing_memory_id",
+              message: "Missing memory_id in params",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    _ =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "invalid_params",
+          message: "Invalid memory lookup parameters",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  match
+    @job.MemoryService::new(store=self.job_runtime().store()).get(memory_id) {
+    Some(memory) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some(memory.to_json()),
+        error: None,
+      })
+    None =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "memory_not_found",
+          message: "Memory not found: \{memory_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_memories_create_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params : @job.MemoryWriteRequest = match request.params {
+    Some(params) =>
+      match @json.from_json(params) {
+        Ok(params) => params
+        Err(error) =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "invalid_params",
+              message: "Invalid memory create params: \{error}",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing memory create params",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let memory = @job.MemoryService::new(store=self.job_runtime().store()).remember(
+    params,
+    self.uuid.v4().to_string(),
+    current_time_ms(),
+  )
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({ "status": "created", "memory": memory.to_json() }),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_memories_search_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params = match request.params {
+    Some(params) => params
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing memory search params",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let obj = match params {
+    Object(obj) => obj
+    _ =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "invalid_params",
+          message: "Memory search params must be an object",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let question = match obj.get("question") {
+    Some(String(question)) => question
+    _ =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_question",
+          message: "Missing memory search question",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let query = match obj.get("query") {
+    Some(query_json) =>
+      @json.from_json(query_json) catch {
+        _ => @job.MemoryQuery::new()
+      }
+    None => @job.MemoryQuery::new()
+  }
+  let max_hits = match obj.get("max_hits") {
+    Some(Number(value)) => value.to_int()
+    _ => 5
+  }
+  let hits = @job.MemoryService::new(store=self.job_runtime().store()).search(
+    question,
+    query~,
+    max_hits~,
+  )
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({ "hits": hits.map(fn(hit) { hit.to_json() }) }),
+    error: None,
+  })
 }
 
 ///|

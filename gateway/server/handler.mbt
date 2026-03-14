@@ -378,6 +378,165 @@ async fn Gateway::handle_get_artifact(
 }
 
 ///|
+async fn Gateway::handle_list_memories(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let memories = @job.MemoryService::new(store=self.job_runtime().store()).list()
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  let result : Json = {
+    "memories": memories.map(fn(memory) { memory.to_json() }),
+  }
+  w.write(result.stringify())
+}
+
+///|
+async fn Gateway::handle_get_memory(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let memory_id = match paths {
+    ["", "v1", "memories", id] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_memory_id",
+          "message": "Missing memory_id in path",
+        },
+      })
+  }
+  match
+    @job.MemoryService::new(store=self.job_runtime().store()).get(memory_id) {
+    Some(memory) => {
+      w.header().set("Content-Type", "application/json")
+      w.write_header(200)
+      let result : Json = { "memory": memory.to_json() }
+      w.write(result.stringify())
+    }
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "memory_not_found",
+          "message": "Memory not found: \{memory_id}",
+        },
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_create_memory(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let body = r.body.read_all().binary()
+  let text : String = @encoding/utf8.decode(body) catch {
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "invalid_utf8",
+          "message": "Invalid UTF-8 in request body",
+        },
+      })
+  }
+  let json = @json.parse(text) catch {
+    error =>
+      raise json_error(400, "BadRequest", {
+        "error": { "code": "parse_error", "message": "Invalid JSON: \{error}" },
+      })
+  }
+  let params : @job.MemoryWriteRequest = @json.from_json(json) catch {
+    error =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "invalid_params",
+          "message": "Invalid memory create params: \{error}",
+        },
+      })
+  }
+  let memory = @job.MemoryService::new(store=self.job_runtime().store()).remember(
+    params,
+    self.uuid.v4().to_string(),
+    current_time_ms(),
+  )
+  w.header().set("Content-Type", "application/json")
+  w.write_header(201)
+  let result : Json = {
+    "status": "created".to_json(),
+    "memory": memory.to_json(),
+  }
+  w.write(result.stringify())
+}
+
+///|
+async fn Gateway::handle_search_memories(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let body = r.body.read_all().binary()
+  let text : String = @encoding/utf8.decode(body) catch {
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "invalid_utf8",
+          "message": "Invalid UTF-8 in request body",
+        },
+      })
+  }
+  let json = @json.parse(text) catch {
+    error =>
+      raise json_error(400, "BadRequest", {
+        "error": { "code": "parse_error", "message": "Invalid JSON: \{error}" },
+      })
+  }
+  let obj = match json {
+    Object(obj) => obj
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "invalid_params",
+          "message": "Memory search params must be an object",
+        },
+      })
+  }
+  let question = match obj.get("question") {
+    Some(String(question)) => question
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_question",
+          "message": "Missing memory search question",
+        },
+      })
+  }
+  let query = match obj.get("query") {
+    Some(query_json) =>
+      @json.from_json(query_json) catch {
+        _ => @job.MemoryQuery::new()
+      }
+    None => @job.MemoryQuery::new()
+  }
+  let max_hits = match obj.get("max_hits") {
+    Some(Number(value)) => value.to_int()
+    _ => 5
+  }
+  let hits = @job.MemoryService::new(store=self.job_runtime().store()).search(
+    question,
+    query~,
+    max_hits~,
+  )
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  let result : Json = { "hits": hits.map(fn(hit) { hit.to_json() }).to_json() }
+  w.write(result.stringify())
+}
+
+///|
 async fn Gateway::handle_job_ask(
   self : Gateway,
   r : @httpx.RequestReader,

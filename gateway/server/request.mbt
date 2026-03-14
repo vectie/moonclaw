@@ -30,6 +30,11 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "artifacts"]) => self.handle_list_artifacts(r, w)
       (Get, ["", "v1", "artifacts", artifact_id]) =>
         self.handle_get_artifact(r, w)
+      (Get, ["", "v1", "memories"]) => self.handle_list_memories(r, w)
+      (Get, ["", "v1", "memories", memory_id]) => self.handle_get_memory(r, w)
+      (Post, ["", "v1", "memories"]) => self.handle_create_memory(r, w)
+      (Post, ["", "v1", "memories", "search"]) =>
+        self.handle_search_memories(r, w)
       (Post, ["", "v1", "jobs", "ask"]) => self.handle_job_ask(r, w)
       (Get, ["", "v1", "channels"]) => self.handle_list_channels(r, w)
       (Get, ["", "v1", "channels", channel_id]) => self.handle_get_channel(r, w)

@@ -104,6 +104,30 @@ fn sample_artifact(root : String) -> ArtifactRecord {
 }
 
 ///|
+fn sample_memory() -> MemoryRecord {
+  MemoryRecord::{
+    id: "memory-1",
+    kind: "note",
+    title: Some("daily digest"),
+    content: "Remember to review VLA benchmarks in daily digests.",
+    metadata: { "importance": "high" },
+    tags: ["research", "digest"],
+    scope: ["workspace:main", "research"],
+    workspace: Some("/tmp/workspace"),
+    agent_id: Some("main"),
+    channel_id: Some("feishu"),
+    account_id: Some("default"),
+    recipient: Some("oc_chat_123"),
+    thread_id: None,
+    source_artifact_id: Some("artifact-1"),
+    status: MemoryStatus::Active,
+    created_at: 14,
+    updated_at: 14,
+    archived_at: None,
+  }
+}
+
+///|
 fn sample_proposal() -> JobProposal {
   JobProposal::{
     id: "proposal-1",
@@ -149,12 +173,14 @@ async test "SystemStore persists definitions workflows runs steps and artifacts"
     let run = sample_run()
     let step = sample_step_run()
     let artifact = sample_artifact(root)
+    let memory = sample_memory()
 
     store.save_definition(definition)
     store.save_workflow(workflow)
     store.save_run(run)
     store.save_step_run(step)
     store.save_artifact(artifact)
+    store.save_memory(memory)
 
     let reloaded = SystemStore::new(root~)
     reloaded.load()
@@ -164,6 +190,7 @@ async test "SystemStore persists definitions workflows runs steps and artifacts"
     inspect(reloaded.list_runs().length(), content="1")
     inspect(reloaded.list_step_runs("run-1").length(), content="1")
     inspect(reloaded.list_artifacts().length(), content="1")
+    inspect(reloaded.list_memories().length(), content="1")
     inspect(
       reloaded
       .get_definition("research.topic.sync")
@@ -198,6 +225,13 @@ async test "SystemStore persists definitions workflows runs steps and artifacts"
       .map(fn(a) { a.artifact_type })
       .unwrap_or(""),
       content="paper.meta",
+    )
+    inspect(
+      reloaded
+      .get_memory("memory-1")
+      .map(fn(memory) { memory.kind })
+      .unwrap_or(""),
+      content="note",
     )
   })
 }

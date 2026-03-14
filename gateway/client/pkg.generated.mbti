@@ -46,19 +46,23 @@ pub async fn Client::cancel_job(Self, job_id~ : String) -> Result[JobMutationPay
 pub async fn Client::configure_channel(Self, channel_id~ : String, @channel.ChannelConfig) -> Result[ChannelMutationPayload, String]
 pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
 pub async fn Client::create_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
+pub async fn Client::create_memory(Self, @job.MemoryWriteRequest) -> Result[MemoryMutationPayload, String]
 pub async fn Client::force_cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]
 pub async fn Client::get_job(Self, job_id~ : String) -> Result[JobPayload, String]
 pub async fn Client::get_job_run(Self, run_id~ : String) -> Result[JobRunDetails, String]
+pub async fn Client::get_memory(Self, memory_id~ : String) -> Result[@job.MemoryRecord, String]
 pub async fn Client::get_run(Self, run_id~ : String) -> Result[RunInfo, String]
 pub async fn Client::health(Self) -> Result[@protocol.HealthPayload, String]
 pub async fn Client::list_channels(Self) -> Result[ChannelsListPayload, String]
 pub async fn Client::list_job_runs(Self) -> Result[JobRunsPayload, String]
 pub async fn Client::list_jobs(Self) -> Result[JobsListPayload, String]
+pub async fn Client::list_memories(Self, query? : @job.MemoryQuery) -> Result[MemoriesListPayload, String]
 pub async fn Client::list_runs(Self) -> Result[RunsListPayload, String]
 pub async fn Client::list_sessions(Self) -> Result[@protocol.SessionsListPayload, String]
 pub async fn Client::new(ClientConfig) -> Self
 pub async fn Client::run_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
+pub async fn Client::search_memories(Self, question~ : String, query? : @job.MemoryQuery, max_hits? : Int) -> Result[MemorySearchPayload, String]
 pub async fn Client::start_channel(Self, channel_id~ : String, account_id~ : String, Json) -> Result[ChannelMutationPayload, String]
 pub async fn Client::stop_channel(Self, channel_id~ : String, account_id~ : String) -> Result[ChannelMutationPayload, String]
 pub async fn Client::update_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
@@ -109,6 +113,28 @@ pub(all) struct JobsListPayload {
 pub impl Show for JobsListPayload
 pub impl ToJson for JobsListPayload
 pub impl @json.FromJson for JobsListPayload
+
+pub(all) struct MemoriesListPayload {
+  memories : Array[@job.MemoryRecord]
+}
+pub impl Show for MemoriesListPayload
+pub impl ToJson for MemoriesListPayload
+pub impl @json.FromJson for MemoriesListPayload
+
+pub(all) struct MemoryMutationPayload {
+  status : String
+  memory : @job.MemoryRecord
+}
+pub impl Show for MemoryMutationPayload
+pub impl ToJson for MemoryMutationPayload
+pub impl @json.FromJson for MemoryMutationPayload
+
+pub(all) struct MemorySearchPayload {
+  hits : Array[@job.MemorySearchHit]
+}
+pub impl Show for MemorySearchPayload
+pub impl ToJson for MemorySearchPayload
+pub impl @json.FromJson for MemorySearchPayload
 
 pub(all) struct RunInfo {
   run_id : String

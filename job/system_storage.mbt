@@ -16,6 +16,11 @@ struct ArtifactsIndexFile {
 } derive(ToJson, FromJson, Show)
 
 ///|
+struct MemoriesFile {
+  memories : Array[MemoryRecord]
+} derive(ToJson, FromJson, Show)
+
+///|
 struct ChatBindingsFile {
   bindings : Array[ChatBinding]
 } derive(ToJson, FromJson, Show)
@@ -38,6 +43,7 @@ pub struct SystemStore {
   runs : Map[String, JobRun]
   steps : Map[String, JobStepRun]
   artifacts : Map[String, ArtifactRecord]
+  memories : Map[String, MemoryRecord]
   chat_bindings : Map[String, ChatBinding]
   notification_preferences : Map[String, JobNotificationPreference]
   proposals : Map[String, JobProposal]
@@ -52,6 +58,7 @@ pub fn SystemStore::new(root~ : String) -> SystemStore {
     runs: {},
     steps: {},
     artifacts: {},
+    memories: {},
     chat_bindings: {},
     notification_preferences: {},
     proposals: {},
@@ -76,6 +83,11 @@ fn SystemStore::runs_index_file(self : SystemStore) -> String {
 ///|
 fn SystemStore::artifacts_index_file(self : SystemStore) -> String {
   self.root |> @pathx.join("index") |> @pathx.join("artifacts.json")
+}
+
+///|
+fn SystemStore::memories_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("memories.json")
 }
 
 ///|
@@ -192,6 +204,7 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
   clear_map(self.runs)
   clear_map(self.steps)
   clear_map(self.artifacts)
+  clear_map(self.memories)
   clear_map(self.chat_bindings)
   clear_map(self.notification_preferences)
   clear_map(self.proposals)
@@ -229,6 +242,16 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
     )
     for artifact in file.artifacts {
       self.artifacts.set(artifact.id, artifact)
+    }
+  }
+
+  if @fsx.exists(self.memories_file()) {
+    let file : MemoriesFile = load_json_file(
+      self.memories_file(),
+      "Failed to load job memories",
+    )
+    for memory in file.memories {
+      self.memories.set(memory.id, memory)
     }
   }
 
@@ -290,6 +313,13 @@ async fn SystemStore::save_artifacts_index(self : SystemStore) -> Unit {
     artifacts: self.artifacts.values().to_array(),
   }
   @fsx.write_to_file(self.artifacts_index_file(), file.to_json().stringify())
+}
+
+///|
+async fn SystemStore::save_memories(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = MemoriesFile::{ memories: self.memories.values().to_array() }
+  @fsx.write_to_file(self.memories_file(), file.to_json().stringify())
 }
 
 ///|
@@ -388,6 +418,15 @@ pub async fn SystemStore::save_artifact(
 }
 
 ///|
+pub async fn SystemStore::save_memory(
+  self : SystemStore,
+  memory : MemoryRecord,
+) -> Unit {
+  self.memories.set(memory.id, memory)
+  self.save_memories()
+}
+
+///|
 pub async fn SystemStore::save_chat_binding(
   self : SystemStore,
   binding : ChatBinding,
@@ -478,6 +517,14 @@ pub fn SystemStore::get_artifact(
 }
 
 ///|
+pub fn SystemStore::get_memory(
+  self : SystemStore,
+  id : String,
+) -> MemoryRecord? {
+  self.memories.get(id)
+}
+
+///|
 pub fn SystemStore::get_chat_binding(
   self : SystemStore,
   id : String,
@@ -554,6 +601,11 @@ pub fn SystemStore::list_artifacts(
       .to_array()
     None => self.artifacts.values().to_array()
   }
+}
+
+///|
+pub fn SystemStore::list_memories(self : SystemStore) -> Array[MemoryRecord] {
+  self.memories.values().to_array()
 }
 
 ///|

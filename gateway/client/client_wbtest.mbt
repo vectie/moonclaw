@@ -121,6 +121,55 @@ test "decode_ok_payload parses run and channel payloads" {
     payload: Some({ "run": job_run.to_json(), "steps": [], "artifacts": [] }),
     error: None,
   })
+  let memory = @job.MemoryRecord::{
+    id: "memory-1",
+    kind: "note",
+    title: Some("workspace note"),
+    content: "Track VLA papers daily.",
+    metadata: {},
+    tags: ["research"],
+    scope: ["workspace:main", "research"],
+    workspace: Some("/tmp/workspace"),
+    agent_id: Some("main"),
+    channel_id: Some("feishu"),
+    account_id: Some("default"),
+    recipient: Some("chat-1"),
+    thread_id: None,
+    source_artifact_id: None,
+    status: @job.MemoryStatus::Active,
+    created_at: 1,
+    updated_at: 1,
+    archived_at: None,
+  }
+  let memory_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-memory",
+    ok: true,
+    payload: Some(memory.to_json()),
+    error: None,
+  })
+  let memory_search_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-memory-search",
+    ok: true,
+    payload: Some({
+      "hits": [
+        @job.MemorySearchHit::{
+          memory_id: "memory-1",
+          kind: "note",
+          title: Some("workspace note"),
+          score: 2,
+          snippet: "Track VLA papers daily.",
+          tags: ["research"],
+          scope: ["workspace:main", "research"],
+          workspace: Some("/tmp/workspace"),
+          channel_id: Some("feishu"),
+          account_id: Some("default"),
+          recipient: Some("chat-1"),
+          thread_id: None,
+        }.to_json(),
+      ],
+    }),
+    error: None,
+  })
 
   let runs_result : Result[RunsListPayload, String] = decode_ok_payload(
     runs_response, "default", "missing", "parse failed",
@@ -145,6 +194,12 @@ test "decode_ok_payload parses run and channel payloads" {
   let job_run_result : Result[JobRunDetails, String] = decode_ok_payload(
     job_run_response, "default", "missing", "parse failed",
   )
+  let memory_result : Result[@job.MemoryRecord, String] = decode_ok_payload(
+    memory_response, "default", "missing", "parse failed",
+  )
+  let memory_search_result : Result[MemorySearchPayload, String] = decode_ok_payload(
+    memory_search_response, "default", "missing", "parse failed",
+  )
   let ask : @job.ChatAnswer = match ask_result {
     Ok(value) => value
     Err(error) => fail(error)
@@ -157,6 +212,14 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let memory_payload : @job.MemoryRecord = match memory_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let memory_search_payload : MemorySearchPayload = match memory_search_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
 
   inspect(runs.runs.length(), content="1")
   inspect(runs.runs[0].run_id, content="run-1")
@@ -166,6 +229,8 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(ask.citations.length(), content="1")
   inspect(job_payload.job.id, content="job-1")
   inspect(job_run_payload.run.id, content="job-run-1")
+  inspect(memory_payload.id, content="memory-1")
+  inspect(memory_search_payload.hits[0].memory_id, content="memory-1")
 }
 
 ///|
