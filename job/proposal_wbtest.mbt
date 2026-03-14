@@ -150,3 +150,58 @@ test "render_job_proposal_for_chat includes compiler notes and missing capabilit
   )
   inspect(rendered.contains("Compiler notes:"), content="true")
 }
+
+///|
+test "ensure_draft_proposal rejects non-draft proposals" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal("proposal-8", "Track papers.", 100),
+    status: Confirmed,
+  }
+  inspect(
+    ensure_draft_proposal(proposal, "proposal-8").unwrap_or(""),
+    content="Proposal proposal-8 is already \"Confirmed\"",
+  )
+}
+
+///|
+async test "save_confirmed_job_proposal persists compilation metadata and run id" {
+  @fsx.with_temporary_directory("job-proposal-confirm-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    let proposal = draft_job_proposal("proposal-9", "Track VLA papers.", 100)
+    let compilation = compile_job_proposal(
+      proposal, 101, "/tmp/workspace", "/tmp/home",
+    )
+    save_confirmed_job_proposal(store, proposal, compilation, "run-9", 200)
+    let saved = store.get_job_proposal("proposal-9")
+    inspect(
+      saved.map(fn(p) { p.status.to_json().stringify() }).unwrap_or(""),
+      content="\"Confirmed\"",
+    )
+    inspect(
+      saved.map(fn(p) { p.last_run_id.unwrap_or("") }).unwrap_or(""),
+      content="run-9",
+    )
+    inspect(
+      saved.map(fn(p) { p.suggested_template.unwrap_or("") }).unwrap_or(""),
+      content="research.topic_watch",
+    )
+  })
+}
+
+///|
+async test "save_rejected_job_proposal persists rejected status" {
+  @fsx.with_temporary_directory("job-proposal-reject-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    let proposal = draft_job_proposal("proposal-10", "Review repository.", 100)
+    save_rejected_job_proposal(store, proposal, 200)
+    inspect(
+      store
+      .get_job_proposal("proposal-10")
+      .map(fn(p) { p.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Rejected\"",
+    )
+  })
+}

@@ -84,7 +84,7 @@ async fn Gateway::handle_jobs_list_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let jobs = self.jobs.store().list_definitions()
+  let jobs = self.job_runtime().store().list_definitions()
   self.send_response(w, @protocol.Response::{
     id: request.id,
     ok: true,
@@ -109,7 +109,7 @@ async fn Gateway::handle_jobs_get_method(
         error: Some(error),
       })
   }
-  match self.jobs.store().get_definition(job_id) {
+  match self.job_runtime().store().get_definition(job_id) {
     Some(job) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,
@@ -171,7 +171,7 @@ async fn Gateway::handle_jobs_create_method(
         }),
       })
   }
-  self.jobs.register_definition(definition)
+  self.job_runtime().register_definition(definition)
   self.send_response(w, @protocol.Response::{
     id: request.id,
     ok: true,
@@ -218,7 +218,7 @@ async fn Gateway::handle_jobs_update_method(
         }),
       })
   }
-  if self.jobs.store().get_definition(definition.id) is None {
+  if self.job_runtime().store().get_definition(definition.id) is None {
     return self.send_response(w, @protocol.Response::{
       id: request.id,
       ok: false,
@@ -232,7 +232,7 @@ async fn Gateway::handle_jobs_update_method(
       }),
     })
   }
-  self.jobs.register_definition(definition)
+  self.job_runtime().register_definition(definition)
   self.send_response(w, @protocol.Response::{
     id: request.id,
     ok: true,
@@ -367,7 +367,7 @@ async fn Gateway::handle_job_runs_list_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let runs = self.jobs.store().list_runs()
+  let runs = self.job_runtime().store().list_runs()
   self.send_response(w, @protocol.Response::{
     id: request.id,
     ok: true,
@@ -392,19 +392,21 @@ async fn Gateway::handle_job_runs_get_method(
         error: Some(error),
       })
   }
-  match self.jobs.store().get_run(run_id) {
+  match self.job_runtime().store().get_run(run_id) {
     Some(run) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,
         ok: true,
         payload: Some({
           "run": run.to_json(),
-          "steps": self.jobs
+          "steps": self
+          .job_runtime()
           .store()
           .list_step_runs(run_id)
           .map(step => step.to_json())
           .to_json(),
-          "artifacts": self.jobs
+          "artifacts": self
+          .job_runtime()
           .store()
           .list_artifacts(run_id?=Some(run_id))
           .map(artifact => artifact.to_json())

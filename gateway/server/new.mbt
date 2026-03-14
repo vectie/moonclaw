@@ -58,6 +58,13 @@ pub async fn Gateway::new(
   let extension_registry = @channel.ExtensionRegistry::new()
   let extension_websocket_runtime_manager = @channel.WebSocketClientRuntimeManager::new()
   let extension_websocket_runtime = extension_websocket_runtime_manager.controller()
+  let job_app = @job.GatewayJobApp::new(
+    root=jobs_dir,
+    cwd~,
+    home~,
+    next_id=fn() { uuid.v4().to_string() },
+    now=current_time_ms,
+  )
   let gateway = Gateway::{
     clock: @clock.epoch,
     uuid,
@@ -85,12 +92,7 @@ pub async fn Gateway::new(
     coordinator: coordinator(uuid~),
     pipeline_manager: pipeline_manager(uuid~),
     channel_state: ChannelStateStore::{ path: channel_state_file, states: {} },
-    jobs: @job.RuntimeManager::new(root=jobs_dir),
-    job_cancel_requests: {},
-    job_force_stop_requests: {},
-    job_status_last_sent_at: {},
-    job_last_notified_event_count: {},
-    job_long_running_warned: {},
+    job_app,
   }
   gateway.sessions.load() catch {
     error => gateway.logger.warn("Failed to load gateway sessions: \{error}")
@@ -98,7 +100,7 @@ pub async fn Gateway::new(
   gateway.channel_state.load() catch {
     error => gateway.logger.warn("Failed to load channel state: \{error}")
   }
-  gateway.jobs.load() catch {
+  gateway.job_app.load() catch {
     error => gateway.logger.warn("Failed to load job runtime state: \{error}")
   }
   gateway.seed_channel_state_from_moonclaw_config() catch {

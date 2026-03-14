@@ -451,6 +451,55 @@ pub async fn revise_job_proposal(
 }
 
 ///|
+pub fn ensure_draft_proposal(
+  proposal : JobProposal,
+  proposal_ref : String,
+) -> String? {
+  guard proposal.status is Draft else {
+    return Some(
+      "Proposal \{proposal_ref} is already \{proposal.status.to_json().stringify()}",
+    )
+  }
+  None
+}
+
+///|
+pub async fn save_confirmed_job_proposal(
+  store : SystemStore,
+  proposal : JobProposal,
+  compilation : ProposalCompilation,
+  run_id : String,
+  now_ms : Int,
+) -> Unit {
+  store.save_job_proposal(JobProposal::{
+    ..proposal,
+    suggested_family: Some(compilation.family),
+    suggested_template: Some(compilation.template),
+    required_capabilities: compilation.required_capabilities,
+    missing_capabilities: compilation.missing_capabilities,
+    compiler_notes: compilation.compiler_notes,
+    status: Confirmed,
+    job_id: Some(compilation.definition.id),
+    workflow_id: Some(compilation.workflow.id),
+    last_run_id: Some(run_id),
+    updated_at: now_ms,
+  })
+}
+
+///|
+pub async fn save_rejected_job_proposal(
+  store : SystemStore,
+  proposal : JobProposal,
+  now_ms : Int,
+) -> Unit {
+  store.save_job_proposal(JobProposal::{
+    ..proposal,
+    status: Rejected,
+    updated_at: now_ms,
+  })
+}
+
+///|
 pub fn draft_job_proposal(
   proposal_id : String,
   request_text : String,

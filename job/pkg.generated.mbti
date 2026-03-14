@@ -15,21 +15,53 @@ pub fn capability_record(String) -> CapabilityRecord?
 
 pub fn capability_registry() -> Array[CapabilityRecord]
 
+pub fn child_runs_for(SystemStore, String) -> Array[JobRun]
+
 pub fn compile_job_proposal(JobProposal, Int, String, String) -> ProposalCompilation
+
+pub fn current_step_label(SystemStore, JobDefinition, String) -> String
+
+pub fn decide_active_job_notifications(String, JobRun, Array[JobRunEvent], JobNotifyTarget, JobNotificationRuntimeState, Int) -> JobNotificationDecision
 
 pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn default_paper_text_extractor() -> PaperTextExtractor
 
+pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T) -> T?
+
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
+
+pub fn ensure_draft_proposal(JobProposal, String) -> String?
+
+pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> WorkflowEngine, control? : WorkflowExecutionControl, hooks? : RunExecutionHooks) -> Unit
+
+pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
 
 pub fn explain_proposal_compilation_hints(JobProposal) -> (String, String, Array[String], Array[String], Array[String])
 
+pub fn finished_status_prefix(RunStatus) -> String
+
+pub fn format_progress_event(JobRunEvent) -> String?
+
 pub fn infer_proposal_compilation_hints(JobProposal) -> (String, String, Array[String])
+
+pub fn initial_notification_runtime_state(Int) -> JobNotificationRuntimeState
 
 pub fn missing_capabilities(Array[String]) -> Array[String]
 
+pub fn notification_preference_id(String, String, String, String?) -> String
+
 pub fn parse_arxiv_feed(String) -> ArxivFeedResult
+
+pub fn parse_job_chat_action(String, Bool) -> JobChatAction?
+
+pub fn parse_job_notify_target(Json) -> JobNotifyTarget?
+
+pub fn parse_notification_verbosity(String) -> NotificationVerbosity?
+
+pub fn parse_reply_thread_job_action(String) -> (String, String)?
+
+pub fn parse_revise_args(String) -> (String, String)?
 
 pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?) -> JobProposal
 
@@ -37,7 +69,45 @@ pub fn preferred_templates_for_capabilities(Array[String]) -> Array[String]
 
 pub fn proposal_as_workflow(JobProposal, Int, String, String) -> (JobDefinition, WorkflowDefinition)
 
+pub fn proposal_for_reply(SystemStore, String?) -> JobProposal?
+
+pub fn render_active_jobs(Array[ActiveJobSnapshot]) -> String
+
+pub fn render_active_runs(SystemStore, Array[JobRun]) -> String
+
+pub fn render_confirm_proposal_failure(String, String) -> String
+
+pub fn render_confirmed_job_reply(String, String, String, String, String, Array[String], Array[String]) -> String
+
+pub fn render_job_notify_updated(NotificationVerbosity) -> String
+
+pub fn render_job_notify_usage() -> String
+
 pub fn render_job_proposal_for_chat(JobProposal) -> String
+
+pub fn render_job_status(JobStatusSnapshot, String) -> String
+
+pub async fn render_job_status_command_reply(SystemStore, String, Int, String, active_run_id? : String?) -> String?
+
+pub fn render_job_stop_requested(String, String, Bool) -> String
+
+pub fn render_job_stop_usage(Bool) -> String
+
+pub fn render_jobs_command_reply(SystemStore, Array[JobRun]) -> String
+
+pub fn render_progress_notification(String, String, String) -> String
+
+pub fn render_rejected_job_reply(String) -> String
+
+pub fn render_revise_usage(Bool) -> String
+
+pub async fn render_status_text(SystemStore, JobDefinition, JobRun, String, Int) -> String
+
+pub fn render_unknown_job_or_run_message(String) -> String
+
+pub fn render_unknown_proposal_message(String) -> String
+
+pub async fn request_job_stop(SystemStore, String, async (String, Bool) -> Result[JobRun, String], force? : Bool, active_run_id? : String?) -> Result[String, String]
 
 pub fn research_paper_analyze_bundle(job_id~ : String, config~ : ResearchPaperAnalyzeConfig, Int) -> ResearchJobBundle
 
@@ -65,7 +135,23 @@ pub fn research_topic_sync_bundle(job_id~ : String, config~ : ResearchTopicSyncC
 
 pub fn research_topic_sync_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
+pub fn resolve_job_notify_target(SystemStore, JobDefinition) -> JobNotifyTarget?
+
+pub fn resolve_status_target(SystemStore, String, active_run_id? : String?) -> (JobDefinition, JobRun)?
+
+pub fn resolve_target_proposal(SystemStore, String, String?) -> JobProposal?
+
 pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?) -> JobProposal
+
+pub async fn save_confirmed_job_proposal(SystemStore, JobProposal, ProposalCompilation, String, Int) -> Unit
+
+pub async fn save_job_notification_preference(SystemStore, String, String, String, String?, NotificationVerbosity, Int, heartbeat_interval_ms? : Int?, warn_after_ms? : Int?) -> Unit
+
+pub async fn save_presented_job_proposal(SystemStore, JobProposal, String) -> Unit
+
+pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
+
+pub fn split_job_chat_command(String) -> (String, String)
 
 pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
@@ -81,6 +167,18 @@ pub suberror InvalidJobId {
 }
 
 // Types and methods
+pub(all) struct ActiveJobSnapshot {
+  definition_id : String
+  run_id : String
+  status : String
+  family : String
+  depth : Int
+  current_step : String
+}
+pub impl Show for ActiveJobSnapshot
+pub impl ToJson for ActiveJobSnapshot
+pub impl @json.FromJson for ActiveJobSnapshot
+
 pub(all) struct AnalysisArtifactConfig {
   report_artifact_type : String
   result_artifact_type : String
@@ -376,10 +474,63 @@ pub fn CheckpointStore::new(root~ : String) -> Self
 pub async fn CheckpointStore::save(Self) -> Unit
 pub async fn CheckpointStore::save_checkpoint(Self, CheckpointRecord) -> Unit
 
+pub(all) struct ChildRunStatus {
+  run_id : String
+  status : String
+}
+pub impl Show for ChildRunStatus
+pub impl ToJson for ChildRunStatus
+pub impl @json.FromJson for ChildRunStatus
+
+pub struct ConfirmProposalResult {
+  compilation : ProposalCompilation
+  run : JobRun
+}
+
 type DefinitionsIndexFile
 pub impl Show for DefinitionsIndexFile
 pub impl ToJson for DefinitionsIndexFile
 pub impl @json.FromJson for DefinitionsIndexFile
+
+pub struct GatewayJobApp {
+  state : GatewayJobState
+  cwd : String
+  home : String
+  next_id : () -> String
+  now : () -> Int
+}
+pub fn GatewayJobApp::compile_proposal(Self, JobProposal) -> ProposalCompilation
+pub async fn GatewayJobApp::confirm_proposal(Self, JobProposal, String, async (String) -> Result[JobRun, String]) -> Result[ConfirmProposalResult, String]
+pub async fn GatewayJobApp::load(Self) -> Unit
+pub fn GatewayJobApp::new(root~ : String, cwd~ : String, home~ : String, next_id~ : () -> String, now~ : () -> Int) -> Self
+pub fn GatewayJobApp::new_workflow_engine(Self) -> WorkflowEngine
+pub fn GatewayJobApp::next_id(Self) -> String
+pub fn GatewayJobApp::now(Self) -> Int
+pub async fn GatewayJobApp::plan_proposal(Self, String, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
+pub async fn GatewayJobApp::reject_proposal(Self, JobProposal) -> Unit
+pub async fn GatewayJobApp::revise_draft_proposal(Self, JobProposal, String, String) -> Result[JobProposal, String]
+pub async fn GatewayJobApp::revise_proposal(Self, JobProposal, String) -> JobProposal
+pub fn GatewayJobApp::runtime(Self) -> RuntimeManager
+pub fn GatewayJobApp::state(Self) -> GatewayJobState
+
+pub struct GatewayJobState {
+  runtime : RuntimeManager
+  cancel_requests : Map[String, Bool]
+  force_stop_requests : Map[String, Bool]
+  status_last_sent_at : Map[String, Int]
+  last_notified_event_count : Map[String, Int]
+  long_running_warned : Map[String, Bool]
+}
+pub fn GatewayJobState::clear_control_requests(Self, String) -> Unit
+pub fn GatewayJobState::clear_notification_runtime_state(Self, String) -> Unit
+pub async fn GatewayJobState::load(Self) -> Unit
+pub fn GatewayJobState::new(root~ : String) -> Self
+pub fn GatewayJobState::notification_runtime_state(Self, String) -> JobNotificationRuntimeState
+pub fn GatewayJobState::request_stop(Self, String, force? : Bool) -> Unit
+pub fn GatewayJobState::runtime(Self) -> RuntimeManager
+pub fn GatewayJobState::set_notification_runtime_state(Self, String, JobNotificationRuntimeState) -> Unit
+pub fn GatewayJobState::should_cancel(Self, String) -> Bool
+pub fn GatewayJobState::should_force_stop(Self, String) -> Bool
 
 pub(all) struct Id(Int)
 #deprecated
@@ -414,6 +565,19 @@ pub impl Show for JobAskParams
 pub impl ToJson for JobAskParams
 pub impl @json.FromJson for JobAskParams
 
+pub(all) enum JobChatAction {
+  PlanJob(String)
+  Confirm(String)
+  Reject(String)
+  Revise(String)
+  JobStatus(String)
+  Jobs
+  JobStop(String)
+  JobForceStop(String)
+  JobNotify(String)
+}
+pub impl Show for JobChatAction
+
 pub(all) struct JobDefinition {
   id : String
   kind : String
@@ -430,6 +594,14 @@ pub impl Show for JobDefinition
 pub impl ToJson for JobDefinition
 pub impl @json.FromJson for JobDefinition
 
+pub(all) struct JobNotificationDecision {
+  messages : Array[String]
+  next_state : JobNotificationRuntimeState
+}
+pub impl Show for JobNotificationDecision
+pub impl ToJson for JobNotificationDecision
+pub impl @json.FromJson for JobNotificationDecision
+
 pub(all) struct JobNotificationPreference {
   id : String
   channel_id : String
@@ -445,6 +617,26 @@ pub(all) struct JobNotificationPreference {
 pub impl Show for JobNotificationPreference
 pub impl ToJson for JobNotificationPreference
 pub impl @json.FromJson for JobNotificationPreference
+
+pub(all) struct JobNotificationRuntimeState {
+  last_sent_at : Int
+  last_notified_event_count : Int
+  long_running_warned : Bool
+}
+pub impl Show for JobNotificationRuntimeState
+pub impl ToJson for JobNotificationRuntimeState
+pub impl @json.FromJson for JobNotificationRuntimeState
+
+pub(all) struct JobNotifyTarget {
+  channel_id : String
+  account_id : String
+  recipient : String
+  thread_id : String?
+  verbosity : NotificationVerbosity
+  heartbeat_interval_ms : Int
+  warn_after_ms : Int
+}
+pub impl Show for JobNotifyTarget
 
 pub(all) struct JobProposal {
   id : String
@@ -531,6 +723,29 @@ pub(all) struct JobRunEvent {
 pub impl Show for JobRunEvent
 pub impl ToJson for JobRunEvent
 pub impl @json.FromJson for JobRunEvent
+
+pub(all) struct JobStatusSnapshot {
+  definition_id : String
+  run_id : String
+  status : String
+  family : String
+  template : String
+  current_step : String
+  done_steps : Int
+  total_steps : Int
+  elapsed_ms : Int
+  lineage_line : String?
+  capabilities : String
+  missing_capabilities : String
+  compiler_notes : Array[String]
+  summary : String?
+  error : String?
+  child_runs : Array[ChildRunStatus]
+  latest_event_line : String
+}
+pub impl Show for JobStatusSnapshot
+pub impl ToJson for JobStatusSnapshot
+pub impl @json.FromJson for JobStatusSnapshot
 
 pub(all) struct JobStepRun {
   id : String
@@ -726,6 +941,14 @@ pub(all) struct RetryPolicy {
 pub impl Show for RetryPolicy
 pub impl ToJson for RetryPolicy
 pub impl @json.FromJson for RetryPolicy
+
+pub(all) struct RunExecutionHooks {
+  on_started : async (JobDefinition, JobRun) -> Unit
+  on_finished : async (JobDefinition, JobRun) -> Unit
+  on_info : async (String) -> Unit
+  on_warn : async (String) -> Unit
+}
+pub fn RunExecutionHooks::new(on_started? : async (JobDefinition, JobRun) -> Unit, on_finished? : async (JobDefinition, JobRun) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> Self
 
 pub(all) enum RunStatus {
   Pending

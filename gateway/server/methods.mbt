@@ -241,7 +241,9 @@ async fn Gateway::handle_artifacts_list_method(
       }
     None => @job.ArtifactQuery::new()
   }
-  let artifacts = @job.ArtifactStore::new(store=self.jobs.store()).list(query~)
+  let artifacts = @job.ArtifactStore::new(store=self.job_runtime().store()).list(
+    query~,
+  )
   self.send_response(w, @protocol.Response::{
     id: request.id,
     ok: true,
@@ -305,7 +307,7 @@ async fn Gateway::handle_artifacts_get_method(
         }),
       })
   }
-  let artifacts = @job.ArtifactStore::new(store=self.jobs.store())
+  let artifacts = @job.ArtifactStore::new(store=self.job_runtime().store())
   match artifacts.get(artifact_id) {
     Some(artifact) =>
       self.send_response(w, @protocol.Response::{
@@ -371,7 +373,7 @@ async fn Gateway::handle_jobs_ask_method(
         }),
       })
   }
-  match @job.ChatService::new(store=self.jobs.store()).ask(params) {
+  match @job.ChatService::new(store=self.job_runtime().store()).ask(params) {
     Ok(answer) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,

@@ -31,7 +31,7 @@ async fn Gateway::handle_list_jobs(
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let jobs = self.jobs.store().list_definitions()
+  let jobs = self.job_runtime().store().list_definitions()
   let result : Json = { "jobs": jobs.map(job => job.to_json()) }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
@@ -55,7 +55,7 @@ async fn Gateway::handle_get_job(
         },
       })
   }
-  match self.jobs.store().get_definition(job_id) {
+  match self.job_runtime().store().get_definition(job_id) {
     Some(job) => {
       let result : Json = { "job": job.to_json() }
       w.header().set("Content-Type", "application/json")
@@ -88,7 +88,7 @@ async fn Gateway::handle_create_job(
         },
       })
   }
-  self.jobs.register_definition(definition)
+  self.job_runtime().register_definition(definition)
   let result : Json = {
     "status": "created".to_json(),
     "job": definition.to_json(),
@@ -105,7 +105,7 @@ async fn Gateway::handle_update_job(
   w : @httpx.ResponseWriter,
   job_id : String,
 ) -> Unit {
-  if self.jobs.store().get_definition(job_id) is None {
+  if self.job_runtime().store().get_definition(job_id) is None {
     raise json_error(404, "NotFound", {
       "error": {
         "code": "job_not_found",
@@ -124,7 +124,7 @@ async fn Gateway::handle_update_job(
       })
   }
   let updated = @job.JobDefinition::{ ..definition, id: job_id }
-  self.jobs.register_definition(updated)
+  self.job_runtime().register_definition(updated)
   let result : Json = {
     "status": "updated".to_json(),
     "job": updated.to_json(),
@@ -194,7 +194,7 @@ async fn Gateway::handle_list_job_runs(
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let runs = self.jobs.store().list_runs()
+  let runs = self.job_runtime().store().list_runs()
   let result : Json = { "runs": runs.map(run => run.to_json()) }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
@@ -218,10 +218,13 @@ async fn Gateway::handle_get_job_run(
         },
       })
   }
-  match self.jobs.store().get_run(run_id) {
+  match self.job_runtime().store().get_run(run_id) {
     Some(run) => {
-      let steps = self.jobs.store().list_step_runs(run_id)
-      let artifacts = self.jobs.store().list_artifacts(run_id?=Some(run_id))
+      let steps = self.job_runtime().store().list_step_runs(run_id)
+      let artifacts = self
+        .job_runtime()
+        .store()
+        .list_artifacts(run_id?=Some(run_id))
       let result : Json = {
         "run": run.to_json(),
         "steps": steps.map(step => step.to_json()).to_json(),

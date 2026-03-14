@@ -330,7 +330,7 @@ async fn Gateway::handle_list_artifacts(
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let artifacts = @job.ArtifactStore::new(store=self.jobs.store()).list()
+  let artifacts = @job.ArtifactStore::new(store=self.job_runtime().store()).list()
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
@@ -356,7 +356,7 @@ async fn Gateway::handle_get_artifact(
         },
       })
   }
-  let artifacts = @job.ArtifactStore::new(store=self.jobs.store())
+  let artifacts = @job.ArtifactStore::new(store=self.job_runtime().store())
   match artifacts.get(artifact_id) {
     Some(artifact) => {
       w.header().set("Content-Type", "application/json")
@@ -409,7 +409,7 @@ async fn Gateway::handle_job_ask(
       })
   }
   let answer = match
-    @job.ChatService::new(store=self.jobs.store()).ask(params) {
+    @job.ChatService::new(store=self.job_runtime().store()).ask(params) {
     Ok(answer) => answer
     Err(error) =>
       raise json_error(400, "BadRequest", {

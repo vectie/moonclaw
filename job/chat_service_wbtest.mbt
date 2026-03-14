@@ -1,0 +1,289 @@
+///|
+test "decide_active_job_notifications emits verbose progress and heartbeat" {
+  let run = JobRun::{
+    id: "run-1",
+    job_id: "job-1",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    status: RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(1_000),
+    completed_at: None,
+    summary: None,
+    error: None,
+  }
+  let decision = decide_active_job_notifications(
+    "job-1",
+    run,
+    [
+      JobRunEvent::{
+        run_id: "run-1",
+        job_id: "job-1",
+        event_type: "step.started",
+        timestamp: 1_050,
+        step_id: Some("step-a"),
+        status: Some(RunStatus::Running),
+        message: "Starting step A",
+        data: {},
+      },
+    ],
+    JobNotifyTarget::{
+      channel_id: "feishu",
+      account_id: "default",
+      recipient: "oc_chat_1",
+      thread_id: None,
+      verbosity: NotificationVerbosity::Verbose,
+      heartbeat_interval_ms: 100,
+      warn_after_ms: 1_000,
+    },
+    JobNotificationRuntimeState::{
+      last_sent_at: 1_000,
+      last_notified_event_count: 0,
+      long_running_warned: false,
+    },
+    1_150,
+  )
+  inspect(decision.messages.length(), content="2")
+  inspect(decision.messages[0].contains("Job progress: job-1"), content="true")
+  inspect(decision.messages[1], content="Job heartbeat")
+  inspect(decision.next_state.last_notified_event_count, content="1")
+  inspect(decision.next_state.last_sent_at, content="1150")
+}
+
+///|
+test "decide_active_job_notifications warns once for long-running jobs" {
+  let run = JobRun::{
+    id: "run-2",
+    job_id: "job-2",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    status: RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(1_000),
+    completed_at: None,
+    summary: None,
+    error: None,
+  }
+  let decision = decide_active_job_notifications(
+    "job-2",
+    run,
+    [],
+    JobNotifyTarget::{
+      channel_id: "feishu",
+      account_id: "default",
+      recipient: "oc_chat_1",
+      thread_id: None,
+      verbosity: NotificationVerbosity::Normal,
+      heartbeat_interval_ms: 100,
+      warn_after_ms: 200,
+    },
+    JobNotificationRuntimeState::{
+      last_sent_at: 1_000,
+      last_notified_event_count: 0,
+      long_running_warned: false,
+    },
+    1_250,
+  )
+  inspect(decision.messages.join("|"), content="Job is still running")
+  inspect(decision.next_state.long_running_warned, content="true")
+}
+
+///|
+test "resolve_job_notify_target applies persisted preference overrides" {
+  let store = SystemStore::new(root="unused")
+  let definition = JobDefinition::{
+    id: "job-1",
+    kind: "job",
+    enabled: true,
+    config: {
+      "notify": {
+        "channel": "feishu",
+        "account_id": "default",
+        "to": "oc_chat_1",
+        "heartbeat_interval_ms": 120000,
+        "warn_after_ms": 300000,
+      },
+    },
+    schedule: None,
+    retry_policy: None,
+    workflow_id: None,
+    created_at: 1,
+    updated_at: 1,
+    tags: [],
+  }
+  store.notification_preferences.set("feishu:default:oc_chat_1", JobNotificationPreference::{
+    id: "feishu:default:oc_chat_1",
+    channel_id: "feishu",
+    account_id: "default",
+    recipient: "oc_chat_1",
+    thread_id: None,
+    verbosity: NotificationVerbosity::Verbose,
+    heartbeat_interval_ms: Some(60_000),
+    warn_after_ms: Some(180_000),
+    created_at: 1,
+    updated_at: 2,
+  })
+  let target = resolve_job_notify_target(store, definition)
+  inspect(
+    target.map(fn(t) { t.verbosity.to_json().stringify() }).unwrap_or(""),
+    content="\"Verbose\"",
+  )
+  inspect(
+    target.map(fn(t) { t.heartbeat_interval_ms.to_string() }).unwrap_or(""),
+    content="60000",
+  )
+}
+
+///|
+async test "save_job_notification_preference preserves created_at when updating" {
+  @fsx.with_temporary_directory("job-chat-service-notify-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    save_job_notification_preference(
+      store,
+      "feishu",
+      "default",
+      "oc_chat_1",
+      None,
+      NotificationVerbosity::Normal,
+      100,
+    )
+    save_job_notification_preference(
+      store,
+      "feishu",
+      "default",
+      "oc_chat_1",
+      None,
+      NotificationVerbosity::Verbose,
+      200,
+      heartbeat_interval_ms=Some(30_000),
+    )
+    let pref = store.get_notification_preference("feishu:default:oc_chat_1")
+    inspect(
+      pref.map(fn(p) { p.created_at.to_string() }).unwrap_or(""),
+      content="100",
+    )
+    inspect(
+      pref.map(fn(p) { p.updated_at.to_string() }).unwrap_or(""),
+      content="200",
+    )
+    inspect(
+      pref.map(fn(p) { p.verbosity.to_json().stringify() }).unwrap_or(""),
+      content="\"Verbose\"",
+    )
+  })
+}
+
+///|
+async test "save_presented_job_proposal stores presented message id" {
+  @fsx.with_temporary_directory("job-chat-service-proposal-save-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    let proposal = JobProposal::{
+      ..draft_job_proposal(
+        "proposal-1", "Track important research papers.", 100,
+      ),
+      presented_message_id: None,
+    }
+    save_presented_job_proposal(store, proposal, "message-1")
+    inspect(
+      store
+      .get_job_proposal("proposal-1")
+      .map(fn(saved) { saved.presented_message_id.unwrap_or("") })
+      .unwrap_or(""),
+      content="message-1",
+    )
+  })
+}
+
+///|
+test "resolve_target_proposal prefers explicit id and falls back to reply lookup" {
+  let store = SystemStore::new(root="unused")
+  let proposal = JobProposal::{
+    ..draft_job_proposal("proposal-2", "Review yesterday's papers.", 100),
+    presented_message_id: Some("message-2"),
+  }
+  store.proposals.set(proposal.id, proposal)
+  inspect(
+    resolve_target_proposal(store, "proposal-2", None)
+    .map(fn(found) { found.id })
+    .unwrap_or(""),
+    content="proposal-2",
+  )
+  inspect(
+    resolve_target_proposal(store, "", Some("message-2"))
+    .map(fn(found) { found.id })
+    .unwrap_or(""),
+    content="proposal-2",
+  )
+  inspect(
+    resolve_target_proposal(store, "", Some("missing")) is None,
+    content="true",
+  )
+}
+
+///|
+test "proposal command render helpers produce expected text" {
+  inspect(
+    render_unknown_proposal_message("confirm"),
+    content="Unknown proposal. Use `/confirm <proposal_id>` or reply `confirm` to a proposal message.",
+  )
+  inspect(
+    render_confirm_proposal_failure("proposal-1", "boom"),
+    content="Failed to confirm proposal proposal-1: boom",
+  )
+  inspect(
+    render_rejected_job_reply("proposal-2"),
+    content="Rejected proposal `proposal-2`.",
+  )
+  inspect(
+    render_revise_usage(true),
+    content="Usage: /revise <proposal_id> <extra guidance> or reply `revise <guidance>` to a proposal message.",
+  )
+  inspect(
+    render_job_notify_usage(),
+    content="Usage: /job-notify <off|normal|verbose>",
+  )
+  inspect(
+    render_job_notify_updated(NotificationVerbosity::Verbose),
+    content="Job notifications set to \"Verbose\" for this chat scope.",
+  )
+}
+
+///|
+async test "dispatch_job_chat_action routes commands through callbacks" {
+  inspect(
+    dispatch_job_chat_action(
+      Some(JobChatAction::Jobs),
+      async fn(_args) { "plan" },
+      async fn(_args) { "confirm" },
+      async fn(_args) { "reject" },
+      async fn(_args) { "revise" },
+      async fn(_args) { "status" },
+      async fn() { "jobs" },
+      async fn(args, force) { "\{args}:\{force}" },
+      async fn(_args) { "notify" },
+    ).unwrap_or(""),
+    content="jobs",
+  )
+  inspect(
+    dispatch_job_chat_action(
+      Some(JobChatAction::JobForceStop("run-1")),
+      async fn(_args) { "plan" },
+      async fn(_args) { "confirm" },
+      async fn(_args) { "reject" },
+      async fn(_args) { "revise" },
+      async fn(_args) { "status" },
+      async fn() { "jobs" },
+      async fn(args, force) { "\{args}:\{force}" },
+      async fn(_args) { "notify" },
+    ).unwrap_or(""),
+    content="run-1:true",
+  )
+}
