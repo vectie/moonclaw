@@ -82,6 +82,42 @@ test "decode_ok_payload parses run and channel payloads" {
     ),
     error: None,
   })
+  let job = @job.JobDefinition::{
+    id: "job-1",
+    kind: "analysis",
+    enabled: true,
+    config: {},
+    schedule: None,
+    retry_policy: None,
+    workflow_id: Some("workflow-1"),
+    created_at: 1,
+    updated_at: 2,
+    tags: ["research"],
+  }
+  let job_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-job",
+    ok: true,
+    payload: Some({ "job": job.to_json() }),
+    error: None,
+  })
+  let job_run = @job.JobRun::{
+    id: "job-run-1",
+    job_id: "job-1",
+    trigger: @job.TriggerSource::Manual,
+    status: @job.RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(10),
+    completed_at: None,
+    summary: None,
+    error: None,
+  }
+  let job_run_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-job-run",
+    ok: true,
+    payload: Some({ "run": job_run.to_json(), "steps": [], "artifacts": [] }),
+    error: None,
+  })
 
   let runs_result : Result[RunsListPayload, String] = decode_ok_payload(
     runs_response, "default", "missing", "parse failed",
@@ -100,7 +136,21 @@ test "decode_ok_payload parses run and channel payloads" {
   let ask_result : Result[@job.ChatAnswer, String] = decode_ok_payload(
     ask_response, "default", "missing", "parse failed",
   )
+  let job_result : Result[JobPayload, String] = decode_ok_payload(
+    job_response, "default", "missing", "parse failed",
+  )
+  let job_run_result : Result[JobRunDetails, String] = decode_ok_payload(
+    job_run_response, "default", "missing", "parse failed",
+  )
   let ask : @job.ChatAnswer = match ask_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let job_payload : JobPayload = match job_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let job_run_payload : JobRunDetails = match job_run_result {
     Ok(value) => value
     Err(error) => fail(error)
   }
@@ -111,6 +161,8 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(channels.channels[0].id, content="feishu")
   inspect(ask.binding_id.unwrap_or(""), content="binding-paper")
   inspect(ask.citations.length(), content="1")
+  inspect(job_payload.job.id, content="job-1")
+  inspect(job_run_payload.run.id, content="job-run-1")
 }
 
 ///|

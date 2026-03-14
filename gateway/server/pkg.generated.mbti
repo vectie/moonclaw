@@ -252,6 +252,8 @@ pub struct Gateway {
   pipeline_manager : PipelineManager
   channel_state : ChannelStateStore
   jobs : @job.RuntimeManager
+  job_cancel_requests : Map[String, Bool]
+  job_force_stop_requests : Map[String, Bool]
 }
 pub fn Gateway::auth_token(Self) -> String?
 pub async fn Gateway::handle_request(Self, @httpx.RequestReader, @httpx.ResponseWriter) -> Unit

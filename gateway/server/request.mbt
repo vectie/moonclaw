@@ -14,6 +14,19 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
       (Get, ["", "v1", "runs"]) => self.handle_list_runs(r, w)
       (Get, ["", "v1", "runs", run_id]) => self.handle_get_run(r, w)
+      (Get, ["", "v1", "jobs"]) => self.handle_list_jobs(r, w)
+      (Get, ["", "v1", "jobs", "runs"]) => self.handle_list_job_runs(r, w)
+      (Get, ["", "v1", "jobs", "runs", run_id]) => self.handle_get_job_run(r, w)
+      (Get, ["", "v1", "jobs", job_id]) => self.handle_get_job(r, w)
+      (Post, ["", "v1", "jobs"]) => self.handle_create_job(r, w)
+      (Post, ["", "v1", "jobs", job_id, "update"]) =>
+        self.handle_update_job(r, w, job_id.to_string())
+      (Post, ["", "v1", "jobs", job_id, "run"]) =>
+        self.handle_run_job(r, w, job_id.to_string())
+      (Post, ["", "v1", "jobs", job_id, "cancel"]) =>
+        self.handle_cancel_job(r, w, job_id.to_string(), false)
+      (Post, ["", "v1", "jobs", job_id, "force-cancel"]) =>
+        self.handle_cancel_job(r, w, job_id.to_string(), true)
       (Get, ["", "v1", "artifacts"]) => self.handle_list_artifacts(r, w)
       (Get, ["", "v1", "artifacts", artifact_id]) =>
         self.handle_get_artifact(r, w)
@@ -101,11 +114,15 @@ async fn Gateway::handle_index(
     "protocol_version": @protocol.PROTOCOL_VERSION,
     "endpoints": [
       "GET /health - Health check", "GET /v1/events - SSE event stream", "GET /v1/runs - List agent runs",
-      "GET /v1/runs/{id} - Get agent run status", "POST /v1/jobs/ask - Ask over job artifacts",
-      "GET /v1/channels - List channels", "GET /v1/channels/{id} - Get channel info",
-      "POST /v1/channels/{id}/configure - Configure channel accounts", "POST /v1/channels/{id}/start - Start a channel account",
-      "POST /v1/channels/{id}/stop - Stop a channel account", "POST /v1/agent - Submit agent task",
-      "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
+      "GET /v1/runs/{id} - Get agent run status", "GET /v1/jobs - List job definitions",
+      "GET /v1/jobs/{id} - Get job definition", "POST /v1/jobs - Create job definition",
+      "POST /v1/jobs/{id}/update - Update job definition", "POST /v1/jobs/{id}/run - Trigger a job run",
+      "POST /v1/jobs/{id}/cancel - Cancel the active job run", "POST /v1/jobs/{id}/force-cancel - Force-cancel the active job run",
+      "GET /v1/jobs/runs - List job runs", "GET /v1/jobs/runs/{id} - Get job run status",
+      "POST /v1/jobs/ask - Ask over job artifacts", "GET /v1/channels - List channels",
+      "GET /v1/channels/{id} - Get channel info", "POST /v1/channels/{id}/configure - Configure channel accounts",
+      "POST /v1/channels/{id}/start - Start a channel account", "POST /v1/channels/{id}/stop - Stop a channel account",
+      "POST /v1/agent - Submit agent task", "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
     ],
   }
   w.write(info.stringify())

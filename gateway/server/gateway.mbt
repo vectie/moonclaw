@@ -37,6 +37,8 @@ pub struct Gateway {
   pipeline_manager : PipelineManager
   channel_state : ChannelStateStore
   jobs : @job.RuntimeManager
+  job_cancel_requests : Map[String, Bool]
+  job_force_stop_requests : Map[String, Bool]
 }
 
 ///|
@@ -127,6 +129,7 @@ pub async fn Gateway::schedule_due_jobs(self : Gateway) -> Array[@job.JobRun] {
   })
   for run in runs {
     self.logger.info("Scheduled job run created: \{run.job_id} -> \{run.id}")
+    self.launch_job_run(run.id)
   }
   runs
 }

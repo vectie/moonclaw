@@ -4,6 +4,38 @@ pub struct ArtifactStore {
 }
 
 ///|
+struct ArtifactBytesWriteRequest {
+  run_id : String
+  job_id : String
+  artifact_type : String
+  logical_key : String?
+  content_type : String
+  file_name : String?
+  metadata : Json
+  scope : Array[String]
+  content : Bytes
+  append_only : Bool
+}
+
+///|
+fn ArtifactBytesWriteRequest::from_text(
+  request : ArtifactWriteRequest,
+) -> ArtifactBytesWriteRequest {
+  ArtifactBytesWriteRequest::{
+    run_id: request.run_id,
+    job_id: request.job_id,
+    artifact_type: request.artifact_type,
+    logical_key: request.logical_key,
+    content_type: request.content_type,
+    file_name: request.file_name,
+    metadata: request.metadata,
+    scope: request.scope,
+    content: @encoding/utf8.encode(request.content),
+    append_only: request.append_only,
+  }
+}
+
+///|
 pub fn ArtifactStore::new(store~ : SystemStore) -> ArtifactStore {
   ArtifactStore::{ store, }
 }
@@ -57,9 +89,9 @@ fn ArtifactStore::matches_query(
 }
 
 ///|
-fn ArtifactStore::latest_version(
+fn ArtifactStore::latest_bytes_version(
   self : ArtifactStore,
-  request : ArtifactWriteRequest,
+  request : ArtifactBytesWriteRequest,
 ) -> Int {
   self.store
   .list_artifacts()
@@ -78,9 +110,9 @@ fn ArtifactStore::latest_version(
 }
 
 ///|
-fn ArtifactStore::existing_mutable_record(
+fn ArtifactStore::existing_mutable_bytes_record(
   self : ArtifactStore,
-  request : ArtifactWriteRequest,
+  request : ArtifactBytesWriteRequest,
 ) -> ArtifactRecord? {
   guard !request.append_only else { return None }
   let artifacts = self.store
@@ -139,14 +171,28 @@ pub async fn ArtifactStore::write(
   artifact_id : String,
   now_ms : Int,
 ) -> ArtifactRecord {
-  let existing = self.existing_mutable_record(request)
+  self.write_bytes(
+    ArtifactBytesWriteRequest::from_text(request),
+    artifact_id,
+    now_ms,
+  )
+}
+
+///|
+pub async fn ArtifactStore::write_bytes(
+  self : ArtifactStore,
+  request : ArtifactBytesWriteRequest,
+  artifact_id : String,
+  now_ms : Int,
+) -> ArtifactRecord {
+  let existing = self.existing_mutable_bytes_record(request)
   let id = match existing {
     Some(record) => record.id
     None => artifact_id
   }
   let version = match existing {
     Some(record) => record.version
-    None => self.latest_version(request) + 1
+    None => self.latest_bytes_version(request) + 1
   }
   let file_name = request.file_name.unwrap_or(
     ArtifactStore::default_file_name(request.content_type),
@@ -159,7 +205,7 @@ pub async fn ArtifactStore::write(
   ) catch {
     _ => ()
   }
-  @fsx.write_to_file(path, request.content)
+  @fsx.write_bytes_to_file(path, request.content)
   let record = ArtifactRecord::{
     id,
     run_id: request.run_id,

@@ -56,6 +56,9 @@ The shared unit is `@moonclaw.Moonclaw`:
 | `sessions` | session key -> conversation/model/cwd state |
 | `dedupe` | run/idempotency cache |
 | `agent_runs` | run status and final payloads |
+| `jobs` | generic job definitions, runs, artifacts, workflows, and scheduler state |
+| `job_cancel_requests` | cooperative cancel requests for active job runs |
+| `job_force_stop_requests` | force-stop requests for active job runs |
 | `channel_manager` | registered channel docks |
 | `extension_registry` | webhook-capable channel extensions |
 | `mailbox_manager` | agent-to-agent message mailboxes |
@@ -104,6 +107,16 @@ The route table lives in `gateway/server/request.mbt`.
 - `GET /v1/events`
 - `GET /v1/runs`
 - `GET /v1/runs/{id}`
+- `GET /v1/jobs`
+- `GET /v1/jobs/{id}`
+- `POST /v1/jobs`
+- `POST /v1/jobs/{id}/update`
+- `POST /v1/jobs/{id}/run`
+- `POST /v1/jobs/{id}/cancel`
+- `POST /v1/jobs/{id}/force-cancel`
+- `GET /v1/jobs/runs`
+- `GET /v1/jobs/runs/{id}`
+- `POST /v1/jobs/ask`
 - `POST /v1/agent`
 - `POST /v1/rpc`
 - `POST /v1/shutdown`
@@ -176,6 +189,7 @@ POST /v1/rpc
     -> parse_frame(json)
     -> Gateway::handle_request_frame
       -> "connect" / "agent" / "agent.wait" / "sessions.list" / ...
+      -> "jobs.*" / "jobs.runs.*" / "artifacts.*"
 ```
 
 ### 4. Direct HTTP agent path
@@ -217,6 +231,126 @@ The final run payload currently includes:
 - `content`
 - `conversation_id`
 - `completed_at`
+
+## Job Execution Call Chain
+
+The generic job system now runs under the gateway instead of being a passive store.
+
+### Manual trigger path
+
+```text
+CLI / RPC / HTTP
+  -> RuntimeManager::trigger_definition(...)
+  -> Gateway::launch_job_run(run_id)
+  -> WorkflowEngine::execute_run(...)
+  -> step handlers persist step state, outputs, and artifacts
+  -> JobRuntime / ArtifactStore update run + artifact indexes
+```
+
+### Scheduled path
+
+```text
+Gateway tick loop
+  -> RuntimeManager::trigger_due_definitions(now_ms)
+  -> create pending due runs
+  -> Gateway::launch_due_job_runs(...)
+  -> WorkflowEngine::execute_run(...)
+```
+
+## Research Job Family
+
+`job/research.mbt` is the first concrete job family built on the generic job platform.
+
+Implemented research step kinds:
+
+- `research.topic.sync`
+- `research.paper.fetch`
+- `research.paper.parse`
+- `research.paper.analyze`
+
+Implemented research chat bindings:
+
+- `research.topic.ask:<topic_id>`
+- `research.paper.ask:<paper_id>`
+
+Research call chain:
+
+```text
+job definition or workflow bundle
+  -> gateway job runtime / workflow engine
+    -> research.topic.sync
+      -> ArxivClient.search(...)
+      -> persist topic feed artifact
+      -> persist paper metadata artifacts
+      -> optionally download PDF artifacts
+      -> create/update topic chat binding
+    -> research.paper.fetch
+      -> fetch one paper from arXiv
+      -> persist paper metadata + PDF artifacts
+      -> create/update paper chat binding
+    -> research.paper.parse
+      -> load paper metadata + PDF artifact
+      -> PaperTextExtractor.extract(...)
+      -> persist `research.paper.text`
+      -> persist `research.paper.chunks`
+    -> research.paper.analyze
+      -> load paper metadata + parsed text artifacts
+      -> AnalysisExecutor.run(...)
+      -> persist analysis report + structured result artifacts
+```
+
+Research artifact types currently persisted include:
+
+- `research.topic.feed`
+- `research.paper.meta`
+- `research.paper.pdf`
+- `research.paper.text`
+- `research.paper.chunks`
+- `research.paper.analysis.summary.report`
+- `research.paper.analysis.summary.result`
+
+The default parse path uses `pdftotext` when it is available, and falls back to metadata-derived text when PDF text extraction is unavailable.
+
+```text
+POST /v1/jobs/{id}/run or RPC jobs.run
+  -> Gateway::handle_run_job / handle_jobs_run_method
+  -> Gateway::trigger_job_definition(job_id)
+  -> RuntimeManager::trigger_definition(...)
+  -> persist JobRun
+  -> Gateway::launch_job_run(run_id)
+  -> spawn background execute_job_run_async(...)
+  -> WorkflowEngine::execute_run(...)
+  -> registered step handlers run
+  -> ArtifactStore persists outputs
+  -> JobRun / JobStepRun state saved back to disk
+```
+
+### Scheduled path
+
+```text
+gateway tick
+  -> Gateway::schedule_due_jobs()
+  -> RuntimeManager::trigger_due_definitions(...)
+  -> create due JobRun values
+  -> Gateway::launch_job_run(run_id) for each due run
+  -> WorkflowEngine::execute_run(...)
+```
+
+### Cancellation path
+
+```text
+POST /v1/jobs/{id}/cancel or RPC jobs.cancel
+  -> Gateway::cancel_job_definition_run(job_id, force=false)
+  -> pending run: mark cancelled immediately
+  -> active run: set cooperative cancel flag
+  -> WorkflowExecutionControl observes the flag and exits cleanly
+
+POST /v1/jobs/{id}/force-cancel or RPC jobs.force_cancel
+  -> Gateway::cancel_job_definition_run(job_id, force=true)
+  -> active run sees force-stop flag through WorkflowExecutionControl
+```
+
+Current built-in step registration is intentionally narrow: the gateway workflow engine registers the generic analysis step handler by default. Additional job-family step kinds can be registered on top of the same runtime later without changing the gateway control plane.
 
 ## Session Routing and Write-Back Flow
 

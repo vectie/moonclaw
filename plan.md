@@ -116,22 +116,22 @@ Deliverable:
 
 ## Phase 6: AI Analysis Workflows
 
-- [ ] Add generic AI analysis workflow support
-- [ ] Allow workflow steps to invoke MoonClaw with chosen model, tools, and skills
-- [ ] Persist structured analysis outputs and readable reports as artifacts
-- [ ] Add workflow-level cost, timeout, and skip policies
-- [ ] Add tests for analysis workflow execution and persistence
+- [x] Add generic AI analysis workflow support
+- [x] Allow workflow steps to invoke MoonClaw with chosen model, tools, and skills
+- [x] Persist structured analysis outputs and readable reports as artifacts
+- [x] Add workflow-level cost, timeout, and skip policies
+- [x] Add tests for analysis workflow execution and persistence
 
 Deliverable:
 - any job family can attach AI analysis steps to its workflows
 
 ## Phase 7: Gateway API and CLI Surface
 
-- [ ] Add gateway RPC for job definitions, runs, artifacts, and chat
-- [ ] Add HTTP surface for the same operations
-- [ ] Add CLI commands for job list/create/update/run/inspect
-- [ ] Add CLI commands for artifact list/get and job-bound ask
-- [ ] Document the operator flow for running jobs under gateway
+- [x] Add gateway RPC for job definitions, runs, artifacts, and chat
+- [x] Add HTTP surface for the same operations
+- [x] Add CLI commands for job list/create/update/run/inspect
+- [x] Add CLI commands for artifact list/get and job-bound ask
+- [x] Document the operator flow for running jobs under gateway
 
 Suggested RPC surface:
 - `jobs.list`
@@ -152,16 +152,16 @@ Deliverable:
 
 ## Phase 8: Research as the First Built-in Job Family
 
-- [ ] Add `research.topic.sync` job definition kind
-- [ ] Add `research.paper.fetch` job definition kind
-- [ ] Add `research.paper.parse` job definition kind
-- [ ] Add `research.paper.analyze` job definition kind
-- [ ] Add `research.paper.ask` chat binding conventions
-- [ ] Add arXiv client and feed parsing
-- [ ] Add PDF download and paper asset persistence
-- [ ] Add paper text extraction and chunk artifacts
-- [ ] Add research-specific analysis workflows such as summary, novelty, critique, and reproduction checklist
-- [ ] Add tests for arXiv ingestion and paper artifact lifecycle
+- [x] Add `research.topic.sync` job definition kind
+- [x] Add `research.paper.fetch` job definition kind
+- [x] Add `research.paper.parse` job definition kind
+- [x] Add `research.paper.analyze` job definition kind
+- [x] Add `research.paper.ask` chat binding conventions
+- [x] Add arXiv client and feed parsing
+- [x] Add PDF download and paper asset persistence
+- [x] Add paper text extraction and chunk artifacts
+- [x] Add research-specific analysis workflows such as summary, novelty, critique, and reproduction checklist
+- [x] Add tests for arXiv ingestion and paper artifact lifecycle
 
 Deliverable:
 - research works as a concrete job family built on the generic platform
@@ -206,8 +206,8 @@ Deliverable:
 - [x] workflow retry/cancel/force-cancel tests
 - [x] artifact indexing and retrieval tests
 - [x] chat over artifacts tests
-- [ ] AI analysis workflow persistence tests
-- [ ] research/arXiv integration tests
+- [x] AI analysis workflow persistence tests
+- [x] research/arXiv integration tests
 
 ## Initial Build Order
 
@@ -216,7 +216,7 @@ Deliverable:
 - [x] Finish Phase 3 before adding analysis workflows
 - [x] Finish Phase 4 before artifact chat
 - [x] Finish Phase 5 before research ask UX
-- [ ] Finish Phase 8 before TUI/channel research polish
+- [x] Finish Phase 8 before TUI/channel research polish
 
 ## Non-Goals for v1
 

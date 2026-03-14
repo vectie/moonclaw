@@ -29,6 +29,18 @@ moonclaw gateway connect [--url URL] [--token TOKEN]
 moonclaw gateway agent --message "..." [--session KEY] [--cwd DIR] [--model NAME] [--wait] [--timeout MS]
 moonclaw gateway runs [--url URL] [--token TOKEN]
 moonclaw gateway run --id RUN_ID [--url URL] [--token TOKEN]
+moonclaw gateway jobs [--url URL] [--token TOKEN]
+moonclaw gateway job --id JOB_ID [--url URL] [--token TOKEN]
+moonclaw gateway job-create --definition-json '{...}' [--url URL] [--token TOKEN]
+moonclaw gateway job-update --definition-json '{...}' [--url URL] [--token TOKEN]
+moonclaw gateway job-run --id JOB_ID [--url URL] [--token TOKEN]
+moonclaw gateway job-cancel --id JOB_ID [--url URL] [--token TOKEN]
+moonclaw gateway job-force-cancel --id JOB_ID [--url URL] [--token TOKEN]
+moonclaw gateway job-runs [--url URL] [--token TOKEN]
+moonclaw gateway job-run-status --run-id RUN_ID [--url URL] [--token TOKEN]
+moonclaw gateway artifacts [--url URL] [--token TOKEN]
+moonclaw gateway artifact --id ARTIFACT_ID [--url URL] [--token TOKEN]
+moonclaw gateway job-ask --question "..." [--binding BINDING_ID] [--url URL] [--token TOKEN]
 moonclaw gateway channels [--url URL] [--token TOKEN]
 moonclaw gateway channel --id CHANNEL_ID [--url URL] [--token TOKEN]
 moonclaw gateway channel-configure --id CHANNEL_ID --config-json '{...}' [--url URL] [--token TOKEN]
@@ -95,9 +107,90 @@ moonclaw gateway agent --message "Use a specific model" --model default --wait
 ```bash
 moonclaw gateway runs
 moonclaw gateway run --id run-123
+moonclaw gateway jobs
+moonclaw gateway job --id nightly-research
+moonclaw gateway job-runs
+moonclaw gateway job-run-status --run-id run-123
+moonclaw gateway artifacts
+moonclaw gateway artifact --id artifact-123
+moonclaw gateway job-ask --binding research-topic --question "What changed this week?"
 moonclaw gateway channels
 moonclaw gateway channel --id feishu
 ```
+
+### Define and run jobs
+
+```bash
+moonclaw gateway job-create \
+  --definition-json '{"id":"nightly-research","kind":"research.topic.sync","enabled":true,"schedule":{"interval_ms":3600000},"workflow_id":"research-sync"}'
+
+moonclaw gateway job-update \
+  --definition-json '{"id":"nightly-research","kind":"research.topic.sync","enabled":false,"schedule":{"interval_ms":3600000},"workflow_id":"research-sync"}'
+
+moonclaw gateway job-run --id nightly-research
+moonclaw gateway job-cancel --id nightly-research
+moonclaw gateway job-force-cancel --id nightly-research
+```
+
+### Research job family
+
+The first built-in job family is `research`, implemented on top of the generic job runtime.
+
+Current workflow step kinds:
+
+- `research.topic.sync`
+- `research.paper.fetch`
+- `research.paper.parse`
+- `research.paper.analyze`
+
+Current research chat binding conventions:
+
+- `research.topic.ask:<topic_id>`
+- `research.paper.ask:<paper_id>`
+
+Typical research flow:
+
+```text
+create research job definition
+  -> trigger run manually or let scheduler trigger it
+  -> sync/fetch step pulls paper metadata from arXiv
+  -> PDF artifact is stored on disk
+  -> parse step produces text + chunk artifacts
+  -> analyze step produces report + structured result artifacts
+  -> ask grounded questions with `job-ask` against the research binding
+```
+
+Example job definition shape for a scheduled topic sync:
+
+```json
+{
+  "id": "research.agents.sync",
+  "kind": "research.topic.sync",
+  "enabled": true,
+  "schedule": {
+    "interval_ms": 3600000
+  },
+  "workflow_id": "workflow.research.agents.sync",
+  "tags": ["research", "arxiv"]
+}
+```
+
+Research artifacts are then queryable through the generic artifact APIs and chat surface. The current implementation stores arXiv feed metadata, paper metadata, PDFs, extracted text, chunks, and analysis outputs as first-class job artifacts.
+
+### Operator flow for jobs
+
+```text
+define or update a job
+  -> create/update stored definition
+  -> gateway scheduler sees enabled definitions on tick
+  -> RuntimeManager::trigger_due_definitions(...) creates a run when due
+  -> Gateway::launch_job_run(...) executes the workflow in background
+  -> workflow steps persist step state and artifacts
+  -> inspect run/artifact state through RPC, HTTP, or CLI
+  -> ask grounded questions over produced artifacts with jobs.ask / job-ask
+```
+
+Scheduled jobs are not metadata-only. Once a due run is created, the gateway immediately launches it in the background.
 
 ### Configure and control channel runtime
 
@@ -181,6 +274,16 @@ If no explicit `accounts` map is present, the gateway seeds a `default` Feishu a
 | `/v1/events` | `GET` | SSE event stream |
 | `/v1/runs` | `GET` | list runs |
 | `/v1/runs/{id}` | `GET` | get run payload |
+| `/v1/jobs` | `GET` | list job definitions |
+| `/v1/jobs/{id}` | `GET` | get one job definition |
+| `/v1/jobs` | `POST` | create a job definition |
+| `/v1/jobs/{id}/update` | `POST` | update a job definition |
+| `/v1/jobs/{id}/run` | `POST` | trigger a job now |
+| `/v1/jobs/{id}/cancel` | `POST` | request cooperative cancel |
+| `/v1/jobs/{id}/force-cancel` | `POST` | request force-stop |
+| `/v1/jobs/runs` | `GET` | list job runs |
+| `/v1/jobs/runs/{id}` | `GET` | inspect one job run with steps and artifacts |
+| `/v1/jobs/ask` | `POST` | ask a grounded question over bound artifacts |
 | `/v1/agent` | `POST` | accept an agent request |
 | `/v1/rpc` | `POST` | JSON-RPC entrypoint |
 | `/v1/shutdown` | `POST` | graceful shutdown |
@@ -226,6 +329,18 @@ Implemented methods:
 - `health`
 - `runs.list`
 - `runs.get`
+- `jobs.list`
+- `jobs.get`
+- `jobs.create`
+- `jobs.update`
+- `jobs.run`
+- `jobs.cancel`
+- `jobs.force_cancel`
+- `jobs.runs.list`
+- `jobs.runs.get`
+- `jobs.ask`
+- `artifacts.list`
+- `artifacts.get`
 - `channels.list`
 - `channels.get`
 - `channels.configure`

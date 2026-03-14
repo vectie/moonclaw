@@ -3,9 +3,43 @@ package "moonbitlang/moonclaw/job"
 
 import {
   "moonbitlang/core/json",
+  "moonbitlang/moonclaw/ai",
 }
 
 // Values
+pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
+
+pub fn default_analysis_executor() -> AnalysisExecutor
+
+pub fn default_paper_text_extractor() -> PaperTextExtractor
+
+pub fn parse_arxiv_feed(String) -> ArxivFeedResult
+
+pub fn research_paper_analyze_bundle(job_id~ : String, config~ : ResearchPaperAnalyzeConfig, Int) -> ResearchJobBundle
+
+pub fn research_paper_analyze_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
+
+pub fn research_paper_binding(String, Int, title? : String?) -> ChatBinding
+
+pub fn research_paper_fetch_bundle(job_id~ : String, config~ : ResearchPaperFetchConfig, Int) -> ResearchJobBundle
+
+pub fn research_paper_fetch_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
+
+pub fn research_paper_parse_bundle(job_id~ : String, config~ : ResearchPaperParseConfig, Int) -> ResearchJobBundle
+
+pub fn research_paper_parse_step_handler(runtime~ : RuntimeManager, extractor? : PaperTextExtractor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
+
+pub fn research_paper_scope(String) -> String
+
+pub fn research_scope() -> String
+
+pub fn research_topic_binding(String, Int, title? : String?) -> ChatBinding
+
+pub fn research_topic_scope(String) -> String
+
+pub fn research_topic_sync_bundle(job_id~ : String, config~ : ResearchTopicSyncConfig, Int, schedule? : SchedulePolicy?) -> ResearchJobBundle
+
+pub fn research_topic_sync_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
 // Errors
 pub suberror InvalidJobId {
@@ -13,6 +47,81 @@ pub suberror InvalidJobId {
 }
 
 // Types and methods
+pub(all) struct AnalysisArtifactConfig {
+  report_artifact_type : String
+  result_artifact_type : String
+  logical_key : String?
+  report_file_name : String?
+  result_file_name : String?
+  scope : Array[String]
+  append_only : Bool
+}
+pub fn AnalysisArtifactConfig::new(report_artifact_type? : String, result_artifact_type? : String, logical_key? : String?, report_file_name? : String?, result_file_name? : String?, scope? : Array[String], append_only? : Bool) -> Self
+pub impl Show for AnalysisArtifactConfig
+pub impl ToJson for AnalysisArtifactConfig
+pub impl @json.FromJson for AnalysisArtifactConfig
+
+pub(all) struct AnalysisExecution {
+  model_name : String
+  content : String
+  conversation_id : String?
+  usage : @ai.Usage?
+  metadata : Json
+}
+pub impl Show for AnalysisExecution
+
+pub(all) struct AnalysisExecutor {
+  run : async (AnalysisRequest) -> Result[AnalysisExecution, String]
+}
+pub fn AnalysisExecutor::new(run~ : async (AnalysisRequest) -> Result[AnalysisExecution, String]) -> Self
+
+pub(all) struct AnalysisPolicy {
+  timeout_ms : Int?
+  max_total_tokens : Int?
+  skip_if_artifact_exists : Bool
+}
+pub fn AnalysisPolicy::new(timeout_ms? : Int?, max_total_tokens? : Int?, skip_if_artifact_exists? : Bool) -> Self
+pub impl Show for AnalysisPolicy
+pub impl ToJson for AnalysisPolicy
+pub impl @json.FromJson for AnalysisPolicy
+
+pub(all) struct AnalysisRequest {
+  job_id : String
+  run_id : String
+  step_id : String
+  prompt : String
+  model_name : String
+  cwd : String
+  home : String?
+  system_prompt : String
+  preferred_skills : Array[String]
+  enable_tools : Bool
+  web_search : Bool
+}
+pub impl Show for AnalysisRequest
+pub impl ToJson for AnalysisRequest
+pub impl @json.FromJson for AnalysisRequest
+
+pub(all) struct AnalysisStepConfig {
+  prompt : String
+  model : String?
+  cwd : String?
+  home : String?
+  system_prompt : String?
+  preferred_skills : Array[String]
+  enable_tools : Bool
+  web_search : Bool
+  policy : AnalysisPolicy
+  artifacts : AnalysisArtifactConfig
+  metadata : Json
+}
+pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String?, home? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, artifacts? : AnalysisArtifactConfig, metadata? : Json) -> Self
+pub impl Show for AnalysisStepConfig
+pub impl ToJson for AnalysisStepConfig
+pub impl @json.FromJson for AnalysisStepConfig
+
+type ArtifactBytesWriteRequest
+
 pub(all) struct ArtifactCleanupReport {
   archived_ids : Array[String]
   deleted_ids : Array[String]
@@ -84,6 +193,7 @@ pub fn ArtifactStore::list(Self, query? : ArtifactQuery) -> Array[ArtifactRecord
 pub fn ArtifactStore::new(store~ : SystemStore) -> Self
 pub async fn ArtifactStore::read_text(Self, String) -> String?
 pub async fn ArtifactStore::write(Self, ArtifactWriteRequest, String, Int) -> ArtifactRecord
+pub async fn ArtifactStore::write_bytes(Self, ArtifactBytesWriteRequest, String, Int) -> ArtifactRecord
 
 pub(all) struct ArtifactWriteRequest {
   run_id : String
@@ -106,6 +216,36 @@ type ArtifactsIndexFile
 pub impl Show for ArtifactsIndexFile
 pub impl ToJson for ArtifactsIndexFile
 pub impl @json.FromJson for ArtifactsIndexFile
+
+pub(all) struct ArxivClient {
+  fetch_feed : async (ArxivSearchRequest) -> Result[String, String]
+  fetch_pdf : async (String) -> Result[Bytes, String]
+}
+pub fn ArxivClient::new(fetch_feed? : async (ArxivSearchRequest) -> Result[String, String], fetch_pdf? : async (String) -> Result[Bytes, String]) -> Self
+pub async fn ArxivClient::search(Self, ArxivSearchRequest) -> Result[ArxivFeedResult, String]
+
+pub(all) struct ArxivFeedResult {
+  papers : Array[ResearchPaper]
+  total_results : Int
+  start_index : Int
+  items_per_page : Int
+}
+pub impl Show for ArxivFeedResult
+pub impl ToJson for ArxivFeedResult
+pub impl @json.FromJson for ArxivFeedResult
+
+pub(all) struct ArxivSearchRequest {
+  query : String?
+  id_list : Array[String]
+  max_results : Int
+  start : Int
+  sort_by : String
+  sort_order : String
+}
+pub fn ArxivSearchRequest::new(query? : String?, id_list? : Array[String], max_results? : Int, start? : Int, sort_by? : String, sort_order? : String) -> Self
+pub impl Show for ArxivSearchRequest
+pub impl ToJson for ArxivSearchRequest
+pub impl @json.FromJson for ArxivSearchRequest
 
 pub(all) struct ChatAnswer {
   binding_id : String?
@@ -279,6 +419,107 @@ pub fn Manager::new(cwd~ : String) -> Self
 pub async fn Manager::spawn(Self, name~ : String, description? : String, command~ : String, cwd? : String) -> Job
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int
+
+pub(all) struct PaperTextExtractor {
+  extract : async (String, ResearchPaper) -> Result[String, String]
+}
+pub fn PaperTextExtractor::new(extract~ : async (String, ResearchPaper) -> Result[String, String]) -> Self
+
+type ParsedUrl
+
+pub(all) struct ResearchChunk {
+  id : String
+  paper_id : String
+  index : Int
+  text : String
+  heading : String?
+  token_estimate : Int
+}
+pub impl Show for ResearchChunk
+pub impl ToJson for ResearchChunk
+pub impl @json.FromJson for ResearchChunk
+
+pub(all) struct ResearchJobBundle {
+  definition : JobDefinition
+  workflows : Array[WorkflowDefinition]
+  bindings : Array[ChatBinding]
+}
+pub impl Show for ResearchJobBundle
+pub impl ToJson for ResearchJobBundle
+pub impl @json.FromJson for ResearchJobBundle
+
+pub(all) struct ResearchPaper {
+  id : String
+  base_id : String
+  version : Int
+  title : String
+  abstract_text : String
+  authors : Array[String]
+  categories : Array[String]
+  primary_category : String?
+  published_at : String?
+  updated_at : String?
+  abs_url : String?
+  pdf_url : String?
+}
+pub impl Show for ResearchPaper
+pub impl ToJson for ResearchPaper
+pub impl @json.FromJson for ResearchPaper
+
+pub(all) struct ResearchPaperAnalyzeConfig {
+  paper_id : String
+  analysis_kind : String
+  model : String?
+  cwd : String?
+  home : String?
+  system_prompt : String?
+  preferred_skills : Array[String]
+  enable_tools : Bool
+  web_search : Bool
+  policy : AnalysisPolicy
+  max_context_chars : Int
+  scope : Array[String]
+}
+pub fn ResearchPaperAnalyzeConfig::new(paper_id~ : String, analysis_kind? : String, model? : String?, cwd? : String?, home? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, max_context_chars? : Int, scope? : Array[String]) -> Self
+pub impl Show for ResearchPaperAnalyzeConfig
+pub impl ToJson for ResearchPaperAnalyzeConfig
+pub impl @json.FromJson for ResearchPaperAnalyzeConfig
+
+pub(all) struct ResearchPaperFetchConfig {
+  paper_id : String?
+  query : String?
+  topic_id : String?
+  max_results : Int
+  download_pdf : Bool
+  scope : Array[String]
+}
+pub fn ResearchPaperFetchConfig::new(paper_id? : String?, query? : String?, topic_id? : String?, max_results? : Int, download_pdf? : Bool, scope? : Array[String]) -> Self
+pub impl Show for ResearchPaperFetchConfig
+pub impl ToJson for ResearchPaperFetchConfig
+pub impl @json.FromJson for ResearchPaperFetchConfig
+
+pub(all) struct ResearchPaperParseConfig {
+  paper_id : String?
+  chunk_chars : Int
+  scope : Array[String]
+}
+pub fn ResearchPaperParseConfig::new(paper_id? : String?, chunk_chars? : Int, scope? : Array[String]) -> Self
+pub impl Show for ResearchPaperParseConfig
+pub impl ToJson for ResearchPaperParseConfig
+pub impl @json.FromJson for ResearchPaperParseConfig
+
+pub(all) struct ResearchTopicSyncConfig {
+  topic_id : String
+  title : String?
+  query : String
+  max_results : Int
+  download_pdf : Bool
+  scope : Array[String]
+}
+pub fn ResearchTopicSyncConfig::new(topic_id~ : String, query~ : String, title? : String?, max_results? : Int, download_pdf? : Bool, scope? : Array[String]) -> Self
+pub impl Show for ResearchTopicSyncConfig
+pub impl ToJson for ResearchTopicSyncConfig
+pub impl @json.FromJson for ResearchTopicSyncConfig
 
 pub(all) struct RetrievalHit {
   artifact_id : String

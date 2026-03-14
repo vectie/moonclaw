@@ -3,8 +3,9 @@ fn supported_rpc_methods() -> Array[String] {
   [
     "connect", "agent", "agent.wait", "sessions.list", "sessions.reset", "config.get",
     "config.set", "health", "runs.list", "runs.get", "artifacts.list", "artifacts.get",
-    "jobs.ask", "channels.list", "channels.get", "channels.configure", "channels.start",
-    "channels.stop",
+    "jobs.list", "jobs.get", "jobs.create", "jobs.update", "jobs.run", "jobs.cancel",
+    "jobs.force_cancel", "jobs.runs.list", "jobs.runs.get", "jobs.ask", "channels.list",
+    "channels.get", "channels.configure", "channels.start", "channels.stop",
   ]
 }
 

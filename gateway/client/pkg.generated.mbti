@@ -42,17 +42,26 @@ pub struct Client {
 }
 pub async fn Client::agent(Self, message~ : String, session_key? : String, cwd? : String, model? : String, run_id? : String) -> Result[@protocol.AgentAcceptedPayload, String]
 pub async fn Client::ask_job(Self, @job.JobAskParams) -> Result[@job.ChatAnswer, String]
+pub async fn Client::cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::configure_channel(Self, channel_id~ : String, @channel.ChannelConfig) -> Result[ChannelMutationPayload, String]
 pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
+pub async fn Client::create_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
+pub async fn Client::force_cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]
+pub async fn Client::get_job(Self, job_id~ : String) -> Result[JobPayload, String]
+pub async fn Client::get_job_run(Self, run_id~ : String) -> Result[JobRunDetails, String]
 pub async fn Client::get_run(Self, run_id~ : String) -> Result[RunInfo, String]
 pub async fn Client::health(Self) -> Result[@protocol.HealthPayload, String]
 pub async fn Client::list_channels(Self) -> Result[ChannelsListPayload, String]
+pub async fn Client::list_job_runs(Self) -> Result[JobRunsPayload, String]
+pub async fn Client::list_jobs(Self) -> Result[JobsListPayload, String]
 pub async fn Client::list_runs(Self) -> Result[RunsListPayload, String]
 pub async fn Client::list_sessions(Self) -> Result[@protocol.SessionsListPayload, String]
 pub async fn Client::new(ClientConfig) -> Self
+pub async fn Client::run_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::start_channel(Self, channel_id~ : String, account_id~ : String, Json) -> Result[ChannelMutationPayload, String]
 pub async fn Client::stop_channel(Self, channel_id~ : String, account_id~ : String) -> Result[ChannelMutationPayload, String]
+pub async fn Client::update_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
 pub async fn Client::wait_agent(Self, run_id~ : String, timeout_ms? : Int) -> Result[Json, String]
 
 pub(all) struct ClientConfig {
@@ -61,6 +70,45 @@ pub(all) struct ClientConfig {
   client_id : String?
   client_mode : @protocol.ClientMode
 }
+
+pub(all) struct JobMutationPayload {
+  status : String
+  job : @job.JobDefinition?
+  run : @job.JobRun?
+}
+pub impl Show for JobMutationPayload
+pub impl ToJson for JobMutationPayload
+pub impl @json.FromJson for JobMutationPayload
+
+pub(all) struct JobPayload {
+  job : @job.JobDefinition
+}
+pub impl Show for JobPayload
+pub impl ToJson for JobPayload
+pub impl @json.FromJson for JobPayload
+
+pub(all) struct JobRunDetails {
+  run : @job.JobRun
+  steps : Array[@job.JobStepRun]
+  artifacts : Array[@job.ArtifactRecord]
+}
+pub impl Show for JobRunDetails
+pub impl ToJson for JobRunDetails
+pub impl @json.FromJson for JobRunDetails
+
+pub(all) struct JobRunsPayload {
+  runs : Array[@job.JobRun]
+}
+pub impl Show for JobRunsPayload
+pub impl ToJson for JobRunsPayload
+pub impl @json.FromJson for JobRunsPayload
+
+pub(all) struct JobsListPayload {
+  jobs : Array[@job.JobDefinition]
+}
+pub impl Show for JobsListPayload
+pub impl ToJson for JobsListPayload
+pub impl @json.FromJson for JobsListPayload
 
 pub(all) struct RunInfo {
   run_id : String

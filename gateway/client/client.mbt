@@ -33,6 +33,35 @@ pub(all) struct RunsListPayload {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct JobsListPayload {
+  jobs : Array[@job.JobDefinition]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobRunsPayload {
+  runs : Array[@job.JobRun]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobMutationPayload {
+  status : String
+  job : @job.JobDefinition?
+  run : @job.JobRun?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobPayload {
+  job : @job.JobDefinition
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobRunDetails {
+  run : @job.JobRun
+  steps : Array[@job.JobStepRun]
+  artifacts : Array[@job.ArtifactRecord]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct ChannelsListPayload {
   channels : Array[@channel.ChannelDock]
 } derive(ToJson, FromJson, Show)
@@ -321,6 +350,166 @@ pub async fn Client::ask_job(
     "Job ask failed with unknown error",
     "Missing job ask payload",
     "Failed to parse job ask response",
+  )
+}
+
+///|
+pub async fn Client::list_jobs(
+  self : Client,
+) -> Result[JobsListPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.list",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Jobs list failed with unknown error",
+    "Missing jobs payload",
+    "Failed to parse jobs payload",
+  )
+}
+
+///|
+pub async fn Client::get_job(
+  self : Client,
+  job_id~ : String,
+) -> Result[JobPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.get",
+    params: Some({ "job_id": job_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job lookup failed with unknown error",
+    "Missing job payload",
+    "Failed to parse job payload",
+  )
+}
+
+///|
+pub async fn Client::create_job(
+  self : Client,
+  definition : @job.JobDefinition,
+) -> Result[JobMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.create",
+    params: Some(definition.to_json()),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job create failed with unknown error",
+    "Missing job create payload",
+    "Failed to parse job create response",
+  )
+}
+
+///|
+pub async fn Client::update_job(
+  self : Client,
+  definition : @job.JobDefinition,
+) -> Result[JobMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.update",
+    params: Some(definition.to_json()),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job update failed with unknown error",
+    "Missing job update payload",
+    "Failed to parse job update response",
+  )
+}
+
+///|
+pub async fn Client::run_job(
+  self : Client,
+  job_id~ : String,
+) -> Result[JobMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.run",
+    params: Some({ "job_id": job_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job run failed with unknown error",
+    "Missing job run payload",
+    "Failed to parse job run response",
+  )
+}
+
+///|
+pub async fn Client::cancel_job(
+  self : Client,
+  job_id~ : String,
+) -> Result[JobMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.cancel",
+    params: Some({ "job_id": job_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job cancel failed with unknown error",
+    "Missing job cancel payload",
+    "Failed to parse job cancel response",
+  )
+}
+
+///|
+pub async fn Client::force_cancel_job(
+  self : Client,
+  job_id~ : String,
+) -> Result[JobMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.force_cancel",
+    params: Some({ "job_id": job_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job force-cancel failed with unknown error",
+    "Missing job force-cancel payload",
+    "Failed to parse job force-cancel response",
+  )
+}
+
+///|
+pub async fn Client::list_job_runs(
+  self : Client,
+) -> Result[JobRunsPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.runs.list",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job runs list failed with unknown error",
+    "Missing job runs payload",
+    "Failed to parse job runs response",
+  )
+}
+
+///|
+pub async fn Client::get_job_run(
+  self : Client,
+  run_id~ : String,
+) -> Result[JobRunDetails, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "jobs.runs.get",
+    params: Some({ "run_id": run_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job run lookup failed with unknown error",
+    "Missing job run payload",
+    "Failed to parse job run response",
   )
 }
 

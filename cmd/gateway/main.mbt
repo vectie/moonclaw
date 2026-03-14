@@ -5,6 +5,15 @@ pub async fn start(args : ArrayView[String]) -> Unit {
     ["start", ..] => start_gateway(arr)
     ["connect", ..] => connect_gateway(arr)
     ["agent", ..] => run_agent(arr)
+    ["jobs", ..] => list_jobs(arr)
+    ["job", ..] => get_job(arr)
+    ["job-create", ..] => create_job(arr)
+    ["job-update", ..] => update_job(arr)
+    ["job-run", ..] => run_job(arr)
+    ["job-cancel", ..] => cancel_job(arr, false)
+    ["job-force-cancel", ..] => cancel_job(arr, true)
+    ["job-runs", ..] => list_job_runs(arr)
+    ["job-run-status", ..] => get_job_run(arr)
     ["runs", ..] => list_runs(arr)
     ["run", ..] => get_run(arr)
     ["job-ask", ..] => ask_job(arr)
@@ -37,6 +46,17 @@ fn print_help() -> Unit {
   println("  start     Start the gateway server")
   println("  connect   Connect to a running gateway")
   println("  agent     Send an agent request to the gateway")
+  println("  jobs      List job definitions")
+  println("  job       Get a single job definition")
+  println("  job-create        Create a job definition from JSON")
+  println("  job-update        Update a job definition from JSON")
+  println("  job-run           Trigger a job definition")
+  println("  job-cancel        Cancel the active run for a job definition")
+  println(
+    "  job-force-cancel  Force-cancel the active run for a job definition",
+  )
+  println("  job-runs          List job runs")
+  println("  job-run-status    Get a single job run with steps and artifacts")
   println("  runs      List agent runs")
   println("  run       Get a single run")
   println("  job-ask   Ask grounded questions over job artifacts")
@@ -76,6 +96,11 @@ fn print_help() -> Unit {
   println("  --binding <id>         Optional persisted chat binding id")
   println("  --query-json <json>    Optional ArtifactQuery JSON override")
   println("  --max-hits <n>         Retrieval hit limit (default: 5)")
+  println("")
+  println("Job definition options:")
+  println("  --id <job_id>          Job definition id")
+  println("  --definition-json <json>  Raw JobDefinition JSON")
+  println("  --run-id <run_id>      Job run id")
   println("")
   println("Channel options:")
   println("  --id <channel_id>      Channel id")
@@ -225,6 +250,156 @@ async fn list_runs(args : Array[String]) -> Unit {
   let client = make_client(args, mode=@protocol.ClientMode::Cli)
   match client.list_runs() {
     Err(error) => logger.error("Runs list failed: \{error}")
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn list_jobs(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match client.list_jobs() {
+    Err(error) => logger.error("Jobs list failed: \{error}")
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn get_job(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let job_id = match parse_string_arg(args, "--id") {
+    Some(job_id) => job_id
+    None => {
+      logger.error("--id is required")
+      return
+    }
+  }
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match client.get_job(job_id~) {
+    Err(error) => logger.error("Job lookup failed: \{error}")
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn create_job(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let definition_json = match parse_json_arg(args, "--definition-json") {
+    Ok(definition) => definition
+    Err(error) => {
+      logger.error(error)
+      return
+    }
+  }
+  let definition : @job.JobDefinition = @json.from_json(definition_json) catch {
+    error => {
+      logger.error("Invalid job definition JSON: \{error}")
+      return
+    }
+  }
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match client.create_job(definition) {
+    Err(error) => logger.error("Job create failed: \{error}")
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn update_job(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let definition_json = match parse_json_arg(args, "--definition-json") {
+    Ok(definition) => definition
+    Err(error) => {
+      logger.error(error)
+      return
+    }
+  }
+  let definition : @job.JobDefinition = @json.from_json(definition_json) catch {
+    error => {
+      logger.error("Invalid job definition JSON: \{error}")
+      return
+    }
+  }
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match client.update_job(definition) {
+    Err(error) => logger.error("Job update failed: \{error}")
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn run_job(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let job_id = match parse_string_arg(args, "--id") {
+    Some(job_id) => job_id
+    None => {
+      logger.error("--id is required")
+      return
+    }
+  }
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match client.run_job(job_id~) {
+    Err(error) => logger.error("Job run failed: \{error}")
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn cancel_job(args : Array[String], force : Bool) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let job_id = match parse_string_arg(args, "--id") {
+    Some(job_id) => job_id
+    None => {
+      logger.error("--id is required")
+      return
+    }
+  }
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let result = if force {
+    client.force_cancel_job(job_id~)
+  } else {
+    client.cancel_job(job_id~)
+  }
+  match result {
+    Err(error) =>
+      logger.error(
+        if force {
+          "Job force-cancel failed: \{error}"
+        } else {
+          "Job cancel failed: \{error}"
+        },
+      )
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn list_job_runs(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match client.list_job_runs() {
+    Err(error) => logger.error("Job runs list failed: \{error}")
+    Ok(payload) => println(payload.to_json().stringify())
+  }
+}
+
+///|
+async fn get_job_run(args : Array[String]) -> Unit {
+  let logger = @pino.logger("gateway", @pino.Transport::console())
+  let run_id = match parse_string_arg(args, "--run-id") {
+    Some(run_id) => run_id
+    None =>
+      match parse_string_arg(args, "--id") {
+        Some(run_id) => run_id
+        None => {
+          logger.error("--run-id or --id is required")
+          return
+        }
+      }
+  }
+  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  match client.get_job_run(run_id~) {
+    Err(error) => logger.error("Job run lookup failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
   }
 }

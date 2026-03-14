@@ -86,6 +86,8 @@ pub async fn Gateway::new(
     pipeline_manager: pipeline_manager(uuid~),
     channel_state: ChannelStateStore::{ path: channel_state_file, states: {} },
     jobs: @job.RuntimeManager::new(root=jobs_dir),
+    job_cancel_requests: {},
+    job_force_stop_requests: {},
   }
   gateway.sessions.load() catch {
     error => gateway.logger.warn("Failed to load gateway sessions: \{error}")

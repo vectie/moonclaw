@@ -1,10 +1,26 @@
 import {
   "moonbitlang/async",
+  "moonbitlang/async/http",
+  "moonbitlang/moonclaw/agent",
+  "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw/event",
+  "moonbitlang/moonclaw/file",
+  "moonbitlang/moonclaw/model",
+  "moonbitlang/moonclaw/prompt",
   "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
+  "moonbitlang/core/strconv",
   "moonbitlang/core/test",
+  "moonbitlang/moonclaw/tools/apply_patch",
+  "moonbitlang/moonclaw/tools/list_files",
+  "moonbitlang/moonclaw/tools/read_file",
+  "moonbitlang/moonclaw/tools/search_files",
+  "moonbitlang/moonclaw/tools/todo",
+  "moonbitlang/moonclaw/tools/write_to_file",
 }
 
 import {
