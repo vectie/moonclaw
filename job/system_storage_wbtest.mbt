@@ -108,6 +108,9 @@ fn sample_proposal() -> JobProposal {
     request_text: "Track recent agent papers and summarize findings.",
     summary: "Draft proposal for research tracking.",
     revision_history: [],
+    suggested_family: Some("research"),
+    suggested_template: Some("research.topic_watch"),
+    required_capabilities: ["research.arxiv_sync", "analysis.summarize"],
     status: JobProposalStatus::Draft,
     steps: [
       JobProposalStep::{

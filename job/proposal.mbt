@@ -215,17 +215,41 @@ fn proposal_payload_to_proposal(
         thread_id~,
       )
   }
+  let title = payload.title.map(compact_title).unwrap_or(fallback.title)
+  let summary = payload.summary
+    .map(fn(text) { text.trim().to_string() })
+    .unwrap_or(fallback.summary)
+  let steps = normalized_plan_steps(payload, request_text)
+  let tags = payload.tags.unwrap_or(fallback.tags)
+  let hint_source = JobProposal::{
+    ..fallback,
+    title,
+    request_text,
+    summary,
+    revision_history: fallback.revision_history,
+    suggested_family: fallback.suggested_family,
+    suggested_template: fallback.suggested_template,
+    required_capabilities: fallback.required_capabilities,
+    status: Draft,
+    steps,
+    tags,
+    updated_at: now_ms,
+  }
+  let (family, template, capabilities) = infer_proposal_compilation_hints(
+    hint_source,
+  )
   JobProposal::{
     ..fallback,
-    title: payload.title.map(compact_title).unwrap_or(fallback.title),
+    title,
     request_text,
-    summary: payload.summary
-    .map(fn(text) { text.trim().to_string() })
-    .unwrap_or(fallback.summary),
+    summary,
     revision_history: fallback.revision_history,
+    suggested_family: Some(family),
+    suggested_template: Some(template),
+    required_capabilities: capabilities,
     status: Draft,
-    steps: normalized_plan_steps(payload, request_text),
-    tags: payload.tags.unwrap_or(fallback.tags),
+    steps,
+    tags,
     updated_at: now_ms,
   }
 }
@@ -440,6 +464,13 @@ pub fn draft_job_proposal(
   } else {
     generic_proposal_steps(request_text)
   }
+  let tags = infer_job_tags(request_text)
+  let family = if tags.contains("research") { "research" } else { "generic" }
+  let template = if family == "research" {
+    "research.topic_watch"
+  } else {
+    "generic.analysis"
+  }
   JobProposal::{
     id: proposal_id,
     title: compact_title(request_text),
@@ -448,9 +479,37 @@ pub fn draft_job_proposal(
       "Draft job proposal generated from chat request.", "This proposal will not execute until explicitly confirmed.",
     ].join(" "),
     revision_history: [],
+    suggested_family: Some(family),
+    suggested_template: Some(template),
+    required_capabilities: inferred_capabilities_for_proposal(
+      JobProposal::{
+        id: proposal_id,
+        title: compact_title(request_text),
+        request_text,
+        summary: "",
+        revision_history: [],
+        suggested_family: Some(family),
+        suggested_template: Some(template),
+        required_capabilities: [],
+        status: Draft,
+        steps,
+        tags,
+        channel_id,
+        account_id,
+        recipient,
+        thread_id,
+        presented_message_id: None,
+        job_id: None,
+        workflow_id: None,
+        last_run_id: None,
+        created_at: now_ms,
+        updated_at: now_ms,
+      },
+      family,
+    ),
     status: Draft,
     steps,
-    tags: infer_job_tags(request_text),
+    tags,
     channel_id,
     account_id,
     recipient,
@@ -471,79 +530,31 @@ pub fn proposal_as_workflow(
   cwd : String,
   home : String,
 ) -> (JobDefinition, WorkflowDefinition) {
-  let job_id = "job.proposal.\{proposal.id}"
-  let workflow_id = "workflow.proposal.\{proposal.id}"
-  let steps = proposal.steps.map(fn(step) {
-    WorkflowStepDefinition::{
-      id: step.id,
-      kind: step.kind,
-      config: AnalysisStepConfig::new(
-        prompt=step.prompt,
-        cwd=Some(cwd),
-        home=Some(home),
-        preferred_skills=[],
-        enable_tools=true,
-        web_search=false,
-        policy=AnalysisPolicy::new(skip_if_artifact_exists=false),
-        artifacts=AnalysisArtifactConfig::new(
-          report_artifact_type="job.proposal.step.report",
-          result_artifact_type="job.proposal.step.result",
-          logical_key=Some("\{proposal.id}:\{step.id}"),
-          scope=["jobs", "proposal:\{proposal.id}"],
-          append_only=false,
-        ),
-        metadata={
-          "proposal_id": proposal.id,
-          "proposal_step_id": step.id,
-          "proposal_step_title": step.title,
-        },
-      ).to_json(),
-      retry_policy: None,
-    }
-  })
-  let definition = JobDefinition::{
-    id: job_id,
-    kind: "job.proposal",
-    enabled: true,
-    config: {
-      "proposal_id": proposal.id,
-      "notify": {
-        "channel": proposal.channel_id,
-        "account_id": proposal.account_id,
-        "to": proposal.recipient,
-        "thread_id": proposal.thread_id,
-        "heartbeat_interval_ms": 120000,
-        "warn_after_ms": 300000,
-      },
-    },
-    schedule: None,
-    retry_policy: None,
-    workflow_id: Some(workflow_id),
-    created_at: now_ms,
-    updated_at: now_ms,
-    tags: proposal.tags,
-  }
-  let workflow = WorkflowDefinition::{
-    id: workflow_id,
-    kind: "job.proposal",
-    steps,
-    output_bindings: proposal.steps.map(fn(step) { step.id }),
-  }
-  (definition, workflow)
+  let compilation = compile_job_proposal(proposal, now_ms, cwd, home)
+  (compilation.definition, compilation.workflow)
 }
 
 ///|
 pub fn render_job_proposal_for_chat(proposal : JobProposal) -> String {
+  let family = proposal.suggested_family.unwrap_or("unknown")
+  let template = proposal.suggested_template.unwrap_or("unknown")
+  let capabilities = proposal.required_capabilities.join(", ")
   let lines = [
     "Job proposal `\{proposal.id}`",
     "",
     "Title: \{proposal.title}",
     "Status: \{proposal.status.to_json().stringify()}",
+    "Family: \{family}",
+    "Template: \{template}",
     "",
     "Summary: \{proposal.summary}",
-    "",
-    "Planned steps:",
   ]
+  let lines = if proposal.required_capabilities.is_empty() {
+    lines
+  } else {
+    [..lines, "Capabilities: \{capabilities}"]
+  }
+  let lines = [..lines, "", "Planned steps:"]
   let lines = proposal.steps.fold(init=lines, fn(lines, step) {
     [..lines, "\{step.id}. \{step.title}"]
   })

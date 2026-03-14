@@ -171,6 +171,9 @@ Deliverable:
 - [x] Add persisted job proposals for chat-originated job drafts
 - [x] Add `/plan-job` draft generation without execution
 - [x] Add model-backed proposal planning with deterministic fallback
+- [x] Add proposal family/template/capability hints
+- [x] Add deterministic compiler from proposal -> specialized workflow
+- [x] Route research-like proposals into the `research` job family instead of generic-only analysis
 - [x] Add `/confirm <proposal_id>` to materialize and start a job
 - [x] Add `/reject <proposal_id>` to close a draft without execution
 - [x] Add `/revise <proposal_id> <guidance>` to refine a draft plan

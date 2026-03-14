@@ -9,11 +9,23 @@ import {
 // Values
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
+pub fn capability_available(String) -> Bool
+
+pub fn capability_record(String) -> CapabilityRecord?
+
+pub fn capability_registry() -> Array[CapabilityRecord]
+
+pub fn compile_job_proposal(JobProposal, Int, String, String) -> ProposalCompilation
+
 pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn default_paper_text_extractor() -> PaperTextExtractor
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
+
+pub fn infer_proposal_compilation_hints(JobProposal) -> (String, String, Array[String])
+
+pub fn missing_capabilities(Array[String]) -> Array[String]
 
 pub fn parse_arxiv_feed(String) -> ArxivFeedResult
 
@@ -50,6 +62,12 @@ pub fn research_topic_sync_bundle(job_id~ : String, config~ : ResearchTopicSyncC
 pub fn research_topic_sync_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
 pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?) -> JobProposal
+
+pub fn template_default_skills(String) -> Array[String]
+
+pub fn template_definition(String) -> TemplateDefinition?
+
+pub fn template_registry() -> Array[TemplateDefinition]
 
 // Errors
 pub suberror InvalidJobId {
@@ -257,6 +275,27 @@ pub impl Show for ArxivSearchRequest
 pub impl ToJson for ArxivSearchRequest
 pub impl @json.FromJson for ArxivSearchRequest
 
+pub(all) struct CapabilityRecord {
+  id : String
+  family : String
+  status : CapabilityStatus
+  preferred_template : String?
+  fallback_template : String?
+}
+pub impl Show for CapabilityRecord
+pub impl ToJson for CapabilityRecord
+pub impl @json.FromJson for CapabilityRecord
+
+pub(all) enum CapabilityStatus {
+  Available
+  Planned
+  Missing
+}
+pub impl Eq for CapabilityStatus
+pub impl Show for CapabilityStatus
+pub impl ToJson for CapabilityStatus
+pub impl @json.FromJson for CapabilityStatus
+
 pub(all) struct ChatAnswer {
   binding_id : String?
   question : String
@@ -406,6 +445,10 @@ pub(all) struct JobProposal {
   title : String
   request_text : String
   summary : String
+  revision_history : Array[String]
+  suggested_family : String?
+  suggested_template : String?
+  required_capabilities : Array[String]
   status : JobProposalStatus
   steps : Array[JobProposalStep]
   tags : Array[String]
@@ -526,6 +569,16 @@ pub(all) struct PaperTextExtractor {
   extract : async (String, ResearchPaper) -> Result[String, String]
 }
 pub fn PaperTextExtractor::new(extract~ : async (String, ResearchPaper) -> Result[String, String]) -> Self
+
+pub(all) struct ProposalCompilation {
+  family : String
+  template : String
+  required_capabilities : Array[String]
+  missing_capabilities : Array[String]
+  definition : JobDefinition
+  workflow : WorkflowDefinition
+  bindings : Array[ChatBinding]
+}
 
 type ProposalPlanPayload
 pub impl Show for ProposalPlanPayload
@@ -747,6 +800,18 @@ pub async fn SystemStore::save_notification_preference(Self, JobNotificationPref
 pub async fn SystemStore::save_run(Self, JobRun) -> Unit
 pub async fn SystemStore::save_step_run(Self, JobStepRun) -> Unit
 pub async fn SystemStore::save_workflow(Self, WorkflowDefinition) -> Unit
+
+pub(all) struct TemplateDefinition {
+  id : String
+  family : String
+  summary : String
+  required_capabilities : Array[String]
+  default_skills : Array[String]
+  fallback_template : String?
+}
+pub impl Show for TemplateDefinition
+pub impl ToJson for TemplateDefinition
+pub impl @json.FromJson for TemplateDefinition
 
 pub(all) enum TriggerSource {
   Manual

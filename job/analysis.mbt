@@ -171,13 +171,86 @@ fn preferred_skills_prompt(preferred_skills : Array[String]) -> String {
 }
 
 ///|
+fn skill_file_candidates(
+  cwd : String,
+  home : String?,
+  skill : String,
+) -> Array[String] {
+  let candidates : Array[String] = [
+    cwd
+    |> @pathx.join("skills")
+    |> @pathx.join(skill)
+    |> @pathx.join("SKILL.md"),
+    cwd
+    |> @pathx.join("skills")
+    |> @pathx.join(skill)
+    |> @pathx.join("skill.md"),
+    cwd
+    |> @pathx.join(".moonclaw")
+    |> @pathx.join("skills")
+    |> @pathx.join(skill)
+    |> @pathx.join("SKILL.md"),
+  ]
+  match home {
+    Some(home) =>
+      candidates.push(
+        home
+        |> @pathx.join(".moonclaw")
+        |> @pathx.join("skills")
+        |> @pathx.join(skill)
+        |> @pathx.join("SKILL.md"),
+      )
+    None => ()
+  }
+  candidates
+}
+
+///|
+async fn load_skill_instruction_text(
+  cwd : String,
+  home : String?,
+  skill : String,
+) -> String? {
+  for candidate in skill_file_candidates(cwd, home, skill) {
+    let exists = @fsx.exists(candidate) catch { _ => false }
+    if exists {
+      let content = @fsx.read_file(candidate) catch { _ => continue }
+      return Some(content)
+    }
+  }
+  None
+}
+
+///|
+async fn loaded_skills_prompt(
+  cwd : String,
+  home : String?,
+  preferred_skills : Array[String],
+) -> String {
+  let loaded : Array[String] = []
+  for skill in preferred_skills {
+    match load_skill_instruction_text(cwd, home, skill) {
+      Some(content) => loaded.push(["Skill `\{skill}`", content].join("\n\n"))
+      None => ()
+    }
+  }
+  if loaded.is_empty() {
+    ""
+  } else {
+    ["Loaded skill instructions:", loaded.join("\n\n---\n\n")].join("\n\n")
+  }
+}
+
+///|
 fn build_analysis_prompt(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
+  skills_prompt : String,
 ) -> String {
   let sections = [
     config.prompt,
     preferred_skills_prompt(config.preferred_skills),
+    skills_prompt,
     "Job id: \{context.run.job_id}",
     "Run id: \{context.run.id}",
     "Step id: \{context.step.id}",
@@ -357,11 +430,16 @@ pub fn analysis_step_handler(
       )
     }
 
+    let skills_prompt = loaded_skills_prompt(
+      config.cwd.unwrap_or("."),
+      config.home,
+      config.preferred_skills,
+    )
     let request = AnalysisRequest::{
       job_id: context.run.job_id,
       run_id: context.run.id,
       step_id: context.step.id,
-      prompt: build_analysis_prompt(context, config),
+      prompt: build_analysis_prompt(context, config, skills_prompt),
       model_name: config.model.unwrap_or("default"),
       cwd: config.cwd.unwrap_or("."),
       home: config.home,

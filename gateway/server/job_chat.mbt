@@ -284,7 +284,7 @@ fn Gateway::job_current_step_label(
 }
 
 ///|
-fn Gateway::job_status_text(
+async fn Gateway::job_status_text(
   self : Gateway,
   definition : @job.JobDefinition,
   run : @job.JobRun,
@@ -306,15 +306,161 @@ fn Gateway::job_status_text(
     .length()
   let current_step = self.job_current_step_label(definition, run.id)
   let elapsed_ms = run_elapsed_ms(run, now_ms)
+  let family = match definition.config {
+    { "family": String(family), .. } => family
+    _ => "unknown"
+  }
+  let template = match definition.config {
+    { "template": String(template), .. } => template
+    _ => "unknown"
+  }
+  let capabilities = match definition.config {
+    { "required_capabilities": Array(items), .. } =>
+      items
+      .map(fn(item) {
+        match item {
+          String(text) => text
+          _ => ""
+        }
+      })
+      .filter(fn(text) { !text.is_blank() })
+      .join(", ")
+    _ => ""
+  }
+  let run_events = self.jobs.store().list_run_events(run.id)
+  let latest_event = if run_events.is_empty() {
+    None
+  } else {
+    run_events.get(run_events.length() - 1)
+  }
+  let latest_event_line = match latest_event {
+    Some(event) => "Latest event: \{event.event_type} - \{event.message}"
+    None => "Latest event: none"
+  }
+  let error_line = match run.error {
+    Some(error) if !error.is_blank() => Some("Error: \{error}")
+    _ => None
+  }
+  let summary_line = match run.summary {
+    Some(summary) if !summary.is_blank() => Some("Summary: \{summary}")
+    _ => None
+  }
   [
     "\{prefix}: \{definition.id}",
     "Run: \{run.id}",
     "Status: \{run.status.to_json().stringify()}",
+    "Family: \{family}",
+    "Template: \{template}",
     "Current step: \{current_step}",
     "Progress: \{done_steps}/\{total_steps}",
     "Elapsed: \{elapsed_ms}ms",
+    if capabilities.is_blank() {
+      ""
+    } else {
+      "Capabilities: \{capabilities}"
+    },
+    summary_line.unwrap_or(""),
+    error_line.unwrap_or(""),
+    latest_event_line,
     "Use `/job-status \{definition.id}` for a fresh status check.",
-  ].join("\n")
+  ]
+  .filter(fn(line) { !line.is_blank() })
+  .join("\n")
+}
+
+///|
+async fn Gateway::format_active_jobs(
+  self : Gateway,
+  runs : Array[@job.JobRun],
+) -> String {
+  if runs.is_empty() {
+    return "No pending or running jobs."
+  }
+  let lines = ["Active jobs:"]
+  for run in runs {
+    match self.jobs.store().get_definition(run.job_id) {
+      Some(definition) => {
+        let family = match definition.config {
+          { "family": String(family), .. } => family
+          _ => "unknown"
+        }
+        lines.push(
+          [
+            "- `\{definition.id}`",
+            "run=`\{run.id}`",
+            "status=\{run.status.to_json().stringify()}",
+            "family=\{family}",
+            "step=\{self.job_current_step_label(definition, run.id)}",
+          ].join(" "),
+        )
+      }
+      None => ()
+    }
+  }
+  lines.join("\n")
+}
+
+///|
+async fn Gateway::handle_jobs_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> @channel.Message {
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    self.format_active_jobs(self.active_job_runs()),
+  )
+}
+
+///|
+async fn Gateway::handle_job_stop_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  args : String,
+  force? : Bool = false,
+) -> @channel.Message {
+  let trimmed = args.trim().to_string()
+  guard !trimmed.is_blank() else {
+    return self.job_reply_message(
+      channel_id,
+      account_id,
+      message,
+      if force {
+        "Usage: /job-force-stop <job_id|run_id>"
+      } else {
+        "Usage: /job-stop <job_id|run_id>"
+      },
+    )
+  }
+  let (definition, _run) = match self.resolve_job_status_target(trimmed) {
+    Some(resolved) => resolved
+    None =>
+      return self.job_reply_message(
+        channel_id,
+        account_id,
+        message,
+        "Unknown job or run id: \{trimmed}",
+      )
+  }
+  match self.cancel_job_definition_run(definition.id, force~) {
+    Ok(run) =>
+      self.job_reply_message(
+        channel_id,
+        account_id,
+        message,
+        if force {
+          "Force-stop requested for `\{definition.id}` (`\{run.id}`)."
+        } else {
+          "Stop requested for `\{definition.id}` (`\{run.id}`)."
+        },
+      )
+    Err(error) => self.job_reply_message(channel_id, account_id, message, error)
+  }
 }
 
 ///|
@@ -517,14 +663,19 @@ async fn Gateway::handle_confirm_job_command(
       "Proposal \{proposal_id} is already \{proposal.status.to_json().stringify()}",
     )
   }
-  let (definition, workflow) = @job.proposal_as_workflow(
+  let compilation = @job.compile_job_proposal(
     proposal,
     current_time_ms(),
     self.cwd,
     self.home,
   )
+  let definition = compilation.definition
+  let workflow = compilation.workflow
   self.jobs.register_definition(definition)
   self.jobs.register_workflow(workflow)
+  for binding in compilation.bindings {
+    self.jobs.store().save_chat_binding(binding)
+  }
   let run = match self.trigger_job_definition(definition.id) {
     Ok(run) => run
     Err(error) =>
@@ -552,6 +703,7 @@ async fn Gateway::handle_confirm_job_command(
     [
       "Confirmed proposal `\{proposal_id}`.",
       "Created job `\{definition.id}` and started run `\{run.id}`.",
+      "Compiled as `\{compilation.family}` / `\{compilation.template}`.",
       "Check status with `/job-status \{definition.id}` or `/job-status \{run.id}`.",
       "You will receive start, progress, and completion notifications here.",
     ].join("\n"),
@@ -640,7 +792,7 @@ async fn Gateway::handle_revise_job_command(
 }
 
 ///|
-fn Gateway::handle_job_status_command(
+async fn Gateway::handle_job_status_command(
   self : Gateway,
   channel_id : String,
   account_id : String,
@@ -772,6 +924,20 @@ async fn Gateway::handle_job_chat_command(
     "/job-status" =>
       Some(
         self.handle_job_status_command(channel_id, account_id, message, args),
+      )
+    "/jobs" | "/job-runs" =>
+      Some(self.handle_jobs_command(channel_id, account_id, message))
+    "/job-stop" =>
+      Some(self.handle_job_stop_command(channel_id, account_id, message, args))
+    "/job-force-stop" =>
+      Some(
+        self.handle_job_stop_command(
+          channel_id,
+          account_id,
+          message,
+          args,
+          force=true,
+        ),
       )
     "/job-notify" =>
       Some(

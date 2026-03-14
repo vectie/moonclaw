@@ -101,6 +101,56 @@ async test "analysis_step_handler persists report and result artifacts" {
 }
 
 ///|
+async test "analysis_step_handler loads local skill file content into prompt" {
+  @fsx.with_temporary_directory("job-analysis-skill-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let skill_dir = dir
+      |> @pathx.join("skills")
+      |> @pathx.join("research-paper-summary")
+    @fsx.make_directory(skill_dir, recursive=true)
+    @fsx.write_to_file(
+      skill_dir |> @pathx.join("SKILL.md"),
+      [
+        "---", "name: research-paper-summary", "description: test skill", "---",
+        "", "Include the exact phrase SKILL_SUMMARY_MARKER.",
+      ].join("\n"),
+    )
+    let config = AnalysisStepConfig::new(
+      prompt="Summarize the parsed paper output.",
+      cwd=Some(dir),
+      preferred_skills=["research-paper-summary"],
+    )
+    let engine = analysis_test_engine(root, config)
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: request.prompt,
+            conversation_id: Some("conv-1"),
+            usage: None,
+            metadata: { "captured_prompt": request.prompt },
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(
+      result.outputs
+      .get("analyze")
+      .map(fn(output) { output.stringify().contains("SKILL_SUMMARY_MARKER") })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
 test "requested_model_name_or_none treats default as auto-detect" {
   inspect(requested_model_name_or_none("default") is None, content="true")
   inspect(requested_model_name_or_none("  ") is None, content="true")

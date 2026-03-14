@@ -11,6 +11,7 @@ test "draft_job_proposal creates non-executing draft with steps" {
   inspect(proposal.status.to_json().stringify(), content="\"Draft\"")
   inspect(proposal.steps.length() > 0, content="true")
   inspect(proposal.tags.contains("research"), content="true")
+  inspect(proposal.suggested_family.unwrap_or(""), content="research")
   inspect(proposal.job_id is None, content="true")
 }
 
@@ -105,5 +106,28 @@ async test "revise_job_proposal carries prior revision history into later revisi
   inspect(
     revised.revision_history.join("|"),
     content="focus on security|also cover deployment risks",
+  )
+}
+
+///|
+test "proposal_as_workflow compiles research drafts into research topic workflow" {
+  let proposal = draft_job_proposal(
+    "proposal-6",
+    "Review yesterday's VLA arxiv papers and send me a daily digest.",
+    100,
+    channel_id=Some("feishu"),
+    account_id=Some("default"),
+    recipient=Some("oc_chat_123"),
+  )
+  let (definition, workflow) = proposal_as_workflow(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(definition.kind, content="job.proposal.research")
+  inspect(workflow.steps.length(), content="3")
+  inspect(workflow.steps[0].kind, content="research.topic.sync")
+  inspect(workflow.steps[1].kind, content="job.analysis")
+  inspect(
+    definition.config.stringify().contains("\"family\":\"research\""),
+    content="true",
   )
 }

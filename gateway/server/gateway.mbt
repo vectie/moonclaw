@@ -142,5 +142,8 @@ fn Gateway::active_job_runs(self : Gateway) -> Array[@job.JobRun] {
   self.jobs
   .store()
   .list_runs()
-  .filter(fn(run) { run.status is @job.RunStatus::Running })
+  .filter(fn(run) {
+    run.status is @job.RunStatus::Running ||
+    run.status is @job.RunStatus::Pending
+  })
 }
