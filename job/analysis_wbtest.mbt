@@ -2,6 +2,7 @@
 async fn analysis_test_engine(
   root : String,
   config : AnalysisStepConfig,
+  workspace_dir? : String? = None,
 ) -> WorkflowEngine {
   let runtime = RuntimeManager::new(root~)
   let workflow = WorkflowDefinition::{
@@ -39,6 +40,7 @@ async fn analysis_test_engine(
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
+    workspace_dir,
     status: RunStatus::Pending,
     attempt: 1,
     retry_of: None,
@@ -48,6 +50,64 @@ async fn analysis_test_engine(
     error: None,
   })
   WorkflowEngine::new(runtime~)
+}
+
+///|
+async test "analysis_step_handler prefers run workspace over config cwd" {
+  @fsx.with_temporary_directory("job-analysis-workspace-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config_cwd = @pathx.join(dir, "config-cwd")
+    let run_workspace = @pathx.join(dir, "run-workspace")
+    @fsx.make_directory(config_cwd, recursive=true)
+    @fsx.make_directory(run_workspace, recursive=true)
+    @fsx.make_directory(
+      run_workspace
+      |> @pathx.join("skills")
+      |> @pathx.join("research-paper-summary"),
+      recursive=true,
+    )
+    @fsx.write_to_file(
+      run_workspace
+      |> @pathx.join("skills")
+      |> @pathx.join("research-paper-summary")
+      |> @pathx.join("SKILL.md"),
+      "RUN_WORKSPACE_SKILL_MARKER",
+    )
+    let config = AnalysisStepConfig::new(
+      prompt="Check working directory selection.",
+      cwd=Some(config_cwd),
+      preferred_skills=["research-paper-summary"],
+    )
+    let engine = analysis_test_engine(
+      root,
+      config,
+      workspace_dir=Some(run_workspace),
+    )
+    let captured : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          captured.val = request.cwd
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: request.prompt,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    inspect(captured.val, content=run_workspace)
+  })
 }
 
 ///|

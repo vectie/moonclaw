@@ -7,6 +7,7 @@ test "decide_active_job_notifications emits verbose progress and heartbeat" {
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
+    workspace_dir: None,
     status: RunStatus::Running,
     attempt: 1,
     retry_of: None,
@@ -62,6 +63,7 @@ test "decide_active_job_notifications warns once for long-running jobs" {
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
+    workspace_dir: None,
     status: RunStatus::Running,
     attempt: 1,
     retry_of: None,
@@ -251,6 +253,10 @@ test "proposal command render helpers produce expected text" {
     content="Usage: /job-notify <off|normal|verbose>",
   )
   inspect(
+    render_job_workspace_usage(),
+    content="Usage: /job-workspace <job_id|run_id>",
+  )
+  inspect(
     render_job_notify_updated(NotificationVerbosity::Verbose),
     content="Job notifications set to \"Verbose\" for this chat scope.",
   )
@@ -266,6 +272,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
       async fn(_args) { "reject" },
       async fn(_args) { "revise" },
       async fn(_args) { "status" },
+      async fn(_args) { "workspace" },
       async fn() { "jobs" },
       async fn(args, force) { "\{args}:\{force}" },
       async fn(_args) { "notify" },
@@ -283,6 +290,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
       async fn(_args) { "reject" },
       async fn(_args) { "revise" },
       async fn(_args) { "status" },
+      async fn(_args) { "workspace" },
       async fn() { "jobs" },
       async fn(args, force) { "\{args}:\{force}" },
       async fn(_args) { "notify" },
@@ -300,6 +308,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
       async fn(_args) { "reject" },
       async fn(_args) { "revise" },
       async fn(_args) { "status" },
+      async fn(_args) { "workspace" },
       async fn() { "jobs" },
       async fn(args, force) { "\{args}:\{force}" },
       async fn(_args) { "notify" },
@@ -317,6 +326,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
       async fn(_args) { "reject" },
       async fn(_args) { "revise" },
       async fn(_args) { "status" },
+      async fn(_args) { "workspace" },
       async fn() { "jobs" },
       async fn(args, force) { "\{args}:\{force}" },
       async fn(_args) { "notify" },

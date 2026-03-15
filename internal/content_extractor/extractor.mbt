@@ -39,15 +39,19 @@ fn split_content_with_sliding_window(
 ) -> Array[String] {
   let lines = content.split("\n").collect()
   let chunks = Array::new()
-  for i in 0..<lines.length() {
-    let start = i
-    let end = i + window_size
-    if end > lines.length() {
-      break
+  let mut start = 0
+  while start < lines.length() {
+    let end = if start + window_size > lines.length() {
+      lines.length()
+    } else {
+      start + window_size
     }
     let chunk = lines[start:end].join("\n")
     chunks.push(chunk)
-    continue i + window_size - overlap
+    if end == lines.length() {
+      break
+    }
+    start = end - overlap
   }
   chunks
 }

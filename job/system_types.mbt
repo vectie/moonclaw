@@ -67,6 +67,7 @@ pub(all) struct JobRun {
   parent_run_id : String?
   parent_step_id : String?
   depth : Int
+  workspace_dir : String?
   status : RunStatus
   attempt : Int
   retry_of : String?

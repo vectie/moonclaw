@@ -1,0 +1,49 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/workspace"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn load_workspace_snapshot_from_root(String, configured_from? : String) -> WorkspaceSnapshot
+
+pub fn managed_workspace_file_names() -> Array[String]
+
+// Errors
+
+// Types and methods
+pub struct WorkspaceFile {
+  name : String
+  path : String
+  content : String
+}
+pub impl Show for WorkspaceFile
+pub impl ToJson for WorkspaceFile
+pub impl @json.FromJson for WorkspaceFile
+
+pub struct WorkspaceRuntime {
+  home : String
+  cwd : String
+  mut snapshot : WorkspaceSnapshot
+}
+pub async fn WorkspaceRuntime::load(Self) -> Unit
+pub async fn WorkspaceRuntime::new(home~ : String, cwd~ : String) -> Self
+pub fn WorkspaceRuntime::prompt_context(Self) -> String
+pub fn WorkspaceRuntime::root(Self) -> String
+pub fn WorkspaceRuntime::snapshot(Self) -> WorkspaceSnapshot
+
+pub struct WorkspaceSnapshot {
+  root : String
+  configured_from : String
+  files : Array[WorkspaceFile]
+  prompt_context : String
+}
+pub impl Show for WorkspaceSnapshot
+pub impl ToJson for WorkspaceSnapshot
+pub impl @json.FromJson for WorkspaceSnapshot
+
+// Type aliases
+
+// Traits
+

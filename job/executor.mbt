@@ -74,6 +74,7 @@ async fn notify_run_finished(
       now_ms,
     ),
   )
+  refresh_run_workspace_memory(state.runtime().store(), definition, run)
   let target = match
     resolve_job_notify_target(state.runtime().store(), definition) {
     Some(target) => target
@@ -146,6 +147,8 @@ pub async fn execute_run_lifecycle(
       return
     }
   }
+  let prepared_run = prepare_run_workspace(runtime.store(), definition, run)
+  let workspace_dir = prepared_run.workspace_dir.unwrap_or(".")
   if definition.workflow_id is None {
     let message = "Skipping job run \{run_id}; no workflow configured"
     (hooks.on_warn)(message)
@@ -159,8 +162,10 @@ pub async fn execute_run_lifecycle(
     )
     return
   }
-  (hooks.on_info)("Starting job run \{definition.id} -> \{run_id}")
-  (hooks.on_started)(definition, run)
+  (hooks.on_info)(
+    "Starting job run \{definition.id} -> \{run_id} in \{workspace_dir}",
+  )
+  (hooks.on_started)(definition, prepared_run)
   let engine = engine_factory()
   let result = engine.execute_run(run_id, now, control~) catch {
     error => {
@@ -174,6 +179,13 @@ pub async fn execute_run_lifecycle(
           summary=Some("Job execution crashed"),
         ),
       )
+      ignore(
+        checkpoint_run_workspace(
+          runtime.store(),
+          run_id,
+          "moonclaw: job crashed",
+        ),
+      )
       match runtime.store().get_run(run_id) {
         Some(updated_run) => (hooks.on_finished)(definition, updated_run)
         None => ()
@@ -183,12 +195,26 @@ pub async fn execute_run_lifecycle(
   }
   match result {
     Ok(result) => {
+      ignore(
+        checkpoint_run_workspace(
+          runtime.store(),
+          run_id,
+          "moonclaw: run finished \{result.run.status.to_json().stringify()}",
+        ),
+      )
       (hooks.on_info)(
         "Completed job run \{result.run.job_id} -> \{result.run.id} with \{result.steps.length()} step(s)",
       )
       (hooks.on_finished)(definition, result.run)
     }
     Err(error) => {
+      ignore(
+        checkpoint_run_workspace(
+          runtime.store(),
+          run_id,
+          "moonclaw: run ended with error",
+        ),
+      )
       (hooks.on_warn)("Job run \{run_id} finished with error: \{error}")
       match runtime.store().get_run(run_id) {
         Some(updated_run) => (hooks.on_finished)(definition, updated_run)

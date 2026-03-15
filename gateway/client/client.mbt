@@ -48,6 +48,16 @@ pub(all) struct MemoriesListPayload {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct WorkspacePayload {
+  workspace : @workspace.WorkspaceSnapshot
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct PluginsListPayload {
+  plugins : Array[@plugin.PluginRecord]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct MemoryMutationPayload {
   status : String
   memory : @job.MemoryRecord
@@ -366,6 +376,58 @@ pub async fn Client::ask_job(
     "Job ask failed with unknown error",
     "Missing job ask payload",
     "Failed to parse job ask response",
+  )
+}
+
+///|
+pub async fn Client::get_workspace(
+  self : Client,
+) -> Result[WorkspacePayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "workspace.get",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Workspace lookup failed with unknown error",
+    "Missing workspace payload",
+    "Failed to parse workspace payload",
+  )
+}
+
+///|
+pub async fn Client::list_plugins(
+  self : Client,
+) -> Result[PluginsListPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "plugins.list",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Plugin list failed with unknown error",
+    "Missing plugins payload",
+    "Failed to parse plugins payload",
+  )
+}
+
+///|
+pub async fn Client::get_plugin(
+  self : Client,
+  plugin_id~ : String,
+) -> Result[@plugin.PluginRecord, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    method: "plugins.get",
+    params: Some({ "plugin_id": plugin_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Plugin lookup failed with unknown error",
+    "Missing plugin payload",
+    "Failed to parse plugin payload",
   )
 }
 

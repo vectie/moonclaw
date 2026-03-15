@@ -52,6 +52,7 @@ pub(all) struct AnalysisStepConfig {
   model : String?
   cwd : String?
   home : String?
+  workspace : String?
   system_prompt : String?
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -67,6 +68,7 @@ pub fn AnalysisStepConfig::new(
   model? : String? = None,
   cwd? : String? = None,
   home? : String? = None,
+  workspace? : String? = None,
   system_prompt? : String? = None,
   preferred_skills? : Array[String] = [],
   enable_tools? : Bool = true,
@@ -80,6 +82,7 @@ pub fn AnalysisStepConfig::new(
     model,
     cwd,
     home,
+    workspace,
     system_prompt,
     preferred_skills,
     enable_tools,
@@ -275,12 +278,31 @@ fn build_analysis_prompt(
 }
 
 ///|
-fn analysis_memory_query(config : AnalysisStepConfig) -> MemoryQuery {
+fn analysis_memory_query(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+) -> MemoryQuery {
+  let workspace = match config.workspace {
+    Some(workspace) => Some(workspace)
+    None =>
+      match context.run.workspace_dir {
+        Some(workspace_dir) => Some(workspace_dir)
+        None => config.cwd
+      }
+  }
   MemoryQuery::new(
-    workspace=config.cwd,
+    workspace~,
     scope=config.artifacts.scope.get(0),
     status=Some(MemoryStatus::Active),
   )
+}
+
+///|
+fn analysis_working_directory(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+) -> String {
+  context.run.workspace_dir.unwrap_or(config.cwd.unwrap_or("."))
 }
 
 ///|
@@ -311,7 +333,7 @@ fn analysis_memory_prompt(
   config : AnalysisStepConfig,
 ) -> String {
   let memories = MemoryService::new(store~)
-  let query = analysis_memory_query(config)
+  let query = analysis_memory_query(context, config)
   let hits = memories.search(
     analysis_memory_search_text(context, config),
     query~,
@@ -494,8 +516,9 @@ pub fn analysis_step_handler(
       )
     }
 
+    let working_directory = analysis_working_directory(context, config)
     let skills_prompt = loaded_skills_prompt(
-      config.cwd.unwrap_or("."),
+      working_directory,
       config.home,
       config.preferred_skills,
     )
@@ -508,7 +531,7 @@ pub fn analysis_step_handler(
         context, config, skills_prompt, memory_prompt,
       ),
       model_name: config.model.unwrap_or("default"),
-      cwd: config.cwd.unwrap_or("."),
+      cwd: working_directory,
       home: config.home,
       system_prompt: config.system_prompt.unwrap_or(
         default_analysis_system_prompt(),

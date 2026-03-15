@@ -147,6 +147,41 @@ async fn Gateway::handle_job_stop_command(
       @job.render_job_stop_usage(force),
     )
   }
+  if force {
+    let scope_key = @security.approval_scope_key(
+      channel_id,
+      account_id,
+      message.to,
+      message.thread_id,
+    )
+    let approved = self
+      .security_runtime()
+      .consume_approval("job.force_stop", trimmed, scope_key)
+    if !approved {
+      let pending = self
+        .security_runtime()
+        .matching_pending_approval("job.force_stop", trimmed, scope_key)
+      let record = match pending {
+        Some(record) => record
+        None =>
+          self
+          .security_runtime()
+          .request_approval(
+            self.uuid.v4().to_string(),
+            "job.force_stop",
+            trimmed,
+            scope_key,
+            current_time_ms(),
+          )
+      }
+      return self.job_reply_message(
+        channel_id,
+        account_id,
+        message,
+        @security.render_pending_approval(record),
+      )
+    }
+  }
   match
     @job.request_job_stop(
       self.job_runtime().store(),
@@ -513,6 +548,36 @@ async fn Gateway::handle_job_status_command(
 }
 
 ///|
+async fn Gateway::handle_job_workspace_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  job_or_run_id : String,
+) -> @channel.Message {
+  let trimmed = job_or_run_id.trim().to_string()
+  guard !trimmed.is_blank() else {
+    return self.job_reply_message(
+      channel_id,
+      account_id,
+      message,
+      @job.render_job_workspace_usage(),
+    )
+  }
+  let content = @job.render_job_workspace_command_reply(
+    self.job_runtime().store(),
+    trimmed,
+    active_run_id=self.job_runtime().active_run_id(trimmed),
+  )
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    content.unwrap_or(@job.render_unknown_job_or_run_message(trimmed)),
+  )
+}
+
+///|
 async fn Gateway::handle_job_notify_command(
   self : Gateway,
   channel_id : String,
@@ -553,8 +618,19 @@ async fn Gateway::handle_job_chat_command(
   message : @channel.Message,
 ) -> @channel.Message? {
   let trimmed = message.content.trim().to_string()
+  let action = @job.parse_job_chat_action(trimmed, message.reply_to is Some(_))
+  if action is Some(_) && !self.security_runtime().allows_native_commands(true) {
+    return Some(
+      self.job_reply_message(
+        channel_id,
+        account_id,
+        message,
+        @security.render_native_commands_disabled(),
+      ),
+    )
+  }
   @job.dispatch_job_chat_action(
-    @job.parse_job_chat_action(trimmed, message.reply_to is Some(_)),
+    action,
     async fn(args) {
       self.handle_plan_job_command(channel_id, account_id, message, args)
     },
@@ -569,6 +645,9 @@ async fn Gateway::handle_job_chat_command(
     },
     async fn(args) {
       self.handle_job_status_command(channel_id, account_id, message, args)
+    },
+    async fn(args) {
+      self.handle_job_workspace_command(channel_id, account_id, message, args)
     },
     async fn() { self.handle_jobs_command(channel_id, account_id, message) },
     async fn(args, force) {

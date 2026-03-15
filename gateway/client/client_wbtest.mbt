@@ -78,6 +78,7 @@ test "decode_ok_payload parses run and channel payloads" {
             scope: ["research", "paper:1"],
           },
         ],
+        memory_hits: [],
       }.to_json(),
     ),
     error: None,
@@ -170,6 +171,38 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
+  let workspace_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-workspace",
+    ok: true,
+    payload: Some({
+      "workspace": {
+        "root": "/tmp/workspace",
+        "configured_from": "/tmp/moonclaw.json",
+        "files": [],
+        "prompt_context": "Workspace context",
+      },
+    }),
+    error: None,
+  })
+  let plugins_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-plugins",
+    ok: true,
+    payload: Some({
+      "plugins": [
+        {
+          "id": "feishu",
+          "enabled": true,
+          "status": "enabled",
+          "source": "npm",
+          "spec": "@openclaw/feishu",
+          "version": "1.0.0",
+          "install_path": "/tmp/plugin",
+          "metadata": {},
+        },
+      ],
+    }),
+    error: None,
+  })
 
   let runs_result : Result[RunsListPayload, String] = decode_ok_payload(
     runs_response, "default", "missing", "parse failed",
@@ -200,6 +233,12 @@ test "decode_ok_payload parses run and channel payloads" {
   let memory_search_result : Result[MemorySearchPayload, String] = decode_ok_payload(
     memory_search_response, "default", "missing", "parse failed",
   )
+  let workspace_result : Result[WorkspacePayload, String] = decode_ok_payload(
+    workspace_response, "default", "missing", "parse failed",
+  )
+  let plugins_result : Result[PluginsListPayload, String] = decode_ok_payload(
+    plugins_response, "default", "missing", "parse failed",
+  )
   let ask : @job.ChatAnswer = match ask_result {
     Ok(value) => value
     Err(error) => fail(error)
@@ -220,6 +259,14 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let workspace_payload : WorkspacePayload = match workspace_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let plugins_payload : PluginsListPayload = match plugins_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
 
   inspect(runs.runs.length(), content="1")
   inspect(runs.runs[0].run_id, content="run-1")
@@ -231,6 +278,8 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(job_run_payload.run.id, content="job-run-1")
   inspect(memory_payload.id, content="memory-1")
   inspect(memory_search_payload.hits[0].memory_id, content="memory-1")
+  inspect(workspace_payload.workspace.root, content="/tmp/workspace")
+  inspect(plugins_payload.plugins[0].id, content="feishu")
 }
 
 ///|

@@ -14,6 +14,26 @@ test "session route helpers preserve direct, channel, and orchestration key form
     content="feishu:acct-1:chat-9:thread-3",
   )
   inspect(
+    channel_session_key(
+      "feishu",
+      "acct-1",
+      "chat-9",
+      Some("thread-3"),
+      dm_scope="per-channel-peer",
+    ),
+    content="feishu:chat-9:thread-3",
+  )
+  inspect(
+    channel_session_key(
+      "feishu",
+      "acct-1",
+      "chat-9",
+      Some("thread-3"),
+      dm_scope="main",
+    ),
+    content="feishu:acct-1:main",
+  )
+  inspect(
     coordination_session_key("coord-7", "task-2"),
     content="coord:coord-7:task-2",
   )

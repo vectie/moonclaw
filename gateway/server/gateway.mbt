@@ -37,6 +37,9 @@ pub struct Gateway {
   pipeline_manager : PipelineManager
   channel_state : ChannelStateStore
   job_app : @job.GatewayJobApp
+  security_runtime : @security.SecurityRuntime
+  workspace_runtime : @workspace.WorkspaceRuntime
+  plugin_runtime : @plugin.PluginRuntime
 }
 
 ///|
@@ -149,4 +152,21 @@ fn Gateway::active_job_runs(self : Gateway) -> Array[@job.JobRun] {
 ///|
 fn Gateway::job_runtime(self : Gateway) -> @job.RuntimeManager {
   self.job_app.runtime()
+}
+
+///|
+pub fn Gateway::workspace_runtime(
+  self : Gateway,
+) -> @workspace.WorkspaceRuntime {
+  self.workspace_runtime
+}
+
+///|
+pub fn Gateway::security_runtime(self : Gateway) -> @security.SecurityRuntime {
+  self.security_runtime
+}
+
+///|
+pub fn Gateway::plugin_runtime(self : Gateway) -> @plugin.PluginRuntime {
+  self.plugin_runtime
 }

@@ -118,6 +118,7 @@ async test "execution_notification_hooks sends start and finish notifications" {
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
+      workspace_dir: None,
       status: RunStatus::Running,
       attempt: 1,
       retry_of: None,

@@ -2,10 +2,15 @@
 async test "GatewayJobApp::revise_draft_proposal rejects non-draft proposals" {
   @fsx.with_temporary_directory("job-app-revise-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
+    let workspace = @workspace.WorkspaceRuntime::new(
+      home="/tmp/home",
+      cwd="/tmp/workspace",
+    )
     let app = GatewayJobApp::new(
       root~,
       cwd="/tmp/workspace",
       home="/tmp/home",
+      workspace~,
       next_id=fn() { "proposal-next" },
       now=fn() { 200 },
     )
@@ -30,10 +35,15 @@ async test "GatewayJobApp::revise_draft_proposal rejects non-draft proposals" {
 async test "GatewayJobApp::confirm_proposal registers workflow and persists proposal state" {
   @fsx.with_temporary_directory("job-app-confirm-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
+    let workspace = @workspace.WorkspaceRuntime::new(
+      home="/tmp/home",
+      cwd="/tmp/workspace",
+    )
     let app = GatewayJobApp::new(
       root~,
       cwd="/tmp/workspace",
       home="/tmp/home",
+      workspace~,
       next_id=fn() { "proposal-next" },
       now=fn() { 200 },
     )

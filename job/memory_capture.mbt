@@ -84,7 +84,10 @@ pub async fn capture_successful_run_memories(
 ) -> Array[MemoryRecord] {
   guard run.status is Succeeded else { return [] }
   let target = parse_job_notify_target(definition.config)
-  let workspace = compiled_job_workspace(definition)
+  let workspace = match run.workspace_dir {
+    Some(workspace_dir) => Some(workspace_dir)
+    None => compiled_job_workspace(definition)
+  }
   let family = compiled_job_family(definition)
   let template = compiled_job_template(definition)
   let tags = [definition.kind, ..definition.tags]

@@ -3,10 +3,11 @@ fn supported_rpc_methods() -> Array[String] {
   [
     "connect", "agent", "agent.wait", "sessions.list", "sessions.reset", "config.get",
     "config.set", "health", "runs.list", "runs.get", "artifacts.list", "artifacts.get",
-    "memories.list", "memories.get", "memories.create", "memories.search", "jobs.list",
-    "jobs.get", "jobs.create", "jobs.update", "jobs.run", "jobs.cancel", "jobs.force_cancel",
-    "jobs.runs.list", "jobs.runs.get", "jobs.ask", "channels.list", "channels.get",
-    "channels.configure", "channels.start", "channels.stop",
+    "workspace.get", "plugins.list", "plugins.get", "memories.list", "memories.get",
+    "memories.create", "memories.search", "jobs.list", "jobs.get", "jobs.create",
+    "jobs.update", "jobs.run", "jobs.cancel", "jobs.force_cancel", "jobs.runs.list",
+    "jobs.runs.get", "jobs.ask", "channels.list", "channels.get", "channels.configure",
+    "channels.start", "channels.stop",
   ]
 }
 
@@ -358,6 +359,118 @@ async fn Gateway::handle_memories_list_method(
     payload: Some({ "memories": memories.map(fn(memory) { memory.to_json() }) }),
     error: None,
   })
+}
+
+///|
+async fn Gateway::handle_workspace_get_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some(self.workspace_runtime().snapshot().to_json()),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_plugins_list_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({
+      "plugins": self
+      .plugin_runtime()
+      .list()
+      .map(fn(plugin) { plugin.to_json() }),
+    }),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_plugins_get_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params = match request.params {
+    Some(params) => params
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing plugin lookup parameters",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let plugin_id = match params {
+    String(id) => id
+    Object(obj) =>
+      match obj.get("plugin_id") {
+        Some(String(id)) => id
+        _ =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "missing_plugin_id",
+              message: "Missing plugin_id in params",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    _ =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "invalid_params",
+          message: "Invalid plugin lookup parameters",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  match self.plugin_runtime().get(plugin_id) {
+    Some(plugin) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some(plugin.to_json()),
+        error: None,
+      })
+    None =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "plugin_not_found",
+          message: "Plugin not found: \{plugin_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
 }
 
 ///|

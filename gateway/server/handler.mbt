@@ -393,6 +393,70 @@ async fn Gateway::handle_list_memories(
 }
 
 ///|
+async fn Gateway::handle_get_workspace(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  ignore(r)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  let result : Json = {
+    "workspace": self.workspace_runtime().snapshot().to_json(),
+  }
+  w.write(result.stringify())
+}
+
+///|
+async fn Gateway::handle_list_plugins(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  ignore(r)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  let result : Json = {
+    "plugins": self.plugin_runtime().list().map(fn(plugin) { plugin.to_json() }),
+  }
+  w.write(result.stringify())
+}
+
+///|
+async fn Gateway::handle_get_plugin(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let plugin_id = match paths {
+    ["", "v1", "plugins", id] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_plugin_id",
+          "message": "Missing plugin_id in path",
+        },
+      })
+  }
+  match self.plugin_runtime().get(plugin_id) {
+    Some(plugin) => {
+      w.header().set("Content-Type", "application/json")
+      w.write_header(200)
+      let result : Json = { "plugin": plugin.to_json() }
+      w.write(result.stringify())
+    }
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "plugin_not_found",
+          "message": "Plugin not found: \{plugin_id}",
+        },
+      })
+  }
+}
+
+///|
 async fn Gateway::handle_get_memory(
   self : Gateway,
   r : @httpx.RequestReader,

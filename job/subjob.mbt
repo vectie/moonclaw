@@ -96,7 +96,7 @@ pub fn subjob_step_handler(
         "Subjob depth limit reached: \{context.run.depth} >= \{config.max_depth}",
       )
     }
-    let cwd = config.cwd.unwrap_or(".")
+    let cwd = context.run.workspace_dir.unwrap_or(config.cwd.unwrap_or("."))
     let home = config.home
     let request_text = compiled_subjob_request(context, config)
     let proposal = (planner.run)(request_text, cwd, home)

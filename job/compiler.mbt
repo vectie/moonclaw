@@ -406,6 +406,7 @@ fn compile_generic_analysis_workflow(
   now_ms : Int,
   cwd : String,
   home : String,
+  workspace_root : String,
   family : String,
   template : String,
   capabilities : Array[String],
@@ -424,6 +425,7 @@ fn compile_generic_analysis_workflow(
         prompt=step.prompt,
         cwd=Some(cwd),
         home=Some(home),
+        workspace=Some(workspace_root),
         preferred_skills=template_skills,
         enable_tools=true,
         web_search=false,
@@ -452,7 +454,7 @@ fn compile_generic_analysis_workflow(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
-      "workspace": cwd,
+      "workspace": workspace_root,
       "family": family,
       "template": template,
       "required_capabilities": capabilities,
@@ -498,6 +500,7 @@ fn compile_research_workflow(
   now_ms : Int,
   cwd : String,
   home : String,
+  workspace_root : String,
   template : String,
   capabilities : Array[String],
 ) -> ProposalCompilation {
@@ -535,6 +538,7 @@ fn compile_research_workflow(
         .unwrap_or(default_research_summary_prompt(proposal, topic_id)),
       cwd=Some(cwd),
       home=Some(home),
+      workspace=Some(workspace_root),
       preferred_skills=template_skills,
       enable_tools=true,
       web_search=false,
@@ -570,6 +574,7 @@ fn compile_research_workflow(
         .unwrap_or(default_research_report_prompt(proposal)),
       cwd=Some(cwd),
       home=Some(home),
+      workspace=Some(workspace_root),
       preferred_skills=template_skills,
       enable_tools=true,
       web_search=false,
@@ -607,7 +612,7 @@ fn compile_research_workflow(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
-      "workspace": cwd,
+      "workspace": workspace_root,
       "family": "research",
       "template": template,
       "topic_id": topic_id,
@@ -654,6 +659,7 @@ fn delegate_step_from_proposal_step(
   step : JobProposalStep,
   cwd : String,
   home : String,
+  workspace_root : String,
 ) -> WorkflowStepDefinition {
   WorkflowStepDefinition::{
     id: step.id,
@@ -663,6 +669,7 @@ fn delegate_step_from_proposal_step(
         step.title,
         step.prompt,
         "Parent request: \{proposal.request_text}",
+        "Workspace root: \{workspace_root}",
       ].join("\n\n"),
       cwd=Some(cwd),
       home=Some(home),
@@ -679,6 +686,7 @@ fn compile_delegated_generic_workflow(
   now_ms : Int,
   cwd : String,
   home : String,
+  workspace_root : String,
   family : String,
   template : String,
   capabilities : Array[String],
@@ -689,7 +697,7 @@ fn compile_delegated_generic_workflow(
   let job_id = "job.proposal.\{proposal.id}"
   let workflow_id = "workflow.proposal.\{proposal.id}"
   let delegate_steps = proposal.steps.map(fn(step) {
-    delegate_step_from_proposal_step(proposal, step, cwd, home)
+    delegate_step_from_proposal_step(proposal, step, cwd, home, workspace_root)
   })
   let workflow = WorkflowDefinition::{
     id: workflow_id,
@@ -703,7 +711,7 @@ fn compile_delegated_generic_workflow(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
-      "workspace": cwd,
+      "workspace": workspace_root,
       "family": family,
       "template": template,
       "required_capabilities": capabilities,
@@ -743,6 +751,7 @@ fn compile_delegated_research_workflow(
   now_ms : Int,
   cwd : String,
   home : String,
+  workspace_root : String,
   template : String,
   capabilities : Array[String],
 ) -> ProposalCompilation {
@@ -773,13 +782,16 @@ fn compile_delegated_research_workflow(
   }
   let delegated_steps = proposal.steps[1:].map(fn(step) {
     WorkflowStepDefinition::{
-      ..delegate_step_from_proposal_step(proposal, step, cwd, home),
+      ..delegate_step_from_proposal_step(
+        proposal, step, cwd, home, workspace_root,
+      ),
       config: SubjobStepConfig::new(
         request_text=[
           step.title,
           step.prompt,
           "Use topic context `\{topic_id}` and existing research artifacts when available.",
           "Preferred skills: \{preferred_skill_names}",
+          "Workspace root: \{workspace_root}",
         ].join("\n\n"),
         cwd=Some(cwd),
         home=Some(home),
@@ -801,6 +813,7 @@ fn compile_delegated_research_workflow(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
+      "workspace": workspace_root,
       "family": "research",
       "template": template,
       "topic_id": topic_id,
@@ -857,6 +870,7 @@ pub fn compile_job_proposal(
   now_ms : Int,
   cwd : String,
   home : String,
+  workspace_root? : String = cwd,
 ) -> ProposalCompilation {
   let (family, template, capabilities) = infer_proposal_compilation_hints(
     proposal,
@@ -868,19 +882,19 @@ pub fn compile_job_proposal(
   match family {
     "research" if resolved_template == "research.delegated_review" =>
       compile_delegated_research_workflow(
-        proposal, now_ms, cwd, home, resolved_template, capabilities,
+        proposal, now_ms, cwd, home, workspace_root, resolved_template, capabilities,
       )
     "research" =>
       compile_research_workflow(
-        proposal, now_ms, cwd, home, resolved_template, capabilities,
+        proposal, now_ms, cwd, home, workspace_root, resolved_template, capabilities,
       )
     _ if resolved_template == "generic.delegated" =>
       compile_delegated_generic_workflow(
-        proposal, now_ms, cwd, home, family, resolved_template, capabilities,
+        proposal, now_ms, cwd, home, workspace_root, family, resolved_template, capabilities,
       )
     _ =>
       compile_generic_analysis_workflow(
-        proposal, now_ms, cwd, home, family, resolved_template, capabilities,
+        proposal, now_ms, cwd, home, workspace_root, family, resolved_template, capabilities,
       )
   }
 }

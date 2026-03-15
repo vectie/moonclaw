@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/plugin"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct PluginRecord {
+  id : String
+  enabled : Bool
+  status : String
+  source : String?
+  spec : String?
+  version : String?
+  install_path : String?
+  metadata : Json
+}
+pub impl Show for PluginRecord
+pub impl ToJson for PluginRecord
+pub impl @json.FromJson for PluginRecord
+
+pub struct PluginRuntime {
+  home : String
+  cwd : String
+  plugins : Map[String, PluginRecord]
+}
+pub fn PluginRuntime::get(Self, String) -> PluginRecord?
+pub fn PluginRuntime::list(Self) -> Array[PluginRecord]
+pub async fn PluginRuntime::load(Self) -> Unit
+pub async fn PluginRuntime::new(home~ : String, cwd~ : String) -> Self
+
+// Type aliases
+
+// Traits
+

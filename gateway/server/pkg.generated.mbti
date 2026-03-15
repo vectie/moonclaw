@@ -13,6 +13,9 @@ import {
   "moonbitlang/moonclaw/internal/uuid",
   "moonbitlang/moonclaw/job",
   "moonbitlang/moonclaw/model",
+  "moonbitlang/moonclaw/plugin",
+  "moonbitlang/moonclaw/security",
+  "moonbitlang/moonclaw/workspace",
 }
 
 // Values
@@ -252,17 +255,23 @@ pub struct Gateway {
   pipeline_manager : PipelineManager
   channel_state : ChannelStateStore
   job_app : @job.GatewayJobApp
+  security_runtime : @security.SecurityRuntime
+  workspace_runtime : @workspace.WorkspaceRuntime
+  plugin_runtime : @plugin.PluginRuntime
 }
 pub fn Gateway::auth_token(Self) -> String?
 pub async fn Gateway::handle_request(Self, @httpx.RequestReader, @httpx.ResponseWriter) -> Unit
 pub async fn Gateway::new(uuid? : @uuid.Generator, port? : Int, cwd? : StringView, home? : StringView, auth? : AuthConfig) -> Self
+pub fn Gateway::plugin_runtime(Self) -> @plugin.PluginRuntime
 pub fn Gateway::port(Self) -> Int
 pub fn Gateway::register_extension(Self, &@channel.ChannelExtension) -> Unit raise
 pub fn Gateway::request_shutdown(Self) -> Unit
 pub async fn Gateway::restore_channel_runtime(Self) -> Unit
 pub async fn Gateway::schedule_due_jobs(Self) -> Array[@job.JobRun]
+pub fn Gateway::security_runtime(Self) -> @security.SecurityRuntime
 pub async fn Gateway::start(Self) -> Unit
 pub fn Gateway::unregister_extension(Self, String) -> Unit
+pub fn Gateway::workspace_runtime(Self) -> @workspace.WorkspaceRuntime
 
 type GatewayEvent
 

@@ -58,10 +58,14 @@ pub async fn Gateway::new(
   let extension_registry = @channel.ExtensionRegistry::new()
   let extension_websocket_runtime_manager = @channel.WebSocketClientRuntimeManager::new()
   let extension_websocket_runtime = extension_websocket_runtime_manager.controller()
+  let security_runtime = @security.SecurityRuntime::new(home~, cwd~)
+  let workspace_runtime = @workspace.WorkspaceRuntime::new(home~, cwd~)
+  let plugin_runtime = @plugin.PluginRuntime::new(home~, cwd~)
   let job_app = @job.GatewayJobApp::new(
     root=jobs_dir,
     cwd~,
     home~,
+    workspace=workspace_runtime,
     next_id=fn() { uuid.v4().to_string() },
     now=current_time_ms,
   )
@@ -93,6 +97,9 @@ pub async fn Gateway::new(
     pipeline_manager: pipeline_manager(uuid~),
     channel_state: ChannelStateStore::{ path: channel_state_file, states: {} },
     job_app,
+    security_runtime,
+    workspace_runtime,
+    plugin_runtime,
   }
   gateway.sessions.load() catch {
     error => gateway.logger.warn("Failed to load gateway sessions: \{error}")
@@ -102,6 +109,15 @@ pub async fn Gateway::new(
   }
   gateway.job_app.load() catch {
     error => gateway.logger.warn("Failed to load job runtime state: \{error}")
+  }
+  gateway.security_runtime.load() catch {
+    error => gateway.logger.warn("Failed to load security runtime: \{error}")
+  }
+  gateway.workspace_runtime.load() catch {
+    error => gateway.logger.warn("Failed to load workspace runtime: \{error}")
+  }
+  gateway.plugin_runtime.load() catch {
+    error => gateway.logger.warn("Failed to load plugin runtime: \{error}")
   }
   gateway.seed_channel_state_from_moonclaw_config() catch {
     error =>

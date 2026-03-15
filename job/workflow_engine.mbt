@@ -283,6 +283,13 @@ pub async fn WorkflowEngine::execute_run(
             error=Some(message),
           )
           store.save_step_run(cancelled_step)
+          ignore(
+            checkpoint_run_workspace(
+              store,
+              run_id,
+              "moonclaw: step \{step.id} cancelled",
+            ),
+          )
           self.log_run_event(
             started_run,
             "step.cancelled",
@@ -354,6 +361,13 @@ pub async fn WorkflowEngine::execute_run(
             output=Some(result.output),
           )
           store.save_step_run(completed_step)
+          ignore(
+            checkpoint_run_workspace(
+              store,
+              run_id,
+              "moonclaw: step \{step.id} succeeded",
+            ),
+          )
           self.log_run_event(
             started_run,
             "step.succeeded",
@@ -385,6 +399,13 @@ pub async fn WorkflowEngine::execute_run(
             error=Some(error),
           )
           store.save_step_run(failed_step)
+          ignore(
+            checkpoint_run_workspace(
+              store,
+              run_id,
+              "moonclaw: step \{step.id} failed",
+            ),
+          )
           self.log_run_event(
             started_run,
             "step.failed",

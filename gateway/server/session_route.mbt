@@ -12,12 +12,18 @@ fn channel_session_key(
   account_id : String,
   chat_id : String,
   thread_id : String?,
+  dm_scope? : String = "per-account-channel-peer",
 ) -> String {
   let thread = thread_id.unwrap_or("")
-  if thread.is_blank() {
-    "\{channel_id}:\{account_id}:\{chat_id}"
+  let base = match dm_scope {
+    "main" => "\{channel_id}:\{account_id}:main"
+    "per-channel-peer" => "\{channel_id}:\{chat_id}"
+    _ => "\{channel_id}:\{account_id}:\{chat_id}"
+  }
+  if thread.is_blank() || dm_scope == "main" {
+    base
   } else {
-    "\{channel_id}:\{account_id}:\{chat_id}:\{thread}"
+    "\{base}:\{thread}"
   }
 }
 
@@ -26,8 +32,15 @@ fn message_session_key(
   channel_id : String,
   account_id : String,
   message : @channel.Message,
+  dm_scope? : String = "per-account-channel-peer",
 ) -> String {
-  channel_session_key(channel_id, account_id, message.to, message.thread_id)
+  channel_session_key(
+    channel_id,
+    account_id,
+    message.to,
+    message.thread_id,
+    dm_scope~,
+  )
 }
 
 ///|

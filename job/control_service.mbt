@@ -49,6 +49,19 @@ pub async fn render_job_status_command_reply(
 }
 
 ///|
+pub async fn render_job_workspace_command_reply(
+  store : SystemStore,
+  job_or_run_id : String,
+  active_run_id? : String? = None,
+) -> String? {
+  match resolve_status_target(store, job_or_run_id, active_run_id~) {
+    Some((definition, run)) =>
+      Some(render_run_workspace_status(store, definition, run))
+    None => None
+  }
+}
+
+///|
 pub async fn request_job_stop(
   store : SystemStore,
   job_or_run_id : String,

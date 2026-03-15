@@ -39,6 +39,7 @@ async test "render_job_status_command_reply resolves run targets" {
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
+    workspace_dir: None,
     status: RunStatus::Running,
     attempt: 1,
     retry_of: None,
@@ -91,6 +92,7 @@ async test "request_job_stop resolves run ids before calling cancel" {
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
+    workspace_dir: None,
     status: RunStatus::Running,
     attempt: 1,
     retry_of: None,
@@ -114,4 +116,48 @@ async test "request_job_stop resolves run ids before calling cancel" {
     content="Stop requested for `job-1` (`run-1`).",
   )
   inspect(cancelled.join(","), content="job-1:false")
+}
+
+///|
+async test "render_job_workspace_command_reply shows workspace path" {
+  @fsx.with_temporary_directory("job-workspace-status-XXXXXX", async fn(dir) {
+    let workspace_root = dir |> @pathx.join("workspace")
+    ignore(@workspace.load_workspace_snapshot_from_root(workspace_root))
+    let store = SystemStore::new(root=dir |> @pathx.join("jobs"))
+    let definition = JobDefinition::{
+      id: "job-1",
+      kind: "generic",
+      enabled: true,
+      config: { "workspace": workspace_root },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: None,
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    }
+    let run = JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: TriggerSource::Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: RunStatus::Running,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(10),
+      completed_at: None,
+      summary: None,
+      error: None,
+    }
+    store.save_definition(definition)
+    store.save_run(run)
+    let prepared = prepare_run_workspace(store, definition, run)
+    inspect(prepared.workspace_dir is Some(_), content="true")
+    let reply = render_job_workspace_command_reply(store, "run-1").unwrap_or("")
+    inspect(reply.contains("Job workspace: job-1"), content="true")
+    inspect(reply.contains("Recent commits:"), content="true")
+  })
 }

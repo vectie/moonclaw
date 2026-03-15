@@ -3,6 +3,7 @@ pub struct GatewayJobApp {
   state : GatewayJobState
   cwd : String
   home : String
+  workspace : @workspace.WorkspaceRuntime
   next_id : () -> String
   now : () -> Int
 }
@@ -18,10 +19,18 @@ pub fn GatewayJobApp::new(
   root~ : String,
   cwd~ : String,
   home~ : String,
+  workspace~ : @workspace.WorkspaceRuntime,
   next_id~ : () -> String,
   now~ : () -> Int,
 ) -> GatewayJobApp {
-  GatewayJobApp::{ state: GatewayJobState::new(root~), cwd, home, next_id, now }
+  GatewayJobApp::{
+    state: GatewayJobState::new(root~),
+    cwd,
+    home,
+    workspace,
+    next_id,
+    now,
+  }
 }
 
 ///|
@@ -37,6 +46,16 @@ pub fn GatewayJobApp::runtime(self : GatewayJobApp) -> RuntimeManager {
 ///|
 pub fn GatewayJobApp::state(self : GatewayJobApp) -> GatewayJobState {
   self.state
+}
+
+///|
+pub fn GatewayJobApp::workspace_root(self : GatewayJobApp) -> String {
+  self.workspace.root()
+}
+
+///|
+pub fn GatewayJobApp::workspace_prompt_context(self : GatewayJobApp) -> String {
+  self.workspace.prompt_context()
 }
 
 ///|
@@ -79,9 +98,10 @@ fn unique_memory_hits(
 }
 
 ///|
-fn GatewayJobApp::planning_memory_context(
+async fn GatewayJobApp::planning_memory_context(
   self : GatewayJobApp,
   request_text : String,
+  workspace_root : String,
   channel_id : String?,
   account_id : String?,
   recipient : String?,
@@ -91,7 +111,7 @@ fn GatewayJobApp::planning_memory_context(
   let scoped_hits = memories.search(
     request_text,
     query=MemoryQuery::new(
-      workspace=Some(self.cwd),
+      workspace=Some(workspace_root),
       channel_id~,
       account_id~,
       recipient~,
@@ -103,12 +123,57 @@ fn GatewayJobApp::planning_memory_context(
   let workspace_hits = memories.search(
     request_text,
     query=MemoryQuery::new(
-      workspace=Some(self.cwd),
+      workspace=Some(workspace_root),
       status=Some(MemoryStatus::Active),
     ),
     max_hits=4,
   )
-  render_memory_hits_prompt(unique_memory_hits(scoped_hits, workspace_hits, 4))
+  let workspace_snapshot = @workspace.load_workspace_snapshot_from_root(
+    workspace_root,
+    configured_from="job",
+  )
+  let sections : Array[String] = []
+  let memory_prompt = render_memory_hits_prompt(
+    unique_memory_hits(scoped_hits, workspace_hits, 4),
+  )
+  if !workspace_snapshot.prompt_context.is_blank() {
+    sections.push(workspace_snapshot.prompt_context)
+  }
+  if !memory_prompt.is_blank() {
+    sections.push(memory_prompt)
+  }
+  sections.join("\n\n")
+}
+
+///|
+pub async fn GatewayJobApp::plan_proposal_in_workspace(
+  self : GatewayJobApp,
+  request_text : String,
+  workspace_root : String,
+  cwd : String,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+) -> JobProposal {
+  let memory_context = self.planning_memory_context(
+    request_text, workspace_root, channel_id, account_id, recipient, thread_id,
+  )
+  plan_job_proposal(
+    self.next_id(),
+    request_text,
+    self.now(),
+    channel_id~,
+    account_id~,
+    recipient~,
+    thread_id~,
+    model~,
+    cwd~,
+    home=Some(self.home),
+    workspace=Some(workspace_root),
+    memory_context=Some(memory_context),
+  )
 }
 
 ///|
@@ -121,20 +186,41 @@ pub async fn GatewayJobApp::plan_proposal(
   thread_id? : String? = None,
   model? : String? = None,
 ) -> JobProposal {
-  let memory_context = self.planning_memory_context(
-    request_text, channel_id, account_id, recipient, thread_id,
-  )
-  plan_job_proposal(
-    self.next_id(),
+  self.plan_proposal_in_workspace(
     request_text,
-    self.now(),
+    self.workspace_root(),
+    self.cwd,
     channel_id~,
     account_id~,
     recipient~,
     thread_id~,
     model~,
-    cwd=self.cwd,
+  )
+}
+
+///|
+pub async fn GatewayJobApp::revise_proposal_in_workspace(
+  self : GatewayJobApp,
+  proposal : JobProposal,
+  guidance : String,
+  workspace_root : String,
+  cwd : String,
+) -> JobProposal {
+  let memory_context = self.planning_memory_context(
+    proposal.request_text,
+    workspace_root,
+    proposal.channel_id,
+    proposal.account_id,
+    proposal.recipient,
+    proposal.thread_id,
+  )
+  revise_job_proposal(
+    proposal,
+    guidance,
+    self.now(),
+    cwd~,
     home=Some(self.home),
+    workspace=Some(workspace_root),
     memory_context=Some(memory_context),
   )
 }
@@ -145,21 +231,22 @@ pub async fn GatewayJobApp::revise_proposal(
   proposal : JobProposal,
   guidance : String,
 ) -> JobProposal {
-  let memory_context = self.planning_memory_context(
-    proposal.request_text,
-    proposal.channel_id,
-    proposal.account_id,
-    proposal.recipient,
-    proposal.thread_id,
-  )
-  revise_job_proposal(
+  self.revise_proposal_in_workspace(
     proposal,
     guidance,
-    self.now(),
-    cwd=self.cwd,
-    home=Some(self.home),
-    memory_context=Some(memory_context),
+    self.workspace_root(),
+    self.cwd,
   )
+}
+
+///|
+pub fn GatewayJobApp::compile_proposal_in_workspace(
+  self : GatewayJobApp,
+  proposal : JobProposal,
+  cwd : String,
+  workspace_root : String,
+) -> ProposalCompilation {
+  compile_job_proposal(proposal, self.now(), cwd, self.home, workspace_root~)
 }
 
 ///|
@@ -167,7 +254,7 @@ pub fn GatewayJobApp::compile_proposal(
   self : GatewayJobApp,
   proposal : JobProposal,
 ) -> ProposalCompilation {
-  compile_job_proposal(proposal, self.now(), self.cwd, self.home)
+  self.compile_proposal_in_workspace(proposal, self.cwd, self.workspace_root())
 }
 
 ///|
@@ -226,15 +313,15 @@ pub async fn GatewayJobApp::reject_proposal(
 
 ///|
 fn GatewayJobApp::proposal_planner(self : GatewayJobApp) -> ProposalPlanner {
-  ProposalPlanner::new(run=async fn(request_text, _cwd, _home) {
-    self.plan_proposal(request_text)
+  ProposalPlanner::new(run=async fn(request_text, cwd, _home) {
+    self.plan_proposal_in_workspace(request_text, cwd, cwd)
   })
 }
 
 ///|
 fn GatewayJobApp::proposal_compiler(self : GatewayJobApp) -> ProposalCompiler {
-  ProposalCompiler::new(run=fn(proposal, _now_ms, _cwd, _home) {
-    self.compile_proposal(proposal)
+  ProposalCompiler::new(run=fn(proposal, _now_ms, cwd, _home) {
+    self.compile_proposal_in_workspace(proposal, cwd, cwd)
   })
 }
 

@@ -99,17 +99,188 @@ async fn Gateway::resume_or_create_channel_agent(
 }
 
 ///|
+fn Gateway::channel_reply_message(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  incoming : @channel.Message,
+  content : String,
+) -> @channel.Message {
+  @channel.Message::{
+    id: self.uuid.v4().to_string(),
+    channel: channel_id,
+    from: account_id,
+    to: incoming.to,
+    content,
+    content_type: "text",
+    timestamp: current_time_ms(),
+    thread_id: incoming.thread_id,
+    reply_to: Some(incoming.id),
+    attachments: [],
+  }
+}
+
+///|
+fn configured_dm_policy(
+  store : ChannelStateStore,
+  channel_id : String,
+  account_id : String,
+) -> String {
+  let state = match store.states.get(channel_id) {
+    Some(state) => state
+    None => return "open"
+  }
+  for account in state.accounts {
+    if account.account_id != account_id {
+      continue
+    }
+    match account.config {
+      { "dm_policy": String(policy), .. } => return policy
+      { "dmPolicy": String(policy), .. } => return policy
+      _ => ()
+    }
+  }
+  match state.config.accounts.get(account_id) {
+    Some({ "dm_policy": String(policy), .. }) => policy
+    Some({ "dmPolicy": String(policy), .. }) => policy
+    _ => "open"
+  }
+}
+
+///|
+fn Gateway::configured_dm_policy(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+) -> String {
+  configured_dm_policy(self.channel_state, channel_id, account_id)
+}
+
+///|
+fn Gateway::security_scope_key(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> String {
+  @security.approval_scope_key(
+    channel_id,
+    account_id,
+    message.to,
+    message.thread_id,
+  )
+}
+
+///|
+async fn Gateway::handle_security_chat_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> @channel.Message? {
+  match @security.parse_security_chat_action(message.content) {
+    Some(@security.SecurityChatAction::Pair) => {
+      let record = self
+        .security_runtime()
+        .approve_pairing(channel_id, account_id, message.to, current_time_ms())
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          "Pairing approved for \{record.channel_id}/\{record.account_id}/\{record.recipient}",
+        ),
+      )
+    }
+    Some(@security.SecurityChatAction::PairStatus) =>
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          self
+          .security_runtime()
+          .pairing_status_text(channel_id, account_id, message.to),
+        ),
+      )
+    Some(@security.SecurityChatAction::RevokePair) =>
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          if self
+            .security_runtime()
+            .revoke_pairing(channel_id, account_id, message.to) {
+            "Pairing revoked for \{channel_id}/\{account_id}/\{message.to}"
+          } else {
+            "No pairing found for \{channel_id}/\{account_id}/\{message.to}"
+          },
+        ),
+      )
+    Some(@security.SecurityChatAction::Approve(token)) =>
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          match
+            self.security_runtime().approve_token(token, current_time_ms()) {
+            Some(record) => @security.render_approval_confirmed(record)
+            None => @security.render_approval_not_found(token)
+          },
+        ),
+      )
+    Some(@security.SecurityChatAction::Approvals) =>
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          @security.render_approvals(
+            self
+            .security_runtime()
+            .list_pending_approvals(
+              self.security_scope_key(channel_id, account_id, message),
+            ),
+          ),
+        ),
+      )
+    None => None
+  }
+}
+
+///|
 impl @channel.MessageHandler for Gateway with handle_message(
   self : Gateway,
   channel_id : String,
   account_id : String,
   message : @channel.Message,
 ) -> @channel.Message raise {
+  if self.handle_security_chat_command(channel_id, account_id, message)
+    is Some(reply) {
+    return reply
+  }
+  let dm_policy = self.configured_dm_policy(channel_id, account_id)
+  if dm_policy == "pairing" &&
+    !self.security_runtime().is_paired(channel_id, account_id, message.to) {
+    return self.channel_reply_message(
+      channel_id,
+      account_id,
+      message,
+      @security.render_pairing_required(dm_policy),
+    )
+  }
   if self.handle_job_chat_command(channel_id, account_id, message)
     is Some(reply) {
     return reply
   }
-  let session_key = message_session_key(channel_id, account_id, message)
+  let session_key = message_session_key(
+    channel_id,
+    account_id,
+    message,
+    dm_scope=self.security_runtime().session_dm_scope(),
+  )
   let session = self.sessions.get(session_key)
   let cwd = match session {
     Some(entry) => entry.cwd.unwrap_or(self.cwd)
@@ -190,7 +361,11 @@ impl @channel.MessageHandler for Gateway with handle_event(
         _ => None
       }
       let session_key = channel_session_key(
-        channel_id, account_id, chat_id, thread_id,
+        channel_id,
+        account_id,
+        chat_id,
+        thread_id,
+        dm_scope=self.security_runtime().session_dm_scope(),
       )
       ignore(self.cancel_active_channel_session(session_key))
     }
@@ -204,7 +379,11 @@ impl @channel.MessageHandler for Gateway with handle_event(
         _ => None
       }
       let session_key = channel_session_key(
-        channel_id, account_id, chat_id, thread_id,
+        channel_id,
+        account_id,
+        chat_id,
+        thread_id,
+        dm_scope=self.security_runtime().session_dm_scope(),
       )
       ignore(self.force_cancel_active_channel_session(session_key))
     }

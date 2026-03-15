@@ -23,6 +23,7 @@ fn workflow_test_run() -> JobRun {
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
+    workspace_dir: None,
     status: RunStatus::Pending,
     attempt: 1,
     retry_of: None,

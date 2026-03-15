@@ -16,6 +16,7 @@ pub(all) enum JobChatAction {
   Reject(String)
   Revise(String)
   JobStatus(String)
+  JobWorkspace(String)
   Jobs
   JobStop(String)
   JobForceStop(String)
@@ -386,6 +387,8 @@ pub fn parse_job_chat_action(
     "/reject" => Some(JobChatAction::Reject(args))
     "/revise" => Some(JobChatAction::Revise(args))
     "/job-status" => Some(JobChatAction::JobStatus(args))
+    "/job-workspace" | "/job-workspace-status" =>
+      Some(JobChatAction::JobWorkspace(args))
     "/jobs" | "/job-runs" => Some(JobChatAction::Jobs)
     "/job-stop" => Some(JobChatAction::JobStop(args))
     "/job-force-stop" => Some(JobChatAction::JobForceStop(args))
@@ -405,6 +408,7 @@ pub async fn[T] dispatch_job_chat_action(
   on_reject : async (String) -> T,
   on_revise : async (String) -> T,
   on_status : async (String) -> T,
+  on_workspace : async (String) -> T,
   on_jobs : async () -> T,
   on_stop : async (String, Bool) -> T,
   on_notify : async (String) -> T,
@@ -418,6 +422,7 @@ pub async fn[T] dispatch_job_chat_action(
     Some(JobChatAction::Reject(args)) => Some(on_reject(args))
     Some(JobChatAction::Revise(args)) => Some(on_revise(args))
     Some(JobChatAction::JobStatus(args)) => Some(on_status(args))
+    Some(JobChatAction::JobWorkspace(args)) => Some(on_workspace(args))
     Some(JobChatAction::Jobs) => Some(on_jobs())
     Some(JobChatAction::JobStop(args)) => Some(on_stop(args, false))
     Some(JobChatAction::JobForceStop(args)) => Some(on_stop(args, true))
@@ -580,6 +585,11 @@ pub fn render_revise_usage(in_reply_thread : Bool) -> String {
 ///|
 pub fn render_job_notify_usage() -> String {
   "Usage: /job-notify <off|normal|verbose>"
+}
+
+///|
+pub fn render_job_workspace_usage() -> String {
+  "Usage: /job-workspace <job_id|run_id>"
 }
 
 ///|

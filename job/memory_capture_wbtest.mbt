@@ -32,6 +32,7 @@ async test "capture_successful_run_memories stores run summary and report artifa
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
+      workspace_dir: Some(dir),
       status: RunStatus::Succeeded,
       attempt: 1,
       retry_of: None,

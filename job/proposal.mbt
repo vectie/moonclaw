@@ -273,9 +273,15 @@ fn planner_request_prompt(
   request_text : String,
   revision? : String? = None,
   existing? : JobProposal? = None,
+  workspace? : String? = None,
   memory_context? : String? = None,
 ) -> String {
   let parts = ["Create a draft plan for this requested job:", request_text]
+  let parts = match workspace {
+    Some(workspace) if !workspace.trim().to_string().is_blank() =>
+      [..parts, "Workspace root: \{workspace}"]
+    _ => parts
+  }
   let parts = match memory_context {
     Some(memory_context) if !memory_context.trim().to_string().is_blank() =>
       [..parts, memory_context]
@@ -358,13 +364,14 @@ pub async fn plan_job_proposal(
   model? : String? = None,
   cwd? : String = ".",
   home? : String? = None,
+  workspace? : String? = None,
   memory_context? : String? = None,
 ) -> JobProposal {
   let request = AnalysisRequest::{
     job_id: "proposal:\{proposal_id}",
     run_id: "proposal:\{proposal_id}",
     step_id: "planner",
-    prompt: planner_request_prompt(request_text, memory_context~),
+    prompt: planner_request_prompt(request_text, workspace~, memory_context~),
     model_name: model.unwrap_or("default"),
     cwd,
     home,
@@ -405,6 +412,7 @@ pub async fn revise_job_proposal(
   model? : String? = None,
   cwd? : String = ".",
   home? : String? = None,
+  workspace? : String? = None,
   memory_context? : String? = None,
 ) -> JobProposal {
   let request = AnalysisRequest::{
@@ -415,6 +423,7 @@ pub async fn revise_job_proposal(
       proposal.request_text,
       revision=Some(revision),
       existing=Some(proposal),
+      workspace~,
       memory_context~,
     ),
     model_name: model.unwrap_or("default"),
@@ -579,8 +588,15 @@ pub fn proposal_as_workflow(
   now_ms : Int,
   cwd : String,
   home : String,
+  workspace_root? : String = cwd,
 ) -> (JobDefinition, WorkflowDefinition) {
-  let compilation = compile_job_proposal(proposal, now_ms, cwd, home)
+  let compilation = compile_job_proposal(
+    proposal,
+    now_ms,
+    cwd,
+    home,
+    workspace_root~,
+  )
   (compilation.definition, compilation.workflow)
 }
 

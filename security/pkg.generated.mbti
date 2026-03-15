@@ -1,0 +1,105 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/security"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn approval_scope_key(String, String, String, String?) -> String
+
+pub fn parse_security_chat_action(String) -> SecurityChatAction?
+
+pub fn render_approval_confirmed(ApprovalRecord) -> String
+
+pub fn render_approval_not_found(String) -> String
+
+pub fn render_approvals(Array[ApprovalRecord]) -> String
+
+pub fn render_native_commands_disabled() -> String
+
+pub fn render_pairing_required(String) -> String
+
+pub fn render_pending_approval(ApprovalRecord) -> String
+
+// Errors
+
+// Types and methods
+pub struct ApprovalRecord {
+  token : String
+  action_kind : String
+  action_target : String
+  scope_key : String
+  status : String
+  created_at : Int
+  approved_at : Int?
+}
+pub impl Show for ApprovalRecord
+pub impl ToJson for ApprovalRecord
+pub impl @json.FromJson for ApprovalRecord
+
+pub struct CommandPolicy {
+  native : String
+  native_skills : String
+  restart : Bool
+  owner_display : String
+}
+pub impl Show for CommandPolicy
+pub impl ToJson for CommandPolicy
+pub impl @json.FromJson for CommandPolicy
+
+pub struct PairingRecord {
+  key : String
+  channel_id : String
+  account_id : String
+  recipient : String
+  status : String
+  created_at : Int
+  approved_at : Int?
+}
+pub impl Show for PairingRecord
+pub impl ToJson for PairingRecord
+pub impl @json.FromJson for PairingRecord
+
+type PersistedSecurityState
+pub impl Show for PersistedSecurityState
+pub impl ToJson for PersistedSecurityState
+pub impl @json.FromJson for PersistedSecurityState
+
+pub enum SecurityChatAction {
+  Pair
+  PairStatus
+  RevokePair
+  Approve(String)
+  Approvals
+}
+
+pub struct SecurityRuntime {
+  home : String
+  cwd : String
+  mut session_dm_scope : String
+  mut command_policy : CommandPolicy
+  pairings : Map[String, PairingRecord]
+  approvals : Map[String, ApprovalRecord]
+}
+pub fn SecurityRuntime::allows_native_commands(Self, Bool) -> Bool
+pub fn SecurityRuntime::allows_skill_commands(Self) -> Bool
+pub async fn SecurityRuntime::approve_pairing(Self, String, String, String, Int) -> PairingRecord
+pub async fn SecurityRuntime::approve_token(Self, String, Int) -> ApprovalRecord?
+pub fn SecurityRuntime::command_policy(Self) -> CommandPolicy
+pub async fn SecurityRuntime::consume_approval(Self, String, String, String) -> Bool
+pub fn SecurityRuntime::is_paired(Self, String, String, String) -> Bool
+pub fn SecurityRuntime::list_pending_approvals(Self, String) -> Array[ApprovalRecord]
+pub async fn SecurityRuntime::load(Self) -> Unit
+pub fn SecurityRuntime::matching_pending_approval(Self, String, String, String) -> ApprovalRecord?
+pub async fn SecurityRuntime::new(home~ : String, cwd~ : String) -> Self
+pub fn SecurityRuntime::pairing_status_text(Self, String, String, String) -> String
+pub async fn SecurityRuntime::request_approval(Self, String, String, String, String, Int) -> ApprovalRecord
+pub async fn SecurityRuntime::revoke_pairing(Self, String, String, String) -> Bool
+pub async fn SecurityRuntime::save(Self) -> Unit
+pub fn SecurityRuntime::session_dm_scope(Self) -> String
+
+// Type aliases
+
+// Traits
+

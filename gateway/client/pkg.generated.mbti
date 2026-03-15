@@ -9,6 +9,8 @@ import {
   "moonbitlang/moonclaw/internal/pino",
   "moonbitlang/moonclaw/internal/uuid",
   "moonbitlang/moonclaw/job",
+  "moonbitlang/moonclaw/plugin",
+  "moonbitlang/moonclaw/workspace",
 }
 
 // Values
@@ -52,12 +54,15 @@ pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.
 pub async fn Client::get_job(Self, job_id~ : String) -> Result[JobPayload, String]
 pub async fn Client::get_job_run(Self, run_id~ : String) -> Result[JobRunDetails, String]
 pub async fn Client::get_memory(Self, memory_id~ : String) -> Result[@job.MemoryRecord, String]
+pub async fn Client::get_plugin(Self, plugin_id~ : String) -> Result[@plugin.PluginRecord, String]
 pub async fn Client::get_run(Self, run_id~ : String) -> Result[RunInfo, String]
+pub async fn Client::get_workspace(Self) -> Result[WorkspacePayload, String]
 pub async fn Client::health(Self) -> Result[@protocol.HealthPayload, String]
 pub async fn Client::list_channels(Self) -> Result[ChannelsListPayload, String]
 pub async fn Client::list_job_runs(Self) -> Result[JobRunsPayload, String]
 pub async fn Client::list_jobs(Self) -> Result[JobsListPayload, String]
 pub async fn Client::list_memories(Self, query? : @job.MemoryQuery) -> Result[MemoriesListPayload, String]
+pub async fn Client::list_plugins(Self) -> Result[PluginsListPayload, String]
 pub async fn Client::list_runs(Self) -> Result[RunsListPayload, String]
 pub async fn Client::list_sessions(Self) -> Result[@protocol.SessionsListPayload, String]
 pub async fn Client::new(ClientConfig) -> Self
@@ -136,6 +141,13 @@ pub impl Show for MemorySearchPayload
 pub impl ToJson for MemorySearchPayload
 pub impl @json.FromJson for MemorySearchPayload
 
+pub(all) struct PluginsListPayload {
+  plugins : Array[@plugin.PluginRecord]
+}
+pub impl Show for PluginsListPayload
+pub impl ToJson for PluginsListPayload
+pub impl @json.FromJson for PluginsListPayload
+
 pub(all) struct RunInfo {
   run_id : String
   session_key : String
@@ -155,6 +167,13 @@ pub(all) struct RunsListPayload {
 pub impl Show for RunsListPayload
 pub impl ToJson for RunsListPayload
 pub impl @json.FromJson for RunsListPayload
+
+pub(all) struct WorkspacePayload {
+  workspace : @workspace.WorkspaceSnapshot
+}
+pub impl Show for WorkspacePayload
+pub impl ToJson for WorkspacePayload
+pub impl @json.FromJson for WorkspacePayload
 
 // Type aliases
 
