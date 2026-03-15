@@ -467,3 +467,50 @@ async fn Gateway::handle_job_ui_get_method(
       })
   }
 }
+
+///|
+async fn Gateway::handle_job_ui_events_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let run_id = match parse_job_run_id_param(request) {
+    Ok(run_id) => run_id
+    Err(error) =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(error),
+      })
+  }
+  match self.job_runtime().store().get_run(run_id) {
+    Some(_) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some({
+          "timeline": @job.load_run_ui_timeline(
+            self.job_runtime().store(),
+            run_id,
+          )
+          .map(entry => entry.to_json())
+          .to_json(),
+        }),
+        error: None,
+      })
+    None =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "job_run_not_found",
+          message: "Job run not found: \{run_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+}

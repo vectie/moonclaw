@@ -1,0 +1,80 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw-rabbita-job/main"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+type Model
+
+type Msg
+
+type NodeEventStats
+
+type RightPanel
+pub impl Compare for RightPanel
+pub impl Eq for RightPanel
+pub impl Show for RightPanel
+
+type Route
+
+type RunSort
+pub impl Compare for RunSort
+pub impl Eq for RunSort
+pub impl Show for RunSort
+
+type RunSummary
+pub impl Show for RunSummary
+pub impl @json.FromJson for RunSummary
+
+type RunsPayload
+pub impl Show for RunsPayload
+pub impl @json.FromJson for RunsPayload
+
+type StreamDrainPayload
+pub impl Show for StreamDrainPayload
+pub impl @json.FromJson for StreamDrainPayload
+
+type TimelineGroup
+
+type UiArtifact
+pub impl Show for UiArtifact
+pub impl @json.FromJson for UiArtifact
+
+type UiEventsPayload
+pub impl Show for UiEventsPayload
+pub impl @json.FromJson for UiEventsPayload
+
+type UiMemory
+pub impl Show for UiMemory
+pub impl @json.FromJson for UiMemory
+
+type UiNode
+pub impl Show for UiNode
+pub impl @json.FromJson for UiNode
+
+type UiRun
+pub impl Show for UiRun
+pub impl @json.FromJson for UiRun
+
+type UiSnapshot
+pub impl Show for UiSnapshot
+pub impl @json.FromJson for UiSnapshot
+
+type UiSnapshotPayload
+pub impl Show for UiSnapshotPayload
+pub impl @json.FromJson for UiSnapshotPayload
+
+type UiTimelineEntry
+pub impl Show for UiTimelineEntry
+pub impl @json.FromJson for UiTimelineEntry
+
+// Type aliases
+
+// Traits
+

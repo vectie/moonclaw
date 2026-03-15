@@ -58,6 +58,8 @@ pub fn infer_proposal_compilation_hints(JobProposal) -> (String, String, Array[S
 
 pub fn initial_notification_runtime_state(Int) -> JobNotificationRuntimeState
 
+pub async fn load_run_ui_timeline(SystemStore, String) -> Array[JobUiTimelineEntry]
+
 pub fn missing_capabilities(Array[String]) -> Array[String]
 
 pub fn notification_preference_id(String, String, String, String?) -> String

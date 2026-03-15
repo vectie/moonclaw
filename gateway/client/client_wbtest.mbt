@@ -161,6 +161,26 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
+  let job_ui_events_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-job-ui-events",
+    ok: true,
+    payload: Some({
+      "timeline": [
+        @job.JobUiTimelineEntry::{
+          id: "job-run-1:event:0",
+          run_id: "job-run-1",
+          event_type: "step.started",
+          title: "step.started (step-a)",
+          detail: "started",
+          timestamp: 11,
+          step_id: Some("step-a"),
+          status: Some("\"Running\""),
+          data: {},
+        }.to_json(),
+      ],
+    }),
+    error: None,
+  })
   let memory = @job.MemoryRecord::{
     id: "memory-1",
     kind: "note",
@@ -272,6 +292,9 @@ test "decode_ok_payload parses run and channel payloads" {
   let job_ui_snapshot_result : Result[JobUiSnapshotPayload, String] = decode_ok_payload(
     job_ui_snapshot_response, "default", "missing", "parse failed",
   )
+  let job_ui_events_result : Result[JobUiEventsPayload, String] = decode_ok_payload(
+    job_ui_events_response, "default", "missing", "parse failed",
+  )
   let memory_search_result : Result[MemorySearchPayload, String] = decode_ok_payload(
     memory_search_response, "default", "missing", "parse failed",
   )
@@ -302,6 +325,10 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let job_ui_events_payload : JobUiEventsPayload = match job_ui_events_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
   let memory_search_payload : MemorySearchPayload = match memory_search_result {
     Ok(value) => value
     Err(error) => fail(error)
@@ -327,6 +354,7 @@ test "decode_ok_payload parses run and channel payloads" {
     job_ui_snapshot_payload.snapshot.current_step_id.unwrap_or(""),
     content="step-a",
   )
+  inspect(job_ui_events_payload.timeline[0].event_type, content="step.started")
   inspect(memory_payload.id, content="memory-1")
   inspect(memory_search_payload.hits[0].memory_id, content="memory-1")
   inspect(workspace_payload.workspace.root, content="/tmp/workspace")

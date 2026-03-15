@@ -31,3 +31,11 @@ pub fn run_events_as_timeline(
   }
   timeline
 }
+
+///|
+pub async fn load_run_ui_timeline(
+  store : SystemStore,
+  run_id : String,
+) -> Array[JobUiTimelineEntry] {
+  run_events_as_timeline(store.list_run_events(run_id))
+}

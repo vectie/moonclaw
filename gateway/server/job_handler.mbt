@@ -274,3 +274,112 @@ async fn Gateway::handle_get_job_ui(
       })
   }
 }
+
+///|
+async fn Gateway::handle_get_job_ui_events(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let run_id = match paths {
+    ["", "v1", "jobs", "runs", id, "events"] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_run_id",
+          "message": "Missing run id in path",
+        },
+      })
+  }
+  match self.job_runtime().store().get_run(run_id) {
+    Some(_) => {
+      let result : Json = {
+        "timeline": @job.load_run_ui_timeline(
+          self.job_runtime().store(),
+          run_id,
+        )
+        .map(entry => entry.to_json())
+        .to_json(),
+      }
+      w.header().set("Content-Type", "application/json")
+      w.write_header(200)
+      w.write(result.stringify())
+    }
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "job_run_not_found",
+          "message": "Job run not found: \{run_id}",
+        },
+      })
+  }
+}
+
+///|
+fn Gateway::job_run_is_live(
+  _self : Gateway,
+  run : @job.JobRun,
+) -> Bool {
+  run.status is @job.RunStatus::Pending || run.status is @job.RunStatus::Running
+}
+
+///|
+async fn Gateway::handle_stream_job_ui_events(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let run_id = match paths {
+    ["", "v1", "jobs", "runs", id, "events", "stream"] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_run_id",
+          "message": "Missing run id in path",
+        },
+      })
+  }
+  if self.job_runtime().store().get_run(run_id) is None {
+    raise json_error(404, "NotFound", {
+      "error": {
+        "code": "job_run_not_found",
+        "message": "Job run not found: \{run_id}",
+      },
+    })
+  }
+  let sse = @httpx.EventStreamWriter::new(w)
+  sse.write_header(200)
+  sse.write_event(
+    event="connected",
+    data=@encoding/utf8.encode({ "run_id": run_id }.to_json().stringify()),
+  )
+  let mut sent = 0
+  while true {
+    let timeline = @job.load_run_ui_timeline(self.job_runtime().store(), run_id)
+    if sent < timeline.length() {
+      for index in sent..<timeline.length() {
+        let entry = timeline[index]
+        sse.write_event(
+          id=entry.id,
+          event="job_ui_event",
+          data=@encoding/utf8.encode(entry.to_json().stringify()),
+        )
+      }
+      sent = timeline.length()
+    }
+    let current_run = match self.job_runtime().store().get_run(run_id) {
+      Some(run) => run
+      None => break
+    }
+    if !self.job_run_is_live(current_run) {
+      sse.write_event(
+        event="job_ui_complete",
+        data=@encoding/utf8.encode(current_run.to_json().stringify()),
+      )
+      break
+    }
+    @async.sleep(700)
+  }
+}

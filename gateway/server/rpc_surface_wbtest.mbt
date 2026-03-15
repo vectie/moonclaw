@@ -22,6 +22,7 @@ test "supported_rpc_methods advertises the implemented channel and run methods" 
   inspect(methods.contains("jobs.runs.list"), content="true")
   inspect(methods.contains("jobs.runs.get"), content="true")
   inspect(methods.contains("jobs.ui.get"), content="true")
+  inspect(methods.contains("jobs.ui.events"), content="true")
   inspect(methods.contains("jobs.ask"), content="true")
   inspect(methods.contains("channels.list"), content="true")
   inspect(methods.contains("channels.get"), content="true")
