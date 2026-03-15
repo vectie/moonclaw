@@ -87,10 +87,6 @@ MoonClaw is strongest today as:
 
 It is less complete today in:
 
-- full OpenClaw binding parity
-- mature plugin install lifecycle
-- polished onboarding/wizard UX
-
 ## Typical Use Cases
 
 - Draft a job in Feishu, revise it, confirm it, and let it run in the background.
