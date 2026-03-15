@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/onboarding",
+  "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/buildinfo",
+  "moonbitlang/moonclaw/internal/backtrace",
+}
+
+options(
+  "is-main": true,
+)

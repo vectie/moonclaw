@@ -1,0 +1,59 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/onboarding"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn bootstrap(home~ : String, cwd~ : String) -> OnboardingApplyResult
+
+pub async fn collect_status(home~ : String, cwd~ : String) -> OnboardingStatus
+
+pub fn render_bootstrap_result(OnboardingApplyResult) -> String
+
+pub fn render_default_config(home~ : String) -> String
+
+pub fn render_status(OnboardingStatus) -> String
+
+// Errors
+
+// Types and methods
+pub struct OnboardingApplyResult {
+  status : String
+  config_path : String
+  workspace_root : String
+  created : Array[String]
+  preserved : Array[String]
+  onboarding : OnboardingStatus
+}
+pub impl Show for OnboardingApplyResult
+pub impl ToJson for OnboardingApplyResult
+pub impl @json.FromJson for OnboardingApplyResult
+
+pub struct OnboardingStatus {
+  home : String
+  cwd : String
+  config_path : String
+  config_exists : Bool
+  workspace_root : String
+  workspace_configured_from : String
+  workspace_files : Array[String]
+  primary_model : String?
+  provider_count : Int
+  gateway_port : Int?
+  has_gateway_token : Bool
+  feishu_enabled : Bool
+  feishu_ready : Bool
+  plugin_count : Int
+  issues : Array[String]
+  next_steps : Array[String]
+}
+pub impl Show for OnboardingStatus
+pub impl ToJson for OnboardingStatus
+pub impl @json.FromJson for OnboardingStatus
+
+// Type aliases
+
+// Traits
+

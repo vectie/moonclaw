@@ -120,6 +120,13 @@ Useful gateway commands:
 ~/.moon/bin/moon run cmd/main -- gateway channels
 ```
 
+Onboard a fresh local setup:
+
+```bash
+~/.moon/bin/moon run cmd/main -- onboard status --home ~/.moonclaw
+~/.moon/bin/moon run cmd/main -- onboard init --home ~/.moonclaw
+```
+
 In Feishu, the important commands are:
 
 - `/plan-job <description>`
