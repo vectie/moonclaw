@@ -28,7 +28,7 @@ pub fn UserMessage::get_preferred_height(
 }
 
 ///|
-pub async fn UserMessage::render(
+pub fn UserMessage::render(
   self : UserMessage,
   output : RenderOutput,
   x : Int,

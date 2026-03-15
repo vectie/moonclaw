@@ -207,7 +207,7 @@ pub impl @json.FromJson for Policy
 
 pub(all) struct Request {
   id : String
-  method : String
+  rpc_method : String
   params : Json?
 }
 pub impl Show for Request

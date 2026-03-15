@@ -244,11 +244,6 @@ test "Feishu queue cancel clears pending work and marks active queue for stop" {
   let queue_key = feishu_queue_key("default", "chat-1", None)
   channel.enqueue_message(queue_key, QueuedFeishuMessage::{
     account_id: "default",
-    chat_id: "chat-1",
-    thread_id: None,
-    message_id: "msg-1",
-    content: "first",
-    timestamp: 1,
     message: @channel.Message::{
       id: "msg-1",
       channel: "feishu",
@@ -829,7 +824,6 @@ async test "Feishu websocket monitor connections receive ready and status update
 
   let sent : Array[String] = []
   let close_calls : Array[Int] = []
-  let mut inbound : (async (Bytes) -> Unit)? = None
   let mut on_close : (() -> Unit)? = None
   let conn = @channel.WebSocketConnection::new(
     id="monitor-1",
@@ -838,7 +832,6 @@ async test "Feishu websocket monitor connections receive ready and status update
       sent.push(text)
     },
     close=fn() { close_calls.push(1) },
-    on_message=fn(handler) { inbound = Some(handler) },
     on_close=fn(handler) { on_close = Some(handler) },
   )
 
@@ -964,7 +957,7 @@ async test "Feishu websocket runtime starts websocket accounts through extension
 
   let sent : Array[Bytes] = []
   let mut inbound : (async (Bytes) -> Unit)? = None
-  let connector = @channel.WebSocketClientConnector::new(connect=fn(request) {
+  let connector = @channel.WebSocketClientConnector::new(connect=request => {
     inspect(request.protocol(), content="feishu")
     inspect(request.client_id(), content="feishu:websocket")
     inspect(
@@ -1195,9 +1188,7 @@ async test "Feishu websocket runtime refreshes resolved endpoint on reconnect" {
     "ws://127.0.0.1:18080/first", "ws://127.0.0.1:18080/second",
   ])
   let dialed_urls : Array[String] = []
-  let connector = @channel.WebSocketClientConnector::new(connect=async fn(
-    request,
-  ) {
+  let connector = @channel.WebSocketClientConnector::new(connect=request => {
     match request.metadata() {
       { "url": String(url), .. } => dialed_urls.push(url)
       _ => ()

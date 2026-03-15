@@ -104,7 +104,7 @@ async test "request_job_stop resolves run ids before calling cancel" {
   store.save_definition(definition)
   store.save_run(run)
   let cancelled : Array[String] = []
-  let result = request_job_stop(store, "run-1", async fn(job_id, force) {
+  let result = request_job_stop(store, "run-1", fn(job_id, force) {
     cancelled.push("\{job_id}:\{force}")
     Ok(run)
   })

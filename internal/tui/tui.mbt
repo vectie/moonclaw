@@ -61,9 +61,9 @@ fn editor_frame_line(editor : Editor, width : Int) -> (String, Int) {
   let visible_text = truncate_styled(display_text, available_width)
   let line = "\{prompt}\{visible_text}"
   let cursor_col = (prompt_width +
-  @unicode/width.string(try! editor.text()[:editor.cursor()]).min(
-    available_width,
-  )).min(width.max(0))
+  @unicode/width.string(editor.text()[:editor.cursor()]).min(available_width)).min(
+    width.max(0),
+  )
   (frame_line(line, width), cursor_col)
 }
 
@@ -89,8 +89,8 @@ fn write_changed_lines(
 ) -> Unit {
   let line_count = current_lines.length().max(previous_lines.length())
   for i in 0..<line_count {
-    let current = current_lines.get(i).or("")
-    let previous = previous_lines.get(i).or("")
+    let current = current_lines.get(i).unwrap_or("")
+    let previous = previous_lines.get(i).unwrap_or("")
     if current != previous {
       output.write(cursor_to(0, start_row + i))
       output.write(ClearLineRight)

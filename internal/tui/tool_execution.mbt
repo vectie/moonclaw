@@ -133,7 +133,7 @@ pub fn ToolExecution::get_preferred_height(
 }
 
 ///|
-pub async fn ToolExecution::render(
+pub fn ToolExecution::render(
   self : ToolExecution,
   output : RenderOutput,
   x : Int,

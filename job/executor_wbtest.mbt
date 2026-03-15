@@ -37,15 +37,15 @@ async test "execute_run_lifecycle runs workflow and invokes hooks" {
       fn() {
         let engine = WorkflowEngine::new(runtime~)
         engine.register_handler(
-          WorkflowStepHandler::new(kind="job.analysis", run=async fn(_ctx) {
+          WorkflowStepHandler::new(kind="job.analysis", run=fn(_ctx) {
             Ok(WorkflowStepResult::new(output={ "ok": true }))
           }),
         )
         engine
       },
       hooks=RunExecutionHooks::new(
-        on_started=async fn(_definition, _run) { marks.set("started", 1) },
-        on_finished=async fn(_definition, _run) { marks.set("finished", 1) },
+        on_started=fn(_definition, _run) { marks.set("started", 1) },
+        on_finished=fn(_definition, _run) { marks.set("finished", 1) },
       ),
     )
     let run = match runtime.store().get_run("run-1") {
@@ -129,7 +129,7 @@ async test "execution_notification_hooks sends start and finish notifications" {
     }
     state.runtime().register_definition(definition)
     let sent : Array[String] = []
-    let hooks = execution_notification_hooks(state, fn() { 100 }, async fn(
+    let hooks = execution_notification_hooks(state, fn() { 100 }, fn(
       _target,
       content,
     ) {

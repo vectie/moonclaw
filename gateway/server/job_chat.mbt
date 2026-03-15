@@ -243,7 +243,7 @@ async fn Gateway::handle_remember_command(
 }
 
 ///|
-async fn Gateway::handle_memories_command(
+fn Gateway::handle_memories_command(
   self : Gateway,
   channel_id : String,
   account_id : String,
@@ -266,7 +266,7 @@ async fn Gateway::handle_memories_command(
 }
 
 ///|
-async fn Gateway::handle_memory_search_command(
+fn Gateway::handle_memory_search_command(
   self : Gateway,
   channel_id : String,
   account_id : String,
@@ -649,7 +649,7 @@ async fn Gateway::handle_job_chat_command(
     async fn(args) {
       self.handle_job_workspace_command(channel_id, account_id, message, args)
     },
-    async fn() { self.handle_jobs_command(channel_id, account_id, message) },
+    fn() { self.handle_jobs_command(channel_id, account_id, message) },
     async fn(args, force) {
       self.handle_job_stop_command(
         channel_id,
@@ -665,8 +665,8 @@ async fn Gateway::handle_job_chat_command(
     async fn(args) {
       self.handle_remember_command(channel_id, account_id, message, args)
     },
-    async fn() { self.handle_memories_command(channel_id, account_id, message) },
-    async fn(args) {
+    fn() { self.handle_memories_command(channel_id, account_id, message) },
+    fn(args) {
       self.handle_memory_search_command(channel_id, account_id, message, args)
     },
   )

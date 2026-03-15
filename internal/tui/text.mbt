@@ -102,7 +102,7 @@ pub fn Text::get_preferred_height(self : Text, _width : Int) -> Int {
 }
 
 ///|
-pub async fn Text::render(
+pub fn Text::render(
   self : Text,
   output : RenderOutput,
   x : Int,
@@ -208,12 +208,12 @@ pub fn Spacer::get_preferred_height(self : Spacer, _width : Int) -> Int {
 }
 
 ///|
-pub async fn Spacer::render(
+pub fn Spacer::render(
   self : Spacer,
   output : RenderOutput,
   x : Int,
   y : Int,
-  width : Int,
+  _width : Int,
   height : Int,
 ) -> Unit {
   for i in 0..<height.min(self.height) {
@@ -273,7 +273,7 @@ pub fn Box::get_preferred_height(self : Box, width : Int) -> Int {
 }
 
 ///|
-pub async fn Box::render(
+pub fn Box::render(
   self : Box,
   output : RenderOutput,
   x : Int,

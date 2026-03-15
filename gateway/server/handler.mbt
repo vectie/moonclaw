@@ -85,15 +85,13 @@ async fn Gateway::execute_agent_async(
   let result = self.execute_agent(run_id~, params)
   self.pending_requests = self.pending_requests - 1
   match result {
-    Ok(output) => {
+    Ok(output) =>
       self.dedupe.set(idempotency_key, DedupeEntry::{
         ts: current_time_ms(),
         ok: true,
         payload: Some(output),
         error: None,
       })
-      self.events.put(GatewayEvent::AgentCompleted(run_id))
-    }
     Err(error) =>
       self.dedupe.set(idempotency_key, DedupeEntry::{
         ts: current_time_ms(),
@@ -134,8 +132,6 @@ async fn Gateway::execute_agent(
   }
 
   self.logger.info("Spawning agent for run \{run_id} with model \{model_name}")
-  self.events.put(GatewayEvent::AgentStarted(run_id))
-
   let created_at = current_time_ms()
   self.agent_runs[run_id] = AgentRun::{
     run_id,
@@ -249,7 +245,6 @@ async fn Gateway::execute_agent(
     provider_override: session.provider_override,
     cwd: Some(cwd),
   })
-  self.events.put(GatewayEvent::SessionChanged(run_id))
   Ok({
     "run_id": run_id,
     "status": "completed",
@@ -264,7 +259,7 @@ async fn Gateway::execute_agent(
 ///|
 async fn Gateway::handle_events_stream(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let sse = @httpx.EventStreamWriter::new(w)
@@ -273,7 +268,7 @@ async fn Gateway::handle_events_stream(
   self.agent_events.listen_forever(include_history=false, event => {
     sse.write_event(
       event="agent_event",
-      data=event.to_json().stringify().to_bytes(),
+      data=@encoding/utf8.encode(event.to_json().stringify()),
     )
   })
 }
@@ -314,7 +309,7 @@ async fn Gateway::handle_get_run(
 ///|
 async fn Gateway::handle_list_runs(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   w.header().set("Content-Type", "application/json")
@@ -327,7 +322,7 @@ async fn Gateway::handle_list_runs(
 ///|
 async fn Gateway::handle_list_artifacts(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let artifacts = @job.ArtifactStore::new(store=self.job_runtime().store()).list()
@@ -380,7 +375,7 @@ async fn Gateway::handle_get_artifact(
 ///|
 async fn Gateway::handle_list_memories(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let memories = @job.MemoryService::new(store=self.job_runtime().store()).list()
@@ -586,7 +581,7 @@ async fn Gateway::handle_search_memories(
     None => @job.MemoryQuery::new()
   }
   let max_hits = match obj.get("max_hits") {
-    Some(Number(value)) => value.to_int()
+    Some(Number(value, ..)) => value.to_int()
     _ => 5
   }
   let hits = @job.MemoryService::new(store=self.job_runtime().store()).search(

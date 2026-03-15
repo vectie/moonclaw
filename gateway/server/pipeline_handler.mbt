@@ -115,7 +115,7 @@ async fn Gateway::handle_create_pipeline(
 ///|
 async fn Gateway::handle_get_pipeline(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {
@@ -137,7 +137,7 @@ async fn Gateway::handle_get_pipeline(
 ///|
 async fn Gateway::handle_list_pipelines(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let pipelines = self.pipeline_manager.list()
@@ -153,7 +153,7 @@ async fn Gateway::handle_list_pipelines(
 ///|
 async fn Gateway::handle_start_pipeline(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {
@@ -181,7 +181,7 @@ async fn Gateway::handle_start_pipeline(
 ///|
 async fn Gateway::handle_cancel_pipeline(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {
@@ -343,7 +343,7 @@ async fn Gateway::handle_fail_pipeline_stage(
 ///|
 async fn Gateway::handle_pipeline_next_task(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {

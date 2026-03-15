@@ -30,7 +30,6 @@ import {
   "moonbitlang/moonclaw/tools/read_file",
   "moonbitlang/moonclaw/tools/read_multiple_files",
   "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/internal/os",
   "moonbitlang/moonclaw/job",
   "moonbitlang/moonclaw/tools/todo",
   "moonbitlang/moonclaw/tools/list_files",

@@ -101,7 +101,7 @@ async fn Gateway::handle_create_coordination(
 ///|
 async fn Gateway::handle_get_coordination(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {
@@ -123,7 +123,7 @@ async fn Gateway::handle_get_coordination(
 ///|
 async fn Gateway::handle_list_coordinations(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let tasks = self.coordinator.list()
@@ -139,7 +139,7 @@ async fn Gateway::handle_list_coordinations(
 ///|
 async fn Gateway::handle_start_coordination(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {
@@ -175,7 +175,7 @@ async fn Gateway::handle_start_coordination(
 ///|
 async fn Gateway::handle_cancel_coordination(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {
@@ -270,7 +270,7 @@ async fn Gateway::handle_update_subtask(
 ///|
 async fn Gateway::handle_coordination_results(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {

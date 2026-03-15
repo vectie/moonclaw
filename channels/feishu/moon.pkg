@@ -1,5 +1,4 @@
 import {
-  "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/core/buffer" @buffer,
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
@@ -9,3 +8,7 @@ import {
   "moonbitlang/moonclaw/channel",
   "moonbitlang/moonclaw/clock",
 }
+
+import {
+  "moonbitlang/async",
+} for "wbtest"

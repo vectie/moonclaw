@@ -108,6 +108,7 @@ test "decode_ok_payload parses run and channel payloads" {
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
+    workspace_dir: None,
     status: @job.RunStatus::Running,
     attempt: 1,
     retry_of: None,

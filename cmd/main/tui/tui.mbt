@@ -67,7 +67,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       @moonclaw.Moonclaw::new(model~, web_search~, logger?)
     }
 
-    let tui = @tui.TUI::new() catch {
+    let tui = @itui.TUI::new() catch {
       error => {
         println("Failed to initialize TUI: \{error}")
         return
@@ -94,7 +94,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
     })
 
     tui.set_on_command(fn(text : String) {
-      let (cmd, args) = @tui.parse_command(text)
+      let (cmd, args) = @itui.parse_command(text)
       handle_command(tui, moonclaw, cmd, args, state)
       tui.request_render()
     })
@@ -272,7 +272,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
 }
 
 ///|
-fn flush_pending_stream(tui : @tui.TUI, state : TuiState) -> Unit {
+fn flush_pending_stream(tui : @itui.TUI, state : TuiState) -> Unit {
   if state.pending_assistant_text is Some(content) {
     tui.chat_log().update_assistant(content)
     tui.scroll_chat_to_bottom()
@@ -284,7 +284,7 @@ fn flush_pending_stream(tui : @tui.TUI, state : TuiState) -> Unit {
 
 ///|
 fn handle_command(
-  tui : @tui.TUI,
+  tui : @itui.TUI,
   moonclaw : @moonclaw.Moonclaw,
   cmd : String,
   _args : String,

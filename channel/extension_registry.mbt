@@ -242,15 +242,3 @@ pub fn ExtensionInfo::allowed_methods(self : ExtensionInfo) -> Array[String] {
 pub fn ExtensionInfo::dock_config(self : ExtensionInfo) -> ChannelDockConfig {
   self.dock_config
 }
-
-///|
-impl ToJson for ExtensionInfo with to_json(self) -> Json {
-  let methods_json = self.allowed_methods.map(fn(s) { s.to_json() }).to_json()
-  {
-    "channel_id": self.channel_id,
-    "webhook_path": self.webhook_path,
-    "supports_websocket": self.supports_websocket,
-    "allowed_methods": methods_json,
-    "dock_config": self.dock_config.to_json(),
-  }
-}

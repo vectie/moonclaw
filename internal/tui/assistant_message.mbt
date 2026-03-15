@@ -46,7 +46,7 @@ pub fn AssistantMessage::get_preferred_height(
 }
 
 ///|
-pub async fn AssistantMessage::render(
+pub fn AssistantMessage::render(
   self : AssistantMessage,
   output : RenderOutput,
   x : Int,
@@ -107,7 +107,7 @@ pub fn SystemMessage::get_preferred_height(
 }
 
 ///|
-pub async fn SystemMessage::render(
+pub fn SystemMessage::render(
   self : SystemMessage,
   output : RenderOutput,
   x : Int,

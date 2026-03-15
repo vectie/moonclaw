@@ -32,7 +32,7 @@ fn parse_http_channel_configure_params(
     Object(obj) =>
       Ok(@protocol.Request::{
         id: "http:channels.configure:\{channel_id}",
-        method: "channels.configure",
+        rpc_method: "channels.configure",
         params: Some({ "channel_id": channel_id, "config": obj }),
       })
     _ =>
@@ -55,7 +55,7 @@ fn parse_http_channel_start_params(
     Object({ "account_id": String(account_id), "config": config, .. }) =>
       Ok(@protocol.Request::{
         id: "http:channels.start:\{channel_id}:\{account_id}",
-        method: "channels.start",
+        rpc_method: "channels.start",
         params: Some({
           "channel_id": channel_id,
           "account_id": account_id,
@@ -90,7 +90,7 @@ fn parse_http_channel_stop_params(
     Object({ "account_id": String(account_id), .. }) =>
       Ok(@protocol.Request::{
         id: "http:channels.stop:\{channel_id}:\{account_id}",
-        method: "channels.stop",
+        rpc_method: "channels.stop",
         params: Some({ "channel_id": channel_id, "account_id": account_id }),
       })
     Object(_) =>

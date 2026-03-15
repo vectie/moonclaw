@@ -8,7 +8,7 @@ pub(all) enum Frame {
 ///|
 pub(all) struct Request {
   id : String
-  method : String
+  rpc_method : String
   params : Json?
 } derive(ToJson, FromJson, Show)
 

@@ -163,7 +163,7 @@ pub fn Editor::get_preferred_height(self : Editor, _width : Int) -> Int {
 }
 
 ///|
-pub async fn Editor::render(
+pub fn Editor::render(
   self : Editor,
   output : RenderOutput,
   x : Int,
@@ -185,7 +185,7 @@ pub async fn Editor::render(
   output.write(truncated)
   let cursor_col = x +
     prompt_width +
-    @unicode/width.string(try! self.text[:self.cursor])
+    @unicode/width.string(self.text[:self.cursor])
   output.write(cursor_to(cursor_col, y))
   output.write(CursorShow)
 }
@@ -262,11 +262,11 @@ pub fn Editor::handle_key(self : Editor, key : Key) -> Bool {
       true
     }
     Ctrl('k') => {
-      self.text = (try! self.text[:self.cursor]).to_string()
+      self.text = self.text[:self.cursor].to_string()
       true
     }
     Ctrl('u') => {
-      self.text = (try! self.text[self.cursor:]).to_string()
+      self.text = self.text[self.cursor:].to_string()
       self.cursor = 0
       true
     }
@@ -280,8 +280,8 @@ pub fn Editor::handle_key(self : Editor, key : Key) -> Bool {
 
 ///|
 fn Editor::insert_char(self : Editor, c : Char) -> Unit {
-  let before = try! self.text[:self.cursor]
-  let after = try! self.text[self.cursor:]
+  let before = self.text[:self.cursor]
+  let after = self.text[self.cursor:]
   self.text = "\{before}\{c}\{after}"
   self.cursor += 1
   if self.on_change is Some(cb) {
@@ -292,8 +292,8 @@ fn Editor::insert_char(self : Editor, c : Char) -> Unit {
 ///|
 fn Editor::delete_left(self : Editor) -> Unit {
   if self.cursor > 0 {
-    let before = try! self.text[:self.cursor - 1]
-    let after = try! self.text[self.cursor:]
+    let before = self.text[:self.cursor - 1]
+    let after = self.text[self.cursor:]
     self.text = "\{before}\{after}"
     self.cursor -= 1
     if self.on_change is Some(cb) {
@@ -305,8 +305,8 @@ fn Editor::delete_left(self : Editor) -> Unit {
 ///|
 fn Editor::delete_right(self : Editor) -> Unit {
   if self.cursor < self.text.length() {
-    let before = try! self.text[:self.cursor]
-    let after = try! self.text[self.cursor + 1:]
+    let before = self.text[:self.cursor]
+    let after = self.text[self.cursor + 1:]
     self.text = "\{before}\{after}"
     if self.on_change is Some(cb) {
       cb(self.text)
@@ -343,7 +343,7 @@ fn Editor::delete_word_left(self : Editor) -> Unit {
       None => break
     }
   }
-  self.text = "\{try! self.text[:new_cursor]}\{try! self.text[self.cursor:]}"
+  self.text = "\{self.text[:new_cursor]}\{self.text[self.cursor:]}"
   self.cursor = new_cursor
   if self.on_change is Some(cb) {
     cb(self.text)

@@ -7,21 +7,11 @@ pub(all) struct RunExecutionHooks {
 }
 
 ///|
-async fn noop_run_hook(_definition : JobDefinition, _run : JobRun) -> Unit {
-  ()
-}
-
-///|
-async fn noop_message_hook(_message : String) -> Unit {
-  ()
-}
-
-///|
 pub fn RunExecutionHooks::new(
-  on_started? : async (JobDefinition, JobRun) -> Unit = noop_run_hook,
-  on_finished? : async (JobDefinition, JobRun) -> Unit = noop_run_hook,
-  on_info? : async (String) -> Unit = noop_message_hook,
-  on_warn? : async (String) -> Unit = noop_message_hook,
+  on_started? : async (JobDefinition, JobRun) -> Unit = (_, _) => (),
+  on_finished? : async (JobDefinition, JobRun) -> Unit = (_, _) => (),
+  on_info? : async (String) -> Unit = _ => (),
+  on_warn? : async (String) -> Unit = _ => (),
 ) -> RunExecutionHooks {
   RunExecutionHooks::{ on_started, on_finished, on_info, on_warn }
 }
@@ -100,8 +90,8 @@ pub fn execution_notification_hooks(
   state : GatewayJobState,
   now : () -> Int,
   send : async (JobNotifyTarget, String) -> Unit,
-  on_info? : async (String) -> Unit = noop_message_hook,
-  on_warn? : async (String) -> Unit = noop_message_hook,
+  on_info? : async (String) -> Unit = _ => (),
+  on_warn? : async (String) -> Unit = _ => (),
 ) -> RunExecutionHooks {
   RunExecutionHooks::new(
     on_started=async fn(definition, run) {

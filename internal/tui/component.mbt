@@ -78,7 +78,7 @@ pub fn Key::to_char(self : Key) -> Char? {
 
 ///|
 pub fn parse_key(bytes : BytesView) -> Key {
-  loop bytes {
+  match bytes {
     ['\r' | '\n', ..] => return Enter
     ['\b' | 0x7f, ..] => return Backspace
     ['\t', ..] => return Tab
@@ -88,6 +88,7 @@ pub fn parse_key(bytes : BytesView) -> Key {
         ['[', 'B', ..] => return Down
         ['[', 'C', ..] => return Right
         ['[', 'D', ..] => return Left
+        ['[', '3', '~', ..] => return Delete
         ['[', 'H', ..] => return Home
         ['[', 'F', ..] => return End
         ['[', '5', '~', ..] => return PageUp
@@ -117,14 +118,14 @@ pub fn parse_key(bytes : BytesView) -> Key {
         }
         [c, ..] if c.to_int() >= 'A'.to_int() && c.to_int() <= 'Z'.to_int() => {
           let ch = c.to_char()
-          let lower = Char::from_int(ch.to_int() + 32)
+          let lower = (ch.to_int() + 32).unsafe_to_char()
           return Alt(lower)
         }
         [] => return Escape
         _ => return Unknown
       }
     [c, ..] if c.to_int() >= 0x01 && c.to_int() <= 0x1a => {
-      let ch = Char::from_int(c.to_int() + 96)
+      let ch = (c.to_int() + 96).unsafe_to_char()
       return Ctrl(ch)
     }
     [c, ..] if c.to_int() >= 0x20 && c.to_int() <= 0x7e =>

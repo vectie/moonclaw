@@ -136,16 +136,16 @@ pub fn Theme::quote_style(self : Theme, text : String) -> String {
 }
 
 ///|
-pub fn Theme::bold(self : Theme, text : String) -> String {
+pub fn Theme::bold(_self : Theme, text : String) -> String {
   bold(text)
 }
 
 ///|
-pub fn Theme::italic(self : Theme, text : String) -> String {
+pub fn Theme::italic(_self : Theme, text : String) -> String {
   italic(text)
 }
 
 ///|
-pub fn Theme::underline(self : Theme, text : String) -> String {
+pub fn Theme::underline(_self : Theme, text : String) -> String {
   underline(text)
 }

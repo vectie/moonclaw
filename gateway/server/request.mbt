@@ -13,11 +13,12 @@ pub async fn Gateway::handle_request(
       (Get, ["", "health"]) => self.handle_health(r, w)
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
       (Get, ["", "v1", "runs"]) => self.handle_list_runs(r, w)
-      (Get, ["", "v1", "runs", run_id]) => self.handle_get_run(r, w)
+      (Get, ["", "v1", "runs", _run_id]) => self.handle_get_run(r, w)
       (Get, ["", "v1", "jobs"]) => self.handle_list_jobs(r, w)
       (Get, ["", "v1", "jobs", "runs"]) => self.handle_list_job_runs(r, w)
-      (Get, ["", "v1", "jobs", "runs", run_id]) => self.handle_get_job_run(r, w)
-      (Get, ["", "v1", "jobs", job_id]) => self.handle_get_job(r, w)
+      (Get, ["", "v1", "jobs", "runs", _run_id]) =>
+        self.handle_get_job_run(r, w)
+      (Get, ["", "v1", "jobs", _job_id]) => self.handle_get_job(r, w)
       (Post, ["", "v1", "jobs"]) => self.handle_create_job(r, w)
       (Post, ["", "v1", "jobs", job_id, "update"]) =>
         self.handle_update_job(r, w, job_id.to_string())
@@ -28,19 +29,20 @@ pub async fn Gateway::handle_request(
       (Post, ["", "v1", "jobs", job_id, "force-cancel"]) =>
         self.handle_cancel_job(r, w, job_id.to_string(), true)
       (Get, ["", "v1", "artifacts"]) => self.handle_list_artifacts(r, w)
-      (Get, ["", "v1", "artifacts", artifact_id]) =>
+      (Get, ["", "v1", "artifacts", _artifact_id]) =>
         self.handle_get_artifact(r, w)
       (Get, ["", "v1", "workspace"]) => self.handle_get_workspace(r, w)
       (Get, ["", "v1", "plugins"]) => self.handle_list_plugins(r, w)
-      (Get, ["", "v1", "plugins", plugin_id]) => self.handle_get_plugin(r, w)
+      (Get, ["", "v1", "plugins", _plugin_id]) => self.handle_get_plugin(r, w)
       (Get, ["", "v1", "memories"]) => self.handle_list_memories(r, w)
-      (Get, ["", "v1", "memories", memory_id]) => self.handle_get_memory(r, w)
+      (Get, ["", "v1", "memories", _memory_id]) => self.handle_get_memory(r, w)
       (Post, ["", "v1", "memories"]) => self.handle_create_memory(r, w)
       (Post, ["", "v1", "memories", "search"]) =>
         self.handle_search_memories(r, w)
       (Post, ["", "v1", "jobs", "ask"]) => self.handle_job_ask(r, w)
       (Get, ["", "v1", "channels"]) => self.handle_list_channels(r, w)
-      (Get, ["", "v1", "channels", channel_id]) => self.handle_get_channel(r, w)
+      (Get, ["", "v1", "channels", _channel_id]) =>
+        self.handle_get_channel(r, w)
       (Post, ["", "v1", "channels", channel_id, "configure"]) =>
         self.handle_configure_channel(r, w, channel_id.to_string())
       (Post, ["", "v1", "channels", channel_id, "start"]) =>
@@ -48,7 +50,7 @@ pub async fn Gateway::handle_request(
       (Post, ["", "v1", "channels", channel_id, "stop"]) =>
         self.handle_stop_channel(r, w, channel_id.to_string())
       (Get, ["", "v1", "extensions"]) => self.handle_list_extensions(r, w)
-      (Get, ["", "v1", "extensions", extension_id]) =>
+      (Get, ["", "v1", "extensions", _extension_id]) =>
         self.handle_get_extension(r, w)
       (Post, ["", "v1", "agent"]) => self.handle_agent(r, w)
       (Post, ["", "v1", "agent", "message"]) => self.handle_agent_message(r, w)
@@ -110,8 +112,8 @@ pub async fn Gateway::handle_request(
 
 ///|
 async fn Gateway::handle_index(
-  self : Gateway,
-  r : @httpx.RequestReader,
+  _self : Gateway,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   w.header().set("Content-Type", "application/json")
@@ -139,7 +141,7 @@ async fn Gateway::handle_index(
 ///|
 async fn Gateway::handle_health(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let uptime = if self.started_at > 0 {
@@ -161,7 +163,7 @@ async fn Gateway::handle_health(
 ///|
 async fn Gateway::handle_shutdown_request(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   w.header().set("Content-Type", "application/json")
@@ -176,7 +178,7 @@ async fn Gateway::handle_shutdown_request(
 ///|
 async fn Gateway::handle_list_channels(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let channels = self.channel_manager.list_channels()
@@ -223,7 +225,7 @@ async fn Gateway::handle_get_channel(
 ///|
 async fn Gateway::handle_list_extensions(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let extensions = self.extension_registry.list_extensions()
@@ -294,7 +296,7 @@ async fn Gateway::handle_webhook(
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   channel_id : StringView,
-  rest : ArrayView[StringView],
+  _rest : ArrayView[StringView],
 ) -> Unit {
   let webhook_path = "/webhook/" + channel_id.to_string()
   if !self.extension_registry.has_path(webhook_path) {

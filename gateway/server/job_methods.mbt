@@ -141,9 +141,8 @@ async fn Gateway::handle_jobs_create_method(
 ) -> Unit {
   let definition : @job.JobDefinition = match request.params {
     Some(params) =>
-      match @json.from_json(params) {
-        Ok(definition) => definition
-        Err(error) =>
+      @json.from_json(params) catch {
+        error =>
           return self.send_response(w, @protocol.Response::{
             id: request.id,
             ok: false,
@@ -188,9 +187,8 @@ async fn Gateway::handle_jobs_update_method(
 ) -> Unit {
   let definition : @job.JobDefinition = match request.params {
     Some(params) =>
-      match @json.from_json(params) {
-        Ok(definition) => definition
-        Err(error) =>
+      @json.from_json(params) catch {
+        error =>
           return self.send_response(w, @protocol.Response::{
             id: request.id,
             ok: false,

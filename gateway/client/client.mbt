@@ -132,7 +132,7 @@ pub async fn Client::connect(
   }
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "connect",
+    rpc_method: "connect",
     params: Some(connect_params.to_json()),
   }
   let response = self.send_rpc(request)
@@ -169,7 +169,7 @@ pub async fn Client::agent(
   }
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "agent",
+    rpc_method: "agent",
     params: Some(params.to_json()),
   }
   let response = self.send_rpc(request)
@@ -187,7 +187,7 @@ pub async fn Client::wait_agent(
 ) -> Result[Json, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "agent.wait",
+    rpc_method: "agent.wait",
     params: Some({ "run_id": run_id, "timeout_ms": timeout_ms }),
   }
   let response = self.send_rpc(request)
@@ -203,7 +203,7 @@ pub async fn Client::list_sessions(
 ) -> Result[@protocol.SessionsListPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "sessions.list",
+    rpc_method: "sessions.list",
     params: None,
   }
   let response = self.send_rpc(request)
@@ -219,7 +219,7 @@ pub async fn Client::health(
 ) -> Result[@protocol.HealthPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "health",
+    rpc_method: "health",
     params: None,
   }
   let response = self.send_rpc(request)
@@ -235,7 +235,7 @@ pub async fn Client::list_runs(
 ) -> Result[RunsListPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "runs.list",
+    rpc_method: "runs.list",
     params: None,
   }
   decode_ok_payload(
@@ -253,7 +253,7 @@ pub async fn Client::get_run(
 ) -> Result[RunInfo, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "runs.get",
+    rpc_method: "runs.get",
     params: Some({ "run_id": run_id }),
   }
   decode_ok_payload(
@@ -270,7 +270,7 @@ pub async fn Client::list_channels(
 ) -> Result[ChannelsListPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "channels.list",
+    rpc_method: "channels.list",
     params: None,
   }
   decode_ok_payload(
@@ -288,7 +288,7 @@ pub async fn Client::get_channel(
 ) -> Result[@channel.ChannelDock, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "channels.get",
+    rpc_method: "channels.get",
     params: Some({ "channel_id": channel_id }),
   }
   decode_ok_payload(
@@ -307,7 +307,7 @@ pub async fn Client::configure_channel(
 ) -> Result[ChannelMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "channels.configure",
+    rpc_method: "channels.configure",
     params: Some({ "channel_id": channel_id, "config": config.to_json() }),
   }
   decode_ok_payload(
@@ -327,7 +327,7 @@ pub async fn Client::start_channel(
 ) -> Result[ChannelMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "channels.start",
+    rpc_method: "channels.start",
     params: Some({
       "channel_id": channel_id,
       "account_id": account_id,
@@ -350,7 +350,7 @@ pub async fn Client::stop_channel(
 ) -> Result[ChannelMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "channels.stop",
+    rpc_method: "channels.stop",
     params: Some({ "channel_id": channel_id, "account_id": account_id }),
   }
   decode_ok_payload(
@@ -368,7 +368,7 @@ pub async fn Client::ask_job(
 ) -> Result[@job.ChatAnswer, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.ask",
+    rpc_method: "jobs.ask",
     params: Some(params.to_json()),
   }
   decode_ok_payload(
@@ -385,7 +385,7 @@ pub async fn Client::get_workspace(
 ) -> Result[WorkspacePayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "workspace.get",
+    rpc_method: "workspace.get",
     params: None,
   }
   decode_ok_payload(
@@ -402,7 +402,7 @@ pub async fn Client::list_plugins(
 ) -> Result[PluginsListPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "plugins.list",
+    rpc_method: "plugins.list",
     params: None,
   }
   decode_ok_payload(
@@ -420,7 +420,7 @@ pub async fn Client::get_plugin(
 ) -> Result[@plugin.PluginRecord, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "plugins.get",
+    rpc_method: "plugins.get",
     params: Some({ "plugin_id": plugin_id }),
   }
   decode_ok_payload(
@@ -438,7 +438,7 @@ pub async fn Client::list_memories(
 ) -> Result[MemoriesListPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "memories.list",
+    rpc_method: "memories.list",
     params: query.map(fn(query) { query.to_json() }),
   }
   decode_ok_payload(
@@ -456,7 +456,7 @@ pub async fn Client::get_memory(
 ) -> Result[@job.MemoryRecord, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "memories.get",
+    rpc_method: "memories.get",
     params: Some({ "memory_id": memory_id }),
   }
   decode_ok_payload(
@@ -474,7 +474,7 @@ pub async fn Client::create_memory(
 ) -> Result[MemoryMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "memories.create",
+    rpc_method: "memories.create",
     params: Some(params.to_json()),
   }
   decode_ok_payload(
@@ -494,7 +494,7 @@ pub async fn Client::search_memories(
 ) -> Result[MemorySearchPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "memories.search",
+    rpc_method: "memories.search",
     params: Some({
       "question": question,
       "query": query.map(fn(query) { query.to_json() }),
@@ -515,7 +515,7 @@ pub async fn Client::list_jobs(
 ) -> Result[JobsListPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.list",
+    rpc_method: "jobs.list",
     params: None,
   }
   decode_ok_payload(
@@ -533,7 +533,7 @@ pub async fn Client::get_job(
 ) -> Result[JobPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.get",
+    rpc_method: "jobs.get",
     params: Some({ "job_id": job_id }),
   }
   decode_ok_payload(
@@ -551,7 +551,7 @@ pub async fn Client::create_job(
 ) -> Result[JobMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.create",
+    rpc_method: "jobs.create",
     params: Some(definition.to_json()),
   }
   decode_ok_payload(
@@ -569,7 +569,7 @@ pub async fn Client::update_job(
 ) -> Result[JobMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.update",
+    rpc_method: "jobs.update",
     params: Some(definition.to_json()),
   }
   decode_ok_payload(
@@ -587,7 +587,7 @@ pub async fn Client::run_job(
 ) -> Result[JobMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.run",
+    rpc_method: "jobs.run",
     params: Some({ "job_id": job_id }),
   }
   decode_ok_payload(
@@ -605,7 +605,7 @@ pub async fn Client::cancel_job(
 ) -> Result[JobMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.cancel",
+    rpc_method: "jobs.cancel",
     params: Some({ "job_id": job_id }),
   }
   decode_ok_payload(
@@ -623,7 +623,7 @@ pub async fn Client::force_cancel_job(
 ) -> Result[JobMutationPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.force_cancel",
+    rpc_method: "jobs.force_cancel",
     params: Some({ "job_id": job_id }),
   }
   decode_ok_payload(
@@ -640,7 +640,7 @@ pub async fn Client::list_job_runs(
 ) -> Result[JobRunsPayload, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.runs.list",
+    rpc_method: "jobs.runs.list",
     params: None,
   }
   decode_ok_payload(
@@ -658,7 +658,7 @@ pub async fn Client::get_job_run(
 ) -> Result[JobRunDetails, String] {
   let request = @protocol.Request::{
     id: self.uuid.v4().to_string(),
-    method: "jobs.runs.get",
+    rpc_method: "jobs.runs.get",
     params: Some({ "run_id": run_id }),
   }
   decode_ok_payload(
@@ -677,7 +677,7 @@ async fn Client::send_rpc(
   let frame : Json = {
     "type": "req",
     "id": request.id,
-    "method": request.method,
+    "method": request.rpc_method,
     "params": request.params,
   }
   let extra_headers : Map[String, String] = {

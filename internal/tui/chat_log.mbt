@@ -22,7 +22,7 @@ pub fn MessageComponent::get_preferred_height(
 }
 
 ///|
-pub async fn MessageComponent::render(
+pub fn MessageComponent::render(
   self : MessageComponent,
   output : RenderOutput,
   x : Int,
@@ -385,7 +385,7 @@ pub fn ChatLog::get_preferred_height(self : ChatLog, width : Int) -> Int {
 }
 
 ///|
-pub async fn ChatLog::render(
+pub fn ChatLog::render(
   self : ChatLog,
   output : RenderOutput,
   x : Int,

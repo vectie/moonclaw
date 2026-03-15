@@ -1,6 +1,6 @@
 ///|
 async fn Gateway::read_json_body(
-  self : Gateway,
+  _self : Gateway,
   r : @httpx.RequestReader,
   invalid_message : String,
 ) -> Json {
@@ -28,7 +28,7 @@ async fn Gateway::read_json_body(
 ///|
 async fn Gateway::handle_list_jobs(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let jobs = self.job_runtime().store().list_definitions()
@@ -137,7 +137,7 @@ async fn Gateway::handle_update_job(
 ///|
 async fn Gateway::handle_run_job(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   job_id : String,
 ) -> Unit {
@@ -161,7 +161,7 @@ async fn Gateway::handle_run_job(
 ///|
 async fn Gateway::handle_cancel_job(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   job_id : String,
   force : Bool,
@@ -191,7 +191,7 @@ async fn Gateway::handle_cancel_job(
 ///|
 async fn Gateway::handle_list_job_runs(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let runs = self.job_runtime().store().list_runs()

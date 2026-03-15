@@ -158,7 +158,7 @@ fn Gateway::configured_dm_policy(
 
 ///|
 fn Gateway::security_scope_key(
-  self : Gateway,
+  _self : Gateway,
   channel_id : String,
   account_id : String,
   message : @channel.Message,

@@ -157,7 +157,7 @@ pub fn MailboxManager::list(self : MailboxManager) -> Array[String] {
 
 ///|
 pub fn MailboxManager::size(self : MailboxManager) -> Int {
-  self.mailboxes.size()
+  self.mailboxes.length()
 }
 
 ///|
@@ -208,7 +208,7 @@ pub fn MailboxManager::deliver_sync(
 pub fn MailboxManager::to_json(self : MailboxManager) -> Json {
   {
     "config": self.config.to_json(),
-    "mailbox_count": self.mailboxes.size().to_json(),
+    "mailbox_count": self.mailboxes.length().to_json(),
     "agents": self.mailboxes.keys().to_array().to_json(),
   }
 }

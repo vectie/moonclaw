@@ -49,7 +49,7 @@ pub async fn Gateway::new(
           Some(new_token)
         }
       }
-      AuthConfig::{ token, password: None }
+      AuthConfig::{ token, _password: None }
     }
   }
   let channel_manager = ChannelManager::new(
@@ -185,6 +185,7 @@ pub fn Gateway::unregister_extension(
 
 ///|
 fn generate_token(uuid~ : @uuid.Generator) -> String raise {
+  ignore(uuid)
   let random_bytes = @rand.bytes(32)
   @base64.encode(random_bytes)
 }
@@ -212,7 +213,7 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     group.spawn_bg(() => {
       self.events.listen_forever(include_history=false, event => {
         match event {
-          Tick(_) => {
+          Tick => {
             let _ = self.schedule_due_jobs() catch {
               error => {
                 self.logger.warn("Failed to schedule due jobs: \{error}")
@@ -234,7 +235,6 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
             agent_session.stop()
             group.return_immediately(())
           }
-          _ => ()
         }
       })
     })
@@ -244,11 +244,9 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
 ///|
 async fn Gateway::run_tick_interval(self : Gateway) -> Unit {
   let tick_interval_ms = @protocol.TICK_INTERVAL_MS
-  let mut tick_count = 0
   for ;; {
     @async.sleep(tick_interval_ms)
-    tick_count = tick_count + 1
-    self.events.put(GatewayEvent::Tick(tick_count))
+    self.events.put(GatewayEvent::Tick)
     self.dedupe.clear_expired(current_time_ms())
   }
 }

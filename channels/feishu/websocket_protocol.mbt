@@ -2,7 +2,7 @@
 priv struct FeishuWebSocketHeader {
   key : String
   value : String
-} derive(Show, Eq)
+}
 
 ///|
 priv struct FeishuWebSocketFrame {
@@ -15,12 +15,10 @@ priv struct FeishuWebSocketFrame {
   payload_type : String?
   payload : Bytes?
   log_id_new : String?
-} derive(Show, Eq)
+}
 
 ///|
 priv struct FeishuWebSocketChunkState {
-  total : Int
-  trace_id : String
   chunks : Map[Int, Bytes]
 }
 

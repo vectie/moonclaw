@@ -103,10 +103,10 @@ pub fn CommandRegistry::help_text(self : CommandRegistry) -> String {
 ///|
 pub fn parse_command(input : String) -> (String, String) {
   let trimmed = input.trim()
-  if !trimmed.starts_with("/") {
+  if !trimmed.has_prefix("/") {
     return ("", "")
   }
-  let without_slash = try! trimmed[1:]
+  let without_slash = trimmed[1:]
   let parts = without_slash.split(" ").collect()
   if parts.length() == 0 {
     return ("", "")

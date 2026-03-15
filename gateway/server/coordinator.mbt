@@ -141,7 +141,7 @@ pub fn Coordinator::cancel_task(
 
 ///|
 pub fn Coordinator::size(self : Coordinator) -> Int {
-  self.tasks.size()
+  self.tasks.length()
 }
 
 ///|

@@ -74,7 +74,7 @@ async fn Gateway::handle_agent_message(
 ///|
 async fn Gateway::handle_get_messages(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   agent_id : StringView,
 ) -> Unit {
@@ -95,7 +95,7 @@ async fn Gateway::handle_get_messages(
     "agent_id": agent_id.to_string().to_json(),
     "messages": match messages {
       Some(msg) => [msg.to_json()].to_json()
-      None => [].to_json()
+      None => ([] : Array[Json]).to_json()
     },
   }
   w.write(result.stringify())
@@ -152,7 +152,7 @@ async fn Gateway::handle_create_mailbox(
 ///|
 async fn Gateway::handle_delete_mailbox(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
   mailbox_id : StringView,
 ) -> Unit {
@@ -179,7 +179,7 @@ async fn Gateway::handle_delete_mailbox(
 ///|
 async fn Gateway::handle_list_mailboxes(
   self : Gateway,
-  r : @httpx.RequestReader,
+  _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let agents = self.mailbox_manager.list()

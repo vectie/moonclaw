@@ -9,12 +9,14 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
             Some(String(s)) => s
             _ => return Err("Missing or invalid id")
           }
-          let method = match obj.get("method") {
+          let rpc_method = match obj.get("method") {
             Some(String(s)) => s
             _ => return Err("Missing or invalid method")
           }
           let params = obj.get("params")
-          Ok(@protocol.Frame::Req(@protocol.Request::{ id, method, params }))
+          Ok(
+            @protocol.Frame::Req(@protocol.Request::{ id, rpc_method, params }),
+          )
         }
         Some(String("res")) => {
           let id = match obj.get("id") {
@@ -77,7 +79,7 @@ async fn Gateway::handle_rpc(
 ) -> Unit {
   let body = r.body.read_all().binary()
   let text : String = @encoding/utf8.decode(body) catch {
-    error =>
+    _error =>
       raise json_error(400, "BadRequest", {
         "error": {
           "code": "invalid_utf8",
@@ -123,7 +125,7 @@ async fn Gateway::handle_request_frame(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  match request.method {
+  match request.rpc_method {
     "connect" => self.handle_connect_method(request, w)
     "agent" | "agent.run" => self.handle_agent_method(request, w)
     "agent.wait" => self.handle_agent_wait(request, w)
@@ -165,7 +167,7 @@ async fn Gateway::handle_request_frame(
         payload: None,
         error: Some(@protocol.ErrorShape::{
           code: "method_not_found",
-          message: "Method not found: \{request.method}",
+          message: "Method not found: \{request.rpc_method}",
           details: None,
           retryable: None,
           retry_after_ms: None,
@@ -176,7 +178,7 @@ async fn Gateway::handle_request_frame(
 
 ///|
 async fn Gateway::send_response(
-  self : Gateway,
+  _self : Gateway,
   w : @httpx.ResponseWriter,
   response : @protocol.Response,
 ) -> Unit {
@@ -187,10 +189,11 @@ async fn Gateway::send_response(
     "id": response.id,
     "ok": response.ok,
     "payload": response.payload,
-    "error": match response.error {
-      Some(e) => Some(e.to_json())
-      None => None
-    },
+    "error": (
+      match response.error {
+        Some(e) => Some(e.to_json())
+        None => None
+      } : Json?),
   }
   w.write(frame.stringify())
 }

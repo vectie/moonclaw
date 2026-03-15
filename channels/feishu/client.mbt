@@ -215,7 +215,7 @@ async fn parse_lookup_response(
       ),
     )
   }
-  Ok(parsed.data.map(fn(data) { data.items.get(0) }).flatten())
+  Ok(parsed.data.bind(fn(data) { data.items.get(0) }))
 }
 
 ///|

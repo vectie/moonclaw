@@ -68,7 +68,7 @@ fn report_like_artifact(artifact : ArtifactRecord) -> Bool {
 
 ///|
 fn report_memory_title(
-  definition : JobDefinition,
+  _definition : JobDefinition,
   artifact : ArtifactRecord,
 ) -> String {
   let label = artifact.logical_key.unwrap_or(artifact.artifact_type)

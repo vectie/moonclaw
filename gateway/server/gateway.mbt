@@ -1,5 +1,5 @@
 ///|
-suberror HttpError {
+priv suberror HttpError {
   HttpError(code~ : Int, reason~ : String, body~ : String)
 }
 
@@ -56,7 +56,7 @@ struct AgentRun {
 ///|
 struct AuthConfig {
   token : String?
-  password : String?
+  _password : String?
 }
 
 ///|
@@ -111,11 +111,8 @@ struct ChannelStateStore {
 
 ///|
 enum GatewayEvent {
-  Tick(Int)
+  Tick
   Shutdown
-  SessionChanged(String)
-  AgentStarted(String)
-  AgentCompleted(String)
 }
 
 ///|

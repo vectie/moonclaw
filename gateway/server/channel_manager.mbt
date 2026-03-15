@@ -4,7 +4,7 @@ pub struct ChannelManager {
 }
 
 ///|
-pub fn ChannelManager::new(logger : @pino.Logger) -> ChannelManager {
+pub fn ChannelManager::new(_logger : @pino.Logger) -> ChannelManager {
   ChannelManager::{ registry: @channel.ChannelRegistry::new() }
 }
 
@@ -13,7 +13,7 @@ pub fn ChannelManager::register_channel(
   self : ChannelManager,
   channel : &@channel.Channel,
 ) -> Unit {
-  let channel_id = channel.id()
+  ignore(channel.id())
   self.registry.register(channel)
 }
 

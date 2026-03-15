@@ -1,6 +1,6 @@
 ///|
 struct FeishuChannelState {
-  mut config : @channel.ChannelConfig
+  mut _config : @channel.ChannelConfig
   mut feishu_configs : Map[String, FeishuAccountConfig]
   clients : Map[String, FeishuClient]
   running : Map[String, Bool]
@@ -18,13 +18,8 @@ struct FeishuChannelState {
 }
 
 ///|
-struct QueuedFeishuMessage {
+priv struct QueuedFeishuMessage {
   account_id : String
-  chat_id : String
-  thread_id : String?
-  message_id : String
-  content : String
-  timestamp : Int
   message : @channel.Message
 }
 
@@ -37,7 +32,7 @@ pub struct FeishuChannel {
 pub fn FeishuChannel::new() -> FeishuChannel {
   FeishuChannel::{
     state: FeishuChannelState::{
-      config: @channel.default_config(),
+      _config: @channel.default_config(),
       feishu_configs: {},
       clients: {},
       running: {},
@@ -160,12 +155,12 @@ pub fn FeishuChannel::with_extension(
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with id(self : FeishuChannel) -> @channel.ChannelId {
+impl @channel.Channel for FeishuChannel with id(_self : FeishuChannel) -> @channel.ChannelId {
   "feishu"
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with meta(self : FeishuChannel) -> @channel.ChannelMeta {
+impl @channel.Channel for FeishuChannel with meta(_self : FeishuChannel) -> @channel.ChannelMeta {
   @channel.ChannelMeta::{
     id: "feishu",
     label: "Feishu",
@@ -179,7 +174,7 @@ impl @channel.Channel for FeishuChannel with meta(self : FeishuChannel) -> @chan
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with capabilities(self : FeishuChannel) -> @channel.ChannelCapabilities {
+impl @channel.Channel for FeishuChannel with capabilities(_self : FeishuChannel) -> @channel.ChannelCapabilities {
   @channel.ChannelCapabilities::{
     chat_types: [@channel.ChatType::Direct, @channel.ChatType::Channel],
     polls: false,
@@ -201,7 +196,7 @@ impl @channel.Channel for FeishuChannel with configure(
   self : FeishuChannel,
   config : @channel.ChannelConfig,
 ) -> Unit {
-  self.state.config = config
+  self.state._config = config
   self.state.feishu_configs = {}
   self.state.user_name_cache = {}
   self.state.recent_event_ids.clear()
@@ -311,8 +306,8 @@ impl @channel.Channel for FeishuChannel with send(
 
 ///|
 impl @channel.Channel for FeishuChannel with handle_event(
-  self : FeishuChannel,
-  event : @channel.ChannelEvent,
+  _self : FeishuChannel,
+  _event : @channel.ChannelEvent,
 ) -> Unit {
 
 }
@@ -330,7 +325,7 @@ impl @channel.Channel for FeishuChannel with is_running(
 
 ///|
 impl @channel.ChannelExtension for FeishuChannel with webhook_path(
-  self : FeishuChannel,
+  _self : FeishuChannel,
 ) -> String {
   "/webhook/feishu"
 }
@@ -561,11 +556,6 @@ async fn FeishuChannel::handle_feishu_message(
         let queue_key = feishu_queue_key(account_id, chat_id, thread_id)
         self.enqueue_message(queue_key, QueuedFeishuMessage::{
           account_id,
-          chat_id,
-          thread_id,
-          message_id,
-          content,
-          timestamp,
           message,
         })
         if self.is_processing_queue(queue_key) {
@@ -834,14 +824,14 @@ impl @channel.ChannelExtension for FeishuChannel with handle_websocket(
 
 ///|
 impl @channel.ChannelExtension for FeishuChannel with allowed_methods(
-  self : FeishuChannel,
+  _self : FeishuChannel,
 ) -> Array[String] {
   ["POST", "GET"]
 }
 
 ///|
 impl @channel.ChannelExtension for FeishuChannel with dock_config(
-  self : FeishuChannel,
+  _self : FeishuChannel,
 ) -> @channel.ChannelDockConfig {
   @channel.ChannelDockConfig::default_for_channel("feishu")
 }
@@ -966,7 +956,7 @@ async fn FeishuChannel::resolve_websocket_endpoint(
 }
 
 ///|
-async fn FeishuChannel::ensure_websocket_runtime_client(
+fn FeishuChannel::ensure_websocket_runtime_client(
   self : FeishuChannel,
   account_id : String,
   config : FeishuAccountConfig,
@@ -1030,7 +1020,7 @@ async fn FeishuChannel::ensure_websocket_runtime_client(
 }
 
 ///|
-fn FeishuChannel::set_test_websocket_endpoint_sequence(
+pub fn FeishuChannel::set_test_websocket_endpoint_sequence(
   self : FeishuChannel,
   app_id : String,
   urls : Array[String],
@@ -1608,23 +1598,25 @@ async fn FeishuChannel::handle_monitor_frame(
   connection_id : String,
   bytes : Bytes,
 ) -> Unit {
-  let text = match (try? @encoding/utf8.decode(bytes)) {
-    Ok(text) => text
-    Err(_) => {
+  let text = try @encoding/utf8.decode(bytes) catch {
+    _ => {
       self.send_monitor_error(
         connection_id, "invalid_utf8", "Invalid UTF-8 monitor frame",
       )
       return
     }
+  } noraise {
+    text => text
   }
-  let json : Json = match (try? @json.parse(text)) {
-    Ok(json) => json
-    Err(_) => {
+  let json : Json = try @json.parse(text) catch {
+    _ => {
       self.send_monitor_error(
         connection_id, "invalid_json", "Invalid JSON monitor frame",
       )
       return
     }
+  } noraise {
+    json => json
   }
   match json {
     { "type": String("ping"), .. } =>
@@ -1756,9 +1748,7 @@ fn FeishuChannel::merge_platform_event_chunks(
     1,
   )
   let seq = parse_feishu_ws_header_int(frame, feishu_ws_header_seq).unwrap_or(0)
-  let trace_id = feishu_ws_header(frame, feishu_ws_header_trace_id).unwrap_or(
-    "",
-  )
+  ignore(feishu_ws_header(frame, feishu_ws_header_trace_id))
   let payload = frame.payload.unwrap_or(b"")
   if total <= 1 {
     let text = @encoding/utf8.decode(payload) catch { _ => return None }
@@ -1767,7 +1757,7 @@ fn FeishuChannel::merge_platform_event_chunks(
   let key = platform_chunk_key(account_id, message_id)
   let chunk_state = match self.state.websocket_chunks.get(key) {
     Some(existing) => existing
-    None => FeishuWebSocketChunkState::{ total, trace_id, chunks: {} }
+    None => FeishuWebSocketChunkState::{ chunks: {} }
   }
   chunk_state.chunks[seq] = payload
   self.state.websocket_chunks[key] = chunk_state
@@ -1960,7 +1950,7 @@ fn strip_feishu_mentions(text : String) -> String {
 }
 
 ///|
-struct ResolvedReactionTarget {
+priv struct ResolvedReactionTarget {
   chat_id : String
   chat_type : String?
   thread_id : String?
@@ -2415,7 +2405,7 @@ fn FeishuChannel::verify_request_token(
 
 ///|
 fn FeishuChannel::is_url_verification_request(
-  self : FeishuChannel,
+  _self : FeishuChannel,
   json : Json,
 ) -> Bool {
   match json {

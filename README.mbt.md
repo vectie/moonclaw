@@ -100,9 +100,11 @@ Moonclaw::new()
 ///|
 test "moonclaw usage example" {
   // Create a model configuration
-  let model = @model.open_router_model(
-    api_key="your-api-key",
-    name=@model.CommonModels::Qwen3CoderPlus,
+  ignore(
+    @model.open_router_model(
+      api_key="your-api-key",
+      name=@model.CommonModels::Qwen3CoderPlus,
+    ),
   )
 
   // Note: Moonclaw::new is async, so in real usage:

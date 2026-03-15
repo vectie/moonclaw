@@ -75,17 +75,17 @@ pub fn Loader::tick(self : Loader) -> Unit {
 }
 
 ///|
-pub fn Loader::get_preferred_height(self : Loader, _width : Int) -> Int {
+pub fn Loader::get_preferred_height(_self : Loader, _width : Int) -> Int {
   1
 }
 
 ///|
-pub async fn Loader::render(
+pub fn Loader::render(
   self : Loader,
   output : RenderOutput,
   x : Int,
   y : Int,
-  width : Int,
+  _width : Int,
   _height : Int,
 ) -> Unit {
   output.write(cursor_to(x, y))
@@ -102,6 +102,6 @@ pub async fn Loader::render(
 }
 
 ///|
-pub fn Loader::handle_key(self : Loader, _key : Key) -> Bool {
+pub fn Loader::handle_key(_self : Loader, _key : Key) -> Bool {
   false
 }

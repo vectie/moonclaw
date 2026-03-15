@@ -19,9 +19,8 @@ async fn Gateway::handle_connect_method(
 ) -> Unit {
   let params : @protocol.ConnectParams = match request.params {
     Some(params) =>
-      match @json.from_json(params) {
-        Ok(p) => p
-        Err(e) =>
+      @json.from_json(params) catch {
+        e =>
           return self.send_response(w, @protocol.Response::{
             id: request.id,
             ok: false,
@@ -237,9 +236,8 @@ async fn Gateway::handle_artifacts_list_method(
 ) -> Unit {
   let query = match request.params {
     Some(params) =>
-      match @json.from_json(params) {
-        Ok(query) => query
-        Err(_) => @job.ArtifactQuery::new()
+      @json.from_json(params) catch {
+        _ => @job.ArtifactQuery::new()
       }
     None => @job.ArtifactQuery::new()
   }
@@ -561,9 +559,8 @@ async fn Gateway::handle_memories_create_method(
 ) -> Unit {
   let params : @job.MemoryWriteRequest = match request.params {
     Some(params) =>
-      match @json.from_json(params) {
-        Ok(params) => params
-        Err(error) =>
+      @json.from_json(params) catch {
+        error =>
           return self.send_response(w, @protocol.Response::{
             id: request.id,
             ok: false,
@@ -666,7 +663,7 @@ async fn Gateway::handle_memories_search_method(
     None => @job.MemoryQuery::new()
   }
   let max_hits = match obj.get("max_hits") {
-    Some(Number(value)) => value.to_int()
+    Some(Number(value, ..)) => value.to_int()
     _ => 5
   }
   let hits = @job.MemoryService::new(store=self.job_runtime().store()).search(
@@ -690,9 +687,8 @@ async fn Gateway::handle_jobs_ask_method(
 ) -> Unit {
   let params : @job.JobAskParams = match request.params {
     Some(params) =>
-      match @json.from_json(params) {
-        Ok(params) => params
-        Err(error) =>
+      @json.from_json(params) catch {
+        error =>
           return self.send_response(w, @protocol.Response::{
             id: request.id,
             ok: false,
@@ -752,9 +748,8 @@ async fn Gateway::handle_agent_method(
 ) -> Unit {
   let params : @protocol.AgentParams = match request.params {
     Some(params) =>
-      match @json.from_json(params) {
-        Ok(p) => p
-        Err(e) =>
+      @json.from_json(params) catch {
+        e =>
           return self.send_response(w, @protocol.Response::{
             id: request.id,
             ok: false,

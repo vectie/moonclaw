@@ -148,7 +148,7 @@ fn inferred_capabilities_for_proposal(
 
 ///|
 fn candidate_templates_for_proposal(
-  proposal : JobProposal,
+  _proposal : JobProposal,
   family : String,
   base_template : String,
   capabilities : Array[String],

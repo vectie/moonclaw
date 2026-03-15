@@ -1,7 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/stdio",
-  "moonbitlang/moonclaw/internal/tui",
+  "moonbitlang/moonclaw/internal/tui" @itui,
   "moonbitlang/moonclaw",
   "moonbitlang/moonclaw/agent",
   "moonbitlang/moonclaw/cmd/main/argument",

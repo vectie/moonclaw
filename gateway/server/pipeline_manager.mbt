@@ -128,7 +128,7 @@ pub fn PipelineManager::cancel_pipeline(
 
 ///|
 pub fn PipelineManager::size(self : PipelineManager) -> Int {
-  self.pipelines.size()
+  self.pipelines.length()
 }
 
 ///|

@@ -48,7 +48,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
       error: None,
     })
 
-    let planner = ProposalPlanner::new(run=async fn(request_text, _cwd, _home) {
+    let planner = ProposalPlanner::new(run=fn(request_text, _cwd, _home) {
       draft_job_proposal("proposal-child-1", request_text, 100)
     })
     let compiler = ProposalCompiler::new(run=fn(
