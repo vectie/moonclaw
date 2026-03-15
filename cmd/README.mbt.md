@@ -7,6 +7,7 @@ This directory contains command-line entry points for the Moonclaw application.
 | Command | Description |
 |---------|-------------|
 | `main` | Main CLI entry point |
+| `onboard` | Local onboarding and setup bootstrap |
 | `daemon` | Background daemon server |
 | `gateway` | HTTP/RPC gateway with channels and orchestration |
 | `server` | HTTP server for AI interactions |
@@ -90,6 +91,23 @@ Current capabilities behind the gateway:
 - agent mailboxes
 - coordination tasks
 - pipelines
+
+#### `onboard`
+
+Inspect and bootstrap a local MoonClaw setup.
+
+```bash
+moonclaw onboard status --home ~/.moonclaw
+moonclaw onboard init --home ~/.moonclaw
+moonclaw onboard print-config --home ~/.moonclaw
+```
+
+Current capabilities:
+
+- inspect whether `moonclaw.json` exists
+- validate core setup such as model provider, primary model, gateway token, workspace files, Feishu completeness, and plugin install state
+- create a baseline `moonclaw.json` without overwriting existing settings
+- bootstrap workspace files under the configured workspace root
 
 #### `interactive`
 
