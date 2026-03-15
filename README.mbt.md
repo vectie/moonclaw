@@ -1,126 +1,164 @@
-# Moonclaw Root Package
+# MoonClaw
 
-The root package provides the main entry point for the Moonclaw AI coding agent framework.
+MoonClaw is a MoonBit-native agent and automation system.
 
-## Core Struct
+It is:
 
-### `Moonclaw`
+- built on top of the [moonbitlang/maria](https://github.com/moonbitlang/maria) lineage
+- inspired by [openclaw/openclaw](https://github.com/openclaw/openclaw)
+- tailored toward a full job system with chat-driven planning, background execution, dedicated run workspaces, memory, and channel integrations
 
-The primary struct that encapsulates an AI coding assistant instance.
+## What MoonClaw Is Now
 
-```moonbit nocheck
-///|
-pub struct Moonclaw {
-  logger : @pino.Logger
-  agent : @agent.Agent
-}
+The current system is centered on a long-running `gateway` runtime plus a generic job platform.
+
+Main capabilities:
+
+- local interactive and TUI modes
+- HTTP/RPC gateway service
+- Feishu channel integration
+- chat-initiated job drafting and confirmation
+- async job execution with scheduler, retries, notifications, and subjobs
+- dedicated per-run and per-subjob workspaces
+- run-local git checkpoints
+- artifact storage and grounded artifact Q&A
+- structured long-term memory plus workspace materialization
+- research as the first built-in job family
+
+This is no longer just a thin coding assistant wrapper. The main direction is:
+
+```text
+chat / CLI / HTTP
+  -> proposal
+  -> compile to workflow
+  -> execute as job
+  -> persist artifacts, memory, and workspace state
+  -> notify and inspect through the gateway
 ```
 
-**Fields:**
-- `logger`: Logger instance for recording agent activities
-- `agent`: The underlying Agent instance that handles AI interactions
+## Runtime Modes
 
-## Key APIs
+Top-level entry points:
 
-### Creating a New Instance
+- `interactive`
+- `tui`
+- `gateway`
+- `daemon`
+- `server`
 
-```moonbit nocheck
-pub async fn Moonclaw::new(
-  name? : String,
-  logger? : @pino.Logger,
-  model~ : @model.Model,
-  home? : String,
-  cwd? : String,
-  user_message? : String,
-  web_search? : Bool = false,
-) -> Moonclaw
+For always-on operation, `gateway` is the main runtime.
+
+## Core Architecture
+
+At a high level:
+
+```text
+Feishu / CLI / TUI / HTTP / RPC
+  -> gateway adapters
+  -> job application/services
+  -> workflow runtime
+  -> artifacts + memory + workspaces
+  -> notifications and status surfaces
 ```
 
-Creates a new Moonclaw agent with:
-- A configured AI model
-- Default tools (execute_command, list_files, read_file, todo, search_files)
-- Either `apply_patch` or `write_to_file` based on model capabilities
+Important subsystems:
 
-### Resuming a Session
+- `agent`
+  core conversation/agent runtime
+- `gateway`
+  long-running HTTP/RPC/channel service
+- `job`
+  planning, compilation, execution, artifacts, memory, chat control
+- `workspace`
+  configured workspace runtime plus run workspaces
+- `plugin`
+  plugin registry/runtime view
+- `security`
+  session scope, pairing, approval, command policy
 
-```moonbit nocheck
-pub async fn Moonclaw::resume_(
-  logger? : @pino.Logger,
-  model~ : @model.Model,
-  home? : String,
-  id : @uuid.Uuid,
-  user_message? : String,
-  web_search? : Bool,
-) -> Moonclaw
+## Current Strengths
+
+MoonClaw is strongest today as:
+
+- a gateway-backed async job system
+- a chat-controlled operator surface for background work
+- a workspace-centric execution system
+- a research and analysis automation platform
+
+It is less complete today in:
+
+- full OpenClaw multi-agent binding parity
+- mature plugin install lifecycle
+- polished onboarding/wizard UX
+
+## Typical Use Cases
+
+- Draft a job in Feishu, revise it, confirm it, and let it run in the background.
+- Run research jobs that fetch, parse, analyze, and summarize papers.
+- Give each run its own isolated workspace and inspect the git history afterward.
+- Ask grounded questions over produced artifacts and stored memories.
+- Run recurring automation through the gateway scheduler.
+
+## Basic Usage
+
+From the repo root:
+
+```bash
+cd /Users/kq/Workspace/mcl
+
+/Users/kq/.moon/bin/moon run cmd/main -- interactive
+/Users/kq/.moon/bin/moon run cmd/main -- tui
+/Users/kq/.moon/bin/moon run cmd/main -- gateway start --home ~/.moonclaw --cwd /Users/kq/Workspace/mcl
 ```
 
-Resumes a previously saved conversation by ID.
+Useful gateway commands:
 
-### Starting the Agent
-
-```moonbit nocheck
-pub async fn Moonclaw::start(self : Moonclaw, prompt? : String) -> Unit
+```bash
+/Users/kq/.moon/bin/moon run cmd/main -- gateway health
+/Users/kq/.moon/bin/moon run cmd/main -- gateway jobs
+/Users/kq/.moon/bin/moon run cmd/main -- gateway job-runs
+/Users/kq/.moon/bin/moon run cmd/main -- gateway channels
 ```
 
-Begins processing messages from the queue.
+In Feishu, the important commands are:
 
-### Cleanup
+- `/plan-job <description>`
+- `/confirm <proposal_id>`
+- `/revise <proposal_id> <guidance>`
+- `/reject <proposal_id>`
+- `/job-status <job_id|run_id>`
+- `/jobs`
+- `/job-stop <job_id|run_id>`
+- `/job-force-stop <job_id|run_id>`
+- `/remember <text>`
+- `/memory-search <query>`
 
-```moonbit nocheck
-pub fn Moonclaw::close(self : Moonclaw) -> Unit
+## Docs
+
+Start here:
+
+- [docs/system_architecture.md](/Users/kq/Workspace/mcl/docs/system_architecture.md)
+- [docs/job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md)
+- [docs/GATEWAY_USAGE.md](/Users/kq/Workspace/mcl/docs/GATEWAY_USAGE.md)
+- [docs/expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
+
+Behavior and operator docs:
+
+- [docs/expected_behaviors/chat_and_job_flow.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/chat_and_job_flow.md)
+- [docs/expected_behaviors/workspace_and_memory.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/workspace_and_memory.md)
+- [docs/expected_behaviors/use_cases.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/use_cases.md)
+
+## Development
+
+MoonClaw is a MoonBit project.
+
+Useful commands:
+
+```bash
+/Users/kq/.moon/bin/moon check
+/Users/kq/.moon/bin/moon test
+/Users/kq/.moon/bin/moon info
+/Users/kq/.moon/bin/moon fmt
 ```
 
-Releases resources when done.
-
-## Call Chain
-
-```
-Moonclaw::new()
-    │
-    ├─► @agent.new()           // Create agent instance
-    │       │
-    │       ├─► @conversation.Manager::new()
-    │       ├─► @rules.Loader::new()
-    │       ├─► @skills.Loader::new()
-    │       └─► @context_pruner.Pruner::new()
-    │
-    └─► setup_agent()          // Register tools
-            │
-            ├─► @execute_command.new()
-            ├─► @list_files.new()
-            ├─► @read_file.new()
-            ├─► @todo.new_tool()
-            ├─► @search_files.new()
-            └─► @apply_patch.new() or @write_to_file.new()
-```
-
-## Usage Example
-
-```moonbit check
-///|
-test "moonclaw usage example" {
-  // Create a model configuration
-  ignore(
-    @model.open_router_model(
-      api_key="your-api-key",
-      name=@model.CommonModels::Qwen3CoderPlus,
-    ),
-  )
-
-  // Note: Moonclaw::new is async, so in real usage:
-  // let moonclaw = Moonclaw::new(model~, cwd="/path/to/project")
-  // moonclaw.start(prompt="Help me write a function")
-  // defer moonclaw.close()
-}
-```
-
-## Dependencies
-
-- `agent`: Core agent functionality
-- `model`: AI model configuration
-- `ai`: Message types
-- `tool`: Tool definitions
-- `job`: Job management
-- `file`: File management
-- `prompt`: System prompts
-- Various tool packages in `tools/`
+The repo currently checks clean with `moon check`.
