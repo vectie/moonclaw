@@ -1,0 +1,111 @@
+///|
+pub(all) enum AcpChatAction {
+  Targets
+  Status
+  Attach(String)
+  Detach(String)
+  Run(String)
+} derive(Show)
+
+///|
+fn split_acp_chat_command(text : String) -> (String, String) {
+  let trimmed = text.trim()
+  match trimmed.find(" ") {
+    Some(index) =>
+      (trimmed[:index].to_string(), trimmed[index + 1:].trim().to_string())
+    None => (trimmed.to_string(), "")
+  }
+}
+
+///|
+pub fn parse_acp_chat_action(text : String) -> AcpChatAction? {
+  let trimmed = text.trim().to_string()
+  guard trimmed.has_prefix("/") else { return None }
+  let (command, args) = split_acp_chat_command(trimmed)
+  match command {
+    "/acp-targets" => Some(AcpChatAction::Targets)
+    "/acp-status" => Some(AcpChatAction::Status)
+    "/acp-attach" => Some(AcpChatAction::Attach(args))
+    "/acp-detach" => Some(AcpChatAction::Detach(args))
+    "/acp-run" => Some(AcpChatAction::Run(args))
+    _ => None
+  }
+}
+
+///|
+pub fn render_acp_targets(targets : Array[AcpTarget]) -> String {
+  if targets.is_empty() {
+    return "No ACP targets configured."
+  }
+  let lines = targets.map(fn(target) {
+    let label = target.label.unwrap_or(target.id)
+    let cwd = target.cwd.unwrap_or(target.workspace.unwrap_or("."))
+    "\{target.id} (\{target.backend}) - \{label} @ \{cwd}"
+  })
+  ["ACP targets:", ..lines].join("\n")
+}
+
+///|
+pub fn render_acp_status(
+  session_key : String,
+  sessions : Array[AcpSession],
+) -> String {
+  if sessions.is_empty() {
+    return "No ACP session is bound to this chat.\nUse /acp-attach <target_id>."
+  }
+  let lines = sessions.map(fn(session) {
+    let workspace = session.workspace.unwrap_or(session.cwd.unwrap_or("."))
+    "\{session.id} -> \{session.target_id} [\{session.status}] @ \{workspace}"
+  })
+  ["ACP sessions for \{session_key}:", ..lines].join("\n")
+}
+
+///|
+pub fn render_acp_attach_usage() -> String {
+  "Usage: /acp-attach <target_id>"
+}
+
+///|
+pub fn render_acp_run_usage() -> String {
+  "Usage: /acp-run <message>"
+}
+
+///|
+pub fn render_acp_attached(session : AcpSession) -> String {
+  [
+    "ACP session attached.",
+    "Session: \{session.id}",
+    "Target: \{session.target_id}",
+    "Status: \{session.status}",
+  ].join("\n")
+}
+
+///|
+pub fn render_acp_detached(session : AcpSession) -> String {
+  [
+    "ACP session detached.",
+    "Session: \{session.id}",
+    "Target: \{session.target_id}",
+  ].join("\n")
+}
+
+///|
+pub fn render_acp_no_session() -> String {
+  "No ACP session is bound to this chat.\nUse /acp-attach <target_id> first."
+}
+
+///|
+pub fn render_acp_ambiguous_sessions(sessions : Array[AcpSession]) -> String {
+  let lines = sessions.map(fn(session) {
+    "\{session.id} -> \{session.target_id} [\{session.status}]"
+  })
+  [
+    "Multiple ACP sessions are bound to this chat. Detach one or target a single chat/session.",
+    ..lines,
+  ].join("\n")
+}
+
+///|
+pub fn render_acp_run_failed(error : String) -> String {
+  "ACP run failed: \{error}"
+}

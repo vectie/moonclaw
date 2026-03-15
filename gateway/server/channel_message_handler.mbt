@@ -121,6 +121,289 @@ fn Gateway::channel_reply_message(
 }
 
 ///|
+fn Gateway::routable_acp_sessions(
+  self : Gateway,
+  session_key : String,
+) -> Array[@acp.AcpSession] {
+  let sessions = []
+  for session in self.acp_runtime().list_sessions_for_key(session_key) {
+    if session.status == "attached" || session.status == "running" {
+      sessions.push(session)
+    }
+  }
+  sessions
+}
+
+///|
+fn acp_result_content(result : Json) -> String {
+  match result {
+    { "content": String(content), .. } if !content.is_blank() => content
+    { "status": String(status), .. } =>
+      "ACP run completed with status: \{status}"
+    _ => "ACP run completed."
+  }
+}
+
+///|
+async fn Gateway::run_bound_acp_session(
+  self : Gateway,
+  session : @acp.AcpSession,
+  message : String,
+) -> Result[String, String] {
+  let target = match self.acp_runtime().get_target(session.target_id) {
+    Some(target) => target
+    None => return Err("ACP target not found: \{session.target_id}")
+  }
+  let run_id = self.uuid.v4().to_string()
+  let launch = match
+    @acp.prepare_launch_plan(target, session, @acp.new_run_request(message~)) {
+    Ok(plan) => plan
+    Err(error) => return Err(error)
+  }
+  let params = @protocol.AgentParams::{
+    message,
+    session_key: Some(session.session_key),
+    cwd: Some(launch.cwd),
+    model: launch.model,
+    provider: None,
+    run_id: Some(run_id),
+    idempotency_key: Some(run_id),
+  }
+  ignore(
+    self
+    .acp_runtime()
+    .set_session_status(session.id, "running", current_time_ms()),
+  )
+  match self.execute_agent(run_id~, params) {
+    Ok(result) => {
+      ignore(
+        self
+        .acp_runtime()
+        .set_session_status(session.id, "attached", current_time_ms()),
+      )
+      Ok(acp_result_content(result))
+    }
+    Err(error) => {
+      ignore(
+        self
+        .acp_runtime()
+        .set_session_status(
+          session.id,
+          "failed",
+          current_time_ms(),
+          last_error=Some(error.message),
+        ),
+      )
+      Err(error.message)
+    }
+  }
+}
+
+///|
+async fn Gateway::handle_acp_chat_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> @channel.Message? {
+  let action = @acp.parse_acp_chat_action(message.content)
+  if action is Some(_) && !self.security_runtime().allows_native_commands(true) {
+    return Some(
+      self.channel_reply_message(
+        channel_id,
+        account_id,
+        message,
+        @security.render_native_commands_disabled(),
+      ),
+    )
+  }
+  let session_key = message_session_key(
+    channel_id,
+    account_id,
+    message,
+    dm_scope=self.security_runtime().session_dm_scope(),
+  )
+  match action {
+    Some(@acp.AcpChatAction::Targets) =>
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          @acp.render_acp_targets(self.acp_runtime().list_targets()),
+        ),
+      )
+    Some(@acp.AcpChatAction::Status) =>
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          @acp.render_acp_status(
+            session_key,
+            self.acp_runtime().list_sessions_for_key(session_key),
+          ),
+        ),
+      )
+    Some(@acp.AcpChatAction::Attach(args)) => {
+      let target_id = args.trim().to_string()
+      guard !target_id.is_blank() else {
+        return Some(
+          self.channel_reply_message(
+            channel_id,
+            account_id,
+            message,
+            @acp.render_acp_attach_usage(),
+          ),
+        )
+      }
+      let session = match
+        self
+        .acp_runtime()
+        .open_session(
+          self.uuid.v4().to_string(),
+          target_id,
+          session_key,
+          current_time_ms(),
+          metadata={
+            "channel_id": channel_id,
+            "account_id": account_id,
+            "recipient": message.to,
+            "thread_id": message.thread_id,
+          },
+        ) {
+        Ok(session) => session
+        Err(error) =>
+          return Some(
+            self.channel_reply_message(channel_id, account_id, message, error),
+          )
+      }
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          @acp.render_acp_attached(session),
+        ),
+      )
+    }
+    Some(@acp.AcpChatAction::Detach(args)) => {
+      let sessions = self.acp_runtime().list_sessions_for_key(session_key)
+      let trimmed = args.trim().to_string()
+      let target_session = if trimmed.is_blank() {
+        if sessions.length() != 1 {
+          return Some(
+            self.channel_reply_message(
+              channel_id,
+              account_id,
+              message,
+              if sessions.is_empty() {
+                @acp.render_acp_no_session()
+              } else {
+                @acp.render_acp_ambiguous_sessions(sessions)
+              },
+            ),
+          )
+        }
+        sessions[0]
+      } else {
+        let mut found = None
+        for session in sessions {
+          if session.id == trimmed {
+            found = Some(session)
+            break
+          }
+        }
+        match found {
+          Some(session) => session
+          None =>
+            return Some(
+              self.channel_reply_message(
+                channel_id,
+                account_id,
+                message,
+                "ACP session not found for this chat: \{trimmed}",
+              ),
+            )
+        }
+      }
+      let removed = match self.acp_runtime().delete_session(target_session.id) {
+        Some(session) => session
+        None =>
+          return Some(
+            self.channel_reply_message(
+              channel_id,
+              account_id,
+              message,
+              "ACP session not found: \{target_session.id}",
+            ),
+          )
+      }
+      Some(
+        self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          @acp.render_acp_detached(removed),
+        ),
+      )
+    }
+    Some(@acp.AcpChatAction::Run(args)) => {
+      let content = args.trim().to_string()
+      guard !content.is_blank() else {
+        return Some(
+          self.channel_reply_message(
+            channel_id,
+            account_id,
+            message,
+            @acp.render_acp_run_usage(),
+          ),
+        )
+      }
+      let sessions = self.routable_acp_sessions(session_key)
+      guard !sessions.is_empty() else {
+        return Some(
+          self.channel_reply_message(
+            channel_id,
+            account_id,
+            message,
+            @acp.render_acp_no_session(),
+          ),
+        )
+      }
+      guard sessions.length() == 1 else {
+        return Some(
+          self.channel_reply_message(
+            channel_id,
+            account_id,
+            message,
+            @acp.render_acp_ambiguous_sessions(sessions),
+          ),
+        )
+      }
+      match self.run_bound_acp_session(sessions[0], content) {
+        Ok(reply_text) =>
+          Some(
+            self.channel_reply_message(
+              channel_id, account_id, message, reply_text,
+            ),
+          )
+        Err(error) =>
+          Some(
+            self.channel_reply_message(
+              channel_id,
+              account_id,
+              message,
+              @acp.render_acp_run_failed(error),
+            ),
+          )
+      }
+    }
+    None => None
+  }
+}
+
+///|
 fn configured_dm_policy(
   store : ChannelStateStore,
   channel_id : String,
@@ -281,6 +564,26 @@ impl @channel.MessageHandler for Gateway with handle_message(
     message,
     dm_scope=self.security_runtime().session_dm_scope(),
   )
+  if self.handle_acp_chat_command(channel_id, account_id, message)
+    is Some(reply) {
+    return reply
+  }
+  let acp_sessions = self.routable_acp_sessions(session_key)
+  if acp_sessions.length() == 1 {
+    match self.run_bound_acp_session(acp_sessions[0], message.content) {
+      Ok(reply_text) =>
+        return self.channel_reply_message(
+          channel_id, account_id, message, reply_text,
+        )
+      Err(error) =>
+        return self.channel_reply_message(
+          channel_id,
+          account_id,
+          message,
+          @acp.render_acp_run_failed(error),
+        )
+    }
+  }
   let session = self.sessions.get(session_key)
   let cwd = match session {
     Some(entry) => entry.cwd.unwrap_or(self.cwd)

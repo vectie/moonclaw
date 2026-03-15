@@ -89,6 +89,7 @@ pub(all) struct AcpSessionRunPayload {
   session : @acp.AcpSession
   accepted : @protocol.AgentAcceptedPayload
   target : @acp.AcpTarget
+  plan : @acp.AcpLaunchPlan
 } derive(ToJson, FromJson, Show)
 
 ///|

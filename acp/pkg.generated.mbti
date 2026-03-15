@@ -6,19 +6,81 @@ import {
 }
 
 // Values
+pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String) -> AcpRunRequest
+
+pub fn parse_acp_chat_action(String) -> AcpChatAction?
+
+pub fn prepare_launch_plan(AcpTarget, AcpSession, AcpRunRequest) -> Result[AcpLaunchPlan, String]
+
+pub fn render_acp_ambiguous_sessions(Array[AcpSession]) -> String
+
+pub fn render_acp_attach_usage() -> String
+
+pub fn render_acp_attached(AcpSession) -> String
+
+pub fn render_acp_detached(AcpSession) -> String
+
+pub fn render_acp_no_session() -> String
+
+pub fn render_acp_run_failed(String) -> String
+
+pub fn render_acp_run_usage() -> String
+
+pub fn render_acp_status(String, Array[AcpSession]) -> String
+
+pub fn render_acp_targets(Array[AcpTarget]) -> String
 
 // Errors
 
 // Types and methods
+pub(all) enum AcpChatAction {
+  Targets
+  Status
+  Attach(String)
+  Detach(String)
+  Run(String)
+}
+pub impl Show for AcpChatAction
+
+pub struct AcpLaunchPlan {
+  backend : String
+  target_id : String
+  session_id : String
+  session_key : String
+  cwd : String
+  workspace : String?
+  command : String?
+  args : Array[String]
+  model : String?
+  env : Json
+  metadata : Json
+}
+pub impl Show for AcpLaunchPlan
+pub impl ToJson for AcpLaunchPlan
+pub impl @json.FromJson for AcpLaunchPlan
+
+pub struct AcpRunRequest {
+  message : String
+  run_id : String?
+  model : String?
+  cwd : String?
+  idempotency_key : String?
+}
+pub impl Show for AcpRunRequest
+pub impl ToJson for AcpRunRequest
+pub impl @json.FromJson for AcpRunRequest
+
 pub struct AcpRuntime {
   home : String
   cwd : String
   targets : Map[String, AcpTarget]
   sessions : Map[String, AcpSession]
 }
+pub async fn AcpRuntime::delete_session(Self, String) -> AcpSession?
 pub fn AcpRuntime::get_session(Self, String) -> AcpSession?
 pub fn AcpRuntime::get_target(Self, String) -> AcpTarget?
 pub fn AcpRuntime::list_sessions(Self) -> Array[AcpSession]
+pub fn AcpRuntime::list_sessions_for_key(Self, String) -> Array[AcpSession]
 pub fn AcpRuntime::list_targets(Self) -> Array[AcpTarget]
 pub async fn AcpRuntime::load(Self) -> Unit
 pub async fn AcpRuntime::new(home~ : String, cwd~ : String) -> Self

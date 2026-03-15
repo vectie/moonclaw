@@ -34,6 +34,17 @@ pub impl Show for AcpSessionPayload
 pub impl ToJson for AcpSessionPayload
 pub impl @json.FromJson for AcpSessionPayload
 
+pub(all) struct AcpSessionRunPayload {
+  status : String
+  session : @acp.AcpSession
+  accepted : @protocol.AgentAcceptedPayload
+  target : @acp.AcpTarget
+  plan : @acp.AcpLaunchPlan
+}
+pub impl Show for AcpSessionRunPayload
+pub impl ToJson for AcpSessionRunPayload
+pub impl @json.FromJson for AcpSessionRunPayload
+
 pub(all) struct AcpSessionsPayload {
   sessions : Array[@acp.AcpSession]
 }
@@ -111,6 +122,7 @@ pub async fn Client::list_runs(Self) -> Result[RunsListPayload, String]
 pub async fn Client::list_sessions(Self) -> Result[@protocol.SessionsListPayload, String]
 pub async fn Client::new(ClientConfig) -> Self
 pub async fn Client::reset_acp_session(Self, session_id~ : String) -> Result[AcpSessionMutationPayload, String]
+pub async fn Client::run_acp_session(Self, session_id~ : String, message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String) -> Result[AcpSessionRunPayload, String]
 pub async fn Client::run_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::search_memories(Self, question~ : String, query? : @job.MemoryQuery, max_hits? : Int) -> Result[MemorySearchPayload, String]
 pub async fn Client::start_channel(Self, channel_id~ : String, account_id~ : String, Json) -> Result[ChannelMutationPayload, String]

@@ -501,23 +501,38 @@ async fn Gateway::handle_acp_sessions_run_method(
     }
     None => ()
   }
-  let resolved_cwd = match params.cwd {
-    Some(cwd) => Some(cwd)
-    None =>
-      match session.cwd {
-        Some(cwd) => Some(cwd)
-        None => target.cwd
-      }
-  }
-  let resolved_model = match params.model {
-    Some(model) => Some(model)
-    None => target.model
+  let launch = match
+    @acp.prepare_launch_plan(
+      target,
+      session,
+      @acp.new_run_request(
+        message=params.message,
+        run_id?=params.run_id,
+        model?=params.model,
+        cwd?=params.cwd,
+        idempotency_key?=params.idempotency_key,
+      ),
+    ) {
+    Ok(plan) => plan
+    Err(error) =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "launch_plan_failed",
+          message: error,
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
   }
   let agent_params = @protocol.AgentParams::{
     message: params.message,
     session_key: Some(session.session_key),
-    cwd: resolved_cwd,
-    model: resolved_model,
+    cwd: Some(launch.cwd),
+    model: launch.model,
     provider: None,
     run_id: Some(run_id),
     idempotency_key: Some(idempotency_key),
@@ -542,6 +557,7 @@ async fn Gateway::handle_acp_sessions_run_method(
       "session": updated_session.to_json(),
       "accepted": accepted.to_json(),
       "target": target.to_json(),
+      "plan": launch.to_json(),
     }),
     error: None,
   })

@@ -337,6 +337,26 @@ test "decode_ok_payload parses run and channel payloads" {
         "accepted_at": 3,
       },
       "target": acp_target,
+      "plan": {
+        "backend": "codex",
+        "target_id": "codex-main",
+        "session_id": "acp-session-1",
+        "session_key": "channel:feishu:chat-1",
+        "cwd": "/tmp/workspace",
+        "workspace": "/tmp/workspace",
+        "command": "codex",
+        "args": ["exec"],
+        "model": "gpt-5",
+        "env": {
+          "ACP_TARGET_ID": "codex-main",
+          "ACP_SESSION_ID": "acp-session-1",
+          "ACP_SESSION_KEY": "channel:feishu:chat-1",
+          "ACP_BACKEND": "codex",
+          "ACP_WORKSPACE": "/tmp/workspace",
+          "ACP_MODEL": "gpt-5",
+        },
+        "metadata": {},
+      },
     }),
     error: None,
   })
@@ -491,6 +511,7 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(acp_session_mutation_payload.status, content="attached")
   inspect(acp_session_run_payload.accepted.run_id, content="run-acp-1")
   inspect(acp_session_run_payload.session.status, content="running")
+  inspect(acp_session_run_payload.plan.command.unwrap_or(""), content="codex")
 }
 
 ///|

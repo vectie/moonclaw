@@ -68,6 +68,18 @@ pub(all) struct AcpSessionCreateParams {
 pub impl Show for AcpSessionCreateParams
 pub impl @json.FromJson for AcpSessionCreateParams
 
+pub(all) struct AcpSessionRunParams {
+  session_id : String
+  message : String
+  run_id : String?
+  model : String?
+  cwd : String?
+  idempotency_key : String?
+}
+pub impl Show for AcpSessionRunParams
+pub impl ToJson for AcpSessionRunParams
+pub impl @json.FromJson for AcpSessionRunParams
+
 pub struct AdvanceStageParams {
   stage_name : String
   result : Json

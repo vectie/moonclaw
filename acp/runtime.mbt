@@ -269,6 +269,33 @@ pub fn AcpRuntime::get_session(
 }
 
 ///|
+pub fn AcpRuntime::list_sessions_for_key(
+  self : AcpRuntime,
+  session_key : String,
+) -> Array[AcpSession] {
+  let sessions = self.sessions
+    .values()
+    .filter(fn(session) { session.session_key == session_key })
+    .to_array()
+  sessions.sort_by(fn(left, right) { right.updated_at.compare(left.updated_at) })
+  sessions
+}
+
+///|
+pub async fn AcpRuntime::delete_session(
+  self : AcpRuntime,
+  session_id : String,
+) -> AcpSession? {
+  let session = match self.sessions.get(session_id) {
+    Some(session) => session
+    None => return None
+  }
+  self.sessions.remove(session_id) |> ignore()
+  self.persist_sessions()
+  Some(session)
+}
+
+///|
 pub async fn AcpRuntime::open_session(
   self : AcpRuntime,
   session_id : String,
