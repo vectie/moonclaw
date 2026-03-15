@@ -49,6 +49,8 @@ pub async fn Gateway::handle_request(
         self.handle_get_acp_session(r, w)
       (Post, ["", "v1", "acp", "sessions"]) =>
         self.handle_create_acp_session(r, w)
+      (Post, ["", "v1", "acp", "sessions", _session_id, "run"]) =>
+        self.handle_run_acp_session(r, w)
       (Post, ["", "v1", "acp", "sessions", _session_id, "reset"]) =>
         self.handle_reset_acp_session(r, w)
       (Get, ["", "v1", "memories"]) => self.handle_list_memories(r, w)
@@ -146,11 +148,12 @@ async fn Gateway::handle_index(
       "POST /v1/jobs/{id}/update - Update job definition", "POST /v1/jobs/{id}/run - Trigger a job run",
       "POST /v1/jobs/{id}/cancel - Cancel the active job run", "POST /v1/jobs/{id}/force-cancel - Force-cancel the active job run",
       "GET /v1/acp/targets - List ACP targets", "GET /v1/acp/sessions - List ACP sessions",
-      "GET /v1/jobs/runs - List job runs", "GET /v1/jobs/runs/{id} - Get job run status",
-      "POST /v1/jobs/ask - Ask over job artifacts", "GET /v1/channels - List channels",
-      "GET /v1/channels/{id} - Get channel info", "POST /v1/channels/{id}/configure - Configure channel accounts",
-      "POST /v1/channels/{id}/start - Start a channel account", "POST /v1/channels/{id}/stop - Stop a channel account",
-      "POST /v1/agent - Submit agent task", "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
+      "POST /v1/acp/sessions/{id}/run - Start an ACP-backed run", "GET /v1/jobs/runs - List job runs",
+      "GET /v1/jobs/runs/{id} - Get job run status", "POST /v1/jobs/ask - Ask over job artifacts",
+      "GET /v1/channels - List channels", "GET /v1/channels/{id} - Get channel info",
+      "POST /v1/channels/{id}/configure - Configure channel accounts", "POST /v1/channels/{id}/start - Start a channel account",
+      "POST /v1/channels/{id}/stop - Stop a channel account", "POST /v1/agent - Submit agent task",
+      "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
     ],
   }
   w.write(info.stringify())

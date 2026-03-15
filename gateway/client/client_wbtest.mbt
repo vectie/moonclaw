@@ -315,6 +315,31 @@ test "decode_ok_payload parses run and channel payloads" {
     payload: Some({ "status": "attached", "session": acp_session }),
     error: None,
   })
+  let acp_session_run_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-session-run",
+    ok: true,
+    payload: Some({
+      "status": "accepted",
+      "session": {
+        "id": "acp-session-1",
+        "target_id": "codex-main",
+        "session_key": "channel:feishu:chat-1",
+        "status": "running",
+        "cwd": "/tmp/workspace",
+        "workspace": "/tmp/workspace",
+        "created_at": 1,
+        "updated_at": 3,
+        "metadata": {},
+      },
+      "accepted": {
+        "run_id": "run-acp-1",
+        "status": "accepted",
+        "accepted_at": 3,
+      },
+      "target": acp_target,
+    }),
+    error: None,
+  })
 
   let runs_result : Result[RunsListPayload, String] = decode_ok_payload(
     runs_response, "default", "missing", "parse failed",
@@ -371,6 +396,9 @@ test "decode_ok_payload parses run and channel payloads" {
   )
   let acp_session_mutation_result : Result[AcpSessionMutationPayload, String] = decode_ok_payload(
     acp_session_mutation_response, "default", "missing", "parse failed",
+  )
+  let acp_session_run_result : Result[AcpSessionRunPayload, String] = decode_ok_payload(
+    acp_session_run_response, "default", "missing", "parse failed",
   )
   let ask : @job.ChatAnswer = match ask_result {
     Ok(value) => value
@@ -430,6 +458,11 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let acp_session_run_payload : AcpSessionRunPayload = match
+    acp_session_run_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
 
   inspect(runs.runs.length(), content="1")
   inspect(runs.runs[0].run_id, content="run-1")
@@ -456,6 +489,8 @@ test "decode_ok_payload parses run and channel payloads" {
   )
   inspect(acp_session_payload.session.id, content="acp-session-1")
   inspect(acp_session_mutation_payload.status, content="attached")
+  inspect(acp_session_run_payload.accepted.run_id, content="run-acp-1")
+  inspect(acp_session_run_payload.session.status, content="running")
 }
 
 ///|

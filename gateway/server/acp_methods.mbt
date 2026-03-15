@@ -7,6 +7,60 @@ pub(all) struct AcpSessionCreateParams {
 } derive(FromJson, Show)
 
 ///|
+pub(all) struct AcpSessionRunParams {
+  session_id : String
+  message : String
+  run_id : String?
+  model : String?
+  cwd : String?
+  idempotency_key : String?
+} derive(FromJson, ToJson, Show)
+
+///|
+async fn Gateway::execute_acp_agent_async(
+  self : Gateway,
+  session_id : String,
+  run_id : String,
+  idempotency_key : String,
+  params : @protocol.AgentParams,
+) -> Unit {
+  let result = self.execute_agent(run_id~, params)
+  match result {
+    Ok(output) => {
+      self.dedupe.set(idempotency_key, DedupeEntry::{
+        ts: current_time_ms(),
+        ok: true,
+        payload: Some(output),
+        error: None,
+      })
+      ignore(
+        self
+        .acp_runtime()
+        .set_session_status(session_id, "attached", current_time_ms()),
+      )
+    }
+    Err(error) => {
+      self.dedupe.set(idempotency_key, DedupeEntry::{
+        ts: current_time_ms(),
+        ok: false,
+        payload: None,
+        error: Some(error),
+      })
+      ignore(
+        self
+        .acp_runtime()
+        .set_session_status(
+          session_id,
+          "failed",
+          current_time_ms(),
+          last_error=Some(error.message),
+        ),
+      )
+    }
+  }
+}
+
+///|
 async fn Gateway::handle_acp_targets_list_method(
   self : Gateway,
   request : @protocol.Request,
@@ -350,6 +404,160 @@ async fn Gateway::handle_acp_sessions_reset_method(
 }
 
 ///|
+async fn Gateway::handle_acp_sessions_run_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params : AcpSessionRunParams = match request.params {
+    Some(params) =>
+      @json.from_json(params) catch {
+        error =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "invalid_params",
+              message: "Invalid ACP run params: \{error}",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing ACP run params",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let session = match self.acp_runtime().get_session(params.session_id) {
+    Some(session) => session
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "session_not_found",
+          message: "ACP session not found: \{params.session_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let target = match self.acp_runtime().get_target(session.target_id) {
+    Some(target) => target
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "target_not_found",
+          message: "ACP target not found: \{session.target_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let run_id = match params.run_id {
+    Some(run_id) => run_id
+    None => self.uuid.v4().to_string()
+  }
+  let idempotency_key = match params.idempotency_key {
+    Some(key) => key
+    None => run_id
+  }
+  match self.dedupe.get(idempotency_key) {
+    Some(entry) => {
+      let response = if entry.ok {
+        @protocol.Response::{
+          id: request.id,
+          ok: true,
+          payload: entry.payload,
+          error: None,
+        }
+      } else {
+        @protocol.Response::{
+          id: request.id,
+          ok: false,
+          payload: None,
+          error: entry.error,
+        }
+      }
+      return self.send_response(w, response)
+    }
+    None => ()
+  }
+  let resolved_cwd = match params.cwd {
+    Some(cwd) => Some(cwd)
+    None =>
+      match session.cwd {
+        Some(cwd) => Some(cwd)
+        None => target.cwd
+      }
+  }
+  let resolved_model = match params.model {
+    Some(model) => Some(model)
+    None => target.model
+  }
+  let agent_params = @protocol.AgentParams::{
+    message: params.message,
+    session_key: Some(session.session_key),
+    cwd: resolved_cwd,
+    model: resolved_model,
+    provider: None,
+    run_id: Some(run_id),
+    idempotency_key: Some(idempotency_key),
+  }
+  let updated_session = match
+    self
+    .acp_runtime()
+    .set_session_status(session.id, "running", current_time_ms()) {
+    Ok(updated) => updated
+    Err(_) => session
+  }
+  let accepted = @protocol.AgentAcceptedPayload::{
+    run_id,
+    status: "accepted",
+    accepted_at: current_time_ms(),
+  }
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({
+      "status": "accepted",
+      "session": updated_session.to_json(),
+      "accepted": accepted.to_json(),
+      "target": target.to_json(),
+    }),
+    error: None,
+  })
+  @async.with_task_group(group => {
+    group.spawn_bg(() => {
+      self.execute_acp_agent_async(
+        session.id,
+        run_id,
+        idempotency_key,
+        agent_params,
+      )
+    })
+  })
+}
+
+///|
 async fn Gateway::handle_list_acp_targets(
   self : Gateway,
   _r : @httpx.RequestReader,
@@ -517,4 +725,41 @@ async fn Gateway::handle_reset_acp_session(
         "error": { "code": "session_reset_failed", "message": error },
       })
   }
+}
+
+///|
+async fn Gateway::handle_run_acp_session(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let session_id = match paths {
+    ["", "v1", "acp", "sessions", id, "run"] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_session_id",
+          "message": "Missing ACP session id in path",
+        },
+      })
+  }
+  let payload = self.read_json_body(r, "Invalid ACP run payload")
+  let params : AcpSessionRunParams = @json.from_json(payload) catch {
+    error =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "invalid_params",
+          "message": "Invalid ACP run params: \{error}",
+        },
+      })
+  }
+  self.handle_acp_sessions_run_method(
+    @protocol.Request::{
+      id: self.uuid.v4().to_string(),
+      rpc_method: "acp.sessions.run",
+      params: Some(AcpSessionRunParams::{ ..params, session_id, }.to_json()),
+    },
+    w,
+  )
 }

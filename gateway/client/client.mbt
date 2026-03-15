@@ -84,6 +84,14 @@ pub(all) struct AcpSessionMutationPayload {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct AcpSessionRunPayload {
+  status : String
+  session : @acp.AcpSession
+  accepted : @protocol.AgentAcceptedPayload
+  target : @acp.AcpTarget
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct MemoryMutationPayload {
   status : String
   memory : @job.MemoryRecord
@@ -578,6 +586,36 @@ pub async fn Client::reset_acp_session(
     "ACP session reset failed with unknown error",
     "Missing ACP session reset payload",
     "Failed to parse ACP session reset payload",
+  )
+}
+
+///|
+pub async fn Client::run_acp_session(
+  self : Client,
+  session_id~ : String,
+  message~ : String,
+  run_id? : String,
+  model? : String,
+  cwd? : String,
+  idempotency_key? : String,
+) -> Result[AcpSessionRunPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.sessions.run",
+    params: Some({
+      "session_id": session_id,
+      "message": message,
+      "run_id": run_id,
+      "model": model,
+      "cwd": cwd,
+      "idempotency_key": idempotency_key,
+    }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP session run failed with unknown error",
+    "Missing ACP session run payload",
+    "Failed to parse ACP session run payload",
   )
 }
 
