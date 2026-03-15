@@ -154,6 +154,7 @@ async fn Gateway::handle_request_frame(
     "jobs.force_cancel" => self.handle_jobs_force_cancel_method(request, w)
     "jobs.runs.list" => self.handle_job_runs_list_method(request, w)
     "jobs.runs.get" => self.handle_job_runs_get_method(request, w)
+    "jobs.ui.get" => self.handle_job_ui_get_method(request, w)
     "jobs.ask" => self.handle_jobs_ask_method(request, w)
     "channels.list" => self.handle_channels_list(request, w)
     "channels.get" => self.handle_channels_get(request, w)

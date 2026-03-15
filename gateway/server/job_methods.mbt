@@ -406,10 +406,50 @@ async fn Gateway::handle_job_runs_get_method(
           "artifacts": self
           .job_runtime()
           .store()
-          .list_artifacts(run_id?=Some(run_id))
+          .list_artifacts(run_id~)
           .map(artifact => artifact.to_json())
           .to_json(),
         }),
+        error: None,
+      })
+    None =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "job_run_not_found",
+          message: "Job run not found: \{run_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_job_ui_get_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let run_id = match parse_job_run_id_param(request) {
+    Ok(run_id) => run_id
+    Err(error) =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(error),
+      })
+  }
+  match @job.build_job_ui_snapshot(self.job_runtime().store(), run_id) {
+    Some(snapshot) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some({ "snapshot": snapshot.to_json() }),
         error: None,
       })
     None =>

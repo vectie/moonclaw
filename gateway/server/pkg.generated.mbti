@@ -56,7 +56,6 @@ pub fn sub_task_params(task_id~ : String, message~ : String, model? : String, cw
 pub fn update_subtask_params(status~ : CoordinationStatus, result? : Json, error? : String) -> UpdateSubTaskParams
 
 // Errors
-type HttpError
 
 // Types and methods
 pub struct AdvanceStageParams {

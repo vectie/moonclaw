@@ -123,6 +123,44 @@ test "decode_ok_payload parses run and channel payloads" {
     payload: Some({ "run": job_run.to_json(), "steps": [], "artifacts": [] }),
     error: None,
   })
+  let job_ui_snapshot_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-job-ui",
+    ok: true,
+    payload: Some({
+      "snapshot": @job.JobUiSnapshot::{
+        run: job_run,
+        definition: job,
+        workflow: None,
+        proposal: None,
+        workspace_dir: Some("/tmp/workspace"),
+        current_step_id: Some("step-a"),
+        child_runs: [],
+        artifacts: [],
+        memories: [],
+        nodes: [
+          @job.JobUiNode::{
+            id: "workflow:job-run-1",
+            parent_id: None,
+            kind: @job.JobUiNodeKind::Workflow,
+            title: "analysis",
+            status: "\"Running\"",
+            summary: None,
+            detail: None,
+            run_id: Some("job-run-1"),
+            step_id: None,
+            artifact_id: None,
+            memory_id: None,
+            created_at: Some(10),
+            updated_at: Some(10),
+            provisional: false,
+            metadata: {},
+          },
+        ],
+        timeline: [],
+      }.to_json(),
+    }),
+    error: None,
+  })
   let memory = @job.MemoryRecord::{
     id: "memory-1",
     kind: "note",
@@ -231,6 +269,9 @@ test "decode_ok_payload parses run and channel payloads" {
   let memory_result : Result[@job.MemoryRecord, String] = decode_ok_payload(
     memory_response, "default", "missing", "parse failed",
   )
+  let job_ui_snapshot_result : Result[JobUiSnapshotPayload, String] = decode_ok_payload(
+    job_ui_snapshot_response, "default", "missing", "parse failed",
+  )
   let memory_search_result : Result[MemorySearchPayload, String] = decode_ok_payload(
     memory_search_response, "default", "missing", "parse failed",
   )
@@ -256,6 +297,11 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let job_ui_snapshot_payload : JobUiSnapshotPayload = match
+    job_ui_snapshot_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
   let memory_search_payload : MemorySearchPayload = match memory_search_result {
     Ok(value) => value
     Err(error) => fail(error)
@@ -277,6 +323,10 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(ask.citations.length(), content="1")
   inspect(job_payload.job.id, content="job-1")
   inspect(job_run_payload.run.id, content="job-run-1")
+  inspect(
+    job_ui_snapshot_payload.snapshot.current_step_id.unwrap_or(""),
+    content="step-a",
+  )
   inspect(memory_payload.id, content="memory-1")
   inspect(memory_search_payload.hits[0].memory_id, content="memory-1")
   inspect(workspace_payload.workspace.root, content="/tmp/workspace")

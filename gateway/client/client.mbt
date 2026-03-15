@@ -88,6 +88,11 @@ pub(all) struct JobRunDetails {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct JobUiSnapshotPayload {
+  snapshot : @job.JobUiSnapshot
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct ChannelsListPayload {
   channels : Array[@channel.ChannelDock]
 } derive(ToJson, FromJson, Show)
@@ -666,6 +671,24 @@ pub async fn Client::get_job_run(
     "Job run lookup failed with unknown error",
     "Missing job run payload",
     "Failed to parse job run response",
+  )
+}
+
+///|
+pub async fn Client::get_job_ui_snapshot(
+  self : Client,
+  run_id~ : String,
+) -> Result[JobUiSnapshotPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "jobs.ui.get",
+    params: Some({ "run_id": run_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "Job UI snapshot lookup failed with unknown error",
+    "Missing job UI snapshot payload",
+    "Failed to parse job UI snapshot response",
   )
 }
 

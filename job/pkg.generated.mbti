@@ -10,6 +10,8 @@ import {
 // Values
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
+pub async fn build_job_ui_snapshot(SystemStore, String) -> JobUiSnapshot?
+
 pub fn capability_available(String) -> Bool
 
 pub fn capability_record(String) -> CapabilityRecord?
@@ -24,6 +26,8 @@ pub fn child_runs_for(SystemStore, String) -> Array[JobRun]
 
 pub fn compile_job_proposal(JobProposal, Int, String, String, workspace_root? : String) -> ProposalCompilation
 
+pub fn current_step_id_for_ui(SystemStore, JobRun, WorkflowDefinition?) -> String?
+
 pub fn current_step_label(SystemStore, JobDefinition, String) -> String
 
 pub fn decide_active_job_notifications(String, JobRun, Array[JobRunEvent], JobNotifyTarget, JobNotificationRuntimeState, Int) -> JobNotificationDecision
@@ -37,6 +41,8 @@ pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, as
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
 pub fn ensure_draft_proposal(JobProposal, String) -> String?
+
+pub fn event_as_ui_timeline_entry(JobRunEvent, Int) -> JobUiTimelineEntry
 
 pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> WorkflowEngine, control? : WorkflowExecutionControl, hooks? : RunExecutionHooks) -> Unit
 
@@ -171,6 +177,8 @@ pub fn resolve_status_target(SystemStore, String, active_run_id? : String?) -> (
 pub fn resolve_target_proposal(SystemStore, String, String?) -> JobProposal?
 
 pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
+
+pub fn run_events_as_timeline(Array[JobRunEvent]) -> Array[JobUiTimelineEntry]
 
 pub async fn save_confirmed_job_proposal(SystemStore, JobProposal, ProposalCompilation, String, Int) -> Unit
 
@@ -807,6 +815,71 @@ pub(all) struct JobStepRun {
 pub impl Show for JobStepRun
 pub impl ToJson for JobStepRun
 pub impl @json.FromJson for JobStepRun
+
+pub(all) struct JobUiNode {
+  id : String
+  parent_id : String?
+  kind : JobUiNodeKind
+  title : String
+  status : String
+  summary : String?
+  detail : String?
+  run_id : String?
+  step_id : String?
+  artifact_id : String?
+  memory_id : String?
+  created_at : Int?
+  updated_at : Int?
+  provisional : Bool
+  metadata : Json
+}
+pub impl Show for JobUiNode
+pub impl ToJson for JobUiNode
+pub impl @json.FromJson for JobUiNode
+
+pub(all) enum JobUiNodeKind {
+  Proposal
+  Workflow
+  Step
+  ChildRun
+  Artifact
+  Memory
+}
+pub impl Show for JobUiNodeKind
+pub impl ToJson for JobUiNodeKind
+pub impl @json.FromJson for JobUiNodeKind
+
+pub(all) struct JobUiSnapshot {
+  run : JobRun
+  definition : JobDefinition
+  workflow : WorkflowDefinition?
+  proposal : JobProposal?
+  workspace_dir : String?
+  current_step_id : String?
+  child_runs : Array[JobRun]
+  artifacts : Array[ArtifactRecord]
+  memories : Array[MemoryRecord]
+  nodes : Array[JobUiNode]
+  timeline : Array[JobUiTimelineEntry]
+}
+pub impl Show for JobUiSnapshot
+pub impl ToJson for JobUiSnapshot
+pub impl @json.FromJson for JobUiSnapshot
+
+pub(all) struct JobUiTimelineEntry {
+  id : String
+  run_id : String
+  event_type : String
+  title : String
+  detail : String
+  timestamp : Int
+  step_id : String?
+  status : String?
+  data : Json
+}
+pub impl Show for JobUiTimelineEntry
+pub impl ToJson for JobUiTimelineEntry
+pub impl @json.FromJson for JobUiTimelineEntry
 
 pub struct Manager {
   cwd : String

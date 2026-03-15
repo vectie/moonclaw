@@ -16,6 +16,8 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "runs", _run_id]) => self.handle_get_run(r, w)
       (Get, ["", "v1", "jobs"]) => self.handle_list_jobs(r, w)
       (Get, ["", "v1", "jobs", "runs"]) => self.handle_list_job_runs(r, w)
+      (Get, ["", "v1", "jobs", "runs", _run_id, "ui"]) =>
+        self.handle_get_job_ui(r, w)
       (Get, ["", "v1", "jobs", "runs", _run_id]) =>
         self.handle_get_job_run(r, w)
       (Get, ["", "v1", "jobs", _job_id]) => self.handle_get_job(r, w)

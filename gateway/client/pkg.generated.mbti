@@ -53,6 +53,7 @@ pub async fn Client::force_cancel_job(Self, job_id~ : String) -> Result[JobMutat
 pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]
 pub async fn Client::get_job(Self, job_id~ : String) -> Result[JobPayload, String]
 pub async fn Client::get_job_run(Self, run_id~ : String) -> Result[JobRunDetails, String]
+pub async fn Client::get_job_ui_snapshot(Self, run_id~ : String) -> Result[JobUiSnapshotPayload, String]
 pub async fn Client::get_memory(Self, memory_id~ : String) -> Result[@job.MemoryRecord, String]
 pub async fn Client::get_plugin(Self, plugin_id~ : String) -> Result[@plugin.PluginRecord, String]
 pub async fn Client::get_run(Self, run_id~ : String) -> Result[RunInfo, String]
@@ -111,6 +112,13 @@ pub(all) struct JobRunsPayload {
 pub impl Show for JobRunsPayload
 pub impl ToJson for JobRunsPayload
 pub impl @json.FromJson for JobRunsPayload
+
+pub(all) struct JobUiSnapshotPayload {
+  snapshot : @job.JobUiSnapshot
+}
+pub impl Show for JobUiSnapshotPayload
+pub impl ToJson for JobUiSnapshotPayload
+pub impl @json.FromJson for JobUiSnapshotPayload
 
 pub(all) struct JobsListPayload {
   jobs : Array[@job.JobDefinition]

@@ -6,8 +6,8 @@ fn supported_rpc_methods() -> Array[String] {
     "workspace.get", "plugins.list", "plugins.get", "memories.list", "memories.get",
     "memories.create", "memories.search", "jobs.list", "jobs.get", "jobs.create",
     "jobs.update", "jobs.run", "jobs.cancel", "jobs.force_cancel", "jobs.runs.list",
-    "jobs.runs.get", "jobs.ask", "channels.list", "channels.get", "channels.configure",
-    "channels.start", "channels.stop",
+    "jobs.runs.get", "jobs.ui.get", "jobs.ask", "channels.list", "channels.get",
+    "channels.configure", "channels.start", "channels.stop",
   ]
 }
 

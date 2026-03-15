@@ -221,15 +221,46 @@ async fn Gateway::handle_get_job_run(
   match self.job_runtime().store().get_run(run_id) {
     Some(run) => {
       let steps = self.job_runtime().store().list_step_runs(run_id)
-      let artifacts = self
-        .job_runtime()
-        .store()
-        .list_artifacts(run_id?=Some(run_id))
+      let artifacts = self.job_runtime().store().list_artifacts(run_id~)
       let result : Json = {
         "run": run.to_json(),
         "steps": steps.map(step => step.to_json()).to_json(),
         "artifacts": artifacts.map(artifact => artifact.to_json()).to_json(),
       }
+      w.header().set("Content-Type", "application/json")
+      w.write_header(200)
+      w.write(result.stringify())
+    }
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "job_run_not_found",
+          "message": "Job run not found: \{run_id}",
+        },
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_get_job_ui(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let run_id = match paths {
+    ["", "v1", "jobs", "runs", id, "ui"] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_run_id",
+          "message": "Missing run id in path",
+        },
+      })
+  }
+  match @job.build_job_ui_snapshot(self.job_runtime().store(), run_id) {
+    Some(snapshot) => {
+      let result : Json = { "snapshot": snapshot.to_json() }
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       w.write(result.stringify())
