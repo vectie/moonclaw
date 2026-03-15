@@ -2,6 +2,10 @@
 
 This document describes the current implementation, not the earlier design drafts.
 
+Expected behavior reference:
+
+- [expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
+
 ## Top-Level Entry Points
 
 `cmd/main/main.mbt` dispatches into five user-facing modes:
@@ -43,6 +47,12 @@ The shared unit is `@moonclaw.Moonclaw`:
 - `Moonclaw::resume_(...)` restores a prior conversation by UUID
 - `moonclaw.start()` runs one conversation cycle
 - `moonclaw.close()` releases resources
+
+For operator-facing behavior and supported flows, see:
+
+- [expected_behaviors/chat_and_job_flow.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/chat_and_job_flow.md)
+- [expected_behaviors/workspace_and_memory.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/workspace_and_memory.md)
+- [expected_behaviors/use_cases.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/use_cases.md)
 
 ## Gateway Runtime Structure
 

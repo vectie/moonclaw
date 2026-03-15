@@ -6,6 +6,7 @@ Architecture reference:
 
 - [system_architecture.md](/Users/kq/Workspace/mcl/docs/system_architecture.md)
 - [job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md)
+- [expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
 
 ## What the Gateway Is
 

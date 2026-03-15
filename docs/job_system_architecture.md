@@ -2,6 +2,10 @@
 
 This document describes the current job architecture after the gateway-thinning refactor.
 
+Operator behavior and use-case reference:
+
+- [expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
+
 The important boundary is:
 
 - `gateway/server` is transport and runtime wiring
