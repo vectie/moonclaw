@@ -1,0 +1,69 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/acp"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct AcpRuntime {
+  home : String
+  cwd : String
+  targets : Map[String, AcpTarget]
+  sessions : Map[String, AcpSession]
+}
+pub fn AcpRuntime::get_session(Self, String) -> AcpSession?
+pub fn AcpRuntime::get_target(Self, String) -> AcpTarget?
+pub fn AcpRuntime::list_sessions(Self) -> Array[AcpSession]
+pub fn AcpRuntime::list_targets(Self) -> Array[AcpTarget]
+pub async fn AcpRuntime::load(Self) -> Unit
+pub async fn AcpRuntime::new(home~ : String, cwd~ : String) -> Self
+pub async fn AcpRuntime::open_session(Self, String, String, String, Int, metadata? : Json) -> Result[AcpSession, String]
+pub async fn AcpRuntime::reset_session(Self, String, Int) -> Result[AcpSession, String]
+pub async fn AcpRuntime::set_session_status(Self, String, String, Int, last_error? : String?) -> Result[AcpSession, String]
+
+pub struct AcpSession {
+  id : String
+  target_id : String
+  session_key : String
+  status : String
+  cwd : String?
+  workspace : String?
+  created_at : Int
+  updated_at : Int
+  last_error : String?
+  metadata : Json
+}
+pub impl Show for AcpSession
+pub impl ToJson for AcpSession
+pub impl @json.FromJson for AcpSession
+
+pub struct AcpTarget {
+  id : String
+  backend : String
+  label : String?
+  cwd : String?
+  workspace : String?
+  command : String?
+  args : Array[String]
+  model : String?
+  status : String
+  metadata : Json
+}
+pub impl Show for AcpTarget
+pub impl ToJson for AcpTarget
+pub impl @json.FromJson for AcpTarget
+
+type PersistedAcpState
+pub impl Show for PersistedAcpState
+pub impl ToJson for PersistedAcpState
+pub impl @json.FromJson for PersistedAcpState
+
+// Type aliases
+
+// Traits
+

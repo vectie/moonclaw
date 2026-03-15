@@ -4,6 +4,7 @@ package "moonbitlang/moonclaw/gateway/client"
 import {
   "moonbitlang/async/http",
   "moonbitlang/core/json",
+  "moonbitlang/moonclaw/acp",
   "moonbitlang/moonclaw/channel",
   "moonbitlang/moonclaw/gateway/protocol",
   "moonbitlang/moonclaw/internal/pino",
@@ -18,6 +19,42 @@ import {
 // Errors
 
 // Types and methods
+pub(all) struct AcpSessionMutationPayload {
+  status : String
+  session : @acp.AcpSession
+}
+pub impl Show for AcpSessionMutationPayload
+pub impl ToJson for AcpSessionMutationPayload
+pub impl @json.FromJson for AcpSessionMutationPayload
+
+pub(all) struct AcpSessionPayload {
+  session : @acp.AcpSession
+}
+pub impl Show for AcpSessionPayload
+pub impl ToJson for AcpSessionPayload
+pub impl @json.FromJson for AcpSessionPayload
+
+pub(all) struct AcpSessionsPayload {
+  sessions : Array[@acp.AcpSession]
+}
+pub impl Show for AcpSessionsPayload
+pub impl ToJson for AcpSessionsPayload
+pub impl @json.FromJson for AcpSessionsPayload
+
+pub(all) struct AcpTargetPayload {
+  target : @acp.AcpTarget
+}
+pub impl Show for AcpTargetPayload
+pub impl ToJson for AcpTargetPayload
+pub impl @json.FromJson for AcpTargetPayload
+
+pub(all) struct AcpTargetsPayload {
+  targets : Array[@acp.AcpTarget]
+}
+pub impl Show for AcpTargetsPayload
+pub impl ToJson for AcpTargetsPayload
+pub impl @json.FromJson for AcpTargetsPayload
+
 pub(all) struct ChannelMutationPayload {
   status : String
   channel_id : String
@@ -47,9 +84,12 @@ pub async fn Client::ask_job(Self, @job.JobAskParams) -> Result[@job.ChatAnswer,
 pub async fn Client::cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::configure_channel(Self, channel_id~ : String, @channel.ChannelConfig) -> Result[ChannelMutationPayload, String]
 pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
+pub async fn Client::create_acp_session(Self, target_id~ : String, session_key~ : String, session_id? : String, metadata? : Json) -> Result[AcpSessionMutationPayload, String]
 pub async fn Client::create_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
 pub async fn Client::create_memory(Self, @job.MemoryWriteRequest) -> Result[MemoryMutationPayload, String]
 pub async fn Client::force_cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
+pub async fn Client::get_acp_session(Self, session_id~ : String) -> Result[AcpSessionPayload, String]
+pub async fn Client::get_acp_target(Self, target_id~ : String) -> Result[AcpTargetPayload, String]
 pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]
 pub async fn Client::get_job(Self, job_id~ : String) -> Result[JobPayload, String]
 pub async fn Client::get_job_run(Self, run_id~ : String) -> Result[JobRunDetails, String]
@@ -60,6 +100,8 @@ pub async fn Client::get_plugin(Self, plugin_id~ : String) -> Result[@plugin.Plu
 pub async fn Client::get_run(Self, run_id~ : String) -> Result[RunInfo, String]
 pub async fn Client::get_workspace(Self) -> Result[WorkspacePayload, String]
 pub async fn Client::health(Self) -> Result[@protocol.HealthPayload, String]
+pub async fn Client::list_acp_sessions(Self) -> Result[AcpSessionsPayload, String]
+pub async fn Client::list_acp_targets(Self) -> Result[AcpTargetsPayload, String]
 pub async fn Client::list_channels(Self) -> Result[ChannelsListPayload, String]
 pub async fn Client::list_job_runs(Self) -> Result[JobRunsPayload, String]
 pub async fn Client::list_jobs(Self) -> Result[JobsListPayload, String]
@@ -68,6 +110,7 @@ pub async fn Client::list_plugins(Self) -> Result[PluginsListPayload, String]
 pub async fn Client::list_runs(Self) -> Result[RunsListPayload, String]
 pub async fn Client::list_sessions(Self) -> Result[@protocol.SessionsListPayload, String]
 pub async fn Client::new(ClientConfig) -> Self
+pub async fn Client::reset_acp_session(Self, session_id~ : String) -> Result[AcpSessionMutationPayload, String]
 pub async fn Client::run_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::search_memories(Self, question~ : String, query? : @job.MemoryQuery, max_hits? : Int) -> Result[MemorySearchPayload, String]
 pub async fn Client::start_channel(Self, channel_id~ : String, account_id~ : String, Json) -> Result[ChannelMutationPayload, String]

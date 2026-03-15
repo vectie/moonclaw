@@ -61,6 +61,7 @@ pub async fn Gateway::new(
   let security_runtime = @security.SecurityRuntime::new(home~, cwd~)
   let workspace_runtime = @workspace.WorkspaceRuntime::new(home~, cwd~)
   let plugin_runtime = @plugin.PluginRuntime::new(home~, cwd~)
+  let acp_runtime = @acp.AcpRuntime::new(home~, cwd~)
   let job_app = @job.GatewayJobApp::new(
     root=jobs_dir,
     cwd~,
@@ -100,6 +101,7 @@ pub async fn Gateway::new(
     security_runtime,
     workspace_runtime,
     plugin_runtime,
+    acp_runtime,
   }
   gateway.sessions.load() catch {
     error => gateway.logger.warn("Failed to load gateway sessions: \{error}")
@@ -118,6 +120,9 @@ pub async fn Gateway::new(
   }
   gateway.plugin_runtime.load() catch {
     error => gateway.logger.warn("Failed to load plugin runtime: \{error}")
+  }
+  gateway.acp_runtime.load() catch {
+    error => gateway.logger.warn("Failed to load ACP runtime: \{error}")
   }
   gateway.seed_channel_state_from_moonclaw_config() catch {
     error =>

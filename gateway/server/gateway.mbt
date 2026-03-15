@@ -40,6 +40,7 @@ pub struct Gateway {
   security_runtime : @security.SecurityRuntime
   workspace_runtime : @workspace.WorkspaceRuntime
   plugin_runtime : @plugin.PluginRuntime
+  acp_runtime : @acp.AcpRuntime
 }
 
 ///|
@@ -166,4 +167,9 @@ pub fn Gateway::security_runtime(self : Gateway) -> @security.SecurityRuntime {
 ///|
 pub fn Gateway::plugin_runtime(self : Gateway) -> @plugin.PluginRuntime {
   self.plugin_runtime
+}
+
+///|
+pub fn Gateway::acp_runtime(self : Gateway) -> @acp.AcpRuntime {
+  self.acp_runtime
 }

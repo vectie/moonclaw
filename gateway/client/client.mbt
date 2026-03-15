@@ -58,6 +58,32 @@ pub(all) struct PluginsListPayload {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct AcpTargetsPayload {
+  targets : Array[@acp.AcpTarget]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct AcpTargetPayload {
+  target : @acp.AcpTarget
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct AcpSessionsPayload {
+  sessions : Array[@acp.AcpSession]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct AcpSessionPayload {
+  session : @acp.AcpSession
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct AcpSessionMutationPayload {
+  status : String
+  session : @acp.AcpSession
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct MemoryMutationPayload {
   status : String
   memory : @job.MemoryRecord
@@ -438,6 +464,120 @@ pub async fn Client::get_plugin(
     "Plugin lookup failed with unknown error",
     "Missing plugin payload",
     "Failed to parse plugin payload",
+  )
+}
+
+///|
+pub async fn Client::list_acp_targets(
+  self : Client,
+) -> Result[AcpTargetsPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.targets.list",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP target list failed with unknown error",
+    "Missing ACP targets payload",
+    "Failed to parse ACP targets payload",
+  )
+}
+
+///|
+pub async fn Client::get_acp_target(
+  self : Client,
+  target_id~ : String,
+) -> Result[AcpTargetPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.targets.get",
+    params: Some({ "target_id": target_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP target lookup failed with unknown error",
+    "Missing ACP target payload",
+    "Failed to parse ACP target payload",
+  )
+}
+
+///|
+pub async fn Client::list_acp_sessions(
+  self : Client,
+) -> Result[AcpSessionsPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.sessions.list",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP session list failed with unknown error",
+    "Missing ACP sessions payload",
+    "Failed to parse ACP sessions payload",
+  )
+}
+
+///|
+pub async fn Client::get_acp_session(
+  self : Client,
+  session_id~ : String,
+) -> Result[AcpSessionPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.sessions.get",
+    params: Some({ "session_id": session_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP session lookup failed with unknown error",
+    "Missing ACP session payload",
+    "Failed to parse ACP session payload",
+  )
+}
+
+///|
+pub async fn Client::create_acp_session(
+  self : Client,
+  target_id~ : String,
+  session_key~ : String,
+  session_id? : String,
+  metadata? : Json = {},
+) -> Result[AcpSessionMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.sessions.create",
+    params: Some({
+      "target_id": target_id,
+      "session_key": session_key,
+      "session_id": session_id,
+      "metadata": metadata,
+    }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP session create failed with unknown error",
+    "Missing ACP session mutation payload",
+    "Failed to parse ACP session mutation payload",
+  )
+}
+
+///|
+pub async fn Client::reset_acp_session(
+  self : Client,
+  session_id~ : String,
+) -> Result[AcpSessionMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.sessions.reset",
+    params: Some({ "session_id": session_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP session reset failed with unknown error",
+    "Missing ACP session reset payload",
+    "Failed to parse ACP session reset payload",
   )
 }
 

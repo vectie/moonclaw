@@ -262,6 +262,59 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
+  let acp_target : Json = {
+    "id": "codex-main",
+    "backend": "codex",
+    "label": "Main Codex",
+    "cwd": "/tmp/workspace",
+    "workspace": "/tmp/workspace",
+    "command": "codex",
+    "args": ["exec"],
+    "model": "gpt-5",
+    "status": "ready",
+    "metadata": {},
+  }
+  let acp_session : Json = {
+    "id": "acp-session-1",
+    "target_id": "codex-main",
+    "session_key": "channel:feishu:chat-1",
+    "status": "attached",
+    "cwd": "/tmp/workspace",
+    "workspace": "/tmp/workspace",
+    "created_at": 1,
+    "updated_at": 2,
+    "metadata": {},
+  }
+  let acp_targets_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-targets",
+    ok: true,
+    payload: Some({ "targets": [acp_target] }),
+    error: None,
+  })
+  let acp_target_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-target",
+    ok: true,
+    payload: Some({ "target": acp_target }),
+    error: None,
+  })
+  let acp_sessions_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-sessions",
+    ok: true,
+    payload: Some({ "sessions": [acp_session] }),
+    error: None,
+  })
+  let acp_session_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-session",
+    ok: true,
+    payload: Some({ "session": acp_session }),
+    error: None,
+  })
+  let acp_session_mutation_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-session-mutation",
+    ok: true,
+    payload: Some({ "status": "attached", "session": acp_session }),
+    error: None,
+  })
 
   let runs_result : Result[RunsListPayload, String] = decode_ok_payload(
     runs_response, "default", "missing", "parse failed",
@@ -304,6 +357,21 @@ test "decode_ok_payload parses run and channel payloads" {
   let plugins_result : Result[PluginsListPayload, String] = decode_ok_payload(
     plugins_response, "default", "missing", "parse failed",
   )
+  let acp_targets_result : Result[AcpTargetsPayload, String] = decode_ok_payload(
+    acp_targets_response, "default", "missing", "parse failed",
+  )
+  let acp_target_result : Result[AcpTargetPayload, String] = decode_ok_payload(
+    acp_target_response, "default", "missing", "parse failed",
+  )
+  let acp_sessions_result : Result[AcpSessionsPayload, String] = decode_ok_payload(
+    acp_sessions_response, "default", "missing", "parse failed",
+  )
+  let acp_session_result : Result[AcpSessionPayload, String] = decode_ok_payload(
+    acp_session_response, "default", "missing", "parse failed",
+  )
+  let acp_session_mutation_result : Result[AcpSessionMutationPayload, String] = decode_ok_payload(
+    acp_session_mutation_response, "default", "missing", "parse failed",
+  )
   let ask : @job.ChatAnswer = match ask_result {
     Ok(value) => value
     Err(error) => fail(error)
@@ -341,6 +409,27 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let acp_targets_payload : AcpTargetsPayload = match acp_targets_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let acp_target_payload : AcpTargetPayload = match acp_target_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let acp_sessions_payload : AcpSessionsPayload = match acp_sessions_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let acp_session_payload : AcpSessionPayload = match acp_session_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let acp_session_mutation_payload : AcpSessionMutationPayload = match
+    acp_session_mutation_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
 
   inspect(runs.runs.length(), content="1")
   inspect(runs.runs[0].run_id, content="run-1")
@@ -359,6 +448,14 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(memory_search_payload.hits[0].memory_id, content="memory-1")
   inspect(workspace_payload.workspace.root, content="/tmp/workspace")
   inspect(plugins_payload.plugins[0].id, content="feishu")
+  inspect(acp_targets_payload.targets[0].id, content="codex-main")
+  inspect(acp_target_payload.target.backend, content="codex")
+  inspect(
+    acp_sessions_payload.sessions[0].session_key,
+    content="channel:feishu:chat-1",
+  )
+  inspect(acp_session_payload.session.id, content="acp-session-1")
+  inspect(acp_session_mutation_payload.status, content="attached")
 }
 
 ///|

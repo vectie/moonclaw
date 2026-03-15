@@ -7,7 +7,9 @@ fn supported_rpc_methods() -> Array[String] {
     "memories.create", "memories.search", "jobs.list", "jobs.get", "jobs.create",
     "jobs.update", "jobs.run", "jobs.cancel", "jobs.force_cancel", "jobs.runs.list",
     "jobs.runs.get", "jobs.ui.get", "jobs.ui.events", "jobs.ask", "channels.list",
-    "channels.get", "channels.configure", "channels.start", "channels.stop",
+    "channels.get", "channels.configure", "channels.start", "channels.stop", "acp.targets.list",
+    "acp.targets.get", "acp.sessions.list", "acp.sessions.get", "acp.sessions.create",
+    "acp.sessions.reset",
   ]
 }
 

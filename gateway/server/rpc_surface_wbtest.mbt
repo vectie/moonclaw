@@ -29,6 +29,12 @@ test "supported_rpc_methods advertises the implemented channel and run methods" 
   inspect(methods.contains("channels.configure"), content="true")
   inspect(methods.contains("channels.start"), content="true")
   inspect(methods.contains("channels.stop"), content="true")
+  inspect(methods.contains("acp.targets.list"), content="true")
+  inspect(methods.contains("acp.targets.get"), content="true")
+  inspect(methods.contains("acp.sessions.list"), content="true")
+  inspect(methods.contains("acp.sessions.get"), content="true")
+  inspect(methods.contains("acp.sessions.create"), content="true")
+  inspect(methods.contains("acp.sessions.reset"), content="true")
 }
 
 ///|

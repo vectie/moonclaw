@@ -162,6 +162,12 @@ async fn Gateway::handle_request_frame(
     "channels.configure" => self.handle_channels_configure(request, w)
     "channels.start" => self.handle_channels_start(request, w)
     "channels.stop" => self.handle_channels_stop(request, w)
+    "acp.targets.list" => self.handle_acp_targets_list_method(request, w)
+    "acp.targets.get" => self.handle_acp_targets_get_method(request, w)
+    "acp.sessions.list" => self.handle_acp_sessions_list_method(request, w)
+    "acp.sessions.get" => self.handle_acp_sessions_get_method(request, w)
+    "acp.sessions.create" => self.handle_acp_sessions_create_method(request, w)
+    "acp.sessions.reset" => self.handle_acp_sessions_reset_method(request, w)
     _ =>
       self.send_response(w, @protocol.Response::{
         id: request.id,

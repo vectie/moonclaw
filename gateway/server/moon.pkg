@@ -20,6 +20,7 @@ import {
   "moonbitlang/moonclaw/agent",
   "moonbitlang/moonclaw/model",
   "moonbitlang/moonclaw/job",
+  "moonbitlang/moonclaw/acp",
   "moonbitlang/moonclaw/security",
   "moonbitlang/moonclaw/workspace",
   "moonbitlang/moonclaw/plugin",

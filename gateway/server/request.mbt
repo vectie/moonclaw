@@ -40,6 +40,17 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "workspace"]) => self.handle_get_workspace(r, w)
       (Get, ["", "v1", "plugins"]) => self.handle_list_plugins(r, w)
       (Get, ["", "v1", "plugins", _plugin_id]) => self.handle_get_plugin(r, w)
+      (Get, ["", "v1", "acp", "targets"]) => self.handle_list_acp_targets(r, w)
+      (Get, ["", "v1", "acp", "targets", _target_id]) =>
+        self.handle_get_acp_target(r, w)
+      (Get, ["", "v1", "acp", "sessions"]) =>
+        self.handle_list_acp_sessions(r, w)
+      (Get, ["", "v1", "acp", "sessions", _session_id]) =>
+        self.handle_get_acp_session(r, w)
+      (Post, ["", "v1", "acp", "sessions"]) =>
+        self.handle_create_acp_session(r, w)
+      (Post, ["", "v1", "acp", "sessions", _session_id, "reset"]) =>
+        self.handle_reset_acp_session(r, w)
       (Get, ["", "v1", "memories"]) => self.handle_list_memories(r, w)
       (Get, ["", "v1", "memories", _memory_id]) => self.handle_get_memory(r, w)
       (Post, ["", "v1", "memories"]) => self.handle_create_memory(r, w)
@@ -134,6 +145,7 @@ async fn Gateway::handle_index(
       "GET /v1/jobs/{id} - Get job definition", "POST /v1/jobs - Create job definition",
       "POST /v1/jobs/{id}/update - Update job definition", "POST /v1/jobs/{id}/run - Trigger a job run",
       "POST /v1/jobs/{id}/cancel - Cancel the active job run", "POST /v1/jobs/{id}/force-cancel - Force-cancel the active job run",
+      "GET /v1/acp/targets - List ACP targets", "GET /v1/acp/sessions - List ACP sessions",
       "GET /v1/jobs/runs - List job runs", "GET /v1/jobs/runs/{id} - Get job run status",
       "POST /v1/jobs/ask - Ask over job artifacts", "GET /v1/channels - List channels",
       "GET /v1/channels/{id} - Get channel info", "POST /v1/channels/{id}/configure - Configure channel accounts",
