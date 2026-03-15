@@ -20,3 +20,5 @@ custom_log_path
 node_modules
 _build
 target
+.moonclaw/job-workspaces/
+bisect.coverage
