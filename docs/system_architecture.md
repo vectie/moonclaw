@@ -4,7 +4,7 @@ This document describes the current implementation, not the earlier design draft
 
 Expected behavior reference:
 
-- [expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
+- [expected_behaviors/README.md](expected_behaviors/README.md)
 
 ## Top-Level Entry Points
 
@@ -50,9 +50,9 @@ The shared unit is `@moonclaw.Moonclaw`:
 
 For operator-facing behavior and supported flows, see:
 
-- [expected_behaviors/chat_and_job_flow.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/chat_and_job_flow.md)
-- [expected_behaviors/workspace_and_memory.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/workspace_and_memory.md)
-- [expected_behaviors/use_cases.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/use_cases.md)
+- [expected_behaviors/chat_and_job_flow.md](expected_behaviors/chat_and_job_flow.md)
+- [expected_behaviors/workspace_and_memory.md](expected_behaviors/workspace_and_memory.md)
+- [expected_behaviors/use_cases.md](expected_behaviors/use_cases.md)
 
 ## Gateway Runtime Structure
 
@@ -150,7 +150,7 @@ The route table lives in `gateway/server/request.mbt`.
 - `DELETE /v1/mailbox/{mailbox_id}`
 - `GET /v1/mailboxes`
 
-### Multi-agent routes
+### Coordination Routes
 
 - `POST /v1/coordination`
 - `GET /v1/coordination`
@@ -246,7 +246,7 @@ The final run payload currently includes:
 
 The generic job system now runs under the gateway instead of being a passive store.
 
-Detailed job/service boundaries are documented in [job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md).
+Detailed job/service boundaries are documented in [job_system_architecture.md](job_system_architecture.md).
 
 ### Manual trigger path
 
@@ -478,7 +478,7 @@ Current channel key format:
 
 ### Orchestration runs
 
-Background multi-agent work also gets stable derived keys:
+Background delegated work also gets stable derived keys:
 
 ```text
 coordination_session_key(coordination_id, task_id)

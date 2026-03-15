@@ -12,12 +12,12 @@ Use these docs when you want to answer:
 
 Current documents:
 
-- [chat_and_job_flow.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/chat_and_job_flow.md)
-- [workspace_and_memory.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/workspace_and_memory.md)
-- [use_cases.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/use_cases.md)
+- [chat_and_job_flow.md](chat_and_job_flow.md)
+- [workspace_and_memory.md](workspace_and_memory.md)
+- [use_cases.md](use_cases.md)
 
 Related references:
 
-- [system_architecture.md](/Users/kq/Workspace/mcl/docs/system_architecture.md)
-- [job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md)
-- [GATEWAY_USAGE.md](/Users/kq/Workspace/mcl/docs/GATEWAY_USAGE.md)
+- [system_architecture.md](../system_architecture.md)
+- [job_system_architecture.md](../job_system_architecture.md)
+- [GATEWAY_USAGE.md](../GATEWAY_USAGE.md)

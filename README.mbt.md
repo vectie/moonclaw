@@ -87,7 +87,7 @@ MoonClaw is strongest today as:
 
 It is less complete today in:
 
-- full OpenClaw multi-agent binding parity
+- full OpenClaw binding parity
 - mature plugin install lifecycle
 - polished onboarding/wizard UX
 
@@ -104,20 +104,20 @@ It is less complete today in:
 From the repo root:
 
 ```bash
-cd /Users/kq/Workspace/mcl
+cd ~/Workspace/mcl
 
-/Users/kq/.moon/bin/moon run cmd/main -- interactive
-/Users/kq/.moon/bin/moon run cmd/main -- tui
-/Users/kq/.moon/bin/moon run cmd/main -- gateway start --home ~/.moonclaw --cwd /Users/kq/Workspace/mcl
+~/.moon/bin/moon run cmd/main -- interactive
+~/.moon/bin/moon run cmd/main -- tui
+~/.moon/bin/moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/mcl
 ```
 
 Useful gateway commands:
 
 ```bash
-/Users/kq/.moon/bin/moon run cmd/main -- gateway health
-/Users/kq/.moon/bin/moon run cmd/main -- gateway jobs
-/Users/kq/.moon/bin/moon run cmd/main -- gateway job-runs
-/Users/kq/.moon/bin/moon run cmd/main -- gateway channels
+~/.moon/bin/moon run cmd/main -- gateway health
+~/.moon/bin/moon run cmd/main -- gateway jobs
+~/.moon/bin/moon run cmd/main -- gateway job-runs
+~/.moon/bin/moon run cmd/main -- gateway channels
 ```
 
 In Feishu, the important commands are:
@@ -137,16 +137,16 @@ In Feishu, the important commands are:
 
 Start here:
 
-- [docs/system_architecture.md](/Users/kq/Workspace/mcl/docs/system_architecture.md)
-- [docs/job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md)
-- [docs/GATEWAY_USAGE.md](/Users/kq/Workspace/mcl/docs/GATEWAY_USAGE.md)
-- [docs/expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
+- [docs/system_architecture.md](docs/system_architecture.md)
+- [docs/job_system_architecture.md](docs/job_system_architecture.md)
+- [docs/GATEWAY_USAGE.md](docs/GATEWAY_USAGE.md)
+- [docs/expected_behaviors/README.md](docs/expected_behaviors/README.md)
 
 Behavior and operator docs:
 
-- [docs/expected_behaviors/chat_and_job_flow.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/chat_and_job_flow.md)
-- [docs/expected_behaviors/workspace_and_memory.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/workspace_and_memory.md)
-- [docs/expected_behaviors/use_cases.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/use_cases.md)
+- [docs/expected_behaviors/chat_and_job_flow.md](docs/expected_behaviors/chat_and_job_flow.md)
+- [docs/expected_behaviors/workspace_and_memory.md](docs/expected_behaviors/workspace_and_memory.md)
+- [docs/expected_behaviors/use_cases.md](docs/expected_behaviors/use_cases.md)
 
 ## Development
 
@@ -155,10 +155,10 @@ MoonClaw is a MoonBit project.
 Useful commands:
 
 ```bash
-/Users/kq/.moon/bin/moon check
-/Users/kq/.moon/bin/moon test
-/Users/kq/.moon/bin/moon info
-/Users/kq/.moon/bin/moon fmt
+~/.moon/bin/moon check
+~/.moon/bin/moon test
+~/.moon/bin/moon info
+~/.moon/bin/moon fmt
 ```
 
 The repo currently checks clean with `moon check`.

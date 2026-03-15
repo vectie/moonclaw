@@ -4,7 +4,7 @@ This document describes the current job architecture after the gateway-thinning 
 
 Operator behavior and use-case reference:
 
-- [expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
+- [expected_behaviors/README.md](expected_behaviors/README.md)
 
 The important boundary is:
 

@@ -4,9 +4,9 @@ This guide matches the current implementation in `cmd/gateway` and `gateway/serv
 
 Architecture reference:
 
-- [system_architecture.md](/Users/kq/Workspace/mcl/docs/system_architecture.md)
-- [job_system_architecture.md](/Users/kq/Workspace/mcl/docs/job_system_architecture.md)
-- [expected_behaviors/README.md](/Users/kq/Workspace/mcl/docs/expected_behaviors/README.md)
+- [system_architecture.md](system_architecture.md)
+- [job_system_architecture.md](job_system_architecture.md)
+- [expected_behaviors/README.md](expected_behaviors/README.md)
 
 ## What the Gateway Is
 

@@ -75,7 +75,7 @@ Expected fit:
 
 These are possible directions, but they are not the strongest current use cases:
 
-- full multi-agent routing based on config `bindings`
+- full agent-binding routing parity based on config `bindings`
 - mature plugin installation/runtime lifecycle
 - polished onboarding/wizard flows
 - strict OpenClaw feature parity for every config surface
