@@ -1970,7 +1970,119 @@ fn render_acp_inspector(dispatch : Dispatch[Msg], model : Model) -> Html {
 }
 
 ///|
-fn render_overview(model : Model) -> Html {
+fn string_contains_ci(text : String, needle : String) -> Bool {
+  text.to_lower().contains(needle.to_lower())
+}
+
+///|
+fn path_tail(path : String) -> String {
+  match path.split("/").filter(fn(part) { !part.is_empty() }).last() {
+    Some(part) => part.to_string()
+    None => path
+  }
+}
+
+///|
+fn acp_node_workspace(node : AcpUiNode) -> String? {
+  match node.detail {
+    Some(detail) if !detail.trim().is_blank() => Some(detail)
+    _ => None
+  }
+}
+
+///|
+fn acp_node_related_to_local(snapshot : UiSnapshot, node : AcpUiNode) -> Bool {
+  let run_id = snapshot.run.id
+  let job_id = snapshot.run.job_id
+  let workspace = snapshot.workspace_dir.unwrap_or("")
+  let workspace_tail = if workspace == "" { "" } else { path_tail(workspace) }
+  let summary = node.summary.unwrap_or("")
+  let detail = node.detail.unwrap_or("")
+  let node_workspace = acp_node_workspace(node).unwrap_or("")
+  let metadata_session_key = match node.metadata {
+    { "session_key": String(session_key), .. } => session_key
+    _ => ""
+  }
+  string_contains_ci(summary, run_id) ||
+  string_contains_ci(summary, job_id) ||
+  string_contains_ci(detail, run_id) ||
+  string_contains_ci(detail, job_id) ||
+  string_contains_ci(metadata_session_key, run_id) ||
+  string_contains_ci(metadata_session_key, job_id) ||
+  (
+    workspace != "" &&
+    (
+      string_contains_ci(node_workspace, workspace) ||
+      string_contains_ci(workspace, node_workspace) ||
+      (
+        workspace_tail != "" &&
+        string_contains_ci(node_workspace, workspace_tail)
+      )
+    )
+  )
+}
+
+///|
+fn render_mixed_relationships(
+  snapshot : UiSnapshot?,
+  acp_snapshot : AcpUiSnapshot?,
+) -> Html {
+  match (snapshot, acp_snapshot) {
+    (Some(snapshot), Some(acp_snapshot)) => {
+      let related = acp_snapshot.nodes.filter(fn(node) {
+        acp_node_related_to_local(snapshot, node)
+      })
+      section(class="panel nested-panel", [
+        header(class="panel-header", [h2(class="panel-title", "Mixed Links")]),
+        div(class="panel-body", [
+          p(
+            class="muted",
+            "Local run \{snapshot.run.id} / \{snapshot.run.job_id} cross-referenced against ACP remote targets, sessions, and runs.",
+          ),
+          if related.is_empty() {
+            p(
+              class="empty",
+              "No explicit local↔remote links inferred yet. Relationships appear here when workspace paths, run ids, or job ids overlap.",
+            )
+          } else {
+            div(
+              class="runs-list",
+              related.map(fn(node) {
+                article(class="artifact-card", [
+                  p(class="node-kind", acp_kind_label(node.kind)),
+                  p(class="node-title", node.title),
+                  div([render_status_badge(node.status)]),
+                  match node.detail {
+                    Some(detail) => p(class="mono", preview_text(detail, 120))
+                    None => nothing
+                  },
+                  match node.summary {
+                    Some(summary) =>
+                      p(class="muted", preview_text(summary, 140))
+                    None => nothing
+                  },
+                ])
+              }),
+            )
+          },
+        ]),
+      ])
+    }
+    _ =>
+      section(class="panel nested-panel", [
+        header(class="panel-header", [h2(class="panel-title", "Mixed Links")]),
+        div(class="panel-body", [
+          p(
+            class="empty",
+            "Select or load both a local run and ACP state to inspect cross-linked local↔remote activity.",
+          ),
+        ]),
+      ])
+  }
+}
+
+///|
+fn render_overview(dispatch : Dispatch[Msg], model : Model) -> Html {
   let local_running = model.runs
     .filter(fn(run) { run_status_is_live(run.status) })
     .length()
@@ -1982,7 +2094,7 @@ fn render_overview(model : Model) -> Html {
     None => 0
   }
   section(class="panel", [
-    header(class="panel-header", [h2(class="panel-title", "Operator Overview")]),
+    header(class="panel-header", [h2(class="panel-title", "Mixed Overview")]),
     div(class="panel-body", [
       div(class="overview-grid", [
         article(class="overview-stat", [
@@ -2015,14 +2127,18 @@ fn render_overview(model : Model) -> Html {
               div(
                 class="runs-list",
                 preview_items(filtered_runs(model), 4).map(fn(run) {
-                  article(class="artifact-card", [
-                    p(class="node-title", run.job_id),
-                    div([render_status_badge(run.status)]),
-                    p(
-                      class="muted",
-                      preview_text(run.summary.unwrap_or(run.id), 120),
-                    ),
-                  ])
+                  button(
+                    class="run-card",
+                    on_click=dispatch(SelectRun(run.id)),
+                    [
+                      p(class="node-title", run.job_id),
+                      div([render_status_badge(run.status)]),
+                      p(
+                        class="muted",
+                        preview_text(run.summary.unwrap_or(run.id), 120),
+                      ),
+                    ],
+                  )
                 }),
               )
             },
@@ -2039,14 +2155,18 @@ fn render_overview(model : Model) -> Html {
                   div(
                     class="runs-list",
                     preview_items(snapshot.nodes, 4).map(fn(node) {
-                      article(class="artifact-card", [
-                        p(class="node-title", node.title),
-                        div([render_status_badge(node.status)]),
-                        p(
-                          class="muted",
-                          preview_text(node.summary.unwrap_or(node.id), 120),
-                        ),
-                      ])
+                      button(
+                        class="run-card",
+                        on_click=@nav.push_url("/acp?focus=\{node.id}"),
+                        [
+                          p(class="node-title", node.title),
+                          div([render_status_badge(node.status)]),
+                          p(
+                            class="muted",
+                            preview_text(node.summary.unwrap_or(node.id), 120),
+                          ),
+                        ],
+                      )
                     }),
                   )
                 }
@@ -2054,6 +2174,7 @@ fn render_overview(model : Model) -> Html {
             },
           ]),
         ]),
+        render_mixed_relationships(model.snapshot, model.acp_snapshot),
       ]),
     ]),
   ])
@@ -3628,7 +3749,7 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
         "layout"
       },
       match route_surface(model.route) {
-        SurfaceOverview => [render_overview(model)]
+        SurfaceOverview => [render_overview(dispatch, model)]
         SurfaceJobs =>
           [
             render_runs_panel(dispatch, model),
