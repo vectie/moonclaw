@@ -19,6 +19,20 @@ import {
 // Errors
 
 // Types and methods
+pub(all) struct AcpRunPayload {
+  run : @acp.AcpRun
+}
+pub impl Show for AcpRunPayload
+pub impl ToJson for AcpRunPayload
+pub impl @json.FromJson for AcpRunPayload
+
+pub(all) struct AcpRunsPayload {
+  runs : Array[@acp.AcpRun]
+}
+pub impl Show for AcpRunsPayload
+pub impl ToJson for AcpRunsPayload
+pub impl @json.FromJson for AcpRunsPayload
+
 pub(all) struct AcpSessionMutationPayload {
   status : String
   session : @acp.AcpSession
@@ -37,6 +51,7 @@ pub impl @json.FromJson for AcpSessionPayload
 pub(all) struct AcpSessionRunPayload {
   status : String
   session : @acp.AcpSession
+  run : @acp.AcpRun
   accepted : @protocol.AgentAcceptedPayload
   target : @acp.AcpTarget
   plan : @acp.AcpLaunchPlan
@@ -99,6 +114,7 @@ pub async fn Client::create_acp_session(Self, target_id~ : String, session_key~ 
 pub async fn Client::create_job(Self, @job.JobDefinition) -> Result[JobMutationPayload, String]
 pub async fn Client::create_memory(Self, @job.MemoryWriteRequest) -> Result[MemoryMutationPayload, String]
 pub async fn Client::force_cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
+pub async fn Client::get_acp_run(Self, run_id~ : String) -> Result[AcpRunPayload, String]
 pub async fn Client::get_acp_session(Self, session_id~ : String) -> Result[AcpSessionPayload, String]
 pub async fn Client::get_acp_target(Self, target_id~ : String) -> Result[AcpTargetPayload, String]
 pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]
@@ -111,6 +127,7 @@ pub async fn Client::get_plugin(Self, plugin_id~ : String) -> Result[@plugin.Plu
 pub async fn Client::get_run(Self, run_id~ : String) -> Result[RunInfo, String]
 pub async fn Client::get_workspace(Self) -> Result[WorkspacePayload, String]
 pub async fn Client::health(Self) -> Result[@protocol.HealthPayload, String]
+pub async fn Client::list_acp_runs(Self) -> Result[AcpRunsPayload, String]
 pub async fn Client::list_acp_sessions(Self) -> Result[AcpSessionsPayload, String]
 pub async fn Client::list_acp_targets(Self) -> Result[AcpTargetsPayload, String]
 pub async fn Client::list_channels(Self) -> Result[ChannelsListPayload, String]

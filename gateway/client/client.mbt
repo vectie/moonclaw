@@ -84,9 +84,20 @@ pub(all) struct AcpSessionMutationPayload {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct AcpRunsPayload {
+  runs : Array[@acp.AcpRun]
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct AcpRunPayload {
+  run : @acp.AcpRun
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct AcpSessionRunPayload {
   status : String
   session : @acp.AcpSession
+  run : @acp.AcpRun
   accepted : @protocol.AgentAcceptedPayload
   target : @acp.AcpTarget
   plan : @acp.AcpLaunchPlan
@@ -587,6 +598,41 @@ pub async fn Client::reset_acp_session(
     "ACP session reset failed with unknown error",
     "Missing ACP session reset payload",
     "Failed to parse ACP session reset payload",
+  )
+}
+
+///|
+pub async fn Client::list_acp_runs(
+  self : Client,
+) -> Result[AcpRunsPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.runs.list",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP run list failed with unknown error",
+    "Missing ACP runs payload",
+    "Failed to parse ACP runs payload",
+  )
+}
+
+///|
+pub async fn Client::get_acp_run(
+  self : Client,
+  run_id~ : String,
+) -> Result[AcpRunPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.runs.get",
+    params: Some({ "run_id": run_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP run lookup failed with unknown error",
+    "Missing ACP run payload",
+    "Failed to parse ACP run payload",
   )
 }
 

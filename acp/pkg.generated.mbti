@@ -61,6 +61,24 @@ pub impl Show for AcpLaunchPlan
 pub impl ToJson for AcpLaunchPlan
 pub impl @json.FromJson for AcpLaunchPlan
 
+pub struct AcpRun {
+  id : String
+  session_id : String
+  session_key : String
+  target_id : String
+  backend : String
+  status : String
+  created_at : Int
+  updated_at : Int
+  request : Json
+  plan : Json
+  result : Json?
+  error : String?
+}
+pub impl Show for AcpRun
+pub impl ToJson for AcpRun
+pub impl @json.FromJson for AcpRun
+
 pub struct AcpRunRequest {
   message : String
   run_id : String?
@@ -77,10 +95,14 @@ pub struct AcpRuntime {
   cwd : String
   targets : Map[String, AcpTarget]
   sessions : Map[String, AcpSession]
+  runs : Map[String, AcpRun]
 }
 pub async fn AcpRuntime::delete_session(Self, String) -> AcpSession?
+pub async fn AcpRuntime::finish_run(Self, String, String, Int, result? : Json?, error? : String?) -> Result[AcpRun, String]
+pub fn AcpRuntime::get_run(Self, String) -> AcpRun?
 pub fn AcpRuntime::get_session(Self, String) -> AcpSession?
 pub fn AcpRuntime::get_target(Self, String) -> AcpTarget?
+pub fn AcpRuntime::list_runs(Self) -> Array[AcpRun]
 pub fn AcpRuntime::list_sessions(Self) -> Array[AcpSession]
 pub fn AcpRuntime::list_sessions_for_key(Self, String) -> Array[AcpSession]
 pub fn AcpRuntime::list_targets(Self) -> Array[AcpTarget]
@@ -89,6 +111,7 @@ pub async fn AcpRuntime::new(home~ : String, cwd~ : String) -> Self
 pub async fn AcpRuntime::open_session(Self, String, String, String, Int, metadata? : Json) -> Result[AcpSession, String]
 pub async fn AcpRuntime::reset_session(Self, String, Int) -> Result[AcpSession, String]
 pub async fn AcpRuntime::set_session_status(Self, String, String, Int, last_error? : String?) -> Result[AcpSession, String]
+pub async fn AcpRuntime::start_run(Self, String, AcpSession, AcpTarget, Json, Json, Int) -> AcpRun
 
 pub struct AcpSession {
   id : String

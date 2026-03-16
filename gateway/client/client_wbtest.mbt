@@ -285,6 +285,20 @@ test "decode_ok_payload parses run and channel payloads" {
     "updated_at": 2,
     "metadata": {},
   }
+  let acp_run : Json = {
+    "id": "run-acp-1",
+    "session_id": "acp-session-1",
+    "session_key": "channel:feishu:chat-1",
+    "target_id": "codex-main",
+    "backend": "codex",
+    "status": "running",
+    "created_at": 3,
+    "updated_at": 3,
+    "request": { "message": "Review repo" },
+    "plan": { "command": "codex" },
+    "result": null,
+    "error": "",
+  }
   let acp_targets_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
     id: "req-acp-targets",
     ok: true,
@@ -331,6 +345,7 @@ test "decode_ok_payload parses run and channel payloads" {
         "updated_at": 3,
         "metadata": {},
       },
+      "run": acp_run,
       "accepted": {
         "run_id": "run-acp-1",
         "status": "accepted",
@@ -358,6 +373,18 @@ test "decode_ok_payload parses run and channel payloads" {
         "metadata": {},
       },
     }),
+    error: None,
+  })
+  let acp_runs_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-runs",
+    ok: true,
+    payload: Some({ "runs": [acp_run] }),
+    error: None,
+  })
+  let acp_run_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-run",
+    ok: true,
+    payload: Some({ "run": acp_run }),
     error: None,
   })
 
@@ -419,6 +446,12 @@ test "decode_ok_payload parses run and channel payloads" {
   )
   let acp_session_run_result : Result[AcpSessionRunPayload, String] = decode_ok_payload(
     acp_session_run_response, "default", "missing", "parse failed",
+  )
+  let acp_runs_result : Result[AcpRunsPayload, String] = decode_ok_payload(
+    acp_runs_response, "default", "missing", "parse failed",
+  )
+  let acp_run_result : Result[AcpRunPayload, String] = decode_ok_payload(
+    acp_run_response, "default", "missing", "parse failed",
   )
   let ask : @job.ChatAnswer = match ask_result {
     Ok(value) => value
@@ -483,6 +516,14 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let acp_runs_payload : AcpRunsPayload = match acp_runs_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let acp_run_payload : AcpRunPayload = match acp_run_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
 
   inspect(runs.runs.length(), content="1")
   inspect(runs.runs[0].run_id, content="run-1")
@@ -510,8 +551,11 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(acp_session_payload.session.id, content="acp-session-1")
   inspect(acp_session_mutation_payload.status, content="attached")
   inspect(acp_session_run_payload.accepted.run_id, content="run-acp-1")
+  inspect(acp_session_run_payload.run.id, content="run-acp-1")
   inspect(acp_session_run_payload.session.status, content="running")
   inspect(acp_session_run_payload.plan.command.unwrap_or(""), content="codex")
+  inspect(acp_runs_payload.runs[0].id, content="run-acp-1")
+  inspect(acp_run_payload.run.backend, content="codex")
 }
 
 ///|

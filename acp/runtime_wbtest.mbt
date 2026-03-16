@@ -104,3 +104,46 @@ async test "ACP runtime lists and deletes sessions for a bound session key" {
   )
   inspect(runtime.list_sessions_for_key("session:1").length(), content="1")
 }
+
+///|
+async test "ACP runtime persists run lifecycle" {
+  let dir = "/tmp/moonclaw-acp-runtime-runs"
+  @fsx.make_directory(dir, recursive=true)
+  @fsx.write_to_file(
+    @path.Path(dir).join(@path.Path("moonclaw.json")).to_string(),
+    ({ "acp": { "targets": { "codex-main": { "backend": "codex" } } } } : Json).stringify(),
+  )
+  let runtime = AcpRuntime::new(home=dir, cwd=dir)
+  let session = match
+    runtime.open_session("acp-session-1", "codex-main", "session:1", 100) {
+    Ok(session) => session
+    Err(error) => fail(error)
+  }
+  let target = runtime.get_target("codex-main").unwrap()
+  let run = runtime.start_run(
+    "acp-run-1",
+    session,
+    target,
+    { "message": "hello" },
+    { "command": "codex" },
+    120,
+  )
+  inspect(run.status, content="running")
+  let finished = match
+    runtime.finish_run(
+      "acp-run-1",
+      "completed",
+      180,
+      result=Some(({ "content": "done" } : Json)),
+    ) {
+    Ok(run) => run
+    Err(error) => fail(error)
+  }
+  inspect(finished.status, content="completed")
+  let reloaded = AcpRuntime::new(home=dir, cwd=dir)
+  inspect(reloaded.list_runs().length(), content="1")
+  inspect(
+    reloaded.get_run("acp-run-1").map(fn(run) { run.status }).unwrap_or(""),
+    content="completed",
+  )
+}

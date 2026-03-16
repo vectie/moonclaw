@@ -170,6 +170,18 @@ async fn Gateway::run_bound_acp_session(
   ignore(
     self
     .acp_runtime()
+    .start_run(
+      run_id,
+      session,
+      target,
+      request.to_json(),
+      launch.to_json(),
+      current_time_ms(),
+    ),
+  )
+  ignore(
+    self
+    .acp_runtime()
     .set_session_status(session.id, "running", current_time_ms()),
   )
   match @acp.execute_launch_plan(launch, request) {
@@ -178,6 +190,11 @@ async fn Gateway::run_bound_acp_session(
         self
         .acp_runtime()
         .set_session_status(session.id, "attached", current_time_ms()),
+      )
+      ignore(
+        self
+        .acp_runtime()
+        .finish_run(run_id, "completed", current_time_ms(), result=Some(result)),
       )
       Ok(acp_result_content(result))
     }
@@ -191,6 +208,11 @@ async fn Gateway::run_bound_acp_session(
           current_time_ms(),
           last_error=Some(error),
         ),
+      )
+      ignore(
+        self
+        .acp_runtime()
+        .finish_run(run_id, "failed", current_time_ms(), error=Some(error)),
       )
       Err(error)
     }

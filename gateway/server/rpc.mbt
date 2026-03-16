@@ -169,6 +169,8 @@ async fn Gateway::handle_request_frame(
     "acp.sessions.create" => self.handle_acp_sessions_create_method(request, w)
     "acp.sessions.reset" => self.handle_acp_sessions_reset_method(request, w)
     "acp.sessions.run" => self.handle_acp_sessions_run_method(request, w)
+    "acp.runs.list" => self.handle_acp_runs_list_method(request, w)
+    "acp.runs.get" => self.handle_acp_runs_get_method(request, w)
     _ =>
       self.send_response(w, @protocol.Response::{
         id: request.id,

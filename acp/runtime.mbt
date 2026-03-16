@@ -27,8 +27,25 @@ pub struct AcpSession {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub struct AcpRun {
+  id : String
+  session_id : String
+  session_key : String
+  target_id : String
+  backend : String
+  status : String
+  created_at : Int
+  updated_at : Int
+  request : Json
+  plan : Json
+  result : Json?
+  error : String?
+} derive(ToJson, FromJson, Show)
+
+///|
 struct PersistedAcpState {
   sessions : Array[AcpSession]
+  runs : Array[AcpRun]?
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -37,6 +54,7 @@ pub struct AcpRuntime {
   cwd : String
   targets : Map[String, AcpTarget]
   sessions : Map[String, AcpSession]
+  runs : Map[String, AcpRun]
 }
 
 ///|
@@ -192,14 +210,26 @@ async fn load_persisted_sessions(home : String) -> Array[AcpSession] {
 }
 
 ///|
+async fn load_persisted_runs(home : String) -> Array[AcpRun] {
+  let path = acp_state_path(home)
+  let exists = @fsx.exists(path) catch { _ => false }
+  guard exists else { return [] }
+  let text = @fsx.read_file(path) catch { _ => return [] }
+  let json = @json.parse(text) catch { _ => return [] }
+  let state : PersistedAcpState = @json.from_json(json) catch { _ => return [] }
+  state.runs.unwrap_or([])
+}
+
+///|
 async fn save_persisted_sessions(
   home : String,
   sessions : Array[AcpSession],
+  runs : Array[AcpRun],
 ) -> Unit {
   ensure_acp_state_parent(home)
   @fsx.write_to_file(
     acp_state_path(home),
-    PersistedAcpState::{ sessions, }.to_json().stringify(),
+    PersistedAcpState::{ sessions, runs: Some(runs) }.to_json().stringify(),
   ) catch {
     _ => ()
   }
@@ -212,7 +242,7 @@ fn session_identity_key(target_id : String, session_key : String) -> String {
 
 ///|
 pub async fn AcpRuntime::new(home~ : String, cwd~ : String) -> AcpRuntime {
-  let runtime = AcpRuntime::{ home, cwd, targets: {}, sessions: {} }
+  let runtime = AcpRuntime::{ home, cwd, targets: {}, sessions: {}, runs: {} }
   runtime.load()
   runtime
 }
@@ -221,6 +251,7 @@ pub async fn AcpRuntime::new(home~ : String, cwd~ : String) -> AcpRuntime {
 pub async fn AcpRuntime::load(self : AcpRuntime) -> Unit {
   self.targets.clear()
   self.sessions.clear()
+  self.runs.clear()
   match load_acp_config(self.home, self.cwd) {
     Some(json) =>
       for target_id, target in load_targets_from_config(json) {
@@ -231,11 +262,18 @@ pub async fn AcpRuntime::load(self : AcpRuntime) -> Unit {
   for session in load_persisted_sessions(self.home) {
     self.sessions[session.id] = session
   }
+  for run in load_persisted_runs(self.home) {
+    self.runs[run.id] = run
+  }
 }
 
 ///|
 async fn AcpRuntime::persist_sessions(self : AcpRuntime) -> Unit {
-  save_persisted_sessions(self.home, self.sessions.values().to_array())
+  save_persisted_sessions(
+    self.home,
+    self.sessions.values().to_array(),
+    self.runs.values().to_array(),
+  )
 }
 
 ///|
@@ -279,6 +317,79 @@ pub fn AcpRuntime::list_sessions_for_key(
     .to_array()
   sessions.sort_by(fn(left, right) { right.updated_at.compare(left.updated_at) })
   sessions
+}
+
+///|
+pub fn AcpRuntime::list_runs(self : AcpRuntime) -> Array[AcpRun] {
+  let runs = self.runs.values().to_array()
+  runs.sort_by(fn(left, right) { right.updated_at.compare(left.updated_at) })
+  runs
+}
+
+///|
+pub fn AcpRuntime::get_run(self : AcpRuntime, run_id : String) -> AcpRun? {
+  self.runs.get(run_id)
+}
+
+///|
+pub async fn AcpRuntime::start_run(
+  self : AcpRuntime,
+  run_id : String,
+  session : AcpSession,
+  target : AcpTarget,
+  request : Json,
+  plan : Json,
+  now : Int,
+) -> AcpRun {
+  let run = AcpRun::{
+    id: run_id,
+    session_id: session.id,
+    session_key: session.session_key,
+    target_id: target.id,
+    backend: target.backend,
+    status: "running",
+    created_at: now,
+    updated_at: now,
+    request,
+    plan,
+    result: None,
+    error: None,
+  }
+  self.runs[run.id] = run
+  self.persist_sessions()
+  run
+}
+
+///|
+pub async fn AcpRuntime::finish_run(
+  self : AcpRuntime,
+  run_id : String,
+  status : String,
+  now : Int,
+  result? : Json?,
+  error? : String?,
+) -> Result[AcpRun, String] {
+  match self.runs.get(run_id) {
+    Some(run) => {
+      let updated = AcpRun::{
+        ..run,
+        status,
+        updated_at: now,
+        result: match result {
+          Some(result) => result
+          None => run.result
+        },
+        error: match error {
+          Some(error) => error
+          None => run.error
+        },
+      }
+      self.runs[run_id] = updated
+      self.persist_sessions()
+      Ok(updated)
+    }
+    None => Err("Unknown ACP run: \{run_id}")
+  }
 }
 
 ///|

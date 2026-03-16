@@ -19,6 +19,7 @@ pub(all) struct AcpSessionRunParams {
 ///|
 async fn Gateway::execute_acp_agent_async(
   self : Gateway,
+  run_id : String,
   session_id : String,
   launch : @acp.AcpLaunchPlan,
   request : @acp.AcpRunRequest,
@@ -37,6 +38,11 @@ async fn Gateway::execute_acp_agent_async(
         self
         .acp_runtime()
         .set_session_status(session_id, "attached", current_time_ms()),
+      )
+      ignore(
+        self
+        .acp_runtime()
+        .finish_run(run_id, "completed", current_time_ms(), result=Some(output)),
       )
     }
     Err(error) => {
@@ -62,6 +68,11 @@ async fn Gateway::execute_acp_agent_async(
           current_time_ms(),
           last_error=Some(error),
         ),
+      )
+      ignore(
+        self
+        .acp_runtime()
+        .finish_run(run_id, "failed", current_time_ms(), error=Some(error)),
       )
     }
   }
@@ -249,6 +260,100 @@ async fn Gateway::handle_acp_sessions_get_method(
         error: Some(@protocol.ErrorShape::{
           code: "session_not_found",
           message: "ACP session not found: \{session_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_acp_runs_list_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let runs = self.acp_runtime().list_runs()
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({ "runs": runs.map(fn(run) { run.to_json() }) }),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_acp_runs_get_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params = match request.params {
+    Some(params) => params
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "missing_params",
+          message: "Missing run_id parameter",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  let run_id = match params {
+    String(id) => id
+    Object(obj) =>
+      match obj.get("run_id") {
+        Some(String(id)) => id
+        _ =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(@protocol.ErrorShape::{
+              code: "missing_run_id",
+              message: "Missing run_id in params",
+              details: None,
+              retryable: None,
+              retry_after_ms: None,
+            }),
+          })
+      }
+    _ =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "invalid_params",
+          message: "Invalid ACP run lookup parameters",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  match self.acp_runtime().get_run(run_id) {
+    Some(run) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some({ "run": run.to_json() }),
+        error: None,
+      })
+    None =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "run_not_found",
+          message: "ACP run not found: \{run_id}",
           details: None,
           retryable: None,
           retry_after_ms: None,
@@ -542,6 +647,16 @@ async fn Gateway::handle_acp_sessions_run_method(
     cwd?=params.cwd,
     idempotency_key~,
   )
+  let acp_run = self
+    .acp_runtime()
+    .start_run(
+      run_id,
+      session,
+      target,
+      run_request.to_json(),
+      launch.to_json(),
+      current_time_ms(),
+    )
   let updated_session = match
     self
     .acp_runtime()
@@ -560,6 +675,7 @@ async fn Gateway::handle_acp_sessions_run_method(
     payload: Some({
       "status": "accepted",
       "session": updated_session.to_json(),
+      "run": acp_run.to_json(),
       "accepted": accepted.to_json(),
       "target": target.to_json(),
       "plan": launch.to_json(),
@@ -569,6 +685,7 @@ async fn Gateway::handle_acp_sessions_run_method(
   @async.with_task_group(group => {
     group.spawn_bg(() => {
       self.execute_acp_agent_async(
+        run_id,
         session.id,
         launch,
         run_request,
@@ -640,6 +757,18 @@ async fn Gateway::handle_list_acp_sessions(
 }
 
 ///|
+async fn Gateway::handle_list_acp_runs(
+  self : Gateway,
+  _r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let runs = self.acp_runtime().list_runs()
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(({ "runs": runs.map(fn(run) { run.to_json() }) } : Json).stringify())
+}
+
+///|
 async fn Gateway::handle_get_acp_session(
   self : Gateway,
   r : @httpx.RequestReader,
@@ -667,6 +796,39 @@ async fn Gateway::handle_get_acp_session(
         "error": {
           "code": "session_not_found",
           "message": "ACP session not found: \{session_id}",
+        },
+      })
+  }
+}
+
+///|
+async fn Gateway::handle_get_acp_run(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let run_id = match paths {
+    ["", "v1", "acp", "runs", id] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_run_id",
+          "message": "Missing ACP run id in path",
+        },
+      })
+  }
+  match self.acp_runtime().get_run(run_id) {
+    Some(run) => {
+      w.header().set("Content-Type", "application/json")
+      w.write_header(200)
+      w.write(({ "run": run.to_json() } : Json).stringify())
+    }
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "run_not_found",
+          "message": "ACP run not found: \{run_id}",
         },
       })
   }
