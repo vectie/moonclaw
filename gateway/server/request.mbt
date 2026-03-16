@@ -13,6 +13,12 @@ pub async fn Gateway::handle_request(
       (Get, ["", "ui"]) => self.handle_operator_ui(r, w, [])
       (Get, ["", "ui", .. rest]) =>
         self.handle_operator_ui(r, w, rest.map(fn(part) { part.to_string() }))
+      (Get, ["", "assets", .. rest]) =>
+        self.handle_operator_ui(
+          r,
+          w,
+          ["assets", ..rest.map(fn(part) { part.to_string() })],
+        )
       (Get, ["", "health"]) => self.handle_health(r, w)
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
       (Get, ["", "v1", "runs"]) => self.handle_list_runs(r, w)
