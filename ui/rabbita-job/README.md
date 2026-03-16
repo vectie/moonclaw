@@ -27,7 +27,7 @@ npm run build
 Then start the gateway and open:
 
 ```bash
-~/.moon/bin/moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~/.moonclaw --cwd /Users/kq/Workspace/moonclaw
+moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~/.moonclaw --cwd /Users/kq/Workspace/moonclaw
 ```
 
 ```text
@@ -36,9 +36,10 @@ http://localhost:18123/ui
 
 The gateway serves the built bundle from `ui/rabbita-job/dist`. It first checks
 the gateway `--cwd`, then falls back to the MoonClaw repo's own
-`ui/rabbita-job/dist` when the gateway is serving another workspace. If the
-bundle has not been built yet, `/ui` returns a small HTML page explaining how
-to build it.
+`ui/rabbita-job/dist` when the gateway is serving another workspace. It also
+serves the bundle's root-level `/assets/...` files so the built app can load
+correctly from `/ui`. If the bundle has not been built yet, `/ui` returns a
+small HTML page explaining how to build it.
 
 Important: `ui/rabbita-job` is its own MoonBit module. If you run
 `moon run cmd/main -- ...` from inside this directory, Moon will fail because

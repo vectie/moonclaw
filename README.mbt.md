@@ -78,19 +78,19 @@ cd ~/Workspace/moonclaw
 Run onboarding status:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- onboard status --home ~/.moonclaw
+moon run cmd/main -- onboard status --home ~/.moonclaw
 ```
 
 Use Codex OAuth and switch the primary model automatically:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- onboard auth codex --home ~/.moonclaw
+moon run cmd/main -- onboard auth codex --home ~/.moonclaw
 ```
 
 Configure Feishu:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- onboard configure \
+moon run cmd/main -- onboard configure \
   --home ~/.moonclaw \
   --enable-feishu \
   --feishu-app-id <app_id> \
@@ -100,7 +100,7 @@ Configure Feishu:
 Start the gateway:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/moonclaw
+moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/moonclaw
 ```
 
 Open the operator UI:
@@ -117,18 +117,21 @@ npm install
 npm run build
 ```
 
+The gateway serves the bundle at `/ui` and also serves the built `/assets/...`
+files that the bundle references.
+
 ## 🧭 Onboarding Flow
 
 Useful onboarding commands:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- onboard status --home ~/.moonclaw
-~/.moon/bin/moon run cmd/main -- onboard auth status --home ~/.moonclaw
-~/.moon/bin/moon run cmd/main -- onboard auth codex --home ~/.moonclaw
-~/.moon/bin/moon run cmd/main -- onboard auth copilot --home ~/.moonclaw
-~/.moon/bin/moon run cmd/main -- onboard models --home ~/.moonclaw
-~/.moon/bin/moon run cmd/main -- onboard switch codex --home ~/.moonclaw
-~/.moon/bin/moon run cmd/main -- onboard print-config --home ~/.moonclaw
+moon run cmd/main -- onboard status --home ~/.moonclaw
+moon run cmd/main -- onboard auth status --home ~/.moonclaw
+moon run cmd/main -- onboard auth codex --home ~/.moonclaw
+moon run cmd/main -- onboard auth copilot --home ~/.moonclaw
+moon run cmd/main -- onboard models --home ~/.moonclaw
+moon run cmd/main -- onboard switch codex --home ~/.moonclaw
+moon run cmd/main -- onboard print-config --home ~/.moonclaw
 ```
 
 Current behavior:
@@ -177,13 +180,13 @@ Exports currently include:
 Run local chat:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- interactive
+moon run cmd/main -- interactive
 ```
 
 Run the terminal UI:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- tui
+moon run cmd/main -- tui
 ```
 
 ## 📚 Docs
@@ -209,10 +212,10 @@ MoonClaw is a MoonBit project.
 Useful commands:
 
 ```bash
-~/.moon/bin/moon check
-~/.moon/bin/moon test
-~/.moon/bin/moon info
-~/.moon/bin/moon fmt
+moon check
+moon test
+moon info
+moon fmt
 ```
 
 ## 💡 Positioning
