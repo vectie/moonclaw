@@ -111,6 +111,7 @@ Current capabilities:
 - keep unrelated config while merging the new target
 - support multiple ACP targets by explicit id
 - show whether Codex credentials are already available
+- use an absolute `command` path from `which codex` if the gateway environment resolves a different `codex` binary than your shell
 
 #### `onboard`
 

@@ -183,6 +183,27 @@ Current ACP behavior:
 - if `agents.defaults.workspace` is configured, `acp add codex` uses it as the default ACP workspace
 - if `agents.defaults.cwd` is configured, `acp add codex` uses it as the default ACP cwd
 - the command preserves unrelated config and only writes the target entry it manages
+- if ACP can attach but `codex exec "<prompt>"` fails only from the gateway, pin `acp.targets.<id>.command` to the absolute path from `which codex`
+
+Example:
+
+```bash
+which codex
+```
+
+Then set the ACP target command in `~/.moonclaw/moonclaw.json` to that exact path, for example:
+
+```json
+{
+  "acp": {
+    "targets": {
+      "codex-main": {
+        "command": "/absolute/path/to/codex"
+      }
+    }
+  }
+}
+```
 
 ## 🪽 Feishu Usage
 
