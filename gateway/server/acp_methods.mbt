@@ -1344,6 +1344,102 @@ async fn Gateway::handle_reset_acp_session(
 }
 
 ///|
+async fn Gateway::handle_detach_acp_session(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let session_id = match paths {
+    ["", "v1", "acp", "sessions", id, "detach"] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_session_id",
+          "message": "Missing ACP session id in path",
+        },
+      })
+  }
+  let session = match self.acp_runtime().get_session(session_id) {
+    Some(session) => session
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "session_not_found",
+          "message": "ACP session not found: \{session_id}",
+        },
+      })
+  }
+  match self.active_acp_run_for_session(session.id) {
+    Some(run) =>
+      match self.cancel_active_acp_run(run.id) {
+        Err(error) =>
+          raise json_error(400, "BadRequest", {
+            "error": { "code": "detach_failed", "message": error },
+          })
+        Ok(false) =>
+          raise json_error(400, "BadRequest", {
+            "error": {
+              "code": "run_not_local",
+              "message": "ACP run is not active in this gateway process: \{run.id}",
+            },
+          })
+        Ok(true) => {
+          let updated = match
+            self
+            .acp_runtime()
+            .set_session_status(
+              session.id,
+              "detaching",
+              current_time_ms(),
+              last_error=Some("ACP session detach requested."),
+            ) {
+            Ok(updated) => updated
+            Err(_) => session
+          }
+          ignore(
+            self
+            .acp_runtime()
+            .finish_run(
+              run.id,
+              "cancelling",
+              current_time_ms(),
+              error=Some("ACP session detach requested."),
+            ),
+          )
+          w.header().set("Content-Type", "application/json")
+          w.write_header(200)
+          w.write(
+            (
+              {
+                "status": "detaching",
+                "session": updated.to_json(),
+                "run": run.to_json(),
+              } : Json).stringify(),
+          )
+        }
+      }
+    None =>
+      match self.acp_runtime().delete_session(session.id) {
+        Some(removed) => {
+          w.header().set("Content-Type", "application/json")
+          w.write_header(200)
+          w.write(
+            ({ "status": "detached", "session": removed.to_json() } : Json).stringify(),
+          )
+        }
+        None =>
+          raise json_error(404, "NotFound", {
+            "error": {
+              "code": "session_not_found",
+              "message": "ACP session not found: \{session_id}",
+            },
+          })
+      }
+  }
+}
+
+///|
 async fn Gateway::handle_run_acp_session(
   self : Gateway,
   r : @httpx.RequestReader,

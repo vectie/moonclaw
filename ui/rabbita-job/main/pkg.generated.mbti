@@ -36,6 +36,10 @@ type AcpUiTimelineEntry
 pub impl Show for AcpUiTimelineEntry
 pub impl @json.FromJson for AcpUiTimelineEntry
 
+type BrowserPostResult
+pub impl Show for BrowserPostResult
+pub impl @json.FromJson for BrowserPostResult
+
 type Model
 
 type Msg

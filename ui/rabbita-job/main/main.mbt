@@ -247,6 +247,8 @@ struct Model {
   selected_acp_node_id : String?
   fresh_acp_node_ids : Array[String]
   fresh_acp_timeline_ids : Array[String]
+  acp_run_message : String
+  acp_action_notice : String?
 }
 
 ///|
@@ -264,6 +266,13 @@ enum Msg {
   PollAcp
   AcpSnapshotLoaded(Result[AcpUiSnapshot, String])
   AcpEventsLoaded(Result[Array[AcpUiTimelineEntry], String])
+  SetAcpRunMessage(String)
+  AttachAcpTarget(String)
+  DetachAcpSession(String)
+  ResetAcpSession(String)
+  StartAcpRun(String)
+  CancelAcpRun(String)
+  AcpActionFinished(Result[String, String])
   ExpandActiveBranches
   CollapseCompletedBranches
   ResetTree
@@ -335,6 +344,8 @@ fn init_model() -> Model {
     selected_acp_node_id: None,
     fresh_acp_node_ids: [],
     fresh_acp_timeline_ids: [],
+    acp_run_message: "",
+    acp_action_notice: None,
   }
 }
 
@@ -700,6 +711,79 @@ fn parse_acp_events_payload(
 }
 
 ///|
+fn parse_action_status_payload(text : String) -> Result[String, String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  match json {
+    Ok({ "status": String(status), .. }) => Ok(status)
+    Ok({ "error": { "message": String(message), .. }, .. }) => Err(message)
+    Ok({ "error": String(message), .. }) => Err(message)
+    Ok(_) => Ok("ok")
+    Err(error) => Err("Failed to parse ACP action response: \{error}")
+  }
+}
+
+///|
+struct BrowserPostResult {
+  ok : Bool
+  status : Int
+  body : String
+  error : String?
+} derive(FromJson, Show)
+
+///|
+#cfg(target="js")
+extern "js" fn browser_post_json(url : String, body : String) -> String =
+  #| async (url, body) => {
+  #|   try {
+  #|     const response = await fetch(url, {
+  #|       method: "POST",
+  #|       headers: { "Content-Type": "application/json" },
+  #|       body,
+  #|     });
+  #|     const text = await response.text();
+  #|     return JSON.stringify({
+  #|       ok: response.ok,
+  #|       status: response.status,
+  #|       body: text,
+  #|       error: null,
+  #|     });
+  #|   } catch (error) {
+  #|     return JSON.stringify({
+  #|       ok: false,
+  #|       status: 0,
+  #|       body: "",
+  #|       error: String(error),
+  #|     });
+  #|   }
+  #| }
+
+///|
+fn parse_browser_post_result(text : String) -> Result[String, String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  let payload = match json {
+    Ok(json) =>
+      match (try? @json.from_json(json) : Result[BrowserPostResult, Error]) {
+        Ok(payload) => payload
+        Err(error) =>
+          return Err("Failed to parse browser post result: \{error}")
+      }
+    Err(error) => return Err("Failed to parse browser post wrapper: \{error}")
+  }
+  match payload.error {
+    Some(error) => Err(error)
+    None =>
+      if payload.ok {
+        parse_action_status_payload(payload.body)
+      } else {
+        match parse_action_status_payload(payload.body) {
+          Ok(status) => Err("Request failed (\{payload.status}): \{status}")
+          Err(error) => Err("Request failed (\{payload.status}): \{error}")
+        }
+      }
+  }
+}
+
+///|
 struct StreamDrainPayload {
   entries : Array[String]
   closed : Bool
@@ -798,6 +882,17 @@ fn fetch_acp_timeline(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
     parse_acp_events_payload,
   )
   @http.get("\{gateway_base}/v1/acp/events", expect~)
+}
+
+///|
+fn post_action(
+  dispatch : Dispatch[Msg],
+  url : String,
+  body? : Json = {},
+) -> Cmd {
+  @rabbita.perform(fn(result) { dispatch(AcpActionFinished(result)) }, fn() noraise {
+    parse_browser_post_result(browser_post_json(url, body.stringify()))
+  })
 }
 
 ///|
@@ -1625,6 +1720,66 @@ fn render_stdio_preview(label : String, value : String?) -> Html {
 }
 
 ///|
+fn render_acp_action_bar(
+  dispatch : Dispatch[Msg],
+  model : Model,
+  node : AcpUiNode,
+) -> Html {
+  div(
+    class="tree-controls",
+    match node.kind {
+      Target =>
+        match node.target_id {
+          Some(target_id) =>
+            [
+              button(
+                class="tree-control-button active-filter",
+                on_click=dispatch(AttachAcpTarget(target_id)),
+                "Attach",
+              ),
+            ]
+          None => []
+        }
+      Session =>
+        match node.session_id {
+          Some(session_id) =>
+            [
+              button(
+                class="tree-control-button",
+                on_click=dispatch(ResetAcpSession(session_id)),
+                "Reset",
+              ),
+              button(
+                class="tree-control-button",
+                on_click=dispatch(DetachAcpSession(session_id)),
+                "Detach",
+              ),
+              button(
+                class="tree-control-button active-filter",
+                disabled=model.acp_run_message.trim().is_blank(),
+                on_click=dispatch(StartAcpRun(session_id)),
+                "Run",
+              ),
+            ]
+          None => []
+        }
+      Run =>
+        match node.run_id {
+          Some(run_id) =>
+            [
+              button(
+                class="tree-control-button",
+                on_click=dispatch(CancelAcpRun(run_id)),
+                "Cancel Run",
+              ),
+            ]
+          None => []
+        }
+    },
+  )
+}
+
+///|
 fn render_acp_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
   match model.acp_snapshot {
     Some(snapshot) =>
@@ -1661,8 +1816,30 @@ fn render_acp_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
                   } else {
                     nothing
                   },
+                  match model.acp_action_notice {
+                    Some(notice) =>
+                      div(class="refresh-banner", [
+                        p(class="kv-label", "ACP Action"),
+                        p(class="timeline-detail", notice),
+                      ])
+                    None => nothing
+                  },
                   div(class="detail-grid", [
                     section([
+                      if node.kind == Session {
+                        div(class="runs-controls", [
+                          input(
+                            class="runs-search-input",
+                            placeholder="Message for remote ACP run",
+                            value=model.acp_run_message,
+                            on_input=value => dispatch(SetAcpRunMessage(value)),
+                            nothing,
+                          ),
+                          render_acp_action_bar(dispatch, model, node),
+                        ])
+                      } else {
+                        render_acp_action_bar(dispatch, model, node)
+                      },
                       h3(class="section-title", "Remote Timeline"),
                       render_acp_timeline(dispatch, model, related),
                     ]),
@@ -1697,7 +1874,7 @@ fn render_acp_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
 }
 
 ///|
-fn render_acp_inspector(model : Model) -> Html {
+fn render_acp_inspector(dispatch : Dispatch[Msg], model : Model) -> Html {
   match model.acp_snapshot {
     Some(snapshot) =>
       match resolved_acp_node_id(model, snapshot) {
@@ -1723,6 +1900,7 @@ fn render_acp_inspector(model : Model) -> Html {
                   p(class="node-kind", acp_kind_label(node.kind)),
                   p(class="node-title", node.title),
                   div([render_status_badge(node.status)]),
+                  render_acp_action_bar(dispatch, model, node),
                   match node.detail {
                     Some(detail) => p(class="mono", detail)
                     None => nothing
@@ -3475,7 +3653,7 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
           [
             render_acp_panel(dispatch, model),
             render_acp_detail(dispatch, model),
-            render_acp_inspector(model),
+            render_acp_inspector(dispatch, model),
           ]
       },
     ),
@@ -3642,6 +3820,80 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       )
     AcpEventsLoaded(Err(error)) =>
       (@rabbita.none, { ..model, acp_error: Some(error), acp_loading: false })
+    SetAcpRunMessage(message) =>
+      (@rabbita.none, { ..model, acp_run_message: message })
+    AttachAcpTarget(target_id) =>
+      (
+        post_action(dispatch, "\{model.gateway_base}/v1/acp/sessions", body={
+          "target_id": target_id,
+          "session_key": "ui:acp:\{target_id}",
+        }),
+        {
+          ..model,
+          acp_action_notice: Some("Attaching ACP target \{target_id}..."),
+        },
+      )
+    DetachAcpSession(session_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/sessions/\{session_id}/detach",
+        ),
+        {
+          ..model,
+          acp_action_notice: Some("Detaching ACP session \{session_id}..."),
+        },
+      )
+    ResetAcpSession(session_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/sessions/\{session_id}/reset",
+        ),
+        {
+          ..model,
+          acp_action_notice: Some("Resetting ACP session \{session_id}..."),
+        },
+      )
+    StartAcpRun(session_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/sessions/\{session_id}/run",
+          body={ "message": model.acp_run_message },
+        ),
+        { ..model, acp_action_notice: Some("Starting remote ACP run...") },
+      )
+    CancelAcpRun(run_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/runs/\{run_id}/cancel",
+        ),
+        { ..model, acp_action_notice: Some("Cancelling ACP run \{run_id}...") },
+      )
+    AcpActionFinished(Ok(status)) =>
+      (
+        batch([dispatch(LoadAcp)]),
+        {
+          ..model,
+          acp_action_notice: Some("ACP action completed: \{status}"),
+          acp_run_message: if status == "accepted" {
+            ""
+          } else {
+            model.acp_run_message
+          },
+        },
+      )
+    AcpActionFinished(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_action_notice: Some("ACP action failed: \{error}"),
+          acp_error: Some(error),
+        },
+      )
     SnapshotLoaded(run_id, Ok(snapshot)) =>
       if model.selected_run_id == Some(run_id) {
         let (collapsed_node_ids, expanded_node_ids) = manual_tree_state_for_snapshot(
