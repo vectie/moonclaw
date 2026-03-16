@@ -20,11 +20,11 @@ pub(all) struct AcpSessionRunParams {
 async fn Gateway::execute_acp_agent_async(
   self : Gateway,
   session_id : String,
-  run_id : String,
+  launch : @acp.AcpLaunchPlan,
+  request : @acp.AcpRunRequest,
   idempotency_key : String,
-  params : @protocol.AgentParams,
 ) -> Unit {
-  let result = self.execute_agent(run_id~, params)
+  let result = @acp.execute_launch_plan(launch, request)
   match result {
     Ok(output) => {
       self.dedupe.set(idempotency_key, DedupeEntry::{
@@ -40,11 +40,18 @@ async fn Gateway::execute_acp_agent_async(
       )
     }
     Err(error) => {
+      let error_shape = @protocol.ErrorShape::{
+        code: "acp_backend_failed",
+        message: error,
+        details: None,
+        retryable: None,
+        retry_after_ms: None,
+      }
       self.dedupe.set(idempotency_key, DedupeEntry::{
         ts: current_time_ms(),
         ok: false,
         payload: None,
-        error: Some(error),
+        error: Some(error_shape),
       })
       ignore(
         self
@@ -53,7 +60,7 @@ async fn Gateway::execute_acp_agent_async(
           session_id,
           "failed",
           current_time_ms(),
-          last_error=Some(error.message),
+          last_error=Some(error),
         ),
       )
     }
@@ -528,15 +535,13 @@ async fn Gateway::handle_acp_sessions_run_method(
         }),
       })
   }
-  let agent_params = @protocol.AgentParams::{
-    message: params.message,
-    session_key: Some(session.session_key),
-    cwd: Some(launch.cwd),
-    model: launch.model,
-    provider: None,
-    run_id: Some(run_id),
-    idempotency_key: Some(idempotency_key),
-  }
+  let run_request = @acp.new_run_request(
+    message=params.message,
+    run_id~,
+    model?=params.model,
+    cwd?=params.cwd,
+    idempotency_key~,
+  )
   let updated_session = match
     self
     .acp_runtime()
@@ -565,9 +570,9 @@ async fn Gateway::handle_acp_sessions_run_method(
     group.spawn_bg(() => {
       self.execute_acp_agent_async(
         session.id,
-        run_id,
+        launch,
+        run_request,
         idempotency_key,
-        agent_params,
       )
     })
   })

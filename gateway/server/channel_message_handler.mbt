@@ -160,21 +160,19 @@ async fn Gateway::run_bound_acp_session(
     Ok(plan) => plan
     Err(error) => return Err(error)
   }
-  let params = @protocol.AgentParams::{
-    message,
-    session_key: Some(session.session_key),
-    cwd: Some(launch.cwd),
-    model: launch.model,
-    provider: None,
-    run_id: Some(run_id),
-    idempotency_key: Some(run_id),
-  }
+  let request = @acp.new_run_request(
+    message~,
+    run_id~,
+    cwd=launch.cwd,
+    model?=launch.model,
+    idempotency_key=run_id,
+  )
   ignore(
     self
     .acp_runtime()
     .set_session_status(session.id, "running", current_time_ms()),
   )
-  match self.execute_agent(run_id~, params) {
+  match @acp.execute_launch_plan(launch, request) {
     Ok(result) => {
       ignore(
         self
@@ -191,10 +189,10 @@ async fn Gateway::run_bound_acp_session(
           session.id,
           "failed",
           current_time_ms(),
-          last_error=Some(error.message),
+          last_error=Some(error),
         ),
       )
-      Err(error.message)
+      Err(error)
     }
   }
 }

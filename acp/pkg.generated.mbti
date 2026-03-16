@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub async fn execute_launch_plan(AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
+
 pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String) -> AcpRunRequest
 
 pub fn parse_acp_chat_action(String) -> AcpChatAction?
