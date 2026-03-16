@@ -58,3 +58,33 @@ async test "execute_launch_plan reports backend failure" {
     content="backend-failed",
   )
 }
+
+///|
+test "prepare_launch_command does not mutate stored plan args" {
+  let plan = AcpLaunchPlan::{
+    backend: "codex",
+    target_id: "codex-main",
+    session_id: "acp-session-1",
+    session_key: "channel:feishu:chat-1",
+    cwd: "/tmp",
+    workspace: Some("/tmp"),
+    command: Some("codex"),
+    args: ["exec"],
+    model: Some("gpt-5"),
+    env: {},
+    metadata: {},
+  }
+  let first = match
+    prepare_launch_command(plan, new_run_request(message="first prompt")) {
+    Ok(command) => command
+    Err(error) => fail(error)
+  }
+  let second = match
+    prepare_launch_command(plan, new_run_request(message="second prompt")) {
+    Ok(command) => command
+    Err(error) => fail(error)
+  }
+  inspect(first.args.join("|"), content="exec|first prompt")
+  inspect(second.args.join("|"), content="exec|second prompt")
+  inspect(plan.args.join("|"), content="exec")
+}

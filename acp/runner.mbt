@@ -10,7 +10,7 @@ fn launch_arguments(
   plan : AcpLaunchPlan,
   request : AcpRunRequest,
 ) -> Array[String] {
-  let args = plan.args
+  let args = plan.args.map(fn(arg) { arg })
   if !request.message.trim().is_blank() {
     args.push(request.message)
   }
