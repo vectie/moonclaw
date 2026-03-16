@@ -41,7 +41,13 @@ Current surfaces:
 - mixed overview linking local and remote activity
 - artifact, workspace, memory, and ACP stdio inspection
 - managed polling refresh for active runs and ACP state
+- export surfaces for:
+  - ACP run transcripts
+  - ACP session transcripts
+  - ACP session timeline transcripts
+  - focused mixed-lineage transcripts
+  - combined case exports bundling local run, focused lineage, and linked ACP session timelines
 
 Current limitation:
 
-- local jobs stream timeline updates, but ACP still refreshes through polling
+- local jobs and ACP both use live event streams, but snapshots still refresh periodically for reconciliation

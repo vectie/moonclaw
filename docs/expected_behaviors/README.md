@@ -13,6 +13,7 @@ Use these docs when you want to answer:
 Current documents:
 
 - [chat_and_job_flow.md](chat_and_job_flow.md)
+- [operator_ui.md](operator_ui.md)
 - [workspace_and_memory.md](workspace_and_memory.md)
 - [use_cases.md](use_cases.md)
 

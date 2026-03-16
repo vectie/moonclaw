@@ -24,6 +24,7 @@ Main capabilities:
 - artifact storage and grounded artifact Q&A
 - structured long-term memory plus workspace materialization
 - research as the first built-in job family
+- Rabbita operator UI with local job, ACP remote-agent, and mixed local<->remote control surfaces
 
 This is no longer just a thin coding assistant wrapper. The main direction is:
 
@@ -116,6 +117,19 @@ Useful gateway commands:
 ~/.moon/bin/moon run cmd/main -- gateway channels
 ```
 
+Operator UI:
+
+```text
+http://localhost:4242/ui
+```
+
+The operator UI exposes:
+
+- local job expansion and inspection
+- ACP target/session/run control
+- mixed local<->remote lineage overview
+- transcript export for ACP runs, ACP sessions, ACP session timelines, focused mixed lineages, and combined cases
+
 Onboard a fresh local setup:
 
 ```bash
@@ -150,6 +164,7 @@ Behavior and operator docs:
 - [docs/expected_behaviors/chat_and_job_flow.md](docs/expected_behaviors/chat_and_job_flow.md)
 - [docs/expected_behaviors/workspace_and_memory.md](docs/expected_behaviors/workspace_and_memory.md)
 - [docs/expected_behaviors/use_cases.md](docs/expected_behaviors/use_cases.md)
+- [docs/expected_behaviors/operator_ui.md](docs/expected_behaviors/operator_ui.md)
 
 ## Development
 
