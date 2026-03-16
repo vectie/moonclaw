@@ -94,6 +94,12 @@ struct DedupeEntry {
 }
 
 ///|
+priv struct RemoteUiResolution {
+  links : Array[@job.JobUiRemoteLink]
+  handoffs : Array[@job.JobUiHandoff]
+}
+
+///|
 struct PersistedChannelAccount {
   account_id : String
   config : Json
@@ -240,4 +246,205 @@ fn Gateway::active_acp_run_for_session(
     }
   }
   None
+}
+
+///|
+fn linkage_matches_job_run(run : @job.JobRun, linkage : Json?) -> Bool {
+  match linkage {
+    Some({ "linked_job_run_id": String(linked_run_id), .. }) if linked_run_id ==
+      run.id => true
+    Some({ "linked_job_id": String(linked_job_id), .. }) if linked_job_id ==
+      run.job_id => true
+    Some({ "linked_workspace": String(linked_workspace), .. }) =>
+      match run.workspace_dir {
+        Some(workspace) => linked_workspace == workspace
+        None => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn session_linkage(session : @acp.AcpSession) -> Json? {
+  if session.metadata == ({} : Json) {
+    None
+  } else {
+    Some(session.metadata)
+  }
+}
+
+///|
+fn run_linkage(run : @acp.AcpRun) -> Json? {
+  match run.request {
+    { "metadata": metadata, .. } => Some(metadata)
+    _ => None
+  }
+}
+
+///|
+fn json_object_copy(raw : Json?) -> Map[String, Json] {
+  let copied : Map[String, Json] = {}
+  match raw {
+    Some(Object(obj)) =>
+      for key in obj.keys().to_array() {
+        match obj.get(key) {
+          Some(value) => copied[key] = value
+          None => ()
+        }
+      }
+    _ => ()
+  }
+  copied
+}
+
+///|
+fn merged_acp_linkage_metadata(
+  session_metadata : Json,
+  request_metadata : Json?,
+) -> Json? {
+  let merged = json_object_copy(request_metadata)
+  let inherited = json_object_copy(Some(session_metadata))
+  for key in inherited.keys().to_array() {
+    if merged.get(key) is None {
+      match inherited.get(key) {
+        Some(value) => merged[key] = value
+        None => ()
+      }
+    }
+  }
+  if merged.is_empty() {
+    None
+  } else {
+    Some(merged.to_json())
+  }
+}
+
+///|
+fn merged_acp_run_metadata(
+  session : @acp.AcpSession,
+  request_metadata : Json?,
+) -> Json? {
+  merged_acp_linkage_metadata(session.metadata, request_metadata)
+}
+
+///|
+fn run_result_summary(run : @acp.AcpRun) -> String? {
+  match run.result {
+    Some({ "content": String(content), .. }) if !content.trim().is_blank() =>
+      Some(content.trim().to_string())
+    Some({ "stdout": String(stdout), .. }) if !stdout.trim().is_blank() =>
+      Some(stdout.trim().to_string())
+    _ =>
+      match run.error {
+        Some(error) if !error.trim().is_blank() =>
+          Some(error.trim().to_string())
+        _ => None
+      }
+  }
+}
+
+///|
+fn linkage_node_id(linkage : Json?) -> String? {
+  match linkage {
+    Some({ "linked_job_node_id": String(node_id), .. }) => Some(node_id)
+    _ => None
+  }
+}
+
+///|
+fn linkage_step_id(linkage : Json?) -> String? {
+  match linkage {
+    Some({ "linked_job_step_id": String(step_id), .. }) => Some(step_id)
+    _ => None
+  }
+}
+
+///|
+fn append_handoff(
+  handoffs : Array[@job.JobUiHandoff],
+  link : @job.JobUiRemoteLink,
+) -> Unit {
+  let linkage = match link.metadata {
+    { "linkage": linkage, .. } => Some(linkage)
+    _ => None
+  }
+  let node_id = match linkage_node_id(linkage) {
+    Some(node_id) => node_id
+    None => return
+  }
+  let step_id = linkage_step_id(linkage)
+  for i = 0; i < handoffs.length(); i = i + 1 {
+    if handoffs[i].node_id == node_id && handoffs[i].step_id == step_id {
+      handoffs[i] = { ..handoffs[i], remote: handoffs[i].remote + [link] }
+      return
+    }
+  }
+  handoffs.push(@job.JobUiHandoff::{ node_id, step_id, remote: [link] })
+}
+
+///|
+fn Gateway::resolve_remote_ui_for_job_run(
+  self : Gateway,
+  run_id : String,
+) -> RemoteUiResolution {
+  let job_run = match self.job_runtime().store().get_run(run_id) {
+    Some(run) => run
+    None => return { links: [], handoffs: [] }
+  }
+  let links : Array[@job.JobUiRemoteLink] = []
+  let handoffs : Array[@job.JobUiHandoff] = []
+  for session in self.acp_runtime().list_sessions() {
+    if linkage_matches_job_run(job_run, session_linkage(session)) {
+      let link = @job.JobUiRemoteLink::{
+        id: "acp-session:\{session.id}",
+        kind: "acp_session",
+        title: session.id,
+        status: session.status,
+        summary: Some(session.target_id),
+        detail: match session.workspace {
+          Some(workspace) => Some(workspace)
+          None => session.cwd
+        },
+        metadata: {
+          "target_id": session.target_id,
+          "session_key": session.session_key,
+          "linkage": session.metadata,
+          "last_error": session.last_error,
+          "created_at": session.created_at,
+          "updated_at": session.updated_at,
+        },
+      }
+      links.push(link)
+      append_handoff(handoffs, link)
+    }
+  }
+  for acp_run in self.acp_runtime().list_runs() {
+    if linkage_matches_job_run(job_run, run_linkage(acp_run)) {
+      let link = @job.JobUiRemoteLink::{
+        id: "acp-run:\{acp_run.id}",
+        kind: "acp_run",
+        title: acp_run.id,
+        status: acp_run.status,
+        summary: run_result_summary(acp_run),
+        detail: match acp_run.request {
+          { "message": String(message), .. } => Some(message)
+          _ => None
+        },
+        metadata: {
+          "target_id": acp_run.target_id,
+          "session_id": acp_run.session_id,
+          "session_key": acp_run.session_key,
+          "backend": acp_run.backend,
+          "linkage": run_linkage(acp_run),
+          "result": acp_run.result,
+          "error": acp_run.error,
+          "created_at": acp_run.created_at,
+          "updated_at": acp_run.updated_at,
+        },
+      }
+      links.push(link)
+      append_handoff(handoffs, link)
+    }
+  }
+  { links, handoffs }
 }

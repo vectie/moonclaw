@@ -258,7 +258,14 @@ async fn Gateway::handle_get_job_ui(
         },
       })
   }
-  match @job.build_job_ui_snapshot(self.job_runtime().store(), run_id) {
+  let remote = self.resolve_remote_ui_for_job_run(run_id)
+  match
+    @job.build_job_ui_snapshot(
+      self.job_runtime().store(),
+      run_id,
+      linked_remote=remote.links,
+      handoffs=remote.handoffs,
+    ) {
     Some(snapshot) => {
       let result : Json = { "snapshot": snapshot.to_json() }
       w.header().set("Content-Type", "application/json")

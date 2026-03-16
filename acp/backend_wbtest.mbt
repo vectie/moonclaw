@@ -30,6 +30,7 @@ test "prepare_launch_plan builds codex defaults" {
     model: None,
     cwd: None,
     idempotency_key: None,
+    metadata: None,
   }
   let plan = match prepare_launch_plan(target, session, request) {
     Ok(plan) => plan
@@ -73,6 +74,7 @@ test "prepare_launch_plan prefers request overrides" {
     model: Some("gpt-5.1"),
     cwd: Some("/tmp/request"),
     idempotency_key: Some("idem-1"),
+    metadata: None,
   }
   let plan = match prepare_launch_plan(target, session, request) {
     Ok(plan) => plan

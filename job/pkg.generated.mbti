@@ -10,7 +10,7 @@ import {
 // Values
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
-pub async fn build_job_ui_snapshot(SystemStore, String) -> JobUiSnapshot?
+pub async fn build_job_ui_snapshot(SystemStore, String, linked_remote? : Array[JobUiRemoteLink], handoffs? : Array[JobUiHandoff]) -> JobUiSnapshot?
 
 pub fn capability_available(String) -> Bool
 
@@ -818,6 +818,15 @@ pub impl Show for JobStepRun
 pub impl ToJson for JobStepRun
 pub impl @json.FromJson for JobStepRun
 
+pub(all) struct JobUiHandoff {
+  node_id : String
+  step_id : String?
+  remote : Array[JobUiRemoteLink]
+}
+pub impl Show for JobUiHandoff
+pub impl ToJson for JobUiHandoff
+pub impl @json.FromJson for JobUiHandoff
+
 pub(all) struct JobUiNode {
   id : String
   parent_id : String?
@@ -851,6 +860,19 @@ pub impl Show for JobUiNodeKind
 pub impl ToJson for JobUiNodeKind
 pub impl @json.FromJson for JobUiNodeKind
 
+pub(all) struct JobUiRemoteLink {
+  id : String
+  kind : String
+  title : String
+  status : String
+  summary : String?
+  detail : String?
+  metadata : Json
+}
+pub impl Show for JobUiRemoteLink
+pub impl ToJson for JobUiRemoteLink
+pub impl @json.FromJson for JobUiRemoteLink
+
 pub(all) struct JobUiSnapshot {
   run : JobRun
   definition : JobDefinition
@@ -861,6 +883,8 @@ pub(all) struct JobUiSnapshot {
   child_runs : Array[JobRun]
   artifacts : Array[ArtifactRecord]
   memories : Array[MemoryRecord]
+  linked_remote : Array[JobUiRemoteLink]
+  handoffs : Array[JobUiHandoff]
   nodes : Array[JobUiNode]
   timeline : Array[JobUiTimelineEntry]
 }

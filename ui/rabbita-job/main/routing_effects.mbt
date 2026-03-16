@@ -1,0 +1,593 @@
+///|
+fn route_from_url(url : @url.Url) -> Route {
+  let path = url.path.trim().to_string()
+  let parts = path
+    .split("/")
+    .filter(fn(part) { !part.is_empty() })
+    .map(fn(part) { part.to_string() })
+    .collect()
+  if parts.is_empty() {
+    return Overview
+  }
+  match parts {
+    ["jobs"] => Jobs
+    ["runs", run_id] => Run(run_id)
+    ["acp"] => Acp
+    _ => Overview
+  }
+}
+
+///|
+fn route_surface(route : Route) -> Surface {
+  match route {
+    Overview => SurfaceOverview
+    Jobs => SurfaceJobs
+    Run(_) => SurfaceJobs
+    Acp => SurfaceAcp
+  }
+}
+
+///|
+fn query_value(url : @url.Url, key : String) -> String? {
+  match url.query {
+    Some(query) => {
+      for pair in query.split("&") {
+        match pair.split_once("=") {
+          Some((k, value)) if k == key => return Some(value.to_string())
+          _ => ()
+        }
+      }
+      None
+    }
+    None => None
+  }
+}
+
+///|
+fn panel_query_value(panel : RightPanel) -> String {
+  match panel {
+    Workspace => "workspace"
+    Artifacts => "artifacts"
+    Memory => "memory"
+  }
+}
+
+///|
+fn run_sort_query_value(sort : RunSort) -> String {
+  match sort {
+    Newest => "newest"
+    Oldest => "oldest"
+    Depth => "depth"
+  }
+}
+
+///|
+fn run_sort_from_query(value : String?) -> RunSort {
+  match value {
+    Some("oldest") => Oldest
+    Some("depth") => Depth
+    _ => Newest
+  }
+}
+
+///|
+fn normalized_runs_query(query : String) -> String {
+  query.trim().to_string()
+}
+
+///|
+fn right_panel_from_query(value : String?) -> RightPanel? {
+  match value {
+    Some("workspace") => Some(Workspace)
+    Some("artifacts") => Some(Artifacts)
+    Some("memory") => Some(Memory)
+    _ => None
+  }
+}
+
+///|
+fn run_url(
+  run_id : String,
+  runs_status_filter? : String? = None,
+  runs_query? : String = "",
+  runs_sort? : RunSort = Newest,
+  runs_page? : Int = 0,
+  focused_node_id? : String? = None,
+  timeline_scope_node_id? : String? = None,
+  timeline_scope_branch_only? : Bool = false,
+  panel? : RightPanel? = None,
+) -> String {
+  let params : Array[String] = []
+  match runs_status_filter {
+    Some(status) => params.push("status=\{status}")
+    None => ()
+  }
+  let query = normalized_runs_query(runs_query)
+  if query != "" {
+    params.push("q=\{query}")
+  }
+  if runs_sort != Newest {
+    params.push("sort=\{run_sort_query_value(runs_sort)}")
+  }
+  if runs_page > 0 {
+    params.push("page=\{runs_page}")
+  }
+  match focused_node_id {
+    Some(node_id) => params.push("focus=\{node_id}")
+    None => ()
+  }
+  match timeline_scope_node_id {
+    Some(node_id) => params.push("scope=\{node_id}")
+    None => ()
+  }
+  if timeline_scope_branch_only {
+    params.push("branch=1")
+  }
+  match panel {
+    Some(panel) => params.push("panel=\{panel_query_value(panel)}")
+    None => ()
+  }
+  if params.is_empty() {
+    "/runs/\{run_id}"
+  } else {
+    let query = params.join("&")
+    "/runs/\{run_id}?\{query}"
+  }
+}
+
+///|
+fn jobs_url(
+  runs_status_filter? : String? = None,
+  runs_query? : String = "",
+  runs_sort? : RunSort = Newest,
+  runs_page? : Int = 0,
+) -> String {
+  let params : Array[String] = []
+  match runs_status_filter {
+    Some(status) => params.push("status=\{status}")
+    None => ()
+  }
+  let query = normalized_runs_query(runs_query)
+  if query != "" {
+    params.push("q=\{query}")
+  }
+  if runs_sort != Newest {
+    params.push("sort=\{run_sort_query_value(runs_sort)}")
+  }
+  if runs_page > 0 {
+    params.push("page=\{runs_page}")
+  }
+  if params.is_empty() {
+    "/jobs"
+  } else {
+    let query = params.join("&")
+    "/jobs?\{query}"
+  }
+}
+
+///|
+fn acp_url(selected_node_id? : String? = None) -> String {
+  match selected_node_id {
+    Some(node_id) => "/acp?focus=\{node_id}"
+    None => "/acp"
+  }
+}
+
+///|
+fn overview_url(selected_mixed_handoff_key? : String? = None) -> String {
+  match selected_mixed_handoff_key {
+    Some(key) => "/?mixed=\{key}"
+    None => "/"
+  }
+}
+
+///|
+fn acp_focus_id_for_remote_link(link : UiRemoteLink) -> String? {
+  if link.id.has_prefix("acp-session:") {
+    match link.id.split_once(":") {
+      Some((_, suffix)) => Some("session:\{suffix}")
+      None => None
+    }
+  } else if link.id.has_prefix("acp-run:") {
+    match link.id.split_once(":") {
+      Some((_, suffix)) => Some("run:\{suffix}")
+      None => None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn acp_url_for_remote_link(link : UiRemoteLink) -> String {
+  match acp_focus_id_for_remote_link(link) {
+    Some(focus_id) => acp_url(selected_node_id=Some(focus_id))
+    None => acp_url()
+  }
+}
+
+///|
+fn current_url_for_model(model : Model) -> String {
+  match model.route {
+    Overview =>
+      overview_url(selected_mixed_handoff_key=model.selected_mixed_handoff_key)
+    Acp => acp_url(selected_node_id=model.selected_acp_node_id)
+    Jobs =>
+      jobs_url(
+        runs_status_filter=model.runs_status_filter,
+        runs_query=model.runs_query,
+        runs_sort=model.runs_sort,
+        runs_page=model.runs_page,
+      )
+    Run(run_id) =>
+      run_url(
+        run_id,
+        runs_status_filter=model.runs_status_filter,
+        runs_query=model.runs_query,
+        runs_sort=model.runs_sort,
+        runs_page=model.runs_page,
+        focused_node_id=model.focused_node_id,
+        timeline_scope_node_id=model.timeline_scope_node_id,
+        timeline_scope_branch_only=model.timeline_scope_branch_only,
+        panel=Some(model.right_panel),
+      )
+  }
+}
+
+///|
+fn sync_url_cmd(model : Model) -> Cmd {
+  @nav.replace_url(current_url_for_model(model))
+}
+
+///|
+fn parse_runs_payload(json : Json) -> Result[Array[RunSummary], String] {
+  let payload : Result[RunsPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.runs)
+    Err(error) => Err("Failed to parse runs payload: \{error}")
+  }
+}
+
+///|
+fn parse_snapshot_payload(json : Json) -> Result[UiSnapshot, String] {
+  let payload : Result[UiSnapshotPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.snapshot)
+    Err(error) => Err("Failed to parse job snapshot: \{error}")
+  }
+}
+
+///|
+fn parse_events_payload(json : Json) -> Result[Array[UiTimelineEntry], String] {
+  let payload : Result[UiEventsPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.timeline)
+    Err(error) => Err("Failed to parse job timeline: \{error}")
+  }
+}
+
+///|
+fn parse_acp_snapshot_payload(json : Json) -> Result[AcpUiSnapshot, String] {
+  let payload : Result[AcpUiSnapshotPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.snapshot)
+    Err(error) => Err("Failed to parse ACP snapshot: \{error}")
+  }
+}
+
+///|
+fn parse_acp_events_payload(
+  json : Json,
+) -> Result[Array[AcpUiTimelineEntry], String] {
+  let payload : Result[AcpUiEventsPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.timeline)
+    Err(error) => Err("Failed to parse ACP timeline: \{error}")
+  }
+}
+
+///|
+fn parse_action_status_payload(text : String) -> Result[String, String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  match json {
+    Ok({ "status": String(status), .. }) => Ok(status)
+    Ok({ "error": { "message": String(message), .. }, .. }) => Err(message)
+    Ok({ "error": String(message), .. }) => Err(message)
+    Ok(_) => Ok("ok")
+    Err(error) => Err("Failed to parse ACP action response: \{error}")
+  }
+}
+
+///|
+struct BrowserPostResult {
+  ok : Bool
+  status : Int
+  body : String
+  error : String?
+} derive(FromJson, Show)
+
+///|
+#cfg(target="js")
+extern "js" fn browser_post_json(url : String, body : String) -> String =
+  #| async (url, body) => {
+  #|   try {
+  #|     const response = await fetch(url, {
+  #|       method: "POST",
+  #|       headers: { "Content-Type": "application/json" },
+  #|       body,
+  #|     });
+  #|     const text = await response.text();
+  #|     return JSON.stringify({
+  #|       ok: response.ok,
+  #|       status: response.status,
+  #|       body: text,
+  #|       error: null,
+  #|     });
+  #|   } catch (error) {
+  #|     return JSON.stringify({
+  #|       ok: false,
+  #|       status: 0,
+  #|       body: "",
+  #|       error: String(error),
+  #|     });
+  #|   }
+  #| }
+
+///|
+fn parse_browser_post_result(text : String) -> Result[String, String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  let payload = match json {
+    Ok(json) =>
+      match (try? @json.from_json(json) : Result[BrowserPostResult, Error]) {
+        Ok(payload) => payload
+        Err(error) =>
+          return Err("Failed to parse browser post result: \{error}")
+      }
+    Err(error) => return Err("Failed to parse browser post wrapper: \{error}")
+  }
+  match payload.error {
+    Some(error) => Err(error)
+    None =>
+      if payload.ok {
+        parse_action_status_payload(payload.body)
+      } else {
+        match parse_action_status_payload(payload.body) {
+          Ok(status) => Err("Request failed (\{payload.status}): \{status}")
+          Err(error) => Err("Request failed (\{payload.status}): \{error}")
+        }
+      }
+  }
+}
+
+///|
+struct StreamDrainPayload {
+  entries : Array[String]
+  closed : Bool
+  error : String?
+} derive(FromJson, Show)
+
+///|
+fn parse_timeline_entry_payload(
+  text : String,
+) -> Result[UiTimelineEntry, String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  match json {
+    Ok(json) =>
+      match (try? @json.from_json(json) : Result[UiTimelineEntry, Error]) {
+        Ok(entry) => Ok(entry)
+        Err(error) => Err("Failed to parse streamed timeline entry: \{error}")
+      }
+    Err(error) => Err("Failed to parse streamed timeline JSON: \{error}")
+  }
+}
+
+///|
+fn parse_stream_drain_payload(
+  text : String,
+) -> Result[(Array[UiTimelineEntry], Bool), String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  let payload = match json {
+    Ok(json) =>
+      match (try? @json.from_json(json) : Result[StreamDrainPayload, Error]) {
+        Ok(payload) => payload
+        Err(error) => return Err("Failed to parse stream payload: \{error}")
+      }
+    Err(error) => return Err("Failed to parse stream drain JSON: \{error}")
+  }
+  let entries : Array[UiTimelineEntry] = []
+  for raw in payload.entries {
+    match parse_timeline_entry_payload(raw) {
+      Ok(entry) => entries.push(entry)
+      Err(error) => return Err(error)
+    }
+  }
+  match payload.error {
+    Some(error) => Err(error)
+    None => Ok((entries, payload.closed))
+  }
+}
+
+///|
+fn fetch_runs(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, Array[RunSummary]] = @http.Expecting::Json(
+    fn(result) { dispatch(RunsLoaded(result)) },
+    parse_runs_payload,
+  )
+  @http.get("\{gateway_base}/v1/jobs/runs", expect~)
+}
+
+///|
+fn fetch_snapshot(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+  run_id : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, UiSnapshot] = @http.Expecting::Json(
+    fn(result) { dispatch(SnapshotLoaded(run_id, result)) },
+    parse_snapshot_payload,
+  )
+  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui", expect~)
+}
+
+///|
+fn fetch_timeline(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+  run_id : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, Array[UiTimelineEntry]] = @http.Expecting::Json(
+    fn(result) { dispatch(EventsLoaded(run_id, result)) },
+    parse_events_payload,
+  )
+  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/events", expect~)
+}
+
+///|
+fn fetch_acp_snapshot(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, AcpUiSnapshot] = @http.Expecting::Json(
+    fn(result) { dispatch(AcpSnapshotLoaded(result)) },
+    parse_acp_snapshot_payload,
+  )
+  @http.get("\{gateway_base}/v1/acp/ui", expect~)
+}
+
+///|
+fn fetch_acp_timeline(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, Array[AcpUiTimelineEntry]] = @http.Expecting::Json(
+    fn(result) { dispatch(AcpEventsLoaded(result)) },
+    parse_acp_events_payload,
+  )
+  @http.get("\{gateway_base}/v1/acp/events", expect~)
+}
+
+///|
+fn post_action(
+  dispatch : Dispatch[Msg],
+  url : String,
+  body? : Json = {},
+) -> Cmd {
+  @rabbita.perform(fn(result) { dispatch(AcpActionFinished(result)) }, fn() noraise {
+    parse_browser_post_result(browser_post_json(url, body.stringify()))
+  })
+}
+
+///|
+fn timeline_contains_entry(
+  timeline : Array[UiTimelineEntry],
+  target_id : String,
+) -> Bool {
+  for entry in timeline {
+    if entry.id == target_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn stream_entry_requires_snapshot(entry : UiTimelineEntry) -> Bool {
+  let event_type = entry.event_type
+  event_type == "step.succeeded" ||
+  event_type == "step.failed" ||
+  event_type == "step.cancelled" ||
+  event_type == "job.completed" ||
+  event_type == "job.failed" ||
+  event_type == "job.cancelled" ||
+  event_type.contains("artifact") ||
+  event_type.contains("memory") ||
+  event_type.contains("workspace") ||
+  entry.detail.contains("child run") ||
+  entry.detail.contains("spawned") ||
+  entry.title.contains("ChildRun") ||
+  entry.title.contains("child run")
+}
+
+///|
+#cfg(target="js")
+extern "js" fn start_job_ui_event_stream(url : String) =
+  #| (url) => {
+  #|   const key = "__moonclawJobUiStream";
+  #|   const current = window[key];
+  #|   if (current && current.es) current.es.close();
+  #|   const state = { queue: [], closed: false, error: null, es: null };
+  #|   const es = new EventSource(url);
+  #|   state.es = es;
+  #|   es.addEventListener("job_ui_event", (event) => { state.queue.push(event.data); });
+  #|   es.addEventListener("job_ui_complete", () => {
+  #|     state.closed = true;
+  #|     es.close();
+  #|   });
+  #|   es.onerror = () => {
+  #|     state.error = "stream_error";
+  #|     state.closed = true;
+  #|     es.close();
+  #|   };
+  #|   window[key] = state;
+  #| }
+
+///|
+#cfg(target="js")
+extern "js" fn stop_job_ui_event_stream() =
+  #| () => {
+  #|   const key = "__moonclawJobUiStream";
+  #|   const state = window[key];
+  #|   if (state && state.es) state.es.close();
+  #|   window[key] = null;
+  #| }
+
+///|
+#cfg(target="js")
+extern "js" fn drain_job_ui_event_stream() -> String =
+  #| () => {
+  #|   const key = "__moonclawJobUiStream";
+  #|   const state = window[key];
+  #|   if (!state) return JSON.stringify({ entries: [], closed: true, error: null });
+  #|   const payload = {
+  #|     entries: state.queue.splice(0, state.queue.length),
+  #|     closed: !!state.closed,
+  #|     error: state.error,
+  #|   };
+  #|   if (state.closed && !state.error) window[key] = null;
+  #|   return JSON.stringify(payload);
+  #| }
+
+///|
+fn start_stream_cmd(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+  run_id : String,
+) -> Cmd {
+  batch([
+    @rabbita.effect(fn() noraise {
+      start_job_ui_event_stream(
+        "\{gateway_base}/v1/jobs/runs/\{run_id}/events/stream",
+      )
+    }),
+    @rabbita.delay(dispatch(PumpStream(run_id)), 500),
+  ])
+}
+
+///|
+fn stop_stream_cmd() -> Cmd {
+  @rabbita.effect(fn() noraise { stop_job_ui_event_stream() })
+}
+
+///|
+fn drain_stream_cmd(dispatch : Dispatch[Msg], run_id : String) -> Cmd {
+  @rabbita.perform(
+    fn(raw) { dispatch(StreamDrained(run_id, parse_stream_drain_payload(raw))) },
+    fn() noraise { drain_job_ui_event_stream() },
+  )
+}
+
+///|
+fn load_run_cmd(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+  run_id : String,
+) -> Cmd {
+  batch([
+    fetch_snapshot(dispatch, gateway_base, run_id),
+    fetch_timeline(dispatch, gateway_base, run_id),
+  ])
+}

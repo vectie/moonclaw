@@ -87,7 +87,16 @@ fn session_node(
       "session_key": session.session_key,
       "target_label": target.bind(fn(target) { target.label }),
       "last_error": session.last_error,
+      "linkage": session.metadata,
     },
+  }
+}
+
+///|
+fn run_linkage_metadata(run : AcpRun) -> Json? {
+  match run.request {
+    { "metadata": metadata, .. } => Some(metadata)
+    _ => None
   }
 }
 
@@ -113,6 +122,7 @@ fn run_node(run : AcpRun) -> AcpUiNode {
       "backend": run.backend,
       "session_key": run.session_key,
       "stdout_stderr": run_stdio_summary(run),
+      "linkage": run_linkage_metadata(run),
     },
   }
 }
@@ -141,6 +151,7 @@ fn session_timeline_entry(
       "workspace": session.workspace,
       "cwd": session.cwd,
       "last_error": session.last_error,
+      "linkage": session.metadata,
     },
   }
 }
@@ -168,6 +179,7 @@ fn run_timeline_entry(run : AcpRun) -> AcpUiTimelineEntry {
       "result": run.result,
       "error": run.error,
       "stdout_stderr": run_stdio_summary(run),
+      "linkage": run_linkage_metadata(run),
     },
   }
 }

@@ -12,7 +12,7 @@ pub fn build_acp_ui_timeline(AcpRuntime) -> Array[AcpUiTimelineEntry]
 
 pub async fn execute_launch_plan(AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
 
-pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String) -> AcpRunRequest
+pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String, metadata? : Json) -> AcpRunRequest
 
 pub fn parse_acp_chat_action(String) -> AcpChatAction?
 
@@ -102,6 +102,7 @@ pub struct AcpRunRequest {
   model : String?
   cwd : String?
   idempotency_key : String?
+  metadata : Json?
 }
 pub impl Show for AcpRunRequest
 pub impl ToJson for AcpRunRequest

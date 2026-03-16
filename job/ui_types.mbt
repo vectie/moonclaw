@@ -41,6 +41,24 @@ pub(all) struct JobUiTimelineEntry {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct JobUiRemoteLink {
+  id : String
+  kind : String
+  title : String
+  status : String
+  summary : String?
+  detail : String?
+  metadata : Json
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobUiHandoff {
+  node_id : String
+  step_id : String?
+  remote : Array[JobUiRemoteLink]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct JobUiSnapshot {
   run : JobRun
   definition : JobDefinition
@@ -51,6 +69,8 @@ pub(all) struct JobUiSnapshot {
   child_runs : Array[JobRun]
   artifacts : Array[ArtifactRecord]
   memories : Array[MemoryRecord]
+  linked_remote : Array[JobUiRemoteLink]
+  handoffs : Array[JobUiHandoff]
   nodes : Array[JobUiNode]
   timeline : Array[JobUiTimelineEntry]
 } derive(ToJson, FromJson, Show)

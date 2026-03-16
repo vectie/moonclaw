@@ -20,7 +20,10 @@ async test "ACP UI snapshot includes target session and run hierarchy" {
   )
   let runtime = AcpRuntime::new(home=dir, cwd=dir)
   let session = match
-    runtime.open_session("acp-session-1", "codex-main", "session:1", 100) {
+    runtime.open_session("acp-session-1", "codex-main", "session:1", 100, metadata={
+      "linked_job_run_id": "job-run-1",
+      "linked_job_id": "job-1",
+    }) {
     Ok(session) => session
     Err(error) => fail(error)
   }
@@ -30,7 +33,13 @@ async test "ACP UI snapshot includes target session and run hierarchy" {
       "acp-run-1",
       session,
       target,
-      { "message": "Review repo" },
+      {
+        "message": "Review repo",
+        "metadata": {
+          "linked_job_run_id": "job-run-1",
+          "linked_job_id": "job-1",
+        },
+      },
       { "command": "codex" },
       120,
     ),
@@ -65,5 +74,9 @@ async test "ACP UI snapshot includes target session and run hierarchy" {
     content="session:acp-session-1",
   )
   inspect(snapshot.nodes[2].summary.unwrap_or(""), content="repo reviewed")
+  inspect(
+    snapshot.nodes[1].metadata.stringify(),
+    content="{\"session_key\":\"session:1\",\"target_label\":[\"Main Codex\"],\"last_error\":null,\"linkage\":{\"linked_job_run_id\":\"job-run-1\",\"linked_job_id\":\"job-1\"}}",
+  )
   inspect(snapshot.timeline[0].event_type, content="run.completed")
 }

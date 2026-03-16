@@ -83,6 +83,7 @@ pub(all) struct AcpSessionRunParams {
   model : String?
   cwd : String?
   idempotency_key : String?
+  metadata : Json?
 }
 pub impl Show for AcpSessionRunParams
 pub impl ToJson for AcpSessionRunParams

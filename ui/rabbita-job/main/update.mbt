@@ -1,0 +1,678 @@
+///|
+fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
+  match msg {
+    LoadRuns =>
+      (
+        fetch_runs(dispatch, model.gateway_base),
+        { ..model, runs_loading: true, runs_error: None },
+      )
+    LoadAcp =>
+      (
+        batch([
+          fetch_acp_snapshot(dispatch, model.gateway_base),
+          fetch_acp_timeline(dispatch, model.gateway_base),
+        ]),
+        { ..model, acp_loading: true, acp_error: None },
+      )
+    RunsLoaded(Ok(runs)) => {
+      let next_model = { ..model, runs, runs_loading: false, runs_error: None }
+      match model.route {
+        Run(run_id) =>
+          (
+            batch([
+              load_run_cmd(dispatch, model.gateway_base, run_id),
+              start_stream_cmd(dispatch, model.gateway_base, run_id),
+            ]),
+            {
+              ..next_model,
+              selected_run_id: Some(run_id),
+              detail_loading: true,
+              detail_error: None,
+            },
+          )
+        _ => (@rabbita.none, next_model)
+      }
+    }
+    RunsLoaded(Err(error)) =>
+      (@rabbita.none, { ..model, runs_loading: false, runs_error: Some(error) })
+    SelectRun(run_id) =>
+      (
+        @nav.push_url(
+          run_url(
+            run_id,
+            runs_status_filter=model.runs_status_filter,
+            runs_query=model.runs_query,
+            runs_sort=model.runs_sort,
+            runs_page=model.runs_page,
+          ),
+        ),
+        {
+          ..model,
+          route: Run(run_id),
+          selected_run_id: Some(run_id),
+          detail_loading: true,
+          detail_error: None,
+        },
+      )
+    LoadRun(run_id) =>
+      (
+        batch([
+          load_run_cmd(dispatch, model.gateway_base, run_id),
+          start_stream_cmd(dispatch, model.gateway_base, run_id),
+        ]),
+        {
+          ..model,
+          route: Run(run_id),
+          selected_run_id: Some(run_id),
+          detail_loading: true,
+          detail_error: None,
+        },
+      )
+    PollRun(run_id) =>
+      if model.selected_run_id == Some(run_id) {
+        (
+          batch([
+            fetch_runs(dispatch, model.gateway_base),
+            match model.snapshot {
+              Some(snapshot) =>
+                if run_status_is_live(snapshot.run.status) {
+                  @rabbita.delay(
+                    dispatch(PollRun(run_id)),
+                    runs_poll_interval_ms(),
+                  )
+                } else {
+                  @rabbita.none
+                }
+              None => @rabbita.none
+            },
+          ]),
+          model,
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    PollAcp =>
+      (
+        batch([
+          fetch_acp_snapshot(dispatch, model.gateway_base),
+          fetch_acp_timeline(dispatch, model.gateway_base),
+          match model.acp_snapshot {
+            Some(snapshot) =>
+              if acp_snapshot_is_live(snapshot) {
+                @rabbita.delay(dispatch(PollAcp), acp_poll_interval_ms())
+              } else {
+                @rabbita.none
+              }
+            None => @rabbita.none
+          },
+        ]),
+        model,
+      )
+    PumpStream(run_id) =>
+      if model.selected_run_id == Some(run_id) {
+        (drain_stream_cmd(dispatch, run_id), model)
+      } else {
+        (@rabbita.none, model)
+      }
+    AcpSnapshotLoaded(Ok(snapshot)) => {
+      let next_model = {
+        ..model,
+        acp_snapshot: Some(snapshot),
+        acp_loading: false,
+        acp_error: None,
+        fresh_acp_node_ids: fresh_ids_from(
+          snapshot.nodes,
+          model.acp_snapshot
+          .map(fn(item) { item.nodes.map(fn(node) { node.id }) })
+          .unwrap_or([]),
+          fn(node) { node.id },
+        ),
+        selected_acp_node_id: resolved_acp_node_id(
+          { ..model, acp_snapshot: Some(snapshot) },
+          snapshot,
+        ),
+      }
+      (
+        if acp_snapshot_is_live(snapshot) {
+          @rabbita.delay(dispatch(PollAcp), acp_poll_interval_ms())
+        } else {
+          @rabbita.none
+        },
+        next_model,
+      )
+    }
+    AcpSnapshotLoaded(Err(error)) =>
+      (@rabbita.none, { ..model, acp_loading: false, acp_error: Some(error) })
+    AcpEventsLoaded(Ok(timeline)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_timeline: timeline,
+          fresh_acp_timeline_ids: fresh_ids_from(
+            timeline,
+            model.acp_timeline.map(fn(entry) { entry.id }),
+            fn(entry) { entry.id },
+          ),
+        },
+      )
+    AcpEventsLoaded(Err(error)) =>
+      (@rabbita.none, { ..model, acp_error: Some(error), acp_loading: false })
+    SetAcpRunMessage(message) =>
+      (@rabbita.none, { ..model, acp_run_message: message })
+    AttachAcpTarget(target_id) =>
+      (
+        post_action(dispatch, "\{model.gateway_base}/v1/acp/sessions", body={
+          "target_id": target_id,
+          "session_key": "ui:acp:\{target_id}",
+          "metadata": local_linkage_metadata(
+            model.snapshot,
+            focused_node_id=model.focused_node_id,
+          ),
+        }),
+        {
+          ..model,
+          acp_action_notice: Some("Attaching ACP target \{target_id}..."),
+        },
+      )
+    DetachAcpSession(session_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/sessions/\{session_id}/detach",
+        ),
+        {
+          ..model,
+          acp_action_notice: Some("Detaching ACP session \{session_id}..."),
+        },
+      )
+    ResetAcpSession(session_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/sessions/\{session_id}/reset",
+        ),
+        {
+          ..model,
+          acp_action_notice: Some("Resetting ACP session \{session_id}..."),
+        },
+      )
+    StartAcpRun(session_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/sessions/\{session_id}/run",
+          body={
+            "message": model.acp_run_message,
+            "metadata": local_linkage_metadata(
+              model.snapshot,
+              focused_node_id=model.focused_node_id,
+            ),
+          },
+        ),
+        { ..model, acp_action_notice: Some("Starting remote ACP run...") },
+      )
+    CancelAcpRun(run_id) =>
+      (
+        post_action(
+          dispatch,
+          "\{model.gateway_base}/v1/acp/runs/\{run_id}/cancel",
+        ),
+        { ..model, acp_action_notice: Some("Cancelling ACP run \{run_id}...") },
+      )
+    AcpActionFinished(Ok(status)) =>
+      (
+        batch([dispatch(LoadAcp)]),
+        {
+          ..model,
+          acp_action_notice: Some("ACP action completed: \{status}"),
+          acp_run_message: if status == "accepted" {
+            ""
+          } else {
+            model.acp_run_message
+          },
+        },
+      )
+    AcpActionFinished(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_action_notice: Some("ACP action failed: \{error}"),
+          acp_error: Some(error),
+        },
+      )
+    SnapshotLoaded(run_id, Ok(snapshot)) =>
+      if model.selected_run_id == Some(run_id) {
+        let (collapsed_node_ids, expanded_node_ids) = manual_tree_state_for_snapshot(
+          model, snapshot,
+        )
+        let fresh_node_ids = fresh_ids_from(
+          snapshot.nodes,
+          model.snapshot
+          .map(fn(item) { item.nodes.map(fn(node) { node.id }) })
+          .unwrap_or([]),
+          fn(node) { node.id },
+        )
+        let focused_node_id = resolved_focus_node_id(model, snapshot)
+        let next_model = {
+          ..model,
+          snapshot: Some(snapshot),
+          fresh_node_ids,
+          collapsed_node_ids,
+          expanded_node_ids,
+          focused_node_id,
+          detail_loading: false,
+          detail_error: None,
+        }
+        (
+          if run_status_is_live(snapshot.run.status) {
+            @rabbita.delay(dispatch(PollRun(run_id)), runs_poll_interval_ms())
+          } else {
+            @rabbita.none
+          },
+          { ..next_model },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    SnapshotLoaded(run_id, Err(error)) =>
+      if model.selected_run_id == Some(run_id) {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            snapshot: None,
+            timeline: [],
+            fresh_node_ids: [],
+            fresh_timeline_ids: [],
+            collapsed_node_ids: [],
+            expanded_node_ids: [],
+            focused_node_id: None,
+            detail_loading: false,
+            detail_error: Some(error),
+          },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    EventsLoaded(run_id, Ok(timeline)) =>
+      if model.selected_run_id == Some(run_id) {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            timeline,
+            fresh_timeline_ids: fresh_ids_from(
+              timeline,
+              model.timeline.map(fn(entry) { entry.id }),
+              fn(entry) { entry.id },
+            ),
+          },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    EventsLoaded(run_id, Err(error)) =>
+      if model.selected_run_id == Some(run_id) && model.detail_error is None {
+        (@rabbita.none, { ..model, detail_error: Some(error) })
+      } else {
+        (@rabbita.none, model)
+      }
+    StreamDrained(run_id, Ok((entries, closed))) =>
+      if model.selected_run_id == Some(run_id) {
+        let merged : Array[UiTimelineEntry] = model.timeline.copy()
+        let fresh : Array[String] = []
+        let mut needs_snapshot = false
+        for entry in entries {
+          if !timeline_contains_entry(merged, entry.id) {
+            merged.push(entry)
+            fresh.push(entry.id)
+            if stream_entry_requires_snapshot(entry) {
+              needs_snapshot = true
+            }
+          }
+        }
+        let next_cmd = if closed {
+          batch([
+            fetch_snapshot(dispatch, model.gateway_base, run_id),
+            fetch_runs(dispatch, model.gateway_base),
+          ])
+        } else if needs_snapshot {
+          batch([
+            fetch_snapshot(dispatch, model.gateway_base, run_id),
+            @rabbita.delay(dispatch(PumpStream(run_id)), 500),
+          ])
+        } else {
+          @rabbita.delay(dispatch(PumpStream(run_id)), 500)
+        }
+        (
+          next_cmd,
+          {
+            ..model,
+            timeline: merged,
+            fresh_timeline_ids: if fresh.is_empty() {
+              model.fresh_timeline_ids
+            } else {
+              fresh
+            },
+          },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    StreamDrained(run_id, Err(error)) =>
+      if model.selected_run_id == Some(run_id) {
+        (
+          @rabbita.delay(dispatch(PumpStream(run_id)), 1000),
+          { ..model, detail_error: Some(error) },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    ExpandActiveBranches =>
+      match model.snapshot {
+        Some(snapshot) =>
+          (
+            @rabbita.none,
+            {
+              ..model,
+              collapsed_node_ids: snapshot.nodes
+              .filter(fn(node) { !keep_expanded_node(snapshot, model, node) })
+              .map(fn(node) { node.id }),
+              expanded_node_ids: snapshot.nodes
+              .filter(fn(node) {
+                node_has_collapsible_children(snapshot, node) &&
+                keep_expanded_node(snapshot, model, node)
+              })
+              .map(fn(node) { node.id }),
+            },
+          )
+        None => (@rabbita.none, model)
+      }
+    CollapseCompletedBranches =>
+      match model.snapshot {
+        Some(snapshot) =>
+          (
+            @rabbita.none,
+            {
+              ..model,
+              collapsed_node_ids: auto_collapsed_ids(snapshot),
+              expanded_node_ids: [],
+            },
+          )
+        None => (@rabbita.none, model)
+      }
+    ResetTree =>
+      (
+        sync_url_cmd({
+          ..model,
+          collapsed_node_ids: [],
+          expanded_node_ids: [],
+          timeline_scope_node_id: None,
+          timeline_scope_branch_only: false,
+        }),
+        {
+          ..model,
+          collapsed_node_ids: [],
+          expanded_node_ids: [],
+          timeline_scope_node_id: None,
+          timeline_scope_branch_only: false,
+        },
+      )
+    SelectRunsStatus(status) => {
+      let next_model = { ..model, runs_status_filter: status, runs_page: 0 }
+      (sync_url_cmd(next_model), next_model)
+    }
+    SetRunsQuery(query) => {
+      let next_model = { ..model, runs_query: query, runs_page: 0 }
+      (sync_url_cmd(next_model), next_model)
+    }
+    SelectRunsSort(sort) => {
+      let next_model = { ..model, runs_sort: sort, runs_page: 0 }
+      (sync_url_cmd(next_model), next_model)
+    }
+    SelectRunsPage(page) => {
+      let next_model = { ..model, runs_page: page }
+      (sync_url_cmd(next_model), next_model)
+    }
+    SelectMixedHandoff(key) => {
+      let next_model = { ..model, selected_mixed_handoff_key: key }
+      (sync_url_cmd(next_model), next_model)
+    }
+    ToggleNode(node_id) =>
+      match model.snapshot {
+        Some(snapshot) => {
+          let (collapsed_node_ids, expanded_node_ids) = toggle_manual_tree_state(
+            model, snapshot, node_id,
+          )
+          (@rabbita.none, { ..model, collapsed_node_ids, expanded_node_ids })
+        }
+        None => (@rabbita.none, model)
+      }
+    FocusBranchPanel(node_id, panel) =>
+      match model.snapshot {
+        Some(snapshot) =>
+          match node_for_id(snapshot, node_id) {
+            Some(_) => {
+              let next_model = {
+                ..model,
+                focused_node_id: Some(node_id),
+                timeline_scope_node_id: Some(node_id),
+                timeline_scope_branch_only: true,
+                right_panel: panel,
+              }
+              (sync_url_cmd(next_model), next_model)
+            }
+            None => (@rabbita.none, model)
+          }
+        None => (@rabbita.none, model)
+      }
+    FocusBranchEvents(node_id) =>
+      match model.snapshot {
+        Some(snapshot) =>
+          match node_for_id(snapshot, node_id) {
+            Some(_) => {
+              let next_model = {
+                ..model,
+                focused_node_id: Some(node_id),
+                timeline_scope_node_id: Some(node_id),
+                timeline_scope_branch_only: true,
+              }
+              (sync_url_cmd(next_model), next_model)
+            }
+            None => (@rabbita.none, model)
+          }
+        None => (@rabbita.none, model)
+      }
+    ClearTimelineScope => {
+      let next_model = {
+        ..model,
+        timeline_scope_node_id: None,
+        timeline_scope_branch_only: false,
+      }
+      (sync_url_cmd(next_model), next_model)
+    }
+    FocusNode(node_id) =>
+      match model.snapshot {
+        Some(snapshot) =>
+          match node_for_id(snapshot, node_id) {
+            Some(node) => {
+              let next_model = {
+                ..model,
+                focused_node_id: Some(node_id),
+                timeline_scope_node_id: None,
+                timeline_scope_branch_only: false,
+                right_panel: panel_for_node(model, node),
+              }
+              (sync_url_cmd(next_model), next_model)
+            }
+            None => (@rabbita.none, { ..model, focused_node_id: Some(node_id) })
+          }
+        None => (@rabbita.none, { ..model, focused_node_id: Some(node_id) })
+      }
+    FocusTimeline(entry_id) =>
+      match model.snapshot {
+        Some(snapshot) => {
+          for entry in model.timeline {
+            if entry.id == entry_id {
+              match node_id_for_entry(snapshot, entry) {
+                Some(node_id) =>
+                  match node_for_id(snapshot, node_id) {
+                    Some(node) => {
+                      let next_model = {
+                        ..model,
+                        focused_node_id: Some(node_id),
+                        timeline_scope_node_id: None,
+                        timeline_scope_branch_only: false,
+                        right_panel: panel_for_node(model, node),
+                      }
+                      return (sync_url_cmd(next_model), next_model)
+                    }
+                    None =>
+                      return (
+                        @rabbita.none,
+                        { ..model, focused_node_id: Some(node_id) },
+                      )
+                  }
+                None => return (@rabbita.none, model)
+              }
+            }
+          }
+          (@rabbita.none, model)
+        }
+        None => (@rabbita.none, model)
+      }
+    SelectPanel(panel) => {
+      let next_model = { ..model, right_panel: panel }
+      (sync_url_cmd(next_model), next_model)
+    }
+    SelectAcpNode(node_id) => {
+      let next_model = { ..model, selected_acp_node_id: Some(node_id) }
+      (sync_url_cmd(next_model), next_model)
+    }
+    UrlRequest(request) =>
+      match request {
+        Internal(url) => (@nav.push_url(url.to_string()), model)
+        External(url) => (@nav.load(url), model)
+      }
+    UrlChanged(url) => {
+      let route = route_from_url(url)
+      let runs_status_filter = query_value(url, "status")
+      let runs_query = query_value(url, "q").unwrap_or("")
+      let runs_sort = run_sort_from_query(query_value(url, "sort"))
+      let runs_page = match query_value(url, "page") {
+        Some(page) => @strconv.parse_int(page) catch { _ => 0 }
+        None => 0
+      }
+      let focused_node_id = query_value(url, "focus")
+      let selected_acp_node_id = query_value(url, "focus")
+      let selected_mixed_handoff_key = query_value(url, "mixed")
+      let timeline_scope_node_id = query_value(url, "scope")
+      let timeline_scope_branch_only = query_value(url, "branch") == Some("1")
+      let right_panel = right_panel_from_query(query_value(url, "panel")).unwrap_or(
+        model.right_panel,
+      )
+      match route {
+        Overview =>
+          (
+            batch([@nav.scroll_to_top(), stop_stream_cmd()]),
+            {
+              ..model,
+              route,
+              selected_mixed_handoff_key,
+              selected_run_id: None,
+              runs_status_filter,
+              runs_query,
+              runs_sort,
+              runs_page,
+              snapshot: None,
+              timeline: [],
+              fresh_node_ids: [],
+              fresh_timeline_ids: [],
+              focused_node_id: None,
+              timeline_scope_node_id: None,
+              timeline_scope_branch_only: false,
+              collapsed_node_ids: [],
+              expanded_node_ids: [],
+              detail_loading: false,
+              detail_error: None,
+              selected_acp_node_id: None,
+            },
+          )
+        Jobs =>
+          (
+            batch([@nav.scroll_to_top(), stop_stream_cmd()]),
+            {
+              ..model,
+              route,
+              selected_mixed_handoff_key: None,
+              selected_run_id: None,
+              runs_status_filter,
+              runs_query,
+              runs_sort,
+              runs_page,
+              snapshot: None,
+              timeline: [],
+              fresh_node_ids: [],
+              fresh_timeline_ids: [],
+              focused_node_id: None,
+              timeline_scope_node_id: None,
+              timeline_scope_branch_only: false,
+              collapsed_node_ids: [],
+              expanded_node_ids: [],
+              detail_loading: false,
+              detail_error: None,
+            },
+          )
+        Run(run_id) =>
+          if model.selected_run_id == Some(run_id) && model.snapshot is Some(_) {
+            (
+              @rabbita.none,
+              {
+                ..model,
+                route,
+                selected_mixed_handoff_key: None,
+                runs_status_filter,
+                runs_query,
+                runs_sort,
+                runs_page,
+                focused_node_id,
+                timeline_scope_node_id,
+                timeline_scope_branch_only,
+                right_panel,
+              },
+            )
+          } else {
+            (
+              batch([@nav.scroll_to_top(), dispatch(LoadRun(run_id))]),
+              {
+                ..model,
+                route,
+                selected_mixed_handoff_key: None,
+                selected_run_id: Some(run_id),
+                runs_status_filter,
+                runs_query,
+                runs_sort,
+                runs_page,
+                focused_node_id,
+                timeline_scope_node_id,
+                timeline_scope_branch_only,
+                right_panel,
+              },
+            )
+          }
+        Acp =>
+          (
+            batch([@nav.scroll_to_top(), dispatch(LoadAcp), stop_stream_cmd()]),
+            {
+              ..model,
+              route,
+              selected_mixed_handoff_key: None,
+              selected_acp_node_id,
+            },
+          )
+      }
+    }
+  }
+}

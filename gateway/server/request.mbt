@@ -10,6 +10,9 @@ pub async fn Gateway::handle_request(
     match (r.method_, paths) {
       (Options, _) => w.write_header(204)
       (Get, ["", ""]) => self.handle_index(r, w)
+      (Get, ["", "ui"]) => self.handle_operator_ui(r, w, [])
+      (Get, ["", "ui", .. rest]) =>
+        self.handle_operator_ui(r, w, rest.map(fn(part) { part.to_string() }))
       (Get, ["", "health"]) => self.handle_health(r, w)
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
       (Get, ["", "v1", "runs"]) => self.handle_list_runs(r, w)
@@ -138,6 +141,107 @@ pub async fn Gateway::handle_request(
 }
 
 ///|
+fn ui_not_built_html(ui_root : String) -> String {
+  "<!doctype html>\n" +
+  "<html><head><meta charset=\"utf-8\" />" +
+  "<title>MoonClaw UI Not Built</title>" +
+  "<style>" +
+  "body { font-family: serif; padding: 2rem; line-height: 1.5; background: #faf6ee; color: #2c2418; }" +
+  "code, pre { background: rgba(0,0,0,0.05); padding: 0.15rem 0.35rem; border-radius: 6px; }" +
+  "pre { padding: 1rem; overflow: auto; }" +
+  "</style></head><body>" +
+  "<h1>Operator UI bundle not found</h1>" +
+  "<p>The gateway looked for a built Rabbita UI bundle under:</p>" +
+  "<pre>" +
+  ui_root +
+  "</pre>" +
+  "<p>Build it first:</p>" +
+  "<pre>cd ~/Workspace/mcl/ui/rabbita-job\nnpm install\nnpm run build</pre>" +
+  "<p>Then open <code>/ui</code> again.</p>" +
+  "</body></html>"
+}
+
+///|
+fn Gateway::operator_ui_dist_root(self : Gateway) -> String {
+  @path.Path(self.cwd)
+  .join(@path.Path("ui"))
+  .join(@path.Path("rabbita-job"))
+  .join(@path.Path("dist"))
+  .to_string()
+}
+
+///|
+fn operator_ui_content_type(path : String) -> String {
+  if path.has_suffix(".js") {
+    "application/javascript"
+  } else if path.has_suffix(".css") {
+    "text/css"
+  } else if path.has_suffix(".html") {
+    "text/html"
+  } else if path.has_suffix(".json") {
+    "application/json"
+  } else if path.has_suffix(".svg") {
+    "image/svg+xml"
+  } else if path.has_suffix(".png") {
+    "image/png"
+  } else if path.has_suffix(".jpg") || path.has_suffix(".jpeg") {
+    "image/jpeg"
+  } else {
+    "application/octet-stream"
+  }
+}
+
+///|
+async fn Gateway::handle_operator_ui(
+  self : Gateway,
+  _r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+  path_parts : Array[String],
+) -> Unit {
+  let ui_root = self.operator_ui_dist_root()
+  let relative_path = if path_parts.is_empty() {
+    "index.html"
+  } else {
+    path_parts.join("/")
+  }
+  let is_spa_route = !path_parts.is_empty() && !relative_path.contains(".")
+  let asset_path = if is_spa_route { "index.html" } else { relative_path }
+  let full_path = @path.Path(ui_root).join(@path.Path(asset_path)).to_string()
+  if !full_path.has_prefix(ui_root) {
+    raise json_error(404, "NotFound", {
+      "error": { "code": "ui_not_found", "message": "Unknown UI asset path" },
+    })
+  }
+  let exists = @fsx.exists_as_file(full_path) catch { _ => false }
+  if !exists {
+    if path_parts.is_empty() || asset_path == "index.html" {
+      w.header().set("Content-Type", "text/html")
+      w.write_header(200)
+      w.write(ui_not_built_html(ui_root))
+      return
+    }
+    raise json_error(404, "NotFound", {
+      "error": {
+        "code": "ui_asset_not_found",
+        "message": "UI asset not found: \{relative_path}",
+      },
+    })
+  }
+  let content = @fsx.read_file(full_path) catch {
+    error =>
+      raise json_error(500, "InternalServerError", {
+        "error": {
+          "code": "ui_read_failed",
+          "message": "Failed to read UI asset: \{error}",
+        },
+      })
+  }
+  w.header().set("Content-Type", operator_ui_content_type(full_path))
+  w.write_header(200)
+  w.write(content)
+}
+
+///|
 async fn Gateway::handle_index(
   _self : Gateway,
   _r : @httpx.RequestReader,
@@ -149,17 +253,18 @@ async fn Gateway::handle_index(
     "name": "MoonClaw Gateway",
     "version": @buildinfo.version.to_string(),
     "protocol_version": @protocol.PROTOCOL_VERSION,
+    "operator_ui": "/ui",
     "endpoints": [
       "GET /health - Health check", "GET /v1/events - SSE event stream", "GET /v1/runs - List agent runs",
-      "GET /v1/runs/{id} - Get agent run status", "GET /v1/jobs - List job definitions",
-      "GET /v1/jobs/{id} - Get job definition", "POST /v1/jobs - Create job definition",
-      "POST /v1/jobs/{id}/update - Update job definition", "POST /v1/jobs/{id}/run - Trigger a job run",
-      "POST /v1/jobs/{id}/cancel - Cancel the active job run", "POST /v1/jobs/{id}/force-cancel - Force-cancel the active job run",
-      "GET /v1/acp/targets - List ACP targets", "GET /v1/acp/sessions - List ACP sessions",
-      "GET /v1/acp/runs - List ACP runs", "GET /v1/acp/runs/{id} - Get ACP run",
-      "GET /v1/acp/ui - Get ACP UI snapshot", "GET /v1/acp/events - Get ACP UI timeline",
-      "POST /v1/acp/runs/{id}/cancel - Cancel ACP run", "POST /v1/acp/sessions/{id}/detach - Detach ACP session",
-      "POST /v1/acp/sessions/{id}/run - Start an ACP-backed run",
+      "GET /ui - Serve Rabbita operator UI bundle", "GET /v1/runs/{id} - Get agent run status",
+      "GET /v1/jobs - List job definitions", "GET /v1/jobs/{id} - Get job definition",
+      "POST /v1/jobs - Create job definition", "POST /v1/jobs/{id}/update - Update job definition",
+      "POST /v1/jobs/{id}/run - Trigger a job run", "POST /v1/jobs/{id}/cancel - Cancel the active job run",
+      "POST /v1/jobs/{id}/force-cancel - Force-cancel the active job run", "GET /v1/acp/targets - List ACP targets",
+      "GET /v1/acp/sessions - List ACP sessions", "GET /v1/acp/runs - List ACP runs",
+      "GET /v1/acp/runs/{id} - Get ACP run", "GET /v1/acp/ui - Get ACP UI snapshot",
+      "GET /v1/acp/events - Get ACP UI timeline", "POST /v1/acp/runs/{id}/cancel - Cancel ACP run",
+      "POST /v1/acp/sessions/{id}/detach - Detach ACP session", "POST /v1/acp/sessions/{id}/run - Start an ACP-backed run",
       "GET /v1/jobs/runs - List job runs", "GET /v1/jobs/runs/{id} - Get job run status",
       "POST /v1/jobs/ask - Ask over job artifacts", "GET /v1/channels - List channels",
       "GET /v1/channels/{id} - Get channel info", "POST /v1/channels/{id}/configure - Configure channel accounts",

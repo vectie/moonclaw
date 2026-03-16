@@ -14,6 +14,7 @@ pub(all) struct AcpSessionRunParams {
   model : String?
   cwd : String?
   idempotency_key : String?
+  metadata : Json?
 } derive(FromJson, ToJson, Show)
 
 ///|
@@ -975,6 +976,7 @@ async fn Gateway::handle_acp_sessions_run_method(
     }
     None => ()
   }
+  let metadata = merged_acp_run_metadata(session, params.metadata)
   let launch = match
     @acp.prepare_launch_plan(
       target,
@@ -985,6 +987,7 @@ async fn Gateway::handle_acp_sessions_run_method(
         model?=params.model,
         cwd?=params.cwd,
         idempotency_key?=params.idempotency_key,
+        metadata?,
       ),
     ) {
     Ok(plan) => plan
@@ -1008,6 +1011,7 @@ async fn Gateway::handle_acp_sessions_run_method(
     model?=params.model,
     cwd?=params.cwd,
     idempotency_key~,
+    metadata?,
   )
   let acp_run = self
     .acp_runtime()

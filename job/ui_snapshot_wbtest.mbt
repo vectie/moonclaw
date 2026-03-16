@@ -163,6 +163,8 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
     json_inspect(snapshot.child_runs.length(), content=1)
     json_inspect(snapshot.artifacts.length(), content=1)
     json_inspect(snapshot.memories.length(), content=1)
+    json_inspect(snapshot.linked_remote.length(), content=0)
+    json_inspect(snapshot.handoffs.length(), content=0)
     json_inspect(snapshot.timeline.length(), content=1)
     json_inspect(
       snapshot.nodes.map(fn(node) { node.kind.to_json().stringify() }),
@@ -171,5 +173,95 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
         "\"Memory\"",
       ],
     )
+  })
+}
+
+///|
+async test "build_job_ui_snapshot includes explicit handoffs when provided" {
+  @fsx.with_temporary_directory("job-ui-handoffs-XXXXXX", dir => {
+    let store = SystemStore::new(root=dir)
+    let definition = JobDefinition::{
+      id: "job-1",
+      kind: "analysis",
+      enabled: true,
+      config: {},
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-1"),
+      created_at: 10,
+      updated_at: 10,
+      tags: [],
+    }
+    let workflow = WorkflowDefinition::{
+      id: "wf-1",
+      kind: "analysis",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "step-a",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    }
+    let run = JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: Running,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(100),
+      completed_at: None,
+      summary: None,
+      error: None,
+    }
+    store.save_definition(definition)
+    store.save_workflow(workflow)
+    store.save_run(run)
+    let snapshot = build_job_ui_snapshot(
+      store,
+      "run-1",
+      linked_remote=[
+        JobUiRemoteLink::{
+          id: "acp-run:remote-1",
+          kind: "acp_run",
+          title: "remote-1",
+          status: "running",
+          summary: Some("working"),
+          detail: None,
+          metadata: {},
+        },
+      ],
+      handoffs=[
+        JobUiHandoff::{
+          node_id: "step:run-1:step-a",
+          step_id: Some("step-a"),
+          remote: [
+            JobUiRemoteLink::{
+              id: "acp-run:remote-1",
+              kind: "acp_run",
+              title: "remote-1",
+              status: "running",
+              summary: Some("working"),
+              detail: None,
+              metadata: {},
+            },
+          ],
+        },
+      ],
+    ).unwrap()
+    json_inspect(snapshot.handoffs.length(), content=1)
+    json_inspect(snapshot.handoffs[0].node_id, content="step:run-1:step-a")
+    json_inspect(snapshot.handoffs[0].step_id.unwrap_or(""), content="step-a")
+    json_inspect(snapshot.handoffs[0].remote[0].id, content="acp-run:remote-1")
+    json_inspect(snapshot.timeline.length(), content=1)
+    json_inspect(snapshot.timeline[0].event_type, content="remote.handoff")
+    json_inspect(snapshot.timeline[0].step_id.unwrap_or(""), content="step-a")
   })
 }

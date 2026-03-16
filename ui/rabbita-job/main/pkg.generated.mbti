@@ -40,6 +40,8 @@ type BrowserPostResult
 pub impl Show for BrowserPostResult
 pub impl @json.FromJson for BrowserPostResult
 
+type MixedHandoffGroup
+
 type Model
 
 type Msg
@@ -85,6 +87,10 @@ type UiEventsPayload
 pub impl Show for UiEventsPayload
 pub impl @json.FromJson for UiEventsPayload
 
+type UiHandoff
+pub impl Show for UiHandoff
+pub impl @json.FromJson for UiHandoff
+
 type UiMemory
 pub impl Show for UiMemory
 pub impl @json.FromJson for UiMemory
@@ -92,6 +98,10 @@ pub impl @json.FromJson for UiMemory
 type UiNode
 pub impl Show for UiNode
 pub impl @json.FromJson for UiNode
+
+type UiRemoteLink
+pub impl Show for UiRemoteLink
+pub impl @json.FromJson for UiRemoteLink
 
 type UiRun
 pub impl Show for UiRun

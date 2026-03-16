@@ -5,6 +5,7 @@ pub struct AcpRunRequest {
   model : String?
   cwd : String?
   idempotency_key : String?
+  metadata : Json?
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -14,8 +15,9 @@ pub fn new_run_request(
   model? : String,
   cwd? : String,
   idempotency_key? : String,
+  metadata? : Json,
 ) -> AcpRunRequest {
-  AcpRunRequest::{ message, run_id, model, cwd, idempotency_key }
+  AcpRunRequest::{ message, run_id, model, cwd, idempotency_key, metadata }
 }
 
 ///|
@@ -124,6 +126,7 @@ fn codex_metadata(
     "label": target.label,
     "workspace": resolved_workspace(target, session),
     "request": request.to_json(),
+    "linkage": request.metadata,
     "target_metadata": target.metadata,
     "session_metadata": session.metadata,
   }

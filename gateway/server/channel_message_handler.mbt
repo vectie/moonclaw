@@ -155,8 +155,13 @@ async fn Gateway::run_bound_acp_session(
     None => return Err("ACP target not found: \{session.target_id}")
   }
   let run_id = self.uuid.v4().to_string()
+  let metadata = merged_acp_run_metadata(session, None)
   let launch = match
-    @acp.prepare_launch_plan(target, session, @acp.new_run_request(message~)) {
+    @acp.prepare_launch_plan(
+      target,
+      session,
+      @acp.new_run_request(message~, metadata?),
+    ) {
     Ok(plan) => plan
     Err(error) => return Err(error)
   }
@@ -166,6 +171,7 @@ async fn Gateway::run_bound_acp_session(
     cwd=launch.cwd,
     model?=launch.model,
     idempotency_key=run_id,
+    metadata?,
   )
   ignore(
     self

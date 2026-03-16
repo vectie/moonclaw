@@ -444,7 +444,14 @@ async fn Gateway::handle_job_ui_get_method(
         error: Some(error),
       })
   }
-  match @job.build_job_ui_snapshot(self.job_runtime().store(), run_id) {
+  let remote = self.resolve_remote_ui_for_job_run(run_id)
+  match
+    @job.build_job_ui_snapshot(
+      self.job_runtime().store(),
+      run_id,
+      linked_remote=remote.links,
+      handoffs=remote.handoffs,
+    ) {
     Some(snapshot) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,

@@ -37,12 +37,57 @@ fn timeline_title(event : JobRunEvent) -> String {
 }
 
 ///|
+fn remote_link_timestamp(link : JobUiRemoteLink) -> Int {
+  match link.metadata {
+    { "updated_at": Number(ts, ..), .. } => ts.to_int()
+    { "created_at": Number(ts, ..), .. } => ts.to_int()
+    _ => 0
+  }
+}
+
+///|
+fn remote_handoff_timeline(
+  run : JobRun,
+  handoffs : Array[JobUiHandoff],
+) -> Array[JobUiTimelineEntry] {
+  let timeline : Array[JobUiTimelineEntry] = []
+  let mut index = 0
+  for handoff in handoffs {
+    for remote in handoff.remote {
+      let timestamp = remote_link_timestamp(remote)
+      timeline.push(JobUiTimelineEntry::{
+        id: "\{run.id}:handoff:\{index}",
+        run_id: run.id,
+        event_type: "remote.handoff",
+        title: match handoff.step_id {
+          Some(step_id) => "remote.handoff (\{step_id})"
+          None => "remote.handoff"
+        },
+        detail: "Linked \{remote.kind} \{remote.title} (\{remote.status})",
+        timestamp,
+        step_id: handoff.step_id,
+        status: Some(remote.status),
+        data: {
+          "node_id": handoff.node_id,
+          "remote_id": remote.id,
+          "remote_kind": remote.kind,
+          "remote_title": remote.title,
+        },
+      })
+      index = index + 1
+    }
+  }
+  timeline
+}
+
+///|
 fn timeline_from_events(
   events : Array[JobRunEvent],
+  synthetic? : Array[JobUiTimelineEntry] = [],
 ) -> Array[JobUiTimelineEntry] {
   let sorted = events.copy()
   sorted.sort_by(fn(left, right) { left.timestamp.compare(right.timestamp) })
-  let timeline : Array[JobUiTimelineEntry] = []
+  let timeline : Array[JobUiTimelineEntry] = synthetic.copy()
   for index in 0..<sorted.length() {
     let event = sorted[index]
     timeline.push(JobUiTimelineEntry::{
@@ -57,6 +102,7 @@ fn timeline_from_events(
       data: event.data,
     })
   }
+  timeline.sort_by(fn(left, right) { left.timestamp.compare(right.timestamp) })
   timeline
 }
 
@@ -206,6 +252,8 @@ pub fn current_step_id_for_ui(
 pub async fn build_job_ui_snapshot(
   store : SystemStore,
   run_id : String,
+  linked_remote? : Array[JobUiRemoteLink] = [],
+  handoffs? : Array[JobUiHandoff] = [],
 ) -> JobUiSnapshot? {
   let run = match store.get_run(run_id) {
     Some(run) => run
@@ -316,7 +364,12 @@ pub async fn build_job_ui_snapshot(
     child_runs,
     artifacts,
     memories,
+    linked_remote,
+    handoffs,
     nodes,
-    timeline: timeline_from_events(store.list_run_events(run.id)),
+    timeline: timeline_from_events(
+      store.list_run_events(run.id),
+      synthetic=remote_handoff_timeline(run, handoffs),
+    ),
   })
 }
