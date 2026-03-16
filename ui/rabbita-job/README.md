@@ -41,6 +41,16 @@ serves the bundle's root-level `/assets/...` files so the built app can load
 correctly from `/ui`. If the bundle has not been built yet, `/ui` returns a
 small HTML page explaining how to build it.
 
+Be careful with `--cwd`: it is the gateway's default writable workspace. If
+you start the gateway with `--cwd /Users/kq/Workspace/moonclaw`, agent actions
+and generated files may be written into that repo. Use a separate workspace if
+you want the UI and gateway to operate without mutating the source tree:
+
+```bash
+mkdir -p ~/.moonclaw/workspace
+moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/workspace
+```
+
 Important: `ui/rabbita-job` is its own MoonBit module. If you run
 `moon run cmd/main -- ...` from inside this directory, Moon will fail because
 `cmd/main` only exists in the top-level MoonClaw repo. Run gateway commands

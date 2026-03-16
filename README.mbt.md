@@ -103,6 +103,20 @@ Start the gateway:
 moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/moonclaw
 ```
 
+Important:
+
+- `--home ~/.moonclaw` stores MoonClaw runtime state such as jobs, runs, memories, and gateway data.
+- `--cwd ~/Workspace/moonclaw` sets the default writable workspace for agent actions and generated files.
+- If you point `--cwd` at a git repo, MoonClaw may create or edit files inside that repo.
+- Use a separate workspace if you do not want generated files mixed into your source tree.
+
+Example with an isolated workspace instead of the repo:
+
+```bash
+mkdir -p ~/.moonclaw/workspace
+moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/workspace
+```
+
 Open the operator UI:
 
 ```text
