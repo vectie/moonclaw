@@ -92,19 +92,22 @@ Current capabilities behind the gateway:
 - agent mailboxes
 - coordination tasks
 - pipelines
+- config-backed defaults for port, auth token, workspace, and primary model
 
 #### `acp`
 
 Configure ACP targets that the gateway can launch later.
 
 ```bash
-moonclaw acp add codex --home ~/.moonclaw --workspace ~/.moonclaw/workspace
+moonclaw acp add codex --home ~/.moonclaw
 moonclaw acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
 ```
 
 Current capabilities:
 
 - add or update a Codex ACP target in `moonclaw.json`
+- default the target workspace from `agents.defaults.workspace` when configured
+- default the target cwd from `agents.defaults.cwd` when configured
 - keep unrelated config while merging the new target
 - support multiple ACP targets by explicit id
 - show whether Codex credentials are already available
@@ -139,6 +142,7 @@ Current capabilities:
 - validate core setup such as model provider, primary model, gateway token, workspace files, Feishu completeness, and plugin install state
 - create or update `moonclaw.json` with explicit choices for:
   - primary model
+  - default agent cwd
   - workspace root
   - gateway port
   - gateway token

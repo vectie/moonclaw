@@ -40,10 +40,6 @@ type BrowserCopyResult
 pub impl Show for BrowserCopyResult
 pub impl @json.FromJson for BrowserCopyResult
 
-type BrowserPostResult
-pub impl Show for BrowserPostResult
-pub impl @json.FromJson for BrowserPostResult
-
 type MixedHandoffGroup
 
 type Model

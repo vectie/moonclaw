@@ -7,6 +7,7 @@ pub async fn start(ArrayView[String]) -> Unit
 // Errors
 
 // Types and methods
+type GatewayCliDefaults
 
 // Type aliases
 

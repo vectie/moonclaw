@@ -90,7 +90,7 @@ moon run cmd/main -- onboard auth codex --home ~/.moonclaw
 Provision a Codex ACP target that the gateway can launch later:
 
 ```bash
-moon run cmd/main -- acp add codex --home ~/.moonclaw --workspace ~/.moonclaw/workspace
+moon run cmd/main -- acp add codex --home ~/.moonclaw
 ```
 
 If you want multiple ACP targets, add them with explicit ids:
@@ -112,13 +112,15 @@ moon run cmd/main -- onboard configure \
 Start the gateway:
 
 ```bash
-moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/moonclaw
+moon run cmd/main -- gateway start --home ~/.moonclaw
 ```
 
 Important:
 
 - `--home ~/.moonclaw` stores MoonClaw runtime state such as jobs, runs, memories, and gateway data.
-- `--cwd ~/Workspace/moonclaw` sets the default writable workspace for agent actions and generated files.
+- `gateway start` now falls back to the configured `agents.defaults.cwd` and `gateway.port` from `moonclaw.json`.
+- `acp add codex` now falls back to `agents.defaults.workspace` for the target workspace and `agents.defaults.cwd` for the target cwd.
+- `--cwd` still overrides the writable workspace explicitly when you want to point the gateway somewhere else.
 - If you point `--cwd` at a git repo, MoonClaw may create or edit files inside that repo.
 - Use a separate workspace if you do not want generated files mixed into your source tree.
 
@@ -170,7 +172,7 @@ Current behavior:
 ACP target provisioning is separate from onboarding:
 
 ```bash
-moon run cmd/main -- acp add codex --home ~/.moonclaw --workspace ~/.moonclaw/workspace
+moon run cmd/main -- acp add codex --home ~/.moonclaw
 moon run cmd/main -- acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch
 ```
 
@@ -178,6 +180,8 @@ Current ACP behavior:
 
 - `acp add codex` adds or updates a named Codex ACP target in `moonclaw.json`
 - use `--id` when you want more than one ACP target on the same machine
+- if `agents.defaults.workspace` is configured, `acp add codex` uses it as the default ACP workspace
+- if `agents.defaults.cwd` is configured, `acp add codex` uses it as the default ACP cwd
 - the command preserves unrelated config and only writes the target entry it manages
 
 ## 🪽 Feishu Usage

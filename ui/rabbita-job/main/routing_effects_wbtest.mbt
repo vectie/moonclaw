@@ -1,0 +1,29 @@
+///|
+test "parse_acp_stream_drain_payload accepts structured error payloads" {
+  let result = parse_acp_stream_drain_payload(
+    (
+      { "entries": [], "closed": true, "error": { "message": "stream_error" } } :
+      Json).stringify(),
+  )
+  match result {
+    Err(error) => inspect(error, content="stream_error")
+    Ok(_) => fail("expected structured ACP stream error")
+  }
+}
+
+///|
+test "parse_acp_stream_drain_payload still parses normal entries" {
+  let result = parse_acp_stream_drain_payload(
+    (
+      #|{"entries":["{\"id\":\"event-1\",\"event_type\":\"run.Completed\",\"title\":\"Run Completed\",\"detail\":\"done\",\"timestamp\":123,\"target_id\":\"target-1\",\"session_id\":\"session-1\",\"run_id\":\"run-1\",\"status\":\"Completed\",\"data\":{}}"],"closed":false,"error":null}
+    ),
+  )
+  match result {
+    Ok((entries, closed)) => {
+      inspect(entries.length(), content="1")
+      inspect(entries[0].id, content="event-1")
+      inspect(closed, content="false")
+    }
+    Err(error) => fail(error)
+  }
+}

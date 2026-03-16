@@ -34,8 +34,12 @@ fn print_help() -> Unit {
   )
   println("  --id <target>      Target id (default: codex-main)")
   println("  --label <text>     Target label (default: Codex <id>)")
-  println("  --workspace <dir>  ACP workspace path (default: <home>/workspace)")
-  println("  --target-cwd <dir> ACP target cwd (default: workspace)")
+  println(
+    "  --workspace <dir>  ACP workspace path (default: config workspace or <home>/workspace)",
+  )
+  println(
+    "  --target-cwd <dir> ACP target cwd (default: config cwd or workspace)",
+  )
   println("  --model <model>    Codex model (default: gpt-5)")
   println("  --command <cmd>    Command to launch (default: codex)")
   println("")
@@ -59,7 +63,7 @@ fn parse_string_arg(args : Array[String], flag : String) -> String? {
 fn resolve_home(args : Array[String]) -> String {
   match parse_string_arg(args, "--home") {
     Some(home) => home
-    None => @os.home() catch { _ => ".moonclaw" }
+    None => @pathx.join(@os.home() catch { _ => "." }, ".moonclaw")
   }
 }
 
@@ -121,6 +125,48 @@ fn json_object_copy(value : Json?) -> Map[String, Json] {
     _ => ()
   }
   copied
+}
+
+///|
+fn configured_workspace_root(json : Json?) -> String? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("agents") {
+        Some(Object(agents)) =>
+          match agents.get("defaults") {
+            Some(Object(defaults)) =>
+              match defaults.get("workspace") {
+                Some(String(workspace)) if !workspace.trim().is_empty() =>
+                  Some(workspace.trim().to_string())
+                _ => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn configured_agent_cwd(json : Json?) -> String? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("agents") {
+        Some(Object(agents)) =>
+          match agents.get("defaults") {
+            Some(Object(defaults)) =>
+              match defaults.get("cwd") {
+                Some(String(cwd)) if !cwd.trim().is_empty() =>
+                  Some(cwd.trim().to_string())
+                _ => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
 }
 
 ///|
@@ -215,10 +261,17 @@ async fn add_codex_target(args : Array[String]) -> Unit {
     None => default_config(home)
   }
   let target_id = parse_string_arg(args, "--id").unwrap_or("codex-main")
-  let workspace = parse_string_arg(args, "--workspace").unwrap_or(
-    home |> @pathx.join("workspace"),
-  )
-  let target_cwd = parse_string_arg(args, "--target-cwd").unwrap_or(workspace)
+  let workspace = match parse_string_arg(args, "--workspace") {
+    Some(workspace) => workspace
+    None =>
+      configured_workspace_root(existing).unwrap_or(
+        home |> @pathx.join("workspace"),
+      )
+  }
+  let target_cwd = match parse_string_arg(args, "--target-cwd") {
+    Some(target_cwd) => target_cwd
+    None => configured_agent_cwd(existing).unwrap_or(workspace)
+  }
   let model = parse_string_arg(args, "--model").unwrap_or("gpt-5")
   let command = parse_string_arg(args, "--command").unwrap_or("codex")
   let label = parse_string_arg(args, "--label").unwrap_or("Codex \{target_id}")

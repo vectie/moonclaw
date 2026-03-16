@@ -18,6 +18,19 @@ pub(all) struct AcpSessionRunParams {
 } derive(FromJson, ToJson, Show)
 
 ///|
+fn acp_session_run_payload_with_session_id(
+  payload : Json,
+  session_id : String,
+) -> Json {
+  let obj = match payload {
+    Object(obj) => obj
+    _ => {}
+  }
+  obj["session_id"] = Json::string(session_id)
+  Json::object(obj)
+}
+
+///|
 priv struct AcpProcessOutcome {
   status : String
   result : Json
@@ -1637,7 +1650,9 @@ async fn Gateway::handle_run_acp_session(
       })
   }
   let payload = self.read_json_body(r, "Invalid ACP run payload")
-  let params : AcpSessionRunParams = @json.from_json(payload) catch {
+  let params : AcpSessionRunParams = @json.from_json(
+    acp_session_run_payload_with_session_id(payload, session_id),
+  ) catch {
     error =>
       raise json_error(400, "BadRequest", {
         "error": {

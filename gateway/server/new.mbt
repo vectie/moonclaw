@@ -7,7 +7,7 @@ pub async fn Gateway::new(
   auth? : AuthConfig,
 ) -> Gateway {
   let home = match home {
-    None => @os.home()
+    None => @path.Path(@os.home()).join(@path.Path(".moonclaw")).to_string()
     Some(home) => home.to_string()
   }
   let cwd = match cwd {

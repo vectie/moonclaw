@@ -70,21 +70,30 @@ fn print_help() -> Unit {
   println("  help      Show this help message")
   println("")
   println("Start options:")
-  println("  --port <port>      Port to listen on (default: 18123)")
-  println("  --cwd <dir>        Working directory (default: current)")
+  println("  --port <port>      Port to listen on (default: config or 18123)")
+  println(
+    "  --cwd <dir>        Working directory (default: config cwd or current)",
+  )
   println("  --home <dir>       Home directory (default: ~/.moonclaw)")
   println("")
   println("Connect options:")
-  println("  --url <url>        Gateway URL (default: http://localhost:18123)")
-  println("  --token <token>    Auth token")
+  println(
+    "  --url <url>        Gateway URL (default: config port or http://localhost:18123)",
+  )
+  println("  --token <token>    Auth token (default: config token)")
+  println("  --home <dir>       Home directory for config discovery")
+  println("  --cwd <dir>        Working directory for config discovery")
   println("")
   println("Agent options:")
-  println("  --url <url>        Gateway URL (default: http://localhost:18123)")
-  println("  --token <token>    Auth token")
+  println(
+    "  --url <url>        Gateway URL (default: config port or http://localhost:18123)",
+  )
+  println("  --token <token>    Auth token (default: config token)")
   println("  --message <msg>    Message to send (required)")
   println("  --session <key>    Session key for conversation continuity")
-  println("  --model <name>     Model to use")
-  println("  --cwd <dir>        Working directory")
+  println("  --model <name>     Model to use (default: config primary model)")
+  println("  --cwd <dir>        Working directory (default: config cwd)")
+  println("  --home <dir>       Home directory for config discovery")
   println("  --wait             Wait for completion")
   println("  --timeout <ms>     Timeout for waiting (default: 60000)")
   println("")
@@ -111,16 +120,19 @@ fn print_help() -> Unit {
 ///|
 async fn start_gateway(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let port = parse_int_arg(args, "--port", default=@protocol.DEFAULT_PORT)
-  let cwd = parse_string_arg(args, "--cwd")
-  let home = parse_string_arg(args, "--home")
+  let home = resolve_home(args)
+  let discovery_cwd = resolve_cwd(args)
+  let config = load_config(home, discovery_cwd)
+  let port = parse_int_arg(
+    args,
+    "--port",
+    default=configured_gateway_port(config).unwrap_or(@protocol.DEFAULT_PORT),
+  )
+  let cwd = parse_string_arg(args, "--cwd").unwrap_or(
+    configured_agent_cwd(config).unwrap_or(discovery_cwd),
+  )
   logger.info("Starting MoonClaw Gateway on port \{port}")
-  let gateway = match (cwd, home) {
-    (Some(c), Some(h)) => @server.Gateway::new(port~, cwd=c[:], home=h[:])
-    (Some(c), None) => @server.Gateway::new(port~, cwd=c[:])
-    (None, Some(h)) => @server.Gateway::new(port~, home=h[:])
-    (None, None) => @server.Gateway::new(port~)
-  }
+  let gateway = @server.Gateway::new(port~, cwd=cwd[:], home=home[:])
   logger.info("Gateway started on port \{gateway.port()}")
   gateway.start()
 }
@@ -128,15 +140,10 @@ async fn start_gateway(args : Array[String]) -> Unit {
 ///|
 async fn connect_gateway(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let url = parse_string_arg(args, "--url")
-  let url = match url {
-    Some(u) => u
-    None => "http://localhost:\{@protocol.DEFAULT_PORT}"
-  }
-  let token = parse_string_arg(args, "--token")
+  let defaults = gateway_cli_defaults(args)
   let config = @client.ClientConfig::{
-    base_url: url,
-    token,
+    base_url: defaults.url,
+    token: defaults.token,
     client_id: None,
     client_mode: @protocol.ClientMode::Cli,
   }
@@ -156,12 +163,7 @@ async fn connect_gateway(args : Array[String]) -> Unit {
 ///|
 async fn run_agent(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let url = parse_string_arg(args, "--url")
-  let url = match url {
-    Some(u) => u
-    None => "http://localhost:\{@protocol.DEFAULT_PORT}"
-  }
-  let token = parse_string_arg(args, "--token")
+  let defaults = gateway_cli_defaults(args)
   let message = parse_string_arg(args, "--message")
   let message = match message {
     Some(m) => m
@@ -171,13 +173,19 @@ async fn run_agent(args : Array[String]) -> Unit {
     }
   }
   let session_key = parse_string_arg(args, "--session")
-  let cwd = parse_string_arg(args, "--cwd")
-  let model = parse_string_arg(args, "--model")
+  let cwd = match parse_string_arg(args, "--cwd") {
+    Some(cwd) => Some(cwd)
+    None => defaults.cwd
+  }
+  let model = match parse_string_arg(args, "--model") {
+    Some(model) => Some(model)
+    None => defaults.primary_model
+  }
   let wait = args.contains("--wait")
   let timeout = parse_int_arg(args, "--timeout", default=60000)
   let config = @client.ClientConfig::{
-    base_url: url,
-    token,
+    base_url: defaults.url,
+    token: defaults.token,
     client_id: None,
     client_mode: @protocol.ClientMode::Cli,
   }
@@ -219,15 +227,10 @@ async fn run_agent(args : Array[String]) -> Unit {
 ///|
 async fn check_health(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let url = parse_string_arg(args, "--url")
-  let url = match url {
-    Some(u) => u
-    None => "http://localhost:\{@protocol.DEFAULT_PORT}"
-  }
-  let token = parse_string_arg(args, "--token")
+  let defaults = gateway_cli_defaults(args)
   let config = @client.ClientConfig::{
-    base_url: url,
-    token,
+    base_url: defaults.url,
+    token: defaults.token,
     client_id: None,
     client_mode: @protocol.ClientMode::Probe,
   }
@@ -578,17 +581,179 @@ async fn make_client(
   args : Array[String],
   mode~ : @protocol.ClientMode,
 ) -> @client.Client {
-  let url = match parse_string_arg(args, "--url") {
-    Some(url) => url
-    None => "http://localhost:\{@protocol.DEFAULT_PORT}"
-  }
-  let token = parse_string_arg(args, "--token")
+  let defaults = gateway_cli_defaults(args)
   @client.Client::new(@client.ClientConfig::{
-    base_url: url,
-    token,
+    base_url: defaults.url,
+    token: defaults.token,
     client_id: None,
     client_mode: mode,
   })
+}
+
+///|
+fn resolve_home(args : Array[String]) -> String {
+  match parse_string_arg(args, "--home") {
+    Some(home) => home
+    None => @pathx.join(@os.home() catch { _ => "." }, ".moonclaw")
+  }
+}
+
+///|
+fn resolve_cwd(args : Array[String]) -> String {
+  match parse_string_arg(args, "--cwd") {
+    Some(cwd) => cwd
+    None => @os.cwd() catch { _ => "." }
+  }
+}
+
+///|
+fn root_config_path(root : String) -> String {
+  root |> @pathx.join("moonclaw.json")
+}
+
+///|
+fn nested_config_path(root : String) -> String {
+  root |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json")
+}
+
+///|
+fn config_candidates(home : String, cwd : String) -> Array[String] {
+  [
+    root_config_path(home),
+    nested_config_path(home),
+    root_config_path(cwd),
+    nested_config_path(cwd),
+  ]
+}
+
+///|
+async fn load_config(home : String, cwd : String) -> Json? {
+  for path in config_candidates(home, cwd) {
+    let exists = @fsx.exists(path) catch { _ => false }
+    if !exists {
+      continue
+    }
+    let text = @fsx.read_file(path) catch { _ => continue }
+    let json = @json.parse(text) catch { _ => continue }
+    return Some(json)
+  }
+  None
+}
+
+///|
+fn json_string_field(value : Json, field : String) -> String? {
+  match value {
+    Object(obj) =>
+      match obj.get(field) {
+        Some(String(text)) if !text.trim().is_empty() =>
+          Some(text.trim().to_string())
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn configured_agent_cwd(json : Json?) -> String? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("agents") {
+        Some(Object(agents)) =>
+          match agents.get("defaults") {
+            Some(Object(defaults)) =>
+              match defaults.get("cwd") {
+                Some(String(cwd)) if !cwd.trim().is_empty() =>
+                  Some(cwd.trim().to_string())
+                _ => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn configured_primary_model(json : Json?) -> String? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("agents") {
+        Some(Object(agents)) =>
+          match agents.get("defaults") {
+            Some(Object(defaults)) =>
+              match defaults.get("model") {
+                Some(model) => json_string_field(model, "primary")
+                _ => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn configured_gateway_port(json : Json?) -> Int? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("gateway") {
+        Some(Object(gateway)) =>
+          match gateway.get("port") {
+            Some(Number(port, ..)) => Some(port.to_int())
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn configured_gateway_token(json : Json?) -> String? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("gateway") {
+        Some(Object(gateway)) =>
+          match gateway.get("auth") {
+            Some(auth) => json_string_field(auth, "token")
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+struct GatewayCliDefaults {
+  url : String
+  token : String?
+  cwd : String?
+  primary_model : String?
+}
+
+///|
+async fn gateway_cli_defaults(args : Array[String]) -> GatewayCliDefaults {
+  let home = resolve_home(args)
+  let cwd = resolve_cwd(args)
+  let config = load_config(home, cwd)
+  let url = match parse_string_arg(args, "--url") {
+    Some(url) => url
+    None =>
+      "http://localhost:\{configured_gateway_port(config).unwrap_or(@protocol.DEFAULT_PORT)}"
+  }
+  let token = match parse_string_arg(args, "--token") {
+    Some(token) => Some(token)
+    None => configured_gateway_token(config)
+  }
+  {
+    url,
+    token,
+    cwd: configured_agent_cwd(config),
+    primary_model: configured_primary_model(config),
+  }
 }
 
 ///|

@@ -82,6 +82,7 @@ async test "bootstrap_with_options applies explicit model workspace and channel 
   @fsx.make_directory(cwd, recursive=true)
   let result = bootstrap_with_options(home~, cwd~, {
     primary_model: Some("demo/smart"),
+    working_directory: None,
     workspace_root: Some(custom_workspace),
     gateway_port: Some(19090),
     gateway_token: Some("fixed-token"),
@@ -106,6 +107,7 @@ async test "bootstrap_with_options applies explicit model workspace and channel 
     "agents": {
       "defaults": {
         "model": { "primary": "demo/smart" },
+        "cwd": cwd,
         "workspace": custom_workspace,
       },
     },
@@ -129,6 +131,27 @@ async test "bootstrap_with_options applies explicit model workspace and channel 
       },
     },
   })
+}
+
+///|
+async test "bootstrap adds configured cwd distinct from workspace" {
+  let home = "/tmp/moonclaw-onboarding-cwd"
+  let cwd = home |> @pathx.join("project")
+  let config_path = home |> @pathx.join("moonclaw.json")
+  let custom_workspace = home |> @pathx.join("custom-workspace")
+  @fsx.make_directory(cwd, recursive=true)
+  ignore(
+    bootstrap_with_options(home~, cwd~, {
+      ..default_onboarding_options(),
+      workspace_root: Some(custom_workspace),
+    }),
+  )
+  let text = @fsx.read_file(config_path)
+  inspect(text.contains("\"cwd\": \"\{cwd}\""), content="true")
+  inspect(
+    text.contains("\"workspace\": \"\{custom_workspace}\""),
+    content="true",
+  )
 }
 
 ///|

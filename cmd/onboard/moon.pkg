@@ -4,6 +4,7 @@ import {
   "moonbitlang/core/strconv",
   "moonbitlang/moonclaw/onboarding",
   "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/pino",
   "moonbitlang/moonclaw/internal/buildinfo",
   "moonbitlang/moonclaw/internal/backtrace",

@@ -18,7 +18,7 @@ pub async fn collect_status(home~ : String, cwd~ : String) -> OnboardingStatus
 
 pub async fn discover_models(home~ : String, cwd~ : String) -> Array[String]
 
-pub fn onboarding_options(primary_model? : String?, workspace_root? : String?, gateway_port? : Int?, gateway_token? : String?, feishu_enabled? : Bool?, feishu_app_id? : String?, feishu_app_secret? : String?) -> OnboardingOptions
+pub fn onboarding_options(primary_model? : String?, working_directory? : String?, workspace_root? : String?, gateway_port? : Int?, gateway_token? : String?, feishu_enabled? : Bool?, feishu_app_id? : String?, feishu_app_secret? : String?) -> OnboardingOptions
 
 pub fn render_auth_status(OnboardingAuthStatus) -> String
 
@@ -72,6 +72,7 @@ pub impl @json.FromJson for OnboardingAuthStatus
 
 pub struct OnboardingOptions {
   primary_model : String?
+  working_directory : String?
   workspace_root : String?
   gateway_port : Int?
   gateway_token : String?

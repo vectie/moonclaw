@@ -315,67 +315,6 @@ fn parse_action_status_payload(text : String) -> Result[String, String] {
 }
 
 ///|
-struct BrowserPostResult {
-  ok : Bool
-  status : Int
-  body : String
-  error : String?
-} derive(FromJson, Show)
-
-///|
-#cfg(target="js")
-extern "js" fn browser_post_json(url : String, body : String) -> String =
-  #| async (url, body) => {
-  #|   try {
-  #|     const response = await fetch(url, {
-  #|       method: "POST",
-  #|       headers: { "Content-Type": "application/json" },
-  #|       body,
-  #|     });
-  #|     const text = await response.text();
-  #|     return JSON.stringify({
-  #|       ok: response.ok,
-  #|       status: response.status,
-  #|       body: text,
-  #|       error: null,
-  #|     });
-  #|   } catch (error) {
-  #|     return JSON.stringify({
-  #|       ok: false,
-  #|       status: 0,
-  #|       body: "",
-  #|       error: String(error),
-  #|     });
-  #|   }
-  #| }
-
-///|
-fn parse_browser_post_result(text : String) -> Result[String, String] {
-  let json : Result[Json, Error] = try? @json.parse(text)
-  let payload = match json {
-    Ok(json) =>
-      match (try? @json.from_json(json) : Result[BrowserPostResult, Error]) {
-        Ok(payload) => payload
-        Err(error) =>
-          return Err("Failed to parse browser post result: \{error}")
-      }
-    Err(error) => return Err("Failed to parse browser post wrapper: \{error}")
-  }
-  match payload.error {
-    Some(error) => Err(error)
-    None =>
-      if payload.ok {
-        parse_action_status_payload(payload.body)
-      } else {
-        match parse_action_status_payload(payload.body) {
-          Ok(status) => Err("Request failed (\{payload.status}): \{status}")
-          Err(error) => Err("Request failed (\{payload.status}): \{error}")
-        }
-      }
-  }
-}
-
-///|
 #cfg(target="js")
 extern "js" fn browser_copy_text(text : String) -> String =
   #| async (text) => {
@@ -476,6 +415,63 @@ struct StreamDrainPayload {
 } derive(FromJson, Show)
 
 ///|
+fn stream_drain_error_message(json : Json) -> String? {
+  match json {
+    Null => None
+    String(message) => Some(message)
+    Object(obj) =>
+      match obj.get("message") {
+        Some(String(message)) => Some(message)
+        _ => Some(json.stringify())
+      }
+    _ => Some(json.stringify())
+  }
+}
+
+///|
+fn parse_stream_drain_payload_json(
+  json : Json,
+) -> Result[StreamDrainPayload, String] {
+  match json {
+    Object(obj) => {
+      let entries = match obj.get("entries") {
+        Some(Array(items)) => {
+          let collected : Array[String] = []
+          for item in items {
+            match item {
+              String(text) => collected.push(text)
+              _ =>
+                return Err(
+                  "Failed to parse stream payload: entries must contain only strings",
+                )
+            }
+          }
+          collected
+        }
+        Some(_) =>
+          return Err(
+            "Failed to parse stream payload: entries must be an array of strings",
+          )
+        None => []
+      }
+      let closed = match obj.get("closed") {
+        Some(True) => true
+        Some(False) => false
+        Some(_) =>
+          return Err("Failed to parse stream payload: closed must be a boolean")
+        None => false
+      }
+      let error = match obj.get("error") {
+        Some(value) => stream_drain_error_message(value)
+        None => None
+      }
+      Ok({ entries, closed, error })
+    }
+    _ => Err("Failed to parse stream payload: expected object")
+  }
+}
+
+///|
 fn parse_timeline_entry_payload(
   text : String,
 ) -> Result[UiTimelineEntry, String] {
@@ -497,9 +493,9 @@ fn parse_stream_drain_payload(
   let json : Result[Json, Error] = try? @json.parse(text)
   let payload = match json {
     Ok(json) =>
-      match (try? @json.from_json(json) : Result[StreamDrainPayload, Error]) {
+      match parse_stream_drain_payload_json(json) {
         Ok(payload) => payload
-        Err(error) => return Err("Failed to parse stream payload: \{error}")
+        Err(error) => return Err(error)
       }
     Err(error) => return Err("Failed to parse stream drain JSON: \{error}")
   }
@@ -523,7 +519,7 @@ fn parse_acp_stream_drain_payload(
   let json : Result[Json, Error] = try? @json.parse(text)
   let payload = match json {
     Ok(json) =>
-      match (try? @json.from_json(json) : Result[StreamDrainPayload, Error]) {
+      match parse_stream_drain_payload_json(json) {
         Ok(payload) => payload
         Err(error) => return Err("Failed to parse ACP stream payload: \{error}")
       }
@@ -619,9 +615,17 @@ fn post_action(
   url : String,
   body? : Json = {},
 ) -> Cmd {
-  @rabbita.perform(fn(result) { dispatch(AcpActionFinished(result)) }, fn() noraise {
-    parse_browser_post_result(browser_post_json(url, body.stringify()))
+  let expect : @http.Expecting[Cmd, String] = @http.Expecting::Text(fn(result) {
+    dispatch(
+      AcpActionFinished(
+        match result {
+          Ok(text) => parse_action_status_payload(text)
+          Err(error) => Err(error)
+        },
+      ),
+    )
   })
+  @http.post(url, @http.Body::Json(body), expect~)
 }
 
 ///|

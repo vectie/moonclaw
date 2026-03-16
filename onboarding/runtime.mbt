@@ -1,6 +1,7 @@
 ///|
 pub struct OnboardingOptions {
   primary_model : String?
+  working_directory : String?
   workspace_root : String?
   gateway_port : Int?
   gateway_token : String?
@@ -62,6 +63,7 @@ pub struct OnboardingApplyResult {
 fn default_onboarding_options() -> OnboardingOptions {
   {
     primary_model: None,
+    working_directory: None,
     workspace_root: None,
     gateway_port: None,
     gateway_token: None,
@@ -74,6 +76,7 @@ fn default_onboarding_options() -> OnboardingOptions {
 ///|
 pub fn onboarding_options(
   primary_model? : String? = None,
+  working_directory? : String? = None,
   workspace_root? : String? = None,
   gateway_port? : Int? = None,
   gateway_token? : String? = None,
@@ -83,6 +86,7 @@ pub fn onboarding_options(
 ) -> OnboardingOptions {
   {
     primary_model,
+    working_directory,
     workspace_root,
     gateway_port,
     gateway_token,
@@ -451,6 +455,15 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       )
     _ => ()
   }
+  match options.working_directory {
+    Some(working_directory) if !working_directory.trim().is_empty() =>
+      configured = json_set_path(
+        configured,
+        ["agents", "defaults", "cwd"],
+        Json::string(working_directory.trim().to_string()),
+      )
+    _ => ()
+  }
   match options.workspace_root {
     Some(workspace_root) if !workspace_root.trim().is_empty() =>
       configured = json_set_path(
@@ -525,12 +538,16 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
 }
 
 ///|
-fn default_config(home : String) -> Json {
+fn default_config(home : String, cwd : String) -> Json {
   let workspace_root = home |> @pathx.join("workspace")
   {
     "models": { "providers": {} },
     "agents": {
-      "defaults": { "model": { "primary": "" }, "workspace": workspace_root },
+      "defaults": {
+        "model": { "primary": "" },
+        "cwd": cwd,
+        "workspace": workspace_root,
+      },
     },
     "commands": {
       "native": "auto",
@@ -784,7 +801,7 @@ pub async fn bootstrap_with_options(
   options : OnboardingOptions,
 ) -> OnboardingApplyResult {
   let (config_path, existing) = load_config(home, cwd)
-  let defaults = default_config(home)
+  let defaults = default_config(home, cwd)
   let merged = match existing {
     Some(existing) => merge_missing(existing, defaults)
     None => defaults
@@ -794,7 +811,7 @@ pub async fn bootstrap_with_options(
   @fsx.make_directory(dir, recursive=true) catch {
     _ => ()
   }
-  @fsx.write_to_file(config_path, configured.stringify())
+  @fsx.write_to_file(config_path, configured.stringify(indent=2))
   let workspace_runtime = @workspace.WorkspaceRuntime::new(home~, cwd~)
   workspace_runtime.load()
   let created : Array[String] = []
@@ -983,7 +1000,7 @@ pub fn render_bootstrap_result(result : OnboardingApplyResult) -> String {
 
 ///|
 pub fn render_default_config(home~ : String) -> String {
-  default_config(home).stringify(indent=2)
+  default_config(home, home).stringify(indent=2)
 }
 
 ///|
@@ -991,5 +1008,5 @@ pub fn render_config_with_options(
   home~ : String,
   options : OnboardingOptions,
 ) -> String {
-  apply_options(default_config(home), options).stringify(indent=2)
+  apply_options(default_config(home, home), options).stringify(indent=2)
 }

@@ -44,6 +44,7 @@ fn print_help() -> Unit {
   println(
     "  --model <id>   Set agents.defaults.model.primary (for example: bailian/qwen3.5-plus)",
   )
+  println("  --agent-cwd <dir>        Set agents.defaults.cwd")
   println("  --workspace <dir>        Set agents.defaults.workspace")
   println("  --gateway-port <port>    Set gateway.port")
   println("  --gateway-token <token>  Set gateway.auth.token")
@@ -79,7 +80,7 @@ fn parse_string_arg(args : Array[String], flag : String) -> String? {
 fn resolve_home(args : Array[String]) -> String {
   match parse_string_arg(args, "--home") {
     Some(home) => home
-    None => @os.home() catch { _ => ".moonclaw" }
+    None => @pathx.join(@os.home() catch { _ => "." }, ".moonclaw")
   }
 }
 
@@ -103,6 +104,7 @@ fn parse_int_arg(args : Array[String], flag : String) -> Int? {
 fn resolve_options(args : Array[String]) -> @onboarding.OnboardingOptions {
   @onboarding.onboarding_options(
     primary_model=parse_string_arg(args, "--model"),
+    working_directory=parse_string_arg(args, "--agent-cwd"),
     workspace_root=parse_string_arg(args, "--workspace"),
     gateway_port=parse_int_arg(args, "--gateway-port"),
     gateway_token=parse_string_arg(args, "--gateway-token"),
