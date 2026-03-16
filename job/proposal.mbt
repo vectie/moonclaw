@@ -2,11 +2,6 @@
 fn infer_job_tags(request_text : String) -> Array[String] {
   let lower = request_text.to_lower()
   let tags = ["job"]
-  if lower.contains("research") ||
-    lower.contains("paper") ||
-    lower.contains("arxiv") {
-    tags.push("research")
-  }
   if lower.contains("summarize") || lower.contains("summary") {
     tags.push("summary")
   }
@@ -78,53 +73,6 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
 }
 
 ///|
-fn research_proposal_steps(request_text : String) -> Array[JobProposalStep] {
-  [
-    JobProposalStep::{
-      id: "scope",
-      title: "Define research scope",
-      kind: "job.analysis",
-      prompt: [
-        "Determine the exact research topic, scope, timeframe, and what counts as relevant source material.",
-        "Request: \{request_text}",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
-      id: "collect",
-      title: "Collect candidate sources",
-      kind: "job.analysis",
-      prompt: [
-        "Plan how to collect the most relevant papers and sources.", "Identify search terms, source criteria, and expected artifact structure.",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
-      id: "analyze",
-      title: "Analyze sources",
-      kind: "job.analysis",
-      prompt: [
-        "Analyze the collected material.", "Focus on novelty, methods, evidence quality, and practical relevance.",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
-      id: "synthesize",
-      title: "Synthesize findings",
-      kind: "job.analysis",
-      prompt: [
-        "Synthesize the most important findings into structured conclusions and action items.",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
-      id: "deliver",
-      title: "Prepare research brief",
-      kind: "job.analysis",
-      prompt: [
-        "Prepare a final research brief with recommendations, unanswered questions, and next actions.",
-      ].join("\n\n"),
-    },
-  ]
-}
-
-///|
 struct ProposalPlanStepPayload {
   id : String?
   title : String
@@ -164,13 +112,7 @@ fn normalized_plan_steps(
   payload : ProposalPlanPayload,
   fallback_request : String,
 ) -> Array[JobProposalStep] {
-  let fallback = if fallback_request.to_lower().contains("research") ||
-    fallback_request.to_lower().contains("paper") ||
-    fallback_request.to_lower().contains("arxiv") {
-    research_proposal_steps(fallback_request)
-  } else {
-    generic_proposal_steps(fallback_request)
-  }
+  let fallback = generic_proposal_steps(fallback_request)
   match payload.steps {
     Some(steps) if !steps.is_empty() => {
       let normalized = []
@@ -221,36 +163,12 @@ fn proposal_payload_to_proposal(
     .unwrap_or(fallback.summary)
   let steps = normalized_plan_steps(payload, request_text)
   let tags = payload.tags.unwrap_or(fallback.tags)
-  let hint_source = JobProposal::{
-    ..fallback,
-    title,
-    request_text,
-    summary,
-    revision_history: fallback.revision_history,
-    suggested_family: fallback.suggested_family,
-    suggested_template: fallback.suggested_template,
-    required_capabilities: fallback.required_capabilities,
-    missing_capabilities: fallback.missing_capabilities,
-    compiler_notes: fallback.compiler_notes,
-    status: Draft,
-    steps,
-    tags,
-    updated_at: now_ms,
-  }
-  let (family, template, capabilities, missing, notes) = explain_proposal_compilation_hints(
-    hint_source,
-  )
   JobProposal::{
     ..fallback,
     title,
     request_text,
     summary,
     revision_history: fallback.revision_history,
-    suggested_family: Some(family),
-    suggested_template: Some(template),
-    required_capabilities: capabilities,
-    missing_capabilities: missing,
-    compiler_notes: notes,
     status: Draft,
     steps,
     tags,
@@ -492,10 +410,6 @@ pub async fn save_confirmed_job_proposal(
   store.save_job_proposal(JobProposal::{
     ..proposal,
     suggested_family: Some(compilation.family),
-    suggested_template: Some(compilation.template),
-    required_capabilities: compilation.required_capabilities,
-    missing_capabilities: compilation.missing_capabilities,
-    compiler_notes: compilation.compiler_notes,
     status: Confirmed,
     job_id: Some(compilation.definition.id),
     workflow_id: Some(compilation.workflow.id),
@@ -527,22 +441,9 @@ pub fn draft_job_proposal(
   recipient? : String? = None,
   thread_id? : String? = None,
 ) -> JobProposal {
-  let lower = request_text.to_lower()
-  let steps = if lower.contains("research") ||
-    lower.contains("paper") ||
-    lower.contains("arxiv") {
-    research_proposal_steps(request_text)
-  } else {
-    generic_proposal_steps(request_text)
-  }
+  let steps = generic_proposal_steps(request_text)
   let tags = infer_job_tags(request_text)
-  let family = if tags.contains("research") { "research" } else { "generic" }
-  let template = if family == "research" {
-    "research.topic_watch"
-  } else {
-    "generic.analysis"
-  }
-  let seed = JobProposal::{
+  JobProposal::{
     id: proposal_id,
     title: compact_title(request_text),
     request_text,
@@ -550,11 +451,7 @@ pub fn draft_job_proposal(
       "Draft job proposal generated from chat request.", "This proposal will not execute until explicitly confirmed.",
     ].join(" "),
     revision_history: [],
-    suggested_family: Some(family),
-    suggested_template: Some(template),
-    required_capabilities: [],
-    missing_capabilities: [],
-    compiler_notes: [],
+    suggested_family: Some("generic"),
     status: Draft,
     steps,
     tags,
@@ -568,17 +465,6 @@ pub fn draft_job_proposal(
     last_run_id: None,
     created_at: now_ms,
     updated_at: now_ms,
-  }
-  let (resolved_family, resolved_template, capabilities, missing, notes) = explain_proposal_compilation_hints(
-    seed,
-  )
-  JobProposal::{
-    ..seed,
-    suggested_family: Some(resolved_family),
-    suggested_template: Some(resolved_template),
-    required_capabilities: capabilities,
-    missing_capabilities: missing,
-    compiler_notes: notes,
   }
 }
 
@@ -602,36 +488,18 @@ pub fn proposal_as_workflow(
 
 ///|
 pub fn render_job_proposal_for_chat(proposal : JobProposal) -> String {
-  let family = proposal.suggested_family.unwrap_or("unknown")
-  let template = proposal.suggested_template.unwrap_or("unknown")
-  let capabilities = proposal.required_capabilities.join(", ")
-  let missing = proposal.missing_capabilities.join(", ")
+  let family = proposal.suggested_family.unwrap_or("")
   let lines = [
     "Job proposal `\{proposal.id}`",
     "",
     "Title: \{proposal.title}",
     "Status: \{proposal.status.to_json().stringify()}",
-    "Family: \{family}",
-    "Template: \{template}",
-    "",
-    "Summary: \{proposal.summary}",
   ]
-  let lines = if proposal.required_capabilities.is_empty() {
-    lines
-  } else {
-    [..lines, "Capabilities: \{capabilities}"]
+  if !family.is_blank() {
+    lines.push("Family: \{family}")
   }
-  let lines = if proposal.missing_capabilities.is_empty() {
-    lines
-  } else {
-    [..lines, "Missing capabilities: \{missing}"]
-  }
-  let lines = if proposal.compiler_notes.is_empty() {
-    lines
-  } else {
-    let rendered = proposal.compiler_notes.map(fn(note) { "- \{note}" })
-    [..lines, "", "Compiler notes:", ..rendered]
-  }
+  lines.push("")
+  lines.push("Summary: \{proposal.summary}")
   let lines = [..lines, "", "Planned steps:"]
   let lines = proposal.steps.fold(init=lines, fn(lines, step) {
     [..lines, "\{step.id}. \{step.title}"]

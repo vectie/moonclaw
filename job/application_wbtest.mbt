@@ -65,7 +65,7 @@ async test "GatewayJobApp::confirm_proposal registers workflow and persists prop
       Ok(confirmed) => confirmed
       Err(error) => fail(error)
     }
-    inspect(confirmed.compilation.family, content="research")
+    inspect(confirmed.compilation.family, content="generic")
     inspect(confirmed.run.id, content="run-2")
     inspect(
       app.runtime().store().get_definition(confirmed.compilation.definition.id)

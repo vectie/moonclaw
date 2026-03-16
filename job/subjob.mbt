@@ -147,15 +147,14 @@ pub fn subjob_step_handler(
           "child_job_id": compilation.definition.id,
           "child_run_id": child_run.id,
           "child_family": compilation.family,
-          "child_template": compilation.template,
           "child_outputs": child_result.outputs,
         },
         summary=Some(
-          "Subjob \{compilation.definition.id} completed as \{compilation.template}",
+          "Subjob \{compilation.definition.id} completed as \{compilation.family}",
         ),
         logs=[
           "spawned child run \{child_run.id}",
-          "child template: \{compilation.template}",
+          "child family: \{compilation.family}",
         ],
       ),
     )

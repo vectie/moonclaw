@@ -8,7 +8,7 @@ It is designed for:
 
 - 💬 chat-driven planning
 - ⚙️ long-running background jobs
-- 🧪 research / analysis workflows
+- 🧪 analysis workflows
 - 📁 dedicated run workspaces with git checkpoints
 - 🧠 structured long-term memory
 - 🌐 gateway + operator UI
@@ -42,7 +42,7 @@ MoonClaw is strongest when you want one system to handle:
 - 🗂️ per-run and per-subjob workspaces
 - 🌳 git-managed run history inside each workspace
 - 📦 artifact storage and grounded artifact Q&A
-- 🔬 research-oriented job families
+- 🔬 generic job workflows
 - 🤖 ACP targets, sessions, and runs for remote agent control
 - 🪟 Rabbita operator UI with:
   - local job expansion

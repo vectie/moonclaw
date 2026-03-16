@@ -441,9 +441,6 @@ async fn Gateway::handle_confirm_job_command(
       confirmed.compilation.definition.id,
       confirmed.run.id,
       confirmed.compilation.family,
-      confirmed.compilation.template,
-      confirmed.compilation.missing_capabilities,
-      confirmed.compilation.compiler_notes,
     ),
   )
 }

@@ -26,6 +26,10 @@ npm run build
 
 Then start the gateway and open:
 
+```bash
+~/.moon/bin/moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~/.moonclaw --cwd /Users/kq/Workspace/moonclaw
+```
+
 ```text
 http://localhost:18123/ui
 ```
@@ -35,6 +39,11 @@ the gateway `--cwd`, then falls back to the MoonClaw repo's own
 `ui/rabbita-job/dist` when the gateway is serving another workspace. If the
 bundle has not been built yet, `/ui` returns a small HTML page explaining how
 to build it.
+
+Important: `ui/rabbita-job` is its own MoonBit module. If you run
+`moon run cmd/main -- ...` from inside this directory, Moon will fail because
+`cmd/main` only exists in the top-level MoonClaw repo. Run gateway commands
+from the repo root, or use `moon -C /path/to/moonclaw run cmd/main -- ...`.
 
 Current surfaces:
 

@@ -12,12 +12,6 @@ pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExec
 
 pub async fn build_job_ui_snapshot(SystemStore, String, linked_remote? : Array[JobUiRemoteLink], handoffs? : Array[JobUiHandoff]) -> JobUiSnapshot?
 
-pub fn capability_available(String) -> Bool
-
-pub fn capability_record(String) -> CapabilityRecord?
-
-pub fn capability_registry() -> Array[CapabilityRecord]
-
 pub async fn capture_successful_run_memories(SystemStore, JobDefinition, JobRun, Int) -> Array[MemoryRecord]
 
 pub async fn checkpoint_run_workspace(SystemStore, String, String) -> Bool
@@ -34,8 +28,6 @@ pub fn decide_active_job_notifications(String, JobRun, Array[JobRunEvent], JobNo
 
 pub fn default_analysis_executor() -> AnalysisExecutor
 
-pub fn default_paper_text_extractor() -> PaperTextExtractor
-
 pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
@@ -48,23 +40,15 @@ pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> Work
 
 pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
 
-pub fn explain_proposal_compilation_hints(JobProposal) -> (String, String, Array[String], Array[String], Array[String])
-
 pub fn finished_status_prefix(RunStatus) -> String
 
 pub fn format_progress_event(JobRunEvent) -> String?
-
-pub fn infer_proposal_compilation_hints(JobProposal) -> (String, String, Array[String])
 
 pub fn initial_notification_runtime_state(Int) -> JobNotificationRuntimeState
 
 pub async fn load_run_ui_timeline(SystemStore, String) -> Array[JobUiTimelineEntry]
 
-pub fn missing_capabilities(Array[String]) -> Array[String]
-
 pub fn notification_preference_id(String, String, String, String?) -> String
-
-pub fn parse_arxiv_feed(String) -> ArxivFeedResult
 
 pub fn parse_job_chat_action(String, Bool) -> JobChatAction?
 
@@ -77,8 +61,6 @@ pub fn parse_reply_thread_job_action(String) -> (String, String)?
 pub fn parse_revise_args(String) -> (String, String)?
 
 pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
-
-pub fn preferred_templates_for_capabilities(Array[String]) -> Array[String]
 
 pub async fn prepare_run_workspace(SystemStore, JobDefinition, JobRun) -> JobRun
 
@@ -94,7 +76,7 @@ pub fn render_active_runs(SystemStore, Array[JobRun]) -> String
 
 pub fn render_confirm_proposal_failure(String, String) -> String
 
-pub fn render_confirmed_job_reply(String, String, String, String, String, Array[String], Array[String]) -> String
+pub fn render_confirmed_job_reply(String, String, String, String) -> String
 
 pub fn render_job_notify_updated(NotificationVerbosity) -> String
 
@@ -146,32 +128,6 @@ pub fn render_unknown_proposal_message(String) -> String
 
 pub async fn request_job_stop(SystemStore, String, async (String, Bool) -> Result[JobRun, String], force? : Bool, active_run_id? : String?) -> Result[String, String]
 
-pub fn research_paper_analyze_bundle(job_id~ : String, config~ : ResearchPaperAnalyzeConfig, Int) -> ResearchJobBundle
-
-pub fn research_paper_analyze_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
-
-pub fn research_paper_binding(String, Int, title? : String?) -> ChatBinding
-
-pub fn research_paper_fetch_bundle(job_id~ : String, config~ : ResearchPaperFetchConfig, Int) -> ResearchJobBundle
-
-pub fn research_paper_fetch_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
-
-pub fn research_paper_parse_bundle(job_id~ : String, config~ : ResearchPaperParseConfig, Int) -> ResearchJobBundle
-
-pub fn research_paper_parse_step_handler(runtime~ : RuntimeManager, extractor? : PaperTextExtractor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
-
-pub fn research_paper_scope(String) -> String
-
-pub fn research_scope() -> String
-
-pub fn research_topic_binding(String, Int, title? : String?) -> ChatBinding
-
-pub fn research_topic_scope(String) -> String
-
-pub fn research_topic_sync_bundle(job_id~ : String, config~ : ResearchTopicSyncConfig, Int, schedule? : SchedulePolicy?) -> ResearchJobBundle
-
-pub fn research_topic_sync_step_handler(runtime~ : RuntimeManager, client? : ArxivClient, now? : () -> Int, kind? : String) -> WorkflowStepHandler
-
 pub fn resolve_job_notify_target(SystemStore, JobDefinition) -> JobNotifyTarget?
 
 pub fn resolve_status_target(SystemStore, String, active_run_id? : String?) -> (JobDefinition, JobRun)?
@@ -193,12 +149,6 @@ pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
 pub fn split_job_chat_command(String) -> (String, String)
 
 pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
-
-pub fn template_default_skills(String) -> Array[String]
-
-pub fn template_definition(String) -> TemplateDefinition?
-
-pub fn template_registry() -> Array[TemplateDefinition]
 
 // Errors
 pub suberror InvalidJobId {
@@ -388,57 +338,6 @@ type ArtifactsIndexFile
 pub impl Show for ArtifactsIndexFile
 pub impl ToJson for ArtifactsIndexFile
 pub impl @json.FromJson for ArtifactsIndexFile
-
-pub(all) struct ArxivClient {
-  fetch_feed : async (ArxivSearchRequest) -> Result[String, String]
-  fetch_pdf : async (String) -> Result[Bytes, String]
-}
-pub fn ArxivClient::new(fetch_feed? : async (ArxivSearchRequest) -> Result[String, String], fetch_pdf? : async (String) -> Result[Bytes, String]) -> Self
-pub async fn ArxivClient::search(Self, ArxivSearchRequest) -> Result[ArxivFeedResult, String]
-
-pub(all) struct ArxivFeedResult {
-  papers : Array[ResearchPaper]
-  total_results : Int
-  start_index : Int
-  items_per_page : Int
-}
-pub impl Show for ArxivFeedResult
-pub impl ToJson for ArxivFeedResult
-pub impl @json.FromJson for ArxivFeedResult
-
-pub(all) struct ArxivSearchRequest {
-  query : String?
-  id_list : Array[String]
-  max_results : Int
-  start : Int
-  sort_by : String
-  sort_order : String
-}
-pub fn ArxivSearchRequest::new(query? : String?, id_list? : Array[String], max_results? : Int, start? : Int, sort_by? : String, sort_order? : String) -> Self
-pub impl Show for ArxivSearchRequest
-pub impl ToJson for ArxivSearchRequest
-pub impl @json.FromJson for ArxivSearchRequest
-
-pub(all) struct CapabilityRecord {
-  id : String
-  family : String
-  status : CapabilityStatus
-  preferred_template : String?
-  fallback_template : String?
-}
-pub impl Show for CapabilityRecord
-pub impl ToJson for CapabilityRecord
-pub impl @json.FromJson for CapabilityRecord
-
-pub(all) enum CapabilityStatus {
-  Available
-  Planned
-  Missing
-}
-pub impl Eq for CapabilityStatus
-pub impl Show for CapabilityStatus
-pub impl ToJson for CapabilityStatus
-pub impl @json.FromJson for CapabilityStatus
 
 pub(all) struct ChatAnswer {
   binding_id : String?
@@ -697,10 +596,6 @@ pub(all) struct JobProposal {
   summary : String
   revision_history : Array[String]
   suggested_family : String?
-  suggested_template : String?
-  required_capabilities : Array[String]
-  missing_capabilities : Array[String]
-  compiler_notes : Array[String]
   status : JobProposalStatus
   steps : Array[JobProposalStep]
   tags : Array[String]
@@ -782,15 +677,11 @@ pub(all) struct JobStatusSnapshot {
   run_id : String
   status : String
   family : String
-  template : String
   current_step : String
   done_steps : Int
   total_steps : Int
   elapsed_ms : Int
   lineage_line : String?
-  capabilities : String
-  missing_capabilities : String
-  compiler_notes : Array[String]
   summary : String?
   error : String?
   child_runs : Array[ChildRunStatus]
@@ -1037,17 +928,8 @@ pub impl Show for NotificationVerbosity
 pub impl ToJson for NotificationVerbosity
 pub impl @json.FromJson for NotificationVerbosity
 
-pub(all) struct PaperTextExtractor {
-  extract : async (String, ResearchPaper) -> Result[String, String]
-}
-pub fn PaperTextExtractor::new(extract~ : async (String, ResearchPaper) -> Result[String, String]) -> Self
-
 pub(all) struct ProposalCompilation {
   family : String
-  template : String
-  required_capabilities : Array[String]
-  missing_capabilities : Array[String]
-  compiler_notes : Array[String]
   definition : JobDefinition
   workflow : WorkflowDefinition
   bindings : Array[ChatBinding]
@@ -1072,100 +954,6 @@ pub(all) struct ProposalPlanner {
   run : async (String, String, String?) -> JobProposal
 }
 pub fn ProposalPlanner::new(run~ : async (String, String, String?) -> JobProposal) -> Self
-
-pub(all) struct ResearchChunk {
-  id : String
-  paper_id : String
-  index : Int
-  text : String
-  heading : String?
-  token_estimate : Int
-}
-pub impl Show for ResearchChunk
-pub impl ToJson for ResearchChunk
-pub impl @json.FromJson for ResearchChunk
-
-pub(all) struct ResearchJobBundle {
-  definition : JobDefinition
-  workflows : Array[WorkflowDefinition]
-  bindings : Array[ChatBinding]
-}
-pub impl Show for ResearchJobBundle
-pub impl ToJson for ResearchJobBundle
-pub impl @json.FromJson for ResearchJobBundle
-
-pub(all) struct ResearchPaper {
-  id : String
-  base_id : String
-  version : Int
-  title : String
-  abstract_text : String
-  authors : Array[String]
-  categories : Array[String]
-  primary_category : String?
-  published_at : String?
-  updated_at : String?
-  abs_url : String?
-  pdf_url : String?
-}
-pub impl Show for ResearchPaper
-pub impl ToJson for ResearchPaper
-pub impl @json.FromJson for ResearchPaper
-
-pub(all) struct ResearchPaperAnalyzeConfig {
-  paper_id : String
-  analysis_kind : String
-  model : String?
-  cwd : String?
-  home : String?
-  system_prompt : String?
-  preferred_skills : Array[String]
-  enable_tools : Bool
-  web_search : Bool
-  policy : AnalysisPolicy
-  max_context_chars : Int
-  scope : Array[String]
-}
-pub fn ResearchPaperAnalyzeConfig::new(paper_id~ : String, analysis_kind? : String, model? : String?, cwd? : String?, home? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, max_context_chars? : Int, scope? : Array[String]) -> Self
-pub impl Show for ResearchPaperAnalyzeConfig
-pub impl ToJson for ResearchPaperAnalyzeConfig
-pub impl @json.FromJson for ResearchPaperAnalyzeConfig
-
-pub(all) struct ResearchPaperFetchConfig {
-  paper_id : String?
-  query : String?
-  topic_id : String?
-  max_results : Int
-  download_pdf : Bool
-  scope : Array[String]
-}
-pub fn ResearchPaperFetchConfig::new(paper_id? : String?, query? : String?, topic_id? : String?, max_results? : Int, download_pdf? : Bool, scope? : Array[String]) -> Self
-pub impl Show for ResearchPaperFetchConfig
-pub impl ToJson for ResearchPaperFetchConfig
-pub impl @json.FromJson for ResearchPaperFetchConfig
-
-pub(all) struct ResearchPaperParseConfig {
-  paper_id : String?
-  chunk_chars : Int
-  scope : Array[String]
-}
-pub fn ResearchPaperParseConfig::new(paper_id? : String?, chunk_chars? : Int, scope? : Array[String]) -> Self
-pub impl Show for ResearchPaperParseConfig
-pub impl ToJson for ResearchPaperParseConfig
-pub impl @json.FromJson for ResearchPaperParseConfig
-
-pub(all) struct ResearchTopicSyncConfig {
-  topic_id : String
-  title : String?
-  query : String
-  max_results : Int
-  download_pdf : Bool
-  scope : Array[String]
-}
-pub fn ResearchTopicSyncConfig::new(topic_id~ : String, query~ : String, title? : String?, max_results? : Int, download_pdf? : Bool, scope? : Array[String]) -> Self
-pub impl Show for ResearchTopicSyncConfig
-pub impl ToJson for ResearchTopicSyncConfig
-pub impl @json.FromJson for ResearchTopicSyncConfig
 
 pub(all) struct RetrievalHit {
   artifact_id : String
@@ -1307,18 +1095,6 @@ pub async fn SystemStore::save_notification_preference(Self, JobNotificationPref
 pub async fn SystemStore::save_run(Self, JobRun) -> Unit
 pub async fn SystemStore::save_step_run(Self, JobStepRun) -> Unit
 pub async fn SystemStore::save_workflow(Self, WorkflowDefinition) -> Unit
-
-pub(all) struct TemplateDefinition {
-  id : String
-  family : String
-  summary : String
-  required_capabilities : Array[String]
-  default_skills : Array[String]
-  fallback_template : String?
-}
-pub impl Show for TemplateDefinition
-pub impl ToJson for TemplateDefinition
-pub impl @json.FromJson for TemplateDefinition
 
 pub(all) enum TriggerSource {
   Manual

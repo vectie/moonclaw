@@ -442,10 +442,6 @@ pub(all) struct JobProposal {
   summary : String
   revision_history : Array[String]
   suggested_family : String?
-  suggested_template : String?
-  required_capabilities : Array[String]
-  missing_capabilities : Array[String]
-  compiler_notes : Array[String]
   status : JobProposalStatus
   steps : Array[JobProposalStep]
   tags : Array[String]

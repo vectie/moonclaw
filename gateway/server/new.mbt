@@ -209,6 +209,10 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     self.logger.info("Auth token: \{token}")
   }
   @async.with_task_group(group => {
+    gateway_root_groups[self.port] = group
+    self.resume_pending_job_runs() catch {
+      error => self.logger.warn("Failed to resume pending job runs: \{error}")
+    }
     let session = self.events.spawn_in(group)
     let agent_session = self.agent_events.spawn_in(group)
     group.spawn_bg(() => self.run_tick_interval())
@@ -254,6 +258,7 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
       })
     })
   })
+  gateway_root_groups.remove(self.port) |> ignore()
 }
 
 ///|

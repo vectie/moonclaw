@@ -38,15 +38,11 @@ pub(all) struct JobStatusSnapshot {
   run_id : String
   status : String
   family : String
-  template : String
   current_step : String
   done_steps : Int
   total_steps : Int
   elapsed_ms : Int
   lineage_line : String?
-  capabilities : String
-  missing_capabilities : String
-  compiler_notes : Array[String]
   summary : String?
   error : String?
   child_runs : Array[ChildRunStatus]
@@ -449,7 +445,6 @@ pub fn render_job_status(
   snapshot : JobStatusSnapshot,
   prefix : String,
 ) -> String {
-  let compiler_notes_text = snapshot.compiler_notes.join(" | ")
   let child_run_line = if snapshot.child_runs.is_empty() {
     None
   } else {
@@ -463,26 +458,10 @@ pub fn render_job_status(
     "Run: \{snapshot.run_id}",
     "Status: \{snapshot.status}",
     "Family: \{snapshot.family}",
-    "Template: \{snapshot.template}",
     "Current step: \{snapshot.current_step}",
     "Progress: \{snapshot.done_steps}/\{snapshot.total_steps}",
     "Elapsed: \{snapshot.elapsed_ms}ms",
     snapshot.lineage_line.unwrap_or(""),
-    if snapshot.capabilities.is_blank() {
-      ""
-    } else {
-      "Capabilities: \{snapshot.capabilities}"
-    },
-    if snapshot.missing_capabilities.is_blank() {
-      ""
-    } else {
-      "Missing capabilities: \{snapshot.missing_capabilities}"
-    },
-    if snapshot.compiler_notes.is_empty() {
-      ""
-    } else {
-      "Compiler notes: \{compiler_notes_text}"
-    },
     snapshot.summary.map(fn(text) { "Summary: \{text}" }).unwrap_or(""),
     snapshot.error.map(fn(text) { "Error: \{text}" }).unwrap_or(""),
     child_run_line.unwrap_or(""),
@@ -520,31 +499,20 @@ pub fn render_confirmed_job_reply(
   definition_id : String,
   run_id : String,
   family : String,
-  template : String,
-  missing_capabilities : Array[String],
-  compiler_notes : Array[String],
 ) -> String {
-  let missing_capabilities_text = missing_capabilities.join(", ")
-  let compiler_notes_text = compiler_notes.join(" | ")
-  [
+  let lines = [
     "Confirmed proposal `\{proposal_id}`.",
     "Created job `\{definition_id}` and started run `\{run_id}`.",
-    "Compiled as `\{family}` / `\{template}`.",
-    if missing_capabilities.is_empty() {
-      ""
-    } else {
-      "Missing capabilities: \{missing_capabilities_text}"
-    },
-    if compiler_notes.is_empty() {
-      ""
-    } else {
-      "Compiler notes: \{compiler_notes_text}"
-    },
     "Check status with `/job-status \{definition_id}` or `/job-status \{run_id}`.",
     "You will receive start, progress, and completion notifications here.",
   ]
-  .filter(fn(line) { !line.is_blank() })
-  .join("\n")
+  if family.is_blank() {
+    lines.join("\n")
+  } else {
+    [lines[0], lines[1], "Compiled as `\{family}`.", lines[2], lines[3]].join(
+      "\n",
+    )
+  }
 }
 
 ///|

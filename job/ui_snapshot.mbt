@@ -301,13 +301,7 @@ pub async fn build_job_ui_snapshot(
         created_at: Some(proposal.created_at),
         updated_at: Some(proposal.updated_at),
         provisional: proposal.status is Draft,
-        metadata: {
-          "suggested_family": proposal.suggested_family,
-          "suggested_template": proposal.suggested_template,
-          "required_capabilities": proposal.required_capabilities,
-          "missing_capabilities": proposal.missing_capabilities,
-          "compiler_notes": proposal.compiler_notes,
-        },
+        metadata: { "suggested_family": proposal.suggested_family },
       })
     None => ()
   }

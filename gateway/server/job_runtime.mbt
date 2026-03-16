@@ -1,4 +1,14 @@
 ///|
+
+///|
+let gateway_root_groups : Map[Int, @async.TaskGroup[Unit]] = {}
+
+///|
+fn Gateway::root_group(self : Gateway) -> @async.TaskGroup[Unit]? {
+  gateway_root_groups.get(self.port)
+}
+
+///|
 fn Gateway::job_should_cancel(self : Gateway, run_id : String) -> Bool {
   self.job_app.state().should_cancel(run_id)
 }
@@ -19,11 +29,51 @@ fn Gateway::new_workflow_engine(self : Gateway) -> @job.WorkflowEngine {
 }
 
 ///|
+async fn Gateway::refresh_proposal_definition_if_present(
+  self : Gateway,
+  job_id : String,
+) -> Unit {
+  for proposal in self.job_runtime().store().list_job_proposals() {
+    if proposal.job_id == Some(job_id) &&
+      proposal.status is @job.JobProposalStatus::Confirmed {
+      let compilation = self.job_app.compile_proposal(proposal)
+      self.job_runtime().register_definition(compilation.definition)
+      self.job_runtime().register_workflow(compilation.workflow)
+      for binding in compilation.bindings {
+        self.job_runtime().store().save_chat_binding(binding)
+      }
+      break
+    }
+  }
+}
+
+///|
 async fn Gateway::launch_job_run(self : Gateway, run_id : String) -> Unit {
-  @async.with_task_group(group => {
-    group.spawn_bg(() => self.execute_job_run_async(run_id), no_wait=true)
-  }) catch {
-    error => self.logger.warn("Failed to launch job run \{run_id}: \{error}")
+  match self.root_group() {
+    Some(group) =>
+      group.spawn_bg(no_wait=true, allow_failure=true, () => {
+        self.execute_job_run_async(run_id) catch {
+          error =>
+            self.logger.warn("Job run \{run_id} crashed after launch: \{error}")
+        }
+      })
+    None =>
+      self.logger.warn(
+        "Skipped launching job run \{run_id}: gateway task group is not active",
+      )
+  }
+}
+
+///|
+async fn Gateway::resume_pending_job_runs(self : Gateway) -> Unit {
+  let pending_runs = self
+    .job_runtime()
+    .store()
+    .list_runs()
+    .filter(fn(run) { run.status is @job.RunStatus::Pending })
+  for run in pending_runs {
+    self.refresh_proposal_definition_if_present(run.job_id)
+    self.launch_job_run(run.id)
   }
 }
 
@@ -92,6 +142,7 @@ async fn Gateway::trigger_job_definition(
   job_id : String,
   trigger? : @job.TriggerSource = @job.TriggerSource::Manual,
 ) -> Result[@job.JobRun, String] {
+  self.refresh_proposal_definition_if_present(job_id)
   let definition = match self.job_runtime().store().get_definition(job_id) {
     Some(definition) => definition
     None => return Err("Unknown job definition: \{job_id}")

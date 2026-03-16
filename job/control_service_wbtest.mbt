@@ -3,9 +3,9 @@ async test "render_job_status_command_reply resolves run targets" {
   let store = SystemStore::new(root="unused")
   let definition = JobDefinition::{
     id: "job-1",
-    kind: "research",
+    kind: "job.proposal",
     enabled: true,
-    config: { "family": "research", "template": "research.topic_watch" },
+    config: { "family": "generic" },
     schedule: None,
     retry_policy: None,
     workflow_id: Some("workflow-1"),
@@ -15,17 +15,17 @@ async test "render_job_status_command_reply resolves run targets" {
   }
   let workflow = WorkflowDefinition::{
     id: "workflow-1",
-    kind: "research",
+    kind: "job.proposal",
     steps: [
       WorkflowStepDefinition::{
         id: "step-1",
-        kind: "research.topic.sync",
+        kind: "job.analysis",
         config: {},
         retry_policy: None,
       },
       WorkflowStepDefinition::{
         id: "step-2",
-        kind: "research.paper.analyze",
+        kind: "job.analysis",
         config: {},
         retry_policy: None,
       },
@@ -55,8 +55,7 @@ async test "render_job_status_command_reply resolves run targets" {
     #|Current job status: job-1
     #|Run: run-1
     #|Status: "Running"
-    #|Family: research
-    #|Template: research.topic_watch
+    #|Family: generic
     #|Current step: step-1
     #|Progress: 0/2
     #|Elapsed: 90ms

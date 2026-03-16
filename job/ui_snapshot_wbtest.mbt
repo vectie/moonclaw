@@ -4,9 +4,9 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
     let store = SystemStore::new(root=dir)
     let definition = JobDefinition::{
       id: "job-1",
-      kind: "research.topic_watch",
+      kind: "job.proposal",
       enabled: true,
-      config: { "family": "research", "template": "research.topic_watch" },
+      config: { "family": "generic" },
       schedule: None,
       retry_policy: None,
       workflow_id: Some("wf-1"),
@@ -16,17 +16,17 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
     }
     let workflow = WorkflowDefinition::{
       id: "wf-1",
-      kind: "research.topic_watch",
+      kind: "job.proposal",
       steps: [
         WorkflowStepDefinition::{
           id: "step-a",
-          kind: "research.topic.sync",
+          kind: "job.analysis",
           config: {},
           retry_policy: None,
         },
         WorkflowStepDefinition::{
           id: "step-b",
-          kind: "research.paper.analyze",
+          kind: "job.analysis",
           config: {},
           retry_policy: None,
         },
@@ -120,11 +120,7 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
       request_text: "watch papers",
       summary: "summary",
       revision_history: [],
-      suggested_family: Some("research"),
-      suggested_template: Some("research.topic_watch"),
-      required_capabilities: ["research.topic.sync"],
-      missing_capabilities: [],
-      compiler_notes: [],
+      suggested_family: Some("generic"),
       status: Confirmed,
       steps: [],
       tags: [],

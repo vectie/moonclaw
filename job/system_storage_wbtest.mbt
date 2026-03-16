@@ -1,8 +1,8 @@
 ///|
 fn sample_definition() -> JobDefinition {
   JobDefinition::{
-    id: "research.topic.sync",
-    kind: "research.topic.sync",
+    id: "job.sample.sync",
+    kind: "job.sample.sync",
     enabled: true,
     config: { "query": "llm agents", "limit": 20 },
     schedule: Some(SchedulePolicy::{
@@ -11,22 +11,22 @@ fn sample_definition() -> JobDefinition {
       timezone: Some("Asia/Shanghai"),
     }),
     retry_policy: Some(RetryPolicy::{ max_attempts: 2, backoff_ms: Some(5000) }),
-    workflow_id: Some("research.sync.default"),
+    workflow_id: Some("job.sample.workflow"),
     created_at: 1,
     updated_at: 2,
-    tags: ["research", "arxiv"],
+    tags: ["job", "monitoring"],
   }
 }
 
 ///|
 fn sample_workflow() -> WorkflowDefinition {
   WorkflowDefinition::{
-    id: "research.sync.default",
-    kind: "research",
+    id: "job.sample.workflow",
+    kind: "job",
     steps: [
       WorkflowStepDefinition::{
         id: "fetch",
-        kind: "research.paper.fetch",
+        kind: "job.analysis",
         config: { "source": "arxiv" },
         retry_policy: Some(RetryPolicy::{
           max_attempts: 2,
@@ -35,7 +35,7 @@ fn sample_workflow() -> WorkflowDefinition {
       },
       WorkflowStepDefinition::{
         id: "parse",
-        kind: "research.paper.parse",
+        kind: "job.analysis",
         config: {},
         retry_policy: None,
       },
@@ -48,7 +48,7 @@ fn sample_workflow() -> WorkflowDefinition {
 fn sample_run() -> JobRun {
   JobRun::{
     id: "run-1",
-    job_id: "research.topic.sync",
+    job_id: "job.sample.sync",
     trigger: TriggerSource::Manual,
     parent_run_id: None,
     parent_step_id: None,
@@ -87,7 +87,7 @@ fn sample_artifact(root : String) -> ArtifactRecord {
   ArtifactRecord::{
     id: "artifact-1",
     run_id: "run-1",
-    job_id: "research.topic.sync",
+    job_id: "job.sample.sync",
     artifact_type: "paper.meta",
     logical_key: Some("paper:2501.01234v1"),
     version: 1,
@@ -100,7 +100,7 @@ fn sample_artifact(root : String) -> ArtifactRecord {
     metadata: { "paper_id": "2501.01234v1" },
     created_at: 13,
     archived_at: None,
-    scope: ["research", "paper:2501.01234v1"],
+    scope: ["job", "paper:2501.01234v1"],
   }
 }
 
@@ -112,8 +112,8 @@ fn sample_memory() -> MemoryRecord {
     title: Some("daily digest"),
     content: "Remember to review VLA benchmarks in daily digests.",
     metadata: { "importance": "high" },
-    tags: ["research", "digest"],
-    scope: ["workspace:main", "research"],
+    tags: ["job", "digest"],
+    scope: ["workspace:main", "job"],
     workspace: Some("/tmp/workspace"),
     agent_id: Some("main"),
     channel_id: Some("feishu"),
@@ -134,13 +134,9 @@ fn sample_proposal() -> JobProposal {
     id: "proposal-1",
     title: "Track recent agent papers",
     request_text: "Track recent agent papers and summarize findings.",
-    summary: "Draft proposal for research tracking.",
+    summary: "Draft proposal for job tracking.",
     revision_history: [],
-    suggested_family: Some("research"),
-    suggested_template: Some("research.topic_watch"),
-    required_capabilities: ["research.arxiv_sync", "analysis.summarize"],
-    missing_capabilities: [],
-    compiler_notes: ["Template selected: research.topic_watch"],
+    suggested_family: Some("generic"),
     status: JobProposalStatus::Draft,
     steps: [
       JobProposalStep::{
@@ -150,7 +146,7 @@ fn sample_proposal() -> JobProposal {
         kind: "job.analysis",
       },
     ],
-    tags: ["job", "research"],
+    tags: ["job", "monitoring"],
     channel_id: Some("feishu"),
     account_id: Some("default"),
     recipient: Some("oc_chat_123"),
@@ -194,14 +190,14 @@ async test "SystemStore persists definitions workflows runs steps and artifacts"
     inspect(reloaded.list_memories().length(), content="1")
     inspect(
       reloaded
-      .get_definition("research.topic.sync")
+      .get_definition("job.sample.sync")
       .map(fn(d) { d.kind })
       .unwrap_or(""),
-      content="research.topic.sync",
+      content="job.sample.sync",
     )
     inspect(
       reloaded
-      .get_workflow("research.sync.default")
+      .get_workflow("job.sample.workflow")
       .map(fn(w) { w.steps.length() })
       .unwrap_or(0),
       content="2",
@@ -305,7 +301,7 @@ async test "SystemStore persists job proposals and run events" {
     store.save_job_proposal(proposal)
     store.append_run_event(JobRunEvent::{
       run_id: "run-1",
-      job_id: "research.topic.sync",
+      job_id: "job.sample.sync",
       event_type: "job.started",
       timestamp: 30,
       step_id: None,

@@ -342,9 +342,5 @@ pub fn GatewayJobApp::new_workflow_engine(
       next_run_id=fn() { self.next_id() },
     ),
   )
-  engine.register_handler(research_topic_sync_step_handler(runtime~))
-  engine.register_handler(research_paper_fetch_step_handler(runtime~))
-  engine.register_handler(research_paper_parse_step_handler(runtime~))
-  engine.register_handler(research_paper_analyze_step_handler(runtime~))
   engine
 }

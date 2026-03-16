@@ -74,7 +74,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
         id: "job.child",
         kind: "test.child",
         enabled: true,
-        config: { "family": "generic", "template": "generic.analysis" },
+        config: { "family": "generic" },
         schedule: None,
         retry_policy: None,
         workflow_id: Some(workflow.id),
@@ -84,10 +84,6 @@ async test "subjob_step_handler creates a child run with lineage and executes it
       }
       ProposalCompilation::{
         family: "generic",
-        template: "generic.analysis",
-        required_capabilities: ["analysis.execute"],
-        missing_capabilities: [],
-        compiler_notes: ["Template selected: generic.analysis"],
         definition,
         workflow,
         bindings: [],

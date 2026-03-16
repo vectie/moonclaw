@@ -77,48 +77,6 @@ pub async fn render_status_text(
     { "family": String(family), .. } => family
     _ => "unknown"
   }
-  let template = match definition.config {
-    { "template": String(template), .. } => template
-    _ => "unknown"
-  }
-  let capabilities = match definition.config {
-    { "required_capabilities": Array(items), .. } =>
-      items
-      .map(fn(item) {
-        match item {
-          String(text) => text
-          _ => ""
-        }
-      })
-      .filter(fn(text) { !text.is_blank() })
-      .join(", ")
-    _ => ""
-  }
-  let missing_capabilities = match definition.config {
-    { "missing_capabilities": Array(items), .. } =>
-      items
-      .map(fn(item) {
-        match item {
-          String(text) => text
-          _ => ""
-        }
-      })
-      .filter(fn(text) { !text.is_blank() })
-      .join(", ")
-    _ => ""
-  }
-  let compiler_notes = match definition.config {
-    { "compiler_notes": Array(items), .. } =>
-      items
-      .map(fn(item) {
-        match item {
-          String(text) => text
-          _ => ""
-        }
-      })
-      .filter(fn(text) { !text.is_blank() })
-    _ => []
-  }
   let run_events = store.list_run_events(run.id)
   let latest_event = if run_events.is_empty() {
     None
@@ -141,15 +99,11 @@ pub async fn render_status_text(
       run_id: run.id,
       status: run.status.to_json().stringify(),
       family,
-      template,
       current_step,
       done_steps,
       total_steps,
       elapsed_ms,
       lineage_line,
-      capabilities,
-      missing_capabilities,
-      compiler_notes,
       summary: run.summary,
       error: run.error,
       child_runs,

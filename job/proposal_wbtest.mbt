@@ -10,8 +10,8 @@ test "draft_job_proposal creates non-executing draft with steps" {
   )
   inspect(proposal.status.to_json().stringify(), content="\"Draft\"")
   inspect(proposal.steps.length() > 0, content="true")
-  inspect(proposal.tags.contains("research"), content="true")
-  inspect(proposal.suggested_family.unwrap_or(""), content="research")
+  inspect(proposal.tags.contains("monitoring"), content="true")
+  inspect(proposal.suggested_family.unwrap_or(""), content="generic")
   inspect(proposal.job_id is None, content="true")
 }
 
@@ -52,26 +52,26 @@ fn fake_planner_executor(content : String) -> AnalysisExecutor {
 async test "plan_job_proposal uses model JSON when available" {
   let proposal = plan_job_proposal(
     "proposal-3",
-    "Create a weekly research monitoring job.",
+    "Create a weekly monitoring job.",
     100,
     executor=fake_planner_executor(
-      "{\"title\":\"Weekly research monitor\",\"summary\":\"Monitor and summarize new papers weekly.\",\"tags\":[\"job\",\"research\",\"weekly\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Collect papers\",\"prompt\":\"Collect the newest papers.\",\"kind\":\"job.analysis\"},{\"id\":\"summarize\",\"title\":\"Summarize findings\",\"prompt\":\"Summarize the collected papers.\",\"kind\":\"job.analysis\"}]}",
+      "{\"title\":\"Weekly monitor\",\"summary\":\"Monitor and summarize new items weekly.\",\"tags\":[\"job\",\"weekly\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Collect items\",\"prompt\":\"Collect the newest items.\",\"kind\":\"job.analysis\"},{\"id\":\"summarize\",\"title\":\"Summarize findings\",\"prompt\":\"Summarize the collected items.\",\"kind\":\"job.analysis\"}]}",
     ),
     channel_id=Some("feishu"),
     account_id=Some("default"),
     recipient=Some("oc_chat_123"),
   )
-  inspect(proposal.title, content="Weekly research monitor")
+  inspect(proposal.title, content="Weekly monitor")
   inspect(proposal.steps.length(), content="2")
   inspect(proposal.steps[0].id, content="collect")
-  inspect(proposal.tags.join(","), content="job,research,weekly")
+  inspect(proposal.tags.join(","), content="job,weekly")
 }
 
 ///|
 async test "plan_job_proposal includes relevant memory context in planner prompt" {
   let proposal = plan_job_proposal(
     "proposal-memory-1",
-    "Create a weekly research monitoring job.",
+    "Create a weekly monitoring job.",
     100,
     executor=AnalysisExecutor::new(run=fn(request) {
       let marker = request.prompt.contains("Relevant long-term memory")
@@ -173,7 +173,7 @@ async test "revise_job_proposal carries prior revision history into later revisi
 }
 
 ///|
-test "proposal_as_workflow compiles research drafts into research topic workflow" {
+test "proposal_as_workflow preserves generic drafts as direct proposal workflows" {
   let proposal = draft_job_proposal(
     "proposal-6",
     "Review yesterday's VLA arxiv papers and send me a daily digest.",
@@ -185,33 +185,24 @@ test "proposal_as_workflow compiles research drafts into research topic workflow
   let (definition, workflow) = proposal_as_workflow(
     proposal, 101, "/tmp/workspace", "/tmp/home",
   )
-  inspect(definition.kind, content="job.proposal.research")
-  inspect(workflow.steps.length(), content="3")
-  inspect(workflow.steps[0].kind, content="research.topic.sync")
+  inspect(definition.kind, content="job.proposal")
+  inspect(workflow.steps.length(), content="5")
+  inspect(workflow.steps[0].kind, content="job.analysis")
   inspect(workflow.steps[1].kind, content="job.analysis")
   inspect(
-    definition.config.stringify().contains("\"family\":\"research\""),
+    definition.config.stringify().contains("\"family\":\"generic\""),
     content="true",
   )
 }
 
 ///|
-test "render_job_proposal_for_chat includes compiler notes and missing capabilities" {
-  let proposal = JobProposal::{
-    ..draft_job_proposal(
-      "proposal-7", "Compare each paper and break down subtasks.", 100,
-    ),
-    missing_capabilities: ["workflow.delegate"],
-    compiler_notes: [
-      "Delegation enabled because the request is broad or decomposable.",
-    ],
-  }
-  let rendered = render_job_proposal_for_chat(proposal)
-  inspect(
-    rendered.contains("Missing capabilities: workflow.delegate"),
-    content="true",
+test "render_job_proposal_for_chat includes proposal steps" {
+  let proposal = draft_job_proposal(
+    "proposal-7", "Compare each paper and break down subtasks.", 100,
   )
-  inspect(rendered.contains("Compiler notes:"), content="true")
+  let rendered = render_job_proposal_for_chat(proposal)
+  inspect(rendered.contains("Planned steps:"), content="true")
+  inspect(rendered.contains("requirements"), content="true")
 }
 
 ///|
@@ -227,7 +218,7 @@ test "ensure_draft_proposal rejects non-draft proposals" {
 }
 
 ///|
-async test "save_confirmed_job_proposal persists compilation metadata and run id" {
+async test "save_confirmed_job_proposal persists confirmed status and run id" {
   @fsx.with_temporary_directory("job-proposal-confirm-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
     let store = SystemStore::new(root~)
@@ -244,10 +235,6 @@ async test "save_confirmed_job_proposal persists compilation metadata and run id
     inspect(
       saved.map(fn(p) { p.last_run_id.unwrap_or("") }).unwrap_or(""),
       content="run-9",
-    )
-    inspect(
-      saved.map(fn(p) { p.suggested_template.unwrap_or("") }).unwrap_or(""),
-      content="research.topic_watch",
     )
   })
 }
