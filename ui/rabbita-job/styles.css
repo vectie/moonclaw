@@ -76,6 +76,22 @@ body {
   max-width: 52rem;
 }
 
+.surface-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.95rem;
+}
+
+.surface-tab {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.72);
+  color: var(--text);
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+}
+
 .gateway-chip {
   white-space: nowrap;
   border: 1px solid var(--line);
@@ -98,6 +114,10 @@ body {
   grid-template-columns: 300px minmax(0, 1fr) 320px;
   gap: 1rem;
   padding: 1rem;
+}
+
+.overview-layout {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .panel {
@@ -124,6 +144,24 @@ body {
 
 .panel-body {
   padding: 0.95rem;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.overview-stat {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-strong);
+  padding: 1rem;
+}
+
+.nested-panel {
+  box-shadow: none;
+  background: rgba(255,255,255,0.48);
 }
 
 .runs-list {
@@ -192,6 +230,11 @@ body {
 .run-card.active {
   border-color: var(--accent);
   background: linear-gradient(180deg, rgba(15,118,110,0.12), rgba(255,250,242,0.96));
+}
+
+.run-card.fresh {
+  border-color: var(--line-strong);
+  background: linear-gradient(180deg, rgba(180, 153, 111, 0.14), rgba(255,250,242,0.96));
 }
 
 .run-title {

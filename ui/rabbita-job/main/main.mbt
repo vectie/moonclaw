@@ -20,8 +20,10 @@ using @rabbita {type Cmd, type Dispatch, type Html, batch}
 
 ///|
 enum Route {
-  Home
+  Overview
+  Jobs
   Run(String)
+  Acp
 }
 
 ///|
@@ -36,6 +38,13 @@ enum RunSort {
   Newest
   Oldest
   Depth
+} derive(Eq, Compare, Show)
+
+///|
+enum Surface {
+  SurfaceOverview
+  SurfaceJobs
+  SurfaceAcp
 } derive(Eq, Compare, Show)
 
 ///|
@@ -133,6 +142,63 @@ struct UiEventsPayload {
 } derive(FromJson, Show)
 
 ///|
+enum AcpUiNodeKind {
+  Target
+  Session
+  Run
+} derive(Eq, Compare, FromJson, Show)
+
+///|
+struct AcpUiNode {
+  id : String
+  parent_id : String?
+  kind : AcpUiNodeKind
+  title : String
+  status : String
+  summary : String?
+  detail : String?
+  target_id : String?
+  session_id : String?
+  run_id : String?
+  created_at : Int?
+  updated_at : Int?
+  metadata : Json
+} derive(FromJson, Show)
+
+///|
+struct AcpUiTimelineEntry {
+  id : String
+  event_type : String
+  title : String
+  detail : String
+  timestamp : Int
+  target_id : String?
+  session_id : String?
+  run_id : String?
+  status : String?
+  data : Json
+} derive(FromJson, Show)
+
+///|
+struct AcpUiSnapshot {
+  targets : Array[Json]
+  sessions : Array[Json]
+  runs : Array[Json]
+  nodes : Array[AcpUiNode]
+  timeline : Array[AcpUiTimelineEntry]
+} derive(FromJson, Show)
+
+///|
+struct AcpUiSnapshotPayload {
+  snapshot : AcpUiSnapshot
+} derive(FromJson, Show)
+
+///|
+struct AcpUiEventsPayload {
+  timeline : Array[AcpUiTimelineEntry]
+} derive(FromJson, Show)
+
+///|
 struct TimelineGroup {
   id : String
   title : String
@@ -174,6 +240,13 @@ struct Model {
   detail_loading : Bool
   detail_error : String?
   right_panel : RightPanel
+  acp_snapshot : AcpUiSnapshot?
+  acp_timeline : Array[AcpUiTimelineEntry]
+  acp_loading : Bool
+  acp_error : String?
+  selected_acp_node_id : String?
+  fresh_acp_node_ids : Array[String]
+  fresh_acp_timeline_ids : Array[String]
 }
 
 ///|
@@ -187,6 +260,10 @@ enum Msg {
   SnapshotLoaded(String, Result[UiSnapshot, String])
   EventsLoaded(String, Result[Array[UiTimelineEntry], String])
   StreamDrained(String, Result[(Array[UiTimelineEntry], Bool), String])
+  LoadAcp
+  PollAcp
+  AcpSnapshotLoaded(Result[AcpUiSnapshot, String])
+  AcpEventsLoaded(Result[Array[AcpUiTimelineEntry], String])
   ExpandActiveBranches
   CollapseCompletedBranches
   ResetTree
@@ -200,6 +277,7 @@ enum Msg {
   ClearTimelineScope
   FocusNode(String)
   FocusTimeline(String)
+  SelectAcpNode(String)
   SelectPanel(RightPanel)
   UrlChanged(@url.Url)
   UrlRequest(@url.UrlRequest)
@@ -216,6 +294,11 @@ fn runs_poll_interval_ms() -> Int {
 }
 
 ///|
+fn acp_poll_interval_ms() -> Int {
+  5000
+}
+
+///|
 fn runs_page_size() -> Int {
   12
 }
@@ -224,7 +307,7 @@ fn runs_page_size() -> Int {
 fn init_model() -> Model {
   {
     gateway_base: gateway_base_url(),
-    route: Home,
+    route: Overview,
     runs: [],
     runs_loading: true,
     runs_error: None,
@@ -245,6 +328,13 @@ fn init_model() -> Model {
     detail_loading: false,
     detail_error: None,
     right_panel: Artifacts,
+    acp_snapshot: None,
+    acp_timeline: [],
+    acp_loading: true,
+    acp_error: None,
+    selected_acp_node_id: None,
+    fresh_acp_node_ids: [],
+    fresh_acp_timeline_ids: [],
   }
 }
 
@@ -275,30 +365,82 @@ fn normalize_status(status : String) -> String {
 
 ///|
 fn last_update_label(model : Model) -> String {
-  if model.timeline.is_empty() {
-    "No events yet"
-  } else {
-    let entry = model.timeline[model.timeline.length() - 1]
-    "Last event: \{entry.timestamp}"
+  match route_surface(model.route) {
+    SurfaceJobs =>
+      if model.timeline.is_empty() {
+        "No events yet"
+      } else {
+        let entry = model.timeline[model.timeline.length() - 1]
+        "Last event: \{entry.timestamp}"
+      }
+    SurfaceAcp =>
+      if model.acp_timeline.is_empty() {
+        "No events yet"
+      } else {
+        let entry = model.acp_timeline[model.acp_timeline.length() - 1]
+        "Last event: \{entry.timestamp}"
+      }
+    SurfaceOverview => "Local + remote operator view"
   }
 }
 
 ///|
+fn acp_status_is_live(status : String) -> Bool {
+  let normalized = normalize_status(status)
+  normalized.contains("Running") ||
+  normalized.contains("Pending") ||
+  normalized.contains("Cancelling") ||
+  normalized.contains("Resetting") ||
+  normalized.contains("Detaching")
+}
+
+///|
+fn acp_snapshot_is_live(snapshot : AcpUiSnapshot) -> Bool {
+  snapshot.nodes.any(fn(node) { acp_status_is_live(node.status) })
+}
+
+///|
 fn render_live_chip(model : Model) -> Html {
-  match model.snapshot {
-    Some(snapshot) =>
-      if model.detail_loading && run_status_is_live(snapshot.run.status) {
-        span(class="status-badge pending", "Refreshing")
-      } else if run_status_is_live(snapshot.run.status) {
-        span(class="status-badge running", "Live")
-      } else {
-        span(class="status-badge", "Static")
+  match route_surface(model.route) {
+    SurfaceJobs =>
+      match model.snapshot {
+        Some(snapshot) =>
+          if model.detail_loading && run_status_is_live(snapshot.run.status) {
+            span(class="status-badge pending", "Refreshing")
+          } else if run_status_is_live(snapshot.run.status) {
+            span(class="status-badge running", "Live")
+          } else {
+            span(class="status-badge", "Static")
+          }
+        None =>
+          if model.runs_loading {
+            span(class="status-badge pending", "Loading")
+          } else {
+            span(class="status-badge", "Idle")
+          }
       }
-    None =>
-      if model.runs_loading {
+    SurfaceAcp =>
+      match model.acp_snapshot {
+        Some(snapshot) =>
+          if model.acp_loading && acp_snapshot_is_live(snapshot) {
+            span(class="status-badge pending", "Refreshing")
+          } else if acp_snapshot_is_live(snapshot) {
+            span(class="status-badge running", "Live")
+          } else {
+            span(class="status-badge", "Static")
+          }
+        None =>
+          if model.acp_loading {
+            span(class="status-badge pending", "Loading")
+          } else {
+            span(class="status-badge", "Idle")
+          }
+      }
+    SurfaceOverview =>
+      if model.runs_loading || model.acp_loading {
         span(class="status-badge pending", "Loading")
       } else {
-        span(class="status-badge", "Idle")
+        span(class="status-badge", "Overview")
       }
   }
 }
@@ -312,11 +454,23 @@ fn route_from_url(url : @url.Url) -> Route {
     .map(fn(part) { part.to_string() })
     .collect()
   if parts.is_empty() {
-    return Home
+    return Overview
   }
   match parts {
+    ["jobs"] => Jobs
     ["runs", run_id] => Run(run_id)
-    _ => Home
+    ["acp"] => Acp
+    _ => Overview
+  }
+}
+
+///|
+fn route_surface(route : Route) -> Surface {
+  match route {
+    Overview => SurfaceOverview
+    Jobs => SurfaceJobs
+    Run(_) => SurfaceJobs
+    Acp => SurfaceAcp
   }
 }
 
@@ -429,9 +583,56 @@ fn run_url(
 }
 
 ///|
+fn jobs_url(
+  runs_status_filter? : String? = None,
+  runs_query? : String = "",
+  runs_sort? : RunSort = Newest,
+  runs_page? : Int = 0,
+) -> String {
+  let params : Array[String] = []
+  match runs_status_filter {
+    Some(status) => params.push("status=\{status}")
+    None => ()
+  }
+  let query = normalized_runs_query(runs_query)
+  if query != "" {
+    params.push("q=\{query}")
+  }
+  if runs_sort != Newest {
+    params.push("sort=\{run_sort_query_value(runs_sort)}")
+  }
+  if runs_page > 0 {
+    params.push("page=\{runs_page}")
+  }
+  if params.is_empty() {
+    "/jobs"
+  } else {
+    let query = params.join("&")
+    "/jobs?\{query}"
+  }
+}
+
+///|
+fn acp_url(selected_node_id? : String? = None) -> String {
+  match selected_node_id {
+    Some(node_id) => "/acp?focus=\{node_id}"
+    None => "/acp"
+  }
+}
+
+///|
 fn current_url_for_model(model : Model) -> String {
-  match model.selected_run_id {
-    Some(run_id) =>
+  match model.route {
+    Overview => "/"
+    Acp => acp_url(selected_node_id=model.selected_acp_node_id)
+    Jobs =>
+      jobs_url(
+        runs_status_filter=model.runs_status_filter,
+        runs_query=model.runs_query,
+        runs_sort=model.runs_sort,
+        runs_page=model.runs_page,
+      )
+    Run(run_id) =>
       run_url(
         run_id,
         runs_status_filter=model.runs_status_filter,
@@ -443,26 +644,6 @@ fn current_url_for_model(model : Model) -> String {
         timeline_scope_branch_only=model.timeline_scope_branch_only,
         panel=Some(model.right_panel),
       )
-    None => {
-      let params : Array[String] = []
-      match model.runs_status_filter {
-        Some(status) => params.push("status=\{status}")
-        None => ()
-      }
-      let query = normalized_runs_query(model.runs_query)
-      if query != "" {
-        params.push("q=\{query}")
-      }
-      if model.runs_sort != Newest {
-        params.push("sort=\{run_sort_query_value(model.runs_sort)}")
-      }
-      if params.is_empty() {
-        "/"
-      } else {
-        let query = params.join("&")
-        "/?\{query}"
-      }
-    }
   }
 }
 
@@ -495,6 +676,26 @@ fn parse_events_payload(json : Json) -> Result[Array[UiTimelineEntry], String] {
   match payload {
     Ok(payload) => Ok(payload.timeline)
     Err(error) => Err("Failed to parse job timeline: \{error}")
+  }
+}
+
+///|
+fn parse_acp_snapshot_payload(json : Json) -> Result[AcpUiSnapshot, String] {
+  let payload : Result[AcpUiSnapshotPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.snapshot)
+    Err(error) => Err("Failed to parse ACP snapshot: \{error}")
+  }
+}
+
+///|
+fn parse_acp_events_payload(
+  json : Json,
+) -> Result[Array[AcpUiTimelineEntry], String] {
+  let payload : Result[AcpUiEventsPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.timeline)
+    Err(error) => Err("Failed to parse ACP timeline: \{error}")
   }
 }
 
@@ -579,6 +780,24 @@ fn fetch_timeline(
     parse_events_payload,
   )
   @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/events", expect~)
+}
+
+///|
+fn fetch_acp_snapshot(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, AcpUiSnapshot] = @http.Expecting::Json(
+    fn(result) { dispatch(AcpSnapshotLoaded(result)) },
+    parse_acp_snapshot_payload,
+  )
+  @http.get("\{gateway_base}/v1/acp/ui", expect~)
+}
+
+///|
+fn fetch_acp_timeline(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  let expect : @http.Expecting[Cmd, Array[AcpUiTimelineEntry]] = @http.Expecting::Json(
+    fn(result) { dispatch(AcpEventsLoaded(result)) },
+    parse_acp_events_payload,
+  )
+  @http.get("\{gateway_base}/v1/acp/events", expect~)
 }
 
 ///|
@@ -668,7 +887,7 @@ fn start_stream_cmd(
   run_id : String,
 ) -> Cmd {
   batch([
-    @rabbita.effect(async fn() noraise {
+    @rabbita.effect(fn() noraise {
       start_job_ui_event_stream(
         "\{gateway_base}/v1/jobs/runs/\{run_id}/events/stream",
       )
@@ -679,14 +898,14 @@ fn start_stream_cmd(
 
 ///|
 fn stop_stream_cmd() -> Cmd {
-  @rabbita.effect(async fn() noraise { stop_job_ui_event_stream() })
+  @rabbita.effect(fn() noraise { stop_job_ui_event_stream() })
 }
 
 ///|
 fn drain_stream_cmd(dispatch : Dispatch[Msg], run_id : String) -> Cmd {
   @rabbita.perform(
     fn(raw) { dispatch(StreamDrained(run_id, parse_stream_drain_payload(raw))) },
-    async fn() noraise { drain_job_ui_event_stream() },
+    fn() noraise { drain_job_ui_event_stream() },
   )
 }
 
@@ -1179,6 +1398,485 @@ fn render_runs_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
           ]),
         ])
       },
+    ]),
+  ])
+}
+
+///|
+fn acp_node_for_id(snapshot : AcpUiSnapshot, node_id : String) -> AcpUiNode? {
+  for node in snapshot.nodes {
+    if node.id == node_id {
+      return Some(node)
+    }
+  }
+  None
+}
+
+///|
+fn acp_kind_label(kind : AcpUiNodeKind) -> String {
+  match kind {
+    Target => "Target"
+    Session => "Session"
+    Run => "Run"
+  }
+}
+
+///|
+fn resolved_acp_node_id(model : Model, snapshot : AcpUiSnapshot) -> String? {
+  match model.selected_acp_node_id {
+    Some(node_id) =>
+      match acp_node_for_id(snapshot, node_id) {
+        Some(_) => Some(node_id)
+        None => snapshot.nodes.get(0).map(fn(node) { node.id })
+      }
+    None => snapshot.nodes.get(0).map(fn(node) { node.id })
+  }
+}
+
+///|
+fn acp_timeline_for_node(
+  node : AcpUiNode,
+  timeline : Array[AcpUiTimelineEntry],
+) -> Array[AcpUiTimelineEntry] {
+  timeline.filter(fn(entry) {
+    match node.kind {
+      Target => entry.target_id == node.target_id
+      Session => entry.session_id == node.session_id
+      Run => entry.run_id == node.run_id
+    }
+  })
+}
+
+///|
+fn acp_node_for_entry(
+  snapshot : AcpUiSnapshot,
+  entry : AcpUiTimelineEntry,
+) -> AcpUiNode? {
+  for node in snapshot.nodes {
+    if !acp_timeline_for_node(node, [entry]).is_empty() {
+      return Some(node)
+    }
+  }
+  None
+}
+
+///|
+fn acp_timeline_entry_class(
+  model : Model,
+  entry : AcpUiTimelineEntry,
+) -> String {
+  let mut classes = "timeline-entry"
+  if contains_id(model.fresh_acp_timeline_ids, entry.id) {
+    classes = classes + " fresh"
+  }
+  match model.selected_acp_node_id {
+    Some(node_id) =>
+      match model.acp_snapshot {
+        Some(snapshot) =>
+          match acp_node_for_id(snapshot, node_id) {
+            Some(node) =>
+              if acp_timeline_for_node(node, [entry]).length() > 0 {
+                classes = classes + " focused"
+              }
+            None => ()
+          }
+        None => ()
+      }
+    None => ()
+  }
+  classes
+}
+
+///|
+fn render_acp_node_card(
+  dispatch : Dispatch[Msg],
+  model : Model,
+  node : AcpUiNode,
+) -> Html {
+  let active = model.selected_acp_node_id == Some(node.id)
+  let fresh = contains_id(model.fresh_acp_node_ids, node.id)
+  let cls = if active {
+    "run-card active"
+  } else if fresh {
+    "run-card fresh"
+  } else {
+    "run-card"
+  }
+  button(class=cls, on_click=dispatch(SelectAcpNode(node.id)), [
+    p(class="node-kind", acp_kind_label(node.kind)),
+    p(class="run-title", node.title),
+    div([render_status_badge(node.status)]),
+    match node.summary {
+      Some(summary) => p(class="run-meta", preview_text(summary, 120))
+      None => nothing
+    },
+    match node.detail {
+      Some(detail) => p(class="run-meta mono", preview_text(detail, 120))
+      None => nothing
+    },
+  ])
+}
+
+///|
+fn render_acp_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
+  section(class="panel", [
+    header(class="panel-header", [h2(class="panel-title", "ACP Remote Agents")]),
+    div(class="panel-body", [
+      if model.acp_loading && model.acp_snapshot is None {
+        p(class="empty", "Loading ACP targets, sessions, and runs...")
+      } else if model.acp_error is Some(error) {
+        p(class="empty", error)
+      } else {
+        match model.acp_snapshot {
+          Some(snapshot) =>
+            div(class="runs-list", [
+              article(class="overview-stat", [
+                p(class="kv-label", "Targets"),
+                p(class="detail-title", "\{snapshot.targets.length()}"),
+              ]),
+              article(class="overview-stat", [
+                p(class="kv-label", "Sessions"),
+                p(class="detail-title", "\{snapshot.sessions.length()}"),
+              ]),
+              article(class="overview-stat", [
+                p(class="kv-label", "Runs"),
+                p(class="detail-title", "\{snapshot.runs.length()}"),
+              ]),
+              p(class="kv-label", "Targets"),
+              div(
+                class="runs-list",
+                snapshot.nodes
+                .filter(fn(node) { node.kind == Target })
+                .map(fn(node) { render_acp_node_card(dispatch, model, node) }),
+              ),
+              p(class="kv-label", "Sessions"),
+              div(
+                class="runs-list",
+                snapshot.nodes
+                .filter(fn(node) { node.kind == Session })
+                .map(fn(node) { render_acp_node_card(dispatch, model, node) }),
+              ),
+              p(class="kv-label", "Runs"),
+              div(
+                class="runs-list",
+                snapshot.nodes
+                .filter(fn(node) { node.kind == Run })
+                .map(fn(node) { render_acp_node_card(dispatch, model, node) }),
+              ),
+            ])
+          None => p(class="empty", "No ACP targets configured yet.")
+        }
+      },
+    ]),
+  ])
+}
+
+///|
+fn render_acp_timeline(
+  dispatch : Dispatch[Msg],
+  model : Model,
+  timeline : Array[AcpUiTimelineEntry],
+) -> Html {
+  if timeline.is_empty() {
+    p(class="empty", "No ACP activity yet.")
+  } else {
+    div(
+      class="timeline",
+      timeline.map(fn(entry) {
+        button(
+          class=acp_timeline_entry_class(model, entry),
+          on_click=match model.acp_snapshot {
+            Some(snapshot) =>
+              match acp_node_for_entry(snapshot, entry) {
+                Some(node) => dispatch(SelectAcpNode(node.id))
+                None => @rabbita.none
+              }
+            None => @rabbita.none
+          },
+          [
+            p(class="timeline-title", entry.title),
+            p(class="timeline-detail", preview_text(entry.detail, 220)),
+            div([
+              match entry.status {
+                Some(status) => render_status_badge(status)
+                None => nothing
+              },
+              span(class="muted mono", "\{entry.timestamp}"),
+            ]),
+          ],
+        )
+      }),
+    )
+  }
+}
+
+///|
+fn render_stdio_preview(label : String, value : String?) -> Html {
+  match value {
+    Some(text) if !text.trim().is_blank() =>
+      div(class="focus-block", [
+        p(class="kv-label", label),
+        article(class="artifact-card", [
+          p(class="timeline-detail mono", preview_text(text, 320)),
+        ]),
+      ])
+    _ => nothing
+  }
+}
+
+///|
+fn render_acp_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
+  match model.acp_snapshot {
+    Some(snapshot) =>
+      match resolved_acp_node_id(model, snapshot) {
+        Some(node_id) =>
+          match acp_node_for_id(snapshot, node_id) {
+            Some(node) => {
+              let related = acp_timeline_for_node(node, model.acp_timeline)
+              section(class="panel", [
+                header(class="panel-header", [
+                  div(class="detail-header", [
+                    div([
+                      p(class="eyebrow", "Remote ACP Control"),
+                      h2(class="detail-title", node.title),
+                      p(
+                        class="subline",
+                        node.summary.unwrap_or(
+                          "Attached ACP targets, sessions, and remote runs.",
+                        ),
+                      ),
+                    ]),
+                    render_status_badge(node.status),
+                  ]),
+                ]),
+                div(class="panel-body", [
+                  if model.acp_loading {
+                    div(class="refresh-banner", [
+                      p(class="kv-label", "ACP Refresh"),
+                      p(
+                        class="timeline-detail",
+                        "Refreshing remote-agent state...",
+                      ),
+                    ])
+                  } else {
+                    nothing
+                  },
+                  div(class="detail-grid", [
+                    section([
+                      h3(class="section-title", "Remote Timeline"),
+                      render_acp_timeline(dispatch, model, related),
+                    ]),
+                  ]),
+                ]),
+              ])
+            }
+            None =>
+              section(class="panel", [
+                header(class="panel-header", [
+                  h2(class="panel-title", "ACP Detail"),
+                ]),
+                div(class="panel-body", [
+                  p(class="empty", "Select an ACP node."),
+                ]),
+              ])
+          }
+        None =>
+          section(class="panel", [
+            header(class="panel-header", [h2(class="panel-title", "ACP Detail")]),
+            div(class="panel-body", [
+              p(class="empty", "No ACP state available yet."),
+            ]),
+          ])
+      }
+    None =>
+      section(class="panel", [
+        header(class="panel-header", [h2(class="panel-title", "ACP Detail")]),
+        div(class="panel-body", [p(class="empty", "Loading ACP state...")]),
+      ])
+  }
+}
+
+///|
+fn render_acp_inspector(model : Model) -> Html {
+  match model.acp_snapshot {
+    Some(snapshot) =>
+      match resolved_acp_node_id(model, snapshot) {
+        Some(node_id) =>
+          match acp_node_for_id(snapshot, node_id) {
+            Some(node) => {
+              let related = acp_timeline_for_node(node, model.acp_timeline)
+              let stdout_preview = match node.metadata {
+                { "stdout_stderr": { "stdout": String(stdout), .. }, .. } =>
+                  Some(stdout)
+                _ => None
+              }
+              let stderr_preview = match node.metadata {
+                { "stdout_stderr": { "stderr": String(stderr), .. }, .. } =>
+                  Some(stderr)
+                _ => None
+              }
+              section(class="panel", [
+                header(class="panel-header", [
+                  h2(class="panel-title", "ACP Inspector"),
+                ]),
+                div(class="panel-body", [
+                  p(class="node-kind", acp_kind_label(node.kind)),
+                  p(class="node-title", node.title),
+                  div([render_status_badge(node.status)]),
+                  match node.detail {
+                    Some(detail) => p(class="mono", detail)
+                    None => nothing
+                  },
+                  match node.summary {
+                    Some(summary) => p(class="timeline-detail", summary)
+                    None => nothing
+                  },
+                  div(class="inspector-stats", [
+                    render_meta_chip("events", related.length().to_string()),
+                    match node.target_id {
+                      Some(target_id) => render_meta_chip("target", target_id)
+                      None => nothing
+                    },
+                    match node.session_id {
+                      Some(session_id) =>
+                        render_meta_chip("session", session_id)
+                      None => nothing
+                    },
+                    match node.run_id {
+                      Some(run_id) => render_meta_chip("run", run_id)
+                      None => nothing
+                    },
+                  ]),
+                  render_stdio_preview("stdout", stdout_preview),
+                  render_stdio_preview("stderr", stderr_preview),
+                  if related.is_empty() {
+                    p(class="empty", "No related ACP events yet.")
+                  } else {
+                    div(
+                      class="focus-events",
+                      preview_items(related, 6).map(fn(entry) {
+                        article(class="focus-event", [
+                          p(class="timeline-title", entry.title),
+                          p(class="muted", preview_text(entry.detail, 180)),
+                        ])
+                      }),
+                    )
+                  },
+                ]),
+              ])
+            }
+            None =>
+              section(class="panel", [
+                header(class="panel-header", [
+                  h2(class="panel-title", "ACP Inspector"),
+                ]),
+                div(class="panel-body", [
+                  p(class="empty", "Select an ACP node."),
+                ]),
+              ])
+          }
+        None =>
+          section(class="panel", [
+            header(class="panel-header", [
+              h2(class="panel-title", "ACP Inspector"),
+            ]),
+            div(class="panel-body", [p(class="empty", "No ACP node selected.")]),
+          ])
+      }
+    None =>
+      section(class="panel", [
+        header(class="panel-header", [h2(class="panel-title", "ACP Inspector")]),
+        div(class="panel-body", [p(class="empty", "Loading ACP state...")]),
+      ])
+  }
+}
+
+///|
+fn render_overview(model : Model) -> Html {
+  let local_running = model.runs
+    .filter(fn(run) { run_status_is_live(run.status) })
+    .length()
+  let acp_live = match model.acp_snapshot {
+    Some(snapshot) =>
+      snapshot.nodes
+      .filter(fn(node) { acp_status_is_live(node.status) })
+      .length()
+    None => 0
+  }
+  section(class="panel", [
+    header(class="panel-header", [h2(class="panel-title", "Operator Overview")]),
+    div(class="panel-body", [
+      div(class="overview-grid", [
+        article(class="overview-stat", [
+          p(class="kv-label", "Local Runs"),
+          p(class="detail-title", "\{model.runs.length()}"),
+          p(class="muted", "\{local_running} live in the local agent"),
+        ]),
+        article(class="overview-stat", [
+          p(class="kv-label", "ACP Remote Nodes"),
+          p(
+            class="detail-title",
+            match model.acp_snapshot {
+              Some(snapshot) => "\{snapshot.nodes.length()}"
+              None => "0"
+            },
+          ),
+          p(
+            class="muted",
+            "\{acp_live} live across remote ACP sessions and runs",
+          ),
+        ]),
+      ]),
+      div(class="overview-grid", [
+        section(class="panel nested-panel", [
+          header(class="panel-header", [h2(class="panel-title", "Local Agent")]),
+          div(class="panel-body", [
+            if model.runs.is_empty() {
+              p(class="empty", "No local jobs yet.")
+            } else {
+              div(
+                class="runs-list",
+                preview_items(filtered_runs(model), 4).map(fn(run) {
+                  article(class="artifact-card", [
+                    p(class="node-title", run.job_id),
+                    div([render_status_badge(run.status)]),
+                    p(
+                      class="muted",
+                      preview_text(run.summary.unwrap_or(run.id), 120),
+                    ),
+                  ])
+                }),
+              )
+            },
+          ]),
+        ]),
+        section(class="panel nested-panel", [
+          header(class="panel-header", [h2(class="panel-title", "Remote ACP")]),
+          div(class="panel-body", [
+            match model.acp_snapshot {
+              Some(snapshot) =>
+                if snapshot.nodes.is_empty() {
+                  p(class="empty", "No ACP state yet.")
+                } else {
+                  div(
+                    class="runs-list",
+                    preview_items(snapshot.nodes, 4).map(fn(node) {
+                      article(class="artifact-card", [
+                        p(class="node-title", node.title),
+                        div([render_status_badge(node.status)]),
+                        p(
+                          class="muted",
+                          preview_text(node.summary.unwrap_or(node.id), 120),
+                        ),
+                      ])
+                    }),
+                  )
+                }
+              None => p(class="empty", "Loading ACP state...")
+            },
+          ]),
+        ]),
+      ]),
     ]),
   ])
 }
@@ -2708,16 +3406,34 @@ fn render_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
 }
 
 ///|
+fn render_surface_tabs(model : Model) -> Html {
+  let tab = fn(label : String, route : Surface, url : String) {
+    let active = route_surface(model.route) == route
+    button(
+      class=if active { "surface-tab active-filter" } else { "surface-tab" },
+      on_click=@nav.push_url(url),
+      label,
+    )
+  }
+  div(class="surface-tabs", [
+    tab("Overview", SurfaceOverview, "/"),
+    tab("Jobs", SurfaceJobs, "/jobs"),
+    tab("ACP", SurfaceAcp, "/acp"),
+  ])
+}
+
+///|
 fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   div(class="shell", [
     header(class="topbar", [
       div([
         p(class="eyebrow", "MoonClaw + Rabbita"),
-        h1(class="headline", "Job Expansion Viewer"),
+        h1(class="headline", "Local + Remote Agent Viewer"),
         p(
           class="subline",
-          "A MoonBit-native surface for the generative shape of job planning, delegation, execution, and output capture.",
+          "A MoonBit-native operator surface for local job expansion and ACP-backed remote agent control.",
         ),
+        render_surface_tabs(model),
       ]),
       div(class="topbar-side", [
         div(class="live-stack", [
@@ -2727,23 +3443,42 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
         div(class="gateway-chip", "Gateway: \{model.gateway_base}"),
       ]),
     ]),
-    main_(class="layout", [
-      render_runs_panel(dispatch, model),
-      render_detail(dispatch, model),
-      match model.snapshot {
-        Some(snapshot) => render_right_panel(dispatch, model, snapshot)
-        None =>
-          section(class="panel", [
-            header(class="panel-header", [h2(class="panel-title", "Outputs")]),
-            div(class="panel-body", [
-              p(
-                class="empty",
-                "Artifacts, workspace, and memory appear here once a run is selected.",
-              ),
-            ]),
-          ])
+    main_(
+      class=if route_surface(model.route) == SurfaceOverview {
+        "layout overview-layout"
+      } else {
+        "layout"
       },
-    ]),
+      match route_surface(model.route) {
+        SurfaceOverview => [render_overview(model)]
+        SurfaceJobs =>
+          [
+            render_runs_panel(dispatch, model),
+            render_detail(dispatch, model),
+            match model.snapshot {
+              Some(snapshot) => render_right_panel(dispatch, model, snapshot)
+              None =>
+                section(class="panel", [
+                  header(class="panel-header", [
+                    h2(class="panel-title", "Outputs"),
+                  ]),
+                  div(class="panel-body", [
+                    p(
+                      class="empty",
+                      "Artifacts, workspace, and memory appear here once a run is selected.",
+                    ),
+                  ]),
+                ])
+            },
+          ]
+        SurfaceAcp =>
+          [
+            render_acp_panel(dispatch, model),
+            render_acp_detail(dispatch, model),
+            render_acp_inspector(model),
+          ]
+      },
+    ),
   ])
 }
 
@@ -2754,6 +3489,14 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       (
         fetch_runs(dispatch, model.gateway_base),
         { ..model, runs_loading: true, runs_error: None },
+      )
+    LoadAcp =>
+      (
+        batch([
+          fetch_acp_snapshot(dispatch, model.gateway_base),
+          fetch_acp_timeline(dispatch, model.gateway_base),
+        ]),
+        { ..model, acp_loading: true, acp_error: None },
       )
     RunsLoaded(Ok(runs)) => {
       let next_model = { ..model, runs, runs_loading: false, runs_error: None }
@@ -2771,7 +3514,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               detail_error: None,
             },
           )
-        Home => (@rabbita.none, next_model)
+        _ => (@rabbita.none, next_model)
       }
     }
     RunsLoaded(Err(error)) =>
@@ -2832,12 +3575,73 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       } else {
         (@rabbita.none, model)
       }
+    PollAcp =>
+      (
+        batch([
+          fetch_acp_snapshot(dispatch, model.gateway_base),
+          fetch_acp_timeline(dispatch, model.gateway_base),
+          match model.acp_snapshot {
+            Some(snapshot) =>
+              if acp_snapshot_is_live(snapshot) {
+                @rabbita.delay(dispatch(PollAcp), acp_poll_interval_ms())
+              } else {
+                @rabbita.none
+              }
+            None => @rabbita.none
+          },
+        ]),
+        model,
+      )
     PumpStream(run_id) =>
       if model.selected_run_id == Some(run_id) {
         (drain_stream_cmd(dispatch, run_id), model)
       } else {
         (@rabbita.none, model)
       }
+    AcpSnapshotLoaded(Ok(snapshot)) => {
+      let next_model = {
+        ..model,
+        acp_snapshot: Some(snapshot),
+        acp_loading: false,
+        acp_error: None,
+        fresh_acp_node_ids: fresh_ids_from(
+          snapshot.nodes,
+          model.acp_snapshot
+          .map(fn(item) { item.nodes.map(fn(node) { node.id }) })
+          .unwrap_or([]),
+          fn(node) { node.id },
+        ),
+        selected_acp_node_id: resolved_acp_node_id(
+          { ..model, acp_snapshot: Some(snapshot) },
+          snapshot,
+        ),
+      }
+      (
+        if acp_snapshot_is_live(snapshot) {
+          @rabbita.delay(dispatch(PollAcp), acp_poll_interval_ms())
+        } else {
+          @rabbita.none
+        },
+        next_model,
+      )
+    }
+    AcpSnapshotLoaded(Err(error)) =>
+      (@rabbita.none, { ..model, acp_loading: false, acp_error: Some(error) })
+    AcpEventsLoaded(Ok(timeline)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_timeline: timeline,
+          fresh_acp_timeline_ids: fresh_ids_from(
+            timeline,
+            model.acp_timeline.map(fn(entry) { entry.id }),
+            fn(entry) { entry.id },
+          ),
+        },
+      )
+    AcpEventsLoaded(Err(error)) =>
+      (@rabbita.none, { ..model, acp_error: Some(error), acp_loading: false })
     SnapshotLoaded(run_id, Ok(snapshot)) =>
       if model.selected_run_id == Some(run_id) {
         let (collapsed_node_ids, expanded_node_ids) = manual_tree_state_for_snapshot(
@@ -3139,6 +3943,10 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let next_model = { ..model, right_panel: panel }
       (sync_url_cmd(next_model), next_model)
     }
+    SelectAcpNode(node_id) => {
+      let next_model = { ..model, selected_acp_node_id: Some(node_id) }
+      (sync_url_cmd(next_model), next_model)
+    }
     UrlRequest(request) =>
       match request {
         Internal(url) => (@nav.push_url(url.to_string()), model)
@@ -3154,13 +3962,39 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         None => 0
       }
       let focused_node_id = query_value(url, "focus")
+      let selected_acp_node_id = query_value(url, "focus")
       let timeline_scope_node_id = query_value(url, "scope")
       let timeline_scope_branch_only = query_value(url, "branch") == Some("1")
       let right_panel = right_panel_from_query(query_value(url, "panel")).unwrap_or(
         model.right_panel,
       )
       match route {
-        Home =>
+        Overview =>
+          (
+            batch([@nav.scroll_to_top(), stop_stream_cmd()]),
+            {
+              ..model,
+              route,
+              selected_run_id: None,
+              runs_status_filter,
+              runs_query,
+              runs_sort,
+              runs_page,
+              snapshot: None,
+              timeline: [],
+              fresh_node_ids: [],
+              fresh_timeline_ids: [],
+              focused_node_id: None,
+              timeline_scope_node_id: None,
+              timeline_scope_branch_only: false,
+              collapsed_node_ids: [],
+              expanded_node_ids: [],
+              detail_loading: false,
+              detail_error: None,
+              selected_acp_node_id,
+            },
+          )
+        Jobs =>
           (
             batch([@nav.scroll_to_top(), stop_stream_cmd()]),
             {
@@ -3219,6 +4053,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               },
             )
           }
+        Acp =>
+          (
+            batch([@nav.scroll_to_top(), dispatch(LoadAcp), stop_stream_cmd()]),
+            { ..model, route, selected_acp_node_id },
+          )
       }
     }
   }
@@ -3235,6 +4074,6 @@ fn main {
   ..with_route(url_changed=url => dispatch(UrlChanged(url)), url_request=req => {
     dispatch(UrlRequest(req))
   })
-  ..with_init(dispatch(LoadRuns))
+  ..with_init(batch([dispatch(LoadRuns), dispatch(LoadAcp)]))
   .mount("app")
 }

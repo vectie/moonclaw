@@ -10,6 +10,32 @@ import {
 // Errors
 
 // Types and methods
+type AcpUiEventsPayload
+pub impl Show for AcpUiEventsPayload
+pub impl @json.FromJson for AcpUiEventsPayload
+
+type AcpUiNode
+pub impl Show for AcpUiNode
+pub impl @json.FromJson for AcpUiNode
+
+type AcpUiNodeKind
+pub impl Compare for AcpUiNodeKind
+pub impl Eq for AcpUiNodeKind
+pub impl Show for AcpUiNodeKind
+pub impl @json.FromJson for AcpUiNodeKind
+
+type AcpUiSnapshot
+pub impl Show for AcpUiSnapshot
+pub impl @json.FromJson for AcpUiSnapshot
+
+type AcpUiSnapshotPayload
+pub impl Show for AcpUiSnapshotPayload
+pub impl @json.FromJson for AcpUiSnapshotPayload
+
+type AcpUiTimelineEntry
+pub impl Show for AcpUiTimelineEntry
+pub impl @json.FromJson for AcpUiTimelineEntry
+
 type Model
 
 type Msg
@@ -39,6 +65,11 @@ pub impl @json.FromJson for RunsPayload
 type StreamDrainPayload
 pub impl Show for StreamDrainPayload
 pub impl @json.FromJson for StreamDrainPayload
+
+type Surface
+pub impl Compare for Surface
+pub impl Eq for Surface
+pub impl Show for Surface
 
 type TimelineGroup
 
