@@ -87,6 +87,18 @@ Use Codex OAuth and switch the primary model automatically:
 moon run cmd/main -- onboard auth codex --home ~/.moonclaw
 ```
 
+Provision a Codex ACP target that the gateway can launch later:
+
+```bash
+moon run cmd/main -- acp add codex --home ~/.moonclaw --workspace ~/.moonclaw/workspace
+```
+
+If you want multiple ACP targets, add them with explicit ids:
+
+```bash
+moon run cmd/main -- acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
+```
+
 Configure Feishu:
 
 ```bash
@@ -154,6 +166,19 @@ Current behavior:
 - 🔐 `onboard auth copilot` connects Copilot OAuth and updates the primary model to `copilot/gpt-5.2`
 - 🎯 `onboard switch <model>` changes the active primary model explicitly
 - 🪽 Feishu is built-in through `channels.feishu`, not through a plugin entry
+
+ACP target provisioning is separate from onboarding:
+
+```bash
+moon run cmd/main -- acp add codex --home ~/.moonclaw --workspace ~/.moonclaw/workspace
+moon run cmd/main -- acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch
+```
+
+Current ACP behavior:
+
+- `acp add codex` adds or updates a named Codex ACP target in `moonclaw.json`
+- use `--id` when you want more than one ACP target on the same machine
+- the command preserves unrelated config and only writes the target entry it manages
 
 ## 🪽 Feishu Usage
 

@@ -7,6 +7,7 @@ This directory contains command-line entry points for the Moonclaw application.
 | Command | Description |
 |---------|-------------|
 | `main` | Main CLI entry point |
+| `acp` | ACP target configuration utilities |
 | `onboard` | Local onboarding and setup bootstrap |
 | `daemon` | Background daemon server |
 | `gateway` | HTTP/RPC gateway with channels and orchestration |
@@ -91,6 +92,22 @@ Current capabilities behind the gateway:
 - agent mailboxes
 - coordination tasks
 - pipelines
+
+#### `acp`
+
+Configure ACP targets that the gateway can launch later.
+
+```bash
+moonclaw acp add codex --home ~/.moonclaw --workspace ~/.moonclaw/workspace
+moonclaw acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
+```
+
+Current capabilities:
+
+- add or update a Codex ACP target in `moonclaw.json`
+- keep unrelated config while merging the new target
+- support multiple ACP targets by explicit id
+- show whether Codex credentials are already available
 
 #### `onboard`
 

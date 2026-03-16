@@ -6,6 +6,7 @@ import {
   "moonbitlang/moonclaw/cmd/main/interactive",
   "moonbitlang/moonclaw/cmd/main/exec",
   "moonbitlang/moonclaw/cmd/main/tui",
+  "moonbitlang/moonclaw/cmd/acp",
   "moonbitlang/moonclaw/cmd/onboard",
   "moonbitlang/moonclaw/cmd/server",
   "moonbitlang/moonclaw/cmd/daemon",
