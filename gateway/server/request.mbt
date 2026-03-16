@@ -53,6 +53,8 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "acp", "runs"]) => self.handle_list_acp_runs(r, w)
       (Get, ["", "v1", "acp", "runs", _run_id]) => self.handle_get_acp_run(r, w)
       (Get, ["", "v1", "acp", "ui"]) => self.handle_get_acp_ui(r, w)
+      (Get, ["", "v1", "acp", "events", "stream"]) =>
+        self.handle_stream_acp_ui_events(r, w)
       (Get, ["", "v1", "acp", "events"]) => self.handle_get_acp_ui_events(r, w)
       (Post, ["", "v1", "acp", "runs", _run_id, "cancel"]) =>
         self.handle_cancel_acp_run(r, w)

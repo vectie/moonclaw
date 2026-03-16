@@ -36,6 +36,10 @@ type AcpUiTimelineEntry
 pub impl Show for AcpUiTimelineEntry
 pub impl @json.FromJson for AcpUiTimelineEntry
 
+type BrowserCopyResult
+pub impl Show for BrowserCopyResult
+pub impl @json.FromJson for BrowserCopyResult
+
 type BrowserPostResult
 pub impl Show for BrowserPostResult
 pub impl @json.FromJson for BrowserPostResult

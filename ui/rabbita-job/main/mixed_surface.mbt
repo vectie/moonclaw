@@ -347,9 +347,229 @@ fn render_focused_lineage_summary(
         "Open ACP",
         @nav.push_url(acp_url_for_remote_link(primary_remote)),
       ),
+      render_action_chip("Export", dispatch(ExportMixedLineage(group.key))),
+      render_action_chip("Export Case", dispatch(ExportMixedCase(group.key))),
       render_action_chip("Clear Focus", dispatch(SelectMixedHandoff(None))),
     ]),
   ])
+}
+
+///|
+fn local_run_transcript(snapshot : UiSnapshot) -> String {
+  let lines : Array[String] = [
+    "Local Run Transcript",
+    "",
+    "run_id: \{snapshot.run.id}",
+    "job_id: \{snapshot.run.job_id}",
+    "status: \{normalize_status(snapshot.run.status)}",
+    "node_count: \{snapshot.nodes.length()}",
+    "timeline_count: \{snapshot.timeline.length()}",
+    "artifact_count: \{snapshot.artifacts.length()}",
+    "memory_count: \{snapshot.memories.length()}",
+    "linked_remote_count: \{snapshot.linked_remote.length()}",
+    "handoff_count: \{snapshot.handoffs.length()}",
+  ]
+  match snapshot.workspace_dir {
+    Some(workspace) => lines.push("workspace: \{workspace}")
+    None => ()
+  }
+  match snapshot.current_step_id {
+    Some(step_id) => lines.push("current_step_id: \{step_id}")
+    None => ()
+  }
+  match snapshot.run.summary {
+    Some(summary) if !summary.trim().is_blank() => {
+      lines.push("")
+      lines.push("summary:")
+      lines.push(summary)
+    }
+    _ => ()
+  }
+  match snapshot.run.error {
+    Some(error) if !error.trim().is_blank() => {
+      lines.push("")
+      lines.push("error:")
+      lines.push(error)
+    }
+    _ => ()
+  }
+  if !snapshot.timeline.is_empty() {
+    lines.push("")
+    lines.push("recent_timeline:")
+    for entry in preview_items(snapshot.timeline, 20) {
+      lines.push("")
+      lines.push("---")
+      lines.push("timestamp: \{entry.timestamp}")
+      lines.push("event_type: \{entry.event_type}")
+      lines.push("title: \{entry.title}")
+      lines.push("detail: \{entry.detail}")
+      match entry.status {
+        Some(status) => lines.push("status: \{normalize_status(status)}")
+        None => ()
+      }
+      match entry.step_id {
+        Some(step_id) => lines.push("step_id: \{step_id}")
+        None => ()
+      }
+    }
+  }
+  lines.join("\n")
+}
+
+///|
+fn mixed_lineage_transcript(
+  snapshot : UiSnapshot,
+  group : MixedHandoffGroup,
+) -> String {
+  let lines : Array[String] = [
+    "Mixed Lineage Transcript",
+    "",
+    "lineage_key: \{group.key}",
+    "run_id: \{snapshot.run.id}",
+    "job_id: \{snapshot.run.job_id}",
+    "status: \{normalize_status(snapshot.run.status)}",
+  ]
+  match snapshot.workspace_dir {
+    Some(workspace) => lines.push("workspace: \{workspace}")
+    None => ()
+  }
+  match snapshot.run.summary {
+    Some(summary) if !summary.trim().is_blank() => {
+      lines.push("")
+      lines.push("run_summary:")
+      lines.push(summary)
+    }
+    _ => ()
+  }
+  lines.push("")
+  lines.push("local_handoffs: \{group.handoffs.length()}")
+  lines.push("remote_links: \{group.remote.length()}")
+  if !group.handoffs.is_empty() {
+    lines.push("")
+    lines.push("local_origins:")
+    for handoff in group.handoffs {
+      lines.push("")
+      lines.push("---")
+      lines.push("node_id: \{handoff.node_id}")
+      match handoff.step_id {
+        Some(step_id) => lines.push("step_id: \{step_id}")
+        None => ()
+      }
+      match node_for_id(snapshot, handoff.node_id) {
+        Some(node) => {
+          lines.push("node_kind: \{node.kind}")
+          lines.push("node_title: \{node.title}")
+          lines.push("node_status: \{normalize_status(node.status)}")
+          match node.summary {
+            Some(summary) if !summary.trim().is_blank() =>
+              lines.push("node_summary: \{summary}")
+            _ => ()
+          }
+          match node.detail {
+            Some(detail) if !detail.trim().is_blank() =>
+              lines.push("node_detail: \{detail}")
+            _ => ()
+          }
+        }
+        None => ()
+      }
+    }
+  }
+  if !group.remote.is_empty() {
+    lines.push("")
+    lines.push("remote_branch:")
+    for link in group.remote {
+      lines.push("")
+      lines.push("---")
+      lines.push("id: \{link.id}")
+      lines.push("kind: \{link.kind}")
+      lines.push("title: \{link.title}")
+      lines.push("status: \{normalize_status(link.status)}")
+      match link.summary {
+        Some(summary) if !summary.trim().is_blank() =>
+          lines.push("summary: \{summary}")
+        _ => ()
+      }
+      match link.detail {
+        Some(detail) if !detail.trim().is_blank() =>
+          lines.push("detail: \{detail}")
+        _ => ()
+      }
+      match remote_linked_node_id(link) {
+        Some(node_id) => lines.push("linked_job_node_id: \{node_id}")
+        None => ()
+      }
+      match remote_linked_step_id(link) {
+        Some(step_id) => lines.push("linked_job_step_id: \{step_id}")
+        None => ()
+      }
+    }
+  }
+  lines.join("\n")
+}
+
+///|
+fn session_ids_for_mixed_group(
+  group : MixedHandoffGroup,
+  acp_snapshot : AcpUiSnapshot,
+) -> Array[String] {
+  let session_ids : Array[String] = []
+  for link in group.remote {
+    if link.id.has_prefix("acp-session:") {
+      match link.id.split_once(":") {
+        Some((_, session_id)) => {
+          let session_id = session_id.to_string()
+          if !contains_id(session_ids, session_id) {
+            session_ids.push(session_id)
+          }
+        }
+        None => ()
+      }
+    } else if link.id.has_prefix("acp-run:") {
+      match link.id.split_once(":") {
+        Some((_, run_id)) =>
+          match acp_node_for_id(acp_snapshot, "run:\{run_id}") {
+            Some(node) =>
+              match node.session_id {
+                Some(session_id) =>
+                  if !contains_id(session_ids, session_id) {
+                    session_ids.push(session_id)
+                  }
+                None => ()
+              }
+            None => ()
+          }
+        None => ()
+      }
+    }
+  }
+  session_ids
+}
+
+///|
+fn mixed_case_transcript(
+  snapshot : UiSnapshot,
+  acp_snapshot : AcpUiSnapshot,
+  group : MixedHandoffGroup,
+) -> String {
+  let sections : Array[String] = [
+    local_run_transcript(snapshot),
+    mixed_lineage_transcript(snapshot, group),
+  ]
+  let session_ids = session_ids_for_mixed_group(group, acp_snapshot)
+  for session_id in session_ids {
+    match acp_node_for_id(acp_snapshot, "session:\{session_id}") {
+      Some(node) =>
+        sections.push(
+          acp_session_timeline_transcript(
+            node,
+            acp_timeline_for_node(node, acp_snapshot.timeline),
+          ),
+        )
+      None => ()
+    }
+  }
+  sections.join("\n\n====================\n\n")
 }
 
 ///|

@@ -11,6 +11,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         batch([
           fetch_acp_snapshot(dispatch, model.gateway_base),
           fetch_acp_timeline(dispatch, model.gateway_base),
+          start_acp_stream_cmd(dispatch, model.gateway_base),
         ]),
         { ..model, acp_loading: true, acp_error: None },
       )
@@ -95,7 +96,6 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       (
         batch([
           fetch_acp_snapshot(dispatch, model.gateway_base),
-          fetch_acp_timeline(dispatch, model.gateway_base),
           match model.acp_snapshot {
             Some(snapshot) =>
               if acp_snapshot_is_live(snapshot) {
@@ -108,6 +108,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         ]),
         model,
       )
+    PumpAcpStream => (drain_acp_stream_cmd(dispatch), model)
     PumpStream(run_id) =>
       if model.selected_run_id == Some(run_id) {
         (drain_stream_cmd(dispatch, run_id), model)
@@ -158,6 +159,47 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       )
     AcpEventsLoaded(Err(error)) =>
       (@rabbita.none, { ..model, acp_error: Some(error), acp_loading: false })
+    AcpStreamDrained(Ok((entries, closed))) => {
+      let merged : Array[AcpUiTimelineEntry] = model.acp_timeline.copy()
+      let fresh : Array[String] = []
+      let mut needs_snapshot = false
+      for entry in entries {
+        if !acp_timeline_contains_entry(merged, entry.id) {
+          merged.push(entry)
+          fresh.push(entry.id)
+          if acp_stream_entry_requires_snapshot(entry) {
+            needs_snapshot = true
+          }
+        }
+      }
+      let next_cmd = if closed {
+        fetch_acp_snapshot(dispatch, model.gateway_base)
+      } else if needs_snapshot {
+        batch([
+          fetch_acp_snapshot(dispatch, model.gateway_base),
+          @rabbita.delay(dispatch(PumpAcpStream), 500),
+        ])
+      } else {
+        @rabbita.delay(dispatch(PumpAcpStream), 500)
+      }
+      (
+        next_cmd,
+        {
+          ..model,
+          acp_timeline: merged,
+          fresh_acp_timeline_ids: if fresh.is_empty() {
+            model.fresh_acp_timeline_ids
+          } else {
+            fresh
+          },
+        },
+      )
+    }
+    AcpStreamDrained(Err(error)) =>
+      (
+        @rabbita.delay(dispatch(PumpAcpStream), 1000),
+        { ..model, acp_error: Some(error) },
+      )
     SetAcpRunMessage(message) =>
       (@rabbita.none, { ..model, acp_run_message: message })
     AttachAcpTarget(target_id) =>
@@ -440,6 +482,68 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let next_model = { ..model, selected_mixed_handoff_key: key }
       (sync_url_cmd(next_model), next_model)
     }
+    ExportMixedLineage(key) =>
+      match model.snapshot {
+        Some(snapshot) =>
+          match mixed_handoff_group_for_key(snapshot.handoffs, Some(key)) {
+            Some(group) =>
+              (
+                download_mixed_text_file(
+                  dispatch,
+                  "mixed-lineage-\{snapshot.run.id}.txt",
+                  mixed_lineage_transcript(snapshot, group),
+                ),
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "Exporting mixed lineage transcript \{key}...",
+                  ),
+                },
+              )
+            None =>
+              (
+                @rabbita.none,
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "Mixed lineage not found for export: \{key}",
+                  ),
+                },
+              )
+          }
+        None => (@rabbita.none, model)
+      }
+    ExportMixedCase(key) =>
+      match (model.snapshot, model.acp_snapshot) {
+        (Some(snapshot), Some(acp_snapshot)) =>
+          match mixed_handoff_group_for_key(snapshot.handoffs, Some(key)) {
+            Some(group) =>
+              (
+                download_mixed_text_file(
+                  dispatch,
+                  "case-\{snapshot.run.id}.txt",
+                  mixed_case_transcript(snapshot, acp_snapshot, group),
+                ),
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "Exporting combined case transcript \{key}...",
+                  ),
+                },
+              )
+            None =>
+              (
+                @rabbita.none,
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "Mixed lineage not found for case export: \{key}",
+                  ),
+                },
+              )
+          }
+        _ => (@rabbita.none, model)
+      }
     ToggleNode(node_id) =>
       match model.snapshot {
         Some(snapshot) => {
@@ -543,6 +647,177 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         }
         None => (@rabbita.none, model)
       }
+    ToggleAcpOutput(output_id) =>
+      if contains_id(model.expanded_acp_output_ids, output_id) {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            expanded_acp_output_ids: model.expanded_acp_output_ids.filter(fn(
+              id,
+            ) {
+              id != output_id
+            }),
+          },
+        )
+      } else {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            expanded_acp_output_ids: model.expanded_acp_output_ids + [output_id],
+          },
+        )
+      }
+    CopyAcpOutput(_label, text) =>
+      (
+        copy_to_clipboard(dispatch, text),
+        { ..model, acp_action_notice: Some("Copying ACP output...") },
+      )
+    AcpCopyFinished(Ok(status)) =>
+      (
+        @rabbita.none,
+        { ..model, acp_action_notice: Some("ACP output copied: \{status}") },
+      )
+    AcpCopyFinished(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_action_notice: Some("ACP output copy failed: \{error}"),
+          acp_error: Some(error),
+        },
+      )
+    ExportAcpSession(session_id) =>
+      match model.acp_snapshot {
+        Some(snapshot) =>
+          match acp_node_for_id(snapshot, "session:\{session_id}") {
+            Some(node) =>
+              (
+                download_text_file(
+                  dispatch,
+                  "acp-session-\{session_id}.txt",
+                  acp_session_transcript(snapshot, node),
+                ),
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "Exporting ACP session transcript \{session_id}...",
+                  ),
+                },
+              )
+            None =>
+              (
+                @rabbita.none,
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "ACP session not found for export: \{session_id}",
+                  ),
+                },
+              )
+          }
+        None => (@rabbita.none, model)
+      }
+    ExportAcpSessionTimeline(session_id) =>
+      match model.acp_snapshot {
+        Some(snapshot) =>
+          match acp_node_for_id(snapshot, "session:\{session_id}") {
+            Some(node) =>
+              (
+                download_text_file(
+                  dispatch,
+                  "acp-session-\{session_id}-timeline.txt",
+                  acp_session_timeline_transcript(
+                    node,
+                    acp_timeline_for_node(node, model.acp_timeline),
+                  ),
+                ),
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "Exporting ACP session timeline \{session_id}...",
+                  ),
+                },
+              )
+            None =>
+              (
+                @rabbita.none,
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "ACP session not found for timeline export: \{session_id}",
+                  ),
+                },
+              )
+          }
+        None => (@rabbita.none, model)
+      }
+    ExportAcpRun(run_id) =>
+      match model.acp_snapshot {
+        Some(snapshot) =>
+          match acp_node_for_id(snapshot, "run:\{run_id}") {
+            Some(node) =>
+              (
+                download_text_file(
+                  dispatch,
+                  "acp-\{run_id}.txt",
+                  acp_run_transcript(node),
+                ),
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "Exporting ACP transcript \{run_id}...",
+                  ),
+                },
+              )
+            None =>
+              (
+                @rabbita.none,
+                {
+                  ..model,
+                  acp_action_notice: Some(
+                    "ACP run not found for export: \{run_id}",
+                  ),
+                },
+              )
+          }
+        None => (@rabbita.none, model)
+      }
+    AcpExportFinished(Ok(status)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_action_notice: Some("ACP transcript exported: \{status}"),
+        },
+      )
+    AcpExportFinished(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_action_notice: Some("ACP transcript export failed: \{error}"),
+          acp_error: Some(error),
+        },
+      )
+    MixedExportFinished(Ok(status)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_action_notice: Some("Mixed lineage exported: \{status}"),
+        },
+      )
+    MixedExportFinished(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          acp_action_notice: Some("Mixed lineage export failed: \{error}"),
+          acp_error: Some(error),
+        },
+      )
     SelectPanel(panel) => {
       let next_model = { ..model, right_panel: panel }
       (sync_url_cmd(next_model), next_model)
@@ -576,7 +851,12 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       match route {
         Overview =>
           (
-            batch([@nav.scroll_to_top(), stop_stream_cmd()]),
+            batch([
+              @nav.scroll_to_top(),
+              stop_stream_cmd(),
+              stop_acp_stream_cmd(),
+              dispatch(LoadAcp),
+            ]),
             {
               ..model,
               route,
@@ -602,7 +882,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           )
         Jobs =>
           (
-            batch([@nav.scroll_to_top(), stop_stream_cmd()]),
+            batch([
+              @nav.scroll_to_top(),
+              stop_stream_cmd(),
+              stop_acp_stream_cmd(),
+            ]),
             {
               ..model,
               route,
@@ -645,7 +929,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             )
           } else {
             (
-              batch([@nav.scroll_to_top(), dispatch(LoadRun(run_id))]),
+              batch([
+                @nav.scroll_to_top(),
+                stop_acp_stream_cmd(),
+                dispatch(LoadRun(run_id)),
+              ]),
               {
                 ..model,
                 route,
@@ -664,7 +952,12 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           }
         Acp =>
           (
-            batch([@nav.scroll_to_top(), dispatch(LoadAcp), stop_stream_cmd()]),
+            batch([
+              @nav.scroll_to_top(),
+              stop_stream_cmd(),
+              stop_acp_stream_cmd(),
+              dispatch(LoadAcp),
+            ]),
             {
               ..model,
               route,

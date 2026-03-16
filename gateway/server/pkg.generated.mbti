@@ -60,6 +60,8 @@ pub fn update_subtask_params(status~ : CoordinationStatus, result? : Json, error
 // Errors
 
 // Types and methods
+type AcpLiveOutput
+
 pub(all) struct AcpRunCancelParams {
   run_id : String
 }
@@ -291,6 +293,7 @@ pub struct Gateway {
   acp_runtime : @acp.AcpRuntime
   acp_process_manager : @spawn.Manager
   active_acp_runs : Map[String, @spawn.Process]
+  active_acp_output : Map[String, AcpLiveOutput]
   cancelled_acp_runs : Map[String, Bool]
 }
 pub fn Gateway::acp_runtime(Self) -> @acp.AcpRuntime

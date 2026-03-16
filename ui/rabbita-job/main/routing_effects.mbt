@@ -287,6 +287,22 @@ fn parse_acp_events_payload(
 }
 
 ///|
+fn parse_acp_timeline_entry_payload(
+  text : String,
+) -> Result[AcpUiTimelineEntry, String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  match json {
+    Ok(json) =>
+      match (try? @json.from_json(json) : Result[AcpUiTimelineEntry, Error]) {
+        Ok(entry) => Ok(entry)
+        Err(error) =>
+          Err("Failed to parse streamed ACP timeline entry: \{error}")
+      }
+    Err(error) => Err("Failed to parse streamed ACP timeline JSON: \{error}")
+  }
+}
+
+///|
 fn parse_action_status_payload(text : String) -> Result[String, String] {
   let json : Result[Json, Error] = try? @json.parse(text)
   match json {
@@ -360,6 +376,99 @@ fn parse_browser_post_result(text : String) -> Result[String, String] {
 }
 
 ///|
+#cfg(target="js")
+extern "js" fn browser_copy_text(text : String) -> String =
+  #| async (text) => {
+  #|   try {
+  #|     await navigator.clipboard.writeText(text);
+  #|     return JSON.stringify({ ok: true, value: "copied", error: null });
+  #|   } catch (error) {
+  #|     return JSON.stringify({ ok: false, value: "", error: String(error) });
+  #|   }
+  #| }
+
+///|
+struct BrowserCopyResult {
+  ok : Bool
+  value : String
+  error : String?
+} derive(FromJson, Show)
+
+///|
+fn parse_browser_copy_result(text : String) -> Result[String, String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  let payload = match json {
+    Ok(json) =>
+      match (try? @json.from_json(json) : Result[BrowserCopyResult, Error]) {
+        Ok(payload) => payload
+        Err(error) => return Err("Failed to parse clipboard result: \{error}")
+      }
+    Err(error) => return Err("Failed to parse clipboard wrapper: \{error}")
+  }
+  match payload.error {
+    Some(error) => Err(error)
+    None =>
+      if payload.ok {
+        Ok(payload.value)
+      } else {
+        Err("Clipboard write failed")
+      }
+  }
+}
+
+///|
+fn copy_to_clipboard(dispatch : Dispatch[Msg], text : String) -> Cmd {
+  @rabbita.perform(fn(result) { dispatch(AcpCopyFinished(result)) }, fn() noraise {
+    parse_browser_copy_result(browser_copy_text(text))
+  })
+}
+
+///|
+#cfg(target="js")
+extern "js" fn browser_download_text(
+  filename : String,
+  content : String,
+) -> String =
+  #| async (filename, content) => {
+  #|   try {
+  #|     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  #|     const url = URL.createObjectURL(blob);
+  #|     const link = document.createElement("a");
+  #|     link.href = url;
+  #|     link.download = filename;
+  #|     document.body.appendChild(link);
+  #|     link.click();
+  #|     link.remove();
+  #|     URL.revokeObjectURL(url);
+  #|     return JSON.stringify({ ok: true, value: "downloaded", error: null });
+  #|   } catch (error) {
+  #|     return JSON.stringify({ ok: false, value: "", error: String(error) });
+  #|   }
+  #| }
+
+///|
+fn download_text_file(
+  dispatch : Dispatch[Msg],
+  filename : String,
+  content : String,
+) -> Cmd {
+  @rabbita.perform(fn(result) { dispatch(AcpExportFinished(result)) }, fn() noraise {
+    parse_browser_copy_result(browser_download_text(filename, content))
+  })
+}
+
+///|
+fn download_mixed_text_file(
+  dispatch : Dispatch[Msg],
+  filename : String,
+  content : String,
+) -> Cmd {
+  @rabbita.perform(fn(result) { dispatch(MixedExportFinished(result)) }, fn() noraise {
+    parse_browser_copy_result(browser_download_text(filename, content))
+  })
+}
+
+///|
 struct StreamDrainPayload {
   entries : Array[String]
   closed : Bool
@@ -397,6 +506,32 @@ fn parse_stream_drain_payload(
   let entries : Array[UiTimelineEntry] = []
   for raw in payload.entries {
     match parse_timeline_entry_payload(raw) {
+      Ok(entry) => entries.push(entry)
+      Err(error) => return Err(error)
+    }
+  }
+  match payload.error {
+    Some(error) => Err(error)
+    None => Ok((entries, payload.closed))
+  }
+}
+
+///|
+fn parse_acp_stream_drain_payload(
+  text : String,
+) -> Result[(Array[AcpUiTimelineEntry], Bool), String] {
+  let json : Result[Json, Error] = try? @json.parse(text)
+  let payload = match json {
+    Ok(json) =>
+      match (try? @json.from_json(json) : Result[StreamDrainPayload, Error]) {
+        Ok(payload) => payload
+        Err(error) => return Err("Failed to parse ACP stream payload: \{error}")
+      }
+    Err(error) => return Err("Failed to parse ACP stream drain JSON: \{error}")
+  }
+  let entries : Array[AcpUiTimelineEntry] = []
+  for raw in payload.entries {
+    match parse_acp_timeline_entry_payload(raw) {
       Ok(entry) => entries.push(entry)
       Err(error) => return Err(error)
     }
@@ -458,6 +593,24 @@ fn fetch_acp_timeline(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
     parse_acp_events_payload,
   )
   @http.get("\{gateway_base}/v1/acp/events", expect~)
+}
+
+///|
+fn acp_timeline_contains_entry(
+  timeline : Array[AcpUiTimelineEntry],
+  target_id : String,
+) -> Bool {
+  for entry in timeline {
+    if entry.id == target_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn acp_stream_entry_requires_snapshot(entry : AcpUiTimelineEntry) -> Bool {
+  entry.event_type != "run.output"
 }
 
 ///|
@@ -590,4 +743,76 @@ fn load_run_cmd(
     fetch_snapshot(dispatch, gateway_base, run_id),
     fetch_timeline(dispatch, gateway_base, run_id),
   ])
+}
+
+///|
+#cfg(target="js")
+extern "js" fn start_acp_ui_event_stream(url : String) =
+  #| (url) => {
+  #|   const key = "__moonclawAcpUiStream";
+  #|   const current = window[key];
+  #|   if (current && current.es) current.es.close();
+  #|   const state = { queue: [], closed: false, error: null, es: null };
+  #|   const es = new EventSource(url);
+  #|   state.es = es;
+  #|   es.addEventListener("acp_ui_event", (event) => { state.queue.push(event.data); });
+  #|   es.addEventListener("acp_ui_complete", () => {
+  #|     state.closed = true;
+  #|     es.close();
+  #|   });
+  #|   es.onerror = () => {
+  #|     state.error = "stream_error";
+  #|     state.closed = true;
+  #|     es.close();
+  #|   };
+  #|   window[key] = state;
+  #| }
+
+///|
+#cfg(target="js")
+extern "js" fn stop_acp_ui_event_stream() =
+  #| () => {
+  #|   const key = "__moonclawAcpUiStream";
+  #|   const state = window[key];
+  #|   if (state && state.es) state.es.close();
+  #|   window[key] = null;
+  #| }
+
+///|
+#cfg(target="js")
+extern "js" fn drain_acp_ui_event_stream() -> String =
+  #| () => {
+  #|   const key = "__moonclawAcpUiStream";
+  #|   const state = window[key];
+  #|   if (!state) return JSON.stringify({ entries: [], closed: true, error: null });
+  #|   const payload = {
+  #|     entries: state.queue.splice(0, state.queue.length),
+  #|     closed: !!state.closed,
+  #|     error: state.error,
+  #|   };
+  #|   if (state.closed && !state.error) window[key] = null;
+  #|   return JSON.stringify(payload);
+  #| }
+
+///|
+fn start_acp_stream_cmd(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
+  batch([
+    @rabbita.effect(fn() noraise {
+      start_acp_ui_event_stream("\{gateway_base}/v1/acp/events/stream")
+    }),
+    @rabbita.delay(dispatch(PumpAcpStream), 500),
+  ])
+}
+
+///|
+fn stop_acp_stream_cmd() -> Cmd {
+  @rabbita.effect(fn() noraise { stop_acp_ui_event_stream() })
+}
+
+///|
+fn drain_acp_stream_cmd(dispatch : Dispatch[Msg]) -> Cmd {
+  @rabbita.perform(
+    fn(raw) { dispatch(AcpStreamDrained(parse_acp_stream_drain_payload(raw))) },
+    fn() noraise { drain_acp_ui_event_stream() },
+  )
 }

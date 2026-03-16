@@ -105,6 +105,7 @@ pub async fn Gateway::new(
     acp_runtime,
     acp_process_manager,
     active_acp_runs: {},
+    active_acp_output: {},
     cancelled_acp_runs: {},
   }
   gateway.sessions.load() catch {

@@ -255,6 +255,7 @@ struct Model {
   selected_acp_node_id : String?
   fresh_acp_node_ids : Array[String]
   fresh_acp_timeline_ids : Array[String]
+  expanded_acp_output_ids : Array[String]
   acp_run_message : String
   acp_action_notice : String?
 }
@@ -272,8 +273,10 @@ enum Msg {
   StreamDrained(String, Result[(Array[UiTimelineEntry], Bool), String])
   LoadAcp
   PollAcp
+  PumpAcpStream
   AcpSnapshotLoaded(Result[AcpUiSnapshot, String])
   AcpEventsLoaded(Result[Array[AcpUiTimelineEntry], String])
+  AcpStreamDrained(Result[(Array[AcpUiTimelineEntry], Bool), String])
   SetAcpRunMessage(String)
   AttachAcpTarget(String)
   DetachAcpSession(String)
@@ -289,6 +292,8 @@ enum Msg {
   SelectRunsSort(RunSort)
   SelectRunsPage(Int)
   SelectMixedHandoff(String?)
+  ExportMixedLineage(String)
+  ExportMixedCase(String)
   ToggleNode(String)
   FocusBranchPanel(String, RightPanel)
   FocusBranchEvents(String)
@@ -296,6 +301,14 @@ enum Msg {
   FocusNode(String)
   FocusTimeline(String)
   SelectAcpNode(String)
+  ToggleAcpOutput(String)
+  CopyAcpOutput(String, String)
+  AcpCopyFinished(Result[String, String])
+  ExportAcpSession(String)
+  ExportAcpSessionTimeline(String)
+  ExportAcpRun(String)
+  AcpExportFinished(Result[String, String])
+  MixedExportFinished(Result[String, String])
   SelectPanel(RightPanel)
   UrlChanged(@url.Url)
   UrlRequest(@url.UrlRequest)
@@ -354,6 +367,7 @@ fn init_model() -> Model {
     selected_acp_node_id: None,
     fresh_acp_node_ids: [],
     fresh_acp_timeline_ids: [],
+    expanded_acp_output_ids: [],
     acp_run_message: "",
     acp_action_notice: None,
   }

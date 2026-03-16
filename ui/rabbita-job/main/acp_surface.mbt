@@ -62,6 +62,9 @@ fn acp_timeline_entry_class(
   entry : AcpUiTimelineEntry,
 ) -> String {
   let mut classes = "timeline-entry"
+  if entry.event_type == "run.output" {
+    classes = classes + " remote-handoff"
+  }
   match entry.data {
     { "linkage": { "linked_job_run_id": String(_), .. }, .. } =>
       classes = classes + " local-origin"
@@ -91,6 +94,10 @@ fn acp_timeline_entry_class(
 ///|
 fn acp_timeline_badges(entry : AcpUiTimelineEntry) -> Array[Html] {
   let badges : Array[Html] = []
+  match entry.data {
+    { "live": True, .. } => badges.push(render_meta_chip("live", "stdio"))
+    _ => ()
+  }
   match entry.data {
     { "linkage": { "linked_job_run_id": String(run_id), .. }, .. } =>
       badges.push(render_meta_chip("local-run", run_id))
@@ -128,6 +135,7 @@ fn render_acp_node_card(
     p(class="node-kind", acp_kind_label(node.kind)),
     p(class="run-title", node.title),
     div([render_status_badge(node.status)]),
+    div(class="timeline-meta", render_acp_runtime_chips(node)),
     match node.summary {
       Some(summary) => p(class="run-meta", preview_text(summary, 120))
       None => nothing
@@ -137,6 +145,70 @@ fn render_acp_node_card(
       None => nothing
     },
   ])
+}
+
+///|
+fn acp_duration_label(node : AcpUiNode) -> String? {
+  let created_at = match node.created_at {
+    Some(created_at) => created_at
+    None => return None
+  }
+  let updated_at = match node.updated_at {
+    Some(updated_at) => updated_at
+    None => return None
+  }
+  let elapsed_ms = updated_at - created_at
+  if elapsed_ms < 0 {
+    None
+  } else if elapsed_ms < 1000 {
+    Some("\{elapsed_ms}ms")
+  } else if elapsed_ms < 60_000 {
+    Some("\{elapsed_ms / 1000}s")
+  } else {
+    let minutes = elapsed_ms / 60_000
+    let seconds = elapsed_ms % 60_000 / 1000
+    Some("\{minutes}m \{seconds}s")
+  }
+}
+
+///|
+fn acp_exit_status(node : AcpUiNode) -> Int? {
+  match node.metadata {
+    { "stdout_stderr": { "exit_status": Number(exit_status, ..), .. }, .. } =>
+      Some(exit_status.to_int())
+    _ => None
+  }
+}
+
+///|
+fn render_acp_runtime_chips(node : AcpUiNode) -> Array[Html] {
+  let chips : Array[Html] = []
+  match acp_duration_label(node) {
+    Some(duration) => chips.push(render_meta_chip("elapsed", duration))
+    None => ()
+  }
+  match acp_exit_status(node) {
+    Some(exit_status) =>
+      chips.push(render_meta_chip("exit", exit_status.to_string()))
+    None => ()
+  }
+  chips
+}
+
+///|
+fn latest_live_acp_run(snapshot : AcpUiSnapshot) -> AcpUiNode? {
+  let live_runs = snapshot.nodes.filter(fn(node) {
+    node.kind == Run && acp_status_is_live(node.status)
+  })
+  if live_runs.is_empty() {
+    None
+  } else {
+    let sorted = live_runs.copy()
+    sorted.sort_by(fn(left, right) {
+      right.updated_at.unwrap_or(0).compare(left.updated_at.unwrap_or(0))
+    })
+    Some(sorted[0])
+  }
 }
 
 ///|
@@ -152,6 +224,37 @@ fn render_acp_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
         match model.acp_snapshot {
           Some(snapshot) =>
             div(class="runs-list", [
+              match latest_live_acp_run(snapshot) {
+                Some(run) =>
+                  article(class="overview-stat", [
+                    p(class="kv-label", "Latest Active Run"),
+                    button(
+                      class="focus-link",
+                      on_click=dispatch(SelectAcpNode(run.id)),
+                      [
+                        p(class="node-kind", "run"),
+                        p(class="timeline-title", run.title),
+                        div(
+                          class="timeline-meta",
+                          [
+                            render_status_badge(run.status),
+                            match run.run_id {
+                              Some(run_id) => render_meta_chip("run", run_id)
+                              None => nothing
+                            },
+                            ..render_acp_runtime_chips(run),
+                          ],
+                        ),
+                        match run.summary {
+                          Some(summary) =>
+                            p(class="muted", preview_text(summary, 160))
+                          None => nothing
+                        },
+                      ],
+                    ),
+                  ])
+                None => nothing
+              },
               article(class="overview-stat", [
                 p(class="kv-label", "Targets"),
                 p(class="detail-title", "\{snapshot.targets.length()}"),
@@ -239,17 +342,461 @@ fn render_acp_timeline(
 }
 
 ///|
-fn render_stdio_preview(label : String, value : String?) -> Html {
+fn acp_output_id(node : AcpUiNode, label : String) -> String {
+  "\{node.id}:\{label}"
+}
+
+///|
+fn render_stdio_preview(
+  dispatch : Dispatch[Msg],
+  model : Model,
+  node : AcpUiNode,
+  label : String,
+  value : String?,
+) -> Html {
   match value {
-    Some(text) if !text.trim().is_blank() =>
+    Some(text) if !text.trim().is_blank() => {
+      let output_id = acp_output_id(node, label)
+      let expanded = contains_id(model.expanded_acp_output_ids, output_id)
       div(class="focus-block", [
-        p(class="kv-label", label),
+        div(class="timeline-meta", [
+          p(class="kv-label", label),
+          render_action_chip(
+            if expanded {
+              "Collapse"
+            } else {
+              "Show Full"
+            },
+            dispatch(ToggleAcpOutput(output_id)),
+          ),
+          render_action_chip("Copy", dispatch(CopyAcpOutput(label, text))),
+        ]),
         article(class="artifact-card", [
-          p(class="timeline-detail mono", preview_text(text, 320)),
+          p(
+            class="timeline-detail mono",
+            if expanded {
+              text
+            } else {
+              preview_text(text, 320)
+            },
+          ),
         ]),
       ])
+    }
     _ => nothing
   }
+}
+
+///|
+fn acp_node_stdout(node : AcpUiNode) -> String? {
+  match node.metadata {
+    { "stdout_stderr": { "stdout": String(stdout), .. }, .. } => Some(stdout)
+    _ => None
+  }
+}
+
+///|
+fn acp_node_stderr(node : AcpUiNode) -> String? {
+  match node.metadata {
+    { "stdout_stderr": { "stderr": String(stderr), .. }, .. } => Some(stderr)
+    _ => None
+  }
+}
+
+///|
+fn acp_linkage_lines(node : AcpUiNode) -> Array[String] {
+  let lines : Array[String] = []
+  match acp_node_linkage(node) {
+    Some({ "linked_job_run_id": String(run_id), .. }) =>
+      lines.push("linked_job_run_id: \{run_id}")
+    _ => ()
+  }
+  match acp_node_linkage(node) {
+    Some({ "linked_job_id": String(job_id), .. }) =>
+      lines.push("linked_job_id: \{job_id}")
+    _ => ()
+  }
+  match acp_node_linkage(node) {
+    Some({ "linked_job_node_id": String(node_id), .. }) =>
+      lines.push("linked_job_node_id: \{node_id}")
+    _ => ()
+  }
+  match acp_node_linkage(node) {
+    Some({ "linked_job_step_id": String(step_id), .. }) =>
+      lines.push("linked_job_step_id: \{step_id}")
+    _ => ()
+  }
+  match acp_linked_local_workspace(node) {
+    Some(workspace) => lines.push("linked_workspace: \{workspace}")
+    None => ()
+  }
+  lines
+}
+
+///|
+fn acp_run_transcript(node : AcpUiNode) -> String {
+  let lines : Array[String] = [
+    "ACP Run Transcript",
+    "",
+    "title: \{node.title}",
+    "status: \{normalize_status(node.status)}",
+  ]
+  match node.run_id {
+    Some(run_id) => lines.push("run_id: \{run_id}")
+    None => ()
+  }
+  match node.session_id {
+    Some(session_id) => lines.push("session_id: \{session_id}")
+    None => ()
+  }
+  match node.target_id {
+    Some(target_id) => lines.push("target_id: \{target_id}")
+    None => ()
+  }
+  match node.created_at {
+    Some(created_at) => lines.push("created_at: \{created_at}")
+    None => ()
+  }
+  match node.updated_at {
+    Some(updated_at) => lines.push("updated_at: \{updated_at}")
+    None => ()
+  }
+  match acp_duration_label(node) {
+    Some(duration) => lines.push("elapsed: \{duration}")
+    None => ()
+  }
+  match acp_exit_status(node) {
+    Some(exit_status) => lines.push("exit_status: \{exit_status}")
+    None => ()
+  }
+  match node.summary {
+    Some(summary) if !summary.trim().is_blank() => {
+      lines.push("")
+      lines.push("summary:")
+      lines.push(summary)
+    }
+    _ => ()
+  }
+  match node.detail {
+    Some(detail) if !detail.trim().is_blank() => {
+      lines.push("")
+      lines.push("detail:")
+      lines.push(detail)
+    }
+    _ => ()
+  }
+  let linkage = acp_linkage_lines(node)
+  if !linkage.is_empty() {
+    lines.push("")
+    lines.push("linkage:")
+    for line in linkage {
+      lines.push(line)
+    }
+  }
+  match acp_node_stdout(node) {
+    Some(stdout) if !stdout.trim().is_blank() => {
+      lines.push("")
+      lines.push("stdout:")
+      lines.push(stdout)
+    }
+    _ => ()
+  }
+  match acp_node_stderr(node) {
+    Some(stderr) if !stderr.trim().is_blank() => {
+      lines.push("")
+      lines.push("stderr:")
+      lines.push(stderr)
+    }
+    _ => ()
+  }
+  lines.join("\n")
+}
+
+///|
+fn acp_session_transcript(snapshot : AcpUiSnapshot, node : AcpUiNode) -> String {
+  let lines : Array[String] = [
+    "ACP Session Transcript",
+    "",
+    "title: \{node.title}",
+    "status: \{normalize_status(node.status)}",
+  ]
+  match node.session_id {
+    Some(session_id) => lines.push("session_id: \{session_id}")
+    None => ()
+  }
+  match node.target_id {
+    Some(target_id) => lines.push("target_id: \{target_id}")
+    None => ()
+  }
+  match node.created_at {
+    Some(created_at) => lines.push("created_at: \{created_at}")
+    None => ()
+  }
+  match node.updated_at {
+    Some(updated_at) => lines.push("updated_at: \{updated_at}")
+    None => ()
+  }
+  match acp_duration_label(node) {
+    Some(duration) => lines.push("elapsed: \{duration}")
+    None => ()
+  }
+  match node.summary {
+    Some(summary) if !summary.trim().is_blank() => {
+      lines.push("")
+      lines.push("summary:")
+      lines.push(summary)
+    }
+    _ => ()
+  }
+  match node.detail {
+    Some(detail) if !detail.trim().is_blank() => {
+      lines.push("")
+      lines.push("detail:")
+      lines.push(detail)
+    }
+    _ => ()
+  }
+  let linkage = acp_linkage_lines(node)
+  if !linkage.is_empty() {
+    lines.push("")
+    lines.push("linkage:")
+    for line in linkage {
+      lines.push(line)
+    }
+  }
+  match node.session_id {
+    Some(session_id) => {
+      let runs = acp_session_run_nodes(snapshot, session_id)
+      lines.push("")
+      lines.push("run_count: \{runs.length()}")
+      if !runs.is_empty() {
+        lines.push("")
+        lines.push("runs:")
+        for run in runs {
+          lines.push("")
+          lines.push("---")
+          lines.push("title: \{run.title}")
+          lines.push("status: \{normalize_status(run.status)}")
+          match run.run_id {
+            Some(run_id) => lines.push("run_id: \{run_id}")
+            None => ()
+          }
+          match run.created_at {
+            Some(created_at) => lines.push("created_at: \{created_at}")
+            None => ()
+          }
+          match run.updated_at {
+            Some(updated_at) => lines.push("updated_at: \{updated_at}")
+            None => ()
+          }
+          match acp_duration_label(run) {
+            Some(duration) => lines.push("elapsed: \{duration}")
+            None => ()
+          }
+          match acp_exit_status(run) {
+            Some(exit_status) => lines.push("exit_status: \{exit_status}")
+            None => ()
+          }
+          match run.summary {
+            Some(summary) if !summary.trim().is_blank() => {
+              lines.push("")
+              lines.push("summary:")
+              lines.push(summary)
+            }
+            _ => ()
+          }
+          match run.detail {
+            Some(detail) if !detail.trim().is_blank() => {
+              lines.push("")
+              lines.push("detail:")
+              lines.push(detail)
+            }
+            _ => ()
+          }
+          match acp_node_stdout(run) {
+            Some(stdout) if !stdout.trim().is_blank() => {
+              lines.push("")
+              lines.push("stdout:")
+              lines.push(stdout)
+            }
+            _ => ()
+          }
+          match acp_node_stderr(run) {
+            Some(stderr) if !stderr.trim().is_blank() => {
+              lines.push("")
+              lines.push("stderr:")
+              lines.push(stderr)
+            }
+            _ => ()
+          }
+        }
+      }
+    }
+    None => ()
+  }
+  lines.join("\n")
+}
+
+///|
+fn acp_session_timeline_transcript(
+  node : AcpUiNode,
+  timeline : Array[AcpUiTimelineEntry],
+) -> String {
+  let lines : Array[String] = [
+    "ACP Session Timeline Transcript",
+    "",
+    "title: \{node.title}",
+    "status: \{normalize_status(node.status)}",
+  ]
+  match node.session_id {
+    Some(session_id) => lines.push("session_id: \{session_id}")
+    None => ()
+  }
+  match node.target_id {
+    Some(target_id) => lines.push("target_id: \{target_id}")
+    None => ()
+  }
+  lines.push("event_count: \{timeline.length()}")
+  if !timeline.is_empty() {
+    lines.push("")
+    lines.push("events:")
+    for entry in timeline {
+      lines.push("")
+      lines.push("---")
+      lines.push("timestamp: \{entry.timestamp}")
+      lines.push("event_type: \{entry.event_type}")
+      lines.push("title: \{entry.title}")
+      lines.push("detail: \{entry.detail}")
+      match entry.status {
+        Some(status) => lines.push("status: \{normalize_status(status)}")
+        None => ()
+      }
+      match entry.session_id {
+        Some(session_id) => lines.push("session_id: \{session_id}")
+        None => ()
+      }
+      match entry.run_id {
+        Some(run_id) => lines.push("run_id: \{run_id}")
+        None => ()
+      }
+      match entry.target_id {
+        Some(target_id) => lines.push("target_id: \{target_id}")
+        None => ()
+      }
+    }
+  }
+  lines.join("\n")
+}
+
+///|
+fn acp_session_run_nodes(
+  snapshot : AcpUiSnapshot,
+  session_id : String,
+) -> Array[AcpUiNode] {
+  snapshot.nodes.filter(fn(node) {
+    node.kind == Run && node.session_id == Some(session_id)
+  })
+}
+
+///|
+fn render_acp_run_history(
+  dispatch : Dispatch[Msg],
+  snapshot : AcpUiSnapshot,
+  selected_node_id : String?,
+  session_id : String?,
+) -> Html {
+  match session_id {
+    Some(session_id) => {
+      let runs = acp_session_run_nodes(snapshot, session_id)
+      div(class="focus-block", [
+        p(class="kv-label", "Run History"),
+        if runs.is_empty() {
+          p(class="empty", "No remote runs for this ACP session yet.")
+        } else {
+          div(
+            class="focus-links",
+            runs.map(fn(run) {
+              let button_class = if selected_node_id == Some(run.id) {
+                "focus-link active"
+              } else {
+                "focus-link"
+              }
+              button(
+                class=button_class,
+                on_click=dispatch(SelectAcpNode(run.id)),
+                [
+                  p(class="node-kind", "run"),
+                  p(class="timeline-title", run.title),
+                  div(
+                    class="timeline-meta",
+                    [
+                      match run.run_id {
+                        Some(run_id) => render_meta_chip("run", run_id)
+                        None => nothing
+                      },
+                      render_status_badge(run.status),
+                      ..render_acp_runtime_chips(run),
+                    ],
+                  ),
+                  match run.summary {
+                    Some(summary) =>
+                      p(class="muted", preview_text(summary, 140))
+                    None => nothing
+                  },
+                ],
+              )
+            }),
+          )
+        },
+      ])
+    }
+    None => nothing
+  }
+}
+
+///|
+fn render_acp_output_pane(
+  dispatch : Dispatch[Msg],
+  model : Model,
+  snapshot : AcpUiSnapshot,
+  node : AcpUiNode,
+  related : Array[AcpUiTimelineEntry],
+) -> Html {
+  let session_id = match node.kind {
+    Session => node.session_id
+    Run => node.session_id
+    _ => None
+  }
+  let live_output_events = related.filter(fn(entry) {
+    entry.event_type == "run.output"
+  })
+  section([
+    h3(class="section-title", "Remote Output"),
+    render_stdio_preview(dispatch, model, node, "stdout", acp_node_stdout(node)),
+    render_stdio_preview(dispatch, model, node, "stderr", acp_node_stderr(node)),
+    if live_output_events.is_empty() {
+      nothing
+    } else {
+      div(class="focus-block", [
+        p(class="kv-label", "Live Output Feed"),
+        div(
+          class="focus-events",
+          preview_items(live_output_events, 6).map(fn(entry) {
+            article(class="focus-event", [
+              p(class="timeline-title", entry.title),
+              p(class="muted", preview_text(entry.detail, 220)),
+            ])
+          }),
+        ),
+      ])
+    },
+    render_acp_run_history(
+      dispatch,
+      snapshot,
+      model.selected_acp_node_id,
+      session_id,
+    ),
+  ])
 }
 
 ///|
@@ -279,6 +826,16 @@ fn render_acp_action_bar(
             [
               button(
                 class="tree-control-button",
+                on_click=dispatch(ExportAcpSession(session_id)),
+                "Export Session",
+              ),
+              button(
+                class="tree-control-button",
+                on_click=dispatch(ExportAcpSessionTimeline(session_id)),
+                "Export Timeline",
+              ),
+              button(
+                class="tree-control-button",
                 on_click=dispatch(ResetAcpSession(session_id)),
                 "Reset",
               ),
@@ -304,6 +861,11 @@ fn render_acp_action_bar(
                 class="tree-control-button",
                 on_click=dispatch(CancelAcpRun(run_id)),
                 "Cancel Run",
+              ),
+              button(
+                class="tree-control-button",
+                on_click=dispatch(ExportAcpRun(run_id)),
+                "Export",
               ),
             ]
           None => []
@@ -376,6 +938,9 @@ fn render_acp_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
                       h3(class="section-title", "Remote Timeline"),
                       render_acp_timeline(dispatch, model, related),
                     ]),
+                    render_acp_output_pane(
+                      dispatch, model, snapshot, node, related,
+                    ),
                   ]),
                 ]),
               ])
@@ -415,16 +980,6 @@ fn render_acp_inspector(dispatch : Dispatch[Msg], model : Model) -> Html {
           match acp_node_for_id(snapshot, node_id) {
             Some(node) => {
               let related = acp_timeline_for_node(node, model.acp_timeline)
-              let stdout_preview = match node.metadata {
-                { "stdout_stderr": { "stdout": String(stdout), .. }, .. } =>
-                  Some(stdout)
-                _ => None
-              }
-              let stderr_preview = match node.metadata {
-                { "stdout_stderr": { "stderr": String(stderr), .. }, .. } =>
-                  Some(stderr)
-                _ => None
-              }
               section(class="panel", [
                 header(class="panel-header", [
                   h2(class="panel-title", "ACP Inspector"),
@@ -459,8 +1014,30 @@ fn render_acp_inspector(dispatch : Dispatch[Msg], model : Model) -> Html {
                     },
                   ]),
                   render_linked_local_panel(node),
-                  render_stdio_preview("stdout", stdout_preview),
-                  render_stdio_preview("stderr", stderr_preview),
+                  render_stdio_preview(
+                    dispatch,
+                    model,
+                    node,
+                    "stdout",
+                    acp_node_stdout(node),
+                  ),
+                  render_stdio_preview(
+                    dispatch,
+                    model,
+                    node,
+                    "stderr",
+                    acp_node_stderr(node),
+                  ),
+                  render_acp_run_history(
+                    dispatch,
+                    snapshot,
+                    model.selected_acp_node_id,
+                    match node.kind {
+                      Session => node.session_id
+                      Run => node.session_id
+                      _ => None
+                    },
+                  ),
                   if related.is_empty() {
                     p(class="empty", "No related ACP events yet.")
                   } else {

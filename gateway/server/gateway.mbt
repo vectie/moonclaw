@@ -43,6 +43,7 @@ pub struct Gateway {
   acp_runtime : @acp.AcpRuntime
   acp_process_manager : @spawn.Manager
   active_acp_runs : Map[String, @spawn.Process]
+  active_acp_output : Map[String, AcpLiveOutput]
   cancelled_acp_runs : Map[String, Bool]
 }
 
@@ -91,6 +92,12 @@ struct DedupeEntry {
   ok : Bool
   payload : Json?
   error : @protocol.ErrorShape?
+}
+
+///|
+struct AcpLiveOutput {
+  stdout : @spawn.Buffer
+  stderr : @spawn.Buffer
 }
 
 ///|
@@ -188,13 +195,17 @@ fn Gateway::register_active_acp_run(
   self : Gateway,
   run_id : String,
   process : @spawn.Process,
+  stdout : @spawn.Buffer,
+  stderr : @spawn.Buffer,
 ) -> Unit {
   self.active_acp_runs[run_id] = process
+  self.active_acp_output[run_id] = AcpLiveOutput::{ stdout, stderr }
 }
 
 ///|
 fn Gateway::clear_active_acp_run(self : Gateway, run_id : String) -> Unit {
   self.active_acp_runs.remove(run_id) |> ignore()
+  self.active_acp_output.remove(run_id) |> ignore()
 }
 
 ///|
@@ -246,6 +257,22 @@ fn Gateway::active_acp_run_for_session(
     }
   }
   None
+}
+
+///|
+fn Gateway::active_acp_stdio(self : Gateway, run_id : String) -> Json? {
+  match self.active_acp_output.get(run_id) {
+    Some(output) => {
+      let stdout = output.stdout.to_string()
+      let stderr = output.stderr.to_string()
+      if stdout.trim().is_blank() && stderr.trim().is_blank() {
+        None
+      } else {
+        Some({ "stdout": stdout, "stderr": stderr })
+      }
+    }
+    None => None
+  }
 }
 
 ///|

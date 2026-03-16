@@ -36,6 +36,146 @@ fn acp_run_error_shape(code : String, message : String) -> @protocol.ErrorShape 
 }
 
 ///|
+fn stdio_content_preview(stdio : Json) -> String? {
+  match stdio {
+    { "stdout": String(stdout), .. } if !stdout.trim().is_blank() =>
+      Some(stdout.trim().to_string())
+    { "stderr": String(stderr), .. } if !stderr.trim().is_blank() =>
+      Some(stderr.trim().to_string())
+    _ => None
+  }
+}
+
+///|
+fn metadata_with_live_stdio(metadata : Json, stdio : Json) -> Json {
+  let obj = match metadata {
+    Object(obj) => obj
+    _ => {}
+  }
+  obj["stdout_stderr"] = stdio
+  obj["live"] = Json::boolean(true)
+  Json::object(obj)
+}
+
+///|
+fn live_acp_run_node(node : @acp.AcpUiNode, stdio : Json) -> @acp.AcpUiNode {
+  @acp.AcpUiNode::{
+    ..node,
+    summary: stdio_content_preview(stdio),
+    metadata: metadata_with_live_stdio(node.metadata, stdio),
+  }
+}
+
+///|
+fn live_acp_session_node(
+  node : @acp.AcpUiNode,
+  stdio : Json,
+  run_id : String,
+) -> @acp.AcpUiNode {
+  @acp.AcpUiNode::{
+    ..node,
+    status: "running",
+    summary: stdio_content_preview(stdio),
+    run_id: Some(run_id),
+    metadata: metadata_with_live_stdio(node.metadata, stdio),
+  }
+}
+
+///|
+fn live_acp_output_timeline_entry(
+  run : @acp.AcpRun,
+  stdio : Json,
+  timestamp : Int,
+) -> @acp.AcpUiTimelineEntry? {
+  let preview = match stdio_content_preview(stdio) {
+    Some(preview) => preview
+    None => return None
+  }
+  let stdout_len = match stdio {
+    { "stdout": String(stdout), .. } => stdout.length()
+    _ => 0
+  }
+  let stderr_len = match stdio {
+    { "stderr": String(stderr), .. } => stderr.length()
+    _ => 0
+  }
+  let linkage = match run.request {
+    { "metadata": metadata, .. } => metadata
+    _ => {}
+  }
+  Some(@acp.AcpUiTimelineEntry::{
+    id: "run-output:\{run.id}:\{stdout_len}:\{stderr_len}",
+    event_type: "run.output",
+    title: "Run output streaming",
+    detail: preview,
+    timestamp,
+    target_id: Some(run.target_id),
+    session_id: Some(run.session_id),
+    run_id: Some(run.id),
+    status: Some(run.status),
+    data: { "stdout_stderr": stdio, "linkage": linkage, "live": true },
+  })
+}
+
+///|
+fn Gateway::build_live_acp_ui_snapshot(self : Gateway) -> @acp.AcpUiSnapshot {
+  let snapshot = @acp.build_acp_ui_snapshot(self.acp_runtime())
+  let now = current_time_ms()
+  for run in snapshot.runs {
+    match self.active_acp_stdio(run.id) {
+      Some(stdio) => {
+        for i = 0; i < snapshot.nodes.length(); i = i + 1 {
+          let node = snapshot.nodes[i]
+          if node.run_id == Some(run.id) {
+            snapshot.nodes[i] = live_acp_run_node(node, stdio)
+          } else {
+            match node.kind {
+              Session if node.session_id == Some(run.session_id) =>
+                snapshot.nodes[i] = live_acp_session_node(node, stdio, run.id)
+              _ => ()
+            }
+          }
+        }
+        match live_acp_output_timeline_entry(run, stdio, now) {
+          Some(entry) => snapshot.timeline.push(entry)
+          None => ()
+        }
+      }
+      None => ()
+    }
+  }
+  snapshot.timeline.sort_by(fn(left, right) {
+    right.timestamp.compare(left.timestamp)
+  })
+  snapshot
+}
+
+///|
+fn Gateway::acp_ui_is_live(
+  _self : Gateway,
+  snapshot : @acp.AcpUiSnapshot,
+) -> Bool {
+  snapshot.nodes.any(fn(node) {
+    let status = node.status.trim().to_lower()
+    status.contains("running") ||
+    status.contains("pending") ||
+    status.contains("cancelling") ||
+    status.contains("resetting") ||
+    status.contains("detaching")
+  })
+}
+
+///|
+fn array_contains_id(ids : Array[String], target : String) -> Bool {
+  for id in ids {
+    if id == target {
+      return true
+    }
+  }
+  false
+}
+
+///|
 async fn Gateway::finalize_acp_session_after_run(
   self : Gateway,
   session_id : String,
@@ -137,7 +277,7 @@ async fn Gateway::execute_managed_acp_process(
   ) catch {
     error => return Err("Failed to start ACP backend: \{error}")
   }
-  self.register_active_acp_run(run_id, process)
+  self.register_active_acp_run(run_id, process, stdout, stderr)
   let status = process.wait()
   self.clear_active_acp_run(run_id)
   let stdout_text = stdout.to_string()
@@ -599,7 +739,7 @@ async fn Gateway::handle_acp_ui_get_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let snapshot = @acp.build_acp_ui_snapshot(self.acp_runtime())
+  let snapshot = self.build_live_acp_ui_snapshot()
   self.send_response(w, @protocol.Response::{
     id: request.id,
     ok: true,
@@ -614,7 +754,7 @@ async fn Gateway::handle_acp_ui_events_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let timeline = @acp.build_acp_ui_timeline(self.acp_runtime())
+  let timeline = self.build_live_acp_ui_snapshot().timeline
   self.send_response(w, @protocol.Response::{
     id: request.id,
     ok: true,
@@ -1206,7 +1346,7 @@ async fn Gateway::handle_get_acp_ui(
   _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let snapshot = @acp.build_acp_ui_snapshot(self.acp_runtime())
+  let snapshot = self.build_live_acp_ui_snapshot()
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(({ "snapshot": snapshot.to_json() } : Json).stringify())
@@ -1218,12 +1358,48 @@ async fn Gateway::handle_get_acp_ui_events(
   _r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let timeline = @acp.build_acp_ui_timeline(self.acp_runtime())
+  let timeline = self.build_live_acp_ui_snapshot().timeline
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(
     ({ "timeline": timeline.map(fn(entry) { entry.to_json() }) } : Json).stringify(),
   )
+}
+
+///|
+async fn Gateway::handle_stream_acp_ui_events(
+  self : Gateway,
+  _r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let sse = @httpx.EventStreamWriter::new(w)
+  sse.write_header(200)
+  sse.write_event(
+    event="connected",
+    data=@encoding/utf8.encode(({ "stream": "acp_ui" } : Json).stringify()),
+  )
+  let sent : Array[String] = []
+  while true {
+    let snapshot = self.build_live_acp_ui_snapshot()
+    for entry in snapshot.timeline {
+      if !array_contains_id(sent, entry.id) {
+        sse.write_event(
+          id=entry.id,
+          event="acp_ui_event",
+          data=@encoding/utf8.encode(entry.to_json().stringify()),
+        )
+        sent.push(entry.id)
+      }
+    }
+    if !self.acp_ui_is_live(snapshot) {
+      sse.write_event(
+        event="acp_ui_complete",
+        data=@encoding/utf8.encode(({ "status": "static" } : Json).stringify()),
+      )
+      break
+    }
+    @async.sleep(500)
+  }
 }
 
 ///|
