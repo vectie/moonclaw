@@ -1,4 +1,11 @@
 ///|
+pub struct AcpLaunchCommand {
+  command : String
+  args : Array[String]
+  env : Map[String, String]
+} derive(ToJson, FromJson, Show)
+
+///|
 fn launch_arguments(
   plan : AcpLaunchPlan,
   request : AcpRunRequest,
@@ -32,23 +39,34 @@ fn launch_env(
 }
 
 ///|
-fn codex_output_summary(process : @spawn.CompletedProcess) -> String {
-  let stdout = process.stdout.trim().to_string()
-  let stderr = process.stderr.trim().to_string()
+pub fn process_output_summary(
+  stdout : String,
+  stderr : String,
+  status : Int,
+) -> String {
+  let stdout = stdout.trim().to_string()
+  let stderr = stderr.trim().to_string()
   if !stdout.is_blank() {
     stdout
   } else if !stderr.is_blank() {
     stderr
   } else {
-    "Codex backend exited with status \{process.status}"
+    "Codex backend exited with status \{status}"
   }
 }
 
 ///|
-pub async fn execute_launch_plan(
+fn codex_output_summary(process : @spawn.CompletedProcess) -> String {
+  let stdout = process.stdout.trim().to_string()
+  let stderr = process.stderr.trim().to_string()
+  process_output_summary(stdout, stderr, process.status)
+}
+
+///|
+pub fn prepare_launch_command(
   plan : AcpLaunchPlan,
   request : AcpRunRequest,
-) -> Result[Json, String] {
+) -> Result[AcpLaunchCommand, String] {
   let command = match plan.command {
     Some(command) => command
     None =>
@@ -56,20 +74,34 @@ pub async fn execute_launch_plan(
         "ACP launch plan is missing a command for backend \{plan.backend}",
       )
   }
+  Ok(AcpLaunchCommand::{
+    command,
+    args: launch_arguments(plan, request),
+    env: launch_env(plan, request),
+  })
+}
+
+///|
+pub async fn execute_launch_plan(
+  plan : AcpLaunchPlan,
+  request : AcpRunRequest,
+) -> Result[Json, String] {
   if plan.backend == "codex" &&
-    command == "codex" &&
+    plan.command == Some("codex") &&
     !@codex.credentials_exist() {
     return Err(
       "Codex credentials are not available. Authenticate first with the Codex OAuth flow.",
     )
   }
-  let arguments = launch_arguments(plan, request)
-  let env = launch_env(plan, request)
+  let command = match prepare_launch_command(plan, request) {
+    Ok(command) => command
+    Err(error) => return Err(error)
+  }
   let process = @spawn.spawn(
-    command,
-    arguments.map(fn(arg) { arg }),
+    command.command,
+    command.args.map(fn(arg) { arg }),
     cwd=plan.cwd,
-    env~,
+    env=command.env,
   ) catch {
     error => return Err("Failed to start ACP backend: \{error}")
   }
@@ -80,8 +112,8 @@ pub async fn execute_launch_plan(
     "session_key": plan.session_key,
     "cwd": plan.cwd,
     "workspace": plan.workspace,
-    "command": command,
-    "args": arguments,
+    "command": command.command,
+    "args": command.args,
     "status": if process.status == 0 {
       "completed"
     } else {

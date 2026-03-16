@@ -62,6 +62,7 @@ pub async fn Gateway::new(
   let workspace_runtime = @workspace.WorkspaceRuntime::new(home~, cwd~)
   let plugin_runtime = @plugin.PluginRuntime::new(home~, cwd~)
   let acp_runtime = @acp.AcpRuntime::new(home~, cwd~)
+  let acp_process_manager = @spawn.Manager::new(cwd~)
   let job_app = @job.GatewayJobApp::new(
     root=jobs_dir,
     cwd~,
@@ -102,6 +103,9 @@ pub async fn Gateway::new(
     workspace_runtime,
     plugin_runtime,
     acp_runtime,
+    acp_process_manager,
+    active_acp_runs: {},
+    cancelled_acp_runs: {},
   }
   gateway.sessions.load() catch {
     error => gateway.logger.warn("Failed to load gateway sessions: \{error}")
@@ -209,6 +213,11 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     group.spawn_bg(() => self.run_tick_interval())
     group.spawn_bg(
       () => self.extension_websocket_runtime_manager.start(),
+      no_wait=true,
+      allow_failure=true,
+    )
+    group.spawn_bg(
+      () => self.acp_process_manager.start(),
       no_wait=true,
       allow_failure=true,
     )

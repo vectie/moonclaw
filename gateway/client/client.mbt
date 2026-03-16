@@ -94,6 +94,22 @@ pub(all) struct AcpRunPayload {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct AcpRunMutationPayload {
+  status : String
+  run : @acp.AcpRun
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct AcpUiSnapshotPayload {
+  snapshot : @acp.AcpUiSnapshot
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct AcpUiEventsPayload {
+  timeline : Array[@acp.AcpUiTimelineEntry]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct AcpSessionRunPayload {
   status : String
   session : @acp.AcpSession
@@ -633,6 +649,58 @@ pub async fn Client::get_acp_run(
     "ACP run lookup failed with unknown error",
     "Missing ACP run payload",
     "Failed to parse ACP run payload",
+  )
+}
+
+///|
+pub async fn Client::cancel_acp_run(
+  self : Client,
+  run_id~ : String,
+) -> Result[AcpRunMutationPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.runs.cancel",
+    params: Some({ "run_id": run_id }),
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP run cancel failed with unknown error",
+    "Missing ACP run cancel payload",
+    "Failed to parse ACP run cancel payload",
+  )
+}
+
+///|
+pub async fn Client::get_acp_ui_snapshot(
+  self : Client,
+) -> Result[AcpUiSnapshotPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.ui.get",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP UI snapshot failed with unknown error",
+    "Missing ACP UI snapshot payload",
+    "Failed to parse ACP UI snapshot payload",
+  )
+}
+
+///|
+pub async fn Client::get_acp_ui_events(
+  self : Client,
+) -> Result[AcpUiEventsPayload, String] {
+  let request = @protocol.Request::{
+    id: self.uuid.v4().to_string(),
+    rpc_method: "acp.ui.events",
+    params: None,
+  }
+  decode_ok_payload(
+    self.send_rpc(request),
+    "ACP UI events failed with unknown error",
+    "Missing ACP UI events payload",
+    "Failed to parse ACP UI events payload",
   )
 }
 

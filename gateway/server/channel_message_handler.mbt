@@ -184,30 +184,53 @@ async fn Gateway::run_bound_acp_session(
     .acp_runtime()
     .set_session_status(session.id, "running", current_time_ms()),
   )
-  match @acp.execute_launch_plan(launch, request) {
-    Ok(result) => {
+  match self.execute_managed_acp_process(run_id, launch, request) {
+    Ok(outcome) => {
+      let now = current_time_ms()
+      let result = outcome.result
+      if outcome.status == "completed" {
+        self.finalize_acp_session_after_run(session.id, "completed", now)
+        ignore(
+          self
+          .acp_runtime()
+          .finish_run(run_id, "completed", now, result=Some(result)),
+        )
+        return Ok(acp_result_content(result))
+      }
+      match outcome.error {
+        Some(error) =>
+          self.finalize_acp_session_after_run(
+            session.id,
+            outcome.status,
+            now,
+            error=Some(error),
+          )
+        None =>
+          self.finalize_acp_session_after_run(session.id, outcome.status, now)
+      }
       ignore(
         self
         .acp_runtime()
-        .set_session_status(session.id, "attached", current_time_ms()),
+        .finish_run(
+          run_id,
+          outcome.status,
+          now,
+          result=Some(result),
+          error=outcome.error,
+        ),
       )
-      ignore(
-        self
-        .acp_runtime()
-        .finish_run(run_id, "completed", current_time_ms(), result=Some(result)),
-      )
-      Ok(acp_result_content(result))
+      if outcome.status == "cancelled" {
+        Ok("ACP run cancelled.")
+      } else {
+        Err(outcome.error.unwrap_or("ACP backend failed"))
+      }
     }
     Err(error) => {
-      ignore(
-        self
-        .acp_runtime()
-        .set_session_status(
-          session.id,
-          "failed",
-          current_time_ms(),
-          last_error=Some(error),
-        ),
+      self.finalize_acp_session_after_run(
+        session.id,
+        "failed",
+        current_time_ms(),
+        error=Some(error),
       )
       ignore(
         self
@@ -262,6 +285,7 @@ async fn Gateway::handle_acp_chat_command(
           @acp.render_acp_status(
             session_key,
             self.acp_runtime().list_sessions_for_key(session_key),
+            self.acp_runtime().list_runs(),
           ),
         ),
       )
@@ -347,17 +371,73 @@ async fn Gateway::handle_acp_chat_command(
             )
         }
       }
-      let removed = match self.acp_runtime().delete_session(target_session.id) {
-        Some(session) => session
+      let removed = match self.active_acp_run_for_session(target_session.id) {
+        Some(run) =>
+          match self.cancel_active_acp_run(run.id) {
+            Err(error) =>
+              return Some(
+                self.channel_reply_message(
+                  channel_id,
+                  account_id,
+                  message,
+                  "Failed to detach ACP session: \{error}",
+                ),
+              )
+            Ok(false) =>
+              return Some(
+                self.channel_reply_message(
+                  channel_id,
+                  account_id,
+                  message,
+                  "ACP session run is not active in this gateway process: \{run.id}",
+                ),
+              )
+            Ok(true) => {
+              let updated = match
+                self
+                .acp_runtime()
+                .set_session_status(
+                  target_session.id,
+                  "detaching",
+                  current_time_ms(),
+                  last_error=Some("ACP session detach requested."),
+                ) {
+                Ok(updated) => updated
+                Err(_) => target_session
+              }
+              ignore(
+                self
+                .acp_runtime()
+                .finish_run(
+                  run.id,
+                  "cancelling",
+                  current_time_ms(),
+                  error=Some("ACP session detach requested."),
+                ),
+              )
+              return Some(
+                self.channel_reply_message(
+                  channel_id,
+                  account_id,
+                  message,
+                  "ACP session detach requested.\nSession: \{updated.id}\nRun: \{run.id}\nStatus: \{updated.status}",
+                ),
+              )
+            }
+          }
         None =>
-          return Some(
-            self.channel_reply_message(
-              channel_id,
-              account_id,
-              message,
-              "ACP session not found: \{target_session.id}",
-            ),
-          )
+          match self.acp_runtime().delete_session(target_session.id) {
+            Some(session) => session
+            None =>
+              return Some(
+                self.channel_reply_message(
+                  channel_id,
+                  account_id,
+                  message,
+                  "ACP session not found: \{target_session.id}",
+                ),
+              )
+          }
       }
       Some(
         self.channel_reply_message(

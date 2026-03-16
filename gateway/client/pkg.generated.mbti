@@ -19,6 +19,14 @@ import {
 // Errors
 
 // Types and methods
+pub(all) struct AcpRunMutationPayload {
+  status : String
+  run : @acp.AcpRun
+}
+pub impl Show for AcpRunMutationPayload
+pub impl ToJson for AcpRunMutationPayload
+pub impl @json.FromJson for AcpRunMutationPayload
+
 pub(all) struct AcpRunPayload {
   run : @acp.AcpRun
 }
@@ -81,6 +89,20 @@ pub impl Show for AcpTargetsPayload
 pub impl ToJson for AcpTargetsPayload
 pub impl @json.FromJson for AcpTargetsPayload
 
+pub(all) struct AcpUiEventsPayload {
+  timeline : Array[@acp.AcpUiTimelineEntry]
+}
+pub impl Show for AcpUiEventsPayload
+pub impl ToJson for AcpUiEventsPayload
+pub impl @json.FromJson for AcpUiEventsPayload
+
+pub(all) struct AcpUiSnapshotPayload {
+  snapshot : @acp.AcpUiSnapshot
+}
+pub impl Show for AcpUiSnapshotPayload
+pub impl ToJson for AcpUiSnapshotPayload
+pub impl @json.FromJson for AcpUiSnapshotPayload
+
 pub(all) struct ChannelMutationPayload {
   status : String
   channel_id : String
@@ -107,6 +129,7 @@ pub struct Client {
 }
 pub async fn Client::agent(Self, message~ : String, session_key? : String, cwd? : String, model? : String, run_id? : String) -> Result[@protocol.AgentAcceptedPayload, String]
 pub async fn Client::ask_job(Self, @job.JobAskParams) -> Result[@job.ChatAnswer, String]
+pub async fn Client::cancel_acp_run(Self, run_id~ : String) -> Result[AcpRunMutationPayload, String]
 pub async fn Client::cancel_job(Self, job_id~ : String) -> Result[JobMutationPayload, String]
 pub async fn Client::configure_channel(Self, channel_id~ : String, @channel.ChannelConfig) -> Result[ChannelMutationPayload, String]
 pub async fn Client::connect(Self) -> Result[@protocol.HelloOk, String]
@@ -117,6 +140,8 @@ pub async fn Client::force_cancel_job(Self, job_id~ : String) -> Result[JobMutat
 pub async fn Client::get_acp_run(Self, run_id~ : String) -> Result[AcpRunPayload, String]
 pub async fn Client::get_acp_session(Self, session_id~ : String) -> Result[AcpSessionPayload, String]
 pub async fn Client::get_acp_target(Self, target_id~ : String) -> Result[AcpTargetPayload, String]
+pub async fn Client::get_acp_ui_events(Self) -> Result[AcpUiEventsPayload, String]
+pub async fn Client::get_acp_ui_snapshot(Self) -> Result[AcpUiSnapshotPayload, String]
 pub async fn Client::get_channel(Self, channel_id~ : String) -> Result[@channel.ChannelDock, String]
 pub async fn Client::get_job(Self, job_id~ : String) -> Result[JobPayload, String]
 pub async fn Client::get_job_run(Self, run_id~ : String) -> Result[JobRunDetails, String]

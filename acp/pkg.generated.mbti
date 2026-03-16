@@ -6,13 +6,21 @@ import {
 }
 
 // Values
+pub fn build_acp_ui_snapshot(AcpRuntime) -> AcpUiSnapshot
+
+pub fn build_acp_ui_timeline(AcpRuntime) -> Array[AcpUiTimelineEntry]
+
 pub async fn execute_launch_plan(AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
 
 pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String) -> AcpRunRequest
 
 pub fn parse_acp_chat_action(String) -> AcpChatAction?
 
+pub fn prepare_launch_command(AcpLaunchPlan, AcpRunRequest) -> Result[AcpLaunchCommand, String]
+
 pub fn prepare_launch_plan(AcpTarget, AcpSession, AcpRunRequest) -> Result[AcpLaunchPlan, String]
+
+pub fn process_output_summary(String, String, Int) -> String
 
 pub fn render_acp_ambiguous_sessions(Array[AcpSession]) -> String
 
@@ -28,7 +36,7 @@ pub fn render_acp_run_failed(String) -> String
 
 pub fn render_acp_run_usage() -> String
 
-pub fn render_acp_status(String, Array[AcpSession]) -> String
+pub fn render_acp_status(String, Array[AcpSession], Array[AcpRun]) -> String
 
 pub fn render_acp_targets(Array[AcpTarget]) -> String
 
@@ -43,6 +51,15 @@ pub(all) enum AcpChatAction {
   Run(String)
 }
 pub impl Show for AcpChatAction
+
+pub struct AcpLaunchCommand {
+  command : String
+  args : Array[String]
+  env : Map[String, String]
+}
+pub impl Show for AcpLaunchCommand
+pub impl ToJson for AcpLaunchCommand
+pub impl @json.FromJson for AcpLaunchCommand
 
 pub struct AcpLaunchPlan {
   backend : String
@@ -102,7 +119,9 @@ pub async fn AcpRuntime::finish_run(Self, String, String, Int, result? : Json?, 
 pub fn AcpRuntime::get_run(Self, String) -> AcpRun?
 pub fn AcpRuntime::get_session(Self, String) -> AcpSession?
 pub fn AcpRuntime::get_target(Self, String) -> AcpTarget?
+pub fn AcpRuntime::latest_run_for_session(Self, String) -> AcpRun?
 pub fn AcpRuntime::list_runs(Self) -> Array[AcpRun]
+pub fn AcpRuntime::list_runs_for_session(Self, String) -> Array[AcpRun]
 pub fn AcpRuntime::list_sessions(Self) -> Array[AcpSession]
 pub fn AcpRuntime::list_sessions_for_key(Self, String) -> Array[AcpSession]
 pub fn AcpRuntime::list_targets(Self) -> Array[AcpTarget]
@@ -144,6 +163,61 @@ pub struct AcpTarget {
 pub impl Show for AcpTarget
 pub impl ToJson for AcpTarget
 pub impl @json.FromJson for AcpTarget
+
+pub(all) struct AcpUiNode {
+  id : String
+  parent_id : String?
+  kind : AcpUiNodeKind
+  title : String
+  status : String
+  summary : String?
+  detail : String?
+  target_id : String?
+  session_id : String?
+  run_id : String?
+  created_at : Int?
+  updated_at : Int?
+  metadata : Json
+}
+pub impl Show for AcpUiNode
+pub impl ToJson for AcpUiNode
+pub impl @json.FromJson for AcpUiNode
+
+pub(all) enum AcpUiNodeKind {
+  Target
+  Session
+  Run
+}
+pub impl Show for AcpUiNodeKind
+pub impl ToJson for AcpUiNodeKind
+pub impl @json.FromJson for AcpUiNodeKind
+
+pub(all) struct AcpUiSnapshot {
+  targets : Array[AcpTarget]
+  sessions : Array[AcpSession]
+  runs : Array[AcpRun]
+  nodes : Array[AcpUiNode]
+  timeline : Array[AcpUiTimelineEntry]
+}
+pub impl Show for AcpUiSnapshot
+pub impl ToJson for AcpUiSnapshot
+pub impl @json.FromJson for AcpUiSnapshot
+
+pub(all) struct AcpUiTimelineEntry {
+  id : String
+  event_type : String
+  title : String
+  detail : String
+  timestamp : Int
+  target_id : String?
+  session_id : String?
+  run_id : String?
+  status : String?
+  data : Json
+}
+pub impl Show for AcpUiTimelineEntry
+pub impl ToJson for AcpUiTimelineEntry
+pub impl @json.FromJson for AcpUiTimelineEntry
 
 type PersistedAcpState
 pub impl Show for PersistedAcpState

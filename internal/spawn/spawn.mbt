@@ -164,3 +164,8 @@ pub fn kill(pid : Int, sig : Int) -> Unit raise @errno.Errno {
     raise @errno.Errno(status)
   }
 }
+
+///|
+pub fn Process::kill(self : Process, sig : Int) -> Unit raise @errno.Errno {
+  kill(self.pid.0, sig)
+}

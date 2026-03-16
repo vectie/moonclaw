@@ -67,6 +67,7 @@ pub struct Process {
   stderr : RedirectOutput
   // private fields
 }
+pub fn Process::kill(Self, Int) -> Unit raise @errno.Errno
 pub fn Process::status(Self) -> Int?
 pub async fn Process::wait(Self) -> Int
 

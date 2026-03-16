@@ -11,6 +11,7 @@ import {
   "moonbitlang/moonclaw/internal/broadcast",
   "moonbitlang/moonclaw/internal/httpx",
   "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/moonclaw/internal/uuid",
   "moonbitlang/moonclaw/job",
   "moonbitlang/moonclaw/model",
@@ -59,6 +60,13 @@ pub fn update_subtask_params(status~ : CoordinationStatus, result? : Json, error
 // Errors
 
 // Types and methods
+pub(all) struct AcpRunCancelParams {
+  run_id : String
+}
+pub impl Show for AcpRunCancelParams
+pub impl ToJson for AcpRunCancelParams
+pub impl @json.FromJson for AcpRunCancelParams
+
 pub(all) struct AcpSessionCreateParams {
   target_id : String
   session_key : String
@@ -280,6 +288,9 @@ pub struct Gateway {
   workspace_runtime : @workspace.WorkspaceRuntime
   plugin_runtime : @plugin.PluginRuntime
   acp_runtime : @acp.AcpRuntime
+  acp_process_manager : @spawn.Manager
+  active_acp_runs : Map[String, @spawn.Process]
+  cancelled_acp_runs : Map[String, Bool]
 }
 pub fn Gateway::acp_runtime(Self) -> @acp.AcpRuntime
 pub fn Gateway::auth_token(Self) -> String?

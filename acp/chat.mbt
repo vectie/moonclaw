@@ -8,6 +8,81 @@ pub(all) enum AcpChatAction {
 } derive(Show)
 
 ///|
+fn chat_run_summary(run : AcpRun) -> String? {
+  match run.result {
+    Some({ "content": String(content), .. }) if !content.trim().is_blank() =>
+      Some(content.trim().to_string())
+    Some({ "stdout": String(stdout), .. }) if !stdout.trim().is_blank() =>
+      Some(stdout.trim().to_string())
+    Some({ "stderr": String(stderr), .. }) if !stderr.trim().is_blank() =>
+      Some(stderr.trim().to_string())
+    _ =>
+      match run.error {
+        Some(error) if !error.trim().is_blank() =>
+          Some(error.trim().to_string())
+        _ => None
+      }
+  }
+}
+
+///|
+fn chat_stdio_preview(run : AcpRun) -> String {
+  match run.result {
+    Some({ "stdout": String(stdout), "stderr": String(stderr), .. }) => {
+      let stdout = stdout.trim().to_string()
+      let stderr = stderr.trim().to_string()
+      if !stdout.is_blank() && !stderr.is_blank() {
+        "stdout=\{stdout}\nstderr=\{stderr}"
+      } else if !stdout.is_blank() {
+        "stdout=\{stdout}"
+      } else if !stderr.is_blank() {
+        "stderr=\{stderr}"
+      } else {
+        ""
+      }
+    }
+    _ => ""
+  }
+}
+
+///|
+fn latest_run_for_status(session : AcpSession, runs : Array[AcpRun]) -> AcpRun? {
+  for run in runs {
+    if run.session_id == session.id {
+      return Some(run)
+    }
+  }
+  None
+}
+
+///|
+fn render_session_status_line(
+  session : AcpSession,
+  runs : Array[AcpRun],
+) -> String {
+  let workspace = match session.workspace {
+    Some(workspace) => workspace
+    None => session.cwd.unwrap_or(".")
+  }
+  let run_line = match latest_run_for_status(session, runs) {
+    Some(run) =>
+      match chat_run_summary(run) {
+        Some(summary) => {
+          let io = chat_stdio_preview(run)
+          if io.is_blank() {
+            " | run \{run.id} [\{run.status}] \{summary}"
+          } else {
+            " | run \{run.id} [\{run.status}] \{summary}\n  \{io}"
+          }
+        }
+        None => " | run \{run.id} [\{run.status}]"
+      }
+    None => ""
+  }
+  "\{session.id} -> \{session.target_id} [\{session.status}] @ \{workspace}\{run_line}"
+}
+
+///|
 fn split_acp_chat_command(text : String) -> (String, String) {
   let trimmed = text.trim()
   match trimmed.find(" ") {
@@ -49,13 +124,13 @@ pub fn render_acp_targets(targets : Array[AcpTarget]) -> String {
 pub fn render_acp_status(
   session_key : String,
   sessions : Array[AcpSession],
+  runs : Array[AcpRun],
 ) -> String {
   if sessions.is_empty() {
     return "No ACP session is bound to this chat.\nUse /acp-attach <target_id>."
   }
-  let lines = sessions.map(fn(session) {
-    let workspace = session.workspace.unwrap_or(session.cwd.unwrap_or("."))
-    "\{session.id} -> \{session.target_id} [\{session.status}] @ \{workspace}"
+  let lines : Array[String] = sessions.map(fn(session) {
+    render_session_status_line(session, runs)
   })
   ["ACP sessions for \{session_key}:", ..lines].join("\n")
 }

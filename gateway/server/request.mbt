@@ -49,6 +49,10 @@ pub async fn Gateway::handle_request(
         self.handle_get_acp_session(r, w)
       (Get, ["", "v1", "acp", "runs"]) => self.handle_list_acp_runs(r, w)
       (Get, ["", "v1", "acp", "runs", _run_id]) => self.handle_get_acp_run(r, w)
+      (Get, ["", "v1", "acp", "ui"]) => self.handle_get_acp_ui(r, w)
+      (Get, ["", "v1", "acp", "events"]) => self.handle_get_acp_ui_events(r, w)
+      (Post, ["", "v1", "acp", "runs", _run_id, "cancel"]) =>
+        self.handle_cancel_acp_run(r, w)
       (Post, ["", "v1", "acp", "sessions"]) =>
         self.handle_create_acp_session(r, w)
       (Post, ["", "v1", "acp", "sessions", _session_id, "run"]) =>
@@ -151,12 +155,13 @@ async fn Gateway::handle_index(
       "POST /v1/jobs/{id}/cancel - Cancel the active job run", "POST /v1/jobs/{id}/force-cancel - Force-cancel the active job run",
       "GET /v1/acp/targets - List ACP targets", "GET /v1/acp/sessions - List ACP sessions",
       "GET /v1/acp/runs - List ACP runs", "GET /v1/acp/runs/{id} - Get ACP run",
-      "POST /v1/acp/sessions/{id}/run - Start an ACP-backed run", "GET /v1/jobs/runs - List job runs",
-      "GET /v1/jobs/runs/{id} - Get job run status", "POST /v1/jobs/ask - Ask over job artifacts",
-      "GET /v1/channels - List channels", "GET /v1/channels/{id} - Get channel info",
-      "POST /v1/channels/{id}/configure - Configure channel accounts", "POST /v1/channels/{id}/start - Start a channel account",
-      "POST /v1/channels/{id}/stop - Stop a channel account", "POST /v1/agent - Submit agent task",
-      "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
+      "GET /v1/acp/ui - Get ACP UI snapshot", "GET /v1/acp/events - Get ACP UI timeline",
+      "POST /v1/acp/runs/{id}/cancel - Cancel ACP run", "POST /v1/acp/sessions/{id}/run - Start an ACP-backed run",
+      "GET /v1/jobs/runs - List job runs", "GET /v1/jobs/runs/{id} - Get job run status",
+      "POST /v1/jobs/ask - Ask over job artifacts", "GET /v1/channels - List channels",
+      "GET /v1/channels/{id} - Get channel info", "POST /v1/channels/{id}/configure - Configure channel accounts",
+      "POST /v1/channels/{id}/start - Start a channel account", "POST /v1/channels/{id}/stop - Stop a channel account",
+      "POST /v1/agent - Submit agent task", "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
     ],
   }
   w.write(info.stringify())

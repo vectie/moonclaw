@@ -41,6 +41,9 @@ pub struct Gateway {
   workspace_runtime : @workspace.WorkspaceRuntime
   plugin_runtime : @plugin.PluginRuntime
   acp_runtime : @acp.AcpRuntime
+  acp_process_manager : @spawn.Manager
+  active_acp_runs : Map[String, @spawn.Process]
+  cancelled_acp_runs : Map[String, Bool]
 }
 
 ///|
@@ -172,4 +175,69 @@ pub fn Gateway::plugin_runtime(self : Gateway) -> @plugin.PluginRuntime {
 ///|
 pub fn Gateway::acp_runtime(self : Gateway) -> @acp.AcpRuntime {
   self.acp_runtime
+}
+
+///|
+fn Gateway::register_active_acp_run(
+  self : Gateway,
+  run_id : String,
+  process : @spawn.Process,
+) -> Unit {
+  self.active_acp_runs[run_id] = process
+}
+
+///|
+fn Gateway::clear_active_acp_run(self : Gateway, run_id : String) -> Unit {
+  self.active_acp_runs.remove(run_id) |> ignore()
+}
+
+///|
+fn Gateway::mark_acp_run_cancel_requested(
+  self : Gateway,
+  run_id : String,
+) -> Unit {
+  self.cancelled_acp_runs[run_id] = true
+}
+
+///|
+fn Gateway::consume_acp_run_cancel_requested(
+  self : Gateway,
+  run_id : String,
+) -> Bool {
+  let cancelled = self.cancelled_acp_runs.contains(run_id)
+  if cancelled {
+    self.cancelled_acp_runs.remove(run_id) |> ignore()
+  }
+  cancelled
+}
+
+///|
+fn Gateway::cancel_active_acp_run(
+  self : Gateway,
+  run_id : String,
+) -> Result[Bool, String] {
+  match self.active_acp_runs.get(run_id) {
+    Some(process) => {
+      self.mark_acp_run_cancel_requested(run_id)
+      process.kill(@signal.sigterm) catch {
+        error => return Err("Failed to cancel ACP run \{run_id}: \{error}")
+      }
+      Ok(true)
+    }
+    None => Ok(false)
+  }
+}
+
+///|
+fn Gateway::active_acp_run_for_session(
+  self : Gateway,
+  session_id : String,
+) -> @acp.AcpRun? {
+  for run in self.acp_runtime().list_runs_for_session(session_id) {
+    if self.active_acp_runs.contains(run.id) &&
+      (run.status == "running" || run.status == "cancelling") {
+      return Some(run)
+    }
+  }
+  None
 }

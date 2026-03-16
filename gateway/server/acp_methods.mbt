@@ -17,6 +17,172 @@ pub(all) struct AcpSessionRunParams {
 } derive(FromJson, ToJson, Show)
 
 ///|
+priv struct AcpProcessOutcome {
+  status : String
+  result : Json
+  error : String?
+}
+
+///|
+fn acp_run_error_shape(code : String, message : String) -> @protocol.ErrorShape {
+  @protocol.ErrorShape::{
+    code,
+    message,
+    details: None,
+    retryable: None,
+    retry_after_ms: None,
+  }
+}
+
+///|
+async fn Gateway::finalize_acp_session_after_run(
+  self : Gateway,
+  session_id : String,
+  outcome_status : String,
+  now : Int,
+  error? : String?,
+) -> Unit {
+  let session = match self.acp_runtime().get_session(session_id) {
+    Some(session) => session
+    None => return
+  }
+  match session.status {
+    "detaching" => ignore(self.acp_runtime().delete_session(session_id))
+    "resetting" => ignore(self.acp_runtime().reset_session(session_id, now))
+    _ =>
+      if outcome_status == "failed" {
+        ignore(
+          self
+          .acp_runtime()
+          .set_session_status(session_id, "failed", now, last_error?=error),
+        )
+      } else {
+        ignore(
+          self.acp_runtime().set_session_status(session_id, "attached", now),
+        )
+      }
+  }
+}
+
+///|
+async fn Gateway::request_acp_session_reset(
+  self : Gateway,
+  session : @acp.AcpSession,
+) -> Result[@acp.AcpSession, String] {
+  let now = current_time_ms()
+  match self.active_acp_run_for_session(session.id) {
+    Some(run) =>
+      match self.cancel_active_acp_run(run.id) {
+        Err(error) => Err(error)
+        Ok(false) =>
+          Err("ACP run is not active in this gateway process: \{run.id}")
+        Ok(true) => {
+          let updated = match
+            self
+            .acp_runtime()
+            .set_session_status(
+              session.id,
+              "resetting",
+              now,
+              last_error=Some("ACP session reset requested."),
+            ) {
+            Ok(updated) => updated
+            Err(_) => session
+          }
+          ignore(
+            self
+            .acp_runtime()
+            .finish_run(
+              run.id,
+              "cancelling",
+              now,
+              error=Some("ACP session reset requested."),
+            ),
+          )
+          Ok(updated)
+        }
+      }
+    None => self.acp_runtime().reset_session(session.id, now)
+  }
+}
+
+///|
+async fn Gateway::execute_managed_acp_process(
+  self : Gateway,
+  run_id : String,
+  launch : @acp.AcpLaunchPlan,
+  request : @acp.AcpRunRequest,
+) -> Result[AcpProcessOutcome, String] {
+  if launch.backend == "codex" &&
+    launch.command == Some("codex") &&
+    !@codex.credentials_exist() {
+    return Err(
+      "Codex credentials are not available. Authenticate first with the Codex OAuth flow.",
+    )
+  }
+  let command = match @acp.prepare_launch_command(launch, request) {
+    Ok(command) => command
+    Err(error) => return Err(error)
+  }
+  let stdout = @spawn.Buffer::new()
+  let stderr = @spawn.Buffer::new()
+  let process = self.acp_process_manager.spawn(
+    command.command,
+    command.args,
+    stdout=@spawn.Capture(stdout),
+    stderr=@spawn.Capture(stderr),
+    cwd=launch.cwd,
+    env=command.env,
+  ) catch {
+    error => return Err("Failed to start ACP backend: \{error}")
+  }
+  self.register_active_acp_run(run_id, process)
+  let status = process.wait()
+  self.clear_active_acp_run(run_id)
+  let stdout_text = stdout.to_string()
+  let stderr_text = stderr.to_string()
+  let cancelled = self.consume_acp_run_cancel_requested(run_id)
+  let outcome_status = if cancelled {
+    "cancelled"
+  } else if status == 0 {
+    "completed"
+  } else {
+    "failed"
+  }
+  let summary = @acp.process_output_summary(stdout_text, stderr_text, status)
+  let result : Json = {
+    "backend": launch.backend,
+    "target_id": launch.target_id,
+    "session_id": launch.session_id,
+    "session_key": launch.session_key,
+    "cwd": launch.cwd,
+    "workspace": launch.workspace,
+    "command": command.command,
+    "args": command.args,
+    "status": outcome_status,
+    "exit_status": status,
+    "stdout": stdout_text,
+    "stderr": stderr_text,
+    "content": if outcome_status == "cancelled" {
+      "ACP run cancelled."
+    } else {
+      summary
+    },
+  }
+  Ok(AcpProcessOutcome::{
+    status: outcome_status,
+    result,
+    error: if outcome_status == "completed" {
+      None
+    } else if outcome_status == "cancelled" {
+      Some("ACP run cancelled.")
+    } else {
+      Some(summary)
+    },
+  })
+}
+
+///|
 async fn Gateway::execute_acp_agent_async(
   self : Gateway,
   run_id : String,
@@ -25,55 +191,198 @@ async fn Gateway::execute_acp_agent_async(
   request : @acp.AcpRunRequest,
   idempotency_key : String,
 ) -> Unit {
-  let result = @acp.execute_launch_plan(launch, request)
+  let result = self.execute_managed_acp_process(run_id, launch, request)
   match result {
-    Ok(output) => {
+    Ok(outcome) => {
+      let now = current_time_ms()
+      let output = outcome.result
+      if outcome.status == "completed" {
+        self.dedupe.set(idempotency_key, DedupeEntry::{
+          ts: now,
+          ok: true,
+          payload: Some(output),
+          error: None,
+        })
+        self.finalize_acp_session_after_run(session_id, "completed", now)
+        ignore(
+          self
+          .acp_runtime()
+          .finish_run(run_id, "completed", now, result=Some(output)),
+        )
+        return
+      }
+      let (code, message) = if outcome.status == "cancelled" {
+        ("acp_run_cancelled", outcome.error.unwrap_or("ACP run cancelled."))
+      } else {
+        ("acp_backend_failed", outcome.error.unwrap_or("ACP backend failed"))
+      }
+      let error_shape = acp_run_error_shape(code, message)
       self.dedupe.set(idempotency_key, DedupeEntry::{
-        ts: current_time_ms(),
-        ok: true,
+        ts: now,
+        ok: false,
         payload: Some(output),
-        error: None,
+        error: Some(error_shape),
       })
+      match outcome.error {
+        Some(error) =>
+          self.finalize_acp_session_after_run(
+            session_id,
+            outcome.status,
+            now,
+            error=Some(error),
+          )
+        None =>
+          self.finalize_acp_session_after_run(session_id, outcome.status, now)
+      }
       ignore(
         self
         .acp_runtime()
-        .set_session_status(session_id, "attached", current_time_ms()),
-      )
-      ignore(
-        self
-        .acp_runtime()
-        .finish_run(run_id, "completed", current_time_ms(), result=Some(output)),
+        .finish_run(
+          run_id,
+          outcome.status,
+          now,
+          result=Some(output),
+          error=outcome.error,
+        ),
       )
     }
     Err(error) => {
-      let error_shape = @protocol.ErrorShape::{
-        code: "acp_backend_failed",
-        message: error,
-        details: None,
-        retryable: None,
-        retry_after_ms: None,
-      }
+      let error_shape = acp_run_error_shape("acp_backend_failed", error)
       self.dedupe.set(idempotency_key, DedupeEntry::{
         ts: current_time_ms(),
         ok: false,
         payload: None,
         error: Some(error_shape),
       })
-      ignore(
-        self
-        .acp_runtime()
-        .set_session_status(
-          session_id,
-          "failed",
-          current_time_ms(),
-          last_error=Some(error),
-        ),
+      self.finalize_acp_session_after_run(
+        session_id,
+        "failed",
+        current_time_ms(),
+        error=Some(error),
       )
       ignore(
         self
         .acp_runtime()
         .finish_run(run_id, "failed", current_time_ms(), error=Some(error)),
       )
+    }
+  }
+}
+
+///|
+pub(all) struct AcpRunCancelParams {
+  run_id : String
+} derive(FromJson, ToJson, Show)
+
+///|
+async fn Gateway::handle_acp_runs_cancel_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let params : AcpRunCancelParams = match request.params {
+    Some(params) =>
+      @json.from_json(params) catch {
+        error =>
+          return self.send_response(w, @protocol.Response::{
+            id: request.id,
+            ok: false,
+            payload: None,
+            error: Some(
+              acp_run_error_shape(
+                "invalid_params",
+                "Invalid ACP run cancel params: \{error}",
+              ),
+            ),
+          })
+      }
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(
+          acp_run_error_shape("missing_params", "Missing ACP run cancel params"),
+        ),
+      })
+  }
+  let run = match self.acp_runtime().get_run(params.run_id) {
+    Some(run) => run
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(
+          acp_run_error_shape(
+            "run_not_found",
+            "ACP run not found: \{params.run_id}",
+          ),
+        ),
+      })
+  }
+  if run.status != "running" && run.status != "cancelling" {
+    return self.send_response(w, @protocol.Response::{
+      id: request.id,
+      ok: false,
+      payload: None,
+      error: Some(
+        acp_run_error_shape(
+          "run_not_active",
+          "ACP run is not active: \{run.id}",
+        ),
+      ),
+    })
+  }
+  match self.cancel_active_acp_run(run.id) {
+    Err(error) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(acp_run_error_shape("cancel_failed", error)),
+      })
+    Ok(false) =>
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(
+          acp_run_error_shape(
+            "run_not_local",
+            "ACP run is not active in this gateway process: \{run.id}",
+          ),
+        ),
+      })
+    Ok(true) => {
+      let updated = match
+        self
+        .acp_runtime()
+        .finish_run(
+          run.id,
+          "cancelling",
+          current_time_ms(),
+          error=Some("ACP run cancellation requested."),
+        ) {
+        Ok(updated) => updated
+        Err(_) => run
+      }
+      ignore(
+        self
+        .acp_runtime()
+        .set_session_status(
+          run.session_id,
+          "cancelling",
+          current_time_ms(),
+          last_error=Some("ACP run cancellation requested."),
+        ),
+      )
+      self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: true,
+        payload: Some({ "status": "cancelling", "run": updated.to_json() }),
+        error: None,
+      })
     }
   }
 }
@@ -279,6 +588,36 @@ async fn Gateway::handle_acp_runs_list_method(
     id: request.id,
     ok: true,
     payload: Some({ "runs": runs.map(fn(run) { run.to_json() }) }),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_acp_ui_get_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let snapshot = @acp.build_acp_ui_snapshot(self.acp_runtime())
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({ "snapshot": snapshot.to_json() }),
+    error: None,
+  })
+}
+
+///|
+async fn Gateway::handle_acp_ui_events_method(
+  self : Gateway,
+  request : @protocol.Request,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let timeline = @acp.build_acp_ui_timeline(self.acp_runtime())
+  self.send_response(w, @protocol.Response::{
+    id: request.id,
+    ok: true,
+    payload: Some({ "timeline": timeline.map(fn(entry) { entry.to_json() }) }),
     error: None,
   })
 }
@@ -491,12 +830,35 @@ async fn Gateway::handle_acp_sessions_reset_method(
         }),
       })
   }
-  match self.acp_runtime().reset_session(session_id, current_time_ms()) {
+  let session = match self.acp_runtime().get_session(session_id) {
+    Some(session) => session
+    None =>
+      return self.send_response(w, @protocol.Response::{
+        id: request.id,
+        ok: false,
+        payload: None,
+        error: Some(@protocol.ErrorShape::{
+          code: "session_not_found",
+          message: "ACP session not found: \{session_id}",
+          details: None,
+          retryable: None,
+          retry_after_ms: None,
+        }),
+      })
+  }
+  match self.request_acp_session_reset(session) {
     Ok(session) =>
       self.send_response(w, @protocol.Response::{
         id: request.id,
         ok: true,
-        payload: Some({ "status": "reset", "session": session.to_json() }),
+        payload: Some({
+          "status": if session.status == "resetting" {
+            "resetting"
+          } else {
+            "reset"
+          },
+          "session": session.to_json(),
+        }),
         error: None,
       })
     Err(error) =>
@@ -835,6 +1197,59 @@ async fn Gateway::handle_get_acp_run(
 }
 
 ///|
+async fn Gateway::handle_get_acp_ui(
+  self : Gateway,
+  _r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let snapshot = @acp.build_acp_ui_snapshot(self.acp_runtime())
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(({ "snapshot": snapshot.to_json() } : Json).stringify())
+}
+
+///|
+async fn Gateway::handle_get_acp_ui_events(
+  self : Gateway,
+  _r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let timeline = @acp.build_acp_ui_timeline(self.acp_runtime())
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(
+    ({ "timeline": timeline.map(fn(entry) { entry.to_json() }) } : Json).stringify(),
+  )
+}
+
+///|
+async fn Gateway::handle_cancel_acp_run(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let paths = r.path.split("/").collect()
+  let run_id = match paths {
+    ["", "v1", "acp", "runs", id, "cancel"] => id.to_string()
+    _ =>
+      raise json_error(400, "BadRequest", {
+        "error": {
+          "code": "missing_run_id",
+          "message": "Missing ACP run id in path",
+        },
+      })
+  }
+  self.handle_acp_runs_cancel_method(
+    @protocol.Request::{
+      id: self.uuid.v4().to_string(),
+      rpc_method: "acp.runs.cancel",
+      params: Some(AcpRunCancelParams::{ run_id, }.to_json()),
+    },
+    w,
+  )
+}
+
+///|
 async fn Gateway::handle_create_acp_session(
   self : Gateway,
   r : @httpx.RequestReader,
@@ -895,12 +1310,30 @@ async fn Gateway::handle_reset_acp_session(
         },
       })
   }
-  match self.acp_runtime().reset_session(session_id, current_time_ms()) {
+  let session = match self.acp_runtime().get_session(session_id) {
+    Some(session) => session
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "session_not_found",
+          "message": "ACP session not found: \{session_id}",
+        },
+      })
+  }
+  match self.request_acp_session_reset(session) {
     Ok(session) => {
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       w.write(
-        ({ "status": "reset", "session": session.to_json() } : Json).stringify(),
+        (
+          {
+            "status": if session.status == "resetting" {
+              "resetting"
+            } else {
+              "reset"
+            },
+            "session": session.to_json(),
+          } : Json).stringify(),
       )
     }
     Err(error) =>

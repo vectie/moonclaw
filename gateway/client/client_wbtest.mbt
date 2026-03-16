@@ -387,6 +387,92 @@ test "decode_ok_payload parses run and channel payloads" {
     payload: Some({ "run": acp_run }),
     error: None,
   })
+  let acp_ui_snapshot_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-ui",
+    ok: true,
+    payload: Some({
+      "snapshot": {
+        "targets": [acp_target],
+        "sessions": [acp_session],
+        "runs": [acp_run],
+        "nodes": [
+          {
+            "id": "target:codex-main",
+            "parent_id": "",
+            "kind": "Target",
+            "title": "Main Codex",
+            "status": "ready",
+            "summary": "codex",
+            "detail": "/tmp/workspace",
+            "target_id": "codex-main",
+            "session_id": "",
+            "run_id": "",
+            "created_at": 0,
+            "updated_at": 0,
+            "metadata": {},
+          },
+        ],
+        "timeline": [
+          {
+            "id": "run:run-acp-1",
+            "event_type": "run.running",
+            "title": "Run running",
+            "detail": "Review repo",
+            "timestamp": 3,
+            "target_id": "codex-main",
+            "session_id": "acp-session-1",
+            "run_id": "run-acp-1",
+            "status": "running",
+            "data": {},
+          },
+        ],
+      },
+    }),
+    error: None,
+  })
+  let acp_ui_events_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-ui-events",
+    ok: true,
+    payload: Some({
+      "timeline": [
+        {
+          "id": "run:run-acp-1",
+          "event_type": "run.running",
+          "title": "Run running",
+          "detail": "Review repo",
+          "timestamp": 3,
+          "target_id": "codex-main",
+          "session_id": "acp-session-1",
+          "run_id": "run-acp-1",
+          "status": "running",
+          "data": {},
+        },
+      ],
+    }),
+    error: None,
+  })
+  let acp_run_cancel_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+    id: "req-acp-run-cancel",
+    ok: true,
+    payload: Some({
+      "status": "cancelling",
+      "run": {
+        "id": "run-acp-1",
+        "session_id": "acp-session-1",
+        "session_key": "channel:feishu:chat-1",
+        "target_id": "codex-main",
+        "backend": "codex",
+        "status": "cancelling",
+        "created_at": 3,
+        "updated_at": 4,
+        "request": { "message": "Review repo" },
+        "plan": { "command": "codex" },
+        "result": null,
+        "error": "ACP run cancellation requested.",
+      },
+    }),
+    error: None,
+  })
 
   let runs_result : Result[RunsListPayload, String] = decode_ok_payload(
     runs_response, "default", "missing", "parse failed",
@@ -452,6 +538,15 @@ test "decode_ok_payload parses run and channel payloads" {
   )
   let acp_run_result : Result[AcpRunPayload, String] = decode_ok_payload(
     acp_run_response, "default", "missing", "parse failed",
+  )
+  let acp_run_cancel_result : Result[AcpRunMutationPayload, String] = decode_ok_payload(
+    acp_run_cancel_response, "default", "missing", "parse failed",
+  )
+  let acp_ui_snapshot_result : Result[AcpUiSnapshotPayload, String] = decode_ok_payload(
+    acp_ui_snapshot_response, "default", "missing", "parse failed",
+  )
+  let acp_ui_events_result : Result[AcpUiEventsPayload, String] = decode_ok_payload(
+    acp_ui_events_response, "default", "missing", "parse failed",
   )
   let ask : @job.ChatAnswer = match ask_result {
     Ok(value) => value
@@ -524,6 +619,20 @@ test "decode_ok_payload parses run and channel payloads" {
     Ok(value) => value
     Err(error) => fail(error)
   }
+  let acp_run_cancel_payload : AcpRunMutationPayload = match
+    acp_run_cancel_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let acp_ui_snapshot_payload : AcpUiSnapshotPayload = match
+    acp_ui_snapshot_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
+  let acp_ui_events_payload : AcpUiEventsPayload = match acp_ui_events_result {
+    Ok(value) => value
+    Err(error) => fail(error)
+  }
 
   inspect(runs.runs.length(), content="1")
   inspect(runs.runs[0].run_id, content="run-1")
@@ -556,6 +665,13 @@ test "decode_ok_payload parses run and channel payloads" {
   inspect(acp_session_run_payload.plan.command.unwrap_or(""), content="codex")
   inspect(acp_runs_payload.runs[0].id, content="run-acp-1")
   inspect(acp_run_payload.run.backend, content="codex")
+  inspect(acp_run_cancel_payload.status, content="cancelling")
+  inspect(acp_run_cancel_payload.run.status, content="cancelling")
+  inspect(
+    acp_ui_snapshot_payload.snapshot.nodes[0].id,
+    content="target:codex-main",
+  )
+  inspect(acp_ui_events_payload.timeline[0].event_type, content="run.running")
 }
 
 ///|

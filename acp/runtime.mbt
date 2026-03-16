@@ -332,6 +332,27 @@ pub fn AcpRuntime::get_run(self : AcpRuntime, run_id : String) -> AcpRun? {
 }
 
 ///|
+pub fn AcpRuntime::list_runs_for_session(
+  self : AcpRuntime,
+  session_id : String,
+) -> Array[AcpRun] {
+  let runs = self.runs
+    .values()
+    .filter(fn(run) { run.session_id == session_id })
+    .to_array()
+  runs.sort_by(fn(left, right) { right.updated_at.compare(left.updated_at) })
+  runs
+}
+
+///|
+pub fn AcpRuntime::latest_run_for_session(
+  self : AcpRuntime,
+  session_id : String,
+) -> AcpRun? {
+  self.list_runs_for_session(session_id).get(0)
+}
+
+///|
 pub async fn AcpRuntime::start_run(
   self : AcpRuntime,
   run_id : String,
