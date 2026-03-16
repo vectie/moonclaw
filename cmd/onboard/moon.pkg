@@ -1,6 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbitlang/core/json",
+  "moonbitlang/core/strconv",
   "moonbitlang/moonclaw/onboarding",
   "moonbitlang/moonclaw/internal/os",
   "moonbitlang/moonclaw/internal/pino",

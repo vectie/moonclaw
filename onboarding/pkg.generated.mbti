@@ -6,15 +6,33 @@ import {
 }
 
 // Values
+pub async fn auth_status() -> OnboardingAuthStatus
+
 pub async fn bootstrap(home~ : String, cwd~ : String) -> OnboardingApplyResult
+
+pub async fn bootstrap_with_options(home~ : String, cwd~ : String, OnboardingOptions) -> OnboardingApplyResult
+
+pub async fn clear_auth(String) -> String
 
 pub async fn collect_status(home~ : String, cwd~ : String) -> OnboardingStatus
 
+pub async fn discover_models(home~ : String, cwd~ : String) -> Array[String]
+
+pub fn onboarding_options(primary_model? : String?, workspace_root? : String?, gateway_port? : Int?, gateway_token? : String?, feishu_enabled? : Bool?, feishu_app_id? : String?, feishu_app_secret? : String?) -> OnboardingOptions
+
+pub fn render_auth_status(OnboardingAuthStatus) -> String
+
 pub fn render_bootstrap_result(OnboardingApplyResult) -> String
+
+pub fn render_config_with_options(home~ : String, OnboardingOptions) -> String
 
 pub fn render_default_config(home~ : String) -> String
 
+pub fn render_model_list(Array[String]) -> String
+
 pub fn render_status(OnboardingStatus) -> String
+
+pub async fn start_auth_flow(String) -> String
 
 // Errors
 
@@ -31,6 +49,40 @@ pub impl Show for OnboardingApplyResult
 pub impl ToJson for OnboardingApplyResult
 pub impl @json.FromJson for OnboardingApplyResult
 
+pub struct OnboardingAuthProviderStatus {
+  provider : String
+  authenticated : Bool
+  account_label : String?
+  detail : String?
+  default_model : String?
+  available_models : Array[String]
+}
+pub impl Show for OnboardingAuthProviderStatus
+pub impl ToJson for OnboardingAuthProviderStatus
+pub impl @json.FromJson for OnboardingAuthProviderStatus
+
+pub struct OnboardingAuthStatus {
+  providers : Array[OnboardingAuthProviderStatus]
+  issues : Array[String]
+  next_steps : Array[String]
+}
+pub impl Show for OnboardingAuthStatus
+pub impl ToJson for OnboardingAuthStatus
+pub impl @json.FromJson for OnboardingAuthStatus
+
+pub struct OnboardingOptions {
+  primary_model : String?
+  workspace_root : String?
+  gateway_port : Int?
+  gateway_token : String?
+  feishu_enabled : Bool?
+  feishu_app_id : String?
+  feishu_app_secret : String?
+}
+pub impl Show for OnboardingOptions
+pub impl ToJson for OnboardingOptions
+pub impl @json.FromJson for OnboardingOptions
+
 pub struct OnboardingStatus {
   home : String
   cwd : String
@@ -45,6 +97,8 @@ pub struct OnboardingStatus {
   has_gateway_token : Bool
   feishu_enabled : Bool
   feishu_ready : Bool
+  available_models : Array[String]
+  auth : OnboardingAuthStatus
   plugin_count : Int
   issues : Array[String]
   next_steps : Array[String]

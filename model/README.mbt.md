@@ -102,7 +102,7 @@ pub(all) enum CopilotModels {
   Gpt5_1Codex
   Gpt5_1CodexMax
   Gpt5_1CodexMini
-  Gpt5_2
+  Gpt5_4
   O3
   O3Mini
   O4Mini

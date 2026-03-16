@@ -90,7 +90,10 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("supports_apply_patch") is Some(supports_apply_patch) else {
       // Auto-detect based on model name for GPT 5.1+
       let name_lower = model_name.to_lower()
-      name_lower.contains("gpt-5.1") || name_lower.contains("gpt-5.2")
+      name_lower.contains("gpt-5.1") ||
+      name_lower.contains("gpt-5.2") ||
+      name_lower.contains("gpt-5.3") ||
+      name_lower.contains("gpt-5.4")
     }
     @json.from_json(
       supports_apply_patch,

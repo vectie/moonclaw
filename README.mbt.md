@@ -1,143 +1,138 @@
 # MoonClaw
 
-MoonClaw is a MoonBit-native agent and automation system.
+> 🦀 MoonBit-native agent runtime + 📡 gateway + 🧠 memory + 🗂️ job system + 🤖 ACP remote-agent control
 
-It is:
+MoonClaw is an agent and automation system built on top of [moonbitlang/maria](https://github.com/moonbitlang/maria), inspired by [openclaw/openclaw](https://github.com/openclaw/openclaw), and shaped around a full job runtime instead of a thin chat wrapper.
 
-- built on top of the [moonbitlang/maria](https://github.com/moonbitlang/maria) lineage
-- inspired by [openclaw/openclaw](https://github.com/openclaw/openclaw)
-- tailored toward a full job system with chat-driven planning, background execution, dedicated run workspaces, memory, and channel integrations
+It is designed for:
 
-## What MoonClaw Is Now
+- 💬 chat-driven planning
+- ⚙️ long-running background jobs
+- 🧪 research / analysis workflows
+- 📁 dedicated run workspaces with git checkpoints
+- 🧠 structured long-term memory
+- 🌐 gateway + operator UI
+- 🤖 local jobs working alongside ACP remote agents
 
-The current system is centered on a long-running `gateway` runtime plus a generic job platform.
-
-Main capabilities:
-
-- local interactive and TUI modes
-- HTTP/RPC gateway service
-- Feishu channel integration
-- chat-initiated job drafting and confirmation
-- async job execution with scheduler, retries, notifications, and subjobs
-- dedicated per-run and per-subjob workspaces
-- run-local git checkpoints
-- artifact storage and grounded artifact Q&A
-- structured long-term memory plus workspace materialization
-- research as the first built-in job family
-- Rabbita operator UI with local job, ACP remote-agent, and mixed local<->remote control surfaces
-
-This is no longer just a thin coding assistant wrapper. The main direction is:
+## ✨ What MoonClaw Feels Like
 
 ```text
-chat / CLI / HTTP
-  -> proposal
+chat / CLI / Feishu / web UI
+  -> draft a proposal
   -> compile to workflow
-  -> execute as job
+  -> execute as a job
   -> persist artifacts, memory, and workspace state
-  -> notify and inspect through the gateway
+  -> inspect local + remote activity from one operator surface
 ```
 
-## Runtime Modes
+MoonClaw is strongest when you want one system to handle:
 
-Top-level entry points:
+- 🛠️ local execution
+- 🔄 async orchestration
+- 🧾 durable outputs
+- 🧭 operator control
+- 🤝 local-agent + remote-agent handoff
 
-- `interactive`
-- `tui`
-- `gateway`
-- `daemon`
-- `server`
+## 🚀 Current Capabilities
 
-For always-on operation, `gateway` is the main runtime.
+- 🖥️ `interactive` and `tui` local modes
+- 📡 long-running HTTP/RPC `gateway`
+- 🪽 Feishu integration
+- 🧠 memory capture, retrieval, and workspace materialization
+- 🗂️ per-run and per-subjob workspaces
+- 🌳 git-managed run history inside each workspace
+- 📦 artifact storage and grounded artifact Q&A
+- 🔬 research-oriented job families
+- 🤖 ACP targets, sessions, and runs for remote agent control
+- 🪟 Rabbita operator UI with:
+  - local job expansion
+  - ACP remote-agent lane
+  - mixed local↔remote lineage view
+  - transcript and case export
 
-## Core Architecture
-
-At a high level:
-
-```text
-Feishu / CLI / TUI / HTTP / RPC
-  -> gateway adapters
-  -> job application/services
-  -> workflow runtime
-  -> artifacts + memory + workspaces
-  -> notifications and status surfaces
-```
-
-Important subsystems:
+## 🧩 Main Subsystems
 
 - `agent`
-  core conversation/agent runtime
+  core conversation and execution runtime
 - `gateway`
-  long-running HTTP/RPC/channel service
+  long-running service, HTTP/RPC surface, channels, ACP control
 - `job`
-  planning, compilation, execution, artifacts, memory, chat control
+  planning, compilation, execution, artifacts, memory, workspace integration
 - `workspace`
-  configured workspace runtime plus run workspaces
-- `plugin`
-  plugin registry/runtime view
+  configured workspace runtime plus dedicated run workspaces
 - `security`
-  session scope, pairing, approval, command policy
+  session scope, approval, pairing, command policy
+- `acp`
+  remote-agent control plane and Codex-oriented execution bridge
+- `ui/rabbita-job`
+  operator UI for local + remote execution
 
-## Current Strengths
-
-MoonClaw is strongest today as:
-
-- a gateway-backed async job system
-- a chat-controlled operator surface for background work
-- a workspace-centric execution system
-- a research and analysis automation platform
-
-It is less complete today in:
-
-## Typical Use Cases
-
-- Draft a job in Feishu, revise it, confirm it, and let it run in the background.
-- Run research jobs that fetch, parse, analyze, and summarize papers.
-- Give each run its own isolated workspace and inspect the git history afterward.
-- Ask grounded questions over produced artifacts and stored memories.
-- Run recurring automation through the gateway scheduler.
-
-## Basic Usage
+## ⚡ Quick Start
 
 From the repo root:
 
 ```bash
 cd ~/Workspace/mcl
+```
 
-~/.moon/bin/moon run cmd/main -- interactive
-~/.moon/bin/moon run cmd/main -- tui
+Run onboarding status:
+
+```bash
+~/.moon/bin/moon run cmd/main -- onboard status --home ~/.moonclaw
+```
+
+Use Codex OAuth and switch the primary model automatically:
+
+```bash
+~/.moon/bin/moon run cmd/main -- onboard auth codex --home ~/.moonclaw
+```
+
+Configure Feishu:
+
+```bash
+~/.moon/bin/moon run cmd/main -- onboard configure \
+  --home ~/.moonclaw \
+  --enable-feishu \
+  --feishu-app-id <app_id> \
+  --feishu-app-secret <app_secret>
+```
+
+Start the gateway:
+
+```bash
 ~/.moon/bin/moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/mcl
 ```
 
-Useful gateway commands:
-
-```bash
-~/.moon/bin/moon run cmd/main -- gateway health
-~/.moon/bin/moon run cmd/main -- gateway jobs
-~/.moon/bin/moon run cmd/main -- gateway job-runs
-~/.moon/bin/moon run cmd/main -- gateway channels
-```
-
-Operator UI:
+Open the operator UI:
 
 ```text
 http://localhost:18123/ui
 ```
 
-The operator UI exposes:
+## 🧭 Onboarding Flow
 
-- local job expansion and inspection
-- ACP target/session/run control
-- mixed local<->remote lineage overview
-- transcript export for ACP runs, ACP sessions, ACP session timelines, focused mixed lineages, and combined cases
-
-Onboard a fresh local setup:
+Useful onboarding commands:
 
 ```bash
 ~/.moon/bin/moon run cmd/main -- onboard status --home ~/.moonclaw
-~/.moon/bin/moon run cmd/main -- onboard init --home ~/.moonclaw
+~/.moon/bin/moon run cmd/main -- onboard auth status --home ~/.moonclaw
+~/.moon/bin/moon run cmd/main -- onboard auth codex --home ~/.moonclaw
+~/.moon/bin/moon run cmd/main -- onboard auth copilot --home ~/.moonclaw
+~/.moon/bin/moon run cmd/main -- onboard models --home ~/.moonclaw
+~/.moon/bin/moon run cmd/main -- onboard switch codex --home ~/.moonclaw
+~/.moon/bin/moon run cmd/main -- onboard print-config --home ~/.moonclaw
 ```
 
-In Feishu, the important commands are:
+Current behavior:
+
+- 🔐 `onboard auth codex` connects Codex OAuth and updates the primary model to `codex/gpt-5.4`
+- 🔐 `onboard auth copilot` connects Copilot OAuth and updates the primary model to `copilot/gpt-5.2`
+- 🎯 `onboard switch <model>` changes the active primary model explicitly
+- 🪽 Feishu is built-in through `channels.feishu`, not through a plugin entry
+
+## 🪽 Feishu Usage
+
+Once Feishu is configured and the gateway is running, the important commands are:
 
 - `/plan-job <description>`
 - `/confirm <proposal_id>`
@@ -150,7 +145,40 @@ In Feishu, the important commands are:
 - `/remember <text>`
 - `/memory-search <query>`
 
-## Docs
+## 🤖 Operator UI
+
+The Rabbita UI exposes three main surfaces:
+
+- 🧩 `Jobs`
+  generative local workflow expansion
+- 🌐 `ACP`
+  remote-agent targets, sessions, runs, stdout/stderr, cancel/reset/detach
+- 🔀 `Overview`
+  mixed local↔remote lineage, handoffs, and case export
+
+Exports currently include:
+
+- 📄 ACP run transcript
+- 📚 ACP session transcript
+- 🕰️ ACP session timeline transcript
+- 🔗 focused mixed-lineage transcript
+- 🧳 combined case export
+
+## 🛠️ Local Modes
+
+Run local chat:
+
+```bash
+~/.moon/bin/moon run cmd/main -- interactive
+```
+
+Run the terminal UI:
+
+```bash
+~/.moon/bin/moon run cmd/main -- tui
+```
+
+## 📚 Docs
 
 Start here:
 
@@ -159,14 +187,14 @@ Start here:
 - [docs/GATEWAY_USAGE.md](docs/GATEWAY_USAGE.md)
 - [docs/expected_behaviors/README.md](docs/expected_behaviors/README.md)
 
-Behavior and operator docs:
+Behavior docs:
 
 - [docs/expected_behaviors/chat_and_job_flow.md](docs/expected_behaviors/chat_and_job_flow.md)
 - [docs/expected_behaviors/workspace_and_memory.md](docs/expected_behaviors/workspace_and_memory.md)
 - [docs/expected_behaviors/use_cases.md](docs/expected_behaviors/use_cases.md)
 - [docs/expected_behaviors/operator_ui.md](docs/expected_behaviors/operator_ui.md)
 
-## Development
+## 🔧 Development
 
 MoonClaw is a MoonBit project.
 
@@ -179,4 +207,18 @@ Useful commands:
 ~/.moon/bin/moon fmt
 ```
 
-The repo currently checks clean with `moon check`.
+## 💡 Positioning
+
+MoonClaw is not trying to be only:
+
+- a simple chat bot
+- a bare CLI coding wrapper
+- a single-step prompt runner
+
+It is trying to be:
+
+- 🧠 an agent runtime
+- 🗂️ a durable job system
+- 🪵 a workspace-centric execution environment
+- 📡 an operator-controlled gateway
+- 🤖 a local + remote multi-surface control plane

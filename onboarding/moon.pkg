@@ -5,6 +5,8 @@ import {
   "moonbitlang/moonclaw/workspace",
   "moonbitlang/moonclaw/plugin",
   "moonbitlang/moonclaw/security",
+  "moonbitlang/moonclaw/oauth/codex",
+  "moonbitlang/moonclaw/oauth/copilot",
   "moonbitlang/moonclaw/internal/rand",
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/fsx",

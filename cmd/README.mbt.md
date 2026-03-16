@@ -94,19 +94,39 @@ Current capabilities behind the gateway:
 
 #### `onboard`
 
-Inspect and bootstrap a local MoonClaw setup.
+Inspect and configure a local MoonClaw setup.
 
 ```bash
 moonclaw onboard status --home ~/.moonclaw
-moonclaw onboard init --home ~/.moonclaw
+moonclaw onboard auth status --home ~/.moonclaw
+moonclaw onboard auth codex --home ~/.moonclaw
+moonclaw onboard models --home ~/.moonclaw
+moonclaw onboard init --home ~/.moonclaw --model bailian/qwen3.5-plus --workspace ~/.moonclaw/workspace --gateway-port 18123
+moonclaw onboard configure --home ~/.moonclaw --model bailian/qwen3.5-plus --enable-feishu --feishu-app-id <app_id> --feishu-app-secret <app_secret>
+moonclaw onboard switch codex --home ~/.moonclaw
 moonclaw onboard print-config --home ~/.moonclaw
 ```
 
 Current capabilities:
 
 - inspect whether `moonclaw.json` exists
+- show Codex and Copilot OAuth readiness with `onboard auth status`
+- start or clear OAuth for Codex and Copilot with:
+  - `onboard auth codex`
+  - `onboard auth copilot`
+  - `onboard auth logout codex`
+  - `onboard auth logout copilot`
+- after successful `onboard auth codex` or `onboard auth copilot`, automatically update the primary model to the matching latest authenticated default
+- list configured provider/model choices with `onboard models`
+- switch the primary model directly with `onboard switch <model>` or `onboard switch codex`
 - validate core setup such as model provider, primary model, gateway token, workspace files, Feishu completeness, and plugin install state
-- create a baseline `moonclaw.json` without overwriting existing settings
+- create or update `moonclaw.json` with explicit choices for:
+  - primary model
+  - workspace root
+  - gateway port
+  - gateway token
+  - Feishu enabled state
+  - Feishu app id / app secret
 - bootstrap workspace files under the configured workspace root
 
 #### `interactive`

@@ -1,5 +1,5 @@
 // Copyright 2025 OpenAI under Apache 2.0 License
-// origin: https://github.com/openai/codex/blob/main/codex-rs/core/gpt-5.2-codex_prompt.md
+// origin: https://github.com/openai/codex/blob/main/codex-rs/core/gpt-5.3-codex_prompt.md
 
 ///|
 pub let base_instructions : String =

@@ -66,7 +66,9 @@ pub fn Model::new(
   // Auto-detect apply_patch support based on model name
   let name_lower = model_name.to_lower()
   let supports_apply_patch = name_lower.contains("gpt-5.1") ||
-    name_lower.contains("gpt-5.2")
+    name_lower.contains("gpt-5.2") ||
+    name_lower.contains("gpt-5.3") ||
+    name_lower.contains("gpt-5.4")
   {
     api_key,
     base_url,
@@ -214,20 +216,23 @@ pub fn open_router_model(
 
 ///|
 pub(all) enum CodexModels {
-  Gpt5_2
+  Gpt5_4
+  Gpt5_3Codex
 }
 
 ///|
 pub impl Show for CodexModels with output(self : CodexModels, logger : &Logger) -> Unit {
   match self {
-    Gpt5_2 => logger.write_string("gpt-5.2")
+    Gpt5_4 => logger.write_string("gpt-5.4")
+    Gpt5_3Codex => logger.write_string("gpt-5.3-codex")
   }
 }
 
 ///|
 fn CodexModels::safe_zone_tokens(self : CodexModels) -> Int {
   match self {
-    Gpt5_2 => 400_000
+    Gpt5_4 => 400_000
+    Gpt5_3Codex => 400_000
   }
 }
 
@@ -237,7 +242,7 @@ pub fn codex_oauth_model(
   account_id~ : String,
   refresh_token~ : String,
   id_token? : String,
-  name? : CodexModels = Gpt5_2,
+  name? : CodexModels = Gpt5_4,
 ) -> Model {
   Model::new(
     api_key="", // Not used for CodexOAuth

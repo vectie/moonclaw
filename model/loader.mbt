@@ -489,7 +489,7 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
   if self.load_openrouter_model(None) is Some(model) {
     return Some(model)
   }
-  if self.load_codex_model("codex/gpt-5.2", allow_auto_login=false)
+  if self.load_codex_model("codex/gpt-5.4", allow_auto_login=false)
     is Some(model) {
     return Some(model)
   }
@@ -575,10 +575,15 @@ async fn Loader::load_codex_model(
     }
   }
   let codex_model = match name {
-    "codex/gpt-5.2" => CodexModels::Gpt5_2
+    "codex/gpt-5.4" => CodexModels::Gpt5_4
+    "codex/gpt-5.3-codex" => CodexModels::Gpt5_3Codex
+    "codex/gpt-5.2" => {
+      logger.warn("Codex model `codex/gpt-5.2` is deprecated, using gpt-5.4")
+      CodexModels::Gpt5_4
+    }
     _ => {
-      logger.warn("Unknown Codex model '\{name}', using gpt-5.2")
-      CodexModels::Gpt5_2
+      logger.warn("Unknown Codex model '\{name}', using gpt-5.4")
+      CodexModels::Gpt5_4
     }
   }
   logger.info("Using Codex OAuth model '\{codex_model}'")
