@@ -16,6 +16,7 @@ import {
   "moonbitlang/moonclaw/clock",
   "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/moonclaw/internal/git",
   "moonbitlang/moonclaw/internal/buildinfo",
   "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/moonclaw/internal/signal",

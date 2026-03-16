@@ -143,7 +143,7 @@ pub async fn Gateway::handle_request(
 }
 
 ///|
-fn ui_not_built_html(ui_root : String) -> String {
+fn ui_not_built_html(ui_root : String, build_dir : String) -> String {
   "<!doctype html>\n" +
   "<html><head><meta charset=\"utf-8\" />" +
   "<title>MoonClaw UI Not Built</title>" +
@@ -158,18 +158,48 @@ fn ui_not_built_html(ui_root : String) -> String {
   ui_root +
   "</pre>" +
   "<p>Build it first:</p>" +
-  "<pre>cd ~/Workspace/mcl/ui/rabbita-job\nnpm install\nnpm run build</pre>" +
+  "<pre>cd " +
+  build_dir +
+  "\nnpm install\nnpm run build</pre>" +
   "<p>Then open <code>/ui</code> again.</p>" +
   "</body></html>"
 }
 
 ///|
-fn Gateway::operator_ui_dist_root(self : Gateway) -> String {
-  @path.Path(self.cwd)
+fn gateway_operator_ui_dist_root(root : String) -> String {
+  @path.Path(root)
   .join(@path.Path("ui"))
   .join(@path.Path("rabbita-job"))
   .join(@path.Path("dist"))
   .to_string()
+}
+
+///|
+fn gateway_operator_ui_build_dir(root : String) -> String {
+  @path.Path(root)
+  .join(@path.Path("ui"))
+  .join(@path.Path("rabbita-job"))
+  .to_string()
+}
+
+///|
+async fn Gateway::operator_ui_dist_root(self : Gateway) -> (String, String) {
+  let cwd_root = self.cwd
+  let cwd_ui_root = gateway_operator_ui_dist_root(cwd_root)
+  let cwd_index = @path.Path(cwd_ui_root)
+    .join(@path.Path("index.html"))
+    .to_string()
+  let cwd_exists = @fsx.exists_as_file(cwd_index) catch { _ => false }
+  if cwd_exists {
+    return (cwd_ui_root, gateway_operator_ui_build_dir(cwd_root))
+  }
+  let process_cwd = @os.cwd() catch { _ => cwd_root }
+  let repo_root = @git.find_repo_root(process_cwd)
+  match repo_root {
+    Some(root) =>
+      (gateway_operator_ui_dist_root(root), gateway_operator_ui_build_dir(root))
+    None => (cwd_ui_root, gateway_operator_ui_build_dir(cwd_root))
+  }
 }
 
 ///|
@@ -200,7 +230,7 @@ async fn Gateway::handle_operator_ui(
   w : @httpx.ResponseWriter,
   path_parts : Array[String],
 ) -> Unit {
-  let ui_root = self.operator_ui_dist_root()
+  let (ui_root, build_dir) = self.operator_ui_dist_root()
   let relative_path = if path_parts.is_empty() {
     "index.html"
   } else {
@@ -219,7 +249,7 @@ async fn Gateway::handle_operator_ui(
     if path_parts.is_empty() || asset_path == "index.html" {
       w.header().set("Content-Type", "text/html")
       w.write_header(200)
-      w.write(ui_not_built_html(ui_root))
+      w.write(ui_not_built_html(ui_root, build_dir))
       return
     }
     raise json_error(404, "NotFound", {

@@ -20,6 +20,7 @@ Build the app bundle:
 
 ```bash
 cd ui/rabbita-job
+npm install
 npm run build
 ```
 
@@ -29,9 +30,11 @@ Then start the gateway and open:
 http://localhost:18123/ui
 ```
 
-The gateway serves the built bundle from `ui/rabbita-job/dist`. If the bundle
-has not been built yet, `/ui` returns a small HTML page explaining how to build
-it.
+The gateway serves the built bundle from `ui/rabbita-job/dist`. It first checks
+the gateway `--cwd`, then falls back to the MoonClaw repo's own
+`ui/rabbita-job/dist` when the gateway is serving another workspace. If the
+bundle has not been built yet, `/ui` returns a small HTML page explaining how
+to build it.
 
 Current surfaces:
 

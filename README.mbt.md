@@ -72,7 +72,7 @@ MoonClaw is strongest when you want one system to handle:
 From the repo root:
 
 ```bash
-cd ~/Workspace/mcl
+cd ~/Workspace/moonclaw
 ```
 
 Run onboarding status:
@@ -100,13 +100,21 @@ Configure Feishu:
 Start the gateway:
 
 ```bash
-~/.moon/bin/moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/mcl
+~/.moon/bin/moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/Workspace/moonclaw
 ```
 
 Open the operator UI:
 
 ```text
 http://localhost:18123/ui
+```
+
+If `/ui` says the Rabbita bundle is missing, build it from the repo:
+
+```bash
+cd ~/Workspace/moonclaw/ui/rabbita-job
+npm install
+npm run build
 ```
 
 ## 🧭 Onboarding Flow
