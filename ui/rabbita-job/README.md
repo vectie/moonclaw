@@ -12,7 +12,7 @@ npm i
 npm run dev
 ```
 
-By default the app talks to the gateway at `http://localhost:4242`.
+By default the app talks to the gateway at `http://localhost:18123`.
 
 ## Serve Through Gateway
 
@@ -26,7 +26,7 @@ npm run build
 Then start the gateway and open:
 
 ```text
-http://localhost:4242/ui
+http://localhost:18123/ui
 ```
 
 The gateway serves the built bundle from `ui/rabbita-job/dist`. If the bundle

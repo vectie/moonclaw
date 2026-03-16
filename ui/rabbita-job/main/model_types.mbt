@@ -316,7 +316,7 @@ enum Msg {
 
 ///|
 fn gateway_base_url() -> String {
-  "http://localhost:4242"
+  "http://localhost:18123"
 }
 
 ///|

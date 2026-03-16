@@ -120,7 +120,7 @@ Useful gateway commands:
 Operator UI:
 
 ```text
-http://localhost:4242/ui
+http://localhost:18123/ui
 ```
 
 The operator UI exposes:
