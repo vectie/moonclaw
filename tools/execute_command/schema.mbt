@@ -16,6 +16,15 @@ let schema : @tool.JsonSchema = {
       "description": "The maximum number of output lines to return directly. If the output exceeds this number, it will be truncated and saved to a file.",
       "default": 100,
     },
+    "simulate": {
+      "type": "boolean",
+      "description": "If true, do not execute the command. Return a sandbox-style risk assessment instead.",
+      "default": false,
+    },
+    "approval_token": {
+      "type": "string",
+      "description": "Approval token returned by a previous risky-command assessment. Required to execute high-risk commands.",
+    },
     // FIXME: enable background execution when supported
     // "background": {
     //   "type": "boolean",

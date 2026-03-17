@@ -66,6 +66,7 @@ async fn Gateway::resume_or_create_channel_agent(
   session : SessionEntry?,
   cwd : String,
   user_message : String,
+  command_approval_scope : String,
 ) -> @moonclaw.Moonclaw {
   match session {
     Some(entry) => {
@@ -77,6 +78,7 @@ async fn Gateway::resume_or_create_channel_agent(
             home=self.home,
             cwd~,
             user_message~,
+            command_approval_scope~,
           )
       }
       @moonclaw.Moonclaw::resume_(
@@ -85,6 +87,7 @@ async fn Gateway::resume_or_create_channel_agent(
         home=self.home,
         id,
         user_message~,
+        command_approval_scope~,
       )
     }
     None =>
@@ -94,6 +97,7 @@ async fn Gateway::resume_or_create_channel_agent(
         home=self.home,
         cwd~,
         user_message~,
+        command_approval_scope~,
       )
   }
 }
@@ -709,6 +713,7 @@ impl @channel.MessageHandler for Gateway with handle_message(
     session,
     cwd,
     message.content,
+    self.security_scope_key(channel_id, account_id, message),
   )
   self.register_active_channel_session(
     session_key,

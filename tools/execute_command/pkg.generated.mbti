@@ -4,6 +4,7 @@ package "moonbitlang/moonclaw/tools/execute_command"
 import {
   "moonbitlang/core/json",
   "moonbitlang/moonclaw/job",
+  "moonbitlang/moonclaw/security",
   "moonbitlang/moonclaw/tool",
 }
 
@@ -22,6 +23,9 @@ pub impl ToJson for CommandOutput
 pub impl @json.FromJson for CommandOutput
 
 pub enum CommandResult {
+  Simulated(assessment~ : @security.CommandAssessment)
+  ApprovalRequired(command~ : String, assessment~ : @security.CommandAssessment, token~ : String)
+  Blocked(command~ : String, assessment~ : @security.CommandAssessment)
   Completed(command~ : String, status~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
   TimedOut(command~ : String, timeout~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
   Background(command~ : String, job_id~ : @job.Id)

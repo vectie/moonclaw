@@ -8,6 +8,12 @@ import {
 // Values
 pub fn approval_scope_key(String, String, String, String?) -> String
 
+pub fn assess_shell_command(String, String, String?) -> CommandAssessment
+
+pub fn command_approval_target(CommandAssessment) -> String
+
+pub fn command_approval_token(CommandAssessment, Int) -> String
+
 pub fn parse_security_chat_action(String) -> SecurityChatAction?
 
 pub fn render_approval_confirmed(ApprovalRecord) -> String
@@ -15,6 +21,8 @@ pub fn render_approval_confirmed(ApprovalRecord) -> String
 pub fn render_approval_not_found(String) -> String
 
 pub fn render_approvals(Array[ApprovalRecord]) -> String
+
+pub fn render_command_approval_required(CommandAssessment, token? : String) -> String
 
 pub fn render_native_commands_disabled() -> String
 
@@ -38,6 +46,33 @@ pub impl Show for ApprovalRecord
 pub impl ToJson for ApprovalRecord
 pub impl @json.FromJson for ApprovalRecord
 
+pub struct CommandAssessment {
+  command : String
+  cwd : String
+  workspace : String?
+  intent : CommandIntent
+  risk_level : CommandRiskLevel
+  reasons : Array[String]
+  predicted_effects : Array[String]
+  requires_approval : Bool
+  allowed_by_policy : Bool
+}
+pub impl Show for CommandAssessment
+pub impl ToJson for CommandAssessment
+pub impl @json.FromJson for CommandAssessment
+
+pub enum CommandIntent {
+  Binary
+  Shell
+  PackageManager
+  Vcs
+  Unknown
+}
+pub impl Eq for CommandIntent
+pub impl Show for CommandIntent
+pub impl ToJson for CommandIntent
+pub impl @json.FromJson for CommandIntent
+
 pub struct CommandPolicy {
   native : String
   native_skills : String
@@ -47,6 +82,17 @@ pub struct CommandPolicy {
 pub impl Show for CommandPolicy
 pub impl ToJson for CommandPolicy
 pub impl @json.FromJson for CommandPolicy
+
+pub enum CommandRiskLevel {
+  Low
+  Medium
+  High
+  Blocked
+}
+pub impl Eq for CommandRiskLevel
+pub impl Show for CommandRiskLevel
+pub impl ToJson for CommandRiskLevel
+pub impl @json.FromJson for CommandRiskLevel
 
 pub struct PairingRecord {
   key : String

@@ -4,6 +4,7 @@ package "moonbitlang/moonclaw/job"
 import {
   "moonbitlang/core/json",
   "moonbitlang/moonclaw/ai",
+  "moonbitlang/moonclaw/security",
   "moonbitlang/moonclaw/workspace",
 }
 
@@ -151,6 +152,14 @@ pub fn split_job_chat_command(String) -> (String, String)
 pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
 // Errors
+pub suberror CommandApprovalRequired {
+  CommandApprovalRequired(@security.CommandAssessment)
+}
+
+pub suberror CommandBlocked {
+  CommandBlocked(@security.CommandAssessment)
+}
+
 pub suberror InvalidJobId {
   InvalidJobId(Id)
 }
@@ -799,12 +808,13 @@ pub impl ToJson for JobUiTimelineEntry
 pub impl @json.FromJson for JobUiTimelineEntry
 
 pub struct Manager {
+  home : String
   cwd : String
   // private fields
 }
 pub fn Manager::get(Self, Id) -> Job?
 pub fn Manager::list(Self) -> Array[Job]
-pub fn Manager::new(cwd~ : String) -> Self
+pub fn Manager::new(cwd~ : String, home? : String) -> Self
 pub async fn Manager::spawn(Self, name~ : String, description? : String, command~ : String, cwd? : String) -> Job
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int

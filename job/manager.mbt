@@ -38,6 +38,7 @@ pub impl ToJson for Job with to_json(self : Job) -> Json {
 
 ///|
 pub struct Manager {
+  home : String
   cwd : String
   priv mut id : Int
   priv process : @spawn.Manager
@@ -67,8 +68,19 @@ pub impl @json.FromJson for Id with from_json(
 }
 
 ///|
-pub fn Manager::new(cwd~ : String) -> Manager {
-  Manager::{ cwd, id: 0, process: @spawn.Manager::new(cwd~), jobs: {} }
+pub fn Manager::new(cwd~ : String, home? : String) -> Manager {
+  let home = home.unwrap_or(cwd)
+  Manager::{ home, cwd, id: 0, process: @spawn.Manager::new(cwd~), jobs: {} }
+}
+
+///|
+pub suberror CommandApprovalRequired {
+  CommandApprovalRequired(@security.CommandAssessment)
+}
+
+///|
+pub suberror CommandBlocked {
+  CommandBlocked(@security.CommandAssessment)
 }
 
 ///|
@@ -89,6 +101,13 @@ pub async fn Manager::spawn(
   let cwd = match cwd {
     Some(cwd) => cwd
     None => self.cwd
+  }
+  let assessment = @security.assess_shell_command(command, cwd, Some(self.cwd))
+  if !assessment.allowed_by_policy {
+    raise CommandBlocked(assessment)
+  }
+  if assessment.requires_approval {
+    raise CommandApprovalRequired(assessment)
   }
   let id = self.new_id()
   let jobs_dir = self.cwd

@@ -1,13 +1,16 @@
 import {
   "moonbitlang/moonclaw/tool",
+  "moonbitlang/moonclaw/clock",
   "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/job",
+  "moonbitlang/moonclaw/security",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
+  "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/moonclaw/internal/mock",
 } for "test"

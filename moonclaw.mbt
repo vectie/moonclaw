@@ -8,12 +8,21 @@ pub struct Moonclaw {
 }
 
 ///|
-fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
-  let job_manager = @job.Manager::new(cwd=agent.cwd)
+fn setup_agent(
+  agent : @agent.Agent,
+  cwd~ : String,
+  home~ : String,
+  command_approval_scope? : String,
+) -> Unit {
+  let job_manager = @job.Manager::new(cwd=agent.cwd, home~)
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
+  let execute_command_tool = match command_approval_scope {
+    Some(scope) => @execute_command.new(job_manager, approval_scope=scope)
+    None => @execute_command.new(job_manager)
+  }
   agent.add_tools([
-    @execute_command.new(job_manager).to_agent_tool(),
+    execute_command_tool.to_agent_tool(),
     @list_files.new(file_manager).to_agent_tool(),
     @read_file.new(file_manager).to_agent_tool(),
     @todo.new_tool(todo_list).to_agent_tool(),
@@ -50,6 +59,7 @@ pub async fn Moonclaw::new(
   cwd? : String,
   user_message? : String,
   web_search? : Bool = false,
+  command_approval_scope? : String,
 ) -> Moonclaw {
   let cwd = match cwd {
     Some(cwd) => cwd
@@ -68,7 +78,7 @@ pub async fn Moonclaw::new(
     user_message?,
     web_search~,
   )
-  setup_agent(agent, cwd~)
+  setup_agent(agent, cwd~, home=home.unwrap_or(cwd), command_approval_scope?)
   { logger, agent }
 }
 
@@ -120,6 +130,7 @@ pub async fn Moonclaw::resume_(
   id : @uuid.Uuid,
   user_message? : String,
   web_search? : Bool,
+  command_approval_scope? : String,
 ) -> Moonclaw {
   let home = match home {
     Some(home) => home
@@ -139,6 +150,6 @@ pub async fn Moonclaw::resume_(
     user_message?,
     web_search~,
   )
-  setup_agent(agent, cwd=conversation.cwd())
+  setup_agent(agent, cwd=conversation.cwd(), home~, command_approval_scope?)
   { logger, agent }
 }

@@ -68,3 +68,27 @@ async test "security runtime tracks approval lifecycle" {
     )
   })
 }
+
+///|
+test "security runtime command approval helpers are stable" {
+  let assessment = assess_shell_command(
+    "echo hello > out.txt",
+    "/tmp/workspace",
+    Some("/tmp/workspace"),
+  )
+  inspect(
+    command_approval_target(assessment),
+    content="/tmp/workspace|/tmp/workspace|echo hello > out.txt|write-files",
+  )
+  inspect(
+    render_command_approval_required(assessment, token="tok-9"),
+    content=(
+      #|Approval required for command execution.
+      #|Risk: High
+      #|Command: `echo hello > out.txt`
+      #|CWD: `/tmp/workspace`
+      #|Reasons: Command may modify files.
+      #|Token: `tok-9`
+    ),
+  )
+}

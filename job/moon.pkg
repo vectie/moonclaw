@@ -10,6 +10,7 @@ import {
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/security",
   "moonbitlang/moonclaw/workspace",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
