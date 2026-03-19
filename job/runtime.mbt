@@ -179,6 +179,10 @@ pub async fn RuntimeManager::create_run(
   guard self.store.get_definition(job_id) is Some(_) else {
     return Err("Unknown job definition: \{job_id}")
   }
+  let definition = match self.store.get_definition(job_id) {
+    Some(definition) => definition
+    None => return Err("Unknown job definition: \{job_id}")
+  }
   let run = JobRun::{
     id: run_id,
     job_id,
@@ -196,6 +200,7 @@ pub async fn RuntimeManager::create_run(
     error: None,
   }
   self.store.save_run(run)
+  ensure_controller_records_for_run(self.store, definition, run, now_ms)
   let checkpoint = match self.checkpoints.get(job_id) {
     Some(existing) =>
       CheckpointRecord::{

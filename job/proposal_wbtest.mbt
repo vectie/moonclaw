@@ -16,6 +16,34 @@ test "draft_job_proposal creates non-executing draft with steps" {
 }
 
 ///|
+async test "plan_job_proposal applies configured controller profile steps" {
+  @fsx.with_temporary_directory("job-proposal-profile-XXXXXX", async fn(dir) {
+    @fsx.write_to_file(
+      @pathx.join(dir, "moonclaw.json"),
+      sample_profiles_json().stringify(),
+    )
+    let proposal = plan_job_proposal(
+      "proposal-profile-1",
+      "Research VLA papers and test new hypotheses.",
+      100,
+      executor=fake_planner_executor(
+        "{\"title\":\"Research VLA papers\",\"summary\":\"Investigate papers and hypotheses.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"draft\",\"title\":\"Draft\",\"prompt\":\"Draft a plan.\",\"kind\":\"job.analysis\"}]}",
+      ),
+      cwd=dir,
+      home=Some(dir),
+      workspace=Some(dir),
+    )
+    inspect(
+      proposal.suggested_family.unwrap_or(""),
+      content="research_controller",
+    )
+    inspect(proposal.steps.length(), content="2")
+    inspect(proposal.steps[0].kind, content="job.delegate")
+    inspect(proposal.steps[1].kind, content="job.analysis")
+  })
+}
+
+///|
 test "proposal_as_workflow builds generic analysis workflow with notify config" {
   let proposal = draft_job_proposal(
     "proposal-2",
@@ -30,7 +58,7 @@ test "proposal_as_workflow builds generic analysis workflow with notify config" 
     proposal, 101, "/tmp/workspace", "/tmp/home",
   )
   inspect(definition.kind, content="job.proposal")
-  inspect(workflow.steps.length(), content="5")
+  inspect(workflow.steps.length(), content="3")
   inspect(workflow.steps[0].kind, content="job.analysis")
   inspect(definition.config.stringify().contains("\"notify\""), content="true")
 }
@@ -186,7 +214,7 @@ test "proposal_as_workflow preserves generic drafts as direct proposal workflows
     proposal, 101, "/tmp/workspace", "/tmp/home",
   )
   inspect(definition.kind, content="job.proposal")
-  inspect(workflow.steps.length(), content="5")
+  inspect(workflow.steps.length(), content="3")
   inspect(workflow.steps[0].kind, content="job.analysis")
   inspect(workflow.steps[1].kind, content="job.analysis")
   inspect(
@@ -202,7 +230,7 @@ test "render_job_proposal_for_chat includes proposal steps" {
   )
   let rendered = render_job_proposal_for_chat(proposal)
   inspect(rendered.contains("Planned steps:"), content="true")
-  inspect(rendered.contains("requirements"), content="true")
+  inspect(rendered.contains("scope"), content="true")
 }
 
 ///|

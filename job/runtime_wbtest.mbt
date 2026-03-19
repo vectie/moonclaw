@@ -198,3 +198,65 @@ async test "RuntimeManager schedules retry runs with backoff and resets retry st
     )
   })
 }
+
+///|
+async test "RuntimeManager initializes controller state for controller jobs" {
+  @fsx.with_temporary_directory("job-runtime-controller-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let manager = RuntimeManager::new(root~)
+    manager.register_definition(JobDefinition::{
+      id: "job-controller-1",
+      kind: "job.controller",
+      enabled: true,
+      config: {
+        "proposal_id": "proposal-controller-1",
+        "family": "research_controller",
+        "profile_id": "research_controller",
+        "role": "controller",
+        "profile_metadata": { "domain": "research" },
+      },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: None,
+      created_at: 1,
+      updated_at: 1,
+      tags: ["controller"],
+    })
+    manager
+    .store()
+    .save_job_proposal(JobProposal::{
+      ..draft_job_proposal("proposal-controller-1", "Research VLA papers.", 1),
+      suggested_family: Some("research_controller"),
+      profile_id: Some("research_controller"),
+      profile_role: Some("controller"),
+      profile_metadata: { "domain": "research" },
+    })
+    let run = match
+      manager.create_run(
+        "run-controller-1",
+        "job-controller-1",
+        TriggerSource::Manual,
+        100,
+      ) {
+      Ok(run) => run
+      Err(error) => fail(error)
+    }
+    let state = match manager.store().get_controller_state(run.id) {
+      Some(state) => state
+      None => fail("expected controller state")
+    }
+    inspect(state.family, content="research_controller")
+    inspect(state.profile_id.unwrap_or(""), content="research_controller")
+    inspect(
+      state.active_iteration_ids.join(","),
+      content="run-controller-1:iter:root",
+    )
+    let iteration = match
+      manager.store().get_controller_iteration("run-controller-1:iter:root") {
+      Some(iteration) => iteration
+      None => fail("expected root iteration")
+    }
+    inspect(iteration.status, content="active")
+    inspect(iteration.hypothesis, content="Research VLA papers.")
+  })
+}

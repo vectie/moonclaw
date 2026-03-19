@@ -20,6 +20,10 @@ pub fn child_runs_for(SystemStore, String) -> Array[JobRun]
 
 pub fn compile_job_proposal(JobProposal, Int, String, String, workspace_root? : String) -> ProposalCompilation
 
+pub async fn complete_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, RunStatus, Int) -> Unit
+
+pub async fn complete_controller_run(SystemStore, JobRun, RunStatus, Int) -> Unit
+
 pub fn current_step_id_for_ui(SystemStore, JobRun, WorkflowDefinition?) -> String?
 
 pub fn current_step_label(SystemStore, JobDefinition, String) -> String
@@ -31,6 +35,10 @@ pub fn default_analysis_executor() -> AnalysisExecutor
 pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
+
+pub async fn ensure_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, Int) -> Unit
+
+pub async fn ensure_controller_records_for_run(SystemStore, JobDefinition, JobRun, Int) -> Unit
 
 pub fn ensure_draft_proposal(JobProposal, String) -> String?
 
@@ -45,6 +53,10 @@ pub fn finished_status_prefix(RunStatus) -> String
 pub fn format_progress_event(JobRunEvent) -> String?
 
 pub fn initial_notification_runtime_state(Int) -> JobNotificationRuntimeState
+
+pub async fn list_job_profiles(String, String) -> Array[JobProfile]
+
+pub async fn load_job_profile(String, String, String) -> JobProfile?
 
 pub async fn load_run_ui_timeline(SystemStore, String) -> Array[JobUiTimelineEntry]
 
@@ -67,6 +79,8 @@ pub async fn prepare_run_workspace(SystemStore, JobDefinition, JobRun) -> JobRun
 pub fn proposal_as_workflow(JobProposal, Int, String, String, workspace_root? : String) -> (JobDefinition, WorkflowDefinition)
 
 pub fn proposal_for_reply(SystemStore, String?) -> JobProposal?
+
+pub async fn record_controller_child_run(SystemStore, JobRun, WorkflowStepDefinition, String, String, String, Int) -> Unit
 
 pub async fn refresh_run_workspace_memory(SystemStore, JobDefinition, JobRun) -> Unit
 
@@ -149,6 +163,8 @@ pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
 pub fn split_job_chat_command(String) -> (String, String)
 
 pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
+
+pub async fn suggest_job_profile_family(String, String, String) -> String?
 
 // Errors
 pub suberror InvalidJobId {
@@ -428,6 +444,21 @@ pub struct ConfirmProposalResult {
   run : JobRun
 }
 
+type ControllerIterationsFile
+pub impl Show for ControllerIterationsFile
+pub impl ToJson for ControllerIterationsFile
+pub impl @json.FromJson for ControllerIterationsFile
+
+type ControllerLineageFile
+pub impl Show for ControllerLineageFile
+pub impl ToJson for ControllerLineageFile
+pub impl @json.FromJson for ControllerLineageFile
+
+type ControllerStateFile
+pub impl Show for ControllerStateFile
+pub impl ToJson for ControllerStateFile
+pub impl @json.FromJson for ControllerStateFile
+
 type DefinitionsIndexFile
 pub impl Show for DefinitionsIndexFile
 pub impl ToJson for DefinitionsIndexFile
@@ -529,6 +560,57 @@ pub(all) enum JobChatAction {
 }
 pub impl Show for JobChatAction
 
+pub(all) struct JobControllerIteration {
+  id : String
+  controller_job_id : String
+  controller_run_id : String
+  parent_iteration_id : String?
+  title : String
+  hypothesis : String
+  status : String
+  decision : String?
+  child_job_ids : Array[String]
+  child_run_ids : Array[String]
+  metadata : Json
+  created_at : Int
+  updated_at : Int
+}
+pub impl Show for JobControllerIteration
+pub impl ToJson for JobControllerIteration
+pub impl @json.FromJson for JobControllerIteration
+
+pub(all) struct JobControllerLineageEdge {
+  id : String
+  controller_job_id : String
+  from_iteration_id : String
+  to_iteration_id : String
+  edge_kind : String
+  metadata : Json
+  created_at : Int
+}
+pub impl Show for JobControllerLineageEdge
+pub impl ToJson for JobControllerLineageEdge
+pub impl @json.FromJson for JobControllerLineageEdge
+
+pub(all) struct JobControllerState {
+  controller_job_id : String
+  controller_run_id : String
+  family : String
+  profile_id : String?
+  objective : String
+  active_iteration_ids : Array[String]
+  accepted_iteration_ids : Array[String]
+  rejected_iteration_ids : Array[String]
+  best_iteration_id : String?
+  frontier : Array[String]
+  metadata : Json
+  created_at : Int
+  updated_at : Int
+}
+pub impl Show for JobControllerState
+pub impl ToJson for JobControllerState
+pub impl @json.FromJson for JobControllerState
+
 pub(all) struct JobDefinition {
   id : String
   kind : String
@@ -589,6 +671,48 @@ pub(all) struct JobNotifyTarget {
 }
 pub impl Show for JobNotifyTarget
 
+pub(all) struct JobProfile {
+  id : String
+  family : String
+  label : String?
+  role : String?
+  priority : Int
+  tags : Array[String]
+  match_rules : JobProfileMatchRules?
+  steps : Array[JobProfileStep]
+  metadata : Json
+}
+pub impl Show for JobProfile
+pub impl ToJson for JobProfile
+pub impl @json.FromJson for JobProfile
+
+type JobProfileConfigPayload
+pub impl Show for JobProfileConfigPayload
+pub impl ToJson for JobProfileConfigPayload
+pub impl @json.FromJson for JobProfileConfigPayload
+
+pub(all) struct JobProfileMatchRules {
+  any : Array[String]?
+  all : Array[String]?
+}
+pub impl Show for JobProfileMatchRules
+pub impl ToJson for JobProfileMatchRules
+pub impl @json.FromJson for JobProfileMatchRules
+
+pub(all) struct JobProfileStep {
+  id : String
+  title : String
+  kind : String
+  prompt_template : String?
+  request_template : String?
+  include_parent_outputs : Bool?
+  max_depth : Int?
+  metadata : Json?
+}
+pub impl Show for JobProfileStep
+pub impl ToJson for JobProfileStep
+pub impl @json.FromJson for JobProfileStep
+
 pub(all) struct JobProposal {
   id : String
   title : String
@@ -596,6 +720,9 @@ pub(all) struct JobProposal {
   summary : String
   revision_history : Array[String]
   suggested_family : String?
+  profile_id : String?
+  profile_role : String?
+  profile_metadata : Json
   status : JobProposalStatus
   steps : Array[JobProposalStep]
   tags : Array[String]
@@ -1057,6 +1184,9 @@ pub struct SystemStore {
   chat_bindings : Map[String, ChatBinding]
   notification_preferences : Map[String, JobNotificationPreference]
   proposals : Map[String, JobProposal]
+  controller_states : Map[String, JobControllerState]
+  controller_iterations : Map[String, JobControllerIteration]
+  controller_lineage_edges : Map[String, JobControllerLineageEdge]
 }
 pub async fn SystemStore::append_run_event(Self, JobRunEvent) -> Unit
 pub fn SystemStore::artifact_content_file(Self, String, file_name? : String) -> String
@@ -1065,6 +1195,8 @@ pub async fn SystemStore::delete_artifact(Self, String) -> Bool
 pub fn SystemStore::find_job_proposal_by_message_id(Self, String) -> JobProposal?
 pub fn SystemStore::get_artifact(Self, String) -> ArtifactRecord?
 pub fn SystemStore::get_chat_binding(Self, String) -> ChatBinding?
+pub fn SystemStore::get_controller_iteration(Self, String) -> JobControllerIteration?
+pub fn SystemStore::get_controller_state(Self, String) -> JobControllerState?
 pub fn SystemStore::get_definition(Self, String) -> JobDefinition?
 pub fn SystemStore::get_job_proposal(Self, String) -> JobProposal?
 pub fn SystemStore::get_memory(Self, String) -> MemoryRecord?
@@ -1074,6 +1206,9 @@ pub fn SystemStore::get_step_run(Self, String, String) -> JobStepRun?
 pub fn SystemStore::get_workflow(Self, String) -> WorkflowDefinition?
 pub fn SystemStore::list_artifacts(Self, run_id? : String) -> Array[ArtifactRecord]
 pub fn SystemStore::list_chat_bindings(Self) -> Array[ChatBinding]
+pub fn SystemStore::list_controller_iterations(Self, controller_run_id? : String?) -> Array[JobControllerIteration]
+pub fn SystemStore::list_controller_lineage_edges(Self, controller_job_id? : String?) -> Array[JobControllerLineageEdge]
+pub fn SystemStore::list_controller_states(Self) -> Array[JobControllerState]
 pub fn SystemStore::list_definitions(Self) -> Array[JobDefinition]
 pub fn SystemStore::list_job_proposals(Self) -> Array[JobProposal]
 pub fn SystemStore::list_memories(Self) -> Array[MemoryRecord]
@@ -1088,6 +1223,9 @@ pub fn SystemStore::root_dir(Self) -> String
 pub fn SystemStore::run_events_file(Self, String) -> String
 pub async fn SystemStore::save_artifact(Self, ArtifactRecord) -> Unit
 pub async fn SystemStore::save_chat_binding(Self, ChatBinding) -> Unit
+pub async fn SystemStore::save_controller_iteration(Self, JobControllerIteration) -> Unit
+pub async fn SystemStore::save_controller_lineage_edge(Self, JobControllerLineageEdge) -> Unit
+pub async fn SystemStore::save_controller_state(Self, JobControllerState) -> Unit
 pub async fn SystemStore::save_definition(Self, JobDefinition) -> Unit
 pub async fn SystemStore::save_job_proposal(Self, JobProposal) -> Unit
 pub async fn SystemStore::save_memory(Self, MemoryRecord) -> Unit

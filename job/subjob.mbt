@@ -126,6 +126,15 @@ pub fn subjob_step_handler(
       Ok(run) => run
       Err(error) => return Err(error)
     }
+    record_controller_child_run(
+      store,
+      context.run,
+      context.step,
+      compilation.definition.id,
+      child_run.id,
+      compilation.family,
+      now(),
+    )
     store.save_job_proposal(JobProposal::{
       ..proposal,
       status: JobProposalStatus::Confirmed,

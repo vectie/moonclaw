@@ -333,6 +333,7 @@ pub async fn WorkflowEngine::execute_run(
         status=Some(Running),
         data={ "step_kind": step.kind, "attempt": attempt },
       )
+      ensure_controller_iteration_for_step(store, started_run, step, start_ts)
 
       let context = WorkflowStepContext::new(
         run=started_run,
@@ -377,6 +378,13 @@ pub async fn WorkflowEngine::execute_run(
             status=Some(Succeeded),
             data={ "attempt": attempt, "metrics": result.metrics },
           )
+          complete_controller_iteration_for_step(
+            store,
+            started_run,
+            step,
+            RunStatus::Succeeded,
+            now(),
+          )
           outputs.set(step.id, result.output)
           final_step = Some(completed_step)
           break
@@ -418,6 +426,13 @@ pub async fn WorkflowEngine::execute_run(
           step_logs = failed_logs
           final_step = Some(failed_step)
           if attempt >= max_attempts {
+            complete_controller_iteration_for_step(
+              store,
+              started_run,
+              step,
+              RunStatus::Failed,
+              now(),
+            )
             self.log_run_event(
               started_run,
               "job.failed",
@@ -433,6 +448,12 @@ pub async fn WorkflowEngine::execute_run(
                 error,
                 summary=Some("Workflow step \{step.id} failed"),
               ),
+            )
+            complete_controller_run(
+              store,
+              started_run,
+              RunStatus::Failed,
+              now(),
             )
             return Err(error)
           }
@@ -468,5 +489,6 @@ pub async fn WorkflowEngine::execute_run(
     status=Some(Succeeded),
     data={ "step_count": steps.length() },
   )
+  complete_controller_run(store, completed_run, RunStatus::Succeeded, now())
   Ok(WorkflowExecutionResult::{ run: completed_run, workflow, outputs, steps })
 }

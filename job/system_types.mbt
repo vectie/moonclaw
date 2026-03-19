@@ -442,6 +442,9 @@ pub(all) struct JobProposal {
   summary : String
   revision_history : Array[String]
   suggested_family : String?
+  profile_id : String?
+  profile_role : String?
+  profile_metadata : Json
   status : JobProposalStatus
   steps : Array[JobProposalStep]
   tags : Array[String]
@@ -455,6 +458,51 @@ pub(all) struct JobProposal {
   last_run_id : String?
   created_at : Int
   updated_at : Int
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobControllerState {
+  controller_job_id : String
+  controller_run_id : String
+  family : String
+  profile_id : String?
+  objective : String
+  active_iteration_ids : Array[String]
+  accepted_iteration_ids : Array[String]
+  rejected_iteration_ids : Array[String]
+  best_iteration_id : String?
+  frontier : Array[String]
+  metadata : Json
+  created_at : Int
+  updated_at : Int
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobControllerIteration {
+  id : String
+  controller_job_id : String
+  controller_run_id : String
+  parent_iteration_id : String?
+  title : String
+  hypothesis : String
+  status : String
+  decision : String?
+  child_job_ids : Array[String]
+  child_run_ids : Array[String]
+  metadata : Json
+  created_at : Int
+  updated_at : Int
+} derive(ToJson, FromJson, Show)
+
+///|
+pub(all) struct JobControllerLineageEdge {
+  id : String
+  controller_job_id : String
+  from_iteration_id : String
+  to_iteration_id : String
+  edge_kind : String
+  metadata : Json
+  created_at : Int
 } derive(ToJson, FromJson, Show)
 
 ///|

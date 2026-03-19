@@ -27,22 +27,13 @@ fn compact_title(text : String) -> String {
 fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
   [
     JobProposalStep::{
-      id: "requirements",
-      title: "Clarify objective and success criteria",
+      id: "scope",
+      title: "Clarify objective and constraints",
       kind: "job.analysis",
       prompt: [
-        "Take the following requested job and restate the real objective, constraints, assumptions, and success criteria.",
-        "Identify any missing information but keep moving with explicit assumptions.",
+        "Take the following requested job and restate the objective, constraints, assumptions, and success criteria.",
+        "Keep this compact and execution-oriented.",
         "Request: \{request_text}",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
-      id: "plan",
-      title: "Build execution plan",
-      kind: "job.analysis",
-      prompt: [
-        "Build a concrete execution plan for the requested job.", "Break the work into sequential tasks with clear inputs, outputs, and validation points.",
-        "Use the prior step output as context.",
       ].join("\n\n"),
     },
     JobProposalStep::{
@@ -50,23 +41,16 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
       title: "Execute main work",
       kind: "job.analysis",
       prompt: [
-        "Perform the main requested work using the prior outputs as context.", "Be concrete and produce a useful working result, not just advice.",
+        "Perform the main requested work using the prior step output as context.",
+        "Produce concrete results, not just advice.",
       ].join("\n\n"),
     },
     JobProposalStep::{
-      id: "verify",
-      title: "Verify and refine result",
+      id: "finalize",
+      title: "Verify and deliver result",
       kind: "job.analysis",
       prompt: [
-        "Review the result critically.", "Find gaps, risks, and quality problems, then refine the result.",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
-      id: "deliver",
-      title: "Prepare final delivery",
-      kind: "job.analysis",
-      prompt: [
-        "Prepare a concise final delivery summary.", "Include what was done, what remains open, and what artifacts or outputs were produced.",
+        "Review the result critically and refine it if needed.", "Then prepare the final delivery with outcome, remaining risks, and produced artifacts.",
       ].join("\n\n"),
     },
   ]
@@ -173,6 +157,74 @@ fn proposal_payload_to_proposal(
     steps,
     tags,
     updated_at: now_ms,
+  }
+}
+
+///|
+fn render_profile_step_template(
+  template : String,
+  proposal : JobProposal,
+  family : String,
+  workspace_root : String,
+) -> String {
+  let rendered = template.replace_all(
+    old="${request}",
+    new=proposal.request_text,
+  )
+  let rendered = rendered.replace_all(old="${proposal.id}", new=proposal.id)
+  let rendered = rendered.replace_all(
+    old="${proposal.title}",
+    new=proposal.title,
+  )
+  let rendered = rendered.replace_all(
+    old="${proposal.summary}",
+    new=proposal.summary,
+  )
+  let rendered = rendered.replace_all(old="${family}", new=family)
+  rendered.replace_all(old="${workspace}", new=workspace_root)
+}
+
+///|
+async fn maybe_apply_job_profile(
+  proposal : JobProposal,
+  cwd : String,
+  home : String,
+  workspace_root : String,
+) -> JobProposal {
+  let family = suggest_job_profile_family(proposal.request_text, home, cwd)
+  let profile = match family {
+    Some(family) => load_job_profile(home, cwd, family)
+    None => None
+  }
+  match profile {
+    Some(profile) if !profile.steps.is_empty() => {
+      let family = profile.family
+      let steps = profile.steps.map(fn(step) {
+        let prompt_source = if step.kind == "job.delegate" {
+          step.request_template.unwrap_or(proposal.request_text)
+        } else {
+          step.prompt_template.unwrap_or(proposal.request_text)
+        }
+        JobProposalStep::{
+          id: step.id,
+          title: step.title,
+          kind: step.kind,
+          prompt: render_profile_step_template(
+            prompt_source, proposal, family, workspace_root,
+          ),
+        }
+      })
+      JobProposal::{
+        ..proposal,
+        suggested_family: Some(family),
+        profile_id: Some(profile.id),
+        profile_role: profile.role,
+        profile_metadata: profile.metadata,
+        steps,
+        tags: [..proposal.tags, ..profile.tags],
+      }
+    }
+    _ => proposal
   }
 }
 
@@ -307,16 +359,29 @@ pub async fn plan_job_proposal(
     recipient~,
     thread_id~,
   )
+  let fallback = maybe_apply_job_profile(
+    fallback,
+    cwd,
+    home.unwrap_or(cwd),
+    workspace.unwrap_or(cwd),
+  )
   let execution = match (executor.run)(request) {
     Ok(execution) => execution
     Err(_) => return fallback
   }
   match maybe_parse_payload(execution.content) {
-    Some(payload) =>
-      proposal_payload_to_proposal(
+    Some(payload) => {
+      let proposal = proposal_payload_to_proposal(
         proposal_id, request_text, payload, now_ms, channel_id, account_id, recipient,
         thread_id,
       )
+      maybe_apply_job_profile(
+        proposal,
+        cwd,
+        home.unwrap_or(cwd),
+        workspace.unwrap_or(cwd),
+      )
+    }
     None => fallback
   }
 }
@@ -362,8 +427,8 @@ pub async fn revise_job_proposal(
       }
   }
   match maybe_parse_payload(execution.content) {
-    Some(payload) =>
-      JobProposal::{
+    Some(payload) => {
+      let revised = JobProposal::{
         ..proposal_payload_to_proposal(
           proposal.id,
           proposal.request_text,
@@ -377,6 +442,13 @@ pub async fn revise_job_proposal(
         ),
         revision_history: [..proposal.revision_history, revision],
       }
+      maybe_apply_job_profile(
+        revised,
+        cwd,
+        home.unwrap_or(cwd),
+        workspace.unwrap_or(cwd),
+      )
+    }
     None =>
       JobProposal::{
         ..proposal,
@@ -452,6 +524,9 @@ pub fn draft_job_proposal(
     ].join(" "),
     revision_history: [],
     suggested_family: Some("generic"),
+    profile_id: None,
+    profile_role: None,
+    profile_metadata: {},
     status: Draft,
     steps,
     tags,

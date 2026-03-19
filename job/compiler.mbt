@@ -109,14 +109,23 @@ pub fn compile_job_proposal(
   let steps = workflow_steps_for_proposal(
     proposal, cwd, home, workspace_root, family,
   )
+  let role = proposal.profile_role.unwrap_or("")
+  let definition_kind = if role == "controller" {
+    "job.controller"
+  } else {
+    "job.proposal"
+  }
   let definition = JobDefinition::{
     id: job_id,
-    kind: "job.proposal",
+    kind: definition_kind,
     enabled: true,
     config: {
       "proposal_id": proposal.id,
       "workspace": workspace_root,
       "family": family,
+      "profile_id": proposal.profile_id,
+      "role": role,
+      "profile_metadata": proposal.profile_metadata,
       "notify": {
         "channel": proposal.channel_id,
         "account_id": proposal.account_id,
@@ -135,7 +144,7 @@ pub fn compile_job_proposal(
   }
   let workflow = WorkflowDefinition::{
     id: workflow_id,
-    kind: "job.proposal",
+    kind: definition_kind,
     steps,
     output_bindings: steps.map(fn(step) { step.id }),
   }

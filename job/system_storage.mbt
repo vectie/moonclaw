@@ -36,6 +36,21 @@ struct JobProposalsFile {
 } derive(ToJson, FromJson, Show)
 
 ///|
+struct ControllerStateFile {
+  states : Array[JobControllerState]
+} derive(ToJson, FromJson, Show)
+
+///|
+struct ControllerIterationsFile {
+  iterations : Array[JobControllerIteration]
+} derive(ToJson, FromJson, Show)
+
+///|
+struct ControllerLineageFile {
+  edges : Array[JobControllerLineageEdge]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub struct SystemStore {
   root : String
   definitions : Map[String, JobDefinition]
@@ -47,6 +62,9 @@ pub struct SystemStore {
   chat_bindings : Map[String, ChatBinding]
   notification_preferences : Map[String, JobNotificationPreference]
   proposals : Map[String, JobProposal]
+  controller_states : Map[String, JobControllerState]
+  controller_iterations : Map[String, JobControllerIteration]
+  controller_lineage_edges : Map[String, JobControllerLineageEdge]
 }
 
 ///|
@@ -62,6 +80,9 @@ pub fn SystemStore::new(root~ : String) -> SystemStore {
     chat_bindings: {},
     notification_preferences: {},
     proposals: {},
+    controller_states: {},
+    controller_iterations: {},
+    controller_lineage_edges: {},
   }
 }
 
@@ -103,6 +124,21 @@ fn SystemStore::notification_preferences_file(self : SystemStore) -> String {
 ///|
 fn SystemStore::job_proposals_file(self : SystemStore) -> String {
   self.root |> @pathx.join("job_proposals.json")
+}
+
+///|
+fn SystemStore::controller_states_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("controller_states.json")
+}
+
+///|
+fn SystemStore::controller_iterations_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("controller_iterations.json")
+}
+
+///|
+fn SystemStore::controller_lineage_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("controller_lineage.json")
 }
 
 ///|
@@ -208,6 +244,9 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
   clear_map(self.chat_bindings)
   clear_map(self.notification_preferences)
   clear_map(self.proposals)
+  clear_map(self.controller_states)
+  clear_map(self.controller_iterations)
+  clear_map(self.controller_lineage_edges)
 
   if @fsx.exists(self.definitions_file()) {
     let file : DefinitionsIndexFile = load_json_file(
@@ -284,6 +323,36 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
       self.proposals.set(proposal.id, proposal)
     }
   }
+
+  if @fsx.exists(self.controller_states_file()) {
+    let file : ControllerStateFile = load_json_file(
+      self.controller_states_file(),
+      "Failed to load controller states",
+    )
+    for state in file.states {
+      self.controller_states.set(state.controller_run_id, state)
+    }
+  }
+
+  if @fsx.exists(self.controller_iterations_file()) {
+    let file : ControllerIterationsFile = load_json_file(
+      self.controller_iterations_file(),
+      "Failed to load controller iterations",
+    )
+    for iteration in file.iterations {
+      self.controller_iterations.set(iteration.id, iteration)
+    }
+  }
+
+  if @fsx.exists(self.controller_lineage_file()) {
+    let file : ControllerLineageFile = load_json_file(
+      self.controller_lineage_file(),
+      "Failed to load controller lineage",
+    )
+    for edge in file.edges {
+      self.controller_lineage_edges.set(edge.id, edge)
+    }
+  }
 }
 
 ///|
@@ -348,6 +417,36 @@ async fn SystemStore::save_job_proposals(self : SystemStore) -> Unit {
   self.ensure_directories()
   let file = JobProposalsFile::{ proposals: self.proposals.values().to_array() }
   @fsx.write_to_file(self.job_proposals_file(), file.to_json().stringify())
+}
+
+///|
+async fn SystemStore::save_controller_states(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = ControllerStateFile::{
+    states: self.controller_states.values().to_array(),
+  }
+  @fsx.write_to_file(self.controller_states_file(), file.to_json().stringify())
+}
+
+///|
+async fn SystemStore::save_controller_iterations(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = ControllerIterationsFile::{
+    iterations: self.controller_iterations.values().to_array(),
+  }
+  @fsx.write_to_file(
+    self.controller_iterations_file(),
+    file.to_json().stringify(),
+  )
+}
+
+///|
+async fn SystemStore::save_controller_lineage(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = ControllerLineageFile::{
+    edges: self.controller_lineage_edges.values().to_array(),
+  }
+  @fsx.write_to_file(self.controller_lineage_file(), file.to_json().stringify())
 }
 
 ///|
@@ -454,6 +553,33 @@ pub async fn SystemStore::save_job_proposal(
 }
 
 ///|
+pub async fn SystemStore::save_controller_state(
+  self : SystemStore,
+  state : JobControllerState,
+) -> Unit {
+  self.controller_states.set(state.controller_run_id, state)
+  self.save_controller_states()
+}
+
+///|
+pub async fn SystemStore::save_controller_iteration(
+  self : SystemStore,
+  iteration : JobControllerIteration,
+) -> Unit {
+  self.controller_iterations.set(iteration.id, iteration)
+  self.save_controller_iterations()
+}
+
+///|
+pub async fn SystemStore::save_controller_lineage_edge(
+  self : SystemStore,
+  edge : JobControllerLineageEdge,
+) -> Unit {
+  self.controller_lineage_edges.set(edge.id, edge)
+  self.save_controller_lineage()
+}
+
+///|
 pub async fn SystemStore::delete_artifact(
   self : SystemStore,
   artifact_id : String,
@@ -549,6 +675,22 @@ pub fn SystemStore::get_job_proposal(
 }
 
 ///|
+pub fn SystemStore::get_controller_state(
+  self : SystemStore,
+  controller_run_id : String,
+) -> JobControllerState? {
+  self.controller_states.get(controller_run_id)
+}
+
+///|
+pub fn SystemStore::get_controller_iteration(
+  self : SystemStore,
+  id : String,
+) -> JobControllerIteration? {
+  self.controller_iterations.get(id)
+}
+
+///|
 pub fn SystemStore::find_job_proposal_by_message_id(
   self : SystemStore,
   message_id : String,
@@ -627,6 +769,43 @@ pub fn SystemStore::list_job_proposals(
   self : SystemStore,
 ) -> Array[JobProposal] {
   self.proposals.values().to_array()
+}
+
+///|
+pub fn SystemStore::list_controller_states(
+  self : SystemStore,
+) -> Array[JobControllerState] {
+  self.controller_states.values().to_array()
+}
+
+///|
+pub fn SystemStore::list_controller_iterations(
+  self : SystemStore,
+  controller_run_id? : String? = None,
+) -> Array[JobControllerIteration] {
+  match controller_run_id {
+    Some(controller_run_id) =>
+      self.controller_iterations
+      .values()
+      .filter(fn(iteration) { iteration.controller_run_id == controller_run_id })
+      .to_array()
+    None => self.controller_iterations.values().to_array()
+  }
+}
+
+///|
+pub fn SystemStore::list_controller_lineage_edges(
+  self : SystemStore,
+  controller_job_id? : String? = None,
+) -> Array[JobControllerLineageEdge] {
+  match controller_job_id {
+    Some(controller_job_id) =>
+      self.controller_lineage_edges
+      .values()
+      .filter(fn(edge) { edge.controller_job_id == controller_job_id })
+      .to_array()
+    None => self.controller_lineage_edges.values().to_array()
+  }
 }
 
 ///|

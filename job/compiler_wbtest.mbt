@@ -8,10 +8,10 @@ test "compile_job_proposal preserves proposal step structure for generic request
     proposal, 101, "/tmp/workspace", "/tmp/home",
   )
   inspect(compilation.family, content="generic")
-  inspect(compilation.workflow.steps.length(), content="5")
+  inspect(compilation.workflow.steps.length(), content="3")
   inspect(compilation.workflow.steps[0].kind, content="job.analysis")
   inspect(compilation.workflow.steps[1].kind, content="job.analysis")
-  inspect(compilation.workflow.steps[4].kind, content="job.analysis")
+  inspect(compilation.workflow.steps[2].kind, content="job.analysis")
 }
 
 ///|

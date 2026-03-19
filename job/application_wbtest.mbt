@@ -92,3 +92,65 @@ async test "GatewayJobApp::confirm_proposal registers workflow and persists prop
     )
   })
 }
+
+///|
+async test "GatewayJobApp::confirm_proposal initializes generic controller records" {
+  @fsx.with_temporary_directory("job-app-controller-confirm-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workspace = @workspace.WorkspaceRuntime::new(home=dir, cwd=dir)
+    let app = GatewayJobApp::new(
+      root~,
+      cwd=dir,
+      home=dir,
+      workspace~,
+      next_id=fn() { "proposal-controller-next" },
+      now=fn() { 200 },
+    )
+    let proposal = JobProposal::{
+      ..draft_job_proposal(
+        "proposal-controller", "Research VLA papers and evaluate hypotheses.", 100,
+      ),
+      suggested_family: Some("research_controller"),
+      profile_id: Some("research_controller"),
+      profile_role: Some("controller"),
+      profile_metadata: { "domain": "research" },
+      steps: [
+        JobProposalStep::{
+          id: "collect",
+          title: "Collect evidence",
+          prompt: "Collect evidence for ${request}",
+          kind: "job.delegate",
+        },
+        JobProposalStep::{
+          id: "evaluate",
+          title: "Evaluate",
+          prompt: "Evaluate outputs.",
+          kind: "job.analysis",
+        },
+      ],
+    }
+    app.runtime().store().save_job_proposal(proposal)
+    let result = app.confirm_proposal(proposal, "proposal-controller", async fn(
+      job_id,
+    ) {
+      app
+      .runtime()
+      .trigger_definition("run-controller", job_id, TriggerSource::Manual, 200)
+    })
+    let confirmed = match result {
+      Ok(confirmed) => confirmed
+      Err(error) => fail(error)
+    }
+    inspect(confirmed.compilation.definition.kind, content="job.controller")
+    inspect(confirmed.compilation.workflow.kind, content="job.controller")
+    inspect(
+      app.runtime().store().get_controller_state("run-controller") is Some(_),
+      content="true",
+    )
+    inspect(
+      app.runtime().store().get_controller_iteration("run-controller:iter:root")
+      is Some(_),
+      content="true",
+    )
+  })
+}

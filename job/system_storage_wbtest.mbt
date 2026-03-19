@@ -137,6 +137,9 @@ fn sample_proposal() -> JobProposal {
     summary: "Draft proposal for job tracking.",
     revision_history: [],
     suggested_family: Some("generic"),
+    profile_id: None,
+    profile_role: None,
+    profile_metadata: {},
     status: JobProposalStatus::Draft,
     steps: [
       JobProposalStep::{
