@@ -51,6 +51,11 @@ struct ControllerLineageFile {
 } derive(ToJson, FromJson, Show)
 
 ///|
+struct ControllerDecisionsFile {
+  decisions : Array[JobControllerDecision]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub struct SystemStore {
   root : String
   definitions : Map[String, JobDefinition]
@@ -65,6 +70,7 @@ pub struct SystemStore {
   controller_states : Map[String, JobControllerState]
   controller_iterations : Map[String, JobControllerIteration]
   controller_lineage_edges : Map[String, JobControllerLineageEdge]
+  controller_decisions : Map[String, JobControllerDecision]
 }
 
 ///|
@@ -83,6 +89,7 @@ pub fn SystemStore::new(root~ : String) -> SystemStore {
     controller_states: {},
     controller_iterations: {},
     controller_lineage_edges: {},
+    controller_decisions: {},
   }
 }
 
@@ -139,6 +146,11 @@ fn SystemStore::controller_iterations_file(self : SystemStore) -> String {
 ///|
 fn SystemStore::controller_lineage_file(self : SystemStore) -> String {
   self.root |> @pathx.join("controller_lineage.json")
+}
+
+///|
+fn SystemStore::controller_decisions_file(self : SystemStore) -> String {
+  self.root |> @pathx.join("controller_decisions.json")
 }
 
 ///|
@@ -247,6 +259,7 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
   clear_map(self.controller_states)
   clear_map(self.controller_iterations)
   clear_map(self.controller_lineage_edges)
+  clear_map(self.controller_decisions)
 
   if @fsx.exists(self.definitions_file()) {
     let file : DefinitionsIndexFile = load_json_file(
@@ -353,6 +366,16 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
       self.controller_lineage_edges.set(edge.id, edge)
     }
   }
+
+  if @fsx.exists(self.controller_decisions_file()) {
+    let file : ControllerDecisionsFile = load_json_file(
+      self.controller_decisions_file(),
+      "Failed to load controller decisions",
+    )
+    for decision in file.decisions {
+      self.controller_decisions.set(decision.id, decision)
+    }
+  }
 }
 
 ///|
@@ -447,6 +470,18 @@ async fn SystemStore::save_controller_lineage(self : SystemStore) -> Unit {
     edges: self.controller_lineage_edges.values().to_array(),
   }
   @fsx.write_to_file(self.controller_lineage_file(), file.to_json().stringify())
+}
+
+///|
+async fn SystemStore::save_controller_decisions(self : SystemStore) -> Unit {
+  self.ensure_directories()
+  let file = ControllerDecisionsFile::{
+    decisions: self.controller_decisions.values().to_array(),
+  }
+  @fsx.write_to_file(
+    self.controller_decisions_file(),
+    file.to_json().stringify(),
+  )
 }
 
 ///|
@@ -580,6 +615,15 @@ pub async fn SystemStore::save_controller_lineage_edge(
 }
 
 ///|
+pub async fn SystemStore::save_controller_decision(
+  self : SystemStore,
+  decision : JobControllerDecision,
+) -> Unit {
+  self.controller_decisions.set(decision.id, decision)
+  self.save_controller_decisions()
+}
+
+///|
 pub async fn SystemStore::delete_artifact(
   self : SystemStore,
   artifact_id : String,
@@ -688,6 +732,14 @@ pub fn SystemStore::get_controller_iteration(
   id : String,
 ) -> JobControllerIteration? {
   self.controller_iterations.get(id)
+}
+
+///|
+pub fn SystemStore::get_controller_decision(
+  self : SystemStore,
+  id : String,
+) -> JobControllerDecision? {
+  self.controller_decisions.get(id)
 }
 
 ///|
@@ -805,6 +857,21 @@ pub fn SystemStore::list_controller_lineage_edges(
       .filter(fn(edge) { edge.controller_job_id == controller_job_id })
       .to_array()
     None => self.controller_lineage_edges.values().to_array()
+  }
+}
+
+///|
+pub fn SystemStore::list_controller_decisions(
+  self : SystemStore,
+  controller_run_id? : String? = None,
+) -> Array[JobControllerDecision] {
+  match controller_run_id {
+    Some(controller_run_id) =>
+      self.controller_decisions
+      .values()
+      .filter(fn(decision) { decision.controller_run_id == controller_run_id })
+      .to_array()
+    None => self.controller_decisions.values().to_array()
   }
 }
 

@@ -69,6 +69,103 @@ fn controller_profile_metadata(definition : JobDefinition) -> Json {
 }
 
 ///|
+fn controller_policy_metadata(definition : JobDefinition) -> Json? {
+  match definition.config {
+    { "controller_policy": metadata, .. } => Some(metadata)
+    _ =>
+      match controller_profile_metadata(definition) {
+        { "controller_policy": metadata, .. } => Some(metadata)
+        _ => None
+      }
+  }
+}
+
+///|
+fn controller_acceptance_source(definition : JobDefinition) -> String? {
+  match controller_policy_metadata(definition) {
+    Some({ "acceptance_source": String(source), .. }) => Some(source)
+    _ => None
+  }
+}
+
+///|
+fn controller_result_schema(definition : JobDefinition) -> String? {
+  match controller_policy_metadata(definition) {
+    Some({ "result_schema": String(schema), .. }) => Some(schema)
+    _ => None
+  }
+}
+
+///|
+fn controller_next_iteration_field(
+  definition : JobDefinition,
+  key : String,
+  fallback : String,
+) -> String {
+  match controller_policy_metadata(definition) {
+    Some({ "next_iteration_fields": Object(fields), .. }) =>
+      match fields.get(key) {
+        Some(String(field)) if !field.trim().to_string().is_blank() =>
+          field.trim().to_string()
+        _ => fallback
+      }
+    _ => fallback
+  }
+}
+
+///|
+fn controller_allowed_verdicts(definition : JobDefinition) -> Array[String] {
+  match controller_policy_metadata(definition) {
+    Some({ "allowed_verdicts": Array(verdicts), .. }) => {
+      let allowed : Array[String] = []
+      for verdict in verdicts {
+        match verdict {
+          String(value) => allowed.push(value.trim().to_string().to_lower())
+          _ => ()
+        }
+      }
+      allowed
+    }
+    _ => []
+  }
+}
+
+///|
+fn controller_verdict_aliases(
+  definition : JobDefinition,
+) -> Map[String, String] {
+  match controller_policy_metadata(definition) {
+    Some({ "verdict_aliases": Object(aliases), .. }) => {
+      let normalized : Map[String, String] = {}
+      for key, value in aliases {
+        match value {
+          String(target) =>
+            normalized.set(
+              key.trim().to_string().to_lower(),
+              target.trim().to_string().to_lower(),
+            )
+          _ => ()
+        }
+      }
+      normalized
+    }
+    _ => {}
+  }
+}
+
+///|
+fn controller_accepts_step_output(definition : JobDefinition) -> Bool {
+  match controller_acceptance_source(definition) {
+    Some("child_output") => false
+    Some("manual") => false
+    Some("disabled") => false
+    Some("none") => false
+    Some("step_output") | None => true
+    Some(_) => true
+  }
+}
+
+///|
 fn controller_objective(
   store : SystemStore,
   definition : JobDefinition,
@@ -254,6 +351,279 @@ fn completed_iteration_decision(status : RunStatus) -> String? {
     RunStatus::Failed => Some("rejected")
     RunStatus::Cancelled => Some("cancelled")
     RunStatus::Pending | RunStatus::Running => None
+  }
+}
+
+///|
+fn controller_decision_id(run_id : String, step_id : String) -> String {
+  "\{run_id}:decision:\{step_id}"
+}
+
+///|
+fn controller_next_iteration_id(
+  run_id : String,
+  step_id : String,
+  provided? : String? = None,
+) -> String {
+  match provided {
+    Some(id) if !id.trim().to_string().is_blank() => id.trim().to_string()
+    _ => "\{run_id}:iter:\{step_id}:next"
+  }
+}
+
+///|
+fn decision_metadata_with_schema(
+  metadata : Json,
+  result_schema : String?,
+) -> Json {
+  match result_schema {
+    Some(schema) => { "result_schema": schema, "payload": metadata }
+    None => metadata
+  }
+}
+
+///|
+fn decision_metadata_with_warning(metadata : Json, warning : String?) -> Json {
+  match warning {
+    Some(warning) => { "warning": warning, "payload": metadata }
+    None => metadata
+  }
+}
+
+///|
+fn decision_payload_from_output(output : Json) -> Json? {
+  match output {
+    { "controller_decision": decision, .. } => Some(decision)
+    { "verdict": String(_), .. } => Some(output)
+    { "decision": String(_), .. } => Some(output)
+    { "status": String(_), .. } => Some(output)
+    { "action": String(_), .. } => Some(output)
+    _ => None
+  }
+}
+
+///|
+fn decision_verdict(decision : Json) -> String? {
+  match decision {
+    { "verdict": String(verdict), .. } => Some(verdict)
+    { "decision": String(verdict), .. } => Some(verdict)
+    { "status": String(verdict), .. } => Some(verdict)
+    { "action": String(verdict), .. } => Some(verdict)
+    _ => None
+  }
+}
+
+///|
+fn normalized_verdict(
+  definition : JobDefinition,
+  verdict : String,
+) -> (String, String?) {
+  let raw = verdict.trim().to_string()
+  let normalized = raw.to_lower()
+  let aliases = controller_verdict_aliases(definition)
+  let canonical = aliases.get(normalized).unwrap_or(normalized)
+  let allowed = controller_allowed_verdicts(definition)
+  if allowed.is_empty() || allowed.contains(canonical) {
+    (canonical, None)
+  } else {
+    let allowed_text = allowed.join(",")
+    (
+      canonical,
+      Some(
+        "Verdict `\{raw}` is outside configured allowed_verdicts: \{allowed_text}",
+      ),
+    )
+  }
+}
+
+///|
+fn decision_reason(decision : Json) -> String? {
+  match decision {
+    { "reason": String(reason), .. } => Some(reason)
+    { "rationale": String(reason), .. } => Some(reason)
+    { "summary": String(reason), .. } => Some(reason)
+    _ => None
+  }
+}
+
+///|
+fn decision_next_action(decision : Json) -> String? {
+  match decision {
+    { "next_action": String(next_action), .. } => Some(next_action)
+    { "next": String(next_action), .. } => Some(next_action)
+    _ => None
+  }
+}
+
+///|
+fn decision_next_iteration(decision : Json) -> Json? {
+  match decision {
+    { "next_iteration": next_iteration, .. } => Some(next_iteration)
+    { "next": next_iteration, .. } =>
+      match next_iteration {
+        Object(_) => Some(next_iteration)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn mapped_object_string(
+  object : Json,
+  primary : String,
+  secondary? : String? = None,
+) -> String? {
+  match object {
+    Object(fields) =>
+      match fields.get(primary) {
+        Some(String(value)) if !value.trim().to_string().is_blank() =>
+          Some(value)
+        _ =>
+          match secondary {
+            Some(secondary) =>
+              match fields.get(secondary) {
+                Some(String(value)) if !value.trim().to_string().is_blank() =>
+                  Some(value)
+                _ => None
+              }
+            None => None
+          }
+      }
+    _ => None
+  }
+}
+
+///|
+pub async fn record_controller_decision_from_output(
+  store : SystemStore,
+  definition : JobDefinition,
+  run : JobRun,
+  step : WorkflowStepDefinition,
+  output : Json,
+  now_ms : Int,
+) -> Unit {
+  guard store.get_controller_state(run.id) is Some(state) else { return () }
+  guard controller_accepts_step_output(definition) else { return () }
+  ensure_controller_iteration_for_step(store, run, step, now_ms)
+  let iteration_id = controller_step_iteration_id(run.id, step.id)
+  let result_schema = controller_result_schema(definition)
+  match decision_payload_from_output(output) {
+    Some(decision) =>
+      match decision_verdict(decision) {
+        Some(verdict) => {
+          let (verdict, verdict_warning) = normalized_verdict(
+            definition, verdict,
+          )
+          let reason = decision_reason(decision)
+          let next_action = decision_next_action(decision)
+          store.save_controller_decision(JobControllerDecision::{
+            id: controller_decision_id(run.id, step.id),
+            controller_job_id: state.controller_job_id,
+            controller_run_id: run.id,
+            iteration_id,
+            step_id: step.id,
+            verdict,
+            reason,
+            next_action,
+            metadata: decision_metadata_with_warning(
+              decision_metadata_with_schema(decision, result_schema),
+              verdict_warning,
+            ),
+            created_at: now_ms,
+            updated_at: now_ms,
+          })
+          match decision_next_iteration(decision) {
+            Some(next_iteration) => {
+              let title_field = controller_next_iteration_field(
+                definition, "title", "title",
+              )
+              let hypothesis_field = controller_next_iteration_field(
+                definition, "hypothesis", "hypothesis",
+              )
+              let objective_field = controller_next_iteration_field(
+                definition, "objective", "objective",
+              )
+              let id_field = controller_next_iteration_field(
+                definition, "id", "id",
+              )
+              let edge_kind_field = controller_next_iteration_field(
+                definition, "edge_kind", "edge_kind",
+              )
+              let metadata_field = controller_next_iteration_field(
+                definition, "metadata", "metadata",
+              )
+              match mapped_object_string(next_iteration, title_field) {
+                Some(title) => {
+                  let hypothesis = mapped_object_string(
+                    next_iteration,
+                    hypothesis_field,
+                    secondary=Some(objective_field),
+                  ).unwrap_or(title)
+                  let next_iteration_id = controller_next_iteration_id(
+                    run.id,
+                    step.id,
+                    provided=mapped_object_string(next_iteration, id_field),
+                  )
+                  let edge_kind = mapped_object_string(
+                    next_iteration, edge_kind_field,
+                  ).unwrap_or("branches")
+                  let next_metadata = match next_iteration {
+                    Object(fields) =>
+                      match fields.get(metadata_field) {
+                        Some(metadata) => metadata
+                        None => {}
+                      }
+                    _ => {}
+                  }
+                  if store.get_controller_iteration(next_iteration_id) is None {
+                    store.save_controller_iteration(JobControllerIteration::{
+                      id: next_iteration_id,
+                      controller_job_id: state.controller_job_id,
+                      controller_run_id: run.id,
+                      parent_iteration_id: Some(iteration_id),
+                      title,
+                      hypothesis,
+                      status: "pending",
+                      decision: None,
+                      child_job_ids: [],
+                      child_run_ids: [],
+                      metadata: next_metadata,
+                      created_at: now_ms,
+                      updated_at: now_ms,
+                    })
+                  }
+                  let edge_id = "\{run.id}:edge:\{step.id}:\{next_iteration_id}"
+                  if !controller_edge_exists(
+                      store,
+                      state.controller_job_id,
+                      edge_id,
+                    ) {
+                    store.save_controller_lineage_edge(JobControllerLineageEdge::{
+                      id: edge_id,
+                      controller_job_id: state.controller_job_id,
+                      from_iteration_id: iteration_id,
+                      to_iteration_id: next_iteration_id,
+                      edge_kind,
+                      metadata: next_metadata,
+                      created_at: now_ms,
+                    })
+                  }
+                  store.save_controller_state(JobControllerState::{
+                    ..state,
+                    frontier: append_unique(state.frontier, next_iteration_id),
+                    updated_at: now_ms,
+                  })
+                }
+                None => ()
+              }
+            }
+            _ => ()
+          }
+        }
+        None => ()
+      }
+    _ => ()
   }
 }
 

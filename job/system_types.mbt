@@ -506,6 +506,21 @@ pub(all) struct JobControllerLineageEdge {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub(all) struct JobControllerDecision {
+  id : String
+  controller_job_id : String
+  controller_run_id : String
+  iteration_id : String
+  step_id : String
+  verdict : String
+  reason : String?
+  next_action : String?
+  metadata : Json
+  created_at : Int
+  updated_at : Int
+} derive(ToJson, FromJson, Show)
+
+///|
 pub(all) struct JobRunEvent {
   run_id : String
   job_id : String

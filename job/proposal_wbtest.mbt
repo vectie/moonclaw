@@ -77,6 +77,41 @@ fn fake_planner_executor(content : String) -> AnalysisExecutor {
 }
 
 ///|
+fn mapped_controller_profile_json() -> Json {
+  {
+    "jobs": {
+      "profiles": {
+        "generic_controller": {
+          "family": "generic_controller",
+          "role": "controller",
+          "priority": 100,
+          "match": { "any": ["controller", "evaluate", "hypothesis"] },
+          "steps": [
+            {
+              "id": "evaluate",
+              "title": "Evaluate outcome",
+              "kind": "test.evaluate",
+              "prompt_template": "Evaluate ${request}",
+            },
+          ],
+          "metadata": {
+            "controller_policy": {
+              "next_iteration_fields": {
+                "title": "label",
+                "hypothesis": "idea",
+                "id": "key",
+                "edge_kind": "relation",
+                "metadata": "extras",
+              },
+            },
+          },
+        },
+      },
+    },
+  }
+}
+
+///|
 async test "plan_job_proposal uses model JSON when available" {
   let proposal = plan_job_proposal(
     "proposal-3",
@@ -93,6 +128,89 @@ async test "plan_job_proposal uses model JSON when available" {
   inspect(proposal.steps.length(), content="2")
   inspect(proposal.steps[0].id, content="collect")
   inspect(proposal.tags.join(","), content="job,weekly")
+}
+
+///|
+async test "profile json drives controller policy through compilation into runtime" {
+  @fsx.with_temporary_directory("job-proposal-controller-runtime-XXXXXX", async fn(
+    dir,
+  ) {
+    @fsx.write_to_file(
+      @pathx.join(dir, "moonclaw.json"),
+      mapped_controller_profile_json().stringify(),
+    )
+    let proposal = plan_job_proposal(
+      "proposal-controller-runtime-1",
+      "Evaluate controller output and branch to a next hypothesis.",
+      100,
+      executor=fake_planner_executor(
+        "{\"title\":\"Controller eval\",\"summary\":\"Use the controller profile.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"draft\",\"title\":\"Draft\",\"prompt\":\"Draft.\",\"kind\":\"job.analysis\"}]}",
+      ),
+      cwd=dir,
+      home=Some(dir),
+      workspace=Some(dir),
+    )
+    inspect(proposal.profile_role.unwrap_or(""), content="controller")
+    inspect(
+      proposal.profile_metadata.stringify().contains("next_iteration_fields"),
+      content="true",
+    )
+
+    let compilation = compile_job_proposal(
+      proposal,
+      101,
+      dir,
+      dir,
+      workspace_root=dir,
+    )
+    inspect(compilation.definition.kind, content="job.controller")
+
+    let runtime = RuntimeManager::new(root=@pathx.join(dir, "jobs"))
+    runtime.register_definition(compilation.definition)
+    runtime.register_workflow(compilation.workflow)
+    let run = match
+      runtime.trigger_definition(
+        "run-controller-runtime-1",
+        compilation.definition.id,
+        TriggerSource::Manual,
+        200,
+      ) {
+      Ok(run) => run
+      Err(error) => fail(error)
+    }
+    let engine = WorkflowEngine::new(runtime~)
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.evaluate", run=fn(_context) {
+        Ok(
+          WorkflowStepResult::new(output={
+            "decision": "accept",
+            "next": {
+              "key": "iter-profile-mapped",
+              "label": "Mapped from profile",
+              "idea": "Use fields declared in profile metadata.",
+              "relation": "refines",
+              "extras": { "source": "profile-json" },
+            },
+          }),
+        )
+      }),
+    )
+    let result = match engine.execute_run(run.id, fn() { 300 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    let next_iteration = match
+      runtime.store().get_controller_iteration("iter-profile-mapped") {
+      Some(iteration) => iteration
+      None => fail("missing mapped iteration from profile")
+    }
+    inspect(next_iteration.title, content="Mapped from profile")
+    inspect(
+      next_iteration.hypothesis,
+      content="Use fields declared in profile metadata.",
+    )
+  })
 }
 
 ///|

@@ -82,6 +82,8 @@ pub fn proposal_for_reply(SystemStore, String?) -> JobProposal?
 
 pub async fn record_controller_child_run(SystemStore, JobRun, WorkflowStepDefinition, String, String, String, Int) -> Unit
 
+pub async fn record_controller_decision_from_output(SystemStore, JobDefinition, JobRun, WorkflowStepDefinition, Json, Int) -> Unit
+
 pub async fn refresh_run_workspace_memory(SystemStore, JobDefinition, JobRun) -> Unit
 
 pub fn render_active_jobs(Array[ActiveJobSnapshot]) -> String
@@ -444,6 +446,11 @@ pub struct ConfirmProposalResult {
   run : JobRun
 }
 
+type ControllerDecisionsFile
+pub impl Show for ControllerDecisionsFile
+pub impl ToJson for ControllerDecisionsFile
+pub impl @json.FromJson for ControllerDecisionsFile
+
 type ControllerIterationsFile
 pub impl Show for ControllerIterationsFile
 pub impl ToJson for ControllerIterationsFile
@@ -559,6 +566,23 @@ pub(all) enum JobChatAction {
   MemorySearch(String)
 }
 pub impl Show for JobChatAction
+
+pub(all) struct JobControllerDecision {
+  id : String
+  controller_job_id : String
+  controller_run_id : String
+  iteration_id : String
+  step_id : String
+  verdict : String
+  reason : String?
+  next_action : String?
+  metadata : Json
+  created_at : Int
+  updated_at : Int
+}
+pub impl Show for JobControllerDecision
+pub impl ToJson for JobControllerDecision
+pub impl @json.FromJson for JobControllerDecision
 
 pub(all) struct JobControllerIteration {
   id : String
@@ -1187,6 +1211,7 @@ pub struct SystemStore {
   controller_states : Map[String, JobControllerState]
   controller_iterations : Map[String, JobControllerIteration]
   controller_lineage_edges : Map[String, JobControllerLineageEdge]
+  controller_decisions : Map[String, JobControllerDecision]
 }
 pub async fn SystemStore::append_run_event(Self, JobRunEvent) -> Unit
 pub fn SystemStore::artifact_content_file(Self, String, file_name? : String) -> String
@@ -1195,6 +1220,7 @@ pub async fn SystemStore::delete_artifact(Self, String) -> Bool
 pub fn SystemStore::find_job_proposal_by_message_id(Self, String) -> JobProposal?
 pub fn SystemStore::get_artifact(Self, String) -> ArtifactRecord?
 pub fn SystemStore::get_chat_binding(Self, String) -> ChatBinding?
+pub fn SystemStore::get_controller_decision(Self, String) -> JobControllerDecision?
 pub fn SystemStore::get_controller_iteration(Self, String) -> JobControllerIteration?
 pub fn SystemStore::get_controller_state(Self, String) -> JobControllerState?
 pub fn SystemStore::get_definition(Self, String) -> JobDefinition?
@@ -1206,6 +1232,7 @@ pub fn SystemStore::get_step_run(Self, String, String) -> JobStepRun?
 pub fn SystemStore::get_workflow(Self, String) -> WorkflowDefinition?
 pub fn SystemStore::list_artifacts(Self, run_id? : String) -> Array[ArtifactRecord]
 pub fn SystemStore::list_chat_bindings(Self) -> Array[ChatBinding]
+pub fn SystemStore::list_controller_decisions(Self, controller_run_id? : String?) -> Array[JobControllerDecision]
 pub fn SystemStore::list_controller_iterations(Self, controller_run_id? : String?) -> Array[JobControllerIteration]
 pub fn SystemStore::list_controller_lineage_edges(Self, controller_job_id? : String?) -> Array[JobControllerLineageEdge]
 pub fn SystemStore::list_controller_states(Self) -> Array[JobControllerState]
@@ -1223,6 +1250,7 @@ pub fn SystemStore::root_dir(Self) -> String
 pub fn SystemStore::run_events_file(Self, String) -> String
 pub async fn SystemStore::save_artifact(Self, ArtifactRecord) -> Unit
 pub async fn SystemStore::save_chat_binding(Self, ChatBinding) -> Unit
+pub async fn SystemStore::save_controller_decision(Self, JobControllerDecision) -> Unit
 pub async fn SystemStore::save_controller_iteration(Self, JobControllerIteration) -> Unit
 pub async fn SystemStore::save_controller_lineage_edge(Self, JobControllerLineageEdge) -> Unit
 pub async fn SystemStore::save_controller_state(Self, JobControllerState) -> Unit

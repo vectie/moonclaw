@@ -378,6 +378,14 @@ pub async fn WorkflowEngine::execute_run(
             status=Some(Succeeded),
             data={ "attempt": attempt, "metrics": result.metrics },
           )
+          record_controller_decision_from_output(
+            store,
+            definition,
+            started_run,
+            step,
+            result.output,
+            now(),
+          )
           complete_controller_iteration_for_step(
             store,
             started_run,
