@@ -1,0 +1,54 @@
+{
+  "jobs": {
+    "profiles": {
+      "topic_watch_controller": {
+        "family": "topic_watch_controller",
+        "role": "controller",
+        "priority": 100,
+        "tags": ["research", "controller", "topic-watch"],
+        "match": {
+          "any": ["research", "papers", "arxiv", "topic", "watch", "literature"]
+        },
+        "steps": [
+          {
+            "id": "collect",
+            "title": "Collect candidate sources",
+            "kind": "job.analysis",
+            "prompt_template": "Collect candidate sources for ${request}. Return grounded findings and, if useful, a controller decision with a next iteration."
+          },
+          {
+            "id": "rank",
+            "title": "Rank and filter results",
+            "kind": "job.analysis",
+            "prompt_template": "Rank and filter the collected results for ${proposal.title}. Prefer precision over breadth."
+          },
+          {
+            "id": "report",
+            "title": "Prepare research brief",
+            "kind": "job.analysis",
+            "prompt_template": "Prepare a concise research brief for ${proposal.title} with findings, caveats, and next actions."
+          }
+        ],
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output",
+            "result_schema": "generic/controller_decision.v1",
+            "allowed_verdicts": ["accept", "reject", "branch", "escalate"],
+            "verdict_aliases": {
+              "keep": "accept",
+              "continue": "branch"
+            },
+            "next_iteration_fields": {
+              "title": "title",
+              "hypothesis": "hypothesis",
+              "objective": "objective",
+              "id": "id",
+              "edge_kind": "edge_kind",
+              "metadata": "metadata"
+            }
+          }
+        }
+      }
+    }
+  }
+}

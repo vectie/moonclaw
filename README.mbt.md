@@ -205,6 +205,18 @@ Then set the ACP target command in `~/.moonclaw/moonclaw.json` to that exact pat
 }
 ```
 
+## Research Job Example
+
+A concrete research-style controller profile is available at [research_job_moonclaw.json](/Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json), with a matching test guide at [research_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/research_job_test_guide.md).
+
+This is the intended way to test research ability right now:
+
+- copy the example `moonclaw.json` into an isolated workspace
+- start the gateway against that workspace
+- run `/plan-job` with a real literature-review style prompt
+- confirm it and inspect `/job-status`
+- verify that behavior changes when you edit the JSON profile, without changing MoonBit code
+
 ## 🪽 Feishu Usage
 
 Once Feishu is configured and the gateway is running, the important commands are:
