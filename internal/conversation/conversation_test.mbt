@@ -215,3 +215,50 @@ async test "Conversation::display" (t : @test.Test) {
     )
   })
 }
+
+///|
+async test "Conversation::messages/preserved_pruned_tool_call_protocol" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let home = mock.cwd
+    let cwd = home.add_directory("cwd")
+    let manager = @conversation.Manager::new(
+      uuid=mock.uuid,
+      clock=mock.clock,
+      home=home.path(),
+    )
+    let conversation = manager.new_conversation(
+      name="Test Conversation",
+      cwd=cwd.path(),
+    )
+    let event_target = @event.EventTarget::new(uuid=mock.uuid)
+    event_target.add_listener(event => conversation.add_event(event))
+    event_target.emit(UserMessage("Run command"))
+    event_target.emit(
+      AssistantMessage(usage=None, "Running", tool_calls=[
+        @ai.tool_call(
+          id="tc0",
+          name="execute_command",
+          arguments="{\"command\":\"date\"}",
+        ),
+      ]),
+    )
+    event_target.emit(
+      PostToolCall(
+        @ai.tool_call(
+          id="tc0",
+          name="execute_command",
+          arguments="{\"command\":\"date\"}",
+        ),
+        result=Ok("2024-01-01T12:00:00Z"),
+        rendered="2024-01-01T12:00:00Z",
+      ),
+    )
+    event_target.flush()
+    let post_tool_call_id = conversation.events()[2].id
+    event_target.emit(Pruned(id=post_tool_call_id))
+    event_target.flush()
+    json_inspect(conversation.messages().map(fn(m) { m.to_openai() }), content=([{"role":"user","content":"Run command"},{"role":"assistant","content":"Running","tool_calls":[{"id":"tc0","function":{"name":"execute_command","arguments":"{\"command\":\"date\"}"},"type":"function"}]},{"role":"tool","content":[{"type":"text","text":"[Cleared: tool output. If you want to see the output, you can use the tool again.]"}],"tool_call_id":"tc0"}]))
+  })
+}

@@ -2,7 +2,6 @@ import {
   "moonbitlang/moonclaw/tool",
   "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/job",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

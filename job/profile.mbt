@@ -136,22 +136,15 @@ fn parse_job_profile_steps(value : Json) -> Array[JobProfileStep]? {
 }
 
 ///|
-fn job_profile_config_path_candidates(
-  home : String,
-  cwd : String,
-) -> Array[String] {
-  [
-    home |> @pathx.join("moonclaw.json"),
-    home |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
-    cwd |> @pathx.join("moonclaw.json"),
-    cwd |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
-  ]
+fn job_profile_config_path_candidates(cwd : String) -> Array[String] {
+  [cwd |> @pathx.join("moonclaw.jobs.json")]
 }
 
 ///|
 async fn load_job_profiles_json(home : String, cwd : String) -> Json? {
   let mut loaded : Json? = None
-  for path in job_profile_config_path_candidates(home, cwd) {
+  let _ = home
+  for path in job_profile_config_path_candidates(cwd) {
     let exists = @fsx.exists(path) catch { _ => false }
     if !exists {
       continue

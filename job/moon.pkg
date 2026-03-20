@@ -16,6 +16,7 @@ import {
   "moonbitlang/core/strconv",
   "moonbitlang/core/test",
   "moonbitlang/moonclaw/tools/apply_patch",
+  "moonbitlang/moonclaw/tools/execute_command",
   "moonbitlang/moonclaw/tools/list_files",
   "moonbitlang/moonclaw/tools/read_file",
   "moonbitlang/moonclaw/tools/search_files",

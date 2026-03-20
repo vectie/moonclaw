@@ -127,9 +127,9 @@ pub fn compile_job_proposal(
       "role": role,
       "profile_metadata": proposal.profile_metadata,
       "notify": {
-        "channel": proposal.channel_id,
-        "account_id": proposal.account_id,
-        "to": proposal.recipient,
+        "channel": proposal.channel_id.unwrap_or(""),
+        "account_id": proposal.account_id.unwrap_or(""),
+        "to": proposal.recipient.unwrap_or(""),
         "thread_id": proposal.thread_id,
         "heartbeat_interval_ms": 120000,
         "warn_after_ms": 300000,

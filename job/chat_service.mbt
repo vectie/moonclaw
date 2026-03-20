@@ -86,40 +86,45 @@ pub fn notification_preference_id(
 }
 
 ///|
-pub fn parse_job_notify_target(config : Json) -> JobNotifyTarget? {
-  match config {
-    {
-      "notify": {
-        "channel": String(channel_id),
-        "account_id": String(account_id),
-        "to": String(recipient),
-        ..
-      },
-      ..
-    } =>
-      Some(JobNotifyTarget::{
-        channel_id,
-        account_id,
-        recipient,
-        thread_id: match config {
-          { "notify": { "thread_id": String(thread_id), .. }, .. } =>
-            Some(thread_id)
-          _ => None
-        },
-        verbosity: NotificationVerbosity::Normal,
-        heartbeat_interval_ms: match config {
-          { "notify": { "heartbeat_interval_ms": Number(ms, ..), .. }, .. } =>
-            ms.to_int()
-          _ => 120_000
-        },
-        warn_after_ms: match config {
-          { "notify": { "warn_after_ms": Number(ms, ..), .. }, .. } =>
-            ms.to_int()
-          _ => 300_000
-        },
-      })
+fn json_string_like(value : Json?) -> String? {
+  match value {
+    Some(String(value)) => Some(value)
+    Some([String(value)]) => Some(value)
     _ => None
   }
+}
+
+///|
+pub fn parse_job_notify_target(config : Json) -> JobNotifyTarget? {
+  let notify = match config {
+    { "notify": Object(notify), .. } => Some(notify)
+    _ => None
+  }
+  guard notify is Some(notify) else { return None }
+  guard json_string_like(notify.get("channel")) is Some(channel_id) else {
+    return None
+  }
+  guard json_string_like(notify.get("account_id")) is Some(account_id) else {
+    return None
+  }
+  guard json_string_like(notify.get("to")) is Some(recipient) else {
+    return None
+  }
+  Some(JobNotifyTarget::{
+    channel_id,
+    account_id,
+    recipient,
+    thread_id: json_string_like(notify.get("thread_id")),
+    verbosity: NotificationVerbosity::Normal,
+    heartbeat_interval_ms: match notify.get("heartbeat_interval_ms") {
+      Some(Number(ms, ..)) => ms.to_int()
+      _ => 120_000
+    },
+    warn_after_ms: match notify.get("warn_after_ms") {
+      Some(Number(ms, ..)) => ms.to_int()
+      _ => 300_000
+    },
+  })
 }
 
 ///|
@@ -275,9 +280,18 @@ pub fn decide_active_job_notifications(
   }
   let messages : Array[String] = []
   let mut next_state = state
-  if next_state.last_notified_event_count < events.length() &&
-    target.verbosity is NotificationVerbosity::Verbose {
+  if next_state.last_notified_event_count < events.length() {
     for event in events[next_state.last_notified_event_count:] {
+      let should_send = match target.verbosity {
+        NotificationVerbosity::Verbose => true
+        NotificationVerbosity::Normal =>
+          event.event_type == "step.started" ||
+          event.event_type == "step.failed"
+        NotificationVerbosity::Off => false
+      }
+      if !should_send {
+        continue
+      }
       match format_progress_event(event) {
         Some(content) =>
           messages.push(

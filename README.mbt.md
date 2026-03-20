@@ -211,7 +211,7 @@ A concrete research-style controller profile is available at [research_job_moonc
 
 This is the intended way to test research ability right now:
 
-- copy the example `moonclaw.json` into an isolated workspace
+- copy the example `moonclaw.jobs.json` into an isolated workspace
 - start the gateway against that workspace
 - run `/plan-job` with a real literature-review style prompt
 - confirm it and inspect `/job-status`

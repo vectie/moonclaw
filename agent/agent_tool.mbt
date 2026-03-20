@@ -84,13 +84,15 @@ async fn Agent::execute_tool(
   agent : Agent,
   tool_call : @ai.ToolCall,
 ) -> @ai.Message {
-  guard agent.tools.get(tool_call.name) is Some(tool) else {
-    @ai.tool_message(
-      content="Unknown tool: \{tool_call.name}",
-      tool_call_id=tool_call.id,
-    )
-  }
   agent.emit(PreToolCall(tool_call))
+  guard agent.tools.get(tool_call.name) is Some(tool) else {
+    let rendered = "Unknown tool: \{tool_call.name}"
+    let result : Result[Json, Json] = Err(
+      Json::object({ "error": Json::string(rendered) }),
+    )
+    agent.emit(PostToolCall(tool_call, result~, rendered~))
+    return @ai.tool_message(content=rendered, tool_call_id=tool_call.id)
+  }
   let arguments : Json = match tool_call.arguments {
     None | Some("") =>
       // when models like haiku return empty arguments, we treat it as empty object 

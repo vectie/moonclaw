@@ -406,3 +406,19 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
     )
   })
 }
+
+///|
+async test "setup_analysis_agent registers execute_command tool" {
+  let agent = @agent.new(
+    @model.Model::new(
+      api_key="",
+      base_url="https://example.invalid/v1",
+      name="test-model",
+      safe_zone_tokens=4096,
+    ),
+    cwd="/tmp",
+    logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
+  )
+  setup_analysis_agent(agent, "/tmp")
+  inspect(agent.tools().contains("execute_command"), content="true")
+}

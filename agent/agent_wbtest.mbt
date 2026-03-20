@@ -28,3 +28,35 @@ async test "queue_message" (t : @test.Test) {
     json_inspect(agent.input_queue.length(), content=0)
   })
 }
+
+///|
+async test "execute_tool preserves unknown tool response in history" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let agent = new(
+      @model.Model::new(
+        api_key="",
+        base_url="https://example.invalid/v1",
+        name="test-model",
+        safe_zone_tokens=4096,
+      ),
+      uuid=mock.uuid,
+      cwd=mock.cwd.path(),
+      logger=mock.logger,
+    )
+    let tool_call = @ai.tool_call(
+      id="tc-unknown",
+      name="execute_command",
+      arguments="{}",
+    )
+    agent.emit(AssistantMessage(usage=None, tool_calls=[tool_call], ""))
+    let _ = agent.execute_tool(tool_call)
+    json_inspect(
+      agent.history
+      .messages(include_system=false)
+      .map(fn(message) { message.to_openai() }),
+      content=([{"role":"assistant","content":"","tool_calls":[{"id":"tc-unknown","function":{"name":"execute_command","arguments":"{}"},"type":"function"}]},{"role":"tool","content":[{"type":"text","text":"Unknown tool: execute_command"}],"tool_call_id":"tc-unknown"}]),
+    )
+  })
+}

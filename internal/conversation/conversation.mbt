@@ -1,4 +1,7 @@
 ///|
+const PrunedToolOutputPlaceholder : String = "[Cleared: tool output. If you want to see the output, you can use the tool again.]"
+
+///|
 pub fn Conversation::add_event(
   self : Conversation,
   event : @event.Event,
@@ -101,19 +104,27 @@ pub fn Conversation::messages(
   let mut sys_msg = None
   let msgs = []
   for e in self.events() {
-    // Skip events that have been pruned
-    if pruned_ids.contains(e.id) {
-      continue
-    }
     match e.desc {
-      SystemPromptSet(Some(prompt)) if include_system =>
+      SystemPromptSet(Some(prompt)) if include_system &&
+        !pruned_ids.contains(e.id) =>
         sys_msg = Some(@ai.system_message(content=prompt))
-      SystemPromptSet(None) if include_system => sys_msg = None
-      UserMessage(content) => msgs.push(@ai.user_message(content~))
-      AssistantMessage(tool_calls~, content, ..) =>
+      SystemPromptSet(None) if include_system && !pruned_ids.contains(e.id) =>
+        sys_msg = None
+      UserMessage(content) if !pruned_ids.contains(e.id) =>
+        msgs.push(@ai.user_message(content~))
+      AssistantMessage(tool_calls~, content, ..) if !pruned_ids.contains(e.id) =>
         msgs.push(@ai.assistant_message(content~, tool_calls~))
       PostToolCall(tc, rendered~, ..) =>
-        msgs.push(@ai.tool_message(tool_call_id=tc.id, content=rendered))
+        msgs.push(
+          @ai.tool_message(
+            tool_call_id=tc.id,
+            content=if pruned_ids.contains(e.id) {
+              PrunedToolOutputPlaceholder
+            } else {
+              rendered
+            },
+          ),
+        )
       _ => ()
     }
   }

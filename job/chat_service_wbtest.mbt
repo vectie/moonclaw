@@ -97,6 +97,70 @@ test "decide_active_job_notifications warns once for long-running jobs" {
 }
 
 ///|
+test "decide_active_job_notifications emits step start for normal verbosity" {
+  let run = JobRun::{
+    id: "run-3",
+    job_id: "job-3",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    workspace_dir: None,
+    status: RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(1_000),
+    completed_at: None,
+    summary: None,
+    error: None,
+  }
+  let decision = decide_active_job_notifications(
+    "job-3",
+    run,
+    [
+      JobRunEvent::{
+        run_id: "run-3",
+        job_id: "job-3",
+        event_type: "step.started",
+        timestamp: 1_050,
+        step_id: Some("step-a"),
+        status: Some(RunStatus::Running),
+        message: "Starting step A",
+        data: {},
+      },
+      JobRunEvent::{
+        run_id: "run-3",
+        job_id: "job-3",
+        event_type: "step.succeeded",
+        timestamp: 1_120,
+        step_id: Some("step-a"),
+        status: Some(RunStatus::Succeeded),
+        message: "Step A finished",
+        data: {},
+      },
+    ],
+    JobNotifyTarget::{
+      channel_id: "feishu",
+      account_id: "default",
+      recipient: "oc_chat_1",
+      thread_id: None,
+      verbosity: NotificationVerbosity::Normal,
+      heartbeat_interval_ms: 1_000,
+      warn_after_ms: 10_000,
+    },
+    JobNotificationRuntimeState::{
+      last_sent_at: 1_000,
+      last_notified_event_count: 0,
+      long_running_warned: false,
+    },
+    1_150,
+  )
+  inspect(decision.messages.length(), content="1")
+  inspect(decision.messages[0].contains("Step started: step-a"), content="true")
+  inspect(decision.next_state.last_notified_event_count, content="2")
+}
+
+///|
 test "resolve_job_notify_target applies persisted preference overrides" {
   let store = SystemStore::new(root="unused")
   let definition = JobDefinition::{
@@ -140,6 +204,29 @@ test "resolve_job_notify_target applies persisted preference overrides" {
     target.map(fn(t) { t.heartbeat_interval_ms.to_string() }).unwrap_or(""),
     content="60000",
   )
+}
+
+///|
+test "parse_job_notify_target accepts legacy optional-json array encoding" {
+  let target = parse_job_notify_target({
+    "notify": {
+      "channel": ["feishu"],
+      "account_id": ["default"],
+      "to": ["oc_chat_1"],
+      "thread_id": ["thread_1"],
+      "heartbeat_interval_ms": 1000,
+      "warn_after_ms": 2000,
+    },
+  })
+  guard target is Some(target) else {
+    fail("Expected legacy encoded notify target to parse")
+  }
+  inspect(target.channel_id, content="feishu")
+  inspect(target.account_id, content="default")
+  inspect(target.recipient, content="oc_chat_1")
+  inspect(target.thread_id.unwrap_or(""), content="thread_1")
+  inspect(target.heartbeat_interval_ms, content="1000")
+  inspect(target.warn_after_ms, content="2000")
 }
 
 ///|

@@ -151,6 +151,7 @@ fn setup_analysis_agent(agent : @agent.Agent, cwd : String) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
   agent.add_tools([
+    @execute_command.new(cwd).to_agent_tool(),
     @list_files.new(file_manager).to_agent_tool(),
     @read_file.new(file_manager).to_agent_tool(),
     @todo.new_tool(todo_list).to_agent_tool(),

@@ -4,15 +4,15 @@ This is a concrete way to test whether MoonClaw can handle a real research-style
 
 ## 1. Install the example profile
 
-Copy [research_job_moonclaw.json](/Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json) into the workspace you will run the gateway against as `moonclaw.json`.
+Copy [research_job_moonclaw.json](/Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json) into the workspace you will run the gateway against as `moonclaw.jobs.json`.
 
-If you want to merge it into an existing config, copy only the `jobs.profiles.topic_watch_controller` block.
+This file is workspace job-behavior config. It is separate from your global runtime config at `~/.moonclaw/moonclaw.json`.
 
 ## 2. Start the gateway in an isolated workspace
 
 ```bash
 mkdir -p ~/.moonclaw/workspace
-cp /Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json ~/.moonclaw/workspace/moonclaw.json
+cp /Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json ~/.moonclaw/workspace/moonclaw.jobs.json
 moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/workspace
 ```
 

@@ -21,7 +21,7 @@ pub enum CommandResult {
     stderr~ : String,
     max_output_lines~ : Int
   )
-  Background(command~ : String, job_id~ : @job.Id)
+  Background(command~ : String, job_id~ : Int)
 } derive(@json.FromJson, ToJson)
 
 ///|
@@ -83,7 +83,7 @@ pub impl Show for CommandResult with output(
 }
 
 ///|
-pub fn new(ctx : @job.Manager) -> @tool.Tool[CommandResult] {
+pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
   @tool.new(
     description="Execute an shell command with arguments and capture its output.",
     name="execute_command",
@@ -118,10 +118,10 @@ pub fn new(ctx : @job.Manager) -> @tool.Tool[CommandResult] {
         if @pathx.is_absolute(working_directory) {
           working_directory
         } else {
-          @pathx.join(ctx.cwd, working_directory)
+          @pathx.join(cwd, working_directory)
         }
       } else {
-        ctx.cwd
+        cwd
       }
       let background = if args is { "background": background, .. } {
         match background {
@@ -138,48 +138,38 @@ pub fn new(ctx : @job.Manager) -> @tool.Tool[CommandResult] {
           "Background execution is not supported in this environment.",
         )
       }
-      if background {
-        let job = ctx.spawn(name=command, command~) catch {
-          error =>
-            return @tool.error(
-              "Failed to start background job for command '\{command}': \{error}",
-            )
-        }
-        @tool.ok(CommandResult::Background(command~, job_id=job.id))
-      } else {
-        let timeout = timeout.to_int()
-        let process = @spawn.spawn(
-          "sh",
-          ["-c", command],
-          timeout~,
-          cwd=working_directory,
-        ) catch {
-          @spawn.TimedOut(timeout~, stdout~, stderr~) =>
-            return @tool.ok(
-              CommandResult::TimedOut(
-                command~,
-                timeout~,
-                stdout~,
-                stderr~,
-                max_output_lines~,
-              ),
-            )
-          error =>
-            return @tool.error(
-              "Failed to execute command '\{command}': \{error}",
-              error~,
-            )
-        }
-        return @tool.ok(
-          CommandResult::Completed(
-            command~,
-            status=process.status,
-            stdout=process.stdout,
-            stderr=process.stderr,
-            max_output_lines~,
-          ),
-        )
+      let timeout = timeout.to_int()
+      let process = @spawn.spawn(
+        "sh",
+        ["-c", command],
+        timeout~,
+        cwd=working_directory,
+      ) catch {
+        @spawn.TimedOut(timeout~, stdout~, stderr~) =>
+          return @tool.ok(
+            CommandResult::TimedOut(
+              command~,
+              timeout~,
+              stdout~,
+              stderr~,
+              max_output_lines~,
+            ),
+          )
+        error =>
+          return @tool.error(
+            "Failed to execute command '\{command}': \{error}",
+            error~,
+          )
       }
+      return @tool.ok(
+        CommandResult::Completed(
+          command~,
+          status=process.status,
+          stdout=process.stdout,
+          stderr=process.stderr,
+          max_output_lines~,
+        ),
+      )
     }),
   )
 }

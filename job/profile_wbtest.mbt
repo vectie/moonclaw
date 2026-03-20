@@ -37,10 +37,10 @@ fn sample_profiles_json() -> Json {
 }
 
 ///|
-async test "load_job_profile reads controller profile from moonclaw json" {
+async test "load_job_profile reads controller profile from moonclaw.jobs.json" {
   @fsx.with_temporary_directory("job-profile-load-XXXXXX", async fn(dir) {
     @fsx.write_to_file(
-      @pathx.join(dir, "moonclaw.json"),
+      @pathx.join(dir, "moonclaw.jobs.json"),
       sample_profiles_json().stringify(),
     )
     let profile = match load_job_profile(dir, dir, "research_controller") {
@@ -57,7 +57,7 @@ async test "load_job_profile reads controller profile from moonclaw json" {
 async test "suggest_job_profile_family matches configured request rules" {
   @fsx.with_temporary_directory("job-profile-match-XXXXXX", async fn(dir) {
     @fsx.write_to_file(
-      @pathx.join(dir, "moonclaw.json"),
+      @pathx.join(dir, "moonclaw.jobs.json"),
       sample_profiles_json().stringify(),
     )
     inspect(

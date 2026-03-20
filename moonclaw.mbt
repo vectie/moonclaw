@@ -9,11 +9,10 @@ pub struct Moonclaw {
 
 ///|
 fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
-  let job_manager = @job.Manager::new(cwd=agent.cwd)
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
   agent.add_tools([
-    @execute_command.new(job_manager).to_agent_tool(),
+    @execute_command.new(agent.cwd).to_agent_tool(),
     @list_files.new(file_manager).to_agent_tool(),
     @read_file.new(file_manager).to_agent_tool(),
     @todo.new_tool(todo_list).to_agent_tool(),

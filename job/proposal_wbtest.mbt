@@ -19,7 +19,7 @@ test "draft_job_proposal creates non-executing draft with steps" {
 async test "plan_job_proposal applies configured controller profile steps" {
   @fsx.with_temporary_directory("job-proposal-profile-XXXXXX", async fn(dir) {
     @fsx.write_to_file(
-      @pathx.join(dir, "moonclaw.json"),
+      @pathx.join(dir, "moonclaw.jobs.json"),
       sample_profiles_json().stringify(),
     )
     let proposal = plan_job_proposal(
@@ -136,7 +136,7 @@ async test "profile json drives controller policy through compilation into runti
     dir,
   ) {
     @fsx.write_to_file(
-      @pathx.join(dir, "moonclaw.json"),
+      @pathx.join(dir, "moonclaw.jobs.json"),
       mapped_controller_profile_json().stringify(),
     )
     let proposal = plan_job_proposal(

@@ -1,8 +1,8 @@
 ///|
 async test "timeout" (t : @test.Test) {
-  @mock.run(t, mock => {
+    @mock.run(t, mock => {
     @async.with_task_group(_ => {
-      let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+      let tool = @execute_command.new(mock.cwd.path())
       json_inspect(tool.call({ "command": "sleep 5", "timeout": 1000 }), content=[
         "Ok",
         [
@@ -24,7 +24,7 @@ async test "timeout" (t : @test.Test) {
 async test "cat" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({ "file.txt": "hello world" })
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path())
     let result = tool.call({ "command": "cat file.txt", "timeout": 5000 })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -48,7 +48,7 @@ async test "output-overflow" (t : @test.Test) {
       lines.push("hello")
     }
     mock.add_json_tree({ "file.txt": lines.join("\n") })
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path())
     let result = tool.call({
       "command": "cat file.txt",
       "timeout": 5000,
@@ -82,7 +82,7 @@ async test "cd" (t : @test.Test) {
       "file.txt": "hello world",
       "subdir": { "file.txt": "hello from subdir" },
     })
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path())
     let result = tool.call({ "command": "cat file.txt", "timeout": 5000 })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -97,7 +97,7 @@ async test "cd" (t : @test.Test) {
         "max_output_lines": 100,
       },
     ])
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path())
     let result = tool.call({
       "command": "cd subdir && cat file.txt",
       "timeout": 5000,
@@ -123,9 +123,7 @@ async test "cd" (t : @test.Test) {
 #cfg(false)
 async test "background" (t : @test.Test) {
   @mock.run(t, mock => {
-    let manager = @job.Manager::new(cwd=mock.cwd.path())
-    mock.group.spawn_bg(() => manager.start(), no_wait=true)
-    let tool = @execute_command.new(manager)
+    let tool = @execute_command.new(mock.cwd.path())
     let result = tool.call({ "command": "sleep 2", "background": true })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
