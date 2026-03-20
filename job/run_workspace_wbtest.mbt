@@ -81,38 +81,24 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
 
     let prepared = prepare_run_workspace(store, definition, run)
     let workspace_dir = prepared.workspace_dir.unwrap_or("")
-    inspect(
-      workspace_dir.has_suffix(".moonclaw/job-workspaces/run-1"),
-      content="true",
-    )
+    inspect(workspace_dir.has_suffix("moonclaw-jobs/run-1"), content="true")
     inspect(@fsx.exists(workspace_dir |> @pathx.join(".git")), content="true")
     inspect(
+      @fsx.exists(workspace_dir |> @pathx.join("MEMORY.md")),
+      content="false",
+    )
+    inspect(
       @fsx.exists(workspace_dir |> @pathx.join("IDENTITY.md")),
-      content="true",
-    )
-    let memory_file = @fsx.read_file(workspace_dir |> @pathx.join("MEMORY.md"))
-    inspect(memory_file.contains("Inherited workspace memory"), content="true")
-    inspect(memory_file.contains("benchmark appendix"), content="true")
-    let identity_file = @fsx.read_file(
-      workspace_dir |> @pathx.join("IDENTITY.md"),
+      content="false",
     )
     inspect(
-      identity_file.contains("Materialized identity memory"),
-      content="true",
+      @fsx.exists(workspace_dir |> @pathx.join("ROUTINES.md")),
+      content="false",
     )
-    inspect(identity_file.contains("benchmark rigor"), content="true")
-    let routines_file = @fsx.read_file(
-      workspace_dir |> @pathx.join("ROUTINES.md"),
-    )
-    inspect(
-      routines_file.contains("Materialized routine memory"),
-      content="true",
-    )
-    inspect(routines_file.contains("missing ablations"), content="true")
 
     @fsx.write_to_file(
       workspace_dir |> @pathx.join("MEMORY.md"),
-      memory_file + "\n\nMy private working note.\n",
+      "# Scratchpad\n\nMy private working note.\n",
     )
     ignore(
       checkpoint_run_workspace(
@@ -208,8 +194,7 @@ async test "prepare_run_workspace nests child runs under parent workspace" {
       .unwrap_or("")
       .has_prefix(
         prepared_parent.workspace_dir.unwrap_or("")
-        |> @pathx.join(".moonclaw")
-        |> @pathx.join("subjobs"),
+        |> @pathx.join("moonclaw-subjobs"),
       ),
       content="true",
     )

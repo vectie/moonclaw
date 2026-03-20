@@ -438,6 +438,8 @@ async fn Gateway::handle_confirm_job_command(
     message,
     @job.render_confirmed_job_reply(
       proposal_id,
+      @job.definition_display_title(confirmed.compilation.definition),
+      @job.format_job_timestamp(confirmed.compilation.definition.created_at),
       confirmed.compilation.definition.id,
       confirmed.run.id,
       confirmed.compilation.family,

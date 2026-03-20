@@ -32,6 +32,8 @@ pub fn decide_active_job_notifications(String, JobRun, Array[JobRunEvent], JobNo
 
 pub fn default_analysis_executor() -> AnalysisExecutor
 
+pub fn definition_display_title(JobDefinition) -> String
+
 pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
@@ -50,7 +52,13 @@ pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotify
 
 pub fn finished_status_prefix(RunStatus) -> String
 
+pub fn format_job_timestamp(Int) -> String
+
 pub fn format_progress_event(JobRunEvent) -> String?
+
+pub fn human_readable_proposal_id(String, Int, String) -> String
+
+pub fn human_readable_run_id(Int, String) -> String
 
 pub fn initial_notification_runtime_state(Int) -> JobNotificationRuntimeState
 
@@ -92,7 +100,7 @@ pub fn render_active_runs(SystemStore, Array[JobRun]) -> String
 
 pub fn render_confirm_proposal_failure(String, String) -> String
 
-pub fn render_confirmed_job_reply(String, String, String, String) -> String
+pub fn render_confirmed_job_reply(String, String, String, String, String, String) -> String
 
 pub fn render_job_notify_updated(NotificationVerbosity) -> String
 
@@ -176,6 +184,8 @@ pub suberror InvalidJobId {
 // Types and methods
 pub(all) struct ActiveJobSnapshot {
   definition_id : String
+  definition_title : String
+  created_at_label : String
   run_id : String
   status : String
   family : String
@@ -825,6 +835,8 @@ pub impl @json.FromJson for JobRunEvent
 
 pub(all) struct JobStatusSnapshot {
   definition_id : String
+  definition_title : String
+  created_at_label : String
   run_id : String
   status : String
   family : String

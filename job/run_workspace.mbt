@@ -9,12 +9,12 @@ fn configured_workspace_root(definition : JobDefinition) -> String? {
 
 ///|
 fn run_workspace_root_dir(root : String) -> String {
-  root |> @pathx.join(".moonclaw") |> @pathx.join("job-workspaces")
+  root |> @pathx.join("moonclaw-jobs")
 }
 
 ///|
 fn child_workspace_root_dir(parent_workspace : String) -> String {
-  parent_workspace |> @pathx.join(".moonclaw") |> @pathx.join("subjobs")
+  parent_workspace |> @pathx.join("moonclaw-subjobs")
 }
 
 ///|
@@ -84,67 +84,6 @@ async fn ensure_directory(path : String) -> Unit {
 }
 
 ///|
-async fn copy_workspace_files_if_missing(
-  source_workspace : String,
-  workspace_dir : String,
-) -> Unit {
-  for name in @workspace.managed_workspace_file_names() {
-    let source_file = source_workspace |> @pathx.join(name)
-    let target_file = workspace_dir |> @pathx.join(name)
-    let target_exists = @fsx.exists(target_file) catch { _ => false }
-    if target_exists {
-      continue
-    }
-    let content = @fsx.read_file(source_file) catch { _ => "" }
-    @fsx.write_to_file(target_file, content) catch {
-      _ => ()
-    }
-  }
-}
-
-///|
-fn scoped_workspace_memories(
-  store : SystemStore,
-  workspace_root : String,
-) -> Array[MemoryRecord] {
-  MemoryService::new(store~).list(
-    query=MemoryQuery::new(
-      workspace=Some(workspace_root),
-      status=Some(MemoryStatus::Active),
-    ),
-  )
-}
-
-///|
-fn file_with_generated_section(
-  current_content : String,
-  start_marker : String,
-  end_marker : String,
-  generated_content : String,
-) -> String {
-  let section = [start_marker, generated_content, end_marker].join("\n")
-  match (current_content.find(start_marker), current_content.find(end_marker)) {
-    (Some(start), Some(end)) if end >= start =>
-      current_content[:start].to_string() +
-      section +
-      current_content[end + end_marker.length():].to_string()
-    _ if current_content.trim().is_blank() => section + "\n"
-    _ => current_content.trim_end().to_string() + "\n\n" + section + "\n"
-  }
-}
-
-///|
-fn memory_file_with_generated_section(
-  current_content : String,
-  generated_content : String,
-) -> String {
-  file_with_generated_section(
-    current_content, "<!-- moonclaw:memory:start -->", "<!-- moonclaw:memory:end -->",
-    generated_content,
-  )
-}
-
-///|
 fn manual_memory_content(current_content : String) -> String {
   let start_marker = "<!-- moonclaw:memory:start -->"
   let end_marker = "<!-- moonclaw:memory:end -->"
@@ -156,34 +95,6 @@ fn manual_memory_content(current_content : String) -> String {
       .to_string()
     _ => current_content.trim().to_string()
   }
-}
-
-///|
-fn memory_matches_materialized_role(
-  memory : MemoryRecord,
-  role : String,
-) -> Bool {
-  if memory.tags.contains(role) || memory.tags.contains("workspace.\{role}") {
-    return true
-  }
-  match (role, memory.kind) {
-    ("identity", kind) if kind == "identity.note" ||
-      kind == "workspace.identity" => true
-    ("routine", kind) if kind == "routine.note" || kind == "workspace.routine" =>
-      true
-    _ => false
-  }
-}
-
-///|
-fn materialized_workspace_memories(
-  store : SystemStore,
-  workspace_root : String,
-  role : String,
-) -> Array[MemoryRecord] {
-  scoped_workspace_memories(store, workspace_root).filter(fn(memory) {
-    memory_matches_materialized_role(memory, role)
-  })
 }
 
 ///|
@@ -233,61 +144,6 @@ async fn sync_manual_workspace_memory(
 }
 
 ///|
-async fn sync_workspace_memory_file(
-  store : SystemStore,
-  source_workspace : String,
-  workspace_dir : String,
-) -> Unit {
-  let memory_file = workspace_dir |> @pathx.join("MEMORY.md")
-  let current_content = @fsx.read_file(memory_file) catch { _ => "" }
-  let generated = render_memory_records_prompt(
-    scoped_workspace_memories(store, source_workspace),
-    header="Inherited workspace memory",
-  )
-  let next_content = memory_file_with_generated_section(
-    current_content,
-    if generated.is_blank() {
-      "No inherited workspace memories yet."
-    } else {
-      generated
-    },
-  )
-  @fsx.write_to_file(memory_file, next_content) catch {
-    _ => ()
-  }
-}
-
-///|
-async fn sync_materialized_workspace_file(
-  store : SystemStore,
-  source_workspace : String,
-  workspace_dir : String,
-  file_name : String,
-  role : String,
-  header : String,
-) -> Unit {
-  let file_path = workspace_dir |> @pathx.join(file_name)
-  let current_content = @fsx.read_file(file_path) catch { _ => "" }
-  let generated = render_memory_records_prompt(
-    materialized_workspace_memories(store, source_workspace, role),
-    header~,
-  )
-  let next_content = file_with_generated_section(
-    current_content,
-    "<!-- moonclaw:\{role}:start -->",
-    "<!-- moonclaw:\{role}:end -->",
-    if generated.is_blank() {
-      "No materialized \{role} memories yet."
-    } else {
-      generated
-    },
-  )
-  @fsx.write_to_file(file_path, next_content) catch {
-    _ => ()
-  }
-}
-
-///|
 pub async fn refresh_run_workspace_memory(
   store : SystemStore,
   definition : JobDefinition,
@@ -300,13 +156,6 @@ pub async fn refresh_run_workspace_memory(
   }
   sync_manual_workspace_memory(
     store, definition, run, source_workspace, workspace_dir,
-  )
-  sync_workspace_memory_file(store, source_workspace, workspace_dir)
-  sync_materialized_workspace_file(
-    store, source_workspace, workspace_dir, "IDENTITY.md", "identity", "Materialized identity memory",
-  )
-  sync_materialized_workspace_file(
-    store, source_workspace, workspace_dir, "ROUTINES.md", "routine", "Materialized routine memory",
   )
 }
 
@@ -453,8 +302,6 @@ pub async fn prepare_run_workspace(
   let source_workspace = source_workspace_dir(store, definition, run)
   let workspace_dir = derived_workspace_dir(store, definition, run)
   ensure_directory(workspace_dir)
-  copy_workspace_files_if_missing(source_workspace, workspace_dir)
-  sync_workspace_memory_file(store, source_workspace, workspace_dir)
   write_run_workspace_metadata(definition, run, workspace_dir, source_workspace)
   initialize_workspace_repo(workspace_dir)
   let updated = JobRun::{ ..run, workspace_dir: Some(workspace_dir) }

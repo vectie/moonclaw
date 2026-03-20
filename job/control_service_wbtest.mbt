@@ -51,16 +51,18 @@ async test "render_job_status_command_reply resolves run targets" {
   store.save_definition(definition)
   store.save_workflow(workflow)
   store.save_run(run)
-  let expected =
-    #|Current job status: job-1
-    #|Run: run-1
-    #|Status: "Running"
-    #|Family: generic
-    #|Current step: step-1
-    #|Progress: 0/2
-    #|Elapsed: 90ms
-    #|Latest event: none
-    #|Use `/job-status job-1` for a fresh status check.
+  let created_at = format_job_timestamp(1)
+  let expected = "Current job status: job-1\n" +
+    "Title: job-1\n" +
+    "Created: \{created_at}\n" +
+    "Run: run-1\n" +
+    "Status: \"Running\"\n" +
+    "Family: generic\n" +
+    "Current step: step-1\n" +
+    "Progress: 0/2\n" +
+    "Elapsed: 90ms\n" +
+    "Latest event: none\n" +
+    "Use `/job-status job-1` for a fresh status check."
   inspect(
     render_job_status_command_reply(store, "job-1", 100, "Current job status").unwrap_or(
       "",

@@ -15,6 +15,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/strconv",
   "moonbitlang/core/test",
+  "moonbitlang/x/time",
   "moonbitlang/moonclaw/tools/apply_patch",
   "moonbitlang/moonclaw/tools/execute_command",
   "moonbitlang/moonclaw/tools/list_files",

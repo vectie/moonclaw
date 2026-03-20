@@ -35,6 +35,8 @@ pub(all) struct ChildRunStatus {
 ///|
 pub(all) struct JobStatusSnapshot {
   definition_id : String
+  definition_title : String
+  created_at_label : String
   run_id : String
   status : String
   family : String
@@ -52,6 +54,8 @@ pub(all) struct JobStatusSnapshot {
 ///|
 pub(all) struct ActiveJobSnapshot {
   definition_id : String
+  definition_title : String
+  created_at_label : String
   run_id : String
   status : String
   family : String
@@ -469,6 +473,8 @@ pub fn render_job_status(
   }
   [
     "\{prefix}: \{snapshot.definition_id}",
+    "Title: \{snapshot.definition_title}",
+    "Created: \{snapshot.created_at_label}",
     "Run: \{snapshot.run_id}",
     "Status: \{snapshot.status}",
     "Family: \{snapshot.family}",
@@ -495,8 +501,10 @@ pub fn render_active_jobs(runs : Array[ActiveJobSnapshot]) -> String {
   for run in runs {
     lines.push(
       [
-        "- `\{run.definition_id}`",
+        "- `\{run.definition_title}`",
+        "job=`\{run.definition_id}`",
         "run=`\{run.run_id}`",
+        "created=\{run.created_at_label}",
         "status=\{run.status}",
         "family=\{run.family}",
         "depth=\{run.depth}",
@@ -510,12 +518,16 @@ pub fn render_active_jobs(runs : Array[ActiveJobSnapshot]) -> String {
 ///|
 pub fn render_confirmed_job_reply(
   proposal_id : String,
+  title : String,
+  created_at_label : String,
   definition_id : String,
   run_id : String,
   family : String,
 ) -> String {
   let lines = [
     "Confirmed proposal `\{proposal_id}`.",
+    "Title: \{title}",
+    "Created: \{created_at_label}",
     "Created job `\{definition_id}` and started run `\{run_id}`.",
     "Check status with `/job-status \{definition_id}` or `/job-status \{run_id}`.",
     "You will receive start, progress, and completion notifications here.",

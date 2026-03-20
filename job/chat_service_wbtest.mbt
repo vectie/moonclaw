@@ -230,6 +230,23 @@ test "parse_job_notify_target accepts legacy optional-json array encoding" {
 }
 
 ///|
+test "render_confirmed_job_reply includes title and created time" {
+  let rendered = render_confirmed_job_reply(
+    "20260320-track-vla-abc123", "Fetch Top 10 VLA Articles from arXiv", "2026-03-20 18:42:33",
+    "job.proposal.20260320-track-vla-abc123", "run-20260320-184233-abc123", "topic_watch_controller",
+  )
+  inspect(
+    rendered.contains("Title: Fetch Top 10 VLA Articles from arXiv"),
+    content="true",
+  )
+  inspect(rendered.contains("Created: 2026-03-20 18:42:33"), content="true")
+  inspect(
+    rendered.contains("Created job `job.proposal.20260320-track-vla-abc123`"),
+    content="true",
+  )
+}
+
+///|
 async test "save_job_notification_preference preserves created_at when updating" {
   @fsx.with_temporary_directory("job-chat-service-notify-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

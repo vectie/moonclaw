@@ -154,7 +154,7 @@ async fn Gateway::trigger_job_definition(
     self
     .job_runtime()
     .trigger_definition(
-      self.uuid.v4().to_string(),
+      @job.human_readable_run_id(current_time_ms(), self.uuid.v4().to_string()),
       job_id,
       trigger,
       current_time_ms(),

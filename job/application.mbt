@@ -157,13 +157,14 @@ pub async fn GatewayJobApp::plan_proposal_in_workspace(
   thread_id? : String? = None,
   model? : String? = None,
 ) -> JobProposal {
+  let now_ms = self.now()
   let memory_context = self.planning_memory_context(
     request_text, workspace_root, channel_id, account_id, recipient, thread_id,
   )
   plan_job_proposal(
-    self.next_id(),
+    human_readable_proposal_id(request_text, now_ms, self.next_id()),
     request_text,
-    self.now(),
+    now_ms,
     channel_id~,
     account_id~,
     recipient~,
@@ -339,7 +340,7 @@ pub fn GatewayJobApp::new_workflow_engine(
       compiler=self.proposal_compiler(),
       engine_factory=fn() { self.new_workflow_engine() },
       now=fn() { self.now() },
-      next_run_id=fn() { self.next_id() },
+      next_run_id=fn() { human_readable_run_id(self.now(), self.next_id()) },
     ),
   )
   engine

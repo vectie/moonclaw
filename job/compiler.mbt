@@ -121,6 +121,8 @@ pub fn compile_job_proposal(
     enabled: true,
     config: {
       "proposal_id": proposal.id,
+      "title": proposal.title,
+      "proposal_title": proposal.title,
       "workspace": workspace_root,
       "family": family,
       "profile_id": proposal.profile_id,

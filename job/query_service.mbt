@@ -38,6 +38,11 @@ pub fn current_step_label(
 }
 
 ///|
+fn definition_created_at_label(definition : JobDefinition) -> String {
+  format_job_timestamp(definition.created_at)
+}
+
+///|
 pub fn child_runs_for(store : SystemStore, run_id : String) -> Array[JobRun] {
   store.list_runs().filter(fn(run) { run.parent_run_id == Some(run_id) })
 }
@@ -96,6 +101,8 @@ pub async fn render_status_text(
   render_job_status(
     JobStatusSnapshot::{
       definition_id: definition.id,
+      definition_title: definition_display_title(definition),
+      created_at_label: definition_created_at_label(definition),
       run_id: run.id,
       status: run.status.to_json().stringify(),
       family,
@@ -125,6 +132,8 @@ pub fn render_active_runs(store : SystemStore, runs : Array[JobRun]) -> String {
         }
         summaries.push(ActiveJobSnapshot::{
           definition_id: definition.id,
+          definition_title: definition_display_title(definition),
+          created_at_label: definition_created_at_label(definition),
           run_id: run.id,
           status: run.status.to_json().stringify(),
           family,
