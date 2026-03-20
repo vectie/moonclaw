@@ -47,6 +47,7 @@ pub struct FeishuChannel {
 }
 pub fn FeishuChannel::new() -> Self
 pub fn FeishuChannel::set_message_handler(Self, &@channel.MessageHandler) -> Unit
+pub fn FeishuChannel::set_test_websocket_endpoint_sequence(Self, String, Array[String]) -> Unit
 pub fn FeishuChannel::with_extension(Self, (&@channel.ChannelExtension) -> Unit raise) -> Unit raise
 
 type FeishuChannelState
@@ -54,12 +55,19 @@ type FeishuChannelState
 pub struct FeishuClient {
   config : FeishuAccountConfig
 }
+pub async fn FeishuClient::add_message_reaction(Self, String, String) -> Result[FeishuReactionIndicatorState, @channel.ChannelError]
+pub async fn FeishuClient::add_typing_indicator(Self, String) -> Result[FeishuTypingIndicatorState, @channel.ChannelError]
+pub async fn FeishuClient::close_streaming_card(Self, FeishuStreamingCardSession, String) -> Result[@channel.SendResult, @channel.ChannelError]
 pub async fn FeishuClient::get_message(Self, String) -> Result[FeishuMessageLookupItem?, @channel.ChannelError]
 pub async fn FeishuClient::get_message_items(Self, String) -> Result[Array[FeishuMessageLookupItem], @channel.ChannelError]
 pub async fn FeishuClient::get_user_display_name(Self, String) -> Result[String?, @channel.ChannelError]
 pub async fn FeishuClient::get_user_display_names(Self, Array[String]) -> Result[Map[String, String], @channel.ChannelError]
 pub fn FeishuClient::new(FeishuAccountConfig) -> Self
+pub async fn FeishuClient::remove_message_reaction(Self, FeishuReactionIndicatorState) -> Result[Unit, @channel.ChannelError]
+pub async fn FeishuClient::remove_typing_indicator(Self, FeishuTypingIndicatorState) -> Result[Unit, @channel.ChannelError]
 pub async fn FeishuClient::send_text_message(Self, String, String, reply_to? : String?, reply_in_thread? : Bool) -> Result[@channel.SendResult, @channel.ChannelError]
+pub async fn FeishuClient::start_streaming_card(Self, String, String, reply_to? : String?, reply_in_thread? : Bool) -> Result[FeishuStreamingCardSession, @channel.ChannelError]
+pub async fn FeishuClient::update_streaming_card(Self, FeishuStreamingCardSession, String) -> Result[FeishuStreamingCardSession, @channel.ChannelError]
 
 pub struct FeishuEvent {
   schema : String
@@ -154,6 +162,13 @@ pub impl Show for FeishuMessageLookupSender
 pub impl ToJson for FeishuMessageLookupSender
 pub impl @json.FromJson for FeishuMessageLookupSender
 
+pub struct FeishuReactionIndicatorState {
+  message_id : String
+  reaction_id : String
+  emoji_type : String
+}
+pub impl Show for FeishuReactionIndicatorState
+
 pub struct FeishuSendMessageRequest {
   receive_id : String
   msg_type : String
@@ -171,6 +186,20 @@ pub struct FeishuSendMessageResponse {
 pub impl Show for FeishuSendMessageResponse
 pub impl ToJson for FeishuSendMessageResponse
 pub impl @json.FromJson for FeishuSendMessageResponse
+
+pub struct FeishuStreamingCardSession {
+  card_id : String
+  message_id : String
+  sequence : Int
+  current_text : String
+}
+pub impl Show for FeishuStreamingCardSession
+
+pub struct FeishuTypingIndicatorState {
+  message_id : String
+  reaction_id : String
+}
+pub impl Show for FeishuTypingIndicatorState
 
 pub struct FeishuUser {
   open_id : String?
@@ -239,10 +268,6 @@ pub struct FeishuWebSocketEndpointResponse {
 pub impl Show for FeishuWebSocketEndpointResponse
 pub impl ToJson for FeishuWebSocketEndpointResponse
 pub impl @json.FromJson for FeishuWebSocketEndpointResponse
-
-type QueuedFeishuMessage
-
-type ResolvedReactionTarget
 
 // Type aliases
 pub type FeishuConnectionMode = String

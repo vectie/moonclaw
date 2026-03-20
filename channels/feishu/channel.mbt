@@ -12,6 +12,7 @@ struct FeishuChannelState {
   pending_messages : Map[String, Array[QueuedFeishuMessage]]
   processing_keys : Map[String, Bool]
   cancelled_queues : Map[String, Bool]
+  mut active_progress_reactions : Map[String, FeishuReactionIndicatorState]
   mut websocket_chunks : Map[String, FeishuWebSocketChunkState]
   websocket_endpoint_test_overrides : Map[String, Array[String]]
   mut message_handler : &@channel.MessageHandler?
@@ -44,6 +45,7 @@ pub fn FeishuChannel::new() -> FeishuChannel {
       pending_messages: {},
       processing_keys: {},
       cancelled_queues: {},
+      active_progress_reactions: {},
       websocket_chunks: {},
       websocket_endpoint_test_overrides: {},
       message_handler: None,
@@ -204,6 +206,7 @@ impl @channel.Channel for FeishuChannel with configure(
   self.state.pending_messages.clear()
   self.state.processing_keys.clear()
   self.state.cancelled_queues.clear()
+  self.state.active_progress_reactions = {}
   self.state.websocket_chunks.clear()
   self.state.websocket_endpoint_test_overrides.clear()
   for account_id, account_config in config.accounts {
@@ -285,7 +288,14 @@ impl @channel.Channel for FeishuChannel with send(
   }
 
   match self.state.clients.get(actual_account_id) {
-    Some(client) =>
+    Some(client) => {
+      let stream_key = feishu_stream_key(actual_account_id, message)
+      if message.content_type == "progress" {
+        return self.send_stream_progress(
+          client, actual_account_id, to, message, stream_key,
+        )
+      }
+      self.clear_progress_reaction(client, actual_account_id, stream_key)
       client.send_text_message(
         to,
         message.content,
@@ -295,6 +305,7 @@ impl @channel.Channel for FeishuChannel with send(
           None => false
         },
       )
+    }
     None =>
       Err(
         @channel.ChannelError::NotConfigured(
@@ -302,6 +313,116 @@ impl @channel.Channel for FeishuChannel with send(
         ),
       )
   }
+}
+
+///|
+fn feishu_stream_key(account_id : String, message : @channel.Message) -> String {
+  let reply_to = message.reply_to.unwrap_or("")
+  let thread_id = message.thread_id.unwrap_or("")
+  "\{account_id}:\{message.to}:\{reply_to}:\{thread_id}"
+}
+
+///|
+fn feishu_typing_message_id(message : @channel.Message) -> String? {
+  match message.reply_to {
+    Some(message_id) if !message_id.is_blank() => Some(message_id)
+    _ => None
+  }
+}
+
+///|
+fn feishu_progress_emoji_type(progress : String) -> String {
+  match progress {
+    "thinking" => "THINKING"
+    "tool" => "HAMMER"
+    "drafting" => "OnIt"
+    _ => "THINKING"
+  }
+}
+
+///|
+async fn FeishuChannel::ensure_progress_reaction(
+  self : FeishuChannel,
+  client : FeishuClient,
+  account_id : String,
+  stream_key : String,
+  message : @channel.Message,
+) -> Unit {
+  let emoji_type = feishu_progress_emoji_type(message.content)
+  match feishu_typing_message_id(message) {
+    Some(message_id) =>
+      match self.state.active_progress_reactions.get(stream_key) {
+        Some(state) if state.message_id == message_id &&
+          state.emoji_type == emoji_type => ()
+        Some(state) => {
+          self.state.active_progress_reactions.remove(stream_key) |> ignore()
+          ignore(client.remove_message_reaction(state))
+          match client.add_message_reaction(message_id, emoji_type) {
+            Ok(updated) =>
+              self.state.active_progress_reactions[stream_key] = updated
+            Err(error) =>
+              self.log_warn(
+                "Failed to add Feishu progress reaction for \{account_id}: \{error}",
+              )
+          }
+        }
+        None =>
+          match client.add_message_reaction(message_id, emoji_type) {
+            Ok(state) =>
+              self.state.active_progress_reactions[stream_key] = state
+            Err(error) =>
+              self.log_warn(
+                "Failed to add Feishu progress reaction for \{account_id}: \{error}",
+              )
+          }
+      }
+    None => ()
+  }
+}
+
+///|
+async fn FeishuChannel::clear_progress_reaction(
+  self : FeishuChannel,
+  client : FeishuClient,
+  account_id : String,
+  stream_key : String,
+) -> Unit {
+  match self.state.active_progress_reactions.get(stream_key) {
+    Some(state) => {
+      self.state.active_progress_reactions.remove(stream_key) |> ignore()
+      match client.remove_message_reaction(state) {
+        Ok(_) => ()
+        Err(error) =>
+          self.log_warn(
+            "Failed to remove Feishu progress reaction for \{account_id}: \{error}",
+          )
+      }
+    }
+    None => ()
+  }
+}
+
+///|
+async fn FeishuChannel::send_stream_progress(
+  self : FeishuChannel,
+  client : FeishuClient,
+  account_id : String,
+  to : String,
+  message : @channel.Message,
+  stream_key : String,
+) -> Result[@channel.SendResult, @channel.ChannelError] {
+  ignore(to)
+  self.ensure_progress_reaction(client, account_id, stream_key, message)
+  let message_id = match feishu_typing_message_id(message) {
+    Some(message_id) => message_id
+    None => message.id
+  }
+  Ok(@channel.SendResult::{
+    channel: "feishu",
+    message_id,
+    timestamp: 0,
+    status: "updated",
+  })
 }
 
 ///|

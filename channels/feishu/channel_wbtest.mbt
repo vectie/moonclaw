@@ -197,6 +197,76 @@ fn feishu_event_request(
 }
 
 ///|
+test "feishu_stream_key is stable for reply target" {
+  let message = @channel.Message::{
+    id: "reply-1",
+    channel: "feishu",
+    from: "bot",
+    to: "chat-1",
+    content: "Thinking...",
+    content_type: "progress",
+    timestamp: 1,
+    thread_id: Some("thread-1"),
+    reply_to: Some("incoming-1"),
+    attachments: [],
+  }
+  inspect(
+    feishu_stream_key("default", message),
+    content="default:chat-1:incoming-1:thread-1",
+  )
+}
+
+///|
+test "feishu_typing_message_id uses reply target only" {
+  inspect(
+    feishu_typing_message_id(@channel.Message::{
+      id: "reply-1",
+      channel: "feishu",
+      from: "bot",
+      to: "chat-1",
+      content: "Thinking...",
+      content_type: "progress",
+      timestamp: 1,
+      thread_id: Some("thread-1"),
+      reply_to: Some("incoming-1"),
+      attachments: [],
+    }),
+    content="Some(\"incoming-1\")",
+  )
+  inspect(
+    feishu_typing_message_id(@channel.Message::{
+      id: "reply-2",
+      channel: "feishu",
+      from: "bot",
+      to: "chat-1",
+      content: "Thinking...",
+      content_type: "progress",
+      timestamp: 1,
+      thread_id: None,
+      reply_to: None,
+      attachments: [],
+    }),
+    content="None",
+  )
+}
+
+///|
+test "feishu_progress_emoji_type maps phases to emoji names" {
+  inspect(feishu_progress_emoji_type("thinking"), content="THINKING")
+  inspect(feishu_progress_emoji_type("tool"), content="HAMMER")
+  inspect(feishu_progress_emoji_type("drafting"), content="OnIt")
+  inspect(feishu_progress_emoji_type("unknown"), content="THINKING")
+}
+
+///|
+test "build_streaming_card_json contains content element" {
+  inspect(
+    build_streaming_card_json("Thinking...").stringify(),
+    content="{\"schema\":\"2.0\",\"config\":{\"streaming_mode\":true,\"summary\":{\"content\":\"[Generating...]\"},\"streaming_config\":{\"print_frequency_ms\":{\"default\":50},\"print_step\":{\"default\":1}}},\"body\":{\"elements\":[{\"tag\":\"markdown\",\"content\":\"Thinking...\",\"element_id\":\"content\"}]}}",
+  )
+}
+
+///|
 async test "Feishu webhook routes abort text to cancel events without invoking message handling" {
   let channel = FeishuChannel::new()
   channel.configure(feishu_test_config())

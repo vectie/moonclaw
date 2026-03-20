@@ -345,6 +345,27 @@ async test "Event::ToJson/AssistantMessage" (t : @test.Test) {
 }
 
 ///|
+async test "Event::ToJson/AssistantMessageDelta" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let events = []
+    @async.with_task_group(group => {
+      let emitter = @event.EventTarget::new(uuid=mock.uuid, clock=mock.clock)
+      emitter.add_listener(event => events.push(event))
+      group.spawn_bg(() => emitter.start(), no_wait=true)
+      @async.pause()
+      emitter.emit(AssistantMessageDelta("partial"))
+    })
+    json_inspect(events, content=[
+      {
+        "id": "ac8a366d-ce7e-47d9-8bc7-27c69e416f1a",
+        "created": 0,
+        "desc": { "msg": "AssistantMessageDelta", "content": "partial" },
+      },
+    ])
+  })
+}
+
+///|
 async test "Event::ModelLoaded" (t : @test.Test) {
   @mock.run(t, mock => {
     let events = []
@@ -599,6 +620,14 @@ test "Event::Roundtrip/AssistantMessage/WithUsage" {
       "total_tokens": 150,
     },
   })
+  let roundtripped : @event.EventDesc = @json.from_json(json)
+  assert_eq(roundtripped, event)
+}
+
+///|
+test "Event::Roundtrip/AssistantMessageDelta" {
+  let event : @event.EventDesc = AssistantMessageDelta("partial response")
+  let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   assert_eq(roundtripped, event)
 }

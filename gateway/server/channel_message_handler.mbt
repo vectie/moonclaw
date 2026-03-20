@@ -121,6 +121,49 @@ fn Gateway::channel_reply_message(
 }
 
 ///|
+fn thinking_status_text() -> String {
+  "thinking"
+}
+
+///|
+fn tool_status_text(tool_name : String) -> String {
+  ignore(tool_name)
+  "tool"
+}
+
+///|
+fn drafting_status_text() -> String {
+  "drafting"
+}
+
+///|
+async fn Gateway::send_channel_progress_message(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  incoming : @channel.Message,
+  content : String,
+) -> Unit {
+  let message = @channel.Message::{
+    ..self.channel_reply_message(channel_id, account_id, incoming, content),
+    content_type: "progress",
+  }
+  match
+    self.channel_manager.send_message(
+      channel_id,
+      message.to,
+      message,
+      Some(account_id),
+    ) {
+    Ok(_) => ()
+    Err(error) =>
+      self.logger.warn(
+        "Failed to send channel progress message: \{channel_id} / \{account_id} / \{error}",
+      )
+  }
+}
+
+///|
 fn Gateway::routable_acp_sessions(
   self : Gateway,
   session_key : String,
@@ -715,8 +758,40 @@ impl @channel.MessageHandler for Gateway with handle_message(
     moonclaw.agent.external_events(),
   )
   defer self.clear_active_channel_session(session_key)
+  let mut last_progress_text = ""
+  let mut saw_text_delta = false
   moonclaw.agent.event_target.add_listener(event => {
     match event.desc {
+      PreConversation if channel_id == "feishu" => {
+        let progress = thinking_status_text()
+        if last_progress_text != progress {
+          last_progress_text = progress
+          self.send_channel_progress_message(
+            channel_id, account_id, message, progress,
+          )
+        }
+      }
+      PreToolCall(tool_call) if channel_id == "feishu" => {
+        let progress = tool_status_text(tool_call.name)
+        if last_progress_text != progress {
+          last_progress_text = progress
+          self.send_channel_progress_message(
+            channel_id, account_id, message, progress,
+          )
+        }
+      }
+      AssistantMessageDelta(delta) if channel_id == "feishu" &&
+        !delta.is_blank() &&
+        !saw_text_delta => {
+        saw_text_delta = true
+        let progress = drafting_status_text()
+        if last_progress_text != progress {
+          last_progress_text = progress
+          self.send_channel_progress_message(
+            channel_id, account_id, message, progress,
+          )
+        }
+      }
       AssistantMessage(content, ..) if !content.is_blank() =>
         reply_text = content
       _ => ()

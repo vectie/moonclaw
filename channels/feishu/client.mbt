@@ -4,6 +4,27 @@ pub struct FeishuClient {
 }
 
 ///|
+pub struct FeishuStreamingCardSession {
+  card_id : String
+  message_id : String
+  sequence : Int
+  current_text : String
+} derive(Show)
+
+///|
+pub struct FeishuTypingIndicatorState {
+  message_id : String
+  reaction_id : String
+} derive(Show)
+
+///|
+pub struct FeishuReactionIndicatorState {
+  message_id : String
+  reaction_id : String
+  emoji_type : String
+} derive(Show)
+
+///|
 pub fn FeishuClient::new(config : FeishuAccountConfig) -> FeishuClient {
   FeishuClient::{ config, }
 }
@@ -94,6 +115,131 @@ fn detect_receive_id_type(target : String) -> (String, String) {
 ///|
 fn build_text_content(text : String) -> Json {
   { "text": text }
+}
+
+///|
+fn build_streaming_card_content(card_id : String) -> Json {
+  { "type": "card", "data": { "card_id": card_id } }
+}
+
+///|
+fn build_streaming_card_json(initial_text : String) -> Json {
+  {
+    "schema": "2.0",
+    "config": {
+      "streaming_mode": true,
+      "summary": { "content": "[Generating...]" },
+      "streaming_config": {
+        "print_frequency_ms": { "default": 50 },
+        "print_step": { "default": 1 },
+      },
+    },
+    "body": {
+      "elements": [
+        { "tag": "markdown", "content": initial_text, "element_id": "content" },
+      ],
+    },
+  }
+}
+
+///|
+fn truncate_stream_summary(text : String, max_chars? : Int = 50) -> String {
+  let clean = text.replace(old="\n", new=" ").trim().to_string()
+  if clean.is_blank() {
+    "[Generating...]"
+  } else if clean.length() <= max_chars {
+    clean
+  } else {
+    clean[:max_chars - 3].trim().to_string() + "..."
+  }
+}
+
+///|
+fn parse_json_code_msg(
+  response_json : Json,
+  error_prefix : String,
+) -> Result[(Int, String), @channel.ChannelError] {
+  let code = match response_json {
+    { "code": Number(code, ..), .. } => code.to_int()
+    { "code": String(code), .. } =>
+      @strconv.parse_int(code) catch {
+        _ =>
+          return Err(
+            @channel.ChannelError::SendMessageFailed(
+              message="\{error_prefix}: invalid response code",
+            ),
+          )
+      }
+    _ =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="\{error_prefix}: missing response code",
+        ),
+      )
+  }
+  let msg = match response_json {
+    { "msg": String(msg), .. } => msg
+    _ => ""
+  }
+  Ok((code, msg))
+}
+
+///|
+fn parse_card_id(
+  response_json : Json,
+  error_prefix : String,
+) -> Result[String, @channel.ChannelError] {
+  match response_json {
+    { "data": { "card_id": String(card_id), .. }, .. } if !card_id.is_blank() =>
+      Ok(card_id)
+    _ =>
+      Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="\{error_prefix}: missing card_id",
+        ),
+      )
+  }
+}
+
+///|
+fn parse_reaction_id(
+  response_json : Json,
+  error_prefix : String,
+) -> Result[String, @channel.ChannelError] {
+  match response_json {
+    { "data": { "reaction_id": String(reaction_id), .. }, .. } if !reaction_id.is_blank() =>
+      Ok(reaction_id)
+    _ =>
+      Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="\{error_prefix}: missing reaction_id",
+        ),
+      )
+  }
+}
+
+///|
+async fn authed_feishu_http_client(
+  config : FeishuAccountConfig,
+) -> Result[@http.Client, @channel.ChannelError] {
+  let token = match FeishuClient::new(config).load_tenant_access_token() {
+    Ok(token) => token
+    Err(error) => return Err(error)
+  }
+  let base_url = feishu_base_url(config.domain)
+  let client = @http.Client::new(base_url, headers={
+    "Authorization": "Bearer \{token}",
+    "Content-Type": "application/json",
+    "Connection": "close",
+  }) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to create Feishu HTTP client: \{error}",
+        ),
+      )
+  }
+  Ok(client)
 }
 
 ///|
@@ -494,6 +640,167 @@ async fn FeishuClient::load_tenant_access_token(
 }
 
 ///|
+pub async fn FeishuClient::add_typing_indicator(
+  self : FeishuClient,
+  message_id : String,
+) -> Result[FeishuTypingIndicatorState, @channel.ChannelError] {
+  let state = match self.add_message_reaction(message_id, "Typing") {
+    Ok(state) => state
+    Err(error) => return Err(error)
+  }
+  Ok(FeishuTypingIndicatorState::{
+    message_id: state.message_id,
+    reaction_id: state.reaction_id,
+  })
+}
+
+///|
+pub async fn FeishuClient::add_message_reaction(
+  self : FeishuClient,
+  message_id : String,
+  emoji_type : String,
+) -> Result[FeishuReactionIndicatorState, @channel.ChannelError] {
+  let client = match authed_feishu_http_client(self.config) {
+    Ok(client) => client
+    Err(error) => return Err(error)
+  }
+  defer client.close()
+
+  let response = client.post(
+    "/open-apis/im/v1/messages/\{message_id}/reactions",
+    Json::object({ "reaction_type": Json::object({ "emoji_type": emoji_type }) }),
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Failed to add Feishu reaction: \{error}",
+        ),
+      )
+  }
+  let body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::SendMessageFailed(
+            message="Failed to read Feishu reaction response: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu reaction API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Invalid Feishu reaction response: \{body_text}",
+        ),
+      )
+  }
+  let (code, msg) = match
+    parse_json_code_msg(response_json, "Failed to add Feishu reaction") {
+    Ok(pair) => pair
+    Err(error) => return Err(error)
+  }
+  if code != 0 {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu reaction failed: \{msg}",
+      ),
+    )
+  }
+  let reaction_id = match
+    parse_reaction_id(response_json, "Failed to add Feishu reaction") {
+    Ok(reaction_id) => reaction_id
+    Err(error) => return Err(error)
+  }
+  Ok(FeishuReactionIndicatorState::{ message_id, reaction_id, emoji_type })
+}
+
+///|
+pub async fn FeishuClient::remove_typing_indicator(
+  self : FeishuClient,
+  state : FeishuTypingIndicatorState,
+) -> Result[Unit, @channel.ChannelError] {
+  self.remove_message_reaction(FeishuReactionIndicatorState::{
+    message_id: state.message_id,
+    reaction_id: state.reaction_id,
+    emoji_type: "Typing",
+  })
+}
+
+///|
+pub async fn FeishuClient::remove_message_reaction(
+  self : FeishuClient,
+  state : FeishuReactionIndicatorState,
+) -> Result[Unit, @channel.ChannelError] {
+  let client = match authed_feishu_http_client(self.config) {
+    Ok(client) => client
+    Err(error) => return Err(error)
+  }
+  defer client.close()
+
+  client.request(
+    @http.RequestMethod::Delete,
+    "/open-apis/im/v1/messages/\{state.message_id}/reactions/\{state.reaction_id}",
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Failed to remove Feishu reaction: \{error}",
+        ),
+      )
+  }
+  let response = client.end_request() catch {
+    error =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Failed to finish Feishu reaction removal request: \{error}",
+        ),
+      )
+  }
+  let body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::SendMessageFailed(
+            message="Failed to read Feishu reaction removal response: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu reaction removal API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Invalid Feishu reaction removal response: \{body_text}",
+        ),
+      )
+  }
+  let (code, msg) = match
+    parse_json_code_msg(response_json, "Failed to remove Feishu reaction") {
+    Ok(pair) => pair
+    Err(error) => return Err(error)
+  }
+  if code != 0 {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu reaction removal failed: \{msg}",
+      ),
+    )
+  }
+  Ok(())
+}
+
+///|
 pub async fn FeishuClient::send_text_message(
   self : FeishuClient,
   receive_id : String,
@@ -558,6 +865,283 @@ pub async fn FeishuClient::send_text_message(
   }
 
   parse_send_response(response, client)
+}
+
+///|
+pub async fn FeishuClient::start_streaming_card(
+  self : FeishuClient,
+  receive_id : String,
+  initial_text : String,
+  reply_to? : String? = None,
+  reply_in_thread? : Bool = false,
+) -> Result[FeishuStreamingCardSession, @channel.ChannelError] {
+  let client = match authed_feishu_http_client(self.config) {
+    Ok(client) => client
+    Err(error) => return Err(error)
+  }
+  defer client.close()
+
+  let card_response = client.post(
+    "/open-apis/cardkit/v1/cards",
+    Json::object({
+      "type": "card_json",
+      "data": build_streaming_card_json(initial_text).stringify(),
+    }),
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Failed to create Feishu streaming card: \{error}",
+        ),
+      )
+  }
+  let card_body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::SendMessageFailed(
+            message="Failed to read Feishu streaming card response: \{error}",
+          ),
+        )
+    }
+  guard card_response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu streaming card API error \{card_response.code}: \{card_body_text}",
+      ),
+    )
+  }
+  let card_json : Json = @json.parse(card_body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Invalid Feishu streaming card response: \{card_body_text}",
+        ),
+      )
+  }
+  let (card_code, card_msg) = match
+    parse_json_code_msg(card_json, "Failed to create Feishu streaming card") {
+    Ok(pair) => pair
+    Err(error) => return Err(error)
+  }
+  if card_code != 0 {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu streaming card creation failed: \{card_msg}",
+      ),
+    )
+  }
+  let card_id = match
+    parse_card_id(card_json, "Failed to create Feishu streaming card") {
+    Ok(card_id) => card_id
+    Err(error) => return Err(error)
+  }
+
+  let message_response = match reply_to {
+    Some(message_id) if !message_id.is_blank() =>
+      client.post(
+        "/open-apis/im/v1/messages/\{message_id}/reply",
+        Json::object({
+          "content": build_streaming_card_content(card_id).stringify(),
+          "msg_type": "interactive",
+          "reply_in_thread": reply_in_thread.to_json(),
+        }),
+      ) catch {
+        error =>
+          return Err(
+            @channel.ChannelError::SendMessageFailed(
+              message="Failed to send Feishu streaming card reply: \{error}",
+            ),
+          )
+      }
+    _ => {
+      let (receive_id_type, target_id) = detect_receive_id_type(receive_id)
+      client.post(
+        "/open-apis/im/v1/messages?receive_id_type=\{receive_id_type}",
+        Json::object({
+          "receive_id": target_id,
+          "msg_type": "interactive",
+          "content": build_streaming_card_content(card_id).stringify(),
+        }),
+      ) catch {
+        error =>
+          return Err(
+            @channel.ChannelError::SendMessageFailed(
+              message="Failed to send Feishu streaming card message: \{error}",
+            ),
+          )
+      }
+    }
+  }
+  let sent = match parse_send_response(message_response, client) {
+    Ok(sent) => sent
+    Err(error) => return Err(error)
+  }
+  Ok(FeishuStreamingCardSession::{
+    card_id,
+    message_id: sent.message_id,
+    sequence: 1,
+    current_text: initial_text,
+  })
+}
+
+///|
+pub async fn FeishuClient::update_streaming_card(
+  self : FeishuClient,
+  session : FeishuStreamingCardSession,
+  text : String,
+) -> Result[FeishuStreamingCardSession, @channel.ChannelError] {
+  let client = match authed_feishu_http_client(self.config) {
+    Ok(client) => client
+    Err(error) => return Err(error)
+  }
+  defer client.close()
+
+  let next_sequence = session.sequence + 1
+  let response = client.put(
+    "/open-apis/cardkit/v1/cards/\{session.card_id}/elements/content/content",
+    Json::object({
+      "content": text,
+      "sequence": next_sequence,
+      "uuid": "s_\{session.card_id}_\{next_sequence}",
+    }),
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Failed to update Feishu streaming card: \{error}",
+        ),
+      )
+  }
+  let body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::SendMessageFailed(
+            message="Failed to read Feishu streaming card update response: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu streaming card update API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Invalid Feishu streaming card update response: \{body_text}",
+        ),
+      )
+  }
+  let (code, msg) = match
+    parse_json_code_msg(response_json, "Failed to update Feishu streaming card") {
+    Ok(pair) => pair
+    Err(error) => return Err(error)
+  }
+  if code != 0 {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu streaming card update failed: \{msg}",
+      ),
+    )
+  }
+  Ok(FeishuStreamingCardSession::{
+    ..session,
+    sequence: next_sequence,
+    current_text: text,
+  })
+}
+
+///|
+pub async fn FeishuClient::close_streaming_card(
+  self : FeishuClient,
+  session : FeishuStreamingCardSession,
+  final_text : String,
+) -> Result[@channel.SendResult, @channel.ChannelError] {
+  let session = match self.update_streaming_card(session, final_text) {
+    Ok(session) => session
+    Err(error) => return Err(error)
+  }
+  let client = match authed_feishu_http_client(self.config) {
+    Ok(client) => client
+    Err(error) => return Err(error)
+  }
+  defer client.close()
+  let next_sequence = session.sequence + 1
+  client.request(
+    @http.RequestMethod::Patch,
+    "/open-apis/cardkit/v1/cards/\{session.card_id}/settings",
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Failed to close Feishu streaming card: \{error}",
+        ),
+      )
+  }
+  client.write(
+    Json::object({
+      "settings": Json::object({
+        "config": {
+          "streaming_mode": false,
+          "summary": { "content": truncate_stream_summary(final_text) },
+        },
+      }).stringify(),
+      "sequence": next_sequence,
+      "uuid": "c_\{session.card_id}_\{next_sequence}",
+    }),
+  )
+  let response = client.end_request() catch {
+    error =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Failed to finish Feishu streaming card close request: \{error}",
+        ),
+      )
+  }
+  let body_text = client.read_all().text() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::SendMessageFailed(
+            message="Failed to read Feishu streaming card close response: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu streaming card close API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let response_json : Json = @json.parse(body_text) catch {
+    _ =>
+      return Err(
+        @channel.ChannelError::SendMessageFailed(
+          message="Invalid Feishu streaming card close response: \{body_text}",
+        ),
+      )
+  }
+  let (code, msg) = match
+    parse_json_code_msg(response_json, "Failed to close Feishu streaming card") {
+    Ok(pair) => pair
+    Err(error) => return Err(error)
+  }
+  if code != 0 {
+    return Err(
+      @channel.ChannelError::SendMessageFailed(
+        message="Feishu streaming card close failed: \{msg}",
+      ),
+    )
+  }
+  Ok(@channel.SendResult::{
+    channel: "feishu",
+    message_id: session.message_id,
+    timestamp: 0,
+    status: "updated",
+  })
 }
 
 ///|

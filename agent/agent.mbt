@@ -278,15 +278,21 @@ pub async fn Agent::start(agent : Agent) -> Unit {
       }
 
       // Make the API request to get the model's response
-      let response = @openai.chat(
+      let response = @openai.chat_with_text_deltas(
         model=agent.model,
-        logger=agent.logger,
         @openai.chat_completion(
           messages=cache_messages,
           model=agent.model.model_name,
           tools=tools.map(x => x.to_openai()),
+          stream=true,
         ),
+        logger=agent.logger,
         extra_body~,
+        on_text_delta=delta => {
+          if !delta.is_blank() {
+            agent.emit(AssistantMessageDelta(delta))
+          }
+        },
       )
       // Extract the message from the response, raise error if no choices returned
       guard response is { choices: [{ message, .. }, ..], usage, .. } else {

@@ -99,6 +99,8 @@ pub(all) enum EventDesc {
   /// the limit and no pruning is performed.
   ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
   /// Event triggered when a assistant message is received from the model.
+  AssistantMessageDelta(String)
+  /// Event triggered when a assistant message is received from the model.
   AssistantMessage(
     usage~ : @ai.Usage?,
     tool_calls~ : Array[@ai.ToolCall],
@@ -196,6 +198,8 @@ pub impl ToJson for EventDesc with to_json(self : EventDesc) -> Json {
           "schema": tool_desc.schema,
         },
       }
+    AssistantMessageDelta(content) =>
+      { "msg": "AssistantMessageDelta", "content": content }
     AssistantMessage(usage~, tool_calls~, content) => {
       let json : Map[String, Json] = {
         "msg": "AssistantMessage",
@@ -398,6 +402,17 @@ pub impl @json.FromJson for EventDesc with from_json(
       )
       let schema : Json = schema_json
       ToolAdded(@tool.tool_desc(description~, name~, schema~))
+    }
+    "AssistantMessageDelta" => {
+      let content : String = match json_object.get("content") {
+        None =>
+          raise @json.JsonDecodeError(
+            (json_path, "AssistantMessageDelta event missing 'content' field"),
+          )
+        Some(content_json) =>
+          @json.from_json(content_json, path=json_path.add_key("content"))
+      }
+      AssistantMessageDelta(content)
     }
     "AssistantMessage" => {
       let usage : @ai.Usage? = match json_object.get("usage") {

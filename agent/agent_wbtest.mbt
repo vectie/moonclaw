@@ -56,7 +56,26 @@ async test "execute_tool preserves unknown tool response in history" (
       agent.history
       .messages(include_system=false)
       .map(fn(message) { message.to_openai() }),
-      content=([{"role":"assistant","content":"","tool_calls":[{"id":"tc-unknown","function":{"name":"execute_command","arguments":"{}"},"type":"function"}]},{"role":"tool","content":[{"type":"text","text":"Unknown tool: execute_command"}],"tool_call_id":"tc-unknown"}]),
+      content=[
+        {
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "tc-unknown",
+              "function": { "name": "execute_command", "arguments": "{}" },
+              "type": "function",
+            },
+          ],
+        },
+        {
+          "role": "tool",
+          "content": [
+            { "type": "text", "text": "Unknown tool: execute_command" },
+          ],
+          "tool_call_id": "tc-unknown",
+        },
+      ],
     )
   })
 }

@@ -23,11 +23,22 @@ pub async fn chat(
   logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
   extra_body? : Map[String, Json] = {},
 ) -> ChatCompletion {
+  chat_with_text_deltas(model~, request, logger~, extra_body~)
+}
+
+///|
+pub async fn chat_with_text_deltas(
+  model~ : @model.Model,
+  request : Request,
+  logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
+  extra_body? : Map[String, Json] = {},
+  on_text_delta? : (String) -> Unit = _ => (),
+) -> ChatCompletion {
   match model.model_type {
-    SaaS(CodexOAuth) => chat_codex(model~, request, logger~)
-    SaaS(Copilot) => chat_copilot(model~, request, logger~)
-    SaaS(Anthropic) => chat_anthropic(model~, request, logger~)
-    _ => chat_openai(model~, request, logger~, extra_body~)
+    SaaS(CodexOAuth) => chat_codex(model~, request, logger~, on_text_delta~)
+    SaaS(Copilot) => chat_copilot(model~, request, logger~, on_text_delta~)
+    SaaS(Anthropic) => chat_anthropic(model~, request, logger~, on_text_delta~)
+    _ => chat_openai(model~, request, logger~, extra_body~, on_text_delta~)
   }
 }
 
@@ -38,6 +49,7 @@ async fn chat_openai(
   request : Request,
   logger~ : @pino.Logger,
   extra_body~ : Map[String, Json],
+  on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
@@ -78,6 +90,7 @@ async fn chat_openai(
         let builder = ChatCompletionBuilder::new()
         while reader.read() is Some(chunk) {
           logger.debug("ChunkReceived", data={ "chunk": chunk })
+          emit_text_deltas_from_chunk(chunk, on_text_delta)
           builder.add_chunk(chunk)
         }
         let chat_completion = builder.to_chat_completion()
@@ -107,6 +120,7 @@ async fn chat_anthropic(
   model~ : @model.Model,
   request : Request,
   logger~ : @pino.Logger,
+  on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
@@ -142,6 +156,7 @@ async fn chat_anthropic(
         let builder = ChatCompletionBuilder::new()
         while reader.read() is Some(chunk) {
           logger.debug("AnthropicChunkReceived", data={ "chunk": chunk })
+          emit_text_deltas_from_chunk(chunk, on_text_delta)
           builder.add_chunk(chunk)
         }
         let chat_completion = builder.to_chat_completion()
@@ -174,6 +189,7 @@ async fn chat_codex(
   model~ : @model.Model,
   request : Request,
   logger~ : @pino.Logger,
+  on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
   let (access_token, account_id) = match
     (model.access_token, model.account_id) {
@@ -222,6 +238,7 @@ async fn chat_codex(
         current_access_token.val,
         current_account_id.val,
         codex_request,
+        on_text_delta~,
       ) catch {
         HttpError(code=401, ..) as err if not(has_refreshed.val) => {
           logger.info("Received 401, attempting to refresh token")
@@ -279,6 +296,7 @@ async fn chat_copilot(
   model~ : @model.Model,
   request : Request,
   logger~ : @pino.Logger,
+  on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
   // Get valid credentials (auto-refresh if needed)
   let credentials = @copilot.get_valid_credentials() catch {
@@ -376,6 +394,7 @@ async fn chat_copilot(
         let reader = ChunkReader::new(client)
         let builder = ChatCompletionBuilder::new()
         while reader.read() is Some(chunk) {
+          emit_text_deltas_from_chunk(chunk, on_text_delta)
           builder.add_chunk(chunk)
         }
         builder.to_chat_completion()
@@ -416,6 +435,7 @@ async fn do_codex_stream_request(
   access_token : String,
   account_id : String,
   request : @responses.ResponsesRequest,
+  on_text_delta~ : (String) -> Unit,
 ) -> CodexStreamResult raise Error {
   let client = @http.Client::new("https://chatgpt.com", headers={
     "Authorization": "Bearer \{access_token}",
@@ -447,12 +467,28 @@ async fn do_codex_stream_request(
   let output_items : Array[@responses.ResponseItem] = []
   while reader.read() is Some(event) {
     match event {
-      TextDelta(delta) => text_chunks.push(delta)
+      TextDelta(delta) => {
+        text_chunks.push(delta)
+        on_text_delta(delta)
+      }
       OutputItemDone(item) => output_items.push(item)
       Completed => break
     }
   }
   { text_chunks, output_items }
+}
+
+///|
+fn emit_text_deltas_from_chunk(
+  chunk : ChatCompletionChunk,
+  on_text_delta : (String) -> Unit,
+) -> Unit {
+  for choice in chunk.choices {
+    match choice.delta.content {
+      Some(content) if !content.is_blank() => on_text_delta(content)
+      _ => ()
+    }
+  }
 }
 
 ///|

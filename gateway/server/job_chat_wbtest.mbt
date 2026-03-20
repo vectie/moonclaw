@@ -85,3 +85,12 @@ test "parse_job_chat_action recognizes slash and reply commands" {
     content="true",
   )
 }
+
+///|
+test "feishu progress status helpers render expected text" {
+  inspect(thinking_status_text(), content="Thinking...")
+  inspect(
+    tool_status_text("execute_command"),
+    content="Thinking...\nUsing tool: execute_command",
+  )
+}

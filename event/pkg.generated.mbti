@@ -41,6 +41,7 @@ pub(all) enum EventDesc {
   PostToolCall(@ai.ToolCall, result~ : Result[Json, Json], rendered~ : String)
   TokenCounted(Int)
   ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
+  AssistantMessageDelta(String)
   AssistantMessage(usage~ : @ai.Usage?, tool_calls~ : Array[@ai.ToolCall], String)
   UserMessage(String)
   Cancelled
