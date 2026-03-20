@@ -1,4 +1,42 @@
 ///|
+fn abs_diff(left : Int64, right : Int64) -> Int64 {
+  if left >= right {
+    left - right
+  } else {
+    right - left
+  }
+}
+
+///|
+fn unwrapped_epoch_ms_near(
+  timestamp_ms : Int,
+  reference_now_ms : Int64,
+) -> Int64 {
+  let cycle = 4_294_967_296L
+  let residue = timestamp_ms.to_int64()
+  let unsigned = if residue < 0L { residue + cycle } else { residue }
+  let base = reference_now_ms / cycle
+  let mut best = unsigned + base * cycle
+  let mut best_diff = abs_diff(best, reference_now_ms)
+  for offset in [-1L, 1L] {
+    let candidate = unsigned + (base + offset) * cycle
+    let candidate_diff = abs_diff(candidate, reference_now_ms)
+    if candidate_diff < best_diff {
+      best = candidate
+      best_diff = candidate_diff
+    }
+  }
+  best
+}
+
+///|
+fn display_zone() -> @time.Zone {
+  @time.fixed_zone("Asia/Shanghai", 8 * 60 * 60) catch {
+    _ => @time.utc_zone
+  }
+}
+
+///|
 fn compact_title_for_display(text : String) -> String {
   let trimmed = text.trim().to_string()
   if trimmed.length() <= 72 {
@@ -90,9 +128,13 @@ fn short_id_suffix(seed : String, max_chars? : Int = 6) -> String {
 
 ///|
 fn formatted_timestamp_or_fallback(timestamp_ms : Int) -> String {
-  let seconds = (timestamp_ms / 1000).to_int64()
-  @time.unix(seconds).to_plain_date_time().to_string() catch {
+  let normalized = unwrapped_epoch_ms_near(timestamp_ms, @async.now())
+  let seconds = normalized / 1000L
+  try @time.unix(seconds, zone=display_zone()) catch {
     _ => timestamp_ms.to_string()
+  } noraise {
+    zoned =>
+      "\{zoned.to_plain_date_time().to_string()} \{zoned.offset().to_string()}"
   }
 }
 

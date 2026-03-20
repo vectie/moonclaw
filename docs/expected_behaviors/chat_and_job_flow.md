@@ -62,17 +62,22 @@ Expected behavior after confirmation:
 - status reports should show:
   - job id
   - run id
+  - job title
+  - created time
   - current step
   - progress
   - elapsed time
 - if the workflow has 3 steps, status should report `0/3`, `1/3`, `2/3`, `3/3` rather than `0/0`
+- new ids should be readable and time-prefixed rather than opaque UUIDs when possible
 
 ## Notifications
 
 Expected behavior when notifications are enabled:
 
 - send a start message when the run begins
-- send heartbeat/progress messages while running
+- send progress messages while running
+- in `normal`, send `step.started` and `step.failed`
+- in `verbose`, also send more detailed step-level progress like `step.succeeded`
 - send a warning when a run is long-running
 - do not interrupt automatically on long-running warning
 - send a finish message on success/failure/cancel

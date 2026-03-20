@@ -30,3 +30,10 @@ test "definition_display_title prefers stored title" {
     content="Fetch Top 10 VLA Articles from arXiv",
   )
 }
+
+///|
+test "unwrapped_epoch_ms_near restores wrapped timestamps near current era" {
+  let restored = unwrapped_epoch_ms_near(183505038, 1_742_801_777_334L)
+  inspect(restored > 1_700_000_000_000L, content="true")
+  inspect(restored < 1_800_000_000_000L, content="true")
+}

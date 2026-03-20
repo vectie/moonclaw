@@ -60,7 +60,10 @@ Use these checks:
 5. Output quality
    The final brief should be grounded, ranked, and concise rather than generic filler.
 
-6. Flexibility
+6. Workspace clarity
+   The run should create a visible workspace under `<workspace>/moonclaw-jobs/<run-id>` rather than hiding it under `.moonclaw/job-workspaces/`.
+
+7. Flexibility
    If you revise the profile JSON, behavior should change without touching MoonBit code.
 
 ## 6. Failure modes to look for

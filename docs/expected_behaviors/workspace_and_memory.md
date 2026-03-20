@@ -15,14 +15,15 @@ Expected behavior:
 Expected behavior for a top-level run:
 
 - create a dedicated run workspace under:
-  - `<workspace>/.moonclaw/job-workspaces/<run_id>`
+  - `<workspace>/moonclaw-jobs/<run_id>`
 - initialize a git repository there
-- write run metadata
-- project workspace files are materialized into that run workspace
+- write run metadata under the run workspace's internal `.moonclaw/`
+- keep the run workspace itself run-owned rather than copying workspace context files into it
 
 Expected behavior for a subjob:
 
-- create a nested sub-workspace under the parent run workspace
+- create a nested sub-workspace under the parent run workspace at:
+  - `<parent_run_workspace>/moonclaw-subjobs/<run_id>`
 - preserve lineage to the parent run
 
 ## Git Behavior
@@ -37,11 +38,9 @@ Expected behavior:
 
 Expected behavior:
 
-- `IDENTITY.md` reflects identity-shaped memories
-- `ROUTINES.md` reflects routine-shaped memories
-- `MEMORY.md` reflects broader inherited and run-local memory context
-
-These files are materialized for the run workspace so the agent can work with concrete files instead of only in-memory state.
+- workspace-owned markdown stays in the workspace where it changes over time
+- run workspaces do not automatically copy `AGENTS.md`, `USER.md`, `IDENTITY.md`, `ROUTINES.md`, or `MEMORY.md`
+- run workspaces should contain files created by the run itself plus internal run metadata
 
 ## Structured Memory
 
@@ -58,6 +57,8 @@ Expected behavior:
 
 - if a run edits `MEMORY.md`, the manual content can be synced back into structured memory
 - this makes the workspace file layer and memory layer bidirectional instead of write-only
+
+This only applies when a run explicitly creates `MEMORY.md` itself. MoonClaw no longer pre-populates that file in every run workspace.
 
 ## Memory Scope
 

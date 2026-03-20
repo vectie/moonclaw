@@ -113,7 +113,7 @@ Manager::spawn()
     │
     ├─► Generate unique ID
     │
-    ├─► Create job directory (.moonclaw/jobs/{id}/)
+    ├─► Create job directory (.moonclaw/jobs/{id}/) for stdout/stderr capture
     │
     ├─► Create stdout/stderr files
     │
@@ -168,6 +168,11 @@ for job in job_manager.list() {
 Jobs store their output in `.moonclaw/jobs/{id}/`:
 - `stdout`: Standard output from the command
 - `stderr`: Standard error from the command
+
+This package-level storage is distinct from the higher-level workflow run workspace used by the newer job runtime. Operator-facing workflow runs now create visible workspaces under the configured workspace root, for example:
+
+- `<workspace>/moonclaw-jobs/<run-id>`
+- `<parent_run_workspace>/moonclaw-subjobs/<run-id>`
 
 ## Dependencies
 

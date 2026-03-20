@@ -33,6 +33,18 @@ MoonClaw is strongest when you want one system to handle:
 - 🧭 operator control
 - 🤝 local-agent + remote-agent handoff
 
+## Operator UX
+
+Current job behavior is designed to stay readable from chat and from the workspace:
+
+- new proposal ids are human-readable and time-prefixed instead of raw UUIDs
+- new run ids use a readable `run-YYYYMMDD-HHMMSS-...` format
+- `/job-status` and `/jobs` show job title and created time alongside ids
+- top-level run workspaces are created under `<workspace>/moonclaw-jobs/<run-id>`
+- child runs are created under the parent run workspace at `moonclaw-subjobs/<run-id>`
+- run workspaces are run-owned and no longer copy workspace markdown like `AGENTS.md`, `USER.md`, `MEMORY.md`, `IDENTITY.md`, or `ROUTINES.md`
+- job timestamps are rendered in local time with an explicit offset
+
 ## 🚀 Current Capabilities
 
 - 🖥️ `interactive` and `tui` local modes
@@ -131,6 +143,14 @@ mkdir -p ~/.moonclaw/workspace
 moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/workspace
 ```
 
+With that setup, new run workspaces will appear under:
+
+```text
+~/.moonclaw/workspace/moonclaw-jobs/
+```
+
+instead of being hidden under a nested `.moonclaw/job-workspaces/` path.
+
 Open the operator UI:
 
 ```text
@@ -215,6 +235,7 @@ This is the intended way to test research ability right now:
 - start the gateway against that workspace
 - run `/plan-job` with a real literature-review style prompt
 - confirm it and inspect `/job-status`
+- inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
 - verify that behavior changes when you edit the JSON profile, without changing MoonBit code
 
 ## 🪽 Feishu Usage
