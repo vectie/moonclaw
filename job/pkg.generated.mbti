@@ -248,6 +248,8 @@ pub(all) struct AnalysisRequest {
   model_name : String
   cwd : String
   home : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -263,6 +265,8 @@ pub(all) struct AnalysisStepConfig {
   cwd : String?
   home : String?
   workspace : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String?
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -271,7 +275,7 @@ pub(all) struct AnalysisStepConfig {
   artifacts : AnalysisArtifactConfig
   metadata : Json
 }
-pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String?, home? : String?, workspace? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, artifacts? : AnalysisArtifactConfig, metadata? : Json) -> Self
+pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String?, home? : String?, workspace? : String?, execution_mode? : String?, execution_target? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, artifacts? : AnalysisArtifactConfig, metadata? : Json) -> Self
 pub impl Show for AnalysisStepConfig
 pub impl ToJson for AnalysisStepConfig
 pub impl @json.FromJson for AnalysisStepConfig
@@ -519,6 +523,7 @@ pub async fn GatewayJobApp::load(Self) -> Unit
 pub fn GatewayJobApp::new(root~ : String, cwd~ : String, home~ : String, workspace~ : @workspace.WorkspaceRuntime, next_id~ : () -> String, now~ : () -> Int) -> Self
 pub fn GatewayJobApp::new_workflow_engine(Self) -> WorkflowEngine
 pub fn GatewayJobApp::new_workflow_engine_with_child_executor(Self, child_executor? : ChildRunExecutor?) -> WorkflowEngine
+pub fn GatewayJobApp::new_workflow_engine_with_executors(Self, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> WorkflowEngine
 pub fn GatewayJobApp::next_id(Self) -> String
 pub fn GatewayJobApp::now(Self) -> Int
 pub async fn GatewayJobApp::plan_proposal(Self, String, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal

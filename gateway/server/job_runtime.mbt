@@ -47,6 +47,14 @@ fn acp_execution_requested(config : @job.SubjobStepConfig) -> Bool {
 }
 
 ///|
+fn acp_analysis_execution_requested(request : @job.AnalysisRequest) -> Bool {
+  match request.execution_mode {
+    Some(mode) => mode.trim().to_string() == "acp"
+    None => false
+  }
+}
+
+///|
 async fn Gateway::child_run_step_started(
   self : Gateway,
   child_run : @job.JobRun,
@@ -101,6 +109,153 @@ fn acp_child_run_message(request : @job.AnalysisRequest) -> String {
   [request.system_prompt, request.prompt]
   .filter(fn(section) { !section.trim().to_string().is_blank() })
   .join("\n\n")
+}
+
+///|
+fn gateway_analysis_session_key(run_id : String, step_id : String) -> String {
+  "job-analysis:\{run_id}:\{step_id}"
+}
+
+///|
+fn gateway_analysis_acp_session_id(run_id : String, step_id : String) -> String {
+  "acp-analysis-session-\{run_id}-\{step_id}"
+}
+
+///|
+fn gateway_analysis_acp_run_id(run_id : String, step_id : String) -> String {
+  "acp-analysis-\{run_id}-\{step_id}"
+}
+
+///|
+async fn Gateway::execute_analysis_via_acp(
+  self : Gateway,
+  request : @job.AnalysisRequest,
+) -> Result[@job.AnalysisExecution, String] {
+  let target_id = match request.execution_target {
+    Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
+    _ => return Err("ACP analysis execution requires execution_target")
+  }
+  let now_ms = current_time_ms()
+  let session = match
+    self
+    .acp_runtime()
+    .open_session(
+      gateway_analysis_acp_session_id(request.run_id, request.step_id),
+      target_id,
+      gateway_analysis_session_key(request.run_id, request.step_id),
+      now_ms,
+      metadata={
+        "job_id": request.job_id,
+        "job_run_id": request.run_id,
+        "job_step_id": request.step_id,
+      },
+    ) {
+    Ok(session) => session
+    Err(error) => return Err(error)
+  }
+  let target = match self.acp_runtime().get_target(target_id) {
+    Some(target) => target
+    None => return Err("Unknown ACP target: \{target_id}")
+  }
+  let metadata : Json = {
+    "job_id": request.job_id,
+    "job_run_id": request.run_id,
+    "job_step_id": request.step_id,
+    "execution_mode": request.execution_mode,
+    "execution_target": request.execution_target,
+  }
+  let run_id = gateway_analysis_acp_run_id(request.run_id, request.step_id)
+  let run_request = @acp.new_run_request(
+    message=acp_child_run_message(request),
+    run_id~,
+    model?=if request.model_name == "default" {
+      None
+    } else {
+      Some(request.model_name)
+    },
+    cwd=request.cwd,
+    metadata~,
+  )
+  let launch = match @acp.prepare_launch_plan(target, session, run_request) {
+    Ok(plan) => plan
+    Err(error) => return Err(error)
+  }
+  ignore(
+    self
+    .acp_runtime()
+    .start_run(
+      run_id,
+      session,
+      target,
+      run_request.to_json(),
+      launch.to_json(),
+      now_ms,
+    ),
+  )
+  ignore(self.acp_runtime().set_session_status(session.id, "running", now_ms))
+  let outcome = match
+    self.execute_managed_acp_process(run_id, launch, run_request) {
+    Ok(outcome) => outcome
+    Err(error) => {
+      let failed_at = current_time_ms()
+      ignore(
+        self
+        .acp_runtime()
+        .finish_run(run_id, "failed", failed_at, error=Some(error)),
+      )
+      self.finalize_acp_session_after_run(
+        session.id,
+        "failed",
+        failed_at,
+        error=Some(error),
+      )
+      return Err(error)
+    }
+  }
+  let finished_at = current_time_ms()
+  ignore(
+    self
+    .acp_runtime()
+    .finish_run(
+      run_id,
+      outcome.status,
+      finished_at,
+      result=Some(outcome.result),
+      error=outcome.error,
+    ),
+  )
+  self.finalize_acp_session_after_run(
+    session.id,
+    outcome.status,
+    finished_at,
+    error=outcome.error,
+  )
+  if outcome.status != "completed" {
+    return Err(outcome.error.unwrap_or("ACP analysis execution failed"))
+  }
+  let content = match outcome.result {
+    { "content": String(content), .. } => content
+    _ => outcome.result.stringify()
+  }
+  Ok(@job.AnalysisExecution::{
+    model_name: if request.model_name == "default" {
+      target.label.unwrap_or(target.id)
+    } else {
+      request.model_name
+    },
+    content,
+    conversation_id: Some(run_id),
+    usage: None,
+    metadata: {
+      "job_id": request.job_id,
+      "run_id": request.run_id,
+      "step_id": request.step_id,
+      "execution_mode": "acp",
+      "execution_target": target_id,
+      "acp_run_id": run_id,
+      "acp_session_id": session.id,
+    },
+  })
 }
 
 ///|
@@ -360,9 +515,21 @@ fn Gateway::job_child_run_executor(self : Gateway) -> @job.ChildRunExecutor {
 }
 
 ///|
+fn Gateway::analysis_executor(self : Gateway) -> @job.AnalysisExecutor {
+  let fallback_executor = @job.default_analysis_executor()
+  @job.AnalysisExecutor::new(run=async fn(request) {
+    if !acp_analysis_execution_requested(request) {
+      return (fallback_executor.run)(request)
+    }
+    self.execute_analysis_via_acp(request)
+  })
+}
+
+///|
 fn Gateway::new_workflow_engine(self : Gateway) -> @job.WorkflowEngine {
-  self.job_app.new_workflow_engine_with_child_executor(
+  self.job_app.new_workflow_engine_with_executors(
     child_executor=Some(self.job_child_run_executor()),
+    analysis_executor=Some(self.analysis_executor()),
   )
 }
 

@@ -101,6 +101,8 @@ fn workflow_step_definition_for_proposal_step(
       cwd=Some(cwd),
       home=Some(home),
       workspace=Some(workspace_root),
+      execution_mode=step.execution_mode,
+      execution_target=step.execution_target,
       system_prompt=metadata_string(step.metadata, "system_prompt"),
       preferred_skills=metadata_string_array(step.metadata, "preferred_skills"),
       enable_tools=metadata_bool(step.metadata, "enable_tools", true),
