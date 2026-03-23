@@ -30,6 +30,12 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
       id: "scope",
       title: "Clarify objective and constraints",
       kind: "job.analysis",
+      metadata: {},
+      child_profile: None,
+      execution_mode: None,
+      execution_target: None,
+      include_parent_outputs: None,
+      max_depth: None,
       prompt: [
         "Take the following requested job and restate the objective, constraints, assumptions, and success criteria.",
         "Keep this compact and execution-oriented.",
@@ -40,6 +46,12 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
       id: "execute",
       title: "Execute main work",
       kind: "job.analysis",
+      metadata: {},
+      child_profile: None,
+      execution_mode: None,
+      execution_target: None,
+      include_parent_outputs: None,
+      max_depth: None,
       prompt: [
         "Perform the main requested work using the prior step output as context.",
         "Produce concrete results, not just advice.",
@@ -49,6 +61,12 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
       id: "finalize",
       title: "Verify and deliver result",
       kind: "job.analysis",
+      metadata: {},
+      child_profile: None,
+      execution_mode: None,
+      execution_target: None,
+      include_parent_outputs: None,
+      max_depth: None,
       prompt: [
         "Review the result critically and refine it if needed.", "Then prepare the final delivery with outcome, remaining risks, and produced artifacts.",
       ].join("\n\n"),
@@ -107,6 +125,12 @@ fn normalized_plan_steps(
           title: step.title.trim().to_string(),
           prompt: step.prompt.trim().to_string(),
           kind: step_kind_or_default(step),
+          metadata: {},
+          child_profile: None,
+          execution_mode: None,
+          execution_target: None,
+          include_parent_outputs: None,
+          max_depth: None,
         })
         index += 1
       }
@@ -192,6 +216,17 @@ async fn maybe_apply_job_profile(
   workspace_root : String,
 ) -> JobProposal {
   let family = suggest_job_profile_family(proposal.request_text, home, cwd)
+  apply_named_job_profile(proposal, cwd, home, workspace_root, family)
+}
+
+///|
+pub async fn apply_named_job_profile(
+  proposal : JobProposal,
+  cwd : String,
+  home : String,
+  workspace_root : String,
+  family : String?,
+) -> JobProposal {
   let profile = match family {
     Some(family) => load_job_profile(home, cwd, family)
     None => None
@@ -209,6 +244,12 @@ async fn maybe_apply_job_profile(
           id: step.id,
           title: step.title,
           kind: step.kind,
+          metadata: step.metadata.unwrap_or({}),
+          child_profile: step.child_profile,
+          execution_mode: step.execution_mode,
+          execution_target: step.execution_target,
+          include_parent_outputs: step.include_parent_outputs,
+          max_depth: step.max_depth,
           prompt: render_profile_step_template(
             prompt_source, proposal, family, workspace_root,
           ),

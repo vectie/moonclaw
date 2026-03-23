@@ -19,6 +19,9 @@ fn sample_profiles_json() -> Json {
               "title": "Collect evidence",
               "kind": "job.delegate",
               "request_template": "Collect evidence for: ${request}",
+              "child_profile": "research_worker",
+              "execution_mode": "acp",
+              "execution_target": "codex-research",
               "include_parent_outputs": false,
               "max_depth": 3,
             },
@@ -49,6 +52,15 @@ async test "load_job_profile reads controller profile from moonclaw.jobs.json" {
     }
     inspect(profile.role.unwrap_or(""), content="controller")
     inspect(profile.steps.length(), content="2")
+    inspect(
+      profile.steps[0].child_profile.unwrap_or(""),
+      content="research_worker",
+    )
+    inspect(profile.steps[0].execution_mode.unwrap_or(""), content="acp")
+    inspect(
+      profile.steps[0].execution_target.unwrap_or(""),
+      content="codex-research",
+    )
     inspect(profile.tags.join(","), content="research,controller")
   })
 }

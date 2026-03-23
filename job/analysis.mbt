@@ -137,6 +137,11 @@ fn default_analysis_system_prompt() -> String {
 }
 
 ///|
+pub fn analysis_system_prompt(config : AnalysisStepConfig) -> String {
+  config.system_prompt.unwrap_or(default_analysis_system_prompt())
+}
+
+///|
 fn requested_model_name_or_none(name : String) -> String? {
   let trimmed = name.trim().to_string()
   if trimmed.is_blank() || trimmed == "default" {
@@ -360,6 +365,34 @@ fn analysis_memory_prompt(
 }
 
 ///|
+pub async fn build_analysis_request(
+  store : SystemStore,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+) -> AnalysisRequest {
+  let working_directory = analysis_working_directory(context, config)
+  let skills_prompt = loaded_skills_prompt(
+    working_directory,
+    config.home,
+    config.preferred_skills,
+  )
+  let memory_prompt = analysis_memory_prompt(store, context, config)
+  AnalysisRequest::{
+    job_id: context.run.job_id,
+    run_id: context.run.id,
+    step_id: context.step.id,
+    prompt: build_analysis_prompt(context, config, skills_prompt, memory_prompt),
+    model_name: config.model.unwrap_or("default"),
+    cwd: working_directory,
+    home: config.home,
+    system_prompt: analysis_system_prompt(config),
+    preferred_skills: config.preferred_skills,
+    enable_tools: config.enable_tools,
+    web_search: config.web_search,
+  }
+}
+
+///|
 fn find_existing_analysis_artifact(
   artifacts : ArtifactStore,
   run : JobRun,
@@ -517,30 +550,7 @@ pub fn analysis_step_handler(
       )
     }
 
-    let working_directory = analysis_working_directory(context, config)
-    let skills_prompt = loaded_skills_prompt(
-      working_directory,
-      config.home,
-      config.preferred_skills,
-    )
-    let memory_prompt = analysis_memory_prompt(store, context, config)
-    let request = AnalysisRequest::{
-      job_id: context.run.job_id,
-      run_id: context.run.id,
-      step_id: context.step.id,
-      prompt: build_analysis_prompt(
-        context, config, skills_prompt, memory_prompt,
-      ),
-      model_name: config.model.unwrap_or("default"),
-      cwd: working_directory,
-      home: config.home,
-      system_prompt: config.system_prompt.unwrap_or(
-        default_analysis_system_prompt(),
-      ),
-      preferred_skills: config.preferred_skills,
-      enable_tools: config.enable_tools,
-      web_search: config.web_search,
-    }
+    let request = build_analysis_request(store, context, config)
 
     let execution = match config.policy.timeout_ms {
       Some(timeout_ms) =>

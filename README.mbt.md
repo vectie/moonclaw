@@ -238,6 +238,19 @@ This is the intended way to test research ability right now:
 - inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
 - verify that behavior changes when you edit the JSON profile, without changing MoonBit code
 
+## OPC Job Example
+
+A concrete one-person-company controller profile is available at [opc_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json), with a matching test guide at [opc_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/opc_job_test_guide.md).
+
+This example is meant to prove the extension boundary:
+
+- MoonClaw core stays generic
+- OPC behavior comes from `moonclaw.jobs.json`
+- role behavior comes from workspace `skills/`
+- controller bookkeeping, delegation, artifacts, and notifications are reused
+
+The recommended architecture for keeping research and OPC side by side is documented in [extension_packs.md](/Users/kq/Workspace/moonclaw/docs/extension_packs.md).
+
 ## 🪽 Feishu Usage
 
 Once Feishu is configured and the gateway is running, the important commands are:

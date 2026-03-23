@@ -11,6 +11,9 @@ pub(all) struct JobProfileStep {
   kind : String
   prompt_template : String?
   request_template : String?
+  child_profile : String?
+  execution_mode : String?
+  execution_target : String?
   include_parent_outputs : Bool?
   max_depth : Int?
   metadata : Json?
@@ -104,6 +107,18 @@ fn parse_job_profile_steps(value : Json) -> Array[JobProfileStep]? {
               Some(String(value)) => Some(value)
               _ => None
             }
+            let child_profile = match obj.get("child_profile") {
+              Some(String(value)) => Some(value)
+              _ => None
+            }
+            let execution_mode = match obj.get("execution_mode") {
+              Some(String(value)) => Some(value)
+              _ => None
+            }
+            let execution_target = match obj.get("execution_target") {
+              Some(String(value)) => Some(value)
+              _ => None
+            }
             let include_parent_outputs = match
               obj.get("include_parent_outputs") {
               Some(True) => Some(true)
@@ -121,6 +136,9 @@ fn parse_job_profile_steps(value : Json) -> Array[JobProfileStep]? {
               kind,
               prompt_template,
               request_template,
+              child_profile,
+              execution_mode,
+              execution_target,
               include_parent_outputs,
               max_depth,
               metadata,
