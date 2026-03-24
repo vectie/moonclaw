@@ -43,13 +43,11 @@ Current planning routine:
    [/Users/kq/Workspace/moonclaw/job/proposal.mbt](/Users/kq/Workspace/moonclaw/job/proposal.mbt).
 4. Ask the planner model for strict JSON when available.
 5. Normalize the result into a `JobProposal`.
-6. If no usable model result exists, fall back to a compact generic 3-step plan:
-   - `scope`
+6. If no usable model result exists, fall back to one minimal generic step:
    - `execute`
-   - `finalize`
 
-The default planner is intentionally compact. It is no longer the earlier,
-over-planned research-shaped flow.
+The default fallback is intentionally minimal. AI planning or workspace profiles
+are expected to provide richer step structure when needed.
 
 ## 3. Workspace Job Profiles
 
@@ -215,9 +213,14 @@ Current analysis routine:
    - `todo`
    - `search_files`
    - `apply_patch` or `write_to_file`
-6. Run the agent and collect result text.
-7. Persist report/result artifacts.
-8. Return a structured `WorkflowStepResult`.
+6. If the step config carries:
+   - `execution_mode`
+   - `execution_target`
+   the gateway can route the analysis step through ACP instead of the local
+   direct model path
+7. Run the agent and collect result text.
+8. Persist report/result artifacts.
+9. Return a structured `WorkflowStepResult`.
 
 `job.delegate` is implemented in
 [/Users/kq/Workspace/moonclaw/job/subjob.mbt](/Users/kq/Workspace/moonclaw/job/subjob.mbt).
@@ -226,12 +229,17 @@ Current delegate routine:
 
 1. Decode `SubjobStepConfig`.
 2. Build a child request, optionally including parent outputs.
-3. Plan a child proposal.
-4. Compile the child proposal.
-5. Register the child definition and workflow.
-6. Trigger a child run with lineage metadata.
-7. Execute that child run through a fresh workflow engine.
-8. Return child outputs to the parent step.
+3. Optionally apply a named child profile.
+4. Optionally carry execution routing intent:
+   - `execution_mode`
+   - `execution_target`
+5. Plan a child proposal.
+6. Compile the child proposal.
+7. Register the child definition and workflow.
+8. Trigger a child run with lineage metadata.
+9. Execute that child run through a fresh workflow engine, or through ACP when
+   the current runtime supports the requested routing.
+10. Return child outputs to the parent step.
 
 ## 9. Controller Routine
 
@@ -316,7 +324,22 @@ The run workspace and the durable store are separate on purpose:
 - visible execution workspace under `<workspace>/moonclaw-jobs/...`
 - durable runtime state under `~/.moonclaw/jobs/...`
 
-## 12. Operator-Facing Routine
+## 12. Controller UI Routine
+
+The current Rabbita jobs surface can render controller runs as a company-style
+board in addition to the normal execution tree.
+
+Current board behavior:
+
+- `Split` and `Merge` nodes are synthesized for controller runs
+- controller steps can be grouped into horizontal lanes
+- company health, lane sequencing, and handoff cards are shown above the normal tree
+- lane grouping prefers explicit step metadata:
+  - `board_lane`
+  - `board_order`
+- if those are absent, the UI falls back to heuristics such as OPC skills or worker roles
+
+## 13. Operator-Facing Routine
 
 From the operator’s point of view, the current job routine is:
 
@@ -328,7 +351,7 @@ From the operator’s point of view, the current job routine is:
 6. Use `/jobs`, `/job-status`, `/job-stop`, or `/job-force-stop` as needed.
 7. Read final artifacts from the run workspace and the durable artifact store.
 
-## 13. What The Routine Is Not
+## 14. What The Routine Is Not
 
 The current routine is no longer:
 

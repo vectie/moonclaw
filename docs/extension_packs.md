@@ -108,10 +108,14 @@ Current hooks that make this work:
   - `enable_tools`
   - `web_search`
   - `model`
+  - `board_lane`
+  - `board_order`
 - delegate step compilation using typed child-job config
+- delegate step compilation can also preserve board metadata for UI grouping
 - delegate steps optionally forcing a named child profile without changing core runtime semantics
 - delegate steps optionally carrying execution routing intent that later executors can honor
 - the gateway can honor ACP routing hints for simple delegated child analysis jobs
+- analysis steps can also carry ACP routing intent
 - controller policy metadata on the profile
 
 ## Recommended Pack Structure
@@ -143,6 +147,23 @@ workspace/
     opc-ship/
       SKILL.md
 ```
+
+Example controller lane metadata inside `moonclaw.jobs.json`:
+
+```json
+{
+  "id": "qa",
+  "title": "QA worker",
+  "kind": "job.delegate",
+  "metadata": {
+    "board_lane": "QA",
+    "board_order": 4
+  }
+}
+```
+
+This lets the company board remain profile-driven instead of hardcoding lane
+names in core.
 
 ## Practical Rule Of Thumb
 

@@ -1,6 +1,6 @@
 # Weixin Channel: Current MoonClaw Scope
 
-This document describes the first Weixin channel slice implemented in MoonClaw on the `weixin` branch.
+This document describes the first Weixin channel slice implemented in MoonClaw.
 
 It is intentionally smaller than a full OpenClaw-style production extension. The goal is:
 

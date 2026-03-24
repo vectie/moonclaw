@@ -50,6 +50,7 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - 🖥️ `interactive` and `tui` local modes
 - 📡 long-running HTTP/RPC `gateway`
 - 🪽 Feishu integration
+- 💬 Weixin Official Account integration
 - 🧠 memory capture, retrieval, and workspace materialization
 - 🗂️ per-run and per-subjob workspaces
 - 🌳 git-managed run history inside each workspace
@@ -60,6 +61,7 @@ Current job behavior is designed to stay readable from chat and from the workspa
   - local job expansion
   - ACP remote-agent lane
   - mixed local↔remote lineage view
+  - controller/company board lanes
   - transcript and case export
 
 ## 🧩 Main Subsystems
@@ -157,6 +159,8 @@ Open the operator UI:
 http://localhost:18123/ui
 ```
 
+Recent merged changes are summarized in [news.md](/Users/kq/Workspace/moonclaw/docs/news.md).
+
 If `/ui` says the Rabbita bundle is missing, build it from the repo:
 
 ```bash
@@ -205,6 +209,11 @@ Current ACP behavior:
 - the command preserves unrelated config and only writes the target entry it manages
 - if ACP can attach but `codex exec "<prompt>"` fails only from the gateway, pin `acp.targets.<id>.command` to the absolute path from `which codex`
 
+Local/controller analysis can also run through ACP when a step carries:
+
+- `execution_mode: "acp"`
+- `execution_target: "<target-id>"`
+
 Example:
 
 ```bash
@@ -250,6 +259,32 @@ This example is meant to prove the extension boundary:
 - controller bookkeeping, delegation, artifacts, and notifications are reused
 
 The recommended architecture for keeping research and OPC side by side is documented in [extension_packs.md](/Users/kq/Workspace/moonclaw/docs/extension_packs.md).
+
+The Rabbita jobs surface can now render controller runs as a company-style board with:
+
+- split / merge anchors
+- horizontal role lanes
+- company health strip
+- lane sequence and handoff cards
+
+If a profile wants to control the board explicitly, step metadata can set:
+
+- `board_lane`
+- `board_order`
+
+otherwise the UI falls back to heuristics such as OPC skill and worker-role names.
+
+## Weixin Usage
+
+MoonClaw can now run Feishu and Weixin together in one gateway instance.
+
+Weixin is currently implemented as a webhook-driven Official Account channel:
+
+- callback path: `/webhook/weixin`
+- plaintext text messages in the current slice
+- replies sent through the custom-service API
+
+See [openclaw_weixin_reference.md](/Users/kq/Workspace/moonclaw/docs/openclaw_weixin_reference.md).
 
 ## 🪽 Feishu Usage
 
