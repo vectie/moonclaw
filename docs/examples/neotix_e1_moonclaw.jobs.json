@@ -1,0 +1,53 @@
+{
+  "jobs": {
+    "profiles": {
+      "e1_highcontrol_action": {
+        "family": "robot.e1.highcontrol_action",
+        "role": "controller",
+        "priority": 100,
+        "tags": ["robot", "e1", "noetix", "humanoid", "highcontrol"],
+        "match": {
+          "any": ["robot", "e1", "wave", "shake", "cheer", "walk"]
+        },
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output"
+          }
+        },
+        "steps": [
+          {
+            "id": "interpret_request",
+            "title": "Interpret the requested robot action",
+            "kind": "job.analysis",
+            "metadata": {
+              "enable_tools": false,
+              "board_lane": "Control",
+              "board_order": 0
+            }
+          },
+          {
+            "id": "dispatch_robot_action",
+            "title": "Dispatch the action to the E1 bridge",
+            "kind": "job.analysis",
+            "metadata": {
+              "enable_tools": false,
+              "execution_mode": "robot.e1",
+              "execution_target": "e1-main",
+              "board_lane": "Robot",
+              "board_order": 1
+            }
+          },
+          {
+            "id": "report_result",
+            "title": "Report the robot result back to the operator",
+            "kind": "job.analysis",
+            "metadata": {
+              "enable_tools": false,
+              "board_lane": "Operator",
+              "board_order": 2
+            }
+          }
+        ]
+      }
+    }
+  }
