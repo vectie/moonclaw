@@ -114,6 +114,7 @@ pub(all) struct AnalysisRequest {
   preferred_skills : Array[String]
   enable_tools : Bool
   web_search : Bool
+  metadata : Json
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -399,6 +400,7 @@ pub async fn build_analysis_request(
     preferred_skills: config.preferred_skills,
     enable_tools: config.enable_tools,
     web_search: config.web_search,
+    metadata: config.metadata,
   }
 }
 

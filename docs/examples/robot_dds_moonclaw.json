@@ -1,0 +1,18 @@
+{
+  "robots": {
+    "targets": {
+      "robot-main": {
+        "command": "python3",
+        "args": ["/Users/kq/Workspace/moonclaw/scripts/robot_dds_bridge.py"],
+        "env": {
+          "MOONCLAW_ROBOT_BACKEND": "custom",
+          "MOONCLAW_ROBOT_DRY_RUN": "true",
+          "ROBOT_DDS_DOMAIN": "17",
+          "ROBOT_DDS_TASK_TOPIC": "robot/task_request",
+          "ROBOT_DDS_STATUS_TOPIC": "robot/task_status",
+          "ROBOT_BOARD_URI": "board://main-controller"
+        }
+      }
+    }
+  }
+}

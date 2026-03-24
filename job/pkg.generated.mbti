@@ -254,6 +254,7 @@ pub(all) struct AnalysisRequest {
   preferred_skills : Array[String]
   enable_tools : Bool
   web_search : Bool
+  metadata : Json
 }
 pub impl Show for AnalysisRequest
 pub impl ToJson for AnalysisRequest

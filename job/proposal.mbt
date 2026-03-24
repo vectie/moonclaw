@@ -364,6 +364,7 @@ pub async fn plan_job_proposal(
     preferred_skills: [],
     enable_tools: false,
     web_search: false,
+    metadata: {},
   }
   let fallback = draft_job_proposal(
     proposal_id,
@@ -433,6 +434,7 @@ pub async fn revise_job_proposal(
     preferred_skills: [],
     enable_tools: false,
     web_search: false,
+    metadata: {},
   }
   let execution = match (executor.run)(request) {
     Ok(execution) => execution

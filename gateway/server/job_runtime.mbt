@@ -55,6 +55,102 @@ fn acp_analysis_execution_requested(request : @job.AnalysisRequest) -> Bool {
 }
 
 ///|
+async fn Gateway::execute_child_run_via_robot_e1(
+  self : Gateway,
+  request : @job.ChildRunExecutionRequest,
+) -> Result[@job.ChildRunExecutionResult, String] {
+  let target_id = match request.config.execution_target {
+    Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
+    _ => return Err("robot.e1 child execution requires execution_target")
+  }
+  let workflow = request.compilation.workflow
+  guard workflow.steps.length() == 1 else {
+    return Err(
+      "robot.e1 child execution currently supports workflows with exactly one step",
+    )
+  }
+  let step = workflow.steps[0]
+  guard step.kind == "job.analysis" else {
+    return Err(
+      "robot.e1 child execution currently supports only single-step job.analysis workflows",
+    )
+  }
+  let config : @job.AnalysisStepConfig = @json.from_json(step.config) catch {
+    error => return Err("Invalid robot.e1 child analysis config: \{error}")
+  }
+  let now_ms = current_time_ms()
+  let started_run = match
+    self.job_runtime().mark_run_started(request.child_run.id, now_ms) {
+    Some(run) => run
+    None => return Err("Missing child run: \{request.child_run.id}")
+  }
+  let step_run = self.child_run_step_started(started_run, step, now_ms)
+  let context = @job.WorkflowStepContext::new(
+    run=started_run,
+    step~,
+    control=request.control,
+  )
+  let analysis_request = @job.build_analysis_request(
+    self.job_runtime().store(),
+    context,
+    config,
+  )
+  let execution = match self.execute_analysis_via_robot_e1(analysis_request) {
+    Ok(execution) => execution
+    Err(error) => {
+      self.finish_child_run_step(
+        step_run,
+        @job.RunStatus::Failed,
+        now_ms,
+        summary=Some("robot.e1 child execution failed"),
+        error=Some(error),
+        logs=["execution mode: robot.e1", "execution target: \{target_id}"],
+      )
+      ignore(
+        self
+        .job_runtime()
+        .mark_run_failed(
+          started_run.id,
+          now_ms,
+          error,
+          summary=Some("robot.e1 child execution failed"),
+        ),
+      )
+      return Err(error)
+    }
+  }
+  let finished_at = current_time_ms()
+  let output : Json = {
+    "status": "completed",
+    "model": execution.model_name,
+    "content": execution.content,
+    "execution_mode": "robot.e1",
+    "execution_target": target_id,
+    "metadata": execution.metadata,
+  }
+  self.finish_child_run_step(
+    step_run,
+    @job.RunStatus::Succeeded,
+    finished_at,
+    output=Some(output),
+    summary=Some("robot.e1 analysis completed"),
+    logs=["execution mode: robot.e1", "execution target: \{target_id}"],
+  )
+  ignore(
+    self
+    .job_runtime()
+    .mark_run_succeeded(
+      started_run.id,
+      finished_at,
+      summary=Some("robot.e1 child execution completed"),
+    ),
+  )
+  let outputs : Map[String, Json] = {}
+  outputs.set(step.id, output)
+  Ok(@job.ChildRunExecutionResult::{ outputs, })
+}
+
+///|
 async fn Gateway::child_run_step_started(
   self : Gateway,
   child_run : @job.JobRun,
@@ -504,13 +600,19 @@ async fn Gateway::execute_child_run_via_acp(
 ///|
 fn Gateway::job_child_run_executor(self : Gateway) -> @job.ChildRunExecutor {
   @job.ChildRunExecutor::new(run=async fn(request) {
-    if !acp_execution_requested(request.config) {
-      return Ok(None)
+    if acp_execution_requested(request.config) {
+      return match self.execute_child_run_via_acp(request) {
+        Ok(result) => Ok(Some(result))
+        Err(error) => Err(error)
+      }
     }
-    match self.execute_child_run_via_acp(request) {
-      Ok(result) => Ok(Some(result))
-      Err(error) => Err(error)
+    if robot_bridge_execution_requested(request.config.execution_mode) {
+      return match self.execute_child_run_via_robot_e1(request) {
+        Ok(result) => Ok(Some(result))
+        Err(error) => Err(error)
+      }
     }
+    Ok(None)
   })
 }
 
@@ -518,10 +620,13 @@ fn Gateway::job_child_run_executor(self : Gateway) -> @job.ChildRunExecutor {
 fn Gateway::analysis_executor(self : Gateway) -> @job.AnalysisExecutor {
   let fallback_executor = @job.default_analysis_executor()
   @job.AnalysisExecutor::new(run=async fn(request) {
-    if !acp_analysis_execution_requested(request) {
-      return (fallback_executor.run)(request)
+    if robot_bridge_execution_requested(request.execution_mode) {
+      return self.execute_analysis_via_robot_e1(request)
     }
-    self.execute_analysis_via_acp(request)
+    if acp_analysis_execution_requested(request) {
+      return self.execute_analysis_via_acp(request)
+    }
+    (fallback_executor.run)(request)
   })
 }
 

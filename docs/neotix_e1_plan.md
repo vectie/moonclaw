@@ -1,22 +1,29 @@
-# Noetix E1 Integration Plan
+# Custom Board DDS Robot Integration Plan
 
-This document defines the recommended MoonClaw architecture for integrating the
-Noetix E1 humanoid robot based on the vendor SDK guide in
-[E1+SDK开发指南.docx](/Users/kq/Downloads/E1+SDK开发指南.docx).
+This document defines the recommended MoonClaw architecture for integrating a
+custom humanoid or mobile robot where you own:
+
+- the controller board
+- the board transport
+- the DDS layer
+- the high-level task runtime
+
+The previous Noetix E1 SDK direction is now treated as one possible bridge
+backend shape, not the primary architecture.
 
 ## Summary
 
-MoonClaw should not directly control E1 by running the vendor DDS demo
-executables as ordinary chat-driven shell commands.
+MoonClaw should not directly control your robot by issuing low-level board or
+DDS commands as ordinary chat-driven shell commands.
 
-MoonClaw should orchestrate a dedicated E1 bridge service.
+MoonClaw should orchestrate a dedicated robot bridge service.
 
-The E1 bridge service should own:
+The robot bridge service should own:
 
 - DDS client lifecycle
-- mode switching
+- board transport session management
 - robot state subscription
-- high-level action execution
+- high-level task execution
 - stop / emergency semantics
 - robot-local safety policy
 
@@ -30,21 +37,13 @@ MoonClaw should own:
 
 ## Why This Architecture
 
-The SDK guide makes several things clear:
+Even when the board and DDS are your own, the system boundary should stay the
+same:
 
-- the SDK is C/S based and uses DDS with CycloneDDS
-- the user-facing development board is the Jetson Orin Nano Super
-- the robot motion-control board is not user-facing
-- there are two control paths:
-  - `highcontrol`
-  - `lowcontrol`
-- `lowcontrol` is a 500Hz closed-loop path for per-motor control
-- emergency stop is mapped to the remote `+` button
-- disconnecting the DDS client causes the robot to revert to the prior mode
-- the guide explicitly warns against interacting with the motion-control board
-  while the motion controller is active
-
-These are strong signals that MoonClaw should not be the real-time controller.
+- MoonClaw is not a real-time controller
+- timing-sensitive loops belong on the robot-side stack
+- low-level control should not be directly driven by an LLM conversation
+- MoonClaw should supervise typed tasks, not stream raw joint commands
 
 ## Recommended System Split
 
@@ -61,24 +60,25 @@ MoonClaw handles:
 - progress reporting
 - history, logs, and artifacts
 
-### 2. E1 Bridge Service
+### 2. Robot Bridge Service
 
-The E1 bridge service runs on the E1 Jetson board and handles:
+The robot bridge service runs on your onboard computer or companion computer and
+handles:
 
 - DDS init and config
-- `publishModeData(...)`
+- board protocol init
 - robot status subscription
 - high-level motion commands
 - robot mode tracking
 - stop / safe fallback
 - robot-local guardrails
 
-This service should expose a typed API to MoonClaw instead of exposing raw DDS
-or raw shell calls.
+This service should expose a typed API to MoonClaw instead of exposing raw DDS,
+raw sockets, or raw shell calls.
 
-### 3. E1 Robot
+### 3. Your Robot
 
-The robot executes through the vendor stack:
+The robot executes through your own control stack:
 
 - high-level mode control
 - motion controller
@@ -86,41 +86,42 @@ The robot executes through the vendor stack:
 
 ## Control Levels
 
-The SDK guide exposes two very different control levels.
+Your stack should expose two very different control levels.
 
-### `highcontrol`
+### High-level task control
 
 Use this first.
 
 Characteristics:
 
 - behavior-level commands
-- vendor locomotion remains in charge
+- robot-local controller remains in charge
 - suitable for fast application development
 - appropriate for orchestration from MoonClaw
 
-Example capabilities mentioned or implied by the guide:
+Recommended first capabilities:
 
-- walk
-- run
-- swing / wave
-- shake
-- cheer
-- prepare
-- teach / play recorded action
+- `enable`
+- `disable`
+- `stand`
+- `walk`
+- `turn`
+- `go_home`
+- `wave`
+- `stop`
 
-### `lowcontrol`
+### Low-level control
 
 Do not make this the first MoonClaw integration target.
 
 Characteristics:
 
-- user sends per-motor `pos/vel/tau/kp/kd`
-- 500Hz closed-loop control
+- joint-level or board-level control
+- timing-sensitive closed-loop control
 - suitable for motion-control engineering
 - should remain inside robotics specialists and robot-local code
 
-For MoonClaw, `lowcontrol` should be treated as:
+For MoonClaw, low-level control should be treated as:
 
 - out of scope for normal chat-triggered execution
 - allowed only behind explicit engineering workflows and stronger approvals
@@ -130,16 +131,16 @@ For MoonClaw, `lowcontrol` should be treated as:
 The first target should be:
 
 ```text
-Feishu/UI -> MoonClaw -> E1 bridge -> highcontrol action -> progress -> result
+Feishu/UI -> MoonClaw -> robot bridge -> high-level action -> progress -> result
 ```
 
 Not:
 
 ```text
-Feishu/UI -> MoonClaw -> raw DDS executable -> robot
+Feishu/UI -> MoonClaw -> raw DDS command -> robot
 ```
 
-## Typed E1 Bridge API
+## Typed Robot Bridge API
 
 Recommended API surface:
 
@@ -149,25 +150,24 @@ Recommended API surface:
 - `robot.stop`
 - `robot.run_action`
 - `robot.walk`
-- `robot.play_teach_slot`
+- `robot.turn`
+- `robot.go_home`
 
 Recommended first action set:
 
 - `enable`
 - `disable`
-- `prepare`
 - `walk`
-- `run`
+- `turn`
 - `wave`
-- `shake`
-- `cheer`
-- `play_teach_slot`
+- `go_home`
+- `stop`
 
 Example request shape:
 
 ```json
 {
-  "robot_id": "e1-main",
+  "robot_id": "robot-main",
   "action": "walk",
   "params": {
     "x": 0.2,
@@ -176,6 +176,15 @@ Example request shape:
   }
 }
 ```
+
+MoonClaw should pass this through profile step metadata rather than relying on
+natural-language prompt inference alone.
+
+Recommended dispatch metadata keys:
+
+- `robot_action`
+- `robot_params`
+- `robot_safety_class`
 
 Example status shape:
 
@@ -189,20 +198,40 @@ Example status shape:
 }
 ```
 
+## DDS Design Guidance
+
+Design your DDS surface so MoonClaw only touches high-level tasks.
+
+Recommended DDS topics/services:
+
+- low-level:
+  - `robot/joint_command`
+  - `robot/joint_state`
+  - `robot/base_cmd`
+  - `robot/mode_cmd`
+  - `robot/fault_state`
+- high-level:
+  - `robot/task_request`
+  - `robot/task_status`
+  - `robot/action_feedback`
+
+MoonClaw should integrate through the high-level side only.
+
 ## MoonClaw Job Model
 
-MoonClaw should represent E1 actions as specialist worker jobs.
+MoonClaw should represent robot actions as specialist worker jobs.
 
 Recommended profile families:
 
-- `robot.e1.system_check`
-- `robot.e1.highcontrol_action`
-- `robot.e1.session_supervision`
+- `robot.dds.system_check`
+- `robot.dds.action`
+- `robot.dds.session_supervision`
 
 Recommended execution pattern:
 
 - analysis/controller step in MoonClaw interprets user intent
-- delegate or external-worker step calls the E1 bridge
+- dispatch step includes explicit `robot_action` metadata when possible
+- delegate or external-worker step calls the robot bridge
 - bridge executes and streams status
 - MoonClaw reports back to Feishu/UI
 
@@ -214,16 +243,16 @@ Required safety categories:
 
 - `inspect_only`
   read state, capabilities, logs
-- `highcontrol_motion`
-  vendor high-level robot motion
-- `lowcontrol_engineering`
-  500Hz joint-level control
+- `high_level_motion`
+  robot motion through the bridge
+- `low_level_engineering`
+  board-level or joint-level control
 
 Default policy recommendation:
 
 - allow `inspect_only`
-- require approval for `highcontrol_motion`
-- disallow `lowcontrol_engineering` from chat-driven workflows unless the
+- require approval for `high_level_motion`
+- disallow `low_level_engineering` from chat-driven workflows unless the
   operator explicitly enters an engineering mode
 
 ## Operator UX
@@ -233,53 +262,80 @@ MoonClaw should surface:
 - current robot mode
 - active robot task
 - stop button / cancel action
-- safe summary such as:
-  - `Preparing`
+- safe summaries such as:
+  - `Planning`
   - `Walking`
-  - `Playing teach action`
+  - `Turning`
+  - `Going home`
   - `Stopped`
   - `Approval required`
 
-It should not expose raw joint-level control details in normal chat flows.
+It should not expose low-level control details in normal chat flows.
 
 ## Bridge Implementation Guidance
 
-The bridge should run on the Jetson board at the user-facing IP shown in the
-guide:
+The bridge should:
 
-- `192.168.55.101`
+- own the board transport
+- own DDS init and teardown
+- own heartbeat and stop logic
+- translate MoonClaw JSON requests into DDS requests
+- translate DDS status into concise MoonClaw status updates
 
-It should manage the DDS config pointing to the motion-control board:
-
-- `192.168.55.102`
-
-The bridge should embed or wrap the vendor examples rather than asking MoonClaw
-to run `sudo ./highcontrol` directly each time.
+MoonClaw should not run your DDS binaries directly each time.
 
 Preferred bridge implementation options:
 
-1. native service wrapping the SDK in C++ with HTTP/gRPC
-2. local daemon supervising `highcontrol` and exposing a typed RPC layer
+- a local CLI bridge process first
+- later an HTTP or daemon-based bridge for live supervision
 
-Avoid:
+## What The SDK In `../sdk` Changes
 
-- direct chat-triggered shell execution of the DDS demo binaries
-- exposing the motion-control board to MoonClaw
+The SDK found in `/Users/kq/Workspace/sdk` confirms an important integration
+detail:
+
+- `build_release.sh` builds demo executables like `highcontrol`
+- `highcontroller.cpp` and `lowcontroller.cpp` are example controller loops
+- the demos do not expose a stable stdin/stdout task API
+- `highcontroller.cpp` sets `CYCLONEDDS_URI` internally from `config/dds.xml`
+- `highcontroller.cpp` publishes control actions like:
+  - `WALK`
+  - `SWING`
+  - `SHAKE`
+  - `CHEER`
+  - `PLAYTEACH`
+  - `RUN`
+
+That means the right path is:
+
+- do not shell-wrap `highcontrol` directly from MoonClaw
+- build a small board-side adapter around the SDK
+- let that adapter implement a stable MoonClaw bridge protocol
+
+In other words, the SDK is useful as a control library/example base, not as the
+final MoonClaw worker protocol.
+
+## What MoonClaw Already Supports
+
+The current `neotix` branch now supports:
+
+- `execution_mode: "robot.dds"`
+- `execution_target: "<target-id>"`
+- bridge command resolution from `moonclaw.json`
+- JSON stdin/stdout bridge requests for `job.analysis`
+- compatibility alias `execution_mode: "robot.e1"` for the earlier branch work
 
 ## First Milestone
 
-Milestone 1 should prove:
+First milestone:
 
-- MoonClaw can query E1 bridge capabilities and state
-- MoonClaw can ask for approval before motion
-- MoonClaw can trigger a safe `highcontrol` action like `wave` or `cheer`
-- MoonClaw can show progress and final result in Feishu/UI
+1. build a CLI bridge around your board + DDS runtime
+2. support `wave`, `walk`, `turn`, `go_home`, and `stop`
+3. route one MoonClaw job step through that bridge
+4. return structured success/failure and a short summary
 
-## Non-Goals For The First Milestone
+Only after that should you add:
 
-- natural-language end-to-end tasking like `pick up water and give it to me`
-- perception-driven object fetching
-- whole-body manipulation planning
-- `lowcontrol` orchestration from MoonClaw
-
-Those should come later, after the bridge and safety model are proven.
+- long-running live supervision
+- richer robot state streaming
+- manipulation tasks like pickup or handover

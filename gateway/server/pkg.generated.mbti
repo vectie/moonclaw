@@ -431,6 +431,11 @@ pub impl Show for PipelineStatus
 pub impl ToJson for PipelineStatus
 pub impl @json.FromJson for PipelineStatus
 
+type RobotBridgeTargetConfig
+pub impl Show for RobotBridgeTargetConfig
+pub impl ToJson for RobotBridgeTargetConfig
+pub impl @json.FromJson for RobotBridgeTargetConfig
+
 pub struct SendMessageParams {
   from_agent : String
   to_agent : String?
