@@ -56,6 +56,7 @@ struct UiNode {
   step_id : String?
   artifact_id : String?
   memory_id : String?
+  metadata : Json
   provisional : Bool
 } derive(FromJson, Show)
 

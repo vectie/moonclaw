@@ -18,6 +18,47 @@ fn child_run_nodes(snapshot : UiSnapshot) -> Array[UiNode] {
 }
 
 ///|
+struct CompanyLaneEntry {
+  step : UiNode
+  child_runs : Array[UiNode]
+}
+
+///|
+struct CompanyLane {
+  key : String
+  title : String
+  order : Int
+  entries : Array[CompanyLaneEntry]
+}
+
+///|
+struct CompanyLaneStats {
+  live : Int
+  failed : Int
+  completed : Int
+  total : Int
+}
+
+///|
+struct CompanyBoardStats {
+  lane_count : Int
+  live_lanes : Int
+  blocked_lanes : Int
+  completed_lanes : Int
+  waiting_lanes : Int
+  remote_workers : Int
+}
+
+///|
+struct CompanyHandoff {
+  from_title : String
+  to_title : String
+  from_status : String
+  to_status : String
+  active_title : String
+}
+
+///|
 fn node_is_root(snapshot : UiSnapshot, node : UiNode) -> Bool {
   match node.parent_id {
     None => true
@@ -382,6 +423,517 @@ fn render_tree_controls(dispatch : Dispatch[Msg]) -> Html {
       "Reset Tree",
     ),
   ])
+}
+
+///|
+fn node_metadata_string(node : UiNode, key : String) -> String? {
+  match node.metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(String(value)) => Some(value)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn node_metadata_int(node : UiNode, key : String) -> Int? {
+  match node.metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(Number(value, ..)) => Some(value.to_int())
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn node_metadata_has_string(
+  node : UiNode,
+  key : String,
+  target : String,
+) -> Bool {
+  match node.metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(Array(values)) =>
+          values.any(fn(value) {
+            match value {
+              String(text) => text == target
+              _ => false
+            }
+          })
+        _ => false
+      }
+    _ => false
+  }
+}
+
+///|
+fn node_step_text(node : UiNode) -> String {
+  let step_id = node.step_id.unwrap_or("")
+  let detail = node.detail.unwrap_or("")
+  let child_profile = node_metadata_string(node, "child_profile").unwrap_or("")
+  let worker_role = node_metadata_string(node, "worker_role").unwrap_or("")
+  "\{node.title} \{step_id} \{detail} \{child_profile} \{worker_role}"
+}
+
+///|
+fn lane_title_from_text(text : String) -> String {
+  let lowered = text.to_lower()
+  if lowered.contains("ceo") || lowered.contains("founder") {
+    "CEO"
+  } else if lowered.contains("eng") || lowered.contains("engineering") {
+    "Engineering"
+  } else if lowered.contains("implement") || lowered.contains("builder") {
+    "Implementation"
+  } else if lowered.contains("review") {
+    "Review"
+  } else if lowered.contains("qa") ||
+    lowered.contains("verify") ||
+    lowered.contains("test") {
+    "QA"
+  } else if lowered.contains("ship") || lowered.contains("release") {
+    "Shipping"
+  } else {
+    "Operations"
+  }
+}
+
+///|
+fn lane_title_for_node(snapshot : UiSnapshot, node : UiNode) -> String {
+  match node_metadata_string(node, "board_lane") {
+    Some(title) if !title.is_blank() => return title
+    _ => ()
+  }
+  if node.kind == "ChildRun" {
+    match node_metadata_string(node, "worker_role") {
+      Some(role) => lane_title_from_text(role)
+      None =>
+        match parent_node(snapshot, node) {
+          Some(parent) => lane_title_for_node(snapshot, parent)
+          None => "Operations"
+        }
+    }
+  } else if node_metadata_has_string(node, "preferred_skills", "opc-ceo") {
+    "CEO"
+  } else if node_metadata_has_string(node, "preferred_skills", "opc-eng") {
+    "Engineering"
+  } else if node_metadata_has_string(node, "preferred_skills", "opc-review") {
+    "Review"
+  } else if node_metadata_has_string(node, "preferred_skills", "opc-qa") {
+    "QA"
+  } else if node_metadata_has_string(node, "preferred_skills", "opc-ship") {
+    "Shipping"
+  } else {
+    lane_title_from_text(node_step_text(node))
+  }
+}
+
+///|
+fn lane_rank(title : String) -> Int {
+  match title {
+    "CEO" => 0
+    "Engineering" => 1
+    "Implementation" => 2
+    "Review" => 3
+    "QA" => 4
+    "Shipping" => 5
+    _ => 6
+  }
+}
+
+///|
+fn lane_order_for_node(snapshot : UiSnapshot, node : UiNode) -> Int {
+  match node_metadata_int(node, "board_order") {
+    Some(order) => order
+    None =>
+      if node.kind == "ChildRun" {
+        match parent_node(snapshot, node) {
+          Some(parent) => lane_order_for_node(snapshot, parent)
+          None => lane_rank(lane_title_for_node(snapshot, node))
+        }
+      } else {
+        lane_rank(lane_title_for_node(snapshot, node))
+      }
+  }
+}
+
+///|
+fn controller_split_node(snapshot : UiSnapshot) -> UiNode? {
+  for node in snapshot.nodes {
+    if node.kind == "Split" {
+      return Some(node)
+    }
+  }
+  None
+}
+
+///|
+fn controller_merge_node(snapshot : UiSnapshot) -> UiNode? {
+  for node in snapshot.nodes {
+    if node.kind == "Merge" {
+      return Some(node)
+    }
+  }
+  None
+}
+
+///|
+fn company_lane_entries(snapshot : UiSnapshot) -> Array[CompanyLane] {
+  let split = match controller_split_node(snapshot) {
+    Some(node) => node
+    None => return []
+  }
+  let lanes : Array[CompanyLane] = []
+  for
+    step in child_nodes(snapshot, split.id).filter(fn(node) {
+      node.kind == "Step"
+    }) {
+    let title = lane_title_for_node(snapshot, step)
+    let key = title.to_lower()
+    let order = lane_order_for_node(snapshot, step)
+    let entry = {
+      step,
+      child_runs: child_nodes(snapshot, step.id).filter(fn(node) {
+        node.kind == "ChildRun"
+      }),
+    }
+    let mut matched = false
+    for i = 0; i < lanes.length(); i = i + 1 {
+      if lanes[i].key == key {
+        lanes[i] = { ..lanes[i], entries: lanes[i].entries + [entry] }
+        matched = true
+        break
+      }
+    }
+    if !matched {
+      lanes.push({ key, title, order, entries: [entry] })
+    }
+  }
+  lanes.sort_by(fn(left, right) { left.order.compare(right.order) })
+  lanes
+}
+
+///|
+fn render_company_step_stack(
+  dispatch : Dispatch[Msg],
+  snapshot : UiSnapshot,
+  timeline : Array[UiTimelineEntry],
+  entry : CompanyLaneEntry,
+) -> Html {
+  div(class="company-step-stack", [
+    render_focus_node_button(dispatch, snapshot, timeline, entry.step),
+    if entry.child_runs.is_empty() {
+      nothing
+    } else {
+      div(
+        class="company-substack",
+        entry.child_runs.map(fn(node) {
+          render_focus_node_button(dispatch, snapshot, timeline, node)
+        }),
+      )
+    },
+  ])
+}
+
+///|
+fn render_company_lane(
+  dispatch : Dispatch[Msg],
+  snapshot : UiSnapshot,
+  timeline : Array[UiTimelineEntry],
+  lane : CompanyLane,
+) -> Html {
+  let stats = company_lane_stats(lane)
+  let active_title = company_lane_active_title(lane)
+  section(class="company-lane", [
+    div(class="company-lane-header", [
+      div(class="company-lane-title-stack", [
+        h3(class="section-title", lane.title),
+        if active_title == "" {
+          nothing
+        } else {
+          p(class="muted", "Active: \{active_title}")
+        },
+      ]),
+      div(class="company-lane-header-meta", [
+        render_status_badge(company_lane_status(lane)),
+        render_meta_chip("tracks", lane.entries.length().to_string()),
+      ]),
+    ]),
+    div(class="company-lane-summary", [
+      render_meta_chip("nodes", stats.total.to_string()),
+      if stats.live > 0 {
+        render_meta_chip("live", stats.live.to_string())
+      } else {
+        nothing
+      },
+      if stats.failed > 0 {
+        render_meta_chip("failed", stats.failed.to_string())
+      } else {
+        nothing
+      },
+      if stats.completed > 0 {
+        render_meta_chip("done", stats.completed.to_string())
+      } else {
+        nothing
+      },
+    ]),
+    div(
+      class="company-lane-stack",
+      lane.entries.map(fn(entry) {
+        render_company_step_stack(dispatch, snapshot, timeline, entry)
+      }),
+    ),
+  ])
+}
+
+///|
+fn render_company_board(
+  dispatch : Dispatch[Msg],
+  snapshot : UiSnapshot,
+  timeline : Array[UiTimelineEntry],
+) -> Html {
+  match controller_split_node(snapshot) {
+    Some(split) => {
+      let lanes = company_lane_entries(snapshot)
+      let merge = controller_merge_node(snapshot)
+      let stats = company_board_stats(lanes)
+      let handoffs = company_handoffs(lanes)
+      section(class="company-board", [
+        div(class="section-header", [
+          h3(class="section-title", "Company Board"),
+          div(class="company-board-meta", [
+            render_meta_chip("lanes", lanes.length().to_string()),
+            render_meta_chip("mode", "parallel roles"),
+          ]),
+        ]),
+        render_company_health_strip(stats),
+        div(class="company-board-anchors", [
+          render_focus_node_button(dispatch, snapshot, timeline, split),
+        ]),
+        render_company_lane_sequence(lanes),
+        render_company_handoff_row(handoffs),
+        div(
+          class="company-board-lanes",
+          lanes.map(fn(lane) {
+            render_company_lane(dispatch, snapshot, timeline, lane)
+          }),
+        ),
+        match merge {
+          Some(merge) =>
+            div(class="company-board-anchors", [
+              render_focus_node_button(dispatch, snapshot, timeline, merge),
+            ])
+          None => nothing
+        },
+      ])
+    }
+    None => nothing
+  }
+}
+
+///|
+fn company_lane_nodes(lane : CompanyLane) -> Array[UiNode] {
+  let nodes : Array[UiNode] = []
+  for entry in lane.entries {
+    nodes.push(entry.step)
+    for child in entry.child_runs {
+      nodes.push(child)
+    }
+  }
+  nodes
+}
+
+///|
+fn company_lane_stats(lane : CompanyLane) -> CompanyLaneStats {
+  let mut live = 0
+  let mut failed = 0
+  let mut completed = 0
+  let nodes = company_lane_nodes(lane)
+  for node in nodes {
+    let status = normalize_status(node.status)
+    if status.contains("Running") || status.contains("Pending") {
+      live = live + 1
+    } else if status.contains("Failed") {
+      failed = failed + 1
+    } else if status.contains("Succeeded") {
+      completed = completed + 1
+    }
+  }
+  { live, failed, completed, total: nodes.length() }
+}
+
+///|
+fn company_lane_status(lane : CompanyLane) -> String {
+  let stats = company_lane_stats(lane)
+  if stats.live > 0 {
+    "\"Running\""
+  } else if stats.failed > 0 {
+    "\"Failed\""
+  } else if stats.completed > 0 {
+    "\"Succeeded\""
+  } else {
+    "\"Pending\""
+  }
+}
+
+///|
+fn company_lane_active_title(lane : CompanyLane) -> String {
+  let nodes = company_lane_nodes(lane)
+  for node in nodes {
+    let status = normalize_status(node.status)
+    if status.contains("Running") || status.contains("Pending") {
+      return node.title
+    }
+  }
+  ""
+}
+
+///|
+fn company_board_stats(lanes : Array[CompanyLane]) -> CompanyBoardStats {
+  let mut live_lanes = 0
+  let mut blocked_lanes = 0
+  let mut completed_lanes = 0
+  let mut waiting_lanes = 0
+  let mut remote_workers = 0
+  for lane in lanes {
+    let status = normalize_status(company_lane_status(lane))
+    if status.contains("Running") {
+      live_lanes = live_lanes + 1
+    } else if status.contains("Failed") {
+      blocked_lanes = blocked_lanes + 1
+    } else if status.contains("Succeeded") {
+      completed_lanes = completed_lanes + 1
+    } else {
+      waiting_lanes = waiting_lanes + 1
+    }
+    for node in company_lane_nodes(lane) {
+      if node.kind == "ChildRun" {
+        remote_workers = remote_workers + 1
+      }
+    }
+  }
+  {
+    lane_count: lanes.length(),
+    live_lanes,
+    blocked_lanes,
+    completed_lanes,
+    waiting_lanes,
+    remote_workers,
+  }
+}
+
+///|
+fn render_company_health_strip(stats : CompanyBoardStats) -> Html {
+  div(class="company-health-strip", [
+    article(class="company-health-card", [
+      p(class="kv-label", "Departments"),
+      p(class="node-title", stats.lane_count.to_string()),
+    ]),
+    article(class="company-health-card", [
+      p(class="kv-label", "Active"),
+      p(class="node-title", stats.live_lanes.to_string()),
+    ]),
+    article(class="company-health-card", [
+      p(class="kv-label", "Blocked"),
+      p(class="node-title", stats.blocked_lanes.to_string()),
+    ]),
+    article(class="company-health-card", [
+      p(class="kv-label", "Waiting"),
+      p(class="node-title", stats.waiting_lanes.to_string()),
+    ]),
+    article(class="company-health-card", [
+      p(class="kv-label", "Done"),
+      p(class="node-title", stats.completed_lanes.to_string()),
+    ]),
+    article(class="company-health-card", [
+      p(class="kv-label", "Workers"),
+      p(class="node-title", stats.remote_workers.to_string()),
+    ]),
+  ])
+}
+
+///|
+fn render_company_lane_sequence(lanes : Array[CompanyLane]) -> Html {
+  if lanes.is_empty() {
+    nothing
+  } else {
+    let items : Array[Html] = []
+    for i = 0; i < lanes.length(); i = i + 1 {
+      let lane = lanes[i]
+      items.push(
+        div(class="company-sequence-chip", [
+          span(class="meta-chip", lane.title),
+          render_status_badge(company_lane_status(lane)),
+        ]),
+      )
+      if i < lanes.length() - 1 {
+        items.push(
+          div(class="company-sequence-arrow", [span(class="meta-chip", "then")]),
+        )
+      }
+    }
+    div(class="company-sequence", items)
+  }
+}
+
+///|
+fn company_handoffs(lanes : Array[CompanyLane]) -> Array[CompanyHandoff] {
+  let handoffs : Array[CompanyHandoff] = []
+  if lanes.length() < 2 {
+    return handoffs
+  }
+  for i = 0; i < lanes.length() - 1; i = i + 1 {
+    let from_lane = lanes[i]
+    let to_lane = lanes[i + 1]
+    handoffs.push({
+      from_title: from_lane.title,
+      to_title: to_lane.title,
+      from_status: company_lane_status(from_lane),
+      to_status: company_lane_status(to_lane),
+      active_title: if company_lane_active_title(to_lane) != "" {
+        company_lane_active_title(to_lane)
+      } else {
+        company_lane_active_title(from_lane)
+      },
+    })
+  }
+  handoffs
+}
+
+///|
+fn render_company_handoff_card(handoff : CompanyHandoff) -> Html {
+  article(class="company-handoff-card", [
+    div(class="company-handoff-head", [
+      span(class="meta-chip", handoff.from_title),
+      span(class="company-handoff-arrow", "→"),
+      span(class="meta-chip", handoff.to_title),
+    ]),
+    div(class="company-handoff-status", [
+      render_status_badge(handoff.from_status),
+      render_status_badge(handoff.to_status),
+    ]),
+    if handoff.active_title == "" {
+      p(class="muted", "Waiting for next handoff")
+    } else {
+      p(class="muted", "Current baton: \{handoff.active_title}")
+    },
+  ])
+}
+
+///|
+fn render_company_handoff_row(handoffs : Array[CompanyHandoff]) -> Html {
+  if handoffs.is_empty() {
+    nothing
+  } else {
+    div(
+      class="company-handoff-row",
+      handoffs.map(fn(handoff) { render_company_handoff_card(handoff) }),
+    )
+  }
 }
 
 ///|
@@ -1465,6 +2017,7 @@ fn render_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
               ])
             None => nothing
           },
+          render_company_board(dispatch, snapshot, timeline),
           div(class="detail-grid", [
             section([
               div(class="section-header", [

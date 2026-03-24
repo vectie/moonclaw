@@ -17,6 +17,8 @@
             "prompt_template": "Act as the product-minded founder for ${request}. Reframe the user need, challenge weak assumptions, and define the narrowest wedge worth shipping now.",
             "metadata": {
               "preferred_skills": ["opc-ceo"],
+              "board_lane": "CEO",
+              "board_order": 0,
               "enable_tools": false
             }
           },
@@ -27,6 +29,8 @@
             "prompt_template": "Act as the engineering lead for ${proposal.title}. Turn the CEO direction into an execution plan with architecture, failure modes, and a concrete implementation order.",
             "metadata": {
               "preferred_skills": ["opc-eng"],
+              "board_lane": "Engineering",
+              "board_order": 1,
               "enable_tools": false
             }
           },
@@ -38,6 +42,10 @@
             "child_profile": "opc_impl_worker",
             "execution_mode": "acp",
             "execution_target": "codex-impl",
+            "metadata": {
+              "board_lane": "Implementation",
+              "board_order": 2
+            },
             "include_parent_outputs": true,
             "max_depth": 3
           },
@@ -49,6 +57,10 @@
             "child_profile": "opc_review_worker",
             "execution_mode": "acp",
             "execution_target": "codex-review",
+            "metadata": {
+              "board_lane": "Review",
+              "board_order": 3
+            },
             "include_parent_outputs": true,
             "max_depth": 3
           },
@@ -60,6 +72,10 @@
             "child_profile": "opc_qa_worker",
             "execution_mode": "acp",
             "execution_target": "codex-qa",
+            "metadata": {
+              "board_lane": "QA",
+              "board_order": 4
+            },
             "include_parent_outputs": true,
             "max_depth": 3
           },
@@ -70,6 +86,8 @@
             "prompt_template": "Act as the one-person-company operator for ${proposal.title}. Synthesize the outputs so far, decide whether to ship, and produce a final execution brief. If another iteration is needed, return a controller decision with the next iteration.",
             "metadata": {
               "preferred_skills": ["opc-ship"],
+              "board_lane": "Shipping",
+              "board_order": 5,
               "enable_tools": false
             }
           }

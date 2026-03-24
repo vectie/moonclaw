@@ -27,24 +27,8 @@ fn compact_title(text : String) -> String {
 fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
   [
     JobProposalStep::{
-      id: "scope",
-      title: "Clarify objective and constraints",
-      kind: "job.analysis",
-      metadata: {},
-      child_profile: None,
-      execution_mode: None,
-      execution_target: None,
-      include_parent_outputs: None,
-      max_depth: None,
-      prompt: [
-        "Take the following requested job and restate the objective, constraints, assumptions, and success criteria.",
-        "Keep this compact and execution-oriented.",
-        "Request: \{request_text}",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
       id: "execute",
-      title: "Execute main work",
+      title: "Execute requested work",
       kind: "job.analysis",
       metadata: {},
       child_profile: None,
@@ -53,22 +37,10 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
       include_parent_outputs: None,
       max_depth: None,
       prompt: [
-        "Perform the main requested work using the prior step output as context.",
+        "Perform the requested job directly.",
         "Produce concrete results, not just advice.",
-      ].join("\n\n"),
-    },
-    JobProposalStep::{
-      id: "finalize",
-      title: "Verify and deliver result",
-      kind: "job.analysis",
-      metadata: {},
-      child_profile: None,
-      execution_mode: None,
-      execution_target: None,
-      include_parent_outputs: None,
-      max_depth: None,
-      prompt: [
-        "Review the result critically and refine it if needed.", "Then prepare the final delivery with outcome, remaining risks, and produced artifacts.",
+        "State any assumptions and remaining risks in the final output.",
+        "Request: \{request_text}",
       ].join("\n\n"),
     },
   ]

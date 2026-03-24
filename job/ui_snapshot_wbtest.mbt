@@ -264,3 +264,187 @@ async test "build_job_ui_snapshot includes explicit handoffs when provided" {
     json_inspect(snapshot.timeline[0].step_id.unwrap_or(""), content="step-a")
   })
 }
+
+///|
+async test "build_job_ui_snapshot adds split and merge nodes for controller runs" {
+  @fsx.with_temporary_directory("job-ui-controller-XXXXXX", dir => {
+    let store = SystemStore::new(root=dir)
+    let definition = JobDefinition::{
+      id: "job-controller",
+      kind: "job.controller",
+      enabled: true,
+      config: { "family": "opc_feature_sprint", "role": "controller" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-controller"),
+      created_at: 10,
+      updated_at: 10,
+      tags: [],
+    }
+    let workflow = WorkflowDefinition::{
+      id: "wf-controller",
+      kind: "job.controller",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "ceo_review",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+        WorkflowStepDefinition::{
+          id: "implement",
+          kind: "job.delegate",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    }
+    let run = JobRun::{
+      id: "run-controller",
+      job_id: "job-controller",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: Some("/tmp/opc-ws"),
+      status: Running,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(100),
+      completed_at: None,
+      summary: Some("shipping feature"),
+      error: None,
+    }
+    let child_run = JobRun::{
+      id: "run-worker",
+      job_id: "job-worker",
+      trigger: Manual,
+      parent_run_id: Some("run-controller"),
+      parent_step_id: Some("implement"),
+      depth: 1,
+      workspace_dir: Some("/tmp/opc-worker"),
+      status: Running,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(120),
+      completed_at: None,
+      summary: Some("implementing"),
+      error: None,
+    }
+    let worker_definition = JobDefinition::{
+      id: "job-worker",
+      kind: "job.proposal",
+      enabled: true,
+      config: {
+        "family": "opc_impl_worker",
+        "profile_metadata": { "worker_role": "implementation" },
+      },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: None,
+      created_at: 12,
+      updated_at: 12,
+      tags: [],
+    }
+    let artifact = ArtifactRecord::{
+      id: "artifact-merge",
+      run_id: "run-controller",
+      job_id: "job-controller",
+      artifact_type: "report",
+      logical_key: Some("ship-brief"),
+      version: 1,
+      status: Active,
+      path: "/tmp/opc-ws/ship.md",
+      content_type: "text/markdown",
+      metadata: {},
+      created_at: 150,
+      archived_at: None,
+      scope: [],
+    }
+    store.save_definition(definition)
+    store.save_definition(worker_definition)
+    store.save_workflow(workflow)
+    store.save_run(run)
+    store.save_run(child_run)
+    store.save_controller_state(JobControllerState::{
+      controller_job_id: "job-controller",
+      controller_run_id: "run-controller",
+      family: "opc_feature_sprint",
+      profile_id: Some("opc_feature_sprint"),
+      objective: "Ship the feature",
+      active_iteration_ids: [
+        "run-controller:iter:root", "run-controller:iter:implement",
+      ],
+      accepted_iteration_ids: ["run-controller:iter:implement"],
+      rejected_iteration_ids: [],
+      best_iteration_id: Some("run-controller:iter:implement"),
+      frontier: ["run-controller:iter:implement"],
+      metadata: {},
+      created_at: 101,
+      updated_at: 170,
+    })
+    store.save_controller_decision(JobControllerDecision::{
+      id: "decision-1",
+      controller_job_id: "job-controller",
+      controller_run_id: "run-controller",
+      iteration_id: "run-controller:iter:implement",
+      step_id: "implement",
+      verdict: "accept",
+      reason: Some("ready to ship"),
+      next_action: Some("merge"),
+      metadata: {},
+      created_at: 171,
+      updated_at: 171,
+    })
+    store.save_artifact(artifact)
+
+    let snapshot = build_job_ui_snapshot(store, "run-controller").unwrap()
+    let kinds = snapshot.nodes.map(fn(node) { node.kind.to_json().stringify() })
+    json_inspect(kinds, content=[
+      "\"Workflow\"", "\"Split\"", "\"Step\"", "\"Step\"", "\"ChildRun\"", "\"Merge\"",
+      "\"Artifact\"",
+    ])
+    let split = snapshot.nodes.filter(fn(node) {
+        node.kind.to_json().stringify() == "\"Split\""
+      })[0]
+    let merge = snapshot.nodes.filter(fn(node) {
+        node.kind.to_json().stringify() == "\"Merge\""
+      })[0]
+    json_inspect(split.status, content="\"Running\"")
+    json_inspect(
+      split.summary.unwrap_or(""),
+      content="1 delegated steps · 1 worker runs · 1 active",
+    )
+    json_inspect(merge.status, content="\"Running\"")
+    json_inspect(
+      merge.summary.unwrap_or(""),
+      content="1 accepted · 1 decisions · 1 artifacts · shipping feature",
+    )
+    let implement = snapshot.nodes.filter(fn(node) {
+        node.step_id == Some("implement")
+      })[0]
+    json_inspect(
+      implement.parent_id.unwrap_or(""),
+      content="split:run-controller",
+    )
+    let artifact_node = snapshot.nodes.filter(fn(node) {
+        node.artifact_id == Some("artifact-merge")
+      })[0]
+    let child_node = snapshot.nodes.filter(fn(node) {
+        node.run_id == Some("run-worker")
+      })[0]
+    json_inspect(
+      artifact_node.parent_id.unwrap_or(""),
+      content="merge:run-controller",
+    )
+    json_inspect(child_node.metadata, content={
+      "depth": 1,
+      "job_id": "job-worker",
+      "parent_run_id": "run-controller",
+      "family": "opc_impl_worker",
+      "role": null,
+      "worker_role": "implementation",
+    })
+  })
+}

@@ -68,6 +68,32 @@ fn metadata_string(metadata : Json, key : String) -> String? {
 }
 
 ///|
+fn metadata_json_value(metadata : Json, key : String) -> Json? {
+  match metadata {
+    Object(obj) => obj.get(key)
+    _ => None
+  }
+}
+
+///|
+fn merge_json_objects(base : Json, extras : Array[(String, Json)]) -> Json {
+  let merged : Map[String, Json] = {}
+  match base {
+    Object(obj) =>
+      for key, value in obj {
+        merged.set(key, value)
+      }
+    _ => ()
+  }
+  for extra in extras {
+    let key = extra.0
+    let value = extra.1
+    merged.set(key, value)
+  }
+  Json::object(merged)
+}
+
+///|
 fn workflow_step_definition_for_proposal_step(
   proposal : JobProposal,
   step : JobProposalStep,
@@ -83,38 +109,57 @@ fn workflow_step_definition_for_proposal_step(
     "proposal_step_title": step.title,
     "family": family,
   }
+  let board_extras : Array[(String, Json)] = []
+  match metadata_json_value(step.metadata, "board_lane") {
+    Some(value) => board_extras.push(("board_lane", value))
+    None => ()
+  }
+  match metadata_json_value(step.metadata, "board_order") {
+    Some(value) => board_extras.push(("board_order", value))
+    None => ()
+  }
   let config = if kind == "job.delegate" {
-    SubjobStepConfig::new(
-      request_text=step.prompt,
-      cwd=Some(cwd),
-      home=Some(home),
-      child_profile=step.child_profile,
-      execution_mode=step.execution_mode,
-      execution_target=step.execution_target,
-      include_parent_outputs=step.include_parent_outputs.unwrap_or(true),
-      max_depth=step.max_depth.unwrap_or(2),
-    ).to_json()
+    merge_json_objects(
+      SubjobStepConfig::new(
+        request_text=step.prompt,
+        cwd=Some(cwd),
+        home=Some(home),
+        child_profile=step.child_profile,
+        execution_mode=step.execution_mode,
+        execution_target=step.execution_target,
+        include_parent_outputs=step.include_parent_outputs.unwrap_or(true),
+        max_depth=step.max_depth.unwrap_or(2),
+      ).to_json(),
+      board_extras,
+    )
   } else {
-    AnalysisStepConfig::new(
-      prompt=step.prompt,
-      model=metadata_string(step.metadata, "model"),
-      cwd=Some(cwd),
-      home=Some(home),
-      workspace=Some(workspace_root),
-      system_prompt=metadata_string(step.metadata, "system_prompt"),
-      preferred_skills=metadata_string_array(step.metadata, "preferred_skills"),
-      enable_tools=metadata_bool(step.metadata, "enable_tools", true),
-      web_search=metadata_bool(step.metadata, "web_search", false),
-      policy=AnalysisPolicy::new(skip_if_artifact_exists=false),
-      artifacts=AnalysisArtifactConfig::new(
-        report_artifact_type="job.proposal.step.report",
-        result_artifact_type="job.proposal.step.result",
-        logical_key=Some("\{proposal.id}:\{step.id}"),
-        scope=["jobs", "proposal:\{proposal.id}"],
-        append_only=false,
-      ),
-      metadata=base_metadata,
-    ).to_json()
+    let analysis_metadata = merge_json_objects(base_metadata, board_extras)
+    merge_json_objects(
+      AnalysisStepConfig::new(
+        prompt=step.prompt,
+        model=metadata_string(step.metadata, "model"),
+        cwd=Some(cwd),
+        home=Some(home),
+        workspace=Some(workspace_root),
+        system_prompt=metadata_string(step.metadata, "system_prompt"),
+        preferred_skills=metadata_string_array(
+          step.metadata,
+          "preferred_skills",
+        ),
+        enable_tools=metadata_bool(step.metadata, "enable_tools", true),
+        web_search=metadata_bool(step.metadata, "web_search", false),
+        policy=AnalysisPolicy::new(skip_if_artifact_exists=false),
+        artifacts=AnalysisArtifactConfig::new(
+          report_artifact_type="job.proposal.step.report",
+          result_artifact_type="job.proposal.step.result",
+          logical_key=Some("\{proposal.id}:\{step.id}"),
+          scope=["jobs", "proposal:\{proposal.id}"],
+          append_only=false,
+        ),
+        metadata=analysis_metadata,
+      ).to_json(),
+      board_extras,
+    )
   }
   WorkflowStepDefinition::{ id: step.id, kind, config, retry_policy: None }
 }

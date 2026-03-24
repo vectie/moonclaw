@@ -938,6 +938,8 @@ pub impl @json.FromJson for JobUiNode
 pub(all) enum JobUiNodeKind {
   Proposal
   Workflow
+  Split
+  Merge
   Step
   ChildRun
   Artifact
