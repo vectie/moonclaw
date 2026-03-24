@@ -386,3 +386,13 @@ It is trying to be:
 - 🪵 a workspace-centric execution environment
 - 📡 an operator-controlled gateway
 - 🤖 a local + remote multi-surface control plane
+
+## Star Growth
+
+<!-- STAR_GROWTH:START -->
+_Last updated: 2026-03-24_
+
+| Date | Stars | Delta |
+| --- | ---: | ---: |
+| 2026-03-24 | 21 | — |
+<!-- STAR_GROWTH:END -->
