@@ -200,3 +200,54 @@ async test "seed_channel_state_from_moonclaw_config preserves persisted state" {
     content="true",
   )
 }
+
+///|
+async test "bootstrap_channel_states_from_moonclaw_config normalizes weixin config" {
+  @fsx.with_temporary_directory("gateway-bootstrap-weixin-XXXXXX", dir => {
+    let home_config_dir = @path.Path(dir)
+      .join(@path.Path(".moonclaw"))
+      .to_string()
+    @fsx.make_directory(home_config_dir, recursive=true)
+    let config_path = @path.Path(home_config_dir)
+      .join(@path.Path("moonclaw.json"))
+      .to_string()
+    @fsx.write_to_file(
+      config_path,
+      Json::object({
+        "channels": {
+          "weixin": {
+            "enabled": true,
+            "appId": "wx-app",
+            "appSecret": "wx-secret",
+            "token": "wx-token",
+            "originalId": "gh_test",
+            "allowFrom": ["openid-1"],
+          },
+        },
+      }).stringify(),
+    )
+
+    let states = bootstrap_channel_states_from_moonclaw_config(
+      dir, "/tmp/no-project",
+    )
+    inspect(states.length(), content="1")
+    let state = states[0]
+    inspect(state.channel_id, content="weixin")
+    inspect(
+      state.accounts[0].config.stringify().contains("\"app_id\":\"wx-app\""),
+      content="true",
+    )
+    inspect(
+      state.accounts[0].config
+      .stringify()
+      .contains("\"original_id\":\"gh_test\""),
+      content="true",
+    )
+    inspect(
+      state.config.global_settings
+      .stringify()
+      .contains("\"allow_from\":[\"openid-1\"]"),
+      content="true",
+    )
+  })
+}
