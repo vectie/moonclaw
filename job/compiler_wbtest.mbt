@@ -131,3 +131,39 @@ test "compile_job_proposal applies analysis metadata from proposal steps" {
     content="true",
   )
 }
+
+///|
+test "compile_job_proposal preserves analysis execution routing hints" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal("proposal-compiler-5", "run analysis remotely", 100),
+    steps: [
+      JobProposalStep::{
+        id: "scope",
+        title: "Scope",
+        prompt: "Scope the work.",
+        kind: "job.analysis",
+        metadata: {},
+        child_profile: None,
+        execution_mode: Some("acp"),
+        execution_target: Some("codex-main"),
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_mode\":\"acp\""),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_target\":\"codex-main\""),
+    content="true",
+  )
+}

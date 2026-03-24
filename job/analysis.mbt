@@ -53,6 +53,8 @@ pub(all) struct AnalysisStepConfig {
   cwd : String?
   home : String?
   workspace : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String?
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -69,6 +71,8 @@ pub fn AnalysisStepConfig::new(
   cwd? : String? = None,
   home? : String? = None,
   workspace? : String? = None,
+  execution_mode? : String? = None,
+  execution_target? : String? = None,
   system_prompt? : String? = None,
   preferred_skills? : Array[String] = [],
   enable_tools? : Bool = true,
@@ -83,6 +87,8 @@ pub fn AnalysisStepConfig::new(
     cwd,
     home,
     workspace,
+    execution_mode,
+    execution_target,
     system_prompt,
     preferred_skills,
     enable_tools,
@@ -102,6 +108,8 @@ pub(all) struct AnalysisRequest {
   model_name : String
   cwd : String
   home : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -385,6 +393,8 @@ pub async fn build_analysis_request(
     model_name: config.model.unwrap_or("default"),
     cwd: working_directory,
     home: config.home,
+    execution_mode: config.execution_mode,
+    execution_target: config.execution_target,
     system_prompt: analysis_system_prompt(config),
     preferred_skills: config.preferred_skills,
     enable_tools: config.enable_tools,
