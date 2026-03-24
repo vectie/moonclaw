@@ -1,0 +1,242 @@
+# `moonclaw.jobs.json` Reference
+
+This document is the canonical reference for workspace-local job profile
+configuration.
+
+MoonClaw loads job profiles only from:
+
+- `<cwd>/moonclaw.jobs.json`
+
+This file is intentionally separate from global runtime config in:
+
+- `~/.moonclaw/moonclaw.json`
+
+## Purpose
+
+`moonclaw.jobs.json` defines workspace-local workflow policy:
+
+- which prompts match which profile
+- what family a proposal should use
+- whether a proposal behaves like a normal job or a controller job
+- what steps it should run
+- what skills, routing hints, and board metadata each step carries
+
+It is the main extension boundary for packs like research and OPC.
+
+## Top-Level Shape
+
+```json
+{
+  "jobs": {
+    "profiles": {
+      "profile_id": {
+        "...": "..."
+      }
+    }
+  }
+}
+```
+
+## Profile Fields
+
+Each entry under `jobs.profiles` can contain:
+
+- `family`
+  job family name stamped onto the proposal
+- `role`
+  usually `default` or `controller`
+- `priority`
+  higher priority wins when multiple profiles match
+- `tags`
+  optional descriptive tags
+- `match`
+  profile selection rules
+- `steps`
+  the explicit step list to use
+- `metadata`
+  arbitrary profile-level metadata
+
+Example:
+
+```json
+{
+  "jobs": {
+    "profiles": {
+      "opc_feature_sprint": {
+        "family": "opc_feature_sprint",
+        "role": "controller",
+        "priority": 90,
+        "tags": ["opc", "controller"],
+        "match": {
+          "any": ["feature", "sprint", "ship", "dashboard"]
+        },
+        "steps": [],
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Match Rules
+
+Current match controls:
+
+- `match.any`
+  profile matches if any term appears
+- `match.all`
+  profile matches only if all terms appear
+
+Terms are simple text fragments, not a full query language.
+
+When multiple profiles match:
+
+- higher `priority` wins
+
+## Step Fields
+
+Each step should include:
+
+- `id`
+- `title`
+- `kind`
+
+Current common `kind` values:
+
+- `job.analysis`
+- `job.delegate`
+
+Optional common step fields:
+
+- `prompt_template`
+- `metadata`
+
+Example:
+
+```json
+{
+  "id": "eng_plan",
+  "title": "Engineering plan",
+  "kind": "job.analysis",
+  "metadata": {
+    "preferred_skills": ["opc-eng"]
+  }
+}
+```
+
+## Analysis Step Metadata
+
+`job.analysis` steps can currently carry metadata such as:
+
+- `preferred_skills`
+- `system_prompt`
+- `enable_tools`
+- `web_search`
+- `model`
+- `execution_mode`
+- `execution_target`
+- `board_lane`
+- `board_order`
+
+Important current routing behavior:
+
+- if `execution_mode: "acp"` and `execution_target` are present, the gateway can
+  route that analysis step through ACP instead of the local model path
+
+Example:
+
+```json
+{
+  "id": "scope",
+  "title": "Scope the feature",
+  "kind": "job.analysis",
+  "metadata": {
+    "preferred_skills": ["opc-ceo"],
+    "execution_mode": "acp",
+    "execution_target": "codex-main",
+    "board_lane": "CEO",
+    "board_order": 0
+  }
+}
+```
+
+## Delegate Step Fields
+
+`job.delegate` steps can currently carry:
+
+- `child_profile`
+- `execution_mode`
+- `execution_target`
+- `include_parent_outputs`
+- `max_depth`
+- `metadata`
+
+Example:
+
+```json
+{
+  "id": "review",
+  "title": "Peer review",
+  "kind": "job.delegate",
+  "child_profile": "opc_review_worker",
+  "execution_mode": "acp",
+  "execution_target": "codex-review",
+  "metadata": {
+    "board_lane": "Review",
+    "board_order": 3
+  }
+}
+```
+
+## Controller Metadata
+
+Controller-shaped profiles usually use:
+
+- `role: "controller"`
+
+and may include:
+
+- `metadata.controller_policy`
+
+The runtime keeps controller behavior generic. The profile provides the policy
+shape; the runtime persists controller state, iterations, lineage, and
+decisions.
+
+## Board Metadata
+
+The Rabbita company board prefers explicit metadata on steps:
+
+- `board_lane`
+- `board_order`
+
+This is the current recommended way to make the board predictable. If these
+fields are missing, the UI falls back to heuristics.
+
+## Fallback Behavior
+
+If no matching profile is found and no valid model-generated plan is available:
+
+- the generic fallback proposal is a single minimal `execute` step
+
+So explicit profiles are the right place for structured workflow shape.
+
+## Recommended Layout
+
+Typical workspace layout:
+
+```text
+workspace/
+  moonclaw.jobs.json
+  skills/
+    my-pack/
+      SKILL.md
+```
+
+For full examples, see:
+
+- [docs/examples/research_job_moonclaw.json](/Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json)
+- [docs/examples/opc_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json)

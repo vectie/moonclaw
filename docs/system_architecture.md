@@ -75,7 +75,7 @@ For operator-facing behavior and supported flows, see:
 | `coordinator` | coordination tasks and subtask state |
 | `pipeline_manager` | pipeline definitions and stage state |
 
-`gateway/server/new.mbt` creates the gateway, loads persisted state, seeds missing Feishu channel state from `.moonclaw/moonclaw.json`, auto-registers the Feishu extension, and restores enabled channel runtime.
+`gateway/server/new.mbt` creates the gateway, loads persisted state, seeds missing channel state from `.moonclaw/moonclaw.json`, auto-registers built-in channel extensions, and restores enabled channel runtime.
 
 ## Gateway Persistent State
 
@@ -100,11 +100,17 @@ Gateway::new(...)
 ```
 
 That means a restart now preserves direct-run conversation continuity, channel-triggered conversation continuity, channel config, and which channel accounts should auto-start again.
-It also means a first gateway start can bootstrap Feishu from the same `.moonclaw/moonclaw.json` file that the local CLI/model loader already uses.
+It also means a first gateway start can bootstrap built-in channels from the same `.moonclaw/moonclaw.json` file that the local CLI/model loader already uses.
 For Feishu websocket-mode accounts, restore now supports both:
 
 - manual `websocket_url` override
 - native endpoint resolution from `app_id` / `app_secret` via Feishu `/callback/ws/endpoint`
+
+Weixin currently uses the simpler Official Account webhook model:
+
+- `GET /webhook/weixin` for handshake verification
+- `POST /webhook/weixin` for inbound plaintext text messages
+- outbound replies through the Weixin custom-service API
 
 ## Gateway HTTP Surface
 
@@ -141,6 +147,11 @@ The route table lives in `gateway/server/request.mbt`.
 - `GET /v1/extensions`
 - `GET /v1/extensions/{id}`
 - `POST|GET /webhook/{channel_id}/...`
+
+Current built-in channel ids:
+
+- `feishu`
+- `weixin`
 
 ### Mailbox routes
 
@@ -218,6 +229,35 @@ POST /v1/agent
 ```text
 Gateway::execute_agent_async
   -> Gateway::execute_agent
+
+## Job and Controller Routing Notes
+
+The current job runtime is now profile-driven and workspace-local:
+
+- job profiles load from `<cwd>/moonclaw.jobs.json`
+- global runtime config stays in `~/.moonclaw/moonclaw.json`
+
+Important current routing capabilities:
+
+- `job.analysis` can run locally or through ACP when a step carries:
+  - `execution_mode`
+  - `execution_target`
+- `job.delegate` can also carry:
+  - `child_profile`
+  - `execution_mode`
+  - `execution_target`
+
+Controller-style runs also drive the operator canvas:
+
+- split / merge anchors
+- horizontal role lanes
+- company health strip
+- handoff and sequence summaries
+
+The preferred board-shaping metadata is:
+
+- `board_lane`
+- `board_order`
     -> resolve cwd
     -> resolve session_key
     -> sessions.get_or_create(...)

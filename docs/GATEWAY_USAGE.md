@@ -16,7 +16,7 @@ The gateway is a long-running HTTP/RPC service that:
 - persists lightweight session state by `session_key`
 - exposes SSE for agent events
 - exposes mailbox, coordination, and pipeline APIs
-- hosts channel extensions such as Feishu webhooks
+- hosts channel extensions such as Feishu and Weixin
 - persists channel configuration and channel account runtime intent
 - supports chat-initiated job planning and lifecycle notifications through channel integrations
 
@@ -70,7 +70,7 @@ moonclaw gateway start
       -> create session/dedupe/mailbox/coordinator/pipeline managers
       -> load `gateway/sessions/sessions.json`
       -> load `gateway/channels.json`
-      -> register Feishu extension
+      -> register built-in channel extensions
       -> restore enabled channel accounts
     -> Gateway::start()
       -> serve HTTP requests
@@ -139,50 +139,36 @@ moonclaw gateway job-cancel --id nightly-research
 moonclaw gateway job-force-cancel --id nightly-research
 ```
 
-### Research job family
+### Profile-driven job runtime
 
-The first built-in job family is `research`, implemented on top of the generic job runtime.
+The current job runtime is generic and profile-driven.
 
-Current workflow step kinds:
+The main extension boundary is:
 
-- `research.topic.sync`
-- `research.paper.fetch`
-- `research.paper.parse`
-- `research.paper.analyze`
+- `<cwd>/moonclaw.jobs.json`
 
-Current research chat binding conventions:
+Current important step kinds:
 
-- `research.topic.ask:<topic_id>`
-- `research.paper.ask:<paper_id>`
+- `job.analysis`
+- `job.delegate`
 
-Typical research flow:
+Current important routing controls:
 
-```text
-create research job definition
-  -> trigger run manually or let scheduler trigger it
-  -> sync/fetch step pulls paper metadata from arXiv
-  -> PDF artifact is stored on disk
-  -> parse step produces text + chunk artifacts
-  -> analyze step produces report + structured result artifacts
-  -> ask grounded questions with `job-ask` against the research binding
-```
+- `execution_mode`
+- `execution_target`
+- `child_profile`
 
-Example job definition shape for a scheduled topic sync:
+That means:
 
-```json
-{
-  "id": "research.agents.sync",
-  "kind": "research.topic.sync",
-  "enabled": true,
-  "schedule": {
-    "interval_ms": 3600000
-  },
-  "workflow_id": "workflow.research.agents.sync",
-  "tags": ["research", "arxiv"]
-}
-```
+- analysis steps can run locally or through ACP
+- delegated workers can select a named child profile
+- delegated workers can also carry ACP routing intent
 
-Research artifacts are then queryable through the generic artifact APIs and chat surface. The current implementation stores arXiv feed metadata, paper metadata, PDFs, extracted text, chunks, and analysis outputs as first-class job artifacts.
+For concrete current examples, see:
+
+- [docs/examples/research_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/research_job_test_guide.md)
+- [docs/examples/opc_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/opc_job_test_guide.md)
+- [docs/moonclaw_jobs_json.md](/Users/kq/Workspace/moonclaw/docs/moonclaw_jobs_json.md)
 
 ### Feishu chat job flow
 
@@ -255,6 +241,16 @@ moonclaw gateway channel-stop --id feishu --account default
 ```
 
 For websocket-mode Feishu accounts, use `connection_mode = "websocket"`. The gateway now resolves the upstream Feishu websocket endpoint from `app_id` / `app_secret` automatically. `websocket_url` is optional and acts as a manual override. Optional handshake headers can be supplied with `websocket_headers`.
+
+Weixin currently uses webhook mode only, not websocket mode.
+
+Its callback path is:
+
+```text
+/webhook/weixin
+```
+
+and the current implementation expects plaintext Official Account callbacks.
 
 ```bash
 moonclaw gateway channel-configure \
