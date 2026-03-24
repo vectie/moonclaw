@@ -330,15 +330,43 @@ fn GatewayJobApp::proposal_compiler(self : GatewayJobApp) -> ProposalCompiler {
 pub fn GatewayJobApp::new_workflow_engine(
   self : GatewayJobApp,
 ) -> WorkflowEngine {
+  self.new_workflow_engine_with_executors()
+}
+
+///|
+pub fn GatewayJobApp::new_workflow_engine_with_child_executor(
+  self : GatewayJobApp,
+  child_executor? : ChildRunExecutor? = None,
+) -> WorkflowEngine {
+  self.new_workflow_engine_with_executors(child_executor~)
+}
+
+///|
+pub fn GatewayJobApp::new_workflow_engine_with_executors(
+  self : GatewayJobApp,
+  child_executor? : ChildRunExecutor? = None,
+  analysis_executor? : AnalysisExecutor? = None,
+) -> WorkflowEngine {
   let runtime = self.runtime()
   let engine = WorkflowEngine::new(runtime~)
-  engine.register_handler(analysis_step_handler(runtime~))
+  engine.register_handler(
+    analysis_step_handler(
+      runtime~,
+      executor=analysis_executor.unwrap_or(default_analysis_executor()),
+    ),
+  )
   engine.register_handler(
     subjob_step_handler(
       runtime~,
       planner=self.proposal_planner(),
       compiler=self.proposal_compiler(),
-      engine_factory=fn() { self.new_workflow_engine() },
+      engine_factory=fn() {
+        self.new_workflow_engine_with_executors(
+          child_executor~,
+          analysis_executor~,
+        )
+      },
+      child_executor~,
       now=fn() { self.now() },
       next_run_id=fn() { human_readable_run_id(self.now(), self.next_id()) },
     ),

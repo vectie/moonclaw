@@ -295,6 +295,123 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
 }
 
 ///|
+fn bootstrap_weixin_account_config(
+  config : Json,
+  fallback? : Json = {},
+) -> Json? {
+  let app_id = match merged_string_field(config, fallback, "app_id", "appId") {
+    Some(value) => value
+    None => return None
+  }
+  let app_secret = match
+    merged_string_field(config, fallback, "app_secret", "appSecret") {
+    Some(value) => value
+    None => return None
+  }
+  let token = match merged_string_field(config, fallback, "token", "token") {
+    Some(value) => value
+    None => return None
+  }
+  let enabled = merged_bool_field(config, fallback, "enabled", "enabled").unwrap_or(
+    true,
+  )
+  let account : Map[String, Json] = {
+    "app_id": Json::string(app_id),
+    "app_secret": Json::string(app_secret),
+    "token": Json::string(token),
+    "enabled": enabled.to_json(),
+  }
+  set_string_field(
+    account,
+    "original_id",
+    merged_string_field(config, fallback, "original_id", "originalId"),
+  )
+  set_string_field(
+    account,
+    "api_base_url",
+    merged_string_field(config, fallback, "api_base_url", "apiBaseUrl"),
+  )
+  Some(Json::object(account))
+}
+
+///|
+fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
+  let channel_enabled = json_bool_field(config, "enabled", "enabled").unwrap_or(
+    true,
+  )
+  let accounts : Map[String, Json] = {}
+  let runtimes : Array[PersistedChannelAccount] = []
+
+  match json_value_field(config, "accounts", "accounts") {
+    Some(Object(account_map)) => {
+      let has_default = account_map.contains("default")
+      let base_account = bootstrap_weixin_account_config(config)
+      if !has_default {
+        match base_account {
+          Some(account) => {
+            accounts["default"] = account
+            if channel_enabled {
+              runtimes.push(PersistedChannelAccount::{
+                account_id: "default",
+                config: account,
+                auto_start: true,
+              })
+            }
+          }
+          None => ()
+        }
+      }
+      for account_id, account_override in account_map {
+        let account = match
+          bootstrap_weixin_account_config(account_override, fallback=config) {
+          Some(account) => account
+          None => continue
+        }
+        accounts[account_id] = account
+        if channel_enabled {
+          runtimes.push(PersistedChannelAccount::{
+            account_id,
+            config: account,
+            auto_start: true,
+          })
+        }
+      }
+    }
+    _ =>
+      match bootstrap_weixin_account_config(config) {
+        Some(account) => {
+          accounts["default"] = account
+          if channel_enabled {
+            runtimes.push(PersistedChannelAccount::{
+              account_id: "default",
+              config: account,
+              auto_start: true,
+            })
+          }
+        }
+        None => return None
+      }
+  }
+  let global_settings_map : Map[String, Json] = {}
+  set_json_field(
+    global_settings_map,
+    "allow_from",
+    json_value_field(config, "allow_from", "allowFrom"),
+  )
+  let global_settings = Json::object(global_settings_map)
+  let channel_config = @channel.ChannelConfig::{
+    enabled: channel_enabled,
+    accounts,
+    global_settings,
+  }
+  Some(PersistedChannelState::{
+    channel_id: "weixin",
+    config: channel_config,
+    accounts: runtimes,
+  })
+}
+
+///|
 async fn bootstrap_channel_states_from_moonclaw_config(
   home : String,
   cwd : String,
@@ -304,11 +421,26 @@ async fn bootstrap_channel_states_from_moonclaw_config(
     None => return []
   }
   match json {
-    { "channels": { "feishu": feishu, .. }, .. } =>
-      match bootstrap_feishu_channel_state(feishu) {
-        Some(state) => [state]
-        None => []
+    { "channels": Object(channels), .. } => {
+      let states : Array[PersistedChannelState] = []
+      match channels.get("feishu") {
+        Some(feishu) =>
+          match bootstrap_feishu_channel_state(feishu) {
+            Some(state) => states.push(state)
+            None => ()
+          }
+        None => ()
       }
+      match channels.get("weixin") {
+        Some(weixin) =>
+          match bootstrap_weixin_channel_state(weixin) {
+            Some(state) => states.push(state)
+            None => ()
+          }
+        None => ()
+      }
+      states
+    }
     _ => []
   }
 }

@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/channels/weixin"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/channel",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct WeixinAccessTokenResponse {
+  access_token : String?
+  expires_in : Int?
+  errcode : Int?
+  errmsg : String?
+}
+pub impl Show for WeixinAccessTokenResponse
+pub impl ToJson for WeixinAccessTokenResponse
+pub impl @json.FromJson for WeixinAccessTokenResponse
+
+pub struct WeixinAccountConfig {
+  app_id : String
+  app_secret : String
+  token : String
+  original_id : String?
+  api_base_url : String?
+  enabled : Bool
+}
+pub impl Show for WeixinAccountConfig
+pub impl ToJson for WeixinAccountConfig
+pub impl @json.FromJson for WeixinAccountConfig
+
+pub struct WeixinChannel {
+  // private fields
+}
+pub fn WeixinChannel::new() -> Self
+pub fn WeixinChannel::set_message_handler(Self, &@channel.MessageHandler) -> Unit
+pub fn WeixinChannel::with_extension(Self, (&@channel.ChannelExtension) -> Unit raise) -> Unit raise
+
+type WeixinChannelState
+
+pub struct WeixinClient {
+  config : WeixinAccountConfig
+  mut test_access_token : String?
+  test_sent_messages : Array[Json]
+}
+pub async fn WeixinClient::load_access_token(Self) -> Result[String, @channel.ChannelError]
+pub fn WeixinClient::new(WeixinAccountConfig) -> Self
+pub async fn WeixinClient::send_text_message(Self, String, String) -> Result[@channel.SendResult, @channel.ChannelError]
+pub fn WeixinClient::set_test_access_token(Self, String) -> Unit
+pub fn WeixinClient::test_sent_messages(Self) -> Array[Json]
+
+// Type aliases
+pub type WeixinOriginalId = String
+
+// Traits
+

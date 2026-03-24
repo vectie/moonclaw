@@ -22,25 +22,134 @@ fn normalized_step_kind(kind : String) -> String {
 }
 
 ///|
-fn workflow_steps_for_proposal(
+fn metadata_string_array(metadata : Json, key : String) -> Array[String] {
+  match metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(Array(values)) => {
+          let strings : Array[String] = []
+          for value in values {
+            match value {
+              String(text) => strings.push(text)
+              _ => ()
+            }
+          }
+          strings
+        }
+        _ => []
+      }
+    _ => []
+  }
+}
+
+///|
+fn metadata_bool(metadata : Json, key : String, fallback : Bool) -> Bool {
+  match metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(True) => true
+        Some(False) => false
+        _ => fallback
+      }
+    _ => fallback
+  }
+}
+
+///|
+fn metadata_string(metadata : Json, key : String) -> String? {
+  match metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(String(value)) => Some(value)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn metadata_json_value(metadata : Json, key : String) -> Json? {
+  match metadata {
+    Object(obj) => obj.get(key)
+    _ => None
+  }
+}
+
+///|
+fn merge_json_objects(base : Json, extras : Array[(String, Json)]) -> Json {
+  let merged : Map[String, Json] = {}
+  match base {
+    Object(obj) =>
+      for key, value in obj {
+        merged.set(key, value)
+      }
+    _ => ()
+  }
+  for extra in extras {
+    let key = extra.0
+    let value = extra.1
+    merged.set(key, value)
+  }
+  Json::object(merged)
+}
+
+///|
+fn workflow_step_definition_for_proposal_step(
   proposal : JobProposal,
+  step : JobProposalStep,
   cwd : String,
   home : String,
   workspace_root : String,
   family : String,
-) -> Array[WorkflowStepDefinition] {
-  let steps = proposal.steps.map(fn(step) {
-    WorkflowStepDefinition::{
-      id: step.id,
-      kind: normalized_step_kind(step.kind),
-      config: AnalysisStepConfig::new(
+) -> WorkflowStepDefinition {
+  let kind = normalized_step_kind(step.kind)
+  let base_metadata : Json = {
+    "proposal_id": proposal.id,
+    "proposal_step_id": step.id,
+    "proposal_step_title": step.title,
+    "family": family,
+  }
+  let board_extras : Array[(String, Json)] = []
+  match metadata_json_value(step.metadata, "board_lane") {
+    Some(value) => board_extras.push(("board_lane", value))
+    None => ()
+  }
+  match metadata_json_value(step.metadata, "board_order") {
+    Some(value) => board_extras.push(("board_order", value))
+    None => ()
+  }
+  let config = if kind == "job.delegate" {
+    merge_json_objects(
+      SubjobStepConfig::new(
+        request_text=step.prompt,
+        cwd=Some(cwd),
+        home=Some(home),
+        child_profile=step.child_profile,
+        execution_mode=step.execution_mode,
+        execution_target=step.execution_target,
+        include_parent_outputs=step.include_parent_outputs.unwrap_or(true),
+        max_depth=step.max_depth.unwrap_or(2),
+      ).to_json(),
+      board_extras,
+    )
+  } else {
+    let analysis_metadata = merge_json_objects(base_metadata, board_extras)
+    merge_json_objects(
+      AnalysisStepConfig::new(
         prompt=step.prompt,
+        model=metadata_string(step.metadata, "model"),
         cwd=Some(cwd),
         home=Some(home),
         workspace=Some(workspace_root),
-        preferred_skills=[],
-        enable_tools=true,
-        web_search=false,
+        execution_mode=step.execution_mode,
+        execution_target=step.execution_target,
+        system_prompt=metadata_string(step.metadata, "system_prompt"),
+        preferred_skills=metadata_string_array(
+          step.metadata,
+          "preferred_skills",
+        ),
+        enable_tools=metadata_bool(step.metadata, "enable_tools", true),
+        web_search=metadata_bool(step.metadata, "web_search", false),
         policy=AnalysisPolicy::new(skip_if_artifact_exists=false),
         artifacts=AnalysisArtifactConfig::new(
           report_artifact_type="job.proposal.step.report",
@@ -49,15 +158,26 @@ fn workflow_steps_for_proposal(
           scope=["jobs", "proposal:\{proposal.id}"],
           append_only=false,
         ),
-        metadata={
-          "proposal_id": proposal.id,
-          "proposal_step_id": step.id,
-          "proposal_step_title": step.title,
-          "family": family,
-        },
+        metadata=analysis_metadata,
       ).to_json(),
-      retry_policy: None,
-    }
+      board_extras,
+    )
+  }
+  WorkflowStepDefinition::{ id: step.id, kind, config, retry_policy: None }
+}
+
+///|
+fn workflow_steps_for_proposal(
+  proposal : JobProposal,
+  cwd : String,
+  home : String,
+  workspace_root : String,
+  family : String,
+) -> Array[WorkflowStepDefinition] {
+  let steps = proposal.steps.map(fn(step) {
+    workflow_step_definition_for_proposal_step(
+      proposal, step, cwd, home, workspace_root, family,
+    )
   })
   if steps.is_empty() {
     [
@@ -85,6 +205,7 @@ fn workflow_steps_for_proposal(
             "proposal_step_id": "execute",
             "proposal_step_title": proposal.title,
             "family": family,
+            "step_metadata": {},
           },
         ).to_json(),
         retry_policy: None,

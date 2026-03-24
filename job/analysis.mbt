@@ -53,6 +53,8 @@ pub(all) struct AnalysisStepConfig {
   cwd : String?
   home : String?
   workspace : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String?
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -69,6 +71,8 @@ pub fn AnalysisStepConfig::new(
   cwd? : String? = None,
   home? : String? = None,
   workspace? : String? = None,
+  execution_mode? : String? = None,
+  execution_target? : String? = None,
   system_prompt? : String? = None,
   preferred_skills? : Array[String] = [],
   enable_tools? : Bool = true,
@@ -83,6 +87,8 @@ pub fn AnalysisStepConfig::new(
     cwd,
     home,
     workspace,
+    execution_mode,
+    execution_target,
     system_prompt,
     preferred_skills,
     enable_tools,
@@ -102,6 +108,8 @@ pub(all) struct AnalysisRequest {
   model_name : String
   cwd : String
   home : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -134,6 +142,11 @@ fn default_analysis_system_prompt() -> String {
   [
     @prompt.prelude, "You are executing a job workflow analysis step.", "Produce a concise, grounded report using the provided context.",
   ].join("\n\n")
+}
+
+///|
+pub fn analysis_system_prompt(config : AnalysisStepConfig) -> String {
+  config.system_prompt.unwrap_or(default_analysis_system_prompt())
 }
 
 ///|
@@ -360,6 +373,36 @@ fn analysis_memory_prompt(
 }
 
 ///|
+pub async fn build_analysis_request(
+  store : SystemStore,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+) -> AnalysisRequest {
+  let working_directory = analysis_working_directory(context, config)
+  let skills_prompt = loaded_skills_prompt(
+    working_directory,
+    config.home,
+    config.preferred_skills,
+  )
+  let memory_prompt = analysis_memory_prompt(store, context, config)
+  AnalysisRequest::{
+    job_id: context.run.job_id,
+    run_id: context.run.id,
+    step_id: context.step.id,
+    prompt: build_analysis_prompt(context, config, skills_prompt, memory_prompt),
+    model_name: config.model.unwrap_or("default"),
+    cwd: working_directory,
+    home: config.home,
+    execution_mode: config.execution_mode,
+    execution_target: config.execution_target,
+    system_prompt: analysis_system_prompt(config),
+    preferred_skills: config.preferred_skills,
+    enable_tools: config.enable_tools,
+    web_search: config.web_search,
+  }
+}
+
+///|
 fn find_existing_analysis_artifact(
   artifacts : ArtifactStore,
   run : JobRun,
@@ -517,30 +560,7 @@ pub fn analysis_step_handler(
       )
     }
 
-    let working_directory = analysis_working_directory(context, config)
-    let skills_prompt = loaded_skills_prompt(
-      working_directory,
-      config.home,
-      config.preferred_skills,
-    )
-    let memory_prompt = analysis_memory_prompt(store, context, config)
-    let request = AnalysisRequest::{
-      job_id: context.run.job_id,
-      run_id: context.run.id,
-      step_id: context.step.id,
-      prompt: build_analysis_prompt(
-        context, config, skills_prompt, memory_prompt,
-      ),
-      model_name: config.model.unwrap_or("default"),
-      cwd: working_directory,
-      home: config.home,
-      system_prompt: config.system_prompt.unwrap_or(
-        default_analysis_system_prompt(),
-      ),
-      preferred_skills: config.preferred_skills,
-      enable_tools: config.enable_tools,
-      web_search: config.web_search,
-    }
+    let request = build_analysis_request(store, context, config)
 
     let execution = match config.policy.timeout_ms {
       Some(timeout_ms) =>

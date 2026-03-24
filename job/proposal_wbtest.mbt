@@ -58,7 +58,7 @@ test "proposal_as_workflow builds generic analysis workflow with notify config" 
     proposal, 101, "/tmp/workspace", "/tmp/home",
   )
   inspect(definition.kind, content="job.proposal")
-  inspect(workflow.steps.length(), content="3")
+  inspect(workflow.steps.length(), content="1")
   inspect(workflow.steps[0].kind, content="job.analysis")
   inspect(definition.config.stringify().contains("\"notify\""), content="true")
 }
@@ -332,9 +332,8 @@ test "proposal_as_workflow preserves generic drafts as direct proposal workflows
     proposal, 101, "/tmp/workspace", "/tmp/home",
   )
   inspect(definition.kind, content="job.proposal")
-  inspect(workflow.steps.length(), content="3")
+  inspect(workflow.steps.length(), content="1")
   inspect(workflow.steps[0].kind, content="job.analysis")
-  inspect(workflow.steps[1].kind, content="job.analysis")
   inspect(
     definition.config.stringify().contains("\"family\":\"generic\""),
     content="true",
@@ -348,7 +347,7 @@ test "render_job_proposal_for_chat includes proposal steps" {
   )
   let rendered = render_job_proposal_for_chat(proposal)
   inspect(rendered.contains("Planned steps:"), content="true")
-  inspect(rendered.contains("scope"), content="true")
+  inspect(rendered.contains("execute"), content="true")
 }
 
 ///|

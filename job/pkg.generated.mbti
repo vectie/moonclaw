@@ -10,6 +10,12 @@ import {
 // Values
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
 
+pub fn analysis_system_prompt(AnalysisStepConfig) -> String
+
+pub async fn apply_named_job_profile(JobProposal, String, String, String, String?) -> JobProposal
+
+pub async fn build_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
+
 pub async fn build_job_ui_snapshot(SystemStore, String, linked_remote? : Array[JobUiRemoteLink], handoffs? : Array[JobUiHandoff]) -> JobUiSnapshot?
 
 pub async fn capture_successful_run_memories(SystemStore, JobDefinition, JobRun, Int) -> Array[MemoryRecord]
@@ -172,7 +178,7 @@ pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
 
 pub fn split_job_chat_command(String) -> (String, String)
 
-pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
+pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
 pub async fn suggest_job_profile_family(String, String, String) -> String?
 
@@ -242,6 +248,8 @@ pub(all) struct AnalysisRequest {
   model_name : String
   cwd : String
   home : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -257,6 +265,8 @@ pub(all) struct AnalysisStepConfig {
   cwd : String?
   home : String?
   workspace : String?
+  execution_mode : String?
+  execution_target : String?
   system_prompt : String?
   preferred_skills : Array[String]
   enable_tools : Bool
@@ -265,7 +275,7 @@ pub(all) struct AnalysisStepConfig {
   artifacts : AnalysisArtifactConfig
   metadata : Json
 }
-pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String?, home? : String?, workspace? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, artifacts? : AnalysisArtifactConfig, metadata? : Json) -> Self
+pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String?, home? : String?, workspace? : String?, execution_mode? : String?, execution_target? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, artifacts? : AnalysisArtifactConfig, metadata? : Json) -> Self
 pub impl Show for AnalysisStepConfig
 pub impl ToJson for AnalysisStepConfig
 pub impl @json.FromJson for AnalysisStepConfig
@@ -443,6 +453,23 @@ pub fn CheckpointStore::new(root~ : String) -> Self
 pub async fn CheckpointStore::save(Self) -> Unit
 pub async fn CheckpointStore::save_checkpoint(Self, CheckpointRecord) -> Unit
 
+pub(all) struct ChildRunExecutionRequest {
+  parent_context : WorkflowStepContext
+  child_run : JobRun
+  compilation : ProposalCompilation
+  config : SubjobStepConfig
+  control : WorkflowExecutionControl
+}
+
+pub(all) struct ChildRunExecutionResult {
+  outputs : Map[String, Json]
+}
+
+pub(all) struct ChildRunExecutor {
+  run : async (ChildRunExecutionRequest) -> Result[ChildRunExecutionResult?, String]
+}
+pub fn ChildRunExecutor::new(run~ : async (ChildRunExecutionRequest) -> Result[ChildRunExecutionResult?, String]) -> Self
+
 pub(all) struct ChildRunStatus {
   run_id : String
   status : String
@@ -495,6 +522,8 @@ pub async fn GatewayJobApp::confirm_proposal(Self, JobProposal, String, async (S
 pub async fn GatewayJobApp::load(Self) -> Unit
 pub fn GatewayJobApp::new(root~ : String, cwd~ : String, home~ : String, workspace~ : @workspace.WorkspaceRuntime, next_id~ : () -> String, now~ : () -> Int) -> Self
 pub fn GatewayJobApp::new_workflow_engine(Self) -> WorkflowEngine
+pub fn GatewayJobApp::new_workflow_engine_with_child_executor(Self, child_executor? : ChildRunExecutor?) -> WorkflowEngine
+pub fn GatewayJobApp::new_workflow_engine_with_executors(Self, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> WorkflowEngine
 pub fn GatewayJobApp::next_id(Self) -> String
 pub fn GatewayJobApp::now(Self) -> Int
 pub async fn GatewayJobApp::plan_proposal(Self, String, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
@@ -739,6 +768,9 @@ pub(all) struct JobProfileStep {
   kind : String
   prompt_template : String?
   request_template : String?
+  child_profile : String?
+  execution_mode : String?
+  execution_target : String?
   include_parent_outputs : Bool?
   max_depth : Int?
   metadata : Json?
@@ -789,6 +821,12 @@ pub(all) struct JobProposalStep {
   title : String
   prompt : String
   kind : String
+  metadata : Json
+  child_profile : String?
+  execution_mode : String?
+  execution_target : String?
+  include_parent_outputs : Bool?
+  max_depth : Int?
 }
 pub impl Show for JobProposalStep
 pub impl ToJson for JobProposalStep
@@ -905,6 +943,8 @@ pub impl @json.FromJson for JobUiNode
 pub(all) enum JobUiNodeKind {
   Proposal
   Workflow
+  Split
+  Merge
   Step
   ChildRun
   Artifact
@@ -1201,10 +1241,13 @@ pub(all) struct SubjobStepConfig {
   request_text : String
   cwd : String?
   home : String?
+  child_profile : String?
+  execution_mode : String?
+  execution_target : String?
   include_parent_outputs : Bool
   max_depth : Int
 }
-pub fn SubjobStepConfig::new(request_text~ : String, cwd? : String?, home? : String?, include_parent_outputs? : Bool, max_depth? : Int) -> Self
+pub fn SubjobStepConfig::new(request_text~ : String, cwd? : String?, home? : String?, child_profile? : String?, execution_mode? : String?, execution_target? : String?, include_parent_outputs? : Bool, max_depth? : Int) -> Self
 pub impl Show for SubjobStepConfig
 pub impl ToJson for SubjobStepConfig
 pub impl @json.FromJson for SubjobStepConfig

@@ -2,6 +2,8 @@
 pub(all) enum JobUiNodeKind {
   Proposal
   Workflow
+  Split
+  Merge
   Step
   ChildRun
   Artifact

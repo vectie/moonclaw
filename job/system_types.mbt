@@ -432,6 +432,12 @@ pub(all) struct JobProposalStep {
   title : String
   prompt : String
   kind : String
+  metadata : Json
+  child_profile : String?
+  execution_mode : String?
+  execution_target : String?
+  include_parent_outputs : Bool?
+  max_depth : Int?
 } derive(ToJson, FromJson, Show)
 
 ///|

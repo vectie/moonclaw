@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/async/http",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
+  "moonbitlang/core/json",
+  "moonbitlang/core/strconv",
+  "moonbitlang/x/crypto",
+  "moonbitlang/moonclaw/channel",
+}
+
+import {
+  "moonbitlang/async",
+} for "wbtest"

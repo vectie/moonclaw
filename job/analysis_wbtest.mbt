@@ -164,6 +164,48 @@ async test "analysis_step_handler persists report and result artifacts" {
 }
 
 ///|
+async test "analysis_step_handler passes execution routing hints into executor" {
+  @fsx.with_temporary_directory("job-analysis-routing-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Route this analysis through ACP.",
+      cwd=Some(dir),
+      execution_mode=Some("acp"),
+      execution_target=Some("codex-main"),
+    )
+    let engine = analysis_test_engine(root, config)
+    let captured_mode : Ref[String] = { val: "" }
+    let captured_target : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          captured_mode.val = request.execution_mode.unwrap_or("")
+          captured_target.val = request.execution_target.unwrap_or("")
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "ok",
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    inspect(captured_mode.val, content="acp")
+    inspect(captured_target.val, content="codex-main")
+  })
+}
+
+///|
 async test "analysis_step_handler loads local skill file content into prompt" {
   @fsx.with_temporary_directory("job-analysis-skill-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

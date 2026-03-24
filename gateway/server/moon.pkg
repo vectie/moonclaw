@@ -33,4 +33,5 @@ import {
   "moonbitlang/x/path",
   "moonbitlang/moonclaw/channel" @channel,
   "moonbitlang/moonclaw/channels/feishu" @feishu,
+  "moonbitlang/moonclaw/channels/weixin" @weixin,
 }

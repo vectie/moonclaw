@@ -1,0 +1,178 @@
+{
+  "jobs": {
+    "profiles": {
+      "opc_feature_sprint": {
+        "family": "opc_feature_sprint",
+        "role": "controller",
+        "priority": 100,
+        "tags": ["opc", "controller", "feature", "sprint"],
+        "match": {
+          "any": ["feature", "build", "ship", "implement", "launch", "sprint"]
+        },
+        "steps": [
+          {
+            "id": "ceo_review",
+            "title": "CEO review",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the product-minded founder for ${request}. Reframe the user need, challenge weak assumptions, and define the narrowest wedge worth shipping now.",
+            "metadata": {
+              "preferred_skills": ["opc-ceo"],
+              "board_lane": "CEO",
+              "board_order": 0,
+              "enable_tools": false
+            }
+          },
+          {
+            "id": "eng_plan",
+            "title": "Engineering plan",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the engineering lead for ${proposal.title}. Turn the CEO direction into an execution plan with architecture, failure modes, and a concrete implementation order.",
+            "metadata": {
+              "preferred_skills": ["opc-eng"],
+              "board_lane": "Engineering",
+              "board_order": 1,
+              "enable_tools": false
+            }
+          },
+          {
+            "id": "implement",
+            "title": "Implementation worker",
+            "kind": "job.delegate",
+            "request_template": "Implement the approved feature plan for ${proposal.title}. Use the CEO and engineering outputs as context. Make concrete code or doc changes, not just advice.",
+            "child_profile": "opc_impl_worker",
+            "execution_mode": "acp",
+            "execution_target": "codex-impl",
+            "metadata": {
+              "board_lane": "Implementation",
+              "board_order": 2
+            },
+            "include_parent_outputs": true,
+            "max_depth": 3
+          },
+          {
+            "id": "review",
+            "title": "Review worker",
+            "kind": "job.delegate",
+            "request_template": "Review the implementation for ${proposal.title}. Focus on correctness, regressions, missing tests, and production risk. Return concrete findings or an explicit clean result.",
+            "child_profile": "opc_review_worker",
+            "execution_mode": "acp",
+            "execution_target": "codex-review",
+            "metadata": {
+              "board_lane": "Review",
+              "board_order": 3
+            },
+            "include_parent_outputs": true,
+            "max_depth": 3
+          },
+          {
+            "id": "qa",
+            "title": "QA worker",
+            "kind": "job.delegate",
+            "request_template": "Test the result for ${proposal.title}. Verify the intended behavior, identify gaps, and describe the exact evidence for pass or fail.",
+            "child_profile": "opc_qa_worker",
+            "execution_mode": "acp",
+            "execution_target": "codex-qa",
+            "metadata": {
+              "board_lane": "QA",
+              "board_order": 4
+            },
+            "include_parent_outputs": true,
+            "max_depth": 3
+          },
+          {
+            "id": "ship_decision",
+            "title": "Shipping decision",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the one-person-company operator for ${proposal.title}. Synthesize the outputs so far, decide whether to ship, and produce a final execution brief. If another iteration is needed, return a controller decision with the next iteration.",
+            "metadata": {
+              "preferred_skills": ["opc-ship"],
+              "board_lane": "Shipping",
+              "board_order": 5,
+              "enable_tools": false
+            }
+          }
+        ],
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output",
+            "result_schema": "generic/controller_decision.v1",
+            "allowed_verdicts": ["accept", "reject", "branch", "hold", "escalate"],
+            "verdict_aliases": {
+              "ship": "accept",
+              "continue": "branch",
+              "revise": "branch"
+            },
+            "next_iteration_fields": {
+              "title": "title",
+              "hypothesis": "hypothesis",
+              "objective": "objective",
+              "id": "id",
+              "edge_kind": "edge_kind",
+              "metadata": "metadata"
+            }
+          }
+        }
+      },
+      "opc_impl_worker": {
+        "family": "opc_impl_worker",
+        "priority": 10,
+        "tags": ["opc", "worker", "implementation"],
+        "steps": [
+          {
+            "id": "implement",
+            "title": "Implement requested change",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the implementation worker for ${request}. Make the requested code or documentation changes directly, then summarize what changed and any remaining risk.",
+            "metadata": {
+              "preferred_skills": ["opc-eng"],
+              "enable_tools": true
+            }
+          }
+        ],
+        "metadata": {
+          "worker_role": "implementation"
+        }
+      },
+      "opc_review_worker": {
+        "family": "opc_review_worker",
+        "priority": 10,
+        "tags": ["opc", "worker", "review"],
+        "steps": [
+          {
+            "id": "review",
+            "title": "Review implementation",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the review worker for ${request}. Focus on correctness, regressions, missing tests, and production risk. Return findings first, then residual risk if no findings exist.",
+            "metadata": {
+              "preferred_skills": ["opc-review"],
+              "enable_tools": true
+            }
+          }
+        ],
+        "metadata": {
+          "worker_role": "review"
+        }
+      },
+      "opc_qa_worker": {
+        "family": "opc_qa_worker",
+        "priority": 10,
+        "tags": ["opc", "worker", "qa"],
+        "steps": [
+          {
+            "id": "qa",
+            "title": "Verify behavior",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the QA worker for ${request}. Verify intended behavior, check for regressions, run the most relevant validation you can, and explain the evidence for pass or fail.",
+            "metadata": {
+              "preferred_skills": ["opc-qa"],
+              "enable_tools": true
+            }
+          }
+        ],
+        "metadata": {
+          "worker_role": "qa"
+        }
+      }
+    }
+  }
+}
