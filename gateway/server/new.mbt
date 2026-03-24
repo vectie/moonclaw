@@ -144,6 +144,14 @@ pub async fn Gateway::new(
     error =>
       gateway.logger.warn("Failed to register Feishu extension: \{error}")
   }
+  let weixin_channel = @weixin.WeixinChannel::new()
+  weixin_channel.set_message_handler(handler)
+  weixin_channel.with_extension(extension => {
+    gateway.register_extension(extension)
+  }) catch {
+    error =>
+      gateway.logger.warn("Failed to register Weixin extension: \{error}")
+  }
   gateway.restore_channel_runtime() catch {
     error => gateway.logger.warn("Failed to restore channel runtime: \{error}")
   }

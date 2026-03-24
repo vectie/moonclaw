@@ -65,6 +65,10 @@ async test "ChannelManager::restore_states restores configured running accounts"
     feishu_channel.with_extension(extension => {
       manager.register_channel(extension)
     })
+    let weixin_channel = @weixin.WeixinChannel::new()
+    weixin_channel.with_extension(extension => {
+      manager.register_channel(extension)
+    })
     manager.restore_states(
       @pino.logger("channel-restore-test", @pino.Transport::console()),
       store.list_states(),
@@ -119,6 +123,10 @@ async test "ChannelStateStore keeps stopped accounts persisted but not auto-star
     )
     let feishu_channel = @feishu.FeishuChannel::new()
     feishu_channel.with_extension(extension => {
+      manager.register_channel(extension)
+    })
+    let weixin_channel = @weixin.WeixinChannel::new()
+    weixin_channel.with_extension(extension => {
       manager.register_channel(extension)
     })
     manager.restore_states(
@@ -178,5 +186,51 @@ async test "ChannelStateStore prunes runtime state for accounts removed from con
     inspect(state.accounts.length(), content="1")
     inspect(state.accounts[0].account_id, content="default")
     inspect(state.accounts[0].auto_start, content="true")
+  })
+}
+
+///|
+async test "ChannelManager::restore_states restores configured Weixin account" {
+  @fsx.with_temporary_directory("gateway-weixin-home-XXXXXX", dir => {
+    let gateway_dir = @path.Path(dir).join(@path.Path("gateway")).to_string()
+    @fsx.make_directory(gateway_dir, recursive=true)
+    let path = @path.Path(gateway_dir)
+      .join(@path.Path("channels.json"))
+      .to_string()
+    let store = ChannelStateStore::{ path, states: {} }
+    let account_config : Json = {
+      "app_id": "wx-app",
+      "app_secret": "wx-secret",
+      "token": "wx-token",
+      "original_id": "gh_test",
+      "enabled": true,
+    }
+    let config = @channel.ChannelConfig::{
+      enabled: true,
+      accounts: { "default": account_config },
+      global_settings: {},
+    }
+    store.save_config("weixin", config)
+    store.save_account_runtime("weixin", "default", account_config, true)
+    store.load()
+
+    let manager = ChannelManager::new(
+      @pino.logger("channel-manager-test", @pino.Transport::console()),
+    )
+    let weixin_channel = @weixin.WeixinChannel::new()
+    weixin_channel.with_extension(extension => {
+      manager.register_channel(extension)
+    })
+    manager.restore_states(
+      @pino.logger("channel-restore-test", @pino.Transport::console()),
+      store.list_states(),
+    )
+    let dock = match manager.get_channel_dock("weixin") {
+      Some(dock) => dock
+      None => fail("expected weixin dock after restore")
+    }
+    inspect(dock.is_configured, content="true")
+    inspect(dock.is_running, content="true")
+    json_inspect(dock.account_ids, content=["default"])
   })
 }

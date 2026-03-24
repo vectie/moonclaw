@@ -160,6 +160,15 @@ pub fn ChannelDockConfig::default_for_channel(
         ),
         security=Some(SecurityAdapter::new(dm_policy="allow_from")),
       )
+    "weixin" =>
+      ChannelDockConfig::new(
+        outbound=Some(OutboundAdapter::new(text_chunk_limit=4000)),
+        threading=Some(
+          ThreadingAdapter::new(reply_to_mode="off", supports_threads=false),
+        ),
+        streaming=Some(StreamingAdapter::new(enabled=false)),
+        security=Some(SecurityAdapter::new(dm_policy="pairing")),
+      )
     _ => ChannelDockConfig::new()
   }
 }
