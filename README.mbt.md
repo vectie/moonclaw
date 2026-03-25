@@ -54,6 +54,7 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - child runs are created under the parent run workspace at `moonclaw-subjobs/<run-id>`
 - run workspaces are run-owned and no longer copy workspace markdown like `AGENTS.md`, `USER.md`, `MEMORY.md`, `IDENTITY.md`, or `ROUTINES.md`
 - job timestamps are rendered in local time with an explicit offset
+- if a run reaches `WaitingForInput`, Feishu status replies now tell you to reply in-thread with the missing text/files to start a resumed continuation run
 
 ## 🚀 Current Capabilities
 
@@ -304,6 +305,13 @@ Once Feishu is configured and the gateway is running, the important commands are
 - `/reject <proposal_id>`
 - `/job-status <job_id|run_id>`
 - `/jobs`
+
+If a job pauses in `WaitingForInput`:
+
+- use `/job-status <job_id|run_id>` to see what is missing
+- reply to the waiting Feishu message with the missing text or attachments
+- MoonClaw will start a resumed continuation run with that new input
+- plain non-reply chat still goes to the normal conversation path
 - `/job-stop <job_id|run_id>`
 - `/job-force-stop <job_id|run_id>`
 - `/remember <text>`

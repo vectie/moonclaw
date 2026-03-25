@@ -113,6 +113,7 @@ async fn Gateway::handle_waiting_job_reply(
   account_id : String,
   message : @channel.Message,
 ) -> @channel.Message? {
+  guard message.reply_to is Some(_) else { return None }
   let has_text = !message.content.trim().to_string().is_blank()
   let has_attachments = !message.attachments.is_empty()
   guard has_text || has_attachments else { return None }

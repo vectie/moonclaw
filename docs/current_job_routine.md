@@ -181,6 +181,10 @@ Current execution routine:
 9. On unrecoverable failure:
    - mark the run `Failed`
    - append `job.failed`
+10. On blocked input:
+   - mark the step `WaitingForInput`
+   - mark the run `WaitingForInput`
+   - stop downstream execution until more input arrives
 
 Current execution is step-handler driven. The engine does not contain a
 research-specific routine anymore.
@@ -218,6 +222,32 @@ Current analysis routine:
    - `execution_target`
    the gateway can route the analysis step through ACP instead of the local
    direct model path
+7. If the step result is not clearly final, MoonClaw can run an adaptive
+   follow-up judgment:
+   - `completed`
+   - `needs_input`
+   - `needs_subplan`
+8. `needs_input` pauses the run with `WaitingForInput`
+9. `needs_subplan` can expand into a child workflow/subplan
+
+## 9. Waiting For Input And Resume
+
+When a run reaches `WaitingForInput`:
+
+1. The status text and Feishu notification say the run is waiting.
+2. The status message tells the operator to reply in the same Feishu thread
+   with the missing text, files, or both.
+3. A plain reply to that waiting message is treated as resume input.
+4. MoonClaw starts a resumed continuation run for the same job definition.
+5. The new reply content and attachment metadata are passed as `initial_input`
+   into the new run.
+
+Important current rule:
+
+- this is a resumed continuation run, not an in-place mutation of the original
+  waiting run
+- ordinary non-reply chat should still fall through to the normal conversation
+  path
 7. Run the agent and collect result text.
 8. Persist report/result artifacts.
 9. Return a structured `WorkflowStepResult`.
