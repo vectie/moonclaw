@@ -475,8 +475,8 @@ pub fn render_job_status(
   }
   let waiting_guidance = if snapshot.status == "\"WaitingForInput\"" {
     [
-      "Reply in this Feishu thread with the missing data or attachments to resume.",
-      "You can send text, files, or both.",
+      "Reply in this Feishu thread with attachments, or reply with `resume:` followed by the missing data.",
+      "Ordinary plain chat messages do not resume the job.",
     ]
   } else {
     []

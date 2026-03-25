@@ -198,8 +198,9 @@ Behavior:
 - `/job-notify` changes notification verbosity for the current chat/thread scope
 - `verbose` mode sends step progress messages derived from workflow run events
 - long-running jobs send a warning without interrupting execution
-- if a run pauses in `WaitingForInput`, the status reply tells you to reply in
-  that Feishu thread with the missing text/files
+- if a run pauses in `WaitingForInput`, the status reply tells you to either:
+  - reply in that Feishu thread with attachments
+  - or reply with `resume:` / `/resume` followed by the missing text
 - replying to the waiting message starts a resumed continuation run with the new
   input payload
 - normal non-reply chat still falls through to the usual MoonClaw conversation

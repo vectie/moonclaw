@@ -236,8 +236,10 @@ When a run reaches `WaitingForInput`:
 
 1. The status text and Feishu notification say the run is waiting.
 2. The status message tells the operator to reply in the same Feishu thread
-   with the missing text, files, or both.
-3. A plain reply to that waiting message is treated as resume input.
+   with attachments, or to reply with `resume:` followed by the missing text.
+3. Automatic resume only triggers on:
+   - a reply with attachments
+   - or a reply beginning with `resume:` or `/resume`
 4. MoonClaw starts a resumed continuation run for the same job definition.
 5. The new reply content and attachment metadata are passed as `initial_input`
    into the new run.

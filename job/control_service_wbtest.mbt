@@ -129,11 +129,14 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
   )
   inspect(
     reply.contains(
-      "Reply in this Feishu thread with the missing data or attachments to resume.",
+      "Reply in this Feishu thread with attachments, or reply with `resume:` followed by the missing data.",
     ),
     content="true",
   )
-  inspect(reply.contains("You can send text, files, or both."), content="true")
+  inspect(
+    reply.contains("Ordinary plain chat messages do not resume the job."),
+    content="true",
+  )
 }
 
 ///|

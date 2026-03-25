@@ -309,7 +309,7 @@ Once Feishu is configured and the gateway is running, the important commands are
 If a job pauses in `WaitingForInput`:
 
 - use `/job-status <job_id|run_id>` to see what is missing
-- reply to the waiting Feishu message with the missing text or attachments
+- reply to the waiting Feishu message with attachments, or reply with `resume:` followed by the missing text
 - MoonClaw will start a resumed continuation run with that new input
 - plain non-reply chat still goes to the normal conversation path
 - `/job-stop <job_id|run_id>`

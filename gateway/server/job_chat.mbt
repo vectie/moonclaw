@@ -107,6 +107,33 @@ fn message_resume_input(message : @channel.Message) -> Json {
 }
 
 ///|
+fn resume_reply_text(message : @channel.Message) -> String {
+  let trimmed = message.content.trim().to_string()
+  let lower = trimmed.to_lower()
+  if lower == "/resume" || lower == "resume" {
+    ""
+  } else if lower.has_prefix("/resume ") {
+    trimmed[8:].to_string().trim().to_string()
+  } else if lower.has_prefix("resume:") {
+    trimmed[7:].to_string().trim().to_string()
+  } else if lower.has_prefix("resume ") {
+    trimmed[7:].to_string().trim().to_string()
+  } else {
+    trimmed
+  }
+}
+
+///|
+fn is_explicit_resume_reply(message : @channel.Message) -> Bool {
+  let lower = message.content.trim().to_string().to_lower()
+  lower == "/resume" ||
+  lower == "resume" ||
+  lower.has_prefix("/resume ") ||
+  lower.has_prefix("resume:") ||
+  lower.has_prefix("resume ")
+}
+
+///|
 async fn Gateway::handle_waiting_job_reply(
   self : Gateway,
   channel_id : String,
@@ -114,9 +141,10 @@ async fn Gateway::handle_waiting_job_reply(
   message : @channel.Message,
 ) -> @channel.Message? {
   guard message.reply_to is Some(_) else { return None }
-  let has_text = !message.content.trim().to_string().is_blank()
   let has_attachments = !message.attachments.is_empty()
-  guard has_text || has_attachments else { return None }
+  let explicit_resume = is_explicit_resume_reply(message)
+  guard explicit_resume || has_attachments else { return None }
+  let resume_text = resume_reply_text(message)
   let (definition, waiting_run) = match
     self.latest_waiting_job_for_message(channel_id, account_id, message) {
     Some(matched) => matched
@@ -126,7 +154,12 @@ async fn Gateway::handle_waiting_job_reply(
     self.trigger_job_definition(
       definition.id,
       trigger=@job.TriggerSource::Custom("resume"),
-      initial_input=Some(message_resume_input(message)),
+      initial_input=Some(
+        message_resume_input(@channel.Message::{
+          ..message,
+          content: resume_text,
+        }),
+      ),
     ) {
     Ok(run) => run
     Err(error) =>
@@ -144,12 +177,18 @@ async fn Gateway::handle_waiting_job_reply(
   } else {
     ""
   }
+  let resume_mode = if has_attachments {
+    "Resume input received from attachment reply."
+  } else {
+    "Resume input received from explicit resume reply."
+  }
   Some(
     self.job_reply_message(
       channel_id,
       account_id,
       message,
       [
+        resume_mode,
         "Resumed waiting job `\{definition.id}`.",
         "Previous waiting run: `\{waiting_run.id}`",
         "New run: `\{resumed.id}`",
