@@ -92,3 +92,38 @@ test "feishu progress status helpers render expected text" {
   inspect(tool_status_text("execute_command"), content="tool")
   inspect(drafting_status_text(), content="drafting")
 }
+
+///|
+test "message_resume_input includes content and attachments" {
+  let payload = message_resume_input(@channel.Message::{
+    id: "msg-1",
+    channel: "feishu",
+    from: "user-1",
+    to: "chat-1",
+    content: "here is the missing file",
+    content_type: "text",
+    timestamp: 123,
+    thread_id: Some("thread-1"),
+    reply_to: Some("reply-1"),
+    attachments: [
+      @channel.Attachment::{
+        id: "file-1",
+        mime_type: "application/pdf",
+        url: "https://example.test/file.pdf",
+        filename: Some("file.pdf"),
+        size: Some(42),
+      },
+    ],
+  })
+  let payload_text = payload.stringify()
+  inspect(
+    payload_text.contains("\"resume_content\":\"here is the missing file\""),
+    content="true",
+  )
+  inspect(
+    payload_text.contains(
+      "\"attachments\":[{\"id\":\"file-1\",\"mime_type\":\"application/pdf\",\"url\":\"https://example.test/file.pdf\",\"filename\":\"file.pdf\",\"size\":\"42\"}]",
+    ),
+    content="true",
+  )
+}

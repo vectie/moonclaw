@@ -11,6 +11,7 @@ pub(all) enum TriggerSource {
 pub(all) enum RunStatus {
   Pending
   Running
+  WaitingForInput
   Succeeded
   Failed
   Cancelled

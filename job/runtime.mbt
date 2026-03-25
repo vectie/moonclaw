@@ -347,7 +347,8 @@ async fn RuntimeManager::finish_run_with_status(
       }
       match status {
         Failed => self.with_failure_retry_state(updated, base, now_ms)
-        Succeeded | Cancelled => RuntimeManager::clear_retry_state(base)
+        Succeeded | Cancelled | WaitingForInput =>
+          RuntimeManager::clear_retry_state(base)
         Pending | Running => base
       }
     }
@@ -368,7 +369,8 @@ async fn RuntimeManager::finish_run_with_status(
       }
       match status {
         Failed => self.with_failure_retry_state(updated, base, now_ms)
-        Succeeded | Cancelled => RuntimeManager::clear_retry_state(base)
+        Succeeded | Cancelled | WaitingForInput =>
+          RuntimeManager::clear_retry_state(base)
         Pending | Running => base
       }
     }
@@ -420,6 +422,22 @@ pub async fn RuntimeManager::cancel_run(
   self.finish_run_with_status(
     run_id,
     RunStatus::Cancelled,
+    now_ms,
+    summary.unwrap_or(None),
+    None,
+  )
+}
+
+///|
+pub async fn RuntimeManager::mark_run_waiting_for_input(
+  self : RuntimeManager,
+  run_id : String,
+  now_ms : Int,
+  summary? : String?,
+) -> JobRun? {
+  self.finish_run_with_status(
+    run_id,
+    RunStatus::WaitingForInput,
     now_ms,
     summary.unwrap_or(None),
     None,

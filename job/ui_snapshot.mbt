@@ -139,7 +139,9 @@ fn merge_node_id(run_id : String) -> String {
 ///|
 fn controller_split_status(run : JobRun, child_runs : Array[JobRun]) -> String {
   if child_runs.any(fn(child) {
-      child.status is RunStatus::Running || child.status is RunStatus::Pending
+      child.status is RunStatus::Running ||
+      child.status is RunStatus::Pending ||
+      child.status is RunStatus::WaitingForInput
     }) {
     return ui_status_text(RunStatus::Running)
   }
@@ -164,7 +166,9 @@ fn controller_split_summary(
   }
   let running = child_runs
     .filter(fn(child) {
-      child.status is RunStatus::Running || child.status is RunStatus::Pending
+      child.status is RunStatus::Running ||
+      child.status is RunStatus::Pending ||
+      child.status is RunStatus::WaitingForInput
     })
     .length()
   let failed = child_runs
@@ -489,6 +493,12 @@ pub fn current_step_id_for_ui(
   let running = steps.filter(fn(step) { step.status is RunStatus::Running })
   if !running.is_empty() {
     return Some(running[0].step_id)
+  }
+  let waiting = steps.filter(fn(step) {
+    step.status is RunStatus::WaitingForInput
+  })
+  if !waiting.is_empty() {
+    return Some(waiting[0].step_id)
   }
   match workflow {
     Some(workflow) =>

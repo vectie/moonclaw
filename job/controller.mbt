@@ -339,6 +339,7 @@ fn completed_iteration_status(status : RunStatus) -> String {
     RunStatus::Succeeded => "completed"
     RunStatus::Failed => "failed"
     RunStatus::Cancelled => "cancelled"
+    RunStatus::WaitingForInput => "waiting_input"
     RunStatus::Pending => "pending"
     RunStatus::Running => "active"
   }
@@ -350,7 +351,7 @@ fn completed_iteration_decision(status : RunStatus) -> String? {
     RunStatus::Succeeded => Some("accepted")
     RunStatus::Failed => Some("rejected")
     RunStatus::Cancelled => Some("cancelled")
-    RunStatus::Pending | RunStatus::Running => None
+    RunStatus::Pending | RunStatus::Running | RunStatus::WaitingForInput => None
   }
 }
 

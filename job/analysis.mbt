@@ -275,11 +275,19 @@ fn adaptive_missing_inputs_line(envelope : AdaptiveAnalysisEnvelope) -> String {
 ///|
 fn adaptive_decision_system_prompt() -> String {
   [
-    @prompt.prelude, "You are deciding whether an analysis step is complete or should expand.",
+    @prompt.prelude, "You are deciding whether an analysis step is truly complete or should expand.",
     "Return strict JSON only.", "If the step is complete, return {\"verdict\":\"completed\",\"summary\":string}.",
     "If key inputs are missing and the user or an external source must provide them, return {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}.",
     "If the step should be decomposed into smaller executable units before it can produce a useful result, return {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}.",
+    "Be conservative about calling a step completed.", "Do not mark the step completed if the output mainly asks follow-up questions, requests missing facts, says the estimate is not supportable yet, says the result is only a screening or first-pass view, or lists next actions instead of delivering the requested artifact.",
+    "Prefer needs_subplan over needs_input when useful preparatory work can still continue without the missing facts.",
+    "Use needs_input only when the missing parcel, market, numeric, user, or external-source facts truly block all meaningful next work.",
+    "Use needs_subplan when the work can still make progress by splitting into smaller executable research, collection, verification, checklist, template, comparison, or analysis tasks, even if some final facts are still missing.",
     "Do not default to subplanning. Only request a subplan when decomposition would materially improve execution.",
+    "If the output contains both caveats and a usable final deliverable, choose completed. If the output is mostly a blocker report or a request for more information, do not choose completed.",
+    "Examples:", "{\"verdict\":\"needs_input\",\"summary\":\"Parcel and pricing inputs are still missing.\",\"missing_inputs\":[\"parcel location\",\"parcel size\",\"comparable sales\"]}",
+    "{\"verdict\":\"needs_subplan\",\"summary\":\"The diligence work should be split before valuation.\",\"suggested_substeps\":[{\"title\":\"Collect comparable sales\",\"prompt\":\"Gather recent comparable land sales and normalize unit pricing.\"},{\"title\":\"Review zoning and utilities\",\"prompt\":\"Check zoning, entitlement status, access, and utility availability.\"}]}",
+    "{\"verdict\":\"needs_subplan\",\"summary\":\"The final estimate is blocked on parcel facts, but useful preparation can still continue.\",\"suggested_substeps\":[{\"title\":\"Build missing-input checklist\",\"prompt\":\"Prepare the minimum parcel, zoning, and market data checklist required for the final estimate.\"},{\"title\":\"Build sensitivity template\",\"prompt\":\"Create a sensitivity framework for price, parcel size, entitlement timing, and site-prep risk.\"}]}",
   ].join("\n\n")
 }
 
@@ -289,13 +297,26 @@ fn adaptive_decision_prompt(
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
 ) -> String {
-  [
+  let sections = [
     "Original step prompt:",
     config.prompt,
     "Step id: \{context.step.id}",
     "Current analysis output:",
     execution.content,
     "Decide whether this output is complete, needs external input, or should be expanded into a child subplan.",
+  ]
+  let sections = if context.outputs.is_empty() {
+    sections
+  } else {
+    let rendered : Array[String] = []
+    for step_id, output in context.outputs {
+      rendered.push("[\{step_id}] \{output.stringify()}")
+    }
+    let rendered_text = rendered.join("\n")
+    [..sections, "Previous step outputs:\n\{rendered_text}"]
+  }
+  [
+    ..sections, "If the current output mainly reports blockers, missing facts, provisional screening status, or next actions, it is not completed.",
   ].join("\n\n")
 }
 
@@ -307,17 +328,53 @@ async fn adaptive_followup_envelope(
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
 ) -> AdaptiveAnalysisEnvelope? {
-  let followup = AnalysisRequest::{
+  let preferred_skills = ["analysis-adaptation"]
+  let skills_prompt = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
+  let base_followup = AnalysisRequest::{
     ..request,
-    prompt: adaptive_decision_prompt(context, config, execution),
+    prompt: [
+      adaptive_decision_prompt(context, config, execution),
+      skills_prompt,
+    ]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
     system_prompt: adaptive_decision_system_prompt(),
     enable_tools: false,
     web_search: false,
-    preferred_skills: [],
+    preferred_skills,
   }
-  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  let followup_execution = (executor.run)(base_followup) catch {
+    _ => return None
+  }
   match followup_execution {
-    Ok(result) => parse_adaptive_analysis_envelope(result.content)
+    Ok(result) =>
+      match parse_adaptive_analysis_envelope(result.content) {
+        Some(envelope) => Some(envelope)
+        None => {
+          let repair_followup = AnalysisRequest::{
+            ..base_followup,
+            prompt: [
+              base_followup.prompt,
+              "The previous judgment did not follow the required JSON schema.",
+              "Return strict JSON only with one of these verdicts: completed, needs_input, needs_subplan.",
+              "Previous judgment output:",
+              result.content,
+            ].join("\n\n"),
+          }
+          let repair_execution = (executor.run)(repair_followup) catch {
+            _ => return None
+          }
+          match repair_execution {
+            Ok(repair_result) =>
+              parse_adaptive_analysis_envelope(repair_result.content)
+            Err(_) => None
+          }
+        }
+      }
     Err(_) => None
   }
 }

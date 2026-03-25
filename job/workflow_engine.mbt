@@ -183,6 +183,16 @@ fn WorkflowEngine::control_message(
 }
 
 ///|
+fn waiting_for_input_message(error : String) -> String? {
+  let prefix = "Analysis requires input: "
+  if error.has_prefix(prefix) {
+    Some(error[prefix.length():].trim().to_string())
+  } else {
+    None
+  }
+}
+
+///|
 pub async fn WorkflowEngine::execute_run(
   self : WorkflowEngine,
   run_id : String,
@@ -398,6 +408,79 @@ pub async fn WorkflowEngine::execute_run(
           break
         }
         Err(error) => {
+          if waiting_for_input_message(error) is Some(message) {
+            let waiting_logs = [
+              ..step_logs,
+              "attempt \{attempt} started",
+              "attempt \{attempt} waiting for input: \{message}",
+            ]
+            let waiting_step = WorkflowEngine::step_run_record(
+              run_id,
+              step,
+              RunStatus::WaitingForInput,
+              Some(start_ts),
+              Some(now()),
+              attempt - 1,
+              waiting_logs,
+              summary=Some(message),
+              error=Some(error),
+            )
+            store.save_step_run(waiting_step)
+            ignore(
+              checkpoint_run_workspace(
+                store,
+                run_id,
+                "moonclaw: step \{step.id} waiting for input",
+              ),
+            )
+            self.log_run_event(
+              started_run,
+              "step.waiting_for_input",
+              now(),
+              message,
+              step_id=Some(step.id),
+              status=Some(WaitingForInput),
+              data={ "attempt": attempt },
+            )
+            complete_controller_iteration_for_step(
+              store,
+              started_run,
+              step,
+              RunStatus::WaitingForInput,
+              now(),
+            )
+            steps.push(waiting_step)
+            self.log_run_event(
+              started_run,
+              "job.waiting_for_input",
+              now(),
+              message,
+              step_id=Some(step.id),
+              status=Some(WaitingForInput),
+            )
+            let waiting_run = match
+              self.runtime.mark_run_waiting_for_input(
+                run_id,
+                now(),
+                summary=Some("Waiting for input on step \{step.id}: \{message}"),
+              ) {
+              Some(run) => run
+              None =>
+                return Err("Unable to mark run \{run_id} as waiting for input")
+            }
+            complete_controller_run(
+              store,
+              waiting_run,
+              RunStatus::WaitingForInput,
+              now(),
+            )
+            return Ok(WorkflowExecutionResult::{
+              run: waiting_run,
+              workflow,
+              outputs,
+              steps,
+            })
+          }
           let failed_logs = [
             ..step_logs,
             "attempt \{attempt} started",

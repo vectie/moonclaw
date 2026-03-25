@@ -29,6 +29,138 @@ fn Gateway::job_reply_message(
 }
 
 ///|
+fn Gateway::waiting_job_matches_message(
+  self : Gateway,
+  definition : @job.JobDefinition,
+  run : @job.JobRun,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> Bool {
+  guard run.status is @job.RunStatus::WaitingForInput else { return false }
+  let target = match self.job_notification_target(definition) {
+    Some(target) => target
+    None => return false
+  }
+  target.channel_id == channel_id &&
+  target.account_id == account_id &&
+  target.recipient == message.to &&
+  target.thread_id == message.thread_id
+}
+
+///|
+fn Gateway::latest_waiting_job_for_message(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> (@job.JobDefinition, @job.JobRun)? {
+  let matches : Array[(@job.JobDefinition, @job.JobRun)] = []
+  for run in self.job_runtime().store().list_runs() {
+    guard run.status is @job.RunStatus::WaitingForInput else { continue }
+    let definition = match
+      self.job_runtime().store().get_definition(run.job_id) {
+      Some(definition) => definition
+      None => continue
+    }
+    if self.waiting_job_matches_message(
+        definition, run, channel_id, account_id, message,
+      ) {
+      matches.push((definition, run))
+    }
+  }
+  if matches.is_empty() {
+    None
+  } else {
+    matches.sort_by(fn(left, right) {
+      let left_ts = left.1.completed_at.unwrap_or(
+        left.1.started_at.unwrap_or(0),
+      )
+      let right_ts = right.1.completed_at.unwrap_or(
+        right.1.started_at.unwrap_or(0),
+      )
+      right_ts.compare(left_ts)
+    })
+    Some(matches[0])
+  }
+}
+
+///|
+fn message_resume_input(message : @channel.Message) -> Json {
+  {
+    "resume_message_id": message.id,
+    "resume_reply_to": message.reply_to,
+    "resume_content": message.content,
+    "resume_content_type": message.content_type,
+    "resume_thread_id": message.thread_id,
+    "resume_timestamp": message.timestamp,
+    "attachments": message.attachments.map(fn(attachment) {
+      {
+        "id": attachment.id,
+        "mime_type": attachment.mime_type,
+        "url": attachment.url,
+        "filename": attachment.filename.unwrap_or(""),
+        "size": attachment.size.map(fn(size) { size.to_string() }).unwrap_or(""),
+      }
+    }),
+  }
+}
+
+///|
+async fn Gateway::handle_waiting_job_reply(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> @channel.Message? {
+  let has_text = !message.content.trim().to_string().is_blank()
+  let has_attachments = !message.attachments.is_empty()
+  guard has_text || has_attachments else { return None }
+  let (definition, waiting_run) = match
+    self.latest_waiting_job_for_message(channel_id, account_id, message) {
+    Some(matched) => matched
+    None => return None
+  }
+  let resumed = match
+    self.trigger_job_definition(
+      definition.id,
+      trigger=@job.TriggerSource::Custom("resume"),
+      initial_input=Some(message_resume_input(message)),
+    ) {
+    Ok(run) => run
+    Err(error) =>
+      return Some(
+        self.job_reply_message(
+          channel_id,
+          account_id,
+          message,
+          "Failed to resume waiting job `\{definition.id}`: \{error}",
+        ),
+      )
+  }
+  let attachment_line = if has_attachments {
+    "Attachments: \{message.attachments.length()}"
+  } else {
+    ""
+  }
+  Some(
+    self.job_reply_message(
+      channel_id,
+      account_id,
+      message,
+      [
+        "Resumed waiting job `\{definition.id}`.",
+        "Previous waiting run: `\{waiting_run.id}`",
+        "New run: `\{resumed.id}`",
+        attachment_line,
+      ]
+      .filter(fn(line) { !line.is_blank() })
+      .join("\n"),
+    ),
+  )
+}
+
+///|
 async fn Gateway::save_job_notification_preference(
   self : Gateway,
   channel_id : String,
@@ -618,6 +750,12 @@ async fn Gateway::handle_job_chat_command(
 ) -> @channel.Message? {
   let trimmed = message.content.trim().to_string()
   let action = @job.parse_job_chat_action(trimmed, message.reply_to is Some(_))
+  if action is None {
+    match self.handle_waiting_job_reply(channel_id, account_id, message) {
+      Some(reply) => return Some(reply)
+      None => ()
+    }
+  }
   if action is Some(_) && !self.security_runtime().allows_native_commands(true) {
     return Some(
       self.job_reply_message(

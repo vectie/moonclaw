@@ -247,6 +247,7 @@ pub fn finished_status_prefix(status : RunStatus) -> String {
     RunStatus::Succeeded => "Job completed"
     RunStatus::Failed => "Job failed"
     RunStatus::Cancelled => "Job cancelled"
+    RunStatus::WaitingForInput => "Job waiting for input"
     _ => "Job finished"
   }
 }
@@ -472,6 +473,14 @@ pub fn render_job_status(
       .join(", ")
     Some("Child runs: \{rendered}")
   }
+  let waiting_guidance = if snapshot.status == "\"WaitingForInput\"" {
+    [
+      "Reply in this Feishu thread with the missing data or attachments to resume.",
+      "You can send text, files, or both.",
+    ]
+  } else {
+    []
+  }
   [
     "\{prefix}: \{snapshot.definition_id}",
     "Title: \{snapshot.definition_title}",
@@ -488,6 +497,7 @@ pub fn render_job_status(
     child_run_line.unwrap_or(""),
     snapshot.latest_event_line,
     ..snapshot.output_lines,
+    ..waiting_guidance,
     "Use `/job-status \{snapshot.definition_id}` for a fresh status check.",
   ]
   .filter(fn(line) { !line.is_blank() })

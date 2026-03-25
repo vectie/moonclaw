@@ -52,7 +52,7 @@ pub fn ensure_draft_proposal(JobProposal, String) -> String?
 
 pub fn event_as_ui_timeline_entry(JobRunEvent, Int) -> JobUiTimelineEntry
 
-pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> WorkflowEngine, control? : WorkflowExecutionControl, hooks? : RunExecutionHooks) -> Unit
+pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> WorkflowEngine, initial_input? : Json?, control? : WorkflowExecutionControl, hooks? : RunExecutionHooks) -> Unit
 
 pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
 
@@ -1201,6 +1201,7 @@ pub fn RunExecutionHooks::new(on_started? : async (JobDefinition, JobRun) -> Uni
 pub(all) enum RunStatus {
   Pending
   Running
+  WaitingForInput
   Succeeded
   Failed
   Cancelled
@@ -1231,6 +1232,7 @@ pub async fn RuntimeManager::load(Self) -> Unit
 pub async fn RuntimeManager::mark_run_failed(Self, String, Int, String, summary? : String?) -> JobRun?
 pub async fn RuntimeManager::mark_run_started(Self, String, Int) -> JobRun?
 pub async fn RuntimeManager::mark_run_succeeded(Self, String, Int, summary? : String?) -> JobRun?
+pub async fn RuntimeManager::mark_run_waiting_for_input(Self, String, Int, summary? : String?) -> JobRun?
 pub fn RuntimeManager::new(root~ : String) -> Self
 pub async fn RuntimeManager::register_definition(Self, JobDefinition) -> Unit
 pub async fn RuntimeManager::register_workflow(Self, WorkflowDefinition) -> Unit

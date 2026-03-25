@@ -218,6 +218,61 @@ async test "WorkflowEngine fails the run when a step exhausts retries" {
 }
 
 ///|
+async test "WorkflowEngine pauses the run when a step needs input" {
+  @fsx.with_temporary_directory("job-workflow-waiting-input-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workflow = WorkflowDefinition::{
+      id: "workflow.waiting-input",
+      kind: "test",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "estimate",
+          kind: "test.estimate",
+          config: {},
+          retry_policy: None,
+        },
+        WorkflowStepDefinition::{
+          id: "finalize",
+          kind: "test.finalize",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    }
+    let engine = workflow_test_engine(root, workflow)
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.estimate", run=fn(_context) {
+        Err("Analysis requires input: parcel location; parcel size")
+      }),
+    )
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.finalize", run=_context => {
+        fail("finalize step should not run")
+      }),
+    )
+
+    let result = match engine.execute_run("run-workflow-1", fn() { 3000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(
+      result.run.status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(result.steps.length(), content="1")
+    inspect(
+      result.steps[0].status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.run.summary.unwrap_or(""),
+      content="Waiting for input on step estimate: parcel location; parcel size",
+    )
+  })
+}
+
+///|
 async test "WorkflowEngine persists controller decisions from step output when policy allows it" {
   @fsx.with_temporary_directory("job-workflow-controller-decision-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

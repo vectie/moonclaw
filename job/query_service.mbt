@@ -17,6 +17,12 @@ pub fn current_step_label(
   if !running.is_empty() {
     return running[0].step_id
   }
+  let waiting = steps.filter(fn(step) {
+    step.status is RunStatus::WaitingForInput
+  })
+  if !waiting.is_empty() {
+    return waiting[0].step_id
+  }
   if steps.is_empty() {
     match definition.workflow_id {
       Some(workflow_id) =>
@@ -200,7 +206,8 @@ pub fn resolve_status_target(
               run.job_id == trimmed &&
               (
                 run.status is RunStatus::Pending ||
-                run.status is RunStatus::Running
+                run.status is RunStatus::Running ||
+                run.status is RunStatus::WaitingForInput
               )
             })
           if candidates.is_empty() {

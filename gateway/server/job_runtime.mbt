@@ -553,11 +553,15 @@ async fn Gateway::refresh_proposal_definition_if_present(
 }
 
 ///|
-async fn Gateway::launch_job_run(self : Gateway, run_id : String) -> Unit {
+async fn Gateway::launch_job_run(
+  self : Gateway,
+  run_id : String,
+  initial_input? : Json? = None,
+) -> Unit {
   match self.root_group() {
     Some(group) =>
       group.spawn_bg(no_wait=true, allow_failure=true, () => {
-        self.execute_job_run_async(run_id) catch {
+        self.execute_job_run_async(run_id, initial_input~) catch {
           error =>
             self.logger.warn("Job run \{run_id} crashed after launch: \{error}")
         }
@@ -586,6 +590,7 @@ async fn Gateway::resume_pending_job_runs(self : Gateway) -> Unit {
 async fn Gateway::execute_job_run_async(
   self : Gateway,
   run_id : String,
+  initial_input? : Json? = None,
 ) -> Unit {
   self.clear_job_control_requests(run_id)
   @job.execute_run_lifecycle(
@@ -593,6 +598,7 @@ async fn Gateway::execute_job_run_async(
     run_id,
     current_time_ms,
     fn() { self.new_workflow_engine() },
+    initial_input~,
     control=@job.WorkflowExecutionControl::new(
       should_cancel=fn() { self.job_should_cancel(run_id) },
       should_force_stop=fn() { self.job_should_force_stop(run_id) },
@@ -624,7 +630,8 @@ fn Gateway::job_run_for_definition(
           run.job_id == job_id &&
           (
             run.status is @job.RunStatus::Pending ||
-            run.status is @job.RunStatus::Running
+            run.status is @job.RunStatus::Running ||
+            run.status is @job.RunStatus::WaitingForInput
           )
         })
       if candidates.is_empty() {
@@ -646,6 +653,7 @@ async fn Gateway::trigger_job_definition(
   self : Gateway,
   job_id : String,
   trigger? : @job.TriggerSource = @job.TriggerSource::Manual,
+  initial_input? : Json? = None,
 ) -> Result[@job.JobRun, String] {
   self.refresh_proposal_definition_if_present(job_id)
   let definition = match self.job_runtime().store().get_definition(job_id) {
@@ -667,7 +675,7 @@ async fn Gateway::trigger_job_definition(
     Ok(run) => run
     Err(error) => return Err(error)
   }
-  self.launch_job_run(run.id)
+  self.launch_job_run(run.id, initial_input~)
   Ok(run)
 }
 

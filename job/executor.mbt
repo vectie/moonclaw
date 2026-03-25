@@ -111,6 +111,7 @@ pub async fn execute_run_lifecycle(
   run_id : String,
   now : () -> Int,
   engine_factory : () -> WorkflowEngine,
+  initial_input? : Json? = None,
   control? : WorkflowExecutionControl = WorkflowExecutionControl::new(),
   hooks? : RunExecutionHooks = RunExecutionHooks::new(),
 ) -> Unit {
@@ -157,7 +158,7 @@ pub async fn execute_run_lifecycle(
   )
   (hooks.on_started)(definition, prepared_run)
   let engine = engine_factory()
-  let result = engine.execute_run(run_id, now, control~) catch {
+  let result = engine.execute_run(run_id, now, initial_input~, control~) catch {
     error => {
       let message = "Job run \{run_id} crashed before completion: \{error}"
       (hooks.on_warn)(message)

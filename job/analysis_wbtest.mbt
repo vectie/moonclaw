@@ -130,9 +130,14 @@ async test "analysis_step_handler persists report and result artifacts" {
         runtime=engine.runtime,
         executor=AnalysisExecutor::new(run=fn(request) {
           requests.val = requests.val + 1
+          let content = if requests.val == 2 {
+            "{\"verdict\":\"completed\",\"summary\":\"done\"}"
+          } else {
+            "A concise analysis report."
+          }
           Ok(AnalysisExecution::{
             model_name: request.model_name,
-            content: "A concise analysis report.",
+            content,
             conversation_id: Some("conv-1"),
             usage: Some(@ai.usage(input_tokens=40, output_tokens=60)),
             metadata: { "captured_prompt": request.prompt },
@@ -292,14 +297,209 @@ async test "analysis_step_handler can trigger adaptive input verdict from follow
       ),
     )
 
-    let result = engine.execute_run("run-analysis-1", fn() { 1000 })
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
     inspect(calls.val, content="2")
     inspect(
-      match result {
-        Ok(_) => "unexpected-success"
-        Err(error) => error
+      result.run.status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.steps[0].status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.run.summary.unwrap_or(""),
+      content="Waiting for input on step analyze: parcel location; parcel size",
+    )
+  })
+}
+
+///|
+async test "analysis_step_handler treats blocker-style prose as non-complete in followup judge" {
+  @fsx.with_temporary_directory("job-analysis-adaptive-blocker-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Produce a decision-ready land acquisition estimate.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    let followup_prompt : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          if calls.val == 2 {
+            followup_prompt.val = request.prompt
+            Ok(AnalysisExecution::{
+              model_name: request.model_name,
+              content: "{\"verdict\":\"needs_input\",\"summary\":\"Decision-grade estimate is blocked by missing parcel facts.\",\"missing_inputs\":[\"parcel location\",\"parcel size\",\"comparable sales\"]}",
+              conversation_id: None,
+              usage: None,
+              metadata: {},
+            })
+          } else {
+            Ok(AnalysisExecution::{
+              model_name: request.model_name,
+              content: [
+                "**Decision-Ready Output**", "", "- No parcel-specific estimate can be produced yet.",
+                "- Current status is screening only, not decision-grade underwriting.",
+                "", "**Missing required inputs**", "- Parcel location", "- Parcel size",
+                "- Comparable sales", "", "**Recommended next actions**", "1. Gather parcel facts.",
+                "2. Build a comp set.",
+              ].join("\n"),
+              conversation_id: None,
+              usage: None,
+              metadata: {},
+            })
+          }
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(calls.val, content="2")
+    inspect(
+      followup_prompt.val.contains(
+        "If the current output mainly reports blockers, missing facts, provisional screening status, or next actions, it is not completed.",
+      ),
+      content="true",
+    )
+    inspect(
+      result.run.status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.steps[0].status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.run.summary.unwrap_or(""),
+      content="Waiting for input on step analyze: parcel location; parcel size; comparable sales",
+    )
+  })
+}
+
+///|
+async test "analysis_step_handler loads analysis-adaptation skill into followup judge prompt" {
+  @fsx.with_temporary_directory("job-analysis-adaptive-skill-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let skill_dir = dir
+      |> @pathx.join("skills")
+      |> @pathx.join("analysis-adaptation")
+    @fsx.make_directory(skill_dir, recursive=true)
+    @fsx.write_to_file(
+      skill_dir |> @pathx.join("SKILL.md"),
+      [
+        "---", "name: analysis-adaptation", "description: test skill", "---", "",
+        "Include the exact phrase ADAPTIVE_SKILL_MARKER.",
+      ].join("\n"),
+    )
+    let config = AnalysisStepConfig::new(
+      prompt="Produce a decision-ready land acquisition estimate.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    let followup_prompt : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          if calls.val == 2 {
+            followup_prompt.val = request.prompt
+            Ok(AnalysisExecution::{
+              model_name: request.model_name,
+              content: "{\"verdict\":\"completed\",\"summary\":\"ok\"}",
+              conversation_id: None,
+              usage: None,
+              metadata: {},
+            })
+          } else {
+            Ok(AnalysisExecution::{
+              model_name: request.model_name,
+              content: "This is a first-pass estimate with major missing assumptions.",
+              conversation_id: None,
+              usage: None,
+              metadata: {},
+            })
+          }
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
       },
-      content="Analysis requires input: parcel location; parcel size",
+    )
+    inspect(calls.val, content="2")
+    inspect(
+      followup_prompt.val.contains("ADAPTIVE_SKILL_MARKER"),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "analysis_step_handler repairs invalid followup judge output" {
+  @fsx.with_temporary_directory("job-analysis-adaptive-repair-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Produce a decision-ready land acquisition estimate.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          let content = match calls.val {
+            1 =>
+              [
+                "I can’t produce a decision-ready estimate yet.", "The parcel location and comparable sales are missing.",
+              ].join("\n")
+            2 => "This is blocked because important facts are missing."
+            _ =>
+              "{\"verdict\":\"needs_input\",\"summary\":\"Decision-grade estimate is blocked by missing parcel facts.\",\"missing_inputs\":[\"parcel location\",\"comparable sales\"]}"
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(calls.val, content="3")
+    inspect(
+      result.run.status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.run.summary.unwrap_or(""),
+      content="Waiting for input on step analyze: parcel location; comparable sales",
     )
   })
 }
