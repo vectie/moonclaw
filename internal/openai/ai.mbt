@@ -191,14 +191,13 @@ async fn chat_codex(
   logger~ : @pino.Logger,
   on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
-  let (access_token, account_id) = match
-    (model.access_token, model.account_id) {
-    (Some(at), Some(aid)) => (at, aid)
+  let (access_token, account_id) = try {
+    let creds = @codex.load_credentials()
+    (creds.accessToken, creds.accountId)
+  } catch {
     _ =>
-      try {
-        let creds = @codex.load_credentials()
-        (creds.accessToken, creds.accountId)
-      } catch {
+      match (model.access_token, model.account_id) {
+        (Some(at), Some(aid)) => (at, aid)
         _ =>
           raise HttpError(
             code=401,
@@ -433,18 +432,14 @@ priv struct CodexStreamResult {
 ///|
 async fn do_codex_stream_request(
   access_token : String,
-  account_id : String,
+  _account_id : String,
   request : @responses.ResponsesRequest,
   on_text_delta~ : (String) -> Unit,
 ) -> CodexStreamResult raise Error {
-  let client = @http.Client::new("https://chatgpt.com", headers={
-    "Authorization": "Bearer \{access_token}",
-    "ChatGPT-Account-ID": account_id,
-    "Content-Type": "application/json",
-    "Accept": "text/event-stream",
-    "originator": "codex_cli_rs",
-    "User-Agent": "codex_cli_rs/1.0.0",
-  })
+  let client = @http.Client::new(
+    "https://chatgpt.com",
+    headers=codex_request_headers(access_token),
+  )
   defer client.close()
   let body = request.to_json()
   guard body is Object(body_obj) else {
@@ -476,6 +471,17 @@ async fn do_codex_stream_request(
     }
   }
   { text_chunks, output_items }
+}
+
+///|
+fn codex_request_headers(access_token : String) -> Map[String, String] {
+  {
+    "Authorization": "Bearer \{access_token}",
+    "Content-Type": "application/json",
+    "Accept": "text/event-stream",
+    "originator": "openclaw",
+    "User-Agent": "openclaw/0.1.0",
+  }
 }
 
 ///|

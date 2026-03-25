@@ -160,6 +160,72 @@ fn requested_model_name_or_none(name : String) -> String? {
 }
 
 ///|
+fn configured_primary_model_from_json(json : Json?) -> String? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("agents") {
+        Some(Object(agents)) =>
+          match agents.get("defaults") {
+            Some(Object(defaults)) =>
+              match defaults.get("model") {
+                Some(Object(model)) =>
+                  match model.get("primary") {
+                    Some(String(primary)) if !primary.trim().is_empty() =>
+                      Some(primary.trim().to_string())
+                    _ => None
+                  }
+                _ => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn moonclaw_config_path_candidates(
+  cwd : String,
+  home : String?,
+) -> Array[String] {
+  let paths : Array[String] = [
+    cwd |> @pathx.join("moonclaw.json"),
+    cwd |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
+  ]
+  match home {
+    Some(home) => {
+      paths.push(home |> @pathx.join("moonclaw.json"))
+      paths.push(
+        home |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
+      )
+    }
+    None => ()
+  }
+  paths
+}
+
+///|
+async fn configured_primary_model(cwd : String, home : String?) -> String? {
+  for path in moonclaw_config_path_candidates(cwd, home) {
+    let text = @fsx.read_file(path) catch { _ => continue }
+    let json = @json.parse(text) catch { _ => continue }
+    if configured_primary_model_from_json(Some(json)) is Some(primary) {
+      return Some(primary)
+    }
+  }
+  None
+}
+
+///|
+async fn resolved_model_name(request : AnalysisRequest) -> String? {
+  match requested_model_name_or_none(request.model_name) {
+    Some(requested) => Some(requested)
+    None => configured_primary_model(request.cwd, request.home)
+  }
+}
+
+///|
 fn setup_analysis_agent(agent : @agent.Agent, cwd : String) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
@@ -184,6 +250,127 @@ fn preferred_skills_prompt(preferred_skills : Array[String]) -> String {
   } else {
     let names = preferred_skills.join(", ")
     "Prefer these skills if relevant: \{names}"
+  }
+}
+
+///|
+fn workspace_output_slug(text : String) -> String {
+  let buf = StringBuilder::new()
+  let mut chars_written = 0
+  let mut last_dash = true
+  for c in text.to_lower().to_array() {
+    let normalized = match c {
+      'a'..='z' => Some(c)
+      '0'..='9' => Some(c)
+      _ => None
+    }
+    match normalized {
+      Some(c) => {
+        if chars_written >= 32 {
+          break
+        }
+        buf.write_char(c)
+        chars_written += 1
+        last_dash = false
+      }
+      None =>
+        if !last_dash && chars_written < 32 {
+          buf.write_char('-')
+          chars_written += 1
+          last_dash = true
+        }
+    }
+  }
+  let slug = buf.to_string().trim(chars="-").to_string()
+  if slug.is_blank() {
+    "step"
+  } else {
+    slug
+  }
+}
+
+///|
+fn workspace_report_file_name(step_id : String, step_title : String) -> String {
+  "step-\{step_id}-\{workspace_output_slug(step_title)}.md"
+}
+
+///|
+fn workspace_result_file_name(step_id : String, step_title : String) -> String {
+  "step-\{step_id}-\{workspace_output_slug(step_title)}.json"
+}
+
+///|
+fn run_workflow_steps(
+  store : SystemStore,
+  run : JobRun,
+) -> Array[WorkflowStepDefinition] {
+  let definition = match store.get_definition(run.job_id) {
+    Some(definition) => definition
+    None => return []
+  }
+  let workflow_id = match definition.workflow_id {
+    Some(workflow_id) => workflow_id
+    None => return []
+  }
+  match store.get_workflow(workflow_id) {
+    Some(workflow) => workflow.steps
+    None => []
+  }
+}
+
+///|
+fn is_final_workflow_step(
+  store : SystemStore,
+  run : JobRun,
+  step_id : String,
+) -> Bool {
+  let steps = run_workflow_steps(store, run)
+  if steps.is_empty() {
+    false
+  } else {
+    steps[steps.length() - 1].id == step_id
+  }
+}
+
+///|
+async fn materialize_analysis_outputs_to_workspace(
+  store : SystemStore,
+  context : WorkflowStepContext,
+  result_payload : Json,
+  report_content : String,
+) -> Unit {
+  let workspace_dir = match context.run.workspace_dir {
+    Some(workspace_dir) if !workspace_dir.trim().to_string().is_blank() =>
+      workspace_dir
+    _ => return
+  }
+  let outputs_dir = workspace_dir |> @pathx.join("outputs")
+  @fsx.make_directory(outputs_dir, recursive=true) catch {
+    _ => return
+  }
+  let report_file = outputs_dir
+    |> @pathx.join(workspace_report_file_name(context.step.id, context.step.id))
+  let result_file = outputs_dir
+    |> @pathx.join(workspace_result_file_name(context.step.id, context.step.id))
+  @fsx.write_to_file(report_file, report_content) catch {
+    _ => ()
+  }
+  @fsx.write_to_file(result_file, result_payload.stringify()) catch {
+    _ => ()
+  }
+  if is_final_workflow_step(store, context.run, context.step.id) {
+    @fsx.write_to_file(
+      workspace_dir |> @pathx.join("report.md"),
+      report_content,
+    ) catch {
+      _ => ()
+    }
+    @fsx.write_to_file(
+      workspace_dir |> @pathx.join("result.json"),
+      result_payload.stringify(),
+    ) catch {
+      _ => ()
+    }
   }
 }
 
@@ -472,7 +659,7 @@ fn timeout_error_message(step_id : String, timeout_ms : Int) -> String {
 ///|
 pub fn default_analysis_executor() -> AnalysisExecutor {
   AnalysisExecutor::new(run=async fn(request) {
-    let requested_model = requested_model_name_or_none(request.model_name)
+    let requested_model = resolved_model_name(request)
     guard @model.load(
         home?=request.home.map(fn(home) { home[:] }),
         cwd=request.cwd[:],
@@ -631,6 +818,12 @@ pub fn analysis_step_handler(
       ),
       "\{context.run.id}:\{context.step.id}:result:\{now()}",
       now(),
+    )
+    materialize_analysis_outputs_to_workspace(
+      store,
+      context,
+      result_payload,
+      execution.content,
     )
 
     Ok(

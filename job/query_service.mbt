@@ -43,6 +43,23 @@ fn definition_created_at_label(definition : JobDefinition) -> String {
 }
 
 ///|
+fn run_output_lines(run : JobRun) -> Array[String] {
+  match (run.status, run.workspace_dir) {
+    (RunStatus::Succeeded, Some(workspace_dir)) => {
+      let report_path = workspace_dir |> @pathx.join("report.md")
+      let result_path = workspace_dir |> @pathx.join("result.json")
+      let outputs_dir = workspace_dir |> @pathx.join("outputs")
+      [
+        "Output report: \{report_path}",
+        "Output result: \{result_path}",
+        "Output steps: \{outputs_dir}",
+      ]
+    }
+    _ => []
+  }
+}
+
+///|
 pub fn child_runs_for(store : SystemStore, run_id : String) -> Array[JobRun] {
   store.list_runs().filter(fn(run) { run.parent_run_id == Some(run_id) })
 }
@@ -115,6 +132,7 @@ pub async fn render_status_text(
       error: run.error,
       child_runs,
       latest_event_line,
+      output_lines: run_output_lines(run),
     },
     prefix,
   )

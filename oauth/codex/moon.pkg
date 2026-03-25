@@ -14,4 +14,5 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/random",
   "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/core/test",
 }

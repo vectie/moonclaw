@@ -72,6 +72,70 @@ async test "render_job_status_command_reply resolves run targets" {
 }
 
 ///|
+async test "render_job_status_command_reply includes workspace output links for succeeded run" {
+  @fsx.with_temporary_directory("job-status-output-links-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace_dir = dir |> @pathx.join("run-1")
+    @fsx.make_directory(workspace_dir |> @pathx.join("outputs"), recursive=true)
+    @fsx.write_to_file(
+      workspace_dir |> @pathx.join("report.md"),
+      "final report",
+    )
+    @fsx.write_to_file(
+      workspace_dir |> @pathx.join("result.json"),
+      "{\"status\":\"completed\"}",
+    )
+    let store = SystemStore::new(root=dir |> @pathx.join("jobs"))
+    let definition = JobDefinition::{
+      id: "job-1",
+      kind: "job.proposal",
+      enabled: true,
+      config: { "family": "generic" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: None,
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    }
+    let run = JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: TriggerSource::Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: Some(workspace_dir),
+      status: RunStatus::Succeeded,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(10),
+      completed_at: Some(20),
+      summary: Some("Workflow completed"),
+      error: None,
+    }
+    store.save_definition(definition)
+    store.save_run(run)
+    let reply = render_job_status_command_reply(
+      store, "run-1", 100, "Current job status",
+    ).unwrap_or("")
+    inspect(
+      reply.contains("Output report: \{workspace_dir}/report.md"),
+      content="true",
+    )
+    inspect(
+      reply.contains("Output result: \{workspace_dir}/result.json"),
+      content="true",
+    )
+    inspect(
+      reply.contains("Output steps: \{workspace_dir}/outputs"),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "request_job_stop resolves run ids before calling cancel" {
   let store = SystemStore::new(root="unused")
   let definition = JobDefinition::{

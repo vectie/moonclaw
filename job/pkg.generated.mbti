@@ -1148,12 +1148,10 @@ pub fn ProposalCompiler::new(run~ : (JobProposal, Int, String, String) -> Propos
 type ProposalPlanPayload
 pub impl Show for ProposalPlanPayload
 pub impl ToJson for ProposalPlanPayload
-pub impl @json.FromJson for ProposalPlanPayload
 
 type ProposalPlanStepPayload
 pub impl Show for ProposalPlanStepPayload
 pub impl ToJson for ProposalPlanStepPayload
-pub impl @json.FromJson for ProposalPlanStepPayload
 
 pub(all) struct ProposalPlanner {
   run : async (String, String, String?) -> JobProposal

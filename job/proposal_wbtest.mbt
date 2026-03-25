@@ -207,6 +207,148 @@ async test "plan_job_proposal loads skills/job-planning/SKILL.md when present" {
 }
 
 ///|
+async test "plan_job_proposal reports invalid planner json in fallback summary" {
+  let proposal = plan_job_proposal(
+    "proposal-invalid-planner-json-1",
+    "Land acquisition estimation",
+    100,
+    executor=fake_planner_executor(
+      "Here is a plan:\n1. Collect inputs\n2. Analyze\n3. Report",
+    ),
+  )
+  inspect(proposal.steps.length(), content="1")
+  inspect(
+    proposal.summary.contains(
+      "Planner fallback used: model output was not valid proposal JSON.",
+    ),
+    content="true",
+  )
+  inspect(proposal.summary.contains("Collect inputs"), content="true")
+}
+
+///|
+async test "plan_job_proposal accepts step details as prompt fallback" {
+  let proposal = plan_job_proposal(
+    "proposal-details-shape-1",
+    "Land acquisition estimation",
+    100,
+    executor=fake_planner_executor(
+      "{\"title\":\"Land acquisition estimation\",\"summary\":\"Use a decomposed plan.\",\"steps\":[{\"id\":\"scope\",\"title\":\"Clarify acquisition scope and assumptions\",\"details\":\"Define the target geography, parcel type, intended use, and time horizon.\"},{\"id\":\"inputs\",\"title\":\"Collect market and land inputs\",\"details\":\"Gather parcel, zoning, market, and comparable inputs.\"},{\"id\":\"finance\",\"title\":\"Estimate costs and financial outcome\",\"details\":\"Estimate acquisition costs, carrying costs, and expected financial outcome.\"},{\"id\":\"risk\",\"title\":\"Assess risks and produce report\",\"details\":\"Assess material risks and generate the final report.\"}]}",
+    ),
+  )
+  inspect(proposal.steps.length(), content="4")
+  inspect(
+    proposal.steps[0].title,
+    content="Clarify acquisition scope and assumptions",
+  )
+  inspect(
+    proposal.steps[0].prompt,
+    content="Define the target geography, parcel type, intended use, and time horizon.",
+  )
+}
+
+///|
+async test "plan_job_proposal accepts plan and step aliases from planner output" {
+  let proposal = plan_job_proposal(
+    "proposal-plan-alias-1",
+    "Land acquisition estimation",
+    100,
+    executor=fake_planner_executor(
+      "{\"title\":\"Land acquisition estimation\",\"overview\":\"Use a decomposed plan.\",\"plan\":[{\"step\":\"Clarify scope and assumptions for the land acquisition estimate\"},{\"step\":\"Collect market and parcel inputs\"},{\"step\":\"Estimate costs and financial outcome\"},{\"step\":\"Assess risks and prepare report\"}]}",
+    ),
+  )
+  inspect(proposal.title, content="Land acquisition estimation")
+  inspect(proposal.summary, content="Use a decomposed plan.")
+  inspect(proposal.steps.length(), content="4")
+  inspect(
+    proposal.steps[0].title,
+    content="Clarify scope and assumptions for the land acquisition estimate",
+  )
+  inspect(proposal.steps[3].prompt, content="Assess risks and prepare report")
+}
+
+///|
+async test "plan_job_proposal accepts planner job field and details arrays" {
+  let proposal = plan_job_proposal(
+    "proposal-plan-array-details-1",
+    "Land acquisition estimation",
+    100,
+    executor=fake_planner_executor(
+      "{\"job\":\"Land acquisition estimation\",\"workspace_root\":\"/Users/kq/Workspace/moonclaw-workspace\",\"plan\":[{\"step\":1,\"title\":\"Clarify scope and assumptions\",\"details\":[\"Identify the target project geography.\",\"Confirm parcel type, intended use, and time horizon.\"]},{\"step\":2,\"title\":\"Collect market and parcel inputs\",\"details\":[\"Gather comparable sales and asking prices.\",\"Capture zoning, utilities, and legal constraints.\"]}]}",
+    ),
+  )
+  inspect(proposal.title, content="Land acquisition estimation")
+  inspect(proposal.steps.length(), content="2")
+  inspect(proposal.steps[0].title, content="Clarify scope and assumptions")
+  inspect(
+    proposal.steps[0].prompt,
+    content="Identify the target project geography.\nConfirm parcel type, intended use, and time horizon.",
+  )
+  inspect(proposal.steps[1].title, content="Collect market and parcel inputs")
+}
+
+///|
+async test "plan_job_proposal retries under-decomposed analytical plan" {
+  let calls : Ref[Int] = { val: 0 }
+  let proposal = plan_job_proposal(
+    "proposal-repair-1",
+    "Land acquisition estimation",
+    100,
+    executor=AnalysisExecutor::new(run=fn(_request) {
+      calls.val = calls.val + 1
+      let content = if calls.val == 1 {
+        "{\"title\":\"Land acquisition estimation\",\"summary\":\"Initial draft.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"execute\",\"title\":\"Execute requested work\",\"prompt\":\"Perform the requested job directly.\",\"kind\":\"job.analysis\"}]}"
+      } else {
+        "{\"title\":\"Land acquisition estimation\",\"summary\":\"Repaired draft.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Information collection\",\"prompt\":\"Collect the required inputs.\",\"kind\":\"job.analysis\"},{\"id\":\"design\",\"title\":\"Scheme design\",\"prompt\":\"Design the estimation scheme.\",\"kind\":\"job.analysis\"},{\"id\":\"estimate\",\"title\":\"Cost estimation\",\"prompt\":\"Estimate costs.\",\"kind\":\"job.analysis\"},{\"id\":\"finance\",\"title\":\"Financial analysis\",\"prompt\":\"Analyze the financial outcome.\",\"kind\":\"job.analysis\"},{\"id\":\"risk\",\"title\":\"Risk assessment\",\"prompt\":\"Assess major risks.\",\"kind\":\"job.analysis\"},{\"id\":\"report\",\"title\":\"Report generation\",\"prompt\":\"Generate the final report.\",\"kind\":\"job.analysis\"}]}"
+      }
+      Ok(AnalysisExecution::{
+        model_name: "default",
+        content,
+        conversation_id: None,
+        usage: None,
+        metadata: {},
+      })
+    }),
+  )
+  inspect(calls.val, content="2")
+  inspect(proposal.steps.length(), content="6")
+  inspect(proposal.steps[0].title, content="Information collection")
+  inspect(proposal.steps[5].title, content="Report generation")
+}
+
+///|
+async test "plan_job_proposal reports under-decomposed plan after repair" {
+  let calls : Ref[Int] = { val: 0 }
+  let proposal = plan_job_proposal(
+    "proposal-repair-fail-1",
+    "Land acquisition estimation",
+    100,
+    executor=AnalysisExecutor::new(run=fn(_request) {
+      calls.val = calls.val + 1
+      Ok(AnalysisExecution::{
+        model_name: "default",
+        content: "{\"title\":\"Land acquisition estimation\",\"steps\":[{\"id\":\"execute\",\"title\":\"Execute requested work\",\"prompt\":\"Perform the requested job directly.\",\"kind\":\"job.analysis\"}]}",
+        conversation_id: None,
+        usage: None,
+        metadata: {},
+      })
+    }),
+  )
+  inspect(calls.val, content="2")
+  inspect(proposal.steps.length(), content="1")
+  inspect(
+    proposal.summary.contains(
+      "Planner fallback used: planner returned an under-decomposed plan even after repair.",
+    ),
+    content="true",
+  )
+  inspect(
+    proposal.summary.contains("\"title\":\"Land acquisition estimation\""),
+    content="true",
+  )
+}
+
+///|
 async test "profile json drives controller policy through compilation into runtime" {
   @fsx.with_temporary_directory("job-proposal-controller-runtime-XXXXXX", async fn(
     dir,

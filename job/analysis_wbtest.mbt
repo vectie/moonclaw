@@ -164,6 +164,60 @@ async test "analysis_step_handler persists report and result artifacts" {
 }
 
 ///|
+async test "analysis_step_handler materializes outputs into run workspace" {
+  @fsx.with_temporary_directory("job-analysis-workspace-output-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let run_workspace = @pathx.join(dir, "run-workspace")
+    @fsx.make_directory(run_workspace, recursive=true)
+    let config = AnalysisStepConfig::new(prompt="Produce a final report.")
+    let engine = analysis_test_engine(
+      root,
+      config,
+      workspace_dir=Some(run_workspace),
+    )
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "A concise final report.",
+            conversation_id: Some("conv-1"),
+            usage: None,
+            metadata: { "status": "completed" },
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    inspect(
+      @fsx.read_file(
+        run_workspace
+        |> @pathx.join("outputs")
+        |> @pathx.join("step-analyze-analyze.md"),
+      ),
+      content="A concise final report.",
+    )
+    inspect(
+      @fsx.read_file(run_workspace |> @pathx.join("report.md")),
+      content="A concise final report.",
+    )
+    inspect(
+      @fsx.read_file(run_workspace |> @pathx.join("result.json")).contains(
+        "\"status\":\"completed\"",
+      ),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "analysis_step_handler passes execution routing hints into executor" {
   @fsx.with_temporary_directory("job-analysis-routing-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -252,6 +306,34 @@ async test "analysis_step_handler loads local skill file content into prompt" {
       .unwrap_or(false),
       content="true",
     )
+  })
+}
+
+///|
+async test "resolved_model_name uses configured primary model for default" {
+  @fsx.with_temporary_directory("job-analysis-primary-model-XXXXXX", dir => {
+    @fsx.write_to_file(
+      dir |> @pathx.join("moonclaw.json"),
+      { "agents": { "defaults": { "model": { "primary": "codex/gpt-5.4" } } } }
+      .to_json()
+      .stringify(indent=2),
+    )
+    let request = AnalysisRequest::{
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      prompt: "Plan the job.",
+      model_name: "default",
+      cwd: dir,
+      home: None,
+      execution_mode: None,
+      execution_target: None,
+      system_prompt: "system",
+      preferred_skills: [],
+      enable_tools: false,
+      web_search: false,
+    }
+    inspect(resolved_model_name(request).unwrap_or(""), content="codex/gpt-5.4")
   })
 }
 

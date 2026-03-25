@@ -24,6 +24,16 @@ fn compact_title(text : String) -> String {
 }
 
 ///|
+fn compact_preview(text : String, max_len : Int) -> String {
+  let trimmed = text.trim().to_string()
+  if trimmed.length() <= max_len {
+    trimmed
+  } else {
+    "\{trimmed[:max_len - 3].to_string()}..."
+  }
+}
+
+///|
 fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
   [
     JobProposalStep::{
@@ -47,12 +57,114 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
 }
 
 ///|
+fn non_blank_string_or_none(value : Json?) -> String? {
+  match value {
+    Some(String(text)) => {
+      let trimmed = text.trim().to_string()
+      if trimmed.is_blank() {
+        None
+      } else {
+        Some(trimmed)
+      }
+    }
+    _ => None
+  }
+}
+
+///|
+fn non_blank_string_array_lines(value : Json?) -> String? {
+  match value {
+    Some(Array(items)) => {
+      let lines : Array[String] = []
+      for item in items {
+        match item {
+          String(text) => {
+            let trimmed = text.trim().to_string()
+            if !trimmed.is_blank() {
+              lines.push(trimmed)
+            }
+          }
+          _ => ()
+        }
+      }
+      if lines.is_empty() {
+        None
+      } else {
+        Some(lines.join("\n"))
+      }
+    }
+    _ => None
+  }
+}
+
+///|
 struct ProposalPlanStepPayload {
   id : String?
   title : String
   prompt : String
   kind : String?
-} derive(FromJson, ToJson, Show)
+} derive(ToJson, Show)
+
+///|
+impl @json.FromJson for ProposalPlanStepPayload with from_json(
+  json : Json,
+  path : @json.JsonPath,
+) -> ProposalPlanStepPayload raise @json.JsonDecodeError {
+  guard json is Object(obj) else {
+    raise @json.JsonDecodeError(
+      (path, "ProposalPlanStepPayload: expected object"),
+    )
+  }
+  let id : String? = match obj.get("id") {
+    Some(String(id)) => Some(id)
+    _ => None
+  }
+  let title : String = match obj.get("title") {
+    Some(String(title)) => title
+    _ =>
+      match obj.get("step") {
+        Some(String(step)) if !step.trim().to_string().is_blank() => step
+        _ =>
+          raise @json.JsonDecodeError(
+            (path, "ProposalPlanStepPayload: missing 'title'/'step'"),
+          )
+      }
+  }
+  let prompt : String = match non_blank_string_or_none(obj.get("prompt")) {
+    Some(prompt) => prompt
+    None =>
+      match non_blank_string_or_none(obj.get("details")) {
+        Some(details) => details
+        None =>
+          match non_blank_string_array_lines(obj.get("details")) {
+            Some(details) => details
+            None =>
+              match non_blank_string_or_none(obj.get("description")) {
+                Some(description) => description
+                None =>
+                  match non_blank_string_or_none(obj.get("instruction")) {
+                    Some(instruction) => instruction
+                    None =>
+                      match non_blank_string_or_none(obj.get("step")) {
+                        Some(step) => step
+                        None =>
+                          raise @json.JsonDecodeError(
+                            (
+                              path, "ProposalPlanStepPayload: missing 'prompt'/'details'/'description'/'instruction'/'step'",
+                            ),
+                          )
+                      }
+                  }
+              }
+          }
+      }
+  }
+  let kind : String? = match obj.get("kind") {
+    Some(String(kind)) => Some(kind)
+    _ => None
+  }
+  { id, title, prompt, kind }
+}
 
 ///|
 struct ProposalPlanPayload {
@@ -60,7 +172,44 @@ struct ProposalPlanPayload {
   summary : String?
   tags : Array[String]?
   steps : Array[ProposalPlanStepPayload]?
-} derive(FromJson, ToJson, Show)
+} derive(ToJson, Show)
+
+///|
+impl @json.FromJson for ProposalPlanPayload with from_json(
+  json : Json,
+  path : @json.JsonPath,
+) -> ProposalPlanPayload raise @json.JsonDecodeError {
+  guard json is Object(obj) else {
+    raise @json.JsonDecodeError((path, "ProposalPlanPayload: expected object"))
+  }
+  let title : String? = match non_blank_string_or_none(obj.get("title")) {
+    Some(title) => Some(title)
+    None => non_blank_string_or_none(obj.get("job"))
+  }
+  let summary : String? = match obj.get("summary") {
+    Some(String(summary)) if !summary.trim().to_string().is_blank() =>
+      Some(summary)
+    _ =>
+      match obj.get("overview") {
+        Some(String(overview)) if !overview.trim().to_string().is_blank() =>
+          Some(overview)
+        _ => None
+      }
+  }
+  let tags : Array[String]? = match obj.get("tags") {
+    Some(tags_json) => Some(@json.from_json(tags_json, path~))
+    _ => None
+  }
+  let steps : Array[ProposalPlanStepPayload]? = match obj.get("steps") {
+    Some(steps_json) => Some(@json.from_json(steps_json, path~))
+    _ =>
+      match obj.get("plan") {
+        Some(plan_json) => Some(@json.from_json(plan_json, path~))
+        _ => None
+      }
+  }
+  { title, summary, tags, steps }
+}
 
 ///|
 fn normalize_proposal_step_id(
@@ -110,6 +259,104 @@ fn normalized_plan_steps(
     }
     _ => fallback
   }
+}
+
+///|
+fn request_prefers_multi_step_plan(request_text : String) -> Bool {
+  let lower = request_text.to_lower()
+  lower.contains("calculate") ||
+  lower.contains("calculation") ||
+  lower.contains("estimation") ||
+  lower.contains("estimate") ||
+  lower.contains("analysis") ||
+  lower.contains("financial") ||
+  lower.contains("business") ||
+  lower.contains("land acquisition") ||
+  lower.contains("report") ||
+  lower.contains("assessment")
+}
+
+///|
+fn is_generic_single_execute_plan(payload : ProposalPlanPayload) -> Bool {
+  match payload.steps {
+    Some([step]) => {
+      let title = step.title.trim().to_lower()
+      let prompt = step.prompt.trim().to_lower()
+      let id = step.id.map(fn(id) { id.trim().to_lower() }).unwrap_or("")
+      (id == "execute" || id == "step_1") &&
+      (
+        title == "execute" ||
+        title == "execute requested work" ||
+        title == "do the work"
+      ) &&
+      (
+        prompt.contains("execute") ||
+        prompt.contains("perform the requested job")
+      )
+    }
+    _ => false
+  }
+}
+
+///|
+fn is_under_decomposed_plan(
+  payload : ProposalPlanPayload,
+  request_text : String,
+) -> Bool {
+  let steps = normalized_plan_steps(payload, request_text)
+  if !request_prefers_multi_step_plan(request_text) {
+    return false
+  }
+  if steps.length() >= 2 {
+    return false
+  }
+  if is_generic_single_execute_plan(payload) {
+    return true
+  }
+  match steps {
+    [step] => {
+      let title = step.title.trim().to_lower()
+      let prompt = step.prompt.trim().to_lower()
+      title == "execute" ||
+      title == "execute requested work" ||
+      title == "analysis" ||
+      title == "do the work" ||
+      prompt.contains("perform the requested job directly") ||
+      prompt.contains("execute requested work")
+    }
+    _ => true
+  }
+}
+
+///|
+fn planner_repair_prompt(
+  request_text : String,
+  prior_output : String,
+) -> String {
+  [
+    "Your previous plan was under-decomposed for this request.",
+    "Return JSON only.",
+    "Do not return a single generic execute step.",
+    "Produce 4 to 8 concrete phases when the request is analytical, business, estimation, due-diligence, or report-oriented.",
+    "For this request, return at least 5 steps unless the request is obviously trivial.",
+    "Each step must have a concrete business or analytical deliverable, not filler.",
+    "Request:\n\{request_text}",
+    "Previous planner output:\n\{prior_output}",
+  ].join("\n\n")
+}
+
+///|
+fn proposal_with_planner_diagnostic(
+  proposal : JobProposal,
+  reason : String,
+  preview? : String? = None,
+) -> JobProposal {
+  let diagnostic = match preview {
+    Some(preview) if !preview.trim().to_string().is_blank() =>
+      "Planner fallback used: \{reason}. Planner output preview: \{compact_preview(preview, 240)}"
+    _ => "Planner fallback used: \{reason}."
+  }
+  JobProposal::{ ..proposal, summary: diagnostic }
 }
 
 ///|
@@ -408,10 +655,46 @@ pub async fn plan_job_proposal(
   )
   let execution = match (executor.run)(request) {
     Ok(execution) => execution
-    Err(_) => return fallback
+    Err(error) =>
+      return proposal_with_planner_diagnostic(
+        fallback,
+        "analysis executor failed",
+        preview=Some(error),
+      )
   }
   match maybe_parse_payload(execution.content) {
     Some(payload) => {
+      let initial_payload = payload
+      let payload = if is_under_decomposed_plan(payload, request_text) {
+        let repair_request = AnalysisRequest::{
+          ..request,
+          step_id: "planner.repair",
+          prompt: planner_repair_prompt(request_text, execution.content),
+        }
+        match (executor.run)(repair_request) {
+          Ok(repair_execution) =>
+            maybe_parse_payload(repair_execution.content).unwrap_or(payload)
+          Err(_) => payload
+        }
+      } else {
+        payload
+      }
+      if is_under_decomposed_plan(payload, request_text) {
+        let preview = if payload.steps is Some(_) {
+          payload.to_json().stringify()
+        } else {
+          execution.content
+        }
+        return proposal_with_planner_diagnostic(
+          fallback,
+          if is_under_decomposed_plan(initial_payload, request_text) {
+            "planner returned an under-decomposed plan even after repair"
+          } else {
+            "planner returned an under-decomposed plan"
+          },
+          preview=Some(preview),
+        )
+      }
       let proposal = proposal_payload_to_proposal(
         proposal_id, request_text, payload, now_ms, channel_id, account_id, recipient,
         thread_id,
@@ -423,7 +706,12 @@ pub async fn plan_job_proposal(
         workspace.unwrap_or(cwd),
       )
     }
-    None => fallback
+    None =>
+      proposal_with_planner_diagnostic(
+        fallback,
+        "model output was not valid proposal JSON",
+        preview=Some(execution.content),
+      )
   }
 }
 

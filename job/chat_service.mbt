@@ -49,6 +49,7 @@ pub(all) struct JobStatusSnapshot {
   error : String?
   child_runs : Array[ChildRunStatus]
   latest_event_line : String
+  output_lines : Array[String]
 } derive(Show, ToJson, FromJson)
 
 ///|
@@ -486,6 +487,7 @@ pub fn render_job_status(
     snapshot.error.map(fn(text) { "Error: \{text}" }).unwrap_or(""),
     child_run_line.unwrap_or(""),
     snapshot.latest_event_line,
+    ..snapshot.output_lines,
     "Use `/job-status \{snapshot.definition_id}` for a fresh status check.",
   ]
   .filter(fn(line) { !line.is_blank() })

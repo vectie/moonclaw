@@ -106,6 +106,22 @@ fn get_codex_auth_path() -> String {
 }
 
 ///|
+async fn load_credentials_from_path(path : String) -> Credentials raise Error {
+  let content = @fsx.read_file(path)
+  @json.from_json(@json.parse(content))
+}
+
+///|
+fn codex_cli_credentials_path_is_newer(
+  local_path : String,
+  codex_path : String,
+) -> Bool {
+  let local_mtime = @fsx.stat(local_path).mtime() catch { _ => return false }
+  let codex_mtime = @fsx.stat(codex_path).mtime() catch { _ => return false }
+  codex_mtime > local_mtime
+}
+
+///|
 pub async fn save_credentials(credentials : Credentials) -> Unit {
   let path = get_credentials_path()
   let dir = @pathx.dirname(path)
@@ -157,13 +173,23 @@ async fn try_load_from_codex() -> Credentials? {
 ///|
 pub async fn load_credentials() -> Credentials raise Error {
   let path = get_credentials_path()
-  if @fsx.exists_as_file(path) {
-    let content = @fsx.read_file(path)
-    return @json.from_json(@json.parse(content))
+  let codex_path = get_codex_auth_path()
+  let has_local = @fsx.exists_as_file(path)
+  let has_codex = @fsx.exists_as_file(codex_path)
+  if has_local &&
+    has_codex &&
+    codex_cli_credentials_path_is_newer(path, codex_path) {
+    if try_load_from_codex() is Some(credentials) {
+      return credentials
+    }
   }
-  // Try to import from codex CLI
-  if try_load_from_codex() is Some(credentials) {
-    return credentials
+  if has_local {
+    return load_credentials_from_path(path)
+  }
+  if has_codex {
+    if try_load_from_codex() is Some(credentials) {
+      return credentials
+    }
   }
   raise ParseError("Credentials file not found")
 }
