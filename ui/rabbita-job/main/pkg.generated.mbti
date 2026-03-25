@@ -40,9 +40,15 @@ type BrowserCopyResult
 pub impl Show for BrowserCopyResult
 pub impl @json.FromJson for BrowserCopyResult
 
+type CompanyBoardStats
+
+type CompanyHandoff
+
 type CompanyLane
 
 type CompanyLaneEntry
+
+type CompanyLaneStats
 
 type MixedHandoffGroup
 

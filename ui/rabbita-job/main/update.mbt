@@ -19,18 +19,22 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let next_model = { ..model, runs, runs_loading: false, runs_error: None }
       match model.route {
         Run(run_id) =>
-          (
-            batch([
-              load_run_cmd(dispatch, model.gateway_base, run_id),
-              start_stream_cmd(dispatch, model.gateway_base, run_id),
-            ]),
-            {
-              ..next_model,
-              selected_run_id: Some(run_id),
-              detail_loading: true,
-              detail_error: None,
-            },
-          )
+          if model.selected_run_id == Some(run_id) && model.snapshot is Some(_) {
+            (@rabbita.none, next_model)
+          } else {
+            (
+              batch([
+                load_run_cmd(dispatch, model.gateway_base, run_id),
+                start_stream_cmd(dispatch, model.gateway_base, run_id),
+              ]),
+              {
+                ..next_model,
+                selected_run_id: Some(run_id),
+                detail_loading: true,
+                detail_error: None,
+              },
+            )
+          }
         _ => (@rabbita.none, next_model)
       }
     }
@@ -74,6 +78,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         (
           batch([
             fetch_runs(dispatch, model.gateway_base),
+            fetch_snapshot(dispatch, model.gateway_base, run_id),
             match model.snapshot {
               Some(snapshot) =>
                 if run_status_is_live(snapshot.run.status) {
