@@ -445,6 +445,99 @@ async test "build_job_ui_snapshot adds split and merge nodes for controller runs
       "family": "opc_impl_worker",
       "role": null,
       "worker_role": "implementation",
+      "expansion_kind": null,
     })
   })
+}
+
+///|
+async test "build_job_ui_snapshot labels analysis-expanded child runs as subplans" {
+  let store = SystemStore::new(root="unused")
+  let definition = JobDefinition::{
+    id: "job-parent",
+    kind: "job.proposal",
+    enabled: true,
+    config: { "family": "generic" },
+    schedule: None,
+    retry_policy: None,
+    workflow_id: Some("workflow-parent"),
+    created_at: 100,
+    updated_at: 100,
+    tags: [],
+  }
+  let child_definition = JobDefinition::{
+    id: "job-subplan",
+    kind: "job.proposal",
+    enabled: true,
+    config: { "family": "generic" },
+    schedule: None,
+    retry_policy: None,
+    workflow_id: None,
+    created_at: 110,
+    updated_at: 110,
+    tags: [],
+  }
+  let workflow = WorkflowDefinition::{
+    id: "workflow-parent",
+    kind: "job.proposal",
+    steps: [
+      WorkflowStepDefinition::{
+        id: "analyze",
+        kind: "job.analysis",
+        config: {},
+        retry_policy: None,
+      },
+    ],
+    output_bindings: ["analyze"],
+  }
+  let run = JobRun::{
+    id: "run-parent",
+    job_id: "job-parent",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    workspace_dir: None,
+    status: RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(100),
+    completed_at: None,
+    summary: Some("Parent running"),
+    error: None,
+  }
+  let child_run = JobRun::{
+    id: "run-subplan",
+    job_id: "job-subplan",
+    trigger: TriggerSource::Custom("analysis-subplan"),
+    parent_run_id: Some("run-parent"),
+    parent_step_id: Some("analyze"),
+    depth: 1,
+    workspace_dir: None,
+    status: RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(120),
+    completed_at: None,
+    summary: Some("Expanded from analysis"),
+    error: None,
+  }
+  store.save_definition(definition)
+  store.save_definition(child_definition)
+  store.save_workflow(workflow)
+  store.save_run(run)
+  store.save_run(child_run)
+
+  let snapshot = build_job_ui_snapshot(store, "run-parent").unwrap()
+  let node = snapshot.nodes.filter(fn(node) { node.id == "child:run-subplan" })[0]
+  json_inspect(node.title, content="Expanded Subplan")
+  json_inspect(node.summary.unwrap_or(""), content="Expanded from analysis")
+  json_inspect(node.detail.unwrap_or(""), content="job-subplan")
+  json_inspect(
+    match node.metadata {
+      { "expansion_kind": String(value), .. } => value
+      _ => ""
+    },
+    content="analysis-subplan",
+  )
 }

@@ -43,6 +43,19 @@ fn definition_created_at_label(definition : JobDefinition) -> String {
 }
 
 ///|
+fn child_run_status_label(store : SystemStore, run : JobRun) -> String {
+  let prefix = match run.trigger {
+    TriggerSource::Custom(kind) if kind == "analysis-subplan" => "subplan"
+    _ => "child"
+  }
+  let title = match store.get_definition(run.job_id) {
+    Some(definition) => definition_display_title(definition)
+    None => run.job_id
+  }
+  "\{prefix}:\{run.id}=\{run.status.to_json().stringify()} (\{title})"
+}
+
+///|
 fn run_output_lines(run : JobRun) -> Array[String] {
   match (run.status, run.workspace_dir) {
     (RunStatus::Succeeded, Some(workspace_dir)) => {
@@ -112,7 +125,7 @@ pub async fn render_status_text(
   let child_runs = child_runs_for(store, run.id).map(fn(child) {
     ChildRunStatus::{
       run_id: child.id,
-      status: child.status.to_json().stringify(),
+      status: child_run_status_label(store, child),
     }
   })
   render_job_status(

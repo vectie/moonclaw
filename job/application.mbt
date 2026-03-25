@@ -353,6 +353,15 @@ pub fn GatewayJobApp::new_workflow_engine_with_executors(
     analysis_step_handler(
       runtime~,
       executor=analysis_executor.unwrap_or(default_analysis_executor()),
+      compiler=Some(self.proposal_compiler()),
+      engine_factory=Some(fn() {
+        self.new_workflow_engine_with_executors(
+          child_executor~,
+          analysis_executor~,
+        )
+      }),
+      child_executor~,
+      next_run_id=fn() { human_readable_run_id(self.now(), self.next_id()) },
     ),
   )
   engine.register_handler(

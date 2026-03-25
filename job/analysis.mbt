@@ -138,9 +138,381 @@ pub fn AnalysisExecutor::new(
 }
 
 ///|
+struct AdaptiveSubstepPayload {
+  title : String
+  prompt : String
+  kind : String?
+} derive(FromJson, ToJson, Show)
+
+///|
+struct AdaptiveAnalysisEnvelope {
+  verdict : String
+  summary : String?
+  missing_inputs : Array[String]?
+  suggested_substeps : Array[AdaptiveSubstepPayload]?
+  substeps : Array[AdaptiveSubstepPayload]?
+} derive(FromJson, ToJson, Show)
+
+///|
+fn adaptive_json_string_field(
+  object : Map[String, Json],
+  key : String,
+) -> String? {
+  match object.get(key) {
+    Some(String(value)) if !value.trim().is_empty() =>
+      Some(value.trim().to_string())
+    _ => None
+  }
+}
+
+///|
+fn adaptive_json_string_array_field(
+  object : Map[String, Json],
+  key : String,
+) -> Array[String]? {
+  match object.get(key) {
+    Some(Array(values)) => {
+      let items : Array[String] = []
+      for value in values {
+        guard value is String(text) else { continue }
+        let trimmed = text.trim().to_string()
+        if !trimmed.is_blank() {
+          items.push(trimmed)
+        }
+      }
+      if items.is_empty() {
+        None
+      } else {
+        Some(items)
+      }
+    }
+    _ => None
+  }
+}
+
+///|
+fn parse_adaptive_substep(value : Json) -> AdaptiveSubstepPayload? {
+  guard value is Object(object) else { return None }
+  let title = match adaptive_json_string_field(object, "title") {
+    Some(title) => title
+    None => return None
+  }
+  let prompt = match adaptive_json_string_field(object, "prompt") {
+    Some(prompt) => prompt
+    None => title
+  }
+  let kind = adaptive_json_string_field(object, "kind")
+  Some(AdaptiveSubstepPayload::{ title, prompt, kind })
+}
+
+///|
+fn adaptive_json_substeps_field(
+  object : Map[String, Json],
+  key : String,
+) -> Array[AdaptiveSubstepPayload]? {
+  match object.get(key) {
+    Some(Array(values)) => {
+      let items : Array[AdaptiveSubstepPayload] = []
+      for value in values {
+        match parse_adaptive_substep(value) {
+          Some(item) => items.push(item)
+          None => ()
+        }
+      }
+      if items.is_empty() {
+        None
+      } else {
+        Some(items)
+      }
+    }
+    _ => None
+  }
+}
+
+///|
+fn parse_adaptive_analysis_envelope(
+  content : String,
+) -> AdaptiveAnalysisEnvelope? {
+  let trimmed = content.trim().to_string()
+  if trimmed.is_blank() || !trimmed.has_prefix("{") {
+    return None
+  }
+  let json = @json.parse(trimmed) catch { _ => return None }
+  guard json is Object(object) else { return None }
+  let verdict = match adaptive_json_string_field(object, "verdict") {
+    Some(verdict) => verdict
+    None => return None
+  }
+  Some(AdaptiveAnalysisEnvelope::{
+    verdict,
+    summary: adaptive_json_string_field(object, "summary"),
+    missing_inputs: adaptive_json_string_array_field(object, "missing_inputs"),
+    suggested_substeps: adaptive_json_substeps_field(
+      object, "suggested_substeps",
+    ),
+    substeps: adaptive_json_substeps_field(object, "substeps"),
+  })
+}
+
+///|
+fn adaptive_substeps(
+  envelope : AdaptiveAnalysisEnvelope,
+) -> Array[AdaptiveSubstepPayload] {
+  match envelope.suggested_substeps {
+    Some(steps) if !steps.is_empty() => steps
+    _ => envelope.substeps.unwrap_or([])
+  }
+}
+
+///|
+fn adaptive_missing_inputs_line(envelope : AdaptiveAnalysisEnvelope) -> String {
+  match envelope.missing_inputs {
+    Some(inputs) if !inputs.is_empty() => inputs.join("; ")
+    _ => envelope.summary.unwrap_or("Analysis requires additional inputs.")
+  }
+}
+
+///|
+fn adaptive_decision_system_prompt() -> String {
+  [
+    @prompt.prelude, "You are deciding whether an analysis step is complete or should expand.",
+    "Return strict JSON only.", "If the step is complete, return {\"verdict\":\"completed\",\"summary\":string}.",
+    "If key inputs are missing and the user or an external source must provide them, return {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}.",
+    "If the step should be decomposed into smaller executable units before it can produce a useful result, return {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}.",
+    "Do not default to subplanning. Only request a subplan when decomposition would materially improve execution.",
+  ].join("\n\n")
+}
+
+///|
+fn adaptive_decision_prompt(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+) -> String {
+  [
+    "Original step prompt:",
+    config.prompt,
+    "Step id: \{context.step.id}",
+    "Current analysis output:",
+    execution.content,
+    "Decide whether this output is complete, needs external input, or should be expanded into a child subplan.",
+  ].join("\n\n")
+}
+
+///|
+async fn adaptive_followup_envelope(
+  executor : AnalysisExecutor,
+  request : AnalysisRequest,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+) -> AdaptiveAnalysisEnvelope? {
+  let followup = AnalysisRequest::{
+    ..request,
+    prompt: adaptive_decision_prompt(context, config, execution),
+    system_prompt: adaptive_decision_system_prompt(),
+    enable_tools: false,
+    web_search: false,
+    preferred_skills: [],
+  }
+  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  match followup_execution {
+    Ok(result) => parse_adaptive_analysis_envelope(result.content)
+    Err(_) => None
+  }
+}
+
+///|
+fn adaptive_subplan_title(
+  config : AnalysisStepConfig,
+  context : WorkflowStepContext,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> String {
+  match config.metadata {
+    { "proposal_step_title": String(title), .. } if !title.trim().is_blank() =>
+      title
+    _ => envelope.summary.unwrap_or("Subplan for \{context.step.id}")
+  }
+}
+
+///|
+fn adaptive_subplan_summary(envelope : AdaptiveAnalysisEnvelope) -> String {
+  envelope.summary.unwrap_or(
+    "Auto-generated subplan from adaptive analysis verdict.",
+  )
+}
+
+///|
+fn adaptive_subplan_proposal(
+  proposal_id : String,
+  title : String,
+  request_text : String,
+  summary : String,
+  steps : Array[AdaptiveSubstepPayload],
+  now_ms : Int,
+) -> JobProposal {
+  let proposal_steps : Array[JobProposalStep] = []
+  let mut index = 0
+  for step in steps {
+    let step_id = "step_\{index + 1}"
+    proposal_steps.push(JobProposalStep::{
+      id: step_id,
+      title: step.title.trim().to_string(),
+      prompt: step.prompt.trim().to_string(),
+      kind: step.kind.unwrap_or("job.analysis"),
+      metadata: {},
+      child_profile: None,
+      execution_mode: None,
+      execution_target: None,
+      include_parent_outputs: None,
+      max_depth: None,
+    })
+    index += 1
+  }
+  JobProposal::{
+    id: proposal_id,
+    title,
+    request_text,
+    summary,
+    revision_history: [],
+    suggested_family: Some("generic"),
+    profile_id: None,
+    profile_role: None,
+    profile_metadata: {},
+    status: JobProposalStatus::Draft,
+    steps: proposal_steps,
+    tags: ["job", "adaptive-subplan"],
+    channel_id: None,
+    account_id: None,
+    recipient: None,
+    thread_id: None,
+    presented_message_id: None,
+    job_id: None,
+    workflow_id: None,
+    last_run_id: None,
+    created_at: now_ms,
+    updated_at: now_ms,
+  }
+}
+
+///|
+async fn execute_analysis_subplan(
+  runtime : RuntimeManager,
+  compiler : ProposalCompiler,
+  engine_factory : () -> WorkflowEngine,
+  child_executor : ChildRunExecutor?,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  envelope : AdaptiveAnalysisEnvelope,
+  now : () -> Int,
+  next_run_id : () -> String,
+  max_depth : Int,
+) -> Result[(String, String, Map[String, Json]), String] {
+  let steps = adaptive_substeps(envelope)
+  if steps.is_empty() {
+    return Err(
+      "Adaptive subplan requested but no suggested_substeps were provided",
+    )
+  }
+  guard context.run.depth < max_depth else {
+    return Err(
+      "Adaptive subplan depth limit reached: \{context.run.depth} >= \{max_depth}",
+    )
+  }
+  let cwd = context.run.workspace_dir.unwrap_or(config.cwd.unwrap_or("."))
+  let home = config.home.unwrap_or(".")
+  let proposal = adaptive_subplan_proposal(
+    human_readable_proposal_id(
+      adaptive_subplan_title(config, context, envelope),
+      now(),
+      next_run_id(),
+    ),
+    adaptive_subplan_title(config, context, envelope),
+    config.prompt,
+    adaptive_subplan_summary(envelope),
+    steps,
+    now(),
+  )
+  let compilation = (compiler.run)(proposal, now(), cwd, home)
+  runtime
+  .store()
+  .save_job_proposal(JobProposal::{
+    ..proposal,
+    status: JobProposalStatus::Confirmed,
+    job_id: Some(compilation.definition.id),
+    workflow_id: Some(compilation.workflow.id),
+    updated_at: now(),
+  })
+  runtime.register_definition(compilation.definition)
+  runtime.register_workflow(compilation.workflow)
+  for binding in compilation.bindings {
+    runtime.store().save_chat_binding(binding)
+  }
+  let child_run = match
+    runtime.trigger_definition(
+      next_run_id(),
+      compilation.definition.id,
+      TriggerSource::Custom("analysis-subplan"),
+      now(),
+      parent_run_id=Some(context.run.id),
+      parent_step_id=Some(context.step.id),
+      depth=context.run.depth + 1,
+    ) {
+    Ok(run) => run
+    Err(error) => return Err(error)
+  }
+  let child_request = ChildRunExecutionRequest::{
+    parent_context: context,
+    child_run,
+    compilation,
+    config: SubjobStepConfig::new(
+      request_text=config.prompt,
+      cwd=Some(cwd),
+      home=Some(home),
+      include_parent_outputs=true,
+      max_depth~,
+    ),
+    control: context.control,
+  }
+  let child_result = match child_executor {
+    Some(executor) =>
+      match (executor.run)(child_request) {
+        Ok(Some(result)) => result
+        Ok(None) =>
+          match
+            execute_child_run_locally(
+              child_run,
+              engine_factory,
+              now,
+              context.control,
+            ) {
+            Ok(result) => result
+            Err(error) => return Err(error)
+          }
+        Err(error) => return Err(error)
+      }
+    None =>
+      match
+        execute_child_run_locally(
+          child_run,
+          engine_factory,
+          now,
+          context.control,
+        ) {
+        Ok(result) => result
+        Err(error) => return Err(error)
+      }
+  }
+  Ok((compilation.definition.id, child_run.id, child_result.outputs))
+}
+
+///|
 fn default_analysis_system_prompt() -> String {
   [
     @prompt.prelude, "You are executing a job workflow analysis step.", "Produce a concise, grounded report using the provided context.",
+    "If the step cannot be completed because key inputs are missing, you may return JSON only: {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}.",
+    "If the step is too broad and should be decomposed before useful execution, you may return JSON only: {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}.",
+    "Use normal prose output when you can complete the step directly.",
   ].join("\n\n")
 }
 
@@ -212,6 +584,46 @@ async fn configured_primary_model(cwd : String, home : String?) -> String? {
     let json = @json.parse(text) catch { _ => continue }
     if configured_primary_model_from_json(Some(json)) is Some(primary) {
       return Some(primary)
+    }
+  }
+  None
+}
+
+///|
+fn configured_adaptive_subplan_max_depth_from_json(json : Json?) -> Int? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("jobs") {
+        Some(Object(jobs)) =>
+          match jobs.get("analysis") {
+            Some(Object(analysis)) =>
+              match analysis.get("adaptive") {
+                Some(Object(adaptive)) =>
+                  match adaptive.get("max_depth") {
+                    Some(Number(value, ..)) => Some(value.to_int())
+                    _ => None
+                  }
+                _ => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+async fn configured_adaptive_subplan_max_depth(
+  cwd : String,
+  home : String?,
+) -> Int? {
+  for path in moonclaw_config_path_candidates(cwd, home) {
+    let text = @fsx.read_file(path) catch { _ => continue }
+    let json = @json.parse(text) catch { _ => continue }
+    if configured_adaptive_subplan_max_depth_from_json(Some(json))
+      is Some(max_depth) {
+      return Some(max_depth)
     }
   }
   None
@@ -726,7 +1138,11 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
 pub fn analysis_step_handler(
   runtime~ : RuntimeManager,
   executor? : AnalysisExecutor = default_analysis_executor(),
+  compiler? : ProposalCompiler? = None,
+  engine_factory? : (() -> WorkflowEngine)? = None,
+  child_executor? : ChildRunExecutor? = None,
   now? : () -> Int = fn() { @async.now().to_int() },
+  next_run_id? : () -> String = fn() { "run.\{now()}" },
   kind? : String = "job.analysis",
 ) -> WorkflowStepHandler {
   let store = runtime.store()
@@ -825,8 +1241,91 @@ pub fn analysis_step_handler(
       result_payload,
       execution.content,
     )
-
-    Ok(
+    let adaptive_envelope = match
+      parse_adaptive_analysis_envelope(execution.content) {
+      Some(envelope) => Some(envelope)
+      None =>
+        adaptive_followup_envelope(
+          executor, request, context, config, execution,
+        )
+    }
+    let adaptive_max_depth = configured_adaptive_subplan_max_depth(
+      request.cwd,
+      request.home,
+    ).unwrap_or(5)
+    let adaptive_result : Result[WorkflowStepResult, String]? = match
+      adaptive_envelope {
+      Some(envelope) => {
+        let verdict = envelope.verdict.trim().to_string().to_lower()
+        match verdict {
+          "completed" => None
+          "needs_input" =>
+            Some(
+              Err(
+                "Analysis requires input: \{adaptive_missing_inputs_line(envelope)}",
+              ),
+            )
+          "needs_subplan" =>
+            match compiler {
+              None =>
+                Some(
+                  Err(
+                    "Adaptive subplanning requested but no compiler is configured",
+                  ),
+                )
+              Some(compiler) =>
+                match engine_factory {
+                  None =>
+                    Some(
+                      Err(
+                        "Adaptive subplanning requested but no workflow engine factory is configured",
+                      ),
+                    )
+                  Some(engine_factory) =>
+                    match
+                      execute_analysis_subplan(
+                        runtime, compiler, engine_factory, child_executor, context,
+                        config, envelope, now, next_run_id, adaptive_max_depth,
+                      ) {
+                      Err(error) => Some(Err(error))
+                      Ok((child_job_id, child_run_id, child_outputs)) =>
+                        Some(
+                          Ok(
+                            WorkflowStepResult::new(
+                              output={
+                                "status": "subplanned",
+                                "model": execution.model_name,
+                                "content": execution.content,
+                                "conversation_id": execution.conversation_id,
+                                "report_artifact_id": report_artifact.id,
+                                "result_artifact_id": result_artifact.id,
+                                "usage": usage_json(execution.usage),
+                                "child_job_id": child_job_id,
+                                "child_run_id": child_run_id,
+                                "child_outputs": child_outputs,
+                              },
+                              summary=Some(
+                                "Analysis requested and completed a child subplan",
+                              ),
+                              metrics=result_metrics(execution),
+                              logs=[
+                                "report artifact written: \{report_artifact.id}",
+                                "result artifact written: \{result_artifact.id}",
+                                "spawned child job: \{child_job_id}",
+                                "spawned child run: \{child_run_id}",
+                              ],
+                            ),
+                          ),
+                        )
+                    }
+                }
+            }
+          _ => None
+        }
+      }
+      None => None
+    }
+    let completed_result = Ok(
       WorkflowStepResult::new(
         output={
           "status": "completed",
@@ -845,5 +1344,9 @@ pub fn analysis_step_handler(
         ],
       ),
     )
+    match adaptive_result {
+      Some(result) => result
+      None => completed_result
+    }
   })
 }

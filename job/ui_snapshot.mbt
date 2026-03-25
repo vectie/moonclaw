@@ -363,14 +363,28 @@ fn child_run_node(
       _ => None
     }
   })
+  let (title, summary, detail, expansion_kind) = match run.trigger {
+    TriggerSource::Custom(kind) if kind == "analysis-subplan" =>
+      (
+        "Expanded Subplan",
+        Some(
+          run.summary.unwrap_or(
+            "Spawned from an analysis step that requested further decomposition.",
+          ),
+        ),
+        Some(run.job_id),
+        Some(kind),
+      )
+    _ => (run.job_id, run.summary, run.error, None)
+  }
   JobUiNode::{
     id: "child:\{run.id}",
     parent_id,
     kind: ChildRun,
-    title: run.job_id,
+    title,
     status: ui_status_text(run.status),
-    summary: run.summary,
-    detail: run.error,
+    summary,
+    detail,
     run_id: Some(run.id),
     step_id: run.parent_step_id,
     artifact_id: None,
@@ -394,6 +408,10 @@ fn child_run_node(
         None => null
       },
       "worker_role": match worker_role {
+        Some(value) => Json::string(value)
+        None => null
+      },
+      "expansion_kind": match expansion_kind {
         Some(value) => Json::string(value)
         None => null
       },

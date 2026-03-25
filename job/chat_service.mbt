@@ -468,7 +468,7 @@ pub fn render_job_status(
     None
   } else {
     let rendered = snapshot.child_runs
-      .map(fn(child) { "\{child.run_id}=\{child.status}" })
+      .map(fn(child) { child.status })
       .join(", ")
     Some("Child runs: \{rendered}")
   }

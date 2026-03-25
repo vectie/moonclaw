@@ -8,7 +8,7 @@ import {
 }
 
 // Values
-pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, now? : () -> Int, kind? : String) -> WorkflowStepHandler
+pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, compiler? : ProposalCompiler?, engine_factory? : (() -> WorkflowEngine)?, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
 pub fn analysis_system_prompt(AnalysisStepConfig) -> String
 
@@ -203,6 +203,16 @@ pub(all) struct ActiveJobSnapshot {
 pub impl Show for ActiveJobSnapshot
 pub impl ToJson for ActiveJobSnapshot
 pub impl @json.FromJson for ActiveJobSnapshot
+
+type AdaptiveAnalysisEnvelope
+pub impl Show for AdaptiveAnalysisEnvelope
+pub impl ToJson for AdaptiveAnalysisEnvelope
+pub impl @json.FromJson for AdaptiveAnalysisEnvelope
+
+type AdaptiveSubstepPayload
+pub impl Show for AdaptiveSubstepPayload
+pub impl ToJson for AdaptiveSubstepPayload
+pub impl @json.FromJson for AdaptiveSubstepPayload
 
 pub(all) struct AnalysisArtifactConfig {
   report_artifact_type : String
@@ -889,6 +899,7 @@ pub(all) struct JobStatusSnapshot {
   error : String?
   child_runs : Array[ChildRunStatus]
   latest_event_line : String
+  output_lines : Array[String]
 }
 pub impl Show for JobStatusSnapshot
 pub impl ToJson for JobStatusSnapshot

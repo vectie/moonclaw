@@ -3,6 +3,7 @@ async fn analysis_test_engine(
   root : String,
   config : AnalysisStepConfig,
   workspace_dir? : String? = None,
+  depth? : Int = 0,
 ) -> WorkflowEngine {
   let runtime = RuntimeManager::new(root~)
   let workflow = WorkflowDefinition::{
@@ -39,7 +40,7 @@ async fn analysis_test_engine(
     trigger: TriggerSource::Manual,
     parent_run_id: None,
     parent_step_id: None,
-    depth: 0,
+    depth,
     workspace_dir,
     status: RunStatus::Pending,
     attempt: 1,
@@ -145,7 +146,7 @@ async test "analysis_step_handler persists report and result artifacts" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(requests.val, content="1")
+    inspect(requests.val, content="2")
     inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
     inspect(
       result.outputs
@@ -256,6 +257,64 @@ async test "analysis_step_handler passes execution routing hints into executor" 
     )
     inspect(captured_mode.val, content="acp")
     inspect(captured_target.val, content="codex-main")
+  })
+}
+
+///|
+async test "analysis_step_handler can trigger adaptive input verdict from followup model pass" {
+  @fsx.with_temporary_directory("job-analysis-adaptive-judge-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Estimate land acquisition cost for an unknown parcel.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          let content = if calls.val == 2 {
+            "{\"verdict\":\"needs_input\",\"summary\":\"Parcel facts missing\",\"missing_inputs\":[\"parcel location\",\"parcel size\"]}"
+          } else {
+            "This is a first-pass estimate with major missing assumptions."
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = engine.execute_run("run-analysis-1", fn() { 1000 })
+    inspect(calls.val, content="2")
+    inspect(
+      match result {
+        Ok(_) => "unexpected-success"
+        Err(error) => error
+      },
+      content="Analysis requires input: parcel location; parcel size",
+    )
+  })
+}
+
+///|
+async test "analysis_step_handler honors adaptive max depth from moonclaw.json" {
+  @fsx.with_temporary_directory("job-analysis-adaptive-depth-XXXXXX", dir => {
+    @fsx.write_to_file(
+      dir |> @pathx.join("moonclaw.json"),
+      "{\n  \"jobs\": {\n    \"analysis\": {\n      \"adaptive\": {\n        \"max_depth\": 5\n      }\n    }\n  }\n}\n",
+    )
+    inspect(
+      configured_adaptive_subplan_max_depth(dir, None).unwrap_or(0),
+      content="5",
+    )
   })
 }
 

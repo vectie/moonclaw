@@ -136,6 +136,78 @@ async test "render_job_status_command_reply includes workspace output links for 
 }
 
 ///|
+async test "render_job_status_command_reply labels analysis-expanded child runs as subplans" {
+  let store = SystemStore::new(root="unused")
+  let definition = JobDefinition::{
+    id: "job-parent",
+    kind: "job.proposal",
+    enabled: true,
+    config: { "family": "generic" },
+    schedule: None,
+    retry_policy: None,
+    workflow_id: None,
+    created_at: 1,
+    updated_at: 1,
+    tags: [],
+  }
+  let child_definition = JobDefinition::{
+    id: "job-child",
+    kind: "job.proposal",
+    enabled: true,
+    config: { "family": "generic" },
+    schedule: None,
+    retry_policy: None,
+    workflow_id: None,
+    created_at: 2,
+    updated_at: 2,
+    tags: [],
+  }
+  let run = JobRun::{
+    id: "run-parent",
+    job_id: "job-parent",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    workspace_dir: None,
+    status: RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(10),
+    completed_at: None,
+    summary: None,
+    error: None,
+  }
+  let child_run = JobRun::{
+    id: "run-child",
+    job_id: "job-child",
+    trigger: TriggerSource::Custom("analysis-subplan"),
+    parent_run_id: Some("run-parent"),
+    parent_step_id: Some("analyze"),
+    depth: 1,
+    workspace_dir: None,
+    status: RunStatus::Running,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(20),
+    completed_at: None,
+    summary: Some("Expanded from analysis"),
+    error: None,
+  }
+  store.save_definition(definition)
+  store.save_definition(child_definition)
+  store.save_run(run)
+  store.save_run(child_run)
+  let reply = render_job_status_command_reply(
+    store, "run-parent", 100, "Current job status",
+  ).unwrap_or("")
+  inspect(
+    reply.contains("Child runs: subplan:run-child=\"Running\" (job-child)"),
+    content="true",
+  )
+}
+
+///|
 async test "request_job_stop resolves run ids before calling cancel" {
   let store = SystemStore::new(root="unused")
   let definition = JobDefinition::{
