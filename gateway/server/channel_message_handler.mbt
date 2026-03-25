@@ -41,20 +41,125 @@ async fn Gateway::force_cancel_active_channel_session(
 }
 
 ///|
+fn configured_primary_model_from_json(json : Json?) -> String? {
+  match json {
+    Some(Object(root)) =>
+      match root.get("agents") {
+        Some(Object(agents)) =>
+          match agents.get("defaults") {
+            Some(Object(defaults)) =>
+              match defaults.get("model") {
+                Some(Object(model)) =>
+                  match model.get("primary") {
+                    Some(String(primary)) if !primary.trim().is_empty() =>
+                      Some(primary.trim().to_string())
+                    _ => None
+                  }
+                _ => None
+              }
+            _ => None
+          }
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn moonclaw_config_path_candidates(
+  cwd : String,
+  home : String,
+) -> Array[String] {
+  [
+    "\{cwd}/moonclaw.json",
+    "\{cwd}/.moonclaw/moonclaw.json",
+    "\{home}/moonclaw.json",
+    "\{home}/.moonclaw/moonclaw.json",
+  ]
+}
+
+///|
+async fn Gateway::configured_primary_model_for_cwd(
+  self : Gateway,
+  cwd : String,
+) -> String? {
+  for path in moonclaw_config_path_candidates(cwd, self.home) {
+    let text = @fsx.read_file(path) catch { _ => continue }
+    let json = @json.parse(text) catch { _ => continue }
+    if configured_primary_model_from_json(Some(json)) is Some(primary) {
+      return Some(primary)
+    }
+  }
+  None
+}
+
+///|
+fn channel_model_provider_override(model : @model.Model) -> String? {
+  match model.model_type {
+    @model.Type::SaaS(@model.Provider::CodexOAuth) => Some("codex")
+    @model.Type::SaaS(@model.Provider::Copilot) => Some("copilot")
+    @model.Type::SaaS(@model.Provider::Qwen) => Some("qwen")
+    @model.Type::SaaS(@model.Provider::Kimi) => Some("kimi")
+    @model.Type::SaaS(@model.Provider::KimiCoding) => Some("kimi-coding")
+    _ => None
+  }
+}
+
+///|
+fn channel_model_session_name(model : @model.Model) -> String {
+  match channel_model_provider_override(model) {
+    Some(prefix) => {
+      let model_name = model.model_name.trim().to_string()
+      if model_name.has_prefix("\{prefix}/") {
+        model_name
+      } else {
+        "\{prefix}/\{model_name}"
+      }
+    }
+    None => model.name
+  }
+}
+
+///|
+fn resolve_channel_model_override(
+  model_override : String?,
+  provider_override : String?,
+  configured_primary : String?,
+) -> String? {
+  match model_override {
+    Some(model_name) if model_name.contains("/") =>
+      Some(model_name.trim().to_string())
+    Some(model_name) => {
+      let bare = model_name.trim().to_string()
+      match provider_override {
+        Some(provider) if !provider.trim().is_empty() =>
+          Some("\{provider.trim().to_string()}/\{bare}")
+        _ =>
+          match configured_primary {
+            Some(primary) => Some(primary)
+            None => Some(bare)
+          }
+      }
+    }
+    None => configured_primary
+  }
+}
+
+///|
 async fn Gateway::store_channel_session(
   self : Gateway,
   session_key : String,
   conversation_id : String,
   channel_id : String,
   cwd : String,
-  model_name : String,
+  model : @model.Model,
 ) -> Unit {
   self.sessions.save_entry(session_key, SessionEntry::{
     session_id: conversation_id,
     updated_at: current_time_ms(),
     channel: Some(channel_id),
-    model_override: Some(model_name),
-    provider_override: None,
+    model_override: Some(channel_model_session_name(model)),
+    provider_override: channel_model_provider_override(model),
     cwd: Some(cwd),
   })
 }
@@ -118,6 +223,15 @@ fn Gateway::channel_reply_message(
     reply_to: Some(incoming.id),
     attachments: [],
   }
+}
+
+///|
+fn channel_model_debug_summary(
+  requested_model : String?,
+  model : @model.Model,
+) -> String {
+  let requested = requested_model.unwrap_or("auto")
+  "requested=\{requested}; loaded=\{channel_model_session_name(model)}; provider=\{model.model_type}"
 }
 
 ///|
@@ -738,9 +852,21 @@ impl @channel.MessageHandler for Gateway with handle_message(
     Some(entry) => entry.cwd.unwrap_or(self.cwd)
     None => self.cwd
   }
+  let configured_primary_model = self.configured_primary_model_for_cwd(cwd)
   let model_name = match session {
-    Some(entry) => entry.model_override
-    None => None
+    Some(entry) =>
+      resolve_channel_model_override(
+        entry.model_override,
+        entry.provider_override,
+        configured_primary_model,
+      )
+    None => configured_primary_model
+  }
+  if message.content.trim().to_string().is_blank() &&
+    message.attachments.is_empty() {
+    return self.channel_reply_message(
+      channel_id, account_id, message, "I could not parse any text from that message. Please resend it as plain text.",
+    )
   }
   guard @model.load(home=self.home, cwd~, name?=model_name) is Some(model) else {
     fail("No model available for channel reply")
@@ -792,25 +918,33 @@ impl @channel.MessageHandler for Gateway with handle_message(
           )
         }
       }
+      AssistantMessageDelta(delta) if !delta.is_blank() =>
+        reply_text = reply_text + delta
       AssistantMessage(content, ..) if !content.is_blank() =>
         reply_text = content
       _ => ()
     }
   })
-  moonclaw.start()
+  moonclaw.start() catch {
+    error =>
+      return self.channel_reply_message(
+        channel_id,
+        account_id,
+        message,
+        "Channel chat failed: \{error}\nModel: \{channel_model_debug_summary(model_name, model)}",
+      )
+  }
 
   let conversation_id = moonclaw.agent.id().to_string()
   self.store_channel_session(
-    session_key,
-    conversation_id,
-    channel_id,
-    cwd,
-    model.name,
+    session_key, conversation_id, channel_id, cwd, model,
   )
   moonclaw.close()
 
   if reply_text.is_blank() {
-    fail("Agent completed without producing a channel response")
+    return self.channel_reply_message(
+      channel_id, account_id, message, "Channel chat completed without a text reply.",
+    )
   }
 
   @channel.Message::{
