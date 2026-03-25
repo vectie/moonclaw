@@ -79,18 +79,6 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           batch([
             fetch_runs(dispatch, model.gateway_base),
             fetch_snapshot(dispatch, model.gateway_base, run_id),
-            match model.snapshot {
-              Some(snapshot) =>
-                if run_status_is_live(snapshot.run.status) {
-                  @rabbita.delay(
-                    dispatch(PollRun(run_id)),
-                    runs_poll_interval_ms(),
-                  )
-                } else {
-                  @rabbita.none
-                }
-              None => @rabbita.none
-            },
           ]),
           model,
         )
