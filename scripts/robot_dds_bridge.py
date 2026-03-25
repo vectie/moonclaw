@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
+import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Any
@@ -86,6 +88,13 @@ class RobotBackendConfig:
     dds_status_topic: str
     board_uri: str
     dry_run: bool
+    allow_motion: bool
+    allowed_actions: set[str]
+    board_connect_command: str
+    board_safe_mode_command: str
+    dds_connect_command: str
+    dds_publish_command: str
+    dds_wait_command: str
 
 
 def action_with_defaults(
@@ -160,18 +169,50 @@ def infer_action(prompt: str, metadata: dict[str, Any]) -> RobotAction:
 
 
 def load_backend_config(request: BridgeRequest) -> RobotBackendConfig:
+    allowed_actions_raw = os.environ.get(
+        "ROBOT_ALLOWED_ACTIONS", ",".join(sorted(ACTION_SPECS))
+    )
+    allowed_actions = {
+        item.strip() for item in allowed_actions_raw.split(",") if item.strip()
+    }
     return RobotBackendConfig(
         robot_id=request.execution_target,
         dds_domain=os.environ.get("ROBOT_DDS_DOMAIN", "17"),
         dds_task_topic=os.environ.get("ROBOT_DDS_TASK_TOPIC", "robot/task_request"),
         dds_status_topic=os.environ.get("ROBOT_DDS_STATUS_TOPIC", "robot/task_status"),
         board_uri=os.environ.get("ROBOT_BOARD_URI", "board://localhost"),
-        dry_run=os.environ.get("MOONCLAW_ROBOT_DRY_RUN", "").strip().lower() in {
+        dry_run=os.environ.get("MOONCLAW_ROBOT_DRY_RUN", "true").strip().lower() in {
             "1",
             "true",
             "yes",
         },
+        allow_motion=os.environ.get("MOONCLAW_ROBOT_ALLOW_MOTION", "")
+        .strip()
+        .lower()
+        in {"1", "true", "yes"},
+        allowed_actions=allowed_actions,
+        board_connect_command=os.environ.get("ROBOT_BOARD_CONNECT_COMMAND", "").strip(),
+        board_safe_mode_command=os.environ.get(
+            "ROBOT_BOARD_SAFE_MODE_COMMAND", ""
+        ).strip(),
+        dds_connect_command=os.environ.get("ROBOT_DDS_CONNECT_COMMAND", "").strip(),
+        dds_publish_command=os.environ.get("ROBOT_DDS_PUBLISH_COMMAND", "").strip(),
+        dds_wait_command=os.environ.get("ROBOT_DDS_WAIT_COMMAND", "").strip(),
     )
+
+
+def validate_action_policy(config: RobotBackendConfig, action: RobotAction) -> None:
+    if action.name not in config.allowed_actions:
+        allowed = ", ".join(sorted(config.allowed_actions))
+        raise ValueError(
+            f"Action '{action.name}' is not allowed for this target. Allowed actions: {allowed}"
+        )
+    if action.safety_class == "high_level_motion" and not (
+        config.dry_run or config.allow_motion
+    ):
+        raise ValueError(
+            "High-level motion is blocked. Set MOONCLAW_ROBOT_ALLOW_MOTION=true or keep MOONCLAW_ROBOT_DRY_RUN=true."
+        )
 
 
 class RobotBackend:
@@ -215,13 +256,52 @@ class DDSRuntime:
         self.config = config
 
     def connect(self) -> None:
-        raise NotImplementedError("DDSRuntime.connect is not implemented")
+        if not self.config.dds_connect_command:
+            return
+        run_hook_command(
+            self.config.dds_connect_command,
+            {
+                "kind": "dds.connect",
+                "robot_id": self.config.robot_id,
+                "dds_domain": self.config.dds_domain,
+                "task_topic": self.config.dds_task_topic,
+                "status_topic": self.config.dds_status_topic,
+            },
+        )
 
     def publish_task(self, action: RobotAction) -> None:
-        raise NotImplementedError("DDSRuntime.publish_task is not implemented")
+        if not self.config.dds_publish_command:
+            raise NotImplementedError(
+                "DDSRuntime.publish_task is not implemented. Set ROBOT_DDS_PUBLISH_COMMAND."
+            )
+        run_hook_command(
+            self.config.dds_publish_command,
+            {
+                "kind": "dds.publish_task",
+                "robot_id": self.config.robot_id,
+                "dds_domain": self.config.dds_domain,
+                "task_topic": self.config.dds_task_topic,
+                "action": action.name,
+                "params": action.params,
+                "safety_class": action.safety_class,
+            },
+        )
 
     def wait_for_result(self) -> dict[str, Any]:
-        raise NotImplementedError("DDSRuntime.wait_for_result is not implemented")
+        if not self.config.dds_wait_command:
+            raise NotImplementedError(
+                "DDSRuntime.wait_for_result is not implemented. Set ROBOT_DDS_WAIT_COMMAND."
+            )
+        return run_hook_command(
+            self.config.dds_wait_command,
+            {
+                "kind": "dds.wait_result",
+                "robot_id": self.config.robot_id,
+                "dds_domain": self.config.dds_domain,
+                "status_topic": self.config.dds_status_topic,
+            },
+            expect_json=True,
+        )
 
 
 class BoardTransport:
@@ -233,12 +313,71 @@ class BoardTransport:
         self.config = config
 
     def connect(self) -> None:
-        raise NotImplementedError("BoardTransport.connect is not implemented")
+        if not self.config.board_connect_command:
+            return
+        run_hook_command(
+            self.config.board_connect_command,
+            {
+                "kind": "board.connect",
+                "robot_id": self.config.robot_id,
+                "board_uri": self.config.board_uri,
+            },
+        )
 
     def ensure_safe_mode_for_action(self, action: RobotAction) -> None:
-        raise NotImplementedError(
-            "BoardTransport.ensure_safe_mode_for_action is not implemented"
+        if not self.config.board_safe_mode_command:
+            return
+        run_hook_command(
+            self.config.board_safe_mode_command,
+            {
+                "kind": "board.ensure_safe_mode",
+                "robot_id": self.config.robot_id,
+                "board_uri": self.config.board_uri,
+                "action": action.name,
+                "safety_class": action.safety_class,
+            },
         )
+
+
+def run_hook_command(
+    command: str,
+    payload: dict[str, Any],
+    *,
+    expect_json: bool = False,
+) -> dict[str, Any]:
+    args = shlex.split(command)
+    if not args:
+        raise ValueError("Hook command is empty")
+    completed = subprocess.run(
+        args,
+        input=json.dumps(payload),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        stderr = completed.stderr.strip()
+        raise RuntimeError(
+            f"Hook command failed with exit code {completed.returncode}"
+            + (f": {stderr}" if stderr else "")
+        )
+    stdout = completed.stdout.strip()
+    if not expect_json:
+        if not stdout:
+            return {}
+        try:
+            return json.loads(stdout)
+        except json.JSONDecodeError:
+            return {"stdout": stdout}
+    if not stdout:
+        raise RuntimeError("Hook command did not return JSON output")
+    try:
+        parsed = json.loads(stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Hook command returned invalid JSON: {exc}") from exc
+    if not isinstance(parsed, dict):
+        raise RuntimeError("Hook command JSON output must be an object")
+    return parsed
 
 
 class CustomDDSBackend(RobotBackend):
@@ -337,6 +476,7 @@ def main() -> int:
         request = load_request()
         action = infer_action(request.prompt, request.metadata)
         config = load_backend_config(request)
+        validate_action_policy(config, action)
         backend = select_backend()
         response = backend.execute(request, config, action)
     except Exception as exc:  # noqa: BLE001

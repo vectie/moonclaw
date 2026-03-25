@@ -30,12 +30,19 @@ It already:
 - loads bridge config from env
 - returns a valid JSON response
 - runs in stub mode by default
+- defaults to `MOONCLAW_ROBOT_DRY_RUN=true`
 
 The most important metadata keys are:
 
 - `robot_action`
 - `robot_params`
 - `robot_safety_class`
+
+The most important target env controls are:
+
+- `MOONCLAW_ROBOT_DRY_RUN`
+- `MOONCLAW_ROBOT_ALLOW_MOTION`
+- `ROBOT_ALLOWED_ACTIONS`
 
 ## How To Test Immediately
 
@@ -70,6 +77,22 @@ Replace or extend:
 - `DDSRuntime`
 - `BoardTransport`
 - `CustomDDSBackend.execute(...)`
+
+The bridge now already supports command hooks, so you do not have to edit the
+Python code first if your board runtime is exposed through small helper
+commands.
+
+Supported env hook points:
+
+- `ROBOT_BOARD_CONNECT_COMMAND`
+- `ROBOT_BOARD_SAFE_MODE_COMMAND`
+- `ROBOT_DDS_CONNECT_COMMAND`
+- `ROBOT_DDS_PUBLISH_COMMAND`
+- `ROBOT_DDS_WAIT_COMMAND`
+
+See:
+
+- [scripts/robot_hook_example.py](/Users/kq/Workspace/moonclaw/scripts/robot_hook_example.py)
 
 Recommended structure:
 
@@ -133,6 +156,12 @@ So your target config can later become:
 Start with `MOONCLAW_ROBOT_DRY_RUN=true`.
 
 When your board and DDS runtime are ready, remove that flag.
+
+For real hardware, keep:
+
+- `MOONCLAW_ROBOT_ALLOW_MOTION=false`
+
+until you intentionally want that target to move.
 
 ## Recommended Profile Metadata
 
