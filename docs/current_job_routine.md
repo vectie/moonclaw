@@ -236,10 +236,9 @@ When a run reaches `WaitingForInput`:
 
 1. The status text and Feishu notification say the run is waiting.
 2. The status message tells the operator to reply in the same Feishu thread
-   with attachments, or to reply with `resume:` followed by the missing text.
+   with `/resume` followed by the missing text, optionally with attachments.
 3. Automatic resume only triggers on:
-   - a reply with attachments
-   - or a reply beginning with `resume:` or `/resume`
+   - a reply beginning with `/resume`
 4. MoonClaw starts a resumed continuation run for the same job definition.
 5. The new reply content and attachment metadata are passed as `initial_input`
    into the new run.
@@ -250,6 +249,11 @@ Important current rule:
   waiting run
 - ordinary non-reply chat should still fall through to the normal conversation
   path
+- normal channel chat should resolve its model from the configured primary model
+  in `~/.moonclaw/moonclaw.json`; stale bare session model ids should not win
+
+Then the resumed continuation run proceeds normally:
+
 7. Run the agent and collect result text.
 8. Persist report/result artifacts.
 9. Return a structured `WorkflowStepResult`.

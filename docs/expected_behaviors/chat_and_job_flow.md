@@ -9,12 +9,20 @@ Expected behavior:
 - A normal Feishu message is handled as conversation input.
 - If the message is a recognized job command, it is routed into the job chat path instead.
 - If the message is a stop command for the active conversation, the conversation is cancelled cooperatively.
+- Normal channel chat should use the configured primary model from `~/.moonclaw/moonclaw.json`.
+- Stale thread/session-local bare model ids like `qwen3.5-plus` should not override the configured primary model.
 
 For Feishu, the important command groups are:
 
 - proposal commands
 - job status/control commands
 - memory commands
+
+Job control rule:
+
+- job-related control should require slash commands
+- `WaitingForInput` resume should only happen on a reply beginning with `/resume`
+- ordinary non-slash chat should remain normal conversation input
 
 ## Proposal Drafting
 

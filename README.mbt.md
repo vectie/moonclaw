@@ -37,6 +37,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-03-25`: added adaptive step expansion with `needs_input` / `needs_subplan`, `WaitingForInput` pause-and-resume via `/resume`, run-workspace output materialization, and fixed Feishu channel chat to honor the configured primary model from `~/.moonclaw/moonclaw.json`
 - `2026-03-24`: merged `opc`, `weixin`, and `canvas`; added Weixin Official Account support; upgraded the controller/company canvas; made the generic fallback a single `execute` step
 - `2026-03-23`: added generic worker routing with `child_profile`, `execution_mode`, and `execution_target`; routed analysis through ACP
 - `2026-03-20`: made job and run ids human-readable; moved run workspaces under `<workspace>/moonclaw-jobs`; fixed local time display; improved Feishu progress UX
@@ -54,7 +55,8 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - child runs are created under the parent run workspace at `moonclaw-subjobs/<run-id>`
 - run workspaces are run-owned and no longer copy workspace markdown like `AGENTS.md`, `USER.md`, `MEMORY.md`, `IDENTITY.md`, or `ROUTINES.md`
 - job timestamps are rendered in local time with an explicit offset
-- if a run reaches `WaitingForInput`, Feishu status replies now tell you to reply in-thread with the missing text/files to start a resumed continuation run
+- if a run reaches `WaitingForInput`, Feishu status replies now tell you to reply in-thread with `/resume` plus the missing text, optionally with attachments
+- normal Feishu chat uses the configured primary model from `~/.moonclaw/moonclaw.json`; stale thread-local bare model ids no longer override it
 
 ## 🚀 Current Capabilities
 
@@ -309,7 +311,7 @@ Once Feishu is configured and the gateway is running, the important commands are
 If a job pauses in `WaitingForInput`:
 
 - use `/job-status <job_id|run_id>` to see what is missing
-- reply to the waiting Feishu message with attachments, or reply with `resume:` followed by the missing text
+- reply to the waiting Feishu message with `/resume` followed by the missing text, optionally with attachments
 - MoonClaw will start a resumed continuation run with that new input
 - plain non-reply chat still goes to the normal conversation path
 - `/job-stop <job_id|run_id>`
