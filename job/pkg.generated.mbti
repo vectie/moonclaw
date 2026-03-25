@@ -74,6 +74,8 @@ pub async fn load_job_profile(String, String, String) -> JobProfile?
 
 pub async fn load_run_ui_timeline(SystemStore, String) -> Array[JobUiTimelineEntry]
 
+pub async fn loaded_skills_prompt(String, String?, Array[String]) -> String
+
 pub fn notification_preference_id(String, String, String, String?) -> String
 
 pub fn parse_job_chat_action(String, Bool) -> JobChatAction?

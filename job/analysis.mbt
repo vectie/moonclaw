@@ -239,7 +239,7 @@ async fn load_skill_instruction_text(
 }
 
 ///|
-async fn loaded_skills_prompt(
+pub async fn loaded_skills_prompt(
   cwd : String,
   home : String?,
   preferred_skills : Array[String],

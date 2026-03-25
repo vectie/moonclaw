@@ -131,6 +131,82 @@ async test "plan_job_proposal uses model JSON when available" {
 }
 
 ///|
+async test "plan_job_proposal includes decomposition guidance for land acquisition calculation" {
+  let proposal = plan_job_proposal(
+    "proposal-land-acquisition-1",
+    "Land acquisition calculation",
+    100,
+    executor=AnalysisExecutor::new(run=fn(request) {
+      let prompt = request.prompt
+      let has_example = prompt.contains("Land acquisition calculation") &&
+        prompt.contains("information collection") &&
+        prompt.contains("risk assessment")
+      Ok(AnalysisExecution::{
+        model_name: "default",
+        content: if has_example {
+          "{\"title\":\"Land acquisition calculation\",\"summary\":\"Use a decomposed analytical plan.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Information collection\",\"prompt\":\"Collect the required data.\",\"kind\":\"job.analysis\"},{\"id\":\"design\",\"title\":\"Scheme design\",\"prompt\":\"Design the calculation scheme.\",\"kind\":\"job.analysis\"},{\"id\":\"estimate\",\"title\":\"Cost estimation\",\"prompt\":\"Estimate major costs.\",\"kind\":\"job.analysis\"},{\"id\":\"price\",\"title\":\"Marketing pricing\",\"prompt\":\"Estimate commercial pricing assumptions.\",\"kind\":\"job.analysis\"},{\"id\":\"finance\",\"title\":\"Financial analysis\",\"prompt\":\"Analyze the financial outcome.\",\"kind\":\"job.analysis\"},{\"id\":\"risk\",\"title\":\"Risk assessment\",\"prompt\":\"Review the main risks.\",\"kind\":\"job.analysis\"},{\"id\":\"report\",\"title\":\"Report generation\",\"prompt\":\"Generate the final report.\",\"kind\":\"job.analysis\"}]}"
+        } else {
+          "{\"title\":\"Missing guidance\",\"summary\":\"Prompt guidance missing.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"execute\",\"title\":\"Execute\",\"prompt\":\"Execute.\",\"kind\":\"job.analysis\"}]}"
+        },
+        conversation_id: None,
+        usage: None,
+        metadata: {},
+      })
+    }),
+  )
+  inspect(proposal.steps.length(), content="7")
+  inspect(proposal.steps[0].title, content="Information collection")
+  inspect(proposal.steps[5].title, content="Risk assessment")
+  inspect(proposal.steps[6].title, content="Report generation")
+}
+
+///|
+async test "plan_job_proposal loads skills/job-planning/SKILL.md when present" {
+  @fsx.with_temporary_directory("job-proposal-planning-skill-XXXXXX", async fn(
+    dir,
+  ) {
+    let skill_dir = @pathx.join(dir, "skills/job-planning")
+    @fsx.make_directory(skill_dir, recursive=true)
+    @fsx.write_to_file(
+      @pathx.join(skill_dir, "SKILL.md"),
+      [
+        "---", "name: job-planning", "description: planning guidance", "---", "",
+        "Planning skill marker: decompose analytical work into real phases.",
+      ].join("\n"),
+    )
+    let proposal = plan_job_proposal(
+      "proposal-planning-skill-1",
+      "Land acquisition calculation",
+      100,
+      executor=AnalysisExecutor::new(run=fn(request) {
+        let has_skill_name = request.preferred_skills
+          .join(",")
+          .contains("job-planning")
+        let has_skill_content = request.prompt.contains(
+          "Planning skill marker: decompose analytical work into real phases.",
+        )
+        Ok(AnalysisExecution::{
+          model_name: "default",
+          content: if has_skill_name && has_skill_content {
+            "{\"title\":\"Skill-backed plan\",\"summary\":\"Planner loaded the planning skill.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Information collection\",\"prompt\":\"Collect the required inputs.\",\"kind\":\"job.analysis\"},{\"id\":\"report\",\"title\":\"Report generation\",\"prompt\":\"Generate the final report.\",\"kind\":\"job.analysis\"}]}"
+          } else {
+            "{\"title\":\"Missing skill\",\"summary\":\"Planner did not load the planning skill.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"execute\",\"title\":\"Execute\",\"prompt\":\"Execute.\",\"kind\":\"job.analysis\"}]}"
+          },
+          conversation_id: None,
+          usage: None,
+          metadata: {},
+        })
+      }),
+      cwd=dir,
+      home=Some(dir),
+      workspace=Some(dir),
+    )
+    inspect(proposal.title, content="Skill-backed plan")
+    inspect(proposal.steps.length(), content="2")
+  })
+}
+
+///|
 async test "profile json drives controller policy through compilation into runtime" {
   @fsx.with_temporary_directory("job-proposal-controller-runtime-XXXXXX", async fn(
     dir,

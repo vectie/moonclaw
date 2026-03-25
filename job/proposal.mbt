@@ -247,13 +247,18 @@ fn planner_system_prompt() -> String {
     "You design safe draft job plans for an automation system.", "Never execute the job.",
     "Return strict JSON only.", "JSON shape:", "{\"title\": string, \"summary\": string, \"tags\": string[], \"steps\": [{\"id\": string, \"title\": string, \"prompt\": string, \"kind\": string}]}",
     "Use kind `job.analysis` unless a better existing workflow step kind is clearly required.",
-    "Write concrete, execution-oriented steps.",
+    "Write concrete, execution-oriented steps.", "Use the smallest sufficient number of steps, but do not collapse non-trivial work into one generic execute step.",
+    "For non-trivial analytical, business, calculation, due-diligence, or report requests, produce 4 to 8 distinct phases.",
+    "Typical analytical phases include: information collection, scheme or method design, estimation or modeling, financial or comparative analysis, risk review, and report generation.",
+    "Step titles should be short and human-readable.", "Step prompts should tell the step exactly what to produce.",
+    "Example request: Land acquisition calculation", "Example good step titles: Information collection; Scheme design; Cost estimation; Marketing pricing; Financial analysis; Risk assessment; Report generation",
   ].join("\n")
 }
 
 ///|
 fn planner_request_prompt(
   request_text : String,
+  skills_prompt? : String = "",
   revision? : String? = None,
   existing? : JobProposal? = None,
   workspace? : String? = None,
@@ -269,6 +274,11 @@ fn planner_request_prompt(
     Some(memory_context) if !memory_context.trim().to_string().is_blank() =>
       [..parts, memory_context]
     _ => parts
+  }
+  let parts = if skills_prompt.is_blank() {
+    parts
+  } else {
+    [..parts, skills_prompt]
   }
   let parts = match existing {
     Some(existing) => {
@@ -298,7 +308,11 @@ fn planner_request_prompt(
       [..parts, "Revise the draft with this extra guidance:", revision]
     _ => parts
   }
-  [..parts, "Return JSON only."].join("\n\n")
+  [
+    ..parts, "Return JSON only.", "If the request is non-trivial, decompose it into multiple meaningful steps instead of a single generic execution step.",
+    "For analytical or business requests, prefer phases like information collection, scheme design, estimation, analysis, risk review, and final reporting when relevant.",
+    "Example: for `Land acquisition calculation`, a good plan would break into information collection, scheme design, cost estimation, marketing pricing, financial analysis, risk assessment, and report generation.",
+  ].join("\n\n")
 }
 
 ///|
@@ -335,6 +349,11 @@ fn maybe_parse_payload(text : String) -> ProposalPlanPayload? {
 }
 
 ///|
+fn planner_preferred_skills() -> Array[String] {
+  ["job-planning"]
+}
+
+///|
 pub async fn plan_job_proposal(
   proposal_id : String,
   request_text : String,
@@ -350,18 +369,25 @@ pub async fn plan_job_proposal(
   workspace? : String? = None,
   memory_context? : String? = None,
 ) -> JobProposal {
+  let preferred_skills = planner_preferred_skills()
+  let loaded_skills = loaded_skills_prompt(cwd, home, preferred_skills)
   let request = AnalysisRequest::{
     job_id: "proposal:\{proposal_id}",
     run_id: "proposal:\{proposal_id}",
     step_id: "planner",
-    prompt: planner_request_prompt(request_text, workspace~, memory_context~),
+    prompt: planner_request_prompt(
+      request_text,
+      skills_prompt=loaded_skills,
+      workspace~,
+      memory_context~,
+    ),
     model_name: model.unwrap_or("default"),
     cwd,
     home,
     execution_mode: None,
     execution_target: None,
     system_prompt: planner_system_prompt(),
-    preferred_skills: [],
+    preferred_skills,
     enable_tools: false,
     web_search: false,
   }
@@ -413,12 +439,15 @@ pub async fn revise_job_proposal(
   workspace? : String? = None,
   memory_context? : String? = None,
 ) -> JobProposal {
+  let preferred_skills = planner_preferred_skills()
+  let loaded_skills = loaded_skills_prompt(cwd, home, preferred_skills)
   let request = AnalysisRequest::{
     job_id: "proposal:\{proposal.id}",
     run_id: "proposal:\{proposal.id}",
     step_id: "planner.revise",
     prompt: planner_request_prompt(
       proposal.request_text,
+      skills_prompt=loaded_skills,
       revision=Some(revision),
       existing=Some(proposal),
       workspace~,
@@ -430,7 +459,7 @@ pub async fn revise_job_proposal(
     execution_mode: None,
     execution_target: None,
     system_prompt: planner_system_prompt(),
-    preferred_skills: [],
+    preferred_skills,
     enable_tools: false,
     web_search: false,
   }
