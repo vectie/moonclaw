@@ -740,12 +740,18 @@ fn render_overview(dispatch : Dispatch[Msg], model : Model) -> Html {
   let local_running = model.runs
     .filter(fn(run) { run_status_is_live(run.status) })
     .length()
-  let acp_live = match model.acp_snapshot {
+  let (acp_targets, acp_sessions, acp_runs, acp_live_runs) = match
+    model.acp_snapshot {
     Some(snapshot) =>
-      snapshot.nodes
-      .filter(fn(node) { acp_status_is_live(node.status) })
-      .length()
-    None => 0
+      (
+        snapshot.targets.length(),
+        snapshot.sessions.length(),
+        snapshot.runs.length(),
+        snapshot.nodes
+        .filter(fn(node) { node.kind == Run && acp_status_is_live(node.status) })
+        .length(),
+      )
+    None => (0, 0, 0, 0)
   }
   section(class="panel", [
     header(class="panel-header", [h2(class="panel-title", "Mixed Overview")]),
@@ -757,9 +763,14 @@ fn render_overview(dispatch : Dispatch[Msg], model : Model) -> Html {
           p(class="muted", "\{local_running} live"),
         ]),
         article(class="overview-stat", [
-          p(class="kv-label", "Remote ACP"),
-          p(class="detail-title", "\{acp_live}"),
-          p(class="muted", "live targets, sessions, or runs"),
+          p(class="kv-label", "ACP Targets"),
+          p(class="detail-title", "\{acp_targets}"),
+          p(class="muted", "\{acp_sessions} sessions"),
+        ]),
+        article(class="overview-stat", [
+          p(class="kv-label", "ACP Runs"),
+          p(class="detail-title", "\{acp_runs}"),
+          p(class="muted", "\{acp_live_runs} live"),
         ]),
       ]),
       div(class="mixed-grid", [

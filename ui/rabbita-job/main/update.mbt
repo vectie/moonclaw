@@ -1,4 +1,12 @@
 ///|
+fn snapshot_matches_run(snapshot : UiSnapshot?, run_id : String) -> Bool {
+  match snapshot {
+    Some(snapshot) => snapshot.run.id == run_id
+    None => false
+  }
+}
+
+///|
 fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
     LoadRuns =>
@@ -19,7 +27,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let next_model = { ..model, runs, runs_loading: false, runs_error: None }
       match model.route {
         Run(run_id) =>
-          if model.selected_run_id == Some(run_id) && model.snapshot is Some(_) {
+          if model.selected_run_id == Some(run_id) &&
+            snapshot_matches_run(model.snapshot, run_id) {
             (@rabbita.none, next_model)
           } else {
             (
@@ -55,6 +64,15 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           ..model,
           route: Run(run_id),
           selected_run_id: Some(run_id),
+          snapshot: None,
+          timeline: [],
+          fresh_node_ids: [],
+          fresh_timeline_ids: [],
+          focused_node_id: None,
+          timeline_scope_node_id: None,
+          timeline_scope_branch_only: false,
+          collapsed_node_ids: [],
+          expanded_node_ids: [],
           detail_loading: true,
           detail_error: None,
         },
@@ -69,6 +87,15 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           ..model,
           route: Run(run_id),
           selected_run_id: Some(run_id),
+          snapshot: None,
+          timeline: [],
+          fresh_node_ids: [],
+          fresh_timeline_ids: [],
+          focused_node_id: None,
+          timeline_scope_node_id: None,
+          timeline_scope_branch_only: false,
+          collapsed_node_ids: [],
+          expanded_node_ids: [],
           detail_loading: true,
           detail_error: None,
         },
@@ -471,6 +498,31 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let next_model = { ..model, runs_page: page }
       (sync_url_cmd(next_model), next_model)
     }
+    CanvasZoomIn =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          canvas_zoom: if model.canvas_zoom + 10 > 220 {
+            220
+          } else {
+            model.canvas_zoom + 10
+          },
+        },
+      )
+    CanvasZoomOut =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          canvas_zoom: if model.canvas_zoom - 10 < 40 {
+            40
+          } else {
+            model.canvas_zoom - 10
+          },
+        },
+      )
+    CanvasZoomReset => (@rabbita.none, { ..model, canvas_zoom: 100 })
     SelectMixedHandoff(key) => {
       let next_model = { ..model, selected_mixed_handoff_key: key }
       (sync_url_cmd(next_model), next_model)
@@ -903,7 +955,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             },
           )
         Run(run_id) =>
-          if model.selected_run_id == Some(run_id) && model.snapshot is Some(_) {
+          if model.selected_run_id == Some(run_id) &&
+            snapshot_matches_run(model.snapshot, run_id) {
             (
               @rabbita.none,
               {
@@ -932,6 +985,32 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 route,
                 selected_mixed_handoff_key: None,
                 selected_run_id: Some(run_id),
+                snapshot: None,
+                timeline: [],
+                fresh_node_ids: [],
+                fresh_timeline_ids: [],
+                runs_status_filter,
+                runs_query,
+                runs_sort,
+                runs_page,
+                focused_node_id: None,
+                timeline_scope_node_id: None,
+                timeline_scope_branch_only: false,
+                collapsed_node_ids: [],
+                expanded_node_ids: [],
+                right_panel,
+              },
+            )
+          }
+        RunCanvas(run_id) =>
+          if model.selected_run_id == Some(run_id) &&
+            snapshot_matches_run(model.snapshot, run_id) {
+            (
+              @rabbita.none,
+              {
+                ..model,
+                route,
+                selected_mixed_handoff_key: None,
                 runs_status_filter,
                 runs_query,
                 runs_sort,
@@ -939,6 +1018,34 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 focused_node_id,
                 timeline_scope_node_id,
                 timeline_scope_branch_only,
+                right_panel,
+              },
+            )
+          } else {
+            (
+              batch([
+                @nav.scroll_to_top(),
+                stop_acp_stream_cmd(),
+                dispatch(LoadRun(run_id)),
+              ]),
+              {
+                ..model,
+                route,
+                selected_mixed_handoff_key: None,
+                selected_run_id: Some(run_id),
+                snapshot: None,
+                timeline: [],
+                fresh_node_ids: [],
+                fresh_timeline_ids: [],
+                runs_status_filter,
+                runs_query,
+                runs_sort,
+                runs_page,
+                focused_node_id: None,
+                timeline_scope_node_id: None,
+                timeline_scope_branch_only: false,
+                collapsed_node_ids: [],
+                expanded_node_ids: [],
                 right_panel,
               },
             )
