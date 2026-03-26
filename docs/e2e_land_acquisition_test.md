@@ -26,7 +26,7 @@ Before testing, make sure:
 - the gateway is running
 - Feishu channel chat is working
 - your configured primary model is healthy
-- `/plan-job` is working in Feishu
+- `/e2e` is working in Feishu
 - the workspace root is your normal jobs workspace, for example:
   - `/Users/kq/Workspace/moonclaw-workspace`
 
@@ -45,7 +45,7 @@ Use these in order.
 Use this when you want to test preprocessing and missing-data handling.
 
 ```text
-/plan-job Land acquisition estimation
+/e2e Land acquisition estimation
 Output format: Board memo
 ```
 
@@ -71,7 +71,7 @@ Attach a starter file such as:
 Then send:
 
 ```text
-/plan-job Land acquisition estimation
+/e2e Land acquisition estimation
 Output format: Board memo
 ```
 
@@ -86,7 +86,7 @@ Expected behavior:
 Use this when you want to test the presentation post-process.
 
 ```text
-/plan-job Land acquisition estimation
+/e2e Land acquisition estimation
 Output format: Board presentation deck
 ```
 
@@ -106,7 +106,7 @@ Expected behavior:
 In Feishu, send:
 
 ```text
-/plan-job Land acquisition estimation
+/e2e Land acquisition estimation
 Output format: Board memo
 ```
 

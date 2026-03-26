@@ -637,33 +637,53 @@ async fn Gateway::maybe_notify_active_jobs(self : Gateway) -> Unit {
 }
 
 ///|
-async fn Gateway::handle_plan_job_command(
+async fn Gateway::handle_proposal_command(
   self : Gateway,
   channel_id : String,
   account_id : String,
   message : @channel.Message,
   request_text : String,
+  e2e_mode : Bool,
 ) -> @channel.Message {
   let normalized_request_text = @job.normalized_request_text(request_text)
   guard !normalized_request_text.is_blank() else {
     return self.job_reply_message(
-      channel_id, account_id, message, "Usage: /plan-job <job description>",
+      channel_id,
+      account_id,
+      message,
+      if e2e_mode {
+        "Usage: /e2e <job description>"
+      } else {
+        "Usage: /plan-job <job description>"
+      },
     )
   }
-  let proposal = self.job_app.plan_proposal(
-    normalized_request_text,
-    intake=Some(
-      plan_job_input(
-        message,
-        normalized_request_text,
-        self.thread_starter_attachments(channel_id, account_id, message),
-      ),
+  let intake = Some(
+    plan_job_input(
+      message,
+      normalized_request_text,
+      self.thread_starter_attachments(channel_id, account_id, message),
     ),
-    channel_id=Some(channel_id),
-    account_id=Some(account_id),
-    recipient=Some(message.to),
-    thread_id=message.thread_id,
   )
+  let proposal = if e2e_mode {
+    self.job_app.plan_e2e_proposal(
+      normalized_request_text,
+      intake~,
+      channel_id=Some(channel_id),
+      account_id=Some(account_id),
+      recipient=Some(message.to),
+      thread_id=message.thread_id,
+    )
+  } else {
+    self.job_app.plan_proposal(
+      normalized_request_text,
+      intake~,
+      channel_id=Some(channel_id),
+      account_id=Some(account_id),
+      recipient=Some(message.to),
+      thread_id=message.thread_id,
+    )
+  }
   self.save_job_notification_preference(
     channel_id,
     account_id,
@@ -682,6 +702,19 @@ async fn Gateway::handle_plan_job_command(
 }
 
 ///|
+async fn Gateway::handle_plan_job_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  request_text : String,
+) -> @channel.Message {
+  self.handle_proposal_command(
+    channel_id, account_id, message, request_text, false,
+  )
+}
+
+///|
 async fn Gateway::handle_e2e_job_command(
   self : Gateway,
   channel_id : String,
@@ -689,41 +722,9 @@ async fn Gateway::handle_e2e_job_command(
   message : @channel.Message,
   request_text : String,
 ) -> @channel.Message {
-  let normalized_request_text = @job.normalized_request_text(request_text)
-  guard !normalized_request_text.is_blank() else {
-    return self.job_reply_message(
-      channel_id, account_id, message, "Usage: /e2e <job description>",
-    )
-  }
-  let proposal = self.job_app.plan_e2e_proposal(
-    normalized_request_text,
-    intake=Some(
-      plan_job_input(
-        message,
-        normalized_request_text,
-        self.thread_starter_attachments(channel_id, account_id, message),
-      ),
-    ),
-    channel_id=Some(channel_id),
-    account_id=Some(account_id),
-    recipient=Some(message.to),
-    thread_id=message.thread_id,
+  self.handle_proposal_command(
+    channel_id, account_id, message, request_text, true,
   )
-  self.save_job_notification_preference(
-    channel_id,
-    account_id,
-    message.to,
-    message.thread_id,
-    @job.NotificationVerbosity::Normal,
-  )
-  let reply = self.job_reply_message(
-    channel_id,
-    account_id,
-    message,
-    @job.render_job_proposal_for_chat(proposal),
-  )
-  self.save_presented_job_proposal(proposal, reply)
-  reply
 }
 
 ///|

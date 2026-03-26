@@ -380,12 +380,13 @@ Current board behavior:
 From the operator’s point of view, the current job routine is:
 
 1. Ask for a draft with `/plan-job`.
-2. Review the compact proposed steps.
-3. Confirm with `/confirm`.
-4. Watch readable job/run ids and local-time timestamps in `/job-status`.
-5. Inspect the visible run workspace under `<workspace>/moonclaw-jobs/<run-id>`.
-6. Use `/jobs`, `/job-status`, `/job-stop`, or `/job-force-stop` as needed.
-7. Read final artifacts from the run workspace and the durable artifact store.
+2. Or ask for the augmented end-to-end flow with `/e2e`.
+3. Review the compact proposed steps.
+4. Confirm with `/confirm`.
+5. Watch readable job/run ids and local-time timestamps in `/job-status`.
+6. Inspect the visible run workspace under `<workspace>/moonclaw-jobs/<run-id>`.
+7. Use `/jobs`, `/job-status`, `/job-stop`, or `/job-force-stop` as needed.
+8. Read final artifacts from the run workspace and the durable artifact store.
 
 ## 14. What The Routine Is Not
 

@@ -178,6 +178,7 @@ Commands:
 
 ```text
 /plan-job <description>
+/e2e <description>
 /confirm <proposal_id>
 /reject <proposal_id>
 /revise <proposal_id> <extra guidance>
@@ -193,7 +194,8 @@ Reply-thread shortcuts:
 
 Behavior:
 
-- `/plan-job` creates a persisted draft proposal and replies with the step plan
+- `/plan-job` creates a classic persisted draft proposal and replies with the step plan
+- `/e2e` creates an end-to-end draft proposal with job-level preprocess and optional postprocess stages
 - proposals are not executed until confirmed
 - `/job-notify` changes notification verbosity for the current chat/thread scope
 - `verbose` mode sends step progress messages derived from workflow run events
@@ -213,7 +215,7 @@ Current message flow:
 Feishu message
   -> gateway job chat adapter
   -> job chat parser + dispatcher
-  -> GatewayJobApp planning / confirm / revise / reject
+  -> GatewayJobApp classic planning or E2E planning / confirm / revise / reject
   -> runtime launch if confirmed
   -> execution notifications routed back to the same chat/thread
 ```

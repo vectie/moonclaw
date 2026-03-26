@@ -36,6 +36,15 @@ Expected behavior for `/plan-job <description>`:
    - inferred family/template/capabilities when available
 3. No job is executed yet.
 
+Expected behavior for `/e2e <description>`:
+
+1. MoonClaw creates an E2E draft proposal.
+2. The draft may include:
+   - `context_preprocess`
+   - normal planned analysis steps
+   - optional postprocess steps such as `presentation_postprocess`
+3. No job is executed yet.
+
 Safety rule:
 
 - planning is allowed before confirmation
