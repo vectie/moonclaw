@@ -40,7 +40,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn definition_display_title(JobDefinition) -> String
 
-pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
+pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
@@ -606,6 +606,7 @@ pub(all) enum JobChatAction {
   Confirm(String)
   Reject(String)
   Revise(String)
+  Resume(String)
   JobStatus(String)
   JobWorkspace(String)
   Jobs

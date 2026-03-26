@@ -408,6 +408,20 @@ async test "Feishu webhook resolves accounts from camelCase appId/appSecret conf
 }
 
 ///|
+test "strip_feishu_mentions preserves text after newline-separated mention" {
+  inspect(strip_feishu_mentions("@_user_1\nhello there"), content="hello there")
+  inspect(strip_feishu_mentions("@_user_1\tplease help"), content="please help")
+}
+
+///|
+test "parse_feishu_text_content falls back to original text when stripping would erase everything" {
+  inspect(
+    parse_feishu_text_content(Json::object({ "text": "@_user_1" }).stringify()),
+    content="@_user_1",
+  )
+}
+
+///|
 async test "Feishu webhook ignores stale replayed messages" {
   let channel = FeishuChannel::new()
   channel.configure(feishu_test_config())

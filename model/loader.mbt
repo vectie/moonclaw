@@ -368,10 +368,11 @@ async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
         logger.info(
           "Loaded model '\{model_id}' from provider '\{provider_name}'",
         )
+        let qualified_name = "\{provider_name}/\{model_id}"
         let model = Model::new(
           api_key~,
           base_url~,
-          name~,
+          name=qualified_name,
           model_name=model_config.id,
           model_type~,
           safe_zone_tokens~,

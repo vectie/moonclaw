@@ -487,10 +487,10 @@ pub async fn load(
   new(
     model,
     uuid?,
-    logger?,
-    user_message?,
-    home?,
+    logger?=logger,
+    home?=home,
     cwd=history.cwd(),
+    user_message?=user_message,
     web_search~,
     history~,
     external_events?,
