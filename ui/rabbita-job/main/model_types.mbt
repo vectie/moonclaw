@@ -3,6 +3,7 @@ enum Route {
   Overview
   Jobs
   Run(String)
+  RunCanvas(String)
   Acp
 }
 
@@ -249,6 +250,7 @@ struct Model {
   detail_loading : Bool
   detail_error : String?
   right_panel : RightPanel
+  canvas_zoom : Int
   acp_snapshot : AcpUiSnapshot?
   acp_timeline : Array[AcpUiTimelineEntry]
   acp_loading : Bool
@@ -311,6 +313,9 @@ enum Msg {
   AcpExportFinished(Result[String, String])
   MixedExportFinished(Result[String, String])
   SelectPanel(RightPanel)
+  CanvasZoomIn
+  CanvasZoomOut
+  CanvasZoomReset
   UrlChanged(@url.Url)
   UrlRequest(@url.UrlRequest)
 }
@@ -361,6 +366,7 @@ fn init_model() -> Model {
     detail_loading: false,
     detail_error: None,
     right_panel: Artifacts,
+    canvas_zoom: 100,
     acp_snapshot: None,
     acp_timeline: [],
     acp_loading: true,

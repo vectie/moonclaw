@@ -39,31 +39,58 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
     main_(
       class=if route_surface(model.route) == SurfaceOverview {
         "layout overview-layout"
+      } else if model.route is RunCanvas(_) {
+        "layout canvas-layout"
       } else {
         "layout"
       },
       match route_surface(model.route) {
         SurfaceOverview => [render_overview(dispatch, model)]
         SurfaceJobs =>
-          [
-            render_runs_panel(dispatch, model),
-            render_detail(dispatch, model),
-            match model.snapshot {
-              Some(snapshot) => render_right_panel(dispatch, model, snapshot)
-              None =>
-                section(class="panel", [
-                  header(class="panel-header", [
-                    h2(class="panel-title", "Outputs"),
-                  ]),
-                  div(class="panel-body", [
-                    p(
-                      class="empty",
-                      "Artifacts, workspace, and memory appear here once a run is selected.",
-                    ),
-                  ]),
-                ])
-            },
-          ]
+          match model.route {
+            RunCanvas(_) =>
+              [
+                render_runs_panel(dispatch, model),
+                render_run_canvas(dispatch, model),
+                match model.snapshot {
+                  Some(snapshot) =>
+                    render_right_panel(dispatch, model, snapshot)
+                  None =>
+                    section(class="panel", [
+                      header(class="panel-header", [
+                        h2(class="panel-title", "Outputs"),
+                      ]),
+                      div(class="panel-body", [
+                        p(
+                          class="empty",
+                          "Artifacts, workspace, and memory appear here once a run is selected.",
+                        ),
+                      ]),
+                    ])
+                },
+              ]
+            _ =>
+              [
+                render_runs_panel(dispatch, model),
+                render_detail(dispatch, model),
+                match model.snapshot {
+                  Some(snapshot) =>
+                    render_right_panel(dispatch, model, snapshot)
+                  None =>
+                    section(class="panel", [
+                      header(class="panel-header", [
+                        h2(class="panel-title", "Outputs"),
+                      ]),
+                      div(class="panel-body", [
+                        p(
+                          class="empty",
+                          "Artifacts, workspace, and memory appear here once a run is selected.",
+                        ),
+                      ]),
+                    ])
+                },
+              ]
+          }
         SurfaceAcp =>
           [
             render_acp_panel(dispatch, model),

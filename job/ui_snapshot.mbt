@@ -9,14 +9,9 @@ fn workflow_node_id(run_id : String) -> String {
 }
 
 ///|
-fn proposal_for_run(
-  store : SystemStore,
-  run : JobRun,
-  definition : JobDefinition,
-) -> JobProposal? {
+fn proposal_for_run(store : SystemStore, run : JobRun) -> JobProposal? {
   for proposal in store.list_job_proposals() {
-    if proposal.last_run_id == Some(run.id) ||
-      proposal.job_id == Some(definition.id) {
+    if proposal.last_run_id == Some(run.id) {
       return Some(proposal)
     }
   }
@@ -536,10 +531,18 @@ pub async fn build_job_ui_snapshot(
     Some(definition) => definition
     None => return None
   }
-  let workflow = definition.workflow_id.bind(fn(workflow_id) {
+  let proposal = proposal_for_run(store, run)
+  let workflow_id = match proposal {
+    Some(proposal) =>
+      match proposal.workflow_id {
+        Some(workflow_id) => Some(workflow_id)
+        None => definition.workflow_id
+      }
+    None => definition.workflow_id
+  }
+  let workflow = workflow_id.bind(fn(workflow_id) {
     store.get_workflow(workflow_id)
   })
-  let proposal = proposal_for_run(store, run, definition)
   let controller_state = store.get_controller_state(run.id)
   let controller_decisions = store.list_controller_decisions(
     controller_run_id=Some(run.id),

@@ -1994,7 +1994,22 @@ fn render_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
                 ),
               ),
             ]),
-            render_status_badge(snapshot.run.status),
+            div(class="canvas-toolbar", [
+              button(
+                class="tree-control-button",
+                on_click=@nav.push_url(
+                  run_canvas_url(
+                    snapshot.run.id,
+                    runs_status_filter=model.runs_status_filter,
+                    runs_query=model.runs_query,
+                    runs_sort=model.runs_sort,
+                    runs_page=model.runs_page,
+                  ),
+                ),
+                "Canvas",
+              ),
+              render_status_badge(snapshot.run.status),
+            ]),
           ]),
         ]),
         div(class="panel-body", [

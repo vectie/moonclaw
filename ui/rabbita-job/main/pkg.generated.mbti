@@ -40,6 +40,10 @@ type BrowserCopyResult
 pub impl Show for BrowserCopyResult
 pub impl @json.FromJson for BrowserCopyResult
 
+type CanvasEdgeLayout
+
+type CanvasNodeLayout
+
 type CompanyBoardStats
 
 type CompanyHandoff

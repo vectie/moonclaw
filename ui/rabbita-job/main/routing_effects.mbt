@@ -1,6 +1,42 @@
 ///|
+fn route_fragment(url : @url.Url) -> String? {
+  match url.fragment {
+    Some(fragment) => {
+      let trimmed = fragment.trim().to_string()
+      if trimmed == "" {
+        None
+      } else if trimmed.has_prefix("/") {
+        Some(trimmed)
+      } else {
+        Some("/\{trimmed}")
+      }
+    }
+    None => None
+  }
+}
+
+///|
+fn route_query_string(url : @url.Url) -> String? {
+  match route_fragment(url) {
+    Some(fragment) =>
+      match fragment.split_once("?") {
+        Some((_, query)) => Some(query.to_string())
+        None => None
+      }
+    None => url.query
+  }
+}
+
+///|
 fn route_from_url(url : @url.Url) -> Route {
-  let path = url.path.trim().to_string()
+  let path = match route_fragment(url) {
+    Some(fragment) =>
+      match fragment.split_once("?") {
+        Some((fragment_path, _)) => fragment_path.to_string()
+        None => fragment
+      }
+    None => url.path.trim().to_string()
+  }
   let parts = path
     .split("/")
     .filter(fn(part) { !part.is_empty() })
@@ -12,6 +48,7 @@ fn route_from_url(url : @url.Url) -> Route {
   match parts {
     ["jobs"] => Jobs
     ["runs", run_id] => Run(run_id)
+    ["runs", run_id, "canvas"] => RunCanvas(run_id)
     ["acp"] => Acp
     _ => Overview
   }
@@ -23,13 +60,14 @@ fn route_surface(route : Route) -> Surface {
     Overview => SurfaceOverview
     Jobs => SurfaceJobs
     Run(_) => SurfaceJobs
+    RunCanvas(_) => SurfaceJobs
     Acp => SurfaceAcp
   }
 }
 
 ///|
 fn query_value(url : @url.Url, key : String) -> String? {
-  match url.query {
+  match route_query_string(url) {
     Some(query) => {
       for pair in query.split("&") {
         match pair.split_once("=") {
@@ -40,6 +78,15 @@ fn query_value(url : @url.Url, key : String) -> String? {
       None
     }
     None => None
+  }
+}
+
+///|
+fn hash_route_url(path : String) -> String {
+  if path.has_prefix("/") {
+    "#\{path}"
+  } else {
+    "#/\{path}"
   }
 }
 
@@ -128,10 +175,41 @@ fn run_url(
     None => ()
   }
   if params.is_empty() {
-    "/runs/\{run_id}"
+    hash_route_url("/runs/\{run_id}")
   } else {
     let query = params.join("&")
-    "/runs/\{run_id}?\{query}"
+    hash_route_url("/runs/\{run_id}?\{query}")
+  }
+}
+
+///|
+fn run_canvas_url(
+  run_id : String,
+  runs_status_filter? : String? = None,
+  runs_query? : String = "",
+  runs_sort? : RunSort = Newest,
+  runs_page? : Int = 0,
+) -> String {
+  let params : Array[String] = []
+  match runs_status_filter {
+    Some(status) => params.push("status=\{status}")
+    None => ()
+  }
+  let query = normalized_runs_query(runs_query)
+  if query != "" {
+    params.push("q=\{query}")
+  }
+  if runs_sort != Newest {
+    params.push("sort=\{run_sort_query_value(runs_sort)}")
+  }
+  if runs_page > 0 {
+    params.push("page=\{runs_page}")
+  }
+  if params.is_empty() {
+    hash_route_url("/runs/\{run_id}/canvas")
+  } else {
+    let query = params.join("&")
+    hash_route_url("/runs/\{run_id}/canvas?\{query}")
   }
 }
 
@@ -158,26 +236,26 @@ fn jobs_url(
     params.push("page=\{runs_page}")
   }
   if params.is_empty() {
-    "/jobs"
+    hash_route_url("/jobs")
   } else {
     let query = params.join("&")
-    "/jobs?\{query}"
+    hash_route_url("/jobs?\{query}")
   }
 }
 
 ///|
 fn acp_url(selected_node_id? : String? = None) -> String {
   match selected_node_id {
-    Some(node_id) => "/acp?focus=\{node_id}"
-    None => "/acp"
+    Some(node_id) => hash_route_url("/acp?focus=\{node_id}")
+    None => hash_route_url("/acp")
   }
 }
 
 ///|
 fn overview_url(selected_mixed_handoff_key? : String? = None) -> String {
   match selected_mixed_handoff_key {
-    Some(key) => "/?mixed=\{key}"
-    None => "/"
+    Some(key) => hash_route_url("/?mixed=\{key}")
+    None => hash_route_url("/")
   }
 }
 
@@ -214,6 +292,14 @@ fn current_url_for_model(model : Model) -> String {
     Acp => acp_url(selected_node_id=model.selected_acp_node_id)
     Jobs =>
       jobs_url(
+        runs_status_filter=model.runs_status_filter,
+        runs_query=model.runs_query,
+        runs_sort=model.runs_sort,
+        runs_page=model.runs_page,
+      )
+    RunCanvas(run_id) =>
+      run_canvas_url(
+        run_id,
         runs_status_filter=model.runs_status_filter,
         runs_query=model.runs_query,
         runs_sort=model.runs_sort,

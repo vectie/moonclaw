@@ -541,3 +541,151 @@ async test "build_job_ui_snapshot labels analysis-expanded child runs as subplan
     content="analysis-subplan",
   )
 }
+
+///|
+async test "build_job_ui_snapshot uses the proposal and workflow for the selected run instead of the latest proposal for the job" {
+  @fsx.with_temporary_directory("job-ui-run-specific-proposal-XXXXXX", dir => {
+    let store = SystemStore::new(root=dir)
+    let definition = JobDefinition::{
+      id: "job-1",
+      kind: "job.proposal",
+      enabled: true,
+      config: { "family": "generic" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-latest"),
+      created_at: 10,
+      updated_at: 20,
+      tags: [],
+    }
+    let old_workflow = WorkflowDefinition::{
+      id: "wf-old",
+      kind: "job.proposal",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "old-step",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    }
+    let latest_workflow = WorkflowDefinition::{
+      id: "wf-latest",
+      kind: "job.proposal",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "latest-step",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    }
+    let old_run = JobRun::{
+      id: "run-old",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: Succeeded,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(100),
+      completed_at: Some(140),
+      summary: Some("old run"),
+      error: None,
+    }
+    let latest_run = JobRun::{
+      id: "run-latest",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: Running,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(200),
+      completed_at: None,
+      summary: Some("latest run"),
+      error: None,
+    }
+    let old_proposal = JobProposal::{
+      id: "proposal-old",
+      title: "Old plan",
+      request_text: "old request",
+      summary: "old summary",
+      revision_history: [],
+      suggested_family: Some("generic"),
+      profile_id: None,
+      profile_role: None,
+      profile_metadata: {},
+      status: Confirmed,
+      steps: [],
+      tags: [],
+      channel_id: None,
+      account_id: None,
+      recipient: None,
+      thread_id: None,
+      presented_message_id: None,
+      job_id: Some("job-1"),
+      workflow_id: Some("wf-old"),
+      last_run_id: Some("run-old"),
+      created_at: 90,
+      updated_at: 100,
+    }
+    let latest_proposal = JobProposal::{
+      id: "proposal-latest",
+      title: "Latest plan",
+      request_text: "latest request",
+      summary: "latest summary",
+      revision_history: [],
+      suggested_family: Some("generic"),
+      profile_id: None,
+      profile_role: None,
+      profile_metadata: {},
+      status: Confirmed,
+      steps: [],
+      tags: [],
+      channel_id: None,
+      account_id: None,
+      recipient: None,
+      thread_id: None,
+      presented_message_id: None,
+      job_id: Some("job-1"),
+      workflow_id: Some("wf-latest"),
+      last_run_id: Some("run-latest"),
+      created_at: 190,
+      updated_at: 200,
+    }
+    store.save_definition(definition)
+    store.save_workflow(old_workflow)
+    store.save_workflow(latest_workflow)
+    store.save_run(old_run)
+    store.save_run(latest_run)
+    store.save_job_proposal(old_proposal)
+    store.save_job_proposal(latest_proposal)
+
+    let snapshot = build_job_ui_snapshot(store, "run-old").unwrap()
+    json_inspect(
+      snapshot.proposal.map(fn(proposal) { proposal.id }).unwrap_or(""),
+      content="proposal-old",
+    )
+    json_inspect(
+      snapshot.workflow.map(fn(workflow) { workflow.id }).unwrap_or(""),
+      content="wf-old",
+    )
+    json_inspect(
+      snapshot.nodes
+      .filter(fn(node) { node.kind.to_json().stringify() == "\"Step\"" })
+      .map(fn(node) { node.step_id.unwrap_or("") }),
+      content=["old-step"],
+    )
+  })
+}
