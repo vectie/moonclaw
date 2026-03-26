@@ -61,6 +61,7 @@ Responsibilities:
   - use skills
   - use tools when needed
   - prefer fetching over guessing
+  - gather missing public context before the main workflow starts
 
 ### 3. Adaptive Execution Layer
 
@@ -104,6 +105,30 @@ Still to extract:
 - richer `e2e_policy.mbt` defaults
 - adaptive runtime judgment into dedicated `adaptive_*` modules
 - attachment content ingestion instead of metadata-only propagation
+
+## Presentation Post-Processing
+
+E2E should treat presentation generation as a post-processing stage, not as a replacement for the main analytical result.
+
+Recommended flow:
+
+1. produce the normal end-to-end result
+2. generate a page-by-page presentation specification
+3. optionally hand that spec to a downstream rendering vendor/tool
+
+The presentation spec should describe both:
+
+- what each page says
+- what each page should look like
+
+MoonClaw should own the planning/spec generation. Rendering can be delegated to an external tool via a configured execution target.
+
+Current implementation direction:
+
+- prepend a synthetic `context_preprocess` analysis step to gather starter-file context and public facts before the main workflow
+- append a synthetic `presentation_postprocess` analysis step when the requested output format mentions presentation, slides, deck, or ppt
+- write vendor-facing artifacts like `presentation_plan.json` and `presentation_outline.md` into the run workspace
+- optionally append a `presentation_render` step when proposal metadata includes a `presentation_renderer` object with `execution_mode` and `execution_target`
 
 ## Near-Term Plan
 

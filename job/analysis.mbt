@@ -622,6 +622,7 @@ fn is_final_workflow_step(
 async fn materialize_analysis_outputs_to_workspace(
   store : SystemStore,
   context : WorkflowStepContext,
+  config : AnalysisStepConfig,
   result_payload : Json,
   report_content : String,
 ) -> Unit {
@@ -635,16 +636,51 @@ async fn materialize_analysis_outputs_to_workspace(
     _ => return
   }
   let report_file = outputs_dir
-    |> @pathx.join(workspace_report_file_name(context.step.id, context.step.id))
+    |> @pathx.join(
+      config.artifacts.report_file_name.unwrap_or(
+        workspace_report_file_name(context.step.id, context.step.id),
+      ),
+    )
   let result_file = outputs_dir
-    |> @pathx.join(workspace_result_file_name(context.step.id, context.step.id))
+    |> @pathx.join(
+      config.artifacts.result_file_name.unwrap_or(
+        workspace_result_file_name(context.step.id, context.step.id),
+      ),
+    )
   @fsx.write_to_file(report_file, report_content) catch {
     _ => ()
   }
   @fsx.write_to_file(result_file, result_payload.stringify()) catch {
     _ => ()
   }
+  match config.artifacts.report_file_name {
+    Some(file_name) if !file_name.trim().to_string().is_blank() =>
+      @fsx.write_to_file(
+        workspace_dir |> @pathx.join(file_name),
+        report_content,
+      ) catch {
+        _ => ()
+      }
+    _ => ()
+  }
+  match config.artifacts.result_file_name {
+    Some(file_name) if !file_name.trim().to_string().is_blank() =>
+      @fsx.write_to_file(
+        workspace_dir |> @pathx.join(file_name),
+        result_payload.stringify(),
+      ) catch {
+        _ => ()
+      }
+    _ => ()
+  }
   if is_final_workflow_step(store, context.run, context.step.id) {
+    let skip_primary = match config.metadata {
+      { "skip_primary_workspace_output": True, .. } => true
+      _ => false
+    }
+    if skip_primary {
+      return
+    }
     @fsx.write_to_file(
       workspace_dir |> @pathx.join("report.md"),
       report_content,
@@ -1118,6 +1154,7 @@ pub fn analysis_step_handler(
     materialize_analysis_outputs_to_workspace(
       store,
       context,
+      config,
       result_payload,
       execution.content,
     )

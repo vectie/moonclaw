@@ -215,3 +215,94 @@ async test "GatewayJobApp::confirm_proposal passes proposal intake into launch c
     )
   })
 }
+
+///|
+async test "compile_job_proposal preserves presentation postprocess artifact file names" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-presentation-files", "Prepare a presentation.", 100,
+    ),
+    steps: [
+      JobProposalStep::{
+        id: "presentation_postprocess",
+        title: "Generate presentation plan",
+        prompt: "Generate presentation plan",
+        kind: "job.analysis",
+        metadata: {
+          "report_file_name": "presentation_outline.md",
+          "result_file_name": "presentation_plan.json",
+          "skip_primary_workspace_output": true,
+        },
+        child_profile: None,
+        execution_mode: None,
+        execution_target: None,
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal,
+    101,
+    "/tmp/workspace",
+    "/tmp/home",
+    workspace_root="/tmp/workspace",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("presentation_plan.json"),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("presentation_outline.md"),
+    content="true",
+  )
+}
+
+///|
+async test "compile_job_proposal preserves presentation renderer execution target" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-presentation-render", "Prepare a rendered presentation.", 100,
+    ),
+    steps: [
+      JobProposalStep::{
+        id: "presentation_render",
+        title: "Render presentation package",
+        prompt: "Render presentation package",
+        kind: "job.analysis",
+        metadata: {
+          "report_file_name": "presentation_render_report.md",
+          "result_file_name": "presentation_render_result.json",
+          "skip_primary_workspace_output": true,
+          "postprocess_kind": "presentation-render",
+        },
+        child_profile: None,
+        execution_mode: Some("vendor.presentation"),
+        execution_target: Some("slides-main"),
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal,
+    101,
+    "/tmp/workspace",
+    "/tmp/home",
+    workspace_root="/tmp/workspace",
+  )
+  inspect(
+    compilation.workflow.steps[0].config.stringify().contains("slides-main"),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("presentation_render_result.json"),
+    content="true",
+  )
+}

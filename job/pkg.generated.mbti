@@ -56,6 +56,8 @@ pub fn e2e_planner_prompt_sections(Json?) -> Array[String]
 
 pub fn e2e_planner_system_guidance() -> Array[String]
 
+pub fn e2e_requests_presentation(JobProposal) -> Bool
+
 pub async fn ensure_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, Int) -> Unit
 
 pub async fn ensure_controller_records_for_run(SystemStore, JobDefinition, JobRun, Int) -> Unit
@@ -205,6 +207,10 @@ pub fn split_job_chat_command(String) -> (String, String)
 pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
 pub async fn suggest_job_profile_family(String, String, String) -> String?
+
+pub fn with_e2e_postprocess_steps(JobProposal) -> JobProposal
+
+pub fn with_e2e_preprocess_steps(JobProposal) -> JobProposal
 
 // Errors
 pub suberror InvalidJobId {
@@ -1201,6 +1207,48 @@ pub impl Eq for NotificationVerbosity
 pub impl Show for NotificationVerbosity
 pub impl ToJson for NotificationVerbosity
 pub impl @json.FromJson for NotificationVerbosity
+
+pub struct PresentationDeckSpec {
+  title : String
+  audience : String?
+  objective : String
+  source_report : String?
+  requested_output_format : String?
+  style_direction : String?
+  vendor_notes : String?
+  pages : Array[PresentationPageSpec]
+  render_handoff : PresentationRenderHandoff?
+}
+pub impl Show for PresentationDeckSpec
+pub impl ToJson for PresentationDeckSpec
+pub impl @json.FromJson for PresentationDeckSpec
+
+pub struct PresentationPageSpec {
+  page_number : Int
+  page_type : String
+  headline : String
+  purpose : String
+  key_message : String
+  body_points : Array[String]
+  evidence : Array[String]
+  visual_type : String
+  layout_instruction : String
+  look_and_feel : String
+  speaker_notes : String?
+}
+pub impl Show for PresentationPageSpec
+pub impl ToJson for PresentationPageSpec
+pub impl @json.FromJson for PresentationPageSpec
+
+pub struct PresentationRenderHandoff {
+  renderer_target : String?
+  theme : String?
+  delivery_notes : String?
+  asset_requests : Array[String]
+}
+pub impl Show for PresentationRenderHandoff
+pub impl ToJson for PresentationRenderHandoff
+pub impl @json.FromJson for PresentationRenderHandoff
 
 pub(all) struct ProposalCompilation {
   family : String

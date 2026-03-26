@@ -783,6 +783,8 @@ pub async fn plan_job_proposal(
     home.unwrap_or(cwd),
     workspace.unwrap_or(cwd),
   )
+  let fallback = with_e2e_preprocess_steps(fallback)
+  let fallback = with_e2e_postprocess_steps(fallback)
   let execution = match (executor.run)(request) {
     Ok(execution) => execution
     Err(error) =>
@@ -833,12 +835,14 @@ pub async fn plan_job_proposal(
         ..proposal,
         profile_metadata: fallback.profile_metadata,
       }
-      maybe_apply_job_profile(
+      let proposal = maybe_apply_job_profile(
         proposal,
         cwd,
         home.unwrap_or(cwd),
         workspace.unwrap_or(cwd),
       )
+      let proposal = with_e2e_preprocess_steps(proposal)
+      with_e2e_postprocess_steps(proposal)
     }
     None =>
       proposal_with_planner_diagnostic(
@@ -911,12 +915,14 @@ pub async fn revise_job_proposal(
         ),
         revision_history: [..proposal.revision_history, revision],
       }
-      maybe_apply_job_profile(
+      let revised = maybe_apply_job_profile(
         revised,
         cwd,
         home.unwrap_or(cwd),
         workspace.unwrap_or(cwd),
       )
+      let revised = with_e2e_preprocess_steps(revised)
+      with_e2e_postprocess_steps(revised)
     }
     None =>
       JobProposal::{
