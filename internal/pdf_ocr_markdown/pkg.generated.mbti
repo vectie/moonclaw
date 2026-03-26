@@ -1,0 +1,76 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/internal/pdf_ocr_markdown"
+
+// Values
+pub async fn convert_pdf_to_markdown(String, options? : OcrMarkdownOptions, executor? : CommandExecutor) -> OcrMarkdownDocument raise PdfOcrMarkdownError
+
+pub fn default_command_executor() -> CommandExecutor
+
+// Errors
+pub suberror PdfOcrMarkdownError {
+  FileNotFound(String)
+  RasterizationFailed(String)
+  NoPagesGenerated(String)
+  OcrFailed(String)
+}
+pub impl Show for PdfOcrMarkdownError
+
+// Types and methods
+pub(all) struct CommandExecutor {
+  run : async (CommandRequest) -> Result[CommandResult, String]
+}
+pub fn CommandExecutor::new(run~ : async (CommandRequest) -> Result[CommandResult, String]) -> Self
+
+pub(all) struct CommandRequest {
+  command : String
+  arguments : Array[String]
+  cwd : String?
+  timeout_ms : Int?
+}
+pub impl Eq for CommandRequest
+pub impl Show for CommandRequest
+
+pub(all) struct CommandResult {
+  command : String
+  arguments : Array[String]
+  status : Int
+  stdout : String
+  stderr : String
+  elapsed_ms : Int
+  timeout_ms : Int?
+}
+pub impl Eq for CommandResult
+pub impl Show for CommandResult
+
+pub struct OcrMarkdownDocument {
+  source_path : String
+  title : String
+  markdown : String
+  pages : Array[OcrMarkdownPage]
+  engine : String
+}
+pub impl Eq for OcrMarkdownDocument
+pub impl Show for OcrMarkdownDocument
+
+pub struct OcrMarkdownOptions {
+  language : String?
+  dpi : Int
+  timeout_ms : Int?
+  page_segmentation_mode : Int?
+}
+pub fn OcrMarkdownOptions::new(language? : String?, dpi? : Int, timeout_ms? : Int?, page_segmentation_mode? : Int?) -> Self
+pub impl Eq for OcrMarkdownOptions
+pub impl Show for OcrMarkdownOptions
+
+pub struct OcrMarkdownPage {
+  page_number : Int
+  text : String
+  markdown : String
+}
+pub impl Eq for OcrMarkdownPage
+pub impl Show for OcrMarkdownPage
+
+// Type aliases
+
+// Traits
+
