@@ -264,16 +264,10 @@ pub async fn Agent::start(agent : Agent) -> Unit {
       // Enable web search plugin if configured
       let extra_body : Map[String, Json] = {}
       if web_search {
-        // We only support web search plugin for OpenRouter models for now.
-        //
-        // FIXME: We should encode how to enable web search plugin in model
-        // configuration.
+        // OpenRouter supports a native web plugin. Other model backends rely on
+        // the generic web_search tool when it is registered by the caller.
         if agent.model.base_url.contains("openrouter.ai/api/v1") {
           extra_body["plugins"] = [{ "id": "web" }]
-        } else {
-          agent.logger.warn(
-            "Web search plugin is only supported for OpenRouter models.",
-          )
         }
       }
 

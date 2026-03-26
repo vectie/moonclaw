@@ -68,6 +68,18 @@ fn metadata_string(metadata : Json, key : String) -> String? {
 }
 
 ///|
+fn metadata_string_or(
+  metadata : Json,
+  key : String,
+  fallback : String?,
+) -> String? {
+  match metadata_string(metadata, key) {
+    Some(value) => Some(value)
+    None => fallback
+  }
+}
+
+///|
 fn metadata_json_value(metadata : Json, key : String) -> Json? {
   match metadata {
     Object(obj) => obj.get(key)
@@ -133,7 +145,10 @@ fn workflow_step_definition_for_proposal_step(
       board_extras,
     )
   } else {
-    let analysis_metadata = merge_json_objects(base_metadata, board_extras)
+    let analysis_metadata = merge_json_objects(
+      base_metadata,
+      [("step_metadata", step.metadata), ..board_extras],
+    )
     merge_json_objects(
       AnalysisStepConfig::new(
         prompt=step.prompt,
@@ -152,9 +167,19 @@ fn workflow_step_definition_for_proposal_step(
         web_search=metadata_bool(step.metadata, "web_search", false),
         policy=AnalysisPolicy::new(skip_if_artifact_exists=false),
         artifacts=AnalysisArtifactConfig::new(
-          report_artifact_type="job.proposal.step.report",
-          result_artifact_type="job.proposal.step.result",
+          report_artifact_type=metadata_string_or(
+            step.metadata,
+            "report_artifact_type",
+            Some("job.proposal.step.report"),
+          ).unwrap_or("job.proposal.step.report"),
+          result_artifact_type=metadata_string_or(
+            step.metadata,
+            "result_artifact_type",
+            Some("job.proposal.step.result"),
+          ).unwrap_or("job.proposal.step.result"),
           logical_key=Some("\{proposal.id}:\{step.id}"),
+          report_file_name=metadata_string(step.metadata, "report_file_name"),
+          result_file_name=metadata_string(step.metadata, "result_file_name"),
           scope=["jobs", "proposal:\{proposal.id}"],
           append_only=false,
         ),

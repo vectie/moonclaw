@@ -251,6 +251,17 @@ fn drafting_status_text() -> String {
 }
 
 ///|
+fn is_non_text_attachment_message(message : @channel.Message) -> Bool {
+  if message.attachments.is_empty() {
+    return false
+  }
+  match message.content_type {
+    "file" | "media" | "image" | "audio" | "video" => true
+    _ => false
+  }
+}
+
+///|
 async fn Gateway::send_channel_progress_message(
   self : Gateway,
   channel_id : String,
@@ -803,6 +814,7 @@ impl @channel.MessageHandler for Gateway with handle_message(
   account_id : String,
   message : @channel.Message,
 ) -> @channel.Message raise {
+  self.remember_thread_attachments(channel_id, account_id, message)
   if self.handle_security_chat_command(channel_id, account_id, message)
     is Some(reply) {
     return reply
@@ -866,6 +878,17 @@ impl @channel.MessageHandler for Gateway with handle_message(
     message.attachments.is_empty() {
     return self.channel_reply_message(
       channel_id, account_id, message, "I could not parse any text from that message. Please resend it as plain text.",
+    )
+  }
+  if is_non_text_attachment_message(message) {
+    return self.channel_reply_message(
+      channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/e2e ...` or `/plan-job ...` to start a job with them.",
+    )
+  }
+  if message.content.trim().to_string().is_blank() &&
+    !message.attachments.is_empty() {
+    return self.channel_reply_message(
+      channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/e2e ...` or `/plan-job ...` to start a job with them.",
     )
   }
   guard @model.load(home=self.home, cwd~, name?=model_name) is Some(model) else {

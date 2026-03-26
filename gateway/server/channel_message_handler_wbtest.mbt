@@ -41,3 +41,57 @@ test "resolve_channel_model_override prefers configured primary over stale bare 
     content="codex/gpt-5.4",
   )
 }
+
+///|
+test "is_non_text_attachment_message recognizes Feishu file uploads" {
+  inspect(
+    is_non_text_attachment_message(@channel.Message::{
+      id: "msg-1",
+      channel: "feishu",
+      from: "user-1",
+      to: "chat-1",
+      content: "[file] parcel.pdf",
+      content_type: "file",
+      timestamp: 1,
+      thread_id: Some("thread-1"),
+      reply_to: None,
+      attachments: [
+        @channel.Attachment::{
+          id: "file-1",
+          mime_type: "application/pdf",
+          url: "https://example.test/parcel.pdf",
+          filename: Some("parcel.pdf"),
+          size: Some(42),
+        },
+      ],
+    }),
+    content="true",
+  )
+}
+
+///|
+test "is_non_text_attachment_message does not treat text with attachments as file-only upload" {
+  inspect(
+    is_non_text_attachment_message(@channel.Message::{
+      id: "msg-2",
+      channel: "feishu",
+      from: "user-1",
+      to: "chat-1",
+      content: "/resume use these assumptions",
+      content_type: "text",
+      timestamp: 1,
+      thread_id: Some("thread-1"),
+      reply_to: None,
+      attachments: [
+        @channel.Attachment::{
+          id: "file-1",
+          mime_type: "application/pdf",
+          url: "https://example.test/parcel.pdf",
+          filename: Some("parcel.pdf"),
+          size: Some(42),
+        },
+      ],
+    }),
+    content="false",
+  )
+}

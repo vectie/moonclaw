@@ -118,13 +118,33 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
   store.save_definition(definition)
   store.save_workflow(workflow)
   store.save_run(run)
+  store.save_step_run(JobStepRun::{
+    id: "run-1:step-1",
+    run_id: "run-1",
+    step_id: "step-1",
+    status: RunStatus::WaitingForInput,
+    started_at: Some(10),
+    completed_at: Some(20),
+    metrics: {},
+    logs: [],
+    retry_count: 0,
+    summary: Some("parcel size"),
+    output: None,
+    error: Some("Analysis requires input: parcel size"),
+  })
   let reply = render_job_status_command_reply(
     store, "job-1", 100, "Current job status",
   ).unwrap_or("")
   inspect(reply.contains("Status: \"WaitingForInput\""), content="true")
   inspect(reply.contains("Current step: step-1"), content="true")
   inspect(
-    reply.contains("Waiting for input on step step-1: parcel size"),
+    reply.contains("Summary: Waiting for input on step step-1"),
+    content="true",
+  )
+  inspect(reply.contains("Missing inputs required:"), content="true")
+  inspect(reply.contains("- parcel size"), content="true")
+  inspect(
+    !reply.contains("Latest event: job.waiting_for_input - parcel size"),
     content="true",
   )
   inspect(
@@ -137,6 +157,78 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
     reply.contains("Ordinary plain chat messages do not resume the job."),
     content="true",
   )
+}
+
+///|
+async test "render_job_status_command_reply splits multiple missing inputs into bullet lines" {
+  let store = SystemStore::new(root="unused")
+  let definition = JobDefinition::{
+    id: "job-2",
+    kind: "job.proposal",
+    enabled: true,
+    config: { "family": "generic" },
+    schedule: None,
+    retry_policy: None,
+    workflow_id: Some("workflow-2"),
+    created_at: 1,
+    updated_at: 1,
+    tags: [],
+  }
+  let workflow = WorkflowDefinition::{
+    id: "workflow-2",
+    kind: "job.proposal",
+    steps: [
+      WorkflowStepDefinition::{
+        id: "step-1",
+        kind: "job.analysis",
+        config: {},
+        retry_policy: None,
+      },
+    ],
+    output_bindings: [],
+  }
+  let run = JobRun::{
+    id: "run-2",
+    job_id: "job-2",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    workspace_dir: None,
+    status: RunStatus::WaitingForInput,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    summary: Some("Waiting for input on step step-1"),
+    error: None,
+  }
+  store.save_definition(definition)
+  store.save_workflow(workflow)
+  store.save_run(run)
+  store.save_step_run(JobStepRun::{
+    id: "run-2:step-1",
+    run_id: "run-2",
+    step_id: "step-1",
+    status: RunStatus::WaitingForInput,
+    started_at: Some(10),
+    completed_at: Some(20),
+    metrics: {},
+    logs: [],
+    retry_count: 0,
+    summary: Some("parcel location; parcel size; comparable sales"),
+    output: None,
+    error: Some(
+      "Analysis requires input: parcel location; parcel size; comparable sales",
+    ),
+  })
+  let reply = render_job_status_command_reply(
+    store, "job-2", 100, "Current job status",
+  ).unwrap_or("")
+  inspect(reply.contains("Missing inputs required:"), content="true")
+  inspect(reply.contains("- parcel location"), content="true")
+  inspect(reply.contains("- parcel size"), content="true")
+  inspect(reply.contains("- comparable sales"), content="true")
 }
 
 ///|
@@ -321,6 +413,59 @@ async test "request_job_stop resolves run ids before calling cancel" {
     content="Stop requested for `job-1` (`run-1`).",
   )
   inspect(cancelled.join(","), content="job-1:false")
+}
+
+///|
+async test "request_job_stop resolves waiting-for-input run ids before calling force cancel" {
+  let store = SystemStore::new(root="unused-waiting")
+  let definition = JobDefinition::{
+    id: "job-1",
+    kind: "generic",
+    enabled: true,
+    config: {},
+    schedule: None,
+    retry_policy: None,
+    workflow_id: Some("workflow-1"),
+    created_at: 1,
+    updated_at: 1,
+    tags: [],
+  }
+  let run = JobRun::{
+    id: "run-1",
+    job_id: "job-1",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    workspace_dir: None,
+    status: RunStatus::WaitingForInput,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    summary: Some("Waiting for input"),
+    error: None,
+  }
+  store.save_definition(definition)
+  store.save_run(run)
+  let cancelled : Array[String] = []
+  let result = request_job_stop(
+    store,
+    "run-1",
+    fn(job_id, force) {
+      cancelled.push("\{job_id}:\{force}")
+      Ok(run)
+    },
+    force=true,
+  )
+  inspect(
+    match result {
+      Ok(text) => text
+      Err(error) => error
+    },
+    content="Force-stop requested for `job-1` (`run-1`).",
+  )
+  inspect(cancelled.join(","), content="job-1:true")
 }
 
 ///|

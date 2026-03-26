@@ -12,6 +12,7 @@ research-specific behavior; this file reflects the current code path in
 Jobs normally begin from chat commands such as:
 
 - `/plan-job <request>`
+- `/e2e <request>`
 - `/revise <proposal_id> <guidance>`
 - `/confirm <proposal_id>`
 - `/job-status <job_id|run_id>`
@@ -29,7 +30,8 @@ The important boundary is:
 
 ## 2. Planning Routine
 
-Planning starts in `GatewayJobApp::plan_proposal(...)` in
+Planning starts in `GatewayJobApp::plan_proposal(...)` or
+`GatewayJobApp::plan_e2e_proposal(...)` in
 [/Users/kq/Workspace/moonclaw/job/application.mbt](/Users/kq/Workspace/moonclaw/job/application.mbt).
 
 Current planning routine:
@@ -45,6 +47,7 @@ Current planning routine:
 5. Normalize the result into a `JobProposal`.
 6. If no usable model result exists, fall back to one minimal generic step:
    - `execute`
+7. For `/e2e`, prepend a job-level `context_preprocess` step and append any configured postprocess stages.
 
 The default fallback is intentionally minimal. AI planning or workspace profiles
 are expected to provide richer step structure when needed.
@@ -239,20 +242,19 @@ When a run reaches `WaitingForInput`:
    with `/resume` followed by the missing text, optionally with attachments.
 3. Automatic resume only triggers on:
    - a reply beginning with `/resume`
-4. MoonClaw starts a resumed continuation run for the same job definition.
-5. The new reply content and attachment metadata are passed as `initial_input`
-   into the new run.
+4. MoonClaw resumes the same run in place from the blocked step.
+5. The new reply content and attachment metadata are merged into the run input
+   and exposed to the resumed step as operator guidance.
 
 Important current rule:
 
-- this is a resumed continuation run, not an in-place mutation of the original
-  waiting run
+- completed earlier steps are preserved and are not rerun
 - ordinary non-reply chat should still fall through to the normal conversation
   path
 - normal channel chat should resolve its model from the configured primary model
   in `~/.moonclaw/moonclaw.json`; stale bare session model ids should not win
 
-Then the resumed continuation run proceeds normally:
+Then the resumed run proceeds normally:
 
 7. Run the agent and collect result text.
 8. Persist report/result artifacts.
@@ -380,12 +382,13 @@ Current board behavior:
 From the operator’s point of view, the current job routine is:
 
 1. Ask for a draft with `/plan-job`.
-2. Review the compact proposed steps.
-3. Confirm with `/confirm`.
-4. Watch readable job/run ids and local-time timestamps in `/job-status`.
-5. Inspect the visible run workspace under `<workspace>/moonclaw-jobs/<run-id>`.
-6. Use `/jobs`, `/job-status`, `/job-stop`, or `/job-force-stop` as needed.
-7. Read final artifacts from the run workspace and the durable artifact store.
+2. Or ask for the augmented end-to-end flow with `/e2e`.
+3. Review the compact proposed steps.
+4. Confirm with `/confirm`.
+5. Watch readable job/run ids and local-time timestamps in `/job-status`.
+6. Inspect the visible run workspace under `<workspace>/moonclaw-jobs/<run-id>`.
+7. Use `/jobs`, `/job-status`, `/job-stop`, or `/job-force-stop` as needed.
+8. Read final artifacts from the run workspace and the durable artifact store.
 
 ## 14. What The Routine Is Not
 

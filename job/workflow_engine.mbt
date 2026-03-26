@@ -217,24 +217,58 @@ pub async fn WorkflowEngine::execute_run(
     Some(workflow) => workflow
     None => return Err("Unknown workflow definition: \{workflow_id}")
   }
-
-  let started_run = match self.runtime.mark_run_started(run_id, now()) {
-    Some(run) => run
-    None => return Err("Unable to mark run \{run_id} as started")
+  let resuming_from_waiting = initial_run.status is WaitingForInput
+  let started_run = if resuming_from_waiting {
+    match self.runtime.mark_run_resumed(run_id, now()) {
+      Some(run) => run
+      None => return Err("Unable to mark run \{run_id} as resumed")
+    }
+  } else {
+    match self.runtime.mark_run_started(run_id, now()) {
+      Some(run) => run
+      None => return Err("Unable to mark run \{run_id} as started")
+    }
   }
   self.log_run_event(
     started_run,
-    "job.started",
+    if resuming_from_waiting {
+      "job.resumed"
+    } else {
+      "job.started"
+    },
     now(),
-    "Workflow run started",
+    if resuming_from_waiting {
+      "Workflow run resumed"
+    } else {
+      "Workflow run started"
+    },
     status=Some(Running),
     data={ "workflow_id": workflow.id, "workflow_kind": workflow.kind },
   )
 
   let outputs : Map[String, Json] = {}
   let steps : Array[JobStepRun] = []
+  let prior_steps : Map[String, JobStepRun] = {}
+  if resuming_from_waiting {
+    for prior_step in store.list_step_runs(run_id) {
+      prior_steps.set(prior_step.step_id, prior_step)
+      if prior_step.status is Succeeded {
+        steps.push(prior_step)
+        match prior_step.output {
+          Some(output) => outputs.set(prior_step.step_id, output)
+          None => ()
+        }
+      }
+    }
+  }
 
   for step in workflow.steps {
+    if resuming_from_waiting {
+      match prior_steps.get(step.id) {
+        Some(previous) if previous.status is Succeeded => continue
+        _ => ()
+      }
+    }
     match WorkflowEngine::control_message(control) {
       Some(message) => {
         self.log_run_event(

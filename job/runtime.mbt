@@ -263,6 +263,49 @@ pub async fn RuntimeManager::mark_run_started(
 }
 
 ///|
+pub async fn RuntimeManager::mark_run_resumed(
+  self : RuntimeManager,
+  run_id : String,
+  now_ms : Int,
+) -> JobRun? {
+  let run = match self.store.get_run(run_id) {
+    Some(run) => run
+    None => return None
+  }
+  let updated = JobRun::{
+    ..run,
+    status: Running,
+    completed_at: None,
+    summary: None,
+    error: None,
+  }
+  self.store.save_run(updated)
+  self.active_runs.set(updated.job_id, updated.id)
+  let checkpoint = match self.checkpoints.get(updated.job_id) {
+    Some(existing) =>
+      CheckpointRecord::{
+        ..existing,
+        last_started_at: Some(now_ms),
+        last_run_id: Some(updated.id),
+      }
+    None =>
+      CheckpointRecord::{
+        job_id: updated.job_id,
+        last_triggered_at: updated.started_at,
+        last_started_at: Some(now_ms),
+        last_completed_at: None,
+        last_success_at: None,
+        last_run_id: Some(updated.id),
+        retry_attempts: 0,
+        next_retry_at: None,
+        retry_source_run_id: None,
+      }
+  }
+  self.checkpoints.save_checkpoint(checkpoint)
+  Some(updated)
+}
+
+///|
 fn RuntimeManager::definition_retry_policy(
   self : RuntimeManager,
   job_id : String,

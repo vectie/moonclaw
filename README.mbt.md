@@ -37,6 +37,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-03-26`: split classic `/plan-job` from the E2E `/e2e` flow; added job-level preprocess and optional postprocess planning, in-place `/resume` from `WaitingForInput`, tighter planner skill enforcement, and assumption-based continuation for blocked analytical runs
 - `2026-03-25`: added adaptive step expansion with `needs_input` / `needs_subplan`, `WaitingForInput` pause-and-resume via `/resume`, run-workspace output materialization, and fixed Feishu channel chat to honor the configured primary model from `~/.moonclaw/moonclaw.json`
 - `2026-03-24`: merged `opc`, `weixin`, and `canvas`; added Weixin Official Account support; upgraded the controller/company canvas; made the generic fallback a single `execute` step
 - `2026-03-23`: added generic worker routing with `child_profile`, `execution_mode`, and `execution_target`; routed analysis through ACP
@@ -302,6 +303,7 @@ See [openclaw_weixin_reference.md](/Users/kq/Workspace/moonclaw/docs/openclaw_we
 Once Feishu is configured and the gateway is running, the important commands are:
 
 - `/plan-job <description>`
+- `/e2e <description>`
 - `/confirm <proposal_id>`
 - `/revise <proposal_id> <guidance>`
 - `/reject <proposal_id>`
@@ -312,7 +314,8 @@ If a job pauses in `WaitingForInput`:
 
 - use `/job-status <job_id|run_id>` to see what is missing
 - reply to the waiting Feishu message with `/resume` followed by the missing text, optionally with attachments
-- MoonClaw will start a resumed continuation run with that new input
+- `/resume` resumes the same run in place from the blocked step
+- operator guidance like `/resume guess missing data` tells MoonClaw to continue with explicit assumptions when a usable screening result is still possible
 - plain non-reply chat still goes to the normal conversation path
 - `/job-stop <job_id|run_id>`
 - `/job-force-stop <job_id|run_id>`

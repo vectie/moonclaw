@@ -559,13 +559,15 @@ async fn Gateway::launch_job_run(
   initial_input? : Json? = None,
 ) -> Unit {
   match self.root_group() {
-    Some(group) =>
-      group.spawn_bg(no_wait=true, allow_failure=true, () => {
+    Some(group) => {
+      let task = group.spawn(no_wait=true, allow_failure=true, () => {
         self.execute_job_run_async(run_id, initial_input~) catch {
           error =>
             self.logger.warn("Job run \{run_id} crashed after launch: \{error}")
         }
       })
+      self.register_active_job_task(run_id, task)
+    }
     None =>
       self.logger.warn(
         "Skipped launching job run \{run_id}: gateway task group is not active",
@@ -612,6 +614,7 @@ async fn Gateway::execute_job_run_async(
     ),
   )
   self.clear_job_control_requests(run_id)
+  self.clear_active_job_task(run_id)
 }
 
 ///|
@@ -713,7 +716,45 @@ async fn Gateway::cancel_job_definition_run(
     }
     @job.RunStatus::Running => {
       self.job_app.state().request_stop(run.id, force~)
-      Ok(run)
+      if force {
+        ignore(self.cancel_active_job_task(run.id))
+        let cancelled = match
+          self
+          .job_runtime()
+          .cancel_run(
+            run.id,
+            current_time_ms(),
+            summary=Some("Force-stopped while running"),
+          ) {
+          Some(cancelled) => cancelled
+          None => return Err("Failed to force-stop running job: \{run.id}")
+        }
+        self.clear_job_control_requests(run.id)
+        Ok(cancelled)
+      } else {
+        Ok(run)
+      }
+    }
+    @job.RunStatus::WaitingForInput => {
+      let cancelled = match
+        self
+        .job_runtime()
+        .cancel_run(
+          run.id,
+          current_time_ms(),
+          summary=Some(
+            if force {
+              "Force-stopped while waiting for input"
+            } else {
+              "Stopped while waiting for input"
+            },
+          ),
+        ) {
+        Some(cancelled) => cancelled
+        None => return Err("Failed to cancel waiting run: \{run.id}")
+      }
+      self.clear_job_control_requests(run.id)
+      Ok(cancelled)
     }
     _ => Err("Job run \{run.id} is already terminal")
   }

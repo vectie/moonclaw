@@ -22,3 +22,4 @@ _build
 target
 .moonclaw/job-workspaces/
 bisect.coverage
+unused/

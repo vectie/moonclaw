@@ -1,0 +1,37 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/web_search"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new() -> @tool.Tool[WebSearchResult]
+
+// Errors
+
+// Types and methods
+pub struct WebSearchItem {
+  title : String
+  url : String
+  snippet : String
+  source : String
+}
+pub impl ToJson for WebSearchItem
+pub impl @json.FromJson for WebSearchItem
+
+pub struct WebSearchResult {
+  query : String
+  answer : String?
+  results : Array[WebSearchItem]
+  source : String
+}
+pub impl Show for WebSearchResult
+pub impl ToJson for WebSearchResult
+pub impl @json.FromJson for WebSearchResult
+
+// Type aliases
+
+// Traits
+

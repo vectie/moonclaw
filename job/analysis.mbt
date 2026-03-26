@@ -138,189 +138,6 @@ pub fn AnalysisExecutor::new(
 }
 
 ///|
-struct AdaptiveSubstepPayload {
-  title : String
-  prompt : String
-  kind : String?
-} derive(FromJson, ToJson, Show)
-
-///|
-struct AdaptiveAnalysisEnvelope {
-  verdict : String
-  summary : String?
-  missing_inputs : Array[String]?
-  suggested_substeps : Array[AdaptiveSubstepPayload]?
-  substeps : Array[AdaptiveSubstepPayload]?
-} derive(FromJson, ToJson, Show)
-
-///|
-fn adaptive_json_string_field(
-  object : Map[String, Json],
-  key : String,
-) -> String? {
-  match object.get(key) {
-    Some(String(value)) if !value.trim().is_empty() =>
-      Some(value.trim().to_string())
-    _ => None
-  }
-}
-
-///|
-fn adaptive_json_string_array_field(
-  object : Map[String, Json],
-  key : String,
-) -> Array[String]? {
-  match object.get(key) {
-    Some(Array(values)) => {
-      let items : Array[String] = []
-      for value in values {
-        guard value is String(text) else { continue }
-        let trimmed = text.trim().to_string()
-        if !trimmed.is_blank() {
-          items.push(trimmed)
-        }
-      }
-      if items.is_empty() {
-        None
-      } else {
-        Some(items)
-      }
-    }
-    _ => None
-  }
-}
-
-///|
-fn parse_adaptive_substep(value : Json) -> AdaptiveSubstepPayload? {
-  guard value is Object(object) else { return None }
-  let title = match adaptive_json_string_field(object, "title") {
-    Some(title) => title
-    None => return None
-  }
-  let prompt = match adaptive_json_string_field(object, "prompt") {
-    Some(prompt) => prompt
-    None => title
-  }
-  let kind = adaptive_json_string_field(object, "kind")
-  Some(AdaptiveSubstepPayload::{ title, prompt, kind })
-}
-
-///|
-fn adaptive_json_substeps_field(
-  object : Map[String, Json],
-  key : String,
-) -> Array[AdaptiveSubstepPayload]? {
-  match object.get(key) {
-    Some(Array(values)) => {
-      let items : Array[AdaptiveSubstepPayload] = []
-      for value in values {
-        match parse_adaptive_substep(value) {
-          Some(item) => items.push(item)
-          None => ()
-        }
-      }
-      if items.is_empty() {
-        None
-      } else {
-        Some(items)
-      }
-    }
-    _ => None
-  }
-}
-
-///|
-fn parse_adaptive_analysis_envelope(
-  content : String,
-) -> AdaptiveAnalysisEnvelope? {
-  let trimmed = content.trim().to_string()
-  if trimmed.is_blank() || !trimmed.has_prefix("{") {
-    return None
-  }
-  let json = @json.parse(trimmed) catch { _ => return None }
-  guard json is Object(object) else { return None }
-  let verdict = match adaptive_json_string_field(object, "verdict") {
-    Some(verdict) => verdict
-    None => return None
-  }
-  Some(AdaptiveAnalysisEnvelope::{
-    verdict,
-    summary: adaptive_json_string_field(object, "summary"),
-    missing_inputs: adaptive_json_string_array_field(object, "missing_inputs"),
-    suggested_substeps: adaptive_json_substeps_field(
-      object, "suggested_substeps",
-    ),
-    substeps: adaptive_json_substeps_field(object, "substeps"),
-  })
-}
-
-///|
-fn adaptive_substeps(
-  envelope : AdaptiveAnalysisEnvelope,
-) -> Array[AdaptiveSubstepPayload] {
-  match envelope.suggested_substeps {
-    Some(steps) if !steps.is_empty() => steps
-    _ => envelope.substeps.unwrap_or([])
-  }
-}
-
-///|
-fn adaptive_missing_inputs_line(envelope : AdaptiveAnalysisEnvelope) -> String {
-  match envelope.missing_inputs {
-    Some(inputs) if !inputs.is_empty() => inputs.join("; ")
-    _ => envelope.summary.unwrap_or("Analysis requires additional inputs.")
-  }
-}
-
-///|
-fn adaptive_decision_system_prompt() -> String {
-  [
-    @prompt.prelude, "You are deciding whether an analysis step is truly complete or should expand.",
-    "Return strict JSON only.", "If the step is complete, return {\"verdict\":\"completed\",\"summary\":string}.",
-    "If key inputs are missing and the user or an external source must provide them, return {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}.",
-    "If the step should be decomposed into smaller executable units before it can produce a useful result, return {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}.",
-    "Be conservative about calling a step completed.", "Do not mark the step completed if the output mainly asks follow-up questions, requests missing facts, says the estimate is not supportable yet, says the result is only a screening or first-pass view, or lists next actions instead of delivering the requested artifact.",
-    "Prefer needs_subplan over needs_input when useful preparatory work can still continue without the missing facts.",
-    "Use needs_input only when the missing parcel, market, numeric, user, or external-source facts truly block all meaningful next work.",
-    "Use needs_subplan when the work can still make progress by splitting into smaller executable research, collection, verification, checklist, template, comparison, or analysis tasks, even if some final facts are still missing.",
-    "Do not default to subplanning. Only request a subplan when decomposition would materially improve execution.",
-    "If the output contains both caveats and a usable final deliverable, choose completed. If the output is mostly a blocker report or a request for more information, do not choose completed.",
-    "Examples:", "{\"verdict\":\"needs_input\",\"summary\":\"Parcel and pricing inputs are still missing.\",\"missing_inputs\":[\"parcel location\",\"parcel size\",\"comparable sales\"]}",
-    "{\"verdict\":\"needs_subplan\",\"summary\":\"The diligence work should be split before valuation.\",\"suggested_substeps\":[{\"title\":\"Collect comparable sales\",\"prompt\":\"Gather recent comparable land sales and normalize unit pricing.\"},{\"title\":\"Review zoning and utilities\",\"prompt\":\"Check zoning, entitlement status, access, and utility availability.\"}]}",
-    "{\"verdict\":\"needs_subplan\",\"summary\":\"The final estimate is blocked on parcel facts, but useful preparation can still continue.\",\"suggested_substeps\":[{\"title\":\"Build missing-input checklist\",\"prompt\":\"Prepare the minimum parcel, zoning, and market data checklist required for the final estimate.\"},{\"title\":\"Build sensitivity template\",\"prompt\":\"Create a sensitivity framework for price, parcel size, entitlement timing, and site-prep risk.\"}]}",
-  ].join("\n\n")
-}
-
-///|
-fn adaptive_decision_prompt(
-  context : WorkflowStepContext,
-  config : AnalysisStepConfig,
-  execution : AnalysisExecution,
-) -> String {
-  let sections = [
-    "Original step prompt:",
-    config.prompt,
-    "Step id: \{context.step.id}",
-    "Current analysis output:",
-    execution.content,
-    "Decide whether this output is complete, needs external input, or should be expanded into a child subplan.",
-  ]
-  let sections = if context.outputs.is_empty() {
-    sections
-  } else {
-    let rendered : Array[String] = []
-    for step_id, output in context.outputs {
-      rendered.push("[\{step_id}] \{output.stringify()}")
-    }
-    let rendered_text = rendered.join("\n")
-    [..sections, "Previous step outputs:\n\{rendered_text}"]
-  }
-  [
-    ..sections, "If the current output mainly reports blockers, missing facts, provisional screening status, or next actions, it is not completed.",
-  ].join("\n\n")
-}
-
-///|
 async fn adaptive_followup_envelope(
   executor : AnalysisExecutor,
   request : AnalysisRequest,
@@ -374,6 +191,86 @@ async fn adaptive_followup_envelope(
             Err(_) => None
           }
         }
+      }
+    Err(_) => None
+  }
+}
+
+///|
+async fn adaptive_subplan_fill_envelope(
+  executor : AnalysisExecutor,
+  request : AnalysisRequest,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> AdaptiveAnalysisEnvelope? {
+  let preferred_skills = ["analysis-adaptation"]
+  let skills_prompt = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
+  let followup = AnalysisRequest::{
+    ..request,
+    prompt: [
+      adaptive_subplan_fill_prompt(context, config, execution, envelope),
+      skills_prompt,
+    ]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
+    system_prompt: adaptive_subplan_fill_system_prompt(),
+    enable_tools: false,
+    web_search: false,
+    preferred_skills,
+  }
+  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  match followup_execution {
+    Ok(result) =>
+      match parse_adaptive_analysis_envelope(result.content) {
+        Some(expanded) if !adaptive_substeps(expanded).is_empty() =>
+          Some(expanded)
+        _ => None
+      }
+    Err(_) => None
+  }
+}
+
+///|
+async fn adaptive_missing_inputs_fill_envelope(
+  executor : AnalysisExecutor,
+  request : AnalysisRequest,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> AdaptiveAnalysisEnvelope? {
+  let preferred_skills = ["analysis-adaptation"]
+  let skills_prompt = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
+  let followup = AnalysisRequest::{
+    ..request,
+    prompt: [
+      adaptive_missing_inputs_fill_prompt(context, config, execution, envelope),
+      skills_prompt,
+    ]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
+    system_prompt: adaptive_missing_inputs_fill_system_prompt(),
+    enable_tools: false,
+    web_search: false,
+    preferred_skills,
+  }
+  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  match followup_execution {
+    Ok(result) =>
+      match parse_adaptive_analysis_envelope(result.content) {
+        Some(expanded) if expanded.missing_inputs is Some([..]) =>
+          Some(expanded)
+        _ => None
       }
     Err(_) => None
   }
@@ -467,9 +364,10 @@ async fn execute_analysis_subplan(
 ) -> Result[(String, String, Map[String, Json]), String] {
   let steps = adaptive_substeps(envelope)
   if steps.is_empty() {
-    return Err(
-      "Adaptive subplan requested but no suggested_substeps were provided",
+    let detail = envelope.summary.unwrap_or(
+      "Adaptive subplan requested but no substeps were provided.",
     )
+    return Err("Analysis requires input: \{detail}")
   }
   guard context.run.depth < max_depth else {
     return Err(
@@ -576,6 +474,40 @@ fn default_analysis_system_prompt() -> String {
 ///|
 pub fn analysis_system_prompt(config : AnalysisStepConfig) -> String {
   config.system_prompt.unwrap_or(default_analysis_system_prompt())
+}
+
+///|
+fn analysis_adaptive_disabled(config : AnalysisStepConfig) -> Bool {
+  metadata_bool_with_step_metadata(config.metadata, "disable_adaptive", false)
+}
+
+///|
+fn metadata_with_step_metadata(metadata : Json, key : String) -> Json? {
+  match metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(value) => Some(value)
+        None =>
+          match obj.get("step_metadata") {
+            Some(nested) => metadata_with_step_metadata(nested, key)
+            None => None
+          }
+      }
+    _ => None
+  }
+}
+
+///|
+fn metadata_bool_with_step_metadata(
+  metadata : Json,
+  key : String,
+  fallback : Bool,
+) -> Bool {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(True) => true
+    Some(False) => false
+    _ => fallback
+  }
 }
 
 ///|
@@ -695,7 +627,11 @@ async fn resolved_model_name(request : AnalysisRequest) -> String? {
 }
 
 ///|
-fn setup_analysis_agent(agent : @agent.Agent, cwd : String) -> Unit {
+fn setup_analysis_agent(
+  agent : @agent.Agent,
+  cwd : String,
+  web_search? : Bool = false,
+) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
   agent.add_tools([
@@ -705,6 +641,9 @@ fn setup_analysis_agent(agent : @agent.Agent, cwd : String) -> Unit {
     @todo.new_tool(todo_list).to_agent_tool(),
     @search_files.new(agent.cwd).to_agent_tool(),
   ])
+  if web_search {
+    agent.add_tool(@web_search.new())
+  }
   if agent.model.supports_apply_patch {
     agent.add_tool(@apply_patch.new(agent.cwd))
   } else {
@@ -805,6 +744,7 @@ fn is_final_workflow_step(
 async fn materialize_analysis_outputs_to_workspace(
   store : SystemStore,
   context : WorkflowStepContext,
+  config : AnalysisStepConfig,
   result_payload : Json,
   report_content : String,
 ) -> Unit {
@@ -818,16 +758,52 @@ async fn materialize_analysis_outputs_to_workspace(
     _ => return
   }
   let report_file = outputs_dir
-    |> @pathx.join(workspace_report_file_name(context.step.id, context.step.id))
+    |> @pathx.join(
+      config.artifacts.report_file_name.unwrap_or(
+        workspace_report_file_name(context.step.id, context.step.id),
+      ),
+    )
   let result_file = outputs_dir
-    |> @pathx.join(workspace_result_file_name(context.step.id, context.step.id))
+    |> @pathx.join(
+      config.artifacts.result_file_name.unwrap_or(
+        workspace_result_file_name(context.step.id, context.step.id),
+      ),
+    )
   @fsx.write_to_file(report_file, report_content) catch {
     _ => ()
   }
   @fsx.write_to_file(result_file, result_payload.stringify()) catch {
     _ => ()
   }
+  match config.artifacts.report_file_name {
+    Some(file_name) if !file_name.trim().to_string().is_blank() =>
+      @fsx.write_to_file(
+        workspace_dir |> @pathx.join(file_name),
+        report_content,
+      ) catch {
+        _ => ()
+      }
+    _ => ()
+  }
+  match config.artifacts.result_file_name {
+    Some(file_name) if !file_name.trim().to_string().is_blank() =>
+      @fsx.write_to_file(
+        workspace_dir |> @pathx.join(file_name),
+        result_payload.stringify(),
+      ) catch {
+        _ => ()
+      }
+    _ => ()
+  }
   if is_final_workflow_step(store, context.run, context.step.id) {
+    let skip_primary = metadata_bool_with_step_metadata(
+      config.metadata,
+      "skip_primary_workspace_output",
+      false,
+    )
+    if skip_primary {
+      return
+    }
     @fsx.write_to_file(
       workspace_dir |> @pathx.join("report.md"),
       report_content,
@@ -921,11 +897,27 @@ fn build_analysis_prompt(
   skills_prompt : String,
   memory_prompt : String,
 ) -> String {
+  let resume_prompt = match
+    resume_instruction_from_input(context.initial_input) {
+    Some(trimmed) =>
+      [
+        "Resume instruction from user:\n\{trimmed}",
+        "Treat the resume instruction as authoritative operator guidance. Interpret it directly and adapt your approach accordingly. If it authorizes assumptions, best-effort estimation, or proceeding without further user input, follow that guidance and make clearly labeled assumptions unless completion would require inventing core facts.",
+      ].join("\n\n")
+    None => ""
+  }
+  let step_metadata_prompt = match config.metadata {
+    { "step_metadata": metadata, .. } =>
+      "Step metadata:\n\{metadata.stringify()}"
+    _ => ""
+  }
   let sections = [
     config.prompt,
     preferred_skills_prompt(config.preferred_skills),
     skills_prompt,
     memory_prompt,
+    step_metadata_prompt,
+    resume_prompt,
     "Job id: \{context.run.job_id}",
     "Run id: \{context.run.id}",
     "Step id: \{context.step.id}",
@@ -945,6 +937,76 @@ fn build_analysis_prompt(
     [..sections, "Previous step outputs:\n\{rendered_text}"]
   }
   sections.filter(fn(section) { !section.is_blank() }).join("\n\n")
+}
+
+///|
+fn resume_instruction_from_input(input : Json?) -> String? {
+  match input {
+    Some({ "resume_content": String(text), .. }) => {
+      let trimmed = text.trim().to_string()
+      if trimmed.is_blank() {
+        None
+      } else {
+        Some(trimmed)
+      }
+    }
+    Some({ "resume_input": nested, .. }) => resume_instruction_from_json(nested)
+    Some(json) => resume_instruction_from_json(json)
+    None => None
+  }
+}
+
+///|
+fn should_preserve_first_pass_on_empty_subplan(
+  context : WorkflowStepContext,
+  execution : AnalysisExecution,
+) -> Bool {
+  match
+    (
+      resume_instruction_from_input(context.initial_input),
+      parse_adaptive_analysis_envelope(execution.content),
+    ) {
+    (Some(_), None) if !execution.content.trim().to_string().is_blank() => true
+    _ => false
+  }
+}
+
+///|
+fn resume_instruction_from_json(input : Json) -> String? {
+  match input {
+    { "resume_content": String(text), .. } => {
+      let trimmed = text.trim().to_string()
+      if trimmed.is_blank() {
+        None
+      } else {
+        Some(trimmed)
+      }
+    }
+    { "resume_input": nested, .. } => resume_instruction_from_json(nested)
+    _ => resume_instruction_from_serialized_json(input.stringify())
+  }
+}
+
+///|
+fn resume_instruction_from_serialized_json(text : String) -> String? {
+  let marker = "\"resume_content\":\""
+  match text.find(marker) {
+    Some(start) => {
+      let remainder = text[start + marker.length():].to_string()
+      match remainder.find("\"") {
+        Some(end) => {
+          let extracted = remainder[:end].to_string().trim().to_string()
+          if extracted.is_blank() {
+            None
+          } else {
+            Some(extracted)
+          }
+        }
+        None => None
+      }
+    }
+    None => None
+  }
 }
 
 ///|
@@ -1149,7 +1211,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
     )
     defer agent.close()
     if request.enable_tools {
-      setup_analysis_agent(agent, request.cwd)
+      setup_analysis_agent(agent, request.cwd, web_search=request.web_search)
     }
 
     let mut final_content = ""
@@ -1295,93 +1357,10 @@ pub fn analysis_step_handler(
     materialize_analysis_outputs_to_workspace(
       store,
       context,
+      config,
       result_payload,
       execution.content,
     )
-    let adaptive_envelope = match
-      parse_adaptive_analysis_envelope(execution.content) {
-      Some(envelope) => Some(envelope)
-      None =>
-        adaptive_followup_envelope(
-          executor, request, context, config, execution,
-        )
-    }
-    let adaptive_max_depth = configured_adaptive_subplan_max_depth(
-      request.cwd,
-      request.home,
-    ).unwrap_or(5)
-    let adaptive_result : Result[WorkflowStepResult, String]? = match
-      adaptive_envelope {
-      Some(envelope) => {
-        let verdict = envelope.verdict.trim().to_string().to_lower()
-        match verdict {
-          "completed" => None
-          "needs_input" =>
-            Some(
-              Err(
-                "Analysis requires input: \{adaptive_missing_inputs_line(envelope)}",
-              ),
-            )
-          "needs_subplan" =>
-            match compiler {
-              None =>
-                Some(
-                  Err(
-                    "Adaptive subplanning requested but no compiler is configured",
-                  ),
-                )
-              Some(compiler) =>
-                match engine_factory {
-                  None =>
-                    Some(
-                      Err(
-                        "Adaptive subplanning requested but no workflow engine factory is configured",
-                      ),
-                    )
-                  Some(engine_factory) =>
-                    match
-                      execute_analysis_subplan(
-                        runtime, compiler, engine_factory, child_executor, context,
-                        config, envelope, now, next_run_id, adaptive_max_depth,
-                      ) {
-                      Err(error) => Some(Err(error))
-                      Ok((child_job_id, child_run_id, child_outputs)) =>
-                        Some(
-                          Ok(
-                            WorkflowStepResult::new(
-                              output={
-                                "status": "subplanned",
-                                "model": execution.model_name,
-                                "content": execution.content,
-                                "conversation_id": execution.conversation_id,
-                                "report_artifact_id": report_artifact.id,
-                                "result_artifact_id": result_artifact.id,
-                                "usage": usage_json(execution.usage),
-                                "child_job_id": child_job_id,
-                                "child_run_id": child_run_id,
-                                "child_outputs": child_outputs,
-                              },
-                              summary=Some(
-                                "Analysis requested and completed a child subplan",
-                              ),
-                              metrics=result_metrics(execution),
-                              logs=[
-                                "report artifact written: \{report_artifact.id}",
-                                "result artifact written: \{result_artifact.id}",
-                                "spawned child job: \{child_job_id}",
-                                "spawned child run: \{child_run_id}",
-                              ],
-                            ),
-                          ),
-                        )
-                    }
-                }
-            }
-          _ => None
-        }
-      }
-      None => None
-    }
     let completed_result = Ok(
       WorkflowStepResult::new(
         output={
@@ -1401,6 +1380,121 @@ pub fn analysis_step_handler(
         ],
       ),
     )
+    let adaptive_envelope = if analysis_adaptive_disabled(config) {
+      None
+    } else {
+      match parse_adaptive_analysis_envelope(execution.content) {
+        Some(envelope) => Some(envelope)
+        None =>
+          adaptive_followup_envelope(
+            executor, request, context, config, execution,
+          )
+      }
+    }
+    let adaptive_max_depth = configured_adaptive_subplan_max_depth(
+      request.cwd,
+      request.home,
+    ).unwrap_or(5)
+    let adaptive_result : Result[WorkflowStepResult, String]? = match
+      adaptive_envelope {
+      Some(envelope) => {
+        let verdict = envelope.verdict.trim().to_string().to_lower()
+        match verdict {
+          "completed" => None
+          "needs_input" => {
+            let envelope = match envelope.missing_inputs {
+              Some([..]) => envelope
+              _ =>
+                adaptive_missing_inputs_fill_envelope(
+                  executor, request, context, config, execution, envelope,
+                ).unwrap_or(envelope)
+            }
+            Some(
+              Err(
+                "Analysis requires input: \{adaptive_missing_inputs_line(envelope)}",
+              ),
+            )
+          }
+          "needs_subplan" => {
+            let envelope = match adaptive_substeps(envelope) {
+              [] =>
+                adaptive_subplan_fill_envelope(
+                  executor, request, context, config, execution, envelope,
+                ).unwrap_or(envelope)
+              _ => envelope
+            }
+            let substeps = adaptive_substeps(envelope)
+            if substeps.is_empty() {
+              if should_preserve_first_pass_on_empty_subplan(context, execution) {
+                Some(completed_result)
+              } else {
+                let detail = envelope.summary.unwrap_or(
+                  "Adaptive subplan requested but no substeps were provided.",
+                )
+                Some(Err("Analysis requires input: \{detail}"))
+              }
+            } else {
+              match compiler {
+                None =>
+                  Some(
+                    Err(
+                      "Adaptive subplanning requested but no compiler is configured",
+                    ),
+                  )
+                Some(compiler) =>
+                  match engine_factory {
+                    None =>
+                      Some(
+                        Err(
+                          "Adaptive subplanning requested but no workflow engine factory is configured",
+                        ),
+                      )
+                    Some(engine_factory) =>
+                      match
+                        execute_analysis_subplan(
+                          runtime, compiler, engine_factory, child_executor, context,
+                          config, envelope, now, next_run_id, adaptive_max_depth,
+                        ) {
+                        Err(error) => Some(Err(error))
+                        Ok((child_job_id, child_run_id, child_outputs)) =>
+                          Some(
+                            Ok(
+                              WorkflowStepResult::new(
+                                output={
+                                  "status": "subplanned",
+                                  "model": execution.model_name,
+                                  "content": execution.content,
+                                  "conversation_id": execution.conversation_id,
+                                  "report_artifact_id": report_artifact.id,
+                                  "result_artifact_id": result_artifact.id,
+                                  "usage": usage_json(execution.usage),
+                                  "child_job_id": child_job_id,
+                                  "child_run_id": child_run_id,
+                                  "child_outputs": child_outputs,
+                                },
+                                summary=Some(
+                                  "Analysis requested and completed a child subplan",
+                                ),
+                                metrics=result_metrics(execution),
+                                logs=[
+                                  "report artifact written: \{report_artifact.id}",
+                                  "result artifact written: \{result_artifact.id}",
+                                  "spawned child job: \{child_job_id}",
+                                  "spawned child run: \{child_run_id}",
+                                ],
+                              ),
+                            ),
+                          )
+                      }
+                  }
+              }
+            }
+          }
+          _ => None
+        }
+      }
+      None => None
+    }
     match adaptive_result {
       Some(result) => result
       None => completed_result

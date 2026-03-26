@@ -12,6 +12,7 @@ pub(all) struct JobNotifyTarget {
 ///|
 pub(all) enum JobChatAction {
   PlanJob(String)
+  E2EJob(String)
   Confirm(String)
   Reject(String)
   Revise(String)
@@ -26,6 +27,16 @@ pub(all) enum JobChatAction {
   Memories
   MemorySearch(String)
 } derive(Show)
+
+///|
+fn is_plan_job_command(command : String) -> Bool {
+  command == "/plan-job"
+}
+
+///|
+fn is_e2e_job_command(command : String) -> Bool {
+  command == "/e2e"
+}
 
 ///|
 pub(all) struct ChildRunStatus {
@@ -48,6 +59,7 @@ pub(all) struct JobStatusSnapshot {
   lineage_line : String?
   summary : String?
   error : String?
+  missing_input_line : String?
   child_runs : Array[ChildRunStatus]
   latest_event_line : String
   output_lines : Array[String]
@@ -265,10 +277,11 @@ pub fn render_progress_notification(
 ///|
 pub fn initial_notification_runtime_state(
   now_ms : Int,
+  last_notified_event_count? : Int = 0,
 ) -> JobNotificationRuntimeState {
   JobNotificationRuntimeState::{
     last_sent_at: now_ms,
-    last_notified_event_count: 0,
+    last_notified_event_count,
     long_running_warned: false,
   }
 }
@@ -399,7 +412,8 @@ pub fn parse_job_chat_action(
   guard trimmed.has_prefix("/") else { return None }
   let (command, args) = split_job_chat_command(trimmed)
   match command {
-    "/plan-job" => Some(JobChatAction::PlanJob(args))
+    _ if is_plan_job_command(command) => Some(JobChatAction::PlanJob(args))
+    _ if is_e2e_job_command(command) => Some(JobChatAction::E2EJob(args))
     "/confirm" => Some(JobChatAction::Confirm(args))
     "/reject" => Some(JobChatAction::Reject(args))
     "/revise" => Some(JobChatAction::Revise(args))
@@ -422,6 +436,7 @@ pub fn parse_job_chat_action(
 pub async fn[T] dispatch_job_chat_action(
   action : JobChatAction?,
   on_plan : async (String) -> T,
+  on_e2e : async (String) -> T,
   on_confirm : async (String) -> T,
   on_reject : async (String) -> T,
   on_revise : async (String) -> T,
@@ -437,6 +452,7 @@ pub async fn[T] dispatch_job_chat_action(
 ) -> T? {
   match action {
     Some(JobChatAction::PlanJob(args)) => Some(on_plan(args))
+    Some(JobChatAction::E2EJob(args)) => Some(on_e2e(args))
     Some(JobChatAction::Confirm(args)) => Some(on_confirm(args))
     Some(JobChatAction::Reject(args)) => Some(on_reject(args))
     Some(JobChatAction::Revise(args)) => Some(on_revise(args))
@@ -485,6 +501,52 @@ pub fn render_job_status(
   } else {
     []
   }
+  let missing_input_lines = match snapshot.missing_input_line {
+    Some(line) if line.has_prefix("Missing inputs: ") => {
+      let detail = line["Missing inputs: ".length():].trim().to_string()
+      let items : Array[String] = detail
+        .split(";")
+        .map(fn(part) { part.trim().to_string() })
+        .filter(fn(part) { !part.is_blank() })
+        .to_array()
+      if items.is_empty() {
+        []
+      } else {
+        ["Missing inputs required:", ..items.map(fn(item) { "- \{item}" })]
+      }
+    }
+    Some(line) if !line.trim().is_blank() => [line]
+    _ => []
+  }
+  let missing_input_detail = match snapshot.missing_input_line {
+    Some(line) if line.has_prefix("Missing inputs: ") =>
+      Some(line["Missing inputs: ".length():].trim().to_string())
+    Some(line) if !line.trim().is_blank() => Some(line.trim().to_string())
+    _ => None
+  }
+  let summary_line = match snapshot.summary {
+    Some(text) if snapshot.status == "\"WaitingForInput\"" =>
+      match missing_input_detail {
+        Some(detail) if text.contains(detail) =>
+          match text.find(": \{detail}") {
+            Some(index) =>
+              Some("Summary: \{text[:index].to_string().trim().to_string()}")
+            None => Some("Summary: \{text}")
+          }
+        _ => Some("Summary: \{text}")
+      }
+    Some(text) => Some("Summary: \{text}")
+    None => None
+  }
+  let latest_event_line = if snapshot.status == "\"WaitingForInput\"" {
+    match missing_input_detail {
+      Some(detail) if snapshot.latest_event_line.contains(detail) =>
+        "Latest event: job.waiting_for_input"
+      _ => snapshot.latest_event_line
+    }
+  } else {
+    snapshot.latest_event_line
+  }
   [
     "\{prefix}: \{snapshot.definition_id}",
     "Title: \{snapshot.definition_title}",
@@ -496,10 +558,11 @@ pub fn render_job_status(
     "Progress: \{snapshot.done_steps}/\{snapshot.total_steps}",
     "Elapsed: \{snapshot.elapsed_ms}ms",
     snapshot.lineage_line.unwrap_or(""),
-    snapshot.summary.map(fn(text) { "Summary: \{text}" }).unwrap_or(""),
+    summary_line.unwrap_or(""),
     snapshot.error.map(fn(text) { "Error: \{text}" }).unwrap_or(""),
+    ..missing_input_lines,
     child_run_line.unwrap_or(""),
-    snapshot.latest_event_line,
+    latest_event_line,
     ..snapshot.output_lines,
     ..waiting_guidance,
     "Use `/job-status \{snapshot.definition_id}` for a fresh status check.",

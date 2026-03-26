@@ -24,6 +24,11 @@ async fn notify_run_started(
   now_ms : Int,
   send : async (JobNotifyTarget, String) -> Unit,
 ) -> Unit {
+  let existing_event_count = state
+    .runtime()
+    .store()
+    .list_run_events(run.id)
+    .length()
   let target = match
     resolve_job_notify_target(state.runtime().store(), definition) {
     Some(target) => target
@@ -44,7 +49,10 @@ async fn notify_run_started(
   )
   state.set_notification_runtime_state(
     run.id,
-    initial_notification_runtime_state(now_ms),
+    initial_notification_runtime_state(
+      now_ms,
+      last_notified_event_count=existing_event_count,
+    ),
   )
 }
 
@@ -156,7 +164,9 @@ pub async fn execute_run_lifecycle(
   (hooks.on_info)(
     "Starting job run \{definition.id} -> \{run_id} in \{workspace_dir}",
   )
-  (hooks.on_started)(definition, prepared_run)
+  if !(prepared_run.status is WaitingForInput) {
+    (hooks.on_started)(definition, prepared_run)
+  }
   let engine = engine_factory()
   let result = engine.execute_run(run_id, now, initial_input~, control~) catch {
     error => {

@@ -319,6 +319,7 @@ Feishu message
       -> job.parse_job_chat_action(...)
       -> job.dispatch_job_chat_action(...)
         -> "/plan-job" -> GatewayJobApp::plan_proposal(...)
+        -> "/e2e" -> GatewayJobApp::plan_e2e_proposal(...)
         -> persist JobProposal
         -> reply with rendered draft plan
   -> user confirms or revises

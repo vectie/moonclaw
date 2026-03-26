@@ -178,6 +178,7 @@ Commands:
 
 ```text
 /plan-job <description>
+/e2e <description>
 /confirm <proposal_id>
 /reject <proposal_id>
 /revise <proposal_id> <extra guidance>
@@ -193,7 +194,8 @@ Reply-thread shortcuts:
 
 Behavior:
 
-- `/plan-job` creates a persisted draft proposal and replies with the step plan
+- `/plan-job` creates a classic persisted draft proposal and replies with the step plan
+- `/e2e` creates an end-to-end draft proposal with job-level preprocess and optional postprocess stages
 - proposals are not executed until confirmed
 - `/job-notify` changes notification verbosity for the current chat/thread scope
 - `verbose` mode sends step progress messages derived from workflow run events
@@ -201,8 +203,9 @@ Behavior:
 - if a run pauses in `WaitingForInput`, the status reply tells you to either:
   - reply in that Feishu thread with `/resume` followed by the missing text
   - optionally attach files to that same `/resume` reply
-- replying to the waiting message starts a resumed continuation run with the new
-  input payload
+- `/resume` resumes the same run in place from the blocked step; it does not create a fresh run
+- operator guidance like `/resume guess missing data` is treated as permission to continue with clearly labeled assumptions when a usable screening result is still possible
+- after `/resume`, Feishu should move on to fresh step progress updates rather than repeating a stale `WaitingForInput` snapshot
 - normal non-reply chat still falls through to the usual MoonClaw conversation
   path
 - normal channel chat uses the configured primary model from `~/.moonclaw/moonclaw.json`; stale bare session model ids are normalized instead of overriding that config
@@ -213,7 +216,7 @@ Current message flow:
 Feishu message
   -> gateway job chat adapter
   -> job chat parser + dispatcher
-  -> GatewayJobApp planning / confirm / revise / reject
+  -> GatewayJobApp classic planning or E2E planning / confirm / revise / reject
   -> runtime launch if confirmed
   -> execution notifications routed back to the same chat/thread
 ```

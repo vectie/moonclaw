@@ -26,6 +26,7 @@ pub struct Gateway {
   mut pending_requests : Int
   agent_runs : Map[String, AgentRun]
   active_channel_sessions : Map[String, @event.ExternalEventQueue]
+  recent_thread_attachments : Map[String, Array[@job.E2EStarterAttachment]]
   shutdown_requested : Bool
   agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
   channel_manager : ChannelManager
@@ -37,6 +38,7 @@ pub struct Gateway {
   pipeline_manager : PipelineManager
   channel_state : ChannelStateStore
   job_app : @job.GatewayJobApp
+  active_job_tasks : Map[String, @async.Task[Unit]]
   security_runtime : @security.SecurityRuntime
   workspace_runtime : @workspace.WorkspaceRuntime
   plugin_runtime : @plugin.PluginRuntime
@@ -166,6 +168,32 @@ fn Gateway::active_job_runs(self : Gateway) -> Array[@job.JobRun] {
 ///|
 fn Gateway::job_runtime(self : Gateway) -> @job.RuntimeManager {
   self.job_app.runtime()
+}
+
+///|
+fn Gateway::register_active_job_task(
+  self : Gateway,
+  run_id : String,
+  task : @async.Task[Unit],
+) -> Unit {
+  self.active_job_tasks[run_id] = task
+}
+
+///|
+fn Gateway::clear_active_job_task(self : Gateway, run_id : String) -> Unit {
+  self.active_job_tasks.remove(run_id) |> ignore()
+}
+
+///|
+fn Gateway::cancel_active_job_task(self : Gateway, run_id : String) -> Bool {
+  match self.active_job_tasks.get(run_id) {
+    Some(task) => {
+      task.cancel()
+      self.clear_active_job_task(run_id)
+      true
+    }
+    None => false
+  }
 }
 
 ///|
