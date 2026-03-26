@@ -57,6 +57,13 @@ test "parse_job_chat_action recognizes slash and reply commands" {
     content="run-1",
   )
   inspect(
+    match @job.parse_job_chat_action("/resume parcel docs attached", false) {
+      Some(@job.JobChatAction::Resume(args)) => args
+      _ => ""
+    },
+    content="parcel docs attached",
+  )
+  inspect(
     match @job.parse_job_chat_action("/remember save this note", false) {
       Some(@job.JobChatAction::Remember(args)) => args
       _ => ""

@@ -296,15 +296,24 @@ impl @channel.Channel for FeishuChannel with send(
         )
       }
       self.clear_progress_reaction(client, actual_account_id, stream_key)
-      client.send_text_message(
-        to,
-        message.content,
-        reply_to=message.reply_to,
-        reply_in_thread=match message.thread_id {
-          Some(_) => true
-          None => false
-        },
-      )
+      match
+        client.send_text_message(
+          to,
+          message.content,
+          reply_to=message.reply_to,
+          reply_in_thread=match message.thread_id {
+            Some(_) => true
+            None => false
+          },
+        ) {
+        Ok(result) => Ok(result)
+        Err(error) => {
+          self.log_warn(
+            "Feishu reply send failed for \{actual_account_id}, falling back to plain send: \{error}",
+          )
+          client.send_text_message(to, message.content)
+        }
+      }
     }
     None =>
       Err(
@@ -1153,7 +1162,14 @@ pub fn FeishuChannel::set_test_websocket_endpoint_sequence(
 fn parse_feishu_text_content(raw : String) -> String {
   let parsed : Result[Json, Error] = try? @json.parse(raw)
   match parsed {
-    Ok({ "text": String(text), .. }) => strip_feishu_mentions(text)
+    Ok({ "text": String(text), .. }) => {
+      let stripped = strip_feishu_mentions(text)
+      if stripped.is_blank() {
+        text.trim().to_string()
+      } else {
+        stripped
+      }
+    }
     Ok(json) => json.stringify()
     Err(_) => raw
   }
@@ -2062,7 +2078,15 @@ fn FeishuChannel::resolve_account_id(self : FeishuChannel) -> String? {
 
 ///|
 fn strip_feishu_mentions(text : String) -> String {
-  let parts = text.split(" ").map(fn(part) { part.to_string() }).collect()
+  let normalized = text
+    .replace(old="\r", new=" ")
+    .replace(old="\n", new=" ")
+    .replace(old="\t", new=" ")
+  let parts = normalized
+    .split(" ")
+    .map(fn(part) { part.trim().to_string() })
+    .filter(fn(part) { !part.is_blank() })
+    .collect()
   parts
   .filter(fn(part) { !part.has_prefix("@_user_") })
   .join(" ")

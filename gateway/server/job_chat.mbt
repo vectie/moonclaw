@@ -107,30 +107,22 @@ fn message_resume_input(message : @channel.Message) -> Json {
 }
 
 ///|
-fn resume_reply_text(message : @channel.Message) -> String {
+fn slash_resume_text(message : @channel.Message) -> String {
   let trimmed = message.content.trim().to_string()
   let lower = trimmed.to_lower()
-  if lower == "/resume" || lower == "resume" {
+  if lower == "/resume" {
     ""
   } else if lower.has_prefix("/resume ") {
     trimmed[8:].to_string().trim().to_string()
-  } else if lower.has_prefix("resume:") {
-    trimmed[7:].to_string().trim().to_string()
-  } else if lower.has_prefix("resume ") {
-    trimmed[7:].to_string().trim().to_string()
   } else {
     trimmed
   }
 }
 
 ///|
-fn is_explicit_resume_reply(message : @channel.Message) -> Bool {
+fn is_slash_resume_reply(message : @channel.Message) -> Bool {
   let lower = message.content.trim().to_string().to_lower()
-  lower == "/resume" ||
-  lower == "resume" ||
-  lower.has_prefix("/resume ") ||
-  lower.has_prefix("resume:") ||
-  lower.has_prefix("resume ")
+  lower == "/resume" || lower.has_prefix("/resume ")
 }
 
 ///|
@@ -141,10 +133,9 @@ async fn Gateway::handle_waiting_job_reply(
   message : @channel.Message,
 ) -> @channel.Message? {
   guard message.reply_to is Some(_) else { return None }
+  guard is_slash_resume_reply(message) else { return None }
   let has_attachments = !message.attachments.is_empty()
-  let explicit_resume = is_explicit_resume_reply(message)
-  guard explicit_resume || has_attachments else { return None }
-  let resume_text = resume_reply_text(message)
+  let resume_text = slash_resume_text(message)
   let (definition, waiting_run) = match
     self.latest_waiting_job_for_message(channel_id, account_id, message) {
     Some(matched) => matched
@@ -177,18 +168,13 @@ async fn Gateway::handle_waiting_job_reply(
   } else {
     ""
   }
-  let resume_mode = if has_attachments {
-    "Resume input received from attachment reply."
-  } else {
-    "Resume input received from explicit resume reply."
-  }
   Some(
     self.job_reply_message(
       channel_id,
       account_id,
       message,
       [
-        resume_mode,
+        "Resume input received from `/resume` reply.",
         "Resumed waiting job `\{definition.id}`.",
         "Previous waiting run: `\{waiting_run.id}`",
         "New run: `\{resumed.id}`",
@@ -782,6 +768,22 @@ async fn Gateway::handle_job_notify_command(
 }
 
 ///|
+async fn Gateway::handle_resume_job_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> @channel.Message {
+  match self.handle_waiting_job_reply(channel_id, account_id, message) {
+    Some(reply) => reply
+    None =>
+      self.job_reply_message(
+        channel_id, account_id, message, "Use `/resume` as a reply to the waiting job message to resume it.",
+      )
+  }
+}
+
+///|
 async fn Gateway::handle_job_chat_command(
   self : Gateway,
   channel_id : String,
@@ -790,10 +792,15 @@ async fn Gateway::handle_job_chat_command(
 ) -> @channel.Message? {
   let trimmed = message.content.trim().to_string()
   let action = @job.parse_job_chat_action(trimmed, message.reply_to is Some(_))
-  if action is None {
+  if action is Some(@job.JobChatAction::Resume(_)) {
     match self.handle_waiting_job_reply(channel_id, account_id, message) {
       Some(reply) => return Some(reply)
-      None => ()
+      None =>
+        return Some(
+          self.job_reply_message(
+            channel_id, account_id, message, "Use `/resume` as a reply to the waiting job message to resume it.",
+          ),
+        )
     }
   }
   if action is Some(_) && !self.security_runtime().allows_native_commands(true) {
@@ -819,6 +826,9 @@ async fn Gateway::handle_job_chat_command(
     },
     async fn(args) {
       self.handle_revise_job_command(channel_id, account_id, message, args)
+    },
+    async fn(_args) {
+      self.handle_resume_job_command(channel_id, account_id, message)
     },
     async fn(args) {
       self.handle_job_status_command(channel_id, account_id, message, args)

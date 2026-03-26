@@ -15,6 +15,7 @@ pub(all) enum JobChatAction {
   Confirm(String)
   Reject(String)
   Revise(String)
+  Resume(String)
   JobStatus(String)
   JobWorkspace(String)
   Jobs
@@ -402,6 +403,7 @@ pub fn parse_job_chat_action(
     "/confirm" => Some(JobChatAction::Confirm(args))
     "/reject" => Some(JobChatAction::Reject(args))
     "/revise" => Some(JobChatAction::Revise(args))
+    "/resume" => Some(JobChatAction::Resume(args))
     "/job-status" => Some(JobChatAction::JobStatus(args))
     "/job-workspace" | "/job-workspace-status" =>
       Some(JobChatAction::JobWorkspace(args))
@@ -423,6 +425,7 @@ pub async fn[T] dispatch_job_chat_action(
   on_confirm : async (String) -> T,
   on_reject : async (String) -> T,
   on_revise : async (String) -> T,
+  on_resume : async (String) -> T,
   on_status : async (String) -> T,
   on_workspace : async (String) -> T,
   on_jobs : async () -> T,
@@ -437,6 +440,7 @@ pub async fn[T] dispatch_job_chat_action(
     Some(JobChatAction::Confirm(args)) => Some(on_confirm(args))
     Some(JobChatAction::Reject(args)) => Some(on_reject(args))
     Some(JobChatAction::Revise(args)) => Some(on_revise(args))
+    Some(JobChatAction::Resume(args)) => Some(on_resume(args))
     Some(JobChatAction::JobStatus(args)) => Some(on_status(args))
     Some(JobChatAction::JobWorkspace(args)) => Some(on_workspace(args))
     Some(JobChatAction::Jobs) => Some(on_jobs())
@@ -475,7 +479,7 @@ pub fn render_job_status(
   }
   let waiting_guidance = if snapshot.status == "\"WaitingForInput\"" {
     [
-      "Reply in this Feishu thread with attachments, or reply with `resume:` followed by the missing data.",
+      "Reply in this Feishu thread with `/resume` and the missing data, optionally with attachments.",
       "Ordinary plain chat messages do not resume the job.",
     ]
   } else {

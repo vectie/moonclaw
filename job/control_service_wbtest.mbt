@@ -129,7 +129,7 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
   )
   inspect(
     reply.contains(
-      "Reply in this Feishu thread with attachments, or reply with `resume:` followed by the missing data.",
+      "Reply in this Feishu thread with `/resume` and the missing data, optionally with attachments.",
     ),
     content="true",
   )
