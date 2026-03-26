@@ -302,7 +302,11 @@ impl @json.FromJson for ProposalPlanPayload with from_json(
     _ =>
       match obj.get("plan") {
         Some(plan_json) => Some(@json.from_json(plan_json, path~))
-        _ => None
+        _ =>
+          match obj.get("draft_plan") {
+            Some(plan_json) => Some(@json.from_json(plan_json, path~))
+            _ => None
+          }
       }
   }
   { title, summary, tags, steps }
@@ -471,8 +475,11 @@ fn planner_repair_prompt(
   prior_output : String,
 ) -> String {
   [
-    "Your previous plan was under-decomposed for this request.",
+    "Your previous plan did not follow the required planning contract closely enough.",
+    "The loaded `job-planning` skill is authoritative. Follow its exact JSON schema and forbidden-alias rules.",
     "Return JSON only.",
+    "Use the exact top-level shape from the skill: `title`, `summary`, `tags`, `steps`.",
+    "Do not use aliases such as `plan`, `draft_plan`, `job`, `request_text`, `overview`, `step`, `details`, or `objective`.",
     "Do not return a single generic execute step.",
     "Produce 4 to 8 concrete phases when the request is analytical, business, estimation, due-diligence, or report-oriented.",
     "For this request, return at least 5 steps unless the request is obviously trivial.",
@@ -653,14 +660,14 @@ fn planner_system_prompt(e2e_mode? : Bool = false) -> String {
   [
     "You design safe draft job plans for an automation system.",
     "Never execute the job.",
+    "The loaded `job-planning` skill is the authoritative output contract.",
+    "Follow that skill exactly.",
     "Return strict JSON only.",
-    "JSON shape:",
-    "{\"title\": string, \"summary\": string, \"tags\": string[], \"steps\": [{\"id\": string, \"title\": string, \"prompt\": string, \"kind\": string, \"metadata\"?: object, \"child_profile\"?: string, \"execution_mode\"?: string, \"execution_target\"?: string, \"include_parent_outputs\"?: boolean, \"max_depth\"?: number}]}",
+    "Use the exact field names defined by the skill and do not invent aliases.",
     "Use kind `job.analysis` unless a better existing workflow step kind is clearly required.",
     "Write concrete, execution-oriented steps.",
     "Use the smallest sufficient number of steps, but do not collapse non-trivial work into one generic execute step.",
     "For non-trivial analytical, business, calculation, due-diligence, or report requests, produce 4 to 8 distinct phases.",
-    "Typical analytical phases include: information collection, scheme or method design, estimation or modeling, financial or comparative analysis, risk review, and report generation.",
     ..if e2e_mode {
       e2e_planner_system_guidance()
     } else {
@@ -668,8 +675,6 @@ fn planner_system_prompt(e2e_mode? : Bool = false) -> String {
     },
     "Step titles should be short and human-readable.",
     "Step prompts should tell the step exactly what to produce.",
-    "Example request: Land acquisition calculation",
-    "Example good step titles: Information collection; Scheme design; Cost estimation; Marketing pricing; Financial analysis; Risk assessment; Report generation",
   ].join("\n")
 }
 
@@ -734,9 +739,9 @@ fn planner_request_prompt(
     _ => parts
   }
   [
-    ..parts, "Return JSON only.", "If the request is non-trivial, decompose it into multiple meaningful steps instead of a single generic execution step.",
-    "For analytical or business requests, prefer phases like information collection, scheme design, estimation, analysis, risk review, and final reporting when relevant.",
-    "Example: for `Land acquisition calculation`, a good plan would break into information collection, scheme design, cost estimation, marketing pricing, financial analysis, risk assessment, and report generation.",
+    ..parts, "Use the loaded `job-planning` skill as the authoritative contract.",
+    "Return JSON only.", "Use the exact field names from the skill and do not invent aliases.",
+    "If the request is non-trivial, decompose it into multiple meaningful steps instead of a single generic execution step.",
   ].join("\n\n")
 }
 

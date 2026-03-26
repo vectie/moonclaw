@@ -1,4 +1,35 @@
 ///|
+
+///|
+fn adaptive_resume_instruction_text(text : String) -> String? {
+  let trimmed = text.trim().to_string()
+  if trimmed.is_blank() {
+    None
+  } else {
+    Some(trimmed)
+  }
+}
+
+///|
+fn adaptive_resume_instruction_from_json(json : Json) -> String? {
+  match json {
+    { "resume_content": String(text), .. } =>
+      adaptive_resume_instruction_text(text)
+    { "resume_input": nested, .. } =>
+      adaptive_resume_instruction_from_json(nested)
+    _ => None
+  }
+}
+
+///|
+fn resume_instruction_from_context(context : WorkflowStepContext) -> String? {
+  match context.initial_input {
+    Some(input) => adaptive_resume_instruction_from_json(input)
+    None => None
+  }
+}
+
+///|
 pub fn adaptive_decision_system_prompt() -> String {
   [
     @prompt.prelude, "You are deciding whether an analysis step is truly complete or should expand.",
@@ -11,9 +42,12 @@ pub fn adaptive_decision_system_prompt() -> String {
     "Use needs_subplan when the work can still make progress by splitting into smaller executable research, collection, verification, checklist, template, comparison, or analysis tasks, even if some final facts are still missing.",
     "Do not default to subplanning. Only request a subplan when decomposition would materially improve execution.",
     "If the output contains both caveats and a usable final deliverable, choose completed. If the output is mostly a blocker report or a request for more information, do not choose completed.",
+    "If operator resume guidance authorizes guessing, best-effort estimation, or proceeding with assumptions, and the output already provides a usable deliverable with explicit assumptions, choose completed instead of needs_input.",
+    "Do not downgrade a usable assumption-based deliverable to needs_input merely because it still lists risks, caveats, or remaining unknowns.",
     "Examples:", "{\"verdict\":\"needs_input\",\"summary\":\"Parcel and pricing inputs are still missing.\",\"missing_inputs\":[\"parcel location\",\"parcel size\",\"comparable sales\"]}",
     "{\"verdict\":\"needs_subplan\",\"summary\":\"The diligence work should be split before valuation.\",\"suggested_substeps\":[{\"title\":\"Collect comparable sales\",\"prompt\":\"Gather recent comparable land sales and normalize unit pricing.\"},{\"title\":\"Review zoning and utilities\",\"prompt\":\"Check zoning, entitlement status, access, and utility availability.\"}]}",
     "{\"verdict\":\"needs_subplan\",\"summary\":\"The final estimate is blocked on parcel facts, but useful preparation can still continue.\",\"suggested_substeps\":[{\"title\":\"Build missing-input checklist\",\"prompt\":\"Prepare the minimum parcel, zoning, and market data checklist required for the final estimate.\"},{\"title\":\"Build sensitivity template\",\"prompt\":\"Create a sensitivity framework for price, parcel size, entitlement timing, and site-prep risk.\"}]}",
+    "{\"verdict\":\"completed\",\"summary\":\"A usable screening-level estimate was produced with explicit assumptions under operator authorization to guess missing data.\"}",
   ].join("\n\n")
 }
 
@@ -31,6 +65,13 @@ pub fn adaptive_decision_prompt(
     execution.content,
     "Decide whether this output is complete, needs external input, or should be expanded into a child subplan.",
   ]
+  let sections = match resume_instruction_from_context(context) {
+    Some(text) =>
+      [
+        ..sections, "Operator resume guidance:", text, "Treat this resume guidance as authoritative. If it authorizes assumptions or best-effort guessing, prefer completed when the current output already delivers a usable result with explicit assumptions.",
+      ]
+    None => sections
+  }
   let sections = if context.outputs.is_empty() {
     sections
   } else {
@@ -117,6 +158,13 @@ pub fn adaptive_missing_inputs_fill_prompt(
     envelope.summary.unwrap_or("The step is blocked on missing inputs."),
     "List the exact missing inputs still required.",
   ]
+  let sections = match resume_instruction_from_context(context) {
+    Some(text) =>
+      [
+        ..sections, "Operator resume guidance:", text, "If this guidance authorizes assumptions or best-effort guessing, only list missing inputs that truly still block all meaningful completion.",
+      ]
+    None => sections
+  }
   let sections = if context.outputs.is_empty() {
     sections
   } else {

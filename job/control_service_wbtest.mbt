@@ -138,11 +138,15 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
   inspect(reply.contains("Status: \"WaitingForInput\""), content="true")
   inspect(reply.contains("Current step: step-1"), content="true")
   inspect(
-    reply.contains("Waiting for input on step step-1: parcel size"),
+    reply.contains("Summary: Waiting for input on step step-1"),
     content="true",
   )
   inspect(reply.contains("Missing inputs required:"), content="true")
   inspect(reply.contains("- parcel size"), content="true")
+  inspect(
+    !reply.contains("Latest event: job.waiting_for_input - parcel size"),
+    content="true",
+  )
   inspect(
     reply.contains(
       "Reply in this Feishu thread with `/resume` and the missing data, optionally with attachments.",

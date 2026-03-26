@@ -22,6 +22,7 @@ Job control rule:
 
 - job-related control should require slash commands
 - `WaitingForInput` resume should only happen on a reply beginning with `/resume`
+- `/resume` should resume the same run in place from the blocked step
 - ordinary non-slash chat should remain normal conversation input
 
 ## Proposal Drafting
@@ -44,6 +45,11 @@ Expected behavior for `/e2e <description>`:
    - normal planned analysis steps
    - optional postprocess steps such as `presentation_postprocess`
 3. No job is executed yet.
+
+Expected distinction:
+
+- `/plan-job` is the classic two-stage draft and confirm flow
+- `/e2e` is the augmented flow with preprocess and optional postprocess
 
 Safety rule:
 

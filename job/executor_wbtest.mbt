@@ -156,3 +156,82 @@ async test "execution_notification_hooks sends start and finish notifications" {
     )
   })
 }
+
+///|
+async test "execute_run_lifecycle does not send stale start notification when resuming waiting run" {
+  @fsx.with_temporary_directory("job-executor-resume-hooks-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let runtime = RuntimeManager::new(root~)
+    let definition = JobDefinition::{
+      id: "job-1",
+      kind: "generic.analysis",
+      enabled: true,
+      config: {},
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("workflow-1"),
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    }
+    runtime.register_definition(definition)
+    runtime.register_workflow(WorkflowDefinition::{
+      id: "workflow-1",
+      kind: "generic.analysis",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "step-1",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    })
+    runtime
+    .store()
+    .save_run(JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: TriggerSource::Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: RunStatus::WaitingForInput,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(10),
+      completed_at: Some(20),
+      summary: Some("waiting"),
+      error: Some("Analysis requires input: parcel size"),
+    })
+    let marks : Map[String, Int] = {}
+    execute_run_lifecycle(
+      runtime,
+      "run-1",
+      fn() { 100 },
+      fn() {
+        let engine = WorkflowEngine::new(runtime~)
+        engine.register_handler(
+          WorkflowStepHandler::new(kind="job.analysis", run=fn(_ctx) {
+            Ok(WorkflowStepResult::new(output={ "ok": true }))
+          }),
+        )
+        engine
+      },
+      initial_input=Some({ "resume_content": "guess missing data" }),
+      hooks=RunExecutionHooks::new(
+        on_started=fn(_definition, _run) { marks.set("started", 1) },
+        on_finished=fn(_definition, _run) { marks.set("finished", 1) },
+      ),
+    )
+    let run = match runtime.store().get_run("run-1") {
+      Some(run) => run
+      None => fail("expected run")
+    }
+    inspect(run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(marks.contains("started"), content="false")
+    inspect(marks.contains("finished"), content="true")
+  })
+}

@@ -268,6 +268,48 @@ async test "plan_e2e_job_proposal appends presentation render step when renderer
 }
 
 ///|
+async test "plan_e2e_job_proposal preprocess prompt never asks for waiting input" {
+  let proposal = plan_e2e_job_proposal(
+    "proposal-preprocess-no-wait-1",
+    "Land acquisition estimation",
+    100,
+    executor=fake_planner_executor(
+      "{\"title\":\"Land acquisition estimation\",\"summary\":\"Analyze first.\",\"steps\":[{\"id\":\"analyze\",\"title\":\"Estimate land value\",\"prompt\":\"Estimate land value from the available evidence.\",\"kind\":\"job.analysis\"}]}",
+    ),
+    intake=Some({
+      "requested_output_format": "Board memo",
+      "starter_attachments": [
+        {
+          "id": "file-1",
+          "filename": "parcel.pdf",
+          "mime_type": "application/pdf",
+        },
+      ],
+    }),
+  )
+  let preprocess = proposal.steps[0]
+  inspect(preprocess.id, content="context_preprocess")
+  inspect(
+    preprocess.prompt.contains(
+      "Do not ask the user for more input from this preprocessing step.",
+    ),
+    content="true",
+  )
+  inspect(
+    preprocess.prompt.contains(
+      "Do not return waiting, blocker, or control JSON from this preprocessing step.",
+    ),
+    content="true",
+  )
+  inspect(
+    preprocess.prompt.contains(
+      "continue with best-effort assumptions instead of pausing for input",
+    ),
+    content="true",
+  )
+}
+
+///|
 async test "plan_job_proposal includes decomposition guidance for land acquisition calculation" {
   let proposal = plan_job_proposal(
     "proposal-land-acquisition-1",
@@ -276,8 +318,12 @@ async test "plan_job_proposal includes decomposition guidance for land acquisiti
     executor=AnalysisExecutor::new(run=fn(request) {
       let prompt = request.prompt
       let has_example = prompt.contains("Land acquisition calculation") &&
-        prompt.contains("information collection") &&
-        prompt.contains("risk assessment")
+        prompt.contains(
+          "If the request is non-trivial, decompose it into multiple meaningful steps",
+        ) &&
+        prompt.contains(
+          "Use the loaded `job-planning` skill as the authoritative contract.",
+        )
       Ok(AnalysisExecution::{
         model_name: "default",
         content: if has_example {
@@ -322,9 +368,17 @@ async test "plan_job_proposal loads skills/job-planning/SKILL.md when present" {
         let has_skill_content = request.prompt.contains(
           "Planning skill marker: decompose analytical work into real phases.",
         )
+        let has_authoritative_contract = request.prompt.contains(
+            "Use the loaded `job-planning` skill as the authoritative contract.",
+          ) &&
+          request.system_prompt.contains(
+            "The loaded `job-planning` skill is the authoritative output contract.",
+          )
         Ok(AnalysisExecution::{
           model_name: "default",
-          content: if has_skill_name && has_skill_content {
+          content: if has_skill_name &&
+            has_skill_content &&
+            has_authoritative_contract {
             "{\"title\":\"Skill-backed plan\",\"summary\":\"Planner loaded the planning skill.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Information collection\",\"prompt\":\"Collect the required inputs.\",\"kind\":\"job.analysis\"},{\"id\":\"report\",\"title\":\"Report generation\",\"prompt\":\"Generate the final report.\",\"kind\":\"job.analysis\"}]}"
           } else {
             "{\"title\":\"Missing skill\",\"summary\":\"Planner did not load the planning skill.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"execute\",\"title\":\"Execute\",\"prompt\":\"Execute.\",\"kind\":\"job.analysis\"}]}"
@@ -474,6 +528,33 @@ async test "plan_job_proposal accepts objective as prompt fallback" {
   inspect(
     proposal.steps[0].prompt,
     content="Use the starter attachment as the initial evidence set and identify what land-estimation inputs are already available.",
+  )
+}
+
+///|
+async test "plan_job_proposal accepts draft_plan as steps alias" {
+  let proposal = plan_job_proposal(
+    "proposal-draft-plan-1",
+    "Land acquisition estimation",
+    100,
+    executor=fake_planner_executor(
+      "{\"request_text\":\"Land acquisition estimation\",\"output_format\":\"structured intake\",\"draft_plan\":[{\"step\":1,\"title\":\"Collect and inspect available materials\",\"details\":\"Open the starter attachment and identify what parcel facts are already available.\"},{\"step\":2,\"title\":\"Estimate acquisition range\",\"objective\":\"Produce a grounded land-acquisition estimate with explicit assumptions and risks.\"}]}",
+    ),
+  )
+  inspect(proposal.title, content="Land acquisition estimation")
+  inspect(proposal.steps.length(), content="2")
+  inspect(
+    proposal.steps[0].title,
+    content="Collect and inspect available materials",
+  )
+  inspect(
+    proposal.steps[0].prompt,
+    content="Open the starter attachment and identify what parcel facts are already available.",
+  )
+  inspect(proposal.steps[1].title, content="Estimate acquisition range")
+  inspect(
+    proposal.steps[1].prompt,
+    content="Produce a grounded land-acquisition estimate with explicit assumptions and risks.",
   )
 }
 

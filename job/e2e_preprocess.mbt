@@ -61,8 +61,11 @@ fn preprocess_step_prompt(proposal : JobProposal) -> String {
     "Instead, produce a compact context pack for downstream steps.",
     "Include: core facts already known, missing facts you could discover, discovered public facts, working assumptions, source pointers, and recommended focus areas for later steps.",
     "Prefer grounded searching over guessing, but if some public data remains unavailable, make clearly labeled reasonable assumptions so later steps can continue.",
+    "If the operator resumes with guidance like 'guess missing data' or otherwise authorizes assumptions, continue with best-effort assumptions instead of pausing for input.",
     "Do not request a child subplan from this preprocessing step.",
-    "If preprocessing is still blocked on user-provided or external facts, return JSON only as {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]} and make `missing_inputs` explicit and concrete.",
+    "Do not ask the user for more input from this preprocessing step.",
+    "Do not return waiting, blocker, or control JSON from this preprocessing step.",
+    "Always return a usable context pack with explicit assumptions, open questions, and source pointers, even when some facts remain unknown.",
     "Requested final output format: \{requested_format}",
     "Original request: \{proposal.request_text}",
   ].join("\n\n")
@@ -75,6 +78,7 @@ fn preprocess_step_system_prompt() -> String {
     "Do not ask the user for more input in this step.", "Do not request a child subplan in this step.",
     "Search available workspace files, tools, and public sources as appropriate, then produce a compact context pack.",
     "If some facts are still unavailable, make clearly labeled reasonable assumptions so the main workflow can continue.",
+    "If operator resume guidance authorizes guessing or best-effort estimation, honor that guidance and continue with assumptions rather than pausing.",
     "Return normal prose or markdown only, not control JSON.",
   ].join("\n\n")
 }

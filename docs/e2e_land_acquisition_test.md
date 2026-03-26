@@ -79,6 +79,7 @@ Expected behavior:
 
 - the planner should preserve the file-aware context
 - preprocessing should treat the attachment as part of the initial working set
+- if the attachment is a scanned image PDF and OCR is unavailable, MoonClaw may still continue with a clearly labeled assumptions-based estimate later in the run
 - later steps should use the file plus public context together
 
 ### Variant 3: Broad question plus presentation output
@@ -210,6 +211,20 @@ When the run pauses, resume it in Feishu with a slash command reply:
 
 You can also attach files in that reply.
 
+If you want MoonClaw to continue with explicit assumptions instead of pausing again, use guidance like:
+
+```text
+/resume guess missing data
+```
+
+Expected resume behavior:
+
+- the same run id is resumed in place
+- already-completed earlier steps are not rerun
+- Feishu should show new step progress after the `/resume` acknowledgement
+- a stale `WaitingForInput` snapshot should not be re-sent before the next real step event
+- if a later step can produce a usable screening result with explicit assumptions, MoonClaw should prefer that result over bouncing back into `WaitingForInput`
+
 Plain non-slash chat should remain normal conversation, not job control.
 
 ## What To Check In The Run Workspace
@@ -219,6 +234,12 @@ After a successful run, inspect:
 - the final report for decision-ready structure
 - the preprocessing outputs for source-grounded context gathering
 - the step outputs under `outputs/`
+
+Primary output locations:
+
+- `<run-workspace>/report.md`
+- `<run-workspace>/result.json`
+- `<run-workspace>/outputs/`
 
 For this scenario, the final memo should usually include:
 
@@ -283,7 +304,7 @@ Interpretation:
 
 Use this checklist for the end-to-end test.
 
-- `/plan-job` produces a real multi-step proposal
+- `/e2e` produces a real multi-step proposal
 - the first step is preprocessing
 - `/confirm` launches the run successfully
 - preprocessing outputs are written to the run workspace
@@ -297,7 +318,7 @@ Use this checklist for the end-to-end test.
 Use this exact message as a practical E2E test:
 
 ```text
-/plan-job Land acquisition estimation
+/e2e Land acquisition estimation
 
 We need a first-pass decision memo for whether this land opportunity is worth pursuing.
 
@@ -307,7 +328,7 @@ Output format: Board memo
 And for the presentation variant:
 
 ```text
-/plan-job Land acquisition estimation
+/e2e Land acquisition estimation
 
 We need a first-pass decision memo for whether this land opportunity is worth pursuing.
 

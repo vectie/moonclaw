@@ -622,7 +622,7 @@ pub fn GatewayJobApp::now(Self) -> Int
 pub async fn GatewayJobApp::plan_e2e_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::plan_e2e_proposal_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::plan_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
-pub async fn GatewayJobApp::plan_proposal_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
+pub async fn GatewayJobApp::plan_proposal_in_workspace(Self, String, String, String, e2e_mode? : Bool, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::reject_proposal(Self, JobProposal) -> Unit
 pub async fn GatewayJobApp::revise_draft_proposal(Self, JobProposal, String, String) -> Result[JobProposal, String]
 pub async fn GatewayJobApp::revise_proposal(Self, JobProposal, String) -> JobProposal

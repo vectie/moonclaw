@@ -478,9 +478,35 @@ pub fn analysis_system_prompt(config : AnalysisStepConfig) -> String {
 
 ///|
 fn analysis_adaptive_disabled(config : AnalysisStepConfig) -> Bool {
-  match config.metadata {
-    { "disable_adaptive": True, .. } => true
-    _ => false
+  metadata_bool_with_step_metadata(config.metadata, "disable_adaptive", false)
+}
+
+///|
+fn metadata_with_step_metadata(metadata : Json, key : String) -> Json? {
+  match metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(value) => Some(value)
+        None =>
+          match obj.get("step_metadata") {
+            Some(nested) => metadata_with_step_metadata(nested, key)
+            None => None
+          }
+      }
+    _ => None
+  }
+}
+
+///|
+fn metadata_bool_with_step_metadata(
+  metadata : Json,
+  key : String,
+  fallback : Bool,
+) -> Bool {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(True) => true
+    Some(False) => false
+    _ => fallback
   }
 }
 
@@ -770,10 +796,11 @@ async fn materialize_analysis_outputs_to_workspace(
     _ => ()
   }
   if is_final_workflow_step(store, context.run, context.step.id) {
-    let skip_primary = match config.metadata {
-      { "skip_primary_workspace_output": True, .. } => true
-      _ => false
-    }
+    let skip_primary = metadata_bool_with_step_metadata(
+      config.metadata,
+      "skip_primary_workspace_output",
+      false,
+    )
     if skip_primary {
       return
     }
@@ -926,6 +953,21 @@ fn resume_instruction_from_input(input : Json?) -> String? {
     Some({ "resume_input": nested, .. }) => resume_instruction_from_json(nested)
     Some(json) => resume_instruction_from_json(json)
     None => None
+  }
+}
+
+///|
+fn should_preserve_first_pass_on_empty_subplan(
+  context : WorkflowStepContext,
+  execution : AnalysisExecution,
+) -> Bool {
+  match
+    (
+      resume_instruction_from_input(context.initial_input),
+      parse_adaptive_analysis_envelope(execution.content),
+    ) {
+    (Some(_), None) if !execution.content.trim().to_string().is_blank() => true
+    _ => false
   }
 }
 
@@ -1319,6 +1361,25 @@ pub fn analysis_step_handler(
       result_payload,
       execution.content,
     )
+    let completed_result = Ok(
+      WorkflowStepResult::new(
+        output={
+          "status": "completed",
+          "model": execution.model_name,
+          "content": execution.content,
+          "conversation_id": execution.conversation_id,
+          "report_artifact_id": report_artifact.id,
+          "result_artifact_id": result_artifact.id,
+          "usage": usage_json(execution.usage),
+        },
+        summary=Some("Analysis completed"),
+        metrics=result_metrics(execution),
+        logs=[
+          "report artifact written: \{report_artifact.id}",
+          "result artifact written: \{result_artifact.id}",
+        ],
+      ),
+    )
     let adaptive_envelope = if analysis_adaptive_disabled(config) {
       None
     } else {
@@ -1364,10 +1425,14 @@ pub fn analysis_step_handler(
             }
             let substeps = adaptive_substeps(envelope)
             if substeps.is_empty() {
-              let detail = envelope.summary.unwrap_or(
-                "Adaptive subplan requested but no substeps were provided.",
-              )
-              Some(Err("Analysis requires input: \{detail}"))
+              if should_preserve_first_pass_on_empty_subplan(context, execution) {
+                Some(completed_result)
+              } else {
+                let detail = envelope.summary.unwrap_or(
+                  "Adaptive subplan requested but no substeps were provided.",
+                )
+                Some(Err("Analysis requires input: \{detail}"))
+              }
             } else {
               match compiler {
                 None =>
@@ -1430,25 +1495,6 @@ pub fn analysis_step_handler(
       }
       None => None
     }
-    let completed_result = Ok(
-      WorkflowStepResult::new(
-        output={
-          "status": "completed",
-          "model": execution.model_name,
-          "content": execution.content,
-          "conversation_id": execution.conversation_id,
-          "report_artifact_id": report_artifact.id,
-          "result_artifact_id": result_artifact.id,
-          "usage": usage_json(execution.usage),
-        },
-        summary=Some("Analysis completed"),
-        metrics=result_metrics(execution),
-        logs=[
-          "report artifact written: \{report_artifact.id}",
-          "result artifact written: \{result_artifact.id}",
-        ],
-      ),
-    )
     match adaptive_result {
       Some(result) => result
       None => completed_result
