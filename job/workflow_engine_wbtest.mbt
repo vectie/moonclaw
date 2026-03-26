@@ -385,6 +385,141 @@ async test "WorkflowEngine persists controller decisions from step output when p
 }
 
 ///|
+async test "WorkflowEngine resumes waiting run in place from blocked step" {
+  @fsx.with_temporary_directory("job-workflow-resume-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let runtime = RuntimeManager::new(root~)
+    let workflow = WorkflowDefinition::{
+      id: "workflow.resume",
+      kind: "test",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "preprocess",
+          kind: "test.preprocess",
+          config: {},
+          retry_policy: None,
+        },
+        WorkflowStepDefinition::{
+          id: "estimate",
+          kind: "test.estimate",
+          config: {},
+          retry_policy: None,
+        },
+        WorkflowStepDefinition::{
+          id: "finalize",
+          kind: "test.finalize",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: ["finalize"],
+    }
+    runtime.register_definition(workflow_test_definition(workflow.id))
+    runtime.register_workflow(workflow)
+    runtime
+    .store()
+    .save_run(JobRun::{
+      ..workflow_test_run(),
+      status: RunStatus::WaitingForInput,
+      started_at: Some(1000),
+      completed_at: Some(2000),
+      summary: Some("Waiting for input on step estimate"),
+    })
+    runtime
+    .store()
+    .save_step_run(JobStepRun::{
+      id: "run-workflow-1:preprocess",
+      run_id: "run-workflow-1",
+      step_id: "preprocess",
+      status: RunStatus::Succeeded,
+      started_at: Some(1100),
+      completed_at: Some(1200),
+      metrics: {},
+      logs: [],
+      retry_count: 0,
+      summary: Some("preprocess ok"),
+      output: Some({ "seed": 7 }),
+      error: None,
+    })
+    runtime
+    .store()
+    .save_step_run(JobStepRun::{
+      id: "run-workflow-1:estimate",
+      run_id: "run-workflow-1",
+      step_id: "estimate",
+      status: RunStatus::WaitingForInput,
+      started_at: Some(1300),
+      completed_at: Some(1400),
+      metrics: {},
+      logs: [],
+      retry_count: 0,
+      summary: Some("need parcel size"),
+      output: None,
+      error: Some("Analysis requires input: parcel size"),
+    })
+    let engine = WorkflowEngine::new(runtime~)
+    let preprocess_calls = Ref::new(0)
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.preprocess", run=fn(_context) {
+        preprocess_calls.val = preprocess_calls.val + 1
+        Ok(WorkflowStepResult::new(output={ "seed": 99 }))
+      }),
+    )
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.estimate", run=fn(context) {
+        let prior = context
+          .output("preprocess")
+          .map(fn(output) {
+            let data : Map[String, Int] = @json.from_json(output) catch {
+              _ => {}
+            }
+            data.get("seed").unwrap_or(0)
+          })
+          .unwrap_or(0)
+        let resumed = match context.initial_input {
+          Some({ "resume_content": String(text), .. }) => text
+          _ => ""
+        }
+        Ok(
+          WorkflowStepResult::new(
+            output={ "seed": prior, "resume": resumed },
+            summary=Some("estimate ok"),
+          ),
+        )
+      }),
+    )
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.finalize", run=fn(context) {
+        let prior = context.output("estimate").unwrap_or({})
+        Ok(WorkflowStepResult::new(output={ "final": prior }))
+      }),
+    )
+
+    let result = match
+      engine.execute_run(
+        "run-workflow-1",
+        fn() { 3000 },
+        initial_input=Some({ "resume_content": "guess missing data" }),
+      ) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(preprocess_calls.val, content="0")
+    inspect(result.run.id, content="run-workflow-1")
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    let estimate_text = result.outputs
+      .get("estimate")
+      .map(fn(output) { output.stringify() })
+      .unwrap_or("")
+    inspect(estimate_text.contains("\"seed\":7"), content="true")
+    inspect(
+      estimate_text.contains("\"resume\":\"guess missing data\""),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "WorkflowEngine accepts looser controller decision output shapes" {
   @fsx.with_temporary_directory(
     "job-workflow-controller-decision-loose-XXXXXX",

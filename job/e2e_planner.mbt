@@ -18,6 +18,9 @@ pub fn e2e_planner_prompt_sections(intake : Json?) -> Array[String] {
       sections.push(
         "If some data is missing, prefer steps that can explore available files, tools, skills, and public web data before falling back to assumptions.",
       )
+      sections.push(
+        "For local file work, stay inside the active workspace first. At most, look one directory above the workspace when clearly necessary. Do not search broadly across unrelated home or project directories.",
+      )
     }
     None => ()
   }

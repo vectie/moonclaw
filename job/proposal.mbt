@@ -98,6 +98,54 @@ fn non_blank_string_array_lines(value : Json?) -> String? {
 }
 
 ///|
+fn proposal_requested_output_format(proposal : JobProposal) -> String? {
+  match proposal_initial_input(proposal) {
+    Some(Object(obj)) =>
+      match obj.get("requested_output_format") {
+        Some(String(value)) if !value.trim().to_string().is_blank() =>
+          Some(value.trim().to_string())
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn proposal_starter_file_labels(proposal : JobProposal) -> Array[String] {
+  match proposal_initial_input(proposal) {
+    Some(Object(obj)) =>
+      match obj.get("starter_attachments") {
+        Some(Array(items)) => {
+          let files : Array[String] = []
+          for item in items {
+            match item {
+              Object(attachment) => {
+                let label = match attachment.get("filename") {
+                  Some(String(name)) if !name.trim().to_string().is_blank() =>
+                    name.trim().to_string()
+                  _ =>
+                    match attachment.get("id") {
+                      Some(String(id)) if !id.trim().to_string().is_blank() =>
+                        id.trim().to_string()
+                      _ => ""
+                    }
+                }
+                if !label.is_blank() {
+                  files.push(label)
+                }
+              }
+              _ => ()
+            }
+          }
+          files
+        }
+        _ => []
+      }
+    _ => []
+  }
+}
+
+///|
 struct ProposalPlanStepPayload {
   id : String?
   title : String
@@ -151,14 +199,18 @@ impl @json.FromJson for ProposalPlanStepPayload with from_json(
                   match non_blank_string_or_none(obj.get("instruction")) {
                     Some(instruction) => instruction
                     None =>
-                      match non_blank_string_or_none(obj.get("step")) {
-                        Some(step) => step
+                      match non_blank_string_or_none(obj.get("objective")) {
+                        Some(objective) => objective
                         None =>
-                          raise @json.JsonDecodeError(
-                            (
-                              path, "ProposalPlanStepPayload: missing 'prompt'/'details'/'description'/'instruction'/'step'",
-                            ),
-                          )
+                          match non_blank_string_or_none(obj.get("step")) {
+                            Some(step) => step
+                            None =>
+                              raise @json.JsonDecodeError(
+                                (
+                                  path, "ProposalPlanStepPayload: missing 'prompt'/'details'/'description'/'instruction'/'objective'/'step'",
+                                ),
+                              )
+                          }
                       }
                   }
               }
@@ -597,7 +649,7 @@ pub async fn apply_named_job_profile(
 }
 
 ///|
-fn planner_system_prompt() -> String {
+fn planner_system_prompt(e2e_mode? : Bool = false) -> String {
   [
     "You design safe draft job plans for an automation system.",
     "Never execute the job.",
@@ -609,7 +661,11 @@ fn planner_system_prompt() -> String {
     "Use the smallest sufficient number of steps, but do not collapse non-trivial work into one generic execute step.",
     "For non-trivial analytical, business, calculation, due-diligence, or report requests, produce 4 to 8 distinct phases.",
     "Typical analytical phases include: information collection, scheme or method design, estimation or modeling, financial or comparative analysis, risk review, and report generation.",
-    ..e2e_planner_system_guidance(),
+    ..if e2e_mode {
+      e2e_planner_system_guidance()
+    } else {
+      []
+    },
     "Step titles should be short and human-readable.",
     "Step prompts should tell the step exactly what to produce.",
     "Example request: Land acquisition calculation",
@@ -626,9 +682,14 @@ fn planner_request_prompt(
   existing? : JobProposal? = None,
   workspace? : String? = None,
   memory_context? : String? = None,
+  e2e_mode? : Bool = false,
 ) -> String {
   let parts = ["Create a draft plan for this requested job:", request_text]
-  let parts = [..parts, ..e2e_planner_prompt_sections(intake)]
+  let parts = if e2e_mode {
+    [..parts, ..e2e_planner_prompt_sections(intake)]
+  } else {
+    parts
+  }
   let parts = match workspace {
     Some(workspace) if !workspace.trim().to_string().is_blank() =>
       [..parts, "Workspace root: \{workspace}"]
@@ -718,10 +779,19 @@ fn planner_preferred_skills() -> Array[String] {
 }
 
 ///|
-pub async fn plan_job_proposal(
+fn with_e2e_pipeline(proposal : JobProposal) -> JobProposal {
+  proposal
+  |> mark_proposal_as_e2e()
+  |> with_e2e_preprocess_steps()
+  |> with_e2e_postprocess_steps()
+}
+
+///|
+async fn plan_job_proposal_with_mode(
   proposal_id : String,
   request_text : String,
   now_ms : Int,
+  e2e_mode : Bool,
   executor? : AnalysisExecutor = default_analysis_executor(),
   intake? : Json? = None,
   channel_id? : String? = None,
@@ -746,13 +816,14 @@ pub async fn plan_job_proposal(
       skills_prompt=loaded_skills,
       workspace~,
       memory_context~,
+      e2e_mode~,
     ),
     model_name: model.unwrap_or("default"),
     cwd,
     home,
     execution_mode: None,
     execution_target: None,
-    system_prompt: planner_system_prompt(),
+    system_prompt: planner_system_prompt(e2e_mode~),
     preferred_skills,
     enable_tools: false,
     web_search: false,
@@ -783,8 +854,6 @@ pub async fn plan_job_proposal(
     home.unwrap_or(cwd),
     workspace.unwrap_or(cwd),
   )
-  let fallback = with_e2e_preprocess_steps(fallback)
-  let fallback = with_e2e_postprocess_steps(fallback)
   let execution = match (executor.run)(request) {
     Ok(execution) => execution
     Err(error) =>
@@ -841,8 +910,7 @@ pub async fn plan_job_proposal(
         home.unwrap_or(cwd),
         workspace.unwrap_or(cwd),
       )
-      let proposal = with_e2e_preprocess_steps(proposal)
-      with_e2e_postprocess_steps(proposal)
+      proposal
     }
     None =>
       proposal_with_planner_diagnostic(
@@ -851,6 +919,80 @@ pub async fn plan_job_proposal(
         preview=Some(execution.content),
       )
   }
+}
+
+///|
+pub async fn plan_job_proposal(
+  proposal_id : String,
+  request_text : String,
+  now_ms : Int,
+  executor? : AnalysisExecutor = default_analysis_executor(),
+  intake? : Json? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+  cwd? : String = ".",
+  home? : String? = None,
+  workspace? : String? = None,
+  memory_context? : String? = None,
+) -> JobProposal {
+  plan_job_proposal_with_mode(
+    proposal_id,
+    request_text,
+    now_ms,
+    false,
+    executor~,
+    intake~,
+    channel_id~,
+    account_id~,
+    recipient~,
+    thread_id~,
+    model~,
+    cwd~,
+    home~,
+    workspace~,
+    memory_context~,
+  )
+}
+
+///|
+pub async fn plan_e2e_job_proposal(
+  proposal_id : String,
+  request_text : String,
+  now_ms : Int,
+  executor? : AnalysisExecutor = default_analysis_executor(),
+  intake? : Json? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+  cwd? : String = ".",
+  home? : String? = None,
+  workspace? : String? = None,
+  memory_context? : String? = None,
+) -> JobProposal {
+  with_e2e_pipeline(
+    plan_job_proposal_with_mode(
+      proposal_id,
+      request_text,
+      now_ms,
+      true,
+      executor~,
+      intake~,
+      channel_id~,
+      account_id~,
+      recipient~,
+      thread_id~,
+      model~,
+      cwd~,
+      home~,
+      workspace~,
+      memory_context~,
+    ),
+  )
 }
 
 ///|
@@ -879,13 +1021,14 @@ pub async fn revise_job_proposal(
       existing=Some(proposal),
       workspace~,
       memory_context~,
+      e2e_mode=proposal_is_e2e(proposal),
     ),
     model_name: model.unwrap_or("default"),
     cwd,
     home,
     execution_mode: None,
     execution_target: None,
-    system_prompt: planner_system_prompt(),
+    system_prompt: planner_system_prompt(e2e_mode=proposal_is_e2e(proposal)),
     preferred_skills,
     enable_tools: false,
     web_search: false,
@@ -921,8 +1064,11 @@ pub async fn revise_job_proposal(
         home.unwrap_or(cwd),
         workspace.unwrap_or(cwd),
       )
-      let revised = with_e2e_preprocess_steps(revised)
-      with_e2e_postprocess_steps(revised)
+      if proposal_is_e2e(proposal) {
+        with_e2e_pipeline(revised)
+      } else {
+        revised
+      }
     }
     None =>
       JobProposal::{
@@ -1048,8 +1194,23 @@ pub fn render_job_proposal_for_chat(proposal : JobProposal) -> String {
   if !family.is_blank() {
     lines.push("Family: \{family}")
   }
+  match proposal_requested_output_format(proposal) {
+    Some(format) => lines.push("Requested output: \{format}")
+    None => ()
+  }
   lines.push("")
   lines.push("Summary: \{proposal.summary}")
+  let starter_files = proposal_starter_file_labels(proposal)
+  let lines = if starter_files.is_empty() {
+    lines
+  } else {
+    [
+      ..lines,
+      "",
+      "Included starter files:",
+      ..starter_files.map(fn(file) { "- \{file}" }),
+    ]
+  }
   let lines = [..lines, "", "Planned steps:"]
   let lines = proposal.steps.fold(init=lines, fn(lines, step) {
     [..lines, "\{step.id}. \{step.title}"]

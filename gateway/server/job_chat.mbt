@@ -29,23 +29,29 @@ fn Gateway::job_reply_message(
 }
 
 ///|
-fn Gateway::waiting_job_matches_message(
+fn Gateway::waiting_job_scoped_match_score(
   self : Gateway,
   definition : @job.JobDefinition,
   run : @job.JobRun,
   channel_id : String,
   account_id : String,
   message : @channel.Message,
-) -> Bool {
-  guard run.status is @job.RunStatus::WaitingForInput else { return false }
+) -> Int {
+  guard run.status is @job.RunStatus::WaitingForInput else { return 0 }
   let target = match self.job_notification_target(definition) {
     Some(target) => target
-    None => return false
+    None => return 0
   }
-  target.channel_id == channel_id &&
-  target.account_id == account_id &&
-  target.recipient == message.to &&
-  target.thread_id == message.thread_id
+  guard target.channel_id == channel_id &&
+    target.account_id == account_id &&
+    target.recipient == message.to else {
+    return 0
+  }
+  if target.thread_id == message.thread_id {
+    2
+  } else {
+    1
+  }
 }
 
 ///|
@@ -55,7 +61,7 @@ fn Gateway::latest_waiting_job_for_message(
   account_id : String,
   message : @channel.Message,
 ) -> (@job.JobDefinition, @job.JobRun)? {
-  let matches : Array[(@job.JobDefinition, @job.JobRun)] = []
+  let matches : Array[(Int, @job.JobDefinition, @job.JobRun)] = []
   for run in self.job_runtime().store().list_runs() {
     guard run.status is @job.RunStatus::WaitingForInput else { continue }
     let definition = match
@@ -63,25 +69,30 @@ fn Gateway::latest_waiting_job_for_message(
       Some(definition) => definition
       None => continue
     }
-    if self.waiting_job_matches_message(
-        definition, run, channel_id, account_id, message,
-      ) {
-      matches.push((definition, run))
+    let score = self.waiting_job_scoped_match_score(
+      definition, run, channel_id, account_id, message,
+    )
+    if score > 0 {
+      matches.push((score, definition, run))
     }
   }
   if matches.is_empty() {
     None
   } else {
     matches.sort_by(fn(left, right) {
-      let left_ts = left.1.completed_at.unwrap_or(
-        left.1.started_at.unwrap_or(0),
+      let score_compare = right.0.compare(left.0)
+      if score_compare != 0 {
+        return score_compare
+      }
+      let left_ts = left.2.completed_at.unwrap_or(
+        left.2.started_at.unwrap_or(0),
       )
-      let right_ts = right.1.completed_at.unwrap_or(
-        right.1.started_at.unwrap_or(0),
+      let right_ts = right.2.completed_at.unwrap_or(
+        right.2.started_at.unwrap_or(0),
       )
       right_ts.compare(left_ts)
     })
-    Some(matches[0])
+    Some((matches[0].1, matches[0].2))
   }
 }
 
@@ -106,8 +117,48 @@ fn message_resume_input(message : @channel.Message) -> Json {
   }
 }
 
-fn plan_job_input(message : @channel.Message, request_text : String) -> Json {
-  let attachments = message.attachments.map(fn(attachment) {
+///|
+fn Gateway::definition_initial_input(
+  self : Gateway,
+  definition_id : String,
+) -> Json? {
+  let mut latest : @job.JobProposal? = None
+  for proposal in self.job_runtime().store().list_job_proposals() {
+    guard proposal.job_id == Some(definition_id) &&
+      proposal.status is @job.JobProposalStatus::Confirmed else {
+      continue
+    }
+    match latest {
+      Some(current) if current.updated_at >= proposal.updated_at => ()
+      _ => latest = Some(proposal)
+    }
+  }
+  match latest {
+    Some(proposal) => @job.proposal_initial_input(proposal)
+    None => None
+  }
+}
+
+///|
+fn thread_attachment_key(
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> String? {
+  match message.thread_id {
+    Some(thread_id) if !thread_id.trim().to_string().is_blank() =>
+      Some(
+        "\{channel_id}:\{account_id}:\{message.to}:\{thread_id.trim().to_string()}",
+      )
+    _ => Some("\{channel_id}:\{account_id}:\{message.to}:chat")
+  }
+}
+
+///|
+fn starter_attachments_from_channel(
+  attachments : Array[@channel.Attachment],
+) -> Array[@job.E2EStarterAttachment] {
+  attachments.map(fn(attachment) {
     @job.E2EStarterAttachment::new(
       id=attachment.id,
       mime_type=attachment.mime_type,
@@ -116,6 +167,81 @@ fn plan_job_input(message : @channel.Message, request_text : String) -> Json {
       size=attachment.size,
     )
   })
+}
+
+///|
+fn merge_starter_attachments(
+  earlier : Array[@job.E2EStarterAttachment],
+  current : Array[@job.E2EStarterAttachment],
+) -> Array[@job.E2EStarterAttachment] {
+  let merged : Array[@job.E2EStarterAttachment] = []
+  let seen : Map[String, Bool] = {}
+  for attachment in earlier {
+    let key = if attachment.id.is_blank() {
+      attachment.url
+    } else {
+      attachment.id
+    }
+    if !seen.contains(key) {
+      seen.set(key, true)
+      merged.push(attachment)
+    }
+  }
+  for attachment in current {
+    let key = if attachment.id.is_blank() {
+      attachment.url
+    } else {
+      attachment.id
+    }
+    if !seen.contains(key) {
+      seen.set(key, true)
+      merged.push(attachment)
+    }
+  }
+  merged
+}
+
+///|
+fn Gateway::remember_thread_attachments(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> Unit {
+  guard !message.attachments.is_empty() else { return }
+  let key = match thread_attachment_key(channel_id, account_id, message) {
+    Some(key) => key
+    None => return
+  }
+  let current = starter_attachments_from_channel(message.attachments)
+  let prior = self.recent_thread_attachments.get(key).unwrap_or([])
+  self.recent_thread_attachments[key] = merge_starter_attachments(
+    prior, current,
+  )
+}
+
+///|
+fn Gateway::thread_starter_attachments(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+) -> Array[@job.E2EStarterAttachment] {
+  let current = starter_attachments_from_channel(message.attachments)
+  let key = match thread_attachment_key(channel_id, account_id, message) {
+    Some(key) => key
+    None => return current
+  }
+  let prior = self.recent_thread_attachments.get(key).unwrap_or([])
+  merge_starter_attachments(prior, current)
+}
+
+///|
+fn plan_job_input(
+  message : @channel.Message,
+  request_text : String,
+  attachments : Array[@job.E2EStarterAttachment],
+) -> Json {
   @job.job_intake_json(
     request_text,
     attachments,
@@ -151,7 +277,6 @@ async fn Gateway::handle_waiting_job_reply(
   account_id : String,
   message : @channel.Message,
 ) -> @channel.Message? {
-  guard message.reply_to is Some(_) else { return None }
   guard is_slash_resume_reply(message) else { return None }
   let has_attachments = !message.attachments.is_empty()
   let resume_text = slash_resume_text(message)
@@ -160,28 +285,16 @@ async fn Gateway::handle_waiting_job_reply(
     Some(matched) => matched
     None => return None
   }
-  let resumed = match
-    self.trigger_job_definition(
-      definition.id,
-      trigger=@job.TriggerSource::Custom("resume"),
-      initial_input=Some(
-        message_resume_input(@channel.Message::{
-          ..message,
-          content: resume_text,
-        }),
-      ),
-    ) {
-    Ok(run) => run
-    Err(error) =>
-      return Some(
-        self.job_reply_message(
-          channel_id,
-          account_id,
-          message,
-          "Failed to resume waiting job `\{definition.id}`: \{error}",
-        ),
-      )
-  }
+  let resume_input = message_resume_input(@channel.Message::{
+    ..message,
+    content: resume_text,
+  })
+  let merged_input = @job.merge_initial_input_for_resume(
+    self.definition_initial_input(definition.id),
+    resume_input,
+  )
+  self.launch_job_run(waiting_run.id, initial_input=Some(merged_input))
+  let resumed = waiting_run
   let attachment_line = if has_attachments {
     "Attachments: \{message.attachments.length()}"
   } else {
@@ -195,8 +308,7 @@ async fn Gateway::handle_waiting_job_reply(
       [
         "Resume input received from `/resume` reply.",
         "Resumed waiting job `\{definition.id}`.",
-        "Previous waiting run: `\{waiting_run.id}`",
-        "New run: `\{resumed.id}`",
+        "Run: `\{resumed.id}`",
         attachment_line,
       ]
       .filter(fn(line) { !line.is_blank() })
@@ -532,14 +644,66 @@ async fn Gateway::handle_plan_job_command(
   message : @channel.Message,
   request_text : String,
 ) -> @channel.Message {
-  guard !request_text.is_blank() else {
+  let normalized_request_text = @job.normalized_request_text(request_text)
+  guard !normalized_request_text.is_blank() else {
     return self.job_reply_message(
       channel_id, account_id, message, "Usage: /plan-job <job description>",
     )
   }
   let proposal = self.job_app.plan_proposal(
-    request_text,
-    intake=Some(plan_job_input(message, request_text)),
+    normalized_request_text,
+    intake=Some(
+      plan_job_input(
+        message,
+        normalized_request_text,
+        self.thread_starter_attachments(channel_id, account_id, message),
+      ),
+    ),
+    channel_id=Some(channel_id),
+    account_id=Some(account_id),
+    recipient=Some(message.to),
+    thread_id=message.thread_id,
+  )
+  self.save_job_notification_preference(
+    channel_id,
+    account_id,
+    message.to,
+    message.thread_id,
+    @job.NotificationVerbosity::Normal,
+  )
+  let reply = self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_job_proposal_for_chat(proposal),
+  )
+  self.save_presented_job_proposal(proposal, reply)
+  reply
+}
+
+///|
+async fn Gateway::handle_e2e_job_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  request_text : String,
+) -> @channel.Message {
+  let normalized_request_text = @job.normalized_request_text(request_text)
+  guard !normalized_request_text.is_blank() else {
+    return self.job_reply_message(
+      channel_id, account_id, message, "Usage: /e2e <job description>",
+    )
+  }
+  let proposal = self.job_app.plan_e2e_proposal(
+    normalized_request_text,
+    intake=Some(
+      plan_job_input(
+        message,
+        normalized_request_text,
+        self.thread_starter_attachments(channel_id, account_id, message),
+      ),
+    ),
     channel_id=Some(channel_id),
     account_id=Some(account_id),
     recipient=Some(message.to),
@@ -801,7 +965,7 @@ async fn Gateway::handle_resume_job_command(
     Some(reply) => reply
     None =>
       self.job_reply_message(
-        channel_id, account_id, message, "Use `/resume` as a reply to the waiting job message to resume it.",
+        channel_id, account_id, message, "Use `/resume` in the same thread as the waiting job, optionally with attachments.",
       )
   }
 }
@@ -821,7 +985,7 @@ async fn Gateway::handle_job_chat_command(
       None =>
         return Some(
           self.job_reply_message(
-            channel_id, account_id, message, "Use `/resume` as a reply to the waiting job message to resume it.",
+            channel_id, account_id, message, "Use `/resume` in the same thread as the waiting job, optionally with attachments.",
           ),
         )
     }
@@ -840,6 +1004,9 @@ async fn Gateway::handle_job_chat_command(
     action,
     async fn(args) {
       self.handle_plan_job_command(channel_id, account_id, message, args)
+    },
+    async fn(args) {
+      self.handle_e2e_job_command(channel_id, account_id, message, args)
     },
     async fn(args) {
       self.handle_confirm_job_command(channel_id, account_id, message, args)

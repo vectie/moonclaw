@@ -453,6 +453,207 @@ async test "analysis_step_handler loads analysis-adaptation skill into followup 
 }
 
 ///|
+async test "analysis_step_handler degrades empty needs_subplan verdict into waiting for input" {
+  @fsx.with_temporary_directory("job-analysis-empty-subplan-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Produce a decision-ready land acquisition estimate.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          let content = match calls.val {
+            2 =>
+              "{\"verdict\":\"needs_subplan\",\"summary\":\"Split this into narrower research tasks before estimating.\"}"
+            _ =>
+              "The estimate is too broad and under-specified to complete directly."
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(calls.val, content="3")
+    inspect(
+      result.run.status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.run.summary.unwrap_or(""),
+      content="Waiting for input on step analyze: Split this into narrower research tasks before estimating.",
+    )
+  })
+}
+
+///|
+async test "analysis_step_handler asks AI to fill explicit missing inputs for waiting message" {
+  @fsx.with_temporary_directory("job-analysis-fill-missing-inputs-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Produce a decision-ready land acquisition estimate.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          let content = match calls.val {
+            2 =>
+              "{\"verdict\":\"needs_input\",\"summary\":\"More parcel facts are required before the estimate can proceed.\"}"
+            3 =>
+              "{\"verdict\":\"needs_input\",\"summary\":\"More parcel facts are required before the estimate can proceed.\",\"missing_inputs\":[\"parcel location\",\"parcel size\",\"comparable sales\"]}"
+            _ => "This is only a screening view and cannot be finalized yet."
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(calls.val, content="3")
+    inspect(
+      result.run.status.to_json().stringify(),
+      content="\"WaitingForInput\"",
+    )
+    inspect(
+      result.run.summary.unwrap_or(""),
+      content="Waiting for input on step analyze: parcel location; parcel size; comparable sales",
+    )
+  })
+}
+
+///|
+async test "analysis_step_handler asks AI to synthesize missing substeps before executing subplan" {
+  @fsx.with_temporary_directory("job-analysis-synth-subplan-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Produce a decision-ready land acquisition estimate.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
+      let workflow = WorkflowDefinition::{
+        id: "workflow.child.analysis",
+        kind: "test.child",
+        steps: [
+          WorkflowStepDefinition::{
+            id: "child-step",
+            kind: "test.child",
+            config: {},
+            retry_policy: None,
+          },
+        ],
+        output_bindings: ["child-step"],
+      }
+      let definition = JobDefinition::{
+        id: "job.child.analysis",
+        kind: "test.child",
+        enabled: true,
+        config: {},
+        schedule: None,
+        retry_policy: None,
+        workflow_id: Some(workflow.id),
+        created_at: now_ms,
+        updated_at: now_ms,
+        tags: ["child"],
+      }
+      ProposalCompilation::{
+        family: "generic",
+        definition,
+        workflow,
+        bindings: [],
+      }
+    })
+    let child_engine_factory = fn() {
+      let child_engine = WorkflowEngine::new(runtime=engine.runtime)
+      child_engine.register_handler(
+        WorkflowStepHandler::new(kind="test.child", run=async fn(_context) {
+          Ok(
+            WorkflowStepResult::new(
+              output={ "status": "completed", "note": "child complete" },
+              summary=Some("child complete"),
+            ),
+          )
+        }),
+      )
+      child_engine
+    }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          let content = match calls.val {
+            2 =>
+              "{\"verdict\":\"needs_subplan\",\"summary\":\"Split this into narrower research tasks before estimating.\"}"
+            3 =>
+              "{\"verdict\":\"needs_subplan\",\"summary\":\"Split this into narrower research tasks before estimating.\",\"suggested_substeps\":[{\"title\":\"Build checklist\",\"prompt\":\"Build the minimum data checklist needed for valuation.\"},{\"title\":\"Prepare sensitivity template\",\"prompt\":\"Prepare a sensitivity template for land acquisition assumptions.\"}]}"
+            _ =>
+              "The estimate is too broad and under-specified to complete directly."
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        compiler=Some(compiler),
+        engine_factory=Some(child_engine_factory),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(calls.val, content="3")
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
+      result.outputs
+      .get("analyze")
+      .map(fn(output) {
+        output.stringify().contains("\"status\":\"subplanned\"")
+      })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "analysis_step_handler repairs invalid followup judge output" {
   @fsx.with_temporary_directory("job-analysis-adaptive-repair-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -514,6 +715,59 @@ async test "analysis_step_handler honors adaptive max depth from moonclaw.json" 
     inspect(
       configured_adaptive_subplan_max_depth(dir, None).unwrap_or(0),
       content="5",
+    )
+  })
+}
+
+///|
+async test "build_analysis_request turns resume guess instruction into explicit assumption guidance" {
+  @fsx.with_temporary_directory("job-analysis-resume-guidance-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Estimate land acquisition value.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let captured_prompt : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          if captured_prompt.val.is_blank() {
+            captured_prompt.val = request.prompt
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "A best-effort estimate with labeled assumptions.",
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    ignore(
+      match
+        engine.execute_run(
+          "run-analysis-1",
+          fn() { 1000 },
+          initial_input=Some({ "resume_content": "guess missing data" }),
+        ) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "Resume instruction from user:\nguess missing data",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains("authoritative operator guidance"),
+      content="true",
     )
   })
 }
@@ -804,4 +1058,20 @@ async test "setup_analysis_agent registers execute_command tool" {
   )
   setup_analysis_agent(agent, "/tmp")
   inspect(agent.tools().contains("execute_command"), content="true")
+}
+
+///|
+async test "setup_analysis_agent registers web_search tool when enabled" {
+  let agent = @agent.new(
+    @model.Model::new(
+      api_key="",
+      base_url="https://example.invalid/v1",
+      name="test-model",
+      safe_zone_tokens=4096,
+    ),
+    cwd="/tmp",
+    logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
+  )
+  setup_analysis_agent(agent, "/tmp", web_search=true)
+  inspect(agent.tools().contains("web_search"), content="true")
 }

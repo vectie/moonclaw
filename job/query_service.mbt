@@ -79,6 +79,25 @@ fn run_output_lines(run : JobRun) -> Array[String] {
 }
 
 ///|
+fn waiting_input_line(steps : Array[JobStepRun]) -> String? {
+  let waiting = steps.filter(fn(step) {
+    step.status is RunStatus::WaitingForInput
+  })
+  guard !waiting.is_empty() else { return None }
+  let step = waiting[0]
+  let detail = match step.error {
+    Some(error) if error.has_prefix("Analysis requires input: ") =>
+      error["Analysis requires input: ".length():].trim().to_string()
+    _ => step.summary.unwrap_or("")
+  }
+  if detail.is_blank() {
+    None
+  } else {
+    Some("Missing inputs: \{detail}")
+  }
+}
+
+///|
 pub fn child_runs_for(store : SystemStore, run_id : String) -> Array[JobRun] {
   store.list_runs().filter(fn(run) { run.parent_run_id == Some(run_id) })
 }
@@ -149,6 +168,7 @@ pub async fn render_status_text(
       lineage_line,
       summary: run.summary,
       error: run.error,
+      missing_input_line: waiting_input_line(steps),
       child_runs,
       latest_event_line,
       output_lines: run_output_lines(run),

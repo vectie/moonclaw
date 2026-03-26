@@ -16,7 +16,7 @@ test "draft_job_proposal creates non-executing draft with steps" {
 }
 
 ///|
-async test "plan_job_proposal applies configured controller profile steps" {
+async test "plan_job_proposal applies configured controller profile steps without e2e preprocessing" {
   @fsx.with_temporary_directory("job-proposal-profile-XXXXXX", async fn(dir) {
     @fsx.write_to_file(
       @pathx.join(dir, "moonclaw.jobs.json"),
@@ -37,10 +37,9 @@ async test "plan_job_proposal applies configured controller profile steps" {
       proposal.suggested_family.unwrap_or(""),
       content="research_controller",
     )
-    inspect(proposal.steps.length(), content="3")
-    inspect(proposal.steps[0].id, content="context_preprocess")
-    inspect(proposal.steps[1].kind, content="job.delegate")
-    inspect(proposal.steps[2].kind, content="job.analysis")
+    inspect(proposal.steps.length(), content="2")
+    inspect(proposal.steps[0].kind, content="job.delegate")
+    inspect(proposal.steps[1].kind, content="job.analysis")
   })
 }
 
@@ -126,21 +125,21 @@ async test "plan_job_proposal uses model JSON when available" {
     recipient=Some("oc_chat_123"),
   )
   inspect(proposal.title, content="Weekly monitor")
-  inspect(proposal.steps.length(), content="3")
-  inspect(proposal.steps[0].id, content="context_preprocess")
-  inspect(proposal.steps[1].id, content="collect")
+  inspect(proposal.steps.length(), content="2")
+  inspect(proposal.steps[0].id, content="collect")
   inspect(proposal.tags.join(","), content="job,weekly")
 }
 
 ///|
-async test "plan_job_proposal includes structured intake in planner prompt" {
-  let proposal = plan_job_proposal(
+async test "plan_e2e_job_proposal includes structured intake in planner prompt" {
+  let proposal = plan_e2e_job_proposal(
     "proposal-intake-1",
     "Analyze the attached contract and produce a board memo.\nOutput format: Markdown memo",
     100,
     executor=AnalysisExecutor::new(run=fn(request) {
       let has_intake = request.prompt.contains("\"starter_attachments\"") &&
-        request.prompt.contains("\"requested_output_format\":\"Markdown memo\"")
+        request.prompt.contains("\"requested_output_format\":\"Markdown memo\"") &&
+        request.prompt.contains("stay inside the active workspace first")
       Ok(AnalysisExecution::{
         model_name: "default",
         content: if has_intake {
@@ -175,8 +174,29 @@ async test "plan_job_proposal includes structured intake in planner prompt" {
 }
 
 ///|
-async test "plan_job_proposal appends presentation postprocess when requested" {
-  let proposal = plan_job_proposal(
+test "merge_initial_input_for_resume preserves original intake and resume fields" {
+  let merged = merge_initial_input_for_resume(
+    Some({
+      "starter_attachments": [{ "id": "file-1", "filename": "contract.pdf" }],
+      "requested_output_format": "Board memo",
+    }),
+    { "resume_content": "guess missing data", "resume_message_id": "msg-1" },
+  )
+  let text = merged.stringify()
+  inspect(text.contains("\"starter_attachments\""), content="true")
+  inspect(
+    text.contains("\"requested_output_format\":\"Board memo\""),
+    content="true",
+  )
+  inspect(
+    text.contains("\"resume_content\":\"guess missing data\""),
+    content="true",
+  )
+}
+
+///|
+async test "plan_e2e_job_proposal appends presentation postprocess when requested" {
+  let proposal = plan_e2e_job_proposal(
     "proposal-presentation-1",
     "Analyze the company and prepare a deck.\nOutput format: board presentation deck",
     100,
@@ -199,7 +219,7 @@ async test "plan_job_proposal appends presentation postprocess when requested" {
 
 ///|
 async test "plan_job_proposal prepends context preprocessing step" {
-  let proposal = plan_job_proposal(
+  let proposal = plan_e2e_job_proposal(
     "proposal-preprocess-1",
     "Analyze the company and prepare a recommendation memo.",
     100,
@@ -216,8 +236,8 @@ async test "plan_job_proposal prepends context preprocessing step" {
 }
 
 ///|
-async test "plan_job_proposal appends presentation render step when renderer is configured" {
-  let proposal = plan_job_proposal(
+async test "plan_e2e_job_proposal appends presentation render step when renderer is configured" {
+  let proposal = plan_e2e_job_proposal(
     "proposal-presentation-render-1",
     "Analyze the company and prepare a deck.\nOutput format: board presentation deck",
     100,
@@ -271,11 +291,10 @@ async test "plan_job_proposal includes decomposition guidance for land acquisiti
       })
     }),
   )
-  inspect(proposal.steps.length(), content="8")
-  inspect(proposal.steps[0].id, content="context_preprocess")
-  inspect(proposal.steps[1].title, content="Information collection")
-  inspect(proposal.steps[6].title, content="Risk assessment")
-  inspect(proposal.steps[7].title, content="Report generation")
+  inspect(proposal.steps.length(), content="7")
+  inspect(proposal.steps[0].title, content="Information collection")
+  inspect(proposal.steps[5].title, content="Risk assessment")
+  inspect(proposal.steps[6].title, content="Report generation")
 }
 
 ///|
@@ -320,7 +339,7 @@ async test "plan_job_proposal loads skills/job-planning/SKILL.md when present" {
       workspace=Some(dir),
     )
     inspect(proposal.title, content="Skill-backed plan")
-    inspect(proposal.steps.length(), content="3")
+    inspect(proposal.steps.length(), content="2")
   })
 }
 
@@ -334,7 +353,7 @@ async test "plan_job_proposal reports invalid planner json in fallback summary" 
       "Here is a plan:\n1. Collect inputs\n2. Analyze\n3. Report",
     ),
   )
-  inspect(proposal.steps.length(), content="2")
+  inspect(proposal.steps.length(), content="1")
   inspect(
     proposal.summary.contains(
       "Planner fallback used: model output was not valid proposal JSON.",
@@ -354,13 +373,13 @@ async test "plan_job_proposal accepts step details as prompt fallback" {
       "{\"title\":\"Land acquisition estimation\",\"summary\":\"Use a decomposed plan.\",\"steps\":[{\"id\":\"scope\",\"title\":\"Clarify acquisition scope and assumptions\",\"details\":\"Define the target geography, parcel type, intended use, and time horizon.\"},{\"id\":\"inputs\",\"title\":\"Collect market and land inputs\",\"details\":\"Gather parcel, zoning, market, and comparable inputs.\"},{\"id\":\"finance\",\"title\":\"Estimate costs and financial outcome\",\"details\":\"Estimate acquisition costs, carrying costs, and expected financial outcome.\"},{\"id\":\"risk\",\"title\":\"Assess risks and produce report\",\"details\":\"Assess material risks and generate the final report.\"}]}",
     ),
   )
-  inspect(proposal.steps.length(), content="5")
+  inspect(proposal.steps.length(), content="4")
   inspect(
-    proposal.steps[1].title,
+    proposal.steps[0].title,
     content="Clarify acquisition scope and assumptions",
   )
   inspect(
-    proposal.steps[1].prompt,
+    proposal.steps[0].prompt,
     content="Define the target geography, parcel type, intended use, and time horizon.",
   )
 }
@@ -377,12 +396,12 @@ async test "plan_job_proposal accepts plan and step aliases from planner output"
   )
   inspect(proposal.title, content="Land acquisition estimation")
   inspect(proposal.summary, content="Use a decomposed plan.")
-  inspect(proposal.steps.length(), content="5")
+  inspect(proposal.steps.length(), content="4")
   inspect(
-    proposal.steps[1].title,
+    proposal.steps[0].title,
     content="Clarify scope and assumptions for the land acquisition estimate",
   )
-  inspect(proposal.steps[4].prompt, content="Assess risks and prepare report")
+  inspect(proposal.steps[3].prompt, content="Assess risks and prepare report")
 }
 
 ///|
@@ -395,25 +414,25 @@ async test "plan_job_proposal accepts rich step execution metadata" {
       "{\"title\":\"Research memo\",\"summary\":\"Use files and web search.\",\"steps\":[{\"id\":\"collect\",\"title\":\"Collect sources\",\"prompt\":\"Read the starter files and fetch the missing public context.\",\"kind\":\"job.analysis\",\"metadata\":{\"preferred_skills\":[\"research\"],\"enable_tools\":true,\"web_search\":true,\"system_prompt\":\"Stay source-grounded.\"}},{\"id\":\"delegate\",\"title\":\"Deep dive\",\"prompt\":\"Run a deeper branch.\",\"kind\":\"job.delegate\",\"child_profile\":\"research_deep\",\"execution_mode\":\"acp\",\"execution_target\":\"codex-main\",\"include_parent_outputs\":true,\"max_depth\":4}]}",
     ),
   )
-  inspect(proposal.steps.length(), content="3")
+  inspect(proposal.steps.length(), content="2")
   inspect(
-    proposal.steps[1].metadata.stringify(),
+    proposal.steps[0].metadata.stringify(),
     content="{\"preferred_skills\":[\"research\"],\"enable_tools\":true,\"web_search\":true,\"system_prompt\":\"Stay source-grounded.\"}",
   )
   inspect(
-    proposal.steps[2].child_profile.unwrap_or(""),
+    proposal.steps[1].child_profile.unwrap_or(""),
     content="research_deep",
   )
-  inspect(proposal.steps[2].execution_mode.unwrap_or(""), content="acp")
+  inspect(proposal.steps[1].execution_mode.unwrap_or(""), content="acp")
   inspect(
-    proposal.steps[2].execution_target.unwrap_or(""),
+    proposal.steps[1].execution_target.unwrap_or(""),
     content="codex-main",
   )
   inspect(
-    proposal.steps[2].include_parent_outputs.unwrap_or(false),
+    proposal.steps[1].include_parent_outputs.unwrap_or(false),
     content="true",
   )
-  inspect(proposal.steps[2].max_depth.unwrap_or(0), content="4")
+  inspect(proposal.steps[1].max_depth.unwrap_or(0), content="4")
 }
 
 ///|
@@ -427,13 +446,35 @@ async test "plan_job_proposal accepts planner job field and details arrays" {
     ),
   )
   inspect(proposal.title, content="Land acquisition estimation")
-  inspect(proposal.steps.length(), content="3")
-  inspect(proposal.steps[1].title, content="Clarify scope and assumptions")
+  inspect(proposal.steps.length(), content="2")
+  inspect(proposal.steps[0].title, content="Clarify scope and assumptions")
   inspect(
-    proposal.steps[1].prompt,
+    proposal.steps[0].prompt,
     content="Identify the target project geography.\nConfirm parcel type, intended use, and time horizon.",
   )
-  inspect(proposal.steps[2].title, content="Collect market and parcel inputs")
+  inspect(proposal.steps[1].title, content="Collect market and parcel inputs")
+}
+
+///|
+async test "plan_job_proposal accepts objective as prompt fallback" {
+  let proposal = plan_job_proposal(
+    "proposal-plan-objective-1",
+    "Land acquisition estimation",
+    100,
+    executor=fake_planner_executor(
+      "{\"request_text\":\"Land acquisition estimation\",\"plan\":[{\"step\":1,\"title\":\"Collect and inspect source materials\",\"objective\":\"Use the starter attachment as the initial evidence set and identify what land-estimation inputs are already available.\"},{\"step\":2,\"title\":\"Draft the memo\",\"objective\":\"Produce the board memo.\"}]}",
+    ),
+  )
+  inspect(proposal.title, content="Land acquisition estimation")
+  inspect(proposal.steps.length(), content="2")
+  inspect(
+    proposal.steps[0].title,
+    content="Collect and inspect source materials",
+  )
+  inspect(
+    proposal.steps[0].prompt,
+    content="Use the starter attachment as the initial evidence set and identify what land-estimation inputs are already available.",
+  )
 }
 
 ///|
@@ -460,9 +501,9 @@ async test "plan_job_proposal retries under-decomposed analytical plan" {
     }),
   )
   inspect(calls.val, content="2")
-  inspect(proposal.steps.length(), content="7")
-  inspect(proposal.steps[1].title, content="Information collection")
-  inspect(proposal.steps[6].title, content="Report generation")
+  inspect(proposal.steps.length(), content="6")
+  inspect(proposal.steps[0].title, content="Information collection")
+  inspect(proposal.steps[5].title, content="Report generation")
 }
 
 ///|
@@ -484,7 +525,7 @@ async test "plan_job_proposal reports under-decomposed plan after repair" {
     }),
   )
   inspect(calls.val, content="2")
-  inspect(proposal.steps.length(), content="2")
+  inspect(proposal.steps.length(), content="1")
   inspect(
     proposal.summary.contains(
       "Planner fallback used: planner returned an under-decomposed plan even after repair.",
@@ -629,7 +670,7 @@ async test "revise_job_proposal updates draft from model JSON" {
     ),
   )
   inspect(revised.title, content="Security-focused repo review")
-  inspect(revised.steps.length(), content="3")
+  inspect(revised.steps.length(), content="2")
   inspect(revised.summary.contains("security"), content="true")
   inspect(
     revised.revision_history.join("|"),
@@ -720,6 +761,43 @@ test "render_job_proposal_for_chat includes proposal steps" {
   let rendered = render_job_proposal_for_chat(proposal)
   inspect(rendered.contains("Planned steps:"), content="true")
   inspect(rendered.contains("execute"), content="true")
+}
+
+///|
+test "render_job_proposal_for_chat includes starter files and requested output" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal("proposal-7b", "Analyze the attached files.", 100),
+    profile_metadata: {
+      "job_intake": {
+        "requested_output_format": "Board memo",
+        "starter_attachments": [
+          { "id": "file-1", "filename": "parcel-brief.pdf" },
+          { "id": "file-2", "filename": "market-note.xlsx" },
+        ],
+      },
+    },
+  }
+  let rendered = render_job_proposal_for_chat(proposal)
+  inspect(rendered.contains("Requested output: Board memo"), content="true")
+  inspect(rendered.contains("Included starter files:"), content="true")
+  inspect(rendered.contains("- parcel-brief.pdf"), content="true")
+  inspect(rendered.contains("- market-note.xlsx"), content="true")
+}
+
+///|
+test "e2e intake handles inline output format suffix" {
+  inspect(
+    extract_output_format_hint(
+      "Land acquisition estimation Output format: Board memo",
+    ).unwrap_or(""),
+    content="Board memo",
+  )
+  inspect(
+    normalized_request_text(
+      "Land acquisition estimation Output format: Board memo",
+    ),
+    content="Land acquisition estimation",
+  )
 }
 
 ///|

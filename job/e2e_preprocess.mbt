@@ -55,12 +55,27 @@ fn preprocess_step_prompt(proposal : JobProposal) -> String {
   [
     "Do a lightweight preprocessing pass before the main workflow starts.",
     "Use the starter attachments, local context, tools, and public web search to gather missing background facts relevant to the job.",
+    "When using local file tools, search inside the active workspace first. At most, inspect the workspace parent directory when clearly necessary. Do not roam across unrelated directories.",
+    "If the initial input includes `resume_content` or resume attachments, treat them as newly supplied user input that may resolve earlier missing-data gaps.",
     "Do not try to produce the final answer yet.",
     "Instead, produce a compact context pack for downstream steps.",
     "Include: core facts already known, missing facts you could discover, discovered public facts, working assumptions, source pointers, and recommended focus areas for later steps.",
     "Prefer grounded searching over guessing, but if some public data remains unavailable, make clearly labeled reasonable assumptions so later steps can continue.",
+    "Do not request a child subplan from this preprocessing step.",
+    "If preprocessing is still blocked on user-provided or external facts, return JSON only as {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]} and make `missing_inputs` explicit and concrete.",
     "Requested final output format: \{requested_format}",
     "Original request: \{proposal.request_text}",
+  ].join("\n\n")
+}
+
+///|
+fn preprocess_step_system_prompt() -> String {
+  [
+    @prompt.prelude, "You are running a job-level preprocessing pass.", "This step runs once at the very beginning of the job to gather useful related context.",
+    "Do not ask the user for more input in this step.", "Do not request a child subplan in this step.",
+    "Search available workspace files, tools, and public sources as appropriate, then produce a compact context pack.",
+    "If some facts are still unavailable, make clearly labeled reasonable assumptions so the main workflow can continue.",
+    "Return normal prose or markdown only, not control JSON.",
   ].join("\n\n")
 }
 
@@ -70,9 +85,11 @@ fn preprocess_step_metadata() -> Json {
     "preferred_skills": ["research", "context-gathering"],
     "enable_tools": true,
     "web_search": true,
+    "system_prompt": preprocess_step_system_prompt(),
     "report_file_name": "preprocess_context.md",
     "result_file_name": "preprocess_context.json",
     "skip_primary_workspace_output": true,
+    "disable_adaptive": true,
     "preprocess_context": true,
     "board_lane": "Preprocess",
     "board_order": 10,

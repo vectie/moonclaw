@@ -372,6 +372,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
     dispatch_job_chat_action(
       Some(JobChatAction::Jobs),
       fn(_args) { "plan" },
+      fn(_args) { "e2e" },
       fn(_args) { "confirm" },
       fn(_args) { "reject" },
       fn(_args) { "revise" },
@@ -391,6 +392,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
     dispatch_job_chat_action(
       Some(JobChatAction::JobForceStop("run-1")),
       fn(_args) { "plan" },
+      fn(_args) { "e2e" },
       fn(_args) { "confirm" },
       fn(_args) { "reject" },
       fn(_args) { "revise" },
@@ -410,6 +412,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
     dispatch_job_chat_action(
       Some(JobChatAction::Remember("note")),
       fn(_args) { "plan" },
+      fn(_args) { "e2e" },
       fn(_args) { "confirm" },
       fn(_args) { "reject" },
       fn(_args) { "revise" },
@@ -429,6 +432,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
     dispatch_job_chat_action(
       Some(JobChatAction::Memories),
       fn(_args) { "plan" },
+      fn(_args) { "e2e" },
       fn(_args) { "confirm" },
       fn(_args) { "reject" },
       fn(_args) { "revise" },

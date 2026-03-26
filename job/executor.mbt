@@ -24,6 +24,11 @@ async fn notify_run_started(
   now_ms : Int,
   send : async (JobNotifyTarget, String) -> Unit,
 ) -> Unit {
+  let existing_event_count = state
+    .runtime()
+    .store()
+    .list_run_events(run.id)
+    .length()
   let target = match
     resolve_job_notify_target(state.runtime().store(), definition) {
     Some(target) => target
@@ -44,7 +49,10 @@ async fn notify_run_started(
   )
   state.set_notification_runtime_state(
     run.id,
-    initial_notification_runtime_state(now_ms),
+    initial_notification_runtime_state(
+      now_ms,
+      last_notified_event_count=existing_event_count,
+    ),
   )
 }
 

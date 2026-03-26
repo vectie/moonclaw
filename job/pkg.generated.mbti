@@ -12,7 +12,15 @@ pub fn adaptive_decision_prompt(WorkflowStepContext, AnalysisStepConfig, Analysi
 
 pub fn adaptive_decision_system_prompt() -> String
 
+pub fn adaptive_missing_inputs_fill_prompt(WorkflowStepContext, AnalysisStepConfig, AnalysisExecution, AdaptiveAnalysisEnvelope) -> String
+
+pub fn adaptive_missing_inputs_fill_system_prompt() -> String
+
 pub fn adaptive_missing_inputs_line(AdaptiveAnalysisEnvelope) -> String
+
+pub fn adaptive_subplan_fill_prompt(WorkflowStepContext, AnalysisStepConfig, AnalysisExecution, AdaptiveAnalysisEnvelope) -> String
+
+pub fn adaptive_subplan_fill_system_prompt() -> String
 
 pub fn adaptive_substeps(AdaptiveAnalysisEnvelope) -> Array[AdaptiveSubstepPayload]
 
@@ -48,7 +56,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn definition_display_title(JobDefinition) -> String
 
-pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
+pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
@@ -82,7 +90,7 @@ pub fn human_readable_proposal_id(String, Int, String) -> String
 
 pub fn human_readable_run_id(Int, String) -> String
 
-pub fn initial_notification_runtime_state(Int) -> JobNotificationRuntimeState
+pub fn initial_notification_runtime_state(Int, last_notified_event_count? : Int) -> JobNotificationRuntimeState
 
 pub fn job_intake_json(String, Array[E2EStarterAttachment], message_id? : String?, thread_id? : String?, content_type? : String?) -> Json
 
@@ -94,7 +102,13 @@ pub async fn load_run_ui_timeline(SystemStore, String) -> Array[JobUiTimelineEnt
 
 pub async fn loaded_skills_prompt(String, String?, Array[String]) -> String
 
+pub fn mark_proposal_as_e2e(JobProposal) -> JobProposal
+
+pub fn merge_initial_input_for_resume(Json?, Json) -> Json
+
 pub fn merge_job_intake_metadata(Json, Json?) -> Json
+
+pub fn normalized_request_text(String) -> String
 
 pub fn notification_preference_id(String, String, String, String?) -> String
 
@@ -110,6 +124,8 @@ pub fn parse_reply_thread_job_action(String) -> (String, String)?
 
 pub fn parse_revise_args(String) -> (String, String)?
 
+pub async fn plan_e2e_job_proposal(String, String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
+
 pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
 
 pub async fn prepare_run_workspace(SystemStore, JobDefinition, JobRun) -> JobRun
@@ -119,6 +135,8 @@ pub fn proposal_as_workflow(JobProposal, Int, String, String, workspace_root? : 
 pub fn proposal_for_reply(SystemStore, String?) -> JobProposal?
 
 pub fn proposal_initial_input(JobProposal) -> Json?
+
+pub fn proposal_is_e2e(JobProposal) -> Bool
 
 pub async fn record_controller_child_run(SystemStore, JobRun, WorkflowStepDefinition, String, String, String, Int) -> Unit
 
@@ -601,6 +619,8 @@ pub fn GatewayJobApp::new_workflow_engine_with_child_executor(Self, child_execut
 pub fn GatewayJobApp::new_workflow_engine_with_executors(Self, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> WorkflowEngine
 pub fn GatewayJobApp::next_id(Self) -> String
 pub fn GatewayJobApp::now(Self) -> Int
+pub async fn GatewayJobApp::plan_e2e_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
+pub async fn GatewayJobApp::plan_e2e_proposal_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::plan_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::plan_proposal_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::reject_proposal(Self, JobProposal) -> Unit
@@ -666,6 +686,7 @@ pub impl @json.FromJson for JobAskParams
 
 pub(all) enum JobChatAction {
   PlanJob(String)
+  E2EJob(String)
   Confirm(String)
   Reject(String)
   Revise(String)
@@ -961,6 +982,7 @@ pub(all) struct JobStatusSnapshot {
   lineage_line : String?
   summary : String?
   error : String?
+  missing_input_line : String?
   child_runs : Array[ChildRunStatus]
   latest_event_line : String
   output_lines : Array[String]
@@ -1336,6 +1358,7 @@ pub fn RuntimeManager::list_active_runs(Self) -> Array[JobRun]
 pub fn RuntimeManager::list_recent_runs(Self, limit? : Int) -> Array[JobRun]
 pub async fn RuntimeManager::load(Self) -> Unit
 pub async fn RuntimeManager::mark_run_failed(Self, String, Int, String, summary? : String?) -> JobRun?
+pub async fn RuntimeManager::mark_run_resumed(Self, String, Int) -> JobRun?
 pub async fn RuntimeManager::mark_run_started(Self, String, Int) -> JobRun?
 pub async fn RuntimeManager::mark_run_succeeded(Self, String, Int, summary? : String?) -> JobRun?
 pub async fn RuntimeManager::mark_run_waiting_for_input(Self, String, Int, summary? : String?) -> JobRun?

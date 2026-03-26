@@ -45,3 +45,89 @@ pub fn adaptive_decision_prompt(
     ..sections, "If the current output mainly reports blockers, missing facts, provisional screening status, or next actions, it is not completed.",
   ].join("\n\n")
 }
+
+///|
+pub fn adaptive_subplan_fill_system_prompt() -> String {
+  [
+    @prompt.prelude, "You are generating an executable child subplan for an analysis step.",
+    "Return strict JSON only.", "Return exactly this shape: {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}",
+    "Do not return completed or needs_input.", "Generate 2 to 6 concrete child substeps that can make useful progress now.",
+    "Each prompt must be executable and specific.", "Prefer research, verification, checklist, template, comparison, extraction, or synthesis tasks over vague planning language.",
+  ].join("\n\n")
+}
+
+///|
+pub fn adaptive_subplan_fill_prompt(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> String {
+  let sections = [
+    "Original step prompt:",
+    config.prompt,
+    "Step id: \{context.step.id}",
+    "Current analysis output:",
+    execution.content,
+    "Current subplan summary:",
+    envelope.summary.unwrap_or(
+      "This step should be decomposed into smaller tasks.",
+    ),
+    "Generate a concrete child subplan for this step.",
+  ]
+  let sections = if context.outputs.is_empty() {
+    sections
+  } else {
+    let rendered : Array[String] = []
+    for step_id, output in context.outputs {
+      rendered.push("[\{step_id}] \{output.stringify()}")
+    }
+    let rendered_text = rendered.join("\n")
+    [..sections, "Previous step outputs:\n\{rendered_text}"]
+  }
+  [
+    ..sections, "Do not ask the user to provide the substeps. Infer the best child tasks from the step objective and current output.",
+  ].join("\n\n")
+}
+
+///|
+pub fn adaptive_missing_inputs_fill_system_prompt() -> String {
+  [
+    @prompt.prelude, "You are extracting the concrete missing inputs for an analysis step.",
+    "Return strict JSON only.", "Return exactly this shape: {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}",
+    "Do not return completed or needs_subplan.", "List the specific missing facts, files, numbers, locations, assumptions, or external records still needed.",
+    "Keep each missing input short and concrete.",
+  ].join("\n\n")
+}
+
+///|
+pub fn adaptive_missing_inputs_fill_prompt(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> String {
+  let sections = [
+    "Original step prompt:",
+    config.prompt,
+    "Step id: \{context.step.id}",
+    "Current analysis output:",
+    execution.content,
+    "Current missing-input summary:",
+    envelope.summary.unwrap_or("The step is blocked on missing inputs."),
+    "List the exact missing inputs still required.",
+  ]
+  let sections = if context.outputs.is_empty() {
+    sections
+  } else {
+    let rendered : Array[String] = []
+    for step_id, output in context.outputs {
+      rendered.push("[\{step_id}] \{output.stringify()}")
+    }
+    let rendered_text = rendered.join("\n")
+    [..sections, "Previous step outputs:\n\{rendered_text}"]
+  }
+  [
+    ..sections, "Do not ask the user to infer what is missing. State the missing inputs explicitly.",
+  ].join("\n\n")
+}

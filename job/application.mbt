@@ -180,6 +180,40 @@ pub async fn GatewayJobApp::plan_proposal_in_workspace(
 }
 
 ///|
+pub async fn GatewayJobApp::plan_e2e_proposal_in_workspace(
+  self : GatewayJobApp,
+  request_text : String,
+  workspace_root : String,
+  cwd : String,
+  intake? : Json? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+) -> JobProposal {
+  let now_ms = self.now()
+  let memory_context = self.planning_memory_context(
+    request_text, workspace_root, channel_id, account_id, recipient, thread_id,
+  )
+  plan_e2e_job_proposal(
+    human_readable_proposal_id(request_text, now_ms, self.next_id()),
+    request_text,
+    now_ms,
+    intake~,
+    channel_id~,
+    account_id~,
+    recipient~,
+    thread_id~,
+    model~,
+    cwd~,
+    home=Some(self.home),
+    workspace=Some(workspace_root),
+    memory_context=Some(memory_context),
+  )
+}
+
+///|
 pub async fn GatewayJobApp::plan_proposal(
   self : GatewayJobApp,
   request_text : String,
@@ -191,6 +225,30 @@ pub async fn GatewayJobApp::plan_proposal(
   model? : String? = None,
 ) -> JobProposal {
   self.plan_proposal_in_workspace(
+    request_text,
+    self.workspace_root(),
+    self.cwd,
+    intake~,
+    channel_id~,
+    account_id~,
+    recipient~,
+    thread_id~,
+    model~,
+  )
+}
+
+///|
+pub async fn GatewayJobApp::plan_e2e_proposal(
+  self : GatewayJobApp,
+  request_text : String,
+  intake? : Json? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+) -> JobProposal {
+  self.plan_e2e_proposal_in_workspace(
     request_text,
     self.workspace_root(),
     self.cwd,
