@@ -151,6 +151,7 @@ pub async fn GatewayJobApp::plan_proposal_in_workspace(
   request_text : String,
   workspace_root : String,
   cwd : String,
+  intake? : Json? = None,
   channel_id? : String? = None,
   account_id? : String? = None,
   recipient? : String? = None,
@@ -165,6 +166,7 @@ pub async fn GatewayJobApp::plan_proposal_in_workspace(
     human_readable_proposal_id(request_text, now_ms, self.next_id()),
     request_text,
     now_ms,
+    intake~,
     channel_id~,
     account_id~,
     recipient~,
@@ -181,6 +183,7 @@ pub async fn GatewayJobApp::plan_proposal_in_workspace(
 pub async fn GatewayJobApp::plan_proposal(
   self : GatewayJobApp,
   request_text : String,
+  intake? : Json? = None,
   channel_id? : String? = None,
   account_id? : String? = None,
   recipient? : String? = None,
@@ -191,6 +194,7 @@ pub async fn GatewayJobApp::plan_proposal(
     request_text,
     self.workspace_root(),
     self.cwd,
+    intake~,
     channel_id~,
     account_id~,
     recipient~,
@@ -276,7 +280,7 @@ pub async fn GatewayJobApp::confirm_proposal(
   self : GatewayJobApp,
   proposal : JobProposal,
   proposal_id : String,
-  launch_run : async (String) -> Result[JobRun, String],
+  launch_run : async (String, Json?) -> Result[JobRun, String],
 ) -> Result[ConfirmProposalResult, String] {
   match ensure_draft_proposal(proposal, proposal_id) {
     Some(error) => return Err(error)
@@ -290,7 +294,7 @@ pub async fn GatewayJobApp::confirm_proposal(
   for binding in compilation.bindings {
     self.runtime().store().save_chat_binding(binding)
   }
-  let run = match launch_run(definition.id) {
+  let run = match launch_run(definition.id, proposal_initial_input(proposal)) {
     Ok(run) => run
     Err(error) => return Err(error)
   }

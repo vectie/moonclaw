@@ -106,6 +106,25 @@ fn message_resume_input(message : @channel.Message) -> Json {
   }
 }
 
+fn plan_job_input(message : @channel.Message, request_text : String) -> Json {
+  let attachments = message.attachments.map(fn(attachment) {
+    @job.E2EStarterAttachment::new(
+      id=attachment.id,
+      mime_type=attachment.mime_type,
+      url=attachment.url,
+      filename=attachment.filename,
+      size=attachment.size,
+    )
+  })
+  @job.job_intake_json(
+    request_text,
+    attachments,
+    message_id=Some(message.id),
+    thread_id=message.thread_id,
+    content_type=Some(message.content_type),
+  )
+}
+
 ///|
 fn slash_resume_text(message : @channel.Message) -> String {
   let trimmed = message.content.trim().to_string()
@@ -520,6 +539,7 @@ async fn Gateway::handle_plan_job_command(
   }
   let proposal = self.job_app.plan_proposal(
     request_text,
+    intake=Some(plan_job_input(message, request_text)),
     channel_id=Some(channel_id),
     account_id=Some(account_id),
     recipient=Some(message.to),
@@ -574,8 +594,11 @@ async fn Gateway::handle_confirm_job_command(
       )
   }
   let confirmed = match
-    self.job_app.confirm_proposal(proposal, proposal_id, async fn(job_id) {
-      self.trigger_job_definition(job_id)
+    self.job_app.confirm_proposal(proposal, proposal_id, async fn(
+      job_id,
+      initial_input,
+    ) {
+      self.trigger_job_definition(job_id, initial_input~)
     }) {
     Ok(confirmed) => confirmed
     Err(error) =>

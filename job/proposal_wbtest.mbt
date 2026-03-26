@@ -131,6 +131,48 @@ async test "plan_job_proposal uses model JSON when available" {
 }
 
 ///|
+async test "plan_job_proposal includes structured intake in planner prompt" {
+  let proposal = plan_job_proposal(
+    "proposal-intake-1",
+    "Analyze the attached contract and produce a board memo.\nOutput format: Markdown memo",
+    100,
+    executor=AnalysisExecutor::new(run=fn(request) {
+      let has_intake = request.prompt.contains("\"starter_attachments\"") &&
+        request.prompt.contains("\"requested_output_format\":\"Markdown memo\"")
+      Ok(AnalysisExecution::{
+        model_name: "default",
+        content: if has_intake {
+          "{\"title\":\"Intake-aware plan\",\"summary\":\"Planner saw the structured intake.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"review\",\"title\":\"Review starter files\",\"prompt\":\"Review the provided starter files and extract the key facts.\",\"kind\":\"job.analysis\"},{\"id\":\"memo\",\"title\":\"Produce board memo\",\"prompt\":\"Produce the requested board memo in Markdown.\",\"kind\":\"job.analysis\"}]}"
+        } else {
+          "{\"title\":\"Missing intake\",\"summary\":\"Planner missed the intake.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"execute\",\"title\":\"Execute\",\"prompt\":\"Execute.\",\"kind\":\"job.analysis\"}]}"
+        },
+        conversation_id: None,
+        usage: None,
+        metadata: {},
+      })
+    }),
+    intake=Some({
+      "starter_attachments": [
+        {
+          "id": "file-1",
+          "filename": "contract.pdf",
+          "mime_type": "application/pdf",
+        },
+      ],
+      "requested_output_format": "Markdown memo",
+    }),
+  )
+  inspect(proposal.title, content="Intake-aware plan")
+  inspect(proposal.steps.length(), content="2")
+  inspect(
+    proposal_initial_input(proposal)
+    .map(fn(value) { value.stringify() })
+    .unwrap_or(""),
+    content="{\"starter_attachments\":[{\"id\":\"file-1\",\"filename\":\"contract.pdf\",\"mime_type\":\"application/pdf\"}],\"requested_output_format\":\"Markdown memo\"}",
+  )
+}
+
+///|
 async test "plan_job_proposal includes decomposition guidance for land acquisition calculation" {
   let proposal = plan_job_proposal(
     "proposal-land-acquisition-1",
@@ -265,6 +307,37 @@ async test "plan_job_proposal accepts plan and step aliases from planner output"
     content="Clarify scope and assumptions for the land acquisition estimate",
   )
   inspect(proposal.steps[3].prompt, content="Assess risks and prepare report")
+}
+
+///|
+async test "plan_job_proposal accepts rich step execution metadata" {
+  let proposal = plan_job_proposal(
+    "proposal-rich-steps-1",
+    "Produce a research memo.",
+    100,
+    executor=fake_planner_executor(
+      "{\"title\":\"Research memo\",\"summary\":\"Use files and web search.\",\"steps\":[{\"id\":\"collect\",\"title\":\"Collect sources\",\"prompt\":\"Read the starter files and fetch the missing public context.\",\"kind\":\"job.analysis\",\"metadata\":{\"preferred_skills\":[\"research\"],\"enable_tools\":true,\"web_search\":true,\"system_prompt\":\"Stay source-grounded.\"}},{\"id\":\"delegate\",\"title\":\"Deep dive\",\"prompt\":\"Run a deeper branch.\",\"kind\":\"job.delegate\",\"child_profile\":\"research_deep\",\"execution_mode\":\"acp\",\"execution_target\":\"codex-main\",\"include_parent_outputs\":true,\"max_depth\":4}]}",
+    ),
+  )
+  inspect(proposal.steps.length(), content="2")
+  inspect(
+    proposal.steps[0].metadata.stringify(),
+    content="{\"preferred_skills\":[\"research\"],\"enable_tools\":true,\"web_search\":true,\"system_prompt\":\"Stay source-grounded.\"}",
+  )
+  inspect(
+    proposal.steps[1].child_profile.unwrap_or(""),
+    content="research_deep",
+  )
+  inspect(proposal.steps[1].execution_mode.unwrap_or(""), content="acp")
+  inspect(
+    proposal.steps[1].execution_target.unwrap_or(""),
+    content="codex-main",
+  )
+  inspect(
+    proposal.steps[1].include_parent_outputs.unwrap_or(false),
+    content="true",
+  )
+  inspect(proposal.steps[1].max_depth.unwrap_or(0), content="4")
 }
 
 ///|

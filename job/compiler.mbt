@@ -133,7 +133,10 @@ fn workflow_step_definition_for_proposal_step(
       board_extras,
     )
   } else {
-    let analysis_metadata = merge_json_objects(base_metadata, board_extras)
+    let analysis_metadata = merge_json_objects(
+      base_metadata,
+      [("step_metadata", step.metadata), ..board_extras],
+    )
     merge_json_objects(
       AnalysisStepConfig::new(
         prompt=step.prompt,

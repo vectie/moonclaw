@@ -56,7 +56,12 @@ async test "GatewayJobApp::confirm_proposal registers workflow and persists prop
       recipient=Some("oc_chat_123"),
     )
     app.runtime().store().save_job_proposal(proposal)
-    let result = app.confirm_proposal(proposal, "proposal-2", async fn(job_id) {
+    let captured_input : Ref[Json?] = { val: None }
+    let result = app.confirm_proposal(proposal, "proposal-2", async fn(
+      job_id,
+      initial_input,
+    ) {
+      captured_input.val = initial_input
       app
       .runtime()
       .trigger_definition("run-2", job_id, TriggerSource::Manual, 200)
@@ -90,6 +95,7 @@ async test "GatewayJobApp::confirm_proposal registers workflow and persists prop
       .unwrap_or(""),
       content="run-2",
     )
+    inspect(captured_input.val is None, content="true")
   })
 }
 
@@ -144,6 +150,7 @@ async test "GatewayJobApp::confirm_proposal initializes generic controller recor
     app.runtime().store().save_job_proposal(proposal)
     let result = app.confirm_proposal(proposal, "proposal-controller", async fn(
       job_id,
+      _initial_input,
     ) {
       app
       .runtime()
@@ -163,6 +170,48 @@ async test "GatewayJobApp::confirm_proposal initializes generic controller recor
       app.runtime().store().get_controller_iteration("run-controller:iter:root")
       is Some(_),
       content="true",
+    )
+  })
+}
+
+///|
+async test "GatewayJobApp::confirm_proposal passes proposal intake into launch callback" {
+  @fsx.with_temporary_directory("job-app-confirm-intake-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workspace = @workspace.WorkspaceRuntime::new(home=dir, cwd=dir)
+    let app = GatewayJobApp::new(
+      root~,
+      cwd=dir,
+      home=dir,
+      workspace~,
+      next_id=fn() { "proposal-intake-next" },
+      now=fn() { 200 },
+    )
+    let proposal = JobProposal::{
+      ..draft_job_proposal("proposal-intake", "Analyze starter files.", 100),
+      profile_metadata: {
+        "job_intake": {
+          "starter_attachments": [{ "id": "file-1", "filename": "seed.pdf" }],
+          "requested_output_format": "brief markdown",
+        },
+      },
+    }
+    let seen_input : Ref[String] = { val: "" }
+    let result = app.confirm_proposal(proposal, "proposal-intake", async fn(
+      job_id,
+      initial_input,
+    ) {
+      seen_input.val = initial_input
+        .map(fn(json) { json.stringify() })
+        .unwrap_or("")
+      app
+      .runtime()
+      .trigger_definition("run-intake", job_id, TriggerSource::Manual, 200)
+    })
+    inspect(result is Ok(_), content="true")
+    inspect(
+      seen_input.val,
+      content="{\"starter_attachments\":[{\"id\":\"file-1\",\"filename\":\"seed.pdf\"}],\"requested_output_format\":\"brief markdown\"}",
     )
   })
 }

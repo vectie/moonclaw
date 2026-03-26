@@ -8,6 +8,14 @@ import {
 }
 
 // Values
+pub fn adaptive_decision_prompt(WorkflowStepContext, AnalysisStepConfig, AnalysisExecution) -> String
+
+pub fn adaptive_decision_system_prompt() -> String
+
+pub fn adaptive_missing_inputs_line(AdaptiveAnalysisEnvelope) -> String
+
+pub fn adaptive_substeps(AdaptiveAnalysisEnvelope) -> Array[AdaptiveSubstepPayload]
+
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, compiler? : ProposalCompiler?, engine_factory? : (() -> WorkflowEngine)?, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
 pub fn analysis_system_prompt(AnalysisStepConfig) -> String
@@ -44,6 +52,10 @@ pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, as
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
+pub fn e2e_planner_prompt_sections(Json?) -> Array[String]
+
+pub fn e2e_planner_system_guidance() -> Array[String]
+
 pub async fn ensure_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, Int) -> Unit
 
 pub async fn ensure_controller_records_for_run(SystemStore, JobDefinition, JobRun, Int) -> Unit
@@ -55,6 +67,8 @@ pub fn event_as_ui_timeline_entry(JobRunEvent, Int) -> JobUiTimelineEntry
 pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> WorkflowEngine, initial_input? : Json?, control? : WorkflowExecutionControl, hooks? : RunExecutionHooks) -> Unit
 
 pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
+
+pub fn extract_output_format_hint(String) -> String?
 
 pub fn finished_status_prefix(RunStatus) -> String
 
@@ -68,6 +82,8 @@ pub fn human_readable_run_id(Int, String) -> String
 
 pub fn initial_notification_runtime_state(Int) -> JobNotificationRuntimeState
 
+pub fn job_intake_json(String, Array[E2EStarterAttachment], message_id? : String?, thread_id? : String?, content_type? : String?) -> Json
+
 pub async fn list_job_profiles(String, String) -> Array[JobProfile]
 
 pub async fn load_job_profile(String, String, String) -> JobProfile?
@@ -76,7 +92,11 @@ pub async fn load_run_ui_timeline(SystemStore, String) -> Array[JobUiTimelineEnt
 
 pub async fn loaded_skills_prompt(String, String?, Array[String]) -> String
 
+pub fn merge_job_intake_metadata(Json, Json?) -> Json
+
 pub fn notification_preference_id(String, String, String, String?) -> String
+
+pub fn parse_adaptive_analysis_envelope(String) -> AdaptiveAnalysisEnvelope?
 
 pub fn parse_job_chat_action(String, Bool) -> JobChatAction?
 
@@ -88,13 +108,15 @@ pub fn parse_reply_thread_job_action(String) -> (String, String)?
 
 pub fn parse_revise_args(String) -> (String, String)?
 
-pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
+pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
 
 pub async fn prepare_run_workspace(SystemStore, JobDefinition, JobRun) -> JobRun
 
 pub fn proposal_as_workflow(JobProposal, Int, String, String, workspace_root? : String) -> (JobDefinition, WorkflowDefinition)
 
 pub fn proposal_for_reply(SystemStore, String?) -> JobProposal?
+
+pub fn proposal_initial_input(JobProposal) -> Json?
 
 pub async fn record_controller_child_run(SystemStore, JobRun, WorkflowStepDefinition, String, String, String, Int) -> Unit
 
@@ -204,12 +226,22 @@ pub impl Show for ActiveJobSnapshot
 pub impl ToJson for ActiveJobSnapshot
 pub impl @json.FromJson for ActiveJobSnapshot
 
-type AdaptiveAnalysisEnvelope
+pub(all) struct AdaptiveAnalysisEnvelope {
+  verdict : String
+  summary : String?
+  missing_inputs : Array[String]?
+  suggested_substeps : Array[AdaptiveSubstepPayload]?
+  substeps : Array[AdaptiveSubstepPayload]?
+}
 pub impl Show for AdaptiveAnalysisEnvelope
 pub impl ToJson for AdaptiveAnalysisEnvelope
 pub impl @json.FromJson for AdaptiveAnalysisEnvelope
 
-type AdaptiveSubstepPayload
+pub(all) struct AdaptiveSubstepPayload {
+  title : String
+  prompt : String
+  kind : String?
+}
 pub impl Show for AdaptiveSubstepPayload
 pub impl ToJson for AdaptiveSubstepPayload
 pub impl @json.FromJson for AdaptiveSubstepPayload
@@ -520,6 +552,31 @@ pub impl Show for DefinitionsIndexFile
 pub impl ToJson for DefinitionsIndexFile
 pub impl @json.FromJson for DefinitionsIndexFile
 
+pub struct E2EJobIntake {
+  request_text : String
+  requested_output_format : String?
+  starter_attachments : Array[E2EStarterAttachment]
+  message_id : String?
+  thread_id : String?
+  content_type : String?
+}
+pub fn E2EJobIntake::new(request_text~ : String, requested_output_format? : String?, starter_attachments? : Array[E2EStarterAttachment], message_id? : String?, thread_id? : String?, content_type? : String?) -> Self
+pub impl Show for E2EJobIntake
+pub impl ToJson for E2EJobIntake
+pub impl @json.FromJson for E2EJobIntake
+
+pub struct E2EStarterAttachment {
+  id : String
+  mime_type : String
+  url : String
+  filename : String?
+  size : Int?
+}
+pub fn E2EStarterAttachment::new(id~ : String, mime_type~ : String, url~ : String, filename? : String?, size? : Int?) -> Self
+pub impl Show for E2EStarterAttachment
+pub impl ToJson for E2EStarterAttachment
+pub impl @json.FromJson for E2EStarterAttachment
+
 pub struct GatewayJobApp {
   state : GatewayJobState
   cwd : String
@@ -530,7 +587,7 @@ pub struct GatewayJobApp {
 }
 pub fn GatewayJobApp::compile_proposal(Self, JobProposal) -> ProposalCompilation
 pub fn GatewayJobApp::compile_proposal_in_workspace(Self, JobProposal, String, String) -> ProposalCompilation
-pub async fn GatewayJobApp::confirm_proposal(Self, JobProposal, String, async (String) -> Result[JobRun, String]) -> Result[ConfirmProposalResult, String]
+pub async fn GatewayJobApp::confirm_proposal(Self, JobProposal, String, async (String, Json?) -> Result[JobRun, String]) -> Result[ConfirmProposalResult, String]
 pub async fn GatewayJobApp::load(Self) -> Unit
 pub fn GatewayJobApp::new(root~ : String, cwd~ : String, home~ : String, workspace~ : @workspace.WorkspaceRuntime, next_id~ : () -> String, now~ : () -> Int) -> Self
 pub fn GatewayJobApp::new_workflow_engine(Self) -> WorkflowEngine
@@ -538,8 +595,8 @@ pub fn GatewayJobApp::new_workflow_engine_with_child_executor(Self, child_execut
 pub fn GatewayJobApp::new_workflow_engine_with_executors(Self, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> WorkflowEngine
 pub fn GatewayJobApp::next_id(Self) -> String
 pub fn GatewayJobApp::now(Self) -> Int
-pub async fn GatewayJobApp::plan_proposal(Self, String, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
-pub async fn GatewayJobApp::plan_proposal_in_workspace(Self, String, String, String, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
+pub async fn GatewayJobApp::plan_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
+pub async fn GatewayJobApp::plan_proposal_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::reject_proposal(Self, JobProposal) -> Unit
 pub async fn GatewayJobApp::revise_draft_proposal(Self, JobProposal, String, String) -> Result[JobProposal, String]
 pub async fn GatewayJobApp::revise_proposal(Self, JobProposal, String) -> JobProposal

@@ -134,3 +134,37 @@ test "message_resume_input includes content and attachments" {
     content="true",
   )
 }
+
+///|
+test "plan_job_input includes attachments and output format hint" {
+  let payload = plan_job_input(
+    @channel.Message::{
+      id: "msg-2",
+      channel: "feishu",
+      from: "user-1",
+      to: "chat-1",
+      content: "/plan-job Analyze the attached memo.\nOutput format: Executive summary",
+      content_type: "text",
+      timestamp: 123,
+      thread_id: Some("thread-2"),
+      reply_to: None,
+      attachments: [
+        @channel.Attachment::{
+          id: "file-2",
+          mime_type: "text/plain",
+          url: "https://example.test/memo.txt",
+          filename: Some("memo.txt"),
+          size: Some(7),
+        },
+      ],
+    },
+    "Analyze the attached memo.\nOutput format: Executive summary",
+  )
+  let payload_text = payload.stringify()
+  inspect(
+    payload_text.contains("\"requested_output_format\":\"Executive summary\""),
+    content="true",
+  )
+  inspect(payload_text.contains("\"starter_attachments\":"), content="true")
+  inspect(payload_text.contains("\"filename\":\"memo.txt\""), content="true")
+}

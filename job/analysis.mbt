@@ -138,189 +138,6 @@ pub fn AnalysisExecutor::new(
 }
 
 ///|
-struct AdaptiveSubstepPayload {
-  title : String
-  prompt : String
-  kind : String?
-} derive(FromJson, ToJson, Show)
-
-///|
-struct AdaptiveAnalysisEnvelope {
-  verdict : String
-  summary : String?
-  missing_inputs : Array[String]?
-  suggested_substeps : Array[AdaptiveSubstepPayload]?
-  substeps : Array[AdaptiveSubstepPayload]?
-} derive(FromJson, ToJson, Show)
-
-///|
-fn adaptive_json_string_field(
-  object : Map[String, Json],
-  key : String,
-) -> String? {
-  match object.get(key) {
-    Some(String(value)) if !value.trim().is_empty() =>
-      Some(value.trim().to_string())
-    _ => None
-  }
-}
-
-///|
-fn adaptive_json_string_array_field(
-  object : Map[String, Json],
-  key : String,
-) -> Array[String]? {
-  match object.get(key) {
-    Some(Array(values)) => {
-      let items : Array[String] = []
-      for value in values {
-        guard value is String(text) else { continue }
-        let trimmed = text.trim().to_string()
-        if !trimmed.is_blank() {
-          items.push(trimmed)
-        }
-      }
-      if items.is_empty() {
-        None
-      } else {
-        Some(items)
-      }
-    }
-    _ => None
-  }
-}
-
-///|
-fn parse_adaptive_substep(value : Json) -> AdaptiveSubstepPayload? {
-  guard value is Object(object) else { return None }
-  let title = match adaptive_json_string_field(object, "title") {
-    Some(title) => title
-    None => return None
-  }
-  let prompt = match adaptive_json_string_field(object, "prompt") {
-    Some(prompt) => prompt
-    None => title
-  }
-  let kind = adaptive_json_string_field(object, "kind")
-  Some(AdaptiveSubstepPayload::{ title, prompt, kind })
-}
-
-///|
-fn adaptive_json_substeps_field(
-  object : Map[String, Json],
-  key : String,
-) -> Array[AdaptiveSubstepPayload]? {
-  match object.get(key) {
-    Some(Array(values)) => {
-      let items : Array[AdaptiveSubstepPayload] = []
-      for value in values {
-        match parse_adaptive_substep(value) {
-          Some(item) => items.push(item)
-          None => ()
-        }
-      }
-      if items.is_empty() {
-        None
-      } else {
-        Some(items)
-      }
-    }
-    _ => None
-  }
-}
-
-///|
-fn parse_adaptive_analysis_envelope(
-  content : String,
-) -> AdaptiveAnalysisEnvelope? {
-  let trimmed = content.trim().to_string()
-  if trimmed.is_blank() || !trimmed.has_prefix("{") {
-    return None
-  }
-  let json = @json.parse(trimmed) catch { _ => return None }
-  guard json is Object(object) else { return None }
-  let verdict = match adaptive_json_string_field(object, "verdict") {
-    Some(verdict) => verdict
-    None => return None
-  }
-  Some(AdaptiveAnalysisEnvelope::{
-    verdict,
-    summary: adaptive_json_string_field(object, "summary"),
-    missing_inputs: adaptive_json_string_array_field(object, "missing_inputs"),
-    suggested_substeps: adaptive_json_substeps_field(
-      object, "suggested_substeps",
-    ),
-    substeps: adaptive_json_substeps_field(object, "substeps"),
-  })
-}
-
-///|
-fn adaptive_substeps(
-  envelope : AdaptiveAnalysisEnvelope,
-) -> Array[AdaptiveSubstepPayload] {
-  match envelope.suggested_substeps {
-    Some(steps) if !steps.is_empty() => steps
-    _ => envelope.substeps.unwrap_or([])
-  }
-}
-
-///|
-fn adaptive_missing_inputs_line(envelope : AdaptiveAnalysisEnvelope) -> String {
-  match envelope.missing_inputs {
-    Some(inputs) if !inputs.is_empty() => inputs.join("; ")
-    _ => envelope.summary.unwrap_or("Analysis requires additional inputs.")
-  }
-}
-
-///|
-fn adaptive_decision_system_prompt() -> String {
-  [
-    @prompt.prelude, "You are deciding whether an analysis step is truly complete or should expand.",
-    "Return strict JSON only.", "If the step is complete, return {\"verdict\":\"completed\",\"summary\":string}.",
-    "If key inputs are missing and the user or an external source must provide them, return {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}.",
-    "If the step should be decomposed into smaller executable units before it can produce a useful result, return {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}.",
-    "Be conservative about calling a step completed.", "Do not mark the step completed if the output mainly asks follow-up questions, requests missing facts, says the estimate is not supportable yet, says the result is only a screening or first-pass view, or lists next actions instead of delivering the requested artifact.",
-    "Prefer needs_subplan over needs_input when useful preparatory work can still continue without the missing facts.",
-    "Use needs_input only when the missing parcel, market, numeric, user, or external-source facts truly block all meaningful next work.",
-    "Use needs_subplan when the work can still make progress by splitting into smaller executable research, collection, verification, checklist, template, comparison, or analysis tasks, even if some final facts are still missing.",
-    "Do not default to subplanning. Only request a subplan when decomposition would materially improve execution.",
-    "If the output contains both caveats and a usable final deliverable, choose completed. If the output is mostly a blocker report or a request for more information, do not choose completed.",
-    "Examples:", "{\"verdict\":\"needs_input\",\"summary\":\"Parcel and pricing inputs are still missing.\",\"missing_inputs\":[\"parcel location\",\"parcel size\",\"comparable sales\"]}",
-    "{\"verdict\":\"needs_subplan\",\"summary\":\"The diligence work should be split before valuation.\",\"suggested_substeps\":[{\"title\":\"Collect comparable sales\",\"prompt\":\"Gather recent comparable land sales and normalize unit pricing.\"},{\"title\":\"Review zoning and utilities\",\"prompt\":\"Check zoning, entitlement status, access, and utility availability.\"}]}",
-    "{\"verdict\":\"needs_subplan\",\"summary\":\"The final estimate is blocked on parcel facts, but useful preparation can still continue.\",\"suggested_substeps\":[{\"title\":\"Build missing-input checklist\",\"prompt\":\"Prepare the minimum parcel, zoning, and market data checklist required for the final estimate.\"},{\"title\":\"Build sensitivity template\",\"prompt\":\"Create a sensitivity framework for price, parcel size, entitlement timing, and site-prep risk.\"}]}",
-  ].join("\n\n")
-}
-
-///|
-fn adaptive_decision_prompt(
-  context : WorkflowStepContext,
-  config : AnalysisStepConfig,
-  execution : AnalysisExecution,
-) -> String {
-  let sections = [
-    "Original step prompt:",
-    config.prompt,
-    "Step id: \{context.step.id}",
-    "Current analysis output:",
-    execution.content,
-    "Decide whether this output is complete, needs external input, or should be expanded into a child subplan.",
-  ]
-  let sections = if context.outputs.is_empty() {
-    sections
-  } else {
-    let rendered : Array[String] = []
-    for step_id, output in context.outputs {
-      rendered.push("[\{step_id}] \{output.stringify()}")
-    }
-    let rendered_text = rendered.join("\n")
-    [..sections, "Previous step outputs:\n\{rendered_text}"]
-  }
-  [
-    ..sections, "If the current output mainly reports blockers, missing facts, provisional screening status, or next actions, it is not completed.",
-  ].join("\n\n")
-}
-
-///|
 async fn adaptive_followup_envelope(
   executor : AnalysisExecutor,
   request : AnalysisRequest,
@@ -921,11 +738,17 @@ fn build_analysis_prompt(
   skills_prompt : String,
   memory_prompt : String,
 ) -> String {
+  let step_metadata_prompt = match config.metadata {
+    { "step_metadata": metadata, .. } =>
+      "Step metadata:\n\{metadata.stringify()}"
+    _ => ""
+  }
   let sections = [
     config.prompt,
     preferred_skills_prompt(config.preferred_skills),
     skills_prompt,
     memory_prompt,
+    step_metadata_prompt,
     "Job id: \{context.run.job_id}",
     "Run id: \{context.run.id}",
     "Step id: \{context.step.id}",

@@ -103,6 +103,12 @@ struct ProposalPlanStepPayload {
   title : String
   prompt : String
   kind : String?
+  metadata : Json?
+  child_profile : String?
+  execution_mode : String?
+  execution_target : String?
+  include_parent_outputs : Bool?
+  max_depth : Int?
 } derive(ToJson, Show)
 
 ///|
@@ -163,7 +169,46 @@ impl @json.FromJson for ProposalPlanStepPayload with from_json(
     Some(String(kind)) => Some(kind)
     _ => None
   }
-  { id, title, prompt, kind }
+  let metadata : Json? = match obj.get("metadata") {
+    Some(metadata) => Some(metadata)
+    _ => None
+  }
+  let child_profile : String? = match obj.get("child_profile") {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      Some(value.trim().to_string())
+    _ => None
+  }
+  let execution_mode : String? = match obj.get("execution_mode") {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      Some(value.trim().to_string())
+    _ => None
+  }
+  let execution_target : String? = match obj.get("execution_target") {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      Some(value.trim().to_string())
+    _ => None
+  }
+  let include_parent_outputs : Bool? = match obj.get("include_parent_outputs") {
+    Some(True) => Some(true)
+    Some(False) => Some(false)
+    _ => None
+  }
+  let max_depth : Int? = match obj.get("max_depth") {
+    Some(Number(value, ..)) => Some(value.to_int())
+    _ => None
+  }
+  {
+    id,
+    title,
+    prompt,
+    kind,
+    metadata,
+    child_profile,
+    execution_mode,
+    execution_target,
+    include_parent_outputs,
+    max_depth,
+  }
 }
 
 ///|
@@ -223,6 +268,46 @@ fn normalize_proposal_step_id(
 }
 
 ///|
+fn merge_step_metadata(base : Json?, extras : Array[(String, Json?)]) -> Json {
+  let merged : Map[String, Json] = {}
+  match base {
+    Some(Object(obj)) =>
+      for key, value in obj {
+        merged.set(key, value)
+      }
+    _ => ()
+  }
+  for extra in extras {
+    match extra.1 {
+      Some(value) => merged.set(extra.0, value)
+      None => ()
+    }
+  }
+  Json::object(merged)
+}
+
+///|
+fn step_metadata_with_aliases(step : ProposalPlanStepPayload) -> Json {
+  let object = match step.metadata {
+    Some(Object(obj)) => Some(obj)
+    _ => None
+  }
+  let field = fn(key : String) {
+    match object {
+      Some(obj) => obj.get(key)
+      None => None
+    }
+  }
+  merge_step_metadata(step.metadata, [
+    ("preferred_skills", field("preferred_skills")),
+    ("enable_tools", field("enable_tools")),
+    ("web_search", field("web_search")),
+    ("model", field("model")),
+    ("system_prompt", field("system_prompt")),
+  ])
+}
+
+///|
 fn step_kind_or_default(step : ProposalPlanStepPayload) -> String {
   match step.kind {
     Some(kind) if !kind.trim().to_string().is_blank() => kind.trim().to_string()
@@ -246,12 +331,12 @@ fn normalized_plan_steps(
           title: step.title.trim().to_string(),
           prompt: step.prompt.trim().to_string(),
           kind: step_kind_or_default(step),
-          metadata: {},
-          child_profile: None,
-          execution_mode: None,
-          execution_target: None,
-          include_parent_outputs: None,
-          max_depth: None,
+          metadata: step_metadata_with_aliases(step),
+          child_profile: step.child_profile,
+          execution_mode: step.execution_mode,
+          execution_target: step.execution_target,
+          include_parent_outputs: step.include_parent_outputs,
+          max_depth: step.max_depth,
         })
         index += 1
       }
@@ -439,6 +524,26 @@ async fn maybe_apply_job_profile(
 }
 
 ///|
+fn merge_json_metadata(base : Json, extra : Json) -> Json {
+  let merged : Map[String, Json] = {}
+  match base {
+    Object(obj) =>
+      for key, value in obj {
+        merged.set(key, value)
+      }
+    _ => ()
+  }
+  match extra {
+    Object(obj) =>
+      for key, value in obj {
+        merged.set(key, value)
+      }
+    _ => ()
+  }
+  Json::object(merged)
+}
+
+///|
 pub async fn apply_named_job_profile(
   proposal : JobProposal,
   cwd : String,
@@ -479,7 +584,10 @@ pub async fn apply_named_job_profile(
         suggested_family: Some(family),
         profile_id: Some(profile.id),
         profile_role: profile.role,
-        profile_metadata: profile.metadata,
+        profile_metadata: merge_json_metadata(
+          proposal.profile_metadata,
+          profile.metadata,
+        ),
         steps,
         tags: [..proposal.tags, ..profile.tags],
       }
@@ -491,20 +599,28 @@ pub async fn apply_named_job_profile(
 ///|
 fn planner_system_prompt() -> String {
   [
-    "You design safe draft job plans for an automation system.", "Never execute the job.",
-    "Return strict JSON only.", "JSON shape:", "{\"title\": string, \"summary\": string, \"tags\": string[], \"steps\": [{\"id\": string, \"title\": string, \"prompt\": string, \"kind\": string}]}",
+    "You design safe draft job plans for an automation system.",
+    "Never execute the job.",
+    "Return strict JSON only.",
+    "JSON shape:",
+    "{\"title\": string, \"summary\": string, \"tags\": string[], \"steps\": [{\"id\": string, \"title\": string, \"prompt\": string, \"kind\": string, \"metadata\"?: object, \"child_profile\"?: string, \"execution_mode\"?: string, \"execution_target\"?: string, \"include_parent_outputs\"?: boolean, \"max_depth\"?: number}]}",
     "Use kind `job.analysis` unless a better existing workflow step kind is clearly required.",
-    "Write concrete, execution-oriented steps.", "Use the smallest sufficient number of steps, but do not collapse non-trivial work into one generic execute step.",
+    "Write concrete, execution-oriented steps.",
+    "Use the smallest sufficient number of steps, but do not collapse non-trivial work into one generic execute step.",
     "For non-trivial analytical, business, calculation, due-diligence, or report requests, produce 4 to 8 distinct phases.",
     "Typical analytical phases include: information collection, scheme or method design, estimation or modeling, financial or comparative analysis, risk review, and report generation.",
-    "Step titles should be short and human-readable.", "Step prompts should tell the step exactly what to produce.",
-    "Example request: Land acquisition calculation", "Example good step titles: Information collection; Scheme design; Cost estimation; Marketing pricing; Financial analysis; Risk assessment; Report generation",
+    ..e2e_planner_system_guidance(),
+    "Step titles should be short and human-readable.",
+    "Step prompts should tell the step exactly what to produce.",
+    "Example request: Land acquisition calculation",
+    "Example good step titles: Information collection; Scheme design; Cost estimation; Marketing pricing; Financial analysis; Risk assessment; Report generation",
   ].join("\n")
 }
 
 ///|
 fn planner_request_prompt(
   request_text : String,
+  intake? : Json? = None,
   skills_prompt? : String = "",
   revision? : String? = None,
   existing? : JobProposal? = None,
@@ -512,6 +628,7 @@ fn planner_request_prompt(
   memory_context? : String? = None,
 ) -> String {
   let parts = ["Create a draft plan for this requested job:", request_text]
+  let parts = [..parts, ..e2e_planner_prompt_sections(intake)]
   let parts = match workspace {
     Some(workspace) if !workspace.trim().to_string().is_blank() =>
       [..parts, "Workspace root: \{workspace}"]
@@ -606,6 +723,7 @@ pub async fn plan_job_proposal(
   request_text : String,
   now_ms : Int,
   executor? : AnalysisExecutor = default_analysis_executor(),
+  intake? : Json? = None,
   channel_id? : String? = None,
   account_id? : String? = None,
   recipient? : String? = None,
@@ -624,6 +742,7 @@ pub async fn plan_job_proposal(
     step_id: "planner",
     prompt: planner_request_prompt(
       request_text,
+      intake~,
       skills_prompt=loaded_skills,
       workspace~,
       memory_context~,
@@ -647,6 +766,17 @@ pub async fn plan_job_proposal(
     recipient~,
     thread_id~,
   )
+  let fallback = match intake {
+    Some(intake) =>
+      JobProposal::{
+        ..fallback,
+        profile_metadata: merge_job_intake_metadata(
+          fallback.profile_metadata,
+          Some(intake),
+        ),
+      }
+    None => fallback
+  }
   let fallback = maybe_apply_job_profile(
     fallback,
     cwd,
@@ -699,6 +829,10 @@ pub async fn plan_job_proposal(
         proposal_id, request_text, payload, now_ms, channel_id, account_id, recipient,
         thread_id,
       )
+      let proposal = JobProposal::{
+        ..proposal,
+        profile_metadata: fallback.profile_metadata,
+      }
       maybe_apply_job_profile(
         proposal,
         cwd,
@@ -735,6 +869,7 @@ pub async fn revise_job_proposal(
     step_id: "planner.revise",
     prompt: planner_request_prompt(
       proposal.request_text,
+      intake=proposal_initial_input(proposal),
       skills_prompt=loaded_skills,
       revision=Some(revision),
       existing=Some(proposal),
