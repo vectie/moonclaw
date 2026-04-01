@@ -1,4 +1,143 @@
 ///|
+async fn adaptive_followup_envelope(
+  executor : AnalysisExecutor,
+  request : AnalysisRequest,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+) -> AdaptiveAnalysisEnvelope? {
+  let preferred_skills = ["analysis-adaptation"]
+  let skills_prompt = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
+  let base_followup = AnalysisRequest::{
+    ..request,
+    prompt: [
+      adaptive_decision_prompt(context, config, execution),
+      skills_prompt,
+    ]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
+    system_prompt: adaptive_decision_system_prompt(),
+    enable_tools: false,
+    web_search: false,
+    preferred_skills,
+  }
+  let followup_execution = (executor.run)(base_followup) catch {
+    _ => return None
+  }
+  match followup_execution {
+    Ok(result) =>
+      match parse_adaptive_analysis_envelope(result.content) {
+        Some(envelope) => Some(envelope)
+        None => {
+          let repair_followup = AnalysisRequest::{
+            ..base_followup,
+            prompt: [
+              base_followup.prompt,
+              "The previous judgment did not follow the required JSON schema.",
+              "Return strict JSON only with one of these verdicts: completed, needs_input, needs_subplan.",
+              "Previous judgment output:",
+              result.content,
+            ].join("\n\n"),
+          }
+          let repair_execution = (executor.run)(repair_followup) catch {
+            _ => return None
+          }
+          match repair_execution {
+            Ok(repair_result) =>
+              parse_adaptive_analysis_envelope(repair_result.content)
+            Err(_) => None
+          }
+        }
+      }
+    Err(_) => None
+  }
+}
+
+///|
+async fn adaptive_subplan_fill_envelope(
+  executor : AnalysisExecutor,
+  request : AnalysisRequest,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> AdaptiveAnalysisEnvelope? {
+  let preferred_skills = ["analysis-adaptation"]
+  let skills_prompt = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
+  let followup = AnalysisRequest::{
+    ..request,
+    prompt: [
+      adaptive_subplan_fill_prompt(context, config, execution, envelope),
+      skills_prompt,
+    ]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
+    system_prompt: adaptive_subplan_fill_system_prompt(),
+    enable_tools: false,
+    web_search: false,
+    preferred_skills,
+  }
+  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  match followup_execution {
+    Ok(result) =>
+      match parse_adaptive_analysis_envelope(result.content) {
+        Some(expanded) if !adaptive_substeps(expanded).is_empty() =>
+          Some(expanded)
+        _ => None
+      }
+    Err(_) => None
+  }
+}
+
+///|
+async fn adaptive_missing_inputs_fill_envelope(
+  executor : AnalysisExecutor,
+  request : AnalysisRequest,
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> AdaptiveAnalysisEnvelope? {
+  let preferred_skills = ["analysis-adaptation"]
+  let skills_prompt = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
+  let followup = AnalysisRequest::{
+    ..request,
+    prompt: [
+      adaptive_missing_inputs_fill_prompt(context, config, execution, envelope),
+      skills_prompt,
+    ]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
+    system_prompt: adaptive_missing_inputs_fill_system_prompt(),
+    enable_tools: false,
+    web_search: false,
+    preferred_skills,
+  }
+  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  match followup_execution {
+    Ok(result) =>
+      match parse_adaptive_analysis_envelope(result.content) {
+        Some(expanded) if expanded.missing_inputs is Some([..]) =>
+          Some(expanded)
+        _ => None
+      }
+    Err(_) => None
+  }
+}
+
+///|
 fn adaptive_subplanned_result(
   execution : AnalysisExecution,
   report_artifact_id : String,

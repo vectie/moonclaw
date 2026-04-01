@@ -1,33 +1,4 @@
 ///|
-fn adaptive_resume_instruction_text(text : String) -> String? {
-  let trimmed = text.trim().to_string()
-  if trimmed.is_blank() {
-    None
-  } else {
-    Some(trimmed)
-  }
-}
-
-///|
-fn adaptive_resume_instruction_from_json(json : Json) -> String? {
-  match json {
-    { "resume_content": String(text), .. } =>
-      adaptive_resume_instruction_text(text)
-    { "resume_input": nested, .. } =>
-      adaptive_resume_instruction_from_json(nested)
-    _ => None
-  }
-}
-
-///|
-fn resume_instruction_from_context(context : WorkflowStepContext) -> String? {
-  match context.initial_input {
-    Some(input) => adaptive_resume_instruction_from_json(input)
-    None => None
-  }
-}
-
-///|
 pub fn adaptive_decision_system_prompt() -> String {
   [
     @prompt.prelude, "You are deciding whether an analysis step is truly complete or should expand.",
