@@ -419,15 +419,74 @@ fn child_run_node(
 }
 
 ///|
+fn artifact_metadata_string(metadata : Json, key : String) -> String? {
+  match metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(String(value)) => Some(value)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn artifact_node_title(artifact : ArtifactRecord) -> String {
+  if artifact.artifact_type == "starter_attachment.text" {
+    match artifact_metadata_string(artifact.metadata, "filename") {
+      Some(filename) => "Starter Attachment Text: \{filename}"
+      None => "Starter Attachment Text"
+    }
+  } else if artifact.artifact_type == "starter_attachment.manifest" {
+    match artifact_metadata_string(artifact.metadata, "kind") {
+      Some("json") => "Starter Attachment Manifest: JSON"
+      Some("markdown") => "Starter Attachment Manifest: Markdown"
+      Some(kind) => "Starter Attachment Manifest: \{kind}"
+      None => "Starter Attachment Manifest"
+    }
+  } else {
+    artifact.logical_key.unwrap_or(artifact.artifact_type)
+  }
+}
+
+///|
+fn artifact_node_summary(artifact : ArtifactRecord) -> String? {
+  if artifact.artifact_type == "starter_attachment.text" {
+    match artifact_metadata_string(artifact.metadata, "saved_path") {
+      Some(saved_path) => Some(saved_path)
+      None => Some(artifact.path)
+    }
+  } else if artifact.artifact_type == "starter_attachment.manifest" {
+    match artifact_metadata_string(artifact.metadata, "path") {
+      Some(path) => Some(path)
+      None => Some(artifact.path)
+    }
+  } else {
+    Some(artifact.path)
+  }
+}
+
+///|
+fn artifact_node_detail(artifact : ArtifactRecord) -> String? {
+  if artifact.artifact_type == "starter_attachment.text" {
+    Some("starter document text")
+  } else if artifact.artifact_type == "starter_attachment.manifest" {
+    Some("starter attachment manifest")
+  } else {
+    Some(artifact.artifact_type)
+  }
+}
+
+///|
 fn artifact_node(run : JobRun, artifact : ArtifactRecord) -> JobUiNode {
   JobUiNode::{
     id: "artifact:\{artifact.id}",
     parent_id: Some(workflow_node_id(run.id)),
     kind: Artifact,
-    title: artifact.logical_key.unwrap_or(artifact.artifact_type),
+    title: artifact_node_title(artifact),
     status: artifact.status.to_json().stringify(),
-    summary: Some(artifact.path),
-    detail: Some(artifact.artifact_type),
+    summary: artifact_node_summary(artifact),
+    detail: artifact_node_detail(artifact),
     run_id: Some(run.id),
     step_id: None,
     artifact_id: Some(artifact.id),

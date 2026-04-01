@@ -266,6 +266,113 @@ async test "build_job_ui_snapshot includes explicit handoffs when provided" {
 }
 
 ///|
+async test "build_job_ui_snapshot gives starter attachment artifacts operator-friendly labels" {
+  @fsx.with_temporary_directory("job-ui-starter-artifacts-XXXXXX", dir => {
+    let store = SystemStore::new(root=dir)
+    let definition = JobDefinition::{
+      id: "job-1",
+      kind: "job.proposal",
+      enabled: true,
+      config: { "family": "generic" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-1"),
+      created_at: 10,
+      updated_at: 10,
+      tags: [],
+    }
+    let workflow = WorkflowDefinition::{
+      id: "wf-1",
+      kind: "job.proposal",
+      steps: [],
+      output_bindings: [],
+    }
+    let run = JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: Some("/tmp/ws-1"),
+      status: Running,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(100),
+      completed_at: None,
+      summary: None,
+      error: None,
+    }
+    let starter_text = ArtifactRecord::{
+      id: "artifact-starter-text",
+      run_id: "run-1",
+      job_id: "job-1",
+      artifact_type: "starter_attachment.text",
+      logical_key: Some("starter-attachment:file-1:text"),
+      version: 1,
+      status: Active,
+      path: "/tmp/ws-1/.moonclaw/starter_attachments/file-1.txt.extracted.txt",
+      content_type: "text/markdown",
+      metadata: {
+        "filename": "parcel.pdf",
+        "saved_path": "/tmp/ws-1/.moonclaw/starter_attachments/file-1.parcel.pdf",
+      },
+      created_at: 120,
+      archived_at: None,
+      scope: ["starter_attachment", "file-1"],
+    }
+    let starter_manifest = ArtifactRecord::{
+      id: "artifact-starter-manifest",
+      run_id: "run-1",
+      job_id: "job-1",
+      artifact_type: "starter_attachment.manifest",
+      logical_key: Some("starter-attachment:manifest:markdown"),
+      version: 1,
+      status: Active,
+      path: "/tmp/ws-1/.moonclaw/starter_attachments/manifest.md",
+      content_type: "text/markdown",
+      metadata: {
+        "kind": "markdown",
+        "path": "/tmp/ws-1/.moonclaw/starter_attachments/manifest.md",
+      },
+      created_at: 121,
+      archived_at: None,
+      scope: ["starter_attachment", "manifest"],
+    }
+    store.save_definition(definition)
+    store.save_workflow(workflow)
+    store.save_run(run)
+    store.save_artifact(starter_text)
+    store.save_artifact(starter_manifest)
+
+    let snapshot = build_job_ui_snapshot(store, "run-1").unwrap()
+    let text_node = snapshot.nodes.filter(fn(node) {
+        node.artifact_id == Some("artifact-starter-text")
+      })[0]
+    let manifest_node = snapshot.nodes.filter(fn(node) {
+        node.artifact_id == Some("artifact-starter-manifest")
+      })[0]
+    json_inspect(text_node.title, content="Starter Attachment Text: parcel.pdf")
+    json_inspect(
+      text_node.detail.unwrap_or(""),
+      content="starter document text",
+    )
+    json_inspect(
+      text_node.summary.unwrap_or(""),
+      content="/tmp/ws-1/.moonclaw/starter_attachments/file-1.parcel.pdf",
+    )
+    json_inspect(
+      manifest_node.title,
+      content="Starter Attachment Manifest: Markdown",
+    )
+    json_inspect(
+      manifest_node.detail.unwrap_or(""),
+      content="starter attachment manifest",
+    )
+  })
+}
+
+///|
 async test "build_job_ui_snapshot adds split and merge nodes for controller runs" {
   @fsx.with_temporary_directory("job-ui-controller-XXXXXX", dir => {
     let store = SystemStore::new(root=dir)
