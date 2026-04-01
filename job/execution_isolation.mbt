@@ -34,6 +34,63 @@ pub fn ExecutionIsolationSpec::new(
 }
 
 ///|
+fn normalized_isolation_text(text : String) -> String {
+  text.to_lower().trim().to_string()
+}
+
+///|
+fn contains_any_keyword(text : String, keywords : Array[String]) -> Bool {
+  for keyword in keywords {
+    if text.contains(keyword) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+pub fn subtask_prefers_git_worktree(
+  title : String,
+  prompt : String,
+  kind : String?,
+) -> Bool {
+  let kind = kind.unwrap_or("job.analysis").trim().to_string()
+  if kind != "job.analysis" {
+    return false
+  }
+  let text = normalized_isolation_text("\{title}\n\{prompt}")
+  let action_keywords = [
+    "implement", "edit", "modify", "refactor", "rewrite", "update", "fix", "patch",
+    "rename", "change",
+  ]
+  let target_keywords = [
+    "code", "file", "files", "module", "function", "repository", "repo", "source",
+    ".mbt", ".ts", ".js", ".py", ".go", ".rs", ".java", ".kt", ".swift", ".c", ".cpp",
+    ".h",
+  ]
+  contains_any_keyword(text, action_keywords) &&
+  contains_any_keyword(text, target_keywords)
+}
+
+///|
+pub fn subtask_execution_isolation_metadata(
+  step_id : String,
+  title : String,
+  prompt : String,
+  kind : String?,
+) -> Json {
+  if !subtask_prefers_git_worktree(title, prompt, kind) {
+    return {}
+  }
+  {
+    "execution_isolation": {
+      "mode": "git_worktree",
+      "task_key": "\{step_id} \{title}",
+    },
+  }
+}
+
+///|
 fn default_execution_isolation_task_key(
   context : WorkflowStepContext,
 ) -> String {

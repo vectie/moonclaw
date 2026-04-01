@@ -828,7 +828,9 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
     )
     let engine = analysis_test_engine(root, config)
     let calls : Ref[Int] = { val: 0 }
+    let captured_child_proposal : Ref[JobProposal?] = { val: None }
     let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
+      captured_child_proposal.val = Some(proposal)
       let workflow = WorkflowDefinition::{
         id: "workflow.child.analysis",
         kind: "test.child",
@@ -884,7 +886,7 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
             2 =>
               "{\"verdict\":\"needs_subplan\",\"summary\":\"Split this into narrower research tasks before estimating.\"}"
             3 =>
-              "{\"verdict\":\"needs_subplan\",\"summary\":\"Split this into narrower research tasks before estimating.\",\"suggested_substeps\":[{\"title\":\"Build checklist\",\"prompt\":\"Build the minimum data checklist needed for valuation.\"},{\"title\":\"Prepare sensitivity template\",\"prompt\":\"Prepare a sensitivity template for land acquisition assumptions.\"}]}"
+              "{\"verdict\":\"needs_subplan\",\"summary\":\"Split this into narrower research tasks before estimating.\",\"suggested_substeps\":[{\"title\":\"Patch valuation module\",\"prompt\":\"Update the valuation code file to support sensitivity ranges.\"},{\"title\":\"Prepare sensitivity template\",\"prompt\":\"Prepare a sensitivity template for land acquisition assumptions.\"}]}"
             _ =>
               "The estimate is too broad and under-specified to complete directly."
           }
@@ -916,6 +918,18 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
       })
       .unwrap_or(false),
       content="true",
+    )
+    let child_proposal = match captured_child_proposal.val {
+      Some(proposal) => proposal
+      None => fail("missing child proposal")
+    }
+    inspect(
+      child_proposal.steps[0].metadata.stringify().contains("git_worktree"),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[1].metadata.stringify().contains("git_worktree"),
+      content="false",
     )
   })
 }

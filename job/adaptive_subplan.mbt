@@ -36,7 +36,12 @@ fn adaptive_subplan_proposal(
       title: step.title.trim().to_string(),
       prompt: step.prompt.trim().to_string(),
       kind: step.kind.unwrap_or("job.analysis"),
-      metadata: {},
+      metadata: subtask_execution_isolation_metadata(
+        step_id,
+        step.title,
+        step.prompt,
+        step.kind,
+      ),
       child_profile: None,
       execution_mode: None,
       execution_target: None,
