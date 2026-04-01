@@ -74,6 +74,8 @@ pub fn ensure_draft_proposal(JobProposal, String) -> String?
 
 pub fn event_as_ui_timeline_entry(JobRunEvent, Int) -> JobUiTimelineEntry
 
+pub async fn execute_analysis_subplan(RuntimeManager, ProposalCompiler, () -> WorkflowEngine, ChildRunExecutor?, WorkflowStepContext, AnalysisStepConfig, AdaptiveAnalysisEnvelope, () -> Int, () -> String, Int) -> Result[(String, String, Map[String, Json]), String]
+
 pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> WorkflowEngine, initial_input? : Json?, control? : WorkflowExecutionControl, hooks? : RunExecutionHooks) -> Unit
 
 pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
@@ -201,6 +203,8 @@ pub fn render_unknown_job_or_run_message(String) -> String
 pub fn render_unknown_proposal_message(String) -> String
 
 pub async fn request_job_stop(SystemStore, String, async (String, Bool) -> Result[JobRun, String], force? : Bool, active_run_id? : String?) -> Result[String, String]
+
+pub async fn resolve_adaptive_analysis_result(RuntimeManager, ProposalCompiler?, (() -> WorkflowEngine)?, ChildRunExecutor?, AnalysisExecutor, AnalysisRequest, WorkflowStepContext, AnalysisStepConfig, AnalysisExecution, Result[WorkflowStepResult, String], String, String, () -> Int, () -> String) -> Result[WorkflowStepResult, String]?
 
 pub fn resolve_job_notify_target(SystemStore, JobDefinition) -> JobNotifyTarget?
 
