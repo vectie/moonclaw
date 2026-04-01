@@ -115,6 +115,8 @@ pub fn parse_notification_verbosity(String) -> NotificationVerbosity?
 
 pub fn parse_presentation_deck_spec_text(String) -> PresentationDeckSpec?
 
+pub fn parse_presentation_render_package_text(String) -> PresentationRenderPackage?
+
 pub fn parse_reply_thread_job_action(String) -> (String, String)?
 
 pub fn parse_revise_args(String) -> (String, String)?
@@ -130,6 +132,10 @@ pub async fn prepare_run_workspace(SystemStore, JobDefinition, JobRun) -> JobRun
 pub fn presentation_contract_version() -> String
 
 pub fn presentation_deck_spec_schema_prompt() -> String
+
+pub fn presentation_render_contract_version() -> String
+
+pub fn presentation_render_package_schema_prompt() -> String
 
 pub fn proposal_as_workflow(JobProposal, Int, String, String, workspace_root? : String) -> (JobDefinition, WorkflowDefinition)
 
@@ -228,6 +234,8 @@ pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
 pub fn setup_analysis_agent(@agent.Agent, String, web_search? : Bool) -> Unit
 
 pub fn setup_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract) -> Unit
+
+pub fn setup_analysis_agent_for_request(@agent.Agent, AnalysisRequest) -> Unit
 
 pub fn split_job_chat_command(String) -> (String, String)
 
@@ -371,6 +379,8 @@ pub(all) struct AnalysisToolContract {
   glob_files : Bool
   list_resources : Bool
   read_resource : Bool
+  runtime_context : Bool
+  list_worktrees : Bool
   enter_worktree : Bool
   exit_worktree : Bool
   read_files : Bool
@@ -380,7 +390,7 @@ pub(all) struct AnalysisToolContract {
   web_fetch : Bool
   web_search : Bool
 }
-pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 pub impl Show for AnalysisToolContract
 pub impl ToJson for AnalysisToolContract
 pub impl @json.FromJson for AnalysisToolContract
@@ -1341,6 +1351,15 @@ pub impl Show for PresentationPageSpec
 pub impl ToJson for PresentationPageSpec
 pub impl @json.FromJson for PresentationPageSpec
 
+pub struct PresentationRenderArtifact {
+  role : String
+  path : String
+  description : String?
+}
+pub impl Show for PresentationRenderArtifact
+pub impl ToJson for PresentationRenderArtifact
+pub impl @json.FromJson for PresentationRenderArtifact
+
 pub struct PresentationRenderHandoff {
   renderer_target : String?
   theme : String?
@@ -1350,6 +1369,21 @@ pub struct PresentationRenderHandoff {
 pub impl Show for PresentationRenderHandoff
 pub impl ToJson for PresentationRenderHandoff
 pub impl @json.FromJson for PresentationRenderHandoff
+
+pub struct PresentationRenderPackage {
+  provider : String?
+  renderer_target : String?
+  theme : String?
+  source_plan_contract : String
+  source_plan_artifact : String?
+  output_kind : String
+  produced_artifacts : Array[PresentationRenderArtifact]
+  handoff_summary : String
+  notes : Array[String]
+}
+pub impl Show for PresentationRenderPackage
+pub impl ToJson for PresentationRenderPackage
+pub impl @json.FromJson for PresentationRenderPackage
 
 pub(all) struct ProposalCompilation {
   family : String
