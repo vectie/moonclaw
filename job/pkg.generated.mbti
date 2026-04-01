@@ -355,6 +355,7 @@ pub impl @json.FromJson for AnalysisStepConfig
 pub(all) struct AnalysisToolContract {
   shell : Bool
   list_files : Bool
+  glob_files : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
@@ -362,7 +363,7 @@ pub(all) struct AnalysisToolContract {
   web_fetch : Bool
   web_search : Bool
 }
-pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 pub impl Show for AnalysisToolContract
 pub impl ToJson for AnalysisToolContract
 pub impl @json.FromJson for AnalysisToolContract

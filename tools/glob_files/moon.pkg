@@ -1,0 +1,14 @@
+import {
+  "moonbitlang/moonclaw/tool",
+  "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/pathx",
+  "moonbitlang/moonclaw/internal/git",
+  "moonbitlang/moonclaw/internal/os",
+  "moonbitlang/core/json",
+  "moonbitlang/core/test",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/moonclaw/internal/mock",
+} for "test"

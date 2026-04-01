@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/glob_files"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new(String) -> @tool.Tool[GlobFilesResult]
+
+// Errors
+
+// Types and methods
+pub struct GlobFilesResult {
+  root : String
+  pattern : String
+  matches : Array[String]
+  total_matches : Int
+  truncated : Bool
+  respect_gitignore : Bool
+}
+pub impl Show for GlobFilesResult
+pub impl ToJson for GlobFilesResult
+pub impl @json.FromJson for GlobFilesResult
+
+// Type aliases
+
+// Traits
+

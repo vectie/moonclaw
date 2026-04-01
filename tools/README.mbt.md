@@ -13,6 +13,7 @@ This directory contains tool implementations that the AI agent can use.
 | `replace_in_file` | Search and replace in files |
 | `apply_patch` | Apply unified diff patches |
 | `list_files` | List directory contents |
+| `glob_files` | Find file paths by glob pattern |
 | `search_files` | Search for patterns in files |
 | `todo` | Task list management |
 | `list_jobs` | List background jobs |
@@ -173,6 +174,29 @@ pub fn new(manager : @file.Manager) -> @tool.Tool[ListFilesResult]
 - File/directory names
 - Types (file/directory)
 - Sizes
+
+---
+
+## glob_files
+
+Find matching file paths without reading file contents.
+
+```moonbit nocheck
+pub fn new(cwd : String) -> @tool.Tool[GlobFilesResult]
+```
+
+**Parameters:**
+- `pattern`: Glob pattern to match, supporting `*`, `?`, and `**`
+- `path`: Directory to search from (default: `.`)
+- `max_results`: Maximum paths to return (default: `200`)
+- `respect_gitignore`: Skip gitignored paths when possible (default: `true`)
+- `include_hidden`: Include hidden files and directories (default: `false`)
+- `include_directories`: Return matching directories too (default: `false`)
+
+**Features:**
+- Recursive globbing
+- Gitignore-aware path discovery
+- Bounded typed result set
 
 ---
 
