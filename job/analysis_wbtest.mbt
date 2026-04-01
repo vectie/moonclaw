@@ -958,6 +958,7 @@ async test "build_analysis_request renders starter attachment artifacts" {
           "run-analysis-1",
           fn() { 1000 },
           initial_input=Some({
+            "starter_attachment_digest_excerpt": "# Starter Attachment Digest\n\nParcel overview",
             "starter_attachment_digest_path": "/tmp/ws/digest.md",
             "starter_attachment_digest_artifact_id": "artifact-run-1-starter-digest",
             "starter_attachment_artifacts": [
@@ -981,6 +982,12 @@ async test "build_analysis_request renders starter attachment artifacts" {
     )
     inspect(
       captured_prompt.val.contains(
+        "Starter attachment digest excerpt:\n# Starter Attachment Digest\n\nParcel overview",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
         "Aggregate starter attachment digest path: /tmp/ws/digest.md",
       ),
       content="true",
@@ -993,6 +1000,12 @@ async test "build_analysis_request renders starter attachment artifacts" {
     )
     inspect(
       captured_prompt.val.contains("Starter attachment artifacts:"),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "Prefer `starter_attachment_digest_excerpt` first when present as the immediate compact starter-document overview.",
+      ),
       content="true",
     )
     inspect(

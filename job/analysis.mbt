@@ -959,6 +959,16 @@ fn starter_attachment_artifact_priority(artifact_id : String) -> Int {
 fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
   let digest_lines : Array[String] = []
   match input {
+    { "starter_attachment_digest_excerpt": String(text), .. } => {
+      let trimmed = text.trim().to_string()
+      if !trimmed.is_blank() {
+        digest_lines.push("Starter attachment digest excerpt:")
+        digest_lines.push(trimmed)
+      }
+    }
+    _ => ()
+  }
+  match input {
     { "starter_attachment_digest_path": String(path), .. } =>
       digest_lines.push("Aggregate starter attachment digest path: \{path}")
     _ => ()
@@ -1017,6 +1027,7 @@ fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
   } else {
     let sections = [
       "Starter attachment artifacts:",
+      "Prefer `starter_attachment_digest_excerpt` first when present as the immediate compact starter-document overview.",
       "Prefer `starter_attachment_digest_path` first when present as the directly readable aggregate starter-document overview.",
       "Use `starter_attachment_digest_artifact_id` next when artifact-oriented tooling is available.",
       "Prefer `starter_attachment.summary` artifact ids first when available; use the full extracted text artifacts only when you need more detail.",

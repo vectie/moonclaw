@@ -80,6 +80,7 @@ fn merge_starter_attachment_artifacts_into_input(
   artifact_manifest : Json,
   digest_artifact_id : String?,
   digest_path : String?,
+  digest_excerpt : String?,
 ) -> Json {
   let merged : Map[String, Json] = {}
   match initial_input {
@@ -97,6 +98,11 @@ fn merge_starter_attachment_artifacts_into_input(
   }
   match digest_path {
     Some(path) => merged.set("starter_attachment_digest_path", path.to_json())
+    None => ()
+  }
+  match digest_excerpt {
+    Some(text) =>
+      merged.set("starter_attachment_digest_excerpt", text.to_json())
     None => ()
   }
   Json::object(merged)
@@ -259,8 +265,8 @@ async fn persist_starter_attachment_artifacts(
     })
   }
 
-  let (digest_artifact_id, digest_path) = if summary_entries.is_empty() {
-    (None, None)
+  let (digest_artifact_id, digest_path, digest_excerpt) = if summary_entries.is_empty() {
+    (None, None, None)
   } else {
     let digest_markdown = @attachment_ingestion.starter_attachment_digest_markdown(
       attachments, summary_entries,
@@ -289,7 +295,13 @@ async fn persist_starter_attachment_artifacts(
       "artifact-\{run_id}-starter-digest",
       now_ms,
     )
-    (Some(artifact.id), Some(digest_path))
+    (
+      Some(artifact.id),
+      Some(digest_path),
+      Some(
+        @attachment_ingestion.starter_attachment_digest_excerpt(digest_markdown),
+      ),
+    )
   }
 
   Some(
@@ -298,6 +310,7 @@ async fn persist_starter_attachment_artifacts(
       Json::array(entries),
       digest_artifact_id,
       digest_path,
+      digest_excerpt,
     ),
   )
 }

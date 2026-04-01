@@ -208,6 +208,19 @@ pub fn starter_attachment_digest_markdown(
 }
 
 ///|
+pub fn starter_attachment_digest_excerpt(
+  digest_markdown : String,
+  limit? : Int = 2000,
+) -> String {
+  let trimmed = digest_markdown.trim().to_string()
+  if trimmed.length() <= limit {
+    trimmed
+  } else {
+    trimmed[:limit].to_string() + "..."
+  }
+}
+
+///|
 pub fn attachment_is_text_like(
   mime_type : String,
   filename? : String? = None,

@@ -55,6 +55,7 @@ fn preprocess_step_prompt(proposal : JobProposal) -> String {
   [
     "Do a lightweight preprocessing pass before the main workflow starts.",
     "Use the starter attachments, local context, tools, and public web search to gather missing background facts relevant to the job.",
+    "If the initial input includes `starter_attachment_digest_excerpt`, use that compact aggregate starter-document digest text first.",
     "If the initial input includes `starter_attachment_digest_path`, inspect that materialized aggregate starter-document digest first.",
     "If the initial input includes `starter_attachment_digest_artifact_id`, use that durable aggregate starter-document digest reference first when artifact-oriented tooling is available.",
     "If the initial input includes `starter_attachment_artifacts`, inspect those durable starter-document artifacts next.",

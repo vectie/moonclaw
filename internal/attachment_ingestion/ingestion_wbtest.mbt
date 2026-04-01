@@ -79,3 +79,12 @@ test "starter_attachment_digest_markdown includes per-file summaries" {
   inspect(rendered.contains("### Summary"), content="true")
   inspect(rendered.contains("Parcel digest"), content="true")
 }
+
+///|
+test "starter_attachment_digest_excerpt truncates long digest text" {
+  let excerpt = starter_attachment_digest_excerpt(
+    "abcdefghijklmnopqrstuvwxyz",
+    limit=20,
+  )
+  inspect(excerpt, content="abcdefghijklmnopqrst...")
+}
