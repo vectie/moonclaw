@@ -72,7 +72,7 @@ fn adaptive_subplan_proposal(
 }
 
 ///|
-pub async fn execute_analysis_subplan(
+async fn execute_analysis_subplan(
   runtime : RuntimeManager,
   compiler : ProposalCompiler,
   engine_factory : () -> WorkflowEngine,

@@ -91,7 +91,7 @@ fn adaptive_json_substeps_field(
 }
 
 ///|
-pub fn parse_adaptive_analysis_envelope(
+fn parse_adaptive_analysis_envelope(
   content : String,
 ) -> AdaptiveAnalysisEnvelope? {
   let trimmed = content.trim().to_string()
@@ -116,7 +116,7 @@ pub fn parse_adaptive_analysis_envelope(
 }
 
 ///|
-pub fn adaptive_substeps(
+fn adaptive_substeps(
   envelope : AdaptiveAnalysisEnvelope,
 ) -> Array[AdaptiveSubstepPayload] {
   match envelope.suggested_substeps {
@@ -126,9 +126,7 @@ pub fn adaptive_substeps(
 }
 
 ///|
-pub fn adaptive_missing_inputs_line(
-  envelope : AdaptiveAnalysisEnvelope,
-) -> String {
+fn adaptive_missing_inputs_line(envelope : AdaptiveAnalysisEnvelope) -> String {
   match envelope.missing_inputs {
     Some(inputs) if !inputs.is_empty() => inputs.join("; ")
     _ => envelope.summary.unwrap_or("Analysis requires additional inputs.")

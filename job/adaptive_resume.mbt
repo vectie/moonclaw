@@ -41,7 +41,7 @@ fn resume_instruction_from_json(input : Json) -> String? {
 }
 
 ///|
-pub fn resume_instruction_from_input(input : Json?) -> String? {
+fn resume_instruction_from_input(input : Json?) -> String? {
   match input {
     Some({ "resume_content": String(text), .. }) => {
       let trimmed = text.trim().to_string()
@@ -58,9 +58,7 @@ pub fn resume_instruction_from_input(input : Json?) -> String? {
 }
 
 ///|
-pub fn resume_instruction_from_context(
-  context : WorkflowStepContext,
-) -> String? {
+fn resume_instruction_from_context(context : WorkflowStepContext) -> String? {
   match context.initial_input {
     Some(input) => resume_instruction_from_json(input)
     None => None
@@ -68,7 +66,7 @@ pub fn resume_instruction_from_context(
 }
 
 ///|
-pub fn should_preserve_first_pass_on_empty_subplan(
+fn should_preserve_first_pass_on_empty_subplan(
   context : WorkflowStepContext,
   execution : AnalysisExecution,
 ) -> Bool {

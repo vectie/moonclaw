@@ -194,7 +194,7 @@ async fn resolved_adaptive_envelope(
 }
 
 ///|
-pub async fn resolve_adaptive_analysis_result(
+async fn resolve_adaptive_analysis_result(
   runtime : RuntimeManager,
   compiler : ProposalCompiler?,
   engine_factory : (() -> WorkflowEngine)?,

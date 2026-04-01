@@ -1,5 +1,5 @@
 ///|
-pub fn adaptive_decision_system_prompt() -> String {
+fn adaptive_decision_system_prompt() -> String {
   [
     @prompt.prelude, "You are deciding whether an analysis step is truly complete or should expand.",
     "Return strict JSON only.", "If the step is complete, return {\"verdict\":\"completed\",\"summary\":string}.",
@@ -21,7 +21,7 @@ pub fn adaptive_decision_system_prompt() -> String {
 }
 
 ///|
-pub fn adaptive_decision_prompt(
+fn adaptive_decision_prompt(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
@@ -57,7 +57,7 @@ pub fn adaptive_decision_prompt(
 }
 
 ///|
-pub fn adaptive_subplan_fill_system_prompt() -> String {
+fn adaptive_subplan_fill_system_prompt() -> String {
   [
     @prompt.prelude, "You are generating an executable child subplan for an analysis step.",
     "Return strict JSON only.", "Return exactly this shape: {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}",
@@ -67,7 +67,7 @@ pub fn adaptive_subplan_fill_system_prompt() -> String {
 }
 
 ///|
-pub fn adaptive_subplan_fill_prompt(
+fn adaptive_subplan_fill_prompt(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
@@ -101,7 +101,7 @@ pub fn adaptive_subplan_fill_prompt(
 }
 
 ///|
-pub fn adaptive_missing_inputs_fill_system_prompt() -> String {
+fn adaptive_missing_inputs_fill_system_prompt() -> String {
   [
     @prompt.prelude, "You are extracting the concrete missing inputs for an analysis step.",
     "Return strict JSON only.", "Return exactly this shape: {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}",
@@ -111,7 +111,7 @@ pub fn adaptive_missing_inputs_fill_system_prompt() -> String {
 }
 
 ///|
-pub fn adaptive_missing_inputs_fill_prompt(
+fn adaptive_missing_inputs_fill_prompt(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
