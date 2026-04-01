@@ -11,6 +11,10 @@ import {
 // Values
 pub fn analysis_execution_isolation_spec(WorkflowStepContext, AnalysisStepConfig) -> ExecutionIsolationSpec?
 
+pub fn analysis_memory_prompt(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> String
+
+pub fn analysis_memory_query(WorkflowStepContext, AnalysisStepConfig) -> MemoryQuery
+
 pub fn analysis_result_content_contract(AnalysisStepConfig) -> String?
 
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, compiler? : ProposalCompiler?, engine_factory? : (() -> WorkflowEngine)?, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
@@ -19,7 +23,11 @@ pub fn analysis_system_prompt(AnalysisStepConfig) -> String
 
 pub fn analysis_tool_contract(AnalysisStepConfig) -> AnalysisToolContract
 
+pub fn analysis_working_directory(WorkflowStepContext, AnalysisStepConfig) -> String
+
 pub async fn apply_named_job_profile(JobProposal, String, String, String, String?) -> JobProposal
+
+pub fn build_analysis_prompt(WorkflowStepContext, AnalysisStepConfig, String, String) -> String
 
 pub async fn build_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
 
@@ -38,6 +46,8 @@ pub fn compile_job_proposal(JobProposal, Int, String, String, workspace_root? : 
 pub async fn complete_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, RunStatus, Int) -> Unit
 
 pub async fn complete_controller_run(SystemStore, JobRun, RunStatus, Int) -> Unit
+
+pub async fn compose_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
 
 pub fn current_step_id_for_ui(SystemStore, JobRun, WorkflowDefinition?) -> String?
 
@@ -98,6 +108,8 @@ pub async fn load_run_ui_timeline(SystemStore, String) -> Array[JobUiTimelineEnt
 pub async fn loaded_skills_prompt(String, String?, Array[String]) -> String
 
 pub fn mark_proposal_as_e2e(JobProposal) -> JobProposal
+
+pub async fn materialize_analysis_outputs_to_workspace(SystemStore, WorkflowStepContext, AnalysisStepConfig, Json, String) -> Unit
 
 pub fn merge_initial_input_for_resume(Json?, Json) -> Json
 
@@ -220,6 +232,8 @@ pub fn resolve_status_target(SystemStore, String, active_run_id? : String?) -> (
 pub fn resolve_target_proposal(SystemStore, String, String?) -> JobProposal?
 
 pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
+
+pub async fn run_default_analysis_agent(AnalysisRequest) -> Result[AnalysisExecution, String]
 
 pub fn run_events_as_timeline(Array[JobRunEvent]) -> Array[JobUiTimelineEntry]
 
@@ -381,16 +395,18 @@ pub(all) struct AnalysisToolContract {
   read_resource : Bool
   runtime_context : Bool
   list_worktrees : Bool
+  delegate_task : Bool
   enter_worktree : Bool
   exit_worktree : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
   file_write : Bool
+  structured_edit : Bool
   web_fetch : Bool
   web_search : Bool
 }
-pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, delegate_task? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, structured_edit? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 pub impl Show for AnalysisToolContract
 pub impl ToJson for AnalysisToolContract
 pub impl @json.FromJson for AnalysisToolContract
