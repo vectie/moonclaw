@@ -433,6 +433,18 @@ fn artifact_metadata_string(metadata : Json, key : String) -> String? {
 ///|
 fn artifact_execution_isolation_label(metadata : Json) -> String? {
   match metadata {
+    {
+      "execution_isolation": {
+        "mode": String(mode),
+        "cleanup_policy": String(cleanup_policy),
+        ..
+      },
+      ..
+    } => {
+      let mode_label = mode.replace_all(old="_", new=" ")
+      let cleanup_label = cleanup_policy.replace_all(old="_", new=" ")
+      Some("\{mode_label} · cleanup \{cleanup_label}")
+    }
     { "execution_isolation": { "mode": String(mode), .. }, .. } =>
       Some(mode.replace_all(old="_", new=" "))
     _ => None

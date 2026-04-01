@@ -317,5 +317,11 @@ async test "execute_run_lifecycle cleans up auto-created worktrees on success" {
     }
     inspect(run.status.to_json().stringify(), content="\"Succeeded\"")
     inspect(@fsx.exists(handle.path), content="false")
+    let cleanup_events = runtime
+      .store()
+      .list_run_events("run-1")
+      .filter(fn(event) { event.event_type == "execution_isolation.cleaned" })
+    inspect(cleanup_events.length(), content="1")
+    inspect(cleanup_events[0].message, content="Removed 1 isolated worktree(s)")
   })
 }

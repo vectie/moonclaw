@@ -176,6 +176,90 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
 }
 
 ///|
+async test "artifact nodes surface execution isolation cleanup policy" {
+  @fsx.with_temporary_directory("job-ui-snapshot-isolation-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let runtime = RuntimeManager::new(root~)
+    let store = runtime.store()
+    store.save_definition(JobDefinition::{
+      id: "job-1",
+      kind: "generic.analysis",
+      enabled: true,
+      config: { "family": "generic" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-1"),
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    })
+    store.save_workflow(WorkflowDefinition::{
+      id: "wf-1",
+      kind: "generic.analysis",
+      steps: [],
+      output_bindings: [],
+    })
+    store.save_run(JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: Succeeded,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(10),
+      completed_at: Some(20),
+      summary: Some("done"),
+      error: None,
+    })
+    let artifacts = ArtifactStore::new(store~)
+    ignore(
+      artifacts.write(
+        ArtifactWriteRequest::new(
+          run_id="run-1",
+          job_id="job-1",
+          artifact_type="analysis.result",
+          logical_key=Some("result"),
+          content="{}",
+          content_type="application/json",
+          metadata={
+            "execution_isolation": {
+              "mode": "git_worktree",
+              "cleanup_policy": "on_success",
+              "cwd": "/tmp/worktree",
+            },
+          },
+        ),
+        "artifact-1",
+        30,
+      ),
+    )
+    let snapshot = build_job_ui_snapshot(store, "run-1").unwrap()
+    let artifact_node = match
+      snapshot.nodes
+      .filter(fn(node) { node.kind.to_json().stringify() == "\"Artifact\"" })
+      .get(0) {
+      Some(node) => node
+      None => fail("missing artifact node")
+    }
+    inspect(
+      artifact_node.summary
+      .unwrap_or("")
+      .contains("git worktree · cleanup on success"),
+      content="true",
+    )
+    inspect(
+      artifact_node.detail.unwrap_or("") ==
+      "analysis.result (git worktree · cleanup on success)",
+      content="true",
+    )
+  })
+}
+
+///|
 async test "build_job_ui_snapshot includes explicit handoffs when provided" {
   @fsx.with_temporary_directory("job-ui-handoffs-XXXXXX", dir => {
     let store = SystemStore::new(root=dir)
