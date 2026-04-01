@@ -115,6 +115,7 @@ pub(all) struct AnalysisRequest {
   enable_tools : Bool
   web_search : Bool
   tool_contract : AnalysisToolContract
+  execution_isolation : Json?
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -168,6 +169,34 @@ async fn resolved_model_name(request : AnalysisRequest) -> String? {
   match requested_model_name_or_none(request.model_name) {
     Some(requested) => Some(requested)
     None => configured_primary_model(request.cwd, request.home)
+  }
+}
+
+///|
+fn execution_isolation_json_for_request(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  working_directory : String,
+) -> Json? {
+  let base_cwd = analysis_working_directory(context, config)
+  if working_directory == base_cwd {
+    return None
+  }
+  match analysis_execution_isolation_spec(context, config) {
+    Some(spec) => {
+      let mode = match spec.mode {
+        SharedWorkspace => "shared_workspace"
+        GitWorktree => "git_worktree"
+      }
+      Some({
+        "mode": mode,
+        "cwd": working_directory,
+        "base_cwd": base_cwd,
+        "task_key": spec.task_key,
+        "branch_name": spec.branch_name,
+      })
+    }
+    None => None
   }
 }
 
@@ -676,6 +705,9 @@ pub async fn build_analysis_request(
     enable_tools: config.enable_tools,
     web_search: config.web_search,
     tool_contract: analysis_tool_contract(config),
+    execution_isolation: execution_isolation_json_for_request(
+      context, config, working_directory,
+    ),
   }
 }
 
@@ -812,6 +844,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
         "job_id": request.job_id,
         "run_id": request.run_id,
         "step_id": request.step_id,
+        "execution_isolation": request.execution_isolation,
       },
     })
   })

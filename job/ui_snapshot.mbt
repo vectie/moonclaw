@@ -431,6 +431,15 @@ fn artifact_metadata_string(metadata : Json, key : String) -> String? {
 }
 
 ///|
+fn artifact_execution_isolation_label(metadata : Json) -> String? {
+  match metadata {
+    { "execution_isolation": { "mode": String(mode), .. }, .. } =>
+      Some(mode.replace_all(old="_", new=" "))
+    _ => None
+  }
+}
+
+///|
 fn artifact_node_title(artifact : ArtifactRecord) -> String {
   if artifact.artifact_type == "starter_attachment.text" {
     match artifact_metadata_string(artifact.metadata, "filename") {
@@ -479,7 +488,10 @@ fn artifact_node_summary(artifact : ArtifactRecord) -> String? {
       None => Some(artifact.path)
     }
   } else {
-    Some(artifact.path)
+    match artifact_execution_isolation_label(artifact.metadata) {
+      Some(label) => Some("\{artifact.path} · \{label}")
+      None => Some(artifact.path)
+    }
   }
 }
 
@@ -494,7 +506,10 @@ fn artifact_node_detail(artifact : ArtifactRecord) -> String? {
   } else if artifact.artifact_type == "starter_attachment.manifest" {
     Some("starter attachment manifest")
   } else {
-    Some(artifact.artifact_type)
+    match artifact_execution_isolation_label(artifact.metadata) {
+      Some(label) => Some("\{artifact.artifact_type} (\{label})")
+      None => Some(artifact.artifact_type)
+    }
   }
 }
 

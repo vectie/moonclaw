@@ -8,6 +8,16 @@ pub(all) struct PersistedAnalysisExecution {
 }
 
 ///|
+fn analysis_execution_isolation_metadata(
+  execution : AnalysisExecution,
+) -> Json? {
+  match execution.metadata {
+    { "execution_isolation": value, .. } => Some(value)
+    _ => None
+  }
+}
+
+///|
 pub async fn execute_analysis_request(
   executor : AnalysisExecutor,
   request : AnalysisRequest,
@@ -45,6 +55,7 @@ pub async fn persist_analysis_execution(
   execution : AnalysisExecution,
   now : () -> Int,
 ) -> PersistedAnalysisExecution {
+  let execution_isolation = analysis_execution_isolation_metadata(execution)
   let report_artifact = artifacts.write(
     ArtifactWriteRequest::new(
       run_id=context.run.id,
@@ -60,6 +71,7 @@ pub async fn persist_analysis_execution(
         "conversation_id": execution.conversation_id,
         "preferred_skills": config.preferred_skills,
         "config_metadata": config.metadata,
+        "execution_isolation": execution_isolation,
       },
       scope=config.artifacts.scope,
       append_only=config.artifacts.append_only,
@@ -85,6 +97,7 @@ pub async fn persist_analysis_execution(
         "step_id": context.step.id,
         "report_artifact_id": report_artifact.id,
         "config_metadata": config.metadata,
+        "execution_isolation": execution_isolation,
       },
       scope=config.artifacts.scope,
       append_only=config.artifacts.append_only,
@@ -109,6 +122,7 @@ pub async fn persist_analysis_execution(
         "report_artifact_id": report_artifact.id,
         "result_artifact_id": result_artifact.id,
         "usage": usage_json(execution.usage),
+        "execution_isolation": execution_isolation,
       },
       summary=Some("Analysis completed"),
       metrics=result_metrics(execution),

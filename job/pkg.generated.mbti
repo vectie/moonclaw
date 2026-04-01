@@ -334,6 +334,7 @@ pub(all) struct AnalysisRequest {
   enable_tools : Bool
   web_search : Bool
   tool_contract : AnalysisToolContract
+  execution_isolation : Json?
 }
 pub impl Show for AnalysisRequest
 pub impl ToJson for AnalysisRequest

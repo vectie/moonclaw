@@ -1306,6 +1306,7 @@ async test "resolved_model_name uses configured primary model for default" {
         file_write=false,
         web_search=false,
       ),
+      execution_isolation: None,
     }
     inspect(resolved_model_name(request).unwrap_or(""), content="codex/gpt-5.4")
   })
@@ -1355,6 +1356,64 @@ async test "build_analysis_request can isolate execution in a git worktree" {
     inspect(captured.val.contains(".moonclaw-worktrees"), content="true")
     inspect(captured.val != dir, content="true")
     @worktree.remove_worktree_path(dir, captured.val)
+  })
+}
+
+///|
+async test "analysis_step_handler persists execution isolation metadata" {
+  @fsx.with_temporary_directory("job-analysis-isolation-metadata-XXXXXX", dir => {
+    @git.init_(dir)
+    @fsx.write_to_file(dir |> @pathx.join("README.md"), "hello")
+    @git.commit("init", ["README.md"], cwd=dir)
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Review the repository in isolation.",
+      cwd=Some(dir),
+      metadata={
+        "execution_isolation": {
+          "mode": "git_worktree",
+          "task_key": "Inspect repo",
+        },
+      },
+    )
+    let engine = analysis_test_engine(root, config, workspace_dir=Some(dir))
+    let captured_cwd : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          captured_cwd.val = request.cwd
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "done",
+            conversation_id: None,
+            usage: None,
+            metadata: { "execution_isolation": request.execution_isolation },
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    let artifact = match
+      engine.runtime
+      .store()
+      .list_artifacts(run_id="run-analysis-1")
+      .filter(fn(artifact) { artifact.artifact_type == "analysis.result" })
+      .get(0) {
+      Some(artifact) => artifact
+      None => fail("missing analysis result artifact")
+    }
+    inspect(
+      artifact.metadata.stringify().contains("git_worktree"),
+      content="true",
+    )
+    @worktree.remove_worktree_path(dir, captured_cwd.val)
   })
 }
 
