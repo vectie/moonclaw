@@ -260,6 +260,7 @@ fn canvas_starter_artifact_node(node : UiNode) -> Bool {
   match node.detail {
     Some(detail) =>
       detail == "starter document text" ||
+      detail == "starter document summary" ||
       detail == "starter attachment manifest"
     None => false
   }

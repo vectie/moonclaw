@@ -130,6 +130,7 @@ async fn persist_starter_attachment_artifacts(
     let artifact_ids : Array[String] = []
     match attachment.extracted_text_path {
       Some(text_path) if @fsx.exists(text_path) => {
+        let extracted_text = @fsx.read_file(text_path)
         let file_name = match attachment.filename {
           Some(filename) => Some("\{filename}.md")
           None => Some("starter_attachment.md")
@@ -139,7 +140,7 @@ async fn persist_starter_attachment_artifacts(
             run_id~,
             job_id~,
             artifact_type="starter_attachment.text",
-            content=@fsx.read_file(text_path),
+            content=extracted_text,
             logical_key=Some("starter-attachment:\{attachment.id}:text"),
             content_type="text/markdown",
             file_name~,
@@ -155,6 +156,33 @@ async fn persist_starter_attachment_artifacts(
           now_ms,
         )
         artifact_ids.push(artifact.id)
+        let summary_artifact = artifacts.write(
+          @job.ArtifactWriteRequest::new(
+            run_id~,
+            job_id~,
+            artifact_type="starter_attachment.summary",
+            content=@attachment_ingestion.starter_attachment_summary_markdown(
+              attachment, extracted_text,
+            ),
+            logical_key=Some("starter-attachment:\{attachment.id}:summary"),
+            content_type="text/markdown",
+            file_name=Some(
+              @attachment_ingestion.starter_attachment_summary_file_name(
+                attachment.filename,
+              ),
+            ),
+            metadata={
+              "attachment_id": attachment.id,
+              "filename": attachment.filename,
+              "saved_path": attachment.saved_path,
+              "extracted_text_path": attachment.extracted_text_path,
+            },
+            scope=["starter_attachment", attachment.id, "summary"],
+          ),
+          "artifact-\{run_id}-starter-\{attachment.id}-summary",
+          now_ms,
+        )
+        artifact_ids.push(summary_artifact.id)
       }
       _ => ()
     }

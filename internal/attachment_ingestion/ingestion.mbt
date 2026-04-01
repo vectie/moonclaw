@@ -101,6 +101,51 @@ pub fn starter_attachment_extracted_text_path(saved_path : String) -> String {
 }
 
 ///|
+pub fn starter_attachment_summary_file_name(filename : String?) -> String {
+  match filename {
+    Some(filename) if !filename.trim().to_string().is_blank() =>
+      "\{sanitized_attachment_name(filename.trim().to_string())}.summary.md"
+    None => "starter_attachment.summary.md"
+    _ => "starter_attachment.summary.md"
+  }
+}
+
+///|
+pub fn starter_attachment_summary_markdown(
+  attachment : MaterializedStarterAttachment,
+  extracted_text : String,
+) -> String {
+  let title = attachment.filename.unwrap_or(attachment.id)
+  let trimmed = extracted_text.trim().to_string()
+  let excerpt = if trimmed.length() > 600 {
+    trimmed[:600].to_string() + "..."
+  } else {
+    trimmed
+  }
+  let lines = ["# Starter Attachment Summary", ""]
+  lines.push("- Filename: \{title}")
+  lines.push("- Attachment id: \{attachment.id}")
+  lines.push("- MIME type: \{attachment.mime_type}")
+  match attachment.saved_path {
+    Some(path) => lines.push("- Saved path: \{path}")
+    None => ()
+  }
+  match attachment.extracted_text_path {
+    Some(path) => lines.push("- Extracted text path: \{path}")
+    None => ()
+  }
+  lines.push("")
+  lines.push("## Extracted Preview")
+  lines.push("")
+  if excerpt.is_blank() {
+    lines.push("No readable text was extracted.")
+  } else {
+    lines.push(excerpt)
+  }
+  lines.join("\n").trim_end().to_string() + "\n"
+}
+
+///|
 pub fn attachment_is_text_like(
   mime_type : String,
   filename? : String? = None,

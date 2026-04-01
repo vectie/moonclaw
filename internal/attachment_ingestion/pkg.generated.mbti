@@ -24,6 +24,10 @@ pub fn starter_attachment_manifest_markdown_path(String) -> String
 
 pub fn starter_attachment_saved_path(String, String, String?) -> String
 
+pub fn starter_attachment_summary_file_name(String?) -> String
+
+pub fn starter_attachment_summary_markdown(MaterializedStarterAttachment, String) -> String
+
 // Errors
 
 // Types and methods

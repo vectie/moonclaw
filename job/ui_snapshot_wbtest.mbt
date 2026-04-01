@@ -339,11 +339,30 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       archived_at: None,
       scope: ["starter_attachment", "manifest"],
     }
+    let starter_summary = ArtifactRecord::{
+      id: "artifact-starter-summary",
+      run_id: "run-1",
+      job_id: "job-1",
+      artifact_type: "starter_attachment.summary",
+      logical_key: Some("starter-attachment:file-1:summary"),
+      version: 1,
+      status: Active,
+      path: "/tmp/ws-1/.moonclaw/starter_attachments/parcel.summary.md",
+      content_type: "text/markdown",
+      metadata: {
+        "filename": "parcel.pdf",
+        "saved_path": "/tmp/ws-1/.moonclaw/starter_attachments/file-1.parcel.pdf",
+      },
+      created_at: 122,
+      archived_at: None,
+      scope: ["starter_attachment", "file-1", "summary"],
+    }
     store.save_definition(definition)
     store.save_workflow(workflow)
     store.save_run(run)
     store.save_artifact(starter_text)
     store.save_artifact(starter_manifest)
+    store.save_artifact(starter_summary)
 
     let snapshot = build_job_ui_snapshot(store, "run-1").unwrap()
     let text_node = snapshot.nodes.filter(fn(node) {
@@ -351,6 +370,9 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       })[0]
     let manifest_node = snapshot.nodes.filter(fn(node) {
         node.artifact_id == Some("artifact-starter-manifest")
+      })[0]
+    let summary_node = snapshot.nodes.filter(fn(node) {
+        node.artifact_id == Some("artifact-starter-summary")
       })[0]
     json_inspect(text_node.title, content="Starter Attachment Text: parcel.pdf")
     json_inspect(
@@ -368,6 +390,14 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
     json_inspect(
       manifest_node.detail.unwrap_or(""),
       content="starter attachment manifest",
+    )
+    json_inspect(
+      summary_node.title,
+      content="Starter Attachment Summary: parcel.pdf",
+    )
+    json_inspect(
+      summary_node.detail.unwrap_or(""),
+      content="starter document summary",
     )
   })
 }

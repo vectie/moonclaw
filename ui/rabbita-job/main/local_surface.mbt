@@ -15,6 +15,7 @@ fn[T] preview_items(items : Array[T], limit : Int) -> Array[T] {
 ///|
 fn starter_artifact(artifact : UiArtifact) -> Bool {
   artifact.artifact_type == "starter_attachment.text" ||
+  artifact.artifact_type == "starter_attachment.summary" ||
   artifact.artifact_type == "starter_attachment.manifest"
 }
 

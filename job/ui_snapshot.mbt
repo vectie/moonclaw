@@ -437,6 +437,11 @@ fn artifact_node_title(artifact : ArtifactRecord) -> String {
       Some(filename) => "Starter Attachment Text: \{filename}"
       None => "Starter Attachment Text"
     }
+  } else if artifact.artifact_type == "starter_attachment.summary" {
+    match artifact_metadata_string(artifact.metadata, "filename") {
+      Some(filename) => "Starter Attachment Summary: \{filename}"
+      None => "Starter Attachment Summary"
+    }
   } else if artifact.artifact_type == "starter_attachment.manifest" {
     match artifact_metadata_string(artifact.metadata, "kind") {
       Some("json") => "Starter Attachment Manifest: JSON"
@@ -456,6 +461,11 @@ fn artifact_node_summary(artifact : ArtifactRecord) -> String? {
       Some(saved_path) => Some(saved_path)
       None => Some(artifact.path)
     }
+  } else if artifact.artifact_type == "starter_attachment.summary" {
+    match artifact_metadata_string(artifact.metadata, "saved_path") {
+      Some(saved_path) => Some(saved_path)
+      None => Some(artifact.path)
+    }
   } else if artifact.artifact_type == "starter_attachment.manifest" {
     match artifact_metadata_string(artifact.metadata, "path") {
       Some(path) => Some(path)
@@ -470,6 +480,8 @@ fn artifact_node_summary(artifact : ArtifactRecord) -> String? {
 fn artifact_node_detail(artifact : ArtifactRecord) -> String? {
   if artifact.artifact_type == "starter_attachment.text" {
     Some("starter document text")
+  } else if artifact.artifact_type == "starter_attachment.summary" {
+    Some("starter document summary")
   } else if artifact.artifact_type == "starter_attachment.manifest" {
     Some("starter attachment manifest")
   } else {

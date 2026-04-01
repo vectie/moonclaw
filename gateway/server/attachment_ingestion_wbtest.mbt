@@ -156,13 +156,18 @@ async test "persist_starter_attachment_artifacts writes extracted text and manif
       _ => []
     }
     inspect(persisted_entries.length().to_string(), content="3")
+    let first_attachment = match persisted_entries[0] {
+      { "artifact_ids": Json::Array(ids), .. } => ids
+      _ => []
+    }
+    inspect(first_attachment.length().to_string(), content="2")
     let artifact_store = @job.ArtifactStore::new(store~)
     inspect(
       artifact_store
       .list(query=@job.ArtifactQuery::new(run_id=Some("run-1")))
       .length()
       .to_string(),
-      content="3",
+      content="4",
     )
   })
 }
