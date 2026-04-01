@@ -1,0 +1,47 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/internal/attachment_ingestion"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn attachment_is_text_like(String, filename? : String?) -> Bool
+
+pub fn render_materialized_attachment_manifest(Array[MaterializedStarterAttachment]) -> String
+
+pub fn starter_attachment_dir(String) -> String
+
+pub fn starter_attachment_extracted_text_path(String) -> String
+
+pub fn starter_attachment_file_name(String, String?) -> String
+
+pub fn starter_attachment_manifest_json_path(String) -> String
+
+pub fn starter_attachment_manifest_markdown_path(String) -> String
+
+pub fn starter_attachment_saved_path(String, String, String?) -> String
+
+// Errors
+
+// Types and methods
+pub struct MaterializedStarterAttachment {
+  id : String
+  mime_type : String
+  source_url : String
+  filename : String?
+  saved_path : String?
+  extracted_text_path : String?
+  status : String
+  note : String?
+  size : Int?
+}
+pub fn MaterializedStarterAttachment::new(id~ : String, mime_type~ : String, source_url~ : String, filename? : String?, saved_path? : String?, extracted_text_path? : String?, status? : String, note? : String?, size? : Int?) -> Self
+pub impl Show for MaterializedStarterAttachment
+pub impl ToJson for MaterializedStarterAttachment
+pub impl @json.FromJson for MaterializedStarterAttachment
+
+// Type aliases
+
+// Traits
+

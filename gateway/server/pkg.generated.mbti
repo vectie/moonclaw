@@ -2,6 +2,7 @@
 package "moonbitlang/moonclaw/gateway/server"
 
 import {
+  "moonbitlang/async",
   "moonbitlang/core/json",
   "moonbitlang/moonclaw/acp",
   "moonbitlang/moonclaw/channel",
@@ -276,6 +277,7 @@ pub struct Gateway {
   mut pending_requests : Int
   agent_runs : Map[String, AgentRun]
   active_channel_sessions : Map[String, @event.ExternalEventQueue]
+  recent_thread_attachments : Map[String, Array[@job.E2EStarterAttachment]]
   shutdown_requested : Bool
   agent_events : @broadcast.Broadcast[@protocol.AgentEventPayload]
   channel_manager : ChannelManager
@@ -287,6 +289,7 @@ pub struct Gateway {
   pipeline_manager : PipelineManager
   channel_state : ChannelStateStore
   job_app : @job.GatewayJobApp
+  active_job_tasks : Map[String, @async.Task[Unit]]
   security_runtime : @security.SecurityRuntime
   workspace_runtime : @workspace.WorkspaceRuntime
   plugin_runtime : @plugin.PluginRuntime

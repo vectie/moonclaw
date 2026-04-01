@@ -92,7 +92,7 @@ pub fn human_readable_run_id(Int, String) -> String
 
 pub fn initial_notification_runtime_state(Int, last_notified_event_count? : Int) -> JobNotificationRuntimeState
 
-pub fn job_intake_json(String, Array[E2EStarterAttachment], message_id? : String?, thread_id? : String?, content_type? : String?) -> Json
+pub fn job_intake_json(String, Array[E2EStarterAttachment], channel_id? : String?, account_id? : String?, recipient? : String?, message_id? : String?, thread_id? : String?, content_type? : String?) -> Json
 
 pub async fn list_job_profiles(String, String) -> Array[JobProfile]
 
@@ -580,11 +580,14 @@ pub struct E2EJobIntake {
   request_text : String
   requested_output_format : String?
   starter_attachments : Array[E2EStarterAttachment]
+  channel_id : String?
+  account_id : String?
+  recipient : String?
   message_id : String?
   thread_id : String?
   content_type : String?
 }
-pub fn E2EJobIntake::new(request_text~ : String, requested_output_format? : String?, starter_attachments? : Array[E2EStarterAttachment], message_id? : String?, thread_id? : String?, content_type? : String?) -> Self
+pub fn E2EJobIntake::new(request_text~ : String, requested_output_format? : String?, starter_attachments? : Array[E2EStarterAttachment], channel_id? : String?, account_id? : String?, recipient? : String?, message_id? : String?, thread_id? : String?, content_type? : String?) -> Self
 pub impl Show for E2EJobIntake
 pub impl ToJson for E2EJobIntake
 pub impl @json.FromJson for E2EJobIntake

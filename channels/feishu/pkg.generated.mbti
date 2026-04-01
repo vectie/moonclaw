@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn account_config_from_json(Json) -> FeishuAccountConfig
+
 pub async fn resolve_websocket_endpoint(String, String, String) -> Result[FeishuWebSocketEndpointData, @channel.ChannelError]
 
 // Errors
@@ -58,6 +60,7 @@ pub struct FeishuClient {
 pub async fn FeishuClient::add_message_reaction(Self, String, String) -> Result[FeishuReactionIndicatorState, @channel.ChannelError]
 pub async fn FeishuClient::add_typing_indicator(Self, String) -> Result[FeishuTypingIndicatorState, @channel.ChannelError]
 pub async fn FeishuClient::close_streaming_card(Self, FeishuStreamingCardSession, String) -> Result[@channel.SendResult, @channel.ChannelError]
+pub async fn FeishuClient::download_message_resource(Self, String, String, String) -> Result[(Bytes, String?), @channel.ChannelError]
 pub async fn FeishuClient::get_message(Self, String) -> Result[FeishuMessageLookupItem?, @channel.ChannelError]
 pub async fn FeishuClient::get_message_items(Self, String) -> Result[Array[FeishuMessageLookupItem], @channel.ChannelError]
 pub async fn FeishuClient::get_user_display_name(Self, String) -> Result[String?, @channel.ChannelError]

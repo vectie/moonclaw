@@ -595,12 +595,15 @@ async fn Gateway::execute_job_run_async(
   initial_input? : Json? = None,
 ) -> Unit {
   self.clear_job_control_requests(run_id)
+  let enriched_input = self.materialize_starter_attachments_for_run(
+    run_id, initial_input,
+  )
   @job.execute_run_lifecycle(
     self.job_runtime(),
     run_id,
     current_time_ms,
     fn() { self.new_workflow_engine() },
-    initial_input~,
+    initial_input=enriched_input,
     control=@job.WorkflowExecutionControl::new(
       should_cancel=fn() { self.job_should_cancel(run_id) },
       should_force_stop=fn() { self.job_should_force_stop(run_id) },

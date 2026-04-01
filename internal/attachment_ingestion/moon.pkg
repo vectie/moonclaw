@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/internal/pathx",
+}
+
+import {
+  "moonbitlang/core/test",
+} for "wbtest"

@@ -15,6 +15,7 @@ import {
   "moonbitlang/moonclaw/internal/websocket" @internal/websocket,
   "moonbitlang/moonclaw/clock",
   "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/attachment_ingestion",
   "moonbitlang/moonclaw/internal/os",
   "moonbitlang/moonclaw/internal/git",
   "moonbitlang/moonclaw/internal/buildinfo",

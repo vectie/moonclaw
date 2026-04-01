@@ -145,6 +145,8 @@ test "message_resume_input includes content and attachments" {
 ///|
 test "plan_job_input includes attachments and output format hint" {
   let payload = plan_job_input(
+    "feishu",
+    "default",
     @channel.Message::{
       id: "msg-2",
       channel: "feishu",
@@ -183,6 +185,9 @@ test "plan_job_input includes attachments and output format hint" {
   )
   inspect(payload_text.contains("\"starter_attachments\":"), content="true")
   inspect(payload_text.contains("\"filename\":\"memo.txt\""), content="true")
+  inspect(payload_text.contains("\"channel_id\":\"feishu\""), content="true")
+  inspect(payload_text.contains("\"account_id\":\"default\""), content="true")
+  inspect(payload_text.contains("\"recipient\":\"chat-1\""), content="true")
 }
 
 ///|
@@ -238,6 +243,8 @@ test "thread_attachment_key falls back to chat scope when thread id is missing" 
 ///|
 test "plan_job_input can use starter files gathered earlier in the thread" {
   let payload = plan_job_input(
+    "feishu",
+    "default",
     @channel.Message::{
       id: "msg-3",
       channel: "feishu",

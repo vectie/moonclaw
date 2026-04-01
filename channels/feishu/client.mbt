@@ -30,6 +30,55 @@ pub fn FeishuClient::new(config : FeishuAccountConfig) -> FeishuClient {
 }
 
 ///|
+pub async fn FeishuClient::download_message_resource(
+  self : FeishuClient,
+  message_id : String,
+  resource_key : String,
+  resource_type : String,
+) -> Result[(Bytes, String?), @channel.ChannelError] {
+  let client = match authed_feishu_http_client(self.config) {
+    Ok(client) => client
+    Err(error) => return Err(error)
+  }
+  defer client.close()
+  let response = client.get(
+    "/open-apis/im/v1/messages/\{message_id}/resources/\{resource_key}?type=\{resource_type}",
+  ) catch {
+    error =>
+      return Err(
+        @channel.ChannelError::ConnectionFailed(
+          message="Failed to download Feishu message resource: \{error}",
+        ),
+      )
+  }
+  let body = client.read_all().binary() catch {
+      error =>
+        return Err(
+          @channel.ChannelError::ConnectionFailed(
+            message="Failed to read Feishu message resource: \{error}",
+          ),
+        )
+    }
+  guard response.code is (200..=299) else {
+    let body_text = @encoding/utf8.decode_lossy(body)
+    return Err(
+      @channel.ChannelError::ConnectionFailed(
+        message="Feishu resource API error \{response.code}: \{body_text}",
+      ),
+    )
+  }
+  let content_type = response.headers
+    .get("content-type")
+    .map(fn(value) {
+      match value.find(";") {
+        Some(index) => value[:index].to_string().trim().to_string()
+        None => value.trim().to_string()
+      }
+    })
+  Ok((body, content_type))
+}
+
+///|
 fn websocket_endpoint_request_payload(
   app_id : String,
   app_secret : String,

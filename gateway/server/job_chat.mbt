@@ -238,6 +238,8 @@ fn Gateway::thread_starter_attachments(
 
 ///|
 fn plan_job_input(
+  channel_id : String,
+  account_id : String,
   message : @channel.Message,
   request_text : String,
   attachments : Array[@job.E2EStarterAttachment],
@@ -245,6 +247,9 @@ fn plan_job_input(
   @job.job_intake_json(
     request_text,
     attachments,
+    channel_id=Some(channel_id),
+    account_id=Some(account_id),
+    recipient=Some(message.to),
     message_id=Some(message.id),
     thread_id=message.thread_id,
     content_type=Some(message.content_type),
@@ -660,6 +665,8 @@ async fn Gateway::handle_proposal_command(
   }
   let intake = Some(
     plan_job_input(
+      channel_id,
+      account_id,
       message,
       normalized_request_text,
       self.thread_starter_attachments(channel_id, account_id, message),

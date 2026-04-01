@@ -141,6 +141,11 @@ fn get_feishu_config(config : Json) -> FeishuAccountConfig {
 }
 
 ///|
+pub fn account_config_from_json(config : Json) -> FeishuAccountConfig {
+  get_feishu_config(config)
+}
+
+///|
 pub fn FeishuChannel::set_message_handler(
   self : FeishuChannel,
   handler : &@channel.MessageHandler,
