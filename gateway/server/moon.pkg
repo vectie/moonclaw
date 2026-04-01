@@ -16,6 +16,7 @@ import {
   "moonbitlang/moonclaw/clock",
   "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/moonclaw/internal/attachment_ingestion",
+  "moonbitlang/moonclaw/internal/pdf_ocr",
   "moonbitlang/moonclaw/internal/os",
   "moonbitlang/moonclaw/internal/git",
   "moonbitlang/moonclaw/internal/buildinfo",

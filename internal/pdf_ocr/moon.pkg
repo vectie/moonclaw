@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/spawn",
+}
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
+} for "wbtest"
