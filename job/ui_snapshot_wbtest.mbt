@@ -357,12 +357,28 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       archived_at: None,
       scope: ["starter_attachment", "file-1", "summary"],
     }
+    let starter_digest = ArtifactRecord::{
+      id: "artifact-starter-digest",
+      run_id: "run-1",
+      job_id: "job-1",
+      artifact_type: "starter_attachment.digest",
+      logical_key: Some("starter-attachment:digest"),
+      version: 1,
+      status: Active,
+      path: "/tmp/ws-1/.moonclaw/starter_attachments/digest.md",
+      content_type: "text/markdown",
+      metadata: { "attachment_count": 1 },
+      created_at: 123,
+      archived_at: None,
+      scope: ["starter_attachment", "digest"],
+    }
     store.save_definition(definition)
     store.save_workflow(workflow)
     store.save_run(run)
     store.save_artifact(starter_text)
     store.save_artifact(starter_manifest)
     store.save_artifact(starter_summary)
+    store.save_artifact(starter_digest)
 
     let snapshot = build_job_ui_snapshot(store, "run-1").unwrap()
     let text_node = snapshot.nodes.filter(fn(node) {
@@ -373,6 +389,9 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       })[0]
     let summary_node = snapshot.nodes.filter(fn(node) {
         node.artifact_id == Some("artifact-starter-summary")
+      })[0]
+    let digest_node = snapshot.nodes.filter(fn(node) {
+        node.artifact_id == Some("artifact-starter-digest")
       })[0]
     json_inspect(text_node.title, content="Starter Attachment Text: parcel.pdf")
     json_inspect(
@@ -398,6 +417,11 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
     json_inspect(
       summary_node.detail.unwrap_or(""),
       content="starter document summary",
+    )
+    json_inspect(digest_node.title, content="Starter Attachment Digest")
+    json_inspect(
+      digest_node.detail.unwrap_or(""),
+      content="starter document digest",
     )
   })
 }

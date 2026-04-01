@@ -78,6 +78,7 @@ fn merge_materialized_starter_attachments_into_input(
 fn merge_starter_attachment_artifacts_into_input(
   initial_input : Json?,
   artifact_manifest : Json,
+  digest_artifact_id : String?,
 ) -> Json {
   let merged : Map[String, Json] = {}
   match initial_input {
@@ -88,6 +89,11 @@ fn merge_starter_attachment_artifacts_into_input(
     _ => ()
   }
   merged.set("starter_attachment_artifacts", artifact_manifest)
+  match digest_artifact_id {
+    Some(artifact_id) =>
+      merged.set("starter_attachment_digest_artifact_id", artifact_id.to_json())
+    None => ()
+  }
   Json::object(merged)
 }
 
@@ -114,6 +120,7 @@ async fn persist_starter_attachment_artifacts(
   let artifacts = @job.ArtifactStore::new(store~)
   let now_ms = current_time_ms()
   let entries : Array[Json] = []
+  let summary_entries : Array[(String, String)] = []
   for attachment in attachments {
     let entry : Map[String, Json] = {
       "id": attachment.id.to_json(),
@@ -156,14 +163,15 @@ async fn persist_starter_attachment_artifacts(
           now_ms,
         )
         artifact_ids.push(artifact.id)
+        let summary_markdown = @attachment_ingestion.starter_attachment_summary_markdown(
+          attachment, extracted_text,
+        )
         let summary_artifact = artifacts.write(
           @job.ArtifactWriteRequest::new(
             run_id~,
             job_id~,
             artifact_type="starter_attachment.summary",
-            content=@attachment_ingestion.starter_attachment_summary_markdown(
-              attachment, extracted_text,
-            ),
+            content=summary_markdown,
             logical_key=Some("starter-attachment:\{attachment.id}:summary"),
             content_type="text/markdown",
             file_name=Some(
@@ -183,6 +191,7 @@ async fn persist_starter_attachment_artifacts(
           now_ms,
         )
         artifact_ids.push(summary_artifact.id)
+        summary_entries.push((attachment.id, summary_markdown))
       }
       _ => ()
     }
@@ -245,10 +254,34 @@ async fn persist_starter_attachment_artifacts(
     })
   }
 
+  let digest_artifact_id = if summary_entries.is_empty() {
+    None
+  } else {
+    let artifact = artifacts.write(
+      @job.ArtifactWriteRequest::new(
+        run_id~,
+        job_id~,
+        artifact_type="starter_attachment.digest",
+        content=@attachment_ingestion.starter_attachment_digest_markdown(
+          attachments, summary_entries,
+        ),
+        logical_key=Some("starter-attachment:digest"),
+        content_type="text/markdown",
+        file_name=Some("starter_attachment_digest.md"),
+        metadata={ "attachment_count": attachments.length() },
+        scope=["starter_attachment", "digest"],
+      ),
+      "artifact-\{run_id}-starter-digest",
+      now_ms,
+    )
+    Some(artifact.id)
+  }
+
   Some(
     merge_starter_attachment_artifacts_into_input(
       initial_input,
       Json::array(entries),
+      digest_artifact_id,
     ),
   )
 }

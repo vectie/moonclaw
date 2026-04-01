@@ -54,3 +54,28 @@ test "render_materialized_attachment_manifest includes saved and extracted paths
     content="true",
   )
 }
+
+///|
+test "starter_attachment_digest_markdown includes per-file summaries" {
+  let rendered = starter_attachment_digest_markdown(
+    [
+      MaterializedStarterAttachment::new(
+        id="file-1",
+        mime_type="application/pdf",
+        source_url="feishu://file/file-1",
+        filename=Some("parcel.pdf"),
+        saved_path=Some("/tmp/parcel.pdf"),
+        extracted_text_path=Some("/tmp/parcel.pdf.extracted.txt"),
+      ),
+    ],
+    [
+      (
+        "file-1", "# Starter Attachment Summary\n\n## Extracted Preview\n\nParcel digest",
+      ),
+    ],
+  )
+  inspect(rendered.contains("# Starter Attachment Digest"), content="true")
+  inspect(rendered.contains("## parcel.pdf"), content="true")
+  inspect(rendered.contains("### Summary"), content="true")
+  inspect(rendered.contains("Parcel digest"), content="true")
+}

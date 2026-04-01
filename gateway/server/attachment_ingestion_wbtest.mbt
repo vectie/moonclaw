@@ -156,6 +156,11 @@ async test "persist_starter_attachment_artifacts writes extracted text and manif
       _ => []
     }
     inspect(persisted_entries.length().to_string(), content="3")
+    let digest_artifact_id = match updated {
+      Some({ "starter_attachment_digest_artifact_id": String(id), .. }) => id
+      _ => ""
+    }
+    inspect(digest_artifact_id.is_blank().to_string(), content="false")
     let first_attachment = match persisted_entries[0] {
       { "artifact_ids": Json::Array(ids), .. } => ids
       _ => []
@@ -167,7 +172,7 @@ async test "persist_starter_attachment_artifacts writes extracted text and manif
       .list(query=@job.ArtifactQuery::new(run_id=Some("run-1")))
       .length()
       .to_string(),
-      content="4",
+      content="5",
     )
   })
 }

@@ -958,11 +958,14 @@ async test "build_analysis_request renders starter attachment artifacts" {
           "run-analysis-1",
           fn() { 1000 },
           initial_input=Some({
+            "starter_attachment_digest_artifact_id": "artifact-run-1-starter-digest",
             "starter_attachment_artifacts": [
               {
                 "id": "file-1",
                 "filename": "parcel.pdf",
-                "artifact_ids": ["artifact-run-1-starter-file-1-text"],
+                "artifact_ids": [
+                  "artifact-run-1-starter-file-1-text", "artifact-run-1-starter-file-1-summary",
+                ],
               },
               {
                 "kind": "manifest_markdown",
@@ -976,12 +979,30 @@ async test "build_analysis_request renders starter attachment artifacts" {
       },
     )
     inspect(
+      captured_prompt.val.contains(
+        "Aggregate starter attachment digest: artifact-run-1-starter-digest",
+      ),
+      content="true",
+    )
+    inspect(
       captured_prompt.val.contains("Starter attachment artifacts:"),
       content="true",
     )
     inspect(
       captured_prompt.val.contains(
-        "parcel.pdf: artifact-run-1-starter-file-1-text",
+        "Prefer `starter_attachment_digest_artifact_id` first when present as the aggregate starter-document overview.",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "parcel.pdf: artifact-run-1-starter-file-1-summary, artifact-run-1-starter-file-1-text",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "Prefer `starter_attachment.summary` artifact ids first when available",
       ),
       content="true",
     )

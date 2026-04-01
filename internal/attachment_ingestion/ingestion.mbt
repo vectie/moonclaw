@@ -146,6 +146,63 @@ pub fn starter_attachment_summary_markdown(
 }
 
 ///|
+pub fn starter_attachment_digest_markdown(
+  attachments : Array[MaterializedStarterAttachment],
+  summary_entries : Array[(String, String)],
+) -> String {
+  let lines = [
+    "# Starter Attachment Digest", "", "Use this digest as the compact starter-document overview before reading per-file extracted text in full.",
+    "",
+  ]
+  if attachments.is_empty() {
+    lines.push("No starter attachments were materialized.")
+    return lines.join("\n").trim_end().to_string() + "\n"
+  }
+  for attachment in attachments {
+    let title = attachment.filename.unwrap_or(attachment.id)
+    lines.push("## \{title}")
+    lines.push("")
+    lines.push("- Attachment id: \{attachment.id}")
+    lines.push("- MIME type: \{attachment.mime_type}")
+    lines.push("- Status: \{attachment.status}")
+    match attachment.saved_path {
+      Some(path) => lines.push("- Saved path: \{path}")
+      None => ()
+    }
+    match attachment.extracted_text_path {
+      Some(path) => lines.push("- Extracted text path: \{path}")
+      None => ()
+    }
+    match attachment.note {
+      Some(note) if !note.trim().to_string().is_blank() =>
+        lines.push("- Note: \{note.trim().to_string()}")
+      _ => ()
+    }
+    let mut matched_summary : String? = None
+    for entry in summary_entries {
+      if entry.0 == attachment.id {
+        matched_summary = Some(entry.1)
+        break
+      }
+    }
+    match matched_summary {
+      Some(summary_markdown) => {
+        let excerpt = summary_markdown.trim().to_string()
+        if !excerpt.is_blank() {
+          lines.push("")
+          lines.push("### Summary")
+          lines.push("")
+          lines.push(excerpt)
+        }
+      }
+      None => ()
+    }
+    lines.push("")
+  }
+  lines.join("\n").trim_end().to_string() + "\n"
+}
+
+///|
 pub fn attachment_is_text_like(
   mime_type : String,
   filename? : String? = None,

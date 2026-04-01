@@ -945,7 +945,23 @@ fn build_analysis_prompt(
 }
 
 ///|
+fn starter_attachment_artifact_priority(artifact_id : String) -> Int {
+  if artifact_id.has_suffix("-summary") {
+    0
+  } else if artifact_id.has_suffix("-text") {
+    1
+  } else {
+    2
+  }
+}
+
+///|
 fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
+  let digest_prompt = match input {
+    { "starter_attachment_digest_artifact_id": String(artifact_id), .. } =>
+      "Aggregate starter attachment digest: \{artifact_id}"
+    _ => ""
+  }
   let rendered : Array[String] = []
   match input {
     { "starter_attachment_artifacts": Array(entries), .. } =>
@@ -970,6 +986,12 @@ fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
               })
               .filter(fn(id) { !id.is_blank() })
             if !ids.is_empty() {
+              let ids = ids.copy()
+              ids.sort_by(fn(left, right) {
+                starter_attachment_artifact_priority(left).compare(
+                  starter_attachment_artifact_priority(right),
+                )
+              })
               let joined_ids = ids.join(", ")
               rendered.push("- \{name}: \{joined_ids}")
             }
@@ -982,13 +1004,21 @@ fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
     _ => ()
   }
   if rendered.is_empty() {
-    ""
+    digest_prompt
   } else {
-    [
+    let sections = [
       "Starter attachment artifacts:",
+      "Prefer `starter_attachment_digest_artifact_id` first when present as the aggregate starter-document overview.",
+      "Prefer `starter_attachment.summary` artifact ids first when available; use the full extracted text artifacts only when you need more detail.",
       "Prefer these durable artifact references before falling back to raw workspace paths.",
       rendered.join("\n"),
-    ].join("\n")
+    ]
+    let sections = if digest_prompt.is_blank() {
+      sections
+    } else {
+      [digest_prompt, ..sections]
+    }
+    sections.join("\n")
   }
 }
 

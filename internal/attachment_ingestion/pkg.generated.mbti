@@ -12,6 +12,8 @@ pub fn attachment_is_text_like(String, filename? : String?) -> Bool
 
 pub fn render_materialized_attachment_manifest(Array[MaterializedStarterAttachment]) -> String
 
+pub fn starter_attachment_digest_markdown(Array[MaterializedStarterAttachment], Array[(String, String)]) -> String
+
 pub fn starter_attachment_dir(String) -> String
 
 pub fn starter_attachment_extracted_text_path(String) -> String
