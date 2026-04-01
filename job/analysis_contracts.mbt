@@ -6,6 +6,7 @@ pub(all) struct AnalysisToolContract {
   search_files : Bool
   todo : Bool
   file_write : Bool
+  web_fetch : Bool
   web_search : Bool
 } derive(ToJson, FromJson, Show)
 
@@ -17,6 +18,7 @@ pub fn AnalysisToolContract::new(
   search_files? : Bool = true,
   todo? : Bool = true,
   file_write? : Bool = true,
+  web_fetch? : Bool = false,
   web_search? : Bool = false,
 ) -> AnalysisToolContract {
   AnalysisToolContract::{
@@ -26,6 +28,7 @@ pub fn AnalysisToolContract::new(
     search_files,
     todo,
     file_write,
+    web_fetch,
     web_search,
   }
 }
@@ -43,10 +46,11 @@ fn default_analysis_tool_contract(
       search_files=false,
       todo=false,
       file_write=false,
+      web_fetch=false,
       web_search=false,
     )
   } else {
-    AnalysisToolContract::new(web_search~)
+    AnalysisToolContract::new(web_fetch=web_search, web_search~)
   }
 }
 
@@ -128,6 +132,9 @@ pub fn setup_analysis_agent_for_contract(
   if contract.web_search {
     agent.add_tool(@web_search.new())
   }
+  if contract.web_fetch {
+    agent.add_tool(@web_fetch.new())
+  }
   if contract.file_write {
     if agent.model.supports_apply_patch {
       agent.add_tool(@apply_patch.new(agent.cwd))
@@ -146,6 +153,6 @@ pub fn setup_analysis_agent(
   setup_analysis_agent_for_contract(
     agent,
     cwd,
-    AnalysisToolContract::new(web_search~),
+    AnalysisToolContract::new(web_fetch=web_search, web_search~),
   )
 }

@@ -21,6 +21,7 @@ import {
   "moonbitlang/moonclaw/tools/list_files",
   "moonbitlang/moonclaw/tools/read_file",
   "moonbitlang/moonclaw/tools/search_files",
+  "moonbitlang/moonclaw/tools/web_fetch",
   "moonbitlang/moonclaw/tools/web_search",
   "moonbitlang/moonclaw/tools/todo",
   "moonbitlang/moonclaw/tools/write_to_file",

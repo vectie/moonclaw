@@ -17,6 +17,7 @@ This directory contains tool implementations that the AI agent can use.
 | `todo` | Task list management |
 | `list_jobs` | List background jobs |
 | `wait_job` | Wait for job completion |
+| `web_fetch` | Fetch and clean URL content |
 
 ---
 
@@ -253,6 +254,27 @@ pub fn new(manager : @job.Manager) -> @tool.Tool[WaitJobResult]
 **Output:**
 - Exit code
 - Final status
+
+---
+
+## web_fetch
+
+Fetch a URL and return cleaned text content.
+
+```moonbit nocheck
+pub fn new() -> @tool.Tool[WebFetchResult]
+```
+
+**Parameters:**
+- `url`: HTTP or HTTPS URL to fetch (required)
+- `max_chars`: Maximum number of characters to return (default: 5000)
+
+**Behavior:**
+- fetches the target URL
+- returns plain text for text responses
+- strips common HTML markup for HTML pages
+- extracts page title when available
+- truncates oversized results predictably
 
 ---
 

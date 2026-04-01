@@ -329,6 +329,7 @@ test "analysis_tool_contract defaults from legacy booleans" {
   )
   inspect(enabled.shell.to_json().stringify(), content="true")
   inspect(enabled.read_files.to_json().stringify(), content="true")
+  inspect(enabled.web_fetch.to_json().stringify(), content="true")
   inspect(enabled.web_search.to_json().stringify(), content="true")
 
   let disabled = analysis_tool_contract(
@@ -340,6 +341,7 @@ test "analysis_tool_contract defaults from legacy booleans" {
   )
   inspect(disabled.shell.to_json().stringify(), content="false")
   inspect(disabled.read_files.to_json().stringify(), content="false")
+  inspect(disabled.web_fetch.to_json().stringify(), content="false")
   inspect(disabled.web_search.to_json().stringify(), content="false")
 }
 
@@ -354,12 +356,14 @@ test "analysis_tool_contract prefers structured metadata contract" {
         "search_files": false,
         "todo": false,
         "file_write": false,
+        "web_fetch": true,
         "web_search": true,
       },
     }),
   )
   inspect(contract.list_files.to_json().stringify(), content="true")
   inspect(contract.read_files.to_json().stringify(), content="true")
+  inspect(contract.web_fetch.to_json().stringify(), content="true")
   inspect(contract.web_search.to_json().stringify(), content="true")
   inspect(contract.shell.to_json().stringify(), content="false")
 }

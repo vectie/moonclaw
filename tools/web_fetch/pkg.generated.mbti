@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/web_fetch"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new() -> @tool.Tool[WebFetchResult]
+
+// Errors
+
+// Types and methods
+pub struct WebFetchResult {
+  url : String
+  status_code : Int
+  content_type : String?
+  title : String?
+  text : String
+  truncated : Bool
+  source : String
+}
+pub impl Show for WebFetchResult
+pub impl ToJson for WebFetchResult
+pub impl @json.FromJson for WebFetchResult
+
+// Type aliases
+
+// Traits
+

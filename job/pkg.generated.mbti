@@ -3,14 +3,19 @@ package "moonbitlang/moonclaw/job"
 
 import {
   "moonbitlang/core/json",
+  "moonbitlang/moonclaw/agent",
   "moonbitlang/moonclaw/ai",
   "moonbitlang/moonclaw/workspace",
 }
 
 // Values
+pub fn analysis_result_content_contract(AnalysisStepConfig) -> String?
+
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, compiler? : ProposalCompiler?, engine_factory? : (() -> WorkflowEngine)?, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
 pub fn analysis_system_prompt(AnalysisStepConfig) -> String
+
+pub fn analysis_tool_contract(AnalysisStepConfig) -> AnalysisToolContract
 
 pub async fn apply_named_job_profile(JobProposal, String, String, String, String?) -> JobProposal
 
@@ -58,6 +63,8 @@ pub fn ensure_draft_proposal(JobProposal, String) -> String?
 
 pub fn event_as_ui_timeline_entry(JobRunEvent, Int) -> JobUiTimelineEntry
 
+pub async fn execute_analysis_request(AnalysisExecutor, AnalysisRequest, AnalysisPolicy, String) -> Result[AnalysisExecution, String]
+
 pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> WorkflowEngine, initial_input? : Json?, control? : WorkflowExecutionControl, hooks? : RunExecutionHooks) -> Unit
 
 pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
@@ -102,15 +109,23 @@ pub fn parse_job_notify_target(Json) -> JobNotifyTarget?
 
 pub fn parse_notification_verbosity(String) -> NotificationVerbosity?
 
+pub fn parse_presentation_deck_spec_text(String) -> PresentationDeckSpec?
+
 pub fn parse_reply_thread_job_action(String) -> (String, String)?
 
 pub fn parse_revise_args(String) -> (String, String)?
+
+pub async fn persist_analysis_execution(SystemStore, ArtifactStore, WorkflowStepContext, AnalysisStepConfig, AnalysisExecution, () -> Int) -> PersistedAnalysisExecution
 
 pub async fn plan_e2e_job_proposal(String, String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
 
 pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
 
 pub async fn prepare_run_workspace(SystemStore, JobDefinition, JobRun) -> JobRun
+
+pub fn presentation_contract_version() -> String
+
+pub fn presentation_deck_spec_schema_prompt() -> String
 
 pub fn proposal_as_workflow(JobProposal, Int, String, String, workspace_root? : String) -> (JobDefinition, WorkflowDefinition)
 
@@ -202,7 +217,13 @@ pub async fn save_presented_job_proposal(SystemStore, JobProposal, String) -> Un
 
 pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
 
+pub fn setup_analysis_agent(@agent.Agent, String, web_search? : Bool) -> Unit
+
+pub fn setup_analysis_agent_for_contract(@agent.Agent, String, AnalysisToolContract) -> Unit
+
 pub fn split_job_chat_command(String) -> (String, String)
+
+pub fn structured_analysis_result_payload(String, AnalysisStepConfig, AnalysisExecution) -> Json
 
 pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
@@ -304,6 +325,7 @@ pub(all) struct AnalysisRequest {
   preferred_skills : Array[String]
   enable_tools : Bool
   web_search : Bool
+  tool_contract : AnalysisToolContract
 }
 pub impl Show for AnalysisRequest
 pub impl ToJson for AnalysisRequest
@@ -329,6 +351,21 @@ pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String
 pub impl Show for AnalysisStepConfig
 pub impl ToJson for AnalysisStepConfig
 pub impl @json.FromJson for AnalysisStepConfig
+
+pub(all) struct AnalysisToolContract {
+  shell : Bool
+  list_files : Bool
+  read_files : Bool
+  search_files : Bool
+  todo : Bool
+  file_write : Bool
+  web_fetch : Bool
+  web_search : Bool
+}
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub impl Show for AnalysisToolContract
+pub impl ToJson for AnalysisToolContract
+pub impl @json.FromJson for AnalysisToolContract
 
 type ArtifactBytesWriteRequest
 
@@ -1214,6 +1251,14 @@ pub impl Eq for NotificationVerbosity
 pub impl Show for NotificationVerbosity
 pub impl ToJson for NotificationVerbosity
 pub impl @json.FromJson for NotificationVerbosity
+
+pub(all) struct PersistedAnalysisExecution {
+  execution : AnalysisExecution
+  result_payload : Json
+  report_artifact_id : String
+  result_artifact_id : String
+  completed_result : Result[WorkflowStepResult, String]
+}
 
 pub struct PresentationDeckSpec {
   title : String
