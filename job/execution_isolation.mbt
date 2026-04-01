@@ -65,8 +65,8 @@ pub fn subtask_prefers_git_worktree(
   ]
   let target_keywords = [
     "code", "file", "files", "module", "function", "repository", "repo", "source",
-    ".mbt", ".ts", ".js", ".py", ".go", ".rs", ".java", ".kt", ".swift", ".c", ".cpp",
-    ".h",
+    "implementation", "implement requested change", "worker request", ".mbt", ".ts",
+    ".js", ".py", ".go", ".rs", ".java", ".kt", ".swift", ".c", ".cpp", ".h",
   ]
   contains_any_keyword(text, action_keywords) &&
   contains_any_keyword(text, target_keywords)

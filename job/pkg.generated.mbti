@@ -231,6 +231,10 @@ pub fn structured_analysis_result_payload(String, AnalysisStepConfig, AnalysisEx
 
 pub fn subjob_step_handler(runtime~ : RuntimeManager, planner~ : ProposalPlanner, compiler~ : ProposalCompiler, engine_factory~ : () -> WorkflowEngine, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
 
+pub fn subtask_execution_isolation_metadata(String, String, String, String?) -> Json
+
+pub fn subtask_prefers_git_worktree(String, String, String?) -> Bool
+
 pub async fn suggest_job_profile_family(String, String, String) -> String?
 
 pub fn with_e2e_postprocess_steps(JobProposal) -> JobProposal

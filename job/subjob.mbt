@@ -84,6 +84,39 @@ fn proposal_with_execution_override(
 }
 
 ///|
+fn proposal_with_isolation_policy(proposal : JobProposal) -> JobProposal {
+  let updated_steps = proposal.steps.map(fn(step) {
+    let isolation_metadata = subtask_execution_isolation_metadata(
+      step.id,
+      step.title,
+      step.prompt,
+      Some(step.kind),
+    )
+    if isolation_metadata.stringify() == "{}" {
+      step
+    } else {
+      let merged_step_metadata : Map[String, Json] = {}
+      match step.metadata {
+        Object(obj) =>
+          for key, value in obj {
+            merged_step_metadata.set(key, value)
+          }
+        _ => ()
+      }
+      match isolation_metadata {
+        Object(obj) =>
+          for key, value in obj {
+            merged_step_metadata.set(key, value)
+          }
+        _ => ()
+      }
+      JobProposalStep::{ ..step, metadata: Json::object(merged_step_metadata) }
+    }
+  })
+  JobProposal::{ ..proposal, steps: updated_steps }
+}
+
+///|
 fn render_parent_outputs(outputs : Map[String, Json]) -> String {
   if outputs.is_empty() {
     return ""
@@ -214,6 +247,7 @@ pub fn subjob_step_handler(
       cwd,
       config.child_profile,
     )
+    let proposal = proposal_with_isolation_policy(proposal)
     let proposal = proposal_with_execution_override(
       proposal,
       config.execution_mode,

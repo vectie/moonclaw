@@ -377,6 +377,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
     let captured_skill_present : Ref[Bool] = { val: false }
     let captured_execution_mode : Ref[String] = { val: "" }
     let captured_execution_target : Ref[String] = { val: "" }
+    let captured_step_metadata : Ref[String] = { val: "" }
     let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
       captured_family.val = proposal.suggested_family.unwrap_or("")
       captured_profile_id.val = proposal.profile_id.unwrap_or("")
@@ -393,6 +394,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
         { "execution": { "target": String(target), .. }, .. } => target
         _ => ""
       }
+      captured_step_metadata.val = proposal.steps[0].metadata.stringify()
       let workflow = WorkflowDefinition::{
         id: "workflow.child.profile",
         kind: "test.child",
@@ -457,6 +459,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
     inspect(captured_skill_present.val, content="true")
     inspect(captured_execution_mode.val, content="acp")
     inspect(captured_execution_target.val, content="codex-impl")
+    inspect(captured_step_metadata.val.contains("git_worktree"), content="true")
     inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
     inspect(
       result.outputs
