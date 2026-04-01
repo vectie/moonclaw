@@ -464,7 +464,10 @@ fn artifact_node_summary(artifact : ArtifactRecord) -> String? {
       None => Some(artifact.path)
     }
   } else if artifact.artifact_type == "starter_attachment.digest" {
-    Some(artifact.path)
+    match artifact_metadata_string(artifact.metadata, "path") {
+      Some(path) => Some(path)
+      None => Some(artifact.path)
+    }
   } else if artifact.artifact_type == "starter_attachment.summary" {
     match artifact_metadata_string(artifact.metadata, "saved_path") {
       Some(saved_path) => Some(saved_path)

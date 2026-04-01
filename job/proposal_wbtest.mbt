@@ -291,7 +291,13 @@ async test "plan_e2e_job_proposal preprocess prompt never asks for waiting input
   inspect(preprocess.id, content="context_preprocess")
   inspect(
     preprocess.prompt.contains(
-      "If the initial input includes `starter_attachment_digest_artifact_id`, inspect that durable aggregate starter-document digest first.",
+      "If the initial input includes `starter_attachment_digest_path`, inspect that materialized aggregate starter-document digest first.",
+    ),
+    content="true",
+  )
+  inspect(
+    preprocess.prompt.contains(
+      "If the initial input includes `starter_attachment_digest_artifact_id`, use that durable aggregate starter-document digest reference first when artifact-oriented tooling is available.",
     ),
     content="true",
   )

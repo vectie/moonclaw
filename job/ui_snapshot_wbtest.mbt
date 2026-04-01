@@ -367,7 +367,10 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       status: Active,
       path: "/tmp/ws-1/.moonclaw/starter_attachments/digest.md",
       content_type: "text/markdown",
-      metadata: { "attachment_count": 1 },
+      metadata: {
+        "attachment_count": 1,
+        "path": "/tmp/ws-1/.moonclaw/starter_attachments/digest.md",
+      },
       created_at: 123,
       archived_at: None,
       scope: ["starter_attachment", "digest"],
@@ -422,6 +425,10 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
     json_inspect(
       digest_node.detail.unwrap_or(""),
       content="starter document digest",
+    )
+    json_inspect(
+      digest_node.summary.unwrap_or(""),
+      content="/tmp/ws-1/.moonclaw/starter_attachments/digest.md",
     )
   })
 }

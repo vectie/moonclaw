@@ -14,6 +14,8 @@ pub fn render_materialized_attachment_manifest(Array[MaterializedStarterAttachme
 
 pub fn starter_attachment_digest_markdown(Array[MaterializedStarterAttachment], Array[(String, String)]) -> String
 
+pub fn starter_attachment_digest_path(String) -> String
+
 pub fn starter_attachment_dir(String) -> String
 
 pub fn starter_attachment_extracted_text_path(String) -> String

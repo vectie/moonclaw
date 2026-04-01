@@ -56,6 +56,11 @@ pub fn starter_attachment_manifest_markdown_path(
 }
 
 ///|
+pub fn starter_attachment_digest_path(workspace_dir : String) -> String {
+  starter_attachment_dir(workspace_dir) |> @pathx.join("digest.md")
+}
+
+///|
 fn sanitized_attachment_name(text : String) -> String {
   let builder = StringBuilder::new()
   for char in text {

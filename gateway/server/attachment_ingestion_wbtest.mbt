@@ -161,6 +161,12 @@ async test "persist_starter_attachment_artifacts writes extracted text and manif
       _ => ""
     }
     inspect(digest_artifact_id.is_blank().to_string(), content="false")
+    let digest_path = match updated {
+      Some({ "starter_attachment_digest_path": String(path), .. }) => path
+      _ => ""
+    }
+    inspect(digest_path.is_blank().to_string(), content="false")
+    inspect(@fsx.exists(digest_path), content="true")
     let first_attachment = match persisted_entries[0] {
       { "artifact_ids": Json::Array(ids), .. } => ids
       _ => []

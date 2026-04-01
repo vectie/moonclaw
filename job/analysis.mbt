@@ -957,11 +957,20 @@ fn starter_attachment_artifact_priority(artifact_id : String) -> Int {
 
 ///|
 fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
-  let digest_prompt = match input {
-    { "starter_attachment_digest_artifact_id": String(artifact_id), .. } =>
-      "Aggregate starter attachment digest: \{artifact_id}"
-    _ => ""
+  let digest_lines : Array[String] = []
+  match input {
+    { "starter_attachment_digest_path": String(path), .. } =>
+      digest_lines.push("Aggregate starter attachment digest path: \{path}")
+    _ => ()
   }
+  match input {
+    { "starter_attachment_digest_artifact_id": String(artifact_id), .. } =>
+      digest_lines.push(
+        "Aggregate starter attachment digest artifact: \{artifact_id}",
+      )
+    _ => ()
+  }
+  let digest_prompt = digest_lines.join("\n")
   let rendered : Array[String] = []
   match input {
     { "starter_attachment_artifacts": Array(entries), .. } =>
@@ -1008,7 +1017,8 @@ fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
   } else {
     let sections = [
       "Starter attachment artifacts:",
-      "Prefer `starter_attachment_digest_artifact_id` first when present as the aggregate starter-document overview.",
+      "Prefer `starter_attachment_digest_path` first when present as the directly readable aggregate starter-document overview.",
+      "Use `starter_attachment_digest_artifact_id` next when artifact-oriented tooling is available.",
       "Prefer `starter_attachment.summary` artifact ids first when available; use the full extracted text artifacts only when you need more detail.",
       "Prefer these durable artifact references before falling back to raw workspace paths.",
       rendered.join("\n"),

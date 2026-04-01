@@ -79,6 +79,7 @@ fn merge_starter_attachment_artifacts_into_input(
   initial_input : Json?,
   artifact_manifest : Json,
   digest_artifact_id : String?,
+  digest_path : String?,
 ) -> Json {
   let merged : Map[String, Json] = {}
   match initial_input {
@@ -92,6 +93,10 @@ fn merge_starter_attachment_artifacts_into_input(
   match digest_artifact_id {
     Some(artifact_id) =>
       merged.set("starter_attachment_digest_artifact_id", artifact_id.to_json())
+    None => ()
+  }
+  match digest_path {
+    Some(path) => merged.set("starter_attachment_digest_path", path.to_json())
     None => ()
   }
   Json::object(merged)
@@ -254,27 +259,37 @@ async fn persist_starter_attachment_artifacts(
     })
   }
 
-  let digest_artifact_id = if summary_entries.is_empty() {
-    None
+  let (digest_artifact_id, digest_path) = if summary_entries.is_empty() {
+    (None, None)
   } else {
+    let digest_markdown = @attachment_ingestion.starter_attachment_digest_markdown(
+      attachments, summary_entries,
+    )
+    let digest_path = @attachment_ingestion.starter_attachment_digest_path(
+      workspace_dir,
+    )
+    @fsx.write_to_file(digest_path, digest_markdown) catch {
+      _ => ()
+    }
     let artifact = artifacts.write(
       @job.ArtifactWriteRequest::new(
         run_id~,
         job_id~,
         artifact_type="starter_attachment.digest",
-        content=@attachment_ingestion.starter_attachment_digest_markdown(
-          attachments, summary_entries,
-        ),
+        content=digest_markdown,
         logical_key=Some("starter-attachment:digest"),
         content_type="text/markdown",
         file_name=Some("starter_attachment_digest.md"),
-        metadata={ "attachment_count": attachments.length() },
+        metadata={
+          "attachment_count": attachments.length(),
+          "path": digest_path,
+        },
         scope=["starter_attachment", "digest"],
       ),
       "artifact-\{run_id}-starter-digest",
       now_ms,
     )
-    Some(artifact.id)
+    (Some(artifact.id), Some(digest_path))
   }
 
   Some(
@@ -282,6 +297,7 @@ async fn persist_starter_attachment_artifacts(
       initial_input,
       Json::array(entries),
       digest_artifact_id,
+      digest_path,
     ),
   )
 }

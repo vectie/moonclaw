@@ -958,6 +958,7 @@ async test "build_analysis_request renders starter attachment artifacts" {
           "run-analysis-1",
           fn() { 1000 },
           initial_input=Some({
+            "starter_attachment_digest_path": "/tmp/ws/digest.md",
             "starter_attachment_digest_artifact_id": "artifact-run-1-starter-digest",
             "starter_attachment_artifacts": [
               {
@@ -980,7 +981,13 @@ async test "build_analysis_request renders starter attachment artifacts" {
     )
     inspect(
       captured_prompt.val.contains(
-        "Aggregate starter attachment digest: artifact-run-1-starter-digest",
+        "Aggregate starter attachment digest path: /tmp/ws/digest.md",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "Aggregate starter attachment digest artifact: artifact-run-1-starter-digest",
       ),
       content="true",
     )
@@ -990,7 +997,13 @@ async test "build_analysis_request renders starter attachment artifacts" {
     )
     inspect(
       captured_prompt.val.contains(
-        "Prefer `starter_attachment_digest_artifact_id` first when present as the aggregate starter-document overview.",
+        "Prefer `starter_attachment_digest_path` first when present as the directly readable aggregate starter-document overview.",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "Use `starter_attachment_digest_artifact_id` next when artifact-oriented tooling is available.",
       ),
       content="true",
     )
