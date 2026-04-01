@@ -1,0 +1,57 @@
+///|
+async test "read_resource reads file URIs" (t : @test.Test) {
+  @mock.run(t, mock => {
+    mock.add_json_tree({ "notes.txt": "hello from resource tool" })
+    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let result = tool.call({ "uri": "file://notes.txt" })
+    guard result is Ok(output) else {
+      fail("Expected Ok result but got: \{result}")
+    }
+    inspect(output.kind.to_json().stringify(), content="\"File\"")
+    inspect(output.text, content="hello from resource tool")
+  })
+}
+
+///|
+async test "read_resource reads skill URIs" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let skill_dir = mock.cwd.path()
+      |> @pathx.join(".moonclaw")
+      |> @pathx.join("skills")
+      |> @pathx.join("demo-skill")
+    @fsx.make_directory(skill_dir, recursive=true)
+    @fsx.write_to_file(
+      skill_dir |> @pathx.join("SKILL.md"),
+      (
+        #|---
+        #|name: demo-skill
+        #|description: Demo skill for resource reading.
+        #|---
+        #|
+        #|This is the demo skill body.
+      ),
+    )
+    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let result = tool.call({ "uri": "skill://demo-skill" })
+    guard result is Ok(output) else {
+      fail("Expected Ok result but got: \{result}")
+    }
+    inspect(output.kind.to_json().stringify(), content="\"Skill\"")
+    inspect(output.metadata.stringify().contains("demo-skill"), content="true")
+    inspect(output.text.contains("demo skill body"), content="true")
+  })
+}
+
+///|
+async test "read_resource truncates text" (t : @test.Test) {
+  @mock.run(t, mock => {
+    mock.add_json_tree({ "long.txt": "abcdefghijklmnopqrstuvwxyz" })
+    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let result = tool.call({ "uri": "file://long.txt", "max_chars": 100 })
+    guard result is Ok(output) else {
+      fail("Expected Ok result but got: \{result}")
+    }
+    inspect(output.truncated.to_json().stringify(), content="false")
+    inspect(output.text, content="abcdefghijklmnopqrstuvwxyz")
+  })
+}

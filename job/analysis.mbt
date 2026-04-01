@@ -769,6 +769,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
       setup_analysis_agent_for_contract(
         agent,
         request.cwd,
+        request.home,
         request.tool_contract,
       )
     }

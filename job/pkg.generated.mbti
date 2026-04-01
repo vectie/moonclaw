@@ -219,7 +219,7 @@ pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
 
 pub fn setup_analysis_agent(@agent.Agent, String, web_search? : Bool) -> Unit
 
-pub fn setup_analysis_agent_for_contract(@agent.Agent, String, AnalysisToolContract) -> Unit
+pub fn setup_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract) -> Unit
 
 pub fn split_job_chat_command(String) -> (String, String)
 
@@ -356,6 +356,7 @@ pub(all) struct AnalysisToolContract {
   shell : Bool
   list_files : Bool
   glob_files : Bool
+  read_resource : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
@@ -363,7 +364,7 @@ pub(all) struct AnalysisToolContract {
   web_fetch : Bool
   web_search : Bool
 }
-pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, read_resource? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 pub impl Show for AnalysisToolContract
 pub impl ToJson for AnalysisToolContract
 pub impl @json.FromJson for AnalysisToolContract

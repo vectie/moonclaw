@@ -329,6 +329,7 @@ test "analysis_tool_contract defaults from legacy booleans" {
   )
   inspect(enabled.shell.to_json().stringify(), content="true")
   inspect(enabled.glob_files.to_json().stringify(), content="true")
+  inspect(enabled.read_resource.to_json().stringify(), content="true")
   inspect(enabled.read_files.to_json().stringify(), content="true")
   inspect(enabled.web_fetch.to_json().stringify(), content="true")
   inspect(enabled.web_search.to_json().stringify(), content="true")
@@ -342,6 +343,7 @@ test "analysis_tool_contract defaults from legacy booleans" {
   )
   inspect(disabled.shell.to_json().stringify(), content="false")
   inspect(disabled.glob_files.to_json().stringify(), content="false")
+  inspect(disabled.read_resource.to_json().stringify(), content="false")
   inspect(disabled.read_files.to_json().stringify(), content="false")
   inspect(disabled.web_fetch.to_json().stringify(), content="false")
   inspect(disabled.web_search.to_json().stringify(), content="false")
@@ -355,6 +357,7 @@ test "analysis_tool_contract prefers structured metadata contract" {
         "shell": false,
         "list_files": true,
         "glob_files": true,
+        "read_resource": true,
         "read_files": true,
         "search_files": false,
         "todo": false,
@@ -366,6 +369,7 @@ test "analysis_tool_contract prefers structured metadata contract" {
   )
   inspect(contract.list_files.to_json().stringify(), content="true")
   inspect(contract.glob_files.to_json().stringify(), content="true")
+  inspect(contract.read_resource.to_json().stringify(), content="true")
   inspect(contract.read_files.to_json().stringify(), content="true")
   inspect(contract.web_fetch.to_json().stringify(), content="true")
   inspect(contract.web_search.to_json().stringify(), content="true")
@@ -1501,6 +1505,7 @@ async test "setup_analysis_agent registers execute_command tool" {
   setup_analysis_agent(agent, "/tmp")
   inspect(agent.tools().contains("execute_command"), content="true")
   inspect(agent.tools().contains("glob_files"), content="true")
+  inspect(agent.tools().contains("read_resource"), content="true")
 }
 
 ///|

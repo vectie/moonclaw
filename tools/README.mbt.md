@@ -14,6 +14,7 @@ This directory contains tool implementations that the AI agent can use.
 | `apply_patch` | Apply unified diff patches |
 | `list_files` | List directory contents |
 | `glob_files` | Find file paths by glob pattern |
+| `read_resource` | Read typed local resources by URI |
 | `search_files` | Search for patterns in files |
 | `todo` | Task list management |
 | `list_jobs` | List background jobs |
@@ -197,6 +198,29 @@ pub fn new(cwd : String) -> @tool.Tool[GlobFilesResult]
 - Recursive globbing
 - Gitignore-aware path discovery
 - Bounded typed result set
+
+---
+
+## read_resource
+
+Read local runtime resources by URI.
+
+```moonbit nocheck
+pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult]
+```
+
+**Supported URIs:**
+- `file://relative/or/absolute/path`
+- `skill://skill-name`
+
+**Parameters:**
+- `uri`: Resource URI to read
+- `max_chars`: Maximum characters to return (default: `20000`)
+
+**Features:**
+- Typed file and skill resource reads
+- Runtime-aware `cwd` / `home` resolution
+- Structured metadata in the result payload
 
 ---
 

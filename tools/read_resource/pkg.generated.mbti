@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/read_resource"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new(String, home? : String?) -> @tool.Tool[ReadResourceResult]
+
+// Errors
+
+// Types and methods
+pub struct ReadResourceResult {
+  uri : String
+  resolved_uri : String
+  kind : ResourceKind
+  text : String
+  truncated : Bool
+  content_type : String
+  metadata : Json
+}
+pub impl Show for ReadResourceResult
+pub impl ToJson for ReadResourceResult
+pub impl @json.FromJson for ReadResourceResult
+
+pub enum ResourceKind {
+  File
+  Skill
+}
+pub impl Show for ResourceKind
+pub impl ToJson for ResourceKind
+pub impl @json.FromJson for ResourceKind
+
+// Type aliases
+
+// Traits
+

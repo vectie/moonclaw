@@ -3,6 +3,7 @@ pub(all) struct AnalysisToolContract {
   shell : Bool
   list_files : Bool
   glob_files : Bool
+  read_resource : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
@@ -16,6 +17,7 @@ pub fn AnalysisToolContract::new(
   shell? : Bool = true,
   list_files? : Bool = true,
   glob_files? : Bool = true,
+  read_resource? : Bool = true,
   read_files? : Bool = true,
   search_files? : Bool = true,
   todo? : Bool = true,
@@ -27,6 +29,7 @@ pub fn AnalysisToolContract::new(
     shell,
     list_files,
     glob_files,
+    read_resource,
     read_files,
     search_files,
     todo,
@@ -46,6 +49,7 @@ fn default_analysis_tool_contract(
       shell=false,
       list_files=false,
       glob_files=false,
+      read_resource=false,
       read_files=false,
       search_files=false,
       todo=false,
@@ -110,6 +114,7 @@ pub fn structured_analysis_result_payload(
 pub fn setup_analysis_agent_for_contract(
   agent : @agent.Agent,
   cwd : String,
+  home : String?,
   contract : AnalysisToolContract,
 ) -> Unit {
   let file_manager = @file.manager(cwd~)
@@ -123,6 +128,9 @@ pub fn setup_analysis_agent_for_contract(
   }
   if contract.glob_files {
     builtin_tools.push(@glob_files.new(agent.cwd).to_agent_tool())
+  }
+  if contract.read_resource {
+    builtin_tools.push(@read_resource.new(agent.cwd, home=home).to_agent_tool())
   }
   if contract.read_files {
     builtin_tools.push(@read_file.new(file_manager).to_agent_tool())
@@ -160,6 +168,7 @@ pub fn setup_analysis_agent(
   setup_analysis_agent_for_contract(
     agent,
     cwd,
+    None,
     AnalysisToolContract::new(web_fetch=web_search, web_search~),
   )
 }
