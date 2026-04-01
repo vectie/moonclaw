@@ -1,0 +1,45 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/list_resources"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new(String, home? : String?) -> @tool.Tool[ListResourcesResult]
+
+// Errors
+
+// Types and methods
+pub struct ListResourcesResult {
+  resources : Array[ResourceSummary]
+  total_resources : Int
+  truncated : Bool
+}
+pub impl Show for ListResourcesResult
+pub impl ToJson for ListResourcesResult
+pub impl @json.FromJson for ListResourcesResult
+
+pub struct ResourceSummary {
+  uri : String
+  kind : ResourceSummaryKind
+  title : String
+  description : String
+  metadata : Json
+}
+pub impl ToJson for ResourceSummary
+pub impl @json.FromJson for ResourceSummary
+
+pub enum ResourceSummaryKind {
+  File
+  Skill
+}
+pub impl Show for ResourceSummaryKind
+pub impl ToJson for ResourceSummaryKind
+pub impl @json.FromJson for ResourceSummaryKind
+
+// Type aliases
+
+// Traits
+
