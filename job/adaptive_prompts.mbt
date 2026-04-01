@@ -1,6 +1,4 @@
 ///|
-
-///|
 fn adaptive_resume_instruction_text(text : String) -> String? {
   let trimmed = text.trim().to_string()
   if trimmed.is_blank() {
