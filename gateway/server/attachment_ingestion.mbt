@@ -75,6 +75,157 @@ fn merge_materialized_starter_attachments_into_input(
 }
 
 ///|
+fn merge_starter_attachment_artifacts_into_input(
+  initial_input : Json?,
+  artifact_manifest : Json,
+) -> Json {
+  let merged : Map[String, Json] = {}
+  match initial_input {
+    Some(Object(obj)) =>
+      for key, value in obj {
+        merged.set(key, value)
+      }
+    _ => ()
+  }
+  merged.set("starter_attachment_artifacts", artifact_manifest)
+  Json::object(merged)
+}
+
+///|
+fn materialized_starter_attachment_string_field(value : String?) -> Json {
+  match value {
+    Some(value) => value.to_json()
+    None => null
+  }
+}
+
+///|
+async fn persist_starter_attachment_artifacts(
+  store : @job.SystemStore,
+  job_id : String,
+  run_id : String,
+  workspace_dir : String,
+  initial_input : Json?,
+) -> Json? {
+  let attachments = materialized_starter_attachments_from_input(initial_input)
+  if attachments.is_empty() {
+    return initial_input
+  }
+  let artifacts = @job.ArtifactStore::new(store~)
+  let now_ms = current_time_ms()
+  let entries : Array[Json] = []
+  for attachment in attachments {
+    let entry : Map[String, Json] = {
+      "id": attachment.id.to_json(),
+      "filename": attachment.filename.to_json(),
+      "status": attachment.status.to_json(),
+      "saved_path": materialized_starter_attachment_string_field(
+        attachment.saved_path,
+      ),
+      "extracted_text_path": materialized_starter_attachment_string_field(
+        attachment.extracted_text_path,
+      ),
+      "artifact_ids": Json::array([]),
+    }
+    let artifact_ids : Array[String] = []
+    match attachment.extracted_text_path {
+      Some(text_path) if @fsx.exists(text_path) => {
+        let file_name = match attachment.filename {
+          Some(filename) => Some("\{filename}.md")
+          None => Some("starter_attachment.md")
+        }
+        let artifact = artifacts.write(
+          @job.ArtifactWriteRequest::new(
+            run_id~,
+            job_id~,
+            artifact_type="starter_attachment.text",
+            content=@fsx.read_file(text_path),
+            logical_key=Some("starter-attachment:\{attachment.id}:text"),
+            content_type="text/markdown",
+            file_name~,
+            metadata={
+              "attachment_id": attachment.id,
+              "filename": attachment.filename,
+              "saved_path": attachment.saved_path,
+              "extracted_text_path": attachment.extracted_text_path,
+            },
+            scope=["starter_attachment", attachment.id],
+          ),
+          "artifact-\{run_id}-starter-\{attachment.id}-text",
+          now_ms,
+        )
+        artifact_ids.push(artifact.id)
+      }
+      _ => ()
+    }
+    entry.set(
+      "artifact_ids",
+      artifact_ids.map(fn(id) { id.to_json() }).to_json(),
+    )
+    entries.push(Json::object(entry))
+  }
+
+  let manifest_json_path = @attachment_ingestion.starter_attachment_manifest_json_path(
+    workspace_dir,
+  )
+  if @fsx.exists(manifest_json_path) {
+    let artifact = artifacts.write(
+      @job.ArtifactWriteRequest::new(
+        run_id~,
+        job_id~,
+        artifact_type="starter_attachment.manifest",
+        content=@fsx.read_file(manifest_json_path),
+        logical_key=Some("starter-attachment:manifest:json"),
+        content_type="application/json",
+        file_name=Some("starter_attachment_manifest.json"),
+        metadata={ "kind": "json", "path": manifest_json_path },
+        scope=["starter_attachment", "manifest"],
+      ),
+      "artifact-\{run_id}-starter-manifest-json",
+      now_ms,
+    )
+    entries.push({
+      "kind": "manifest_json",
+      "path": manifest_json_path,
+      "artifact_id": artifact.id,
+    })
+  }
+
+  let manifest_markdown_path = @attachment_ingestion.starter_attachment_manifest_markdown_path(
+    workspace_dir,
+  )
+  if @fsx.exists(manifest_markdown_path) {
+    let artifact = artifacts.write(
+      @job.ArtifactWriteRequest::new(
+        run_id~,
+        job_id~,
+        artifact_type="starter_attachment.manifest",
+        content=@fsx.read_file(manifest_markdown_path),
+        logical_key=Some("starter-attachment:manifest:markdown"),
+        content_type="text/markdown",
+        file_name=Some("starter_attachment_manifest.md"),
+        metadata={ "kind": "markdown", "path": manifest_markdown_path },
+        scope=["starter_attachment", "manifest"],
+      ),
+      "artifact-\{run_id}-starter-manifest-markdown",
+      now_ms,
+    )
+    entries.push({
+      "kind": "manifest_markdown",
+      "path": manifest_markdown_path,
+      "artifact_id": artifact.id,
+    })
+  }
+
+  Some(
+    merge_starter_attachment_artifacts_into_input(
+      initial_input,
+      Json::array(entries),
+    ),
+  )
+}
+
+///|
 fn feishu_resource_type_for_attachment(
   attachment : @job.E2EStarterAttachment,
 ) -> String? {
@@ -366,10 +517,18 @@ async fn Gateway::materialize_starter_attachments_for_run(
     run,
   )
   let workspace_dir = prepared_run.workspace_dir.unwrap_or(self.cwd)
-  materialize_starter_attachments_for_workspace(workspace_dir, initial_input, async fn(
-    attachment,
-    input,
-  ) {
-    self.fetch_starter_attachment(attachment, input)
-  })
+  let materialized = materialize_starter_attachments_for_workspace(
+    workspace_dir,
+    initial_input,
+    async fn(attachment, input) {
+      self.fetch_starter_attachment(attachment, input)
+    },
+  )
+  persist_starter_attachment_artifacts(
+    self.job_runtime().store(),
+    definition.id,
+    run.id,
+    workspace_dir,
+    materialized,
+  )
 }

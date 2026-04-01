@@ -89,3 +89,80 @@ async test "materialize_starter_attachments_for_workspace records unresolved att
     inspect(materialized[0].note.unwrap_or(""), content="download failed")
   })
 }
+
+///|
+async test "persist_starter_attachment_artifacts writes extracted text and manifests" {
+  @fsx.with_temporary_directory("starter-ingestion-artifacts-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace_dir = dir + "/workspace"
+    @fsx.make_directory(workspace_dir, recursive=true, exists_ok=true) catch {
+      _ => ()
+    }
+    let saved_path = @attachment_ingestion.starter_attachment_saved_path(
+      workspace_dir,
+      "file-1",
+      Some("brief.txt"),
+    )
+    let extracted_text_path = @attachment_ingestion.starter_attachment_extracted_text_path(
+      saved_path,
+    )
+    @fsx.make_directory(
+      @attachment_ingestion.starter_attachment_dir(workspace_dir),
+      recursive=true,
+      exists_ok=true,
+    ) catch {
+      _ => ()
+    }
+    @fsx.write_to_file(extracted_text_path, "# Extracted") catch {
+      _ => ()
+    }
+    @fsx.write_to_file(
+      @attachment_ingestion.starter_attachment_manifest_json_path(workspace_dir),
+      "[{\"id\":\"file-1\"}]",
+    ) catch {
+      _ => ()
+    }
+    @fsx.write_to_file(
+      @attachment_ingestion.starter_attachment_manifest_markdown_path(
+        workspace_dir,
+      ),
+      "- brief.txt",
+    ) catch {
+      _ => ()
+    }
+    let store = @job.SystemStore::new(root=dir + "/jobs")
+    let updated = persist_starter_attachment_artifacts(
+      store,
+      "job-1",
+      "run-1",
+      workspace_dir,
+      Some({
+        "materialized_starter_attachments": [
+          @attachment_ingestion.MaterializedStarterAttachment::new(
+            id="file-1",
+            mime_type="text/plain",
+            source_url="feishu://file/file-1",
+            filename=Some("brief.txt"),
+            saved_path=Some(saved_path),
+            extracted_text_path=Some(extracted_text_path),
+          ),
+        ],
+      }),
+    )
+    let persisted_entries = match updated {
+      Some({ "starter_attachment_artifacts": Json::Array(entries), .. }) =>
+        entries
+      _ => []
+    }
+    inspect(persisted_entries.length().to_string(), content="3")
+    let artifact_store = @job.ArtifactStore::new(store~)
+    inspect(
+      artifact_store
+      .list(query=@job.ArtifactQuery::new(run_id=Some("run-1")))
+      .length()
+      .to_string(),
+      content="3",
+    )
+  })
+}
