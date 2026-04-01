@@ -650,7 +650,11 @@ pub async fn build_analysis_request(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
 ) -> AnalysisRequest {
-  let working_directory = analysis_working_directory(context, config)
+  let working_directory = resolve_analysis_execution_cwd(
+    context,
+    config,
+    analysis_working_directory(context, config),
+  )
   let skills_prompt = loaded_skills_prompt(
     working_directory,
     config.home,

@@ -5,6 +5,8 @@ pub(all) struct AnalysisToolContract {
   glob_files : Bool
   list_resources : Bool
   read_resource : Bool
+  enter_worktree : Bool
+  exit_worktree : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
@@ -20,6 +22,8 @@ pub fn AnalysisToolContract::new(
   glob_files? : Bool = true,
   list_resources? : Bool = true,
   read_resource? : Bool = true,
+  enter_worktree? : Bool = false,
+  exit_worktree? : Bool = false,
   read_files? : Bool = true,
   search_files? : Bool = true,
   todo? : Bool = true,
@@ -33,6 +37,8 @@ pub fn AnalysisToolContract::new(
     glob_files,
     list_resources,
     read_resource,
+    enter_worktree,
+    exit_worktree,
     read_files,
     search_files,
     todo,
@@ -54,6 +60,8 @@ fn default_analysis_tool_contract(
       glob_files=false,
       list_resources=false,
       read_resource=false,
+      enter_worktree=false,
+      exit_worktree=false,
       read_files=false,
       search_files=false,
       todo=false,
@@ -138,6 +146,12 @@ pub fn setup_analysis_agent_for_contract(
   }
   if contract.read_resource {
     builtin_tools.push(@read_resource.new(agent.cwd, home~).to_agent_tool())
+  }
+  if contract.enter_worktree {
+    builtin_tools.push(@enter_worktree.new(agent.cwd).to_agent_tool())
+  }
+  if contract.exit_worktree {
+    builtin_tools.push(@exit_worktree.new(agent.cwd).to_agent_tool())
   }
   if contract.read_files {
     builtin_tools.push(@read_file.new(file_manager).to_agent_tool())

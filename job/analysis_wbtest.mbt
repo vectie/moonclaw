@@ -361,6 +361,8 @@ test "analysis_tool_contract prefers structured metadata contract" {
         "glob_files": true,
         "list_resources": true,
         "read_resource": true,
+        "enter_worktree": false,
+        "exit_worktree": false,
         "read_files": true,
         "search_files": false,
         "todo": false,
@@ -1292,6 +1294,53 @@ async test "resolved_model_name uses configured primary model for default" {
       ),
     }
     inspect(resolved_model_name(request).unwrap_or(""), content="codex/gpt-5.4")
+  })
+}
+
+///|
+async test "build_analysis_request can isolate execution in a git worktree" {
+  @fsx.with_temporary_directory("job-analysis-worktree-XXXXXX", dir => {
+    @git.init_(dir)
+    @fsx.write_to_file(dir |> @pathx.join("README.md"), "hello")
+    @git.commit("init", ["README.md"], cwd=dir)
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Review the repository in isolation.",
+      cwd=Some(dir),
+      metadata={
+        "execution_isolation": {
+          "mode": "git_worktree",
+          "task_key": "Review README",
+        },
+      },
+    )
+    let engine = analysis_test_engine(root, config, workspace_dir=Some(dir))
+    let captured : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          captured.val = request.cwd
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: request.prompt,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    inspect(captured.val.contains(".moonclaw-worktrees"), content="true")
+    inspect(captured.val != dir, content="true")
+    @worktree.remove_worktree_path(dir, captured.val)
   })
 }
 

@@ -10,6 +10,7 @@ import {
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/worktree",
   "moonbitlang/moonclaw/workspace",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
@@ -19,6 +20,8 @@ import {
   "moonbitlang/moonclaw/tools/apply_patch",
   "moonbitlang/moonclaw/tools/execute_command",
   "moonbitlang/moonclaw/tools/glob_files",
+  "moonbitlang/moonclaw/tools/enter_worktree",
+  "moonbitlang/moonclaw/tools/exit_worktree",
   "moonbitlang/moonclaw/tools/list_files",
   "moonbitlang/moonclaw/tools/list_resources",
   "moonbitlang/moonclaw/tools/read_file",
@@ -37,4 +40,5 @@ import {
 
 import {
   "moonbitlang/async",
+  "moonbitlang/moonclaw/internal/git",
 } for "wbtest"

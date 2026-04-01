@@ -16,6 +16,8 @@ This directory contains tool implementations that the AI agent can use.
 | `glob_files` | Find file paths by glob pattern |
 | `list_resources` | List typed local resources |
 | `read_resource` | Read typed local resources by URI |
+| `enter_worktree` | Provision an isolated git worktree |
+| `exit_worktree` | Remove an isolated git worktree |
 | `search_files` | Search for patterns in files |
 | `todo` | Task list management |
 | `list_jobs` | List background jobs |
@@ -248,6 +250,47 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult]
 - Typed file and skill resource reads
 - Runtime-aware `cwd` / `home` resolution
 - Structured metadata in the result payload
+
+---
+
+## enter_worktree
+
+Provision an isolated git worktree for a coding subtask.
+
+```moonbit nocheck
+pub fn new(cwd : String) -> @tool.Tool[EnterWorktreeResult]
+```
+
+**Parameters:**
+- `task_key`: Short task label used to derive the worktree path and default branch name
+- `base_dir`: Optional base directory for the worktree root
+- `branch_name`: Optional explicit branch name
+- `commit`: Optional commit-ish to base the worktree on
+- `force_new_branch`: Replace an existing branch with the same name
+
+**Features:**
+- Repo-root-based worktree planning
+- Stable slug and branch derivation
+- Returns the created worktree path for follow-up commands
+
+---
+
+## exit_worktree
+
+Remove a previously created git worktree.
+
+```moonbit nocheck
+pub fn new(cwd : String) -> @tool.Tool[ExitWorktreeResult]
+```
+
+**Parameters:**
+- `path`: Path to the worktree to remove
+- `repo_root`: Optional repository root when `cwd` is not inside the parent repository
+- `force`: Force removal even with local changes (default: `true`)
+
+**Features:**
+- Cleans up isolated checkouts
+- Works with repo-root inference or explicit repo root
 
 ---
 

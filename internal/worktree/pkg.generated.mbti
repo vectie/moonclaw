@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/internal/worktree"
+
+import {
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn create_worktree(WorktreeHandle, commit? : String?, force_new_branch? : Bool) -> WorktreeHandle
+
+pub async fn plan_worktree(String, String, base_dir? : String?, branch_name? : String?) -> WorktreeHandle
+
+pub async fn remove_worktree(WorktreeHandle, force? : Bool) -> Unit
+
+pub async fn remove_worktree_path(String, String, repo_root? : String?, force? : Bool) -> Unit
+
+pub async fn[T] with_worktree(String, String, base_dir? : String?, branch_name? : String?, commit? : String?, force_new_branch? : Bool, async (WorktreeHandle) -> T) -> T
+
+// Errors
+
+// Types and methods
+pub struct WorktreeHandle {
+  repo_root : String
+  path : String
+  branch_name : String
+  task_key : String
+}
+pub impl Show for WorktreeHandle
+pub impl ToJson for WorktreeHandle
+pub impl @json.FromJson for WorktreeHandle
+
+// Type aliases
+
+// Traits
+

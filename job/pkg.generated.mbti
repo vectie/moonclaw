@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn analysis_execution_isolation_spec(WorkflowStepContext, AnalysisStepConfig) -> ExecutionIsolationSpec?
+
 pub fn analysis_result_content_contract(AnalysisStepConfig) -> String?
 
 pub fn analysis_step_handler(runtime~ : RuntimeManager, executor? : AnalysisExecutor, compiler? : ProposalCompiler?, engine_factory? : (() -> WorkflowEngine)?, child_executor? : ChildRunExecutor?, now? : () -> Int, next_run_id? : () -> String, kind? : String) -> WorkflowStepHandler
@@ -199,6 +201,8 @@ pub fn render_unknown_proposal_message(String) -> String
 
 pub async fn request_job_stop(SystemStore, String, async (String, Bool) -> Result[JobRun, String], force? : Bool, active_run_id? : String?) -> Result[String, String]
 
+pub async fn resolve_analysis_execution_cwd(WorkflowStepContext, AnalysisStepConfig, String) -> String
+
 pub fn resolve_job_notify_target(SystemStore, JobDefinition) -> JobNotifyTarget?
 
 pub fn resolve_status_target(SystemStore, String, active_run_id? : String?) -> (JobDefinition, JobRun)?
@@ -356,7 +360,10 @@ pub(all) struct AnalysisToolContract {
   shell : Bool
   list_files : Bool
   glob_files : Bool
+  list_resources : Bool
   read_resource : Bool
+  enter_worktree : Bool
+  exit_worktree : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
@@ -364,7 +371,7 @@ pub(all) struct AnalysisToolContract {
   web_fetch : Bool
   web_search : Bool
 }
-pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, read_resource? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 pub impl Show for AnalysisToolContract
 pub impl ToJson for AnalysisToolContract
 pub impl @json.FromJson for AnalysisToolContract
@@ -624,6 +631,27 @@ pub fn E2EStarterAttachment::new(id~ : String, mime_type~ : String, url~ : Strin
 pub impl Show for E2EStarterAttachment
 pub impl ToJson for E2EStarterAttachment
 pub impl @json.FromJson for E2EStarterAttachment
+
+pub(all) enum ExecutionIsolationMode {
+  SharedWorkspace
+  GitWorktree
+}
+pub impl Show for ExecutionIsolationMode
+pub impl ToJson for ExecutionIsolationMode
+pub impl @json.FromJson for ExecutionIsolationMode
+
+pub(all) struct ExecutionIsolationSpec {
+  mode : ExecutionIsolationMode
+  task_key : String
+  base_dir : String?
+  branch_name : String?
+  commit : String?
+  force_new_branch : Bool
+}
+pub fn ExecutionIsolationSpec::new(mode? : ExecutionIsolationMode, task_key? : String, base_dir? : String?, branch_name? : String?, commit? : String?, force_new_branch? : Bool) -> Self
+pub impl Show for ExecutionIsolationSpec
+pub impl ToJson for ExecutionIsolationSpec
+pub impl @json.FromJson for ExecutionIsolationSpec
 
 pub struct GatewayJobApp {
   state : GatewayJobState
