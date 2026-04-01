@@ -127,6 +127,20 @@ pub fn attachment_is_text_like(
 }
 
 ///|
+pub fn attachment_is_pdf(
+  mime_type : String,
+  filename? : String? = None,
+) -> Bool {
+  if mime_type == "application/pdf" {
+    return true
+  }
+  match filename {
+    Some(filename) => filename.to_lower().has_suffix(".pdf")
+    None => false
+  }
+}
+
+///|
 pub fn render_materialized_attachment_manifest(
   attachments : Array[MaterializedStarterAttachment],
 ) -> String {

@@ -23,6 +23,19 @@ test "attachment_is_text_like accepts text and structured text extensions" {
 }
 
 ///|
+test "attachment_is_pdf accepts mime type and file extension" {
+  inspect(attachment_is_pdf("application/pdf"), content="true")
+  inspect(
+    attachment_is_pdf("application/octet-stream", filename=Some("brief.pdf")),
+    content="true",
+  )
+  inspect(
+    attachment_is_pdf("text/plain", filename=Some("brief.txt")),
+    content="false",
+  )
+}
+
+///|
 test "render_materialized_attachment_manifest includes saved and extracted paths" {
   let rendered = render_materialized_attachment_manifest([
     MaterializedStarterAttachment::new(

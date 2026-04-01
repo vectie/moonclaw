@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn attachment_is_pdf(String, filename? : String?) -> Bool
+
 pub fn attachment_is_text_like(String, filename? : String?) -> Bool
 
 pub fn render_materialized_attachment_manifest(Array[MaterializedStarterAttachment]) -> String

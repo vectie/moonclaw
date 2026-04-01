@@ -21,7 +21,7 @@ async test "materialize_starter_attachments_for_workspace writes manifest and ex
     let updated = materialize_starter_attachments_for_workspace(
       dir,
       initial_input,
-      async fn(_attachment, _input) {
+      fn(_attachment, _input) {
         Ok(StarterAttachmentFetchResult::{
           content: @encoding/utf8.encode("starter file body"),
           mime_type: Some("text/plain"),
@@ -73,7 +73,7 @@ async test "materialize_starter_attachments_for_workspace records unresolved att
           message_id=Some("msg-2"),
         ),
       ),
-      async fn(_attachment, _input) { Err("download failed") },
+      fn(_attachment, _input) { Err("download failed") },
     )
     let materialized : Array[
       @attachment_ingestion.MaterializedStarterAttachment,
@@ -87,5 +87,27 @@ async test "materialize_starter_attachments_for_workspace records unresolved att
     inspect(materialized.length().to_string(), content="1")
     inspect(materialized[0].status, content="unresolved")
     inspect(materialized[0].note.unwrap_or(""), content="download failed")
+  })
+}
+
+///|
+async test "extract_pdf_text_from_saved_file reports missing local tools" {
+  @fsx.with_temporary_directory("starter-ingestion-pdf-XXXXXX", async fn(dir) {
+    let saved_path = dir + "/brief.pdf"
+    @fsx.write_bytes_to_file(saved_path, @encoding/utf8.encode("pdf")) catch {
+      _ => ()
+    }
+    let (text_path, note) = extract_pdf_text_from_saved_file(saved_path, dir, fn(
+      _command,
+      _args,
+      _cwd,
+    ) {
+      Err("missing tool")
+    })
+    inspect(text_path is None, content="true")
+    inspect(
+      note.unwrap_or("").contains("install pdftotext or pdftoppm+tesseract"),
+      content="true",
+    )
   })
 }
