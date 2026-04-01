@@ -11,8 +11,11 @@ research-specific behavior; this file reflects the current code path in
 
 Jobs normally begin from chat commands such as:
 
+- `/plan <request>`
+- `/preview [guidance]`
 - `/plan-job <request>`
 - `/e2e <request>`
+- `/promote`
 - `/revise <proposal_id> <guidance>`
 - `/confirm <proposal_id>`
 - `/job-status <job_id|run_id>`
@@ -30,7 +33,8 @@ The important boundary is:
 
 ## 2. Planning Routine
 
-Planning starts in `GatewayJobApp::plan_proposal(...)` or
+Planning starts in `GatewayJobApp::plan_mode(...)`,
+`GatewayJobApp::plan_proposal(...)`, or
 `GatewayJobApp::plan_e2e_proposal(...)` in
 [/Users/kq/Workspace/moonclaw/job/application.mbt](/Users/kq/Workspace/moonclaw/job/application.mbt).
 
@@ -40,14 +44,25 @@ Current planning routine:
    - request text
    - workspace prompt context
    - relevant structured memory hits
-2. Generate a draft proposal id using a human-readable, time-prefixed format.
-3. Call `plan_job_proposal(...)` in
+2. For durable proposal paths, generate a human-readable, time-prefixed proposal id.
+3. Call either `plan_chat_mode(...)` or `plan_job_proposal(...)` in
    [/Users/kq/Workspace/moonclaw/job/proposal.mbt](/Users/kq/Workspace/moonclaw/job/proposal.mbt).
 4. Ask the planner model for strict JSON when available.
-5. Normalize the result into a `JobProposal`.
+5. Normalize the result into either:
+   - a transient `JobPlanPreview` for `/plan`
+   - a durable `JobProposal` for `/plan-job` and `/e2e`
 6. If no usable model result exists, fall back to one minimal generic step:
    - `execute`
 7. For `/e2e`, prepend a job-level `context_preprocess` step and append any configured postprocess stages.
+
+The key distinction is:
+
+- `/plan` starts thread-local plan mode and never creates a persisted proposal object by itself
+- plain follow-up messages in that thread are gathered as planning notes and rerun through the planner
+- `/preview` reads the current plan-mode candidate and may refresh it with one more guidance note without persisting it
+- `/promote` converts the current plan-mode candidate into a persisted draft proposal and exits plan mode
+- `/plan-job` and `/e2e` create persisted proposal artifacts
+- `/confirm` is required before any persisted draft proposal can execute
 
 The default fallback is intentionally minimal. AI planning or workspace profiles
 are expected to provide richer step structure when needed.
@@ -199,39 +214,63 @@ The main step kinds currently used by the generic job path are:
 - `job.analysis`
 - `job.delegate`
 
-`job.analysis` is implemented in
-[/Users/kq/Workspace/moonclaw/job/analysis.mbt](/Users/kq/Workspace/moonclaw/job/analysis.mbt).
+`job.analysis` is now split across:
+
+- [/Users/kq/Workspace/moonclaw/job/analysis.mbt](/Users/kq/Workspace/moonclaw/job/analysis.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_request_composer.mbt](/Users/kq/Workspace/moonclaw/job/analysis_request_composer.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_runner.mbt](/Users/kq/Workspace/moonclaw/job/analysis_runner.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_execution.mbt](/Users/kq/Workspace/moonclaw/job/analysis_execution.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_contracts.mbt](/Users/kq/Workspace/moonclaw/job/analysis_contracts.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_prompt_support.mbt](/Users/kq/Workspace/moonclaw/job/analysis_prompt_support.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_workspace_outputs.mbt](/Users/kq/Workspace/moonclaw/job/analysis_workspace_outputs.mbt)
 
 Current analysis routine:
 
 1. Decode `AnalysisStepConfig`.
-2. Resolve the effective working directory.
+2. Compose a `AnalysisRequest`, including:
+   - effective working directory
+   - execution-isolation metadata
+   - tool contract
+   - model / execution routing fields
 3. Build the prompt from:
    - step prompt
    - preferred skills
    - loaded skill contents
    - memory context
+   - starter attachment digest/artifact context
    - job/run metadata
-4. Construct an agent.
-5. Register analysis tools, currently including:
+   - operator resume guidance when present
+4. Construct and run the step agent.
+5. Configure analysis tools from the typed tool contract. Depending on the step config, the tool surface can include:
    - `execute_command`
    - `list_files`
+   - `glob_files`
+   - `list_resources`
+   - `read_resource`
+   - `runtime_context`
+   - `list_worktrees`
+   - `delegate_run`
+   - `enter_worktree`
+   - `exit_worktree`
    - `read_file`
    - `todo`
    - `search_files`
+   - `patch_edit`
    - `apply_patch` or `write_to_file`
+   - `web_fetch`
+   - `web_search`
 6. If the step config carries:
    - `execution_mode`
    - `execution_target`
-   the gateway can route the analysis step through ACP instead of the local
-   direct model path
-7. If the step result is not clearly final, MoonClaw can run an adaptive
+   the step can run through ACP or another execution target instead of the local direct model path
+7. Persist report/result artifacts and materialize workspace outputs.
+8. If the step result is not clearly final, MoonClaw can run an adaptive
    follow-up judgment:
    - `completed`
    - `needs_input`
    - `needs_subplan`
-8. `needs_input` pauses the run with `WaitingForInput`
-9. `needs_subplan` can expand into a child workflow/subplan
+9. `needs_input` pauses the run with `WaitingForInput`
+10. `needs_subplan` can expand into a child workflow/subplan
 
 ## 9. Waiting For Input And Resume
 
@@ -256,9 +295,10 @@ Important current rule:
 
 Then the resumed run proceeds normally:
 
-7. Run the agent and collect result text.
-8. Persist report/result artifacts.
-9. Return a structured `WorkflowStepResult`.
+7. Rebuild the blocked step request with merged resume input.
+8. Run the step again in place from the blocked step.
+9. Persist fresh report/result artifacts.
+10. Return a structured `WorkflowStepResult`.
 
 `job.delegate` is implemented in
 [/Users/kq/Workspace/moonclaw/job/subjob.mbt](/Users/kq/Workspace/moonclaw/job/subjob.mbt).

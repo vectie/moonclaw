@@ -204,6 +204,62 @@ pub async fn GatewayJobApp::plan_proposal_in_workspace(
 }
 
 ///|
+pub async fn GatewayJobApp::plan_mode_in_workspace(
+  self : GatewayJobApp,
+  request_text : String,
+  workspace_root : String,
+  cwd : String,
+  intake? : Json? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+) -> JobPlanPreview {
+  let memory_context = self.planning_memory_context(
+    request_text, workspace_root, channel_id, account_id, recipient, thread_id,
+  )
+  plan_chat_mode(
+    request_text,
+    self.now(),
+    intake~,
+    channel_id~,
+    account_id~,
+    recipient~,
+    thread_id~,
+    model~,
+    cwd~,
+    home=Some(self.home),
+    workspace=Some(workspace_root),
+    memory_context=Some(memory_context),
+  )
+}
+
+///|
+pub async fn GatewayJobApp::plan_mode(
+  self : GatewayJobApp,
+  request_text : String,
+  intake? : Json? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+) -> JobPlanPreview {
+  self.plan_mode_in_workspace(
+    request_text,
+    self.workspace_root(),
+    self.cwd,
+    intake~,
+    channel_id~,
+    account_id~,
+    recipient~,
+    thread_id~,
+    model~,
+  )
+}
+
+///|
 pub async fn GatewayJobApp::plan_proposal(
   self : GatewayJobApp,
   request_text : String,

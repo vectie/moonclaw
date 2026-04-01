@@ -29,6 +29,57 @@ fn Gateway::job_reply_message(
 }
 
 ///|
+fn plan_mode_session_key(
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  dm_scope : String,
+) -> String {
+  message_session_key(channel_id, account_id, message, dm_scope~)
+}
+
+///|
+fn planning_request_text(
+  request_text : String,
+  notes : Array[String],
+) -> String {
+  if notes.is_empty() {
+    request_text
+  } else {
+    [
+      request_text,
+      "",
+      "Planning conversation notes:",
+      ..notes.map(fn(note) { "- \{note}" }),
+    ].join("\n")
+  }
+}
+
+///|
+async fn Gateway::save_plan_mode_session(
+  self : Gateway,
+  session_key : String,
+  session : SessionEntry?,
+  state : PlanModeState?,
+  updated_at : Int,
+) -> Unit {
+  let existing = session.unwrap_or(SessionEntry::{
+    session_id: session_key,
+    updated_at,
+    channel: None,
+    model_override: None,
+    provider_override: None,
+    cwd: Some(self.cwd),
+    plan_mode: None,
+  })
+  self.sessions.save_entry(session_key, SessionEntry::{
+    ..existing,
+    updated_at,
+    plan_mode: state,
+  })
+}
+
+///|
 fn Gateway::waiting_job_scoped_match_score(
   self : Gateway,
   definition : @job.JobDefinition,
@@ -709,6 +760,299 @@ async fn Gateway::handle_proposal_command(
 }
 
 ///|
+async fn Gateway::handle_plan_mode_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  session_key : String,
+  request_text : String,
+) -> @channel.Message {
+  let normalized_request_text = @job.normalized_request_text(request_text)
+  guard !normalized_request_text.is_blank() else {
+    return self.job_reply_message(
+      channel_id, account_id, message, "Usage: /plan <job description>",
+    )
+  }
+  let intake = Some(
+    plan_job_input(
+      channel_id,
+      account_id,
+      message,
+      normalized_request_text,
+      self.thread_starter_attachments(channel_id, account_id, message),
+    ),
+  )
+  let candidate = self.job_app.plan_proposal(
+    normalized_request_text,
+    intake~,
+    channel_id=Some(channel_id),
+    account_id=Some(account_id),
+    recipient=Some(message.to),
+    thread_id=message.thread_id,
+  )
+  let preview = @job.plan_preview_from_proposal(candidate)
+  let session = self.sessions.get(session_key)
+  self.save_plan_mode_session(
+    session_key,
+    session,
+    Some(PlanModeState::{
+      request_text: normalized_request_text,
+      notes: [],
+      latest_candidate: candidate,
+      updated_at: current_time_ms(),
+    }),
+    current_time_ms(),
+  )
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_job_plan_preview_for_chat(preview),
+  )
+}
+
+///|
+async fn Gateway::handle_plan_mode_followup(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  session_key : String,
+  state : PlanModeState,
+) -> @channel.Message {
+  let note = message.content.trim().to_string()
+  let notes = if note.is_blank() { state.notes } else { [..state.notes, note] }
+  let effective_request = planning_request_text(state.request_text, notes)
+  let intake = Some(
+    plan_job_input(
+      channel_id,
+      account_id,
+      message,
+      state.request_text,
+      self.thread_starter_attachments(channel_id, account_id, message),
+    ),
+  )
+  let proposal_id = @job.human_readable_proposal_id(
+    state.request_text,
+    current_time_ms(),
+    self.job_app.next_id(),
+  )
+  let candidate = self.job_app.plan_proposal(
+    effective_request,
+    intake~,
+    channel_id=Some(channel_id),
+    account_id=Some(account_id),
+    recipient=Some(message.to),
+    thread_id=message.thread_id,
+  )
+  let candidate = @job.promote_plan_candidate(
+    candidate,
+    proposal_id,
+    state.request_text,
+    current_time_ms(),
+    channel_id=Some(channel_id),
+    account_id=Some(account_id),
+    recipient=Some(message.to),
+    thread_id=message.thread_id,
+  )
+  self.save_plan_mode_session(
+    session_key,
+    self.sessions.get(session_key),
+    Some(PlanModeState::{
+      request_text: state.request_text,
+      notes,
+      latest_candidate: candidate,
+      updated_at: current_time_ms(),
+    }),
+    current_time_ms(),
+  )
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_job_plan_preview_for_chat(
+      @job.plan_preview_from_proposal(candidate),
+    ),
+  )
+}
+
+///|
+async fn Gateway::handle_promote_plan_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  session_key : String,
+  args : String,
+) -> @channel.Message {
+  let session = self.sessions.get(session_key)
+  let state = match session {
+    Some(session) =>
+      match session.plan_mode {
+        Some(state) => state
+        None =>
+          return self.job_reply_message(
+            channel_id, account_id, message, "No active `/plan` mode found for this thread. Start one with `/plan <job description>`.",
+          )
+      }
+    None =>
+      return self.job_reply_message(
+        channel_id, account_id, message, "No active `/plan` mode found for this thread. Start one with `/plan <job description>`.",
+      )
+  }
+  let promoted_state = if args.trim().to_string().is_blank() {
+    state
+  } else {
+    let notes = [..state.notes, args.trim().to_string()]
+    let effective_request = planning_request_text(state.request_text, notes)
+    let intake = Some(
+      plan_job_input(
+        channel_id,
+        account_id,
+        message,
+        state.request_text,
+        self.thread_starter_attachments(channel_id, account_id, message),
+      ),
+    )
+    let candidate = self.job_app.plan_proposal(
+      effective_request,
+      intake~,
+      channel_id=Some(channel_id),
+      account_id=Some(account_id),
+      recipient=Some(message.to),
+      thread_id=message.thread_id,
+    )
+    let candidate = @job.promote_plan_candidate(
+      candidate,
+      "plan-preview",
+      state.request_text,
+      current_time_ms(),
+      channel_id=Some(channel_id),
+      account_id=Some(account_id),
+      recipient=Some(message.to),
+      thread_id=message.thread_id,
+    )
+    PlanModeState::{
+      request_text: state.request_text,
+      notes,
+      latest_candidate: candidate,
+      updated_at: current_time_ms(),
+    }
+  }
+  let proposal_id = @job.human_readable_proposal_id(
+    promoted_state.request_text,
+    current_time_ms(),
+    self.job_app.next_id(),
+  )
+  let proposal = @job.promote_plan_candidate(
+    promoted_state.latest_candidate,
+    proposal_id,
+    promoted_state.request_text,
+    current_time_ms(),
+    channel_id=Some(channel_id),
+    account_id=Some(account_id),
+    recipient=Some(message.to),
+    thread_id=message.thread_id,
+  )
+  self.save_job_notification_preference(
+    channel_id,
+    account_id,
+    message.to,
+    message.thread_id,
+    @job.NotificationVerbosity::Normal,
+  )
+  let reply = self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_job_proposal_for_chat(proposal),
+  )
+  self.save_presented_job_proposal(proposal, reply)
+  self.save_plan_mode_session(session_key, session, None, current_time_ms())
+  reply
+}
+
+///|
+async fn Gateway::handle_preview_plan_command(
+  self : Gateway,
+  channel_id : String,
+  account_id : String,
+  message : @channel.Message,
+  session_key : String,
+  args : String,
+) -> @channel.Message {
+  let session = self.sessions.get(session_key)
+  let state = match session {
+    Some(session) =>
+      match session.plan_mode {
+        Some(state) => state
+        None =>
+          return self.job_reply_message(
+            channel_id, account_id, message, "No active `/plan` mode found for this thread. Start one with `/plan <job description>`.",
+          )
+      }
+    None =>
+      return self.job_reply_message(
+        channel_id, account_id, message, "No active `/plan` mode found for this thread. Start one with `/plan <job description>`.",
+      )
+  }
+  let preview_state = if args.trim().to_string().is_blank() {
+    state
+  } else {
+    let notes = [..state.notes, args.trim().to_string()]
+    let effective_request = planning_request_text(state.request_text, notes)
+    let intake = Some(
+      plan_job_input(
+        channel_id,
+        account_id,
+        message,
+        state.request_text,
+        self.thread_starter_attachments(channel_id, account_id, message),
+      ),
+    )
+    let candidate = self.job_app.plan_proposal(
+      effective_request,
+      intake~,
+      channel_id=Some(channel_id),
+      account_id=Some(account_id),
+      recipient=Some(message.to),
+      thread_id=message.thread_id,
+    )
+    let candidate = @job.promote_plan_candidate(
+      candidate,
+      "plan-preview",
+      state.request_text,
+      current_time_ms(),
+      channel_id=Some(channel_id),
+      account_id=Some(account_id),
+      recipient=Some(message.to),
+      thread_id=message.thread_id,
+    )
+    PlanModeState::{
+      request_text: state.request_text,
+      notes,
+      latest_candidate: candidate,
+      updated_at: current_time_ms(),
+    }
+  }
+  self.save_plan_mode_session(
+    session_key,
+    session,
+    Some(preview_state),
+    current_time_ms(),
+  )
+  self.job_reply_message(
+    channel_id,
+    account_id,
+    message,
+    @job.render_job_plan_preview_for_chat(
+      @job.plan_preview_from_proposal(preview_state.latest_candidate),
+    ),
+  )
+}
+
+///|
 async fn Gateway::handle_plan_job_command(
   self : Gateway,
   channel_id : String,
@@ -986,7 +1330,29 @@ async fn Gateway::handle_job_chat_command(
   message : @channel.Message,
 ) -> @channel.Message? {
   let trimmed = message.content.trim().to_string()
+  let session_key = plan_mode_session_key(
+    channel_id,
+    account_id,
+    message,
+    self.security_runtime().session_dm_scope(),
+  )
   let action = @job.parse_job_chat_action(trimmed, message.reply_to is Some(_))
+  if action is None &&
+    (!trimmed.has_prefix("/") || !message.attachments.is_empty()) {
+    match self.sessions.get(session_key) {
+      Some(session) =>
+        match session.plan_mode {
+          Some(state) =>
+            return Some(
+              self.handle_plan_mode_followup(
+                channel_id, account_id, message, session_key, state,
+              ),
+            )
+          None => ()
+        }
+      None => ()
+    }
+  }
   if action is Some(@job.JobChatAction::Resume(_)) {
     match self.handle_waiting_job_reply(channel_id, account_id, message) {
       Some(reply) => return Some(reply)
@@ -1011,10 +1377,25 @@ async fn Gateway::handle_job_chat_command(
   @job.dispatch_job_chat_action(
     action,
     async fn(args) {
+      self.handle_plan_mode_command(
+        channel_id, account_id, message, session_key, args,
+      )
+    },
+    async fn(args) {
+      self.handle_preview_plan_command(
+        channel_id, account_id, message, session_key, args,
+      )
+    },
+    async fn(args) {
       self.handle_plan_job_command(channel_id, account_id, message, args)
     },
     async fn(args) {
       self.handle_e2e_job_command(channel_id, account_id, message, args)
+    },
+    async fn(args) {
+      self.handle_promote_plan_command(
+        channel_id, account_id, message, session_key, args,
+      )
     },
     async fn(args) {
       self.handle_confirm_job_command(channel_id, account_id, message, args)

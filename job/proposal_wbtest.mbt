@@ -924,6 +924,65 @@ test "render_job_proposal_for_chat includes starter files and requested output" 
 }
 
 ///|
+test "render_job_plan_preview_for_chat stays transient and points to next actions" {
+  let preview = JobPlanPreview::{
+    title: "Analyze attached files",
+    request_text: "Analyze attached files",
+    summary: "Break the work into a few investigation steps before execution.",
+    steps: [
+      JobPlanPreviewStep::{ id: "step_1", title: "Inspect files" },
+      JobPlanPreviewStep::{ id: "step_2", title: "Draft approach" },
+    ],
+    requested_output_format: Some("Board memo"),
+    starter_files: ["parcel-brief.pdf"],
+    source: "plan_mode",
+  }
+  let rendered = render_job_plan_preview_for_chat(preview)
+  inspect(rendered.contains("Plan preview"), content="true")
+  inspect(
+    rendered.contains(
+      "This is an in-session plan preview. It is not saved and will not execute by itself.",
+    ),
+    content="true",
+  )
+  inspect(
+    rendered.contains(
+      "Use `/promote` to turn this plan into a durable proposal.",
+    ),
+    content="true",
+  )
+  inspect(
+    rendered.contains(
+      "Use `/plan-job Analyze attached files` to create a separate durable proposal directly.",
+    ),
+    content="true",
+  )
+  inspect(rendered.contains("Requested output: Board memo"), content="true")
+  inspect(rendered.contains("- parcel-brief.pdf"), content="true")
+}
+
+///|
+test "promote_plan_candidate rekeys a transient candidate into a draft proposal" {
+  let candidate = draft_job_proposal(
+    "plan-preview", "Analyze attached files.", 100,
+  )
+  let promoted = promote_plan_candidate(
+    candidate,
+    "proposal-123",
+    "Analyze attached files.",
+    200,
+    channel_id=Some("feishu"),
+    account_id=Some("default"),
+    recipient=Some("oc_chat_123"),
+    thread_id=Some("thread-1"),
+  )
+  inspect(promoted.id, content="proposal-123")
+  inspect(promoted.request_text, content="Analyze attached files.")
+  inspect(promoted.status.to_json().stringify(), content="\"Draft\"")
+  inspect(promoted.thread_id.unwrap_or(""), content="thread-1")
+}
+
+///|
 test "e2e intake handles inline output format suffix" {
   inspect(
     extract_output_format_hint(

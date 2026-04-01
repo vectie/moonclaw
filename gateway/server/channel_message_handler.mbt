@@ -161,6 +161,10 @@ async fn Gateway::store_channel_session(
     model_override: Some(channel_model_session_name(model)),
     provider_override: channel_model_provider_override(model),
     cwd: Some(cwd),
+    plan_mode: self.sessions
+    .get(session_key)
+    .map(fn(entry) { entry.plan_mode })
+    .unwrap_or(None),
   })
 }
 
@@ -882,13 +886,13 @@ impl @channel.MessageHandler for Gateway with handle_message(
   }
   if is_non_text_attachment_message(message) {
     return self.channel_reply_message(
-      channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/e2e ...` or `/plan-job ...` to start a job with them.",
+      channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/plan ...`, `/plan-job ...`, or `/e2e ...` to start a job flow with them.",
     )
   }
   if message.content.trim().to_string().is_blank() &&
     !message.attachments.is_empty() {
     return self.channel_reply_message(
-      channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/e2e ...` or `/plan-job ...` to start a job with them.",
+      channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/plan ...`, `/plan-job ...`, or `/e2e ...` to start a job flow with them.",
     )
   }
   guard @model.load(home=self.home, cwd~, name?=model_name) is Some(model) else {

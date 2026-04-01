@@ -80,6 +80,15 @@ struct SessionEntry {
   model_override : String?
   provider_override : String?
   cwd : String?
+  plan_mode : PlanModeState?
+} derive(ToJson, FromJson, Show)
+
+///|
+struct PlanModeState {
+  request_text : String
+  notes : Array[String]
+  latest_candidate : @job.JobProposal
+  updated_at : Int
 } derive(ToJson, FromJson, Show)
 
 ///|

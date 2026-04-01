@@ -81,6 +81,7 @@ pub fn SessionManager::get_or_create(
         model_override: None,
         provider_override: None,
         cwd: Some(cwd),
+        plan_mode: None,
       }
       self.sessions.set(session_key, entry)
       entry

@@ -177,8 +177,11 @@ When Feishu is configured, jobs can now be drafted and controlled from chat with
 Commands:
 
 ```text
+/plan <description>
+/preview [extra guidance]
 /plan-job <description>
 /e2e <description>
+/promote
 /confirm <proposal_id>
 /reject <proposal_id>
 /revise <proposal_id> <extra guidance>
@@ -194,6 +197,10 @@ Reply-thread shortcuts:
 
 Behavior:
 
+- `/plan` creates an in-session plan preview and replies with the step outline only
+- `/plan` activates thread-local plan mode; plain follow-up messages in the same thread refine the current plan
+- `/preview` shows the current thread-local plan candidate; optional guidance refreshes the candidate first without persisting it
+- `/promote` stops plan mode and converts the current plan candidate into a normal persisted draft proposal
 - `/plan-job` creates a classic persisted draft proposal and replies with the step plan
 - `/e2e` creates an end-to-end draft proposal with job-level preprocess and optional postprocess stages
 - proposals are not executed until confirmed

@@ -303,8 +303,11 @@ See [openclaw_weixin_reference.md](/Users/kq/Workspace/moonclaw/docs/openclaw_we
 
 Once Feishu is configured and the gateway is running, the important commands are:
 
+- `/plan <description>`
+- `/preview`
 - `/plan-job <description>`
 - `/e2e <description>`
+- `/promote`
 - `/confirm <proposal_id>`
 - `/revise <proposal_id> <guidance>`
 - `/reject <proposal_id>`
@@ -322,6 +325,15 @@ If a job pauses in `WaitingForInput`:
 - `/job-force-stop <job_id|run_id>`
 - `/remember <text>`
 - `/memory-search <query>`
+
+Command roles:
+
+- `/plan` starts thread-local plan mode and replies with a transient plan preview
+- while plan mode is active, plain follow-up messages in the same thread refine that plan instead of going to normal chat
+- `/preview` shows the current plan-mode candidate again; if you add guidance, it refreshes the candidate first without promoting it
+- `/promote` turns the current plan-mode candidate into a normal durable proposal
+- `/plan-job` creates a durable draft proposal that can later be revised and confirmed
+- `/e2e` creates the augmented draft flow with preprocess and optional postprocess
 
 ## 🤖 Operator UI
 

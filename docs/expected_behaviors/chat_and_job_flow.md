@@ -27,6 +27,32 @@ Job control rule:
 
 ## Proposal Drafting
 
+Expected behavior for `/plan <description>`:
+
+1. MoonClaw creates an in-session plan preview.
+2. MoonClaw replies with:
+   - title
+   - summary
+   - planned steps
+   - starter-file and output-format hints when available
+3. No proposal is persisted.
+4. No job is executed.
+5. Plain follow-up messages in the same thread continue refining the active plan instead of going to normal chat.
+
+Expected behavior for `/promote`:
+
+1. MoonClaw reads the active thread-local plan mode state.
+2. MoonClaw converts the latest planned candidate into a durable draft proposal.
+3. MoonClaw exits plan mode for that thread.
+4. The reply is a normal proposal message that can later be confirmed with `/confirm <proposal_id>`.
+
+Expected behavior for `/preview`:
+
+1. MoonClaw reads the active thread-local plan mode state.
+2. With no extra guidance, it renders the current candidate as-is.
+3. With extra guidance, it first refreshes the current candidate and then renders it.
+4. No proposal is persisted.
+
 Expected behavior for `/plan-job <description>`:
 
 1. MoonClaw creates a draft proposal.
@@ -48,6 +74,9 @@ Expected behavior for `/e2e <description>`:
 
 Expected distinction:
 
+- `/plan` is lightweight and transient
+- `/preview` is the read-only inspection step for the current plan-mode candidate
+- `/promote` is the bridge from transient planning into the durable job flow
 - `/plan-job` is the classic two-stage draft and confirm flow
 - `/e2e` is the augmented flow with preprocess and optional postprocess
 

@@ -65,7 +65,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn definition_display_title(JobDefinition) -> String
 
-pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
+pub async fn[T] dispatch_job_chat_action(JobChatAction?, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String, Bool) -> T, async (String) -> T, async (String) -> T, async () -> T, async (String) -> T) -> T?
 
 pub fn draft_job_proposal(String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
@@ -141,9 +141,13 @@ pub fn parse_revise_args(String) -> (String, String)?
 
 pub async fn persist_analysis_execution(SystemStore, ArtifactStore, WorkflowStepContext, AnalysisStepConfig, AnalysisExecution, () -> Int) -> PersistedAnalysisExecution
 
+pub async fn plan_chat_mode(String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobPlanPreview
+
 pub async fn plan_e2e_job_proposal(String, String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
 
 pub async fn plan_job_proposal(String, String, Int, executor? : AnalysisExecutor, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
+
+pub fn plan_preview_from_proposal(JobProposal, source? : String) -> JobPlanPreview
 
 pub async fn prepare_run_workspace(SystemStore, JobDefinition, JobRun) -> JobRun
 
@@ -154,6 +158,8 @@ pub fn presentation_deck_spec_schema_prompt() -> String
 pub fn presentation_render_contract_version() -> String
 
 pub fn presentation_render_package_schema_prompt() -> String
+
+pub fn promote_plan_candidate(JobProposal, String, String, Int, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?) -> JobProposal
 
 pub fn proposal_as_workflow(JobProposal, Int, String, String, workspace_root? : String) -> (JobDefinition, WorkflowDefinition)
 
@@ -180,6 +186,8 @@ pub fn render_confirmed_job_reply(String, String, String, String, String, String
 pub fn render_job_notify_updated(NotificationVerbosity) -> String
 
 pub fn render_job_notify_usage() -> String
+
+pub fn render_job_plan_preview_for_chat(JobPlanPreview) -> String
 
 pub fn render_job_proposal_for_chat(JobProposal) -> String
 
@@ -718,6 +726,8 @@ pub fn GatewayJobApp::next_id(Self) -> String
 pub fn GatewayJobApp::now(Self) -> Int
 pub async fn GatewayJobApp::plan_e2e_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::plan_e2e_proposal_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
+pub async fn GatewayJobApp::plan_mode(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobPlanPreview
+pub async fn GatewayJobApp::plan_mode_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobPlanPreview
 pub async fn GatewayJobApp::plan_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::plan_proposal_in_workspace(Self, String, String, String, e2e_mode? : Bool, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::reject_proposal(Self, JobProposal) -> Unit
@@ -782,8 +792,11 @@ pub impl ToJson for JobAskParams
 pub impl @json.FromJson for JobAskParams
 
 pub(all) enum JobChatAction {
+  Plan(String)
+  Preview(String)
   PlanJob(String)
   E2EJob(String)
+  Promote(String)
   Confirm(String)
   Reject(String)
   Revise(String)
@@ -927,6 +940,27 @@ pub(all) struct JobNotifyTarget {
   warn_after_ms : Int
 }
 pub impl Show for JobNotifyTarget
+
+pub struct JobPlanPreview {
+  title : String
+  request_text : String
+  summary : String
+  steps : Array[JobPlanPreviewStep]
+  requested_output_format : String?
+  starter_files : Array[String]
+  source : String
+}
+pub impl Show for JobPlanPreview
+pub impl ToJson for JobPlanPreview
+pub impl @json.FromJson for JobPlanPreview
+
+pub struct JobPlanPreviewStep {
+  id : String
+  title : String
+}
+pub impl Show for JobPlanPreviewStep
+pub impl ToJson for JobPlanPreviewStep
+pub impl @json.FromJson for JobPlanPreviewStep
 
 pub(all) struct JobProfile {
   id : String

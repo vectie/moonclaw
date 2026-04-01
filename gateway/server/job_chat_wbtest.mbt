@@ -35,6 +35,13 @@ test "parse_notification_verbosity accepts expected values" {
 ///|
 test "parse_job_chat_action recognizes slash and reply commands" {
   inspect(
+    match @job.parse_job_chat_action("/plan review yesterday papers", false) {
+      Some(@job.JobChatAction::Plan(args)) => args
+      _ => ""
+    },
+    content="review yesterday papers",
+  )
+  inspect(
     match
       @job.parse_job_chat_action("/plan-job review yesterday papers", false) {
       Some(@job.JobChatAction::PlanJob(args)) => args
@@ -48,6 +55,28 @@ test "parse_job_chat_action recognizes slash and reply commands" {
       _ => ""
     },
     content="review yesterday papers",
+  )
+  inspect(
+    match @job.parse_job_chat_action("/preview", false) {
+      Some(@job.JobChatAction::Preview(args)) => args
+      _ => "missing"
+    },
+    content="",
+  )
+  inspect(
+    match
+      @job.parse_job_chat_action("/preview tighten cost assumptions", false) {
+      Some(@job.JobChatAction::Preview(args)) => args
+      _ => ""
+    },
+    content="tighten cost assumptions",
+  )
+  inspect(
+    match @job.parse_job_chat_action("/promote keep the market comps", false) {
+      Some(@job.JobChatAction::Promote(args)) => args
+      _ => ""
+    },
+    content="keep the market comps",
   )
   inspect(
     match @job.parse_job_chat_action("confirm", true) {

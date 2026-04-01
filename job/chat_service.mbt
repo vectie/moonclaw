@@ -11,8 +11,11 @@ pub(all) struct JobNotifyTarget {
 
 ///|
 pub(all) enum JobChatAction {
+  Plan(String)
+  Preview(String)
   PlanJob(String)
   E2EJob(String)
+  Promote(String)
   Confirm(String)
   Reject(String)
   Revise(String)
@@ -27,6 +30,11 @@ pub(all) enum JobChatAction {
   Memories
   MemorySearch(String)
 } derive(Show)
+
+///|
+fn is_plan_mode_command(command : String) -> Bool {
+  command == "/plan"
+}
 
 ///|
 fn is_plan_job_command(command : String) -> Bool {
@@ -412,8 +420,11 @@ pub fn parse_job_chat_action(
   guard trimmed.has_prefix("/") else { return None }
   let (command, args) = split_job_chat_command(trimmed)
   match command {
+    _ if is_plan_mode_command(command) => Some(JobChatAction::Plan(args))
+    "/preview" => Some(JobChatAction::Preview(args))
     _ if is_plan_job_command(command) => Some(JobChatAction::PlanJob(args))
     _ if is_e2e_job_command(command) => Some(JobChatAction::E2EJob(args))
+    "/promote" => Some(JobChatAction::Promote(args))
     "/confirm" => Some(JobChatAction::Confirm(args))
     "/reject" => Some(JobChatAction::Reject(args))
     "/revise" => Some(JobChatAction::Revise(args))
@@ -435,8 +446,11 @@ pub fn parse_job_chat_action(
 ///|
 pub async fn[T] dispatch_job_chat_action(
   action : JobChatAction?,
+  on_plan_mode : async (String) -> T,
+  on_preview : async (String) -> T,
   on_plan : async (String) -> T,
   on_e2e : async (String) -> T,
+  on_promote : async (String) -> T,
   on_confirm : async (String) -> T,
   on_reject : async (String) -> T,
   on_revise : async (String) -> T,
@@ -451,8 +465,11 @@ pub async fn[T] dispatch_job_chat_action(
   on_memory_search : async (String) -> T,
 ) -> T? {
   match action {
+    Some(JobChatAction::Plan(args)) => Some(on_plan_mode(args))
+    Some(JobChatAction::Preview(args)) => Some(on_preview(args))
     Some(JobChatAction::PlanJob(args)) => Some(on_plan(args))
     Some(JobChatAction::E2EJob(args)) => Some(on_e2e(args))
+    Some(JobChatAction::Promote(args)) => Some(on_promote(args))
     Some(JobChatAction::Confirm(args)) => Some(on_confirm(args))
     Some(JobChatAction::Reject(args)) => Some(on_reject(args))
     Some(JobChatAction::Revise(args)) => Some(on_revise(args))

@@ -10,6 +10,7 @@ async test "SessionManager persists and reloads sessions" {
       model_override: Some("default"),
       provider_override: None,
       cwd: Some("/repo"),
+      plan_mode: None,
     }
     manager.save_entry("feishu:acct:chat", entry)
 
@@ -38,6 +39,7 @@ async test "SessionManager reset_and_save removes persisted sessions" {
       model_override: None,
       provider_override: None,
       cwd: Some("/repo"),
+      plan_mode: None,
     })
     inspect(manager.reset_and_save("session-1"), content="true")
 
@@ -60,6 +62,7 @@ async test "SessionManager preserves unrelated persisted sessions across updates
       model_override: Some("sonnet"),
       provider_override: None,
       cwd: Some("/repo/a"),
+      plan_mode: None,
     })
     manager.save_entry("channel:feishu:default:chat-1", SessionEntry::{
       session_id: "conversation-2",
@@ -68,6 +71,7 @@ async test "SessionManager preserves unrelated persisted sessions across updates
       model_override: None,
       provider_override: Some("openai"),
       cwd: Some("/repo/b"),
+      plan_mode: None,
     })
     inspect(manager.reset_and_save("direct:user:1"), content="true")
 
@@ -83,5 +87,44 @@ async test "SessionManager preserves unrelated persisted sessions across updates
     inspect(preserved.channel.unwrap_or(""), content="feishu")
     inspect(preserved.provider_override.unwrap_or(""), content="openai")
     inspect(reloaded.get("direct:user:1") is None, content="true")
+  })
+}
+
+///|
+async test "SessionManager persists plan mode state" {
+  @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
+    let session_dir = @path.Path(dir).join(@path.Path("sessions")).to_string()
+    let manager = SessionManager::{ sessions: {}, session_dir }
+    manager.save_entry("channel:feishu:default:chat-1:thread-1", SessionEntry::{
+      session_id: "conversation-2",
+      updated_at: 2,
+      channel: Some("feishu"),
+      model_override: None,
+      provider_override: Some("openai"),
+      cwd: Some("/repo/b"),
+      plan_mode: Some(PlanModeState::{
+        request_text: "Analyze the parcel.",
+        notes: ["Focus on land comps."],
+        latest_candidate: @job.draft_job_proposal(
+          "plan-preview", "Analyze the parcel.", 1,
+        ),
+        updated_at: 2,
+      }),
+    })
+    let reloaded = SessionManager::{ sessions: {}, session_dir }
+    reloaded.load()
+    let preserved = match
+      reloaded.get("channel:feishu:default:chat-1:thread-1") {
+      Some(entry) => entry
+      None => fail("expected preserved channel session")
+    }
+    inspect(
+      preserved.plan_mode.map(fn(state) { state.request_text }).unwrap_or(""),
+      content="Analyze the parcel.",
+    )
+    inspect(
+      preserved.plan_mode.map(fn(state) { state.notes.join(",") }).unwrap_or(""),
+      content="Focus on land comps.",
+    )
   })
 }

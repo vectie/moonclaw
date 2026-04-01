@@ -937,6 +937,115 @@ async fn plan_job_proposal_with_mode(
 }
 
 ///|
+pub struct JobPlanPreviewStep {
+  id : String
+  title : String
+} derive(Show, ToJson, FromJson)
+
+///|
+pub struct JobPlanPreview {
+  title : String
+  request_text : String
+  summary : String
+  steps : Array[JobPlanPreviewStep]
+  requested_output_format : String?
+  starter_files : Array[String]
+  source : String
+} derive(Show, ToJson, FromJson)
+
+///|
+fn proposal_to_plan_preview(
+  proposal : JobProposal,
+  source : String,
+) -> JobPlanPreview {
+  JobPlanPreview::{
+    title: proposal.title,
+    request_text: proposal.request_text,
+    summary: proposal.summary,
+    steps: proposal.steps.map(fn(step) {
+      JobPlanPreviewStep::{ id: step.id, title: step.title }
+    }),
+    requested_output_format: proposal_requested_output_format(proposal),
+    starter_files: proposal_starter_file_labels(proposal),
+    source,
+  }
+}
+
+///|
+pub fn plan_preview_from_proposal(
+  proposal : JobProposal,
+  source? : String = "plan_mode",
+) -> JobPlanPreview {
+  proposal_to_plan_preview(proposal, source)
+}
+
+///|
+pub async fn plan_chat_mode(
+  request_text : String,
+  now_ms : Int,
+  executor? : AnalysisExecutor = default_analysis_executor(),
+  intake? : Json? = None,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+  model? : String? = None,
+  cwd? : String = ".",
+  home? : String? = None,
+  workspace? : String? = None,
+  memory_context? : String? = None,
+) -> JobPlanPreview {
+  let proposal = plan_job_proposal_with_mode(
+    "plan-preview",
+    request_text,
+    now_ms,
+    false,
+    executor~,
+    intake~,
+    channel_id~,
+    account_id~,
+    recipient~,
+    thread_id~,
+    model~,
+    cwd~,
+    home~,
+    workspace~,
+    memory_context~,
+  )
+  proposal_to_plan_preview(proposal, "plan_mode")
+}
+
+///|
+pub fn promote_plan_candidate(
+  candidate : JobProposal,
+  proposal_id : String,
+  request_text : String,
+  now_ms : Int,
+  channel_id? : String? = None,
+  account_id? : String? = None,
+  recipient? : String? = None,
+  thread_id? : String? = None,
+) -> JobProposal {
+  JobProposal::{
+    ..candidate,
+    id: proposal_id,
+    title: compact_title(request_text),
+    request_text,
+    status: Draft,
+    channel_id,
+    account_id,
+    recipient,
+    thread_id,
+    presented_message_id: None,
+    job_id: None,
+    workflow_id: None,
+    last_run_id: None,
+    created_at: now_ms,
+    updated_at: now_ms,
+  }
+}
+
+///|
 pub async fn plan_job_proposal(
   proposal_id : String,
   request_text : String,
@@ -1246,5 +1355,39 @@ pub fn render_job_proposal_for_chat(proposal : JobProposal) -> String {
     "Confirm with `/confirm \{proposal.id}`",
     "Revise with `/revise \{proposal.id} <extra guidance>`",
     "Reject with `/reject \{proposal.id}`",
+  ].join("\n")
+}
+
+///|
+pub fn render_job_plan_preview_for_chat(preview : JobPlanPreview) -> String {
+  let lines = ["Plan preview", "", "Title: \{preview.title}"]
+  match preview.requested_output_format {
+    Some(format) => lines.push("Requested output: \{format}")
+    None => ()
+  }
+  let lines = [..lines, "", "Summary: \{preview.summary}"]
+  let lines = if preview.starter_files.is_empty() {
+    lines
+  } else {
+    [
+      ..lines,
+      "",
+      "Included starter files:",
+      ..preview.starter_files.map(fn(file) { "- \{file}" }),
+    ]
+  }
+  let lines = [..lines, "", "Planned steps:"]
+  let lines = preview.steps.fold(init=lines, fn(lines, step) {
+    [..lines, "\{step.id}. \{step.title}"]
+  })
+  [
+    ..lines,
+    "",
+    "This is an in-session plan preview. It is not saved and will not execute by itself.",
+    "Reply in the same thread with plain text to refine this plan.",
+    "Use `/preview` to inspect the current plan-mode state again without promoting it.",
+    "Use `/promote` to turn this plan into a durable proposal.",
+    "Use `/plan-job \{preview.request_text}` to create a separate durable proposal directly.",
+    "Use `/e2e \{preview.request_text}` for preprocess + planned execution.",
   ].join("\n")
 }

@@ -217,6 +217,35 @@ async test "GatewayJobApp::confirm_proposal passes proposal intake into launch c
 }
 
 ///|
+async test "GatewayJobApp::plan_mode returns a transient preview" {
+  @fsx.with_temporary_directory("job-app-plan-mode-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workspace = @workspace.WorkspaceRuntime::new(home=dir, cwd=dir)
+    let app = GatewayJobApp::new(
+      root~,
+      cwd=dir,
+      home=dir,
+      workspace~,
+      next_id=fn() { "proposal-plan-preview" },
+      now=fn() { 200 },
+    )
+    let preview = app.plan_mode(
+      "Analyze starter files.",
+      intake=Some({
+        "requested_output_format": "brief markdown",
+        "starter_attachments": [{ "id": "file-1", "filename": "seed.pdf" }],
+      }),
+    )
+    inspect(preview.title.is_blank(), content="false")
+    inspect(
+      preview.requested_output_format.unwrap_or(""),
+      content="brief markdown",
+    )
+    inspect(preview.starter_files.join(","), content="seed.pdf")
+  })
+}
+
+///|
 async test "compile_job_proposal preserves presentation postprocess artifact file names" {
   let proposal = JobProposal::{
     ..draft_job_proposal(

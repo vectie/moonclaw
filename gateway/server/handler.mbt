@@ -121,6 +121,7 @@ async fn Gateway::execute_agent(
     model_override: session.model_override,
     provider_override: session.provider_override,
     cwd: Some(cwd),
+    plan_mode: session.plan_mode,
   })
   let model_name = match params.model {
     Some(m) => m
@@ -169,6 +170,7 @@ async fn Gateway::execute_agent(
         model_override: Some(model_name),
         provider_override: session.provider_override,
         cwd: Some(cwd),
+        plan_mode: session.plan_mode,
       })
       return Err(error_shape)
     }
@@ -244,6 +246,7 @@ async fn Gateway::execute_agent(
     model_override: Some(model_name),
     provider_override: session.provider_override,
     cwd: Some(cwd),
+    plan_mode: session.plan_mode,
   })
   Ok({
     "run_id": run_id,
