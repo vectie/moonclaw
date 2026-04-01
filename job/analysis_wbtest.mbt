@@ -319,6 +319,52 @@ async test "analysis_step_handler honors nested disable_adaptive metadata" {
 }
 
 ///|
+test "analysis_tool_contract defaults from legacy booleans" {
+  let enabled = analysis_tool_contract(
+    AnalysisStepConfig::new(
+      prompt="Analyze.",
+      enable_tools=true,
+      web_search=true,
+    ),
+  )
+  inspect(enabled.shell.to_json().stringify(), content="true")
+  inspect(enabled.read_files.to_json().stringify(), content="true")
+  inspect(enabled.web_search.to_json().stringify(), content="true")
+
+  let disabled = analysis_tool_contract(
+    AnalysisStepConfig::new(
+      prompt="Analyze.",
+      enable_tools=false,
+      web_search=true,
+    ),
+  )
+  inspect(disabled.shell.to_json().stringify(), content="false")
+  inspect(disabled.read_files.to_json().stringify(), content="false")
+  inspect(disabled.web_search.to_json().stringify(), content="false")
+}
+
+///|
+test "analysis_tool_contract prefers structured metadata contract" {
+  let contract = analysis_tool_contract(
+    AnalysisStepConfig::new(prompt="Analyze.", enable_tools=false, metadata={
+      "tool_contract": {
+        "shell": false,
+        "list_files": true,
+        "read_files": true,
+        "search_files": false,
+        "todo": false,
+        "file_write": false,
+        "web_search": true,
+      },
+    }),
+  )
+  inspect(contract.list_files.to_json().stringify(), content="true")
+  inspect(contract.read_files.to_json().stringify(), content="true")
+  inspect(contract.web_search.to_json().stringify(), content="true")
+  inspect(contract.shell.to_json().stringify(), content="false")
+}
+
+///|
 async test "analysis_step_handler honors nested skip_primary_workspace_output metadata" {
   @fsx.with_temporary_directory("job-analysis-skip-primary-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -1219,6 +1265,15 @@ async test "resolved_model_name uses configured primary model for default" {
       preferred_skills: [],
       enable_tools: false,
       web_search: false,
+      tool_contract: AnalysisToolContract::new(
+        shell=false,
+        list_files=false,
+        read_files=false,
+        search_files=false,
+        todo=false,
+        file_write=false,
+        web_search=false,
+      ),
     }
     inspect(resolved_model_name(request).unwrap_or(""), content="codex/gpt-5.4")
   })

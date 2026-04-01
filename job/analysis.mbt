@@ -114,6 +114,7 @@ pub(all) struct AnalysisRequest {
   preferred_skills : Array[String]
   enable_tools : Bool
   web_search : Bool
+  tool_contract : AnalysisToolContract
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -171,31 +172,6 @@ async fn resolved_model_name(request : AnalysisRequest) -> String? {
 }
 
 ///|
-fn setup_analysis_agent(
-  agent : @agent.Agent,
-  cwd : String,
-  web_search? : Bool = false,
-) -> Unit {
-  let file_manager = @file.manager(cwd~)
-  let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
-  agent.add_tools([
-    @execute_command.new(cwd).to_agent_tool(),
-    @list_files.new(file_manager).to_agent_tool(),
-    @read_file.new(file_manager).to_agent_tool(),
-    @todo.new_tool(todo_list).to_agent_tool(),
-    @search_files.new(agent.cwd).to_agent_tool(),
-  ])
-  if web_search {
-    agent.add_tool(@web_search.new())
-  }
-  if agent.model.supports_apply_patch {
-    agent.add_tool(@apply_patch.new(agent.cwd))
-  } else {
-    agent.add_tool(@write_to_file.new(agent.cwd))
-  }
-}
-
-///|
 fn preferred_skills_prompt(preferred_skills : Array[String]) -> String {
   if preferred_skills.is_empty() {
     ""
@@ -203,35 +179,6 @@ fn preferred_skills_prompt(preferred_skills : Array[String]) -> String {
     let names = preferred_skills.join(", ")
     "Prefer these skills if relevant: \{names}"
   }
-}
-
-///|
-fn structured_result_payload(
-  step_id : String,
-  config : AnalysisStepConfig,
-  execution : AnalysisExecution,
-) -> Json {
-  let payload : Map[String, Json] = {
-    "step_id": step_id.to_json(),
-    "model": execution.model_name.to_json(),
-    "content": execution.content.to_json(),
-    "conversation_id": execution.conversation_id.to_json(),
-    "usage": usage_json(execution.usage),
-    "metadata": execution.metadata,
-  }
-  match metadata_string(config.metadata, "result_content_json_contract") {
-    Some(contract) => {
-      payload.set("content_contract", contract.to_json())
-      if contract == presentation_contract_version() {
-        match parse_presentation_deck_spec_text(execution.content) {
-          Some(spec) => payload.set("parsed_content", spec.to_json())
-          None => ()
-        }
-      }
-    }
-    None => ()
-  }
-  Json::object(payload)
 }
 
 ///|
@@ -724,6 +671,7 @@ pub async fn build_analysis_request(
     preferred_skills: config.preferred_skills,
     enable_tools: config.enable_tools,
     web_search: config.web_search,
+    tool_contract: analysis_tool_contract(config),
   }
 }
 
@@ -818,7 +766,11 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
     )
     defer agent.close()
     if request.enable_tools {
-      setup_analysis_agent(agent, request.cwd, web_search=request.web_search)
+      setup_analysis_agent_for_contract(
+        agent,
+        request.cwd,
+        request.tool_contract,
+      )
     }
 
     let mut final_content = ""
@@ -891,98 +843,19 @@ pub fn analysis_step_handler(
 
     let request = build_analysis_request(store, context, config)
 
-    let execution = match config.policy.timeout_ms {
-      Some(timeout_ms) =>
-        @async.with_timeout(timeout_ms, () => (executor.run)(request)) catch {
-          @async.TimeoutError =>
-            return Err(timeout_error_message(context.step.id, timeout_ms))
-          error => return Err("Analysis execution failed: \{error}")
-        }
-      None =>
-        (executor.run)(request) catch {
-          error => return Err("Analysis execution failed: \{error}")
-        }
-    }
+    let execution = execute_analysis_request(
+      executor,
+      request,
+      config.policy,
+      context.step.id,
+    )
     let execution = match execution {
       Ok(execution) => execution
       Err(error) => return Err(error)
     }
-    if policy_budget_exceeded(execution, config.policy) is Some(error) {
-      return Err(error)
-    }
 
-    let report_artifact = artifacts.write(
-      ArtifactWriteRequest::new(
-        run_id=context.run.id,
-        job_id=context.run.job_id,
-        artifact_type=config.artifacts.report_artifact_type,
-        logical_key=config.artifacts.logical_key,
-        content=execution.content,
-        content_type="text/markdown",
-        file_name=config.artifacts.report_file_name,
-        metadata={
-          "step_id": context.step.id,
-          "model": execution.model_name,
-          "conversation_id": execution.conversation_id,
-          "preferred_skills": config.preferred_skills,
-          "config_metadata": config.metadata,
-        },
-        scope=config.artifacts.scope,
-        append_only=config.artifacts.append_only,
-      ),
-      "\{context.run.id}:\{context.step.id}:report:\{now()}",
-      now(),
-    )
-    let result_payload = structured_result_payload(
-      context.step.id,
-      config,
-      execution,
-    )
-    let result_artifact = artifacts.write(
-      ArtifactWriteRequest::new(
-        run_id=context.run.id,
-        job_id=context.run.job_id,
-        artifact_type=config.artifacts.result_artifact_type,
-        logical_key=config.artifacts.logical_key,
-        content=result_payload.stringify(),
-        content_type="application/json",
-        file_name=config.artifacts.result_file_name,
-        metadata={
-          "step_id": context.step.id,
-          "report_artifact_id": report_artifact.id,
-          "config_metadata": config.metadata,
-        },
-        scope=config.artifacts.scope,
-        append_only=config.artifacts.append_only,
-      ),
-      "\{context.run.id}:\{context.step.id}:result:\{now()}",
-      now(),
-    )
-    materialize_analysis_outputs_to_workspace(
-      store,
-      context,
-      config,
-      result_payload,
-      execution.content,
-    )
-    let completed_result = Ok(
-      WorkflowStepResult::new(
-        output={
-          "status": "completed",
-          "model": execution.model_name,
-          "content": execution.content,
-          "conversation_id": execution.conversation_id,
-          "report_artifact_id": report_artifact.id,
-          "result_artifact_id": result_artifact.id,
-          "usage": usage_json(execution.usage),
-        },
-        summary=Some("Analysis completed"),
-        metrics=result_metrics(execution),
-        logs=[
-          "report artifact written: \{report_artifact.id}",
-          "result artifact written: \{result_artifact.id}",
-        ],
-      ),
+    let persisted = persist_analysis_execution(
+      store, artifacts, context, config, execution, now,
     )
     let adaptive_result = resolve_adaptive_analysis_result(
       runtime,
@@ -993,16 +866,16 @@ pub fn analysis_step_handler(
       request,
       context,
       config,
-      execution,
-      completed_result,
-      report_artifact.id,
-      result_artifact.id,
+      persisted.execution,
+      persisted.completed_result,
+      persisted.report_artifact_id,
+      persisted.result_artifact_id,
       now,
       next_run_id,
     )
     match adaptive_result {
       Some(result) => result
-      None => completed_result
+      None => persisted.completed_result
     }
   })
 }

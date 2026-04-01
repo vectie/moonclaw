@@ -832,6 +832,15 @@ async fn plan_job_proposal_with_mode(
     preferred_skills,
     enable_tools: false,
     web_search: false,
+    tool_contract: AnalysisToolContract::new(
+      shell=false,
+      list_files=false,
+      read_files=false,
+      search_files=false,
+      todo=false,
+      file_write=false,
+      web_search=false,
+    ),
   }
   let fallback = draft_job_proposal(
     proposal_id,
@@ -1037,6 +1046,15 @@ pub async fn revise_job_proposal(
     preferred_skills,
     enable_tools: false,
     web_search: false,
+    tool_contract: AnalysisToolContract::new(
+      shell=false,
+      list_files=false,
+      read_files=false,
+      search_files=false,
+      todo=false,
+      file_write=false,
+      web_search=false,
+    ),
   }
   let execution = match (executor.run)(request) {
     Ok(execution) => execution
