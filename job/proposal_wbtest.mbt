@@ -281,6 +281,18 @@ async test "plan_e2e_job_proposal appends presentation render step when renderer
     proposal.steps[3].prompt.contains("presentation_plan.json"),
     content="true",
   )
+  inspect(
+    proposal.steps[3].prompt.contains(presentation_render_contract_version()),
+    content="true",
+  )
+  inspect(
+    proposal.steps[3].metadata
+    .stringify()
+    .contains(
+      "\"result_content_json_contract\":\"\{presentation_render_contract_version()}\"",
+    ),
+    content="true",
+  )
 }
 
 ///|

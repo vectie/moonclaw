@@ -16,6 +16,8 @@ This directory contains tool implementations that the AI agent can use.
 | `glob_files` | Find file paths by glob pattern |
 | `list_resources` | List typed local resources |
 | `read_resource` | Read typed local resources by URI |
+| `runtime_context` | Inspect current job/run/step execution context |
+| `list_worktrees` | List managed git worktrees for the current repository |
 | `enter_worktree` | Provision an isolated git worktree |
 | `exit_worktree` | Remove an isolated git worktree |
 | `search_files` | Search for patterns in files |
@@ -215,6 +217,7 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult]
 **Supported kinds:**
 - `file`
 - `skill`
+- `worktree`
 
 **Parameters:**
 - `kind`: Resource kind to list
@@ -225,6 +228,7 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult]
 
 **Features:**
 - URI-based discovery for files and skills
+- First-class discovery of managed git worktrees
 - Reuses glob-based file discovery
 - Structured metadata for downstream `read_resource` calls
 
@@ -241,6 +245,7 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult]
 **Supported URIs:**
 - `file://relative/or/absolute/path`
 - `skill://skill-name`
+- `worktree://worktree-key`
 
 **Parameters:**
 - `uri`: Resource URI to read
@@ -248,8 +253,47 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult]
 
 **Features:**
 - Typed file and skill resource reads
+- Worktree resource inspection via typed URIs
 - Runtime-aware `cwd` / `home` resolution
 - Structured metadata in the result payload
+
+---
+
+## web_search
+
+Search the public web for source leads with explicit provenance.
+
+```moonbit nocheck
+pub fn new() -> @tool.Tool[WebSearchResult]
+```
+
+**Parameters:**
+- `query`: Search query string
+- `max_results`: Maximum number of search items to return
+
+**Features:**
+- Public-web background search
+- Stable `search_url` in the result payload
+- Per-result source metadata including `domain` and `rank`
+
+---
+
+## web_fetch
+
+Fetch a URL and return cleaned page text with fetch provenance.
+
+```moonbit nocheck
+pub fn new() -> @tool.Tool[WebFetchResult]
+```
+
+**Parameters:**
+- `url`: HTTP or HTTPS URL to fetch
+- `max_chars`: Maximum returned text size
+
+**Features:**
+- Cleaned text extraction from HTML or plain text responses
+- Explicit `final_url` and `domain`
+- Structured metadata including scheme, host, path, and HTML extraction mode
 
 ---
 

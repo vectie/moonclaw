@@ -7,6 +7,26 @@ pub struct PresentationRenderHandoff {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub struct PresentationRenderArtifact {
+  role : String
+  path : String
+  description : String?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub struct PresentationRenderPackage {
+  provider : String?
+  renderer_target : String?
+  theme : String?
+  source_plan_contract : String
+  source_plan_artifact : String?
+  output_kind : String
+  produced_artifacts : Array[PresentationRenderArtifact]
+  handoff_summary : String
+  notes : Array[String]
+} derive(ToJson, FromJson, Show)
+
+///|
 pub struct PresentationPageSpec {
   page_number : Int
   page_type : String
@@ -40,6 +60,11 @@ pub fn presentation_contract_version() -> String {
 }
 
 ///|
+pub fn presentation_render_contract_version() -> String {
+  "presentation_render_package.v1"
+}
+
+///|
 pub fn presentation_deck_spec_schema_prompt() -> String {
   [
     "Return JSON only using the `\{presentation_contract_version()}` contract.",
@@ -55,9 +80,59 @@ pub fn presentation_deck_spec_schema_prompt() -> String {
 }
 
 ///|
+pub fn presentation_render_package_schema_prompt() -> String {
+  [
+    "Return JSON only using the `\{presentation_render_contract_version()}` contract.",
+    "Top-level shape:",
+    "{\"provider\":string?,\"renderer_target\":string?,\"theme\":string?,\"source_plan_contract\":string,\"source_plan_artifact\":string?,\"output_kind\":string,\"produced_artifacts\":[{\"role\":string,\"path\":string,\"description\":string?}],\"handoff_summary\":string,\"notes\":string[]}",
+    "Rules:",
+    "- `source_plan_contract` must be `\{presentation_contract_version()}`.",
+    "- `output_kind` should clearly indicate whether this is a rendered deck, vendor handoff package, or preview bundle.",
+    "- `produced_artifacts` must list the concrete files or package paths produced by the rendering step.",
+    "- `handoff_summary` should explain what was rendered or what a downstream vendor should do next.",
+    "- `notes` should capture renderer constraints, assumptions, or follow-up actions.",
+  ].join("\n")
+}
+
+///|
 pub fn parse_presentation_deck_spec_text(
   text : String,
 ) -> PresentationDeckSpec? {
+  let trimmed = text.trim().to_string()
+  if trimmed.is_blank() {
+    return None
+  }
+  let first = match trimmed.find("{") {
+    Some(index) => index
+    None => return None
+  }
+  let mut end = trimmed.length()
+  while end > first {
+    let candidate = trimmed[first:end].to_string()
+    if !candidate.has_suffix("}") {
+      end = end - 1
+      continue
+    }
+    let parsed_json = try? @json.parse(candidate)
+    match parsed_json {
+      Ok(json) => {
+        let payload = try? @json.from_json(json)
+        match payload {
+          Ok(payload) => return Some(payload)
+          Err(_) => ()
+        }
+      }
+      Err(_) => ()
+    }
+    end = end - 1
+  }
+  None
+}
+
+///|
+pub fn parse_presentation_render_package_text(
+  text : String,
+) -> PresentationRenderPackage? {
   let trimmed = text.trim().to_string()
   if trimmed.is_blank() {
     return None

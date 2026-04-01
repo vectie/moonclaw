@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/runtime_context"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new(RuntimeContextResult) -> @tool.Tool[RuntimeContextResult]
+
+// Errors
+
+// Types and methods
+pub struct RuntimeContextResult {
+  cwd : String
+  home : String?
+  run_id : String?
+  job_id : String?
+  step_id : String?
+  model_name : String?
+  execution_mode : String?
+  execution_target : String?
+  workspace_dir : String?
+  execution_isolation : Json?
+  enabled_tools : Array[String]
+}
+pub fn RuntimeContextResult::new(cwd~ : String, home? : String?, run_id? : String?, job_id? : String?, step_id? : String?, model_name? : String?, execution_mode? : String?, execution_target? : String?, workspace_dir? : String?, execution_isolation? : Json?, enabled_tools? : Array[String]) -> Self
+pub impl Show for RuntimeContextResult
+pub impl ToJson for RuntimeContextResult
+pub impl @json.FromJson for RuntimeContextResult
+
+// Type aliases
+
+// Traits
+

@@ -4,11 +4,14 @@ pub struct WebSearchItem {
   url : String
   snippet : String
   source : String
+  domain : String?
+  rank : Int
 } derive(ToJson, FromJson)
 
 ///|
 pub struct WebSearchResult {
   query : String
+  search_url : String
   answer : String?
   results : Array[WebSearchItem]
   source : String
@@ -19,7 +22,11 @@ pub impl Show for WebSearchResult with output(
   result : WebSearchResult,
   logger : &Logger,
 ) -> Unit {
-  let lines = ["Query: \{result.query}", "Source: \{result.source}"]
+  let lines = [
+    "Query: \{result.query}",
+    "Source: \{result.source}",
+    "Search URL: \{result.search_url}",
+  ]
   if result.answer is Some(answer) && !answer.is_blank() {
     lines.push("")
     lines.push("Summary:")
@@ -38,6 +45,22 @@ pub impl Show for WebSearchResult with output(
     }
   }
   logger.write_string(lines.join("\n"))
+}
+
+///|
+fn domain_from_url(url : String) -> String? {
+  guard url.find("://") is Some(index) else { return None }
+  let remainder = url[index + 3:].to_string()
+  let host = match remainder.find("/") {
+    Some(path_index) => remainder[:path_index].to_string()
+    None => remainder
+  }
+  let host = host.trim().to_string()
+  if host.is_blank() {
+    None
+  } else {
+    Some(host)
+  }
 }
 
 ///|
@@ -121,6 +144,8 @@ fn add_result(
     url: resolved_url,
     snippet: resolved_snippet,
     source,
+    domain: domain_from_url(resolved_url),
+    rank: items.length() + 1,
   })
 }
 
@@ -173,6 +198,7 @@ fn first_present(
 ///|
 fn parse_duckduckgo_result(
   query : String,
+  search_url : String,
   body : String,
   max_results : Int,
 ) -> WebSearchResult raise {
@@ -237,6 +263,7 @@ fn parse_duckduckgo_result(
   }
   WebSearchResult::{
     query,
+    search_url,
     answer,
     results: limited,
     source: "duckduckgo-instant-answer",
@@ -250,6 +277,7 @@ async fn perform_web_search(
 ) -> WebSearchResult {
   let encoded = url_encode_component(query)
   let path = "/?q=\{encoded}&format=json&no_html=1&no_redirect=1&skip_disambig=0"
+  let search_url = "https://duckduckgo.com/?q=\{encoded}"
   let client = @http.Client::new("https://api.duckduckgo.com", headers={
     "Accept": "application/json",
     "Connection": "close",
@@ -262,7 +290,7 @@ async fn perform_web_search(
     fail("web_search HTTP \{response.code}: \{error_body}")
   }
   let body = client.read_all().text()
-  parse_duckduckgo_result(query, body, max_results)
+  parse_duckduckgo_result(query, search_url, body, max_results)
 }
 
 ///|
@@ -318,7 +346,7 @@ test "url_encode_component encodes spaces and punctuation" {
 ///|
 test "parse_duckduckgo_result collects abstract and related topics" {
   let result = parse_duckduckgo_result(
-    "moonbit", "{\"AbstractText\":\"MoonBit is a programming language.\",\"AbstractURL\":\"https://example.test/moonbit\",\"Heading\":\"MoonBit\",\"RelatedTopics\":[{\"Text\":\"MoonBit docs\",\"FirstURL\":\"https://example.test/docs\"},{\"Name\":\"Nested\",\"Topics\":[{\"Text\":\"MoonBit repo\",\"FirstURL\":\"https://example.test/repo\"}]}]}",
+    "moonbit", "https://duckduckgo.com/?q=moonbit", "{\"AbstractText\":\"MoonBit is a programming language.\",\"AbstractURL\":\"https://example.test/moonbit\",\"Heading\":\"MoonBit\",\"RelatedTopics\":[{\"Text\":\"MoonBit docs\",\"FirstURL\":\"https://example.test/docs\"},{\"Name\":\"Nested\",\"Topics\":[{\"Text\":\"MoonBit repo\",\"FirstURL\":\"https://example.test/repo\"}]}]}",
     5,
   )
   inspect(

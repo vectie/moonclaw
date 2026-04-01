@@ -8,6 +8,8 @@ import {
 // Values
 pub async fn create_worktree(WorktreeHandle, commit? : String?, force_new_branch? : Bool) -> WorktreeHandle
 
+pub async fn list_worktrees(String, base_dir? : String?) -> WorktreeList
+
 pub async fn plan_worktree(String, String, base_dir? : String?, branch_name? : String?) -> WorktreeHandle
 
 pub async fn remove_worktree(WorktreeHandle, force? : Bool) -> Unit
@@ -28,6 +30,15 @@ pub struct WorktreeHandle {
 pub impl Show for WorktreeHandle
 pub impl ToJson for WorktreeHandle
 pub impl @json.FromJson for WorktreeHandle
+
+pub struct WorktreeList {
+  repo_root : String
+  base_dir : String
+  worktrees : Array[WorktreeHandle]
+}
+pub impl Show for WorktreeList
+pub impl ToJson for WorktreeList
+pub impl @json.FromJson for WorktreeList
 
 // Type aliases
 

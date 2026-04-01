@@ -69,3 +69,23 @@ async test "list_resources truncates file resource listings" (t : @test.Test) {
     inspect(output.resources.length().to_string(), content="2")
   })
 }
+
+///|
+async test "list_resources lists worktree URIs" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let repo = mock.cwd.path()
+    @git.init_(repo)
+    @fsx.write_to_file(@pathx.join(repo, "README.md"), "hello")
+    @git.commit("init", ["README.md"], cwd=repo)
+    let handle = @worktree.plan_worktree(repo, "Inspect docs")
+    ignore(@worktree.create_worktree(handle))
+    let tool = new(repo)
+    let result = tool.call({ "kind": "worktree" })
+    guard result is Ok(output) else {
+      fail("Expected Ok result but got: \{result}")
+    }
+    inspect(output.total_resources.to_string(), content="1")
+    inspect(output.resources[0].uri, content="worktree://inspect-docs")
+    @worktree.remove_worktree(handle)
+  })
+}

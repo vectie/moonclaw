@@ -773,12 +773,7 @@ pub fn default_analysis_executor() -> AnalysisExecutor {
     )
     defer agent.close()
     if request.enable_tools {
-      setup_analysis_agent_for_contract(
-        agent,
-        request.cwd,
-        request.home,
-        request.tool_contract,
-      )
+      setup_analysis_agent_for_request(agent, request)
     }
 
     let mut final_content = ""

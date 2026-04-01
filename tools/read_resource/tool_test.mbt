@@ -55,3 +55,26 @@ async test "read_resource truncates text" (t : @test.Test) {
     inspect(output.text, content="abcdefghijklmnopqrstuvwxyz")
   })
 }
+
+///|
+async test "read_resource reads worktree URIs" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let repo = mock.cwd.path()
+    @git.init_(repo)
+    @fsx.write_to_file(@pathx.join(repo, "README.md"), "hello")
+    @git.commit("init", ["README.md"], cwd=repo)
+    let handle = @worktree.plan_worktree(repo, "Inspect docs")
+    ignore(@worktree.create_worktree(handle))
+    let tool = new(repo)
+    let result = tool.call({ "uri": "worktree://inspect-docs" })
+    guard result is Ok(output) else {
+      fail("Expected Ok result but got: \{result}")
+    }
+    inspect(output.kind.to_json().stringify(), content="\"Worktree\"")
+    inspect(
+      output.metadata.stringify().contains("moonclaw/inspect-docs"),
+      content="true",
+    )
+    @worktree.remove_worktree(handle)
+  })
+}

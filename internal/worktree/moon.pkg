@@ -2,6 +2,7 @@ import {
   "moonbitlang/moonclaw/internal/git",
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/fsx",
+  "moonbitlang/moonclaw/internal/spawn",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

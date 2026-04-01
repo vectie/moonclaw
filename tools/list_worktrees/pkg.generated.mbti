@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/list_worktrees"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/internal/worktree",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new(String) -> @tool.Tool[ListWorktreesResult]
+
+// Errors
+
+// Types and methods
+pub struct ListWorktreesResult {
+  repo_root : String
+  current_cwd : String
+  worktrees : Array[@worktree.WorktreeHandle]
+}
+pub impl Show for ListWorktreesResult
+pub impl ToJson for ListWorktreesResult
+pub impl @json.FromJson for ListWorktreesResult
+
+// Type aliases
+
+// Traits
+

@@ -25,3 +25,34 @@ test "parse_presentation_deck_spec_text parses wrapped JSON" {
     content="1",
   )
 }
+
+///|
+test "presentation_render_package_schema_prompt names the render contract" {
+  inspect(
+    presentation_render_package_schema_prompt().contains(
+      presentation_render_contract_version(),
+    ),
+    content="true",
+  )
+}
+
+///|
+test "parse_presentation_render_package_text parses wrapped JSON" {
+  let spec = parse_presentation_render_package_text(
+    [
+      "Render package follows:", "{\"provider\":\"slides-vendor\",\"renderer_target\":\"slides-main\",\"theme\":\"board-clean\",\"source_plan_contract\":\"presentation_deck_spec.v1\",\"source_plan_artifact\":\"artifact://presentation-plan\",\"output_kind\":\"vendor_handoff\",\"produced_artifacts\":[{\"role\":\"deck_json\",\"path\":\"outputs/presentation/render.json\",\"description\":\"Renderer package\"}],\"handoff_summary\":\"Ready for vendor upload\",\"notes\":[\"Use brand template\"]}",
+    ].join("\n"),
+  )
+  inspect(spec is Some(_), content="true")
+  inspect(
+    spec.map(fn(value) { value.output_kind }).unwrap_or(""),
+    content="vendor_handoff",
+  )
+  inspect(
+    spec
+    .map(fn(value) { value.produced_artifacts.length() })
+    .unwrap_or(0)
+    .to_string(),
+    content="1",
+  )
+}

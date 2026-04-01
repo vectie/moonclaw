@@ -2,6 +2,7 @@
 pub enum ResourceSummaryKind {
   File
   Skill
+  Worktree
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -70,6 +71,24 @@ fn skill_resource_summary(skill : @skills.Skill) -> ResourceSummary {
 }
 
 ///|
+fn worktree_resource_summary(
+  handle : @worktree.WorktreeHandle,
+) -> ResourceSummary {
+  ResourceSummary::{
+    uri: "worktree://\{handle.task_key}",
+    kind: Worktree,
+    title: handle.task_key,
+    description: "Managed git worktree",
+    metadata: {
+      "repo_root": handle.repo_root,
+      "path": handle.path,
+      "branch_name": handle.branch_name,
+      "task_key": handle.task_key,
+    },
+  }
+}
+
+///|
 async fn list_file_resources(
   cwd : String,
   path : String,
@@ -126,6 +145,27 @@ async fn list_skill_resources(
 }
 
 ///|
+async fn list_worktree_resources(
+  cwd : String,
+  base_dir : String?,
+  max_results : Int,
+) -> ListResourcesResult {
+  let result = @worktree.list_worktrees(cwd, base_dir~)
+  let resources : Array[ResourceSummary] = []
+  for handle in result.worktrees {
+    if resources.length() >= max_results {
+      break
+    }
+    resources.push(worktree_resource_summary(handle))
+  }
+  ListResourcesResult::{
+    resources,
+    total_resources: result.worktrees.length(),
+    truncated: result.worktrees.length() > resources.length(),
+  }
+}
+
+///|
 pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
   let resolved_home = home.unwrap_or(None)
   @tool.new(
@@ -136,7 +176,7 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["file", "skill"],
+          "enum": ["file", "skill", "worktree"],
           "description": "Resource kind to list",
         },
         "path": {
@@ -155,6 +195,10 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
         "include_hidden": {
           "type": "boolean",
           "description": "Whether hidden files should be included for file resources",
+        },
+        "base_dir": {
+          "type": "string",
+          "description": "Optional explicit worktree base directory",
         },
       },
       "required": ["kind"],
@@ -189,6 +233,15 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
           list_skill_resources(cwd, resolved_home, max_results) catch {
             error => return @tool.error("Error listing resources: \{error}")
           }
+        "worktree" => {
+          let base_dir = match args {
+            { "base_dir": String(base_dir), .. } => Some(base_dir)
+            _ => None
+          }
+          list_worktree_resources(cwd, base_dir, max_results) catch {
+            error => return @tool.error("Error listing resources: \{error}")
+          }
+        }
         _ => return @tool.error("Error: unsupported resource kind '\{kind}'")
       }
       @tool.ok(result)

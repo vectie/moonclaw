@@ -222,6 +222,62 @@ async test "analysis_step_handler parses structured presentation result payload 
 }
 
 ///|
+async test "analysis_step_handler parses structured presentation render payload when contract is declared" {
+  @fsx.with_temporary_directory(
+    "job-analysis-presentation-render-result-XXXXXX",
+    dir => {
+      let root = @pathx.join(dir, "jobs")
+      let config = AnalysisStepConfig::new(
+        prompt="Render a presentation package.",
+        metadata={
+          "result_content_json_contract": presentation_render_contract_version(),
+        },
+        artifacts=AnalysisArtifactConfig::new(
+          result_file_name=Some("presentation_render_result.json"),
+        ),
+      )
+      let engine = analysis_test_engine(root, config)
+      engine.register_handler(
+        analysis_step_handler(
+          runtime=engine.runtime,
+          executor=AnalysisExecutor::new(run=fn(request) {
+            ignore(request)
+            Ok(AnalysisExecution::{
+              model_name: "codex/gpt-5.4",
+              content: "{\"provider\":\"slides-vendor\",\"renderer_target\":\"slides-main\",\"theme\":\"board-clean\",\"source_plan_contract\":\"presentation_deck_spec.v1\",\"source_plan_artifact\":\"artifact://presentation-plan\",\"output_kind\":\"vendor_handoff\",\"produced_artifacts\":[{\"role\":\"deck_json\",\"path\":\"outputs/presentation/render.json\",\"description\":\"Renderer package\"}],\"handoff_summary\":\"Ready for vendor upload\",\"notes\":[\"Use brand template\"]}",
+              conversation_id: Some("conv-presentation-render-1"),
+              usage: None,
+              metadata: {},
+            })
+          }),
+          now=fn() { 1000 },
+        ),
+      )
+      let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      }
+      inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+      let artifacts = ArtifactStore::new(store=engine.runtime.store())
+      let artifact = engine.runtime.store().list_artifacts()[1]
+      let content = artifacts.read_text(artifact.id).unwrap_or("")
+      inspect(artifact.artifact_type, content="analysis.result")
+      inspect(
+        content.contains(
+          "\"content_contract\":\"presentation_render_package.v1\"",
+        ),
+        content="true",
+      )
+      inspect(content.contains("\"parsed_content\""), content="true")
+      inspect(
+        content.contains("\"output_kind\":\"vendor_handoff\""),
+        content="true",
+      )
+    },
+  )
+}
+
+///|
 async test "analysis_step_handler materializes outputs into run workspace" {
   @fsx.with_temporary_directory("job-analysis-workspace-output-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -361,6 +417,8 @@ test "analysis_tool_contract prefers structured metadata contract" {
         "glob_files": true,
         "list_resources": true,
         "read_resource": true,
+        "runtime_context": true,
+        "list_worktrees": true,
         "enter_worktree": false,
         "exit_worktree": false,
         "read_files": true,
@@ -376,6 +434,8 @@ test "analysis_tool_contract prefers structured metadata contract" {
   inspect(contract.glob_files.to_json().stringify(), content="true")
   inspect(contract.list_resources.to_json().stringify(), content="true")
   inspect(contract.read_resource.to_json().stringify(), content="true")
+  inspect(contract.runtime_context.to_json().stringify(), content="true")
+  inspect(contract.list_worktrees.to_json().stringify(), content="true")
   inspect(contract.read_files.to_json().stringify(), content="true")
   inspect(contract.web_fetch.to_json().stringify(), content="true")
   inspect(contract.web_search.to_json().stringify(), content="true")
@@ -1649,4 +1709,55 @@ async test "setup_analysis_agent registers web_search tool when enabled" {
   )
   setup_analysis_agent(agent, "/tmp", web_search=true)
   inspect(agent.tools().contains("web_search"), content="true")
+}
+
+///|
+async test "setup_analysis_agent_for_request registers runtime introspection tools" {
+  let model = @model.Model::new(
+    api_key="",
+    base_url="https://example.invalid/v1",
+    name="test-model",
+    safe_zone_tokens=4096,
+  )
+  let agent = @agent.new(
+    model,
+    cwd="/tmp",
+    logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
+  )
+  let request = AnalysisRequest::{
+    job_id: "job-1",
+    run_id: "run-1",
+    step_id: "step-1",
+    prompt: "Inspect runtime.",
+    model_name: "codex/gpt-5.4",
+    cwd: "/tmp",
+    home: Some("/tmp/home"),
+    execution_mode: Some("vendor.presentation"),
+    execution_target: Some("slides-main"),
+    system_prompt: "system",
+    preferred_skills: [],
+    enable_tools: true,
+    web_search: false,
+    tool_contract: AnalysisToolContract::new(
+      shell=false,
+      list_files=false,
+      glob_files=false,
+      list_resources=false,
+      read_resource=false,
+      runtime_context=true,
+      list_worktrees=true,
+      enter_worktree=false,
+      exit_worktree=false,
+      read_files=false,
+      search_files=false,
+      todo=false,
+      file_write=false,
+      web_fetch=false,
+      web_search=false,
+    ),
+    execution_isolation: Some({ "mode": "git_worktree" }),
+  }
+  setup_analysis_agent_for_request(agent, request)
+  inspect(agent.tools().contains("runtime_context"), content="true")
+  inspect(agent.tools().contains("list_worktrees"), content="true")
 }

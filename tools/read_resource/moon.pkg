@@ -4,11 +4,13 @@ import {
   "moonbitlang/moonclaw/internal/pathx",
   "moonbitlang/moonclaw/internal/skills",
   "moonbitlang/moonclaw/internal/pino",
+  "moonbitlang/moonclaw/internal/worktree",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
+  "moonbitlang/moonclaw/internal/git",
   "moonbitlang/moonclaw/internal/mock",
 } for "test"

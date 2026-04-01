@@ -1,12 +1,15 @@
 ///|
 pub struct WebFetchResult {
   url : String
+  final_url : String
+  domain : String
   status_code : Int
   content_type : String?
   title : String?
   text : String
   truncated : Bool
   source : String
+  metadata : Json
 } derive(ToJson, FromJson)
 
 ///|
@@ -16,6 +19,8 @@ pub impl Show for WebFetchResult with output(
 ) -> Unit {
   let lines = [
     "URL: \{result.url}",
+    "Final URL: \{result.final_url}",
+    "Domain: \{result.domain}",
     "Status: \{result.status_code}",
     "Source: \{result.source}",
   ]
@@ -236,12 +241,23 @@ async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
   let (truncated_text, truncated) = truncate_text(text, max_chars)
   WebFetchResult::{
     url,
+    final_url: url,
+    domain: uri.host,
     status_code: response.code,
     content_type,
     title,
     text: truncated_text,
     truncated,
     source: "http-fetch",
+    metadata: {
+      "scheme": uri.scheme,
+      "host": uri.host,
+      "path": uri.path,
+      "extracted_as_html": match content_type {
+        Some(content_type) => content_type.to_lower().contains("html")
+        None => false
+      },
+    },
   }
 }
 

@@ -7,6 +7,13 @@ pub struct WorktreeHandle {
 } derive(ToJson, FromJson, Show)
 
 ///|
+pub struct WorktreeList {
+  repo_root : String
+  base_dir : String
+  worktrees : Array[WorktreeHandle]
+} derive(ToJson, FromJson, Show)
+
+///|
 fn worktree_slug(text : String) -> String {
   let buf = StringBuilder::new()
   let mut chars_written = 0
@@ -50,6 +57,59 @@ fn default_worktree_base_dir(repo_root : String) -> String {
 }
 
 ///|
+fn path_is_inside_base_dir(path : String, base_dir : String) -> Bool {
+  let normalized_path = @pathx.normalize(path)
+  let normalized_base_dir = @pathx.normalize(base_dir)
+  normalized_path == normalized_base_dir ||
+  normalized_path.has_prefix("\{normalized_base_dir}/")
+}
+
+///|
+fn parse_worktree_list_output(
+  repo_root : String,
+  base_dir : String,
+  stdout : String,
+) -> Array[WorktreeHandle] {
+  let worktrees : Array[WorktreeHandle] = []
+  let mut current_path : String? = None
+  let mut current_branch_name = ""
+  let mut current_task_key = ""
+  let flush = () => {
+    guard current_path is Some(path) else { return }
+    if path_is_inside_base_dir(path, base_dir) {
+      worktrees.push(WorktreeHandle::{
+        repo_root,
+        path,
+        branch_name: current_branch_name,
+        task_key: current_task_key,
+      })
+    }
+  }
+  for raw_line in stdout.split("\n") {
+    let line = raw_line.trim_end().to_string()
+    if line.is_blank() {
+      flush()
+      current_path = None
+      current_branch_name = ""
+      current_task_key = ""
+    } else if line.has_prefix("worktree ") {
+      current_path = Some(line["worktree ".length():].trim().to_string())
+      current_branch_name = ""
+      current_task_key = match current_path {
+        Some(path) => @pathx.basename(path).to_string()
+        None => ""
+      }
+    } else if line.has_prefix("branch refs/heads/") {
+      current_branch_name = line["branch refs/heads/".length():]
+        .trim()
+        .to_string()
+    }
+  }
+  flush()
+  worktrees
+}
+
+///|
 pub async fn plan_worktree(
   cwd : String,
   task_key : String,
@@ -65,6 +125,32 @@ pub async fn plan_worktree(
   let base_dir = base_dir.unwrap_or(default_worktree_base_dir(repo_root))
   let path = @pathx.join(base_dir, slug)
   WorktreeHandle::{ repo_root, path, branch_name, task_key }
+}
+
+///|
+pub async fn list_worktrees(
+  cwd : String,
+  base_dir? : String? = None,
+) -> WorktreeList {
+  let repo_root = match @git.find_repo_root(cwd) {
+    Some(repo_root) => repo_root
+    None => fail("No git repository found for worktree listing: \{cwd}")
+  }
+  let base_dir = base_dir.unwrap_or(default_worktree_base_dir(repo_root))
+  let process = @spawn.spawn(
+    "git",
+    ["worktree", "list", "--porcelain"],
+    cwd=repo_root,
+  )
+  process.check() catch {
+    error => fail("Failed to list git worktrees for \{repo_root}: \{error}")
+  }
+  let worktrees = parse_worktree_list_output(
+    repo_root,
+    base_dir,
+    process.stdout,
+  )
+  WorktreeList::{ repo_root, base_dir, worktrees }
 }
 
 ///|

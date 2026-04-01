@@ -5,6 +5,8 @@ pub(all) struct AnalysisToolContract {
   glob_files : Bool
   list_resources : Bool
   read_resource : Bool
+  runtime_context : Bool
+  list_worktrees : Bool
   enter_worktree : Bool
   exit_worktree : Bool
   read_files : Bool
@@ -22,6 +24,8 @@ pub fn AnalysisToolContract::new(
   glob_files? : Bool = true,
   list_resources? : Bool = true,
   read_resource? : Bool = true,
+  runtime_context? : Bool = false,
+  list_worktrees? : Bool = false,
   enter_worktree? : Bool = false,
   exit_worktree? : Bool = false,
   read_files? : Bool = true,
@@ -37,6 +41,8 @@ pub fn AnalysisToolContract::new(
     glob_files,
     list_resources,
     read_resource,
+    runtime_context,
+    list_worktrees,
     enter_worktree,
     exit_worktree,
     read_files,
@@ -60,6 +66,8 @@ fn default_analysis_tool_contract(
       glob_files=false,
       list_resources=false,
       read_resource=false,
+      runtime_context=false,
+      list_worktrees=false,
       enter_worktree=false,
       exit_worktree=false,
       read_files=false,
@@ -115,11 +123,85 @@ pub fn structured_analysis_result_payload(
           Some(spec) => payload.set("parsed_content", spec.to_json())
           None => ()
         }
+      } else if contract == presentation_render_contract_version() {
+        match parse_presentation_render_package_text(execution.content) {
+          Some(spec) => payload.set("parsed_content", spec.to_json())
+          None => ()
+        }
       }
     }
     None => ()
   }
   Json::object(payload)
+}
+
+///|
+fn enabled_tool_names(contract : AnalysisToolContract) -> Array[String] {
+  let tools : Array[String] = []
+  if contract.shell {
+    tools.push("execute_command")
+  }
+  if contract.list_files {
+    tools.push("list_files")
+  }
+  if contract.glob_files {
+    tools.push("glob_files")
+  }
+  if contract.list_resources {
+    tools.push("list_resources")
+  }
+  if contract.read_resource {
+    tools.push("read_resource")
+  }
+  if contract.runtime_context {
+    tools.push("runtime_context")
+  }
+  if contract.list_worktrees {
+    tools.push("list_worktrees")
+  }
+  if contract.enter_worktree {
+    tools.push("enter_worktree")
+  }
+  if contract.exit_worktree {
+    tools.push("exit_worktree")
+  }
+  if contract.read_files {
+    tools.push("read_file")
+  }
+  if contract.todo {
+    tools.push("todo")
+  }
+  if contract.search_files {
+    tools.push("search_files")
+  }
+  if contract.web_search {
+    tools.push("web_search")
+  }
+  if contract.web_fetch {
+    tools.push("web_fetch")
+  }
+  if contract.file_write {
+    tools.push("file_write")
+  }
+  tools
+}
+
+///|
+fn runtime_context_tool_result(
+  request : AnalysisRequest,
+) -> @runtime_context.RuntimeContextResult {
+  @runtime_context.RuntimeContextResult::new(
+    cwd=request.cwd,
+    home=request.home,
+    run_id=Some(request.run_id),
+    job_id=Some(request.job_id),
+    step_id=Some(request.step_id),
+    model_name=requested_model_name_or_none(request.model_name),
+    execution_mode=request.execution_mode,
+    execution_target=request.execution_target,
+    execution_isolation=request.execution_isolation,
+    enabled_tools=enabled_tool_names(request.tool_contract),
+  )
 }
 
 ///|
@@ -177,6 +259,25 @@ pub fn setup_analysis_agent_for_contract(
     } else {
       agent.add_tool(@write_to_file.new(agent.cwd))
     }
+  }
+}
+
+///|
+pub fn setup_analysis_agent_for_request(
+  agent : @agent.Agent,
+  request : AnalysisRequest,
+) -> Unit {
+  setup_analysis_agent_for_contract(
+    agent,
+    request.cwd,
+    request.home,
+    request.tool_contract,
+  )
+  if request.tool_contract.runtime_context {
+    agent.add_tool(@runtime_context.new(runtime_context_tool_result(request)))
+  }
+  if request.tool_contract.list_worktrees {
+    agent.add_tool(@list_worktrees.new(request.cwd))
   }
 }
 

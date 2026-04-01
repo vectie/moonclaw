@@ -14,12 +14,15 @@ pub fn new() -> @tool.Tool[WebFetchResult]
 // Types and methods
 pub struct WebFetchResult {
   url : String
+  final_url : String
+  domain : String
   status_code : Int
   content_type : String?
   title : String?
   text : String
   truncated : Bool
   source : String
+  metadata : Json
 }
 pub impl Show for WebFetchResult
 pub impl ToJson for WebFetchResult

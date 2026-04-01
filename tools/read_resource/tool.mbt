@@ -2,6 +2,7 @@
 pub enum ResourceKind {
   File
   Skill
+  Worktree
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -39,6 +40,7 @@ pub impl Show for ReadResourceResult with output(
 priv enum ResourceUri {
   File(String)
   Skill(String)
+  Worktree(String)
 }
 
 ///|
@@ -57,7 +59,14 @@ fn parse_resource_uri(uri : String) -> ResourceUri raise {
     }
     return Skill(name)
   }
-  fail("Unsupported resource URI. Expected file:// or skill://")
+  if uri.has_prefix("worktree://") {
+    let key = uri[11:].trim().to_string()
+    guard !key.is_blank() else {
+      fail("worktree:// URI must include a worktree key")
+    }
+    return Worktree(key)
+  }
+  fail("Unsupported resource URI. Expected file://, skill://, or worktree://")
 }
 
 ///|
@@ -147,17 +156,59 @@ async fn read_skill_resource(
 }
 
 ///|
+async fn read_worktree_resource(
+  cwd : String,
+  uri : String,
+  worktree_key : String,
+) -> ReadResourceResult {
+  let result = @worktree.list_worktrees(cwd) catch {
+    error => fail("failed to list worktrees: \{error}")
+  }
+  let mut matched : @worktree.WorktreeHandle? = None
+  for handle in result.worktrees {
+    if handle.task_key == worktree_key {
+      matched = Some(handle)
+      break
+    }
+  }
+  let handle = match matched {
+    Some(handle) => handle
+    None => fail("Worktree resource not found: \{worktree_key}")
+  }
+  let text = [
+    "Worktree: \{handle.task_key}",
+    "Path: \{handle.path}",
+    "Branch: \{handle.branch_name}",
+    "Repo root: \{handle.repo_root}",
+  ].join("\n")
+  ReadResourceResult::{
+    uri,
+    resolved_uri: "worktree://\{handle.task_key}",
+    kind: Worktree,
+    text,
+    truncated: false,
+    content_type: "text/plain",
+    metadata: {
+      "repo_root": handle.repo_root,
+      "path": handle.path,
+      "branch_name": handle.branch_name,
+      "task_key": handle.task_key,
+    },
+  }
+}
+
+///|
 pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult] {
   let resolved_home = home.unwrap_or(None)
   @tool.new(
     name="read_resource",
-    description="Read a typed local resource by URI. Supported schemes: file:// and skill://.",
+    description="Read a typed local resource by URI. Supported schemes: file://, skill://, and worktree://.",
     schema={
       "type": "object",
       "properties": {
         "uri": {
           "type": "string",
-          "description": "Resource URI such as file://notes.txt or skill://job-planning",
+          "description": "Resource URI such as file://notes.txt, skill://job-planning, or worktree://review-docs",
         },
         "max_chars": {
           "type": "integer",
@@ -185,6 +236,10 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult] {
           }
         Skill(name) =>
           read_skill_resource(cwd, resolved_home, uri, name, max_chars) catch {
+            error => return @tool.error("Error reading resource: \{error}")
+          }
+        Worktree(key) =>
+          read_worktree_resource(cwd, uri, key) catch {
             error => return @tool.error("Error reading resource: \{error}")
           }
       }

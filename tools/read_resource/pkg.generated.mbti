@@ -28,6 +28,7 @@ pub impl @json.FromJson for ReadResourceResult
 pub enum ResourceKind {
   File
   Skill
+  Worktree
 }
 pub impl Show for ResourceKind
 pub impl ToJson for ResourceKind

@@ -17,12 +17,15 @@ pub struct WebSearchItem {
   url : String
   snippet : String
   source : String
+  domain : String?
+  rank : Int
 }
 pub impl ToJson for WebSearchItem
 pub impl @json.FromJson for WebSearchItem
 
 pub struct WebSearchResult {
   query : String
+  search_url : String
   answer : String?
   results : Array[WebSearchItem]
   source : String
