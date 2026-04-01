@@ -253,6 +253,19 @@ fn canvas_edge_html(edge : CanvasEdgeLayout) -> Array[Html] {
 }
 
 ///|
+fn canvas_starter_artifact_node(node : UiNode) -> Bool {
+  if node.kind != "Artifact" {
+    return false
+  }
+  match node.detail {
+    Some(detail) =>
+      detail == "starter document text" ||
+      detail == "starter attachment manifest"
+    None => false
+  }
+}
+
+///|
 fn canvas_node_html(
   dispatch : Dispatch[Msg],
   model : Model,
@@ -260,10 +273,15 @@ fn canvas_node_html(
   layout : CanvasNodeLayout,
 ) -> Html {
   let node = layout.node
-  let classes = node_state_class(model, snapshot, node).replace(
+  let base_classes = node_state_class(model, snapshot, node).replace(
     old="tree-node",
     new="canvas-node",
   )
+  let classes = if canvas_starter_artifact_node(node) {
+    "\{base_classes} starter-doc"
+  } else {
+    base_classes
+  }
   let detail = node.detail.unwrap_or(node.summary.unwrap_or(""))
   let subtitle = if detail.trim().is_empty() { node.kind } else { detail }
   div(

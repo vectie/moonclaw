@@ -294,6 +294,12 @@ body {
   min-height: 132px;
 }
 
+.canvas-node.starter-doc {
+  border-color: rgba(15, 118, 110, 0.28);
+  background:
+    linear-gradient(180deg, rgba(15,118,110,0.12), rgba(255,250,242,0.97));
+}
+
 .canvas-node-head {
   display: flex;
   align-items: center;
