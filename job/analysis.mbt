@@ -206,6 +206,35 @@ fn preferred_skills_prompt(preferred_skills : Array[String]) -> String {
 }
 
 ///|
+fn structured_result_payload(
+  step_id : String,
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+) -> Json {
+  let payload : Map[String, Json] = {
+    "step_id": step_id.to_json(),
+    "model": execution.model_name.to_json(),
+    "content": execution.content.to_json(),
+    "conversation_id": execution.conversation_id.to_json(),
+    "usage": usage_json(execution.usage),
+    "metadata": execution.metadata,
+  }
+  match metadata_string(config.metadata, "result_content_json_contract") {
+    Some(contract) => {
+      payload.set("content_contract", contract.to_json())
+      if contract == presentation_contract_version() {
+        match parse_presentation_deck_spec_text(execution.content) {
+          Some(spec) => payload.set("parsed_content", spec.to_json())
+          None => ()
+        }
+      }
+    }
+    None => ()
+  }
+  Json::object(payload)
+}
+
+///|
 fn workspace_output_slug(text : String) -> String {
   let buf = StringBuilder::new()
   let mut chars_written = 0
@@ -904,14 +933,11 @@ pub fn analysis_step_handler(
       "\{context.run.id}:\{context.step.id}:report:\{now()}",
       now(),
     )
-    let result_payload : Json = {
-      "step_id": context.step.id,
-      "model": execution.model_name,
-      "content": execution.content,
-      "conversation_id": execution.conversation_id,
-      "usage": usage_json(execution.usage),
-      "metadata": execution.metadata,
-    }
+    let result_payload = structured_result_payload(
+      context.step.id,
+      config,
+      execution,
+    )
     let result_artifact = artifacts.write(
       ArtifactWriteRequest::new(
         run_id=context.run.id,

@@ -212,7 +212,19 @@ async test "plan_e2e_job_proposal appends presentation postprocess when requeste
   inspect(proposal.steps[0].id, content="context_preprocess")
   inspect(proposal.steps[2].id, content="presentation_postprocess")
   inspect(
+    proposal.steps[2].prompt.contains(presentation_contract_version()),
+    content="true",
+  )
+  inspect(
     proposal.steps[2].metadata.stringify().contains("presentation_plan.json"),
+    content="true",
+  )
+  inspect(
+    proposal.steps[2].metadata
+    .stringify()
+    .contains(
+      "\"result_content_json_contract\":\"\{presentation_contract_version()}\"",
+    ),
     content="true",
   )
 }
@@ -264,6 +276,10 @@ async test "plan_e2e_job_proposal appends presentation render step when renderer
   inspect(
     proposal.steps[3].execution_target.unwrap_or(""),
     content="slides-main",
+  )
+  inspect(
+    proposal.steps[3].prompt.contains("presentation_plan.json"),
+    content="true",
   )
 }
 

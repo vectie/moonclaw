@@ -170,6 +170,58 @@ async test "analysis_step_handler persists report and result artifacts" {
 }
 
 ///|
+async test "analysis_step_handler parses structured presentation result payload when contract is declared" {
+  @fsx.with_temporary_directory("job-analysis-presentation-result-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Generate a presentation plan.",
+      metadata={
+        "result_content_json_contract": presentation_contract_version(),
+      },
+      artifacts=AnalysisArtifactConfig::new(
+        result_file_name=Some("presentation_plan.json"),
+      ),
+    )
+    let engine = analysis_test_engine(root, config)
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          ignore(request)
+          Ok(AnalysisExecution::{
+            model_name: "codex/gpt-5.4",
+            content: "{\"title\":\"Land acquisition deck\",\"objective\":\"Present screening estimate\",\"pages\":[{\"page_number\":1,\"page_type\":\"title\",\"headline\":\"Land acquisition estimate\",\"purpose\":\"Open the story\",\"key_message\":\"This is a screening estimate\",\"body_points\":[\"Estimate range\"],\"evidence\":[\"Internal model\"],\"visual_type\":\"title\",\"layout_instruction\":\"Large title with one KPI strip\",\"look_and_feel\":\"Board-clean executive style\"}],\"render_handoff\":{\"renderer_target\":\"slides-main\",\"theme\":\"board-clean\",\"delivery_notes\":\"Keep labels bilingual if needed\",\"asset_requests\":[\"site map\"]}}",
+            conversation_id: Some("conv-presentation-1"),
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    let artifacts = ArtifactStore::new(store=engine.runtime.store())
+    let artifact = engine.runtime.store().list_artifacts()[1]
+    let content = artifacts.read_text(artifact.id).unwrap_or("")
+    inspect(artifact.artifact_type, content="analysis.result")
+    inspect(content.contains("\"content_contract\""), content="true")
+    inspect(
+      content.contains("\"content_contract\":\"presentation_deck_spec.v1\""),
+      content="true",
+    )
+    inspect(content.contains("\"parsed_content\""), content="true")
+    inspect(
+      content.contains("\"title\":\"Land acquisition deck\""),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "analysis_step_handler materializes outputs into run workspace" {
   @fsx.with_temporary_directory("job-analysis-workspace-output-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
