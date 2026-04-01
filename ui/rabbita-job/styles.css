@@ -1037,6 +1037,14 @@ body {
   margin-top: 0.8rem;
 }
 
+.starter-artifacts-block {
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: 16px;
+  padding: 0.8rem;
+  background:
+    linear-gradient(180deg, rgba(15,118,110,0.08), rgba(255,255,255,0.72));
+}
+
 .focus-failure {
   border: 1px solid rgba(185, 28, 28, 0.24);
   border-radius: 16px;

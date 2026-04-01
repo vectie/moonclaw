@@ -13,6 +13,34 @@ fn[T] preview_items(items : Array[T], limit : Int) -> Array[T] {
 }
 
 ///|
+fn starter_artifact(artifact : UiArtifact) -> Bool {
+  artifact.artifact_type == "starter_attachment.text" ||
+  artifact.artifact_type == "starter_attachment.manifest"
+}
+
+///|
+fn starter_artifacts(snapshot : UiSnapshot) -> Array[UiArtifact] {
+  snapshot.artifacts.filter(starter_artifact)
+}
+
+///|
+fn non_starter_artifacts(snapshot : UiSnapshot) -> Array[UiArtifact] {
+  snapshot.artifacts.filter(fn(artifact) { !starter_artifact(artifact) })
+}
+
+///|
+fn render_artifact_card(artifact : UiArtifact) -> Html {
+  article(class="artifact-card", [
+    p(
+      class="node-title",
+      artifact.logical_key.unwrap_or(artifact.artifact_type),
+    ),
+    p(class="muted", artifact.artifact_type),
+    p(class="mono", artifact.path),
+  ])
+}
+
+///|
 fn child_run_nodes(snapshot : UiSnapshot) -> Array[UiNode] {
   snapshot.nodes.filter(fn(node) { node.kind == "ChildRun" })
 }
@@ -1097,25 +1125,36 @@ fn render_workspace_panel(snapshot : UiSnapshot) -> Html {
 
 ///|
 fn render_artifacts_panel(snapshot : UiSnapshot) -> Html {
+  let starter = starter_artifacts(snapshot)
+  let other = non_starter_artifacts(snapshot)
   section(class="panel", [
     header(class="panel-header", [h2(class="panel-title", "Artifacts")]),
     div(class="panel-body", [
       if snapshot.artifacts.is_empty() {
         p(class="empty", "No artifacts yet.")
       } else {
-        div(
-          class="artifact-list",
-          snapshot.artifacts.map(fn(artifact) {
-            article(class="artifact-card", [
+        div(class="artifact-list", [
+          if starter.is_empty() {
+            nothing
+          } else {
+            div(class="focus-block starter-artifacts-block", [
+              p(class="kv-label", "Starter Docs"),
               p(
-                class="node-title",
-                artifact.logical_key.unwrap_or(artifact.artifact_type),
+                class="muted",
+                "Materialized starter files, extracted text, and attachment manifests.",
               ),
-              p(class="muted", artifact.artifact_type),
-              p(class="mono", artifact.path),
+              div(class="artifact-list", starter.map(render_artifact_card)),
             ])
-          }),
-        )
+          },
+          if other.is_empty() {
+            nothing
+          } else {
+            div(class="focus-block", [
+              p(class="kv-label", "Run Outputs"),
+              div(class="artifact-list", other.map(render_artifact_card)),
+            ])
+          },
+        ])
       },
     ]),
   ])
@@ -1823,7 +1862,14 @@ fn render_focus_inspector(
               match artifact {
                 Some(artifact) =>
                   div(class="focus-block", [
-                    p(class="kv-label", "Artifact"),
+                    p(
+                      class="kv-label",
+                      if starter_artifact(artifact) {
+                        "Starter Doc"
+                      } else {
+                        "Artifact"
+                      },
+                    ),
                     p(
                       class="timeline-detail",
                       artifact.logical_key.unwrap_or(artifact.artifact_type),
@@ -1831,7 +1877,11 @@ fn render_focus_inspector(
                     p(class="mono", artifact.path),
                     p(
                       class="muted",
-                      "Preview: \{preview_text(artifact.path, 120)}",
+                      if starter_artifact(artifact) {
+                        "Materialized starter-document artifact."
+                      } else {
+                        "Preview: \{preview_text(artifact.path, 120)}"
+                      },
                     ),
                   ])
                 None => nothing
@@ -1892,14 +1942,7 @@ fn render_focus_inspector(
                   div(
                     class="artifact-list",
                     preview_items(branch_artifacts, 3).map(fn(artifact) {
-                      article(class="artifact-card", [
-                        p(
-                          class="node-title",
-                          artifact.logical_key.unwrap_or(artifact.artifact_type),
-                        ),
-                        p(class="muted", artifact.artifact_type),
-                        p(class="mono", preview_text(artifact.path, 120)),
-                      ])
+                      render_artifact_card(artifact)
                     }),
                   ),
                 ])
