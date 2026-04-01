@@ -71,7 +71,7 @@ Suggested files:
 
 - `/Users/kq/Workspace/moonclaw/job/adaptive_types.mbt`
 - `/Users/kq/Workspace/moonclaw/job/adaptive_policy.mbt`
-- `/Users/kq/Workspace/moonclaw/job/adaptive_judge.mbt`
+- `/Users/kq/Workspace/moonclaw/job/adaptive_prompts.mbt`
 - `/Users/kq/Workspace/moonclaw/job/adaptive_subplan.mbt`
 
 Responsibilities:

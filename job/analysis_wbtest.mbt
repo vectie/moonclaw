@@ -387,7 +387,9 @@ test "analysis_tool_contract defaults from legacy booleans" {
   inspect(enabled.glob_files.to_json().stringify(), content="true")
   inspect(enabled.list_resources.to_json().stringify(), content="true")
   inspect(enabled.read_resource.to_json().stringify(), content="true")
+  inspect(enabled.delegate_run.to_json().stringify(), content="true")
   inspect(enabled.read_files.to_json().stringify(), content="true")
+  inspect(enabled.patch_edit.to_json().stringify(), content="true")
   inspect(enabled.web_fetch.to_json().stringify(), content="true")
   inspect(enabled.web_search.to_json().stringify(), content="true")
 
@@ -402,7 +404,9 @@ test "analysis_tool_contract defaults from legacy booleans" {
   inspect(disabled.glob_files.to_json().stringify(), content="false")
   inspect(disabled.list_resources.to_json().stringify(), content="false")
   inspect(disabled.read_resource.to_json().stringify(), content="false")
+  inspect(disabled.delegate_run.to_json().stringify(), content="false")
   inspect(disabled.read_files.to_json().stringify(), content="false")
+  inspect(disabled.patch_edit.to_json().stringify(), content="false")
   inspect(disabled.web_fetch.to_json().stringify(), content="false")
   inspect(disabled.web_search.to_json().stringify(), content="false")
 }
@@ -419,12 +423,14 @@ test "analysis_tool_contract prefers structured metadata contract" {
         "read_resource": true,
         "runtime_context": true,
         "list_worktrees": true,
+        "delegate_run": true,
         "enter_worktree": false,
         "exit_worktree": false,
         "read_files": true,
         "search_files": false,
         "todo": false,
         "file_write": false,
+        "patch_edit": true,
         "web_fetch": true,
         "web_search": true,
       },
@@ -436,7 +442,9 @@ test "analysis_tool_contract prefers structured metadata contract" {
   inspect(contract.read_resource.to_json().stringify(), content="true")
   inspect(contract.runtime_context.to_json().stringify(), content="true")
   inspect(contract.list_worktrees.to_json().stringify(), content="true")
+  inspect(contract.delegate_run.to_json().stringify(), content="true")
   inspect(contract.read_files.to_json().stringify(), content="true")
+  inspect(contract.patch_edit.to_json().stringify(), content="true")
   inspect(contract.web_fetch.to_json().stringify(), content="true")
   inspect(contract.web_search.to_json().stringify(), content="true")
   inspect(contract.shell.to_json().stringify(), content="false")
@@ -1677,7 +1685,7 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
 }
 
 ///|
-async test "setup_analysis_agent registers execute_command tool" {
+async test "configure_analysis_agent_tools registers execute_command tool" {
   let agent = @agent.new(
     @model.Model::new(
       api_key="",
@@ -1688,7 +1696,7 @@ async test "setup_analysis_agent registers execute_command tool" {
     cwd="/tmp",
     logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
   )
-  setup_analysis_agent(agent, "/tmp")
+  configure_analysis_agent_tools(agent, "/tmp")
   inspect(agent.tools().contains("execute_command"), content="true")
   inspect(agent.tools().contains("glob_files"), content="true")
   inspect(agent.tools().contains("list_resources"), content="true")
@@ -1696,7 +1704,7 @@ async test "setup_analysis_agent registers execute_command tool" {
 }
 
 ///|
-async test "setup_analysis_agent registers web_search tool when enabled" {
+async test "configure_analysis_agent_tools registers web_search tool when enabled" {
   let agent = @agent.new(
     @model.Model::new(
       api_key="",
@@ -1707,12 +1715,12 @@ async test "setup_analysis_agent registers web_search tool when enabled" {
     cwd="/tmp",
     logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
   )
-  setup_analysis_agent(agent, "/tmp", web_search=true)
+  configure_analysis_agent_tools(agent, "/tmp", web_search=true)
   inspect(agent.tools().contains("web_search"), content="true")
 }
 
 ///|
-async test "setup_analysis_agent_for_request registers runtime introspection tools" {
+async test "configure_analysis_agent_for_request registers runtime introspection tools" {
   let model = @model.Model::new(
     api_key="",
     base_url="https://example.invalid/v1",
@@ -1746,18 +1754,22 @@ async test "setup_analysis_agent_for_request registers runtime introspection too
       read_resource=false,
       runtime_context=true,
       list_worktrees=true,
+      delegate_run=true,
       enter_worktree=false,
       exit_worktree=false,
       read_files=false,
       search_files=false,
       todo=false,
       file_write=false,
+      patch_edit=true,
       web_fetch=false,
       web_search=false,
     ),
     execution_isolation: Some({ "mode": "git_worktree" }),
   }
-  setup_analysis_agent_for_request(agent, request)
+  configure_analysis_agent_for_request(agent, request)
   inspect(agent.tools().contains("runtime_context"), content="true")
   inspect(agent.tools().contains("list_worktrees"), content="true")
+  inspect(agent.tools().contains("delegate_run"), content="true")
+  inspect(agent.tools().contains("patch_edit"), content="true")
 }

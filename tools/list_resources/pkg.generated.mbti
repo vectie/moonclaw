@@ -35,6 +35,7 @@ pub enum ResourceSummaryKind {
   File
   Skill
   Worktree
+  Provider
 }
 pub impl Show for ResourceSummaryKind
 pub impl ToJson for ResourceSummaryKind

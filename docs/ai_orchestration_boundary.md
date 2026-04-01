@@ -73,7 +73,12 @@ This layer should encode product policy, not domain-specific reasoning.
 
 Main files:
 - [/Users/kq/Workspace/moonclaw/job/analysis.mbt](/Users/kq/Workspace/moonclaw/job/analysis.mbt)
-- [/Users/kq/Workspace/moonclaw/job/adaptive_judge.mbt](/Users/kq/Workspace/moonclaw/job/adaptive_judge.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_request_composer.mbt](/Users/kq/Workspace/moonclaw/job/analysis_request_composer.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_runner.mbt](/Users/kq/Workspace/moonclaw/job/analysis_runner.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_execution.mbt](/Users/kq/Workspace/moonclaw/job/analysis_execution.mbt)
+- [/Users/kq/Workspace/moonclaw/job/analysis_prompt_support.mbt](/Users/kq/Workspace/moonclaw/job/analysis_prompt_support.mbt)
+- [/Users/kq/Workspace/moonclaw/job/adaptive_prompts.mbt](/Users/kq/Workspace/moonclaw/job/adaptive_prompts.mbt)
+- [/Users/kq/Workspace/moonclaw/job/adaptive_policy.mbt](/Users/kq/Workspace/moonclaw/job/adaptive_policy.mbt)
 - [/Users/kq/Workspace/moonclaw/job/adaptive_types.mbt](/Users/kq/Workspace/moonclaw/job/adaptive_types.mbt)
 
 Responsibilities:
@@ -84,6 +89,13 @@ Responsibilities:
 - interpret `/resume` guidance
 
 This layer should rely on AI judgment, not keyword-triggered behavior.
+
+Within this layer:
+- `job/analysis.mbt` should stay as the orchestration entrypoint
+- `job/analysis_request_composer.mbt` should build request payloads
+- `job/analysis_runner.mbt` should run the step agent
+- `job/analysis_execution.mbt` should persist execution results
+- `job/adaptive_*` modules should own adaptive reasoning policy
 
 ## What Must Be Hardcoded
 

@@ -78,3 +78,41 @@ async test "read_resource reads worktree URIs" (t : @test.Test) {
     @worktree.remove_worktree(handle)
   })
 }
+
+///|
+async test "read_resource reads provider URIs" (t : @test.Test) {
+  @mock.run(t, mock => {
+    @fsx.make_directory(
+      mock.cwd.path() |> @pathx.join(".moonclaw"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(
+      mock.cwd.path()
+      |> @pathx.join(".moonclaw")
+      |> @pathx.join("providers.json"),
+      (
+        #|[
+        #|  {
+        #|    "name": "slides-main",
+        #|    "title": "Slides Main",
+        #|    "description": "Presentation renderer",
+        #|    "kind": "renderer",
+        #|    "endpoint": "https://slides.example/api",
+        #|    "docs_uri": "https://slides.example/docs"
+        #|  }
+        #|]
+      ),
+    )
+    let tool = new(mock.cwd.path(), home=Some(mock.moon_home))
+    let result = tool.call({ "uri": "provider://slides-main" })
+    guard result is Ok(output) else {
+      fail("Expected Ok result but got: \{result}")
+    }
+    inspect(output.kind.to_json().stringify(), content="\"Provider\"")
+    inspect(
+      output.text.contains("Endpoint: https://slides.example/api"),
+      content="true",
+    )
+  })
+}

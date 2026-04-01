@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/delegate_run"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new() -> @tool.Tool[DelegateRunResult]
+
+// Errors
+
+// Types and methods
+pub struct DelegateRunResult {
+  title : String
+  request_text : String
+  expected_output : String?
+  child_profile : String?
+  execution_mode : String?
+  execution_target : String?
+  include_parent_outputs : Bool
+  max_depth : Int
+  bounded : Bool
+  step_kind : String
+  step_config : Json
+  summary : String
+}
+pub impl Show for DelegateRunResult
+pub impl ToJson for DelegateRunResult
+pub impl @json.FromJson for DelegateRunResult
+
+// Type aliases
+
+// Traits
+

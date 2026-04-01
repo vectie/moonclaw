@@ -7,12 +7,14 @@ pub(all) struct AnalysisToolContract {
   read_resource : Bool
   runtime_context : Bool
   list_worktrees : Bool
+  delegate_run : Bool
   enter_worktree : Bool
   exit_worktree : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
   file_write : Bool
+  patch_edit : Bool
   web_fetch : Bool
   web_search : Bool
 } derive(ToJson, FromJson, Show)
@@ -26,12 +28,14 @@ pub fn AnalysisToolContract::new(
   read_resource? : Bool = true,
   runtime_context? : Bool = false,
   list_worktrees? : Bool = false,
+  delegate_run? : Bool = false,
   enter_worktree? : Bool = false,
   exit_worktree? : Bool = false,
   read_files? : Bool = true,
   search_files? : Bool = true,
   todo? : Bool = true,
   file_write? : Bool = true,
+  patch_edit? : Bool = true,
   web_fetch? : Bool = false,
   web_search? : Bool = false,
 ) -> AnalysisToolContract {
@@ -43,12 +47,14 @@ pub fn AnalysisToolContract::new(
     read_resource,
     runtime_context,
     list_worktrees,
+    delegate_run,
     enter_worktree,
     exit_worktree,
     read_files,
     search_files,
     todo,
     file_write,
+    patch_edit,
     web_fetch,
     web_search,
   }
@@ -68,17 +74,24 @@ fn default_analysis_tool_contract(
       read_resource=false,
       runtime_context=false,
       list_worktrees=false,
+      delegate_run=false,
       enter_worktree=false,
       exit_worktree=false,
       read_files=false,
       search_files=false,
       todo=false,
       file_write=false,
+      patch_edit=false,
       web_fetch=false,
       web_search=false,
     )
   } else {
-    AnalysisToolContract::new(web_fetch=web_search, web_search~)
+    AnalysisToolContract::new(
+      delegate_run=true,
+      patch_edit=true,
+      web_fetch=web_search,
+      web_search~,
+    )
   }
 }
 
@@ -159,6 +172,9 @@ fn enabled_tool_names(contract : AnalysisToolContract) -> Array[String] {
   if contract.list_worktrees {
     tools.push("list_worktrees")
   }
+  if contract.delegate_run {
+    tools.push("delegate_run")
+  }
   if contract.enter_worktree {
     tools.push("enter_worktree")
   }
@@ -183,6 +199,9 @@ fn enabled_tool_names(contract : AnalysisToolContract) -> Array[String] {
   if contract.file_write {
     tools.push("file_write")
   }
+  if contract.patch_edit {
+    tools.push("patch_edit")
+  }
   tools
 }
 
@@ -205,7 +224,7 @@ fn runtime_context_tool_result(
 }
 
 ///|
-pub fn setup_analysis_agent_for_contract(
+pub fn configure_analysis_agent_for_contract(
   agent : @agent.Agent,
   cwd : String,
   home : String?,
@@ -235,6 +254,9 @@ pub fn setup_analysis_agent_for_contract(
   if contract.exit_worktree {
     builtin_tools.push(@exit_worktree.new(agent.cwd).to_agent_tool())
   }
+  if contract.delegate_run {
+    builtin_tools.push(@delegate_run.new().to_agent_tool())
+  }
   if contract.read_files {
     builtin_tools.push(@read_file.new(file_manager).to_agent_tool())
   }
@@ -260,14 +282,17 @@ pub fn setup_analysis_agent_for_contract(
       agent.add_tool(@write_to_file.new(agent.cwd))
     }
   }
+  if contract.patch_edit {
+    agent.add_tool(@patch_edit.new(agent.cwd))
+  }
 }
 
 ///|
-pub fn setup_analysis_agent_for_request(
+pub fn configure_analysis_agent_for_request(
   agent : @agent.Agent,
   request : AnalysisRequest,
 ) -> Unit {
-  setup_analysis_agent_for_contract(
+  configure_analysis_agent_for_contract(
     agent,
     request.cwd,
     request.home,
@@ -282,12 +307,12 @@ pub fn setup_analysis_agent_for_request(
 }
 
 ///|
-pub fn setup_analysis_agent(
+pub fn configure_analysis_agent_tools(
   agent : @agent.Agent,
   cwd : String,
   web_search? : Bool = false,
 ) -> Unit {
-  setup_analysis_agent_for_contract(
+  configure_analysis_agent_for_contract(
     agent,
     cwd,
     None,

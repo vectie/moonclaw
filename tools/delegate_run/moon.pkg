@@ -1,0 +1,9 @@
+import {
+  "moonbitlang/moonclaw/tool",
+  "moonbitlang/core/json",
+  "moonbitlang/core/test",
+}
+
+import {
+  "moonbitlang/async",
+} for "test"

@@ -3,6 +3,7 @@ pub enum ResourceSummaryKind {
   File
   Skill
   Worktree
+  Provider
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -89,6 +90,26 @@ fn worktree_resource_summary(
 }
 
 ///|
+fn provider_resource_summary(
+  provider : @resource_providers.RegisteredResourceProvider,
+) -> ResourceSummary {
+  ResourceSummary::{
+    uri: "provider://\{provider.name}",
+    kind: Provider,
+    title: provider.title,
+    description: provider.description,
+    metadata: {
+      "name": provider.name,
+      "kind": provider.kind,
+      "endpoint": provider.endpoint,
+      "docs_uri": provider.docs_uri,
+      "capabilities": provider.capabilities,
+      "metadata": provider.metadata,
+    },
+  }
+}
+
+///|
 async fn list_file_resources(
   cwd : String,
   path : String,
@@ -166,17 +187,38 @@ async fn list_worktree_resources(
 }
 
 ///|
+async fn list_provider_resources(
+  cwd : String,
+  home : String?,
+  max_results : Int,
+) -> ListResourcesResult {
+  let providers = @resource_providers.load_resource_providers(cwd, home~)
+  let resources : Array[ResourceSummary] = []
+  for provider in providers {
+    if resources.length() >= max_results {
+      break
+    }
+    resources.push(provider_resource_summary(provider))
+  }
+  ListResourcesResult::{
+    resources,
+    total_resources: providers.length(),
+    truncated: providers.length() > resources.length(),
+  }
+}
+
+///|
 pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
   let resolved_home = home.unwrap_or(None)
   @tool.new(
     name="list_resources",
-    description="List typed local resources. Supported kinds: files and skills.",
+    description="List typed runtime resources. Supported kinds: files, skills, worktrees, and providers.",
     schema={
       "type": "object",
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["file", "skill", "worktree"],
+          "enum": ["file", "skill", "worktree", "provider"],
           "description": "Resource kind to list",
         },
         "path": {
@@ -242,6 +284,10 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult] {
             error => return @tool.error("Error listing resources: \{error}")
           }
         }
+        "provider" =>
+          list_provider_resources(cwd, resolved_home, max_results) catch {
+            error => return @tool.error("Error listing resources: \{error}")
+          }
         _ => return @tool.error("Error: unsupported resource kind '\{kind}'")
       }
       @tool.ok(result)

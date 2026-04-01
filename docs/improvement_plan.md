@@ -111,13 +111,15 @@ Move adaptive runtime policy out of the general analysis handler.
 
 ### Work
 
-- Extract the remaining adaptive logic from `job/analysis.mbt` into:
-  - `job/adaptive_policy.mbt`
-  - `job/adaptive_subplan.mbt`
-- Keep `job/analysis.mbt` focused on:
-  - prompt assembly
-  - execution
-  - artifact persistence
+- Keep `job/analysis.mbt` as the orchestration entrypoint.
+- Keep step request composition in:
+  - `job/analysis_request_composer.mbt`
+- Keep step execution in:
+  - `job/analysis_runner.mbt`
+  - `job/analysis_execution.mbt`
+- Keep prompt and workspace-output support in:
+  - `job/analysis_prompt_support.mbt`
+  - `job/analysis_workspace_outputs.mbt`
 - Keep adaptive modules focused on:
   - verdict judgment
   - missing-input extraction
@@ -127,16 +129,20 @@ Move adaptive runtime policy out of the general analysis handler.
 ### Files likely involved
 
 - `/Users/kq/Workspace/moonclaw/job/analysis.mbt`
-- `/Users/kq/Workspace/moonclaw/job/adaptive_judge.mbt`
+- `/Users/kq/Workspace/moonclaw/job/analysis_request_composer.mbt`
+- `/Users/kq/Workspace/moonclaw/job/analysis_runner.mbt`
+- `/Users/kq/Workspace/moonclaw/job/analysis_execution.mbt`
+- `/Users/kq/Workspace/moonclaw/job/analysis_prompt_support.mbt`
+- `/Users/kq/Workspace/moonclaw/job/analysis_workspace_outputs.mbt`
+- `/Users/kq/Workspace/moonclaw/job/adaptive_prompts.mbt`
 - `/Users/kq/Workspace/moonclaw/job/adaptive_types.mbt`
-- new:
-  - `/Users/kq/Workspace/moonclaw/job/adaptive_policy.mbt`
-  - `/Users/kq/Workspace/moonclaw/job/adaptive_subplan.mbt`
+- `/Users/kq/Workspace/moonclaw/job/adaptive_policy.mbt`
+- `/Users/kq/Workspace/moonclaw/job/adaptive_subplan.mbt`
 
 ### Exit criteria
 
 - adaptive behavior is modular and testable
-- `job/analysis.mbt` no longer carries most product-policy branching
+- `job/analysis.mbt` no longer carries most product-policy branching or low-level prompt/persistence helpers
 - missing-input and subplan behavior can evolve without destabilizing basic analysis execution
 
 ## Milestone 4: Strengthen Planner Contract
@@ -181,7 +187,8 @@ Pause only when truly blocked, and continue with assumptions when operator guida
 
 ### Files likely involved
 
-- `/Users/kq/Workspace/moonclaw/job/adaptive_judge.mbt`
+- `/Users/kq/Workspace/moonclaw/job/adaptive_prompts.mbt`
+- `/Users/kq/Workspace/moonclaw/job/adaptive_policy.mbt`
 - `/Users/kq/Workspace/moonclaw/job/analysis.mbt`
 - `/Users/kq/Workspace/moonclaw/job/chat_service.mbt`
 - `/Users/kq/Workspace/moonclaw/job/query_service.mbt`

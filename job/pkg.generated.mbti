@@ -47,7 +47,13 @@ pub async fn complete_controller_iteration_for_step(SystemStore, JobRun, Workflo
 
 pub async fn complete_controller_run(SystemStore, JobRun, RunStatus, Int) -> Unit
 
-pub async fn compose_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
+pub async fn compose_job_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
+
+pub fn configure_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract) -> Unit
+
+pub fn configure_analysis_agent_for_request(@agent.Agent, AnalysisRequest) -> Unit
+
+pub fn configure_analysis_agent_tools(@agent.Agent, String, web_search? : Bool) -> Unit
 
 pub fn current_step_id_for_ui(SystemStore, JobRun, WorkflowDefinition?) -> String?
 
@@ -233,7 +239,7 @@ pub fn resolve_target_proposal(SystemStore, String, String?) -> JobProposal?
 
 pub async fn revise_job_proposal(JobProposal, String, Int, executor? : AnalysisExecutor, model? : String?, cwd? : String, home? : String?, workspace? : String?, memory_context? : String?) -> JobProposal
 
-pub async fn run_default_analysis_agent(AnalysisRequest) -> Result[AnalysisExecution, String]
+pub async fn run_default_analysis_runner(AnalysisRequest) -> Result[AnalysisExecution, String]
 
 pub fn run_events_as_timeline(Array[JobRunEvent]) -> Array[JobUiTimelineEntry]
 
@@ -244,12 +250,6 @@ pub async fn save_job_notification_preference(SystemStore, String, String, Strin
 pub async fn save_presented_job_proposal(SystemStore, JobProposal, String) -> Unit
 
 pub async fn save_rejected_job_proposal(SystemStore, JobProposal, Int) -> Unit
-
-pub fn setup_analysis_agent(@agent.Agent, String, web_search? : Bool) -> Unit
-
-pub fn setup_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract) -> Unit
-
-pub fn setup_analysis_agent_for_request(@agent.Agent, AnalysisRequest) -> Unit
 
 pub fn split_job_chat_command(String) -> (String, String)
 
@@ -395,18 +395,18 @@ pub(all) struct AnalysisToolContract {
   read_resource : Bool
   runtime_context : Bool
   list_worktrees : Bool
-  delegate_task : Bool
+  delegate_run : Bool
   enter_worktree : Bool
   exit_worktree : Bool
   read_files : Bool
   search_files : Bool
   todo : Bool
   file_write : Bool
-  structured_edit : Bool
+  patch_edit : Bool
   web_fetch : Bool
   web_search : Bool
 }
-pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, delegate_task? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, structured_edit? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, delegate_run? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, patch_edit? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 pub impl Show for AnalysisToolContract
 pub impl ToJson for AnalysisToolContract
 pub impl @json.FromJson for AnalysisToolContract

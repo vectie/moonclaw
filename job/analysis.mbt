@@ -163,7 +163,7 @@ pub async fn build_analysis_request(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
 ) -> AnalysisRequest {
-  compose_analysis_request(store, context, config)
+  compose_job_analysis_request(store, context, config)
 }
 
 ///|
@@ -235,7 +235,7 @@ fn timeout_error_message(step_id : String, timeout_ms : Int) -> String {
 
 ///|
 pub fn default_analysis_executor() -> AnalysisExecutor {
-  AnalysisExecutor::new(run=run_default_analysis_agent)
+  AnalysisExecutor::new(run=run_default_analysis_runner)
 }
 
 ///|

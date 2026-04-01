@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "moonbitlang/moonclaw/tools/patch_edit"
+
+import {
+  "moonbitlang/core/json",
+  "moonbitlang/moonclaw/tool",
+}
+
+// Values
+pub fn new(String) -> @tool.Tool[PatchEditResult]
+
+// Errors
+
+// Types and methods
+pub enum PatchEditMode {
+  Preview
+  Apply
+}
+pub impl Show for PatchEditMode
+pub impl ToJson for PatchEditMode
+pub impl @json.FromJson for PatchEditMode
+
+pub struct PatchEditResult {
+  mode : PatchEditMode
+  patch_valid : Bool
+  changed : Bool
+  summary : String
+  added : Array[String]
+  modified : Array[String]
+  deleted : Array[String]
+  file_count : Int
+}
+pub impl Show for PatchEditResult
+pub impl ToJson for PatchEditResult
+pub impl @json.FromJson for PatchEditResult
+
+// Type aliases
+
+// Traits
+

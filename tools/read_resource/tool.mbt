@@ -3,6 +3,7 @@ pub enum ResourceKind {
   File
   Skill
   Worktree
+  Provider
 } derive(ToJson, FromJson, Show)
 
 ///|
@@ -41,6 +42,7 @@ priv enum ResourceUri {
   File(String)
   Skill(String)
   Worktree(String)
+  Provider(String)
 }
 
 ///|
@@ -66,7 +68,16 @@ fn parse_resource_uri(uri : String) -> ResourceUri raise {
     }
     return Worktree(key)
   }
-  fail("Unsupported resource URI. Expected file://, skill://, or worktree://")
+  if uri.has_prefix("provider://") {
+    let name = uri[11:].trim().to_string()
+    guard !name.is_blank() else {
+      fail("provider:// URI must include a provider name")
+    }
+    return Provider(name)
+  }
+  fail(
+    "Unsupported resource URI. Expected file://, skill://, worktree://, or provider://",
+  )
 }
 
 ///|
@@ -198,17 +209,69 @@ async fn read_worktree_resource(
 }
 
 ///|
+async fn read_provider_resource(
+  cwd : String,
+  home : String?,
+  uri : String,
+  provider_name : String,
+) -> ReadResourceResult {
+  let provider = match
+    @resource_providers.find_resource_provider(cwd, provider_name, home~) {
+    Some(provider) => provider
+    None => fail("Provider resource not found: \{provider_name}")
+  }
+  let lines = [
+    "Provider: \{provider.title}",
+    "Name: \{provider.name}",
+    "Kind: \{provider.kind}",
+    "Description: \{provider.description}",
+  ]
+  let lines = match provider.endpoint {
+    Some(endpoint) if !endpoint.is_blank() => [..lines, "Endpoint: \{endpoint}"]
+    _ => lines
+  }
+  let lines = match provider.docs_uri {
+    Some(docs_uri) if !docs_uri.is_blank() => [..lines, "Docs: \{docs_uri}"]
+    _ => lines
+  }
+  let lines = if provider.capabilities.is_empty() {
+    lines
+  } else {
+    let capabilities = provider.capabilities.join(", ")
+    [..lines, "Capabilities: \{capabilities}"]
+  }
+  ReadResourceResult::{
+    uri,
+    resolved_uri: "provider://\{provider.name}",
+    kind: Provider,
+    text: lines.join("\n"),
+    truncated: false,
+    content_type: "application/json",
+    metadata: {
+      "name": provider.name,
+      "title": provider.title,
+      "description": provider.description,
+      "kind": provider.kind,
+      "endpoint": provider.endpoint,
+      "docs_uri": provider.docs_uri,
+      "capabilities": provider.capabilities,
+      "metadata": provider.metadata,
+    },
+  }
+}
+
+///|
 pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult] {
   let resolved_home = home.unwrap_or(None)
   @tool.new(
     name="read_resource",
-    description="Read a typed local resource by URI. Supported schemes: file://, skill://, and worktree://.",
+    description="Read a typed runtime resource by URI. Supported schemes: file://, skill://, worktree://, and provider://.",
     schema={
       "type": "object",
       "properties": {
         "uri": {
           "type": "string",
-          "description": "Resource URI such as file://notes.txt, skill://job-planning, or worktree://review-docs",
+          "description": "Resource URI such as file://notes.txt, skill://job-planning, worktree://review-docs, or provider://slides-main",
         },
         "max_chars": {
           "type": "integer",
@@ -240,6 +303,10 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult] {
           }
         Worktree(key) =>
           read_worktree_resource(cwd, uri, key) catch {
+            error => return @tool.error("Error reading resource: \{error}")
+          }
+        Provider(name) =>
+          read_provider_resource(cwd, resolved_home, uri, name) catch {
             error => return @tool.error("Error reading resource: \{error}")
           }
       }

@@ -89,3 +89,37 @@ async test "list_resources lists worktree URIs" (t : @test.Test) {
     @worktree.remove_worktree(handle)
   })
 }
+
+///|
+async test "list_resources lists provider URIs" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let manifest =
+      #|[
+      #|  {
+      #|    "name": "slides-main",
+      #|    "title": "Slides Main",
+      #|    "description": "Presentation renderer",
+      #|    "kind": "renderer",
+      #|    "endpoint": "https://slides.example/api"
+      #|  }
+      #|]
+    @fsx.make_directory(
+      mock.cwd.path() |> @pathx.join(".moonclaw"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(
+      mock.cwd.path()
+      |> @pathx.join(".moonclaw")
+      |> @pathx.join("providers.json"),
+      manifest,
+    )
+    let tool = new(mock.cwd.path(), home=Some(mock.cwd.path()))
+    let result = tool.call({ "kind": "provider" })
+    guard result is Ok(output) else {
+      fail("Expected Ok result but got: \{result}")
+    }
+    inspect(output.total_resources.to_string(), content="1")
+    inspect(output.resources[0].uri, content="provider://slides-main")
+  })
+}

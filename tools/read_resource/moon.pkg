@@ -2,6 +2,7 @@ import {
   "moonbitlang/moonclaw/tool",
   "moonbitlang/moonclaw/internal/fsx",
   "moonbitlang/moonclaw/internal/pathx",
+  "moonbitlang/moonclaw/internal/resource_providers",
   "moonbitlang/moonclaw/internal/skills",
   "moonbitlang/moonclaw/internal/pino",
   "moonbitlang/moonclaw/internal/worktree",

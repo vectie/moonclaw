@@ -96,6 +96,10 @@ This layer should be responsible for:
 - creating worktrees and branch names
 - cleanup policy
 - exposing worktree context to tools and child execution
+- supporting execution-layer tools such as:
+  - `delegate_run`
+  - `enter_worktree`
+  - `exit_worktree`
 
 ## Recommended control flow
 

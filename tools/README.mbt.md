@@ -14,12 +14,14 @@ This directory contains tool implementations that the AI agent can use.
 | `apply_patch` | Apply unified diff patches |
 | `list_files` | List directory contents |
 | `glob_files` | Find file paths by glob pattern |
-| `list_resources` | List typed local resources |
-| `read_resource` | Read typed local resources by URI |
+| `list_resources` | List typed runtime resources |
+| `read_resource` | Read typed runtime resources by URI |
 | `runtime_context` | Inspect current job/run/step execution context |
 | `list_worktrees` | List managed git worktrees for the current repository |
+| `delegate_run` | Build a typed bounded child-run delegation request |
 | `enter_worktree` | Provision an isolated git worktree |
 | `exit_worktree` | Remove an isolated git worktree |
+| `patch_edit` | Preview or apply structured patch edits |
 | `search_files` | Search for patterns in files |
 | `todo` | Task list management |
 | `list_jobs` | List background jobs |
@@ -208,7 +210,7 @@ pub fn new(cwd : String) -> @tool.Tool[GlobFilesResult]
 
 ## list_resources
 
-List local runtime resources by kind.
+List typed runtime resources by kind.
 
 ```moonbit nocheck
 pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult]
@@ -218,6 +220,7 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult]
 - `file`
 - `skill`
 - `worktree`
+- `provider`
 
 **Parameters:**
 - `kind`: Resource kind to list
@@ -227,16 +230,16 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult]
 - `include_hidden`: Include hidden file resources
 
 **Features:**
-- URI-based discovery for files and skills
+- URI-based discovery for files, skills, worktrees, and providers
 - First-class discovery of managed git worktrees
-- Reuses glob-based file discovery
+- Provider registry discovery via `.moonclaw/providers.json`
 - Structured metadata for downstream `read_resource` calls
 
 ---
 
 ## read_resource
 
-Read local runtime resources by URI.
+Read typed runtime resources by URI.
 
 ```moonbit nocheck
 pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult]
@@ -246,14 +249,14 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ReadResourceResult]
 - `file://relative/or/absolute/path`
 - `skill://skill-name`
 - `worktree://worktree-key`
+- `provider://provider-name`
 
 **Parameters:**
 - `uri`: Resource URI to read
 - `max_chars`: Maximum characters to return (default: `20000`)
 
 **Features:**
-- Typed file and skill resource reads
-- Worktree resource inspection via typed URIs
+- Typed file, skill, worktree, and provider resource reads
 - Runtime-aware `cwd` / `home` resolution
 - Structured metadata in the result payload
 
@@ -297,6 +300,32 @@ pub fn new() -> @tool.Tool[WebFetchResult]
 
 ---
 
+## delegate_run
+
+Create a typed bounded child-run request surface.
+
+```moonbit nocheck
+pub fn new() -> @tool.Tool[DelegateRunResult]
+```
+
+**Parameters:**
+- `title`: Short delegation title
+- `request_text`: Child task request
+- `expected_output`: Optional expected output
+- `child_profile`: Optional child profile override
+- `execution_mode`: Optional child execution mode
+- `execution_target`: Optional child execution target
+- `include_parent_outputs`: Include parent outputs in the child request
+- `max_depth`: Bounded child depth
+
+**Features:**
+- Explicit `job.delegate` request surface
+- Bounded delegation metadata
+- Structured `step_config` output for runtime delegation
+- Uses the execution-layer name `delegate_run` to distinguish delegated child runs from workflow subplans
+
+---
+
 ## enter_worktree
 
 Provision an isolated git worktree for a coding subtask.
@@ -335,6 +364,26 @@ pub fn new(cwd : String) -> @tool.Tool[ExitWorktreeResult]
 **Features:**
 - Cleans up isolated checkouts
 - Works with repo-root inference or explicit repo root
+
+---
+
+## patch_edit
+
+Preview or apply a structured patch edit with an explicit mode contract.
+
+```moonbit nocheck
+pub fn new(cwd : String) -> @tool.Tool[PatchEditResult]
+```
+
+**Parameters:**
+- `patch`: V4A patch content
+- `mode`: `preview` or `apply`
+
+**Features:**
+- Patch validation without mutation in preview mode
+- Structured file-change report in both preview and apply modes
+- Reuses the same patch format as `apply_patch`
+- Uses the execution-layer name `patch_edit` to distinguish patch editing from higher-level run/workflow mutations
 
 ---
 
