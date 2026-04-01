@@ -924,6 +924,77 @@ async test "build_analysis_request turns resume guess instruction into explicit 
 }
 
 ///|
+async test "build_analysis_request renders starter attachment artifacts" {
+  @fsx.with_temporary_directory("job-analysis-starter-artifacts-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Review the starter materials and estimate the acquisition range.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let captured_prompt : Ref[String] = { val: "" }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          if captured_prompt.val.is_blank() {
+            captured_prompt.val = request.prompt
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "Used the starter artifacts.",
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    ignore(
+      match
+        engine.execute_run(
+          "run-analysis-1",
+          fn() { 1000 },
+          initial_input=Some({
+            "starter_attachment_artifacts": [
+              {
+                "id": "file-1",
+                "filename": "parcel.pdf",
+                "artifact_ids": ["artifact-run-1-starter-file-1-text"],
+              },
+              {
+                "kind": "manifest_markdown",
+                "artifact_id": "artifact-run-1-starter-manifest-markdown",
+              },
+            ],
+          }),
+        ) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    inspect(
+      captured_prompt.val.contains("Starter attachment artifacts:"),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "parcel.pdf: artifact-run-1-starter-file-1-text",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_prompt.val.contains(
+        "manifest_markdown: artifact-run-1-starter-manifest-markdown",
+      ),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "analysis_step_handler keeps guessed deliverable completed after resume guidance" {
   @fsx.with_temporary_directory("job-analysis-resume-completed-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

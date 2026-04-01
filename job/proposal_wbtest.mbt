@@ -291,6 +291,12 @@ async test "plan_e2e_job_proposal preprocess prompt never asks for waiting input
   inspect(preprocess.id, content="context_preprocess")
   inspect(
     preprocess.prompt.contains(
+      "If the initial input includes `starter_attachment_artifacts`, inspect those durable starter-document artifacts first.",
+    ),
+    content="true",
+  )
+  inspect(
+    preprocess.prompt.contains(
       "Do not ask the user for more input from this preprocessing step.",
     ),
     content="true",

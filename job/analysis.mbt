@@ -911,12 +911,17 @@ fn build_analysis_prompt(
       "Step metadata:\n\{metadata.stringify()}"
     _ => ""
   }
+  let starter_attachment_artifacts_prompt = match context.initial_input {
+    Some(input) => render_starter_attachment_artifacts_prompt(input)
+    None => ""
+  }
   let sections = [
     config.prompt,
     preferred_skills_prompt(config.preferred_skills),
     skills_prompt,
     memory_prompt,
     step_metadata_prompt,
+    starter_attachment_artifacts_prompt,
     resume_prompt,
     "Job id: \{context.run.job_id}",
     "Run id: \{context.run.id}",
@@ -937,6 +942,54 @@ fn build_analysis_prompt(
     [..sections, "Previous step outputs:\n\{rendered_text}"]
   }
   sections.filter(fn(section) { !section.is_blank() }).join("\n\n")
+}
+
+///|
+fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
+  let rendered : Array[String] = []
+  match input {
+    { "starter_attachment_artifacts": Array(entries), .. } =>
+      for entry in entries {
+        match entry {
+          {
+            "id": String(id),
+            "filename": filename,
+            "artifact_ids": Array(artifact_ids),
+            ..
+          } => {
+            let name = match filename {
+              String(name) => name
+              _ => id
+            }
+            let ids = artifact_ids
+              .map(fn(value) {
+                match value {
+                  String(id) => id
+                  _ => ""
+                }
+              })
+              .filter(fn(id) { !id.is_blank() })
+            if !ids.is_empty() {
+              let joined_ids = ids.join(", ")
+              rendered.push("- \{name}: \{joined_ids}")
+            }
+          }
+          { "kind": String(kind), "artifact_id": String(artifact_id), .. } =>
+            rendered.push("- \{kind}: \{artifact_id}")
+          _ => ()
+        }
+      }
+    _ => ()
+  }
+  if rendered.is_empty() {
+    ""
+  } else {
+    [
+      "Starter attachment artifacts:",
+      "Prefer these durable artifact references before falling back to raw workspace paths.",
+      rendered.join("\n"),
+    ].join("\n")
+  }
 }
 
 ///|
