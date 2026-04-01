@@ -679,6 +679,29 @@ fn render_runs_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
     }
     button(class=cls, on_click=dispatch(SelectRunsSort(value)), label)
   }
+  let operator_hint = article(class="operator-hint", [
+    h3(class="section-title", "Planning"),
+    p(
+      class="muted",
+      "Feishu plan mode now has a lightweight thread-local path before durable job execution.",
+    ),
+    p(class="mono", "/plan <request>"),
+    p(class="muted", "Start or reset plan mode in the current Feishu thread."),
+    p(class="mono", "/preview [guidance]"),
+    p(
+      class="muted",
+      "Inspect the current plan candidate or refresh it without promoting.",
+    ),
+    p(class="mono", "/promote [guidance]"),
+    p(
+      class="muted",
+      "Turn the current plan candidate into a normal draft proposal.",
+    ),
+    p(class="mono", "/plan-job <request>"),
+    p(class="muted", "Create a durable proposal directly."),
+    p(class="mono", "/e2e <request>"),
+    p(class="muted", "Create the augmented preprocess and postprocess flow."),
+  ])
   section(class="panel", [
     header(class="panel-header", [h2(class="panel-title", "Runs")]),
     div(class="panel-body", [
@@ -710,7 +733,7 @@ fn render_runs_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
       } else if model.runs_error is Some(error) {
         p(class="empty", error)
       } else if runs.is_empty() {
-        p(class="empty", "No job runs available yet.")
+        div([p(class="empty", "No job runs available yet."), operator_hint])
       } else {
         div([
           div(
@@ -719,6 +742,7 @@ fn render_runs_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
               view_run_card(dispatch, model.selected_run_id, run)
             }),
           ),
+          operator_hint,
           div(class="runs-pagination", [
             span(class="muted", "Page \{page + 1} of \{total_pages}"),
             div(class="tree-controls", [

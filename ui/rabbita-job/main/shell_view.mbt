@@ -20,11 +20,11 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   div(class="shell", [
     header(class="topbar", [
       div([
-        p(class="eyebrow", "MoonClaw + Rabbita"),
-        h1(class="headline", "Local + Remote Agent Viewer"),
+        p(class="eyebrow", "MoonClaw Console"),
+        h1(class="headline", "Jobs, Runs, and Remote Agents"),
         p(
           class="subline",
-          "A MoonBit-native operator surface for local job expansion and ACP-backed remote agent control.",
+          "Track local runs, delegated work, and ACP-backed remote execution from one operator surface.",
         ),
         render_surface_tabs(model),
       ]),
