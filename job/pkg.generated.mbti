@@ -31,6 +31,8 @@ pub async fn checkpoint_run_workspace(SystemStore, String, String) -> Bool
 
 pub fn child_runs_for(SystemStore, String) -> Array[JobRun]
 
+pub async fn cleanup_run_execution_isolations(SystemStore, JobRun) -> Array[String]
+
 pub fn compile_job_proposal(JobProposal, Int, String, String, workspace_root? : String) -> ProposalCompilation
 
 pub async fn complete_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, RunStatus, Int) -> Unit
@@ -202,6 +204,8 @@ pub fn render_unknown_proposal_message(String) -> String
 pub async fn request_job_stop(SystemStore, String, async (String, Bool) -> Result[JobRun, String], force? : Bool, active_run_id? : String?) -> Result[String, String]
 
 pub async fn resolve_analysis_execution_cwd(WorkflowStepContext, AnalysisStepConfig, String) -> String
+
+pub async fn resolve_analysis_execution_isolation(WorkflowStepContext, AnalysisStepConfig, String) -> ExecutionIsolationResolution
 
 pub fn resolve_job_notify_target(SystemStore, JobDefinition) -> JobNotifyTarget?
 
@@ -645,15 +649,25 @@ pub impl Show for ExecutionIsolationMode
 pub impl ToJson for ExecutionIsolationMode
 pub impl @json.FromJson for ExecutionIsolationMode
 
+pub(all) struct ExecutionIsolationResolution {
+  cwd : String
+  metadata : Json?
+}
+pub fn ExecutionIsolationResolution::new(cwd~ : String, metadata? : Json?) -> Self
+pub impl Show for ExecutionIsolationResolution
+pub impl ToJson for ExecutionIsolationResolution
+pub impl @json.FromJson for ExecutionIsolationResolution
+
 pub(all) struct ExecutionIsolationSpec {
   mode : ExecutionIsolationMode
   task_key : String
   base_dir : String?
   branch_name : String?
   commit : String?
+  cleanup_policy : String?
   force_new_branch : Bool
 }
-pub fn ExecutionIsolationSpec::new(mode? : ExecutionIsolationMode, task_key? : String, base_dir? : String?, branch_name? : String?, commit? : String?, force_new_branch? : Bool) -> Self
+pub fn ExecutionIsolationSpec::new(mode? : ExecutionIsolationMode, task_key? : String, base_dir? : String?, branch_name? : String?, commit? : String?, cleanup_policy? : String?, force_new_branch? : Bool) -> Self
 pub impl Show for ExecutionIsolationSpec
 pub impl ToJson for ExecutionIsolationSpec
 pub impl @json.FromJson for ExecutionIsolationSpec

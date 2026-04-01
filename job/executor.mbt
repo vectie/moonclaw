@@ -94,6 +94,21 @@ async fn notify_run_finished(
 }
 
 ///|
+async fn cleanup_run_execution_isolation_artifacts(
+  runtime : RuntimeManager,
+  run : JobRun,
+  hooks : RunExecutionHooks,
+) -> Unit {
+  let removed = cleanup_run_execution_isolations(runtime.store(), run)
+  if removed.is_empty() {
+    return
+  }
+  (hooks.on_info)(
+    "Cleaned up \{removed.length()} execution isolation worktree(s) for run \{run.id}",
+  )
+}
+
+///|
 pub fn execution_notification_hooks(
   state : GatewayJobState,
   now : () -> Int,
@@ -188,7 +203,10 @@ pub async fn execute_run_lifecycle(
         ),
       )
       match runtime.store().get_run(run_id) {
-        Some(updated_run) => (hooks.on_finished)(definition, updated_run)
+        Some(updated_run) => {
+          cleanup_run_execution_isolation_artifacts(runtime, updated_run, hooks)
+          (hooks.on_finished)(definition, updated_run)
+        }
         None => ()
       }
       return
@@ -206,6 +224,7 @@ pub async fn execute_run_lifecycle(
       (hooks.on_info)(
         "Completed job run \{result.run.job_id} -> \{result.run.id} with \{result.steps.length()} step(s)",
       )
+      cleanup_run_execution_isolation_artifacts(runtime, result.run, hooks)
       (hooks.on_finished)(definition, result.run)
     }
     Err(error) => {
@@ -218,7 +237,10 @@ pub async fn execute_run_lifecycle(
       )
       (hooks.on_warn)("Job run \{run_id} finished with error: \{error}")
       match runtime.store().get_run(run_id) {
-        Some(updated_run) => (hooks.on_finished)(definition, updated_run)
+        Some(updated_run) => {
+          cleanup_run_execution_isolation_artifacts(runtime, updated_run, hooks)
+          (hooks.on_finished)(definition, updated_run)
+        }
         None => ()
       }
     }

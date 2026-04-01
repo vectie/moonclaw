@@ -11,6 +11,7 @@ pub(all) struct ExecutionIsolationSpec {
   base_dir : String?
   branch_name : String?
   commit : String?
+  cleanup_policy : String?
   force_new_branch : Bool
 } derive(ToJson, FromJson, Show)
 
@@ -21,6 +22,7 @@ pub fn ExecutionIsolationSpec::new(
   base_dir? : String? = None,
   branch_name? : String? = None,
   commit? : String? = None,
+  cleanup_policy? : String? = None,
   force_new_branch? : Bool = false,
 ) -> ExecutionIsolationSpec {
   ExecutionIsolationSpec::{
@@ -29,8 +31,23 @@ pub fn ExecutionIsolationSpec::new(
     base_dir,
     branch_name,
     commit,
+    cleanup_policy,
     force_new_branch,
   }
+}
+
+///|
+pub(all) struct ExecutionIsolationResolution {
+  cwd : String
+  metadata : Json?
+} derive(ToJson, FromJson, Show)
+
+///|
+pub fn ExecutionIsolationResolution::new(
+  cwd~ : String,
+  metadata? : Json? = None,
+) -> ExecutionIsolationResolution {
+  ExecutionIsolationResolution::{ cwd, metadata }
 }
 
 ///|
@@ -86,6 +103,7 @@ pub fn subtask_execution_isolation_metadata(
     "execution_isolation": {
       "mode": "git_worktree",
       "task_key": "\{step_id} \{title}",
+      "cleanup_policy": "on_success",
     },
   }
 }
@@ -129,6 +147,11 @@ pub fn analysis_execution_isolation_spec(
           Some(commit.trim().to_string())
         _ => None
       }
+      let cleanup_policy = match obj.get("cleanup_policy") {
+        Some(String(cleanup_policy)) if !cleanup_policy.trim().is_blank() =>
+          Some(cleanup_policy.trim().to_lower().to_string())
+        _ => None
+      }
       let force_new_branch = match obj.get("force_new_branch") {
         Some(True) => true
         _ => false
@@ -139,10 +162,89 @@ pub fn analysis_execution_isolation_spec(
         base_dir,
         branch_name,
         commit,
+        cleanup_policy,
         force_new_branch,
       })
     }
     _ => None
+  }
+}
+
+///|
+fn execution_isolation_mode_name(mode : ExecutionIsolationMode) -> String {
+  match mode {
+    SharedWorkspace => "shared_workspace"
+    GitWorktree => "git_worktree"
+  }
+}
+
+///|
+fn execution_isolation_metadata(
+  spec : ExecutionIsolationSpec,
+  working_directory : String,
+  base_cwd : String,
+  repo_root : String?,
+  auto_created : Bool,
+) -> Json {
+  {
+    "mode": execution_isolation_mode_name(spec.mode),
+    "cwd": working_directory,
+    "base_cwd": base_cwd,
+    "repo_root": repo_root,
+    "task_key": spec.task_key,
+    "branch_name": spec.branch_name,
+    "cleanup_policy": spec.cleanup_policy,
+    "auto_created": auto_created,
+  }
+}
+
+///|
+pub async fn resolve_analysis_execution_isolation(
+  context : WorkflowStepContext,
+  config : AnalysisStepConfig,
+  fallback_cwd : String,
+) -> ExecutionIsolationResolution {
+  match analysis_execution_isolation_spec(context, config) {
+    Some(spec) =>
+      match spec.mode {
+        SharedWorkspace => ExecutionIsolationResolution::new(cwd=fallback_cwd)
+        GitWorktree => {
+          let handle = @worktree.plan_worktree(
+            fallback_cwd,
+            spec.task_key,
+            base_dir=spec.base_dir,
+            branch_name=spec.branch_name,
+          ) catch {
+            _ => return ExecutionIsolationResolution::new(cwd=fallback_cwd)
+          }
+          let exists = @fsx.exists(handle.path) catch { _ => false }
+          let auto_created = !exists
+          if !exists {
+            ignore(
+              @worktree.create_worktree(
+                handle,
+                commit=spec.commit,
+                force_new_branch=spec.force_new_branch,
+              ) catch {
+                _ => return ExecutionIsolationResolution::new(cwd=fallback_cwd)
+              },
+            )
+          }
+          ExecutionIsolationResolution::new(
+            cwd=handle.path,
+            metadata=Some(
+              execution_isolation_metadata(
+                spec,
+                handle.path,
+                fallback_cwd,
+                Some(handle.repo_root),
+                auto_created,
+              ),
+            ),
+          )
+        }
+      }
+    None => ExecutionIsolationResolution::new(cwd=fallback_cwd)
   }
 }
 
@@ -152,34 +254,60 @@ pub async fn resolve_analysis_execution_cwd(
   config : AnalysisStepConfig,
   fallback_cwd : String,
 ) -> String {
-  match analysis_execution_isolation_spec(context, config) {
-    Some(spec) =>
-      match spec.mode {
-        SharedWorkspace => fallback_cwd
-        GitWorktree => {
-          let handle = @worktree.plan_worktree(
-            fallback_cwd,
-            spec.task_key,
-            base_dir=spec.base_dir,
-            branch_name=spec.branch_name,
-          ) catch {
-            _ => return fallback_cwd
-          }
-          let exists = @fsx.exists(handle.path) catch { _ => false }
-          if !exists {
-            ignore(
-              @worktree.create_worktree(
-                handle,
-                commit=spec.commit,
-                force_new_branch=spec.force_new_branch,
-              ) catch {
-                _ => return fallback_cwd
-              },
-            )
-          }
-          handle.path
-        }
-      }
-    None => fallback_cwd
+  resolve_analysis_execution_isolation(context, config, fallback_cwd).cwd
+}
+
+///|
+fn execution_isolation_cleanup_matches(
+  run_status : RunStatus,
+  cleanup_policy : String,
+) -> Bool {
+  match cleanup_policy {
+    "always" => true
+    "on_finish" => true
+    "on_success" => run_status is Succeeded
+    "on_failure" => run_status is Failed || run_status is Cancelled
+    _ => false
   }
+}
+
+///|
+pub async fn cleanup_run_execution_isolations(
+  store : SystemStore,
+  run : JobRun,
+) -> Array[String] {
+  let removed : Array[String] = []
+  let seen : Map[String, Bool] = {}
+  for artifact in store.list_artifacts(run_id=run.id) {
+    match artifact.metadata {
+      {
+        "execution_isolation": {
+          "mode": String("git_worktree"),
+          "cwd": String(cwd),
+          "base_cwd": String(base_cwd),
+          "repo_root": String(repo_root),
+          "auto_created": True,
+          "cleanup_policy": String(cleanup_policy),
+          ..
+        },
+        ..
+      } if !cwd.trim().is_blank() &&
+        !seen.contains(cwd) &&
+        execution_isolation_cleanup_matches(run.status, cleanup_policy) => {
+        seen.set(cwd, true)
+        ignore(
+          @worktree.remove_worktree_path(
+            base_cwd,
+            cwd,
+            repo_root=Some(repo_root),
+          ) catch {
+            _ => ()
+          },
+        )
+        removed.push(cwd)
+      }
+      _ => ()
+    }
+  }
+  removed
 }

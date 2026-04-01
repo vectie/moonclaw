@@ -235,3 +235,87 @@ async test "execute_run_lifecycle does not send stale start notification when re
     inspect(marks.contains("finished"), content="true")
   })
 }
+
+///|
+async test "execute_run_lifecycle cleans up auto-created worktrees on success" {
+  @fsx.with_temporary_directory("job-executor-worktree-cleanup-XXXXXX", dir => {
+    let repo = @pathx.join(dir, "repo")
+    @fsx.make_directory(repo, recursive=true)
+    @git.init_(repo)
+    @fsx.write_to_file(repo |> @pathx.join("README.md"), "hello")
+    @git.commit("init", ["README.md"], cwd=repo)
+    let handle = @worktree.plan_worktree(repo, "cleanup candidate")
+    ignore(@worktree.create_worktree(handle))
+    inspect(@fsx.exists(handle.path), content="true")
+
+    let root = @pathx.join(dir, "jobs")
+    let runtime = RuntimeManager::new(root~)
+    runtime.register_definition(JobDefinition::{
+      id: "job-1",
+      kind: "generic.analysis",
+      enabled: true,
+      config: {},
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("workflow-1"),
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    })
+    runtime.register_workflow(WorkflowDefinition::{
+      id: "workflow-1",
+      kind: "generic.analysis",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "step-1",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    })
+    ignore(runtime.create_run("run-1", "job-1", TriggerSource::Manual, 10))
+    execute_run_lifecycle(runtime, "run-1", fn() { 100 }, fn() {
+      let engine = WorkflowEngine::new(runtime~)
+      engine.register_handler(
+        WorkflowStepHandler::new(kind="job.analysis", run=async fn(ctx) {
+          let artifacts = ArtifactStore::new(store=runtime.store())
+          ignore(
+            artifacts.write(
+              ArtifactWriteRequest::new(
+                run_id=ctx.run.id,
+                job_id=ctx.run.job_id,
+                artifact_type="analysis.result",
+                logical_key=Some("cleanup-check"),
+                content="{}",
+                content_type="application/json",
+                metadata={
+                  "execution_isolation": {
+                    "mode": "git_worktree",
+                    "cwd": handle.path,
+                    "base_cwd": repo,
+                    "repo_root": repo,
+                    "task_key": "cleanup candidate",
+                    "auto_created": true,
+                    "cleanup_policy": "on_success",
+                  },
+                },
+              ),
+              "artifact-cleanup-1",
+              100,
+            ),
+          )
+          Ok(WorkflowStepResult::new(output={ "ok": true }))
+        }),
+      )
+      engine
+    })
+    let run = match runtime.store().get_run("run-1") {
+      Some(run) => run
+      None => fail("expected run")
+    }
+    inspect(run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(@fsx.exists(handle.path), content="false")
+  })
+}

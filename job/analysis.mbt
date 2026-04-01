@@ -173,34 +173,6 @@ async fn resolved_model_name(request : AnalysisRequest) -> String? {
 }
 
 ///|
-fn execution_isolation_json_for_request(
-  context : WorkflowStepContext,
-  config : AnalysisStepConfig,
-  working_directory : String,
-) -> Json? {
-  let base_cwd = analysis_working_directory(context, config)
-  if working_directory == base_cwd {
-    return None
-  }
-  match analysis_execution_isolation_spec(context, config) {
-    Some(spec) => {
-      let mode = match spec.mode {
-        SharedWorkspace => "shared_workspace"
-        GitWorktree => "git_worktree"
-      }
-      Some({
-        "mode": mode,
-        "cwd": working_directory,
-        "base_cwd": base_cwd,
-        "task_key": spec.task_key,
-        "branch_name": spec.branch_name,
-      })
-    }
-    None => None
-  }
-}
-
-///|
 fn preferred_skills_prompt(preferred_skills : Array[String]) -> String {
   if preferred_skills.is_empty() {
     ""
@@ -679,11 +651,12 @@ pub async fn build_analysis_request(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
 ) -> AnalysisRequest {
-  let working_directory = resolve_analysis_execution_cwd(
+  let execution_isolation = resolve_analysis_execution_isolation(
     context,
     config,
     analysis_working_directory(context, config),
   )
+  let working_directory = execution_isolation.cwd
   let skills_prompt = loaded_skills_prompt(
     working_directory,
     config.home,
@@ -705,9 +678,7 @@ pub async fn build_analysis_request(
     enable_tools: config.enable_tools,
     web_search: config.web_search,
     tool_contract: analysis_tool_contract(config),
-    execution_isolation: execution_isolation_json_for_request(
-      context, config, working_directory,
-    ),
+    execution_isolation: execution_isolation.metadata,
   }
 }
 
