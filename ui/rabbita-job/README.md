@@ -64,6 +64,7 @@ from the repo root, or use `moon -C /path/to/moonclaw run cmd/main -- ...`.
 
 Current surfaces:
 
+- cowork conversation sidebar + transcript + composer
 - job runs list
 - local job expansion viewer
 - full-screen run canvas toggle
@@ -71,6 +72,8 @@ Current surfaces:
 - mixed overview linking local and remote activity
 - final run report/result cards
 - aggregated starter-doc input card
+- linked proposal/run cards inside Cowork
+- right-side Cowork context tabs for preview, workspace, artifacts, and run state
 - full-screen artifact editor surface
 - artifact, workspace, memory, and ACP stdio inspection
 - managed polling refresh for active runs and ACP state
@@ -87,6 +90,7 @@ Current limitation:
 
 Current workflow notes:
 
+- `Cowork` is the conversation-first surface: create a chat, send messages, enter plan mode, preview/promote, confirm linked proposals, and resume waiting runs without leaving the UI
 - final run `report.md` and `result.json` are surfaced as synthetic artifact cards when they exist only as workspace files
 - starter attachment digest/text/summary/manifest artifacts are grouped into one `Starter Docs` card in the main artifact-facing surfaces
 - after frontend changes, rebuild with `./scripts/build-rabbita-ui.sh`

@@ -56,6 +56,20 @@ fn last_update_label(model : Model) -> String {
         let entry = model.timeline[model.timeline.length() - 1]
         "Last event: \{entry.timestamp}"
       }
+    SurfaceCowork =>
+      match model.cowork_detail {
+        Some(detail) =>
+          match detail.messages {
+            [.., last] => "Last message: \{last.timestamp}"
+            _ => "Conversation ready"
+          }
+        None =>
+          if model.cowork_sessions_loading {
+            "Loading conversations"
+          } else {
+            "Conversation-first cowork surface"
+          }
+      }
     SurfaceAcp =>
       if model.acp_timeline.is_empty() {
         "No events yet"
@@ -100,6 +114,23 @@ fn render_live_chip(model : Model) -> Html {
             span(class="status-badge pending", "Loading")
           } else {
             span(class="status-badge", "Idle")
+          }
+      }
+    SurfaceCowork =>
+      match model.cowork_detail {
+        Some(detail) =>
+          if detail.session.has_plan_mode {
+            span(class="status-badge pending", "Plan Mode")
+          } else if detail.linked_run is Some(_) {
+            span(class="status-badge running", "Linked Run")
+          } else {
+            span(class="status-badge", "Chat")
+          }
+        None =>
+          if model.cowork_sessions_loading || model.cowork_detail_loading {
+            span(class="status-badge pending", "Loading")
+          } else {
+            span(class="status-badge", "Cowork")
           }
       }
     SurfaceAcp =>

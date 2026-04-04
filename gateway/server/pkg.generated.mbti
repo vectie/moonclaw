@@ -224,6 +224,42 @@ pub fn Coordinator::start_task(Self, String) -> CoordinationTask?
 pub fn Coordinator::to_json(Self) -> Json
 pub fn Coordinator::update_subtask_status(Self, String, String, CoordinationStatus, result? : Json?, error? : String?) -> CoordinationTask?
 
+type CoworkMessageParams
+pub impl Show for CoworkMessageParams
+pub impl @json.FromJson for CoworkMessageParams
+
+type CoworkPlanParams
+pub impl Show for CoworkPlanParams
+pub impl @json.FromJson for CoworkPlanParams
+
+type CoworkProposalRef
+pub impl Show for CoworkProposalRef
+pub impl ToJson for CoworkProposalRef
+pub impl @json.FromJson for CoworkProposalRef
+
+type CoworkResumeParams
+pub impl Show for CoworkResumeParams
+pub impl @json.FromJson for CoworkResumeParams
+
+type CoworkRunRef
+pub impl Show for CoworkRunRef
+pub impl ToJson for CoworkRunRef
+pub impl @json.FromJson for CoworkRunRef
+
+type CoworkSessionCreateParams
+pub impl Show for CoworkSessionCreateParams
+pub impl @json.FromJson for CoworkSessionCreateParams
+
+type CoworkSessionDetail
+pub impl Show for CoworkSessionDetail
+pub impl ToJson for CoworkSessionDetail
+pub impl @json.FromJson for CoworkSessionDetail
+
+type CoworkSessionSummary
+pub impl Show for CoworkSessionSummary
+pub impl ToJson for CoworkSessionSummary
+pub impl @json.FromJson for CoworkSessionSummary
+
 pub struct CreateCoordinationParams {
   parent_agent : String
   subtasks : Array[SubTaskParams]
@@ -434,6 +470,11 @@ pub impl Show for PipelineStatus
 pub impl ToJson for PipelineStatus
 pub impl @json.FromJson for PipelineStatus
 
+type PlanModeState
+pub impl Show for PlanModeState
+pub impl ToJson for PlanModeState
+pub impl @json.FromJson for PlanModeState
+
 pub struct SendMessageParams {
   from_agent : String
   to_agent : String?
@@ -446,7 +487,6 @@ pub impl @json.FromJson for SendMessageParams
 type SessionEntry
 pub impl Show for SessionEntry
 pub impl ToJson for SessionEntry
-pub impl @json.FromJson for SessionEntry
 
 type SessionManager
 pub fn SessionManager::count(Self) -> Int
@@ -458,6 +498,18 @@ pub fn SessionManager::reset(Self, String) -> Bool
 pub async fn SessionManager::reset_and_save(Self, String) -> Bool
 pub async fn SessionManager::save(Self) -> Unit
 pub async fn SessionManager::save_entry(Self, String, SessionEntry) -> Unit
+
+pub struct SessionMessage {
+  id : String
+  role : String
+  kind : String
+  content : String
+  timestamp : Int
+  metadata : Json
+}
+pub impl Show for SessionMessage
+pub impl ToJson for SessionMessage
+pub impl @json.FromJson for SessionMessage
 
 pub struct SubTask {
   task_id : String

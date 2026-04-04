@@ -47,6 +47,49 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "artifacts", _artifact_id]) =>
         self.handle_get_artifact(r, w)
       (Get, ["", "v1", "workspace"]) => self.handle_get_workspace(r, w)
+      (Get, ["", "v1", "cowork", "sessions"]) =>
+        self.handle_list_cowork_sessions(r, w)
+      (Post, ["", "v1", "cowork", "sessions"]) =>
+        self.handle_create_cowork_session(r, w)
+      (Get, ["", "v1", "cowork", "sessions", session_key]) =>
+        self.handle_get_cowork_session(r, w, session_key.to_string())
+      (Post, ["", "v1", "cowork", "sessions", session_key, "messages"]) =>
+        self.handle_cowork_send_message(r, w, session_key.to_string())
+      (Post, ["", "v1", "cowork", "sessions", session_key, "plan"]) =>
+        self.handle_cowork_plan(r, w, session_key.to_string())
+      (Post, ["", "v1", "cowork", "sessions", session_key, "preview"]) =>
+        self.handle_cowork_preview(r, w, session_key.to_string())
+      (Post, ["", "v1", "cowork", "sessions", session_key, "promote"]) =>
+        self.handle_cowork_promote(r, w, session_key.to_string())
+      (
+        Post,
+        [
+          "",
+          "v1",
+          "cowork",
+          "sessions",
+          session_key,
+          "proposals",
+          proposal_id,
+          "confirm",
+        ],
+      ) =>
+        self.handle_cowork_confirm_proposal(
+          r,
+          w,
+          session_key.to_string(),
+          proposal_id.to_string(),
+        )
+      (
+        Post,
+        ["", "v1", "cowork", "sessions", session_key, "runs", run_id, "resume"],
+      ) =>
+        self.handle_cowork_resume_run(
+          r,
+          w,
+          session_key.to_string(),
+          run_id.to_string(),
+        )
       (Get, ["", "v1", "plugins"]) => self.handle_list_plugins(r, w)
       (Get, ["", "v1", "plugins", _plugin_id]) => self.handle_get_plugin(r, w)
       (Get, ["", "v1", "acp", "targets"]) => self.handle_list_acp_targets(r, w)

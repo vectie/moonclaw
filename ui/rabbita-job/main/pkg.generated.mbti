@@ -54,6 +54,39 @@ type CompanyLaneEntry
 
 type CompanyLaneStats
 
+type CoworkMessage
+pub impl Show for CoworkMessage
+pub impl @json.FromJson for CoworkMessage
+
+type CoworkPanel
+pub impl Compare for CoworkPanel
+pub impl Eq for CoworkPanel
+pub impl Show for CoworkPanel
+
+type CoworkProposalRef
+pub impl Show for CoworkProposalRef
+pub impl @json.FromJson for CoworkProposalRef
+
+type CoworkRunRef
+pub impl Show for CoworkRunRef
+pub impl @json.FromJson for CoworkRunRef
+
+type CoworkSessionDetail
+pub impl Show for CoworkSessionDetail
+pub impl @json.FromJson for CoworkSessionDetail
+
+type CoworkSessionPayload
+pub impl Show for CoworkSessionPayload
+pub impl @json.FromJson for CoworkSessionPayload
+
+type CoworkSessionSummary
+pub impl Show for CoworkSessionSummary
+pub impl @json.FromJson for CoworkSessionSummary
+
+type CoworkSessionsPayload
+pub impl Show for CoworkSessionsPayload
+pub impl @json.FromJson for CoworkSessionsPayload
+
 type LoadedArtifact
 pub impl Show for LoadedArtifact
 pub impl @json.FromJson for LoadedArtifact

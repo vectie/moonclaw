@@ -122,6 +122,9 @@ async fn Gateway::execute_agent(
     provider_override: session.provider_override,
     cwd: Some(cwd),
     plan_mode: session.plan_mode,
+    messages: session.messages,
+    linked_proposal_id: session.linked_proposal_id,
+    linked_run_id: session.linked_run_id,
   })
   let model_name = match params.model {
     Some(m) => m
@@ -171,6 +174,9 @@ async fn Gateway::execute_agent(
         provider_override: session.provider_override,
         cwd: Some(cwd),
         plan_mode: session.plan_mode,
+        messages: session.messages,
+        linked_proposal_id: session.linked_proposal_id,
+        linked_run_id: session.linked_run_id,
       })
       return Err(error_shape)
     }
@@ -247,6 +253,9 @@ async fn Gateway::execute_agent(
     provider_override: session.provider_override,
     cwd: Some(cwd),
     plan_mode: session.plan_mode,
+    messages: session.messages,
+    linked_proposal_id: session.linked_proposal_id,
+    linked_run_id: session.linked_run_id,
   })
   Ok({
     "run_id": run_id,

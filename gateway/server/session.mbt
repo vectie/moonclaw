@@ -82,6 +82,9 @@ pub fn SessionManager::get_or_create(
         provider_override: None,
         cwd: Some(cwd),
         plan_mode: None,
+        messages: [],
+        linked_proposal_id: None,
+        linked_run_id: None,
       }
       self.sessions.set(session_key, entry)
       entry

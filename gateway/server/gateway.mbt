@@ -73,6 +73,16 @@ struct SessionManager {
 }
 
 ///|
+pub struct SessionMessage {
+  id : String
+  role : String
+  kind : String
+  content : String
+  timestamp : Int
+  metadata : Json
+} derive(ToJson, FromJson, Show)
+
+///|
 struct SessionEntry {
   session_id : String
   updated_at : Int
@@ -81,7 +91,92 @@ struct SessionEntry {
   provider_override : String?
   cwd : String?
   plan_mode : PlanModeState?
-} derive(ToJson, FromJson, Show)
+  messages : Array[SessionMessage]
+  linked_proposal_id : String?
+  linked_run_id : String?
+} derive(ToJson, Show)
+
+///|
+impl @json.FromJson for SessionEntry with from_json(
+  json : Json,
+  path : @json.JsonPath,
+) -> SessionEntry raise @json.JsonDecodeError {
+  guard json is Object(obj) else {
+    raise @json.JsonDecodeError((path, "SessionEntry: expected object"))
+  }
+  let session_id = match obj.get("session_id") {
+    Some(String(value)) => value
+    _ => raise @json.JsonDecodeError((path, "SessionEntry: missing session_id"))
+  }
+  let updated_at = match obj.get("updated_at") {
+    Some(Number(value, ..)) => value.to_int()
+    _ => 0
+  }
+  let channel = match obj.get("channel") {
+    Some(String(value)) => Some(value)
+    _ => None
+  }
+  let model_override = match obj.get("model_override") {
+    Some(String(value)) => Some(value)
+    _ => None
+  }
+  let provider_override = match obj.get("provider_override") {
+    Some(String(value)) => Some(value)
+    _ => None
+  }
+  let cwd = match obj.get("cwd") {
+    Some(String(value)) => Some(value)
+    _ => None
+  }
+  let plan_mode = match obj.get("plan_mode") {
+    Some(Null) | None => None
+    Some(plan_json) =>
+      Some(
+        @json.from_json(plan_json, path~) catch {
+          error =>
+            raise @json.JsonDecodeError(
+              (path, "SessionEntry.plan_mode: \{error}"),
+            )
+        },
+      )
+  }
+  let messages = match obj.get("messages") {
+    Some(Array(items)) => {
+      let parsed : Array[SessionMessage] = []
+      for item in items {
+        let message : SessionMessage = @json.from_json(item, path~) catch {
+          error =>
+            raise @json.JsonDecodeError(
+              (path, "SessionEntry.messages: \{error}"),
+            )
+        }
+        parsed.push(message)
+      }
+      parsed
+    }
+    _ => []
+  }
+  let linked_proposal_id = match obj.get("linked_proposal_id") {
+    Some(String(value)) => Some(value)
+    _ => None
+  }
+  let linked_run_id = match obj.get("linked_run_id") {
+    Some(String(value)) => Some(value)
+    _ => None
+  }
+  {
+    session_id,
+    updated_at,
+    channel,
+    model_override,
+    provider_override,
+    cwd,
+    plan_mode,
+    messages,
+    linked_proposal_id,
+    linked_run_id,
+  }
+}
 
 ///|
 struct PlanModeState {

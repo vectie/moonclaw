@@ -1233,6 +1233,131 @@ input {
   box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.12);
 }
 
+.cowork-sidebar,
+.cowork-main,
+.cowork-context {
+  min-height: calc(100vh - 188px);
+}
+
+.cowork-sidebar-body,
+.cowork-main-body {
+  display: grid;
+  gap: 1rem;
+  min-height: 0;
+}
+
+.cowork-session-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.cowork-session-item {
+  display: grid;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  text-align: left;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.cowork-session-item:hover,
+.cowork-session-item.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.08);
+  background: #f8fbff;
+}
+
+.cowork-session-row,
+.cowork-action-row,
+.cowork-message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.cowork-main-body {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.cowork-transcript {
+  display: grid;
+  gap: 0.85rem;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.cowork-transcript-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.cowork-banner,
+.cowork-message {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 0.9rem 1rem;
+}
+
+.cowork-message.user {
+  background: #f8fbff;
+  border-color: #c8ddff;
+}
+
+.cowork-message.card {
+  border-color: #d0d7de;
+  background: #f6f8fa;
+}
+
+.cowork-message.error {
+  border-color: #d1242f;
+  background: #fff8f8;
+}
+
+.cowork-message-content {
+  margin-top: 0.6rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cowork-message .tree-control-button {
+  margin-top: 0.7rem;
+}
+
+.cowork-composer {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.2rem;
+  border-top: 1px solid var(--line);
+}
+
+.cowork-composer-textarea {
+  min-height: 132px;
+}
+
+.cowork-preview-textarea {
+  min-height: 420px;
+}
+
+.cowork-context-pane {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.cowork-memory-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tiny {
+  font-size: 0.72rem;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -1267,6 +1392,12 @@ input {
 
   .layout > .panel:last-child {
     grid-column: 1 / -1;
+  }
+
+  .cowork-sidebar,
+  .cowork-main,
+  .cowork-context {
+    min-height: auto;
   }
 }
 

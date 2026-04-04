@@ -71,6 +71,9 @@ async fn Gateway::save_plan_mode_session(
     provider_override: None,
     cwd: Some(self.cwd),
     plan_mode: None,
+    messages: [],
+    linked_proposal_id: None,
+    linked_run_id: None,
   })
   self.sessions.save_entry(session_key, SessionEntry::{
     ..existing,

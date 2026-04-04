@@ -37,6 +37,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-04-04`: added the Rabbita `Cowork` surface with a conversation sidebar, transcript, composer, plan-mode actions, linked proposal/run cards, and a right-side context pane for preview, workspace, artifacts, and run state
 - `2026-04-04`: added thread-local `/plan` mode with `/preview` and `/promote`; made final run `report.md` and `result.json` appear as clickable Rabbita cards; added a full-screen canvas toggle, aggregated starter documents into one operator-facing input card, and upgraded artifact opening from a small popup into a full-screen editor surface
 - `2026-04-01`: clarified the execution layer with uniquely named analysis helpers, `delegate_run`, `patch_edit`, and `resource_providers`; hardened the analysis backbone by separating execution and tool contracts; added a first-class `web_fetch` tool and made analysis distinguish web search from web fetch instead of relying on loose booleans
 - `2026-03-26`: split classic `/plan-job` from the E2E `/e2e` flow; added job-level preprocess and optional postprocess planning, in-place `/resume` from `WaitingForInput`, tighter planner skill enforcement, and assumption-based continuation for blocked analytical runs
@@ -74,12 +75,15 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - 🔬 generic job workflows
 - 🤖 ACP targets, sessions, and runs for remote agent control
 - 🪟 Rabbita operator UI with:
+  - cowork conversation surface
   - local job expansion
   - ACP remote-agent lane
   - mixed local↔remote lineage view
   - controller/company board lanes
   - final run report/result cards
   - starter-doc aggregation
+  - linked conversation proposal/run cards
+  - conversation preview/workspace/artifact/run context tabs
   - full-screen canvas
   - full-screen artifact editor
   - transcript and case export

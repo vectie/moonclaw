@@ -27,3 +27,19 @@ test "parse_acp_stream_drain_payload still parses normal entries" {
     Err(error) => fail(error)
   }
 }
+
+///|
+test "route_from_url parses cowork route and panel query" {
+  let url = @url.parse(
+    "http://localhost:18123/ui#/cowork?session=session-1&panel=run",
+  )
+  inspect(route_from_url(url) is Cowork, content="true")
+}
+
+///|
+test "cowork_url includes selected session and panel" {
+  inspect(
+    cowork_url(selected_session_key=Some("cowork:2"), panel=CoworkArtifacts),
+    content="#/cowork?session=cowork:2&panel=artifacts",
+  )
+}

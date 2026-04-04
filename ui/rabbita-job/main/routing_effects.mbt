@@ -49,6 +49,7 @@ fn route_from_url(url : @url.Url) -> Route {
     ["jobs"] => Jobs
     ["runs", run_id] => Run(run_id)
     ["runs", run_id, "canvas"] => RunCanvas(run_id)
+    ["cowork"] => Cowork
     ["acp"] => Acp
     _ => Overview
   }
@@ -61,6 +62,7 @@ fn route_surface(route : Route) -> Surface {
     Jobs => SurfaceJobs
     Run(_) => SurfaceJobs
     RunCanvas(_) => SurfaceJobs
+    Cowork => SurfaceCowork
     Acp => SurfaceAcp
   }
 }
@@ -87,6 +89,26 @@ fn hash_route_url(path : String) -> String {
     "#\{path}"
   } else {
     "#/\{path}"
+  }
+}
+
+///|
+fn cowork_panel_query_value(panel : CoworkPanel) -> String {
+  match panel {
+    CoworkPreview => "preview"
+    CoworkWorkspace => "workspace"
+    CoworkArtifacts => "artifacts"
+    CoworkRun => "run"
+  }
+}
+
+///|
+fn cowork_panel_from_query(value : String?) -> CoworkPanel {
+  match value {
+    Some("workspace") => CoworkWorkspace
+    Some("artifacts") => CoworkArtifacts
+    Some("run") => CoworkRun
+    _ => CoworkPreview
   }
 }
 
@@ -252,6 +274,27 @@ fn acp_url(selected_node_id? : String? = None) -> String {
 }
 
 ///|
+fn cowork_url(
+  selected_session_key? : String? = None,
+  panel? : CoworkPanel = CoworkPreview,
+) -> String {
+  let params : Array[String] = []
+  match selected_session_key {
+    Some(session_key) => params.push("session=\{session_key}")
+    None => ()
+  }
+  if panel != CoworkPreview {
+    params.push("panel=\{cowork_panel_query_value(panel)}")
+  }
+  if params.is_empty() {
+    hash_route_url("/cowork")
+  } else {
+    let query = params.join("&")
+    hash_route_url("/cowork?\{query}")
+  }
+}
+
+///|
 fn overview_url(selected_mixed_handoff_key? : String? = None) -> String {
   match selected_mixed_handoff_key {
     Some(key) => hash_route_url("/?mixed=\{key}")
@@ -290,6 +333,11 @@ fn current_url_for_model(model : Model) -> String {
     Overview =>
       overview_url(selected_mixed_handoff_key=model.selected_mixed_handoff_key)
     Acp => acp_url(selected_node_id=model.selected_acp_node_id)
+    Cowork =>
+      cowork_url(
+        selected_session_key=model.selected_cowork_session_key,
+        panel=model.cowork_panel,
+      )
     Jobs =>
       jobs_url(
         runs_status_filter=model.runs_status_filter,
@@ -368,6 +416,30 @@ fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] 
         Err(error) => Err("Failed to parse artifact payload: \{error}")
       }
     _ => Err("Failed to parse artifact payload: expected object")
+  }
+}
+
+///|
+fn parse_cowork_sessions_payload(
+  json : Json,
+) -> Result[Array[CoworkSessionSummary], String] {
+  let payload : Result[CoworkSessionsPayload, Error] = try? @json.from_json(
+    json,
+  )
+  match payload {
+    Ok(payload) => Ok(payload.sessions)
+    Err(error) => Err("Failed to parse Cowork sessions: \{error}")
+  }
+}
+
+///|
+fn parse_cowork_session_payload(
+  json : Json,
+) -> Result[CoworkSessionDetail, String] {
+  let payload : Result[CoworkSessionPayload, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload.session)
+    Err(error) => Err("Failed to parse Cowork session: \{error}")
   }
 }
 
@@ -679,6 +751,19 @@ fn fetch_snapshot(
 }
 
 ///|
+fn fetch_cowork_linked_snapshot(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+  run_id : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, UiSnapshot] = @http.Expecting::Json(
+    fn(result) { dispatch(CoworkLinkedSnapshotLoaded(run_id, result)) },
+    parse_snapshot_payload,
+  )
+  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui", expect~)
+}
+
+///|
 fn fetch_timeline(
   dispatch : Dispatch[Msg],
   gateway_base : String,
@@ -698,6 +783,60 @@ fn fetch_acp_snapshot(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
     parse_acp_snapshot_payload,
   )
   @http.get("\{gateway_base}/v1/acp/ui", expect~)
+}
+
+///|
+fn fetch_cowork_sessions(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, Array[CoworkSessionSummary]] = @http.Expecting::Json(
+    fn(result) { dispatch(CoworkSessionsLoaded(result)) },
+    parse_cowork_sessions_payload,
+  )
+  @http.get("\{gateway_base}/v1/cowork/sessions", expect~)
+}
+
+///|
+fn fetch_cowork_session(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+  session_key : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, CoworkSessionDetail] = @http.Expecting::Json(
+    fn(result) { dispatch(CoworkSessionLoaded(session_key, result)) },
+    parse_cowork_session_payload,
+  )
+  @http.get("\{gateway_base}/v1/cowork/sessions/\{session_key}", expect~)
+}
+
+///|
+fn create_cowork_session(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, CoworkSessionDetail] = @http.Expecting::Json(
+    fn(result) { dispatch(CoworkSessionCreated(result)) },
+    parse_cowork_session_payload,
+  )
+  @http.post(
+    "\{gateway_base}/v1/cowork/sessions",
+    @http.Body::Json({}),
+    expect~,
+  )
+}
+
+///|
+fn post_cowork_action(
+  dispatch : Dispatch[Msg],
+  url : String,
+  body? : Json = {},
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, CoworkSessionDetail] = @http.Expecting::Json(
+    fn(result) { dispatch(CoworkActionFinished(result)) },
+    parse_cowork_session_payload,
+  )
+  @http.post(url, @http.Body::Json(body), expect~)
 }
 
 ///|

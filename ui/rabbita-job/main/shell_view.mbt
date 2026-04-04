@@ -11,6 +11,7 @@ fn render_surface_tabs(model : Model) -> Html {
   div(class="surface-tabs", [
     tab("Overview", SurfaceOverview, "/"),
     tab("Jobs", SurfaceJobs, "/jobs"),
+    tab("Cowork", SurfaceCowork, "/cowork"),
     tab("ACP", SurfaceAcp, "/acp"),
   ])
 }
@@ -84,6 +85,8 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
 fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   let main_class = if route_surface(model.route) == SurfaceOverview {
     "layout overview-layout"
+  } else if route_surface(model.route) == SurfaceCowork {
+    "layout"
   } else if model.route is RunCanvas(_) {
     if model.canvas_fullscreen {
       "layout canvas-layout canvas-layout-fullscreen"
@@ -97,10 +100,10 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
     header(class="topbar", [
       div([
         p(class="eyebrow", "MoonClaw Console"),
-        h1(class="headline", "Jobs, Runs, and Remote Agents"),
+        h1(class="headline", "Jobs, Runs, Conversations, and Remote Agents"),
         p(
           class="subline",
-          "Track local runs, delegated work, and ACP-backed remote execution from one operator surface.",
+          "Switch between live AI coworking, durable job inspection, and ACP-backed remote execution from one operator surface.",
         ),
         render_surface_tabs(model),
       ]),
@@ -116,6 +119,7 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
       class=main_class,
       match route_surface(model.route) {
         SurfaceOverview => [render_overview(dispatch, model)]
+        SurfaceCowork => render_cowork_surface(dispatch, model)
         SurfaceJobs =>
           match model.route {
             RunCanvas(_) =>

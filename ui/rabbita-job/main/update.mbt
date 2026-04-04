@@ -23,6 +23,11 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         ]),
         { ..model, acp_loading: true, acp_error: None },
       )
+    LoadCoworkSessions =>
+      (
+        fetch_cowork_sessions(dispatch, model.gateway_base),
+        { ..model, cowork_sessions_loading: true, cowork_sessions_error: None },
+      )
     RunsLoaded(Ok(runs)) => {
       let next_model = { ..model, runs, runs_loading: false, runs_error: None }
       match model.route {
@@ -124,6 +129,301 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       } else {
         (@rabbita.none, model)
       }
+    CoworkSessionsLoaded(Ok(sessions)) => {
+      let next_model = {
+        ..model,
+        cowork_sessions: sessions,
+        cowork_sessions_loading: false,
+        cowork_sessions_error: None,
+      }
+      match (model.route, model.selected_cowork_session_key) {
+        (Cowork, Some(session_key)) =>
+          (
+            fetch_cowork_session(dispatch, model.gateway_base, session_key),
+            {
+              ..next_model,
+              cowork_detail_loading: true,
+              cowork_detail_error: None,
+            },
+          )
+        (Cowork, None) =>
+          match sessions {
+            [first, ..] =>
+              (
+                @nav.push_url(
+                  cowork_url(
+                    selected_session_key=Some(first.session_key),
+                    panel=model.cowork_panel,
+                  ),
+                ),
+                {
+                  ..next_model,
+                  selected_cowork_session_key: Some(first.session_key),
+                },
+              )
+            _ => (@rabbita.none, next_model)
+          }
+        _ => (@rabbita.none, next_model)
+      }
+    }
+    CoworkSessionsLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_sessions_loading: false,
+          cowork_sessions_error: Some(error),
+        },
+      )
+    CreateCoworkSession =>
+      (
+        create_cowork_session(dispatch, model.gateway_base),
+        { ..model, cowork_action_loading: true, cowork_action_error: None },
+      )
+    CoworkSessionCreated(Ok(session)) => {
+      let next_model = {
+        ..model,
+        cowork_action_loading: false,
+        cowork_action_error: None,
+        cowork_detail: Some(session),
+        selected_cowork_session_key: Some(session.session.session_key),
+        cowork_detail_loading: false,
+        cowork_detail_error: None,
+        cowork_composer: "",
+      }
+      (
+        batch([
+          fetch_cowork_sessions(dispatch, model.gateway_base),
+          match session.linked_run {
+            Some(run) =>
+              fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
+            None => @rabbita.none
+          },
+          @nav.push_url(
+            cowork_url(
+              selected_session_key=Some(session.session.session_key),
+              panel=model.cowork_panel,
+            ),
+          ),
+        ]),
+        next_model,
+      )
+    }
+    CoworkSessionCreated(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_action_loading: false,
+          cowork_action_error: Some(error),
+        },
+      )
+    SelectCoworkSession(session_key) => {
+      let next_model = {
+        ..model,
+        selected_cowork_session_key: Some(session_key),
+        cowork_detail_loading: true,
+        cowork_detail_error: None,
+        cowork_linked_snapshot: None,
+        cowork_linked_snapshot_loading: false,
+        cowork_linked_snapshot_error: None,
+      }
+      (
+        batch([
+          @nav.push_url(
+            cowork_url(
+              selected_session_key=Some(session_key),
+              panel=model.cowork_panel,
+            ),
+          ),
+          fetch_cowork_session(dispatch, model.gateway_base, session_key),
+        ]),
+        next_model,
+      )
+    }
+    LoadCoworkSession(session_key) =>
+      (
+        fetch_cowork_session(dispatch, model.gateway_base, session_key),
+        {
+          ..model,
+          selected_cowork_session_key: Some(session_key),
+          cowork_detail_loading: true,
+          cowork_detail_error: None,
+          cowork_linked_snapshot: None,
+          cowork_linked_snapshot_loading: false,
+          cowork_linked_snapshot_error: None,
+        },
+      )
+    CoworkSessionLoaded(session_key, Ok(session)) =>
+      if model.selected_cowork_session_key == Some(session_key) ||
+        model.route is Cowork {
+        (
+          match session.linked_run {
+            Some(run) =>
+              fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
+            None => @rabbita.none
+          },
+          {
+            ..model,
+            cowork_detail: Some(session),
+            cowork_detail_loading: false,
+            cowork_detail_error: None,
+            cowork_linked_snapshot_loading: session.linked_run is Some(_),
+            cowork_linked_snapshot_error: None,
+          },
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    CoworkSessionLoaded(_, Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_detail_loading: false,
+          cowork_detail_error: Some(error),
+        },
+      )
+    CoworkLinkedSnapshotLoaded(run_id, Ok(snapshot)) =>
+      match model.cowork_detail {
+        Some(detail) =>
+          match detail.linked_run {
+            Some(run) if run.id == run_id =>
+              (
+                @rabbita.none,
+                {
+                  ..model,
+                  cowork_linked_snapshot: Some(snapshot),
+                  cowork_linked_snapshot_loading: false,
+                  cowork_linked_snapshot_error: None,
+                },
+              )
+            _ => (@rabbita.none, model)
+          }
+        None => (@rabbita.none, model)
+      }
+    CoworkLinkedSnapshotLoaded(_, Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_linked_snapshot_loading: false,
+          cowork_linked_snapshot_error: Some(error),
+        },
+      )
+    SetCoworkComposer(value) =>
+      (@rabbita.none, { ..model, cowork_composer: value })
+    SendCoworkMessage =>
+      match model.selected_cowork_session_key {
+        Some(session_key) =>
+          (
+            post_cowork_action(
+              dispatch,
+              "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/messages",
+              body={ "content": model.cowork_composer },
+            ),
+            { ..model, cowork_action_loading: true, cowork_action_error: None },
+          )
+        None => (@rabbita.none, model)
+      }
+    StartCoworkPlan =>
+      match model.selected_cowork_session_key {
+        Some(session_key) =>
+          (
+            post_cowork_action(
+              dispatch,
+              "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/plan",
+              body={ "request_text": model.cowork_composer },
+            ),
+            { ..model, cowork_action_loading: true, cowork_action_error: None },
+          )
+        None => (@rabbita.none, model)
+      }
+    PreviewCoworkPlan =>
+      match model.selected_cowork_session_key {
+        Some(session_key) =>
+          (
+            post_cowork_action(
+              dispatch,
+              "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/preview",
+              body={ "guidance": model.cowork_composer },
+            ),
+            { ..model, cowork_action_loading: true, cowork_action_error: None },
+          )
+        None => (@rabbita.none, model)
+      }
+    PromoteCoworkPlan =>
+      match model.selected_cowork_session_key {
+        Some(session_key) =>
+          (
+            post_cowork_action(
+              dispatch,
+              "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/promote",
+              body={ "guidance": model.cowork_composer },
+            ),
+            { ..model, cowork_action_loading: true, cowork_action_error: None },
+          )
+        None => (@rabbita.none, model)
+      }
+    ConfirmCoworkProposal(proposal_id) =>
+      match model.selected_cowork_session_key {
+        Some(session_key) =>
+          (
+            post_cowork_action(
+              dispatch,
+              "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/proposals/\{proposal_id}/confirm",
+            ),
+            { ..model, cowork_action_loading: true, cowork_action_error: None },
+          )
+        None => (@rabbita.none, model)
+      }
+    ResumeCoworkRun(run_id) =>
+      match model.selected_cowork_session_key {
+        Some(session_key) =>
+          (
+            post_cowork_action(
+              dispatch,
+              "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/runs/\{run_id}/resume",
+              body={ "content": model.cowork_composer },
+            ),
+            { ..model, cowork_action_loading: true, cowork_action_error: None },
+          )
+        None => (@rabbita.none, model)
+      }
+    CoworkActionFinished(Ok(session)) =>
+      (
+        batch([
+          fetch_cowork_sessions(dispatch, model.gateway_base),
+          match session.linked_run {
+            Some(run) =>
+              fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
+            None => @rabbita.none
+          },
+        ]),
+        {
+          ..model,
+          cowork_action_loading: false,
+          cowork_action_error: None,
+          cowork_detail: Some(session),
+          cowork_detail_loading: false,
+          cowork_detail_error: None,
+          cowork_linked_snapshot_loading: session.linked_run is Some(_),
+          cowork_composer: "",
+        },
+      )
+    CoworkActionFinished(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_action_loading: false,
+          cowork_action_error: Some(error),
+        },
+      )
+    SelectCoworkPanel(panel) => {
+      let next_model = { ..model, cowork_panel: panel }
+      (sync_url_cmd(next_model), next_model)
+    }
     PollAcp =>
       (
         batch([
@@ -979,6 +1279,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       let right_panel = right_panel_from_query(query_value(url, "panel")).unwrap_or(
         model.right_panel,
       )
+      let cowork_panel = cowork_panel_from_query(query_value(url, "panel"))
+      let selected_cowork_session_key = query_value(url, "session")
       match route {
         Overview =>
           (
@@ -1151,6 +1453,37 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               selected_acp_node_id,
             },
           )
+        Cowork => {
+          let next_model = {
+            ..model,
+            route,
+            selected_mixed_handoff_key: None,
+            selected_cowork_session_key,
+            cowork_panel,
+          }
+          let next_cmd = batch([
+            @nav.scroll_to_top(),
+            stop_stream_cmd(),
+            stop_acp_stream_cmd(),
+            dispatch(LoadCoworkSessions),
+            match selected_cowork_session_key {
+              Some(session_key) => dispatch(LoadCoworkSession(session_key))
+              None => @rabbita.none
+            },
+          ])
+          (
+            next_cmd,
+            {
+              ..next_model,
+              cowork_detail: None,
+              cowork_detail_loading: selected_cowork_session_key is Some(_),
+              cowork_detail_error: None,
+              cowork_linked_snapshot: None,
+              cowork_linked_snapshot_loading: false,
+              cowork_linked_snapshot_error: None,
+            },
+          )
+        }
       }
     }
   }

@@ -165,6 +165,18 @@ async fn Gateway::store_channel_session(
     .get(session_key)
     .map(fn(entry) { entry.plan_mode })
     .unwrap_or(None),
+    messages: self.sessions
+    .get(session_key)
+    .map(fn(entry) { entry.messages })
+    .unwrap_or([]),
+    linked_proposal_id: self.sessions
+    .get(session_key)
+    .map(fn(entry) { entry.linked_proposal_id })
+    .unwrap_or(None),
+    linked_run_id: self.sessions
+    .get(session_key)
+    .map(fn(entry) { entry.linked_run_id })
+    .unwrap_or(None),
   })
 }
 

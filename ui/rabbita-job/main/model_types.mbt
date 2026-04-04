@@ -4,6 +4,7 @@ enum Route {
   Jobs
   Run(String)
   RunCanvas(String)
+  Cowork
   Acp
 }
 
@@ -25,7 +26,16 @@ enum RunSort {
 enum Surface {
   SurfaceOverview
   SurfaceJobs
+  SurfaceCowork
   SurfaceAcp
+} derive(Eq, Compare, Show)
+
+///|
+enum CoworkPanel {
+  CoworkPreview
+  CoworkWorkspace
+  CoworkArtifacts
+  CoworkRun
 } derive(Eq, Compare, Show)
 
 ///|
@@ -87,6 +97,71 @@ struct UiArtifact {
 struct LoadedArtifact {
   artifact : UiArtifact
   content : String?
+} derive(FromJson, Show)
+
+///|
+struct CoworkSessionSummary {
+  session_key : String
+  session_id : String
+  title : String
+  updated_at : Int
+  state : String
+  last_message_preview : String?
+  channel : String?
+  cwd : String?
+  has_plan_mode : Bool
+  linked_proposal_id : String?
+  linked_run_id : String?
+} derive(FromJson, Show)
+
+///|
+struct CoworkProposalRef {
+  id : String
+  title : String
+  summary : String
+  status : String
+  request_text : String
+  updated_at : Int
+} derive(FromJson, Show)
+
+///|
+struct CoworkRunRef {
+  id : String
+  job_id : String
+  status : String
+  summary : String?
+  error : String?
+  current_step_id : String?
+  workspace_dir : String?
+} derive(FromJson, Show)
+
+///|
+struct CoworkMessage {
+  id : String
+  role : String
+  kind : String
+  content : String
+  timestamp : Int
+  metadata : Json
+} derive(FromJson, Show)
+
+///|
+struct CoworkSessionDetail {
+  session : CoworkSessionSummary
+  messages : Array[CoworkMessage]
+  plan_preview : String?
+  linked_proposal : CoworkProposalRef?
+  linked_run : CoworkRunRef?
+} derive(FromJson, Show)
+
+///|
+struct CoworkSessionsPayload {
+  sessions : Array[CoworkSessionSummary]
+} derive(FromJson, Show)
+
+///|
+struct CoworkSessionPayload {
+  session : CoworkSessionDetail
 } derive(FromJson, Show)
 
 ///|
@@ -260,8 +335,22 @@ struct Model {
   artifact_modal : LoadedArtifact?
   artifact_editor_draft : String
   right_panel : RightPanel
+  cowork_panel : CoworkPanel
   canvas_zoom : Int
   canvas_fullscreen : Bool
+  cowork_sessions : Array[CoworkSessionSummary]
+  cowork_sessions_loading : Bool
+  cowork_sessions_error : String?
+  selected_cowork_session_key : String?
+  cowork_detail : CoworkSessionDetail?
+  cowork_detail_loading : Bool
+  cowork_detail_error : String?
+  cowork_linked_snapshot : UiSnapshot?
+  cowork_linked_snapshot_loading : Bool
+  cowork_linked_snapshot_error : String?
+  cowork_composer : String
+  cowork_action_loading : Bool
+  cowork_action_error : String?
   acp_snapshot : AcpUiSnapshot?
   acp_timeline : Array[AcpUiTimelineEntry]
   acp_loading : Bool
@@ -288,6 +377,23 @@ enum Msg {
   ArtifactLoaded(String, Result[LoadedArtifact, String])
   SetArtifactEditorDraft(String)
   CloseArtifactModal
+  LoadCoworkSessions
+  CoworkSessionsLoaded(Result[Array[CoworkSessionSummary], String])
+  CreateCoworkSession
+  CoworkSessionCreated(Result[CoworkSessionDetail, String])
+  SelectCoworkSession(String)
+  LoadCoworkSession(String)
+  CoworkSessionLoaded(String, Result[CoworkSessionDetail, String])
+  CoworkLinkedSnapshotLoaded(String, Result[UiSnapshot, String])
+  SetCoworkComposer(String)
+  SendCoworkMessage
+  StartCoworkPlan
+  PreviewCoworkPlan
+  PromoteCoworkPlan
+  ConfirmCoworkProposal(String)
+  ResumeCoworkRun(String)
+  CoworkActionFinished(Result[CoworkSessionDetail, String])
+  SelectCoworkPanel(CoworkPanel)
   StreamDrained(String, Result[(Array[UiTimelineEntry], Bool), String])
   LoadAcp
   PollAcp
@@ -386,8 +492,22 @@ fn init_model() -> Model {
     artifact_modal: None,
     artifact_editor_draft: "",
     right_panel: Artifacts,
+    cowork_panel: CoworkPreview,
     canvas_zoom: 100,
     canvas_fullscreen: false,
+    cowork_sessions: [],
+    cowork_sessions_loading: false,
+    cowork_sessions_error: None,
+    selected_cowork_session_key: None,
+    cowork_detail: None,
+    cowork_detail_loading: false,
+    cowork_detail_error: None,
+    cowork_linked_snapshot: None,
+    cowork_linked_snapshot_loading: false,
+    cowork_linked_snapshot_error: None,
+    cowork_composer: "",
+    cowork_action_loading: false,
+    cowork_action_error: None,
     acp_snapshot: None,
     acp_timeline: [],
     acp_loading: true,
