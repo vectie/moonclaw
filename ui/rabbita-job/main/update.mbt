@@ -13,6 +13,7 @@ fn sync_cowork_session_fields(
 ) -> Model {
   {
     ..model,
+    cowork_title_override: detail.session.title,
     cowork_model_override: detail.session.model_override.unwrap_or(""),
     cowork_provider_override: detail.session.provider_override.unwrap_or(""),
     cowork_cwd_override: detail.session.cwd.unwrap_or(""),
@@ -21,12 +22,28 @@ fn sync_cowork_session_fields(
 
 ///|
 fn cowork_composer_content(model : Model, content : String) -> String {
+  let chip_lines = if model.cowork_context_chips.is_empty() {
+    []
+  } else {
+    [
+      "Attached context:",
+      ..model.cowork_context_chips.map(fn(chip) {
+        "### \{chip.label}\n\{chip.content}"
+      }),
+      "",
+    ]
+  }
   match model.cowork_reply_preview {
     Some(preview) => {
       let quoted = preview.replace(old="\n", new="\n> ").to_string()
-      ["Replying to:", "> \{quoted}", "", content].join("\n")
+      [..chip_lines, "Replying to:", "> \{quoted}", "", content].join("\n")
     }
-    None => content
+    None =>
+      if chip_lines.is_empty() {
+        content
+      } else {
+        [..chip_lines, content].join("\n")
+      }
   }
 }
 
@@ -60,6 +77,9 @@ fn queued_cowork_draft_content(draft : QueuedCoworkDraft) -> String {
 
 ///|
 fn next_queued_cowork_draft(model : Model) -> QueuedCoworkDraft? {
+  if model.cowork_queue_paused {
+    return None
+  }
   match model.cowork_draft_queue {
     [first, ..] => Some(first)
     _ => None
@@ -77,6 +97,33 @@ fn queued_cowork_draft_by_id(
     }
   }
   None
+}
+
+///|
+fn move_draft_by_offset(
+  drafts : Array[QueuedCoworkDraft],
+  draft_id : String,
+  delta : Int,
+) -> Array[QueuedCoworkDraft] {
+  let copied = drafts.copy()
+  let mut found_index = -1
+  for index in 0..<copied.length() {
+    if copied[index].id == draft_id {
+      found_index = index
+      break
+    }
+  }
+  if found_index < 0 {
+    return copied
+  }
+  let target = found_index + delta
+  if target < 0 || target >= copied.length() {
+    return copied
+  }
+  let item = copied[found_index]
+  copied[found_index] = copied[target]
+  copied[target] = item
+  copied
 }
 
 ///|
@@ -273,6 +320,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       (
         batch([
           fetch_cowork_sessions(dispatch, model.gateway_base),
+          fetch_cowork_workspace(dispatch, model.gateway_base),
           match session.linked_run {
             Some(run) =>
               fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
@@ -306,6 +354,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         cowork_linked_snapshot: None,
         cowork_linked_snapshot_loading: false,
         cowork_linked_snapshot_error: None,
+        cowork_workspace_loading: true,
+        cowork_workspace_error: None,
       }
       (
         batch([
@@ -316,13 +366,17 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             ),
           ),
           fetch_cowork_session(dispatch, model.gateway_base, session_key),
+          fetch_cowork_workspace(dispatch, model.gateway_base),
         ]),
         next_model,
       )
     }
     LoadCoworkSession(session_key) =>
       (
-        fetch_cowork_session(dispatch, model.gateway_base, session_key),
+        batch([
+          fetch_cowork_session(dispatch, model.gateway_base, session_key),
+          fetch_cowork_workspace(dispatch, model.gateway_base),
+        ]),
         {
           ..model,
           selected_cowork_session_key: Some(session_key),
@@ -331,6 +385,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_linked_snapshot: None,
           cowork_linked_snapshot_loading: false,
           cowork_linked_snapshot_error: None,
+          cowork_workspace_loading: true,
+          cowork_workspace_error: None,
         },
       )
     CoworkSessionLoaded(session_key, Ok(session)) =>
@@ -393,17 +449,66 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_linked_snapshot_error: Some(error),
         },
       )
+    CoworkWorkspaceLoaded(Ok(workspace)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_workspace_snapshot: Some(workspace),
+          cowork_workspace_loading: false,
+          cowork_workspace_error: None,
+        },
+      )
+    CoworkWorkspaceLoaded(Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_workspace_loading: false,
+          cowork_workspace_error: Some(error),
+        },
+      )
     SetCoworkComposer(value) =>
       (
         @rabbita.none,
         { ..model, cowork_composer: value, cowork_input_history_index: None },
       )
+    SetCoworkTitleOverride(value) =>
+      (@rabbita.none, { ..model, cowork_title_override: value })
     SetCoworkModelOverride(value) =>
       (@rabbita.none, { ..model, cowork_model_override: value })
     SetCoworkProviderOverride(value) =>
       (@rabbita.none, { ..model, cowork_provider_override: value })
     SetCoworkCwdOverride(value) =>
       (@rabbita.none, { ..model, cowork_cwd_override: value })
+    SetCoworkSessionQuery(value) =>
+      (@rabbita.none, { ..model, cowork_session_query: value })
+    TogglePinnedCoworkSession(session_key) =>
+      if contains_id(model.cowork_pinned_session_keys, session_key) {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_pinned_session_keys: model.cowork_pinned_session_keys.filter(fn(
+                key,
+              ) {
+                key != session_key
+              },
+            ),
+          },
+        )
+      } else {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_pinned_session_keys: [
+              session_key,
+              ..model.cowork_pinned_session_keys,
+            ],
+          },
+        )
+      }
     SaveCoworkConfig =>
       match model.selected_cowork_session_key {
         Some(session_key) =>
@@ -412,9 +517,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/config",
               body={
-                "title": model.cowork_detail
-                .map(fn(detail) { detail.session.title })
-                .unwrap_or(""),
+                "title": model.cowork_title_override,
                 "cwd": model.cowork_cwd_override,
                 "model": model.cowork_model_override,
                 "provider": model.cowork_provider_override,
@@ -655,6 +758,43 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           }),
         },
       )
+    MoveQueuedCoworkDraftUp(draft_id) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_draft_queue: move_draft_by_offset(
+            model.cowork_draft_queue,
+            draft_id,
+            -1,
+          ),
+        },
+      )
+    MoveQueuedCoworkDraftDown(draft_id) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_draft_queue: move_draft_by_offset(
+            model.cowork_draft_queue,
+            draft_id,
+            1,
+          ),
+        },
+      )
+    ToggleCoworkQueuePaused =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_queue_paused: !model.cowork_queue_paused,
+          cowork_notice: if model.cowork_queue_paused {
+            Some("Draft queue resumed.")
+          } else {
+            Some("Draft queue paused.")
+          },
+        },
+      )
     QuoteCoworkMessage(message_id, preview) =>
       (
         @rabbita.none,
@@ -692,6 +832,32 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           ..model,
           cowork_reply_to_message_id: None,
           cowork_reply_preview: None,
+        },
+      )
+    AttachCoworkContext(id, label, content) =>
+      if contains_id(model.cowork_context_chips.map(fn(chip) { chip.id }), id) {
+        (@rabbita.none, model)
+      } else {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_context_chips: [
+              ..model.cowork_context_chips,
+              CoworkContextChip::{ id, label, content },
+            ],
+            cowork_notice: Some("Attached \{label} to composer context."),
+          },
+        )
+      }
+    RemoveCoworkContext(id) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_context_chips: model.cowork_context_chips.filter(fn(chip) {
+            chip.id != id
+          }),
         },
       )
     RecallPreviousCoworkInput =>
@@ -750,6 +916,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_composer: "",
           cowork_reply_to_message_id: None,
           cowork_reply_preview: None,
+          cowork_context_chips: [],
           cowork_notice: Some("Conversation updated."),
         },
         session,
@@ -757,6 +924,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       (
         batch([
           fetch_cowork_sessions(dispatch, model.gateway_base),
+          fetch_cowork_workspace(dispatch, model.gateway_base),
           match session.linked_run {
             Some(run) =>
               fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
@@ -1827,6 +1995,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             stop_stream_cmd(),
             stop_acp_stream_cmd(),
             dispatch(LoadCoworkSessions),
+            fetch_cowork_workspace(dispatch, model.gateway_base),
             match selected_cowork_session_key {
               Some(session_key) => dispatch(LoadCoworkSession(session_key))
               None => @rabbita.none
@@ -1842,6 +2011,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               cowork_linked_snapshot: None,
               cowork_linked_snapshot_loading: false,
               cowork_linked_snapshot_error: None,
+              cowork_workspace_snapshot: None,
+              cowork_workspace_loading: true,
+              cowork_workspace_error: None,
             },
           )
         }

@@ -117,6 +117,26 @@ struct CoworkSessionSummary {
 } derive(FromJson, Show)
 
 ///|
+struct UiWorkspaceFile {
+  name : String
+  path : String
+  content : String
+} derive(FromJson, Show)
+
+///|
+struct UiWorkspaceSnapshot {
+  root : String
+  configured_from : String
+  files : Array[UiWorkspaceFile]
+  prompt_context : String
+} derive(FromJson, Show)
+
+///|
+struct UiWorkspaceSnapshotPayload {
+  workspace : UiWorkspaceSnapshot
+} derive(FromJson, Show)
+
+///|
 struct CoworkProposalRef {
   id : String
   title : String
@@ -163,6 +183,13 @@ struct QueuedCoworkDraft {
   content : String
   quoted_message_id : String?
   quoted_preview : String?
+} derive(Show)
+
+///|
+struct CoworkContextChip {
+  id : String
+  label : String
+  content : String
 } derive(Show)
 
 ///|
@@ -359,13 +386,21 @@ struct Model {
   cowork_linked_snapshot : UiSnapshot?
   cowork_linked_snapshot_loading : Bool
   cowork_linked_snapshot_error : String?
+  cowork_workspace_snapshot : UiWorkspaceSnapshot?
+  cowork_workspace_loading : Bool
+  cowork_workspace_error : String?
   cowork_composer : String
+  cowork_title_override : String
   cowork_model_override : String
   cowork_provider_override : String
   cowork_cwd_override : String
+  cowork_session_query : String
+  cowork_pinned_session_keys : Array[String]
   cowork_reply_to_message_id : String?
   cowork_reply_preview : String?
+  cowork_context_chips : Array[CoworkContextChip]
   cowork_draft_queue : Array[QueuedCoworkDraft]
+  cowork_queue_paused : Bool
   cowork_input_history : Array[String]
   cowork_input_history_index : Int?
   cowork_notice : String?
@@ -405,10 +440,14 @@ enum Msg {
   LoadCoworkSession(String)
   CoworkSessionLoaded(String, Result[CoworkSessionDetail, String])
   CoworkLinkedSnapshotLoaded(String, Result[UiSnapshot, String])
+  CoworkWorkspaceLoaded(Result[UiWorkspaceSnapshot, String])
   SetCoworkComposer(String)
+  SetCoworkTitleOverride(String)
   SetCoworkModelOverride(String)
   SetCoworkProviderOverride(String)
   SetCoworkCwdOverride(String)
+  SetCoworkSessionQuery(String)
+  TogglePinnedCoworkSession(String)
   SaveCoworkConfig
   SendCoworkMessage
   StartCoworkPlan
@@ -420,11 +459,16 @@ enum Msg {
   RunQueuedCoworkDraft(String)
   RunAllQueuedCoworkDrafts
   RemoveQueuedCoworkDraft(String)
+  MoveQueuedCoworkDraftUp(String)
+  MoveQueuedCoworkDraftDown(String)
+  ToggleCoworkQueuePaused
   QuoteCoworkMessage(String, String)
   ReuseCoworkMessage(String)
   CopyCoworkMessage(String)
   CoworkCopyFinished(Result[String, String])
   ClearCoworkReply
+  AttachCoworkContext(String, String, String)
+  RemoveCoworkContext(String)
   RecallPreviousCoworkInput
   RecallNextCoworkInput
   CoworkActionFinished(Result[CoworkSessionDetail, String])
@@ -540,13 +584,21 @@ fn init_model() -> Model {
     cowork_linked_snapshot: None,
     cowork_linked_snapshot_loading: false,
     cowork_linked_snapshot_error: None,
+    cowork_workspace_snapshot: None,
+    cowork_workspace_loading: false,
+    cowork_workspace_error: None,
     cowork_composer: "",
+    cowork_title_override: "",
     cowork_model_override: "",
     cowork_provider_override: "",
     cowork_cwd_override: "",
+    cowork_session_query: "",
+    cowork_pinned_session_keys: [],
     cowork_reply_to_message_id: None,
     cowork_reply_preview: None,
+    cowork_context_chips: [],
     cowork_draft_queue: [],
+    cowork_queue_paused: false,
     cowork_input_history: [],
     cowork_input_history_index: None,
     cowork_notice: None,

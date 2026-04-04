@@ -54,6 +54,9 @@ type CompanyLaneEntry
 
 type CompanyLaneStats
 
+type CoworkContextChip
+pub impl Show for CoworkContextChip
+
 type CoworkMessage
 pub impl Show for CoworkMessage
 pub impl @json.FromJson for CoworkMessage
@@ -172,6 +175,18 @@ pub impl @json.FromJson for UiSnapshotPayload
 type UiTimelineEntry
 pub impl Show for UiTimelineEntry
 pub impl @json.FromJson for UiTimelineEntry
+
+type UiWorkspaceFile
+pub impl Show for UiWorkspaceFile
+pub impl @json.FromJson for UiWorkspaceFile
+
+type UiWorkspaceSnapshot
+pub impl Show for UiWorkspaceSnapshot
+pub impl @json.FromJson for UiWorkspaceSnapshot
+
+type UiWorkspaceSnapshotPayload
+pub impl Show for UiWorkspaceSnapshotPayload
+pub impl @json.FromJson for UiWorkspaceSnapshotPayload
 
 // Type aliases
 

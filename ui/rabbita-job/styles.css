@@ -425,7 +425,7 @@ input {
 
 .cowork-config-bar {
   display: grid;
-  grid-template-columns: 180px 180px minmax(0, 1fr);
+  grid-template-columns: 180px 160px 160px minmax(0, 1fr);
   gap: 0.65rem;
   margin-bottom: 0.85rem;
 }
@@ -444,6 +444,11 @@ input {
   flex-wrap: wrap;
 }
 
+.cowork-banner.waiting {
+  border-color: rgba(154, 103, 0, 0.25);
+  background: #fff8c5;
+}
+
 .cowork-queue-panel {
   margin: 0.85rem 0;
 }
@@ -457,6 +462,10 @@ input {
 .cowork-memory-list {
   display: grid;
   gap: 0.65rem;
+}
+
+.cowork-sidebar .runs-search-input {
+  margin-bottom: 0.75rem;
 }
 
 .run-card {

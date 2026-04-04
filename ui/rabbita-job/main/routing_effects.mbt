@@ -444,6 +444,19 @@ fn parse_cowork_session_payload(
 }
 
 ///|
+fn parse_workspace_snapshot_payload(
+  json : Json,
+) -> Result[UiWorkspaceSnapshot, String] {
+  let payload : Result[UiWorkspaceSnapshotPayload, Error] = try? @json.from_json(
+    json,
+  )
+  match payload {
+    Ok(payload) => Ok(payload.workspace)
+    Err(error) => Err("Failed to parse workspace snapshot: \{error}")
+  }
+}
+
+///|
 fn parse_acp_snapshot_payload(json : Json) -> Result[AcpUiSnapshot, String] {
   let payload : Result[AcpUiSnapshotPayload, Error] = try? @json.from_json(json)
   match payload {
@@ -815,6 +828,18 @@ fn fetch_cowork_session(
     parse_cowork_session_payload,
   )
   @http.get("\{gateway_base}/v1/cowork/sessions/\{session_key}", expect~)
+}
+
+///|
+fn fetch_cowork_workspace(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, UiWorkspaceSnapshot] = @http.Expecting::Json(
+    fn(result) { dispatch(CoworkWorkspaceLoaded(result)) },
+    parse_workspace_snapshot_payload,
+  )
+  @http.get("\{gateway_base}/v1/workspace", expect~)
 }
 
 ///|
