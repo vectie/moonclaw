@@ -431,6 +431,11 @@ fn artifact_metadata_string(metadata : Json, key : String) -> String? {
 }
 
 ///|
+fn artifact_step_id(artifact : ArtifactRecord) -> String? {
+  artifact_metadata_string(artifact.metadata, "step_id")
+}
+
+///|
 fn artifact_execution_isolation_label(metadata : Json) -> String? {
   match metadata {
     {
@@ -536,7 +541,7 @@ fn artifact_node(run : JobRun, artifact : ArtifactRecord) -> JobUiNode {
     summary: artifact_node_summary(artifact),
     detail: artifact_node_detail(artifact),
     run_id: Some(run.id),
-    step_id: None,
+    step_id: artifact_step_id(artifact),
     artifact_id: Some(artifact.id),
     memory_id: None,
     created_at: Some(artifact.created_at),
@@ -553,6 +558,22 @@ fn artifact_node_with_parent(
   parent_id : String?,
 ) -> JobUiNode {
   { ..artifact_node(run, artifact), parent_id, }
+}
+
+///|
+fn artifact_parent_id(
+  run : JobRun,
+  artifact : ArtifactRecord,
+  controller_state : JobControllerState?,
+) -> String? {
+  match artifact_step_id(artifact) {
+    Some(step_id) => Some("step:\{run.id}:\{step_id}")
+    None =>
+      match controller_state {
+        Some(_) => Some(merge_node_id(run.id))
+        None => Some(workflow_node_id(run.id))
+      }
+  }
 }
 
 ///|
@@ -752,10 +773,7 @@ pub async fn build_job_ui_snapshot(
       artifact_node_with_parent(
         run,
         artifact,
-        match controller_state {
-          Some(_) => Some(merge_node_id(run.id))
-          None => Some(workflow_node_id(run.id))
-        },
+        artifact_parent_id(run, artifact, controller_state),
       ),
     )
   }

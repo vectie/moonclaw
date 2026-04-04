@@ -89,7 +89,7 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
       status: Active,
       path: "/tmp/ws-1/report.md",
       content_type: "text/markdown",
-      metadata: {},
+      metadata: { "step_id": "step-a" },
       created_at: 140,
       archived_at: None,
       scope: [],
@@ -172,6 +172,14 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
         "\"Memory\"",
       ],
     )
+    let artifact_node = snapshot.nodes.filter(fn(node) {
+        node.artifact_id == Some("artifact-1")
+      })[0]
+    json_inspect(
+      artifact_node.parent_id.unwrap_or(""),
+      content="step:run-1:step-a",
+    )
+    json_inspect(artifact_node.step_id.unwrap_or(""), content="step-a")
   })
 }
 

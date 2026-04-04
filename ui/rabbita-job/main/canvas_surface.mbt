@@ -72,58 +72,147 @@ fn canvas_origin_y() -> Int {
 }
 
 ///|
-fn canvas_node_depth(snapshot : UiSnapshot, node : UiNode) -> Int {
-  let mut depth = 0
-  let mut current = node
-  while current.parent_id is Some(_) {
-    match parent_node(snapshot, current) {
-      Some(parent) => {
-        depth = depth + 1
-        current = parent
-      }
-      None => break
-    }
-  }
-  depth
+fn canvas_inline_child_gap() -> Int {
+  20
 }
 
 ///|
-fn canvas_tree_order(snapshot : UiSnapshot) -> Array[UiNode] {
-  let ordered : Array[UiNode] = []
-  let frontier = snapshot.nodes.filter(fn(node) { node_is_root(snapshot, node) })
-  let mut next_index = 0
-  while next_index < frontier.length() {
-    let node = frontier[next_index]
-    ordered.push(node)
-    let children = child_nodes(snapshot, node.id)
-    for child in children {
-      frontier.push(child)
-    }
-    next_index = next_index + 1
+fn canvas_step_output_node(parent : UiNode, child : UiNode) -> Bool {
+  if parent.kind != "Step" || child.kind != "Artifact" {
+    return false
   }
-  ordered
+  if child.step_id != parent.step_id {
+    return false
+  }
+  let detail = child.detail.unwrap_or("").to_lower()
+  detail.contains(".report") ||
+  detail.contains(".result") ||
+  detail == "report" ||
+  detail == "result"
+}
+
+///|
+fn canvas_child_sort_key(node : UiNode) -> (Int, String, String) {
+  let detail = node.detail.unwrap_or("").to_lower()
+  let priority = if detail.contains(".report") || detail == "report" {
+    0
+  } else if detail.contains(".result") || detail == "result" {
+    1
+  } else if node.kind == "Artifact" {
+    2
+  } else if node.kind == "Memory" {
+    3
+  } else if node.kind == "ChildRun" {
+    4
+  } else {
+    5
+  }
+  (priority, node.kind, node.title)
+}
+
+///|
+fn canvas_sorted_children(
+  snapshot : UiSnapshot,
+  parent_id : String,
+) -> Array[UiNode] {
+  let children = child_nodes(snapshot, parent_id)
+  children.sort_by(fn(left, right) {
+    canvas_child_sort_key(left).compare(canvas_child_sort_key(right))
+  })
+  children
+}
+
+///|
+fn canvas_inline_children(
+  snapshot : UiSnapshot,
+  node : UiNode,
+) -> Array[UiNode] {
+  canvas_sorted_children(snapshot, node.id).filter(fn(child) {
+    canvas_step_output_node(node, child)
+  })
+}
+
+///|
+fn canvas_stacked_children(
+  snapshot : UiSnapshot,
+  node : UiNode,
+) -> Array[UiNode] {
+  canvas_sorted_children(snapshot, node.id).filter(fn(child) {
+    !canvas_step_output_node(node, child)
+  })
+}
+
+///|
+fn project_canvas_subtree(
+  snapshot : UiSnapshot,
+  node : UiNode,
+  depth : Int,
+  y : Int,
+  layouts : Array[CanvasNodeLayout],
+) -> Int {
+  let height = canvas_node_height_for(node)
+  let x = canvas_origin_x() +
+    depth * (canvas_node_width() + canvas_column_gap())
+  layouts.push(CanvasNodeLayout::{
+    node,
+    x,
+    y,
+    width: canvas_node_width(),
+    height,
+  })
+
+  let inline_children = canvas_inline_children(snapshot, node)
+  let mut inline_extent = height
+  if !inline_children.is_empty() {
+    let mut child_y = y
+    for child in inline_children {
+      let child_height = canvas_node_height_for(child)
+      let child_x = canvas_origin_x() +
+        (depth + 1) * (canvas_node_width() + canvas_column_gap())
+      layouts.push(CanvasNodeLayout::{
+        node: child,
+        x: child_x,
+        y: child_y,
+        width: canvas_node_width(),
+        height: child_height,
+      })
+      let child_bottom = child_y + child_height - y
+      if child_bottom > inline_extent {
+        inline_extent = child_bottom
+      }
+      child_y = child_y + child_height + canvas_inline_child_gap()
+    }
+  }
+
+  let stacked_children = canvas_stacked_children(snapshot, node)
+  if stacked_children.is_empty() {
+    return inline_extent
+  }
+
+  let mut child_y = y + inline_extent + canvas_row_gap()
+  for child in stacked_children {
+    let subtree_height = project_canvas_subtree(
+      snapshot,
+      child,
+      depth + 1,
+      child_y,
+      layouts,
+    )
+    child_y = child_y + subtree_height + canvas_row_gap()
+  }
+  child_y - y - canvas_row_gap()
 }
 
 ///|
 fn project_canvas_nodes(snapshot : UiSnapshot) -> Array[CanvasNodeLayout] {
   let layouts : Array[CanvasNodeLayout] = []
-  let ordered = canvas_tree_order(snapshot)
   let mut current_y = canvas_origin_y()
-  for index = 0; index < ordered.length(); index = index + 1 {
-    let node = ordered[index]
-    let depth = canvas_node_depth(snapshot, node)
-    let height = canvas_node_height_for(node)
-    let x = canvas_origin_x() +
-      depth * (canvas_node_width() + canvas_column_gap())
-    let y = current_y
-    layouts.push(CanvasNodeLayout::{
-      node,
-      x,
-      y,
-      width: canvas_node_width(),
-      height,
-    })
-    current_y = current_y + height + canvas_row_gap()
+  let roots = snapshot.nodes.filter(fn(node) { node_is_root(snapshot, node) })
+  for root in roots {
+    let subtree_height = project_canvas_subtree(
+      snapshot, root, 0, current_y, layouts,
+    )
+    current_y = current_y + subtree_height + canvas_row_gap()
   }
   layouts
 }
