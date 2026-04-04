@@ -232,6 +232,80 @@ async test "render_job_status_command_reply splits multiple missing inputs into 
 }
 
 ///|
+async test "render_job_status_command_reply avoids generic missing-input placeholder" {
+  let store = SystemStore::new(root="unused")
+  let definition = JobDefinition::{
+    id: "job-3",
+    kind: "job.proposal",
+    enabled: true,
+    config: { "family": "generic" },
+    schedule: None,
+    retry_policy: None,
+    workflow_id: Some("workflow-3"),
+    created_at: 1,
+    updated_at: 1,
+    tags: [],
+  }
+  let workflow = WorkflowDefinition::{
+    id: "workflow-3",
+    kind: "job.proposal",
+    steps: [
+      WorkflowStepDefinition::{
+        id: "step-1",
+        kind: "job.analysis",
+        config: {},
+        retry_policy: None,
+      },
+    ],
+    output_bindings: [],
+  }
+  let run = JobRun::{
+    id: "run-3",
+    job_id: "job-3",
+    trigger: TriggerSource::Manual,
+    parent_run_id: None,
+    parent_step_id: None,
+    depth: 0,
+    workspace_dir: None,
+    status: RunStatus::WaitingForInput,
+    attempt: 1,
+    retry_of: None,
+    started_at: Some(10),
+    completed_at: Some(20),
+    summary: Some("Waiting for input on step step-1"),
+    error: None,
+  }
+  store.save_definition(definition)
+  store.save_workflow(workflow)
+  store.save_run(run)
+  store.save_step_run(JobStepRun::{
+    id: "run-3:step-1",
+    run_id: "run-3",
+    step_id: "step-1",
+    status: RunStatus::WaitingForInput,
+    started_at: Some(10),
+    completed_at: Some(20),
+    metrics: {},
+    logs: [],
+    retry_count: 0,
+    summary: Some("Analysis requires additional inputs."),
+    output: Some({ "missing_inputs": ["Analysis requires additional inputs."] }),
+    error: Some("Analysis requires input: Analysis requires additional inputs."),
+  })
+  let reply = render_job_status_command_reply(
+    store, "job-3", 100, "Current job status",
+  ).unwrap_or("")
+  inspect(
+    reply.contains("- Specific missing inputs were not extracted."),
+    content="true",
+  )
+  inspect(
+    !reply.contains("- Analysis requires additional inputs."),
+    content="true",
+  )
+}
+
+///|
 async test "render_job_status_command_reply includes workspace output links for succeeded run" {
   @fsx.with_temporary_directory("job-status-output-links-XXXXXX", async fn(
     dir,

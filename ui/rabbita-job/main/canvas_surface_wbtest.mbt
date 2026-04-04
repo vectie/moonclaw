@@ -89,6 +89,21 @@ test "project_canvas_nodes places step outputs inline to the right of the step" 
       provisional: false,
     },
     UiNode::{
+      id: "memory:report",
+      parent_id: Some("step:run-1:step-a"),
+      kind: "Memory",
+      title: "Job report: run-1:step-a",
+      status: "\"Active\"",
+      summary: Some("memory copy"),
+      detail: Some("job.report"),
+      run_id: Some("run-1"),
+      step_id: Some("step-a"),
+      artifact_id: Some("artifact:report"),
+      memory_id: Some("memory:report"),
+      metadata: {},
+      provisional: false,
+    },
+    UiNode::{
       id: "step:run-1:step-b",
       parent_id: Some("workflow:run-1"),
       kind: "Step",
@@ -110,12 +125,17 @@ test "project_canvas_nodes places step outputs inline to the right of the step" 
   let step_a = canvas_layout_for_id(layouts, "step:run-1:step-a").unwrap()
   let report = canvas_layout_for_id(layouts, "artifact:report").unwrap()
   let result = canvas_layout_for_id(layouts, "artifact:result").unwrap()
+  let report_memory = canvas_layout_for_id(layouts, "memory:report").unwrap()
   let step_b = canvas_layout_for_id(layouts, "step:run-1:step-b").unwrap()
 
   inspect(step_a.x > workflow.x, content="true")
   inspect(report.x > step_a.x, content="true")
   inspect(result.x == report.x, content="true")
-  inspect(report.y == step_a.y, content="true")
+  inspect(report_memory.x == report.x, content="true")
+  inspect(report.y >= step_a.y, content="true")
+  inspect(report.y < step_b.y, content="true")
   inspect(result.y > report.y, content="true")
-  inspect(step_b.y > result.y, content="true")
+  inspect(report_memory.y >= step_a.y, content="true")
+  inspect(report_memory.y < step_b.y, content="true")
+  inspect(step_b.y > report_memory.y, content="true")
 }

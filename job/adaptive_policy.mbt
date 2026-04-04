@@ -1,4 +1,77 @@
 ///|
+fn generic_missing_input_text(text : String) -> Bool {
+  let normalized = text.trim().to_lower()
+  normalized.is_blank() ||
+  normalized == "analysis requires additional inputs." ||
+  normalized == "analysis requires additional inputs" ||
+  normalized == "additional inputs required" ||
+  normalized == "missing inputs" ||
+  normalized == "more information is required"
+}
+
+///|
+fn normalize_missing_inputs_list(inputs : Array[String]?) -> Array[String] {
+  match inputs {
+    Some(items) => items.filter(fn(item) { !generic_missing_input_text(item) })
+    None => []
+  }
+}
+
+///|
+fn heuristic_missing_inputs_from_text(text : String) -> Array[String] {
+  let lines = text.split("\n")
+  let items : Array[String] = []
+  for raw_line in lines {
+    let line = raw_line.trim().to_string()
+    guard !line.is_blank() else { continue }
+    let mut candidate = ""
+    let is_bullet = line.has_prefix("- ") ||
+      line.has_prefix("* ") ||
+      line.has_prefix("• ")
+    let is_numbered = line.length() > 3 &&
+      line[0] >= '1' &&
+      line[0] <= '9' &&
+      line[1] == '.' &&
+      line[2] == ' '
+    if is_bullet {
+      candidate = line[2:].trim().to_string()
+    } else if is_numbered {
+      candidate = line[3:].trim().to_string()
+    }
+    guard !candidate.is_blank() else { continue }
+    guard !generic_missing_input_text(candidate) else { continue }
+    if !items.contains(candidate) {
+      items.push(candidate)
+    }
+  }
+  items
+}
+
+///|
+fn enriched_missing_inputs_envelope(
+  execution : AnalysisExecution,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> AdaptiveAnalysisEnvelope {
+  let explicit = normalize_missing_inputs_list(envelope.missing_inputs)
+  if !explicit.is_empty() {
+    return { ..envelope, missing_inputs: Some(explicit) }
+  }
+  let heuristic = heuristic_missing_inputs_from_text(execution.content)
+  if !heuristic.is_empty() {
+    return {
+      ..envelope,
+      missing_inputs: Some(heuristic),
+      summary: if generic_missing_input_text(envelope.summary.unwrap_or("")) {
+        Some("Additional inputs are required to continue.")
+      } else {
+        envelope.summary
+      },
+    }
+  }
+  envelope
+}
+
+///|
 async fn adaptive_followup_envelope(
   executor : AnalysisExecutor,
   request : AnalysisRequest,
@@ -219,6 +292,7 @@ async fn resolve_adaptive_analysis_result(
   ).unwrap_or(5)
   match adaptive_envelope {
     Some(envelope) => {
+      let envelope = enriched_missing_inputs_envelope(execution, envelope)
       let verdict = envelope.verdict.trim().to_string().to_lower()
       match verdict {
         "completed" => None
@@ -228,7 +302,11 @@ async fn resolve_adaptive_analysis_result(
             _ =>
               adaptive_missing_inputs_fill_envelope(
                 executor, request, context, config, execution, envelope,
-              ).unwrap_or(envelope)
+              )
+              .map(fn(expanded) {
+                enriched_missing_inputs_envelope(execution, expanded)
+              })
+              .unwrap_or(envelope)
           }
           Some(
             Err(

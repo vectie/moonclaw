@@ -268,6 +268,176 @@ async test "artifact nodes surface execution isolation cleanup policy" {
 }
 
 ///|
+async test "proposal step report artifacts attach under the matching step" {
+  @fsx.with_temporary_directory("job-ui-proposal-step-report-XXXXXX", dir => {
+    let store = SystemStore::new(root=dir)
+    store.save_definition(JobDefinition::{
+      id: "job-1",
+      kind: "job.proposal",
+      enabled: true,
+      config: { "family": "generic" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-1"),
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    })
+    store.save_workflow(WorkflowDefinition::{
+      id: "wf-1",
+      kind: "job.proposal",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "estimate",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    })
+    store.save_run(JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: Succeeded,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(10),
+      completed_at: Some(20),
+      summary: Some("done"),
+      error: None,
+    })
+    store.save_artifact(ArtifactRecord::{
+      id: "artifact-step-report",
+      run_id: "run-1",
+      job_id: "job-1",
+      artifact_type: "job.proposal.step.report",
+      logical_key: Some("proposal-1:estimate"),
+      version: 1,
+      status: Active,
+      path: "/tmp/estimate-report.md",
+      content_type: "text/markdown",
+      metadata: { "proposal_step_id": "estimate" },
+      created_at: 30,
+      archived_at: None,
+      scope: [],
+    })
+
+    let snapshot = build_job_ui_snapshot(store, "run-1").unwrap()
+    let artifact_node = snapshot.nodes.filter(fn(node) {
+        node.artifact_id == Some("artifact-step-report")
+      })[0]
+    json_inspect(
+      artifact_node.parent_id.unwrap_or(""),
+      content="step:run-1:estimate",
+    )
+    json_inspect(artifact_node.step_id.unwrap_or(""), content="estimate")
+  })
+}
+
+///|
+async test "job report memories attach under the matching step via source artifact" {
+  @fsx.with_temporary_directory("job-ui-step-report-memory-XXXXXX", dir => {
+    let store = SystemStore::new(root=dir)
+    store.save_definition(JobDefinition::{
+      id: "job-1",
+      kind: "job.proposal",
+      enabled: true,
+      config: { "family": "generic" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-1"),
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    })
+    store.save_workflow(WorkflowDefinition::{
+      id: "wf-1",
+      kind: "job.proposal",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "step_1",
+          kind: "job.analysis",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    })
+    store.save_run(JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: Some(dir),
+      status: Succeeded,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(10),
+      completed_at: Some(20),
+      summary: Some("done"),
+      error: None,
+    })
+    store.save_artifact(ArtifactRecord::{
+      id: "artifact-step-report",
+      run_id: "run-1",
+      job_id: "job-1",
+      artifact_type: "job.proposal.step.report",
+      logical_key: Some(
+        "20260326-210637-land-acquisition-estimation-6bea3c:step_1",
+      ),
+      version: 1,
+      status: Active,
+      path: "/tmp/step-1-report.md",
+      content_type: "text/markdown",
+      metadata: { "proposal_step_id": "step_1" },
+      created_at: 30,
+      archived_at: None,
+      scope: [],
+    })
+    store.save_memory(MemoryRecord::{
+      id: "memory-job-report",
+      kind: "job.report",
+      title: Some(
+        "Job report: 20260326-210637-land-acquisition-estimation-6bea3c:step_1",
+      ),
+      content: "report body",
+      metadata: {},
+      tags: [],
+      scope: [],
+      workspace: Some(dir),
+      agent_id: None,
+      channel_id: None,
+      account_id: None,
+      recipient: None,
+      thread_id: None,
+      source_artifact_id: Some("artifact-step-report"),
+      status: Active,
+      created_at: 40,
+      updated_at: 40,
+      archived_at: None,
+    })
+
+    let snapshot = build_job_ui_snapshot(store, "run-1").unwrap()
+    let memory_node = snapshot.nodes.filter(fn(node) {
+        node.memory_id == Some("memory-job-report")
+      })[0]
+    json_inspect(
+      memory_node.parent_id.unwrap_or(""),
+      content="step:run-1:step_1",
+    )
+    json_inspect(memory_node.step_id.unwrap_or(""), content="step_1")
+  })
+}
+
+///|
 async test "build_job_ui_snapshot includes explicit handoffs when provided" {
   @fsx.with_temporary_directory("job-ui-handoffs-XXXXXX", dir => {
     let store = SystemStore::new(root=dir)

@@ -270,6 +270,15 @@ test "thread_attachment_key falls back to chat scope when thread id is missing" 
 }
 
 ///|
+test "seed_resume_notification_cursor skips historical events on resume" {
+  let state = @job.GatewayJobState::new(root="unused")
+  seed_resume_notification_cursor(state, "run-1", 5, 123)
+  let runtime_state = state.notification_runtime_state("run-1")
+  inspect(runtime_state.last_notified_event_count.to_string(), content="5")
+  inspect(runtime_state.last_sent_at.to_string(), content="123")
+}
+
+///|
 test "plan_job_input can use starter files gathered earlier in the thread" {
   let payload = plan_job_input(
     "feishu",

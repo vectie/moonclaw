@@ -327,6 +327,22 @@ fn is_slash_resume_reply(message : @channel.Message) -> Bool {
 }
 
 ///|
+fn seed_resume_notification_cursor(
+  state : @job.GatewayJobState,
+  run_id : String,
+  existing_event_count : Int,
+  now_ms : Int,
+) -> Unit {
+  state.set_notification_runtime_state(
+    run_id,
+    @job.initial_notification_runtime_state(
+      now_ms,
+      last_notified_event_count=existing_event_count,
+    ),
+  )
+}
+
+///|
 async fn Gateway::handle_waiting_job_reply(
   self : Gateway,
   channel_id : String,
@@ -348,6 +364,12 @@ async fn Gateway::handle_waiting_job_reply(
   let merged_input = @job.merge_initial_input_for_resume(
     self.definition_initial_input(definition.id),
     resume_input,
+  )
+  seed_resume_notification_cursor(
+    self.job_app.state(),
+    waiting_run.id,
+    self.job_runtime().store().list_run_events(waiting_run.id).length(),
+    current_time_ms(),
   )
   self.launch_job_run(waiting_run.id, initial_input=Some(merged_input))
   let resumed = waiting_run

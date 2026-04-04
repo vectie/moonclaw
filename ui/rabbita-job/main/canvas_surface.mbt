@@ -78,17 +78,26 @@ fn canvas_inline_child_gap() -> Int {
 
 ///|
 fn canvas_step_output_node(parent : UiNode, child : UiNode) -> Bool {
-  if parent.kind != "Step" || child.kind != "Artifact" {
+  if parent.kind != "Step" {
     return false
   }
   if child.step_id != parent.step_id {
     return false
   }
-  let detail = child.detail.unwrap_or("").to_lower()
-  detail.contains(".report") ||
-  detail.contains(".result") ||
-  detail == "report" ||
-  detail == "result"
+  match child.kind {
+    "Artifact" => {
+      let detail = child.detail.unwrap_or("").to_lower()
+      detail.contains(".report") ||
+      detail.contains(".result") ||
+      detail == "report" ||
+      detail == "result"
+    }
+    "Memory" => {
+      let detail = child.detail.unwrap_or("").to_lower()
+      detail == "job.report"
+    }
+    _ => false
+  }
 }
 
 ///|

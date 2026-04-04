@@ -79,19 +79,54 @@ fn run_output_lines(run : JobRun) -> Array[String] {
 }
 
 ///|
+fn generic_missing_input_detail(text : String) -> Bool {
+  let normalized = text.trim().to_lower()
+  normalized.is_blank() ||
+  normalized == "analysis requires additional inputs." ||
+  normalized == "analysis requires additional inputs" ||
+  normalized == "additional inputs required"
+}
+
+///|
+fn output_missing_input_detail(output : Json?) -> String? {
+  match output {
+    Some({ "missing_inputs": Array(values), .. }) => {
+      let items : Array[String] = []
+      for value in values {
+        guard value is String(text) else { continue }
+        let item = text.trim().to_string()
+        if !item.is_blank() && !generic_missing_input_detail(item) {
+          items.push(item)
+        }
+      }
+      if items.is_empty() {
+        None
+      } else {
+        Some(items.join("; "))
+      }
+    }
+    _ => None
+  }
+}
+
+///|
 fn waiting_input_line(steps : Array[JobStepRun]) -> String? {
   let waiting = steps.filter(fn(step) {
     step.status is RunStatus::WaitingForInput
   })
   guard !waiting.is_empty() else { return None }
   let step = waiting[0]
-  let detail = match step.error {
-    Some(error) if error.has_prefix("Analysis requires input: ") =>
-      error["Analysis requires input: ".length():].trim().to_string()
-    _ => step.summary.unwrap_or("")
-  }
+  let detail = output_missing_input_detail(step.output).unwrap_or(
+    match step.error {
+      Some(error) if error.has_prefix("Analysis requires input: ") =>
+        error["Analysis requires input: ".length():].trim().to_string()
+      _ => step.summary.unwrap_or("")
+    },
+  )
   if detail.is_blank() {
     None
+  } else if generic_missing_input_detail(detail) {
+    Some("Missing inputs: Specific missing inputs were not extracted.")
   } else {
     Some("Missing inputs: \{detail}")
   }

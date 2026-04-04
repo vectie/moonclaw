@@ -432,7 +432,10 @@ fn artifact_metadata_string(metadata : Json, key : String) -> String? {
 
 ///|
 fn artifact_step_id(artifact : ArtifactRecord) -> String? {
-  artifact_metadata_string(artifact.metadata, "step_id")
+  match artifact_metadata_string(artifact.metadata, "step_id") {
+    Some(step_id) => Some(step_id)
+    None => artifact_metadata_string(artifact.metadata, "proposal_step_id")
+  }
 }
 
 ///|
@@ -577,7 +580,60 @@ fn artifact_parent_id(
 }
 
 ///|
-fn memory_node(run : JobRun, memory : MemoryRecord) -> JobUiNode {
+fn source_artifact_for_memory(
+  artifacts : Array[ArtifactRecord],
+  memory : MemoryRecord,
+) -> ArtifactRecord? {
+  match memory.source_artifact_id {
+    Some(source_id) => {
+      for artifact in artifacts {
+        if artifact.id == source_id {
+          return Some(artifact)
+        }
+      }
+      None
+    }
+    None => None
+  }
+}
+
+///|
+fn memory_step_id(
+  artifacts : Array[ArtifactRecord],
+  memory : MemoryRecord,
+) -> String? {
+  source_artifact_for_memory(artifacts, memory).bind(fn(artifact) {
+    artifact_step_id(artifact)
+  })
+}
+
+///|
+fn memory_parent_id(
+  run : JobRun,
+  artifacts : Array[ArtifactRecord],
+  memory : MemoryRecord,
+  controller_state : JobControllerState?,
+) -> String? {
+  match source_artifact_for_memory(artifacts, memory) {
+    Some(artifact) =>
+      match artifact_step_id(artifact) {
+        Some(step_id) => Some("step:\{run.id}:\{step_id}")
+        None => artifact_parent_id(run, artifact, controller_state)
+      }
+    None =>
+      match controller_state {
+        Some(_) => Some(merge_node_id(run.id))
+        None => Some(workflow_node_id(run.id))
+      }
+  }
+}
+
+///|
+fn memory_node(
+  run : JobRun,
+  artifacts : Array[ArtifactRecord],
+  memory : MemoryRecord,
+) -> JobUiNode {
   JobUiNode::{
     id: "memory:\{memory.id}",
     parent_id: Some(workflow_node_id(run.id)),
@@ -587,7 +643,7 @@ fn memory_node(run : JobRun, memory : MemoryRecord) -> JobUiNode {
     summary: Some(memory.content),
     detail: Some(memory.kind),
     run_id: Some(run.id),
-    step_id: None,
+    step_id: memory_step_id(artifacts, memory),
     artifact_id: memory.source_artifact_id,
     memory_id: Some(memory.id),
     created_at: Some(memory.created_at),
@@ -600,10 +656,11 @@ fn memory_node(run : JobRun, memory : MemoryRecord) -> JobUiNode {
 ///|
 fn memory_node_with_parent(
   run : JobRun,
+  artifacts : Array[ArtifactRecord],
   memory : MemoryRecord,
   parent_id : String?,
 ) -> JobUiNode {
-  { ..memory_node(run, memory), parent_id, }
+  { ..memory_node(run, artifacts, memory), parent_id, }
 }
 
 ///|
@@ -781,11 +838,9 @@ pub async fn build_job_ui_snapshot(
     nodes.push(
       memory_node_with_parent(
         run,
+        artifacts,
         memory,
-        match controller_state {
-          Some(_) => Some(merge_node_id(run.id))
-          None => Some(workflow_node_id(run.id))
-        },
+        memory_parent_id(run, artifacts, memory, controller_state),
       ),
     )
   }
