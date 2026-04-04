@@ -580,6 +580,63 @@ fn artifact_parent_id(
 }
 
 ///|
+fn synthetic_run_output_artifact(
+  run : JobRun,
+  output_kind : String,
+  path : String,
+) -> ArtifactRecord {
+  let (artifact_type, logical_key, content_type) = match output_kind {
+    "report" => ("job.run.report", Some("final_report"), "text/markdown")
+    "result" => ("job.run.result", Some("final_result"), "application/json")
+    _ => ("job.run.output", Some(output_kind), "text/plain")
+  }
+  ArtifactRecord::{
+    id: "synthetic:\{run.id}:\{output_kind}",
+    run_id: run.id,
+    job_id: run.job_id,
+    artifact_type,
+    logical_key,
+    version: 1,
+    status: Active,
+    path,
+    content_type,
+    metadata: {
+      "synthetic": true,
+      "run_output_kind": output_kind,
+    },
+    created_at: run.completed_at.unwrap_or(run.started_at.unwrap_or(0)),
+    archived_at: None,
+    scope: ["run-output"],
+  }
+}
+
+///|
+async fn append_synthetic_run_output_artifacts(
+  run : JobRun,
+  artifacts : Array[ArtifactRecord],
+) -> Array[ArtifactRecord] {
+  let next = artifacts.copy()
+  match run.workspace_dir {
+    Some(workspace_dir) => {
+      let report_path = workspace_dir |> @pathx.join("report.md")
+      let report_exists = (@fsx.exists(report_path)) catch { _ => false }
+      if report_exists &&
+        !next.any(fn(artifact) { artifact.path == report_path }) {
+        next.push(synthetic_run_output_artifact(run, "report", report_path))
+      }
+      let result_path = workspace_dir |> @pathx.join("result.json")
+      let result_exists = (@fsx.exists(result_path)) catch { _ => false }
+      if result_exists &&
+        !next.any(fn(artifact) { artifact.path == result_path }) {
+        next.push(synthetic_run_output_artifact(run, "result", result_path))
+      }
+      next
+    }
+    None => next
+  }
+}
+
+///|
 fn source_artifact_for_memory(
   artifacts : Array[ArtifactRecord],
   memory : MemoryRecord,
@@ -735,7 +792,10 @@ pub async fn build_job_ui_snapshot(
   let child_runs = store
     .list_runs()
     .filter(fn(candidate) { candidate.parent_run_id == Some(run.id) })
-  let artifacts = store.list_artifacts(run_id=run.id)
+  let artifacts = append_synthetic_run_output_artifacts(
+    run,
+    store.list_artifacts(run_id=run.id),
+  )
   let memories = store
     .list_memories()
     .filter(fn(memory) {

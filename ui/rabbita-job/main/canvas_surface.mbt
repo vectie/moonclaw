@@ -128,7 +128,20 @@ fn canvas_sorted_children(
   children.sort_by(fn(left, right) {
     canvas_child_sort_key(left).compare(canvas_child_sort_key(right))
   })
-  children
+  let starter_children = children.filter(canvas_starter_artifact_node)
+  if starter_children.length() <= 1 {
+    return children
+  }
+  let mut primary_starter = starter_children[0]
+  for node in starter_children {
+    if node.detail == Some("starter document digest") {
+      primary_starter = node
+      break
+    }
+  }
+  children.filter(fn(node) {
+    !canvas_starter_artifact_node(node) || node.id == primary_starter.id
+  })
 }
 
 ///|
@@ -449,6 +462,15 @@ fn render_run_canvas(dispatch : Dispatch[Msg], model : Model) -> Html {
                   ),
                 ),
                 "Detail",
+              ),
+              button(
+                class="tree-control-button",
+                on_click=dispatch(ToggleCanvasFullscreen),
+                if model.canvas_fullscreen {
+                  "Exit Full Screen"
+                } else {
+                  "Full Screen"
+                },
               ),
               button(
                 class="tree-control-button",

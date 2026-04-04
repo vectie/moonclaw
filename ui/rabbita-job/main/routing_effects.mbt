@@ -354,10 +354,20 @@ fn parse_events_payload(json : Json) -> Result[Array[UiTimelineEntry], String] {
 
 ///|
 fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] {
-  let payload : Result[LoadedArtifact, Error] = try? @json.from_json(json)
-  match payload {
-    Ok(payload) => Ok(payload)
-    Err(error) => Err("Failed to parse artifact payload: \{error}")
+  match json {
+    { "artifact": artifact_json, "content": content_json, .. } =>
+      match (try? @json.from_json(artifact_json) : Result[UiArtifact, Error]) {
+        Ok(artifact) => {
+          let content = match content_json {
+            Null => None
+            String(text) => Some(text)
+            value => Some(value.stringify())
+          }
+          Ok(LoadedArtifact::{ artifact, content })
+        }
+        Err(error) => Err("Failed to parse artifact payload: \{error}")
+      }
+    _ => Err("Failed to parse artifact payload: expected object")
   }
 }
 

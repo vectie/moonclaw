@@ -365,13 +365,92 @@ async fn Gateway::handle_get_artifact(
       }
       w.write(result.stringify())
     }
-    None =>
-      raise json_error(404, "NotFound", {
-        "error": {
-          "code": "artifact_not_found",
-          "message": "Artifact not found: \{artifact_id}",
-        },
-      })
+    None => {
+      let synthetic = match artifact_id.split(":").collect() {
+        ["synthetic", run_id, output_kind] =>
+          Some((run_id.to_string(), output_kind.to_string()))
+        _ => None
+      }
+      match synthetic {
+        Some((run_id, output_kind)) =>
+          match self.job_runtime().store().get_run(run_id) {
+            Some(run) =>
+              match run.workspace_dir {
+                Some(workspace_dir) => {
+                  let (path, content_type) = match output_kind {
+                    "report" =>
+                      (
+                        @path.Path(workspace_dir)
+                        .join(@path.Path("report.md"))
+                        .to_string(),
+                        "text/markdown",
+                      )
+                    "result" =>
+                      (
+                        @path.Path(workspace_dir)
+                        .join(@path.Path("result.json"))
+                        .to_string(),
+                        "application/json",
+                      )
+                    _ =>
+                      raise json_error(404, "NotFound", {
+                        "error": {
+                          "code": "artifact_not_found",
+                          "message": "Artifact not found: \{artifact_id}",
+                        },
+                      })
+                  }
+                  if !@fsx.exists(path) {
+                    raise json_error(404, "NotFound", {
+                      "error": {
+                        "code": "artifact_not_found",
+                        "message": "Artifact not found: \{artifact_id}",
+                      },
+                    })
+                  }
+                  w.header().set("Content-Type", "application/json")
+                  w.write_header(200)
+                  let result : Json = {
+                    "artifact": {
+                      "id": artifact_id,
+                      "artifact_type": "job.run.\{output_kind}",
+                      "logical_key": if output_kind == "report" {
+                        "final_report".to_json()
+                      } else {
+                        "final_result".to_json()
+                      },
+                      "path": path,
+                      "content_type": content_type,
+                    },
+                    "content": @fsx.read_file(path),
+                  }
+                  w.write(result.stringify())
+                }
+                None =>
+                  raise json_error(404, "NotFound", {
+                    "error": {
+                      "code": "artifact_not_found",
+                      "message": "Artifact not found: \{artifact_id}",
+                    },
+                  })
+              }
+            None =>
+              raise json_error(404, "NotFound", {
+                "error": {
+                  "code": "artifact_not_found",
+                  "message": "Artifact not found: \{artifact_id}",
+                },
+              })
+          }
+        None =>
+          raise json_error(404, "NotFound", {
+            "error": {
+              "code": "artifact_not_found",
+              "message": "Artifact not found: \{artifact_id}",
+            },
+          })
+      }
+    }
   }
 }
 

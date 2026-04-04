@@ -19,6 +19,12 @@ By default the app talks to the gateway at `http://localhost:18123`.
 Build the app bundle:
 
 ```bash
+./scripts/build-rabbita-ui.sh
+```
+
+Equivalent manual steps:
+
+```bash
 cd ui/rabbita-job
 npm install
 npm run build

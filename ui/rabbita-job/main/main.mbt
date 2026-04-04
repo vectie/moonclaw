@@ -13,6 +13,7 @@ using @html {
   p,
   section,
   span,
+  textarea,
 }
 
 ///|

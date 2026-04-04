@@ -44,6 +44,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 artifact_modal_loading: false,
                 artifact_modal_error: None,
                 artifact_modal: None,
+                artifact_editor_draft: "",
               },
             )
           }
@@ -81,6 +82,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           artifact_modal_loading: false,
           artifact_modal_error: None,
           artifact_modal: None,
+          artifact_editor_draft: "",
         },
       )
     LoadRun(run_id) =>
@@ -107,6 +109,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           artifact_modal_loading: false,
           artifact_modal_error: None,
           artifact_modal: None,
+          artifact_editor_draft: "",
         },
       )
     PollRun(run_id) =>
@@ -371,10 +374,18 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     OpenArtifact(artifact_id) =>
       (
         fetch_artifact(dispatch, model.gateway_base, artifact_id),
-        { ..model, artifact_modal_loading: true, artifact_modal_error: None },
+        {
+          ..model,
+          artifact_modal_loading: true,
+          artifact_modal_error: None,
+          artifact_editor_draft: "",
+        },
       )
     ArtifactLoaded(artifact_id, Ok(artifact)) =>
       if artifact.artifact.id == artifact_id {
+        let content = artifact.content.unwrap_or(
+          "Artifact content is not available as text.",
+        )
         (
           @rabbita.none,
           {
@@ -382,6 +393,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             artifact_modal_loading: false,
             artifact_modal_error: None,
             artifact_modal: Some(artifact),
+            artifact_editor_draft: content,
           },
         )
       } else {
@@ -396,6 +408,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           artifact_modal_error: Some(error),
         },
       )
+    SetArtifactEditorDraft(value) =>
+      (@rabbita.none, { ..model, artifact_editor_draft: value })
     CloseArtifactModal =>
       (
         @rabbita.none,
@@ -404,6 +418,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           artifact_modal_loading: false,
           artifact_modal_error: None,
           artifact_modal: None,
+          artifact_editor_draft: "",
         },
       )
     EventsLoaded(run_id, Ok(timeline)) =>
@@ -571,6 +586,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         },
       )
     CanvasZoomReset => (@rabbita.none, { ..model, canvas_zoom: 100 })
+    ToggleCanvasFullscreen =>
+      (@rabbita.none, { ..model, canvas_fullscreen: !model.canvas_fullscreen })
     SelectMixedHandoff(key) => {
       let next_model = { ..model, selected_mixed_handoff_key: key }
       (sync_url_cmd(next_model), next_model)

@@ -438,6 +438,69 @@ async test "job report memories attach under the matching step via source artifa
 }
 
 ///|
+async test "build_job_ui_snapshot includes synthetic final run outputs from workspace files" {
+  @fsx.with_temporary_directory("job-ui-snapshot-final-outputs-XXXXXX", dir => {
+    let workspace_dir = dir |> @pathx.join("run-1")
+    @fsx.make_directory(workspace_dir, recursive=true)
+    @fsx.write_to_file(workspace_dir |> @pathx.join("report.md"), "# Final Report")
+    @fsx.write_to_file(
+      workspace_dir |> @pathx.join("result.json"),
+      "{\"status\":\"completed\"}",
+    )
+    let store = SystemStore::new(root=dir |> @pathx.join("jobs"))
+    store.save_definition(JobDefinition::{
+      id: "job-1",
+      kind: "job.proposal",
+      enabled: true,
+      config: { "family": "generic" },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some("wf-1"),
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    })
+    store.save_workflow(WorkflowDefinition::{
+      id: "wf-1",
+      kind: "job.proposal",
+      steps: [],
+      output_bindings: [],
+    })
+    store.save_run(JobRun::{
+      id: "run-1",
+      job_id: "job-1",
+      trigger: Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: Some(workspace_dir),
+      status: Succeeded,
+      attempt: 1,
+      retry_of: None,
+      started_at: Some(10),
+      completed_at: Some(20),
+      summary: Some("done"),
+      error: None,
+    })
+    let snapshot = build_job_ui_snapshot(store, "run-1").unwrap()
+    inspect(
+      snapshot.artifacts.any(fn(artifact) {
+        artifact.id == "synthetic:run-1:report" &&
+        artifact.path.has_suffix("/report.md")
+      }),
+      content="true",
+    )
+    inspect(
+      snapshot.artifacts.any(fn(artifact) {
+        artifact.id == "synthetic:run-1:result" &&
+        artifact.path.has_suffix("/result.json")
+      }),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "build_job_ui_snapshot includes explicit handoffs when provided" {
   @fsx.with_temporary_directory("job-ui-handoffs-XXXXXX", dir => {
     let store = SystemStore::new(root=dir)

@@ -31,11 +31,15 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
     Some(loaded) => loaded.artifact.path
     None => ""
   }
+  let content_type = match model.artifact_modal {
+    Some(loaded) => loaded.artifact.content_type
+    None => "text/plain"
+  }
   div(class="artifact-modal-backdrop", [
     div(class="artifact-modal", [
       div(class="artifact-modal-header", [
         div([
-          p(class="eyebrow", "Artifact Viewer"),
+          p(class="eyebrow", "Artifact Editor"),
           h2(class="detail-title", title),
           if subtitle == "" {
             nothing
@@ -43,11 +47,14 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
             p(class="mono artifact-modal-path", subtitle)
           },
         ]),
-        button(
-          class="tree-control-button",
-          on_click=dispatch(CloseArtifactModal),
-          "Close",
-        ),
+        div(class="tree-controls", [
+          span(class="meta-chip", content_type),
+          button(
+            class="tree-control-button",
+            on_click=dispatch(CloseArtifactModal),
+            "Close",
+          ),
+        ]),
       ]),
       div(class="artifact-modal-body", [
         if model.artifact_modal_loading {
@@ -55,16 +62,18 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
         } else if model.artifact_modal_error is Some(error) {
           p(class="empty", error)
         } else {
-          match model.artifact_modal {
-            Some(loaded) =>
-              div(
-                class="artifact-modal-content",
-                loaded.content.unwrap_or(
-                  "Artifact content is not available as text.",
-                ),
-              )
-            None => p(class="empty", "No artifact selected.")
-          }
+          div(class="artifact-editor-stack", [
+            p(
+              class="muted",
+              "Local editing only for now. Changes here are not persisted back to the artifact yet.",
+            ),
+            textarea(
+              class="artifact-editor-textarea mono",
+              value=model.artifact_editor_draft,
+              on_input=value => dispatch(SetArtifactEditorDraft(value)),
+              nothing,
+            ),
+          ])
         },
       ]),
     ]),
@@ -73,6 +82,17 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
 
 ///|
 fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
+  let main_class = if route_surface(model.route) == SurfaceOverview {
+    "layout overview-layout"
+  } else if model.route is RunCanvas(_) {
+    if model.canvas_fullscreen {
+      "layout canvas-layout canvas-layout-fullscreen"
+    } else {
+      "layout canvas-layout"
+    }
+  } else {
+    "layout"
+  }
   div(class="shell", [
     header(class="topbar", [
       div([
@@ -93,38 +113,36 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
       ]),
     ]),
     main_(
-      class=if route_surface(model.route) == SurfaceOverview {
-        "layout overview-layout"
-      } else if model.route is RunCanvas(_) {
-        "layout canvas-layout"
-      } else {
-        "layout"
-      },
+      class=main_class,
       match route_surface(model.route) {
         SurfaceOverview => [render_overview(dispatch, model)]
         SurfaceJobs =>
           match model.route {
             RunCanvas(_) =>
-              [
-                render_runs_panel(dispatch, model),
-                render_run_canvas(dispatch, model),
-                match model.snapshot {
-                  Some(snapshot) =>
-                    render_right_panel(dispatch, model, snapshot)
-                  None =>
-                    section(class="panel", [
-                      header(class="panel-header", [
-                        h2(class="panel-title", "Outputs"),
-                      ]),
-                      div(class="panel-body", [
-                        p(
-                          class="empty",
-                          "Artifacts, workspace, and memory appear here once a run is selected.",
-                        ),
-                      ]),
-                    ])
-                },
-              ]
+              if model.canvas_fullscreen {
+                [render_run_canvas(dispatch, model)]
+              } else {
+                [
+                  render_runs_panel(dispatch, model),
+                  render_run_canvas(dispatch, model),
+                  match model.snapshot {
+                    Some(snapshot) =>
+                      render_right_panel(dispatch, model, snapshot)
+                    None =>
+                      section(class="panel", [
+                        header(class="panel-header", [
+                          h2(class="panel-title", "Outputs"),
+                        ]),
+                        div(class="panel-body", [
+                          p(
+                            class="empty",
+                            "Artifacts, workspace, and memory appear here once a run is selected.",
+                          ),
+                        ]),
+                      ])
+                  },
+                ]
+              }
             _ =>
               [
                 render_runs_panel(dispatch, model),

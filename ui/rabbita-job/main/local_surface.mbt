@@ -21,13 +21,92 @@ fn starter_artifact(artifact : UiArtifact) -> Bool {
 }
 
 ///|
-fn starter_artifacts(snapshot : UiSnapshot) -> Array[UiArtifact] {
-  snapshot.artifacts.filter(starter_artifact)
+fn partition_starter_artifacts(
+  artifacts : Array[UiArtifact],
+) -> (Array[UiArtifact], Array[UiArtifact]) {
+  let starter : Array[UiArtifact] = []
+  let other : Array[UiArtifact] = []
+  for artifact in artifacts {
+    if starter_artifact(artifact) {
+      starter.push(artifact)
+    } else {
+      other.push(artifact)
+    }
+  }
+  (starter, other)
 }
 
 ///|
-fn non_starter_artifacts(snapshot : UiSnapshot) -> Array[UiArtifact] {
-  snapshot.artifacts.filter(fn(artifact) { !starter_artifact(artifact) })
+fn path_basename(path : String) -> String {
+  match path.split("/").collect() {
+    [] => path
+    parts => parts[parts.length() - 1].to_string()
+  }
+}
+
+///|
+fn primary_starter_artifact(artifacts : Array[UiArtifact]) -> UiArtifact? {
+  let priorities = [
+    "starter_attachment.digest", "starter_attachment.summary", "starter_attachment.text",
+    "starter_attachment.manifest",
+  ]
+  for priority in priorities {
+    for artifact in artifacts {
+      if artifact.artifact_type == priority {
+        return Some(artifact)
+      }
+    }
+  }
+  artifacts.get(0)
+}
+
+///|
+fn starter_artifact_preview(artifacts : Array[UiArtifact]) -> String {
+  let names : Array[String] = []
+  for artifact in artifacts {
+    let name = path_basename(artifact.path)
+    if !names.contains(name) {
+      names.push(name)
+    }
+    if names.length() >= 3 {
+      break
+    }
+  }
+  match names {
+    [] => "No starter documents"
+    [name] => name
+    [first, second] => "\{first}, \{second}"
+    [first, second, third, ..] => "\{first}, \{second}, \{third}"
+  }
+}
+
+///|
+fn render_starter_docs_card(
+  dispatch : Dispatch[Msg],
+  artifacts : Array[UiArtifact],
+) -> Html {
+  let primary = primary_starter_artifact(artifacts)
+  let unique_paths : Array[String] = []
+  for artifact in artifacts {
+    if !unique_paths.contains(artifact.path) {
+      unique_paths.push(artifact.path)
+    }
+  }
+  let summary = "\{unique_paths.length()} file(s) materialized across \{artifacts.length()} artifact(s)"
+  let body = [
+    p(class="node-title", "Starter Docs"),
+    p(class="muted", summary),
+    p(class="mono", starter_artifact_preview(artifacts)),
+  ]
+  match primary {
+    Some(artifact) if artifact_is_textual(artifact) =>
+      button(
+        class="artifact-card artifact-card-button",
+        on_click=dispatch(OpenArtifact(artifact.id)),
+        body,
+      )
+    _ => article(class="artifact-card", body)
+  }
 }
 
 ///|
@@ -56,6 +135,32 @@ fn render_artifact_card(
     ),
     p(class="muted", artifact.artifact_type),
     p(class="mono", artifact.path),
+  ]
+  if artifact_is_textual(artifact) {
+    button(
+      class="artifact-card artifact-card-button",
+      on_click=dispatch(OpenArtifact(artifact.id)),
+      body,
+    )
+  } else {
+    article(class="artifact-card", body)
+  }
+}
+
+///|
+fn render_artifact_focus_card(
+  dispatch : Dispatch[Msg],
+  artifact : UiArtifact,
+  label : String,
+  preview : String,
+) -> Html {
+  let body = [
+    p(
+      class="node-title",
+      artifact.logical_key.unwrap_or(artifact.artifact_type),
+    ),
+    p(class="muted", label),
+    p(class="mono", preview),
   ]
   if artifact_is_textual(artifact) {
     button(
@@ -1156,8 +1261,7 @@ fn render_artifacts_panel(
   dispatch : Dispatch[Msg],
   snapshot : UiSnapshot,
 ) -> Html {
-  let starter = starter_artifacts(snapshot)
-  let other = non_starter_artifacts(snapshot)
+  let (starter, other) = partition_starter_artifacts(snapshot.artifacts)
   section(class="panel", [
     header(class="panel-header", [h2(class="panel-title", "Artifacts")]),
     div(class="panel-body", [
@@ -1172,14 +1276,11 @@ fn render_artifacts_panel(
               p(class="kv-label", "Starter Docs"),
               p(
                 class="muted",
-                "Materialized starter files, extracted text, and attachment manifests.",
+                "Materialized starter files, extracted text, and attachment manifests are grouped here.",
               ),
-              div(
-                class="artifact-list",
-                starter.map(fn(artifact) {
-                  render_artifact_card(dispatch, artifact)
-                }),
-              ),
+              div(class="artifact-list", [
+                render_starter_docs_card(dispatch, starter),
+              ]),
             ])
           },
           if other.is_empty() {
@@ -1756,6 +1857,9 @@ fn render_focus_inspector(
           let artifact = artifact_for_node(snapshot, node)
           let memory = memory_for_node(snapshot, node)
           let branch_artifacts = descendant_artifacts(snapshot, node)
+          let (starter_branch_artifacts, other_branch_artifacts) = partition_starter_artifacts(
+            branch_artifacts,
+          )
           let branch_memories = descendant_memories(snapshot, node)
           let latest_branch_artifact = latest_descendant_artifact(
             snapshot,
@@ -1924,6 +2028,12 @@ fn render_focus_inspector(
                         "Preview: \{preview_text(artifact.path, 120)}"
                       },
                     ),
+                    render_artifact_focus_card(
+                      dispatch,
+                      artifact,
+                      "Open artifact",
+                      preview_text(artifact.path, 120),
+                    ),
                   ])
                 None => nothing
               },
@@ -1944,17 +2054,19 @@ fn render_focus_inspector(
                 latest_branch_memory is Some(_) {
                 div(class="focus-block", [
                   p(class="kv-label", "Latest Branch Output"),
-                  match latest_branch_artifact {
-                    Some(artifact) =>
-                      article(class="artifact-card", [
-                        p(
-                          class="node-title",
-                          artifact.logical_key.unwrap_or(artifact.artifact_type),
-                        ),
-                        p(class="muted", "Latest artifact"),
-                        p(class="mono", preview_text(artifact.path, 120)),
-                      ])
-                    None => nothing
+                  if !starter_branch_artifacts.is_empty() {
+                    render_starter_docs_card(dispatch, starter_branch_artifacts)
+                  } else {
+                    match latest_branch_artifact {
+                      Some(artifact) =>
+                        render_artifact_focus_card(
+                          dispatch,
+                          artifact,
+                          "Latest artifact",
+                          preview_text(artifact.path, 120),
+                        )
+                      None => nothing
+                    }
                   },
                   match latest_branch_memory {
                     Some(memory) =>
@@ -1982,7 +2094,16 @@ fn render_focus_inspector(
                   p(class="kv-label", "Descendant Artifacts"),
                   div(
                     class="artifact-list",
-                    preview_items(branch_artifacts, 3).map(fn(artifact) {
+                    [
+                      if starter_branch_artifacts.is_empty() {
+                        nothing
+                      } else {
+                        render_starter_docs_card(
+                          dispatch, starter_branch_artifacts,
+                        )
+                      },
+                    ] +
+                    preview_items(other_branch_artifacts, 3).map(fn(artifact) {
                       render_artifact_card(dispatch, artifact)
                     }),
                   ),

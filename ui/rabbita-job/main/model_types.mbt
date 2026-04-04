@@ -258,8 +258,10 @@ struct Model {
   artifact_modal_loading : Bool
   artifact_modal_error : String?
   artifact_modal : LoadedArtifact?
+  artifact_editor_draft : String
   right_panel : RightPanel
   canvas_zoom : Int
+  canvas_fullscreen : Bool
   acp_snapshot : AcpUiSnapshot?
   acp_timeline : Array[AcpUiTimelineEntry]
   acp_loading : Bool
@@ -284,6 +286,7 @@ enum Msg {
   EventsLoaded(String, Result[Array[UiTimelineEntry], String])
   OpenArtifact(String)
   ArtifactLoaded(String, Result[LoadedArtifact, String])
+  SetArtifactEditorDraft(String)
   CloseArtifactModal
   StreamDrained(String, Result[(Array[UiTimelineEntry], Bool), String])
   LoadAcp
@@ -328,6 +331,7 @@ enum Msg {
   CanvasZoomIn
   CanvasZoomOut
   CanvasZoomReset
+  ToggleCanvasFullscreen
   UrlChanged(@url.Url)
   UrlRequest(@url.UrlRequest)
 }
@@ -380,8 +384,10 @@ fn init_model() -> Model {
     artifact_modal_loading: false,
     artifact_modal_error: None,
     artifact_modal: None,
+    artifact_editor_draft: "",
     right_panel: Artifacts,
     canvas_zoom: 100,
+    canvas_fullscreen: false,
     acp_snapshot: None,
     acp_timeline: [],
     acp_loading: true,
