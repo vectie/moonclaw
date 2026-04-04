@@ -109,6 +109,8 @@ struct CoworkSessionSummary {
   last_message_preview : String?
   channel : String?
   cwd : String?
+  model_override : String?
+  provider_override : String?
   has_plan_mode : Bool
   linked_proposal_id : String?
   linked_run_id : String?
@@ -153,6 +155,15 @@ struct CoworkSessionDetail {
   linked_proposal : CoworkProposalRef?
   linked_run : CoworkRunRef?
 } derive(FromJson, Show)
+
+///|
+struct QueuedCoworkDraft {
+  id : String
+  action : String
+  content : String
+  quoted_message_id : String?
+  quoted_preview : String?
+} derive(Show)
 
 ///|
 struct CoworkSessionsPayload {
@@ -349,6 +360,15 @@ struct Model {
   cowork_linked_snapshot_loading : Bool
   cowork_linked_snapshot_error : String?
   cowork_composer : String
+  cowork_model_override : String
+  cowork_provider_override : String
+  cowork_cwd_override : String
+  cowork_reply_to_message_id : String?
+  cowork_reply_preview : String?
+  cowork_draft_queue : Array[QueuedCoworkDraft]
+  cowork_input_history : Array[String]
+  cowork_input_history_index : Int?
+  cowork_notice : String?
   cowork_action_loading : Bool
   cowork_action_error : String?
   acp_snapshot : AcpUiSnapshot?
@@ -386,12 +406,27 @@ enum Msg {
   CoworkSessionLoaded(String, Result[CoworkSessionDetail, String])
   CoworkLinkedSnapshotLoaded(String, Result[UiSnapshot, String])
   SetCoworkComposer(String)
+  SetCoworkModelOverride(String)
+  SetCoworkProviderOverride(String)
+  SetCoworkCwdOverride(String)
+  SaveCoworkConfig
   SendCoworkMessage
   StartCoworkPlan
   PreviewCoworkPlan
   PromoteCoworkPlan
   ConfirmCoworkProposal(String)
   ResumeCoworkRun(String)
+  QueueCoworkDraft(String)
+  RunQueuedCoworkDraft(String)
+  RunAllQueuedCoworkDrafts
+  RemoveQueuedCoworkDraft(String)
+  QuoteCoworkMessage(String, String)
+  ReuseCoworkMessage(String)
+  CopyCoworkMessage(String)
+  CoworkCopyFinished(Result[String, String])
+  ClearCoworkReply
+  RecallPreviousCoworkInput
+  RecallNextCoworkInput
   CoworkActionFinished(Result[CoworkSessionDetail, String])
   SelectCoworkPanel(CoworkPanel)
   StreamDrained(String, Result[(Array[UiTimelineEntry], Bool), String])
@@ -506,6 +541,15 @@ fn init_model() -> Model {
     cowork_linked_snapshot_loading: false,
     cowork_linked_snapshot_error: None,
     cowork_composer: "",
+    cowork_model_override: "",
+    cowork_provider_override: "",
+    cowork_cwd_override: "",
+    cowork_reply_to_message_id: None,
+    cowork_reply_preview: None,
+    cowork_draft_queue: [],
+    cowork_input_history: [],
+    cowork_input_history_index: None,
+    cowork_notice: None,
     cowork_action_loading: false,
     cowork_action_error: None,
     acp_snapshot: None,

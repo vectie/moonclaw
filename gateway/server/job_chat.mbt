@@ -65,6 +65,7 @@ async fn Gateway::save_plan_mode_session(
 ) -> Unit {
   let existing = session.unwrap_or(SessionEntry::{
     session_id: session_key,
+    title: None,
     updated_at,
     channel: None,
     model_override: None,

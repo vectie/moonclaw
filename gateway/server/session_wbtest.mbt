@@ -5,6 +5,7 @@ async test "SessionManager persists and reloads sessions" {
     let manager = SessionManager::{ sessions: {}, session_dir }
     let entry = SessionEntry::{
       session_id: "conversation-1",
+      title: None,
       updated_at: 42,
       channel: Some("feishu"),
       model_override: Some("default"),
@@ -37,6 +38,7 @@ async test "SessionManager reset_and_save removes persisted sessions" {
     let manager = SessionManager::{ sessions: {}, session_dir }
     manager.save_entry("session-1", SessionEntry::{
       session_id: "conversation-1",
+      title: None,
       updated_at: 1,
       channel: None,
       model_override: None,
@@ -63,6 +65,7 @@ async test "SessionManager preserves unrelated persisted sessions across updates
     let manager = SessionManager::{ sessions: {}, session_dir }
     manager.save_entry("direct:user:1", SessionEntry::{
       session_id: "conversation-1",
+      title: None,
       updated_at: 1,
       channel: None,
       model_override: Some("sonnet"),
@@ -75,6 +78,7 @@ async test "SessionManager preserves unrelated persisted sessions across updates
     })
     manager.save_entry("channel:feishu:default:chat-1", SessionEntry::{
       session_id: "conversation-2",
+      title: None,
       updated_at: 2,
       channel: Some("feishu"),
       model_override: None,
@@ -109,6 +113,7 @@ async test "SessionManager persists plan mode state" {
     let manager = SessionManager::{ sessions: {}, session_dir }
     manager.save_entry("channel:feishu:default:chat-1:thread-1", SessionEntry::{
       session_id: "conversation-2",
+      title: None,
       updated_at: 2,
       channel: Some("feishu"),
       model_override: None,
@@ -151,6 +156,7 @@ async test "SessionManager persists cowork messages and linked ids" {
     let manager = SessionManager::{ sessions: {}, session_dir }
     manager.save_entry("cowork:session-1", SessionEntry::{
       session_id: "conversation-9",
+      title: Some("Parcel Planning"),
       updated_at: 9,
       channel: None,
       model_override: Some("default"),

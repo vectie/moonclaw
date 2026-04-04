@@ -99,6 +99,9 @@ type Msg
 
 type NodeEventStats
 
+type QueuedCoworkDraft
+pub impl Show for QueuedCoworkDraft
+
 type RightPanel
 pub impl Compare for RightPanel
 pub impl Eq for RightPanel

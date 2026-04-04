@@ -53,6 +53,8 @@ pub async fn Gateway::handle_request(
         self.handle_create_cowork_session(r, w)
       (Get, ["", "v1", "cowork", "sessions", session_key]) =>
         self.handle_get_cowork_session(r, w, session_key.to_string())
+      (Post, ["", "v1", "cowork", "sessions", session_key, "config"]) =>
+        self.handle_update_cowork_config(r, w, session_key.to_string())
       (Post, ["", "v1", "cowork", "sessions", session_key, "messages"]) =>
         self.handle_cowork_send_message(r, w, session_key.to_string())
       (Post, ["", "v1", "cowork", "sessions", session_key, "plan"]) =>

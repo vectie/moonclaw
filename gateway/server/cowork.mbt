@@ -8,6 +8,8 @@ struct CoworkSessionSummary {
   last_message_preview : String?
   channel : String?
   cwd : String?
+  model_override : String?
+  provider_override : String?
   has_plan_mode : Bool
   linked_proposal_id : String?
   linked_run_id : String?
@@ -54,6 +56,14 @@ struct CoworkMessageParams {
   content : String
   cwd : String?
   model : String?
+} derive(FromJson, Show)
+
+///|
+struct CoworkConfigParams {
+  title : String?
+  cwd : String?
+  model : String?
+  provider : String?
 } derive(FromJson, Show)
 
 ///|
@@ -153,6 +163,11 @@ fn last_matching_message(
 
 ///|
 fn cowork_message_title(entry : SessionEntry) -> String {
+  match entry.title {
+    Some(title) if !title.trim().to_string().is_blank() =>
+      return title.trim().to_string()
+    _ => ()
+  }
   match entry.plan_mode {
     Some(state) => compact_cowork_preview(state.request_text, 64)
     None =>
@@ -216,9 +231,19 @@ fn cowork_session_summary(
     last_message_preview: session_last_message_preview(entry.messages),
     channel: entry.channel,
     cwd: entry.cwd,
+    model_override: entry.model_override,
+    provider_override: entry.provider_override,
     has_plan_mode: entry.plan_mode is Some(_),
     linked_proposal_id: entry.linked_proposal_id,
     linked_run_id: entry.linked_run_id,
+  }
+}
+
+///|
+fn cowork_effective_cwd(entry : SessionEntry, fallback : String) -> String {
+  match entry.cwd {
+    Some(cwd) if !cwd.trim().to_string().is_blank() => cwd
+    _ => fallback
   }
 }
 
@@ -406,6 +431,7 @@ async fn Gateway::handle_create_cowork_session(
     Some(title) => {
       let trimmed = title.trim().to_string()
       if !trimmed.is_blank() {
+        entry = { ..entry, title: Some(trimmed) }
         entry = self.append_session_message(
           entry,
           "system",
@@ -448,6 +474,84 @@ async fn Gateway::handle_get_cowork_session(
 }
 
 ///|
+async fn Gateway::handle_update_cowork_config(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+  session_key : String,
+) -> Unit {
+  let params : CoworkConfigParams = decode_request_body(
+    r, "cowork config params",
+  )
+  let session = match self.sessions.get(session_key) {
+    Some(entry) => entry
+    None =>
+      raise json_error(404, "NotFound", {
+        "error": {
+          "code": "session_not_found",
+          "message": "Cowork session not found: \{session_key}",
+        },
+      })
+  }
+  let title = match params.title {
+    Some(value) => {
+      let trimmed = value.trim().to_string()
+      if trimmed.is_blank() {
+        None
+      } else {
+        Some(trimmed)
+      }
+    }
+    None => session.title
+  }
+  let cwd = match params.cwd {
+    Some(value) => {
+      let trimmed = value.trim().to_string()
+      if trimmed.is_blank() {
+        None
+      } else {
+        Some(trimmed)
+      }
+    }
+    None => session.cwd
+  }
+  let model_override = match params.model {
+    Some(value) => {
+      let trimmed = value.trim().to_string()
+      if trimmed.is_blank() {
+        None
+      } else {
+        Some(trimmed)
+      }
+    }
+    None => session.model_override
+  }
+  let provider_override = match params.provider {
+    Some(value) => {
+      let trimmed = value.trim().to_string()
+      if trimmed.is_blank() {
+        None
+      } else {
+        Some(trimmed)
+      }
+    }
+    None => session.provider_override
+  }
+  let updated = SessionEntry::{
+    ..session,
+    title,
+    cwd,
+    model_override,
+    provider_override,
+    updated_at: current_time_ms(),
+  }
+  self.save_session_detail(session_key, updated)
+  self.write_json(w, {
+    "session": self.cowork_session_detail(session_key, updated).to_json(),
+  })
+}
+
+///|
 fn agent_result_content(result : Json) -> String {
   match result {
     { "content": String(content), .. } => content
@@ -474,8 +578,12 @@ async fn Gateway::handle_cowork_send_message(
       },
     })
   }
-  let cwd = params.cwd.unwrap_or(self.cwd)
-  let mut session = cowork_session_for_write(self, session_key, cwd)
+  let mut session = cowork_session_for_write(
+    self,
+    session_key,
+    params.cwd.unwrap_or(self.cwd),
+  )
+  let cwd = params.cwd.unwrap_or(cowork_effective_cwd(session, self.cwd))
   session = self.append_session_message(session, "user", "user", content)
   self.save_session_detail(session_key, session)
   let mut final_session = match self.sessions.get(session_key) {
@@ -590,8 +698,13 @@ async fn Gateway::handle_cowork_plan(
       },
     })
   }
-  let cwd = params.cwd.unwrap_or(self.cwd)
-  let mut session = cowork_session_for_write(self, session_key, cwd)
+  let mut session = cowork_session_for_write(
+    self,
+    session_key,
+    params.cwd.unwrap_or(self.cwd),
+  )
+  let cwd = params.cwd.unwrap_or(cowork_effective_cwd(session, self.cwd))
+  ignore(cwd)
   session = self.append_session_message(
     session, "user", "command", request_text,
   )

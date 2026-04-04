@@ -540,6 +540,13 @@ fn copy_to_clipboard(dispatch : Dispatch[Msg], text : String) -> Cmd {
 }
 
 ///|
+fn copy_cowork_text(dispatch : Dispatch[Msg], text : String) -> Cmd {
+  @rabbita.perform(fn(result) { dispatch(CoworkCopyFinished(result)) }, fn() noraise {
+    parse_browser_copy_result(browser_copy_text(text))
+  })
+}
+
+///|
 #cfg(target="js")
 extern "js" fn browser_download_text(
   filename : String,

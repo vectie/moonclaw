@@ -44,6 +44,11 @@ fn cowork_message_class(message : CoworkMessage) -> String {
 }
 
 ///|
+fn cowork_message_preview(message : CoworkMessage) -> String {
+  cowork_compact_preview(message.content, 180)
+}
+
+///|
 fn render_cowork_sidebar(dispatch : Dispatch[Msg], model : Model) -> Html {
   section(class="panel cowork-sidebar", [
     header(class="panel-header", [
@@ -119,14 +124,68 @@ fn render_cowork_message(
       )
     _ => nothing
   }
+  let secondary_actions = div(class="cowork-message-actions", [
+    button(
+      class="tree-control-button",
+      on_click=dispatch(
+        QuoteCoworkMessage(message.id, cowork_message_preview(message)),
+      ),
+      "Reply",
+    ),
+    button(
+      class="tree-control-button",
+      on_click=dispatch(ReuseCoworkMessage(message.content)),
+      "Reuse",
+    ),
+    button(
+      class="tree-control-button",
+      on_click=dispatch(CopyCoworkMessage(message.content)),
+      "Copy",
+    ),
+  ])
   article(class=cowork_message_class(message), [
     div(class="cowork-message-meta", [
       span(class="meta-chip", cowork_message_kind_label(message)),
       span(class="muted tiny", message.timestamp.to_string()),
     ]),
     p(class="cowork-message-content mono", message.content),
-    action,
+    div(class="cowork-action-row", [action, secondary_actions]),
   ])
+}
+
+///|
+fn render_cowork_queue(dispatch : Dispatch[Msg], model : Model) -> Html {
+  if model.cowork_draft_queue.is_empty() {
+    p(class="muted tiny", "Queue is empty.")
+  } else {
+    div(
+      class="cowork-queue-list",
+      model.cowork_draft_queue.map(fn(draft) {
+        article(class="artifact-card", [
+          div(class="cowork-session-row", [
+            p(class="node-title", "Queued \{draft.action}"),
+            span(class="meta-chip", draft.action),
+          ]),
+          p(
+            class="mono",
+            cowork_compact_preview(queued_cowork_draft_content(draft), 220),
+          ),
+          div(class="cowork-action-row", [
+            button(
+              class="tree-control-button",
+              on_click=dispatch(RunQueuedCoworkDraft(draft.id)),
+              "Run",
+            ),
+            button(
+              class="tree-control-button",
+              on_click=dispatch(RemoveQueuedCoworkDraft(draft.id)),
+              "Remove",
+            ),
+          ]),
+        ])
+      }),
+    )
+  }
 }
 
 ///|
@@ -400,6 +459,11 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
       div(class="tree-controls", [
         button(
           class="tree-control-button",
+          on_click=dispatch(SaveCoworkConfig),
+          "Save Config",
+        ),
+        button(
+          class="tree-control-button",
           on_click=dispatch(StartCoworkPlan),
           "Plan",
         ),
@@ -416,7 +480,74 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
       ]),
     ]),
     div(class="panel-body cowork-main-body", [
+      div(class="cowork-config-bar", [
+        input(
+          class="runs-search-input cowork-config-input",
+          value=model.cowork_model_override,
+          on_input=value => dispatch(SetCoworkModelOverride(value)),
+          placeholder="Model override",
+          nothing,
+        ),
+        input(
+          class="runs-search-input cowork-config-input",
+          value=model.cowork_provider_override,
+          on_input=value => dispatch(SetCoworkProviderOverride(value)),
+          placeholder="Provider override",
+          nothing,
+        ),
+        input(
+          class="runs-search-input cowork-config-input cowork-config-cwd",
+          value=model.cowork_cwd_override,
+          on_input=value => dispatch(SetCoworkCwdOverride(value)),
+          placeholder="Working directory",
+          nothing,
+        ),
+      ]),
       transcript_body,
+      if model.cowork_reply_preview is Some(preview) {
+        article(class="cowork-banner", [
+          p(class="node-title", "Reply Target"),
+          p(class="mono", preview),
+          button(
+            class="tree-control-button",
+            on_click=dispatch(ClearCoworkReply),
+            "Clear Reply",
+          ),
+        ])
+      } else {
+        nothing
+      },
+      section(class="operator-hint cowork-queue-panel", [
+        p(class="mono", "Draft Queue"),
+        render_cowork_queue(dispatch, model),
+        div(class="cowork-action-row", [
+          button(
+            class="tree-control-button",
+            on_click=dispatch(QueueCoworkDraft("send")),
+            "Queue Send",
+          ),
+          button(
+            class="tree-control-button",
+            on_click=dispatch(QueueCoworkDraft("plan")),
+            "Queue Plan",
+          ),
+          button(
+            class="tree-control-button",
+            on_click=dispatch(QueueCoworkDraft("preview")),
+            "Queue Preview",
+          ),
+          button(
+            class="tree-control-button",
+            on_click=dispatch(QueueCoworkDraft("promote")),
+            "Queue Promote",
+          ),
+          button(
+            class="tree-control-button",
+            on_click=dispatch(RunAllQueuedCoworkDrafts),
+            "Run Next",
+          ),
+        ]),
+      ]),
       div(class="cowork-composer", [
         textarea(
           class="artifact-editor-textarea cowork-composer-textarea",
@@ -425,6 +556,16 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
           nothing,
         ),
         div(class="cowork-action-row", [
+          button(
+            class="tree-control-button",
+            on_click=dispatch(RecallPreviousCoworkInput),
+            "Older",
+          ),
+          button(
+            class="tree-control-button",
+            on_click=dispatch(RecallNextCoworkInput),
+            "Newer",
+          ),
           button(
             class="tree-control-button",
             on_click=dispatch(SendCoworkMessage),
@@ -437,6 +578,10 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
           },
           match model.cowork_action_error {
             Some(error) => p(class="empty", error)
+            None => nothing
+          },
+          match model.cowork_notice {
+            Some(notice) => p(class="muted", notice)
             None => nothing
           },
         ]),

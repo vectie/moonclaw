@@ -156,6 +156,10 @@ async fn Gateway::store_channel_session(
 ) -> Unit {
   self.sessions.save_entry(session_key, SessionEntry::{
     session_id: conversation_id,
+    title: self.sessions
+    .get(session_key)
+    .map(fn(entry) { entry.title })
+    .unwrap_or(None),
     updated_at: current_time_ms(),
     channel: Some(channel_id),
     model_override: Some(channel_model_session_name(model)),

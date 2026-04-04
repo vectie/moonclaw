@@ -224,6 +224,10 @@ pub fn Coordinator::start_task(Self, String) -> CoordinationTask?
 pub fn Coordinator::to_json(Self) -> Json
 pub fn Coordinator::update_subtask_status(Self, String, String, CoordinationStatus, result? : Json?, error? : String?) -> CoordinationTask?
 
+type CoworkConfigParams
+pub impl Show for CoworkConfigParams
+pub impl @json.FromJson for CoworkConfigParams
+
 type CoworkMessageParams
 pub impl Show for CoworkMessageParams
 pub impl @json.FromJson for CoworkMessageParams

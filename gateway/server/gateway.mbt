@@ -85,6 +85,7 @@ pub struct SessionMessage {
 ///|
 struct SessionEntry {
   session_id : String
+  title : String?
   updated_at : Int
   channel : String?
   model_override : String?
@@ -107,6 +108,10 @@ impl @json.FromJson for SessionEntry with from_json(
   let session_id = match obj.get("session_id") {
     Some(String(value)) => value
     _ => raise @json.JsonDecodeError((path, "SessionEntry: missing session_id"))
+  }
+  let title = match obj.get("title") {
+    Some(String(value)) => Some(value)
+    _ => None
   }
   let updated_at = match obj.get("updated_at") {
     Some(Number(value, ..)) => value.to_int()
@@ -166,6 +171,7 @@ impl @json.FromJson for SessionEntry with from_json(
   }
   {
     session_id,
+    title,
     updated_at,
     channel,
     model_override,

@@ -76,6 +76,7 @@ pub fn SessionManager::get_or_create(
     None => {
       let entry = SessionEntry::{
         session_id: session_key,
+        title: None,
         updated_at: current_time_ms(),
         channel: None,
         model_override: None,

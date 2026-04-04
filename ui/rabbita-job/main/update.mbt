@@ -7,6 +7,79 @@ fn snapshot_matches_run(snapshot : UiSnapshot?, run_id : String) -> Bool {
 }
 
 ///|
+fn sync_cowork_session_fields(
+  model : Model,
+  detail : CoworkSessionDetail,
+) -> Model {
+  {
+    ..model,
+    cowork_model_override: detail.session.model_override.unwrap_or(""),
+    cowork_provider_override: detail.session.provider_override.unwrap_or(""),
+    cowork_cwd_override: detail.session.cwd.unwrap_or(""),
+  }
+}
+
+///|
+fn cowork_composer_content(model : Model, content : String) -> String {
+  match model.cowork_reply_preview {
+    Some(preview) => {
+      let quoted = preview.replace(old="\n", new="\n> ").to_string()
+      ["Replying to:", "> \{quoted}", "", content].join("\n")
+    }
+    None => content
+  }
+}
+
+///|
+fn push_cowork_input_history(model : Model, content : String) -> Model {
+  let trimmed = content.trim().to_string()
+  if trimmed.is_blank() {
+    { ..model, cowork_input_history_index: None }
+  } else {
+    let deduped = model.cowork_input_history.filter(fn(item) { item != trimmed })
+    let history = [trimmed, ..deduped]
+    let limited : Array[String] = []
+    let count = if history.length() > 30 { 30 } else { history.length() }
+    for index in 0..<count {
+      limited.push(history[index])
+    }
+    { ..model, cowork_input_history: limited, cowork_input_history_index: None }
+  }
+}
+
+///|
+fn queued_cowork_draft_content(draft : QueuedCoworkDraft) -> String {
+  match draft.quoted_preview {
+    Some(preview) => {
+      let quoted = preview.replace(old="\n", new="\n> ").to_string()
+      ["Replying to:", "> \{quoted}", "", draft.content].join("\n")
+    }
+    None => draft.content
+  }
+}
+
+///|
+fn next_queued_cowork_draft(model : Model) -> QueuedCoworkDraft? {
+  match model.cowork_draft_queue {
+    [first, ..] => Some(first)
+    _ => None
+  }
+}
+
+///|
+fn queued_cowork_draft_by_id(
+  model : Model,
+  draft_id : String,
+) -> QueuedCoworkDraft? {
+  for draft in model.cowork_draft_queue {
+    if draft.id == draft_id {
+      return Some(draft)
+    }
+  }
+  None
+}
+
+///|
 fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
   match msg {
     LoadRuns =>
@@ -181,16 +254,22 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         { ..model, cowork_action_loading: true, cowork_action_error: None },
       )
     CoworkSessionCreated(Ok(session)) => {
-      let next_model = {
-        ..model,
-        cowork_action_loading: false,
-        cowork_action_error: None,
-        cowork_detail: Some(session),
-        selected_cowork_session_key: Some(session.session.session_key),
-        cowork_detail_loading: false,
-        cowork_detail_error: None,
-        cowork_composer: "",
-      }
+      let next_model = sync_cowork_session_fields(
+        {
+          ..model,
+          cowork_action_loading: false,
+          cowork_action_error: None,
+          cowork_detail: Some(session),
+          selected_cowork_session_key: Some(session.session.session_key),
+          cowork_detail_loading: false,
+          cowork_detail_error: None,
+          cowork_composer: "",
+          cowork_reply_to_message_id: None,
+          cowork_reply_preview: None,
+          cowork_notice: Some("Conversation created."),
+        },
+        session,
+      )
       (
         batch([
           fetch_cowork_sessions(dispatch, model.gateway_base),
@@ -263,14 +342,17 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
             None => @rabbita.none
           },
-          {
-            ..model,
-            cowork_detail: Some(session),
-            cowork_detail_loading: false,
-            cowork_detail_error: None,
-            cowork_linked_snapshot_loading: session.linked_run is Some(_),
-            cowork_linked_snapshot_error: None,
-          },
+          sync_cowork_session_fields(
+            {
+              ..model,
+              cowork_detail: Some(session),
+              cowork_detail_loading: false,
+              cowork_detail_error: None,
+              cowork_linked_snapshot_loading: session.linked_run is Some(_),
+              cowork_linked_snapshot_error: None,
+            },
+            session,
+          ),
         )
       } else {
         (@rabbita.none, model)
@@ -312,57 +394,136 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         },
       )
     SetCoworkComposer(value) =>
-      (@rabbita.none, { ..model, cowork_composer: value })
-    SendCoworkMessage =>
+      (
+        @rabbita.none,
+        { ..model, cowork_composer: value, cowork_input_history_index: None },
+      )
+    SetCoworkModelOverride(value) =>
+      (@rabbita.none, { ..model, cowork_model_override: value })
+    SetCoworkProviderOverride(value) =>
+      (@rabbita.none, { ..model, cowork_provider_override: value })
+    SetCoworkCwdOverride(value) =>
+      (@rabbita.none, { ..model, cowork_cwd_override: value })
+    SaveCoworkConfig =>
       match model.selected_cowork_session_key {
         Some(session_key) =>
+          (
+            post_cowork_action(
+              dispatch,
+              "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/config",
+              body={
+                "title": model.cowork_detail
+                .map(fn(detail) { detail.session.title })
+                .unwrap_or(""),
+                "cwd": model.cowork_cwd_override,
+                "model": model.cowork_model_override,
+                "provider": model.cowork_provider_override,
+              },
+            ),
+            {
+              ..model,
+              cowork_action_loading: true,
+              cowork_action_error: None,
+              cowork_notice: Some("Saving conversation config..."),
+            },
+          )
+        None => (@rabbita.none, model)
+      }
+    SendCoworkMessage =>
+      match model.selected_cowork_session_key {
+        Some(session_key) => {
+          let content = cowork_composer_content(model, model.cowork_composer)
+          let next_model = push_cowork_input_history(model, content)
           (
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/messages",
-              body={ "content": model.cowork_composer },
+              body={
+                "content": content,
+                "cwd": next_model.cowork_cwd_override,
+                "model": next_model.cowork_model_override,
+              },
             ),
-            { ..model, cowork_action_loading: true, cowork_action_error: None },
+            {
+              ..next_model,
+              cowork_action_loading: true,
+              cowork_action_error: None,
+              cowork_notice: Some("Sending message..."),
+            },
           )
+        }
         None => (@rabbita.none, model)
       }
     StartCoworkPlan =>
       match model.selected_cowork_session_key {
-        Some(session_key) =>
+        Some(session_key) => {
+          let content = cowork_composer_content(model, model.cowork_composer)
+          let next_model = push_cowork_input_history(model, content)
           (
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/plan",
-              body={ "request_text": model.cowork_composer },
+              body={
+                "request_text": content,
+                "cwd": next_model.cowork_cwd_override,
+              },
             ),
-            { ..model, cowork_action_loading: true, cowork_action_error: None },
+            {
+              ..next_model,
+              cowork_action_loading: true,
+              cowork_action_error: None,
+              cowork_notice: Some("Starting plan mode..."),
+            },
           )
+        }
         None => (@rabbita.none, model)
       }
     PreviewCoworkPlan =>
       match model.selected_cowork_session_key {
-        Some(session_key) =>
+        Some(session_key) => {
+          let content = cowork_composer_content(model, model.cowork_composer)
+          let next_model = push_cowork_input_history(model, content)
           (
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/preview",
-              body={ "guidance": model.cowork_composer },
+              body={
+                "guidance": content,
+                "cwd": next_model.cowork_cwd_override,
+              },
             ),
-            { ..model, cowork_action_loading: true, cowork_action_error: None },
+            {
+              ..next_model,
+              cowork_action_loading: true,
+              cowork_action_error: None,
+              cowork_notice: Some("Refreshing plan preview..."),
+            },
           )
+        }
         None => (@rabbita.none, model)
       }
     PromoteCoworkPlan =>
       match model.selected_cowork_session_key {
-        Some(session_key) =>
+        Some(session_key) => {
+          let content = cowork_composer_content(model, model.cowork_composer)
+          let next_model = push_cowork_input_history(model, content)
           (
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/promote",
-              body={ "guidance": model.cowork_composer },
+              body={
+                "guidance": content,
+                "cwd": next_model.cowork_cwd_override,
+              },
             ),
-            { ..model, cowork_action_loading: true, cowork_action_error: None },
+            {
+              ..next_model,
+              cowork_action_loading: true,
+              cowork_action_error: None,
+              cowork_notice: Some("Promoting plan into proposal..."),
+            },
           )
+        }
         None => (@rabbita.none, model)
       }
     ConfirmCoworkProposal(proposal_id) =>
@@ -373,33 +534,211 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/proposals/\{proposal_id}/confirm",
             ),
-            { ..model, cowork_action_loading: true, cowork_action_error: None },
+            {
+              ..model,
+              cowork_action_loading: true,
+              cowork_action_error: None,
+              cowork_notice: Some("Confirming proposal..."),
+            },
           )
         None => (@rabbita.none, model)
       }
     ResumeCoworkRun(run_id) =>
       match model.selected_cowork_session_key {
-        Some(session_key) =>
+        Some(session_key) => {
+          let content = cowork_composer_content(model, model.cowork_composer)
+          let next_model = push_cowork_input_history(model, content)
           (
             post_cowork_action(
               dispatch,
               "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/runs/\{run_id}/resume",
-              body={ "content": model.cowork_composer },
+              body={ "content": content },
             ),
-            { ..model, cowork_action_loading: true, cowork_action_error: None },
+            {
+              ..next_model,
+              cowork_action_loading: true,
+              cowork_action_error: None,
+              cowork_notice: Some("Resuming linked run..."),
+            },
           )
+        }
         None => (@rabbita.none, model)
       }
-    CoworkActionFinished(Ok(session)) =>
-      (
-        batch([
-          fetch_cowork_sessions(dispatch, model.gateway_base),
-          match session.linked_run {
-            Some(run) =>
-              fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
-            None => @rabbita.none
+    QueueCoworkDraft(action) => {
+      let content = model.cowork_composer.trim().to_string()
+      if content.is_blank() {
+        (@rabbita.none, { ..model, cowork_notice: Some("Composer is empty.") })
+      } else {
+        let draft = QueuedCoworkDraft::{
+          id: "queue:\{model.cowork_draft_queue.length() + 1}:\{content.length()}",
+          action,
+          content,
+          quoted_message_id: model.cowork_reply_to_message_id,
+          quoted_preview: model.cowork_reply_preview,
+        }
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_draft_queue: [..model.cowork_draft_queue, draft],
+            cowork_notice: Some("Queued \{action}."),
           },
-        ]),
+        )
+      }
+    }
+    RunQueuedCoworkDraft(draft_id) =>
+      match model.selected_cowork_session_key {
+        Some(session_key) =>
+          match queued_cowork_draft_by_id(model, draft_id) {
+            Some(draft) => {
+              let content = queued_cowork_draft_content(draft)
+              let url = match draft.action {
+                "plan" =>
+                  "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/plan"
+                "preview" =>
+                  "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/preview"
+                "promote" =>
+                  "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/promote"
+                _ =>
+                  "\{model.gateway_base}/v1/cowork/sessions/\{session_key}/messages"
+              }
+              let body : Json = match draft.action {
+                "plan" =>
+                  { "request_text": content, "cwd": model.cowork_cwd_override }
+                "preview" =>
+                  { "guidance": content, "cwd": model.cowork_cwd_override }
+                "promote" =>
+                  { "guidance": content, "cwd": model.cowork_cwd_override }
+                _ =>
+                  {
+                    "content": content,
+                    "cwd": model.cowork_cwd_override,
+                    "model": model.cowork_model_override,
+                  }
+              }
+              let next_model = push_cowork_input_history(
+                {
+                  ..model,
+                  cowork_draft_queue: model.cowork_draft_queue.filter(fn(item) {
+                    item.id != draft_id
+                  }),
+                },
+                content,
+              )
+              (
+                post_cowork_action(dispatch, url, body~),
+                {
+                  ..next_model,
+                  cowork_action_loading: true,
+                  cowork_action_error: None,
+                  cowork_notice: Some("Running queued \{draft.action}..."),
+                },
+              )
+            }
+            None => (@rabbita.none, model)
+          }
+        None => (@rabbita.none, model)
+      }
+    RunAllQueuedCoworkDrafts =>
+      match next_queued_cowork_draft(model) {
+        Some(draft) => update(dispatch, RunQueuedCoworkDraft(draft.id), model)
+        None =>
+          (@rabbita.none, { ..model, cowork_notice: Some("Queue is empty.") })
+      }
+    RemoveQueuedCoworkDraft(draft_id) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_draft_queue: model.cowork_draft_queue.filter(fn(draft) {
+            draft.id != draft_id
+          }),
+        },
+      )
+    QuoteCoworkMessage(message_id, preview) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_reply_to_message_id: Some(message_id),
+          cowork_reply_preview: Some(preview),
+        },
+      )
+    ReuseCoworkMessage(content) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_composer: content,
+          cowork_notice: Some("Loaded message into composer."),
+        },
+      )
+    CopyCoworkMessage(content) =>
+      (
+        copy_cowork_text(dispatch, content),
+        { ..model, cowork_notice: Some("Copying message...") },
+      )
+    CoworkCopyFinished(Ok(status)) =>
+      (
+        @rabbita.none,
+        { ..model, cowork_notice: Some("Message copied: \{status}") },
+      )
+    CoworkCopyFinished(Err(error)) =>
+      (@rabbita.none, { ..model, cowork_notice: Some("Copy failed: \{error}") })
+    ClearCoworkReply =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_reply_to_message_id: None,
+          cowork_reply_preview: None,
+        },
+      )
+    RecallPreviousCoworkInput =>
+      if model.cowork_input_history.is_empty() {
+        (@rabbita.none, model)
+      } else {
+        let index = match model.cowork_input_history_index {
+          Some(current) =>
+            if current + 1 >= model.cowork_input_history.length() {
+              model.cowork_input_history.length() - 1
+            } else {
+              current + 1
+            }
+          None => 0
+        }
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_input_history_index: Some(index),
+            cowork_composer: model.cowork_input_history[index],
+          },
+        )
+      }
+    RecallNextCoworkInput =>
+      match model.cowork_input_history_index {
+        Some(current) =>
+          if current <= 0 {
+            (
+              @rabbita.none,
+              { ..model, cowork_input_history_index: None, cowork_composer: "" },
+            )
+          } else {
+            let index = current - 1
+            (
+              @rabbita.none,
+              {
+                ..model,
+                cowork_input_history_index: Some(index),
+                cowork_composer: model.cowork_input_history[index],
+              },
+            )
+          }
+        None => (@rabbita.none, model)
+      }
+    CoworkActionFinished(Ok(session)) => {
+      let next_model = sync_cowork_session_fields(
         {
           ..model,
           cowork_action_loading: false,
@@ -409,8 +748,29 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_detail_error: None,
           cowork_linked_snapshot_loading: session.linked_run is Some(_),
           cowork_composer: "",
+          cowork_reply_to_message_id: None,
+          cowork_reply_preview: None,
+          cowork_notice: Some("Conversation updated."),
         },
+        session,
       )
+      (
+        batch([
+          fetch_cowork_sessions(dispatch, model.gateway_base),
+          match session.linked_run {
+            Some(run) =>
+              fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
+            None => @rabbita.none
+          },
+          if !next_model.cowork_draft_queue.is_empty() {
+            dispatch(RunAllQueuedCoworkDrafts)
+          } else {
+            @rabbita.none
+          },
+        ]),
+        next_model,
+      )
+    }
     CoworkActionFinished(Err(error)) =>
       (
         @rabbita.none,
@@ -418,6 +778,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           ..model,
           cowork_action_loading: false,
           cowork_action_error: Some(error),
+          cowork_notice: Some(error),
         },
       )
     SelectCoworkPanel(panel) => {

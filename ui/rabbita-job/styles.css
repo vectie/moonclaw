@@ -423,6 +423,42 @@ input {
   overflow-wrap: anywhere;
 }
 
+.cowork-config-bar {
+  display: grid;
+  grid-template-columns: 180px 180px minmax(0, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.cowork-config-input {
+  min-width: 0;
+}
+
+.cowork-config-cwd {
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, monospace;
+}
+
+.cowork-message-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.cowork-queue-panel {
+  margin: 0.85rem 0;
+}
+
+.cowork-queue-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.65rem 0;
+}
+
+.cowork-memory-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
 .run-card {
   display: block;
   width: 100%;

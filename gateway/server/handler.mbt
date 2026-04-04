@@ -116,6 +116,7 @@ async fn Gateway::execute_agent(
   let session = self.sessions.get_or_create(session_key~, cwd~)
   self.sessions.save_entry(session_key, SessionEntry::{
     session_id: session.session_id,
+    title: session.title,
     updated_at: current_time_ms(),
     channel: session.channel,
     model_override: session.model_override,
@@ -168,6 +169,7 @@ async fn Gateway::execute_agent(
       }
       self.sessions.save_entry(session_key, SessionEntry::{
         session_id: session.session_id,
+        title: session.title,
         updated_at: current_time_ms(),
         channel: session.channel,
         model_override: Some(model_name),
@@ -247,6 +249,7 @@ async fn Gateway::execute_agent(
   }
   self.sessions.save_entry(session_key, SessionEntry::{
     session_id: conversation_id,
+    title: session.title,
     updated_at: completed_at,
     channel: session.channel,
     model_override: Some(model_name),
