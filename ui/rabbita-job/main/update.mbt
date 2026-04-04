@@ -41,6 +41,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
                 selected_run_id: Some(run_id),
                 detail_loading: true,
                 detail_error: None,
+                artifact_modal_loading: false,
+                artifact_modal_error: None,
+                artifact_modal: None,
               },
             )
           }
@@ -75,6 +78,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           expanded_node_ids: [],
           detail_loading: true,
           detail_error: None,
+          artifact_modal_loading: false,
+          artifact_modal_error: None,
+          artifact_modal: None,
         },
       )
     LoadRun(run_id) =>
@@ -98,6 +104,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           expanded_node_ids: [],
           detail_loading: true,
           detail_error: None,
+          artifact_modal_loading: false,
+          artifact_modal_error: None,
+          artifact_modal: None,
         },
       )
     PollRun(run_id) =>
@@ -353,11 +362,50 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             focused_node_id: None,
             detail_loading: false,
             detail_error: Some(error),
+            artifact_modal_loading: false,
           },
         )
       } else {
         (@rabbita.none, model)
       }
+    OpenArtifact(artifact_id) =>
+      (
+        fetch_artifact(dispatch, model.gateway_base, artifact_id),
+        { ..model, artifact_modal_loading: true, artifact_modal_error: None },
+      )
+    ArtifactLoaded(artifact_id, Ok(artifact)) =>
+      if artifact.artifact.id == artifact_id {
+        (
+          @rabbita.none,
+          {
+            ..model,
+            artifact_modal_loading: false,
+            artifact_modal_error: None,
+            artifact_modal: Some(artifact),
+          },
+        )
+      } else {
+        (@rabbita.none, { ..model, artifact_modal_loading: false })
+      }
+    ArtifactLoaded(_, Err(error)) =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          artifact_modal_loading: false,
+          artifact_modal_error: Some(error),
+        },
+      )
+    CloseArtifactModal =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          artifact_modal_loading: false,
+          artifact_modal_error: None,
+          artifact_modal: None,
+        },
+      )
     EventsLoaded(run_id, Ok(timeline)) =>
       if model.selected_run_id == Some(run_id) {
         (
@@ -647,14 +695,35 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         Some(snapshot) =>
           match node_for_id(snapshot, node_id) {
             Some(node) => {
+              let maybe_artifact = artifact_for_node(snapshot, node)
+              let should_open_report = match maybe_artifact {
+                Some(artifact) =>
+                  artifact_is_textual(artifact) &&
+                  artifact_is_report_like(artifact)
+                None => false
+              }
               let next_model = {
                 ..model,
                 focused_node_id: Some(node_id),
                 timeline_scope_node_id: None,
                 timeline_scope_branch_only: false,
                 right_panel: panel_for_node(model, node),
+                artifact_modal_loading: should_open_report,
+                artifact_modal_error: if should_open_report {
+                  None
+                } else {
+                  model.artifact_modal_error
+                },
               }
-              (sync_url_cmd(next_model), next_model)
+              let next_cmd = match maybe_artifact {
+                Some(artifact) if should_open_report =>
+                  batch([
+                    sync_url_cmd(next_model),
+                    fetch_artifact(dispatch, model.gateway_base, artifact.id),
+                  ])
+                _ => sync_url_cmd(next_model)
+              }
+              (next_cmd, next_model)
             }
             None => (@rabbita.none, { ..model, focused_node_id: Some(node_id) })
           }

@@ -84,6 +84,12 @@ struct UiArtifact {
 } derive(FromJson, Show)
 
 ///|
+struct LoadedArtifact {
+  artifact : UiArtifact
+  content : String?
+} derive(FromJson, Show)
+
+///|
 struct UiMemory {
   id : String
   kind : String
@@ -249,6 +255,9 @@ struct Model {
   timeline_scope_branch_only : Bool
   detail_loading : Bool
   detail_error : String?
+  artifact_modal_loading : Bool
+  artifact_modal_error : String?
+  artifact_modal : LoadedArtifact?
   right_panel : RightPanel
   canvas_zoom : Int
   acp_snapshot : AcpUiSnapshot?
@@ -273,6 +282,9 @@ enum Msg {
   PumpStream(String)
   SnapshotLoaded(String, Result[UiSnapshot, String])
   EventsLoaded(String, Result[Array[UiTimelineEntry], String])
+  OpenArtifact(String)
+  ArtifactLoaded(String, Result[LoadedArtifact, String])
+  CloseArtifactModal
   StreamDrained(String, Result[(Array[UiTimelineEntry], Bool), String])
   LoadAcp
   PollAcp
@@ -365,6 +377,9 @@ fn init_model() -> Model {
     timeline_scope_branch_only: false,
     detail_loading: false,
     detail_error: None,
+    artifact_modal_loading: false,
+    artifact_modal_error: None,
+    artifact_modal: None,
     right_panel: Artifacts,
     canvas_zoom: 100,
     acp_snapshot: None,

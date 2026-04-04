@@ -1045,11 +1045,24 @@ input {
   background: var(--surface);
 }
 
+.artifact-card-button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+}
+
 .artifact-card:hover,
 .memory-card:hover,
 .focus-event:hover,
 .focus-link:hover {
   box-shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+}
+
+.artifact-card-button:hover {
+  border-color: var(--line-strong);
+  background: #f6f8fa;
 }
 
 .mixed-handoff-card {
@@ -1130,6 +1143,58 @@ input {
 .mono {
   font-family: "SF Mono", "Monaco", "Cascadia Code", monospace;
   font-size: 0.83rem;
+}
+
+.artifact-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: rgba(17, 24, 39, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.artifact-modal {
+  width: min(960px, 100%);
+  max-height: min(88vh, 920px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+}
+
+.artifact-modal-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.artifact-modal-path {
+  margin-top: 0.35rem;
+  color: var(--muted);
+}
+
+.artifact-modal-body {
+  overflow: auto;
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.artifact-modal-content {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+  font-family: "SF Mono", "Monaco", "Cascadia Code", monospace;
+  font-size: 0.82rem;
+  color: var(--text);
 }
 
 ::-webkit-scrollbar {

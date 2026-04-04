@@ -31,15 +31,41 @@ fn non_starter_artifacts(snapshot : UiSnapshot) -> Array[UiArtifact] {
 }
 
 ///|
-fn render_artifact_card(artifact : UiArtifact) -> Html {
-  article(class="artifact-card", [
+fn artifact_is_textual(artifact : UiArtifact) -> Bool {
+  artifact.content_type.has_prefix("text/") ||
+  artifact.content_type == "application/json"
+}
+
+///|
+fn artifact_is_report_like(artifact : UiArtifact) -> Bool {
+  artifact.artifact_type.contains(".report") ||
+  artifact.artifact_type == "report" ||
+  artifact.path.has_suffix("/report.md") ||
+  artifact.path.has_suffix(".report.md")
+}
+
+///|
+fn render_artifact_card(
+  dispatch : Dispatch[Msg],
+  artifact : UiArtifact,
+) -> Html {
+  let body = [
     p(
       class="node-title",
       artifact.logical_key.unwrap_or(artifact.artifact_type),
     ),
     p(class="muted", artifact.artifact_type),
     p(class="mono", artifact.path),
-  ])
+  ]
+  if artifact_is_textual(artifact) {
+    button(
+      class="artifact-card artifact-card-button",
+      on_click=dispatch(OpenArtifact(artifact.id)),
+      body,
+    )
+  } else {
+    article(class="artifact-card", body)
+  }
 }
 
 ///|
@@ -1126,7 +1152,10 @@ fn render_workspace_panel(snapshot : UiSnapshot) -> Html {
 }
 
 ///|
-fn render_artifacts_panel(snapshot : UiSnapshot) -> Html {
+fn render_artifacts_panel(
+  dispatch : Dispatch[Msg],
+  snapshot : UiSnapshot,
+) -> Html {
   let starter = starter_artifacts(snapshot)
   let other = non_starter_artifacts(snapshot)
   section(class="panel", [
@@ -1145,7 +1174,12 @@ fn render_artifacts_panel(snapshot : UiSnapshot) -> Html {
                 class="muted",
                 "Materialized starter files, extracted text, and attachment manifests.",
               ),
-              div(class="artifact-list", starter.map(render_artifact_card)),
+              div(
+                class="artifact-list",
+                starter.map(fn(artifact) {
+                  render_artifact_card(dispatch, artifact)
+                }),
+              ),
             ])
           },
           if other.is_empty() {
@@ -1153,7 +1187,12 @@ fn render_artifacts_panel(snapshot : UiSnapshot) -> Html {
           } else {
             div(class="focus-block", [
               p(class="kv-label", "Run Outputs"),
-              div(class="artifact-list", other.map(render_artifact_card)),
+              div(
+                class="artifact-list",
+                other.map(fn(artifact) {
+                  render_artifact_card(dispatch, artifact)
+                }),
+              ),
             ])
           },
         ])
@@ -1262,7 +1301,7 @@ fn render_right_panel(
     ]),
     match model.right_panel {
       Workspace => render_workspace_panel(snapshot)
-      Artifacts => render_artifacts_panel(snapshot)
+      Artifacts => render_artifacts_panel(dispatch, snapshot)
       Memory => render_memory_panel(snapshot)
     },
   ])
@@ -1944,7 +1983,7 @@ fn render_focus_inspector(
                   div(
                     class="artifact-list",
                     preview_items(branch_artifacts, 3).map(fn(artifact) {
-                      render_artifact_card(artifact)
+                      render_artifact_card(dispatch, artifact)
                     }),
                   ),
                 ])

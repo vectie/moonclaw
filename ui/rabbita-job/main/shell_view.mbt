@@ -16,6 +16,62 @@ fn render_surface_tabs(model : Model) -> Html {
 }
 
 ///|
+fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
+  if !model.artifact_modal_loading &&
+    model.artifact_modal is None &&
+    model.artifact_modal_error is None {
+    return nothing
+  }
+  let title = match model.artifact_modal {
+    Some(loaded) =>
+      loaded.artifact.logical_key.unwrap_or(loaded.artifact.artifact_type)
+    None => "Artifact Viewer"
+  }
+  let subtitle = match model.artifact_modal {
+    Some(loaded) => loaded.artifact.path
+    None => ""
+  }
+  div(class="artifact-modal-backdrop", [
+    div(class="artifact-modal", [
+      div(class="artifact-modal-header", [
+        div([
+          p(class="eyebrow", "Artifact Viewer"),
+          h2(class="detail-title", title),
+          if subtitle == "" {
+            nothing
+          } else {
+            p(class="mono artifact-modal-path", subtitle)
+          },
+        ]),
+        button(
+          class="tree-control-button",
+          on_click=dispatch(CloseArtifactModal),
+          "Close",
+        ),
+      ]),
+      div(class="artifact-modal-body", [
+        if model.artifact_modal_loading {
+          p(class="empty", "Loading artifact content...")
+        } else if model.artifact_modal_error is Some(error) {
+          p(class="empty", error)
+        } else {
+          match model.artifact_modal {
+            Some(loaded) =>
+              div(
+                class="artifact-modal-content",
+                loaded.content.unwrap_or(
+                  "Artifact content is not available as text.",
+                ),
+              )
+            None => p(class="empty", "No artifact selected.")
+          }
+        },
+      ]),
+    ]),
+  ])
+}
+
+///|
 fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   div(class="shell", [
     header(class="topbar", [
@@ -99,5 +155,6 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
           ]
       },
     ),
+    render_artifact_modal(dispatch, model),
   ])
 }

@@ -353,6 +353,15 @@ fn parse_events_payload(json : Json) -> Result[Array[UiTimelineEntry], String] {
 }
 
 ///|
+fn parse_loaded_artifact_payload(json : Json) -> Result[LoadedArtifact, String] {
+  let payload : Result[LoadedArtifact, Error] = try? @json.from_json(json)
+  match payload {
+    Ok(payload) => Ok(payload)
+    Err(error) => Err("Failed to parse artifact payload: \{error}")
+  }
+}
+
+///|
 fn parse_acp_snapshot_payload(json : Json) -> Result[AcpUiSnapshot, String] {
   let payload : Result[AcpUiSnapshotPayload, Error] = try? @json.from_json(json)
   match payload {
@@ -631,6 +640,19 @@ fn fetch_runs(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
     parse_runs_payload,
   )
   @http.get("\{gateway_base}/v1/jobs/runs", expect~)
+}
+
+///|
+fn fetch_artifact(
+  dispatch : Dispatch[Msg],
+  gateway_base : String,
+  artifact_id : String,
+) -> Cmd {
+  let expect : @http.Expecting[Cmd, LoadedArtifact] = @http.Expecting::Json(
+    fn(result) { dispatch(ArtifactLoaded(artifact_id, result)) },
+    parse_loaded_artifact_payload,
+  )
+  @http.get("\{gateway_base}/v1/artifacts/\{artifact_id}", expect~)
 }
 
 ///|

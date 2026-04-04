@@ -54,6 +54,10 @@ type CompanyLaneEntry
 
 type CompanyLaneStats
 
+type LoadedArtifact
+pub impl Show for LoadedArtifact
+pub impl @json.FromJson for LoadedArtifact
+
 type MixedHandoffGroup
 
 type Model
