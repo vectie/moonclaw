@@ -203,6 +203,8 @@ Behavior:
 - `/promote` stops plan mode and converts the current plan candidate into a normal persisted draft proposal
 - `/plan-job` creates a classic persisted draft proposal and replies with the step plan
 - `/e2e` creates an end-to-end draft proposal with job-level preprocess and optional postprocess stages
+- `/preview` can be used repeatedly while plan mode is active
+- `/promote` with no new guidance promotes the same candidate that `/preview` would show
 - proposals are not executed until confirmed
 - `/job-notify` changes notification verbosity for the current chat/thread scope
 - `verbose` mode sends step progress messages derived from workflow run events

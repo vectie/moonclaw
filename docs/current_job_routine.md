@@ -64,6 +64,12 @@ The key distinction is:
 - `/plan-job` and `/e2e` create persisted proposal artifacts
 - `/confirm` is required before any persisted draft proposal can execute
 
+Operationally:
+
+- `/preview` can be used repeatedly while plan mode is active
+- `/promote` consumes the active plan-mode session for that thread
+- after `/promote`, further changes should happen through `/revise <proposal_id> ...` or a new `/plan ...`
+
 The default fallback is intentionally minimal. AI planning or workspace profiles
 are expected to provide richer step structure when needed.
 
@@ -416,6 +422,13 @@ Current board behavior:
   - `board_lane`
   - `board_order`
 - if those are absent, the UI falls back to heuristics such as OPC skills or worker roles
+
+Current Rabbita output behavior:
+
+- final run `report.md` and `result.json` are surfaced as synthetic artifact cards even when they only exist as workspace files
+- starter attachment artifacts are aggregated into one `Starter Docs` card in the main artifact-facing surfaces
+- report and artifact cards open in a full-screen editor-style surface
+- the run canvas route exposes a full-screen toggle that collapses the side panes
 
 ## 13. Operator-Facing Routine
 

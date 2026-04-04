@@ -21,6 +21,10 @@ The local job lane should:
 - highlight the active step and newly created nodes
 - expose artifacts, workspace state, memory, and linked remote activity
 - show remote handoff entries in the local timeline when ACP work was triggered from the local run
+- surface final run `report.md` and `result.json` as clickable cards even when they only exist as workspace files
+- aggregate starter-document inputs into one operator-facing `Starter Docs` card instead of many low-level artifact cards
+- open textual reports and artifacts in a full-screen editor-style surface
+- let the run canvas expand into a full-screen layout that hides the side panes
 
 ## ACP Expectations
 

@@ -37,6 +37,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-04-04`: added thread-local `/plan` mode with `/preview` and `/promote`; made final run `report.md` and `result.json` appear as clickable Rabbita cards; added a full-screen canvas toggle, aggregated starter documents into one operator-facing input card, and upgraded artifact opening from a small popup into a full-screen editor surface
 - `2026-04-01`: clarified the execution layer with uniquely named analysis helpers, `delegate_run`, `patch_edit`, and `resource_providers`; hardened the analysis backbone by separating execution and tool contracts; added a first-class `web_fetch` tool and made analysis distinguish web search from web fetch instead of relying on loose booleans
 - `2026-03-26`: split classic `/plan-job` from the E2E `/e2e` flow; added job-level preprocess and optional postprocess planning, in-place `/resume` from `WaitingForInput`, tighter planner skill enforcement, and assumption-based continuation for blocked analytical runs
 - `2026-03-25`: added adaptive step expansion with `needs_input` / `needs_subplan`, `WaitingForInput` pause-and-resume via `/resume`, run-workspace output materialization, and fixed Feishu channel chat to honor the configured primary model from `~/.moonclaw/moonclaw.json`
@@ -77,6 +78,10 @@ Current job behavior is designed to stay readable from chat and from the workspa
   - ACP remote-agent lane
   - mixed local↔remote lineage view
   - controller/company board lanes
+  - final run report/result cards
+  - starter-doc aggregation
+  - full-screen canvas
+  - full-screen artifact editor
   - transcript and case export
 
 ## 🧩 Main Subsystems
@@ -177,9 +182,7 @@ http://localhost:18123/ui
 If `/ui` says the Rabbita bundle is missing, build it from the repo:
 
 ```bash
-cd ~/Workspace/moonclaw/ui/rabbita-job
-npm install
-npm run build
+./scripts/build-rabbita-ui.sh
 ```
 
 The gateway serves the bundle at `/ui` and also serves the built `/assets/...`
@@ -345,6 +348,13 @@ The Rabbita UI exposes three main surfaces:
   remote-agent targets, sessions, runs, stdout/stderr, cancel/reset/detach
 - 🔀 `Overview`
   mixed local↔remote lineage, handoffs, and case export
+
+Current Rabbita behavior also includes:
+
+- final run `report.md` and `result.json` surfaced as clickable cards even when they only exist as workspace files
+- starter attachment artifacts collapsed into one `Starter Docs` card instead of many low-level cards
+- report and artifact clicks opening a full-screen editor-style surface
+- a `Full Screen` toggle on the run canvas route
 
 Exports currently include:
 

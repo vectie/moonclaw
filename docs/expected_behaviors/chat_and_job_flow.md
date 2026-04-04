@@ -45,6 +45,7 @@ Expected behavior for `/promote`:
 2. MoonClaw converts the latest planned candidate into a durable draft proposal.
 3. MoonClaw exits plan mode for that thread.
 4. The reply is a normal proposal message that can later be confirmed with `/confirm <proposal_id>`.
+5. With no new guidance, `/promote` should promote the same candidate that `/preview` would show.
 
 Expected behavior for `/preview`:
 
@@ -52,6 +53,7 @@ Expected behavior for `/preview`:
 2. With no extra guidance, it renders the current candidate as-is.
 3. With extra guidance, it first refreshes the current candidate and then renders it.
 4. No proposal is persisted.
+5. `/preview` can be called repeatedly while plan mode is active.
 
 Expected behavior for `/plan-job <description>`:
 
