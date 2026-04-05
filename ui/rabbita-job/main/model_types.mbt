@@ -186,6 +186,15 @@ struct QueuedCoworkDraft {
 } derive(Show)
 
 ///|
+struct CoworkLocalUpload {
+  id : String
+  name : String
+  media_type : String
+  content : String
+  source : String
+} derive(FromJson, Show)
+
+///|
 struct CoworkContextChip {
   id : String
   label : String
@@ -396,10 +405,12 @@ struct Model {
   cowork_cwd_override : String
   cowork_session_query : String
   cowork_pinned_session_keys : Array[String]
-  cowork_reply_to_message_id : String?
   cowork_reply_preview : String?
+  cowork_local_uploads : Array[CoworkLocalUpload]
   cowork_context_chips : Array[CoworkContextChip]
   cowork_draft_queue : Array[QueuedCoworkDraft]
+  cowork_queue_editing_id : String?
+  cowork_queue_editing_content : String
   cowork_queue_paused : Bool
   cowork_input_history : Array[String]
   cowork_input_history_index : Int?
@@ -449,6 +460,9 @@ enum Msg {
   SetCoworkSessionQuery(String)
   TogglePinnedCoworkSession(String)
   SaveCoworkConfig
+  OpenCoworkFilePicker
+  PollCoworkDroppedFiles
+  CoworkFilesPicked(Result[Array[CoworkLocalUpload], String])
   SendCoworkMessage
   StartCoworkPlan
   PreviewCoworkPlan
@@ -461,12 +475,17 @@ enum Msg {
   RemoveQueuedCoworkDraft(String)
   MoveQueuedCoworkDraftUp(String)
   MoveQueuedCoworkDraftDown(String)
+  EditQueuedCoworkDraft(String)
+  SetQueuedCoworkDraftContent(String)
+  SaveQueuedCoworkDraftEdit
+  CancelQueuedCoworkDraftEdit
   ToggleCoworkQueuePaused
-  QuoteCoworkMessage(String, String)
+  QuoteCoworkMessage(String)
   ReuseCoworkMessage(String)
   CopyCoworkMessage(String)
   CoworkCopyFinished(Result[String, String])
   ClearCoworkReply
+  RemoveCoworkLocalUpload(String)
   AttachCoworkContext(String, String, String)
   RemoveCoworkContext(String)
   RecallPreviousCoworkInput
@@ -594,10 +613,12 @@ fn init_model() -> Model {
     cowork_cwd_override: "",
     cowork_session_query: "",
     cowork_pinned_session_keys: [],
-    cowork_reply_to_message_id: None,
     cowork_reply_preview: None,
+    cowork_local_uploads: [],
     cowork_context_chips: [],
     cowork_draft_queue: [],
+    cowork_queue_editing_id: None,
+    cowork_queue_editing_content: "",
     cowork_queue_paused: false,
     cowork_input_history: [],
     cowork_input_history_index: None,

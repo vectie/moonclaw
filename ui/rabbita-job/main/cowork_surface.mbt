@@ -4,6 +4,9 @@ fn cowork_message_kind_label(message : CoworkMessage) -> String {
     "plan_preview" => "Plan Preview"
     "proposal" => "Draft Proposal"
     "run_event" => "Run Event"
+    "thinking" => "Thinking"
+    "tool_call" => "Tool Call"
+    "tool_result" => "Tool Result"
     "resume" => "Resume Input"
     "command" => "Command"
     "error" => "Error"
@@ -35,6 +38,10 @@ fn cowork_message_class(message : CoworkMessage) -> String {
     classes = classes + " user"
   } else if message.kind == "error" {
     classes = classes + " error"
+  } else if message.kind == "thinking" {
+    classes = classes + " thinking"
+  } else if message.kind == "tool_call" || message.kind == "tool_result" {
+    classes = classes + " tool"
   } else if message.kind == "plan_preview" ||
     message.kind == "proposal" ||
     message.kind == "run_event" {
@@ -46,6 +53,14 @@ fn cowork_message_class(message : CoworkMessage) -> String {
 ///|
 fn cowork_message_preview(message : CoworkMessage) -> String {
   cowork_compact_preview(message.content, 180)
+}
+
+///|
+fn cowork_tool_name(message : CoworkMessage) -> String? {
+  match message.metadata {
+    { "tool_name": String(tool_name), .. } => Some(tool_name)
+    _ => None
+  }
 }
 
 ///|
@@ -92,12 +107,17 @@ fn render_cowork_sidebar(dispatch : Dispatch[Msg], model : Model) -> Html {
   let sessions = visible_cowork_sessions(model)
   section(class="panel cowork-sidebar", [
     header(class="panel-header", [
-      h2(class="panel-title", "Cowork"),
-      button(
-        class="tree-control-button",
-        on_click=dispatch(CreateCoworkSession),
-        "New Chat",
-      ),
+      div(class="cowork-panel-heading", [
+        h2(class="panel-title", "Cowork"),
+        p(class="muted", "Conversations, planning threads, and linked runs."),
+      ]),
+      div(class="cowork-header-actions", [
+        button(
+          class="tree-control-button",
+          on_click=dispatch(CreateCoworkSession),
+          "New Chat",
+        ),
+      ]),
     ]),
     div(class="panel-body cowork-sidebar-body", [
       input(
@@ -200,9 +220,7 @@ fn render_cowork_message(
   let secondary_actions = div(class="cowork-message-actions", [
     button(
       class="tree-control-button",
-      on_click=dispatch(
-        QuoteCoworkMessage(message.id, cowork_message_preview(message)),
-      ),
+      on_click=dispatch(QuoteCoworkMessage(cowork_message_preview(message))),
       "Reply",
     ),
     button(
@@ -219,9 +237,18 @@ fn render_cowork_message(
   let body = if message.kind == "plan_preview" ||
     message.kind == "proposal" ||
     message.kind == "run_event" ||
+    message.kind == "thinking" ||
+    message.kind == "tool_call" ||
+    message.kind == "tool_result" ||
     message.kind == "error" {
     article(class="artifact-card", [
-      p(class="node-title", cowork_message_kind_label(message)),
+      div(class="cowork-session-row", [
+        p(class="node-title", cowork_message_kind_label(message)),
+        match cowork_tool_name(message) {
+          Some(tool_name) => span(class="meta-chip", tool_name)
+          None => nothing
+        },
+      ]),
       p(class="mono cowork-message-content", message.content),
     ])
   } else {
@@ -245,15 +272,25 @@ fn render_cowork_queue(dispatch : Dispatch[Msg], model : Model) -> Html {
     div(
       class="cowork-queue-list",
       model.cowork_draft_queue.map(fn(draft) {
+        let editing = model.cowork_queue_editing_id == Some(draft.id)
         article(class="artifact-card", [
           div(class="cowork-session-row", [
             p(class="node-title", "Queued \{draft.action}"),
             span(class="meta-chip", draft.action),
           ]),
-          p(
-            class="mono",
-            cowork_compact_preview(queued_cowork_draft_content(draft), 220),
-          ),
+          if editing {
+            textarea(
+              class="artifact-editor-textarea mono cowork-queue-editor",
+              value=model.cowork_queue_editing_content,
+              on_input=value => dispatch(SetQueuedCoworkDraftContent(value)),
+              nothing,
+            )
+          } else {
+            p(
+              class="mono",
+              cowork_compact_preview(queued_cowork_draft_content(draft), 220),
+            )
+          },
           div(class="cowork-action-row", [
             button(
               class="tree-control-button",
@@ -265,11 +302,32 @@ fn render_cowork_queue(dispatch : Dispatch[Msg], model : Model) -> Html {
               on_click=dispatch(MoveQueuedCoworkDraftDown(draft.id)),
               "Down",
             ),
-            button(
-              class="tree-control-button",
-              on_click=dispatch(RunQueuedCoworkDraft(draft.id)),
-              "Run",
-            ),
+            if editing {
+              button(
+                class="tree-control-button",
+                on_click=dispatch(SaveQueuedCoworkDraftEdit),
+                "Save",
+              )
+            } else {
+              button(
+                class="tree-control-button",
+                on_click=dispatch(EditQueuedCoworkDraft(draft.id)),
+                "Edit",
+              )
+            },
+            if editing {
+              button(
+                class="tree-control-button",
+                on_click=dispatch(CancelQueuedCoworkDraftEdit),
+                "Cancel",
+              )
+            } else {
+              button(
+                class="tree-control-button",
+                on_click=dispatch(RunQueuedCoworkDraft(draft.id)),
+                "Run",
+              )
+            },
             button(
               class="tree-control-button",
               on_click=dispatch(RemoveQueuedCoworkDraft(draft.id)),
@@ -495,7 +553,13 @@ fn render_cowork_context(
 ) -> Html {
   section(class="panel cowork-context", [
     header(class="panel-header", [
-      h2(class="panel-title", "Context"),
+      div(class="cowork-panel-heading", [
+        h2(class="panel-title", "Context"),
+        p(
+          class="muted",
+          "Preview, files, artifacts, and run state for the active conversation.",
+        ),
+      ]),
       div(class="surface-tabs", [
         button(
           class=if model.cowork_panel == CoworkPreview {
@@ -607,13 +671,19 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
   }
   section(class="panel cowork-main", [
     header(class="panel-header", [
-      h2(
-        class="panel-title",
-        model.cowork_detail
-        .map(fn(detail) { detail.session.title })
-        .unwrap_or("Conversation"),
-      ),
-      div(class="tree-controls", [
+      div(class="cowork-panel-heading", [
+        h2(
+          class="panel-title",
+          model.cowork_detail
+          .map(fn(detail) { detail.session.title })
+          .unwrap_or("Conversation"),
+        ),
+        p(
+          class="muted",
+          "Chat directly, refine plans, and promote durable work without leaving the thread.",
+        ),
+      ]),
+      div(class="tree-controls cowork-primary-actions", [
         button(
           class="tree-control-button",
           on_click=dispatch(SaveCoworkConfig),
@@ -669,7 +739,7 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
       ]),
       transcript_body,
       if model.cowork_reply_preview is Some(preview) {
-        article(class="cowork-banner", [
+        article(class="cowork-banner cowork-inline-banner", [
           p(class="node-title", "Reply Target"),
           p(class="mono", preview),
           button(
@@ -681,8 +751,14 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
       } else {
         nothing
       },
-      section(class="operator-hint cowork-queue-panel", [
-        p(class="mono", "Draft Queue"),
+      section(class="cowork-queue-panel", [
+        div(class="cowork-panel-heading", [
+          p(class="mono", "Draft Queue"),
+          p(
+            class="muted",
+            "Stage send, plan, preview, and promote actions before running them.",
+          ),
+        ]),
         render_cowork_queue(dispatch, model),
         div(class="cowork-action-row", [
           button(
@@ -721,59 +797,92 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
           ),
         ]),
       ]),
-      div(class="cowork-composer", [
-        if model.cowork_context_chips.is_empty() {
-          nothing
-        } else {
-          div(
-            class="cowork-action-row",
-            model.cowork_context_chips.map(fn(chip) {
-              div(class="meta-chip", [
-                span(chip.label),
-                button(
-                  class="tree-control-button",
-                  on_click=dispatch(RemoveCoworkContext(chip.id)),
-                  "x",
-                ),
-              ])
-            }),
-          )
-        },
-        textarea(
-          class="artifact-editor-textarea cowork-composer-textarea",
-          value=model.cowork_composer,
-          on_input=value => dispatch(SetCoworkComposer(value)),
-          nothing,
-        ),
-        div(class="cowork-action-row", [
-          button(
-            class="tree-control-button",
-            on_click=dispatch(RecallPreviousCoworkInput),
-            "Older",
-          ),
-          button(
-            class="tree-control-button",
-            on_click=dispatch(RecallNextCoworkInput),
-            "Newer",
-          ),
-          button(
-            class="tree-control-button",
-            on_click=dispatch(SendCoworkMessage),
-            "Send",
-          ),
-          if model.cowork_action_loading {
-            span(class="status-badge pending", "Working")
-          } else {
+      div(class="cowork-composer-shell", [
+        div(class="cowork-composer", [
+          article(class="cowork-dropzone", [
+            p(class="node-title", "Local Files"),
+            p(
+              class="muted",
+              "Click Upload Files or drag files onto the page to attach local content to this conversation.",
+            ),
+            div(class="cowork-action-row", [
+              button(
+                class="tree-control-button",
+                on_click=dispatch(OpenCoworkFilePicker),
+                "Upload Files",
+              ),
+            ]),
+          ]),
+          if model.cowork_local_uploads.is_empty() {
             nothing
+          } else {
+            div(
+              class="cowork-upload-list",
+              model.cowork_local_uploads.map(fn(upload) {
+                div(class="meta-chip cowork-upload-chip", [
+                  span("\{upload.name} (\{upload.source})"),
+                  button(
+                    class="tree-control-button",
+                    on_click=dispatch(RemoveCoworkLocalUpload(upload.id)),
+                    "x",
+                  ),
+                ])
+              }),
+            )
           },
-          match model.cowork_action_error {
-            Some(error) => p(class="empty", error)
-            None => nothing
+          if model.cowork_context_chips.is_empty() {
+            nothing
+          } else {
+            div(
+              class="cowork-action-row",
+              model.cowork_context_chips.map(fn(chip) {
+                div(class="meta-chip", [
+                  span(chip.label),
+                  button(
+                    class="tree-control-button",
+                    on_click=dispatch(RemoveCoworkContext(chip.id)),
+                    "x",
+                  ),
+                ])
+              }),
+            )
           },
-          match model.cowork_notice {
-            Some(notice) => p(class="muted", notice)
-            None => nothing
-          },
+          textarea(
+            class="artifact-editor-textarea cowork-composer-textarea",
+            value=model.cowork_composer,
+            on_input=value => dispatch(SetCoworkComposer(value)),
+            nothing,
+          ),
+          div(class="cowork-action-row", [
+            button(
+              class="tree-control-button",
+              on_click=dispatch(RecallPreviousCoworkInput),
+              "Older",
+            ),
+            button(
+              class="tree-control-button",
+              on_click=dispatch(RecallNextCoworkInput),
+              "Newer",
+            ),
+            button(
+              class="tree-control-button",
+              on_click=dispatch(SendCoworkMessage),
+              "Send",
+            ),
+            if model.cowork_action_loading {
+              span(class="status-badge pending", "Working")
+            } else {
+              nothing
+            },
+            match model.cowork_action_error {
+              Some(error) => p(class="empty", error)
+              None => nothing
+            },
+            match model.cowork_notice {
+              Some(notice) => p(class="muted", notice)
+              None => nothing
+            },
+          ]),
         ]),
       ]),
     ]),

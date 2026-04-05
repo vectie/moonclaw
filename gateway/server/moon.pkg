@@ -24,6 +24,7 @@ import {
   "moonbitlang/moonclaw/internal/signal",
   "moonbitlang/moonclaw/oauth/codex",
   "moonbitlang/moonclaw/agent",
+  "moonbitlang/moonclaw/ai",
   "moonbitlang/moonclaw/model",
   "moonbitlang/moonclaw/job",
   "moonbitlang/moonclaw/acp",

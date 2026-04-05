@@ -1,0 +1,11 @@
+(function(){const c=document.createElement("link").relList;if(c&&c.supports&&c.supports("modulepreload"))return;for(const e of document.querySelectorAll('link[rel="modulepreload"]'))f(e);new MutationObserver(e=>{for(const t of e)if(t.type==="childList")for(const u of t.addedNodes)u.tagName==="LINK"&&u.rel==="modulepreload"&&f(u)}).observe(document,{childList:!0,subtree:!0});function l(e){const t={};return e.integrity&&(t.integrity=e.integrity),e.referrerPolicy&&(t.referrerPolicy=e.referrerPolicy),e.crossOrigin==="use-credentials"?t.credentials="include":e.crossOrigin==="anonymous"?t.credentials="omit":t.credentials="same-origin",t}function f(e){if(e.ep)return;e.ep=!0;const t=l(e);fetch(e.href,t)}})();const g="modulepreload",P=function(d){return"/"+d},m={},b=function(c,l,f){let e=Promise.resolve();if(l&&l.length>0){let p=function(r){return Promise.all(r.map(i=>Promise.resolve(i).then(a=>({status:"fulfilled",value:a}),a=>({status:"rejected",reason:a}))))};var u=p;document.getElementsByTagName("link");const s=document.querySelector("meta[property=csp-nonce]"),o=s?.nonce||s?.getAttribute("nonce");e=p(l.map(r=>{if(r=P(r),r in m)return;m[r]=!0;const i=r.endsWith(".css"),a=i?'[rel="stylesheet"]':"";if(document.querySelector(`link[href="${r}"]${a}`))return;const n=document.createElement("link");if(n.rel=i?"stylesheet":g,i||(n.as="script"),n.crossOrigin="",n.href=r,o&&n.setAttribute("nonce",o),document.head.appendChild(n),i)return new Promise((y,v)=>{n.addEventListener("load",y),n.addEventListener("error",()=>v(new Error(`Unable to preload CSS for ${r}`)))})}))}function t(s){const o=new Event("vite:preloadError",{cancelable:!0});if(o.payload=s,window.dispatchEvent(o),!o.defaultPrevented)throw s}return e.then(s=>{for(const o of s||[])o.status==="rejected"&&t(o.reason);return c().catch(t)})},h=document.getElementById("app");h&&(h.innerHTML=`
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">MoonClaw Console</p>
+          <h1 class="headline">Loading Rabbita</h1>
+          <p class="subline">Preparing cowork, jobs, and ACP surfaces.</p>
+        </div>
+      </header>
+    </div>
+  `);b(()=>import("./_rabbita_main-entry-WlHd5GUu.js"),[]);

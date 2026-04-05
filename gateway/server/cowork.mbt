@@ -552,11 +552,152 @@ async fn Gateway::handle_update_cowork_config(
 }
 
 ///|
-fn agent_result_content(result : Json) -> String {
-  match result {
-    { "content": String(content), .. } => content
-    _ => result.stringify()
+fn cowork_trimmed_text(text : String, max_len : Int) -> String {
+  let trimmed = text.trim().to_string()
+  if trimmed.length() <= max_len {
+    trimmed
+  } else {
+    "\{trimmed[:max_len - 3].to_string()}..."
   }
+}
+
+///|
+fn cowork_tool_call_text(tool_call : @ai.ToolCall) -> String {
+  let arguments = tool_call.arguments.unwrap_or("{}")
+  [
+    "Tool: \{tool_call.name}",
+    "",
+    "Arguments:",
+    cowork_trimmed_text(arguments, 1600),
+  ].join("\n")
+}
+
+///|
+fn cowork_tool_result_text(
+  tool_call : @ai.ToolCall,
+  rendered : String,
+) -> String {
+  [
+    "Tool: \{tool_call.name}",
+    "",
+    "Result:",
+    cowork_trimmed_text(rendered, 2400),
+  ].join("\n")
+}
+
+///|
+fn cowork_agent_error_shape(
+  code : String,
+  message : String,
+) -> @protocol.ErrorShape {
+  @protocol.ErrorShape::{
+    code,
+    message,
+    details: None,
+    retryable: None,
+    retry_after_ms: None,
+  }
+}
+
+///|
+async fn Gateway::execute_cowork_agent_message(
+  self : Gateway,
+  session : SessionEntry,
+  cwd : String,
+  content : String,
+  model_name : String,
+) -> Result[SessionEntry, @protocol.ErrorShape] {
+  let model = match @model.load(home=self.home, cwd~, name=model_name) {
+    Some(model) => model
+    None =>
+      return Err(
+        cowork_agent_error_shape(
+          "model_not_found",
+          "Model not found: \{model_name}",
+        ),
+      )
+  }
+  let agent = @agent.new(
+    model,
+    cwd~,
+    logger=self.logger,
+    uuid=self.uuid,
+    system_message=content,
+    home=self.home,
+  )
+  let mut updated_session = session
+  let mut final_content = ""
+  let mut thinking_started = false
+  agent.event_target.add_listener(event => {
+    match event.desc {
+      PreConversation =>
+        if !thinking_started {
+          thinking_started = true
+          updated_session = self.append_session_message(
+            updated_session, "assistant", "thinking", "Thinking through the request and preparing the next action.",
+          )
+        }
+      PreToolCall(tool_call) =>
+        updated_session = self.append_session_message(
+          updated_session,
+          "assistant",
+          "tool_call",
+          cowork_tool_call_text(tool_call),
+          metadata={ "tool_name": tool_call.name, "tool_call_id": tool_call.id },
+        )
+      PostToolCall(tool_call, rendered~, ..) =>
+        updated_session = self.append_session_message(
+          updated_session,
+          "assistant",
+          "tool_result",
+          cowork_tool_result_text(tool_call, rendered),
+          metadata={ "tool_name": tool_call.name, "tool_call_id": tool_call.id },
+        )
+      AssistantMessageDelta(delta) if !delta.is_blank() && !thinking_started => {
+        thinking_started = true
+        updated_session = self.append_session_message(
+          updated_session, "assistant", "thinking", "Drafting the response.",
+        )
+      }
+      AssistantMessage(content, usage~, tool_calls~) => {
+        if !content.is_blank() {
+          final_content = content
+        }
+        if !tool_calls.is_empty() && final_content.is_blank() {
+          final_content = tool_calls
+            .map(fn(tool_call) { tool_call.name })
+            .join(", ")
+        }
+        ignore(usage)
+      }
+      _ => ()
+    }
+  })
+  agent.start() catch {
+    error =>
+      return Err(
+        cowork_agent_error_shape(
+          "agent_failed",
+          "Cowork agent failed: \{error}",
+        ),
+      )
+  }
+  agent.close()
+  let conversation_id = agent.id().to_string()
+  Ok(
+    self.append_session_message(
+      SessionEntry::{
+        ..updated_session,
+        session_id: conversation_id,
+        model_override: Some(model_name),
+        cwd: Some(cwd),
+      },
+      "assistant",
+      "assistant",
+      final_content,
+      metadata={ "model": model_name, "conversation_id": conversation_id },
+    ),
+  )
 }
 
 ///|
@@ -626,25 +767,22 @@ async fn Gateway::handle_cowork_send_message(
       })
     }
     None => {
-      let result = self.execute_agent(run_id=self.uuid.v4().to_string(), @protocol.AgentParams::{
-        message: content,
-        session_key: Some(session_key),
-        cwd: Some(cwd),
-        model: params.model,
-        provider: None,
-        run_id: None,
-        idempotency_key: None,
-      })
-      match result {
-        Ok(payload) => {
-          let reloaded = self.sessions.get(session_key).unwrap_or(final_session)
-          final_session = self.append_session_message(
-            reloaded,
-            "assistant",
-            "assistant",
-            agent_result_content(payload),
-            metadata=payload,
-          )
+      let model_name = match params.model {
+        Some(value) if !value.trim().to_string().is_blank() =>
+          value.trim().to_string()
+        _ =>
+          match final_session.model_override {
+            Some(value) if !value.trim().to_string().is_blank() =>
+              value.trim().to_string()
+            _ => "default"
+          }
+      }
+      match
+        self.execute_cowork_agent_message(
+          final_session, cwd, content, model_name,
+        ) {
+        Ok(updated_session) => {
+          final_session = updated_session
           self.save_session_detail(session_key, final_session)
           self.write_json(w, {
             "session": self

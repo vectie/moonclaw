@@ -86,7 +86,7 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   let main_class = if route_surface(model.route) == SurfaceOverview {
     "layout overview-layout"
   } else if route_surface(model.route) == SurfaceCowork {
-    "layout"
+    "layout cowork-layout"
   } else if model.route is RunCanvas(_) {
     if model.canvas_fullscreen {
       "layout canvas-layout canvas-layout-fullscreen"

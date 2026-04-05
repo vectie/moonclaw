@@ -22,6 +22,17 @@ fn sync_cowork_session_fields(
 
 ///|
 fn cowork_composer_content(model : Model, content : String) -> String {
+  let upload_lines = if model.cowork_local_uploads.is_empty() {
+    []
+  } else {
+    [
+      "Attached local files:",
+      ..model.cowork_local_uploads.map(fn(upload) {
+        "### \{upload.name} (\{upload.media_type})\n\{upload.content}"
+      }),
+      "",
+    ]
+  }
   let chip_lines = if model.cowork_context_chips.is_empty() {
     []
   } else {
@@ -36,13 +47,15 @@ fn cowork_composer_content(model : Model, content : String) -> String {
   match model.cowork_reply_preview {
     Some(preview) => {
       let quoted = preview.replace(old="\n", new="\n> ").to_string()
-      [..chip_lines, "Replying to:", "> \{quoted}", "", content].join("\n")
+      [..upload_lines, ..chip_lines, "Replying to:", "> \{quoted}", "", content].join(
+        "\n",
+      )
     }
     None =>
-      if chip_lines.is_empty() {
+      if upload_lines.is_empty() && chip_lines.is_empty() {
         content
       } else {
-        [..chip_lines, content].join("\n")
+        [..upload_lines, ..chip_lines, content].join("\n")
       }
   }
 }
@@ -124,6 +137,28 @@ fn move_draft_by_offset(
   copied[found_index] = copied[target]
   copied[target] = item
   copied
+}
+
+///|
+fn upsert_local_uploads(
+  current : Array[CoworkLocalUpload],
+  incoming : Array[CoworkLocalUpload],
+) -> Array[CoworkLocalUpload] {
+  let next = current.copy()
+  for upload in incoming {
+    let mut replaced = false
+    for index in 0..<next.length() {
+      if next[index].id == upload.id {
+        next[index] = upload
+        replaced = true
+        break
+      }
+    }
+    if !replaced {
+      next.push(upload)
+    }
+  }
+  next
 }
 
 ///|
@@ -298,7 +333,13 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
     CreateCoworkSession =>
       (
         create_cowork_session(dispatch, model.gateway_base),
-        { ..model, cowork_action_loading: true, cowork_action_error: None },
+        {
+          ..model,
+          cowork_action_loading: true,
+          cowork_action_error: None,
+          cowork_local_uploads: [],
+          cowork_context_chips: [],
+        },
       )
     CoworkSessionCreated(Ok(session)) => {
       let next_model = sync_cowork_session_fields(
@@ -311,8 +352,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_detail_loading: false,
           cowork_detail_error: None,
           cowork_composer: "",
-          cowork_reply_to_message_id: None,
           cowork_reply_preview: None,
+          cowork_local_uploads: [],
+          cowork_context_chips: [],
           cowork_notice: Some("Conversation created."),
         },
         session,
@@ -321,6 +363,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         batch([
           fetch_cowork_sessions(dispatch, model.gateway_base),
           fetch_cowork_workspace(dispatch, model.gateway_base),
+          schedule_cowork_drop_poll(dispatch),
           match session.linked_run {
             Some(run) =>
               fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
@@ -356,6 +399,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         cowork_linked_snapshot_error: None,
         cowork_workspace_loading: true,
         cowork_workspace_error: None,
+        cowork_local_uploads: [],
+        cowork_context_chips: [],
       }
       (
         batch([
@@ -367,6 +412,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           ),
           fetch_cowork_session(dispatch, model.gateway_base, session_key),
           fetch_cowork_workspace(dispatch, model.gateway_base),
+          schedule_cowork_drop_poll(dispatch),
         ]),
         next_model,
       )
@@ -376,6 +422,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         batch([
           fetch_cowork_session(dispatch, model.gateway_base, session_key),
           fetch_cowork_workspace(dispatch, model.gateway_base),
+          schedule_cowork_drop_poll(dispatch),
         ]),
         {
           ..model,
@@ -387,6 +434,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_linked_snapshot_error: None,
           cowork_workspace_loading: true,
           cowork_workspace_error: None,
+          cowork_local_uploads: [],
+          cowork_context_chips: [],
         },
       )
     CoworkSessionLoaded(session_key, Ok(session)) =>
@@ -532,6 +581,45 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           )
         None => (@rabbita.none, model)
       }
+    OpenCoworkFilePicker =>
+      (
+        pick_cowork_local_files(dispatch),
+        { ..model, cowork_notice: Some("Opening file picker...") },
+      )
+    PollCoworkDroppedFiles =>
+      if model.route is Cowork {
+        (
+          batch([
+            take_cowork_dropped_files(dispatch),
+            schedule_cowork_drop_poll(dispatch),
+          ]),
+          model,
+        )
+      } else {
+        (@rabbita.none, model)
+      }
+    CoworkFilesPicked(Ok(files)) =>
+      if files.is_empty() {
+        (@rabbita.none, model)
+      } else {
+        let next_uploads = upsert_local_uploads(
+          model.cowork_local_uploads,
+          files,
+        )
+        (
+          @rabbita.none,
+          {
+            ..model,
+            cowork_local_uploads: next_uploads,
+            cowork_notice: Some("Attached \{files.length()} local file(s)."),
+          },
+        )
+      }
+    CoworkFilesPicked(Err(error)) =>
+      (
+        @rabbita.none,
+        { ..model, cowork_notice: Some("File import failed: \{error}") },
+      )
     SendCoworkMessage =>
       match model.selected_cowork_session_key {
         Some(session_key) => {
@@ -668,7 +756,9 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         None => (@rabbita.none, model)
       }
     QueueCoworkDraft(action) => {
-      let content = model.cowork_composer.trim().to_string()
+      let content = cowork_composer_content(model, model.cowork_composer)
+        .trim()
+        .to_string()
       if content.is_blank() {
         (@rabbita.none, { ..model, cowork_notice: Some("Composer is empty.") })
       } else {
@@ -676,14 +766,16 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           id: "queue:\{model.cowork_draft_queue.length() + 1}:\{content.length()}",
           action,
           content,
-          quoted_message_id: model.cowork_reply_to_message_id,
-          quoted_preview: model.cowork_reply_preview,
+          quoted_message_id: None,
+          quoted_preview: None,
         }
         (
           @rabbita.none,
           {
             ..model,
             cowork_draft_queue: [..model.cowork_draft_queue, draft],
+            cowork_queue_editing_id: None,
+            cowork_queue_editing_content: "",
             cowork_notice: Some("Queued \{action}."),
           },
         )
@@ -782,6 +874,60 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           ),
         },
       )
+    EditQueuedCoworkDraft(draft_id) =>
+      match queued_cowork_draft_by_id(model, draft_id) {
+        Some(draft) =>
+          (
+            @rabbita.none,
+            {
+              ..model,
+              cowork_queue_editing_id: Some(draft_id),
+              cowork_queue_editing_content: draft.content,
+            },
+          )
+        None => (@rabbita.none, model)
+      }
+    SetQueuedCoworkDraftContent(content) =>
+      (@rabbita.none, { ..model, cowork_queue_editing_content: content })
+    SaveQueuedCoworkDraftEdit =>
+      match model.cowork_queue_editing_id {
+        Some(draft_id) => {
+          let trimmed = model.cowork_queue_editing_content.trim().to_string()
+          if trimmed.is_blank() {
+            (
+              @rabbita.none,
+              { ..model, cowork_notice: Some("Queued draft content is empty.") },
+            )
+          } else {
+            (
+              @rabbita.none,
+              {
+                ..model,
+                cowork_draft_queue: model.cowork_draft_queue.map(fn(draft) {
+                  if draft.id == draft_id {
+                    { ..draft, content: trimmed }
+                  } else {
+                    draft
+                  }
+                }),
+                cowork_queue_editing_id: None,
+                cowork_queue_editing_content: "",
+                cowork_notice: Some("Queued draft updated."),
+              },
+            )
+          }
+        }
+        None => (@rabbita.none, model)
+      }
+    CancelQueuedCoworkDraftEdit =>
+      (
+        @rabbita.none,
+        {
+          ..model,
+          cowork_queue_editing_id: None,
+          cowork_queue_editing_content: "",
+        },
+      )
     ToggleCoworkQueuePaused =>
       (
         @rabbita.none,
@@ -795,15 +941,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           },
         },
       )
-    QuoteCoworkMessage(message_id, preview) =>
-      (
-        @rabbita.none,
-        {
-          ..model,
-          cowork_reply_to_message_id: Some(message_id),
-          cowork_reply_preview: Some(preview),
-        },
-      )
+    QuoteCoworkMessage(preview) =>
+      (@rabbita.none, { ..model, cowork_reply_preview: Some(preview) })
     ReuseCoworkMessage(content) =>
       (
         @rabbita.none,
@@ -825,13 +964,15 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
       )
     CoworkCopyFinished(Err(error)) =>
       (@rabbita.none, { ..model, cowork_notice: Some("Copy failed: \{error}") })
-    ClearCoworkReply =>
+    ClearCoworkReply => (@rabbita.none, { ..model, cowork_reply_preview: None })
+    RemoveCoworkLocalUpload(id) =>
       (
         @rabbita.none,
         {
           ..model,
-          cowork_reply_to_message_id: None,
-          cowork_reply_preview: None,
+          cowork_local_uploads: model.cowork_local_uploads.filter(fn(upload) {
+            upload.id != id
+          }),
         },
       )
     AttachCoworkContext(id, label, content) =>
@@ -914,8 +1055,8 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           cowork_detail_error: None,
           cowork_linked_snapshot_loading: session.linked_run is Some(_),
           cowork_composer: "",
-          cowork_reply_to_message_id: None,
           cowork_reply_preview: None,
+          cowork_local_uploads: [],
           cowork_context_chips: [],
           cowork_notice: Some("Conversation updated."),
         },
@@ -925,6 +1066,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
         batch([
           fetch_cowork_sessions(dispatch, model.gateway_base),
           fetch_cowork_workspace(dispatch, model.gateway_base),
+          schedule_cowork_drop_poll(dispatch),
           match session.linked_run {
             Some(run) =>
               fetch_cowork_linked_snapshot(dispatch, model.gateway_base, run.id)
@@ -1996,6 +2138,7 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
             stop_acp_stream_cmd(),
             dispatch(LoadCoworkSessions),
             fetch_cowork_workspace(dispatch, model.gateway_base),
+            schedule_cowork_drop_poll(dispatch),
             match selected_cowork_session_key {
               Some(session_key) => dispatch(LoadCoworkSession(session_key))
               None => @rabbita.none

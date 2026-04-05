@@ -40,6 +40,10 @@ type BrowserCopyResult
 pub impl Show for BrowserCopyResult
 pub impl @json.FromJson for BrowserCopyResult
 
+type BrowserLocalUploadBatch
+pub impl Show for BrowserLocalUploadBatch
+pub impl @json.FromJson for BrowserLocalUploadBatch
+
 type CanvasEdgeLayout
 
 type CanvasNodeLayout
@@ -56,6 +60,10 @@ type CompanyLaneStats
 
 type CoworkContextChip
 pub impl Show for CoworkContextChip
+
+type CoworkLocalUpload
+pub impl Show for CoworkLocalUpload
+pub impl @json.FromJson for CoworkLocalUpload
 
 type CoworkMessage
 pub impl Show for CoworkMessage
