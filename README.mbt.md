@@ -37,6 +37,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-04-05`: added a concrete wiki-maintainer extension pack, a wiki-specific test guide, and automatic workspace detection for `raw/` + `wiki/` layouts so planning/execution can see `wiki/index.md`, `wiki/log.md`, and key wiki directories as part of runtime context
 - `2026-04-04`: added the Rabbita `Cowork` surface with a conversation sidebar, transcript, composer, plan-mode actions, linked proposal/run cards, and a right-side context pane for preview, workspace, artifacts, and run state
 - `2026-04-04`: added thread-local `/plan` mode with `/preview` and `/promote`; made final run `report.md` and `result.json` appear as clickable Rabbita cards; added a full-screen canvas toggle, aggregated starter documents into one operator-facing input card, and upgraded artifact opening from a small popup into a full-screen editor surface
 - `2026-04-01`: clarified the execution layer with uniquely named analysis helpers, `delegate_run`, `patch_edit`, and `resource_providers`; hardened the analysis backbone by separating execution and tool contracts; added a first-class `web_fetch` tool and made analysis distinguish web search from web fetch instead of relying on loose booleans
@@ -280,6 +281,15 @@ This is the intended MoonClaw side of a persistent markdown-wiki workflow:
 - inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
 - verify that behavior changes when you revise the workspace-local pack instead of changing MoonBit code
 
+MoonClaw now also detects wiki-shaped workspaces automatically when they contain:
+
+- `raw/`
+- `wiki/`
+- `wiki/index.md`
+- `wiki/log.md`
+
+and includes compact wiki structure plus index/log excerpts in runtime prompt context. That keeps the agent side aligned with a MoonBook-style maintained wiki workspace without hardcoding MoonBook into core.
+
 ## OPC Job Example
 
 A concrete one-person-company controller profile is available at [opc_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json), with a matching test guide at [opc_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/opc_job_test_guide.md).
@@ -445,19 +455,11 @@ It is trying to be:
 <!-- STAR_GROWTH:START -->
 _Last updated: 2026-04-05_
 
-| Date | Stars | Delta |
-| --- | ---: | ---: |
-| 2026-03-24 | 21 | — |
-| 2026-03-25 | 22 | +1 |
-| 2026-03-26 | 22 | +0 |
-| 2026-03-27 | 22 | +0 |
-| 2026-03-28 | 22 | +0 |
-| 2026-03-29 | 22 | +0 |
-| 2026-03-30 | 23 | +1 |
-| 2026-03-31 | 23 | +0 |
-| 2026-04-01 | 23 | +0 |
-| 2026-04-02 | 23 | +0 |
-| 2026-04-03 | 23 | +0 |
-| 2026-04-04 | 23 | +0 |
-| 2026-04-05 | 23 | +0 |
+```mermaid
+xychart-beta
+    title "GitHub Stars"
+    x-axis ["03-24","03-25","03-26","03-27","03-28","03-29","03-30","03-31","04-01","04-02","04-03","04-04","04-05"]
+    y-axis "Stars" 20 --> 24
+    line [21,22,22,22,22,22,23,23,23,23,23,23,23]
+```
 <!-- STAR_GROWTH:END -->

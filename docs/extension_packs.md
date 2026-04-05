@@ -86,6 +86,21 @@ The differing layer is:
 - domain prompts
 - evaluator semantics
 
+For wiki maintenance specifically, a separate host workspace can own the wiki
+product shape while MoonClaw owns the runtime:
+
+- host workspace
+  - `raw/`
+  - `wiki/`
+  - `index.md`
+  - `log.md`
+  - rendering/building/serving
+- MoonClaw pack/runtime
+  - ingest/query/lint workflow policy
+  - controller and worker roles
+  - editing/review execution
+  - artifacts, lineage, UI, and operator control
+
 ## What Must Stay Out Of Core
 
 To preserve generality, core should not hardcode:

@@ -17,6 +17,18 @@ Instead, MoonClaw should provide a reusable runtime for:
 
 The wiki-specific behavior should come from a workspace-local extension pack.
 
+This is designed to sit cleanly beside a separate wiki product/workspace layer.
+A MoonBook-style workspace can own:
+
+- `raw/`
+- `wiki/`
+- `wiki/index.md`
+- `wiki/log.md`
+- rendering/building/serving
+
+while MoonClaw owns the workflow/runtime behavior operating inside that
+workspace.
+
 ## Recommended Pack Shape
 
 ```text
@@ -41,6 +53,10 @@ workspace/
 The current example job pack is:
 
 - [docs/examples/wiki_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/wiki_moonclaw.jobs.json)
+
+Current runtime support also detects wiki-shaped workspaces automatically and
+surfaces compact wiki structure plus `wiki/index.md` / `wiki/log.md` excerpts
+in prompt context.
 
 ## Core Workflow Families
 

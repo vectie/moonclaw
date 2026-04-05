@@ -44,6 +44,7 @@ Current planning routine:
    - request text
    - workspace prompt context
    - relevant structured memory hits
+   - detected wiki workspace context when the workspace contains `raw/` + `wiki/`
 2. For durable proposal paths, generate a human-readable, time-prefixed proposal id.
 3. Call either `plan_chat_mode(...)` or `plan_job_proposal(...)` in
    [/Users/kq/Workspace/moonclaw/job/proposal.mbt](/Users/kq/Workspace/moonclaw/job/proposal.mbt).
@@ -98,6 +99,14 @@ If a profile matches:
 - proposal steps are replaced by the profile’s configured steps
 
 This is currently the main declarative customization mechanism for job behavior.
+
+For wiki-shaped workspaces, the workspace prompt context now also includes:
+
+- the presence of `raw/` and `wiki/`
+- references to `wiki/index.md` and `wiki/log.md`
+- discovered wiki subdirectories such as `entities/`, `concepts/`, `synthesis/`,
+  `queries/`, and `sources/`
+- compact excerpts from `wiki/index.md` and `wiki/log.md` when present
 
 ## 4. Compilation Routine
 
