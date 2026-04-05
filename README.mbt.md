@@ -267,6 +267,19 @@ This is the intended way to test research ability right now:
 - inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
 - verify that behavior changes when you edit the JSON profile, without changing MoonBit code
 
+## Wiki Maintainer Example
+
+A concrete wiki-maintainer controller pack is available at [wiki_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/wiki_moonclaw.jobs.json), with a matching test guide at [wiki_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/wiki_job_test_guide.md).
+
+This is the intended MoonClaw side of a persistent markdown-wiki workflow:
+
+- copy the example `moonclaw.jobs.json` into a wiki workspace
+- start the gateway against that workspace
+- run `/plan-job` for wiki ingest, wiki query, or wiki lint requests
+- confirm the draft and inspect `/job-status`
+- inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
+- verify that behavior changes when you revise the workspace-local pack instead of changing MoonBit code
+
 ## OPC Job Example
 
 A concrete one-person-company controller profile is available at [opc_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json), with a matching test guide at [opc_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/opc_job_test_guide.md).
@@ -278,7 +291,7 @@ This example is meant to prove the extension boundary:
 - role behavior comes from workspace `skills/`
 - controller bookkeeping, delegation, artifacts, and notifications are reused
 
-The recommended architecture for keeping research and OPC side by side is documented in [extension_packs.md](/Users/kq/Workspace/moonclaw/docs/extension_packs.md).
+The recommended architecture for keeping research, wiki, and OPC packs side by side is documented in [extension_packs.md](/Users/kq/Workspace/moonclaw/docs/extension_packs.md).
 
 The Rabbita jobs surface can now render controller runs as a company-style board with:
 

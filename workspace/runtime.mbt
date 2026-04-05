@@ -137,13 +137,91 @@ async fn load_workspace_files(root : String) -> Array[WorkspaceFile] {
 }
 
 ///|
-fn render_workspace_prompt_context(files : Array[WorkspaceFile]) -> String {
+fn excerpt_workspace_text(content : String, max_lines : Int) -> String {
+  let lines : Array[String] = []
+  for line in content.split("\n") {
+    let trimmed = line.trim_end().to_string()
+    if !trimmed.is_blank() {
+      lines.push(trimmed)
+    }
+  }
+  if lines.length() <= max_lines {
+    lines.join("\n")
+  } else {
+    [..lines[:max_lines], "..."].join("\n")
+  }
+}
+
+///|
+async fn render_wiki_workspace_prompt_context(root : String) -> String {
+  let raw_dir = root |> @pathx.join("raw")
+  let wiki_dir = root |> @pathx.join("wiki")
+  let has_raw_dir = @fsx.exists(raw_dir) catch { _ => false }
+  let has_wiki_dir = @fsx.exists(wiki_dir) catch { _ => false }
+  if !has_raw_dir && !has_wiki_dir {
+    return ""
+  }
+  let sections : Array[String] = []
+  let summary_lines : Array[String] = []
+  if has_raw_dir {
+    summary_lines.push("- raw source directory: \{raw_dir}")
+  }
+  if has_wiki_dir {
+    summary_lines.push("- maintained wiki directory: \{wiki_dir}")
+  }
+  let index_path = wiki_dir |> @pathx.join("index.md")
+  let log_path = wiki_dir |> @pathx.join("log.md")
+  let has_index = @fsx.exists(index_path) catch { _ => false }
+  if has_index {
+    summary_lines.push("- wiki index file: \{index_path}")
+    let content = @fsx.read_file(index_path) catch { _ => "" }
+    if !content.trim().is_empty() {
+      sections.push(
+        ["Wiki index excerpt", excerpt_workspace_text(content, 18)].join("\n\n"),
+      )
+    }
+  }
+  let has_log = @fsx.exists(log_path) catch { _ => false }
+  if has_log {
+    summary_lines.push("- wiki log file: \{log_path}")
+    let content = @fsx.read_file(log_path) catch { _ => "" }
+    if !content.trim().is_empty() {
+      sections.push(
+        ["Wiki log excerpt", excerpt_workspace_text(content, 12)].join("\n\n"),
+      )
+    }
+  }
+  for dir_name in ["entities", "concepts", "synthesis", "queries", "sources"] {
+    let path = wiki_dir |> @pathx.join(dir_name)
+    let exists = @fsx.exists(path) catch { _ => false }
+    if exists {
+      summary_lines.push("- wiki/\{dir_name}/ available at: \{path}")
+    }
+  }
+  if !summary_lines.is_empty() {
+    let summary = ["Wiki workspace detected:", summary_lines.join("\n")].join(
+      "\n\n",
+    )
+    return [summary, ..sections].join("\n\n---\n\n")
+  }
+  sections.join("\n\n---\n\n")
+}
+
+///|
+async fn render_workspace_prompt_context(
+  root : String,
+  files : Array[WorkspaceFile],
+) -> String {
   let sections : Array[String] = []
   for file in files {
     if file.content.trim().is_empty() {
       continue
     }
     sections.push(["Workspace file `\{file.name}`", file.content].join("\n\n"))
+  }
+  let wiki_context = render_wiki_workspace_prompt_context(root)
+  if !wiki_context.is_blank() {
+    sections.push(wiki_context)
   }
   if sections.is_empty() {
     ""
@@ -163,7 +241,7 @@ pub async fn load_workspace_snapshot_from_root(
     root,
     configured_from,
     files,
-    prompt_context: render_workspace_prompt_context(files),
+    prompt_context: render_workspace_prompt_context(root, files),
   }
 }
 

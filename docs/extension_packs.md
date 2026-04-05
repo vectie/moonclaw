@@ -1,7 +1,8 @@
 # Extension Packs
 
 This document describes how MoonClaw should stay general while supporting
-opinionated verticals like research and one-person-company workflows.
+opinionated verticals like research, wiki maintenance, and one-person-company
+workflows.
 
 ## Core Rule
 
@@ -41,7 +42,7 @@ An extension pack is a workspace-local combination of:
 This keeps domain behavior close to the workspace that wants it, instead of
 baking it into the runtime.
 
-## Research vs OPC
+## Research vs Wiki vs OPC
 
 These are different workflow shapes built on the same core.
 
@@ -51,6 +52,14 @@ Research usually wants:
 - optional controller
 - grounded source collection
 - ranking, evaluation, and reporting
+
+Wiki maintenance usually wants:
+
+- controller-guided ingest, query, and lint flows
+- direct markdown revision workers
+- durable updates to `index.md` and `log.md`
+- strong cross-reference and consistency review
+- preservation of immutable raw sources
 
 OPC usually wants:
 
@@ -148,6 +157,22 @@ workspace/
       SKILL.md
 ```
 
+Example wiki-maintainer pack:
+
+```text
+workspace/
+  moonclaw.jobs.json
+  raw/
+  wiki/
+    index.md
+    log.md
+  skills/
+    wiki-maintainer/
+      SKILL.md
+    wiki-review/
+      SKILL.md
+```
+
 Example controller lane metadata inside `moonclaw.jobs.json`:
 
 ```json
@@ -183,3 +208,8 @@ If you need to change:
 - how approvals work
 
 then it belongs in core.
+
+See also:
+
+- [docs/wiki_maintainer_pack.md](/Users/kq/Workspace/moonclaw/docs/wiki_maintainer_pack.md)
+- [docs/examples/wiki_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/wiki_moonclaw.jobs.json)

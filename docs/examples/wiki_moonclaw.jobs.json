@@ -1,0 +1,300 @@
+{
+  "jobs": {
+    "profiles": {
+      "wiki_ingest_controller": {
+        "family": "wiki_ingest_controller",
+        "role": "controller",
+        "priority": 130,
+        "tags": ["wiki", "maintainer", "ingest", "source"],
+        "match": {
+          "all": ["wiki"],
+          "any": ["ingest", "source", "integrate", "raw/"]
+        },
+        "steps": [
+          {
+            "id": "inspect_source",
+            "title": "Inspect raw source and current wiki state",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the wiki maintainer for ${proposal.title}. Inspect the raw source material, wiki/index.md, wiki/log.md, and the most relevant entity, concept, synthesis, and source pages. Identify what is new, what changed, what is contradicted, and which pages must be revised.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true,
+              "board_lane": "Inspect",
+              "board_order": 0
+            }
+          },
+          {
+            "id": "plan_revisions",
+            "title": "Plan durable wiki revisions",
+            "kind": "job.analysis",
+            "prompt_template": "Turn the inspected wiki state for ${proposal.title} into a concrete revision plan. Specify which pages to create or update under wiki/entities/, wiki/concepts/, wiki/synthesis/, wiki/sources/, wiki/queries/, plus the required changes to wiki/index.md and wiki/log.md. Prefer cumulative revisions over one-off chat summaries.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true,
+              "board_lane": "Plan",
+              "board_order": 1
+            }
+          },
+          {
+            "id": "apply_revisions",
+            "title": "Apply wiki revisions",
+            "kind": "job.delegate",
+            "request_template": "Apply the approved wiki revision plan for ${proposal.title}. Edit the wiki markdown directly, keep raw/ immutable, update cross-links, and make sure wiki/index.md and wiki/log.md reflect the changes.",
+            "child_profile": "wiki_revision_worker",
+            "include_parent_outputs": true,
+            "max_depth": 3,
+            "metadata": {
+              "board_lane": "Revise",
+              "board_order": 2
+            }
+          },
+          {
+            "id": "review_revisions",
+            "title": "Review wiki consistency",
+            "kind": "job.delegate",
+            "request_template": "Review the wiki revisions for ${proposal.title}. Check link integrity, missing backreferences, unsupported claims, stale wording, and whether wiki/index.md and wiki/log.md were updated consistently.",
+            "child_profile": "wiki_review_worker",
+            "include_parent_outputs": true,
+            "max_depth": 3,
+            "metadata": {
+              "board_lane": "Review",
+              "board_order": 3
+            }
+          },
+          {
+            "id": "finalize_ingest",
+            "title": "Finalize ingest brief",
+            "kind": "job.analysis",
+            "prompt_template": "Summarize the wiki ingest result for ${proposal.title}. Explain what pages changed, what claims were strengthened or challenged, what remains uncertain, and which next sources or follow-up questions would most improve the wiki.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true,
+              "board_lane": "Finalize",
+              "board_order": 4
+            }
+          }
+        ],
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output",
+            "result_schema": "generic/controller_decision.v1",
+            "allowed_verdicts": ["accept", "reject", "branch", "hold", "escalate"],
+            "verdict_aliases": {
+              "save": "accept",
+              "revise": "branch",
+              "continue": "branch"
+            },
+            "next_iteration_fields": {
+              "title": "title",
+              "hypothesis": "hypothesis",
+              "objective": "objective",
+              "id": "id",
+              "edge_kind": "edge_kind",
+              "metadata": "metadata"
+            }
+          }
+        }
+      },
+      "wiki_query_controller": {
+        "family": "wiki_query_controller",
+        "role": "controller",
+        "priority": 120,
+        "tags": ["wiki", "maintainer", "query"],
+        "match": {
+          "all": ["wiki"],
+          "any": ["query", "answer", "summarize", "compare", "brief"]
+        },
+        "steps": [
+          {
+            "id": "locate_pages",
+            "title": "Locate relevant wiki pages",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the wiki maintainer for ${proposal.title}. Read wiki/index.md first, then locate the pages most relevant to the question. Prefer maintained wiki pages over raw sources except when the wiki clearly needs a gap check.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true,
+              "board_lane": "Locate",
+              "board_order": 0
+            }
+          },
+          {
+            "id": "synthesize_answer",
+            "title": "Synthesize cited answer",
+            "kind": "job.analysis",
+            "prompt_template": "Answer ${request} from the maintained wiki with citations to page paths. Highlight uncertainty, conflicting pages, and missing evidence instead of flattening disagreements.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true,
+              "board_lane": "Answer",
+              "board_order": 1
+            }
+          },
+          {
+            "id": "file_query_note",
+            "title": "File durable query note",
+            "kind": "job.delegate",
+            "request_template": "If the synthesized answer for ${proposal.title} creates durable value, write or update a query note under wiki/queries/, then update wiki/index.md and wiki/log.md. If no durable note is justified, explain why and leave the wiki untouched.",
+            "child_profile": "wiki_revision_worker",
+            "include_parent_outputs": true,
+            "max_depth": 3,
+            "metadata": {
+              "board_lane": "File",
+              "board_order": 2
+            }
+          },
+          {
+            "id": "finalize_query",
+            "title": "Finalize query brief",
+            "kind": "job.analysis",
+            "prompt_template": "Summarize the final answer for ${proposal.title}, the pages it relied on, and whether the wiki was updated with a durable query note.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": false,
+              "board_lane": "Finalize",
+              "board_order": 3
+            }
+          }
+        ],
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output",
+            "result_schema": "generic/controller_decision.v1",
+            "allowed_verdicts": ["accept", "branch", "hold"],
+            "verdict_aliases": {
+              "save": "accept",
+              "revise": "branch"
+            },
+            "next_iteration_fields": {
+              "title": "title",
+              "hypothesis": "hypothesis",
+              "objective": "objective",
+              "id": "id",
+              "edge_kind": "edge_kind",
+              "metadata": "metadata"
+            }
+          }
+        }
+      },
+      "wiki_lint_controller": {
+        "family": "wiki_lint_controller",
+        "role": "controller",
+        "priority": 120,
+        "tags": ["wiki", "maintainer", "lint", "health"],
+        "match": {
+          "all": ["wiki"],
+          "any": ["lint", "audit", "health", "orphan", "stale", "contradiction"]
+        },
+        "steps": [
+          {
+            "id": "audit_structure",
+            "title": "Audit wiki health",
+            "kind": "job.analysis",
+            "prompt_template": "Audit the wiki for ${proposal.title}. Look for orphan pages, missing index/log updates, stale claims, unsupported assertions, contradictory pages, weak cross-linking, and important concepts that lack pages.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true,
+              "board_lane": "Audit",
+              "board_order": 0
+            }
+          },
+          {
+            "id": "propose_repairs",
+            "title": "Propose repair plan",
+            "kind": "job.analysis",
+            "prompt_template": "Turn the audit findings for ${proposal.title} into a repair plan ordered by impact. Be explicit about which wiki pages, index entries, and log entries should change.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true,
+              "board_lane": "Plan",
+              "board_order": 1
+            }
+          },
+          {
+            "id": "apply_repairs",
+            "title": "Apply repair edits",
+            "kind": "job.delegate",
+            "request_template": "Apply the approved wiki health repairs for ${proposal.title}. Edit only the wiki layer, preserve raw/ sources, and keep wiki/index.md plus wiki/log.md consistent with the repairs.",
+            "child_profile": "wiki_revision_worker",
+            "include_parent_outputs": true,
+            "max_depth": 3,
+            "metadata": {
+              "board_lane": "Repair",
+              "board_order": 2
+            }
+          },
+          {
+            "id": "finalize_lint",
+            "title": "Finalize lint report",
+            "kind": "job.analysis",
+            "prompt_template": "Produce the final wiki health report for ${proposal.title}. Separate fixed issues from remaining risks, note where the wiki still lacks evidence, and suggest the next highest-value sources or investigations.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": false,
+              "board_lane": "Finalize",
+              "board_order": 3
+            }
+          }
+        ],
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output",
+            "result_schema": "generic/controller_decision.v1",
+            "allowed_verdicts": ["accept", "branch", "hold", "escalate"],
+            "verdict_aliases": {
+              "fix": "accept",
+              "continue": "branch"
+            },
+            "next_iteration_fields": {
+              "title": "title",
+              "hypothesis": "hypothesis",
+              "objective": "objective",
+              "id": "id",
+              "edge_kind": "edge_kind",
+              "metadata": "metadata"
+            }
+          }
+        }
+      },
+      "wiki_revision_worker": {
+        "family": "wiki_revision_worker",
+        "priority": 20,
+        "tags": ["wiki", "maintainer", "worker", "revision"],
+        "steps": [
+          {
+            "id": "revise_wiki",
+            "title": "Revise wiki files",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the wiki revision worker for ${request}. Edit the maintained wiki markdown directly, preserve raw/ as immutable source-of-truth input, strengthen cross-references, update wiki/index.md and wiki/log.md when the wiki changes, and leave a concise change summary with any unresolved uncertainties.",
+            "metadata": {
+              "preferred_skills": ["wiki-maintainer"],
+              "enable_tools": true
+            }
+          }
+        ],
+        "metadata": {
+          "worker_role": "wiki_revision"
+        }
+      },
+      "wiki_review_worker": {
+        "family": "wiki_review_worker",
+        "priority": 20,
+        "tags": ["wiki", "maintainer", "worker", "review"],
+        "steps": [
+          {
+            "id": "review_wiki",
+            "title": "Review wiki changes",
+            "kind": "job.analysis",
+            "prompt_template": "Act as the wiki review worker for ${request}. Review the changed wiki pages for consistency, unsupported synthesis, broken links, missing index/log maintenance, stale wording, and obvious contradictions. Findings first; if clean, state residual risk.",
+            "metadata": {
+              "preferred_skills": ["wiki-review"],
+              "enable_tools": true
+            }
+          }
+        ],
+        "metadata": {
+          "worker_role": "wiki_review"
+        }
+      }
+    }
+  }
+}

@@ -84,3 +84,62 @@ async test "suggest_job_profile_family matches configured request rules" {
     )
   })
 }
+
+///|
+fn sample_wiki_profiles_json() -> Json {
+  {
+    "jobs": {
+      "profiles": {
+        "wiki_ingest_controller": {
+          "family": "wiki_ingest_controller",
+          "role": "controller",
+          "priority": 130,
+          "tags": ["wiki", "maintainer", "ingest"],
+          "match": { "all": ["wiki"], "any": ["ingest", "source", "integrate"] },
+          "steps": [
+            {
+              "id": "inspect_source",
+              "title": "Inspect raw source and current wiki state",
+              "kind": "job.analysis",
+              "prompt_template": "Inspect wiki state for: ${request}",
+              "metadata": {
+                "preferred_skills": ["wiki-maintainer"],
+                "enable_tools": true,
+              },
+            },
+            {
+              "id": "apply_revisions",
+              "title": "Apply wiki revisions",
+              "kind": "job.delegate",
+              "request_template": "Apply wiki edits for: ${request}",
+              "child_profile": "wiki_revision_worker",
+              "include_parent_outputs": true,
+              "max_depth": 3,
+            },
+          ],
+        },
+      },
+    },
+  }
+}
+
+///|
+async test "suggest_job_profile_family matches wiki maintainer profile rules" {
+  @fsx.with_temporary_directory("job-profile-wiki-match-XXXXXX", async fn(dir) {
+    @fsx.write_to_file(
+      @pathx.join(dir, "moonclaw.jobs.json"),
+      sample_wiki_profiles_json().stringify(),
+    )
+    inspect(
+      suggest_job_profile_family(
+        "Ingest this source into the wiki and revise the relevant pages.", dir, dir,
+      ).unwrap_or(""),
+      content="wiki_ingest_controller",
+    )
+    inspect(
+      suggest_job_profile_family("Ingest this source into notes.", dir, dir)
+      is None,
+      content="true",
+    )
+  })
+}

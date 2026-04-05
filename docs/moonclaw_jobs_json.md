@@ -21,7 +21,8 @@ This file is intentionally separate from global runtime config in:
 - what steps it should run
 - what skills, routing hints, and board metadata each step carries
 
-It is the main extension boundary for packs like research and OPC.
+It is the main extension boundary for packs like research, wiki maintenance,
+and OPC.
 
 ## Top-Level Shape
 
@@ -239,4 +240,5 @@ workspace/
 For full examples, see:
 
 - [docs/examples/research_job_moonclaw.json](/Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json)
+- [docs/examples/wiki_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/wiki_moonclaw.jobs.json)
 - [docs/examples/opc_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json)
