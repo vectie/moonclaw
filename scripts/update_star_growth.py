@@ -130,21 +130,25 @@ def upsert_today(history: list[StarPoint], today: str, stars: int) -> list[StarP
 
 def render_section(history: list[StarPoint], limit: int, today: str) -> str:
     recent = history[-limit:]
+    labels = [datetime.fromisoformat(point.date).strftime("%m-%d") for point in recent]
+    values = [str(point.stars) for point in recent]
+    rendered_labels = ",".join(f'"{label}"' for label in labels)
+    min_stars = min(point.stars for point in recent) if recent else 0
+    max_stars = max(point.stars for point in recent) if recent else 0
+    y_min = min_stars - 1 if min_stars > 0 else 0
+    y_max = max_stars + 1
     lines = [
         START_MARKER,
         f"_Last updated: {today}_",
         "",
-        "| Date | Stars | Delta |",
-        "| --- | ---: | ---: |",
+        "```mermaid",
+        "xychart-beta",
+        '    title "GitHub Stars"',
+        f"    x-axis [{rendered_labels}]",
+        f'    y-axis "Stars" {y_min} --> {y_max}',
+        f'    line [{",".join(values)}]',
+        "```",
     ]
-    for index, point in enumerate(recent):
-        if index == 0:
-            delta = "—"
-        else:
-            previous = recent[index - 1]
-            difference = point.stars - previous.stars
-            delta = f"{difference:+d}"
-        lines.append(f"| {point.date} | {point.stars} | {delta} |")
     lines.append(END_MARKER)
     return "\n".join(lines)
 
