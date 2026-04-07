@@ -941,8 +941,6 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           },
         },
       )
-    QuoteCoworkMessage(preview) =>
-      (@rabbita.none, { ..model, cowork_reply_preview: Some(preview) })
     ReuseCoworkMessage(content) =>
       (
         @rabbita.none,
