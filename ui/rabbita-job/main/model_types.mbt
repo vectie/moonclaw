@@ -480,7 +480,6 @@ enum Msg {
   SaveQueuedCoworkDraftEdit
   CancelQueuedCoworkDraftEdit
   ToggleCoworkQueuePaused
-  QuoteCoworkMessage(String)
   ReuseCoworkMessage(String)
   CopyCoworkMessage(String)
   CoworkCopyFinished(Result[String, String])
