@@ -105,6 +105,7 @@ Current hooks that make this work:
 
 - profile loading from `<cwd>/moonclaw.jobs.json`
 - profile matching with `match.any`, `match.all`, and `priority`
+- role runtime envelopes via `metadata.role_runtime`
 - proposal steps carrying:
   - `kind`
   - `metadata`
@@ -116,6 +117,7 @@ Current hooks that make this work:
   - `system_prompt`
   - `enable_tools`
   - `web_search`
+  - `role_runtime`
   - `model`
   - `board_lane`
   - `board_order`
@@ -126,6 +128,15 @@ Current hooks that make this work:
 - the gateway can honor ACP routing hints for simple delegated child analysis jobs
 - analysis steps can also carry ACP routing intent
 - controller policy metadata on the profile
+
+MoonClaw now also provides a reusable role substrate:
+
+- `RoleRuntimeContract`
+- `RoleHandoffPacket`
+- runtime tool gating for planner-only roles
+
+So host systems can embed MoonClaw as different planner or executor roles
+without copying runtime logic.
 
 ## Recommended Pack Structure
 
@@ -213,3 +224,4 @@ See also:
 
 - [docs/wiki_maintainer_pack.md](/Users/kq/Workspace/moonclaw/docs/wiki_maintainer_pack.md)
 - [docs/examples/wiki_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/wiki_moonclaw.jobs.json)
+- [docs/role_substrate.md](/Users/kq/Workspace/moonclaw/docs/role_substrate.md)

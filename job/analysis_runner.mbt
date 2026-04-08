@@ -61,6 +61,7 @@ pub async fn run_default_analysis_runner(
       "run_id": request.run_id,
       "step_id": request.step_id,
       "execution_isolation": request.execution_isolation,
+      "role_runtime_contract": request.role_runtime_contract,
     },
   })
 }
