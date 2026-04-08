@@ -1375,6 +1375,7 @@ async test "resolved_model_name uses configured primary model for default" {
         web_search=false,
       ),
       execution_isolation: None,
+      role_runtime_contract: None,
     }
     inspect(resolved_model_name(request).unwrap_or(""), content="codex/gpt-5.4")
   })
@@ -1766,6 +1767,7 @@ async test "configure_analysis_agent_for_request registers runtime introspection
       web_search=false,
     ),
     execution_isolation: Some({ "mode": "git_worktree" }),
+    role_runtime_contract: None,
   }
   configure_analysis_agent_for_request(agent, request)
   inspect(agent.tools().contains("runtime_context"), content="true")

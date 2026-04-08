@@ -110,6 +110,87 @@ pub fn analysis_tool_contract(
 }
 
 ///|
+pub fn constrain_tool_contract_for_role(
+  contract : AnalysisToolContract,
+  role_runtime_contract : RoleRuntimeContract?,
+) -> AnalysisToolContract {
+  match role_runtime_contract {
+    None => contract
+    Some(role) => {
+      let delegate_run = if role.allow_delegate {
+        contract.delegate_run
+      } else {
+        false
+      }
+      let writable = role.allow_workspace_write
+      let execution_tools = role.allow_execution_tools
+      match role.tool_access {
+        Disabled =>
+          AnalysisToolContract::new(
+            shell=false,
+            list_files=false,
+            glob_files=false,
+            list_resources=false,
+            read_resource=false,
+            runtime_context=false,
+            list_worktrees=false,
+            delegate_run=false,
+            enter_worktree=false,
+            exit_worktree=false,
+            read_files=false,
+            search_files=false,
+            todo=false,
+            file_write=false,
+            patch_edit=false,
+            web_fetch=false,
+            web_search=false,
+          )
+        Limited =>
+          AnalysisToolContract::new(
+            shell=false,
+            list_files=contract.list_files,
+            glob_files=contract.glob_files,
+            list_resources=contract.list_resources,
+            read_resource=contract.read_resource,
+            runtime_context=contract.runtime_context,
+            list_worktrees=false,
+            delegate_run~,
+            enter_worktree=false,
+            exit_worktree=false,
+            read_files=contract.read_files,
+            search_files=contract.search_files,
+            todo=contract.todo,
+            file_write=false,
+            patch_edit=false,
+            web_fetch=false,
+            web_search=false,
+          )
+        Full =>
+          AnalysisToolContract::new(
+            shell=contract.shell && execution_tools,
+            list_files=contract.list_files,
+            glob_files=contract.glob_files,
+            list_resources=contract.list_resources,
+            read_resource=contract.read_resource,
+            runtime_context=contract.runtime_context,
+            list_worktrees=contract.list_worktrees && execution_tools,
+            delegate_run~,
+            enter_worktree=contract.enter_worktree && execution_tools,
+            exit_worktree=contract.exit_worktree && execution_tools,
+            read_files=contract.read_files,
+            search_files=contract.search_files,
+            todo=contract.todo,
+            file_write=contract.file_write && writable && execution_tools,
+            patch_edit=contract.patch_edit && writable && execution_tools,
+            web_fetch=contract.web_fetch && execution_tools,
+            web_search=contract.web_search && execution_tools,
+          )
+      }
+    }
+  }
+}
+
+///|
 pub fn analysis_result_content_contract(config : AnalysisStepConfig) -> String? {
   metadata_string(config.metadata, "result_content_json_contract")
 }
@@ -219,7 +300,12 @@ fn runtime_context_tool_result(
     execution_mode=request.execution_mode,
     execution_target=request.execution_target,
     execution_isolation=request.execution_isolation,
-    enabled_tools=enabled_tool_names(request.tool_contract),
+    enabled_tools=enabled_tool_names(
+      constrain_tool_contract_for_role(
+        request.tool_contract,
+        request.role_runtime_contract,
+      ),
+    ),
   )
 }
 
@@ -292,16 +378,20 @@ pub fn configure_analysis_agent_for_request(
   agent : @agent.Agent,
   request : AnalysisRequest,
 ) -> Unit {
+  let constrained = constrain_tool_contract_for_role(
+    request.tool_contract,
+    request.role_runtime_contract,
+  )
   configure_analysis_agent_for_contract(
     agent,
     request.cwd,
     request.home,
-    request.tool_contract,
+    constrained,
   )
-  if request.tool_contract.runtime_context {
+  if constrained.runtime_context {
     agent.add_tool(@runtime_context.new(runtime_context_tool_result(request)))
   }
-  if request.tool_contract.list_worktrees {
+  if constrained.list_worktrees {
     agent.add_tool(@list_worktrees.new(request.cwd))
   }
 }

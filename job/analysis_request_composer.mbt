@@ -4,6 +4,26 @@ pub async fn compose_job_analysis_request(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
 ) -> AnalysisRequest {
+  let definition = store.get_definition(context.run.job_id)
+  let profile_role = definition.bind(fn(definition) {
+    match definition.config {
+      { "role": String(role), .. } => Some(role)
+      _ => None
+    }
+  })
+  let profile_metadata = definition
+    .map(fn(definition) {
+      match definition.config {
+        { "profile_metadata": metadata, .. } => metadata
+        _ => {}
+      }
+    })
+    .unwrap_or({})
+  let role_runtime_contract = resolve_role_runtime_contract(
+    profile_role,
+    profile_metadata,
+    config.metadata,
+  )
   let execution_isolation = resolve_analysis_execution_isolation(
     context,
     config,
@@ -32,5 +52,6 @@ pub async fn compose_job_analysis_request(
     web_search: config.web_search,
     tool_contract: analysis_tool_contract(config),
     execution_isolation: execution_isolation.metadata,
+    role_runtime_contract: Some(role_runtime_contract),
   }
 }

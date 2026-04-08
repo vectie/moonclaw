@@ -55,6 +55,8 @@ pub fn configure_analysis_agent_for_request(@agent.Agent, AnalysisRequest) -> Un
 
 pub fn configure_analysis_agent_tools(@agent.Agent, String, web_search? : Bool) -> Unit
 
+pub fn constrain_tool_contract_for_role(AnalysisToolContract, RoleRuntimeContract?) -> AnalysisToolContract
+
 pub fn current_step_id_for_ui(SystemStore, JobRun, WorkflowDefinition?) -> String?
 
 pub fn current_step_label(SystemStore, JobDefinition, String) -> String
@@ -241,6 +243,8 @@ pub async fn resolve_analysis_execution_isolation(WorkflowStepContext, AnalysisS
 
 pub fn resolve_job_notify_target(SystemStore, JobDefinition) -> JobNotifyTarget?
 
+pub fn resolve_role_runtime_contract(String?, Json, Json) -> RoleRuntimeContract
+
 pub fn resolve_status_target(SystemStore, String, active_run_id? : String?) -> (JobDefinition, JobRun)?
 
 pub fn resolve_target_proposal(SystemStore, String, String?) -> JobProposal?
@@ -369,6 +373,7 @@ pub(all) struct AnalysisRequest {
   web_search : Bool
   tool_contract : AnalysisToolContract
   execution_isolation : Json?
+  role_runtime_contract : RoleRuntimeContract?
 }
 pub impl Show for AnalysisRequest
 pub impl ToJson for AnalysisRequest
@@ -1480,6 +1485,88 @@ pub(all) struct RetryPolicy {
 pub impl Show for RetryPolicy
 pub impl ToJson for RetryPolicy
 pub impl @json.FromJson for RetryPolicy
+
+pub(all) enum RoleHandoffKind {
+  StrategicToDomain
+  DomainToExecution
+  ExecutionToDomain
+  DomainToStrategic
+}
+pub impl Eq for RoleHandoffKind
+pub impl Show for RoleHandoffKind
+pub impl ToJson for RoleHandoffKind
+pub impl @json.FromJson for RoleHandoffKind
+
+pub(all) struct RoleHandoffPacket {
+  kind : RoleHandoffKind
+  objective : String
+  scope_summary : String
+  constraints : Array[String]
+  output_contract : String?
+  review_required : Bool
+  metadata : Json
+}
+pub fn RoleHandoffPacket::new(kind~ : RoleHandoffKind, objective~ : String, scope_summary~ : String, constraints? : Array[String], output_contract? : String?, review_required? : Bool, metadata? : Json) -> Self
+pub impl Show for RoleHandoffPacket
+pub impl ToJson for RoleHandoffPacket
+pub impl @json.FromJson for RoleHandoffPacket
+
+pub(all) enum RoleMemoryScope {
+  Step
+  Workspace
+  Domain
+  Global
+}
+pub impl Eq for RoleMemoryScope
+pub impl Show for RoleMemoryScope
+pub impl ToJson for RoleMemoryScope
+pub impl @json.FromJson for RoleMemoryScope
+
+pub(all) enum RolePlanningLayer {
+  Strategic
+  Domain
+  Execution
+}
+pub impl Eq for RolePlanningLayer
+pub impl Show for RolePlanningLayer
+pub impl ToJson for RolePlanningLayer
+pub impl @json.FromJson for RolePlanningLayer
+
+pub(all) struct RoleRuntimeContract {
+  role_id : String
+  planning_layer : RolePlanningLayer
+  runtime_mode : RoleRuntimeMode
+  tool_access : RoleToolAccess
+  memory_scope : RoleMemoryScope
+  allow_delegate : Bool
+  allow_workspace_write : Bool
+  allow_execution_tools : Bool
+  output_contract : String?
+  metadata : Json
+}
+pub fn RoleRuntimeContract::new(role_id~ : String, planning_layer? : RolePlanningLayer, runtime_mode? : RoleRuntimeMode, tool_access? : RoleToolAccess, memory_scope? : RoleMemoryScope, allow_delegate? : Bool, allow_workspace_write? : Bool, allow_execution_tools? : Bool, output_contract? : String?, metadata? : Json) -> Self
+pub impl Show for RoleRuntimeContract
+pub impl ToJson for RoleRuntimeContract
+pub impl @json.FromJson for RoleRuntimeContract
+
+pub(all) enum RoleRuntimeMode {
+  PlannerOnly
+  Executor
+}
+pub impl Eq for RoleRuntimeMode
+pub impl Show for RoleRuntimeMode
+pub impl ToJson for RoleRuntimeMode
+pub impl @json.FromJson for RoleRuntimeMode
+
+pub(all) enum RoleToolAccess {
+  Disabled
+  Limited
+  Full
+}
+pub impl Eq for RoleToolAccess
+pub impl Show for RoleToolAccess
+pub impl ToJson for RoleToolAccess
+pub impl @json.FromJson for RoleToolAccess
 
 pub(all) struct RunExecutionHooks {
   on_started : async (JobDefinition, JobRun) -> Unit

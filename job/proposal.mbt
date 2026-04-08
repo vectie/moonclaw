@@ -842,6 +842,7 @@ async fn plan_job_proposal_with_mode(
       web_search=false,
     ),
     execution_isolation: None,
+    role_runtime_contract: None,
   }
   let fallback = draft_job_proposal(
     proposal_id,
@@ -1166,6 +1167,7 @@ pub async fn revise_job_proposal(
       web_search=false,
     ),
     execution_isolation: None,
+    role_runtime_contract: None,
   }
   let execution = match (executor.run)(request) {
     Ok(execution) => execution

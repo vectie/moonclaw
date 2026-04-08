@@ -116,6 +116,7 @@ pub(all) struct AnalysisRequest {
   web_search : Bool
   tool_contract : AnalysisToolContract
   execution_isolation : Json?
+  role_runtime_contract : RoleRuntimeContract?
 } derive(ToJson, FromJson, Show)
 
 ///|

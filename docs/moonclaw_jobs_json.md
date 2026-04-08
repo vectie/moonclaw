@@ -115,6 +115,7 @@ Optional common step fields:
 
 - `prompt_template`
 - `metadata`
+- optional `metadata.role_runtime`
 
 Example:
 
@@ -142,6 +143,7 @@ Example:
 - `execution_target`
 - `board_lane`
 - `board_order`
+- `role_runtime`
 
 Important current routing behavior:
 
@@ -164,6 +166,47 @@ Example:
   }
 }
 ```
+
+### `role_runtime`
+
+Profiles or steps can define a reusable role envelope in metadata:
+
+```json
+{
+  "role_runtime": {
+    "planning_layer": "domain",
+    "runtime_mode": "planner_only",
+    "tool_access": "limited",
+    "memory_scope": "domain",
+    "allow_delegate": true,
+    "allow_workspace_write": false,
+    "allow_execution_tools": false,
+    "output_contract": "lead.plan.packet.v1"
+  }
+}
+```
+
+Supported values:
+
+- `planning_layer`
+  - `strategic`
+  - `domain`
+  - `execution`
+- `runtime_mode`
+  - `planner_only`
+  - `executor`
+- `tool_access`
+  - `none`
+  - `limited`
+  - `full`
+- `memory_scope`
+  - `step`
+  - `workspace`
+  - `domain`
+  - `global`
+
+Step-level `metadata.role_runtime` overrides profile-level
+`metadata.role_runtime`.
 
 ## Delegate Step Fields
 
@@ -202,6 +245,7 @@ Controller-shaped profiles usually use:
 and may include:
 
 - `metadata.controller_policy`
+- `metadata.role_runtime`
 
 The runtime keeps controller behavior generic. The profile provides the policy
 shape; the runtime persists controller state, iterations, lineage, and
