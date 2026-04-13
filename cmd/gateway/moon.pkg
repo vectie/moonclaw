@@ -2,6 +2,7 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/strconv",
   "moonbitlang/async",
+  "vectie/moonclaw/cmd/main/proposal",
   "vectie/moonclaw/channel",
   "vectie/moonclaw/job",
   "vectie/moonclaw/gateway/server",

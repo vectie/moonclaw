@@ -3,6 +3,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   let arr = args.to_array()
   match arr[:] {
     ["start", ..] => start_gateway(arr)
+    ["proposal", .. rest] => @proposal.start(rest)
     ["connect", ..] => connect_gateway(arr)
     ["agent", ..] => run_agent(arr)
     ["jobs", ..] => list_jobs(arr)
@@ -44,6 +45,7 @@ fn print_help() -> Unit {
   println("")
   println("Commands:")
   println("  start     Start the gateway server")
+  println("  proposal  Import external proposal packets")
   println("  connect   Connect to a running gateway")
   println("  agent     Send an agent request to the gateway")
   println("  jobs      List job definitions")

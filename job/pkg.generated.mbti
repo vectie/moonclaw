@@ -92,6 +92,8 @@ pub async fn execute_run_lifecycle(RuntimeManager, String, () -> Int, () -> Work
 
 pub fn execution_notification_hooks(GatewayJobState, () -> Int, async (JobNotifyTarget, String) -> Unit, on_info? : async (String) -> Unit, on_warn? : async (String) -> Unit) -> RunExecutionHooks
 
+pub fn external_proposal_packet_summary(ExternalProposalPacket) -> String
+
 pub fn extract_output_format_hint(String) -> String?
 
 pub fn finished_status_prefix(RunStatus) -> String
@@ -127,6 +129,10 @@ pub fn merge_job_intake_metadata(Json, Json?) -> Json
 pub fn normalized_request_text(String) -> String
 
 pub fn notification_preference_id(String, String, String, String?) -> String
+
+pub fn parse_external_proposal_packet_json(Json) -> Result[ExternalProposalPacket, String]
+
+pub fn parse_external_proposal_packet_text(String) -> Result[ExternalProposalPacket, String]
 
 pub fn parse_job_chat_action(String, Bool) -> JobChatAction?
 
@@ -524,92 +530,6 @@ pub impl Show for ArtifactsIndexFile
 pub impl ToJson for ArtifactsIndexFile
 pub impl @json.FromJson for ArtifactsIndexFile
 
-pub(all) struct BookHarnessCommand {
-  provider : @resource_providers.RegisteredResourceProvider
-  command : String
-  args : Array[String]
-  cwd : String?
-  workspace_root : String
-}
-pub impl Show for BookHarnessCommand
-
-pub(all) struct BookHarnessMemoryCandidate {
-  kind : String
-  title : String
-  detail : String
-  durable : Bool
-  target_page : String?
-}
-pub impl Eq for BookHarnessMemoryCandidate
-pub impl Show for BookHarnessMemoryCandidate
-pub impl ToJson for BookHarnessMemoryCandidate
-pub impl @json.FromJson for BookHarnessMemoryCandidate
-
-pub(all) struct BookHarnessPersistOutcome {
-  log_path : String
-  updated_pages : Array[String]
-  review_queued : Bool
-  notify_town : Bool
-  evidence_id : String
-}
-pub impl Show for BookHarnessPersistOutcome
-pub impl ToJson for BookHarnessPersistOutcome
-pub impl @json.FromJson for BookHarnessPersistOutcome
-
-pub(all) struct BookHarnessResult {
-  task_id : String
-  summary : String
-  artifacts : Array[String]
-  memory_candidates : Array[BookHarnessMemoryCandidate]
-  requires_review : Bool
-  notify_town : Bool
-}
-pub impl Show for BookHarnessResult
-pub impl ToJson for BookHarnessResult
-pub impl @json.FromJson for BookHarnessResult
-
-pub(all) struct BookHarnessTask {
-  id : String
-  title : String
-  kind : String
-  prompt : String
-  priority : Int
-  requires_review : Bool
-  target_pages : Array[String]
-}
-pub impl Show for BookHarnessTask
-pub impl ToJson for BookHarnessTask
-pub impl @json.FromJson for BookHarnessTask
-
-pub(all) struct BookHarnessTaskBatch {
-  goal_id : String
-  goal : String
-  summary : String
-  tasks : Array[BookHarnessTask]
-}
-pub impl Show for BookHarnessTaskBatch
-pub impl ToJson for BookHarnessTaskBatch
-pub impl @json.FromJson for BookHarnessTaskBatch
-
-pub(all) struct BookHarnessWorkerContext {
-  book_id : String
-  workspace_root : String
-  task_id : String
-  prompt : String
-  policy : Array[String]
-  routines : Array[String]
-  skill_paths : Array[String]
-  context_pages : Array[String]
-  active_memory : Array[String]
-  user_memory : Array[String]
-  working_memory : Array[String]
-  memory_summary : String
-  output_contract : Array[String]
-}
-pub impl Show for BookHarnessWorkerContext
-pub impl ToJson for BookHarnessWorkerContext
-pub impl @json.FromJson for BookHarnessWorkerContext
-
 pub(all) struct ChatAnswer {
   binding_id : String?
   question : String
@@ -800,6 +720,28 @@ pub impl Show for ExecutionIsolationSpec
 pub impl ToJson for ExecutionIsolationSpec
 pub impl @json.FromJson for ExecutionIsolationSpec
 
+pub struct ExternalProposalImportResult {
+  proposal : JobProposal
+  confirm_result : ConfirmProposalResult?
+}
+
+pub struct ExternalProposalPacket {
+  packet_id : String?
+  title : String?
+  summary : String?
+  request_text : String
+  profile : String
+  output_contract : Json?
+  context_pages : Array[String]
+  skill_paths : Array[String]
+  notes : Array[String]
+  tags : Array[String]
+  metadata : Json
+}
+pub impl Show for ExternalProposalPacket
+pub impl ToJson for ExternalProposalPacket
+pub impl @json.FromJson for ExternalProposalPacket
+
 pub struct GatewayJobApp {
   state : GatewayJobState
   cwd : String
@@ -811,6 +753,10 @@ pub struct GatewayJobApp {
 pub fn GatewayJobApp::compile_proposal(Self, JobProposal) -> ProposalCompilation
 pub fn GatewayJobApp::compile_proposal_in_workspace(Self, JobProposal, String, String) -> ProposalCompilation
 pub async fn GatewayJobApp::confirm_proposal(Self, JobProposal, String, async (String, Json?) -> Result[JobRun, String]) -> Result[ConfirmProposalResult, String]
+pub async fn GatewayJobApp::confirm_proposal_and_execute(Self, JobProposal, String, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ConfirmProposalResult, String]
+pub async fn GatewayJobApp::execute_definition(Self, String, initial_input? : Json?, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[JobRun, String]
+pub async fn GatewayJobApp::import_external_proposal_packet(Self, ExternalProposalPacket, String, confirm? : Bool, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ExternalProposalImportResult, String]
+pub async fn GatewayJobApp::import_external_proposal_packet_file(Self, String, confirm? : Bool, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ExternalProposalImportResult, String]
 pub async fn GatewayJobApp::load(Self) -> Unit
 pub fn GatewayJobApp::new(root~ : String, cwd~ : String, home~ : String, workspace~ : @workspace.WorkspaceRuntime, next_id~ : () -> String, now~ : () -> Int) -> Self
 pub fn GatewayJobApp::new_workflow_engine(Self) -> WorkflowEngine
@@ -1553,6 +1499,92 @@ pub(all) struct ProposalPlanner {
   run : async (String, String, String?) -> JobProposal
 }
 pub fn ProposalPlanner::new(run~ : async (String, String, String?) -> JobProposal) -> Self
+
+pub(all) struct ProviderTaskBatch {
+  goal_id : String
+  goal : String
+  summary : String
+  tasks : Array[ProviderTaskSpec]
+}
+pub impl Show for ProviderTaskBatch
+pub impl ToJson for ProviderTaskBatch
+pub impl @json.FromJson for ProviderTaskBatch
+
+pub(all) struct ProviderTaskCommand {
+  provider : @resource_providers.RegisteredResourceProvider
+  command : String
+  args : Array[String]
+  cwd : String?
+  workspace_root : String
+}
+pub impl Show for ProviderTaskCommand
+
+pub(all) struct ProviderTaskMemoryCandidate {
+  kind : String
+  title : String
+  detail : String
+  durable : Bool
+  target_page : String?
+}
+pub impl Eq for ProviderTaskMemoryCandidate
+pub impl Show for ProviderTaskMemoryCandidate
+pub impl ToJson for ProviderTaskMemoryCandidate
+pub impl @json.FromJson for ProviderTaskMemoryCandidate
+
+pub(all) struct ProviderTaskPersistOutcome {
+  log_path : String
+  updated_pages : Array[String]
+  review_queued : Bool
+  notify_town : Bool
+  evidence_id : String
+}
+pub impl Show for ProviderTaskPersistOutcome
+pub impl ToJson for ProviderTaskPersistOutcome
+pub impl @json.FromJson for ProviderTaskPersistOutcome
+
+pub(all) struct ProviderTaskResult {
+  task_id : String
+  summary : String
+  artifacts : Array[String]
+  memory_candidates : Array[ProviderTaskMemoryCandidate]
+  requires_review : Bool
+  notify_town : Bool
+}
+pub impl Show for ProviderTaskResult
+pub impl ToJson for ProviderTaskResult
+pub impl @json.FromJson for ProviderTaskResult
+
+pub(all) struct ProviderTaskSpec {
+  id : String
+  title : String
+  kind : String
+  prompt : String
+  priority : Int
+  requires_review : Bool
+  target_pages : Array[String]
+}
+pub impl Show for ProviderTaskSpec
+pub impl ToJson for ProviderTaskSpec
+pub impl @json.FromJson for ProviderTaskSpec
+
+pub(all) struct ProviderTaskWorkerContext {
+  book_id : String
+  workspace_root : String
+  task_id : String
+  prompt : String
+  policy : Array[String]
+  routines : Array[String]
+  skill_paths : Array[String]
+  context_pages : Array[String]
+  active_memory : Array[String]
+  user_memory : Array[String]
+  working_memory : Array[String]
+  memory_summary : String
+  output_contract : Array[String]
+}
+pub impl Show for ProviderTaskWorkerContext
+pub impl ToJson for ProviderTaskWorkerContext
+pub impl @json.FromJson for ProviderTaskWorkerContext
 
 pub(all) struct RetrievalHit {
   artifact_id : String
