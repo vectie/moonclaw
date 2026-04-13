@@ -70,6 +70,8 @@ async fn run_local_analysis_runner(
 pub async fn run_default_analysis_runner(
   request : AnalysisRequest,
 ) -> Result[AnalysisExecution, String] {
+  // Provider-backed execution still reuses the normal local analysis runner for
+  // the actual reasoning loop; only task shaping and persistence are delegated.
   if provider_execution_requested(request.execution_mode) {
     return run_provider_task_analysis_runner(request, run_local_analysis_runner)
   }

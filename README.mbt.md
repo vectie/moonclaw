@@ -37,6 +37,8 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-04-13`: generalized provider-backed execution into a reusable extension-task boundary; analysis and delegate steps can now target task providers via `execution_mode: "provider"` / `"extension"` plus `execution_target`, with backward-compatible `bookapi` aliases kept only for transition
+- `2026-04-05`: added a concrete wiki-maintainer extension pack, a wiki-specific test guide, and automatic workspace detection for `raw/` + `wiki/` layouts so planning/execution can see `wiki/index.md`, `wiki/log.md`, and key wiki directories as part of runtime context
 - `2026-04-04`: added the Rabbita `Cowork` surface with a conversation sidebar, transcript, composer, plan-mode actions, linked proposal/run cards, and a right-side context pane for preview, workspace, artifacts, and run state
 - `2026-04-04`: added thread-local `/plan` mode with `/preview` and `/promote`; made final run `report.md` and `result.json` appear as clickable Rabbita cards; added a full-screen canvas toggle, aggregated starter documents into one operator-facing input card, and upgraded artifact opening from a small popup into a full-screen editor surface
 - `2026-04-01`: clarified the execution layer with uniquely named analysis helpers, `delegate_run`, `patch_edit`, and `resource_providers`; hardened the analysis backbone by separating execution and tool contracts; added a first-class `web_fetch` tool and made analysis distinguish web search from web fetch instead of relying on loose booleans
@@ -280,6 +282,18 @@ This is the intended MoonClaw side of a persistent markdown-wiki workflow:
 - inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
 - verify that behavior changes when you revise the workspace-local pack instead of changing MoonBit code
 
+<<<<<<< HEAD
+=======
+MoonClaw now also detects wiki-shaped workspaces automatically when they contain:
+
+- `raw/`
+- `wiki/`
+- `wiki/index.md`
+- `wiki/log.md`
+
+and includes compact wiki structure plus index/log excerpts in runtime prompt context. That keeps the agent side aligned with a maintained wiki workspace without hardcoding any specific host system into core.
+
+>>>>>>> 64c8413 (Clarify provider task runtime and docs)
 ## OPC Job Example
 
 A concrete one-person-company controller profile is available at [opc_moonclaw.jobs.json](/Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json), with a matching test guide at [opc_job_test_guide.md](/Users/kq/Workspace/moonclaw/docs/examples/opc_job_test_guide.md).

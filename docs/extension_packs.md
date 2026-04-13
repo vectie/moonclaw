@@ -179,6 +179,10 @@ This keeps MoonClaw general:
 The only runtime contract is a provider entry in `.moonclaw/providers.json`
 with a stable `execution_target`.
 
+See also:
+
+- [docs/extension_task_protocol.md](/Users/kq/Workspace/moonclaw/docs/extension_task_protocol.md)
+
 ## Recommended Pack Structure
 
 Example research pack:

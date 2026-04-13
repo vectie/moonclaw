@@ -17,6 +17,17 @@ Instead, MoonClaw should provide a reusable runtime for:
 
 The wiki-specific behavior should come from a workspace-local extension pack.
 
+This is designed to sit cleanly beside a separate wiki product/workspace layer.
+A wiki host workspace can own:
+
+- `raw/`
+- `wiki/`
+- `wiki/index.md`
+- `wiki/log.md`
+- rendering/building/serving
+
+while MoonClaw owns the workflow/runtime behavior operating inside that
+workspace.
 ## Recommended Pack Shape
 
 ```text

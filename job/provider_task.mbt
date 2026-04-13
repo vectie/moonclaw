@@ -1,5 +1,11 @@
 ///|
-pub(all) struct ProviderTaskTask {
+/// Provider-backed extension task bridge.
+/// It lets workspace-local providers shape domain work while MoonClaw keeps
+/// execution, artifacts, lineage, and operator visibility generic.
+///
+
+///|
+pub(all) struct ProviderTaskSpec {
   id : String
   title : String
   kind : String
@@ -10,14 +16,17 @@ pub(all) struct ProviderTaskTask {
 } derive(Show, ToJson, FromJson)
 
 ///|
-pub(all) struct ProviderTaskTaskBatch {
+pub(all) struct ProviderTaskBatch {
   goal_id : String
   goal : String
   summary : String
-  tasks : Array[ProviderTaskTask]
+  tasks : Array[ProviderTaskSpec]
 } derive(Show, ToJson, FromJson)
 
 ///|
+/// Provider-owned context schema. Some field names remain wiki-shaped for
+/// compatibility with existing extensions, but MoonClaw treats this as generic
+/// extension task context.
 pub(all) struct ProviderTaskWorkerContext {
   book_id : String
   workspace_root : String
@@ -126,6 +135,8 @@ fn provider_metadata_string_array(
 }
 
 ///|
+/// Provider capability matching stays permissive during migration so existing
+/// extension implementations can move to generic names without breaking runs.
 fn provider_supports_extension_execution(
   provider : @resource_providers.RegisteredResourceProvider,
 ) -> Bool {
@@ -199,12 +210,12 @@ fn parse_provider_task_payload(
 fn parse_provider_task_task_batch_json(
   text : String,
   context : String,
-) -> Result[ProviderTaskTaskBatch, String] {
+) -> Result[ProviderTaskBatch, String] {
   let json = match parse_provider_task_payload(text, context) {
     Ok(json) => json
     Err(error) => return Err(error)
   }
-  let decoded : ProviderTaskTaskBatch = @json.from_json(json) catch {
+  let decoded : ProviderTaskBatch = @json.from_json(json) catch {
     error =>
       return Err(
         "Provider task \{context} returned unexpected payload: \{error}",
@@ -292,7 +303,7 @@ async fn load_provider_task_task_batch(
   home : String?,
   target_id : String,
   goal : String,
-) -> Result[(ProviderTaskCommand, ProviderTaskTaskBatch), String] {
+) -> Result[(ProviderTaskCommand, ProviderTaskBatch), String] {
   let command = match resolve_provider_task_command(cwd, home, target_id) {
     Ok(command) => command
     Err(error) => return Err(error)
@@ -302,7 +313,7 @@ async fn load_provider_task_task_batch(
     Ok(stdout) => stdout
     Err(error) => return Err(error)
   }
-  let batch : ProviderTaskTaskBatch = match
+  let batch : ProviderTaskBatch = match
     parse_provider_task_task_batch_json(stdout, "tasks") {
     Ok(batch) => batch
     Err(error) => return Err(error)
@@ -334,9 +345,9 @@ async fn load_provider_task_context(
 
 ///|
 fn select_provider_task_task(
-  batch : ProviderTaskTaskBatch,
+  batch : ProviderTaskBatch,
   task_id : String?,
-) -> Result[ProviderTaskTask, String] {
+) -> Result[ProviderTaskSpec, String] {
   match task_id {
     Some(task_id) if !task_id.trim().to_string().is_blank() =>
       match batch.tasks.iter().find_first(fn(task) { task.id == task_id }) {
@@ -356,9 +367,10 @@ fn select_provider_task_task(
 fn provider_task_step_metadata(
   goal : String,
   goal_id : String,
-  task : ProviderTaskTask,
+  task : ProviderTaskSpec,
 ) -> Json {
   {
+    // `bookapi_*` keys are compatibility aliases for older extension packs.
     "bookapi_goal": goal,
     "bookapi_goal_id": goal_id,
     "bookapi_task_id": task.id,
@@ -379,7 +391,7 @@ fn provider_task_step_metadata(
 ///|
 fn provider_task_child_proposal(
   request_text : String,
-  batch : ProviderTaskTaskBatch,
+  batch : ProviderTaskBatch,
   config : SubjobStepConfig,
   now_ms : Int,
 ) -> JobProposal {
@@ -458,7 +470,7 @@ fn join_bullets(items : Array[String]) -> String {
 ///|
 fn provider_task_system_prompt(
   request : AnalysisRequest,
-  task : ProviderTaskTask,
+  task : ProviderTaskSpec,
   context : ProviderTaskWorkerContext,
 ) -> String {
   [
@@ -481,7 +493,7 @@ fn provider_task_system_prompt(
 ///|
 fn provider_task_prompt(
   request : AnalysisRequest,
-  task : ProviderTaskTask,
+  task : ProviderTaskSpec,
   context : ProviderTaskWorkerContext,
 ) -> String {
   let goal = metadata_string_value(request.step_metadata, "extension_goal").unwrap_or(
@@ -490,7 +502,7 @@ fn provider_task_prompt(
     ),
   )
   let sections : Array[String] = [
-    "Book: \{context.book_id}",
+    "Provider Scope: \{context.book_id}",
     "Workspace: \{context.workspace_root}",
     "Goal: \{goal}",
     "Task: \{task.title}",
@@ -548,14 +560,16 @@ fn parse_provider_task_result(
   }
   let decoded : ProviderTaskResult = @json.from_json(json) catch {
     error =>
-      return Err("Provider task analysis returned invalid BookResult: \{error}")
+      return Err(
+        "Provider task analysis returned invalid ProviderTaskResult: \{error}",
+      )
   }
   Ok(decoded)
 }
 
 ///|
 fn persisted_provider_task_report(
-  task : ProviderTaskTask,
+  task : ProviderTaskSpec,
   result : ProviderTaskResult,
   outcome : ProviderTaskPersistOutcome,
 ) -> String {
@@ -565,7 +579,7 @@ fn persisted_provider_task_report(
     outcome.updated_pages.map(fn(page) { "- \{page}" }).join("\n")
   }
   [
-    "# Book Harness Result",
+    "# Extension Task Result",
     "",
     "## Task",
     "- id: \{task.id}",
@@ -597,7 +611,7 @@ fn execution_metadata_value(metadata : Json, key : String) -> Json? {
 ///|
 fn persisted_provider_task_execution(
   execution : AnalysisExecution,
-  task : ProviderTaskTask,
+  task : ProviderTaskSpec,
   result : ProviderTaskResult,
   outcome : ProviderTaskPersistOutcome,
   target_id : String,
@@ -611,6 +625,8 @@ fn persisted_provider_task_execution(
       "step_id": execution_metadata_value(execution.metadata, "step_id"),
       "execution_mode": "provider",
       "execution_target": target_id,
+      // Emit both generic and compatibility metadata so newer UIs/configs can
+      // switch immediately while older packs keep working.
       "extension_task_id": task.id,
       "extension_result": result,
       "extension_persist_outcome": outcome,
@@ -633,12 +649,12 @@ fn persisted_provider_task_execution(
 async fn persist_provider_task_result(
   command : ProviderTaskCommand,
   request : AnalysisRequest,
-  _task : ProviderTaskTask,
+  _task : ProviderTaskSpec,
   result : ProviderTaskResult,
 ) -> Result[ProviderTaskPersistOutcome, String] {
   let result_path = @pathx.join(
     request.cwd,
-    ".moonclaw-book-result-\{request.run_id}-\{request.step_id}.json",
+    ".moonclaw-provider-result-\{request.run_id}-\{request.step_id}.json",
   )
   @fsx.write_to_file(
     result_path,
