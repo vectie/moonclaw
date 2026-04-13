@@ -125,6 +125,8 @@ async fn planned_subjob_proposal(
   planner : ProposalPlanner,
   now : () -> Int,
 ) -> Result[JobProposal, String] {
+  // For provider-backed delegation, the provider owns task decomposition and
+  // MoonClaw only compiles the returned task batch into child analysis steps.
   if provider_execution_requested(config.execution_mode) {
     let target_id = match config.execution_target {
       Some(target_id) if !target_id.trim().to_string().is_blank() => target_id

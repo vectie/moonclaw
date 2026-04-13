@@ -18,7 +18,7 @@ Instead, MoonClaw should provide a reusable runtime for:
 The wiki-specific behavior should come from a workspace-local extension pack.
 
 This is designed to sit cleanly beside a separate wiki product/workspace layer.
-A MoonBook-style workspace can own:
+A wiki host workspace can own:
 
 - `raw/`
 - `wiki/`

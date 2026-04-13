@@ -113,7 +113,7 @@ async fn write_provider_task_fixture(
 }
 
 ///|
-async test "provider task task batch maps provider-backed book tasks into a child proposal" {
+async test "provider task batch maps provider-backed extension tasks into a child proposal" {
   @fsx.with_temporary_directory("job-book-harness-proposal-XXXXXX", async fn(
     dir,
   ) {
@@ -242,7 +242,10 @@ async test "provider task analysis runner hydrates context and persists structur
 
     inspect(captured_prompt.val.contains("Relevant Pages:"), content="true")
     inspect(captured_prompt.val.contains("wiki/entity.md"), content="true")
-    inspect(execution.content.contains("# Book Harness Result"), content="true")
+    inspect(
+      execution.content.contains("# Extension Task Result"),
+      content="true",
+    )
     inspect(execution.content.contains("evidence-1"), content="true")
     inspect(
       execution.metadata.stringify().contains("\"execution_mode\":\"provider\""),
@@ -256,7 +259,7 @@ async test "provider task analysis runner hydrates context and persists structur
     )
     let persisted_path = @fsx.read_file(state_path)
     inspect(
-      persisted_path.contains(".moonclaw-book-result-run-1-step-1.json"),
+      persisted_path.contains(".moonclaw-provider-result-run-1-step-1.json"),
       content="true",
     )
     let persisted_payload = @fsx.read_file(persisted_path.trim())

@@ -222,6 +222,10 @@ Example provider manifest entry:
 ]
 ```
 
+The detailed provider-side handshake is documented in:
+
+- [docs/extension_task_protocol.md](/Users/kq/Workspace/moonclaw/docs/extension_task_protocol.md)
+
 ### `role_runtime`
 
 Profiles or steps can define a reusable role envelope in metadata:
