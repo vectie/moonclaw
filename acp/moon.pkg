@@ -1,8 +1,11 @@
 import {
-  "moonbitlang/async",
   "moonbitlang/core/json",
   "vectie/moonclaw/internal/fsx",
   "vectie/moonclaw/internal/spawn",
   "vectie/moonclaw/oauth/codex",
   "moonbitlang/x/path",
 }
+
+import {
+  "moonbitlang/async",
+} for "wbtest"
