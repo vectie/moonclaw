@@ -10,6 +10,7 @@ import {
   "vectie/moonclaw/internal/pathx",
   "vectie/moonclaw/internal/fsx",
   "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/resource_providers",
   "vectie/moonclaw/internal/worktree",
   "vectie/moonclaw/workspace",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,

@@ -1,5 +1,5 @@
 ///|
-pub async fn run_default_analysis_runner(
+async fn run_local_analysis_runner(
   request : AnalysisRequest,
 ) -> Result[AnalysisExecution, String] {
   let requested_model = resolved_model_name(request)
@@ -64,4 +64,14 @@ pub async fn run_default_analysis_runner(
       "role_runtime_contract": request.role_runtime_contract,
     },
   })
+}
+
+///|
+pub async fn run_default_analysis_runner(
+  request : AnalysisRequest,
+) -> Result[AnalysisExecution, String] {
+  if provider_execution_requested(request.execution_mode) {
+    return run_provider_task_analysis_runner(request, run_local_analysis_runner)
+  }
+  run_local_analysis_runner(request)
 }

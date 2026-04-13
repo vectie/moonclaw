@@ -1355,6 +1355,7 @@ async test "resolved_model_name uses configured primary model for default" {
       job_id: "job-1",
       run_id: "run-1",
       step_id: "step-1",
+      source_prompt: "Plan the job.",
       prompt: "Plan the job.",
       model_name: "default",
       cwd: dir,
@@ -1374,6 +1375,7 @@ async test "resolved_model_name uses configured primary model for default" {
         file_write=false,
         web_search=false,
       ),
+      step_metadata: {},
       execution_isolation: None,
       role_runtime_contract: None,
     }
@@ -1737,6 +1739,7 @@ async test "configure_analysis_agent_for_request registers runtime introspection
     job_id: "job-1",
     run_id: "run-1",
     step_id: "step-1",
+    source_prompt: "Inspect runtime.",
     prompt: "Inspect runtime.",
     model_name: "codex/gpt-5.4",
     cwd: "/tmp",
@@ -1766,6 +1769,7 @@ async test "configure_analysis_agent_for_request registers runtime introspection
       web_fetch=false,
       web_search=false,
     ),
+    step_metadata: {},
     execution_isolation: Some({ "mode": "git_worktree" }),
     role_runtime_contract: None,
   }

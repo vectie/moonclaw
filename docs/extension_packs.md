@@ -127,6 +127,9 @@ Current hooks that make this work:
 - delegate steps optionally carrying execution routing intent that later executors can honor
 - the gateway can honor ACP routing hints for simple delegated child analysis jobs
 - analysis steps can also carry ACP routing intent
+- analysis and delegate steps can also target provider-backed extension tasks
+  via `execution_mode: "provider"` or `execution_mode: "extension"` plus
+  `execution_target`
 - controller policy metadata on the profile
 
 MoonClaw now also provides a reusable role substrate:
@@ -137,6 +140,44 @@ MoonClaw now also provides a reusable role substrate:
 
 So host systems can embed MoonClaw as different planner or executor roles
 without copying runtime logic.
+
+## Provider-Backed Extension Tasks
+
+MoonClaw now supports a typed domain boundary for wiki-style hosts without
+embedding those rules into core runtime logic.
+
+The pattern is:
+
+- MoonClaw owns:
+  - execution runtime
+  - proposal compilation
+  - delegated child runs
+  - analysis artifacts
+  - lineage and operator visibility
+- the extension provider owns:
+  - goal acceptance
+  - task decomposition
+  - worker context hydration
+  - durable result persistence
+  - domain-local health and summary state
+
+The handshake stays protocol-first:
+
+- `tasks`
+  returns a typed task batch for a goal
+- `context`
+  returns worker context for one selected task
+- `persist`
+  accepts a structured result written by MoonClaw after execution
+
+This keeps MoonClaw general:
+
+- no hardcoded wiki page names in planner logic
+- no direct MoonBook imports in proposal matching
+- no domain-specific persistence branches in the workflow engine
+
+The only runtime contract is a provider entry in `.moonclaw/providers.json`
+with a stable `execution_target`.
 
 ## Recommended Pack Structure
 

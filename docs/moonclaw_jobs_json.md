@@ -149,6 +149,12 @@ Important current routing behavior:
 
 - if `execution_mode: "acp"` and `execution_target` are present, the gateway can
   route that analysis step through ACP instead of the local model path
+- if `execution_mode: "provider"` or `execution_mode: "extension"` and
+  `execution_target` point at a registered task provider, MoonClaw can:
+  - ask the provider for a task batch
+  - hydrate worker context for the selected task
+  - run the task through the normal analysis runtime
+  - persist the structured result back through the provider
 
 Example:
 
@@ -165,6 +171,55 @@ Example:
     "board_order": 0
   }
 }
+```
+
+Example provider-backed routing:
+
+```json
+{
+  "id": "book_update",
+  "title": "Update the local knowledge base",
+  "kind": "job.analysis",
+  "metadata": {
+    "preferred_skills": ["wiki-maintainer"],
+    "execution_mode": "provider",
+    "execution_target": "wiki-main",
+    "board_lane": "Wiki",
+    "board_order": 1
+  }
+}
+```
+
+The `execution_target` is resolved through `.moonclaw/providers.json`. A task
+provider should expose:
+
+- `kind: "extension"` or `kind: "task-provider"`
+- `kind: "moonbook"` or `kind: "book-harness"`
+- capability `provider`, `extension`, `provider.task`, or `extension.task`
+- compatibility aliases `bookapi` or `moonbook.bookapi` are also accepted
+- metadata fields:
+  - `command`
+  - `args`
+  - `workspace_root`
+  - optional `cwd`
+
+Example provider manifest entry:
+
+```json
+[
+  {
+    "name": "wiki-main",
+    "title": "Primary Wiki",
+    "description": "Domain-local wiki harness",
+    "kind": "extension",
+    "capabilities": ["provider.task"],
+    "metadata": {
+      "command": "moon",
+      "args": ["run", "cmd/main", "--"],
+      "workspace_root": "/absolute/path/to/book-workspace"
+    }
+  }
+]
 ```
 
 ### `role_runtime`
