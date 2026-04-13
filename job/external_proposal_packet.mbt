@@ -6,7 +6,10 @@ pub struct ExternalProposalPacket {
   request_text : String
   profile : String
   output_contract : Json?
+  source_path : String?
+  source_page : String?
   context_pages : Array[String]
+  related_pages : Array[String]
   skill_paths : Array[String]
   notes : Array[String]
   tags : Array[String]
@@ -267,11 +270,14 @@ pub impl @json.FromJson for ExternalProposalPacket with from_json(
   let output_contract = Some(
     external_packet_output_contract(obj.get("output_contract"), path),
   )
+  let source_path = external_packet_string_field(obj, "source_path")
+  let source_page = external_packet_string_field(obj, "source_page")
   let context_pages = external_packet_required_string_list(
     obj.get("context_pages"),
     path,
     "context_pages",
   )
+  let related_pages = external_packet_string_list(obj.get("related_pages"))
   let skill_paths = external_packet_required_string_list(
     obj.get("skill_paths"),
     path,
@@ -297,7 +303,10 @@ pub impl @json.FromJson for ExternalProposalPacket with from_json(
     request_text,
     profile,
     output_contract,
+    source_path,
+    source_page,
     context_pages,
+    related_pages,
     skill_paths,
     notes,
     tags,
@@ -380,6 +389,62 @@ fn external_packet_preferred_skills(
 }
 
 ///|
+fn keeper_packet_workspace_root(packet_file_path : String) -> String? {
+  let normalized = @pathx.normalize(packet_file_path)
+  let marker = "/keeper/jobs/"
+  match normalized.find(marker) {
+    Some(index) if index > 0 => Some(normalized[:index].to_string())
+    _ => None
+  }
+}
+
+///|
+fn source_path_workspace_root(source_path : String?) -> String? {
+  match source_path {
+    Some(source_path) if @pathx.is_absolute(source_path) => {
+      let normalized = @pathx.normalize(source_path)
+      let marker = "/raw/"
+      match normalized.find(marker) {
+        Some(index) if index > 0 => Some(normalized[:index].to_string())
+        _ => None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
+fn external_packet_workspace_root(
+  packet : ExternalProposalPacket,
+  packet_file_path : String,
+) -> String? {
+  match keeper_packet_workspace_root(packet_file_path) {
+    Some(root) => Some(root)
+    None => source_path_workspace_root(packet.source_path)
+  }
+}
+
+///|
+fn resolve_packet_path(workspace_root : String?, path : String) -> String {
+  if @pathx.is_absolute(path) {
+    @pathx.normalize(path)
+  } else {
+    match workspace_root {
+      Some(root) => @pathx.join(root, path)
+      None => path
+    }
+  }
+}
+
+///|
+fn resolve_packet_paths(
+  workspace_root : String?,
+  paths : Array[String],
+) -> Array[String] {
+  paths.map(fn(path) { resolve_packet_path(workspace_root, path) })
+}
+
+///|
 pub fn external_proposal_packet_summary(
   packet : ExternalProposalPacket,
 ) -> String {
@@ -395,12 +460,41 @@ pub fn external_proposal_packet_summary(
 ///|
 fn external_packet_job_intake(
   packet : ExternalProposalPacket,
-  source_path : String,
+  packet_file_path : String,
 ) -> Json {
+  let workspace_root = external_packet_workspace_root(packet, packet_file_path)
+  let resolved_context_pages = resolve_packet_paths(
+    workspace_root,
+    packet.context_pages,
+  )
+  let resolved_skill_paths = resolve_packet_paths(workspace_root, packet.skill_paths)
+  let resolved_source_page = match packet.source_page {
+    Some(source_page) => Some(resolve_packet_path(workspace_root, source_page))
+    None => None
+  }
+  let resolved_related_pages = resolve_packet_paths(workspace_root, packet.related_pages)
   let intake : Map[String, Json] = {}
-  intake.set("external_packet_source_path", source_path.to_json())
-  intake.set("context_pages", packet.context_pages.to_json())
-  intake.set("skill_paths", packet.skill_paths.to_json())
+  intake.set("external_packet_source_path", packet_file_path.to_json())
+  intake.set("context_pages", resolved_context_pages.to_json())
+  intake.set("skill_paths", resolved_skill_paths.to_json())
+  intake.set("raw_context_pages", packet.context_pages.to_json())
+  intake.set("raw_skill_paths", packet.skill_paths.to_json())
+  intake.set("related_pages", resolved_related_pages.to_json())
+  if workspace_root is Some(root) {
+    intake.set("external_workspace_root", root.to_json())
+  }
+  match packet.source_path {
+    Some(source_path) =>
+      intake.set(
+        "source_path",
+        resolve_packet_path(workspace_root, source_path).to_json(),
+      )
+    None => ()
+  }
+  match resolved_source_page {
+    Some(source_page) => intake.set("source_page", source_page.to_json())
+    None => ()
+  }
   intake.set("notes", packet.notes.to_json())
   match packet.output_contract {
     Some(output_contract) => {
@@ -422,19 +516,42 @@ fn external_packet_job_intake(
 ///|
 fn external_proposal_packet_metadata(
   packet : ExternalProposalPacket,
-  source_path : String,
+  packet_file_path : String,
 ) -> Json {
+  let workspace_root = external_packet_workspace_root(packet, packet_file_path)
   let packet_metadata : Map[String, Json] = {}
   packet_metadata.set(
     "schema",
     "moonclaw.external_proposal_packet.v1".to_json(),
   )
-  packet_metadata.set("source_path", source_path.to_json())
+  packet_metadata.set("source_path", packet_file_path.to_json())
   packet_metadata.set("profile", packet.profile.to_json())
   packet_metadata.set("context_pages", packet.context_pages.to_json())
   packet_metadata.set("skill_paths", packet.skill_paths.to_json())
+  packet_metadata.set(
+    "resolved_context_pages",
+    resolve_packet_paths(workspace_root, packet.context_pages).to_json(),
+  )
+  packet_metadata.set(
+    "resolved_skill_paths",
+    resolve_packet_paths(workspace_root, packet.skill_paths).to_json(),
+  )
+  packet_metadata.set("related_pages", packet.related_pages.to_json())
   packet_metadata.set("notes", packet.notes.to_json())
   packet_metadata.set("tags", packet.tags.to_json())
+  match workspace_root {
+    Some(root) => packet_metadata.set("workspace_root", root.to_json())
+    None => ()
+  }
+  match packet.source_path {
+    Some(source_path) =>
+      packet_metadata.set("packet_source_path", source_path.to_json())
+    None => ()
+  }
+  match packet.source_page {
+    Some(source_page) => packet_metadata.set("source_page", source_page.to_json())
+    None => ()
+  }
   match packet.packet_id {
     Some(packet_id) => packet_metadata.set("packet_id", packet_id.to_json())
     None => ()
@@ -454,8 +571,9 @@ fn external_proposal_packet_metadata(
 fn external_packet_step_metadata(
   step_metadata : Json,
   packet : ExternalProposalPacket,
-  source_path : String,
+  packet_file_path : String,
 ) -> Json {
+  let workspace_root = external_packet_workspace_root(packet, packet_file_path)
   let existing_skills = match step_metadata {
     { "preferred_skills": Array(items), .. } =>
       items.filter_map(fn(item) {
@@ -474,10 +592,42 @@ fn external_packet_step_metadata(
     _ => []
   }
   let extra : Map[String, Json] = {}
-  extra.set("external_packet_source_path", source_path.to_json())
-  extra.set("context_pages", packet.context_pages.to_json())
-  extra.set("skill_paths", packet.skill_paths.to_json())
+  extra.set("external_packet_source_path", packet_file_path.to_json())
+  extra.set(
+    "context_pages",
+    resolve_packet_paths(workspace_root, packet.context_pages).to_json(),
+  )
+  extra.set(
+    "skill_paths",
+    resolve_packet_paths(workspace_root, packet.skill_paths).to_json(),
+  )
+  extra.set("raw_context_pages", packet.context_pages.to_json())
+  extra.set("raw_skill_paths", packet.skill_paths.to_json())
+  extra.set(
+    "related_pages",
+    resolve_packet_paths(workspace_root, packet.related_pages).to_json(),
+  )
   extra.set("external_packet_notes", packet.notes.to_json())
+  match workspace_root {
+    Some(root) => extra.set("external_workspace_root", root.to_json())
+    None => ()
+  }
+  match packet.source_path {
+    Some(source_path) =>
+      extra.set(
+        "source_path",
+        resolve_packet_path(workspace_root, source_path).to_json(),
+      )
+    None => ()
+  }
+  match packet.source_page {
+    Some(source_page) =>
+      extra.set(
+        "source_page",
+        resolve_packet_path(workspace_root, source_page).to_json(),
+      )
+    None => ()
+  }
   extra.set(
     "preferred_skills",
     external_packet_preferred_skills(packet, existing=existing_skills).to_json(),
@@ -499,7 +649,7 @@ fn external_packet_step_metadata(
 fn proposal_with_external_packet(
   proposal_id : String,
   packet : ExternalProposalPacket,
-  source_path : String,
+  packet_file_path : String,
   now_ms : Int,
 ) -> JobProposal {
   let draft = draft_job_proposal(proposal_id, packet.request_text, now_ms)
@@ -513,9 +663,9 @@ fn proposal_with_external_packet(
     profile_metadata: merge_job_intake_metadata(
       merge_json_metadata(
         draft.profile_metadata,
-        external_proposal_packet_metadata(packet, source_path),
+        external_proposal_packet_metadata(packet, packet_file_path),
       ),
-      Some(external_packet_job_intake(packet, source_path)),
+      Some(external_packet_job_intake(packet, packet_file_path)),
     ),
     tags,
   }
@@ -578,7 +728,7 @@ pub async fn GatewayJobApp::confirm_proposal_and_execute(
 pub async fn GatewayJobApp::import_external_proposal_packet(
   self : GatewayJobApp,
   packet : ExternalProposalPacket,
-  source_path : String,
+  packet_file_path : String,
   confirm? : Bool = false,
   child_executor? : ChildRunExecutor? = None,
   analysis_executor? : AnalysisExecutor? = None,
@@ -598,7 +748,7 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
   let imported = proposal_with_external_packet(
     proposal_id,
     packet,
-    source_path,
+    packet_file_path,
     self.now(),
   )
   let profiled = apply_named_job_profile(
@@ -623,7 +773,7 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
         metadata: external_packet_step_metadata(
           step.metadata,
           packet,
-          source_path,
+          packet_file_path,
         ),
       }
     }),

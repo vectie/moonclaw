@@ -33,7 +33,10 @@ async test "parse_external_proposal_packet_json accepts keeper-style packet" {
       "request": "Run the skill-driven wiki ingest revision pass.",
       "profile": "wiki_ingest_controller",
       "output_contract": "keeper.plan.packet.v1",
+      "source_path": "/tmp/moonbook-confirm-check/raw/confirm-demo.md",
+      "source_page": "wiki/sources/confirm-demo.md",
       "context_pages": ["wiki/index.md", "wiki/log.md"],
+      "related_pages": ["wiki/entities/demo.md"],
       "skill_paths": ["skills/wiki-maintainer/SKILL.md"],
       "notes": ["Prefer concise citations."],
       "metadata": { "book": "research" },
@@ -47,6 +50,7 @@ async test "parse_external_proposal_packet_json accepts keeper-style packet" {
     content="Run the skill-driven wiki ingest revision pass.",
   )
   inspect(packet.context_pages.join(","), content="wiki/index.md,wiki/log.md")
+  inspect(packet.related_pages.join(","), content="wiki/entities/demo.md")
   inspect(
     packet.output_contract.map(fn(value) { value.stringify() }).unwrap_or(""),
     content="\"keeper.plan.packet.v1\"",
@@ -126,13 +130,16 @@ async test "GatewayJobApp imports external proposal packet into proposal store" 
         request_text: "Ingest source into wiki and revise the relevant pages.",
         profile: "wiki_ingest_controller",
         output_contract: Some({ "artifact": "wiki/report.md" }),
+        source_path: Some("/tmp/book/raw/demo.md"),
+        source_page: Some("wiki/sources/demo.md"),
         context_pages: ["wiki/index.md"],
+        related_pages: ["wiki/entities/demo.md"],
         skill_paths: ["skills/wiki-maintainer/SKILL.md"],
         notes: ["Prefer concise citations."],
         tags: ["keeper"],
         metadata: { "book": "research" },
       },
-      "/tmp/keeper/jobs/ingest-1.json",
+      "/tmp/book/keeper/jobs/ingest-1.json",
     )
     let imported = match result {
       Ok(imported) => imported
@@ -146,20 +153,20 @@ async test "GatewayJobApp imports external proposal packet into proposal store" 
     inspect(
       imported.proposal.profile_metadata
       .stringify()
-      .contains("\"source_path\":\"/tmp/keeper/jobs/ingest-1.json\""),
+      .contains("\"workspace_root\":\"/tmp/book\""),
       content="true",
     )
     inspect(
       proposal_initial_input(imported.proposal)
       .map(fn(json) { json.stringify() })
       .unwrap_or("")
-      .contains("\"context_pages\":[\"wiki/index.md\"]"),
+      .contains("\"context_pages\":[\"/tmp/book/wiki/index.md\"]"),
       content="true",
     )
     inspect(
       imported.proposal.steps[0].metadata
       .stringify()
-      .contains("\"preferred_skills\":[\"wiki-maintainer\"]"),
+      .contains("\"skill_paths\":[\"/tmp/book/skills/wiki-maintainer/SKILL.md\"]"),
       content="true",
     )
     inspect(
@@ -202,13 +209,16 @@ async test "GatewayJobApp imports and confirms external proposal packet" {
         request_text: "Ingest source into wiki and revise the relevant pages.",
         profile: "wiki_ingest_controller",
         output_contract: Some({ "artifact": "wiki/report.md" }),
+        source_path: Some("/tmp/book/raw/demo.md"),
+        source_page: Some("wiki/sources/demo.md"),
         context_pages: ["wiki/index.md"],
+        related_pages: ["wiki/entities/demo.md"],
         skill_paths: ["skills/wiki-maintainer/SKILL.md"],
         notes: ["Prefer concise citations."],
         tags: [],
         metadata: {},
       },
-      "/tmp/keeper/jobs/ingest-2.json",
+      "/tmp/book/keeper/jobs/ingest-2.json",
       confirm=true,
       analysis_executor=Some(
         AnalysisExecutor::new(run=fn(_request) {
@@ -243,6 +253,13 @@ async test "GatewayJobApp imports and confirms external proposal packet" {
       .contains(
         "\"external_output_contract\":{\"artifact\":\"wiki/report.md\"}",
       ),
+      content="true",
+    )
+    inspect(
+      proposal_initial_input(imported.proposal)
+      .map(fn(json) { json.stringify() })
+      .unwrap_or("")
+      .contains("\"external_workspace_root\":\"/tmp/book\""),
       content="true",
     )
   })
