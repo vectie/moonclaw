@@ -67,7 +67,7 @@ We follow the standard fork-and-pull request workflow:
    git push origin my-feature-branch
    ```
 
-7. Open a pull request against the `main` branch of `moonbitlang/moonclaw`
+7. Open a pull request against the `main` branch of `vectie/moonclaw`
 
 ### CI Requirements
 
@@ -180,7 +180,7 @@ Check out issues tagged with:
 - **`help-wanted`**: Issues that are ready for community contributions
 - **`good-first-issue`**: Beginner-friendly issues
 
-Browse the [issue tracker](https://github.com/moonbitlang/moonclaw/issues) and look for these labels to find issues that match your interests and skill level.
+Browse the [issue tracker](https://github.com/vectie/moonclaw/issues) and look for these labels to find issues that match your interests and skill level.
 
 ### Areas to Contribute
 

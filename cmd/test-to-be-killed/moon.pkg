@@ -2,11 +2,11 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
-  "moonbitlang/moonclaw/internal/os",
-  "moonbitlang/moonclaw/cmd/daemon",
-  "moonbitlang/moonclaw/internal/spawn",
-  "moonbitlang/moonclaw/internal/httpx",
-  "moonbitlang/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/cmd/daemon",
+  "vectie/moonclaw/internal/spawn",
+  "vectie/moonclaw/internal/httpx",
+  "vectie/moonclaw/internal/pino",
 }
 
 options(

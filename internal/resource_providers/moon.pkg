@@ -1,12 +1,12 @@
 import {
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/internal/jsonx",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/jsonx",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
 } for "test"

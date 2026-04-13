@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/assets"
+package "vectie/moonclaw/internal/assets"
 
 import {
-  "moonbitlang/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/pino",
 }
 
 // Values

@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/glob_files"
+package "vectie/moonclaw/tools/glob_files"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/tool",
 }
 
 // Values

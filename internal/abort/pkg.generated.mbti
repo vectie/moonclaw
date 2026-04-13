@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/abort"
+package "vectie/moonclaw/internal/abort"
 
 // Values
 pub fn[T] abort(String) -> T

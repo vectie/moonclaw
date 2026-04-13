@@ -1,6 +1,6 @@
 {
-  "name": "moonbitlang/moonclaw",
-  "version": "0.1.0",
+  "name": "vectie/moonclaw",
+  "version": "0.1.1",
   "deps": {
     "moonbitlang/async": "0.16.6",
     "moonbitlang/x": "0.4.40",
@@ -8,7 +8,7 @@
     "moonbit-community/yaml": "0.0.3"
   },
   "readme": "README.md",
-  "repository": "",
+  "repository": "https://github.com/vectie/moonclaw",
   "license": "Apache-2.0",
   "keywords": [],
   "description": "",

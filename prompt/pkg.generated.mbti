@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/prompt"
+package "vectie/moonclaw/prompt"
 
 // Values
 pub let prelude : String

@@ -2,10 +2,10 @@ import {
   "moonbitlang/async/http",
   "moonbitlang/async/io",
   "moonbitlang/async/socket",
-  "moonbitlang/moonclaw/internal/httpx/status",
-  "moonbitlang/moonclaw/internal/httpx/reason",
-  "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/httpx/status",
+  "vectie/moonclaw/internal/httpx/reason",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/fsx",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
   "moonbitlang/core/test",
@@ -13,5 +13,5 @@ import {
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
 } for "test"

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/cmd/acp"
+package "vectie/moonclaw/cmd/acp"
 
 // Values
 pub async fn start(ArrayView[String]) -> Unit

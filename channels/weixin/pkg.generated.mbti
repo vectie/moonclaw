@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/channels/weixin"
+package "vectie/moonclaw/channels/weixin"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/channel",
+  "vectie/moonclaw/channel",
 }
 
 // Values

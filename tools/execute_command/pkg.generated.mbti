@@ -1,14 +1,13 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/execute_command"
+package "vectie/moonclaw/tools/execute_command"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/job",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/tool",
 }
 
 // Values
-pub fn new(@job.Manager) -> @tool.Tool[CommandResult]
+pub fn new(String) -> @tool.Tool[CommandResult]
 
 // Errors
 
@@ -24,7 +23,7 @@ pub impl @json.FromJson for CommandOutput
 pub enum CommandResult {
   Completed(command~ : String, status~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
   TimedOut(command~ : String, timeout~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
-  Background(command~ : String, job_id~ : @job.Id)
+  Background(command~ : String, job_id~ : Int)
 }
 pub impl Show for CommandResult
 pub impl ToJson for CommandResult

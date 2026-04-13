@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/oauth/codex"
+package "vectie/moonclaw/oauth/codex"
 
 import {
   "moonbitlang/core/json",

@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/moonclaw/internal/backtrace",
+  "vectie/moonclaw/internal/backtrace",
 }
 
 options(

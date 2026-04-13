@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/moonclaw/internal/c",
+  "vectie/moonclaw/internal/c",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
 }
 

@@ -1,6 +1,6 @@
 import {
-  "moonbitlang/moonclaw/tool",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pathx",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pathx",
   "moonbitlang/core/json",
 }

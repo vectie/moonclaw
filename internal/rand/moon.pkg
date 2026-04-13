@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/moonclaw/internal/errno",
+  "vectie/moonclaw/internal/errno",
   "moonbitlang/core/json",
   "moonbitlang/core/random",
 }

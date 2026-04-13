@@ -1,14 +1,14 @@
 import {
-  "moonbitlang/moonclaw/file",
-  "moonbitlang/moonclaw/tool",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/internal/tiktoken",
+  "vectie/moonclaw/file",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/tiktoken",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
 } for "test"

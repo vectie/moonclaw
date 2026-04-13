@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/token_counter"
+package "vectie/moonclaw/internal/token_counter"
 
 import {
-  "moonbitlang/moonclaw/internal/openai",
-  "moonbitlang/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/pino",
 }
 
 // Values

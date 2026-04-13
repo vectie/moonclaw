@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/buildinfo"
+package "vectie/moonclaw/internal/buildinfo"
 
 // Values
 pub let version : Version

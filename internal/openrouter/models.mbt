@@ -14,7 +14,7 @@ pub struct Model {
 } derive(ToJson)
 
 ///|
-const PackageName = "@moonbitlang/moonclaw/internal/openrouter"
+const PackageName = "@vectie/moonclaw/internal/openrouter"
 
 ///|
 pub impl @json.FromJson for Model with from_json(

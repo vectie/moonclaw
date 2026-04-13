@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw-rabbita-job/main"
+package "vectie/moonclaw-rabbita-job/main"
 
 import {
   "moonbitlang/core/json",

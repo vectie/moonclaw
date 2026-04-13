@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/yamd"
+package "vectie/moonclaw/internal/yamd"
 
 import {
   "moonbit-community/yaml",

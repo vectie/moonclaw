@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/cmd/main/conversation"
+package "vectie/moonclaw/cmd/main/conversation"
 
 // Values
 pub async fn list() -> Unit

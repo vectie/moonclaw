@@ -2,18 +2,18 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/io",
   "moonbitlang/async/stdio",
-  "moonbitlang/moonclaw",
-  "moonbitlang/moonclaw/agent",
-  "moonbitlang/moonclaw/ai",
-  "moonbitlang/moonclaw/internal/openai",
-  "moonbitlang/moonclaw/internal/backtrace",
-  "moonbitlang/moonclaw/tool",
-  "moonbitlang/moonclaw/internal/os",
-  "moonbitlang/moonclaw/event",
-  "moonbitlang/moonclaw/model",
+  "vectie/moonclaw",
+  "vectie/moonclaw/agent",
+  "vectie/moonclaw/ai",
+  "vectie/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/backtrace",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/event",
+  "vectie/moonclaw/model",
 }
 
 options(
   "is-main": true,
-  overrides: [ "moonbitlang/moonclaw/internal/abort" ],
+  overrides: [ "vectie/moonclaw/internal/abort" ],
 )

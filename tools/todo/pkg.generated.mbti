@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/todo"
+package "vectie/moonclaw/tools/todo"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/clock",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/clock",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/tool",
 }
 
 // Values

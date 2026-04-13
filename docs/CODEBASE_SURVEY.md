@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**MoonClaw** (module name: `moonbitlang/moonclaw`) is an AI-powered coding assistant built in MoonBit. It provides an agent-based architecture for interacting with various LLM providers and executing tools to perform file operations, code modifications, and other tasks.
+**MoonClaw** (module name: `vectie/moonclaw`) is an AI-powered coding assistant built in MoonBit. It provides an agent-based architecture for interacting with various LLM providers and executing tools to perform file operations, code modifications, and other tasks.
 
 ## Project Structure
 

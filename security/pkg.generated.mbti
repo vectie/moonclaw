@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/security"
+package "vectie/moonclaw/security"
 
 import {
   "moonbitlang/core/json",

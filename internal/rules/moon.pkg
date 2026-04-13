@@ -1,20 +1,20 @@
 import {
-  "moonbitlang/moonclaw/ai",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/internal/os",
-  "moonbitlang/moonclaw/internal/yamd",
+  "vectie/moonclaw/ai",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/internal/yamd",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
 } for "test"
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
 } for "wbtest"

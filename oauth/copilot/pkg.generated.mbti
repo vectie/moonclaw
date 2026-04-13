@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/oauth/copilot"
+package "vectie/moonclaw/oauth/copilot"
 
 import {
   "moonbitlang/core/json",

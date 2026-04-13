@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/ai"
+package "vectie/moonclaw/ai"
 
 import {
-  "moonbitlang/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/openai",
 }
 
 // Values

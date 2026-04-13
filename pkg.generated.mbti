@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw"
+package "vectie/moonclaw"
 
 import {
-  "moonbitlang/moonclaw/agent",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/model",
+  "vectie/moonclaw/agent",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/model",
 }
 
 // Values

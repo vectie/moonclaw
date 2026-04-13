@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/readline/unicode"
+package "vectie/moonclaw/internal/readline/unicode"
 
 // Values
 pub fn char_size_left(BytesView, Int) -> Int

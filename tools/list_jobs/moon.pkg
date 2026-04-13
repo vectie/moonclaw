@@ -1,10 +1,10 @@
 import {
-  "moonbitlang/moonclaw/tool",
-  "moonbitlang/moonclaw/job",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/job",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
 } for "test"

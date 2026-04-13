@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/pdf_ocr"
+package "vectie/moonclaw/internal/pdf_ocr"
 
 import {
-  "moonbitlang/moonclaw/internal/spawn",
+  "vectie/moonclaw/internal/spawn",
 }
 
 // Values

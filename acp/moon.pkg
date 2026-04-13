@@ -1,8 +1,8 @@
 import {
   "moonbitlang/async",
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/spawn",
-  "moonbitlang/moonclaw/oauth/codex",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/spawn",
+  "vectie/moonclaw/oauth/codex",
   "moonbitlang/x/path",
 }

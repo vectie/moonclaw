@@ -1,8 +1,8 @@
 import {
-  "moonbitlang/moonclaw/internal/openai",
-  "moonbitlang/moonclaw/internal/token_counter",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/model",
+  "vectie/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/token_counter",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/model",
   "moonbitlang/core/cmp",
   "moonbitlang/core/json",
 }

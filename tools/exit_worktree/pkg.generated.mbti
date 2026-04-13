@@ -1,0 +1,27 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/tools/exit_worktree"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonclaw/tool",
+}
+
+// Values
+pub fn new(String) -> @tool.Tool[ExitWorktreeResult]
+
+// Errors
+
+// Types and methods
+pub struct ExitWorktreeResult {
+  path : String
+  repo_root : String
+  removed : Bool
+}
+pub impl Show for ExitWorktreeResult
+pub impl ToJson for ExitWorktreeResult
+pub impl @json.FromJson for ExitWorktreeResult
+
+// Type aliases
+
+// Traits
+

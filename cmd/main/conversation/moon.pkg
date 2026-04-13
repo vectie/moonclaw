@@ -1,8 +1,8 @@
 import {
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/internal/rand",
-  "moonbitlang/moonclaw/internal/conversation" @conv,
-  "moonbitlang/moonclaw/internal/os",
-  "moonbitlang/moonclaw/cmd/main/argument",
-  "moonbitlang/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/internal/rand",
+  "vectie/moonclaw/internal/conversation" @conv,
+  "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/cmd/main/argument",
+  "vectie/moonclaw/internal/fsx",
 }

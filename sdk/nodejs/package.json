@@ -26,10 +26,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/moonbitlang/moonclaw.git",
+    "url": "https://github.com/vectie/moonclaw.git",
     "directory": "sdk/nodejs"
   },
-  "homepage": "https://github.com/moonbitlang/moonclaw",
+  "homepage": "https://github.com/vectie/moonclaw",
   "engines": {
     "node": ">=18.0.0"
   },

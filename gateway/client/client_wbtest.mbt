@@ -137,6 +137,8 @@ test "decode_ok_payload parses run and channel payloads" {
         child_runs: [],
         artifacts: [],
         memories: [],
+        linked_remote: [],
+        handoffs: [],
         nodes: [
           @job.JobUiNode::{
             id: "workflow:job-run-1",

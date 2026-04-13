@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/cmd/main/exec"
+package "vectie/moonclaw/cmd/main/exec"
 
 // Values
 pub async fn exec(ArrayView[String]) -> Unit
