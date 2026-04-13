@@ -116,6 +116,22 @@ fn parse_adaptive_analysis_envelope(
 }
 
 ///|
+fn is_completed_keeper_plan_packet(content : String) -> Bool {
+  let trimmed = content.trim().to_string()
+  if trimmed.is_blank() || !trimmed.has_prefix("{") {
+    return false
+  }
+  let json = @json.parse(trimmed) catch { _ => return false }
+  guard json is Object(object) else { return false }
+  let packet_type = adaptive_json_string_field(object, "packet_type")
+  let status = adaptive_json_string_field(object, "status")
+  match (packet_type, status) {
+    (Some("keeper.plan.packet.v1"), Some("ok")) => true
+    _ => false
+  }
+}
+
+///|
 fn adaptive_substeps(
   envelope : AdaptiveAnalysisEnvelope,
 ) -> Array[AdaptiveSubstepPayload] {

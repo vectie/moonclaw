@@ -1003,6 +1003,52 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
 }
 
 ///|
+async test "analysis_step_handler treats keeper plan packet as completed output" {
+  @fsx.with_temporary_directory("job-analysis-keeper-packet-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Inspect source and produce keeper plan packet.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          ignore(request)
+          calls.val = calls.val + 1
+          Ok(AnalysisExecution::{
+            model_name: "gpt-5.4",
+            content: "{\"packet_type\":\"keeper.plan.packet.v1\",\"status\":\"ok\",\"recommended_next_actions\":[\"Revise wiki/synthesis/claims.md\"]}",
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(calls.val, content="1")
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
+      result.outputs
+      .get("analyze")
+      .map(fn(output) {
+        output.stringify().contains("\"result_artifact_id\"")
+      })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "analysis_step_handler repairs invalid followup judge output" {
   @fsx.with_temporary_directory("job-analysis-adaptive-repair-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

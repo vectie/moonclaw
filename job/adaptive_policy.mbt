@@ -255,6 +255,8 @@ async fn resolved_adaptive_envelope(
 ) -> AdaptiveAnalysisEnvelope? {
   if analysis_adaptive_disabled(config) {
     None
+  } else if is_completed_keeper_plan_packet(execution.content) {
+    None
   } else {
     match parse_adaptive_analysis_envelope(execution.content) {
       Some(envelope) => Some(envelope)
