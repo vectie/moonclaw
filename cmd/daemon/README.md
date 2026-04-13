@@ -44,7 +44,7 @@ to spawn and obtain the port of the daemon server:
 
 ## Programmatic API
 
-The `moonbitlang/moonclaw/cmd/daemon` package exposes a small set of public
+The `vectie/moonclaw/cmd/daemon` package exposes a small set of public
 symbols so other MoonBit code can embed or manage the daemon without shelling
 out to the CLI. The table below summarizes each entry point:
 

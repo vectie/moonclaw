@@ -6,8 +6,8 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/strconv",
   "moonbitlang/x/codec/base64",
-  "moonbitlang/moonclaw/channel",
-  "moonbitlang/moonclaw/clock",
+  "vectie/moonclaw/channel",
+  "vectie/moonclaw/clock",
 }
 
 import {

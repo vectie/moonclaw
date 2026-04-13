@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/fuzzy"
+package "vectie/moonclaw/internal/fuzzy"
 
 // Values
 pub fn find_match(String, String) -> MatchResult?

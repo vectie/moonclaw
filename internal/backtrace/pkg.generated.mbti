@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/backtrace"
+package "vectie/moonclaw/internal/backtrace"
 
 // Values
 pub fn backtrace(n? : Int) -> FixedArray[String] raise

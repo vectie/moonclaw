@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/job"
+package "vectie/moonclaw/job"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/agent",
-  "moonbitlang/moonclaw/ai",
-  "moonbitlang/moonclaw/workspace",
+  "vectie/moonclaw/agent",
+  "vectie/moonclaw/ai",
+  "vectie/moonclaw/workspace",
 }
 
 // Values

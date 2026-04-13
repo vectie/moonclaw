@@ -1,8 +1,8 @@
 import {
-  "moonbitlang/moonclaw/cmd/main/argument",
-  "moonbitlang/moonclaw/internal/os",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw",
-  "moonbitlang/moonclaw/model",
+  "vectie/moonclaw/cmd/main/argument",
+  "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw",
+  "vectie/moonclaw/model",
 }

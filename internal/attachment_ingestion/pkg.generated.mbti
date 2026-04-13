@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/attachment_ingestion"
+package "vectie/moonclaw/internal/attachment_ingestion"
 
 import {
   "moonbitlang/core/json",

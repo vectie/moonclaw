@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/patch_edit"
+package "vectie/moonclaw/tools/patch_edit"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/tool",
 }
 
 // Values

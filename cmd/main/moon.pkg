@@ -1,20 +1,20 @@
 import {
-  "moonbitlang/moonclaw/internal/backtrace",
+  "vectie/moonclaw/internal/backtrace",
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/os",
-  "moonbitlang/moonclaw/cmd/main/conversation",
-  "moonbitlang/moonclaw/cmd/main/interactive",
-  "moonbitlang/moonclaw/cmd/main/exec",
-  "moonbitlang/moonclaw/cmd/main/tui",
-  "moonbitlang/moonclaw/cmd/acp",
-  "moonbitlang/moonclaw/cmd/onboard",
-  "moonbitlang/moonclaw/cmd/server",
-  "moonbitlang/moonclaw/cmd/daemon",
-  "moonbitlang/moonclaw/cmd/gateway",
-  "moonbitlang/moonclaw/internal/buildinfo",
+  "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/cmd/main/conversation",
+  "vectie/moonclaw/cmd/main/interactive",
+  "vectie/moonclaw/cmd/main/exec",
+  "vectie/moonclaw/cmd/main/tui",
+  "vectie/moonclaw/cmd/acp",
+  "vectie/moonclaw/cmd/onboard",
+  "vectie/moonclaw/cmd/server",
+  "vectie/moonclaw/cmd/daemon",
+  "vectie/moonclaw/cmd/gateway",
+  "vectie/moonclaw/internal/buildinfo",
 }
 
 options(
   "is-main": true,
-  overrides: [ "moonbitlang/moonclaw/internal/abort" ],
+  overrides: [ "vectie/moonclaw/internal/abort" ],
 )

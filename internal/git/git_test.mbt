@@ -2,7 +2,7 @@
 async test "clone" (t : @test.Test) {
   @mock.run(t, mock => {
     @git.clone(
-      "https://github.com/moonbitlang/moonclaw.git",
+      "https://github.com/vectie/moonclaw.git",
       to=mock.cwd.path(),
       depth=1,
     )
@@ -61,7 +61,7 @@ async test "clone_with_invalid_depth" (t : @test.Test) {
   @mock.run(t, mock => {
     try {
       @git.clone(
-        "https://github.com/moonbitlang/moonclaw.git",
+        "https://github.com/vectie/moonclaw.git",
         to=mock.cwd.path(),
         depth=0,
       )

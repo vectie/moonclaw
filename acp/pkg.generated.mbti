@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/acp"
+package "vectie/moonclaw/acp"
 
 import {
   "moonbitlang/core/json",

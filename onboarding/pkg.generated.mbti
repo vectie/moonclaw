@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/onboarding"
+package "vectie/moonclaw/onboarding"
 
 import {
   "moonbitlang/core/json",

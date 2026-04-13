@@ -7,6 +7,6 @@ import {
 }
 
 import {
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
   "moonbitlang/async",
 } for "test"

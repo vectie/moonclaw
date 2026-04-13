@@ -1,18 +1,18 @@
 import {
-  "moonbitlang/moonclaw/tool",
-  "moonbitlang/moonclaw/internal/resource_providers",
-  "moonbitlang/moonclaw/internal/skills",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/worktree",
-  "moonbitlang/moonclaw/tools/glob_files",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/resource_providers",
+  "vectie/moonclaw/internal/skills",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/worktree",
+  "vectie/moonclaw/tools/glob_files",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/git",
-  "moonbitlang/moonclaw/internal/mock",
-  "moonbitlang/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/git",
+  "vectie/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/pathx",
 } for "test"

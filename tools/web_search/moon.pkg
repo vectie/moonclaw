@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/tool",
   "moonbitlang/async/http",
   "moonbitlang/core/json",
   "moonbitlang/core/test",

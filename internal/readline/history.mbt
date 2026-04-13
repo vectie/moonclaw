@@ -122,12 +122,12 @@ fn HistoryManager::add_history(
     let success = history.try_put(self.history) catch {
       _ =>
         abort(
-          "@moonbitlang/moonclaw/internal/readline.HistoryManager::add_history: Failed to put history into event queue (closed)",
+          "@vectie/moonclaw/internal/readline.HistoryManager::add_history: Failed to put history into event queue (closed)",
         )
     }
     guard success else {
       abort(
-        "@moonbitlang/moonclaw/internal/readline.HistoryManager::add_history: Failed to put history into event queue",
+        "@vectie/moonclaw/internal/readline.HistoryManager::add_history: Failed to put history into event queue",
       )
     }
   }

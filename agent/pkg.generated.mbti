@@ -1,17 +1,17 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/agent"
+package "vectie/moonclaw/agent"
 
 import {
   "moonbitlang/core/json",
   "moonbitlang/core/set",
-  "moonbitlang/moonclaw/ai",
-  "moonbitlang/moonclaw/event",
-  "moonbitlang/moonclaw/internal/broadcast",
-  "moonbitlang/moonclaw/internal/conversation",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/model",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/ai",
+  "vectie/moonclaw/event",
+  "vectie/moonclaw/internal/broadcast",
+  "vectie/moonclaw/internal/conversation",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/model",
+  "vectie/moonclaw/tool",
 }
 
 // Values

@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/wait_job"
+package "vectie/moonclaw/tools/wait_job"
 
 import {
-  "moonbitlang/moonclaw/job",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/job",
+  "vectie/moonclaw/tool",
 }
 
 // Values

@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/rules"
+package "vectie/moonclaw/internal/rules"
 
 import {
-  "moonbitlang/moonclaw/ai",
-  "moonbitlang/moonclaw/internal/pino",
+  "vectie/moonclaw/ai",
+  "vectie/moonclaw/internal/pino",
 }
 
 // Values

@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/cmd/gateway"
+package "vectie/moonclaw/cmd/gateway"
 
 // Values
 pub async fn start(ArrayView[String]) -> Unit

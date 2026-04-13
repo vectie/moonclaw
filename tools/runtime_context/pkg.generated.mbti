@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/runtime_context"
+package "vectie/moonclaw/tools/runtime_context"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/tool",
 }
 
 // Values

@@ -1,24 +1,24 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/gateway/server"
+package "vectie/moonclaw/gateway/server"
 
 import {
   "moonbitlang/async",
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/acp",
-  "moonbitlang/moonclaw/channel",
-  "moonbitlang/moonclaw/clock",
-  "moonbitlang/moonclaw/event",
-  "moonbitlang/moonclaw/gateway/protocol",
-  "moonbitlang/moonclaw/internal/broadcast",
-  "moonbitlang/moonclaw/internal/httpx",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/spawn",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/job",
-  "moonbitlang/moonclaw/model",
-  "moonbitlang/moonclaw/plugin",
-  "moonbitlang/moonclaw/security",
-  "moonbitlang/moonclaw/workspace",
+  "vectie/moonclaw/acp",
+  "vectie/moonclaw/channel",
+  "vectie/moonclaw/clock",
+  "vectie/moonclaw/event",
+  "vectie/moonclaw/gateway/protocol",
+  "vectie/moonclaw/internal/broadcast",
+  "vectie/moonclaw/internal/httpx",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/spawn",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/job",
+  "vectie/moonclaw/model",
+  "vectie/moonclaw/plugin",
+  "vectie/moonclaw/security",
+  "vectie/moonclaw/workspace",
 }
 
 // Values

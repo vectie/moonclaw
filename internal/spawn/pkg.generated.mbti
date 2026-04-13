@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/spawn"
+package "vectie/moonclaw/internal/spawn"
 
 import {
-  "moonbitlang/moonclaw/internal/errno",
+  "vectie/moonclaw/internal/errno",
 }
 
 // Values

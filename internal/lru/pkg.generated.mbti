@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/lru"
+package "vectie/moonclaw/internal/lru"
 
 // Values
 pub fn[K : Eq + Hash, V] cache(max_size? : Int) -> Cache[K, V]

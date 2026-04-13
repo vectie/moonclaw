@@ -1,9 +1,9 @@
 import {
   "moonbitlang/async/fs",
-  "moonbitlang/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/pathx",
   "moonbitlang/async/io",
-  "moonbitlang/moonclaw/internal/errno",
-  "moonbitlang/moonclaw/internal/os",
+  "vectie/moonclaw/internal/errno",
+  "vectie/moonclaw/internal/os",
   "moonbitlang/async/os_error",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
@@ -12,10 +12,10 @@ import {
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
-  "moonbitlang/moonclaw/internal/spawn",
+  "vectie/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/spawn",
   "moonbitlang/async/process",
-  "moonbitlang/moonclaw/internal/signal",
+  "vectie/moonclaw/internal/signal",
 } for "test"
 
 options(

@@ -4,6 +4,6 @@ import {
 }
 
 import {
-  "moonbitlang/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/fsx",
   "moonbitlang/async",
 } for "test"

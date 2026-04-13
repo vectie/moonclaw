@@ -1,4 +1,4 @@
 import {
-  "moonbitlang/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/openai",
   "moonbitlang/core/json",
 }

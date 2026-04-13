@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/tools/enter_worktree"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonclaw/internal/worktree",
+  "vectie/moonclaw/tool",
+}
+
+// Values
+pub fn new(String) -> @tool.Tool[EnterWorktreeResult]
+
+// Errors
+
+// Types and methods
+pub struct EnterWorktreeResult {
+  handle : @worktree.WorktreeHandle
+  created : Bool
+  note : String
+}
+pub impl Show for EnterWorktreeResult
+pub impl ToJson for EnterWorktreeResult
+pub impl @json.FromJson for EnterWorktreeResult
+
+// Type aliases
+
+// Traits
+

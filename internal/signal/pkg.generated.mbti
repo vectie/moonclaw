@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/signal"
+package "vectie/moonclaw/internal/signal"
 
 // Values
 pub let sigkill : Int

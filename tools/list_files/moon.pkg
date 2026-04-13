@@ -1,13 +1,13 @@
 import {
-  "moonbitlang/moonclaw/tool",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/file",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/file",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
   "moonbitlang/async",
 } for "test"

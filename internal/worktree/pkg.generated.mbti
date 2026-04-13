@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/worktree"
+package "vectie/moonclaw/internal/worktree"
 
 import {
   "moonbitlang/core/json",

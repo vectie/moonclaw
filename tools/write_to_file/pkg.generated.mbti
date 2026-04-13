@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/write_to_file"
+package "vectie/moonclaw/tools/write_to_file"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/tool",
 }
 
 // Values

@@ -1,18 +1,18 @@
 import {
-  "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/clock",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/clock",
+  "vectie/moonclaw/tool",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
-  "moonbitlang/moonclaw/agent",
-  "moonbitlang/moonclaw/model",
-  "moonbitlang/moonclaw/event",
-  "moonbitlang/moonclaw/ai",
+  "vectie/moonclaw/internal/mock",
+  "vectie/moonclaw/agent",
+  "vectie/moonclaw/model",
+  "vectie/moonclaw/event",
+  "vectie/moonclaw/ai",
 } for "test"

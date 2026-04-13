@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/gateway/protocol"
+package "vectie/moonclaw/gateway/protocol"
 
 import {
   "moonbitlang/core/json",

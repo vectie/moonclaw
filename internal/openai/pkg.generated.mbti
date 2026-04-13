@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/openai"
+package "vectie/moonclaw/internal/openai"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/schema",
-  "moonbitlang/moonclaw/model",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/schema",
+  "vectie/moonclaw/model",
 }
 
 // Values

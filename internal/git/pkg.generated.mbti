@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/git"
+package "vectie/moonclaw/internal/git"
 
 // Values
 pub async fn add_worktree(String, new_branch? : String, force_new_branch? : Bool, commit? : String, cwd? : StringView) -> Unit

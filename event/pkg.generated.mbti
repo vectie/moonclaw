@@ -1,12 +1,12 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/event"
+package "vectie/moonclaw/event"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/ai",
-  "moonbitlang/moonclaw/clock",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/ai",
+  "vectie/moonclaw/clock",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/tool",
 }
 
 // Values

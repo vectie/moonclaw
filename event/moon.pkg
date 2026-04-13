@@ -1,18 +1,18 @@
 import {
   "moonbitlang/async/aqueue",
-  "moonbitlang/moonclaw/tool",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/ai",
-  "moonbitlang/moonclaw/internal/openai",
-  "moonbitlang/moonclaw/internal/rand",
-  "moonbitlang/moonclaw/clock",
-  "moonbitlang/moonclaw/internal/jsonx",
+  "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/ai",
+  "vectie/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/rand",
+  "vectie/moonclaw/clock",
+  "vectie/moonclaw/internal/jsonx",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
-  "moonbitlang/moonclaw/internal/rand",
+  "vectie/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/rand",
 } for "test"

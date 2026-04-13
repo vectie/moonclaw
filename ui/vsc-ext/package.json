@@ -5,7 +5,7 @@
   "publisher": "moonbit",
   "repository": {
     "type": "git",
-    "url": "https://github.com/moonbitlang/moonclaw"
+    "url": "https://github.com/vectie/moonclaw"
   },
   "version": "0.0.5",
   "engines": {

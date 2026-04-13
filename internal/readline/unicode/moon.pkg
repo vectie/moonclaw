@@ -1,5 +1,5 @@
 import {
-  "moonbitlang/moonclaw/internal/readline/unicode/width" @unicode/width,
+  "vectie/moonclaw/internal/readline/unicode/width" @unicode/width,
   "moonbitlang/core/json",
 }
 

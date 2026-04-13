@@ -1,14 +1,14 @@
 import {
-  "moonbitlang/moonclaw/internal/os",
+  "vectie/moonclaw/internal/os",
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw",
-  "moonbitlang/moonclaw/internal/backtrace",
-  "moonbitlang/moonclaw/model",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw",
+  "vectie/moonclaw/internal/backtrace",
+  "vectie/moonclaw/model",
 }
 
 options(
   "is-main": true,
-  overrides: [ "moonbitlang/moonclaw/internal/abort" ],
+  overrides: [ "vectie/moonclaw/internal/abort" ],
 )

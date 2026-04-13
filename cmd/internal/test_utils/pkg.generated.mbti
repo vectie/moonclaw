@@ -1,10 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/cmd/internal/test_utils"
+package "vectie/moonclaw/cmd/internal/test_utils"
 
 import {
   "moonbitlang/async/http",
-  "moonbitlang/moonclaw/event",
-  "moonbitlang/moonclaw/internal/httpx",
+  "vectie/moonclaw/event",
+  "vectie/moonclaw/internal/httpx",
 }
 
 // Values

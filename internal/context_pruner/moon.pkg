@@ -1,16 +1,16 @@
 import {
-  "moonbitlang/moonclaw/internal/openai",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/token_counter",
-  "moonbitlang/moonclaw/internal/conversation",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/event",
-  "moonbitlang/moonclaw/ai",
+  "vectie/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/token_counter",
+  "vectie/moonclaw/internal/conversation",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/event",
+  "vectie/moonclaw/ai",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
 
 import {
   "moonbitlang/async",
-  "moonbitlang/moonclaw/internal/mock",
+  "vectie/moonclaw/internal/mock",
 } for "test"

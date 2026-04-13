@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/resource_providers"
+package "vectie/moonclaw/internal/resource_providers"
 
 import {
   "moonbitlang/core/json",

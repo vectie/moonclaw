@@ -1,17 +1,17 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/gateway/client"
+package "vectie/moonclaw/gateway/client"
 
 import {
   "moonbitlang/async/http",
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/acp",
-  "moonbitlang/moonclaw/channel",
-  "moonbitlang/moonclaw/gateway/protocol",
-  "moonbitlang/moonclaw/internal/pino",
-  "moonbitlang/moonclaw/internal/uuid",
-  "moonbitlang/moonclaw/job",
-  "moonbitlang/moonclaw/plugin",
-  "moonbitlang/moonclaw/workspace",
+  "vectie/moonclaw/acp",
+  "vectie/moonclaw/channel",
+  "vectie/moonclaw/gateway/protocol",
+  "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/uuid",
+  "vectie/moonclaw/job",
+  "vectie/moonclaw/plugin",
+  "vectie/moonclaw/workspace",
 }
 
 // Values

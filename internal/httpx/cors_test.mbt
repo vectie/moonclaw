@@ -1,5 +1,5 @@
 ///|
-async test "@moonbitlang/moonclaw/internal/httpx.cors" (t : @test.Test) {
+async test "@vectie/moonclaw/internal/httpx.cors" (t : @test.Test) {
   @mock.run(t, _ => {
     let router = @httpx.Router::new()
     router.add_handler(Post, "/task", (_, w) => {

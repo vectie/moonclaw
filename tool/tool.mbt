@@ -78,7 +78,7 @@ pub fn[Output] ToolResult::error(
 /// - `description`: Tool description that can be read by the LLM.
 /// - `name`: Tool name used by the LLM to call the tool.
 /// - `schema`: JSON schema to validate LLM-generated output and provide type information to the LLM.
-///             `schema` should be an *object type*. Related issue: [#258](https://github.com/moonbitlang/moonclaw/issues/258)
+///             `schema` should be an *object type*. Related issue: [#258](https://github.com/vectie/moonclaw/issues/258)
 /// - `f`: Function whose `input` must conform to the `schema` defined above.
 ///
 #as_free_fn

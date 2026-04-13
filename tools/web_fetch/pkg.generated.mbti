@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/tools/web_fetch"
+package "vectie/moonclaw/tools/web_fetch"
 
 import {
   "moonbitlang/core/json",
-  "moonbitlang/moonclaw/tool",
+  "vectie/moonclaw/tool",
 }
 
 // Values

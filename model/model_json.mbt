@@ -6,7 +6,7 @@ pub impl @json.FromJson for Model with from_json(
   guard json is Object(json) else {
     raise @json.JsonDecodeError(
       (
-        json_path, "@moonbitlang/moonclaw/model.Model::from_json: expected object",
+        json_path, "@vectie/moonclaw/model.Model::from_json: expected object",
       ),
     )
   }
@@ -14,7 +14,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("name") is Some(name) else {
       raise @json.JsonDecodeError(
         (
-          json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'name' field",
+          json_path, "@vectie/moonclaw/model.Model::from_json: missing 'name' field",
         ),
       )
     }
@@ -24,7 +24,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("model_name") is Some(model_name) else {
       raise @json.JsonDecodeError(
         (
-          json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'model_name' field",
+          json_path, "@vectie/moonclaw/model.Model::from_json: missing 'model_name' field",
         ),
       )
     }
@@ -34,7 +34,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("model_type") is Some(model_type) else {
       raise @json.JsonDecodeError(
         (
-          json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'model_type' field",
+          json_path, "@vectie/moonclaw/model.Model::from_json: missing 'model_type' field",
         ),
       )
     }
@@ -66,7 +66,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("safe_zone_tokens") is Some(safe_zone_tokens) else {
       // raise @json.JsonDecodeError(
       //   (
-      //     json_path, "@moonbitlang/moonclaw/model.Model::from_json: missing 'safe_zone_tokens' field",
+      //     json_path, "@vectie/moonclaw/model.Model::from_json: missing 'safe_zone_tokens' field",
       //   ),
       // )
       128_000
@@ -143,7 +143,7 @@ pub impl @json.FromJson for Type with from_json(
   guard json is String(json) else {
     raise @json.JsonDecodeError(
       (
-        json_path, "@moonbitlang/moonclaw/model.Type::from_json: expected string",
+        json_path, "@vectie/moonclaw/model.Type::from_json: expected string",
       ),
     )
   }
@@ -159,14 +159,14 @@ pub impl @json.FromJson for Type with from_json(
       raise @json.JsonDecodeError(
         (
           json_path,
-          "@moonbitlang/moonclaw/model.Type::from_json: unsupported SaaS provider '\{provider}'",
+          "@vectie/moonclaw/model.Type::from_json: unsupported SaaS provider '\{provider}'",
         ),
       )
     _ =>
       raise @json.JsonDecodeError(
         (
           json_path,
-          "@moonbitlang/moonclaw/model.Type::from_json: unknown model type '\{json}'",
+          "@vectie/moonclaw/model.Type::from_json: unknown model type '\{json}'",
         ),
       )
   }
