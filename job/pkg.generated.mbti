@@ -5,6 +5,7 @@ import {
   "moonbitlang/core/json",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
+  "vectie/moonclaw/internal/resource_providers",
   "vectie/moonclaw/workspace",
 }
 
@@ -361,6 +362,7 @@ pub(all) struct AnalysisRequest {
   job_id : String
   run_id : String
   step_id : String
+  source_prompt : String
   prompt : String
   model_name : String
   cwd : String
@@ -372,6 +374,7 @@ pub(all) struct AnalysisRequest {
   enable_tools : Bool
   web_search : Bool
   tool_contract : AnalysisToolContract
+  step_metadata : Json
   execution_isolation : Json?
   role_runtime_contract : RoleRuntimeContract?
 }
@@ -520,6 +523,92 @@ type ArtifactsIndexFile
 pub impl Show for ArtifactsIndexFile
 pub impl ToJson for ArtifactsIndexFile
 pub impl @json.FromJson for ArtifactsIndexFile
+
+pub(all) struct BookHarnessCommand {
+  provider : @resource_providers.RegisteredResourceProvider
+  command : String
+  args : Array[String]
+  cwd : String?
+  workspace_root : String
+}
+pub impl Show for BookHarnessCommand
+
+pub(all) struct BookHarnessMemoryCandidate {
+  kind : String
+  title : String
+  detail : String
+  durable : Bool
+  target_page : String?
+}
+pub impl Eq for BookHarnessMemoryCandidate
+pub impl Show for BookHarnessMemoryCandidate
+pub impl ToJson for BookHarnessMemoryCandidate
+pub impl @json.FromJson for BookHarnessMemoryCandidate
+
+pub(all) struct BookHarnessPersistOutcome {
+  log_path : String
+  updated_pages : Array[String]
+  review_queued : Bool
+  notify_town : Bool
+  evidence_id : String
+}
+pub impl Show for BookHarnessPersistOutcome
+pub impl ToJson for BookHarnessPersistOutcome
+pub impl @json.FromJson for BookHarnessPersistOutcome
+
+pub(all) struct BookHarnessResult {
+  task_id : String
+  summary : String
+  artifacts : Array[String]
+  memory_candidates : Array[BookHarnessMemoryCandidate]
+  requires_review : Bool
+  notify_town : Bool
+}
+pub impl Show for BookHarnessResult
+pub impl ToJson for BookHarnessResult
+pub impl @json.FromJson for BookHarnessResult
+
+pub(all) struct BookHarnessTask {
+  id : String
+  title : String
+  kind : String
+  prompt : String
+  priority : Int
+  requires_review : Bool
+  target_pages : Array[String]
+}
+pub impl Show for BookHarnessTask
+pub impl ToJson for BookHarnessTask
+pub impl @json.FromJson for BookHarnessTask
+
+pub(all) struct BookHarnessTaskBatch {
+  goal_id : String
+  goal : String
+  summary : String
+  tasks : Array[BookHarnessTask]
+}
+pub impl Show for BookHarnessTaskBatch
+pub impl ToJson for BookHarnessTaskBatch
+pub impl @json.FromJson for BookHarnessTaskBatch
+
+pub(all) struct BookHarnessWorkerContext {
+  book_id : String
+  workspace_root : String
+  task_id : String
+  prompt : String
+  policy : Array[String]
+  routines : Array[String]
+  skill_paths : Array[String]
+  context_pages : Array[String]
+  active_memory : Array[String]
+  user_memory : Array[String]
+  working_memory : Array[String]
+  memory_summary : String
+  output_contract : Array[String]
+}
+pub impl Show for BookHarnessWorkerContext
+pub impl ToJson for BookHarnessWorkerContext
+pub impl @json.FromJson for BookHarnessWorkerContext
 
 pub(all) struct ChatAnswer {
   binding_id : String?

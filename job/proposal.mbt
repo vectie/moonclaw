@@ -815,6 +815,7 @@ async fn plan_job_proposal_with_mode(
     job_id: "proposal:\{proposal_id}",
     run_id: "proposal:\{proposal_id}",
     step_id: "planner",
+    source_prompt: request_text,
     prompt: planner_request_prompt(
       request_text,
       intake~,
@@ -841,6 +842,7 @@ async fn plan_job_proposal_with_mode(
       file_write=false,
       web_search=false,
     ),
+    step_metadata: {},
     execution_isolation: None,
     role_runtime_contract: None,
   }
@@ -1138,6 +1140,7 @@ pub async fn revise_job_proposal(
     job_id: "proposal:\{proposal.id}",
     run_id: "proposal:\{proposal.id}",
     step_id: "planner.revise",
+    source_prompt: proposal.request_text,
     prompt: planner_request_prompt(
       proposal.request_text,
       intake=proposal_initial_input(proposal),
@@ -1166,6 +1169,7 @@ pub async fn revise_job_proposal(
       file_write=false,
       web_search=false,
     ),
+    step_metadata: {},
     execution_isolation: None,
     role_runtime_contract: None,
   }

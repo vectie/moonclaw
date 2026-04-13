@@ -104,6 +104,7 @@ pub(all) struct AnalysisRequest {
   job_id : String
   run_id : String
   step_id : String
+  source_prompt : String
   prompt : String
   model_name : String
   cwd : String
@@ -115,6 +116,7 @@ pub(all) struct AnalysisRequest {
   enable_tools : Bool
   web_search : Bool
   tool_contract : AnalysisToolContract
+  step_metadata : Json
   execution_isolation : Json?
   role_runtime_contract : RoleRuntimeContract?
 } derive(ToJson, FromJson, Show)

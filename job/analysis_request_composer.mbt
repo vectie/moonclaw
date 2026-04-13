@@ -40,6 +40,7 @@ pub async fn compose_job_analysis_request(
     job_id: context.run.job_id,
     run_id: context.run.id,
     step_id: context.step.id,
+    source_prompt: config.prompt,
     prompt: build_analysis_prompt(context, config, skills_prompt, memory_prompt),
     model_name: config.model.unwrap_or("default"),
     cwd: working_directory,
@@ -51,6 +52,7 @@ pub async fn compose_job_analysis_request(
     enable_tools: config.enable_tools,
     web_search: config.web_search,
     tool_contract: analysis_tool_contract(config),
+    step_metadata: config.metadata,
     execution_isolation: execution_isolation.metadata,
     role_runtime_contract: Some(role_runtime_contract),
   }

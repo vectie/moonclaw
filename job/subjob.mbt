@@ -117,6 +117,31 @@ fn proposal_with_isolation_policy(proposal : JobProposal) -> JobProposal {
 }
 
 ///|
+async fn planned_subjob_proposal(
+  request_text : String,
+  cwd : String,
+  home : String?,
+  config : SubjobStepConfig,
+  planner : ProposalPlanner,
+  now : () -> Int,
+) -> Result[JobProposal, String] {
+  if provider_execution_requested(config.execution_mode) {
+    let target_id = match config.execution_target {
+      Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
+      _ => return Err("Extension task delegation requires execution_target")
+    }
+    let (_, batch) = match
+      load_provider_task_task_batch(cwd, home, target_id, request_text) {
+      Ok(value) => value
+      Err(error) => return Err(error)
+    }
+    Ok(provider_task_child_proposal(request_text, batch, config, now()))
+  } else {
+    Ok((planner.run)(request_text, cwd, home))
+  }
+}
+
+///|
 fn render_parent_outputs(outputs : Map[String, Json]) -> String {
   if outputs.is_empty() {
     return ""
@@ -239,7 +264,11 @@ pub fn subjob_step_handler(
     let cwd = context.run.workspace_dir.unwrap_or(config.cwd.unwrap_or("."))
     let home = config.home
     let request_text = compiled_subjob_request(context, config)
-    let proposal = (planner.run)(request_text, cwd, home)
+    let proposal = match
+      planned_subjob_proposal(request_text, cwd, home, config, planner, now) {
+      Ok(proposal) => proposal
+      Err(error) => return Err(error)
+    }
     let proposal = apply_named_job_profile(
       proposal,
       cwd,
