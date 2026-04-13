@@ -37,6 +37,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-04-13`: added external proposal packet import with `moonclaw proposal import <packet.json> [--confirm]`; imported packets are validated, converted into normal stored proposals, mapped onto configured job profiles, and optionally confirmed/executed through the standard workflow engine
 - `2026-04-13`: generalized provider-backed execution into a reusable extension-task boundary; analysis and delegate steps can now target task providers via `execution_mode: "provider"` / `"extension"` plus `execution_target`, with backward-compatible `bookapi` aliases kept only for transition
 - `2026-04-05`: added a concrete wiki-maintainer extension pack, a wiki-specific test guide, and automatic workspace detection for `raw/` + `wiki/` layouts so planning/execution can see `wiki/index.md`, `wiki/log.md`, and key wiki directories as part of runtime context
 - `2026-04-04`: added the Rabbita `Cowork` surface with a conversation sidebar, transcript, composer, plan-mode actions, linked proposal/run cards, and a right-side context pane for preview, workspace, artifacts, and run state
@@ -75,6 +76,7 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - 🌳 git-managed run history inside each workspace
 - 📦 artifact storage and grounded artifact Q&A
 - 🔬 generic job workflows
+- 📥 external proposal packet import into the normal proposal lifecycle
 - 🤖 ACP targets, sessions, and runs for remote agent control
 - 🪟 Rabbita operator UI with:
   - cowork conversation surface
@@ -153,6 +155,24 @@ Start the gateway:
 
 ```bash
 moon run cmd/main -- gateway start --home ~/.moonclaw
+```
+
+Import an external proposal packet:
+
+```bash
+moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw
+```
+
+Gateway-path alias:
+
+```bash
+moon run cmd/main -- gateway proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw
+```
+
+Import and execute immediately:
+
+```bash
+moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw --confirm
 ```
 
 Important:
@@ -368,6 +388,10 @@ Command roles:
 - `/promote` turns the current plan-mode candidate into a normal durable proposal
 - `/plan-job` creates a durable draft proposal that can later be revised and confirmed
 - `/e2e` creates the augmented draft flow with preprocess and optional postprocess
+
+CLI-only import:
+
+- `moon run cmd/main -- proposal import <packet.json> [--confirm]`
 
 ## 🤖 Operator UI
 

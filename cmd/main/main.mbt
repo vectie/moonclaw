@@ -10,6 +10,7 @@ async fn main {
     ["gateway", .. rest] => @gateway.start(rest)
     ["acp", .. rest] => @acp.start(rest)
     ["onboard", .. rest] => @onboard.start(rest)
+    ["proposal", .. rest] => @proposal.start(rest)
     ["exec", .. rest] => @exec.exec(rest)
     ["tui", .. rest] => @tui.tui_interactive(rest)
     ["version"] => println(@buildinfo.version)

@@ -187,6 +187,11 @@ Deliverable:
 Deliverable:
 - jobs can be drafted, revised, confirmed, and monitored safely from Feishu chat
 
+Additional completion notes:
+- [x] Import external proposal packets from disk into the same durable proposal store
+- [x] Add `proposal import <packet.json> [--confirm]` as a thin CLI submission path
+- [x] Reuse the existing confirm -> compile -> run lifecycle for imported proposals
+
 ## Phase 10: Research Management UX
 
 - [ ] Add topic-oriented management APIs and CLI on top of generic jobs
