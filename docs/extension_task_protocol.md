@@ -24,6 +24,11 @@ The provider owns:
 - worker context hydration
 - durable result persistence
 
+For wiki-style ingest flows, this means MoonClaw may route a controller family
+into a provider-backed extension step, but it should not decide what counts as a
+real source, how source pages are written, or when a domain workspace is ready
+for query. Those remain provider responsibilities.
+
 ## Routing
 
 Analysis or delegate steps can route into a provider through:

@@ -106,6 +106,60 @@ fn merge_json_objects(base : Json, extras : Array[(String, Json)]) -> Json {
 }
 
 ///|
+fn injected_step_metadata(family : String, step : JobProposalStep) -> Json {
+  if family == "wiki_ingest_controller" && step.id == "inspect_source" {
+    merge_json_objects(step.metadata, [
+      ("best_effort_on_missing_input", true.to_json()),
+      ("disable_waiting_for_input", true.to_json()),
+    ])
+  } else {
+    step.metadata
+  }
+}
+
+///|
+fn proposal_profile_metadata_string(
+  proposal : JobProposal,
+  keys : Array[String],
+) -> String? {
+  for key in keys {
+    match metadata_string(proposal.profile_metadata, key) {
+      Some(value) if !value.trim().to_string().is_blank() =>
+        return Some(value.trim().to_string())
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn wiki_ingest_extension_target(proposal : JobProposal) -> String {
+  proposal_profile_metadata_string(proposal, [
+    "extension_target", "provider_target", "execution_target", "bookapi_target",
+    "moonbook_target",
+  ]).unwrap_or("moonbook")
+}
+
+///|
+fn wiki_ingest_extension_mode(proposal : JobProposal) -> String {
+  proposal_profile_metadata_string(proposal, [
+    "extension_mode", "provider_mode", "execution_mode", "bookapi_mode",
+  ]).unwrap_or("provider")
+}
+
+///|
+fn wiki_ingest_extension_prompt(proposal : JobProposal) -> String {
+  [
+    "Run the domain-local ingest extension for this request.",
+    "",
+    "Request:",
+    proposal.request_text,
+    "",
+    "The extension owns source discovery, durable wiki updates, and readiness signals.",
+  ].join("\n")
+}
+
+///|
 fn workflow_step_definition_for_proposal_step(
   proposal : JobProposal,
   step : JobProposalStep,
@@ -115,6 +169,7 @@ fn workflow_step_definition_for_proposal_step(
   family : String,
 ) -> WorkflowStepDefinition {
   let kind = normalized_step_kind(step.kind)
+  let step_metadata = injected_step_metadata(family, step)
   let base_metadata : Json = {
     "proposal_id": proposal.id,
     "proposal_step_id": step.id,
@@ -147,39 +202,38 @@ fn workflow_step_definition_for_proposal_step(
   } else {
     let analysis_metadata = merge_json_objects(
       base_metadata,
-      [("step_metadata", step.metadata), ..board_extras],
+      [("step_metadata", step_metadata), ..board_extras],
     )
     merge_json_objects(
       AnalysisStepConfig::new(
         prompt=step.prompt,
-        model=metadata_string(step.metadata, "model"),
+        model=metadata_string(step_metadata, "model"),
         cwd=Some(cwd),
         home=Some(home),
         workspace=Some(workspace_root),
         execution_mode=step.execution_mode,
         execution_target=step.execution_target,
-        system_prompt=metadata_string(step.metadata, "system_prompt"),
+        system_prompt=metadata_string(step_metadata, "system_prompt"),
         preferred_skills=metadata_string_array(
-          step.metadata,
-          "preferred_skills",
+          step_metadata, "preferred_skills",
         ),
-        enable_tools=metadata_bool(step.metadata, "enable_tools", true),
-        web_search=metadata_bool(step.metadata, "web_search", false),
+        enable_tools=metadata_bool(step_metadata, "enable_tools", true),
+        web_search=metadata_bool(step_metadata, "web_search", false),
         policy=AnalysisPolicy::new(skip_if_artifact_exists=false),
         artifacts=AnalysisArtifactConfig::new(
           report_artifact_type=metadata_string_or(
-            step.metadata,
+            step_metadata,
             "report_artifact_type",
             Some("job.proposal.step.report"),
           ).unwrap_or("job.proposal.step.report"),
           result_artifact_type=metadata_string_or(
-            step.metadata,
+            step_metadata,
             "result_artifact_type",
             Some("job.proposal.step.result"),
           ).unwrap_or("job.proposal.step.result"),
           logical_key=Some("\{proposal.id}:\{step.id}"),
-          report_file_name=metadata_string(step.metadata, "report_file_name"),
-          result_file_name=metadata_string(step.metadata, "result_file_name"),
+          report_file_name=metadata_string(step_metadata, "report_file_name"),
+          result_file_name=metadata_string(step_metadata, "result_file_name"),
           scope=["jobs", "proposal:\{proposal.id}"],
           append_only=false,
         ),
@@ -204,7 +258,7 @@ fn workflow_steps_for_proposal(
       proposal, step, cwd, home, workspace_root, family,
     )
   })
-  if steps.is_empty() {
+  let normalized_steps = if steps.is_empty() {
     [
       WorkflowStepDefinition::{
         id: "execute",
@@ -239,6 +293,34 @@ fn workflow_steps_for_proposal(
   } else {
     steps
   }
+  if family != "wiki_ingest_controller" {
+    return normalized_steps
+  }
+  let has_step = fn(step_id : String) {
+    normalized_steps.any(fn(step) { step.id == step_id })
+  }
+  let augmented : Array[WorkflowStepDefinition] = []
+  if !has_step("extension_ingest") {
+    augmented.push(WorkflowStepDefinition::{
+      id: "extension_ingest",
+      kind: "job.delegate",
+      config: merge_json_objects(
+        SubjobStepConfig::new(
+          request_text=wiki_ingest_extension_prompt(proposal),
+          cwd=Some(cwd),
+          home=Some(home),
+          execution_mode=Some(wiki_ingest_extension_mode(proposal)),
+          execution_target=Some(wiki_ingest_extension_target(proposal)),
+          include_parent_outputs=false,
+          max_depth=2,
+        ).to_json(),
+        [("board_lane", "Extension".to_json()), ("board_order", (-1).to_json())],
+      ),
+      retry_policy: None,
+    })
+  }
+  augmented.append(normalized_steps)
+  augmented
 }
 
 ///|

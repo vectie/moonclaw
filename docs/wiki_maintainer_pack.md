@@ -63,11 +63,9 @@ in prompt context.
 Recommended controller profiles:
 
 - `wiki_ingest_controller`
-  - inspects raw source plus current wiki state
-  - plans durable revisions
-  - delegates file edits to a revision worker
-  - optionally delegates a review pass
-  - finalizes with a concise ingest brief
+  - routes first through a provider-backed ingest extension
+  - lets the workspace pack decide source discovery and durable page creation
+  - then continues with generic controller/review/runtime behavior as needed
 
 - `wiki_query_controller`
   - reads `wiki/index.md` first
@@ -129,6 +127,15 @@ If the change is about:
 - what prompts and skills each step uses
 
 put it in `moonclaw.jobs.json`.
+
+If the change is about:
+
+- what counts as a substantive source
+- how `raw/` maps into durable pages
+- how `wiki/index.md` or `wiki/log.md` are updated
+- when the workspace is ready for query
+
+put it in the workspace extension/provider, not MoonClaw core.
 
 If the change is about:
 

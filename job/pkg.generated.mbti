@@ -732,7 +732,10 @@ pub struct ExternalProposalPacket {
   request_text : String
   profile : String
   output_contract : Json?
+  source_path : String?
+  source_page : String?
   context_pages : Array[String]
+  related_pages : Array[String]
   skill_paths : Array[String]
   notes : Array[String]
   tags : Array[String]
@@ -754,9 +757,12 @@ pub fn GatewayJobApp::compile_proposal(Self, JobProposal) -> ProposalCompilation
 pub fn GatewayJobApp::compile_proposal_in_workspace(Self, JobProposal, String, String) -> ProposalCompilation
 pub async fn GatewayJobApp::confirm_proposal(Self, JobProposal, String, async (String, Json?) -> Result[JobRun, String]) -> Result[ConfirmProposalResult, String]
 pub async fn GatewayJobApp::confirm_proposal_and_execute(Self, JobProposal, String, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ConfirmProposalResult, String]
+pub async fn GatewayJobApp::confirm_proposal_and_launch(Self, JobProposal, String, spawn_runner? : async (String, Array[String]) -> Unit) -> Result[ConfirmProposalResult, String]
 pub async fn GatewayJobApp::execute_definition(Self, String, initial_input? : Json?, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[JobRun, String]
+pub async fn GatewayJobApp::execute_existing_run(Self, String, initial_input? : Json?, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[JobRun, String]
 pub async fn GatewayJobApp::import_external_proposal_packet(Self, ExternalProposalPacket, String, confirm? : Bool, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ExternalProposalImportResult, String]
 pub async fn GatewayJobApp::import_external_proposal_packet_file(Self, String, confirm? : Bool, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ExternalProposalImportResult, String]
+pub async fn GatewayJobApp::launch_definition_detached(Self, String, initial_input? : Json?, spawn_runner? : async (String, Array[String]) -> Unit) -> Result[JobRun, String]
 pub async fn GatewayJobApp::load(Self) -> Unit
 pub fn GatewayJobApp::new(root~ : String, cwd~ : String, home~ : String, workspace~ : @workspace.WorkspaceRuntime, next_id~ : () -> String, now~ : () -> Int) -> Self
 pub fn GatewayJobApp::new_workflow_engine(Self) -> WorkflowEngine

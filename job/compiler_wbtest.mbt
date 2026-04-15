@@ -167,3 +167,98 @@ test "compile_job_proposal preserves analysis execution routing hints" {
     content="true",
   )
 }
+
+///|
+test "compile_job_proposal augments wiki ingest controller with provider delegate step" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-compiler-wiki-ingest", "Ingest this source into the wiki.", 100,
+    ),
+    suggested_family: Some("wiki_ingest_controller"),
+    profile_role: Some("controller"),
+    steps: [
+      JobProposalStep::{
+        id: "inspect_source",
+        title: "Inspect source",
+        prompt: "Inspect the source.",
+        kind: "job.analysis",
+        metadata: {},
+        child_profile: None,
+        execution_mode: None,
+        execution_target: None,
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(compilation.workflow.steps.length(), content="2")
+  inspect(compilation.workflow.steps[0].id, content="extension_ingest")
+  inspect(compilation.workflow.steps[1].kind, content="job.analysis")
+  inspect(compilation.workflow.steps[1].id, content="inspect_source")
+  inspect(compilation.workflow.steps[0].kind, content="job.delegate")
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_mode\":\"provider\""),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_target\":\"moonbook\""),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"include_parent_outputs\":false"),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[1].config
+    .stringify()
+    .contains("\"best_effort_on_missing_input\":true"),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[1].config
+    .stringify()
+    .contains("\"disable_waiting_for_input\":true"),
+    content="true",
+  )
+}
+
+///|
+test "compile_job_proposal lets wiki ingest controller override provider routing" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-compiler-wiki-ingest-routing", "Ingest with custom provider.", 100,
+    ),
+    suggested_family: Some("wiki_ingest_controller"),
+    profile_role: Some("controller"),
+    profile_metadata: {
+      "extension_target": "book-lead",
+      "extension_mode": "extension",
+    },
+    steps: [],
+  }
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(compilation.workflow.steps.length(), content="2")
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_mode\":\"extension\""),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_target\":\"book-lead\""),
+    content="true",
+  )
+}
