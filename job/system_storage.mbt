@@ -169,12 +169,47 @@ fn SystemStore::step_dir(self : SystemStore, run_id : String) -> String {
 }
 
 ///|
+fn safe_step_file_segment(step_id : String) -> String {
+  let buf = StringBuilder::new()
+  let mut chars_written = 0
+  let mut last_dash = true
+  for c in step_id.to_lower().to_array() {
+    let normalized = match c {
+      'a'..='z' => Some(c)
+      '0'..='9' => Some(c)
+      _ => None
+    }
+    match normalized {
+      Some(c) => {
+        if chars_written >= 48 {
+          break
+        }
+        buf.write_char(c)
+        chars_written += 1
+        last_dash = false
+      }
+      None =>
+        if !last_dash && chars_written < 48 {
+          buf.write_char('-')
+          chars_written += 1
+          last_dash = true
+        }
+    }
+  }
+  let slug = buf.to_string().trim(chars="-").to_string()
+  let prefix = if slug.is_blank() { "step" } else { slug }
+  let suffix = step_id.hash().to_string().trim(chars="-").to_string()
+  "\{prefix}-\{suffix}"
+}
+
+///|
 fn SystemStore::step_meta_file(
   self : SystemStore,
   run_id : String,
   step_id : String,
 ) -> String {
-  self.step_dir(run_id) |> @pathx.join("\{step_id}.json")
+  self.step_dir(run_id)
+  |> @pathx.join("\{safe_step_file_segment(step_id)}.json")
 }
 
 ///|

@@ -149,6 +149,11 @@ Owns durable on-disk storage:
 - job proposals
 - run event logs
 
+Per-step metadata files use a bounded storage key derived from `step_id` rather
+than the raw `step_id` string. This keeps long delegated requests from becoming
+invalid filesystem paths while preserving the full logical id in stored run
+records and APIs.
+
 ## Gateway Boundary
 
 `gateway/server` still owns these responsibilities:

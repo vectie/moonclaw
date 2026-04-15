@@ -284,7 +284,7 @@ async test "SystemStore keeps indexes and per-run files in expected layout" {
         |> @pathx.join("runs")
         |> @pathx.join("run-1")
         |> @pathx.join("steps")
-        |> @pathx.join("fetch.json"),
+        |> @pathx.join(safe_step_file_segment("fetch") + ".json"),
       ),
       content="true",
     )
@@ -382,6 +382,53 @@ async test "SystemStore persists notification preferences" {
       .map(fn(pref) { pref.verbosity.to_json().stringify() })
       .unwrap_or(""),
       content="\"Verbose\"",
+    )
+  })
+}
+
+///|
+async test "SystemStore shortens step file names for long step ids" {
+  @fsx.with_temporary_directory("job-system-long-step-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    store.save_run(sample_run())
+    let long_step_id = "goal-run-the-domain-local-ingest-extension-for-this-request-request-load-skills-wiki-ingest-skill-md-inspect-raw-wiki-sources-and-wiki-synthesis-maintenance-plan-md-then-bootstrap-durable-book-coverage-for-the-goal-discover-or-stage-high-signal-sources-populate-maintained-source-pages-and-revise-the-wiki-so-later-synthesis-can-cite-durable-pages-research-moontown-moonbook-and-moonclaw-the-extension-owns-source-discovery-durable-wiki-updates-and-readiness-signals-ingest-followup"
+    store.save_step_run(JobStepRun::{
+      id: "step-run-long",
+      run_id: "run-1",
+      step_id: long_step_id,
+      status: RunStatus::Failed,
+      started_at: Some(11),
+      completed_at: Some(12),
+      metrics: {},
+      logs: ["failed"],
+      retry_count: 0,
+      summary: Some("failed"),
+      output: None,
+      error: Some("boom"),
+    })
+
+    let step_file = safe_step_file_segment(long_step_id) + ".json"
+    inspect(step_file.length() < 100, content="true")
+    inspect(
+      @fsx.exists(
+        root
+        |> @pathx.join("runs")
+        |> @pathx.join("run-1")
+        |> @pathx.join("steps")
+        |> @pathx.join(step_file),
+      ),
+      content="true",
+    )
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+    inspect(
+      reloaded
+      .get_step_run("run-1", long_step_id)
+      .map(fn(step) { step.step_id == long_step_id })
+      .unwrap_or(false),
+      content="true",
     )
   })
 }
