@@ -84,6 +84,53 @@ async fn ensure_directory(path : String) -> Unit {
 }
 
 ///|
+fn source_workspace_mount_names() -> Array[String] {
+  ["wiki", "raw", "skills", "RESOLVER.md", "AGENTS.md", "moonclaw.jobs.json"]
+}
+
+///|
+async fn create_source_workspace_mount(
+  source_workspace : String,
+  workspace_dir : String,
+  name : String,
+) -> Unit {
+  let source_path = source_workspace |> @pathx.join(name)
+  let destination_path = workspace_dir |> @pathx.join(name)
+  if source_path == destination_path {
+    return
+  }
+  let source_exists = @fsx.exists(source_path) catch { _ => false }
+  if !source_exists {
+    return
+  }
+  let destination_exists = @fsx.exists(destination_path) catch { _ => false }
+  if destination_exists {
+    return
+  }
+  let command = @spawn.spawn(
+    "ln",
+    ["-s", source_path, destination_path],
+    cwd=workspace_dir,
+  ) catch {
+    _ => return
+  }
+  ignore(command)
+}
+
+///|
+async fn mount_source_workspace_entries(
+  source_workspace : String,
+  workspace_dir : String,
+) -> Unit {
+  if source_workspace == workspace_dir {
+    return
+  }
+  for name in source_workspace_mount_names() {
+    create_source_workspace_mount(source_workspace, workspace_dir, name)
+  }
+}
+
+///|
 fn manual_memory_content(current_content : String) -> String {
   let start_marker = "<!-- moonclaw:memory:start -->"
   let end_marker = "<!-- moonclaw:memory:end -->"
@@ -302,6 +349,7 @@ pub async fn prepare_run_workspace(
   let source_workspace = source_workspace_dir(store, definition, run)
   let workspace_dir = derived_workspace_dir(store, definition, run)
   ensure_directory(workspace_dir)
+  mount_source_workspace_entries(source_workspace, workspace_dir)
   write_run_workspace_metadata(definition, run, workspace_dir, source_workspace)
   initialize_workspace_repo(workspace_dir)
   let updated = JobRun::{ ..run, workspace_dir: Some(workspace_dir) }

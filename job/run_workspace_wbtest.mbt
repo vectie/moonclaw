@@ -5,6 +5,26 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
     let jobs_root = dir |> @pathx.join("jobs")
     let snapshot = @workspace.load_workspace_snapshot_from_root(workspace_root)
     inspect(snapshot.root, content=workspace_root)
+    @fsx.make_directory(workspace_root |> @pathx.join("wiki"), recursive=true)
+    @fsx.make_directory(
+      workspace_root |> @pathx.join("skills") |> @pathx.join("wiki-ingest"),
+      recursive=true,
+    )
+    @fsx.write_to_file(
+      workspace_root |> @pathx.join("wiki") |> @pathx.join("index.md"),
+      "# Index\n",
+    )
+    @fsx.write_to_file(
+      workspace_root |> @pathx.join("RESOLVER.md"),
+      "# Resolver\n",
+    )
+    @fsx.write_to_file(
+      workspace_root
+      |> @pathx.join("skills")
+      |> @pathx.join("wiki-ingest")
+      |> @pathx.join("SKILL.md"),
+      "# Skill\n",
+    )
 
     let store = SystemStore::new(root=jobs_root)
     let definition = JobDefinition::{
@@ -95,6 +115,26 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
       @fsx.exists(workspace_dir |> @pathx.join("ROUTINES.md")),
       content="false",
     )
+    inspect(
+      @fsx.read_file(
+        workspace_dir |> @pathx.join("wiki") |> @pathx.join("index.md"),
+      ),
+      content="# Index\n",
+    )
+    inspect(
+      @fsx.read_file(workspace_dir |> @pathx.join("RESOLVER.md")),
+      content="# Resolver\n",
+    )
+    inspect(
+      @fsx.read_file(
+        workspace_dir
+        |> @pathx.join("skills")
+        |> @pathx.join("wiki-ingest")
+        |> @pathx.join("SKILL.md"),
+      ),
+      content="# Skill\n",
+    )
+    inspect(@fsx.exists(run_workspace_meta_file(workspace_dir)), content="true")
 
     @fsx.write_to_file(
       workspace_dir |> @pathx.join("MEMORY.md"),
