@@ -325,9 +325,11 @@ async test "provider task analysis runner hydrates context and persists structur
       execution_target: Some("wiki-main"),
     }
     let captured_prompt : Ref[String] = { val: "" }
+    let captured_enable_tools : Ref[Bool] = { val: true }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         captured_prompt.val = inner_request.prompt
+        captured_enable_tools.val = inner_request.enable_tools
         Ok(AnalysisExecution::{
           model_name: inner_request.model_name,
           content: (
@@ -363,6 +365,7 @@ async test "provider task analysis runner hydrates context and persists structur
 
     inspect(captured_prompt.val.contains("Relevant Pages:"), content="true")
     inspect(captured_prompt.val.contains("wiki/entity.md"), content="true")
+    inspect(captured_enable_tools.val, content="false")
     inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
@@ -389,6 +392,28 @@ async test "provider task analysis runner hydrates context and persists structur
       content="true",
     )
   })
+}
+
+///|
+test "parse_provider_task_result accepts fenced or prefixed JSON object output" {
+  let content =
+    #|Here is the structured result.
+    #|```json
+    #|{
+    #|  "task_id": "task-1",
+    #|  "summary": "Updated the wiki and captured the contradiction.",
+    #|  "artifacts": ["wiki/entity.md"],
+    #|  "memory_candidates": [],
+    #|  "requires_review": true,
+    #|  "notify_town": false
+    #|}
+    #|```
+  let result = match parse_provider_task_result(content) {
+    Ok(result) => result
+    Err(error) => fail(error)
+  }
+  inspect(result.task_id, content="task-1")
+  inspect(result.requires_review, content="true")
 }
 
 ///|

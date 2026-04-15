@@ -174,12 +174,15 @@ fn select_provider_by_workspace_affinity(
   providers : Array[@resource_providers.RegisteredResourceProvider],
   cwd : String,
 ) -> @resource_providers.RegisteredResourceProvider? {
-  let matches = providers.iter().filter(fn(provider) {
-    match provider_workspace_root(provider) {
-      Some(root) => path_is_within(root, cwd)
-      None => false
-    }
-  }).to_array()
+  let matches = providers
+    .iter()
+    .filter(fn(provider) {
+      match provider_workspace_root(provider) {
+        Some(root) => path_is_within(root, cwd)
+        None => false
+      }
+    })
+    .to_array()
   match matches {
     [provider] => Some(provider)
     _ => None
@@ -536,6 +539,7 @@ fn provider_task_system_prompt(
   [
     request.system_prompt,
     "You are executing a domain-local extension task.",
+    "Skill files describe the work method, but they do not override the runtime return contract.",
     "Return strict JSON only matching this shape:",
     "{\"task_id\":string,\"summary\":string,\"artifacts\":string[],\"memory_candidates\":[{\"kind\":string,\"title\":string,\"detail\":string,\"durable\":bool,\"target_page\":string|null}],\"requires_review\":bool,\"notify_town\":bool}",
     "Use task_id = \{task.id}.",
@@ -607,10 +611,64 @@ fn provider_task_prompt(
 }
 
 ///|
+fn extract_first_json_object(content : String) -> String? {
+  let trimmed = content.trim().to_string()
+  if trimmed.is_blank() {
+    return None
+  }
+  if trimmed.has_prefix("{") {
+    return Some(trimmed)
+  }
+  let buf = StringBuilder::new()
+  let mut started = false
+  let mut depth = 0
+  let mut in_string = false
+  let mut escaped = false
+  for c in content.to_array() {
+    if !started {
+      if c == '{' {
+        started = true
+        depth = 1
+        buf.write_char(c)
+      }
+      continue
+    }
+    buf.write_char(c)
+    if in_string {
+      if escaped {
+        escaped = false
+        continue
+      }
+      if c == '\\' {
+        escaped = true
+      } else if c == '"' {
+        in_string = false
+      }
+      continue
+    }
+    match c {
+      '"' => in_string = true
+      '{' => depth += 1
+      '}' => {
+        depth -= 1
+        if depth == 0 {
+          return Some(buf.to_string())
+        }
+      }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
 fn parse_provider_task_result(
   content : String,
 ) -> Result[ProviderTaskResult, String] {
-  let trimmed = content.trim().to_string()
+  let trimmed = match extract_first_json_object(content) {
+    Some(payload) => payload.trim().to_string()
+    None => return Err("Provider task analysis must return a JSON object")
+  }
   if trimmed.is_blank() || !trimmed.has_prefix("{") {
     return Err("Provider task analysis must return a JSON object")
   }
@@ -773,6 +831,7 @@ async fn run_provider_task_analysis_runner(
     prompt: provider_task_prompt(request, task, context),
     system_prompt: provider_task_system_prompt(request, task, context),
     source_prompt: goal,
+    enable_tools: false,
     execution_mode: None,
     execution_target: None,
     web_search: false,
