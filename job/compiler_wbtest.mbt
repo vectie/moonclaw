@@ -208,8 +208,8 @@ test "compile_job_proposal augments wiki ingest controller with provider delegat
   inspect(
     compilation.workflow.steps[0].config
     .stringify()
-    .contains("\"execution_target\":\"moonbook\""),
-    content="true",
+    .contains("\"execution_target\""),
+    content="false",
   )
   inspect(
     compilation.workflow.steps[0].config

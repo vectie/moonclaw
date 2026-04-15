@@ -113,6 +113,126 @@ async fn write_provider_task_fixture(
 }
 
 ///|
+async fn write_multi_provider_task_fixture(
+  workspace : String,
+  script_path : String,
+  state_path : String,
+) -> Unit {
+  let coding_root = workspace |> @pathx.join("books") |> @pathx.join("coding")
+  let finance_root = workspace |> @pathx.join("books") |> @pathx.join("finance")
+  @fsx.make_directory(
+    workspace |> @pathx.join(".moonclaw"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.make_directory(coding_root, recursive=true, exists_ok=true)
+  @fsx.make_directory(finance_root, recursive=true, exists_ok=true)
+  @fsx.write_to_file(
+    workspace |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+    (
+      #|[
+      #|  {
+      #|    "name": "coding-main",
+      #|    "title": "Coding Main",
+      #|    "description": "Coding provider task fixture",
+      #|    "kind": "extension",
+      #|    "capabilities": ["provider.task"],
+      #|    "metadata": {
+      #|      "command": "sh",
+      #|      "args": [
+      #|        "__SCRIPT__",
+      #|        "__STATE__"
+      #|      ],
+      #|      "workspace_root": "__CODING__"
+      #|    }
+      #|  },
+      #|  {
+      #|    "name": "finance-main",
+      #|    "title": "Finance Main",
+      #|    "description": "Finance provider task fixture",
+      #|    "kind": "extension",
+      #|    "capabilities": ["provider.task"],
+      #|    "metadata": {
+      #|      "command": "sh",
+      #|      "args": [
+      #|        "__SCRIPT__",
+      #|        "__STATE__"
+      #|      ],
+      #|      "workspace_root": "__FINANCE__"
+      #|    }
+      #|  }
+      #|]
+    )
+    .replace(old="__SCRIPT__", new=script_path)
+    .replace(old="__STATE__", new=state_path)
+    .replace(old="__CODING__", new=coding_root)
+    .replace(old="__FINANCE__", new=finance_root),
+  )
+  @fsx.write_to_file(
+    script_path,
+    (
+      #|#!/bin/sh
+      #|set -eu
+      #|state="$1"
+      #|subcommand="$4"
+      #|root="$5"
+      #|if [ "$subcommand" = "tasks" ]; then
+      #|  cat <<EOF
+      #|{
+      #|  "goal_id": "goal-1",
+      #|  "goal": "Workspace affinity goal",
+      #|  "summary": "Provider task tasks for workspace affinity",
+      #|  "tasks": [
+      #|    {
+      #|      "id": "task-1",
+      #|      "title": "Extract durable updates",
+      #|      "kind": "wiki.update",
+      #|      "prompt": "Read the source and update the durable wiki state.",
+      #|      "priority": 90,
+      #|      "requires_review": true,
+      #|      "target_pages": ["wiki/entity.md", "wiki/index.md"]
+      #|    }
+      #|  ]
+      #|}
+      #|EOF
+      #|elif [ "$subcommand" = "context" ]; then
+      #|  cat <<EOF
+      #|{
+      #|  "book_id": "book-1",
+      #|  "workspace_root": "$root",
+      #|  "task_id": "$8",
+      #|  "prompt": "Use the source evidence to revise the wiki carefully.",
+      #|  "policy": ["Keep raw sources immutable"],
+      #|  "routines": ["Update entity pages"],
+      #|  "skill_paths": ["skills/wiki-maintainer/SKILL.md"],
+      #|  "context_pages": ["wiki/index.md", "wiki/entity.md"],
+      #|  "active_memory": [],
+      #|  "user_memory": [],
+      #|  "working_memory": [],
+      #|  "memory_summary": "",
+      #|  "output_contract": ["Return strict JSON"]
+      #|}
+      #|EOF
+      #|elif [ "$subcommand" = "persist" ]; then
+      #|  printf "%s\n" "$6" > "$state"
+      #|  cat <<EOF
+      #|{
+      #|  "log_path": "wiki/log.md",
+      #|  "updated_pages": ["wiki/entity.md", "wiki/index.md"],
+      #|  "review_queued": false,
+      #|  "notify_town": false,
+      #|  "evidence_id": "evidence-1"
+      #|}
+      #|EOF
+      #|else
+      #|  exit 7
+      #|fi
+    ),
+    create=0o755,
+  )
+}
+
+///|
 async test "provider task batch maps provider-backed extension tasks into a child proposal" {
   @fsx.with_temporary_directory("job-book-harness-proposal-XXXXXX", async fn(
     dir,
@@ -131,11 +251,12 @@ async test "provider task batch maps provider-backed extension tasks into a chil
       execution_mode=Some("provider"),
       execution_target=Some("wiki-main"),
     )
+    let target_id : String? = Some("wiki-main")
     let (_, batch) = match
       load_provider_task_task_batch(
         workspace,
         None,
-        "wiki-main",
+        target_id,
         "Update the knowledge base",
       ) {
       Ok(value) => value
@@ -267,5 +388,133 @@ async test "provider task analysis runner hydrates context and persists structur
       persisted_payload.contains("\"summary\": \"Updated the wiki"),
       content="true",
     )
+  })
+}
+
+///|
+async test "provider task batch resolves a single registered provider when target is omitted" {
+  @fsx.with_temporary_directory("job-book-harness-default-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let (command, batch) = match
+      load_provider_task_task_batch(
+        workspace,
+        None,
+        None,
+        "Update the knowledge base",
+      ) {
+      Ok(value) => value
+      Err(error) => fail(error)
+    }
+
+    inspect(command.provider.name, content="wiki-main")
+    inspect(batch.tasks.length().to_string(), content="2")
+  })
+}
+
+///|
+async test "provider task analysis runner resolves a single registered provider when target is omitted" {
+  @fsx.with_temporary_directory("job-book-harness-default-runner-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: true,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: ["wiki-maintainer"],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: Some(
+        RoleRuntimeContract::new(role_id="wiki_worker"),
+      ),
+      execution_mode: Some("provider"),
+      execution_target: None,
+    }
+    let execution = match
+      run_provider_task_analysis_runner(request, fn(inner_request) {
+        Ok(AnalysisExecution::{
+          model_name: inner_request.model_name,
+          content: (
+            #|{
+            #|  "task_id": "task-1",
+            #|  "summary": "Updated the wiki and captured the contradiction.",
+            #|  "artifacts": ["wiki/entity.md"],
+            #|  "memory_candidates": [],
+            #|  "requires_review": false,
+            #|  "notify_town": false
+            #|}
+          ),
+          conversation_id: Some("conv-provider-implicit"),
+          usage: None,
+          metadata: {},
+        })
+      }) {
+      Ok(execution) => execution
+      Err(error) => fail(error)
+    }
+
+    inspect(
+      execution.metadata
+      .stringify()
+      .contains("\"execution_target\":\"wiki-main\""),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "provider task resolves workspace-affine provider when multiple targets are registered" {
+  @fsx.with_temporary_directory("job-book-harness-affinity-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    let run_cwd = workspace
+      |> @pathx.join("books")
+      |> @pathx.join("coding")
+      |> @pathx.join("moonclaw-jobs")
+      |> @pathx.join("run-1")
+    @fsx.make_directory(run_cwd, recursive=true, exists_ok=true)
+    write_multi_provider_task_fixture(workspace, script_path, state_path)
+
+    let (command, batch) = match
+      load_provider_task_task_batch(
+        run_cwd,
+        None,
+        None,
+        "Update the knowledge base",
+      ) {
+      Ok(value) => value
+      Err(error) => fail(error)
+    }
+
+    inspect(command.provider.name, content="coding-main")
+    inspect(batch.tasks.length().to_string(), content="1")
   })
 }

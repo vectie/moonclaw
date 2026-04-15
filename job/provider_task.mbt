@@ -153,19 +153,79 @@ fn provider_supports_extension_execution(
 }
 
 ///|
+fn provider_workspace_root(
+  provider : @resource_providers.RegisteredResourceProvider,
+) -> String? {
+  provider_metadata_string(provider.metadata, "workspace_root").map(fn(root) {
+    @pathx.normalize(root)
+  })
+}
+
+///|
+fn path_is_within(root : String, path : String) -> Bool {
+  let normalized_root = @pathx.normalize(root)
+  let normalized_path = @pathx.normalize(path)
+  normalized_path == normalized_root ||
+  normalized_path.has_prefix("\{normalized_root}/")
+}
+
+///|
+fn select_provider_by_workspace_affinity(
+  providers : Array[@resource_providers.RegisteredResourceProvider],
+  cwd : String,
+) -> @resource_providers.RegisteredResourceProvider? {
+  let matches = providers.iter().filter(fn(provider) {
+    match provider_workspace_root(provider) {
+      Some(root) => path_is_within(root, cwd)
+      None => false
+    }
+  }).to_array()
+  match matches {
+    [provider] => Some(provider)
+    _ => None
+  }
+}
+
+///|
 async fn resolve_provider_task_command(
   cwd : String,
   home : String?,
-  target_id : String,
+  target_id : String?,
 ) -> Result[ProviderTaskCommand, String] {
-  let provider = match
-    @resource_providers.find_resource_provider(cwd, target_id, home~) {
-    Some(provider) => provider
-    None => return Err("Unknown provider task target: \{target_id}")
+  let provider = match target_id {
+    Some(target_id) if !target_id.trim().to_string().is_blank() =>
+      match @resource_providers.find_resource_provider(cwd, target_id, home~) {
+        Some(provider) => provider
+        None => return Err("Unknown provider task target: \{target_id}")
+      }
+    _ => {
+      let providers = @resource_providers.load_resource_providers(cwd, home~)
+        .iter()
+        .filter(fn(provider) { provider_supports_extension_execution(provider) })
+        .to_array()
+      match providers {
+        [provider] => provider
+        _ =>
+          match select_provider_by_workspace_affinity(providers, cwd) {
+            Some(provider) => provider
+            None =>
+              match providers {
+                [] =>
+                  return Err(
+                    "Extension task execution requires execution_target or exactly one registered provider target",
+                  )
+                _ =>
+                  return Err(
+                    "Extension task execution requires execution_target because multiple provider targets are registered",
+                  )
+              }
+          }
+      }
+    }
   }
   guard provider_supports_extension_execution(provider) else {
     return Err(
-      "Execution target \{target_id} does not expose extension task capability",
+      "Execution target \{provider.name} does not expose extension task capability",
     )
   }
   let command = provider_metadata_string(provider.metadata, "command").unwrap_or(
@@ -178,7 +238,7 @@ async fn resolve_provider_task_command(
     Some(root) => root
     None =>
       return Err(
-        "Extension task target \{target_id} is missing metadata.workspace_root",
+        "Extension task target \{provider.name} is missing metadata.workspace_root",
       )
   }
   Ok(ProviderTaskCommand::{
@@ -301,7 +361,7 @@ async fn run_provider_task_stdout(
 async fn load_provider_task_task_batch(
   cwd : String,
   home : String?,
-  target_id : String,
+  target_id : String?,
   goal : String,
 ) -> Result[(ProviderTaskCommand, ProviderTaskBatch), String] {
   let command = match resolve_provider_task_command(cwd, home, target_id) {
@@ -679,10 +739,6 @@ async fn run_provider_task_analysis_runner(
   request : AnalysisRequest,
   inner_runner : async (AnalysisRequest) -> Result[AnalysisExecution, String],
 ) -> Result[AnalysisExecution, String] {
-  let target_id = match request.execution_target {
-    Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
-    _ => return Err("Extension task execution requires execution_target")
-  }
   let goal = metadata_string_value(request.step_metadata, "extension_goal").unwrap_or(
     metadata_string_value(request.step_metadata, "bookapi_goal").unwrap_or(
       request.source_prompt,
@@ -694,10 +750,16 @@ async fn run_provider_task_analysis_runner(
     None => metadata_string_value(request.step_metadata, "bookapi_task_id")
   }
   let (command, batch) = match
-    load_provider_task_task_batch(request.cwd, request.home, target_id, goal) {
+    load_provider_task_task_batch(
+      request.cwd,
+      request.home,
+      request.execution_target,
+      goal,
+    ) {
     Ok(value) => value
     Err(error) => return Err(error)
   }
+  let resolved_target_id = command.provider.name
   let task = match select_provider_task_task(batch, selected_task_id) {
     Ok(task) => task
     Err(error) => return Err(error)
@@ -732,7 +794,7 @@ async fn run_provider_task_analysis_runner(
   }
   Ok(
     persisted_provider_task_execution(
-      raw_execution, task, result, outcome, target_id,
+      raw_execution, task, result, outcome, resolved_target_id,
     ),
   )
 }

@@ -71,9 +71,19 @@ fn provider_manifest_candidates(cwd : String, home : String?) -> Array[String] {
       )
     None => ()
   }
-  candidates.push(
-    cwd |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
-  )
+  let ancestry : Array[String] = []
+  let mut dir = @pathx.normalize(cwd)
+  while true {
+    ancestry.push(dir |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"))
+    let parent : String = [..@pathx.dirname(dir)]
+    if parent == dir {
+      break
+    }
+    dir = parent
+  }
+  for index = ancestry.length() - 1; index >= 0; index = index - 1 {
+    candidates.push(ancestry[index])
+  }
   candidates
 }
 

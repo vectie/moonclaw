@@ -58,3 +58,40 @@ async test "load_resource_providers prefers cwd manifest over home manifest" (
     inspect(providers[1].name, content="research-kb")
   })
 }
+
+///|
+async test "load_resource_providers discovers parent workspace manifests" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let workspace_root = mock.cwd.path() |> @pathx.join("workspace")
+    let run_dir = workspace_root
+      |> @pathx.join("moonclaw-jobs")
+      |> @pathx.join("run-1")
+    @fsx.make_directory(
+      workspace_root |> @pathx.join(".moonclaw"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.make_directory(run_dir, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      workspace_root
+      |> @pathx.join(".moonclaw")
+      |> @pathx.join("providers.json"),
+      (
+        #|[
+        #|  {
+        #|    "name": "wiki-main",
+        #|    "title": "Workspace Wiki",
+        #|    "description": "Parent workspace provider",
+        #|    "kind": "extension",
+        #|    "capabilities": ["provider.task"]
+        #|  }
+        #|]
+      ),
+    )
+    let providers = load_resource_providers(run_dir, home=None)
+    inspect(providers.length().to_string(), content="1")
+    inspect(providers[0].name, content="wiki-main")
+  })
+}

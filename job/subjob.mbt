@@ -128,16 +128,23 @@ async fn planned_subjob_proposal(
   // For provider-backed delegation, the provider owns task decomposition and
   // MoonClaw only compiles the returned task batch into child analysis steps.
   if provider_execution_requested(config.execution_mode) {
-    let target_id = match config.execution_target {
-      Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
-      _ => return Err("Extension task delegation requires execution_target")
-    }
-    let (_, batch) = match
-      load_provider_task_task_batch(cwd, home, target_id, request_text) {
+    let (command, batch) = match
+      load_provider_task_task_batch(
+        cwd,
+        home,
+        config.execution_target,
+        request_text,
+      ) {
       Ok(value) => value
       Err(error) => return Err(error)
     }
-    Ok(provider_task_child_proposal(request_text, batch, config, now()))
+    let resolved_config = SubjobStepConfig::{
+      ..config,
+      execution_target: Some(command.provider.name),
+    }
+    Ok(
+      provider_task_child_proposal(request_text, batch, resolved_config, now()),
+    )
   } else {
     Ok((planner.run)(request_text, cwd, home))
   }

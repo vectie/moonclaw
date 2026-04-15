@@ -133,11 +133,11 @@ fn proposal_profile_metadata_string(
 }
 
 ///|
-fn wiki_ingest_extension_target(proposal : JobProposal) -> String {
+fn wiki_ingest_extension_target(proposal : JobProposal) -> String? {
   proposal_profile_metadata_string(proposal, [
     "extension_target", "provider_target", "execution_target", "bookapi_target",
     "moonbook_target",
-  ]).unwrap_or("moonbook")
+  ])
 }
 
 ///|
@@ -310,7 +310,7 @@ fn workflow_steps_for_proposal(
           cwd=Some(cwd),
           home=Some(home),
           execution_mode=Some(wiki_ingest_extension_mode(proposal)),
-          execution_target=Some(wiki_ingest_extension_target(proposal)),
+          execution_target=wiki_ingest_extension_target(proposal),
           include_parent_outputs=false,
           max_depth=2,
         ).to_json(),
