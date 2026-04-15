@@ -325,10 +325,12 @@ async test "provider task analysis runner hydrates context and persists structur
       execution_target: Some("wiki-main"),
     }
     let captured_prompt : Ref[String] = { val: "" }
+    let captured_system_prompt : Ref[String] = { val: "" }
     let captured_enable_tools : Ref[Bool] = { val: true }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         captured_prompt.val = inner_request.prompt
+        captured_system_prompt.val = inner_request.system_prompt
         captured_enable_tools.val = inner_request.enable_tools
         Ok(AnalysisExecution::{
           model_name: inner_request.model_name,
@@ -365,6 +367,14 @@ async test "provider task analysis runner hydrates context and persists structur
 
     inspect(captured_prompt.val.contains("Relevant Pages:"), content="true")
     inspect(captured_prompt.val.contains("wiki/entity.md"), content="true")
+    inspect(
+      captured_system_prompt.val.contains("Do not return plans, outlines, or commentary."),
+      content="true",
+    )
+    inspect(
+      captured_system_prompt.val.contains("Base system prompt."),
+      content="false",
+    )
     inspect(captured_enable_tools.val, content="false")
     inspect(
       execution.content.contains("# Extension Task Result"),
@@ -414,6 +424,234 @@ test "parse_provider_task_result accepts fenced or prefixed JSON object output" 
   }
   inspect(result.task_id, content="task-1")
   inspect(result.requires_review, content="true")
+}
+
+///|
+async test "provider task analysis runner repairs planner-shaped output once" {
+  @fsx.with_temporary_directory("job-book-harness-repair-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: true,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: ["wiki-maintainer"],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: Some(
+        RoleRuntimeContract::new(role_id="wiki_worker"),
+      ),
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let call_count : Ref[Int] = { val: 0 }
+    let execution = match
+      run_provider_task_analysis_runner(request, fn(inner_request) {
+        call_count.val = call_count.val + 1
+        if call_count.val == 1 {
+          Ok(AnalysisExecution::{
+            model_name: inner_request.model_name,
+            content: "{\"plan\":[{\"step\":1,\"title\":\"Inspect sources\"}]}",
+            conversation_id: Some("conv-provider-plan"),
+            usage: None,
+            metadata: {},
+          })
+        } else {
+          Ok(AnalysisExecution::{
+            model_name: inner_request.model_name,
+            content: (
+              #|{
+              #|  "task_id": "task-1",
+              #|  "summary": "Updated the wiki from the source evidence.",
+              #|  "artifacts": ["wiki/entity.md"],
+              #|  "memory_candidates": [],
+              #|  "requires_review": false,
+              #|  "notify_town": false
+              #|}
+            ),
+            conversation_id: Some("conv-provider-repair"),
+            usage: None,
+            metadata: {},
+          })
+        }
+      }) {
+      Ok(execution) => execution
+      Err(error) => fail(error)
+    }
+
+    inspect(call_count.val, content="2")
+    inspect(
+      execution.metadata.stringify().contains("\"extension_task_id\":\"task-1\""),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "provider task analysis runner normalizes repaired json missing summary" {
+  @fsx.with_temporary_directory("job-book-harness-normalize-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: true,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: ["wiki-maintainer"],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: Some(
+        RoleRuntimeContract::new(role_id="wiki_worker"),
+      ),
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let call_count : Ref[Int] = { val: 0 }
+    let execution = match
+      run_provider_task_analysis_runner(request, fn(inner_request) {
+        call_count.val = call_count.val + 1
+        if call_count.val == 1 {
+          Ok(AnalysisExecution::{
+            model_name: inner_request.model_name,
+            content: "I will inspect the wiki first.\nPlan:\n1. Inspect sources\n2. Update pages",
+            conversation_id: Some("conv-provider-plan-prose"),
+            usage: None,
+            metadata: {},
+          })
+        } else {
+          Ok(AnalysisExecution::{
+            model_name: inner_request.model_name,
+            content:
+              "{\"artifacts\":[\"wiki/entity.md\"],\"requires_review\":false,\"notify_town\":false}",
+            conversation_id: Some("conv-provider-normalize"),
+            usage: None,
+            metadata: {},
+          })
+        }
+      }) {
+      Ok(execution) => execution
+      Err(error) => fail(error)
+    }
+
+    inspect(call_count.val, content="2")
+    inspect(
+      execution.metadata.stringify().contains("\"extension_task_id\":\"task-1\""),
+      content="true",
+    )
+    inspect(execution.content.contains("Completed provider task"), content="true")
+  })
+}
+
+///|
+async test "provider task analysis runner persists raw response on parse failure" {
+  @fsx.with_temporary_directory("job-book-harness-failure-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: true,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: ["wiki-maintainer"],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: Some(
+        RoleRuntimeContract::new(role_id="wiki_worker"),
+      ),
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let error = match
+      run_provider_task_analysis_runner(request, fn(inner_request) {
+        Ok(AnalysisExecution::{
+          model_name: inner_request.model_name,
+          content: "not valid provider json",
+          conversation_id: Some("conv-provider-failure"),
+          usage: None,
+          metadata: {
+            "job_id": inner_request.job_id,
+            "run_id": inner_request.run_id,
+            "step_id": inner_request.step_id,
+          },
+        })
+      }) {
+      Ok(_) => fail("expected provider parse failure")
+      Err(error) => error
+    }
+
+    inspect(
+      error.contains("Provider task analysis must return a JSON object"),
+      content="true",
+    )
+    let step_key = safe_step_file_segment("step-1")
+    let debug_file = ".moonclaw-provider-failure-run-1-\{step_key}.json"
+    inspect(
+      error.contains(debug_file),
+      content="true",
+    )
+    let debug_path = provider_task_failure_debug_path(request)
+    inspect(@fsx.exists(debug_path), content="true")
+    let debug_payload = @fsx.read_file(debug_path)
+    inspect(
+      debug_payload.contains("\"raw_content\": \"not valid provider json\""),
+      content="true",
+    )
+  })
 }
 
 ///|

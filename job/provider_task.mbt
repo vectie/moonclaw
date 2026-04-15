@@ -532,13 +532,13 @@ fn join_bullets(items : Array[String]) -> String {
 
 ///|
 fn provider_task_system_prompt(
-  request : AnalysisRequest,
+  _request : AnalysisRequest,
   task : ProviderTaskSpec,
   context : ProviderTaskWorkerContext,
 ) -> String {
   [
-    request.system_prompt,
     "You are executing a domain-local extension task.",
+    "Do not return plans, outlines, or commentary.",
     "Skill files describe the work method, but they do not override the runtime return contract.",
     "Return strict JSON only matching this shape:",
     "{\"task_id\":string,\"summary\":string,\"artifacts\":string[],\"memory_candidates\":[{\"kind\":string,\"title\":string,\"detail\":string,\"durable\":bool,\"target_page\":string|null}],\"requires_review\":bool,\"notify_town\":bool}",
@@ -686,6 +686,184 @@ fn parse_provider_task_result(
 }
 
 ///|
+fn provider_task_json_string_field(json : Json, key : String) -> String? {
+  match json {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(String(value)) if !value.trim().to_string().is_blank() =>
+          Some(value.trim().to_string())
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn provider_task_json_bool_field(json : Json, key : String) -> Bool? {
+  match json {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(True) => Some(true)
+        Some(False) => Some(false)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn provider_task_json_string_array_field(json : Json, key : String) -> Array[String] {
+  match json {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(Array(values)) => {
+          let items : Array[String] = []
+          for value in values {
+            guard value is String(text) else { continue }
+            let trimmed = text.trim().to_string()
+            if !trimmed.is_blank() {
+              items.push(trimmed)
+            }
+          }
+          items
+        }
+        _ => []
+      }
+    _ => []
+  }
+}
+
+///|
+fn plan_summary_from_json(json : Json) -> String? {
+  let keys = ["plan", "steps"]
+  for key in keys {
+    guard json is Object(obj) else { break }
+    guard obj.get(key) is Some(Array(items)) else { continue }
+    let titles : Array[String] = []
+    for item in items {
+      let title = provider_task_json_string_field(item, "title").unwrap_or(
+        provider_task_json_string_field(item, "step").unwrap_or(""),
+      )
+      if !title.is_blank() {
+        titles.push(title)
+      }
+      if titles.length() >= 3 {
+        break
+      }
+    }
+    if !titles.is_empty() {
+      let joined_titles = titles.join(", ")
+      return Some("Completed provider task using plan steps: \{joined_titles}.")
+    }
+  }
+  None
+}
+
+///|
+fn normalize_provider_task_result(
+  task : ProviderTaskSpec,
+  content : String,
+) -> Result[ProviderTaskResult, String] {
+  let trimmed = match extract_first_json_object(content) {
+    Some(payload) => payload.trim().to_string()
+    None => return Err("Provider task analysis must return a JSON object")
+  }
+  let json = match parse_provider_task_payload(trimmed, "analysis") {
+    Ok(json) => json
+    Err(error) => return Err(error)
+  }
+  let task_id = provider_task_json_string_field(json, "task_id").unwrap_or(task.id)
+  let summary = provider_task_json_string_field(json, "summary").unwrap_or(
+    provider_task_json_string_field(json, "message").unwrap_or(
+      plan_summary_from_json(json).unwrap_or(
+        "Completed provider task \{task.title}.",
+      ),
+    ),
+  )
+  let artifacts = provider_task_json_string_array_field(json, "artifacts")
+  let memory_candidates = match json {
+    Object(obj) =>
+      match obj.get("memory_candidates") {
+        Some(Array(_)) =>
+          @json.from_json(obj.get("memory_candidates").unwrap()) catch { _ => [] }
+        _ => []
+      }
+    _ => []
+  }
+  Ok(ProviderTaskResult::{
+    task_id,
+    summary,
+    artifacts,
+    memory_candidates,
+    requires_review: provider_task_json_bool_field(
+      json,
+      "requires_review",
+    ).unwrap_or(
+      task.requires_review,
+    ),
+    notify_town: provider_task_json_bool_field(json, "notify_town").unwrap_or(
+      false,
+    ),
+  })
+}
+
+///|
+fn provider_task_repair_system_prompt(task : ProviderTaskSpec) -> String {
+  [
+    "You repair invalid provider task outputs into the required runtime contract.",
+    "Return strict JSON only.",
+    "Do not return plans, outlines, commentary, or markdown fences.",
+    "The required shape is:",
+    "{\"task_id\":string,\"summary\":string,\"artifacts\":string[],\"memory_candidates\":[{\"kind\":string,\"title\":string,\"detail\":string,\"durable\":bool,\"target_page\":string|null}],\"requires_review\":bool,\"notify_town\":bool}",
+    "Use task_id = \{task.id}.",
+  ].join("\n\n")
+}
+
+///|
+fn provider_task_repair_prompt(
+  task : ProviderTaskSpec,
+  raw_content : String,
+) -> String {
+  [
+    "The previous provider task analysis output did not match the required runtime contract.",
+    "Convert it into the required JSON object without inventing unrelated fields.",
+    "If the previous output is planner-shaped, collapse it into one completed task result for the current task.",
+    "Task id: \{task.id}",
+    "Task title: \{task.title}",
+    "Task kind: \{task.kind}",
+    "",
+    "Previous invalid output:",
+    raw_content,
+  ].join("\n")
+}
+
+///|
+async fn repair_provider_task_result(
+  request : AnalysisRequest,
+  task : ProviderTaskSpec,
+  raw_execution : AnalysisExecution,
+  inner_runner : async (AnalysisRequest) -> Result[AnalysisExecution, String],
+) -> Result[ProviderTaskResult, String] {
+  let repair_request = AnalysisRequest::{
+    ..request,
+    prompt: provider_task_repair_prompt(task, raw_execution.content),
+    system_prompt: provider_task_repair_system_prompt(task),
+    enable_tools: false,
+    execution_mode: None,
+    execution_target: None,
+    web_search: false,
+  }
+  let repaired_execution = match inner_runner(repair_request) {
+    Ok(execution) => execution
+    Err(error) => return Err(error)
+  }
+  match parse_provider_task_result(repaired_execution.content) {
+    Ok(result) => Ok(result)
+    Err(_) => normalize_provider_task_result(task, repaired_execution.content)
+  }
+}
+
+///|
 fn persisted_provider_task_report(
   task : ProviderTaskSpec,
   result : ProviderTaskResult,
@@ -793,6 +971,43 @@ async fn persist_provider_task_result(
 }
 
 ///|
+fn provider_task_failure_debug_path(
+  request : AnalysisRequest,
+) -> String {
+  let step_key = safe_step_file_segment(request.step_id)
+  @pathx.join(
+    request.cwd,
+    ".moonclaw-provider-failure-\{request.run_id}-\{step_key}.json",
+  )
+}
+
+///|
+async fn persist_provider_task_failure_debug(
+  request : AnalysisRequest,
+  task : ProviderTaskSpec,
+  execution : AnalysisExecution,
+  error : String,
+) -> String {
+  let path = provider_task_failure_debug_path(request)
+  let payload : Map[String, Json] = {
+    "error": error.to_json(),
+    "task_id": task.id.to_json(),
+    "task_title": task.title.to_json(),
+    "conversation_id": execution.conversation_id.to_json(),
+    "model_name": execution.model_name.to_json(),
+    "raw_content": execution.content.to_json(),
+    "usage": usage_json(execution.usage),
+    "metadata": execution.metadata,
+  }
+  @fsx.write_to_file(
+    path,
+    Json::object(payload).stringify(indent=2),
+    create=0o644,
+  )
+  path
+}
+
+///|
 async fn run_provider_task_analysis_runner(
   request : AnalysisRequest,
   inner_runner : async (AnalysisRequest) -> Result[AnalysisExecution, String],
@@ -844,7 +1059,26 @@ async fn run_provider_task_analysis_runner(
   }
   let result = match parse_provider_task_result(raw_execution.content) {
     Ok(result) => result
-    Err(error) => return Err(error)
+    Err(error) => {
+      match
+        repair_provider_task_result(
+          request,
+          task,
+          raw_execution,
+          inner_runner,
+        ) {
+        Ok(result) => result
+        Err(repair_error) => {
+          let debug_path = persist_provider_task_failure_debug(
+            request,
+            task,
+            raw_execution,
+            "\{error}; repair failed: \{repair_error}",
+          )
+          return Err("\{error} (raw response: \{debug_path})")
+        }
+      }
+    }
   }
   let outcome = match
     persist_provider_task_result(command, request, task, result) {

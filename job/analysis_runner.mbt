@@ -27,10 +27,15 @@ async fn run_local_analysis_runner(
   }
 
   let mut final_content = ""
+  let delta_content = StringBuilder::new()
   let mut final_usage : @ai.Usage? = None
   let mut failed : String? = None
   agent.event_target.add_listener(event => {
     match event.desc {
+      @event.AssistantMessageDelta(content) =>
+        if !content.is_blank() {
+          delta_content.write_string(content)
+        }
       @event.AssistantMessage(usage~, tool_calls~, content) => {
         if !content.is_blank() {
           final_content = content
@@ -50,6 +55,12 @@ async fn run_local_analysis_runner(
   }
   if failed is Some(error) {
     return Err(error)
+  }
+  if final_content.is_blank() {
+    let fallback = delta_content.to_string().trim().to_string()
+    if !fallback.is_blank() {
+      final_content = fallback
+    }
   }
   Ok(AnalysisExecution::{
     model_name: model.name,
