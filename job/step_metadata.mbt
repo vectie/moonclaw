@@ -31,3 +31,27 @@ fn metadata_bool_with_step_metadata(
 fn analysis_adaptive_disabled(config : AnalysisStepConfig) -> Bool {
   metadata_bool_with_step_metadata(config.metadata, "disable_adaptive", false)
 }
+
+///|
+fn metadata_bool_with_step_metadata_option(
+  metadata : Json,
+  key : String,
+) -> Bool? {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(True) => Some(true)
+    Some(False) => Some(false)
+    _ => None
+  }
+}
+
+///|
+fn waiting_for_input_disabled_from_metadata(metadata : Json) -> Bool? {
+  metadata_bool_with_step_metadata_option(metadata, "disable_waiting_for_input")
+}
+
+///|
+fn best_effort_on_missing_input_from_metadata(metadata : Json) -> Bool? {
+  metadata_bool_with_step_metadata_option(
+    metadata, "best_effort_on_missing_input",
+  )
+}

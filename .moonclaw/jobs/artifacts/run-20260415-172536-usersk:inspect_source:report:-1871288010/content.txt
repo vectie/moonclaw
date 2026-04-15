@@ -1,0 +1,25 @@
+I couldn’t inspect the requested wiki content from the current workspace because the files referenced in the packet are not present here.
+
+- The packet exists at `/Users/kq/Workspace/moontown/.moontown/packets/keeper-finance-goal-refresh-finance-memory-review-the-ledger-workflow-and-prepare-the-next-brief-review.json` and points to a finance book workspace at `/Users/kq/Workspace/moontown/.moontown/books/finance`.
+- In the current working directory, only `.git` and `.moonclaw/run.json` are available; paths like `wiki/index.md`, `wiki/log.md`, `wiki/reviews/pending.md`, `skills/wiki-review/SKILL.md`, and `RESOLVER.md` do not exist here.
+- I also searched for likely relocated copies (`**/wiki/index.md`, `**/reviews/pending.md`, `**/SKILL.md`, `**/RESOLVER.md`) and found no matches in this workspace.
+
+summary
+- Blocked: the raw source material and wiki pages to review are not available in the mounted workspace, so I cannot determine what is new, changed, contradicted, or which pages need revision.
+
+artifacts
+- Packet inspected: `/Users/kq/Workspace/moontown/.moontown/packets/keeper-finance-goal-refresh-finance-memory-review-the-ledger-workflow-and-prepare-the-next-brief-review.json`
+- Missing from current workspace: `wiki/index.md`, `wiki/log.md`, `wiki/synthesis/overview.md`, `wiki/synthesis/claims.md`, `wiki/synthesis/map.md`, `wiki/synthesis/evidence.md`, `wiki/reviews/pending.md`, `wiki/reviews/approved.md`, `skills/wiki-review/SKILL.md`, `skills/review-decision/SKILL.md`, `skills/contradiction-review/SKILL.md`, `skills/claim-audit/SKILL.md`, `RESOLVER.md`
+
+memory_candidates
+- None, because no source/wiki content was accessible.
+
+requires_review
+- `true`
+
+notify_town
+- `true`
+
+observations
+- The packet metadata indicates the relevant finance book root is `/Users/kq/Workspace/moontown/.moontown/books/finance`, but that location is outside the currently accessible workspace view.
+- If you want, provide access to that book directory or paste the requested pages, and I can perform the full keeper review and return the requested review output.

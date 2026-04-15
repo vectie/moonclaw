@@ -10,7 +10,6 @@ import {
   "vectie/moonclaw/tools/todo",
   "vectie/moonclaw/tools/search_files",
   "vectie/moonclaw/prompt",
-  "vectie/moonclaw/job",
   "vectie/moonclaw/tool",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/tools/apply_patch",

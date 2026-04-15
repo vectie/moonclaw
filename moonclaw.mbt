@@ -134,9 +134,9 @@ pub async fn Moonclaw::resume_(
   let agent = @agent.load(
     model,
     conversation,
-    logger=logger,
+    logger~,
     home=home[:],
-    user_message?=user_message,
+    user_message?,
     web_search~,
   )
   setup_agent(agent, cwd=conversation.cwd())

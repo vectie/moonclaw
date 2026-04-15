@@ -23,6 +23,42 @@ pub struct ExternalProposalImportResult {
 }
 
 ///|
+fn detached_run_input_dir(home : String) -> String {
+  @pathx.join(@pathx.join(home, "jobs"), "detached-inputs")
+}
+
+///|
+fn detached_run_input_path(home : String, run_id : String) -> String {
+  @pathx.join(detached_run_input_dir(home), "\{run_id}.json")
+}
+
+///|
+fn detached_run_args(
+  run_id : String,
+  home : String,
+  cwd : String,
+  initial_input_path? : String? = None,
+) -> Array[String] {
+  let args = ["proposal", "run", run_id, "--home", home, "--cwd", cwd]
+  match initial_input_path {
+    Some(path) => {
+      args.push("--initial-input-file")
+      args.push(path)
+    }
+    None => ()
+  }
+  args
+}
+
+///|
+async fn default_detached_run_spawner(
+  exec_path : String,
+  args : Array[String],
+) -> Unit {
+  ignore(@process.spawn_orphan(exec_path, args))
+}
+
+///|
 fn external_packet_string_field(
   obj : Map[String, Json],
   key : String,
@@ -467,12 +503,18 @@ fn external_packet_job_intake(
     workspace_root,
     packet.context_pages,
   )
-  let resolved_skill_paths = resolve_packet_paths(workspace_root, packet.skill_paths)
+  let resolved_skill_paths = resolve_packet_paths(
+    workspace_root,
+    packet.skill_paths,
+  )
   let resolved_source_page = match packet.source_page {
     Some(source_page) => Some(resolve_packet_path(workspace_root, source_page))
     None => None
   }
-  let resolved_related_pages = resolve_packet_paths(workspace_root, packet.related_pages)
+  let resolved_related_pages = resolve_packet_paths(
+    workspace_root,
+    packet.related_pages,
+  )
   let intake : Map[String, Json] = {}
   intake.set("external_packet_source_path", packet_file_path.to_json())
   intake.set("context_pages", resolved_context_pages.to_json())
@@ -549,7 +591,8 @@ fn external_proposal_packet_metadata(
     None => ()
   }
   match packet.source_page {
-    Some(source_page) => packet_metadata.set("source_page", source_page.to_json())
+    Some(source_page) =>
+      packet_metadata.set("source_page", source_page.to_json())
     None => ()
   }
   match packet.packet_id {
@@ -707,6 +750,82 @@ pub async fn GatewayJobApp::execute_definition(
 }
 
 ///|
+pub async fn GatewayJobApp::execute_existing_run(
+  self : GatewayJobApp,
+  run_id : String,
+  initial_input? : Json? = None,
+  child_executor? : ChildRunExecutor? = None,
+  analysis_executor? : AnalysisExecutor? = None,
+) -> Result[JobRun, String] {
+  let existing = match self.runtime().store().get_run(run_id) {
+    Some(run) => run
+    None => return Err("Unknown job run: \{run_id}")
+  }
+  execute_run_lifecycle(
+    self.runtime(),
+    run_id,
+    fn() { self.now() },
+    fn() {
+      self.new_workflow_engine_with_executors(
+        child_executor~,
+        analysis_executor~,
+      )
+    },
+    initial_input~,
+  )
+  Ok(self.runtime().store().get_run(run_id).unwrap_or(existing))
+}
+
+///|
+pub async fn GatewayJobApp::launch_definition_detached(
+  self : GatewayJobApp,
+  job_id : String,
+  initial_input? : Json? = None,
+  spawn_runner? : async (String, Array[String]) -> Unit = default_detached_run_spawner,
+) -> Result[JobRun, String] {
+  let run = match
+    self
+    .runtime()
+    .trigger_definition(
+      human_readable_run_id(self.now(), self.next_id()),
+      job_id,
+      TriggerSource::Manual,
+      self.now(),
+    ) {
+    Ok(run) => run
+    Err(error) => return Err(error)
+  }
+  let initial_input_path = match initial_input {
+    Some(input) => {
+      let dir = detached_run_input_dir(self.home)
+      @fsx.make_directory(dir, recursive=true, exists_ok=true) catch {
+        error =>
+          return Err(
+            "Failed to create detached input directory \{dir}: \{error}",
+          )
+      }
+      let path = detached_run_input_path(self.home, run.id)
+      @fsx.write_to_file(path, input.stringify()) catch {
+        error =>
+          return Err(
+            "Failed to persist detached initial input for run \{run.id}: \{error}",
+          )
+      }
+      Some(path)
+    }
+    None => None
+  }
+  let exec_path = @os.executable() catch {
+    error => return Err("Failed to resolve MoonClaw executable path: \{error}")
+  }
+  spawn_runner(
+    exec_path,
+    detached_run_args(run.id, self.home, self.cwd, initial_input_path~),
+  )
+  Ok(self.runtime().store().get_run(run.id).unwrap_or(run))
+}
+
+///|
 pub async fn GatewayJobApp::confirm_proposal_and_execute(
   self : GatewayJobApp,
   proposal : JobProposal,
@@ -721,6 +840,18 @@ pub async fn GatewayJobApp::confirm_proposal_and_execute(
       child_executor~,
       analysis_executor~,
     )
+  })
+}
+
+///|
+pub async fn GatewayJobApp::confirm_proposal_and_launch(
+  self : GatewayJobApp,
+  proposal : JobProposal,
+  proposal_id : String,
+  spawn_runner? : async (String, Array[String]) -> Unit = default_detached_run_spawner,
+) -> Result[ConfirmProposalResult, String] {
+  self.confirm_proposal(proposal, proposal_id, async fn(job_id, initial_input) {
+    self.launch_definition_detached(job_id, initial_input~, spawn_runner~)
   })
 }
 

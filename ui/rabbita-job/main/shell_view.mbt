@@ -83,9 +83,20 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
 
 ///|
 fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
-  let main_class = if route_surface(model.route) == SurfaceOverview {
+  let current_surface = route_surface(model.route)
+  let shell_class = if current_surface == SurfaceCowork {
+    "shell cowork-shell"
+  } else {
+    "shell"
+  }
+  let topbar_class = if current_surface == SurfaceCowork {
+    "topbar cowork-topbar"
+  } else {
+    "topbar"
+  }
+  let main_class = if current_surface == SurfaceOverview {
     "layout overview-layout"
-  } else if route_surface(model.route) == SurfaceCowork {
+  } else if current_surface == SurfaceCowork {
     "layout cowork-layout"
   } else if model.route is RunCanvas(_) {
     if model.canvas_fullscreen {
@@ -96,8 +107,8 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
   } else {
     "layout"
   }
-  div(class="shell", [
-    header(class="topbar", [
+  div(class=shell_class, [
+    header(class=topbar_class, [
       div([
         p(class="eyebrow", "MoonClaw Console"),
         h1(class="headline", "Jobs, Runs, Conversations, and Remote Agents"),

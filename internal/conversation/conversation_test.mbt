@@ -259,6 +259,32 @@ async test "Conversation::messages/preserved_pruned_tool_call_protocol" (
     let post_tool_call_id = conversation.events()[2].id
     event_target.emit(Pruned(id=post_tool_call_id))
     event_target.flush()
-    json_inspect(conversation.messages().map(fn(m) { m.to_openai() }), content=([{"role":"user","content":"Run command"},{"role":"assistant","content":"Running","tool_calls":[{"id":"tc0","function":{"name":"execute_command","arguments":"{\"command\":\"date\"}"},"type":"function"}]},{"role":"tool","content":[{"type":"text","text":"[Cleared: tool output. If you want to see the output, you can use the tool again.]"}],"tool_call_id":"tc0"}]))
+    json_inspect(conversation.messages().map(fn(m) { m.to_openai() }), content=[
+      { "role": "user", "content": "Run command" },
+      {
+        "role": "assistant",
+        "content": "Running",
+        "tool_calls": [
+          {
+            "id": "tc0",
+            "function": {
+              "name": "execute_command",
+              "arguments": "{\"command\":\"date\"}",
+            },
+            "type": "function",
+          },
+        ],
+      },
+      {
+        "role": "tool",
+        "content": [
+          {
+            "type": "text",
+            "text": "[Cleared: tool output. If you want to see the output, you can use the tool again.]",
+          },
+        ],
+        "tool_call_id": "tc0",
+      },
+    ])
   })
 }

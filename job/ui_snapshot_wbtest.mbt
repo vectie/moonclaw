@@ -442,7 +442,10 @@ async test "build_job_ui_snapshot includes synthetic final run outputs from work
   @fsx.with_temporary_directory("job-ui-snapshot-final-outputs-XXXXXX", dir => {
     let workspace_dir = dir |> @pathx.join("run-1")
     @fsx.make_directory(workspace_dir, recursive=true)
-    @fsx.write_to_file(workspace_dir |> @pathx.join("report.md"), "# Final Report")
+    @fsx.write_to_file(
+      workspace_dir |> @pathx.join("report.md"),
+      "# Final Report",
+    )
     @fsx.write_to_file(
       workspace_dir |> @pathx.join("result.json"),
       "{\"status\":\"completed\"}",

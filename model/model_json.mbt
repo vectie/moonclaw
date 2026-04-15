@@ -5,9 +5,7 @@ pub impl @json.FromJson for Model with from_json(
 ) -> Model {
   guard json is Object(json) else {
     raise @json.JsonDecodeError(
-      (
-        json_path, "@vectie/moonclaw/model.Model::from_json: expected object",
-      ),
+      (json_path, "@vectie/moonclaw/model.Model::from_json: expected object"),
     )
   }
   let name : String = {
@@ -142,9 +140,7 @@ pub impl @json.FromJson for Type with from_json(
 ) -> Type {
   guard json is String(json) else {
     raise @json.JsonDecodeError(
-      (
-        json_path, "@vectie/moonclaw/model.Type::from_json: expected string",
-      ),
+      (json_path, "@vectie/moonclaw/model.Type::from_json: expected string"),
     )
   }
   match json {

@@ -47,6 +47,19 @@ async fn workflow_test_engine(
 }
 
 ///|
+async fn workflow_test_engine_with_definition(
+  root : String,
+  workflow : WorkflowDefinition,
+  definition : JobDefinition,
+) -> WorkflowEngine {
+  let runtime = RuntimeManager::new(root~)
+  runtime.register_definition(definition)
+  runtime.register_workflow(workflow)
+  runtime.store().save_run(workflow_test_run())
+  WorkflowEngine::new(runtime~)
+}
+
+///|
 async test "WorkflowEngine executes steps in order and passes outputs" {
   @fsx.with_temporary_directory("job-workflow-engine-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -270,6 +283,254 @@ async test "WorkflowEngine pauses the run when a step needs input" {
       content="Waiting for input on step estimate: parcel location; parcel size",
     )
   })
+}
+
+///|
+async test "WorkflowEngine fails instead of waiting when step metadata disables waiting for input" {
+  @fsx.with_temporary_directory("job-workflow-disable-waiting-step-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workflow = WorkflowDefinition::{
+      id: "workflow.disable-waiting.step",
+      kind: "test",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "estimate",
+          kind: "test.estimate",
+          config: { "step_metadata": { "disable_waiting_for_input": true } },
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    }
+    let engine = workflow_test_engine(root, workflow)
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.estimate", run=fn(_context) {
+        Err("Analysis requires input: parcel location; parcel size")
+      }),
+    )
+
+    let result = engine.execute_run("run-workflow-1", fn() { 3000 })
+    inspect(
+      result is Err("Analysis requires input: parcel location; parcel size"),
+      content="true",
+    )
+    let failed_run = match engine.runtime.store().get_run("run-workflow-1") {
+      Some(run) => run
+      None => fail("missing failed run")
+    }
+    inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
+    let failed_step = match
+      engine.runtime.store().get_step_run("run-workflow-1", "estimate") {
+      Some(step) => step
+      None => fail("missing failed step")
+    }
+    inspect(failed_step.status.to_json().stringify(), content="\"Failed\"")
+  })
+}
+
+///|
+async test "WorkflowEngine fails instead of waiting when profile metadata disables waiting for input" {
+  @fsx.with_temporary_directory("job-workflow-disable-waiting-profile-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workflow = WorkflowDefinition::{
+      id: "workflow.disable-waiting.profile",
+      kind: "test",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "estimate",
+          kind: "test.estimate",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: [],
+    }
+    let engine = workflow_test_engine_with_definition(root, workflow, JobDefinition::{
+      ..workflow_test_definition(workflow.id),
+      config: { "profile_metadata": { "disable_waiting_for_input": true } },
+    })
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.estimate", run=fn(_context) {
+        Err("Analysis requires input: parcel location; parcel size")
+      }),
+    )
+
+    let result = engine.execute_run("run-workflow-1", fn() { 3000 })
+    inspect(
+      result is Err("Analysis requires input: parcel location; parcel size"),
+      content="true",
+    )
+    let failed_run = match engine.runtime.store().get_run("run-workflow-1") {
+      Some(run) => run
+      None => fail("missing failed run")
+    }
+    inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
+  })
+}
+
+///|
+async test "WorkflowEngine continues best-effort for controller locate step on missing input" {
+  @fsx.with_temporary_directory("job-workflow-best-effort-locate-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let runtime = RuntimeManager::new(root~)
+    let workflow = WorkflowDefinition::{
+      id: "workflow.best-effort.locate",
+      kind: "job.controller",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "locate_pages",
+          kind: "test.locate",
+          config: {},
+          retry_policy: None,
+        },
+        WorkflowStepDefinition::{
+          id: "finalize",
+          kind: "test.finalize",
+          config: {},
+          retry_policy: None,
+        },
+      ],
+      output_bindings: ["finalize"],
+    }
+    runtime.register_definition(JobDefinition::{
+      ..workflow_test_definition(workflow.id),
+      kind: "job.controller",
+    })
+    runtime.register_workflow(workflow)
+    runtime.store().save_run(workflow_test_run())
+    let engine = WorkflowEngine::new(runtime~)
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.locate", run=fn(_context) {
+        Err("Analysis requires input: matching wiki pages")
+      }),
+    )
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.finalize", run=fn(context) {
+        let locate = context.output("locate_pages").unwrap_or({})
+        Ok(
+          WorkflowStepResult::new(
+            output={ "locate": locate, "status": "finalized" },
+            summary=Some("finalized"),
+          ),
+        )
+      }),
+    )
+
+    let result = match engine.execute_run("run-workflow-1", fn() { 3000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(result.steps.length(), content="2")
+    inspect(
+      result.outputs
+      .get("locate_pages")
+      .map(fn(output) {
+        output.stringify().contains("\"status\":\"best_effort_missing_input\"")
+      })
+      .unwrap_or(false),
+      content="true",
+    )
+    inspect(
+      result.outputs
+      .get("finalize")
+      .map(fn(output) {
+        output.stringify().contains("\"status\":\"finalized\"")
+      })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "WorkflowEngine continues best-effort when step metadata enables best_effort_on_missing_input" {
+  @fsx.with_temporary_directory("job-workflow-best-effort-step-flag-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workflow = WorkflowDefinition::{
+      id: "workflow.best-effort.step-flag",
+      kind: "test",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "estimate",
+          kind: "test.estimate",
+          config: { "step_metadata": { "best_effort_on_missing_input": true } },
+          retry_policy: None,
+        },
+      ],
+      output_bindings: ["estimate"],
+    }
+    let engine = workflow_test_engine(root, workflow)
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.estimate", run=fn(_context) {
+        Err("Analysis requires input: parcel location; parcel size")
+      }),
+    )
+
+    let result = match engine.execute_run("run-workflow-1", fn() { 3000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
+      result.outputs
+      .get("estimate")
+      .map(fn(output) {
+        output.stringify().contains("\"status\":\"best_effort_missing_input\"")
+      })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "WorkflowEngine continues best-effort when profile metadata enables best_effort_on_missing_input" {
+  @fsx.with_temporary_directory(
+    "job-workflow-best-effort-profile-flag-XXXXXX",
+    dir => {
+      let root = @pathx.join(dir, "jobs")
+      let workflow = WorkflowDefinition::{
+        id: "workflow.best-effort.profile-flag",
+        kind: "test",
+        steps: [
+          WorkflowStepDefinition::{
+            id: "estimate",
+            kind: "test.estimate",
+            config: {},
+            retry_policy: None,
+          },
+        ],
+        output_bindings: ["estimate"],
+      }
+      let engine = workflow_test_engine_with_definition(root, workflow, JobDefinition::{
+        ..workflow_test_definition(workflow.id),
+        config: { "profile_metadata": { "best_effort_on_missing_input": true } },
+      })
+      engine.register_handler(
+        WorkflowStepHandler::new(kind="test.estimate", run=fn(_context) {
+          Err("Analysis requires input: parcel location; parcel size")
+        }),
+      )
+
+      let result = match engine.execute_run("run-workflow-1", fn() { 3000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      }
+      inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+      inspect(
+        result.outputs
+        .get("estimate")
+        .map(fn(output) {
+          output
+          .stringify()
+          .contains("\"status\":\"best_effort_missing_input\"")
+        })
+        .unwrap_or(false),
+        content="true",
+      )
+    },
+  )
 }
 
 ///|

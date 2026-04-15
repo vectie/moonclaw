@@ -193,6 +193,97 @@ fn waiting_for_input_message(error : String) -> String? {
 }
 
 ///|
+fn disable_waiting_for_input_in_job_config(job_config : Json) -> Bool? {
+  match waiting_for_input_disabled_from_metadata(job_config) {
+    Some(value) => Some(value)
+    None =>
+      match job_config {
+        Object(obj) =>
+          match obj.get("profile_metadata") {
+            Some(profile_metadata) =>
+              waiting_for_input_disabled_from_metadata(profile_metadata)
+            None => None
+          }
+        _ => None
+      }
+  }
+}
+
+///|
+fn workflow_disable_waiting_for_input(
+  step : WorkflowStepDefinition,
+  definition : JobDefinition,
+) -> Bool {
+  match waiting_for_input_disabled_from_metadata(step.config) {
+    Some(value) => value
+    None =>
+      disable_waiting_for_input_in_job_config(definition.config).unwrap_or(
+        false,
+      )
+  }
+}
+
+///|
+fn best_effort_on_missing_input_in_job_config(job_config : Json) -> Bool? {
+  match best_effort_on_missing_input_from_metadata(job_config) {
+    Some(value) => Some(value)
+    None =>
+      match job_config {
+        Object(obj) =>
+          match obj.get("profile_metadata") {
+            Some(profile_metadata) =>
+              best_effort_on_missing_input_from_metadata(profile_metadata)
+            None => None
+          }
+        _ => None
+      }
+  }
+}
+
+///|
+fn workflow_best_effort_on_missing_input(
+  step : WorkflowStepDefinition,
+  definition : JobDefinition,
+) -> Bool {
+  match best_effort_on_missing_input_from_metadata(step.config) {
+    Some(value) => value
+    None =>
+      match best_effort_on_missing_input_in_job_config(definition.config) {
+        Some(value) => value
+        None =>
+          definition.kind == "job.controller" &&
+          (step.id.contains("locate") || step.id.contains("search"))
+      }
+  }
+}
+
+///|
+fn waiting_message_items(message : String) -> Array[String] {
+  let items : Array[String] = []
+  for raw in message.split(";") {
+    let trimmed = raw.trim().to_string()
+    if !trimmed.is_blank() {
+      items.push(trimmed)
+    }
+  }
+  items
+}
+
+///|
+fn best_effort_waiting_output(
+  step : WorkflowStepDefinition,
+  message : String,
+) -> Json {
+  {
+    "status": "best_effort_missing_input",
+    "step_id": step.id,
+    "message": message,
+    "missing_inputs": waiting_message_items(message),
+    "review_queued": true,
+  }
+}
+
+///|
 pub async fn WorkflowEngine::execute_run(
   self : WorkflowEngine,
   run_id : String,
@@ -443,77 +534,131 @@ pub async fn WorkflowEngine::execute_run(
         }
         Err(error) => {
           if waiting_for_input_message(error) is Some(message) {
-            let waiting_logs = [
-              ..step_logs,
-              "attempt \{attempt} started",
-              "attempt \{attempt} waiting for input: \{message}",
-            ]
-            let waiting_step = WorkflowEngine::step_run_record(
-              run_id,
-              step,
-              RunStatus::WaitingForInput,
-              Some(start_ts),
-              Some(now()),
-              attempt - 1,
-              waiting_logs,
-              summary=Some(message),
-              error=Some(error),
-            )
-            store.save_step_run(waiting_step)
-            ignore(
-              checkpoint_run_workspace(
-                store,
+            if workflow_best_effort_on_missing_input(step, definition) {
+              let continued_logs = [
+                ..step_logs,
+                "attempt \{attempt} started",
+                "attempt \{attempt} continued best-effort after missing input: \{message}",
+              ]
+              let continued_output = best_effort_waiting_output(step, message)
+              let continued_step = WorkflowEngine::step_run_record(
                 run_id,
-                "moonclaw: step \{step.id} waiting for input",
-              ),
-            )
-            self.log_run_event(
-              started_run,
-              "step.waiting_for_input",
-              now(),
-              message,
-              step_id=Some(step.id),
-              status=Some(WaitingForInput),
-              data={ "attempt": attempt },
-            )
-            complete_controller_iteration_for_step(
-              store,
-              started_run,
-              step,
-              RunStatus::WaitingForInput,
-              now(),
-            )
-            steps.push(waiting_step)
-            self.log_run_event(
-              started_run,
-              "job.waiting_for_input",
-              now(),
-              message,
-              step_id=Some(step.id),
-              status=Some(WaitingForInput),
-            )
-            let waiting_run = match
-              self.runtime.mark_run_waiting_for_input(
-                run_id,
+                step,
+                RunStatus::Succeeded,
+                Some(start_ts),
+                Some(now()),
+                attempt - 1,
+                continued_logs,
+                summary=Some(
+                  "Best-effort continuation after missing input: \{message}",
+                ),
+                output=Some(continued_output),
+              )
+              store.save_step_run(continued_step)
+              ignore(
+                checkpoint_run_workspace(
+                  store,
+                  run_id,
+                  "moonclaw: step \{step.id} continued best-effort after missing input",
+                ),
+              )
+              self.log_run_event(
+                started_run,
+                "step.succeeded",
                 now(),
-                summary=Some("Waiting for input on step \{step.id}: \{message}"),
-              ) {
-              Some(run) => run
-              None =>
-                return Err("Unable to mark run \{run_id} as waiting for input")
+                continued_step.summary.unwrap_or("Step \{step.id} succeeded"),
+                step_id=Some(step.id),
+                status=Some(Succeeded),
+                data={ "attempt": attempt, "best_effort_missing_input": true },
+              )
+              complete_controller_iteration_for_step(
+                store,
+                started_run,
+                step,
+                RunStatus::Succeeded,
+                now(),
+              )
+              outputs.set(step.id, continued_output)
+              final_step = Some(continued_step)
+              break
             }
-            complete_controller_run(
-              store,
-              waiting_run,
-              RunStatus::WaitingForInput,
-              now(),
-            )
-            return Ok(WorkflowExecutionResult::{
-              run: waiting_run,
-              workflow,
-              outputs,
-              steps,
-            })
+            if !workflow_disable_waiting_for_input(step, definition) {
+              let waiting_logs = [
+                ..step_logs,
+                "attempt \{attempt} started",
+                "attempt \{attempt} waiting for input: \{message}",
+              ]
+              let waiting_step = WorkflowEngine::step_run_record(
+                run_id,
+                step,
+                RunStatus::WaitingForInput,
+                Some(start_ts),
+                Some(now()),
+                attempt - 1,
+                waiting_logs,
+                summary=Some(message),
+                error=Some(error),
+              )
+              store.save_step_run(waiting_step)
+              ignore(
+                checkpoint_run_workspace(
+                  store,
+                  run_id,
+                  "moonclaw: step \{step.id} waiting for input",
+                ),
+              )
+              self.log_run_event(
+                started_run,
+                "step.waiting_for_input",
+                now(),
+                message,
+                step_id=Some(step.id),
+                status=Some(WaitingForInput),
+                data={ "attempt": attempt },
+              )
+              complete_controller_iteration_for_step(
+                store,
+                started_run,
+                step,
+                RunStatus::WaitingForInput,
+                now(),
+              )
+              steps.push(waiting_step)
+              self.log_run_event(
+                started_run,
+                "job.waiting_for_input",
+                now(),
+                message,
+                step_id=Some(step.id),
+                status=Some(WaitingForInput),
+              )
+              let waiting_run = match
+                self.runtime.mark_run_waiting_for_input(
+                  run_id,
+                  now(),
+                  summary=Some(
+                    "Waiting for input on step \{step.id}: \{message}",
+                  ),
+                ) {
+                Some(run) => run
+                None =>
+                  return Err(
+                    "Unable to mark run \{run_id} as waiting for input",
+                  )
+              }
+              complete_controller_run(
+                store,
+                waiting_run,
+                RunStatus::WaitingForInput,
+                now(),
+              )
+              return Ok(WorkflowExecutionResult::{
+                run: waiting_run,
+                workflow,
+                outputs,
+                steps,
+              })
+            }
           }
           let failed_logs = [
             ..step_logs,

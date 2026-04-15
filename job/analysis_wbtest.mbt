@@ -934,7 +934,7 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
     let child_engine_factory = fn() {
       let child_engine = WorkflowEngine::new(runtime=engine.runtime)
       child_engine.register_handler(
-        WorkflowStepHandler::new(kind="test.child", run=async fn(_context) {
+        WorkflowStepHandler::new(kind="test.child", run=fn(_context) {
           Ok(
             WorkflowStepResult::new(
               output={ "status": "completed", "note": "child complete" },
@@ -1039,9 +1039,7 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
     inspect(
       result.outputs
       .get("analyze")
-      .map(fn(output) {
-        output.stringify().contains("\"result_artifact_id\"")
-      })
+      .map(fn(output) { output.stringify().contains("\"result_artifact_id\"") })
       .unwrap_or(false),
       content="true",
     )

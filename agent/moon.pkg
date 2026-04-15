@@ -30,7 +30,6 @@ import {
   "vectie/moonclaw/tools/read_file",
   "vectie/moonclaw/tools/read_multiple_files",
   "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/job",
   "vectie/moonclaw/tools/todo",
   "vectie/moonclaw/tools/list_files",
   "vectie/moonclaw/tools/execute_command",

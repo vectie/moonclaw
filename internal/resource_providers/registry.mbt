@@ -74,7 +74,9 @@ fn provider_manifest_candidates(cwd : String, home : String?) -> Array[String] {
   let ancestry : Array[String] = []
   let mut dir = @pathx.normalize(cwd)
   while true {
-    ancestry.push(dir |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"))
+    ancestry.push(
+      dir |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+    )
     let parent : String = [..@pathx.dirname(dir)]
     if parent == dir {
       break

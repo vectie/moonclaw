@@ -1,6 +1,6 @@
 ///|
 async test "timeout" (t : @test.Test) {
-    @mock.run(t, mock => {
+  @mock.run(t, mock => {
     @async.with_task_group(_ => {
       let tool = @execute_command.new(mock.cwd.path())
       json_inspect(tool.call({ "command": "sleep 5", "timeout": 1000 }), content=[
