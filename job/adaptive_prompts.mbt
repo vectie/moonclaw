@@ -1,22 +1,11 @@
 ///|
 fn adaptive_decision_system_prompt() -> String {
   [
-    @prompt.prelude, "You are deciding whether an analysis step is truly complete or should expand.",
-    "Return strict JSON only.", "If the step is complete, return {\"verdict\":\"completed\",\"summary\":string}.",
-    "If key inputs are missing and the user or an external source must provide them, return {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}.",
-    "If the step should be decomposed into smaller executable units before it can produce a useful result, return {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}.",
-    "Be conservative about calling a step completed.", "Do not mark the step completed if the output mainly asks follow-up questions, requests missing facts, says the estimate is not supportable yet, says the result is only a screening or first-pass view, or lists next actions instead of delivering the requested artifact.",
-    "Prefer needs_subplan over needs_input when useful preparatory work can still continue without the missing facts.",
-    "Use needs_input only when the missing parcel, market, numeric, user, or external-source facts truly block all meaningful next work.",
-    "Use needs_subplan when the work can still make progress by splitting into smaller executable research, collection, verification, checklist, template, comparison, or analysis tasks, even if some final facts are still missing.",
-    "Do not default to subplanning. Only request a subplan when decomposition would materially improve execution.",
-    "If the output contains both caveats and a usable final deliverable, choose completed. If the output is mostly a blocker report or a request for more information, do not choose completed.",
-    "If operator resume guidance authorizes guessing, best-effort estimation, or proceeding with assumptions, and the output already provides a usable deliverable with explicit assumptions, choose completed instead of needs_input.",
-    "Do not downgrade a usable assumption-based deliverable to needs_input merely because it still lists risks, caveats, or remaining unknowns.",
-    "Examples:", "{\"verdict\":\"needs_input\",\"summary\":\"Parcel and pricing inputs are still missing.\",\"missing_inputs\":[\"parcel location\",\"parcel size\",\"comparable sales\"]}",
-    "{\"verdict\":\"needs_subplan\",\"summary\":\"The diligence work should be split before valuation.\",\"suggested_substeps\":[{\"title\":\"Collect comparable sales\",\"prompt\":\"Gather recent comparable land sales and normalize unit pricing.\"},{\"title\":\"Review zoning and utilities\",\"prompt\":\"Check zoning, entitlement status, access, and utility availability.\"}]}",
-    "{\"verdict\":\"needs_subplan\",\"summary\":\"The final estimate is blocked on parcel facts, but useful preparation can still continue.\",\"suggested_substeps\":[{\"title\":\"Build missing-input checklist\",\"prompt\":\"Prepare the minimum parcel, zoning, and market data checklist required for the final estimate.\"},{\"title\":\"Build sensitivity template\",\"prompt\":\"Create a sensitivity framework for price, parcel size, entitlement timing, and site-prep risk.\"}]}",
-    "{\"verdict\":\"completed\",\"summary\":\"A usable screening-level estimate was produced with explicit assumptions under operator authorization to guess missing data.\"}",
+    @prompt.prelude, "You are deciding whether an analysis step is complete, blocked on external input, or should expand.",
+    "The loaded `analysis-adaptation` skill is authoritative for the decision procedure.",
+    "Return strict JSON only.", "Allowed shapes:", "{\"verdict\":\"completed\",\"summary\":string}",
+    "{\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}",
+    "{\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}",
   ].join("\n\n")
 }
 
@@ -60,9 +49,9 @@ fn adaptive_decision_prompt(
 fn adaptive_subplan_fill_system_prompt() -> String {
   [
     @prompt.prelude, "You are generating an executable child subplan for an analysis step.",
+    "The loaded `analysis-adaptation` skill is authoritative for subplan quality.",
     "Return strict JSON only.", "Return exactly this shape: {\"verdict\":\"needs_subplan\",\"summary\":string,\"suggested_substeps\":[{\"title\":string,\"prompt\":string,\"kind\":string?}]}",
-    "Do not return completed or needs_input.", "Generate 2 to 6 concrete child substeps that can make useful progress now.",
-    "Each prompt must be executable and specific.", "Prefer research, verification, checklist, template, comparison, extraction, or synthesis tasks over vague planning language.",
+    "Do not return completed or needs_input.",
   ].join("\n\n")
 }
 
@@ -104,9 +93,9 @@ fn adaptive_subplan_fill_prompt(
 fn adaptive_missing_inputs_fill_system_prompt() -> String {
   [
     @prompt.prelude, "You are extracting the concrete missing inputs for an analysis step.",
+    "The loaded `analysis-adaptation` skill is authoritative for missing-input quality.",
     "Return strict JSON only.", "Return exactly this shape: {\"verdict\":\"needs_input\",\"summary\":string,\"missing_inputs\":string[]}",
-    "Do not return completed or needs_subplan.", "List the specific missing facts, files, numbers, locations, assumptions, or external records still needed.",
-    "Keep each missing input short and concrete.",
+    "Do not return completed or needs_subplan.",
   ].join("\n\n")
 }
 

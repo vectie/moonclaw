@@ -377,11 +377,9 @@ async test "plan_job_proposal includes decomposition guidance for land acquisiti
       let prompt = request.prompt
       let has_example = prompt.contains("Land acquisition calculation") &&
         prompt.contains(
-          "If the request is non-trivial, decompose it into multiple meaningful steps",
-        ) &&
-        prompt.contains(
           "Use the loaded `job-planning` skill as the authoritative contract.",
-        )
+        ) &&
+        prompt.contains("# Job Planning")
       Ok(AnalysisExecution::{
         model_name: "default",
         content: if has_example {
@@ -430,7 +428,7 @@ async test "plan_job_proposal loads skills/job-planning/SKILL.md when present" {
             "Use the loaded `job-planning` skill as the authoritative contract.",
           ) &&
           request.system_prompt.contains(
-            "The loaded `job-planning` skill is the authoritative output contract.",
+            "The loaded `job-planning` skill defines the planning procedure and output discipline.",
           )
         Ok(AnalysisExecution::{
           model_name: "default",

@@ -71,6 +71,23 @@ async fn load_skill_instruction_text(
       return Some(content)
     }
   }
+  let process_cwd = @os.cwd() catch { _ => "" }
+  if !process_cwd.is_blank() &&
+    @pathx.normalize(process_cwd) != @pathx.normalize(cwd) {
+    let extra_candidates : Array[String] = []
+    for candidate in skill_file_candidates(process_cwd, home, skill) {
+      if !extra_candidates.contains(candidate) {
+        extra_candidates.push(candidate)
+      }
+    }
+    for candidate in extra_candidates {
+      let exists = @fsx.exists(candidate) catch { _ => false }
+      if exists {
+        let content = @fsx.read_file(candidate) catch { _ => continue }
+        return Some(content)
+      }
+    }
+  }
   None
 }
 

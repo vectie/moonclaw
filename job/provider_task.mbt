@@ -531,24 +531,46 @@ fn join_bullets(items : Array[String]) -> String {
 }
 
 ///|
+fn provider_task_preferred_skills(
+  request : AnalysisRequest,
+  repair? : Bool = false,
+) -> Array[String] {
+  let skills : Array[String] = []
+  skills.push(
+    if repair {
+      "provider-task-repair"
+    } else {
+      "provider-task-execution"
+    },
+  )
+  for skill in request.preferred_skills {
+    if !skills.contains(skill) {
+      skills.push(skill)
+    }
+  }
+  skills
+}
+
+///|
 fn provider_task_system_prompt(
-  _request : AnalysisRequest,
+  request : AnalysisRequest,
   task : ProviderTaskSpec,
   context : ProviderTaskWorkerContext,
 ) -> String {
   [
     "You are executing a domain-local extension task.",
-    "Do not return plans, outlines, or commentary.",
-    "Skill files describe the work method, but they do not override the runtime return contract.",
+    "The loaded `provider-task-execution` skill defines the execution method.",
     "Return strict JSON only matching this shape:",
     "{\"task_id\":string,\"summary\":string,\"artifacts\":string[],\"memory_candidates\":[{\"kind\":string,\"title\":string,\"detail\":string,\"durable\":bool,\"target_page\":string|null}],\"requires_review\":bool,\"notify_town\":bool}",
     "Use task_id = \{task.id}.",
-    "Summary should describe the actual work completed inside the extension boundary.",
-    "Artifacts should list durable output paths relative to the workspace when relevant.",
-    "Only emit memory_candidates that are worth persisting back into the extension provider.",
     "Do not wrap the JSON in markdown fences.",
     "Output contract from the harness:",
     join_bullets(context.output_contract),
+    if request.system_prompt.trim().to_string().is_blank() {
+      ""
+    } else {
+      "Additional runtime instruction:\n\{request.system_prompt}"
+    },
   ]
   .filter(fn(line) { !line.trim().to_string().is_blank() })
   .join("\n\n")
@@ -878,8 +900,8 @@ fn enforce_provider_task_result_semantics(
 fn provider_task_repair_system_prompt(task : ProviderTaskSpec) -> String {
   [
     "You repair invalid provider task outputs into the required runtime contract.",
+    "The loaded `provider-task-repair` skill defines the repair method.",
     "Return strict JSON only.",
-    "Do not return plans, outlines, commentary, or markdown fences.",
     "The required shape is:",
     "{\"task_id\":string,\"summary\":string,\"artifacts\":string[],\"memory_candidates\":[{\"kind\":string,\"title\":string,\"detail\":string,\"durable\":bool,\"target_page\":string|null}],\"requires_review\":bool,\"notify_town\":bool}",
     "Use task_id = \{task.id}.",
@@ -911,14 +933,26 @@ async fn repair_provider_task_result(
   raw_execution : AnalysisExecution,
   inner_runner : async (AnalysisRequest) -> Result[AnalysisExecution, String],
 ) -> Result[ProviderTaskResult, String] {
+  let preferred_skills = provider_task_preferred_skills(request, repair=true)
+  let loaded_skills = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
   let repair_request = AnalysisRequest::{
     ..request,
-    prompt: provider_task_repair_prompt(task, raw_execution.content),
+    prompt: [
+      provider_task_repair_prompt(task, raw_execution.content),
+      loaded_skills,
+    ]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
     system_prompt: provider_task_repair_system_prompt(task),
     enable_tools: false,
     execution_mode: None,
     execution_target: None,
     web_search: false,
+    preferred_skills,
   }
   let repaired_execution = match inner_runner(repair_request) {
     Ok(execution) => execution
@@ -1107,16 +1141,24 @@ async fn run_provider_task_analysis_runner(
     Ok(context) => context
     Err(error) => return Err(error)
   }
+  let preferred_skills = provider_task_preferred_skills(request)
+  let loaded_skills = loaded_skills_prompt(
+    request.cwd,
+    request.home,
+    preferred_skills,
+  )
   let delegated_request = AnalysisRequest::{
     ..request,
-    prompt: provider_task_prompt(request, task, context),
+    prompt: [provider_task_prompt(request, task, context), loaded_skills]
+    .filter(fn(section) { !section.is_blank() })
+    .join("\n\n"),
     system_prompt: provider_task_system_prompt(request, task, context),
     source_prompt: goal,
     enable_tools: false,
     execution_mode: None,
     execution_target: None,
     web_search: false,
-    preferred_skills: request.preferred_skills,
+    preferred_skills,
   }
   let raw_execution = inner_runner(delegated_request)
   let raw_execution = match raw_execution {

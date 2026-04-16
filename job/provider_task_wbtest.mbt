@@ -369,13 +369,17 @@ async test "provider task analysis runner hydrates context and persists structur
     inspect(captured_prompt.val.contains("wiki/entity.md"), content="true")
     inspect(
       captured_system_prompt.val.contains(
-        "Do not return plans, outlines, or commentary.",
+        "loaded `provider-task-execution` skill defines the execution method.",
       ),
       content="true",
     )
     inspect(
+      captured_prompt.val.contains("provider-task-execution"),
+      content="true",
+    )
+    inspect(
       captured_system_prompt.val.contains("Base system prompt."),
-      content="false",
+      content="true",
     )
     inspect(captured_enable_tools.val, content="false")
     inspect(
@@ -508,6 +512,100 @@ async test "provider task analysis runner repairs planner-shaped output once" {
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "provider task repair loads repo provider-task-repair skill" {
+  @fsx.with_temporary_directory("job-book-harness-repair-skill-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    let skill_dir = workspace
+      |> @pathx.join("skills")
+      |> @pathx.join("provider-task-repair")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    @fsx.make_directory(skill_dir, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      skill_dir |> @pathx.join("SKILL.md"),
+      [
+        "---", "name: provider-task-repair", "description: test skill", "---", "",
+        "Include the exact phrase PROVIDER_REPAIR_SKILL_MARKER.",
+      ].join("\n"),
+    )
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: true,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: ["wiki-maintainer"],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: Some(
+        RoleRuntimeContract::new(role_id="wiki_worker"),
+      ),
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let call_count : Ref[Int] = { val: 0 }
+    let repair_prompt : Ref[String] = { val: "" }
+    ignore(
+      match
+        run_provider_task_analysis_runner(request, fn(inner_request) {
+          call_count.val = call_count.val + 1
+          if call_count.val == 1 {
+            Ok(AnalysisExecution::{
+              model_name: inner_request.model_name,
+              content: "{\"plan\":[{\"step\":1,\"title\":\"Inspect sources\"}]}",
+              conversation_id: Some("conv-provider-plan"),
+              usage: None,
+              metadata: {},
+            })
+          } else {
+            repair_prompt.val = inner_request.prompt
+            Ok(AnalysisExecution::{
+              model_name: inner_request.model_name,
+              content: (
+                #|{
+                #|  "task_id": "task-1",
+                #|  "summary": "Updated the wiki from the source evidence.",
+                #|  "artifacts": ["wiki/entity.md"],
+                #|  "memory_candidates": [],
+                #|  "requires_review": false,
+                #|  "notify_town": false
+                #|}
+              ),
+              conversation_id: Some("conv-provider-repair"),
+              usage: None,
+              metadata: {},
+            })
+          }
+        }) {
+        Ok(execution) => execution
+        Err(error) => fail(error)
+      },
+    )
+    inspect(call_count.val, content="2")
+    inspect(
+      repair_prompt.val.contains("PROVIDER_REPAIR_SKILL_MARKER"),
       content="true",
     )
   })

@@ -476,14 +476,11 @@ fn planner_repair_prompt(
 ) -> String {
   [
     "Your previous plan did not follow the required planning contract closely enough.",
-    "The loaded `job-planning` skill is authoritative. Follow its exact JSON schema and forbidden-alias rules.",
+    "The loaded `job-planning` skill is authoritative. Follow it exactly.",
     "Return JSON only.",
-    "Use the exact top-level shape from the skill: `title`, `summary`, `tags`, `steps`.",
-    "Do not use aliases such as `plan`, `draft_plan`, `job`, `request_text`, `overview`, `step`, `details`, or `objective`.",
-    "Do not return a single generic execute step.",
-    "Produce 4 to 8 concrete phases when the request is analytical, business, estimation, due-diligence, or report-oriented.",
-    "For this request, return at least 5 steps unless the request is obviously trivial.",
-    "Each step must have a concrete business or analytical deliverable, not filler.",
+    "Use the exact top-level shape from the skill.",
+    "Do not use forbidden aliases from the skill.",
+    "Repair the structure without losing the original request intent.",
     "Request:\n\{request_text}",
     "Previous planner output:\n\{prior_output}",
   ].join("\n\n")
@@ -660,21 +657,14 @@ fn planner_system_prompt(e2e_mode? : Bool = false) -> String {
   [
     "You design safe draft job plans for an automation system.",
     "Never execute the job.",
-    "The loaded `job-planning` skill is the authoritative output contract.",
-    "Follow that skill exactly.",
+    "The loaded `job-planning` skill defines the planning procedure and output discipline.",
     "Return strict JSON only.",
-    "Use the exact field names defined by the skill and do not invent aliases.",
-    "Use kind `job.analysis` unless a better existing workflow step kind is clearly required.",
-    "Write concrete, execution-oriented steps.",
-    "Use the smallest sufficient number of steps, but do not collapse non-trivial work into one generic execute step.",
-    "For non-trivial analytical, business, calculation, due-diligence, or report requests, produce 4 to 8 distinct phases.",
+    "Do not invent aliases or extra top-level fields.",
     ..if e2e_mode {
       e2e_planner_system_guidance()
     } else {
       []
     },
-    "Step titles should be short and human-readable.",
-    "Step prompts should tell the step exactly what to produce.",
   ].join("\n")
 }
 
@@ -740,8 +730,7 @@ fn planner_request_prompt(
   }
   [
     ..parts, "Use the loaded `job-planning` skill as the authoritative contract.",
-    "Return JSON only.", "Use the exact field names from the skill and do not invent aliases.",
-    "If the request is non-trivial, decompose it into multiple meaningful steps instead of a single generic execution step.",
+    "Return JSON only.", "Use the exact field names from the skill.",
   ].join("\n\n")
 }
 
