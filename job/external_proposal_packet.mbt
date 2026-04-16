@@ -611,6 +611,53 @@ fn external_proposal_packet_metadata(
 }
 
 ///|
+fn external_packet_runtime_profile_metadata(
+  packet : ExternalProposalPacket,
+) -> Json {
+  let promoted : Map[String, Json] = {}
+  match packet.metadata {
+    Object(fields) => {
+      match fields.get("disable_waiting_for_input") {
+        Some(value) => promoted.set("disable_waiting_for_input", value)
+        None => ()
+      }
+      match fields.get("best_effort_on_missing_input") {
+        Some(value) => promoted.set("best_effort_on_missing_input", value)
+        None => ()
+      }
+      match fields.get("profile_metadata") {
+        Some(Object(profile_metadata)) =>
+          for key, value in profile_metadata {
+            promoted.set(key, value)
+          }
+        _ => ()
+      }
+    }
+    _ => ()
+  }
+  Json::object(promoted)
+}
+
+///|
+fn external_packet_runtime_step_metadata(
+  packet : ExternalProposalPacket,
+) -> Json {
+  let promoted : Map[String, Json] = {}
+  match packet.metadata {
+    Object(fields) =>
+      match fields.get("step_metadata") {
+        Some(Object(step_metadata)) =>
+          for key, value in step_metadata {
+            promoted.set(key, value)
+          }
+        _ => ()
+      }
+    _ => ()
+  }
+  Json::object(promoted)
+}
+
+///|
 fn external_packet_step_metadata(
   step_metadata : Json,
   packet : ExternalProposalPacket,
@@ -685,7 +732,11 @@ fn external_packet_step_metadata(
     }
     None => ()
   }
-  merge_json_metadata(step_metadata, Json::object(extra))
+  let merged = merge_json_metadata(
+    step_metadata,
+    external_packet_runtime_step_metadata(packet),
+  )
+  merge_json_metadata(merged, Json::object(extra))
 }
 
 ///|
@@ -705,7 +756,10 @@ fn proposal_with_external_packet(
     suggested_family: Some(packet.profile),
     profile_metadata: merge_job_intake_metadata(
       merge_json_metadata(
-        draft.profile_metadata,
+        merge_json_metadata(
+          draft.profile_metadata,
+          external_packet_runtime_profile_metadata(packet),
+        ),
         external_proposal_packet_metadata(packet, packet_file_path),
       ),
       Some(external_packet_job_intake(packet, packet_file_path)),

@@ -1047,6 +1047,133 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
 }
 
 ///|
+async test "analysis_step_handler propagates missing-input policy into adaptive subplans" {
+  @fsx.with_temporary_directory("job-analysis-adaptive-policy-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Estimate the parcel valuation.",
+      cwd=Some(dir),
+      metadata={
+        "step_metadata": {
+          "disable_waiting_for_input": true,
+          "best_effort_on_missing_input": true,
+        },
+      },
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    let captured_child_proposal : Ref[JobProposal?] = { val: None }
+    let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
+      captured_child_proposal.val = Some(proposal)
+      let workflow = WorkflowDefinition::{
+        id: "workflow.child.analysis.policy",
+        kind: "test.child",
+        steps: [
+          WorkflowStepDefinition::{
+            id: "child-step",
+            kind: "test.child",
+            config: {},
+            retry_policy: None,
+          },
+        ],
+        output_bindings: ["child-step"],
+      }
+      let definition = JobDefinition::{
+        id: "job.child.analysis.policy",
+        kind: "test.child",
+        enabled: true,
+        config: {},
+        schedule: None,
+        retry_policy: None,
+        workflow_id: Some(workflow.id),
+        created_at: now_ms,
+        updated_at: now_ms,
+        tags: ["child"],
+      }
+      ProposalCompilation::{
+        family: "generic",
+        definition,
+        workflow,
+        bindings: [],
+      }
+    })
+    let child_engine_factory = fn() {
+      let child_engine = WorkflowEngine::new(runtime=engine.runtime)
+      child_engine.register_handler(
+        WorkflowStepHandler::new(kind="test.child", run=fn(_context) {
+          Ok(
+            WorkflowStepResult::new(
+              output={ "status": "completed", "note": "child complete" },
+              summary=Some("child complete"),
+            ),
+          )
+        }),
+      )
+      child_engine
+    }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          ignore(request)
+          calls.val = calls.val + 1
+          let content = match calls.val {
+            2 =>
+              "{\"verdict\":\"needs_subplan\",\"summary\":\"Split this into narrower research tasks before estimating.\",\"suggested_substeps\":[{\"title\":\"Collect evidence\",\"prompt\":\"Collect evidence for the valuation estimate.\"}]}"
+            _ =>
+              "The estimate is too broad and under-specified to complete directly."
+          }
+          Ok(AnalysisExecution::{
+            model_name: "gpt-5.4",
+            content,
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        compiler=Some(compiler),
+        engine_factory=Some(child_engine_factory),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    let child_proposal = match captured_child_proposal.val {
+      Some(proposal) => proposal
+      None => fail("missing child proposal")
+    }
+    inspect(
+      child_proposal.profile_metadata
+      .stringify()
+      .contains("\"disable_waiting_for_input\":true"),
+      content="true",
+    )
+    inspect(
+      child_proposal.profile_metadata
+      .stringify()
+      .contains("\"best_effort_on_missing_input\":true"),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"disable_waiting_for_input\":true"),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"best_effort_on_missing_input\":true"),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "analysis_step_handler repairs invalid followup judge output" {
   @fsx.with_temporary_directory("job-analysis-adaptive-repair-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -1822,4 +1949,58 @@ async test "configure_analysis_agent_for_request registers runtime introspection
   inspect(agent.tools().contains("list_worktrees"), content="true")
   inspect(agent.tools().contains("delegate_run"), content="true")
   inspect(agent.tools().contains("patch_edit"), content="true")
+}
+
+///|
+test "provider task single response routing only applies to tool-free provider tasks" {
+  let provider_request = AnalysisRequest::{
+    job_id: "job-1",
+    run_id: "run-1",
+    step_id: "step-1",
+    source_prompt: "Provider task.",
+    prompt: "Provider task.",
+    model_name: "codex/gpt-5.4",
+    cwd: "/tmp",
+    home: None,
+    execution_mode: None,
+    execution_target: None,
+    system_prompt: "system",
+    preferred_skills: [],
+    enable_tools: false,
+    web_search: false,
+    tool_contract: AnalysisToolContract::new(
+      shell=false,
+      list_files=false,
+      glob_files=false,
+      list_resources=false,
+      read_resource=false,
+      runtime_context=false,
+      list_worktrees=false,
+      delegate_run=false,
+      enter_worktree=false,
+      exit_worktree=false,
+      read_files=false,
+      search_files=false,
+      todo=false,
+      file_write=false,
+      patch_edit=false,
+      web_fetch=false,
+      web_search=false,
+    ),
+    step_metadata: { "extension_task_id": "task-1" },
+    execution_isolation: None,
+    role_runtime_contract: None,
+  }
+  let normal_request = AnalysisRequest::{
+    ..provider_request,
+    enable_tools: true,
+  }
+  inspect(
+    provider_task_single_response_requested(provider_request),
+    content="true",
+  )
+  inspect(
+    provider_task_single_response_requested(normal_request),
+    content="false",
+  )
 }

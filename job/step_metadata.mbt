@@ -7,7 +7,11 @@ fn metadata_with_step_metadata(metadata : Json, key : String) -> Json? {
         None =>
           match obj.get("step_metadata") {
             Some(nested) => metadata_with_step_metadata(nested, key)
-            None => None
+            None =>
+              match obj.get("metadata") {
+                Some(nested) => metadata_with_step_metadata(nested, key)
+                None => None
+              }
           }
       }
     _ => None

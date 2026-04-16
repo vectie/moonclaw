@@ -368,7 +368,9 @@ async test "provider task analysis runner hydrates context and persists structur
     inspect(captured_prompt.val.contains("Relevant Pages:"), content="true")
     inspect(captured_prompt.val.contains("wiki/entity.md"), content="true")
     inspect(
-      captured_system_prompt.val.contains("Do not return plans, outlines, or commentary."),
+      captured_system_prompt.val.contains(
+        "Do not return plans, outlines, or commentary.",
+      ),
       content="true",
     )
     inspect(
@@ -392,8 +394,11 @@ async test "provider task analysis runner hydrates context and persists structur
       content="true",
     )
     let persisted_path = @fsx.read_file(state_path)
+    let persisted_step_key = safe_step_file_segment("step-1")
     inspect(
-      persisted_path.contains(".moonclaw-provider-result-run-1-step-1.json"),
+      persisted_path.contains(
+        ".moonclaw-provider-result-run-1-\{persisted_step_key}.json",
+      ),
       content="true",
     )
     let persisted_payload = @fsx.read_file(persisted_path.trim())
@@ -500,7 +505,9 @@ async test "provider task analysis runner repairs planner-shaped output once" {
 
     inspect(call_count.val, content="2")
     inspect(
-      execution.metadata.stringify().contains("\"extension_task_id\":\"task-1\""),
+      execution.metadata
+      .stringify()
+      .contains("\"extension_task_id\":\"task-1\""),
       content="true",
     )
   })
@@ -558,8 +565,7 @@ async test "provider task analysis runner normalizes repaired json missing summa
         } else {
           Ok(AnalysisExecution::{
             model_name: inner_request.model_name,
-            content:
-              "{\"artifacts\":[\"wiki/entity.md\"],\"requires_review\":false,\"notify_town\":false}",
+            content: "{\"artifacts\":[\"wiki/entity.md\"],\"requires_review\":false,\"notify_town\":false}",
             conversation_id: Some("conv-provider-normalize"),
             usage: None,
             metadata: {},
@@ -572,10 +578,15 @@ async test "provider task analysis runner normalizes repaired json missing summa
 
     inspect(call_count.val, content="2")
     inspect(
-      execution.metadata.stringify().contains("\"extension_task_id\":\"task-1\""),
+      execution.metadata
+      .stringify()
+      .contains("\"extension_task_id\":\"task-1\""),
       content="true",
     )
-    inspect(execution.content.contains("Completed provider task"), content="true")
+    inspect(
+      execution.content.contains("Completed provider task"),
+      content="true",
+    )
   })
 }
 
@@ -640,10 +651,7 @@ async test "provider task analysis runner persists raw response on parse failure
     )
     let step_key = safe_step_file_segment("step-1")
     let debug_file = ".moonclaw-provider-failure-run-1-\{step_key}.json"
-    inspect(
-      error.contains(debug_file),
-      content="true",
-    )
+    inspect(error.contains(debug_file), content="true")
     let debug_path = provider_task_failure_debug_path(request)
     inspect(@fsx.exists(debug_path), content="true")
     let debug_payload = @fsx.read_file(debug_path)
@@ -651,6 +659,84 @@ async test "provider task analysis runner persists raw response on parse failure
       debug_payload.contains("\"raw_content\": \"not valid provider json\""),
       content="true",
     )
+  })
+}
+
+///|
+async test "provider task analysis runner converts empty generic completion into blocker" {
+  @fsx.with_temporary_directory("job-book-harness-empty-success-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: true,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: ["wiki-maintainer"],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: Some(
+        RoleRuntimeContract::new(role_id="wiki_worker"),
+      ),
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let execution = match
+      run_provider_task_analysis_runner(request, fn(inner_request) {
+        Ok(AnalysisExecution::{
+          model_name: inner_request.model_name,
+          content: (
+            #|{
+            #|  "task_id": "task-1",
+            #|  "summary": "Completed provider task Bootstrap ingest and population.",
+            #|  "artifacts": [],
+            #|  "memory_candidates": [],
+            #|  "requires_review": true,
+            #|  "notify_town": false
+            #|}
+          ),
+          conversation_id: Some("conv-provider-empty-success"),
+          usage: None,
+          metadata: {},
+        })
+      }) {
+      Ok(execution) => execution
+      Err(error) => fail(error)
+    }
+
+    inspect(execution.content.contains("Blocked provider task"), content="true")
+    let persisted_path = @fsx.read_file(state_path).trim().to_string()
+    let persisted_payload = @fsx.read_file(persisted_path)
+    inspect(
+      persisted_payload.contains(
+        "\"summary\": \"Blocked provider task Extract durable updates:",
+      ),
+      content="true",
+    )
+    inspect(persisted_payload.contains("\"kind\": \"blocker\""), content="true")
+    inspect(
+      persisted_payload.contains("\"kind\": \"next_step\""),
+      content="true",
+    )
+    inspect(persisted_payload.contains("\"durable\": false"), content="true")
   })
 }
 

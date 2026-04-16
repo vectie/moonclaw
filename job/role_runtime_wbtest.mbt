@@ -43,6 +43,54 @@ test "resolve_role_runtime_contract applies role_runtime overrides from profile 
 }
 
 ///|
+test "resolve_role_runtime_contract reads nested compiled step metadata role runtime" {
+  let contract = resolve_role_runtime_contract(
+    Some("controller"),
+    {
+      "role_runtime": {
+        "planning_layer": "domain",
+        "runtime_mode": "planner_only",
+        "tool_access": "limited",
+        "memory_scope": "domain",
+        "allow_delegate": true,
+        "allow_workspace_write": false,
+        "allow_execution_tools": false,
+      },
+    },
+    {
+      "metadata": {
+        "step_metadata": {
+          "role_runtime": {
+            "planning_layer": "execution",
+            "runtime_mode": "executor",
+            "tool_access": "full",
+            "memory_scope": "workspace",
+            "allow_delegate": false,
+            "allow_workspace_write": true,
+            "allow_execution_tools": true,
+            "output_contract": "wiki.gather.result.v1",
+          },
+        },
+      },
+    },
+  )
+  inspect(
+    contract.planning_layer.to_json().stringify(),
+    content="\"Execution\"",
+  )
+  inspect(contract.runtime_mode.to_json().stringify(), content="\"Executor\"")
+  inspect(contract.tool_access.to_json().stringify(), content="\"Full\"")
+  inspect(contract.memory_scope.to_json().stringify(), content="\"Workspace\"")
+  inspect(contract.allow_delegate, content="false")
+  inspect(contract.allow_workspace_write, content="true")
+  inspect(contract.allow_execution_tools, content="true")
+  inspect(
+    contract.output_contract.unwrap_or(""),
+    content="wiki.gather.result.v1",
+  )
+}
+
+///|
 test "constrain_tool_contract_for_role removes execution tools for planner-only roles" {
   let contract = AnalysisToolContract::new(
     runtime_context=true,

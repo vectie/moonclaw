@@ -136,6 +136,8 @@ fn role_runtime_bool(value : Json, key : String) -> Bool? {
 fn role_runtime_metadata(value : Json) -> Json? {
   match value {
     { "role_runtime": metadata, .. } => Some(metadata)
+    { "step_metadata": nested, .. } => role_runtime_metadata(nested)
+    { "metadata": nested, .. } => role_runtime_metadata(nested)
     _ => None
   }
 }

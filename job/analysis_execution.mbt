@@ -56,6 +56,7 @@ pub async fn persist_analysis_execution(
   now : () -> Int,
 ) -> PersistedAnalysisExecution {
   let execution_isolation = analysis_execution_isolation_metadata(execution)
+  let step_key = safe_step_file_segment(context.step.id)
   let report_artifact = artifacts.write(
     ArtifactWriteRequest::new(
       run_id=context.run.id,
@@ -76,7 +77,7 @@ pub async fn persist_analysis_execution(
       scope=config.artifacts.scope,
       append_only=config.artifacts.append_only,
     ),
-    "\{context.run.id}:\{context.step.id}:report:\{now()}",
+    "\{context.run.id}:\{step_key}:report:\{now()}",
     now(),
   )
   let result_payload = structured_analysis_result_payload(
@@ -102,7 +103,7 @@ pub async fn persist_analysis_execution(
       scope=config.artifacts.scope,
       append_only=config.artifacts.append_only,
     ),
-    "\{context.run.id}:\{context.step.id}:result:\{now()}",
+    "\{context.run.id}:\{step_key}:result:\{now()}",
     now(),
   )
   materialize_analysis_outputs_to_workspace(

@@ -353,8 +353,8 @@ async fn resolve_adaptive_analysis_result(
                   Some(engine_factory) =>
                     match
                       execute_analysis_subplan(
-                        runtime, compiler, engine_factory, child_executor, context,
-                        config, envelope, now, next_run_id, adaptive_max_depth,
+                        runtime, compiler, engine_factory, child_executor, request,
+                        context, config, envelope, now, next_run_id, adaptive_max_depth,
                       ) {
                       Err(error) => Some(Err(error))
                       Ok((child_job_id, child_run_id, child_outputs)) =>

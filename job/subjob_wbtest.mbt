@@ -472,3 +472,316 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
     )
   })
 }
+
+///|
+async test "subjob_step_handler propagates missing-input policy into child proposal" {
+  @fsx.with_temporary_directory("job-subjob-policy-XXXXXX", async fn(dir) {
+    @fsx.write_to_file(
+      dir |> @pathx.join("moonclaw.jobs.json"),
+      (
+        #|{
+        #|  "jobs": {
+        #|    "profiles": {
+        #|      "wiki_gather_worker": {
+        #|        "family": "wiki_gather_worker",
+        #|        "steps": [
+        #|          {
+        #|            "id": "gather_materials",
+        #|            "title": "Gather source materials",
+        #|            "kind": "job.analysis",
+        #|            "prompt_template": "Gather for ${request}",
+        #|            "metadata": {}
+        #|          }
+        #|        ],
+        #|        "metadata": {}
+        #|      }
+        #|    }
+        #|  }
+        #|}
+      ),
+    )
+    let runtime = RuntimeManager::new(root=dir)
+    let parent_workflow = WorkflowDefinition::{
+      id: "workflow.parent.policy",
+      kind: "test.parent",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "delegate",
+          kind: "job.delegate",
+          config: SubjobStepConfig::new(
+            request_text="collect source materials",
+            cwd=Some(dir),
+            home=Some(dir),
+            child_profile=Some("wiki_gather_worker"),
+          ).to_json(),
+          retry_policy: None,
+        },
+      ],
+      output_bindings: ["delegate"],
+    }
+    runtime.register_definition(JobDefinition::{
+      id: "job.parent.policy",
+      kind: "job.controller",
+      enabled: true,
+      config: {
+        "profile_metadata": {
+          "disable_waiting_for_input": true,
+          "best_effort_on_missing_input": true,
+        },
+      },
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some(parent_workflow.id),
+      created_at: 1,
+      updated_at: 1,
+      tags: ["test"],
+    })
+    runtime.register_workflow(parent_workflow)
+    runtime
+    .store()
+    .save_run(JobRun::{
+      id: "run-parent-policy-1",
+      job_id: "job.parent.policy",
+      trigger: TriggerSource::Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: Some(dir),
+      status: RunStatus::Pending,
+      attempt: 1,
+      retry_of: None,
+      started_at: None,
+      completed_at: None,
+      summary: None,
+      error: None,
+    })
+
+    let planner = ProposalPlanner::new(run=fn(request_text, _cwd, _home) {
+      draft_job_proposal("proposal-child-policy-1", request_text, 100)
+    })
+    let captured_profile_metadata : Ref[String] = { val: "" }
+    let captured_step_metadata : Ref[String] = { val: "" }
+    let compiler = ProposalCompiler::new(run=fn(proposal, now_ms, _cwd, _home) {
+      captured_profile_metadata.val = proposal.profile_metadata.stringify()
+      captured_step_metadata.val = proposal.steps[0].metadata.stringify()
+      let workflow = WorkflowDefinition::{
+        id: "workflow.child.policy",
+        kind: "test.child",
+        steps: [
+          WorkflowStepDefinition::{
+            id: "child-step",
+            kind: "test.child",
+            config: {},
+            retry_policy: None,
+          },
+        ],
+        output_bindings: ["child-step"],
+      }
+      let definition = JobDefinition::{
+        id: "job.child.policy",
+        kind: "test.child",
+        enabled: true,
+        config: {},
+        schedule: None,
+        retry_policy: None,
+        workflow_id: Some(workflow.id),
+        created_at: now_ms,
+        updated_at: now_ms,
+        tags: ["child"],
+      }
+      ProposalCompilation::{
+        family: "wiki_gather_worker",
+        definition,
+        workflow,
+        bindings: [],
+      }
+    })
+    let child_engine_factory = fn() {
+      let engine = WorkflowEngine::new(runtime~)
+      engine.register_handler(
+        WorkflowStepHandler::new(kind="test.child", run=fn(_context) {
+          Ok(WorkflowStepResult::new(output={ "value": "ok" }))
+        }),
+      )
+      engine
+    }
+    let engine = WorkflowEngine::new(runtime~)
+    engine.register_handler(
+      subjob_step_handler(
+        runtime~,
+        planner~,
+        compiler~,
+        engine_factory=child_engine_factory,
+        next_run_id=fn() { "run-child-policy-1" },
+      ),
+    )
+
+    match engine.execute_run("run-parent-policy-1", fn() { 1000 }) {
+      Ok(_) => ()
+      Err(error) => fail(error)
+    }
+    inspect(
+      captured_profile_metadata.val.contains(
+        "\"disable_waiting_for_input\":true",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_profile_metadata.val.contains(
+        "\"best_effort_on_missing_input\":true",
+      ),
+      content="true",
+    )
+    inspect(
+      captured_step_metadata.val.contains("\"disable_waiting_for_input\":true"),
+      content="true",
+    )
+    inspect(
+      captured_step_metadata.val.contains(
+        "\"best_effort_on_missing_input\":true",
+      ),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "subjob_step_handler fails when child run waits for input" {
+  @fsx.with_temporary_directory("job-subjob-waiting-XXXXXX", async fn(dir) {
+    let runtime = RuntimeManager::new(root=dir)
+    let parent_workflow = WorkflowDefinition::{
+      id: "workflow.parent.waiting",
+      kind: "test.parent",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "delegate",
+          kind: "job.delegate",
+          config: SubjobStepConfig::new(
+            request_text="run child gather",
+            cwd=Some(dir),
+            home=Some(dir),
+          ).to_json(),
+          retry_policy: None,
+        },
+      ],
+      output_bindings: ["delegate"],
+    }
+    runtime.register_definition(JobDefinition::{
+      id: "job.parent.waiting",
+      kind: "test.parent",
+      enabled: true,
+      config: {},
+      schedule: None,
+      retry_policy: None,
+      workflow_id: Some(parent_workflow.id),
+      created_at: 1,
+      updated_at: 1,
+      tags: ["test"],
+    })
+    runtime.register_workflow(parent_workflow)
+    runtime
+    .store()
+    .save_run(JobRun::{
+      id: "run-parent-waiting-1",
+      job_id: "job.parent.waiting",
+      trigger: TriggerSource::Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: Some(dir),
+      status: RunStatus::Pending,
+      attempt: 1,
+      retry_of: None,
+      started_at: None,
+      completed_at: None,
+      summary: None,
+      error: None,
+    })
+
+    let planner = ProposalPlanner::new(run=fn(request_text, _cwd, _home) {
+      JobProposal::{
+        ..draft_job_proposal("proposal-child-waiting-1", request_text, 100),
+        suggested_family: Some("wiki_gather_worker"),
+        steps: [
+          JobProposalStep::{
+            id: "gather_materials",
+            title: "Gather source materials",
+            prompt: request_text,
+            kind: "needs.input",
+            metadata: {},
+            child_profile: None,
+            execution_mode: None,
+            execution_target: None,
+            include_parent_outputs: None,
+            max_depth: None,
+          },
+        ],
+      }
+    })
+    let compiler = ProposalCompiler::new(run=fn(
+      _proposal,
+      now_ms,
+      _cwd,
+      _home,
+    ) {
+      let workflow = WorkflowDefinition::{
+        id: "workflow.child.waiting",
+        kind: "test.child",
+        steps: [
+          WorkflowStepDefinition::{
+            id: "gather_materials",
+            kind: "needs.input",
+            config: {},
+            retry_policy: None,
+          },
+        ],
+        output_bindings: ["gather_materials"],
+      }
+      let definition = JobDefinition::{
+        id: "job.child.waiting",
+        kind: "test.child",
+        enabled: true,
+        config: {},
+        schedule: None,
+        retry_policy: None,
+        workflow_id: Some(workflow.id),
+        created_at: now_ms,
+        updated_at: now_ms,
+        tags: ["child"],
+      }
+      ProposalCompilation::{
+        family: "wiki_gather_worker",
+        definition,
+        workflow,
+        bindings: [],
+      }
+    })
+    let child_engine_factory = fn() {
+      let engine = WorkflowEngine::new(runtime~)
+      engine.register_handler(
+        WorkflowStepHandler::new(kind="needs.input", run=fn(_context) {
+          Err("Analysis requires input: missing raw sources")
+        }),
+      )
+      engine
+    }
+    let engine = WorkflowEngine::new(runtime~)
+    engine.register_handler(
+      subjob_step_handler(
+        runtime~,
+        planner~,
+        compiler~,
+        engine_factory=child_engine_factory,
+        next_run_id=fn() { "run-child-waiting-1" },
+      ),
+    )
+
+    let error = match
+      engine.execute_run("run-parent-waiting-1", fn() { 1000 }) {
+      Ok(_) => fail("expected waiting child run failure")
+      Err(error) => error
+    }
+    inspect(error.contains("waiting for input"), content="true")
+    inspect(error.contains("missing raw sources"), content="true")
+  })
+}

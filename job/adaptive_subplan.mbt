@@ -19,12 +19,27 @@ fn adaptive_subplan_summary(envelope : AdaptiveAnalysisEnvelope) -> String {
 }
 
 ///|
+fn adaptive_subplan_policy_metadata(step_metadata : Json) -> Json {
+  let policy : Map[String, Json] = {}
+  match waiting_for_input_disabled_from_metadata(step_metadata) {
+    Some(value) => policy.set("disable_waiting_for_input", value.to_json())
+    None => ()
+  }
+  match best_effort_on_missing_input_from_metadata(step_metadata) {
+    Some(value) => policy.set("best_effort_on_missing_input", value.to_json())
+    None => ()
+  }
+  Json::object(policy)
+}
+
+///|
 fn adaptive_subplan_proposal(
   proposal_id : String,
   title : String,
   request_text : String,
   summary : String,
   steps : Array[AdaptiveSubstepPayload],
+  policy_metadata : Json,
   now_ms : Int,
 ) -> JobProposal {
   let proposal_steps : Array[JobProposalStep] = []
@@ -36,11 +51,14 @@ fn adaptive_subplan_proposal(
       title: step.title.trim().to_string(),
       prompt: step.prompt.trim().to_string(),
       kind: step.kind.unwrap_or("job.analysis"),
-      metadata: subtask_execution_isolation_metadata(
-        step_id,
-        step.title,
-        step.prompt,
-        step.kind,
+      metadata: merge_json_metadata(
+        subtask_execution_isolation_metadata(
+          step_id,
+          step.title,
+          step.prompt,
+          step.kind,
+        ),
+        policy_metadata,
       ),
       child_profile: None,
       execution_mode: None,
@@ -59,7 +77,7 @@ fn adaptive_subplan_proposal(
     suggested_family: Some("generic"),
     profile_id: None,
     profile_role: None,
-    profile_metadata: {},
+    profile_metadata: policy_metadata,
     status: JobProposalStatus::Draft,
     steps: proposal_steps,
     tags: ["job", "adaptive-subplan"],
@@ -82,6 +100,7 @@ async fn execute_analysis_subplan(
   compiler : ProposalCompiler,
   engine_factory : () -> WorkflowEngine,
   child_executor : ChildRunExecutor?,
+  request : AnalysisRequest,
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
   envelope : AdaptiveAnalysisEnvelope,
@@ -103,6 +122,7 @@ async fn execute_analysis_subplan(
   }
   let cwd = context.run.workspace_dir.unwrap_or(config.cwd.unwrap_or("."))
   let home = config.home.unwrap_or(".")
+  let policy_metadata = adaptive_subplan_policy_metadata(request.step_metadata)
   let proposal = adaptive_subplan_proposal(
     human_readable_proposal_id(
       adaptive_subplan_title(config, context, envelope),
@@ -113,6 +133,7 @@ async fn execute_analysis_subplan(
     config.prompt,
     adaptive_subplan_summary(envelope),
     steps,
+    policy_metadata,
     now(),
   )
   let compilation = (compiler.run)(proposal, now(), cwd, home)

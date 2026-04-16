@@ -712,7 +712,10 @@ fn provider_task_json_bool_field(json : Json, key : String) -> Bool? {
 }
 
 ///|
-fn provider_task_json_string_array_field(json : Json, key : String) -> Array[String] {
+fn provider_task_json_string_array_field(
+  json : Json,
+  key : String,
+) -> Array[String] {
   match json {
     Object(obj) =>
       match obj.get(key) {
@@ -772,7 +775,9 @@ fn normalize_provider_task_result(
     Ok(json) => json
     Err(error) => return Err(error)
   }
-  let task_id = provider_task_json_string_field(json, "task_id").unwrap_or(task.id)
+  let task_id = provider_task_json_string_field(json, "task_id").unwrap_or(
+    task.id,
+  )
   let summary = provider_task_json_string_field(json, "summary").unwrap_or(
     provider_task_json_string_field(json, "message").unwrap_or(
       plan_summary_from_json(json).unwrap_or(
@@ -785,7 +790,9 @@ fn normalize_provider_task_result(
     Object(obj) =>
       match obj.get("memory_candidates") {
         Some(Array(_)) =>
-          @json.from_json(obj.get("memory_candidates").unwrap()) catch { _ => [] }
+          @json.from_json(obj.get("memory_candidates").unwrap()) catch {
+            _ => []
+          }
         _ => []
       }
     _ => []
@@ -795,16 +802,76 @@ fn normalize_provider_task_result(
     summary,
     artifacts,
     memory_candidates,
-    requires_review: provider_task_json_bool_field(
-      json,
-      "requires_review",
-    ).unwrap_or(
+    requires_review: provider_task_json_bool_field(json, "requires_review").unwrap_or(
       task.requires_review,
     ),
     notify_town: provider_task_json_bool_field(json, "notify_town").unwrap_or(
       false,
     ),
   })
+}
+
+///|
+fn provider_task_result_is_empty_pseudo_success(
+  result : ProviderTaskResult,
+) -> Bool {
+  result.artifacts.is_empty() &&
+  result.memory_candidates.is_empty() &&
+  result.summary.trim().to_lower().contains("completed provider task")
+}
+
+///|
+fn provider_task_blocker_result(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+  result : ProviderTaskResult,
+) -> ProviderTaskResult {
+  let target_pages = if task.target_pages.is_empty() {
+    "no target pages were declared"
+  } else {
+    task.target_pages.join(", ")
+  }
+  let context_pages = if context.context_pages.is_empty() {
+    "no context pages were provided"
+  } else {
+    context.context_pages.join(", ")
+  }
+  ProviderTaskResult::{
+    task_id: result.task_id,
+    summary: "Blocked provider task \{task.title}: provider returned generic completion text without durable artifacts or memory candidates.",
+    artifacts: [],
+    memory_candidates: [
+      ProviderTaskMemoryCandidate::{
+        kind: "blocker",
+        title: "No durable provider outputs",
+        detail: "Provider returned a generic completion for \{task.title} but produced no durable artifacts or memory candidates. Expected target pages: \{target_pages}. Context pages: \{context_pages}.",
+        durable: false,
+        target_page: None,
+      },
+      ProviderTaskMemoryCandidate::{
+        kind: "next_step",
+        title: "Materialize durable outputs or return concrete blocker",
+        detail: "Re-run provider execution so it creates durable source, entity, concept, query, or synthesis outputs, or return a structured blocker that names the missing source material.",
+        durable: false,
+        target_page: None,
+      },
+    ],
+    requires_review: true,
+    notify_town: result.notify_town,
+  }
+}
+
+///|
+fn enforce_provider_task_result_semantics(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+  result : ProviderTaskResult,
+) -> ProviderTaskResult {
+  if provider_task_result_is_empty_pseudo_success(result) {
+    provider_task_blocker_result(task, context, result)
+  } else {
+    result
+  }
 }
 
 ///|
@@ -948,9 +1015,10 @@ async fn persist_provider_task_result(
   _task : ProviderTaskSpec,
   result : ProviderTaskResult,
 ) -> Result[ProviderTaskPersistOutcome, String] {
+  let step_key = safe_step_file_segment(request.step_id)
   let result_path = @pathx.join(
     request.cwd,
-    ".moonclaw-provider-result-\{request.run_id}-\{request.step_id}.json",
+    ".moonclaw-provider-result-\{request.run_id}-\{step_key}.json",
   )
   @fsx.write_to_file(
     result_path,
@@ -971,9 +1039,7 @@ async fn persist_provider_task_result(
 }
 
 ///|
-fn provider_task_failure_debug_path(
-  request : AnalysisRequest,
-) -> String {
+fn provider_task_failure_debug_path(request : AnalysisRequest) -> String {
   let step_key = safe_step_file_segment(request.step_id)
   @pathx.join(
     request.cwd,
@@ -1059,14 +1125,9 @@ async fn run_provider_task_analysis_runner(
   }
   let result = match parse_provider_task_result(raw_execution.content) {
     Ok(result) => result
-    Err(error) => {
+    Err(error) =>
       match
-        repair_provider_task_result(
-          request,
-          task,
-          raw_execution,
-          inner_runner,
-        ) {
+        repair_provider_task_result(request, task, raw_execution, inner_runner) {
         Ok(result) => result
         Err(repair_error) => {
           let debug_path = persist_provider_task_failure_debug(
@@ -1078,8 +1139,8 @@ async fn run_provider_task_analysis_runner(
           return Err("\{error} (raw response: \{debug_path})")
         }
       }
-    }
   }
+  let result = enforce_provider_task_result_semantics(task, context, result)
   let outcome = match
     persist_provider_task_result(command, request, task, result) {
     Ok(outcome) => outcome

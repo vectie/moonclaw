@@ -230,7 +230,19 @@ async test "GatewayJobApp imports external proposal packet into proposal store" 
         skill_paths: ["skills/wiki-maintainer/SKILL.md"],
         notes: ["Prefer concise citations."],
         tags: ["keeper"],
-        metadata: { "book": "research" },
+        metadata: {
+          "book": "research",
+          "disable_waiting_for_input": true,
+          "best_effort_on_missing_input": true,
+          "profile_metadata": {
+            "disable_waiting_for_input": true,
+            "best_effort_on_missing_input": true,
+          },
+          "step_metadata": {
+            "disable_waiting_for_input": true,
+            "best_effort_on_missing_input": true,
+          },
+        },
       },
       "/tmp/book/keeper/jobs/ingest-1.json",
     )
@@ -247,6 +259,18 @@ async test "GatewayJobApp imports external proposal packet into proposal store" 
       imported.proposal.profile_metadata
       .stringify()
       .contains("\"workspace_root\":\"/tmp/book\""),
+      content="true",
+    )
+    inspect(
+      imported.proposal.profile_metadata
+      .stringify()
+      .contains("\"disable_waiting_for_input\":true"),
+      content="true",
+    )
+    inspect(
+      imported.proposal.profile_metadata
+      .stringify()
+      .contains("\"best_effort_on_missing_input\":true"),
       content="true",
     )
     inspect(
@@ -270,6 +294,18 @@ async test "GatewayJobApp imports external proposal packet into proposal store" 
       .contains(
         "\"external_output_contract\":{\"artifact\":\"wiki/report.md\"}",
       ),
+      content="true",
+    )
+    inspect(
+      imported.proposal.steps[0].metadata
+      .stringify()
+      .contains("\"disable_waiting_for_input\":true"),
+      content="true",
+    )
+    inspect(
+      imported.proposal.steps[0].metadata
+      .stringify()
+      .contains("\"best_effort_on_missing_input\":true"),
       content="true",
     )
     inspect(

@@ -1,7 +1,88 @@
 ///|
+
+///|
+fn analysis_execution_metadata(request : AnalysisRequest) -> Json {
+  {
+    "job_id": request.job_id,
+    "run_id": request.run_id,
+    "step_id": request.step_id,
+    "execution_isolation": request.execution_isolation,
+    "role_runtime_contract": request.role_runtime_contract,
+  }
+}
+
+///|
+fn provider_task_single_response_requested(request : AnalysisRequest) -> Bool {
+  !request.enable_tools &&
+  (
+    metadata_string_value(request.step_metadata, "extension_task_id") is Some(_) ||
+    metadata_string_value(request.step_metadata, "bookapi_task_id") is Some(_)
+  )
+}
+
+///|
+async fn run_single_response_analysis_runner(
+  request : AnalysisRequest,
+) -> Result[AnalysisExecution, String] {
+  let requested_model = resolved_model_name(request)
+  guard @model.load(
+      home?=request.home.map(fn(home) { home[:] }),
+      cwd=request.cwd[:],
+      name?=requested_model,
+    )
+    is Some(model) else {
+    return Err("Model not found: \{request.model_name}")
+  }
+  let logger = @pino.logger("job-analysis", @pino.Transport::console())
+  let mut final_content = ""
+  let response = @openai.chat_with_text_deltas(
+    model~,
+    @openai.chat_completion(
+      messages=[
+        @openai.system_message(content=request.system_prompt),
+        @openai.user_message(content=request.prompt),
+      ],
+      model=model.model_name,
+      response_format=@openai.ResponseFormat::JsonObject,
+      tool_choice=@openai.ChatCompletionToolChoice::Disallow,
+      stream=true,
+      usage=@openai.usage(include_=true),
+      stream_options=@openai.stream_options(include_usage=true),
+    ),
+    logger~,
+    on_text_delta=delta => {
+      let chunk = delta.to_string()
+      if !chunk.is_blank() {
+        final_content = final_content + chunk
+      }
+    },
+  )
+  guard !response.choices.is_empty() else {
+    return Err("Analysis agent failed: empty choices")
+  }
+  let message = response.choices[0].message
+  let content = message.content.unwrap_or("").trim().to_string()
+  let final_content = if !content.is_blank() {
+    content
+  } else {
+    final_content.trim().to_string()
+  }
+  Ok(AnalysisExecution::{
+    model_name: model.name,
+    content: final_content,
+    conversation_id: None,
+    usage: response.usage.map(fn(usage) { @ai.Usage::from_openai(usage) }),
+    metadata: analysis_execution_metadata(request),
+  })
+}
+
+///|
 async fn run_local_analysis_runner(
   request : AnalysisRequest,
 ) -> Result[AnalysisExecution, String] {
+  if provider_task_single_response_requested(request) {
+    return run_single_response_analysis_runner(request)
+  }
   let requested_model = resolved_model_name(request)
   guard @model.load(
       home?=request.home.map(fn(home) { home[:] }),
@@ -67,13 +148,7 @@ async fn run_local_analysis_runner(
     content: final_content,
     conversation_id: Some(agent.id().to_string()),
     usage: final_usage,
-    metadata: {
-      "job_id": request.job_id,
-      "run_id": request.run_id,
-      "step_id": request.step_id,
-      "execution_isolation": request.execution_isolation,
-      "role_runtime_contract": request.role_runtime_contract,
-    },
+    metadata: analysis_execution_metadata(request),
   })
 }
 

@@ -11,6 +11,7 @@ import {
   "vectie/moonclaw/internal/pathx",
   "vectie/moonclaw/internal/fsx",
   "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/resource_providers",
   "vectie/moonclaw/internal/worktree",

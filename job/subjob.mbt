@@ -117,6 +117,73 @@ fn proposal_with_isolation_policy(proposal : JobProposal) -> JobProposal {
 }
 
 ///|
+fn inherited_missing_input_policy(
+  context : WorkflowStepContext,
+  store : SystemStore,
+) -> (Bool?, Bool?) {
+  let from_step_disable = waiting_for_input_disabled_from_metadata(
+    context.step.config,
+  )
+  let from_step_best_effort = best_effort_on_missing_input_from_metadata(
+    context.step.config,
+  )
+  let definition = store.get_definition(context.run.job_id)
+  let from_job_disable = definition.bind(fn(definition) {
+    disable_waiting_for_input_in_job_config(definition.config)
+  })
+  let from_job_best_effort = definition.bind(fn(definition) {
+    best_effort_on_missing_input_in_job_config(definition.config)
+  })
+  (
+    match from_step_disable {
+      Some(value) => Some(value)
+      None => from_job_disable
+    },
+    match from_step_best_effort {
+      Some(value) => Some(value)
+      None => from_job_best_effort
+    },
+  )
+}
+
+///|
+fn proposal_with_missing_input_policy(
+  proposal : JobProposal,
+  disable_waiting : Bool?,
+  best_effort_on_missing_input : Bool?,
+) -> JobProposal {
+  if disable_waiting is None && best_effort_on_missing_input is None {
+    return proposal
+  }
+  let policy_metadata : Map[String, Json] = {}
+  match disable_waiting {
+    Some(value) =>
+      policy_metadata.set("disable_waiting_for_input", value.to_json())
+    None => ()
+  }
+  match best_effort_on_missing_input {
+    Some(value) =>
+      policy_metadata.set("best_effort_on_missing_input", value.to_json())
+    None => ()
+  }
+  let policy_json = Json::object(policy_metadata)
+  let steps = proposal.steps.map(fn(step) {
+    JobProposalStep::{
+      ..step,
+      metadata: merge_json_metadata(step.metadata, policy_json),
+    }
+  })
+  JobProposal::{
+    ..proposal,
+    profile_metadata: merge_json_metadata(
+      proposal.profile_metadata,
+      policy_json,
+    ),
+    steps,
+  }
+}
+
+///|
 async fn planned_subjob_proposal(
   request_text : String,
   cwd : String,
@@ -246,6 +313,12 @@ async fn execute_child_run_locally(
     Ok(result) => result
     Err(error) => return Err("Subjob \{child_run.id} failed: \{error}")
   }
+  if child_result.run.status is WaitingForInput {
+    let summary = child_result.run.summary.unwrap_or(
+      "Child run \{child_run.id} is waiting for input",
+    )
+    return Err("Subjob \{child_run.id} is waiting for input: \{summary}")
+  }
   Ok(ChildRunExecutionResult::{ outputs: child_result.outputs })
 }
 
@@ -284,6 +357,12 @@ pub fn subjob_step_handler(
       home.unwrap_or(cwd),
       cwd,
       config.child_profile,
+    )
+    let (disable_waiting, best_effort_on_missing_input) = inherited_missing_input_policy(
+      context, store,
+    )
+    let proposal = proposal_with_missing_input_policy(
+      proposal, disable_waiting, best_effort_on_missing_input,
     )
     let proposal = proposal_with_isolation_policy(proposal)
     let proposal = proposal_with_execution_override(

@@ -534,6 +534,51 @@ async test "WorkflowEngine continues best-effort when profile metadata enables b
 }
 
 ///|
+async test "WorkflowEngine continues best-effort when compiled analysis config nests step metadata" {
+  @fsx.with_temporary_directory("job-workflow-best-effort-nested-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workflow = WorkflowDefinition::{
+      id: "workflow.best-effort.nested-step-metadata",
+      kind: "test",
+      steps: [
+        WorkflowStepDefinition::{
+          id: "estimate",
+          kind: "test.estimate",
+          config: {
+            "metadata": {
+              "step_metadata": { "best_effort_on_missing_input": true },
+            },
+          },
+          retry_policy: None,
+        },
+      ],
+      output_bindings: ["estimate"],
+    }
+    let engine = workflow_test_engine(root, workflow)
+    engine.register_handler(
+      WorkflowStepHandler::new(kind="test.estimate", run=fn(_context) {
+        Err("Analysis requires input: parcel location; parcel size")
+      }),
+    )
+
+    let result = match engine.execute_run("run-workflow-1", fn() { 3000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
+      result.outputs
+      .get("estimate")
+      .map(fn(output) {
+        output.stringify().contains("\"status\":\"best_effort_missing_input\"")
+      })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "WorkflowEngine persists controller decisions from step output when policy allows it" {
   @fsx.with_temporary_directory("job-workflow-controller-decision-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
