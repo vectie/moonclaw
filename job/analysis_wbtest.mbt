@@ -170,6 +170,106 @@ async test "analysis_step_handler persists report and result artifacts" {
 }
 
 ///|
+async test "analysis_step_handler projects tool journal into logs and result metadata" {
+  @fsx.with_temporary_directory("job-analysis-tool-journal-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(prompt="Use tools and keep a journal.")
+    let engine = analysis_test_engine(root, config)
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          let journal_path = analysis_tool_journal_path(request)
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "Finished analysis with tool trace.",
+            conversation_id: Some("conv-tool-journal"),
+            usage: None,
+            metadata: {
+              "tool_call_journal_path": journal_path,
+              "tool_call_journal": [
+                {
+                  "phase": "start",
+                  "tool": "read_file",
+                  "arguments": "{\"path\":\"README.md\"}",
+                },
+                {
+                  "phase": "finish",
+                  "tool": "read_file",
+                  "ok": true,
+                  "preview": "Opened README.md successfully.",
+                },
+              ],
+            },
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    let step = result.steps[0]
+    inspect(step.logs.join("\n").contains("tool journal: "), content="true")
+    inspect(
+      step.logs.join("\n").contains("tool[start]: read_file"),
+      content="true",
+    )
+    inspect(
+      step.logs.join("\n").contains("tool[finish]: read_file ok"),
+      content="true",
+    )
+    let artifacts = ArtifactStore::new(store=engine.runtime.store())
+    let result_artifact = engine.runtime
+      .store()
+      .list_artifacts(run_id="run-analysis-1")
+      .filter(fn(artifact) { artifact.artifact_type == "analysis.result" })[0]
+    let payload = artifacts.read_text(result_artifact.id).unwrap_or("")
+    inspect(payload.contains("\"tool_call_journal\""), content="true")
+    inspect(payload.contains("\"tool_call_journal_path\""), content="true")
+  })
+}
+
+///|
+async test "analysis_step_handler timeout points to tool journal path" {
+  @fsx.with_temporary_directory("job-analysis-timeout-journal-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Time out after writing a tool journal.",
+      cwd=Some(dir),
+      policy=AnalysisPolicy::new(timeout_ms=Some(10)),
+    )
+    let engine = analysis_test_engine(root, config)
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=async fn(request) {
+          ignore(request)
+          @async.sleep(50)
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "late result",
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    let error = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(_) => fail("expected timeout")
+      Err(error) => error
+    }
+    inspect(error.contains("tool journal:"), content="true")
+    inspect(error.contains(".moonclaw-tool-journal-"), content="true")
+  })
+}
+
+///|
 async test "analysis_step_handler parses structured presentation result payload when contract is declared" {
   @fsx.with_temporary_directory("job-analysis-presentation-result-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

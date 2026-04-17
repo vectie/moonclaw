@@ -68,6 +68,18 @@ fn metadata_string(metadata : Json, key : String) -> String? {
 }
 
 ///|
+fn metadata_int(metadata : Json, key : String) -> Int? {
+  match metadata {
+    Object(obj) =>
+      match obj.get(key) {
+        Some(Number(value, ..)) => Some(value.to_int())
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
 fn metadata_string_or(
   metadata : Json,
   key : String,
@@ -219,7 +231,11 @@ fn workflow_step_definition_for_proposal_step(
         ),
         enable_tools=metadata_bool(step_metadata, "enable_tools", true),
         web_search=metadata_bool(step_metadata, "web_search", false),
-        policy=AnalysisPolicy::new(skip_if_artifact_exists=false),
+        policy=AnalysisPolicy::new(
+          timeout_ms=metadata_int(step_metadata, "timeout_ms"),
+          max_total_tokens=metadata_int(step_metadata, "max_total_tokens"),
+          skip_if_artifact_exists=false,
+        ),
         artifacts=AnalysisArtifactConfig::new(
           report_artifact_type=metadata_string_or(
             step_metadata,

@@ -448,6 +448,11 @@ fn provider_task_step_metadata(
     "extension_priority": task.priority,
     "extension_requires_review": task.requires_review,
     "extension_target_pages": task.target_pages,
+    // Provider-backed extension runs need a bounded execution window so they
+    // fail cleanly instead of remaining Running indefinitely after partial tool
+    // progress.
+    "timeout_ms": 600000,
+    "max_total_tokens": 24000,
   }
 }
 
@@ -549,6 +554,13 @@ fn provider_task_preferred_skills(
     }
   }
   skills
+}
+
+///|
+fn provider_task_tool_contract(
+  request : AnalysisRequest,
+) -> AnalysisToolContract {
+  AnalysisToolContract::{ ..request.tool_contract, todo: false }
 }
 
 ///|
@@ -782,6 +794,174 @@ fn plan_summary_from_json(json : Json) -> String? {
     }
   }
   None
+}
+
+///|
+fn provider_task_plan_substeps_from_json(
+  json : Json,
+) -> Array[AdaptiveSubstepPayload] {
+  let keys = ["plan", "steps", "suggested_substeps", "substeps"]
+  for key in keys {
+    guard json is Object(obj) else { break }
+    guard obj.get(key) is Some(Array(items)) else { continue }
+    let substeps : Array[AdaptiveSubstepPayload] = []
+    for item in items {
+      guard item is Object(step) else { continue }
+      let title = provider_task_json_string_field(item, "title").unwrap_or(
+        provider_task_json_string_field(item, "step").unwrap_or(
+          provider_task_json_string_field(item, "name").unwrap_or(""),
+        ),
+      )
+      if title.is_blank() {
+        continue
+      }
+      let prompt = provider_task_json_string_field(item, "prompt").unwrap_or(
+        provider_task_json_string_field(item, "instruction").unwrap_or(
+          provider_task_json_string_field(item, "detail").unwrap_or(title),
+        ),
+      )
+      let kind = match step.get("kind") {
+        Some(String(kind)) if !kind.trim().to_string().is_blank() =>
+          Some(kind.trim().to_string())
+        _ => None
+      }
+      substeps.push(AdaptiveSubstepPayload::{ title, prompt, kind })
+    }
+    if !substeps.is_empty() {
+      return substeps
+    }
+  }
+  []
+}
+
+///|
+fn provider_task_breadth_summary(
+  task : ProviderTaskSpec,
+  json : Json,
+) -> String {
+  provider_task_json_string_field(json, "summary").unwrap_or(
+    provider_task_json_string_field(json, "message").unwrap_or(
+      "Split provider task \{task.title} into narrower executable steps before running it.",
+    ),
+  )
+}
+
+///|
+fn provider_task_breadth_envelope_from_content(
+  task : ProviderTaskSpec,
+  content : String,
+) -> AdaptiveAnalysisEnvelope? {
+  let trimmed = match extract_first_json_object(content) {
+    Some(payload) => payload.trim().to_string()
+    None => return None
+  }
+  let json = @json.parse(trimmed) catch { _ => return None }
+  match parse_adaptive_analysis_envelope(trimmed) {
+    Some(envelope) if envelope.verdict.trim().to_lower() == "needs_subplan" =>
+      Some(envelope)
+    _ => {
+      let substeps = provider_task_plan_substeps_from_json(json)
+      let summary = provider_task_breadth_summary(task, json)
+      if substeps.is_empty() {
+        let lower = trimmed.to_lower()
+        if lower.contains("too broad") ||
+          lower.contains("decompos") ||
+          lower.contains("split") ||
+          lower.contains("\"plan\"") ||
+          lower.contains("\"steps\"") {
+          Some(AdaptiveAnalysisEnvelope::{
+            verdict: "needs_subplan",
+            summary: Some(summary),
+            missing_inputs: None,
+            suggested_substeps: None,
+            substeps: None,
+          })
+        } else {
+          None
+        }
+      } else {
+        Some(AdaptiveAnalysisEnvelope::{
+          verdict: "needs_subplan",
+          summary: Some(summary),
+          missing_inputs: None,
+          suggested_substeps: Some(substeps),
+          substeps: None,
+        })
+      }
+    }
+  }
+}
+
+///|
+fn provider_task_guardrail_split_execution(
+  execution : AnalysisExecution,
+  request : AnalysisRequest,
+  task : ProviderTaskSpec,
+  envelope : AdaptiveAnalysisEnvelope,
+  target_id : String,
+) -> AnalysisExecution {
+  let envelope_json : Map[String, Json] = {
+    "verdict": "needs_subplan".to_json(),
+    "summary": envelope.summary
+    .unwrap_or("Provider task requires splitting before execution.")
+    .to_json(),
+  }
+  match adaptive_substeps(envelope) {
+    [] => ()
+    substeps =>
+      envelope_json["suggested_substeps"] = Json::array(
+        substeps.map(fn(step) {
+          { "title": step.title, "prompt": step.prompt, "kind": step.kind }
+        }),
+      )
+  }
+  AnalysisExecution::{
+    ..execution,
+    content: Json::object(envelope_json).stringify(),
+    metadata: {
+      "job_id": execution_metadata_value(execution.metadata, "job_id"),
+      "run_id": execution_metadata_value(execution.metadata, "run_id"),
+      "step_id": execution_metadata_value(execution.metadata, "step_id"),
+      "execution_mode": "provider",
+      "execution_target": target_id,
+      "extension_task_id": task.id,
+      "extension_task_kind": task.kind,
+      "extension_guardrail_verdict": "needs_subplan",
+      "extension_guardrail_summary": envelope.summary.unwrap_or(
+        "Provider task requires splitting before execution.",
+      ),
+      "bookapi_task_id": task.id,
+      "bookapi_guardrail_verdict": "needs_subplan",
+      "bookapi_guardrail_summary": envelope.summary.unwrap_or(
+        "Provider task requires splitting before execution.",
+      ),
+      "execution_isolation": execution_metadata_value(
+        execution.metadata,
+        "execution_isolation",
+      ),
+      "role_runtime_contract": execution_metadata_value(
+        execution.metadata,
+        "role_runtime_contract",
+      ),
+      "disable_waiting_for_input": waiting_for_input_disabled_from_metadata(
+        request.step_metadata,
+      ),
+      "best_effort_on_missing_input": best_effort_on_missing_input_from_metadata(
+        request.step_metadata,
+      ),
+    },
+  }
+}
+
+///|
+fn provider_task_guardrail_reject_error(
+  task : ProviderTaskSpec,
+  envelope : AdaptiveAnalysisEnvelope,
+) -> String {
+  let detail = envelope.summary.unwrap_or(
+    "Provider task requires splitting before execution.",
+  )
+  "Provider task \{task.id} is too broad to execute directly and no executable substeps were provided: \{detail}"
 }
 
 ///|
@@ -1154,16 +1334,31 @@ async fn run_provider_task_analysis_runner(
     .join("\n\n"),
     system_prompt: provider_task_system_prompt(request, task, context),
     source_prompt: goal,
-    enable_tools: false,
+    enable_tools: request.enable_tools,
+    tool_contract: provider_task_tool_contract(request),
     execution_mode: None,
     execution_target: None,
-    web_search: false,
+    web_search: request.web_search,
     preferred_skills,
   }
   let raw_execution = inner_runner(delegated_request)
   let raw_execution = match raw_execution {
     Ok(execution) => execution
     Err(error) => return Err(error)
+  }
+  match
+    provider_task_breadth_envelope_from_content(task, raw_execution.content) {
+    Some(envelope) =>
+      if adaptive_substeps(envelope).is_empty() {
+        return Err(provider_task_guardrail_reject_error(task, envelope))
+      } else {
+        return Ok(
+          provider_task_guardrail_split_execution(
+            raw_execution, request, task, envelope, resolved_target_id,
+          ),
+        )
+      }
+    None => ()
   }
   let result = match parse_provider_task_result(raw_execution.content) {
     Ok(result) => result

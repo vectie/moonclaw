@@ -133,6 +133,42 @@ test "compile_job_proposal applies analysis metadata from proposal steps" {
 }
 
 ///|
+test "compile_job_proposal maps timeout and token budget metadata into analysis policy" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal("proposal-compiler-policy-1", "bounded analysis", 100),
+    steps: [
+      JobProposalStep::{
+        id: "bounded",
+        title: "Bounded",
+        prompt: "Do bounded work.",
+        kind: "job.analysis",
+        metadata: { "timeout_ms": 12345, "max_total_tokens": 678 },
+        child_profile: None,
+        execution_mode: None,
+        execution_target: None,
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"timeout_ms\":12345"),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"max_total_tokens\":678"),
+    content="true",
+  )
+}
+
+///|
 test "compile_job_proposal preserves analysis execution routing hints" {
   let proposal = JobProposal::{
     ..draft_job_proposal("proposal-compiler-5", "run analysis remotely", 100),

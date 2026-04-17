@@ -281,6 +281,16 @@ async test "provider task batch maps provider-backed extension tasks into a chil
       content="true",
     )
     inspect(
+      proposal.steps[0].metadata.stringify().contains("\"timeout_ms\":600000"),
+      content="true",
+    )
+    inspect(
+      proposal.steps[0].metadata
+      .stringify()
+      .contains("\"max_total_tokens\":24000"),
+      content="true",
+    )
+    inspect(
       proposal.profile_metadata.stringify().contains("\"task_count\":2"),
       content="true",
     )
@@ -327,11 +337,15 @@ async test "provider task analysis runner hydrates context and persists structur
     let captured_prompt : Ref[String] = { val: "" }
     let captured_system_prompt : Ref[String] = { val: "" }
     let captured_enable_tools : Ref[Bool] = { val: true }
+    let captured_web_search : Ref[Bool] = { val: false }
+    let captured_todo_enabled : Ref[Bool] = { val: true }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         captured_prompt.val = inner_request.prompt
         captured_system_prompt.val = inner_request.system_prompt
         captured_enable_tools.val = inner_request.enable_tools
+        captured_web_search.val = inner_request.web_search
+        captured_todo_enabled.val = inner_request.tool_contract.todo
         Ok(AnalysisExecution::{
           model_name: inner_request.model_name,
           content: (
@@ -381,7 +395,9 @@ async test "provider task analysis runner hydrates context and persists structur
       captured_system_prompt.val.contains("Base system prompt."),
       content="true",
     )
-    inspect(captured_enable_tools.val, content="false")
+    inspect(captured_enable_tools.val, content="true")
+    inspect(captured_web_search.val, content="true")
+    inspect(captured_todo_enabled.val, content="false")
     inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
@@ -436,7 +452,7 @@ test "parse_provider_task_result accepts fenced or prefixed JSON object output" 
 }
 
 ///|
-async test "provider task analysis runner repairs planner-shaped output once" {
+async test "provider task analysis runner converts planner-shaped output into adaptive split" {
   @fsx.with_temporary_directory("job-book-harness-repair-XXXXXX", async fn(
     dir,
   ) {
@@ -476,44 +492,87 @@ async test "provider task analysis runner repairs planner-shaped output once" {
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         call_count.val = call_count.val + 1
-        if call_count.val == 1 {
-          Ok(AnalysisExecution::{
-            model_name: inner_request.model_name,
-            content: "{\"plan\":[{\"step\":1,\"title\":\"Inspect sources\"}]}",
-            conversation_id: Some("conv-provider-plan"),
-            usage: None,
-            metadata: {},
-          })
-        } else {
-          Ok(AnalysisExecution::{
-            model_name: inner_request.model_name,
-            content: (
-              #|{
-              #|  "task_id": "task-1",
-              #|  "summary": "Updated the wiki from the source evidence.",
-              #|  "artifacts": ["wiki/entity.md"],
-              #|  "memory_candidates": [],
-              #|  "requires_review": false,
-              #|  "notify_town": false
-              #|}
-            ),
-            conversation_id: Some("conv-provider-repair"),
-            usage: None,
-            metadata: {},
-          })
-        }
+        Ok(AnalysisExecution::{
+          model_name: inner_request.model_name,
+          content: "{\"plan\":[{\"step\":1,\"title\":\"Inspect sources\",\"prompt\":\"Inspect the relevant source materials.\"},{\"step\":2,\"title\":\"Materialize durable updates\",\"prompt\":\"Write the durable wiki pages from the inspected evidence.\"}]}",
+          conversation_id: Some("conv-provider-plan"),
+          usage: None,
+          metadata: {},
+        })
       }) {
       Ok(execution) => execution
       Err(error) => fail(error)
     }
 
-    inspect(call_count.val, content="2")
+    inspect(call_count.val, content="1")
+    let envelope = match parse_adaptive_analysis_envelope(execution.content) {
+      Some(envelope) => envelope
+      None => fail("expected adaptive split envelope: \{execution.content}")
+    }
+    inspect(envelope.verdict, content="needs_subplan")
+    inspect(adaptive_substeps(envelope).length(), content="2")
     inspect(
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
       content="true",
     )
+  })
+}
+
+///|
+async test "provider task analysis runner rejects over-broad task without executable substeps" {
+  @fsx.with_temporary_directory("job-book-harness-guardrail-reject-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: true,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: ["wiki-maintainer"],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: Some(
+        RoleRuntimeContract::new(role_id="wiki_worker"),
+      ),
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let error = match
+      run_provider_task_analysis_runner(request, fn(inner_request) {
+        Ok(AnalysisExecution::{
+          model_name: inner_request.model_name,
+          content: "{\"verdict\":\"needs_subplan\",\"summary\":\"The task is too broad and should be decomposed before useful execution.\"}",
+          conversation_id: Some("conv-provider-broad"),
+          usage: None,
+          metadata: {},
+        })
+      }) {
+      Ok(_) => fail("expected breadth guardrail rejection")
+      Err(error) => error
+    }
+
+    inspect(error.contains("too broad to execute directly"), content="true")
+    inspect(error.contains("no executable substeps"), content="true")
   })
 }
 
@@ -603,10 +662,10 @@ async test "provider task repair loads repo provider-task-repair skill" {
         Err(error) => fail(error)
       },
     )
-    inspect(call_count.val, content="2")
+    inspect(call_count.val, content="1")
     inspect(
       repair_prompt.val.contains("PROVIDER_REPAIR_SKILL_MARKER"),
-      content="true",
+      content="false",
     )
   })
 }

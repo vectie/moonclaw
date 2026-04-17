@@ -28,7 +28,9 @@ pub async fn execute_analysis_request(
     Some(timeout_ms) =>
       @async.with_timeout(timeout_ms, () => (executor.run)(request)) catch {
         @async.TimeoutError =>
-          return Err(timeout_error_message(step_id, timeout_ms))
+          return Err(
+            "\{timeout_error_message(step_id, timeout_ms)} (tool journal: \{analysis_tool_journal_path(request)})",
+          )
         error => return Err("Analysis execution failed: \{error}")
       }
     None =>
@@ -130,6 +132,7 @@ pub async fn persist_analysis_execution(
       logs=[
         "report artifact written: \{report_artifact.id}",
         "result artifact written: \{result_artifact.id}",
+        ..analysis_tool_journal_logs(execution.metadata),
       ],
     ),
   )

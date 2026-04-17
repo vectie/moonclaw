@@ -111,12 +111,23 @@ async fn run_local_analysis_runner(
   let delta_content = StringBuilder::new()
   let mut final_usage : @ai.Usage? = None
   let mut failed : String? = None
+  let tool_journal : Array[Json] = []
   agent.event_target.add_listener(event => {
     match event.desc {
       @event.AssistantMessageDelta(content) =>
         if !content.is_blank() {
           delta_content.write_string(content)
         }
+      @event.PreToolCall(tool_call) =>
+        push_analysis_tool_journal_entry(
+          tool_journal,
+          analysis_tool_call_start_entry(tool_call),
+        )
+      @event.PostToolCall(tool_call, result~, rendered~) =>
+        push_analysis_tool_journal_entry(
+          tool_journal,
+          analysis_tool_call_finish_entry(tool_call, result, rendered),
+        )
       @event.AssistantMessage(usage~, tool_calls~, content) => {
         if !content.is_blank() {
           final_content = content
@@ -148,7 +159,9 @@ async fn run_local_analysis_runner(
     content: final_content,
     conversation_id: Some(agent.id().to_string()),
     usage: final_usage,
-    metadata: analysis_execution_metadata(request),
+    metadata: analysis_execution_metadata_with_tool_journal(
+      request, tool_journal,
+    ),
   })
 }
 
