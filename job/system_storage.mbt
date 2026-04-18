@@ -109,6 +109,11 @@ fn SystemStore::runs_index_file(self : SystemStore) -> String {
 }
 
 ///|
+fn SystemStore::store_lock_file(self : SystemStore) -> String {
+  self.root |> @pathx.join(".store.lock")
+}
+
+///|
 fn SystemStore::artifacts_index_file(self : SystemStore) -> String {
   self.root |> @pathx.join("index") |> @pathx.join("artifacts.json")
 }
@@ -281,141 +286,516 @@ async fn[T : @json.FromJson] load_json_file(
 }
 
 ///|
-pub async fn SystemStore::load(self : SystemStore) -> Unit {
-  clear_map(self.definitions)
-  clear_map(self.workflows)
-  clear_map(self.runs)
-  clear_map(self.steps)
-  clear_map(self.artifacts)
-  clear_map(self.memories)
-  clear_map(self.chat_bindings)
-  clear_map(self.notification_preferences)
-  clear_map(self.proposals)
-  clear_map(self.controller_states)
-  clear_map(self.controller_iterations)
-  clear_map(self.controller_lineage_edges)
-  clear_map(self.controller_decisions)
+async fn[T] SystemStore::with_store_lock(
+  self : SystemStore,
+  f : async () -> T,
+) -> T {
+  self.ensure_directories()
+  let lock_file = @fs.open(self.store_lock_file(), mode=WriteOnly, create=0o644)
+  defer lock_file.close()
+  @fsx.lock_file(lock_file)
+  f()
+}
 
-  if @fsx.exists(self.definitions_file()) {
-    let file : DefinitionsIndexFile = load_json_file(
-      self.definitions_file(),
-      "Failed to load job definitions",
-    )
-    for definition in file.definitions {
-      self.definitions.set(definition.id, definition)
+///|
+async fn[T : @json.FromJson] try_load_json_file(path : String) -> T? {
+  Some(@json.from_json(@json.parse(@fsx.read_file(path)))) catch {
+    _ => None
+  }
+}
+
+///|
+async fn try_load_runs_index_file(path : String) -> RunsIndexFile? {
+  try_load_json_file(path)
+}
+
+///|
+async fn SystemStore::runs_index_from_disk(self : SystemStore) -> RunsIndexFile {
+  let runs : Array[JobRun] = []
+  let steps : Array[JobStepRun] = []
+  let runs_root = self.root |> @pathx.join("runs")
+  if !@fsx.exists(runs_root) {
+    return RunsIndexFile::{ runs, steps }
+  }
+  for entry in @fsx.list_directory(runs_root) {
+    match entry.kind {
+      Directory => ()
+      _ => continue
     }
-    for workflow in file.workflows {
-      self.workflows.set(workflow.id, workflow)
+    let meta_path = entry.path |> @pathx.join("meta.json")
+    if @fsx.exists(meta_path) {
+      match try_load_json_file(meta_path) {
+        Some(run) => runs.push(run)
+        None => ()
+      }
+    }
+    let steps_dir = entry.path |> @pathx.join("steps")
+    if !@fsx.exists(steps_dir) {
+      continue
+    }
+    for step_entry in @fsx.list_directory(steps_dir) {
+      match step_entry.kind {
+        Regular => ()
+        _ => continue
+      }
+      if !step_entry.name.has_suffix(".json") {
+        continue
+      }
+      match try_load_json_file(step_entry.path) {
+        Some(step) => steps.push(step)
+        None => ()
+      }
     }
   }
+  RunsIndexFile::{ runs, steps }
+}
 
-  if @fsx.exists(self.runs_index_file()) {
-    let file : RunsIndexFile = load_json_file(
-      self.runs_index_file(),
-      "Failed to load job runs index",
-    )
+///|
+async fn SystemStore::load_runs_index_best_effort(
+  self : SystemStore,
+) -> RunsIndexFile {
+  let disk = self.runs_index_from_disk()
+  if !@fsx.exists(self.runs_index_file()) {
+    return disk
+  }
+  let existing = try_load_runs_index_file(self.runs_index_file())
+  match existing {
+    Some(file) => {
+      let merged_runs : Map[String, JobRun] = {}
+      let merged_steps : Map[String, JobStepRun] = {}
+      for run in file.runs {
+        merged_runs.set(run.id, run)
+      }
+      for step in file.steps {
+        merged_steps.set("\{step.run_id}:\{step.step_id}", step)
+      }
+      // Per-run metadata is authoritative; the shared index is only a cache.
+      for run in disk.runs {
+        merged_runs.set(run.id, run)
+      }
+      for step in disk.steps {
+        merged_steps.set("\{step.run_id}:\{step.step_id}", step)
+      }
+      RunsIndexFile::{
+        runs: merged_runs.values().to_array(),
+        steps: merged_steps.values().to_array(),
+      }
+    }
+    None => disk
+  }
+}
+
+///|
+async fn SystemStore::write_runs_index_cache_unlocked(
+  self : SystemStore,
+  file : RunsIndexFile,
+) -> Unit {
+  @fsx.write_to_file(self.runs_index_file(), file.to_json().stringify())
+}
+
+///|
+fn run_status_is_terminal(status : RunStatus) -> Bool {
+  match status {
+    Succeeded | Failed | Cancelled => true
+    _ => false
+  }
+}
+
+///|
+fn SystemStore::delegate_child_runs_for_step(
+  self : SystemStore,
+  run_id : String,
+  step_id : String,
+) -> Array[JobRun] {
+  let children = self.runs
+    .values()
+    .filter(fn(candidate) {
+      candidate.parent_run_id == Some(run_id) &&
+      candidate.parent_step_id == Some(step_id)
+    })
+    .to_array()
+  children.sort_by(fn(left, right) {
+    let left_time = left.completed_at.unwrap_or(left.started_at.unwrap_or(0))
+    let right_time = right.completed_at.unwrap_or(right.started_at.unwrap_or(0))
+    right_time.compare(left_time)
+  })
+  children
+}
+
+///|
+fn reconciled_delegate_step_run(
+  run : JobRun,
+  step : WorkflowStepDefinition,
+  existing : JobStepRun?,
+  child : JobRun,
+) -> JobStepRun {
+  let completed_at = child.completed_at.unwrap_or(child.started_at.unwrap_or(0))
+  let summary = match child.status {
+    Succeeded =>
+      Some("Recovered delegate completion from child run \{child.id}")
+    Failed => Some("Recovered delegate failure from child run \{child.id}")
+    Cancelled =>
+      Some("Recovered delegate cancellation from child run \{child.id}")
+    _ => None
+  }
+  let logs = match existing {
+    Some(existing) => existing.logs
+    None => []
+  }
+  logs.push(
+    "reconciled from child run \{child.id} status \{child.status.to_json().stringify()}",
+  )
+  let output : Json? = match existing {
+    Some(existing) =>
+      match existing.output {
+        Some(output) => Some(output)
+        None =>
+          Some({
+            "status": "completed",
+            "child_job_id": child.job_id,
+            "child_run_id": child.id,
+          })
+      }
+    None =>
+      Some({
+        "status": "completed",
+        "child_job_id": child.job_id,
+        "child_run_id": child.id,
+      })
+  }
+  let error = match child.status {
+    Failed => Some(child.error.unwrap_or("child run failed"))
+    Cancelled => Some(child.error.unwrap_or("child run cancelled"))
+    _ => None
+  }
+  match existing {
+    Some(existing) => {
+      let resolved_summary = match summary {
+        Some(summary) => Some(summary)
+        None => existing.summary
+      }
+      JobStepRun::{
+        ..existing,
+        status: child.status,
+        completed_at: Some(completed_at),
+        logs,
+        summary: resolved_summary,
+        output,
+        error,
+      }
+    }
+    None =>
+      JobStepRun::{
+        id: "\{run.id}:\{step.id}",
+        run_id: run.id,
+        step_id: step.id,
+        status: child.status,
+        started_at: child.started_at,
+        completed_at: Some(completed_at),
+        metrics: {},
+        logs,
+        retry_count: 0,
+        summary,
+        output,
+        error,
+      }
+  }
+}
+
+///|
+async fn SystemStore::save_reconciled_step_run_unlocked(
+  self : SystemStore,
+  step : JobStepRun,
+) -> Unit {
+  self.steps.set("\{step.run_id}:\{step.step_id}", step)
+  @fsx.make_directory(self.step_dir(step.run_id), recursive=true) catch {
+    _ => ()
+  }
+  @fsx.write_to_file(
+    self.step_meta_file(step.run_id, step.step_id),
+    step.to_json().stringify(),
+  )
+}
+
+///|
+async fn SystemStore::save_reconciled_run_unlocked(
+  self : SystemStore,
+  run : JobRun,
+) -> Unit {
+  self.runs.set(run.id, run)
+  @fsx.make_directory(self.run_dir(run.id), recursive=true) catch {
+    _ => ()
+  }
+  @fsx.write_to_file(self.run_meta_file(run.id), run.to_json().stringify())
+}
+
+///|
+async fn SystemStore::reconcile_delegate_parent_runs_unlocked(
+  self : SystemStore,
+) -> Unit {
+  let runs = self.runs.values().to_array()
+  for run in runs {
+    match run.status {
+      Running => ()
+      _ => continue
+    }
+    let definition = match self.definitions.get(run.job_id) {
+      Some(definition) => definition
+      None => continue
+    }
+    let workflow_id = match definition.workflow_id {
+      Some(workflow_id) => workflow_id
+      None => continue
+    }
+    let workflow = match self.workflows.get(workflow_id) {
+      Some(workflow) => workflow
+      None => continue
+    }
+    let mut all_terminal = true
+    let mut saw_failed = false
+    let mut saw_cancelled = false
+    for step in workflow.steps {
+      let key = "\{run.id}:\{step.id}"
+      let existing = self.steps.get(key)
+      let step_run = if step.kind == "job.delegate" {
+        let children = self.delegate_child_runs_for_step(run.id, step.id)
+        let mut latest_terminal : JobRun? = None
+        for child in children {
+          if run_status_is_terminal(child.status) {
+            latest_terminal = Some(child)
+            break
+          }
+        }
+        match (existing, latest_terminal) {
+          (Some(step_run), Some(child)) =>
+            if run_status_is_terminal(step_run.status) {
+              Some(step_run)
+            } else {
+              let reconciled = reconciled_delegate_step_run(
+                run,
+                step,
+                Some(step_run),
+                child,
+              )
+              self.save_reconciled_step_run_unlocked(reconciled)
+              Some(reconciled)
+            }
+          (None, Some(child)) => {
+            let reconciled = reconciled_delegate_step_run(
+              run,
+              step,
+              None,
+              child,
+            )
+            self.save_reconciled_step_run_unlocked(reconciled)
+            Some(reconciled)
+          }
+          (Some(step_run), _) => Some(step_run)
+          (None, _) => None
+        }
+      } else {
+        existing
+      }
+      match step_run {
+        Some(step_run) =>
+          if !run_status_is_terminal(step_run.status) {
+            all_terminal = false
+          } else {
+            match step_run.status {
+              Failed => saw_failed = true
+              Cancelled => saw_cancelled = true
+              _ => ()
+            }
+          }
+        None => all_terminal = false
+      }
+    }
+    if !all_terminal {
+      continue
+    }
+    let completed_at = workflow.steps.fold(init=0, fn(max_time, step) {
+      let step_time = self.steps
+        .get("\{run.id}:\{step.id}")
+        .bind(fn(step_run) { step_run.completed_at })
+        .unwrap_or(0)
+      if step_time > max_time {
+        step_time
+      } else {
+        max_time
+      }
+    })
+    let (status, summary, error) = if saw_failed {
+      (
+        Failed,
+        Some("Recovered workflow failure from terminal delegate child runs"),
+        Some("delegate child run failed"),
+      )
+    } else if saw_cancelled {
+      (
+        Cancelled,
+        Some(
+          "Recovered workflow cancellation from terminal delegate child runs",
+        ),
+        Some("delegate child run cancelled"),
+      )
+    } else {
+      (
+        Succeeded,
+        Some("Recovered workflow completion from terminal delegate child runs"),
+        None,
+      )
+    }
+    let resolved_summary = match summary {
+      Some(summary) => Some(summary)
+      None => run.summary
+    }
+    self.save_reconciled_run_unlocked(JobRun::{
+      ..run,
+      status,
+      completed_at: Some(completed_at),
+      summary: resolved_summary,
+      error,
+    })
+  }
+}
+
+///|
+pub async fn SystemStore::load(self : SystemStore) -> Unit {
+  self.with_store_lock(async fn() {
+    clear_map(self.definitions)
+    clear_map(self.workflows)
+    clear_map(self.runs)
+    clear_map(self.steps)
+    clear_map(self.artifacts)
+    clear_map(self.memories)
+    clear_map(self.chat_bindings)
+    clear_map(self.notification_preferences)
+    clear_map(self.proposals)
+    clear_map(self.controller_states)
+    clear_map(self.controller_iterations)
+    clear_map(self.controller_lineage_edges)
+    clear_map(self.controller_decisions)
+
+    if @fsx.exists(self.definitions_file()) {
+      let file : DefinitionsIndexFile = load_json_file(
+        self.definitions_file(),
+        "Failed to load job definitions",
+      )
+      for definition in file.definitions {
+        self.definitions.set(definition.id, definition)
+      }
+      for workflow in file.workflows {
+        self.workflows.set(workflow.id, workflow)
+      }
+    }
+
+    let file = self.load_runs_index_best_effort()
+    self.write_runs_index_cache_unlocked(file)
     for run in file.runs {
       self.runs.set(run.id, run)
     }
     for step in file.steps {
       self.steps.set("\{step.run_id}:\{step.step_id}", step)
     }
-  }
 
-  if @fsx.exists(self.artifacts_index_file()) {
-    let file : ArtifactsIndexFile = load_json_file(
-      self.artifacts_index_file(),
-      "Failed to load job artifacts index",
-    )
-    for artifact in file.artifacts {
-      self.artifacts.set(artifact.id, artifact)
+    if @fsx.exists(self.artifacts_index_file()) {
+      let file : ArtifactsIndexFile = load_json_file(
+        self.artifacts_index_file(),
+        "Failed to load job artifacts index",
+      )
+      for artifact in file.artifacts {
+        self.artifacts.set(artifact.id, artifact)
+      }
     }
-  }
 
-  if @fsx.exists(self.memories_file()) {
-    let file : MemoriesFile = load_json_file(
-      self.memories_file(),
-      "Failed to load job memories",
-    )
-    for memory in file.memories {
-      self.memories.set(memory.id, memory)
+    if @fsx.exists(self.memories_file()) {
+      let file : MemoriesFile = load_json_file(
+        self.memories_file(),
+        "Failed to load job memories",
+      )
+      for memory in file.memories {
+        self.memories.set(memory.id, memory)
+      }
     }
-  }
 
-  if @fsx.exists(self.chat_bindings_file()) {
-    let file : ChatBindingsFile = load_json_file(
-      self.chat_bindings_file(),
-      "Failed to load job chat bindings",
-    )
-    for binding in file.bindings {
-      self.chat_bindings.set(binding.id, binding)
+    if @fsx.exists(self.chat_bindings_file()) {
+      let file : ChatBindingsFile = load_json_file(
+        self.chat_bindings_file(),
+        "Failed to load job chat bindings",
+      )
+      for binding in file.bindings {
+        self.chat_bindings.set(binding.id, binding)
+      }
     }
-  }
 
-  if @fsx.exists(self.notification_preferences_file()) {
-    let file : NotificationPreferencesFile = load_json_file(
-      self.notification_preferences_file(),
-      "Failed to load notification preferences",
-    )
-    for preference in file.preferences {
-      self.notification_preferences.set(preference.id, preference)
+    if @fsx.exists(self.notification_preferences_file()) {
+      let file : NotificationPreferencesFile = load_json_file(
+        self.notification_preferences_file(),
+        "Failed to load notification preferences",
+      )
+      for preference in file.preferences {
+        self.notification_preferences.set(preference.id, preference)
+      }
     }
-  }
 
-  if @fsx.exists(self.job_proposals_file()) {
-    let file : JobProposalsFile = load_json_file(
-      self.job_proposals_file(),
-      "Failed to load job proposals",
-    )
-    for proposal in file.proposals {
-      self.proposals.set(proposal.id, proposal)
+    if @fsx.exists(self.job_proposals_file()) {
+      let file : JobProposalsFile = load_json_file(
+        self.job_proposals_file(),
+        "Failed to load job proposals",
+      )
+      for proposal in file.proposals {
+        self.proposals.set(proposal.id, proposal)
+      }
     }
-  }
 
-  if @fsx.exists(self.controller_states_file()) {
-    let file : ControllerStateFile = load_json_file(
-      self.controller_states_file(),
-      "Failed to load controller states",
-    )
-    for state in file.states {
-      self.controller_states.set(state.controller_run_id, state)
+    if @fsx.exists(self.controller_states_file()) {
+      let file : ControllerStateFile = load_json_file(
+        self.controller_states_file(),
+        "Failed to load controller states",
+      )
+      for state in file.states {
+        self.controller_states.set(state.controller_run_id, state)
+      }
     }
-  }
 
-  if @fsx.exists(self.controller_iterations_file()) {
-    let file : ControllerIterationsFile = load_json_file(
-      self.controller_iterations_file(),
-      "Failed to load controller iterations",
-    )
-    for iteration in file.iterations {
-      self.controller_iterations.set(iteration.id, iteration)
+    if @fsx.exists(self.controller_iterations_file()) {
+      let file : ControllerIterationsFile = load_json_file(
+        self.controller_iterations_file(),
+        "Failed to load controller iterations",
+      )
+      for iteration in file.iterations {
+        self.controller_iterations.set(iteration.id, iteration)
+      }
     }
-  }
 
-  if @fsx.exists(self.controller_lineage_file()) {
-    let file : ControllerLineageFile = load_json_file(
-      self.controller_lineage_file(),
-      "Failed to load controller lineage",
-    )
-    for edge in file.edges {
-      self.controller_lineage_edges.set(edge.id, edge)
+    if @fsx.exists(self.controller_lineage_file()) {
+      let file : ControllerLineageFile = load_json_file(
+        self.controller_lineage_file(),
+        "Failed to load controller lineage",
+      )
+      for edge in file.edges {
+        self.controller_lineage_edges.set(edge.id, edge)
+      }
     }
-  }
 
-  if @fsx.exists(self.controller_decisions_file()) {
-    let file : ControllerDecisionsFile = load_json_file(
-      self.controller_decisions_file(),
-      "Failed to load controller decisions",
-    )
-    for decision in file.decisions {
-      self.controller_decisions.set(decision.id, decision)
+    if @fsx.exists(self.controller_decisions_file()) {
+      let file : ControllerDecisionsFile = load_json_file(
+        self.controller_decisions_file(),
+        "Failed to load controller decisions",
+      )
+      for decision in file.decisions {
+        self.controller_decisions.set(decision.id, decision)
+      }
     }
-  }
+    self.reconcile_delegate_parent_runs_unlocked()
+    self.save_runs_index_unlocked()
+  })
 }
 
 ///|
-async fn SystemStore::save_definitions_index(self : SystemStore) -> Unit {
-  self.ensure_directories()
+async fn SystemStore::save_definitions_index_unlocked(
+  self : SystemStore,
+) -> Unit {
   let file = DefinitionsIndexFile::{
     definitions: self.definitions.values().to_array(),
     workflows: self.workflows.values().to_array(),
@@ -424,18 +804,36 @@ async fn SystemStore::save_definitions_index(self : SystemStore) -> Unit {
 }
 
 ///|
-async fn SystemStore::save_runs_index(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = RunsIndexFile::{
-    runs: self.runs.values().to_array(),
-    steps: self.steps.values().to_array(),
-  }
-  @fsx.write_to_file(self.runs_index_file(), file.to_json().stringify())
+async fn SystemStore::save_definitions_index(self : SystemStore) -> Unit {
+  self.with_store_lock(async fn() { self.save_definitions_index_unlocked() })
 }
 
 ///|
-async fn SystemStore::save_artifacts_index(self : SystemStore) -> Unit {
-  self.ensure_directories()
+async fn SystemStore::save_runs_index_unlocked(self : SystemStore) -> Unit {
+  let merged_runs : Map[String, JobRun] = {}
+  let merged_steps : Map[String, JobStepRun] = {}
+  let existing = self.runs_index_from_disk()
+  for run in existing.runs {
+    merged_runs.set(run.id, run)
+  }
+  for step in existing.steps {
+    merged_steps.set("\{step.run_id}:\{step.step_id}", step)
+  }
+  for run in self.runs.values() {
+    merged_runs.set(run.id, run)
+  }
+  for step in self.steps.values() {
+    merged_steps.set("\{step.run_id}:\{step.step_id}", step)
+  }
+  let file = RunsIndexFile::{
+    runs: merged_runs.values().to_array(),
+    steps: merged_steps.values().to_array(),
+  }
+  self.write_runs_index_cache_unlocked(file)
+}
+
+///|
+async fn SystemStore::save_artifacts_index_unlocked(self : SystemStore) -> Unit {
   let file = ArtifactsIndexFile::{
     artifacts: self.artifacts.values().to_array(),
   }
@@ -443,80 +841,101 @@ async fn SystemStore::save_artifacts_index(self : SystemStore) -> Unit {
 }
 
 ///|
+async fn SystemStore::save_artifacts_index(self : SystemStore) -> Unit {
+  self.with_store_lock(async fn() { self.save_artifacts_index_unlocked() })
+}
+
+///|
 async fn SystemStore::save_memories(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = MemoriesFile::{ memories: self.memories.values().to_array() }
-  @fsx.write_to_file(self.memories_file(), file.to_json().stringify())
+  self.with_store_lock(async fn() {
+    let file = MemoriesFile::{ memories: self.memories.values().to_array() }
+    @fsx.write_to_file(self.memories_file(), file.to_json().stringify())
+  })
 }
 
 ///|
 async fn SystemStore::save_chat_bindings(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = ChatBindingsFile::{
-    bindings: self.chat_bindings.values().to_array(),
-  }
-  @fsx.write_to_file(self.chat_bindings_file(), file.to_json().stringify())
+  self.with_store_lock(async fn() {
+    let file = ChatBindingsFile::{
+      bindings: self.chat_bindings.values().to_array(),
+    }
+    @fsx.write_to_file(self.chat_bindings_file(), file.to_json().stringify())
+  })
 }
 
 ///|
 async fn SystemStore::save_notification_preferences(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = NotificationPreferencesFile::{
-    preferences: self.notification_preferences.values().to_array(),
-  }
-  @fsx.write_to_file(
-    self.notification_preferences_file(),
-    file.to_json().stringify(),
-  )
+  self.with_store_lock(async fn() {
+    let file = NotificationPreferencesFile::{
+      preferences: self.notification_preferences.values().to_array(),
+    }
+    @fsx.write_to_file(
+      self.notification_preferences_file(),
+      file.to_json().stringify(),
+    )
+  })
 }
 
 ///|
 async fn SystemStore::save_job_proposals(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = JobProposalsFile::{ proposals: self.proposals.values().to_array() }
-  @fsx.write_to_file(self.job_proposals_file(), file.to_json().stringify())
+  self.with_store_lock(async fn() {
+    let file = JobProposalsFile::{
+      proposals: self.proposals.values().to_array(),
+    }
+    @fsx.write_to_file(self.job_proposals_file(), file.to_json().stringify())
+  })
 }
 
 ///|
 async fn SystemStore::save_controller_states(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = ControllerStateFile::{
-    states: self.controller_states.values().to_array(),
-  }
-  @fsx.write_to_file(self.controller_states_file(), file.to_json().stringify())
+  self.with_store_lock(async fn() {
+    let file = ControllerStateFile::{
+      states: self.controller_states.values().to_array(),
+    }
+    @fsx.write_to_file(
+      self.controller_states_file(),
+      file.to_json().stringify(),
+    )
+  })
 }
 
 ///|
 async fn SystemStore::save_controller_iterations(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = ControllerIterationsFile::{
-    iterations: self.controller_iterations.values().to_array(),
-  }
-  @fsx.write_to_file(
-    self.controller_iterations_file(),
-    file.to_json().stringify(),
-  )
+  self.with_store_lock(async fn() {
+    let file = ControllerIterationsFile::{
+      iterations: self.controller_iterations.values().to_array(),
+    }
+    @fsx.write_to_file(
+      self.controller_iterations_file(),
+      file.to_json().stringify(),
+    )
+  })
 }
 
 ///|
 async fn SystemStore::save_controller_lineage(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = ControllerLineageFile::{
-    edges: self.controller_lineage_edges.values().to_array(),
-  }
-  @fsx.write_to_file(self.controller_lineage_file(), file.to_json().stringify())
+  self.with_store_lock(async fn() {
+    let file = ControllerLineageFile::{
+      edges: self.controller_lineage_edges.values().to_array(),
+    }
+    @fsx.write_to_file(
+      self.controller_lineage_file(),
+      file.to_json().stringify(),
+    )
+  })
 }
 
 ///|
 async fn SystemStore::save_controller_decisions(self : SystemStore) -> Unit {
-  self.ensure_directories()
-  let file = ControllerDecisionsFile::{
-    decisions: self.controller_decisions.values().to_array(),
-  }
-  @fsx.write_to_file(
-    self.controller_decisions_file(),
-    file.to_json().stringify(),
-  )
+  self.with_store_lock(async fn() {
+    let file = ControllerDecisionsFile::{
+      decisions: self.controller_decisions.values().to_array(),
+    }
+    @fsx.write_to_file(
+      self.controller_decisions_file(),
+      file.to_json().stringify(),
+    )
+  })
 }
 
 ///|
@@ -539,16 +958,17 @@ pub async fn SystemStore::save_workflow(
 
 ///|
 pub async fn SystemStore::save_run(self : SystemStore, run : JobRun) -> Unit {
-  self.ensure_directories()
   self.runs.set(run.id, run)
-  @fsx.make_directory(self.run_dir(run.id), recursive=true) catch {
-    _ => ()
-  }
-  @fsx.make_directory(self.step_dir(run.id), recursive=true) catch {
-    _ => ()
-  }
-  @fsx.write_to_file(self.run_meta_file(run.id), run.to_json().stringify())
-  self.save_runs_index()
+  self.with_store_lock(async fn() {
+    @fsx.make_directory(self.run_dir(run.id), recursive=true) catch {
+      _ => ()
+    }
+    @fsx.make_directory(self.step_dir(run.id), recursive=true) catch {
+      _ => ()
+    }
+    @fsx.write_to_file(self.run_meta_file(run.id), run.to_json().stringify())
+    self.save_runs_index_unlocked()
+  })
 }
 
 ///|
@@ -556,16 +976,17 @@ pub async fn SystemStore::save_step_run(
   self : SystemStore,
   step : JobStepRun,
 ) -> Unit {
-  self.ensure_directories()
   self.steps.set("\{step.run_id}:\{step.step_id}", step)
-  @fsx.make_directory(self.step_dir(step.run_id), recursive=true) catch {
-    _ => ()
-  }
-  @fsx.write_to_file(
-    self.step_meta_file(step.run_id, step.step_id),
-    step.to_json().stringify(),
-  )
-  self.save_runs_index()
+  self.with_store_lock(async fn() {
+    @fsx.make_directory(self.step_dir(step.run_id), recursive=true) catch {
+      _ => ()
+    }
+    @fsx.write_to_file(
+      self.step_meta_file(step.run_id, step.step_id),
+      step.to_json().stringify(),
+    )
+    self.save_runs_index_unlocked()
+  })
 }
 
 ///|
@@ -573,17 +994,18 @@ pub async fn SystemStore::save_artifact(
   self : SystemStore,
   artifact : ArtifactRecord,
 ) -> Unit {
-  self.ensure_directories()
   self.artifacts.set(artifact.id, artifact)
-  let artifact_dir = self.artifact_dir(artifact.id)
-  @fsx.make_directory(artifact_dir, recursive=true) catch {
-    _ => ()
-  }
-  @fsx.write_to_file(
-    self.artifact_record_file(artifact.id),
-    artifact.to_json().stringify(),
-  )
-  self.save_artifacts_index()
+  self.with_store_lock(async fn() {
+    let artifact_dir = self.artifact_dir(artifact.id)
+    @fsx.make_directory(artifact_dir, recursive=true) catch {
+      _ => ()
+    }
+    @fsx.write_to_file(
+      self.artifact_record_file(artifact.id),
+      artifact.to_json().stringify(),
+    )
+    self.save_artifacts_index_unlocked()
+  })
 }
 
 ///|

@@ -29,6 +29,25 @@ into a provider-backed extension step, but it should not decide what counts as a
 real source, how source pages are written, or when a domain workspace is ready
 for query. Those remain provider responsibilities.
 
+## Runtime Progression
+
+Provider-backed execution is still expected to follow normal MoonClaw workflow
+state transitions:
+
+1. the routed provider step runs as a normal analysis step
+2. if the provider result requests `needs_subplan`, MoonClaw compiles bounded
+   child runs and executes them as ordinary workflow runs
+3. child completion is synthesized back into the parent provider step and
+   persisted through the normal provider-result path
+4. when the final assistant turn has no tool calls, the event session must stop
+   cleanly so the workflow engine can record `step.succeeded`, start the next
+   phase, or finish the run
+
+This matters because provider packs can shape domain phases such as
+`bootstrap_gather`, `source_materialize`, `knowledge_revise`, and
+`review_finalize`, but core runtime is still responsible for actually moving the
+run from one phase to the next.
+
 ## Routing
 
 Analysis or delegate steps can route into a provider through:

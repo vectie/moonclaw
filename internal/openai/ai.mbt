@@ -22,8 +22,9 @@ pub async fn chat(
   request : Request,
   logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
   extra_body? : Map[String, Json] = {},
+  timeout_ms? : Int? = None,
 ) -> ChatCompletion {
-  chat_with_text_deltas(model~, request, logger~, extra_body~)
+  chat_with_text_deltas(model~, request, logger~, extra_body~, timeout_ms~)
 }
 
 ///|
@@ -33,12 +34,28 @@ pub async fn chat_with_text_deltas(
   logger? : @pino.Logger = @pino.logger("openai", @pino.Transport::sink()),
   extra_body? : Map[String, Json] = {},
   on_text_delta? : (String) -> Unit = _ => (),
+  timeout_ms? : Int? = None,
 ) -> ChatCompletion {
-  match model.model_type {
-    SaaS(CodexOAuth) => chat_codex(model~, request, logger~, on_text_delta~)
-    SaaS(Copilot) => chat_copilot(model~, request, logger~, on_text_delta~)
-    SaaS(Anthropic) => chat_anthropic(model~, request, logger~, on_text_delta~)
-    _ => chat_openai(model~, request, logger~, extra_body~, on_text_delta~)
+  let run = async fn() {
+    match model.model_type {
+      SaaS(CodexOAuth) => chat_codex(model~, request, logger~, on_text_delta~)
+      SaaS(Copilot) => chat_copilot(model~, request, logger~, on_text_delta~)
+      SaaS(Anthropic) =>
+        chat_anthropic(model~, request, logger~, on_text_delta~)
+      _ => chat_openai(model~, request, logger~, extra_body~, on_text_delta~)
+    }
+  }
+  match timeout_ms {
+    Some(timeout_ms) if timeout_ms > 0 =>
+      @async.with_timeout(timeout_ms, run) catch {
+        @async.TimeoutError =>
+          raise HttpError(
+            code=408,
+            body="Model request timed out after \{timeout_ms}ms",
+          )
+        error => raise error
+      }
+    _ => run()
   }
 }
 

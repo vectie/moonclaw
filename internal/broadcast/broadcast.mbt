@@ -94,6 +94,8 @@ pub fn[T] Broadcast::values(self : Broadcast[T]) -> ArrayView[T] {
 /// shutdown.
 struct Session {
   stop : @cond_var.Cond
+  read : @cond_var.Cond
+  mut stopped : Bool
 }
 
 ///|
@@ -103,7 +105,9 @@ struct Session {
 ///
 /// * `self` : The session to stop.
 pub fn Session::stop(self : Session) -> Unit {
+  self.stopped = true
   self.stop.broadcast()
+  self.read.broadcast()
 }
 
 ///|
@@ -152,7 +156,11 @@ pub async fn[T, G] Broadcast::spawn_in(
   self : Broadcast[T],
   group : @async.TaskGroup[G],
 ) -> Session {
-  let stop = @cond_var.Cond::new()
+  let session = Session::{
+    stop: @cond_var.Cond::new(),
+    read: self.read,
+    stopped: false,
+  }
   // Works even if there are no readers. Consider:
   // 1. There is no reader, which means self.readers.length() == 0
   // 2. There will be no calls to Barrier::arrive, so the count will remain 0
@@ -168,13 +176,27 @@ pub async fn[T, G] Broadcast::spawn_in(
               start.arrive()
               for ;; {
                 let index = reader.index
-                let value = self.read(index)
-                // It is possible that other coroutines have already processed
-                // this value (using flush), so we need to check the index
-                // again.
-                if index == reader.index {
-                  (reader.f)(value)
-                  reader.index = index + 1
+                loop self.values.get(index) {
+                  Some(value) => {
+                    // It is possible that other coroutines have already processed
+                    // this value (using flush), so we need to check the index
+                    // again.
+                    if index == reader.index {
+                      (reader.f)(value)
+                      reader.index = index + 1
+                    }
+                    break
+                  }
+                  None => {
+                    if session.stopped {
+                      return
+                    }
+                    self.read.wait()
+                    if session.stopped {
+                      return
+                    }
+                    continue self.values.get(index)
+                  }
                 }
               }
             },
@@ -183,7 +205,7 @@ pub async fn[T, G] Broadcast::spawn_in(
         }
         group.spawn_bg(
           () => {
-            stop.wait()
+            session.stop.wait()
             group.return_immediately(())
           },
           no_wait=true,
@@ -193,7 +215,7 @@ pub async fn[T, G] Broadcast::spawn_in(
     allow_failure=true,
   )
   start.wait()
-  { stop, }
+  session
 }
 
 ///|

@@ -42,6 +42,8 @@ pub fn child_runs_for(SystemStore, String) -> Array[JobRun]
 
 pub async fn cleanup_run_execution_isolations(SystemStore, JobRun) -> Array[String]
 
+pub fn compact_analysis_result_metadata(Json) -> Json
+
 pub fn compile_job_proposal(JobProposal, Int, String, String, workspace_root? : String) -> ProposalCompilation
 
 pub async fn complete_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, RunStatus, Int) -> Unit

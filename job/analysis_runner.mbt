@@ -21,6 +21,11 @@ fn provider_task_single_response_requested(request : AnalysisRequest) -> Bool {
 }
 
 ///|
+fn analysis_request_timeout_ms(request : AnalysisRequest) -> Int? {
+  metadata_int_with_step_metadata_option(request.step_metadata, "timeout_ms")
+}
+
+///|
 async fn run_single_response_analysis_runner(
   request : AnalysisRequest,
 ) -> Result[AnalysisExecution, String] {
@@ -56,6 +61,7 @@ async fn run_single_response_analysis_runner(
         final_content = final_content + chunk
       }
     },
+    timeout_ms=analysis_request_timeout_ms(request),
   )
   guard !response.choices.is_empty() else {
     return Err("Analysis agent failed: empty choices")
@@ -101,6 +107,7 @@ async fn run_local_analysis_runner(
     system_message=request.system_prompt,
     user_message=request.prompt,
     web_search=request.web_search,
+    request_timeout_ms=analysis_request_timeout_ms(request),
   )
   defer agent.close()
   if request.enable_tools {
@@ -142,8 +149,30 @@ async fn run_local_analysis_runner(
     }
   })
 
-  agent.start() catch {
-    error => return Err("Analysis agent failed: \{error}")
+  match analysis_request_timeout_ms(request) {
+    Some(timeout_ms) if timeout_ms > 0 =>
+      @async.with_timeout(timeout_ms, () => agent.start()) catch {
+        @async.TimeoutError => {
+          if failed is Some(error) {
+            return Err("Analysis agent failed: \{error}")
+          }
+          let partial = if !final_content.is_blank() {
+            final_content
+          } else {
+            delta_content.to_string().trim().to_string()
+          }
+          if partial.is_blank() {
+            return Err(
+              "Analysis agent timed out before producing a final answer after \{timeout_ms}ms",
+            )
+          }
+        }
+        error => return Err("Analysis agent failed: \{error}")
+      }
+    _ =>
+      agent.start() catch {
+        error => return Err("Analysis agent failed: \{error}")
+      }
   }
   if failed is Some(error) {
     return Err(error)

@@ -207,7 +207,7 @@ pub fn structured_analysis_result_payload(
     "content": execution.content.to_json(),
     "conversation_id": execution.conversation_id.to_json(),
     "usage": usage_json(execution.usage),
-    "metadata": execution.metadata,
+    "metadata": compact_analysis_result_metadata(execution.metadata),
   }
   match analysis_result_content_contract(config) {
     Some(contract) => {

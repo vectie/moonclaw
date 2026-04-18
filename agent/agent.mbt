@@ -58,6 +58,7 @@ pub(all) struct Agent {
   priv rules : @rules.Loader
   priv skills : @skills.Loader
   mut web_search : Bool
+  request_timeout_ms : Int?
   /// Queue for receiving external events from the environment.
   priv external_events : @event.ExternalEventQueue
 }
@@ -287,6 +288,7 @@ pub async fn Agent::start(agent : Agent) -> Unit {
             agent.emit(AssistantMessageDelta(delta))
           }
         },
+        timeout_ms=agent.request_timeout_ms,
       )
       // Extract the message from the response, raise error if no choices returned
       guard response is { choices: [{ message, .. }, ..], usage, .. } else {
@@ -317,15 +319,28 @@ pub async fn Agent::start(agent : Agent) -> Unit {
       agent.input_queue = []
       // Persist the updated conversation history to disk
       agent.session_manager.save(agent.history)
+      // A plain assistant turn with no tool calls is a terminal model response
+      // for this loop. Exit immediately instead of relying on the next loop
+      // iteration to notice an empty queue.
+      if message.tool_calls.is_empty() {
+        break
+      }
       // Execute each tool call and queue the results for the next iteration
       for call in message.tool_calls {
-        agent.input_queue.push(
-          agent.execute_tool(@ai.ToolCall::from_openai_tool_call(call)),
+        let tool_message = agent.execute_tool(
+          @ai.ToolCall::from_openai_tool_call(call),
         )
+        // Save again after each tool call so a stalled follow-up model round
+        // still leaves a durable post-tool state on disk.
+        agent.session_manager.save(agent.history)
+        agent.input_queue.push(tool_message)
       }
     }
     // Signal the end of conversation
     agent.emit(PostConversation)
+    // Persist the final closed conversation state so downstream analysis and
+    // reconciliation do not have to infer whether the loop exited cleanly.
+    agent.session_manager.save(agent.history)
   })
 }
 
@@ -375,6 +390,7 @@ pub async fn new(
   web_search? : Bool = false,
   external_events? : @event.ExternalEventQueue,
   history? : @conversation.Conversation,
+  request_timeout_ms? : Int? = None,
 ) -> Agent {
   let home = match home {
     Some(home) => home.to_string()
@@ -389,6 +405,11 @@ pub async fn new(
   let rules = @rules.Loader::new(cwd.to_string(), logger~)
   let event_target : @broadcast.Broadcast[@event.Event] = @broadcast.Broadcast::new()
   event_target.add_listener(event => {
+    let is_delta = match event.desc {
+      @event.AssistantMessageDelta(_) => true
+      _ => false
+    }
+    guard !is_delta else { return }
     logger.info("Received event", data={ "event": event.to_json() })
   })
   event_target.put(
@@ -432,6 +453,7 @@ pub async fn new(
     rules,
     skills,
     web_search,
+    request_timeout_ms,
     external_events,
   }
   rules.load()
@@ -477,6 +499,7 @@ pub async fn load(
   user_message? : String,
   web_search? : Bool = false,
   external_events? : @event.ExternalEventQueue,
+  request_timeout_ms? : Int? = None,
 ) -> Agent {
   new(
     model,
@@ -488,6 +511,7 @@ pub async fn load(
     web_search~,
     history~,
     external_events?,
+    request_timeout_ms~,
   )
 }
 

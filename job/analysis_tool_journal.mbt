@@ -111,6 +111,64 @@ fn analysis_execution_metadata_with_tool_journal(
 }
 
 ///|
+fn compact_analysis_tool_journal_entry(entry : Json) -> Json {
+  match entry {
+    Object(obj) => {
+      let compact : Map[String, Json] = {}
+      for key in ["phase", "tool", "call_id", "ok", "preview", "arguments"] {
+        match obj.get(key) {
+          Some(value) => compact.set(key, value)
+          None => ()
+        }
+      }
+      if compact.is_empty() {
+        entry
+      } else {
+        Json::object(compact)
+      }
+    }
+    _ => entry
+  }
+}
+
+///|
+pub fn compact_analysis_result_metadata(metadata : Json) -> Json {
+  match metadata {
+    Object(obj) => {
+      let compact : Map[String, Json] = {}
+      for key in obj.keys() {
+        match obj.get(key) {
+          Some(value) =>
+            if key == "tool_call_journal" {
+              match value {
+                Array(entries) => {
+                  let compact_entries : Array[Json] = []
+                  for entry in entries {
+                    compact_entries.push(
+                      compact_analysis_tool_journal_entry(entry),
+                    )
+                  }
+                  compact.set(key, Json::array(compact_entries))
+                  compact.set(
+                    "tool_call_journal_count",
+                    entries.length().to_json(),
+                  )
+                }
+                _ => compact.set(key, value)
+              }
+            } else {
+              compact.set(key, value)
+            }
+          None => ()
+        }
+      }
+      Json::object(compact)
+    }
+    _ => metadata
+  }
+}
+
+///|
 fn render_analysis_tool_journal_entry(entry : Json) -> String? {
   match entry {
     Object(obj) => {

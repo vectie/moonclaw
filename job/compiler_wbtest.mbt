@@ -77,6 +77,72 @@ test "compile_job_proposal preserves custom step kinds directly" {
     .contains("\"execution_target\":\"codex-impl\""),
     content="true",
   )
+  inspect(
+    compilation.workflow.steps[0].retry_policy
+    .map(fn(policy) { policy.max_attempts })
+    .unwrap_or(0),
+    content="2",
+  )
+}
+
+///|
+test "compile_job_proposal applies default retry policy to generated analysis steps" {
+  let proposal = draft_job_proposal(
+    "proposal-compiler-retry-default", "Analyze the repo and summarize it.", 100,
+  )
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(
+    compilation.workflow.steps[0].retry_policy
+    .map(fn(policy) { policy.max_attempts })
+    .unwrap_or(0),
+    content="2",
+  )
+  inspect(
+    compilation.workflow.steps[0].retry_policy
+    .bind(fn(policy) { policy.backoff_ms })
+    .unwrap_or(0),
+    content="2000",
+  )
+}
+
+///|
+test "compile_job_proposal honors retry metadata overrides" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-compiler-retry-override", "Analyze once more", 100,
+    ),
+    steps: [
+      JobProposalStep::{
+        id: "scope",
+        title: "Scope",
+        prompt: "Inspect the workspace.",
+        kind: "job.analysis",
+        metadata: { "retry_max_attempts": 4, "retry_backoff_ms": 750 },
+        child_profile: None,
+        execution_mode: None,
+        execution_target: None,
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(
+    compilation.workflow.steps[0].retry_policy
+    .map(fn(policy) { policy.max_attempts })
+    .unwrap_or(0),
+    content="4",
+  )
+  inspect(
+    compilation.workflow.steps[0].retry_policy
+    .bind(fn(policy) { policy.backoff_ms })
+    .unwrap_or(0),
+    content="750",
+  )
 }
 
 ///|
@@ -265,6 +331,53 @@ test "compile_job_proposal augments wiki ingest controller with provider delegat
     .contains("\"disable_waiting_for_input\":true"),
     content="true",
   )
+}
+
+///|
+test "compile_job_proposal collapses imported wiki ingest controller to provider delegate only" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-compiler-wiki-ingest-imported", "Ingest this source into the wiki.",
+      100,
+    ),
+    suggested_family: Some("wiki_ingest_controller"),
+    profile_role: Some("controller"),
+    profile_metadata: {
+      "external_packet": { "schema": "moonclaw.external_proposal_packet.v1" },
+    },
+    steps: [
+      JobProposalStep::{
+        id: "plan_gather_fanout",
+        title: "Plan gather fanout",
+        prompt: "Plan the gather lanes.",
+        kind: "job.analysis",
+        metadata: {},
+        child_profile: None,
+        execution_mode: None,
+        execution_target: None,
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+      JobProposalStep::{
+        id: "gather_docs",
+        title: "Gather docs",
+        prompt: "Gather the docs.",
+        kind: "job.delegate",
+        metadata: {},
+        child_profile: None,
+        execution_mode: None,
+        execution_target: None,
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(compilation.workflow.steps.length(), content="1")
+  inspect(compilation.workflow.steps[0].id, content="extension_ingest")
+  inspect(compilation.workflow.steps[0].kind, content="job.delegate")
 }
 
 ///|

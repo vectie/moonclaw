@@ -262,7 +262,8 @@ fn parse_provider_task_payload(
   if trimmed.is_blank() {
     return Err("Provider task \{context} returned empty stdout")
   }
-  let json = @json.parse(trimmed) catch {
+  let payload = extract_first_json_object(trimmed).unwrap_or(trimmed)
+  let json = @json.parse(payload) catch {
     error =>
       return Err("Provider task \{context} returned invalid JSON: \{error}")
   }
@@ -463,7 +464,9 @@ fn provider_task_child_proposal(
   config : SubjobStepConfig,
   now_ms : Int,
 ) -> JobProposal {
-  let steps = batch.tasks.map(fn(task) {
+  let execution_tasks = provider_task_execution_tasks(batch.tasks)
+  let deferred_tasks = batch.tasks.length() - execution_tasks.length()
+  let steps = execution_tasks.map(fn(task) {
     JobProposalStep::{
       id: task.id,
       title: task.title,
@@ -494,7 +497,8 @@ fn provider_task_child_proposal(
       "extension": {
         "goal": batch.goal,
         "goal_id": batch.goal_id,
-        "task_count": batch.tasks.length(),
+        "task_count": execution_tasks.length(),
+        "deferred_task_count": deferred_tasks,
       },
     },
     status: Draft,
@@ -510,6 +514,30 @@ fn provider_task_child_proposal(
     last_run_id: None,
     created_at: now_ms,
     updated_at: now_ms,
+  }
+}
+
+///|
+fn provider_task_is_planning_kind(kind : String) -> Bool {
+  let normalized = kind.trim().to_string().to_lower()
+  normalized == "planning" ||
+  normalized == "plan" ||
+  normalized.has_suffix(".planning") ||
+  normalized.has_suffix(".plan")
+}
+
+///|
+fn provider_task_execution_tasks(
+  tasks : Array[ProviderTaskSpec],
+) -> Array[ProviderTaskSpec] {
+  let executable = tasks
+    .iter()
+    .filter(fn(task) { !provider_task_is_planning_kind(task.kind) })
+    .to_array()
+  if executable.is_empty() {
+    tasks
+  } else {
+    executable
   }
 }
 
@@ -578,6 +606,12 @@ fn provider_task_system_prompt(
     "Do not wrap the JSON in markdown fences.",
     "Output contract from the harness:",
     join_bullets(context.output_contract),
+    "Execution discipline:",
+    "- Treat `Relevant Pages` and `Available Skill Files` as the primary working set.",
+    "- Read concrete candidate files directly before using broad repo-wide search tools.",
+    "- Only use broad search to fill a named gap after the primary working set is exhausted.",
+    "- Ignore generated or dependency trees such as `.git`, `.moonclaw`, `.mooncakes`, `_build`, `node_modules`, `dist`, and temporary output directories unless the task explicitly requires them.",
+    "- For bootstrap gather work, produce at least one `raw/bootstrap/*` artifact before claiming durable wiki revision success.",
     if request.system_prompt.trim().to_string().is_blank() {
       ""
     } else {
@@ -847,7 +881,62 @@ fn provider_task_breadth_summary(
 }
 
 ///|
+fn provider_task_substep_prompt(task : ProviderTaskSpec) -> String {
+  let target_lines = if task.target_pages.is_empty() {
+    "No explicit target pages were declared."
+  } else {
+    join_bullets(task.target_pages)
+  }
+  [
+    task.prompt,
+    "",
+    "Provider-owned narrowed execution task:",
+    "- task_id: \{task.id}",
+    "- task_kind: \{task.kind}",
+    "",
+    "Declared target surfaces:",
+    target_lines,
+    "",
+    "Execute this narrowed task directly. Do not expand back into a broad plan unless you hit a concrete blocker.",
+  ].join("\n")
+}
+
+///|
+fn provider_task_followup_execution_tasks(
+  batch : ProviderTaskBatch,
+  current_task : ProviderTaskSpec,
+) -> Array[ProviderTaskSpec] {
+  let execution_tasks = provider_task_execution_tasks(batch.tasks)
+  let mut selected_index : Int? = None
+  for index = 0; index < execution_tasks.length(); index = index + 1 {
+    if execution_tasks[index].id == current_task.id {
+      selected_index = Some(index)
+      break
+    }
+  }
+  match selected_index {
+    Some(index) => execution_tasks[index + 1:].iter().to_array()
+    None => []
+  }
+}
+
+///|
+fn provider_task_followup_substeps(
+  batch : ProviderTaskBatch,
+  current_task : ProviderTaskSpec,
+) -> Array[AdaptiveSubstepPayload] {
+  provider_task_followup_execution_tasks(batch, current_task).map(fn(task) {
+    AdaptiveSubstepPayload::{
+      title: task.title,
+      prompt: provider_task_substep_prompt(task),
+      kind: Some("job.analysis"),
+    }
+  })
+}
+
+///|
 fn provider_task_breadth_envelope_from_content(
+  batch : ProviderTaskBatch,
   task : ProviderTaskSpec,
   content : String,
 ) -> AdaptiveAnalysisEnvelope? {
@@ -858,12 +947,39 @@ fn provider_task_breadth_envelope_from_content(
   let json = @json.parse(trimmed) catch { _ => return None }
   match parse_adaptive_analysis_envelope(trimmed) {
     Some(envelope) if envelope.verdict.trim().to_lower() == "needs_subplan" =>
-      Some(envelope)
+      if adaptive_substeps(envelope).is_empty() {
+        let followup_substeps = provider_task_followup_substeps(batch, task)
+        if followup_substeps.is_empty() {
+          Some(envelope)
+        } else {
+          Some(AdaptiveAnalysisEnvelope::{
+            verdict: "needs_subplan",
+            summary: envelope.summary,
+            missing_inputs: envelope.missing_inputs,
+            suggested_substeps: Some(followup_substeps),
+            substeps: None,
+          })
+        }
+      } else {
+        Some(envelope)
+      }
     _ => {
       let substeps = provider_task_plan_substeps_from_json(json)
       let summary = provider_task_breadth_summary(task, json)
+      let lower = trimmed.to_lower()
+      let substeps = if substeps.is_empty() &&
+        (
+          lower.contains("too broad") ||
+          lower.contains("decompos") ||
+          lower.contains("split") ||
+          lower.contains("\"plan\"") ||
+          lower.contains("\"steps\"")
+        ) {
+        provider_task_followup_substeps(batch, task)
+      } else {
+        substeps
+      }
       if substeps.is_empty() {
-        let lower = trimmed.to_lower()
         if lower.contains("too broad") ||
           lower.contains("decompos") ||
           lower.contains("split") ||
@@ -977,9 +1093,6 @@ fn normalize_provider_task_result(
     Ok(json) => json
     Err(error) => return Err(error)
   }
-  let task_id = provider_task_json_string_field(json, "task_id").unwrap_or(
-    task.id,
-  )
   let summary = provider_task_json_string_field(json, "summary").unwrap_or(
     provider_task_json_string_field(json, "message").unwrap_or(
       plan_summary_from_json(json).unwrap_or(
@@ -1000,7 +1113,7 @@ fn normalize_provider_task_result(
     _ => []
   }
   Ok(ProviderTaskResult::{
-    task_id,
+    task_id: task.id,
     summary,
     artifacts,
     memory_candidates,
@@ -1229,11 +1342,15 @@ async fn persist_provider_task_result(
   _task : ProviderTaskSpec,
   result : ProviderTaskResult,
 ) -> Result[ProviderTaskPersistOutcome, String] {
-  let step_key = safe_step_file_segment(request.step_id)
-  let result_path = @pathx.join(
-    request.cwd,
-    ".moonclaw-provider-result-\{request.run_id}-\{step_key}.json",
-  )
+  let result_path = match
+    provider_task_runtime_artifact_path(
+      request,
+      command.workspace_root,
+      "result",
+    ) {
+    Ok(path) => path
+    Err(error) => return Err(error)
+  }
   @fsx.write_to_file(
     result_path,
     result.to_json().stringify(indent=2),
@@ -1253,22 +1370,72 @@ async fn persist_provider_task_result(
 }
 
 ///|
-fn provider_task_failure_debug_path(request : AnalysisRequest) -> String {
-  let step_key = safe_step_file_segment(request.step_id)
+fn provider_task_runtime_artifact_root(
+  request : AnalysisRequest,
+  workspace_root : String,
+) -> String {
+  let provider_root = workspace_root.trim().to_string()
+  if !provider_root.is_blank() {
+    provider_root
+  } else {
+    request.cwd
+  }
+}
+
+///|
+fn provider_task_runtime_artifact_dir(
+  request : AnalysisRequest,
+  workspace_root : String,
+) -> String {
   @pathx.join(
-    request.cwd,
-    ".moonclaw-provider-failure-\{request.run_id}-\{step_key}.json",
+    provider_task_runtime_artifact_root(request, workspace_root),
+    ".moonclaw/provider-task",
   )
+}
+
+///|
+async fn provider_task_runtime_artifact_path(
+  request : AnalysisRequest,
+  workspace_root : String,
+  artifact_kind : String,
+) -> Result[String, String] {
+  let step_key = safe_step_file_segment(request.step_id)
+  let artifact_dir = provider_task_runtime_artifact_dir(request, workspace_root)
+  @fsx.make_directory(artifact_dir, recursive=true, exists_ok=true) catch {
+    error =>
+      return Err(
+        "Failed to prepare provider task artifact directory \{artifact_dir}: \{error}",
+      )
+  }
+  Ok(
+    @pathx.join(
+      artifact_dir,
+      ".moonclaw-provider-\{artifact_kind}-\{request.run_id}-\{step_key}.json",
+    ),
+  )
+}
+
+///|
+async fn provider_task_failure_debug_path(
+  request : AnalysisRequest,
+  workspace_root : String,
+) -> Result[String, String] {
+  provider_task_runtime_artifact_path(request, workspace_root, "failure")
 }
 
 ///|
 async fn persist_provider_task_failure_debug(
   request : AnalysisRequest,
+  workspace_root : String,
   task : ProviderTaskSpec,
   execution : AnalysisExecution,
   error : String,
 ) -> String {
-  let path = provider_task_failure_debug_path(request)
+  let path = match provider_task_failure_debug_path(request, workspace_root) {
+    Ok(path) => path
+    Err(path_error) =>
+      return "provider-task-failure-debug-unavailable: \{path_error}; original error: \{error}"
+  }
   let payload : Map[String, Json] = {
     "error": error.to_json(),
     "task_id": task.id.to_json(),
@@ -1285,6 +1452,240 @@ async fn persist_provider_task_failure_debug(
     create=0o644,
   )
   path
+}
+
+///|
+fn is_provider_result_artifact_path(path : String) -> Bool {
+  let normalized = path.trim().to_string()
+  !normalized.is_blank() &&
+  !normalized.has_prefix("/") &&
+  !normalized.contains("://") &&
+  !normalized.has_suffix("/") &&
+  @pathx.basename(normalized).contains(".")
+}
+
+///|
+fn is_provider_result_workspace_artifact(path : String) -> Bool {
+  let normalized = path.trim().to_string()
+  normalized.has_prefix("wiki/") ||
+  normalized.has_prefix("raw/") ||
+  normalized.has_prefix("keeper/")
+}
+
+///|
+async fn provider_task_existing_workspace_artifacts(
+  workspace_root : String,
+  artifacts : Array[String],
+) -> Array[String] {
+  let sanitized : Array[String] = []
+  for artifact in artifacts {
+    let normalized = artifact.trim().to_string()
+    if !is_provider_result_artifact_path(normalized) ||
+      !is_provider_result_workspace_artifact(normalized) {
+      continue
+    }
+    let absolute = @pathx.join(workspace_root, normalized)
+    if !(@fsx.exists(absolute) catch { _ => false }) {
+      continue
+    }
+    if !sanitized.contains(normalized) {
+      sanitized.push(normalized)
+    }
+  }
+  sanitized
+}
+
+///|
+async fn align_provider_task_result(
+  workspace_root : String,
+  task : ProviderTaskSpec,
+  result : ProviderTaskResult,
+) -> ProviderTaskResult {
+  ProviderTaskResult::{
+    ..result,
+    task_id: task.id,
+    artifacts: provider_task_existing_workspace_artifacts(
+      workspace_root,
+      result.artifacts,
+    ),
+  }
+}
+
+///|
+fn provider_task_artifact_paths_from_line(line : String) -> Array[String] {
+  let paths : Array[String] = []
+  let normalized = line
+    .replace_all(old="`", new=" ")
+    .replace_all(old=",", new=" ")
+    .replace_all(old=":", new=" ")
+    .replace_all(old=";", new=" ")
+    .replace_all(old="(", new=" ")
+    .replace_all(old=")", new=" ")
+    .replace_all(old="[", new=" ")
+    .replace_all(old="]", new=" ")
+    .replace_all(old="{", new=" ")
+    .replace_all(old="}", new=" ")
+  for token in normalized.split(" ") {
+    let candidate = token.trim().trim(chars=".'\"").to_string()
+    if candidate.is_blank() {
+      continue
+    }
+    if is_provider_result_artifact_path(candidate) && !paths.contains(candidate) {
+      paths.push(candidate)
+    }
+  }
+  paths
+}
+
+///|
+fn provider_task_collect_artifacts_from_json(
+  value : Json,
+  artifacts : Array[String],
+) -> Unit {
+  match value {
+    String(text) =>
+      for raw_line in text.split("\n") {
+        for path in provider_task_artifact_paths_from_line(raw_line.to_string()) {
+          if !artifacts.contains(path) {
+            artifacts.push(path)
+          }
+        }
+      }
+    Array(items) =>
+      for item in items {
+        provider_task_collect_artifacts_from_json(item, artifacts)
+      }
+    Object(obj) =>
+      for _, item in obj {
+        provider_task_collect_artifacts_from_json(item, artifacts)
+      }
+    _ => ()
+  }
+}
+
+///|
+async fn provider_task_target_artifacts(
+  workspace_root : String,
+  task : ProviderTaskSpec,
+) -> Array[String] {
+  let artifacts : Array[String] = []
+  for path in task.target_pages {
+    let normalized = path.trim().to_string()
+    if normalized.is_blank() {
+      continue
+    }
+    if normalized.has_suffix("/") {
+      let absolute_dir = @pathx.join(workspace_root, normalized)
+      let entries = @fsx.list_directory(absolute_dir) catch { _ => continue }
+      for entry in entries {
+        guard entry.kind is Regular else { continue }
+        let relative = "\{normalized}\{entry.name}"
+        if is_provider_result_artifact_path(relative) &&
+          !artifacts.contains(relative) {
+          artifacts.push(relative)
+        }
+      }
+      continue
+    }
+    let absolute = @pathx.join(workspace_root, normalized)
+    if (@fsx.exists(absolute) catch { _ => false }) &&
+      is_provider_result_artifact_path(normalized) &&
+      !artifacts.contains(normalized) {
+      artifacts.push(normalized)
+    }
+  }
+  artifacts
+}
+
+///|
+fn provider_task_synthesized_subplan_result(
+  task : ProviderTaskSpec,
+  execution : AnalysisExecution,
+  artifacts : Array[String],
+) -> ProviderTaskResult {
+  let summary = metadata_string_value(
+    execution.metadata,
+    "extension_guardrail_summary",
+  ).unwrap_or(
+    "Adaptive subplan for \{task.title} completed and produced durable workspace outputs.",
+  )
+  ProviderTaskResult::{
+    task_id: task.id,
+    summary,
+    artifacts,
+    memory_candidates: [],
+    requires_review: task.requires_review,
+    notify_town: false,
+  }
+}
+
+///|
+async fn finalize_provider_task_subplan_execution(
+  request : AnalysisRequest,
+  execution : AnalysisExecution,
+  child_outputs : Json,
+) -> Result[AnalysisExecution, String]? {
+  guard provider_execution_requested(request.execution_mode) else {
+    return None
+  }
+  let goal = metadata_string_value(request.step_metadata, "extension_goal").unwrap_or(
+    metadata_string_value(request.step_metadata, "bookapi_goal").unwrap_or(
+      request.source_prompt,
+    ),
+  )
+  let selected_task_id = match
+    metadata_string_value(request.step_metadata, "extension_task_id") {
+    Some(task_id) => Some(task_id)
+    None => metadata_string_value(request.step_metadata, "bookapi_task_id")
+  }
+  let (command, batch) = match
+    load_provider_task_task_batch(
+      request.cwd,
+      request.home,
+      request.execution_target,
+      goal,
+    ) {
+    Ok(value) => value
+    Err(error) => return Some(Err(error))
+  }
+  let resolved_target_id = command.provider.name
+  let task = match select_provider_task_task(batch, selected_task_id) {
+    Ok(task) => task
+    Err(error) => return Some(Err(error))
+  }
+  let context = match load_provider_task_context(command, goal, task.id) {
+    Ok(context) => context
+    Err(error) => return Some(Err(error))
+  }
+  let artifacts : Array[String] = []
+  provider_task_collect_artifacts_from_json(child_outputs, artifacts)
+  let artifact_root = if context.workspace_root.is_blank() {
+    request.cwd
+  } else {
+    context.workspace_root
+  }
+  for path in provider_task_target_artifacts(artifact_root, task) {
+    if !artifacts.contains(path) {
+      artifacts.push(path)
+    }
+  }
+  let result = provider_task_synthesized_subplan_result(
+    task, execution, artifacts,
+  )
+  let result = align_provider_task_result(artifact_root, task, result)
+  let result = enforce_provider_task_result_semantics(task, context, result)
+  let outcome = match
+    persist_provider_task_result(command, request, task, result) {
+    Ok(outcome) => outcome
+    Err(error) => return Some(Err(error))
+  }
+  Some(
+    Ok(
+      persisted_provider_task_execution(
+        execution, task, result, outcome, resolved_target_id,
+      ),
+    ),
+  )
 }
 
 ///|
@@ -1347,7 +1748,11 @@ async fn run_provider_task_analysis_runner(
     Err(error) => return Err(error)
   }
   match
-    provider_task_breadth_envelope_from_content(task, raw_execution.content) {
+    provider_task_breadth_envelope_from_content(
+      batch,
+      task,
+      raw_execution.content,
+    ) {
     Some(envelope) =>
       if adaptive_substeps(envelope).is_empty() {
         return Err(provider_task_guardrail_reject_error(task, envelope))
@@ -1369,6 +1774,7 @@ async fn run_provider_task_analysis_runner(
         Err(repair_error) => {
           let debug_path = persist_provider_task_failure_debug(
             request,
+            command.workspace_root,
             task,
             raw_execution,
             "\{error}; repair failed: \{repair_error}",
@@ -1377,6 +1783,12 @@ async fn run_provider_task_analysis_runner(
         }
       }
   }
+  let artifact_root = if context.workspace_root.is_blank() {
+    request.cwd
+  } else {
+    context.workspace_root
+  }
+  let result = align_provider_task_result(artifact_root, task, result)
   let result = enforce_provider_task_result_semantics(task, context, result)
   let outcome = match
     persist_provider_task_result(command, request, task, result) {

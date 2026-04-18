@@ -416,6 +416,10 @@ The run workspace and the durable store are separate on purpose:
 
 - visible execution workspace under `<workspace>/moonclaw-jobs/...`
 - durable runtime state under `~/.moonclaw/jobs/...`
+- provider-backed phases are expected to close their event session after the
+  final assistant turn so the workflow engine can persist `step.succeeded`,
+  advance to the next phase, and eventually finish the parent run instead of
+  leaving it in `Running`
 
 ## 12. Controller UI Routine
 

@@ -83,6 +83,20 @@ async test "Broadcast::stop" {
 }
 
 ///|
+async test "Broadcast::stop exits idle readers" {
+  let broadcast : Broadcast[Int] = Broadcast::new()
+  let results = []
+  broadcast.add_listener((value : Int) => results.push(value))
+  @async.with_task_group(group => {
+    let session = broadcast.spawn_in(group)
+    broadcast.put(1)
+    @async.pause()
+    session.stop()
+  })
+  json_inspect(results, content=[1])
+}
+
+///|
 async test "Broadcast::flush" (t : @test.Test) {
   @mock.run(t, _ => {
     let broadcast : Broadcast[Int] = Broadcast::new()

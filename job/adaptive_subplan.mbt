@@ -21,6 +21,15 @@ fn adaptive_subplan_summary(envelope : AdaptiveAnalysisEnvelope) -> String {
 ///|
 fn adaptive_subplan_policy_metadata(step_metadata : Json) -> Json {
   let policy : Map[String, Json] = {}
+  match metadata_int_with_step_metadata_option(step_metadata, "timeout_ms") {
+    Some(value) => policy.set("timeout_ms", value.to_json())
+    None => ()
+  }
+  match
+    metadata_int_with_step_metadata_option(step_metadata, "max_total_tokens") {
+    Some(value) => policy.set("max_total_tokens", value.to_json())
+    None => ()
+  }
   match waiting_for_input_disabled_from_metadata(step_metadata) {
     Some(value) => policy.set("disable_waiting_for_input", value.to_json())
     None => ()

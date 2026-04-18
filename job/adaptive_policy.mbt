@@ -72,6 +72,32 @@ fn enriched_missing_inputs_envelope(
 }
 
 ///|
+async fn run_adaptive_followup_execution(
+  executor : AnalysisExecutor,
+  config : AnalysisStepConfig,
+  request : AnalysisRequest,
+) -> Result[AnalysisExecution, String] {
+  let timeout_ms = match config.policy.timeout_ms {
+    Some(value) => Some(value)
+    None => analysis_request_timeout_ms(request)
+  }
+  let max_total_tokens = match config.policy.max_total_tokens {
+    Some(value) => Some(value)
+    None =>
+      metadata_int_with_step_metadata_option(
+        request.step_metadata,
+        "max_total_tokens",
+      )
+  }
+  execute_analysis_request(
+    executor,
+    request,
+    AnalysisPolicy::new(timeout_ms~, max_total_tokens~),
+    request.step_id,
+  )
+}
+
+///|
 async fn adaptive_followup_envelope(
   executor : AnalysisExecutor,
   request : AnalysisRequest,
@@ -98,9 +124,9 @@ async fn adaptive_followup_envelope(
     web_search: false,
     preferred_skills,
   }
-  let followup_execution = (executor.run)(base_followup) catch {
-    _ => return None
-  }
+  let followup_execution = run_adaptive_followup_execution(
+    executor, config, base_followup,
+  )
   match followup_execution {
     Ok(result) =>
       match parse_adaptive_analysis_envelope(result.content) {
@@ -116,9 +142,9 @@ async fn adaptive_followup_envelope(
               result.content,
             ].join("\n\n"),
           }
-          let repair_execution = (executor.run)(repair_followup) catch {
-            _ => return None
-          }
+          let repair_execution = run_adaptive_followup_execution(
+            executor, config, repair_followup,
+          )
           match repair_execution {
             Ok(repair_result) =>
               parse_adaptive_analysis_envelope(repair_result.content)
@@ -158,7 +184,9 @@ async fn adaptive_subplan_fill_envelope(
     web_search: false,
     preferred_skills,
   }
-  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  let followup_execution = run_adaptive_followup_execution(
+    executor, config, followup,
+  )
   match followup_execution {
     Ok(result) =>
       match parse_adaptive_analysis_envelope(result.content) {
@@ -198,7 +226,9 @@ async fn adaptive_missing_inputs_fill_envelope(
     web_search: false,
     preferred_skills,
   }
-  let followup_execution = (executor.run)(followup) catch { _ => return None }
+  let followup_execution = run_adaptive_followup_execution(
+    executor, config, followup,
+  )
   match followup_execution {
     Ok(result) =>
       match parse_adaptive_analysis_envelope(result.content) {
@@ -246,6 +276,45 @@ fn adaptive_subplanned_result(
 }
 
 ///|
+fn adaptive_provider_persisted_result(
+  execution : AnalysisExecution,
+  report_artifact_id : String,
+  result_artifact_id : String,
+  child_job_id : String,
+  child_run_id : String,
+  child_outputs : Json,
+) -> Result[WorkflowStepResult, String] {
+  Ok(
+    WorkflowStepResult::new(
+      output={
+        "status": "completed",
+        "model": execution.model_name,
+        "content": execution.content,
+        "conversation_id": execution.conversation_id,
+        "report_artifact_id": report_artifact_id,
+        "result_artifact_id": result_artifact_id,
+        "usage": usage_json(execution.usage),
+        "child_job_id": child_job_id,
+        "child_run_id": child_run_id,
+        "child_outputs": child_outputs,
+        "execution_metadata": compact_analysis_result_metadata(
+          execution.metadata,
+        ),
+      },
+      summary=Some("Provider task completed and persisted after child subplan"),
+      metrics=result_metrics(execution),
+      logs=[
+        "report artifact written: \{report_artifact_id}",
+        "result artifact written: \{result_artifact_id}",
+        "spawned child job: \{child_job_id}",
+        "spawned child run: \{child_run_id}",
+        "provider persist completed after child subplan",
+      ],
+    ),
+  )
+}
+
+///|
 async fn resolved_adaptive_envelope(
   executor : AnalysisExecutor,
   request : AnalysisRequest,
@@ -253,9 +322,16 @@ async fn resolved_adaptive_envelope(
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
 ) -> AdaptiveAnalysisEnvelope? {
+  let has_persisted_provider_result = match execution.metadata {
+    { "extension_result": _, .. } => true
+    { "bookapi_result": _, .. } => true
+    _ => false
+  }
   if analysis_adaptive_disabled(config) {
     None
   } else if is_completed_keeper_plan_packet(execution.content) {
+    None
+  } else if has_persisted_provider_result {
     None
   } else {
     match parse_adaptive_analysis_envelope(execution.content) {
@@ -358,16 +434,36 @@ async fn resolve_adaptive_analysis_result(
                       ) {
                       Err(error) => Some(Err(error))
                       Ok((child_job_id, child_run_id, child_outputs)) =>
-                        Some(
-                          adaptive_subplanned_result(
+                        match
+                          finalize_provider_task_subplan_execution(
+                            request,
                             execution,
-                            report_artifact_id,
-                            result_artifact_id,
-                            child_job_id,
-                            child_run_id,
                             child_outputs.to_json(),
-                          ),
-                        )
+                          ) {
+                          Some(Ok(persisted_execution)) =>
+                            Some(
+                              adaptive_provider_persisted_result(
+                                persisted_execution,
+                                report_artifact_id,
+                                result_artifact_id,
+                                child_job_id,
+                                child_run_id,
+                                child_outputs.to_json(),
+                              ),
+                            )
+                          Some(Err(error)) => Some(Err(error))
+                          None =>
+                            Some(
+                              adaptive_subplanned_result(
+                                execution,
+                                report_artifact_id,
+                                result_artifact_id,
+                                child_job_id,
+                                child_run_id,
+                                child_outputs.to_json(),
+                              ),
+                            )
+                        }
                     }
                 }
             }

@@ -172,6 +172,32 @@ fn wiki_ingest_extension_prompt(proposal : JobProposal) -> String {
 }
 
 ///|
+fn proposal_step_retry_policy(
+  step_kind : String,
+  metadata : Json,
+) -> RetryPolicy? {
+  let requested_attempts = metadata_int(metadata, "retry_max_attempts")
+  let requested_backoff_ms = metadata_int(metadata, "retry_backoff_ms")
+  match requested_attempts {
+    Some(max_attempts) =>
+      Some(RetryPolicy::{
+        max_attempts: if max_attempts > 0 {
+          max_attempts
+        } else {
+          1
+        },
+        backoff_ms: requested_backoff_ms,
+      })
+    None =>
+      match step_kind {
+        "job.analysis" | "job.delegate" =>
+          Some(RetryPolicy::{ max_attempts: 2, backoff_ms: Some(2000) })
+        _ => None
+      }
+  }
+}
+
+///|
 fn workflow_step_definition_for_proposal_step(
   proposal : JobProposal,
   step : JobProposalStep,
@@ -182,6 +208,7 @@ fn workflow_step_definition_for_proposal_step(
 ) -> WorkflowStepDefinition {
   let kind = normalized_step_kind(step.kind)
   let step_metadata = injected_step_metadata(family, step)
+  let retry_policy = proposal_step_retry_policy(kind, step.metadata)
   let base_metadata : Json = {
     "proposal_id": proposal.id,
     "proposal_step_id": step.id,
@@ -258,7 +285,7 @@ fn workflow_step_definition_for_proposal_step(
       board_extras,
     )
   }
-  WorkflowStepDefinition::{ id: step.id, kind, config, retry_policy: None }
+  WorkflowStepDefinition::{ id: step.id, kind, config, retry_policy }
 }
 
 ///|
@@ -303,7 +330,7 @@ fn workflow_steps_for_proposal(
             "step_metadata": {},
           },
         ).to_json(),
-        retry_policy: None,
+        retry_policy: proposal_step_retry_policy("job.analysis", {}),
       },
     ]
   } else {
@@ -311,6 +338,11 @@ fn workflow_steps_for_proposal(
   }
   if family != "wiki_ingest_controller" {
     return normalized_steps
+  }
+  let imported_external_packet = match
+    metadata_json_value(proposal.profile_metadata, "external_packet") {
+    Some(Object(_)) => true
+    _ => false
   }
   let has_step = fn(step_id : String) {
     normalized_steps.any(fn(step) { step.id == step_id })
@@ -332,8 +364,11 @@ fn workflow_steps_for_proposal(
         ).to_json(),
         [("board_lane", "Extension".to_json()), ("board_order", (-1).to_json())],
       ),
-      retry_policy: None,
+      retry_policy: proposal_step_retry_policy("job.delegate", {}),
     })
+  }
+  if imported_external_packet {
+    return augmented
   }
   augmented.append(normalized_steps)
   augmented

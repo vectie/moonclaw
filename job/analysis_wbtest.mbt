@@ -230,6 +230,8 @@ async test "analysis_step_handler projects tool journal into logs and result met
     let payload = artifacts.read_text(result_artifact.id).unwrap_or("")
     inspect(payload.contains("\"tool_call_journal\""), content="true")
     inspect(payload.contains("\"tool_call_journal_path\""), content="true")
+    inspect(payload.contains("\"tool_call_journal_count\""), content="true")
+    inspect(payload.contains("\"result\""), content="false")
   })
 }
 
@@ -1147,6 +1149,62 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
 }
 
 ///|
+async test "analysis_step_handler does not adaptive-subplan persisted provider completions" {
+  @fsx.with_temporary_directory("job-analysis-provider-persisted-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Bootstrap gather for a wiki workspace.",
+      cwd=Some(dir),
+    )
+    let engine = analysis_test_engine(root, config)
+    let calls : Ref[Int] = { val: 0 }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          calls.val = calls.val + 1
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: [
+              "# Extension Task Result", "", "Completed bootstrap gather and prepared handoff into source_materialize.",
+            ].join("\n"),
+            conversation_id: Some("conv-provider-completed"),
+            usage: None,
+            metadata: {
+              "execution_mode": "provider",
+              "extension_task_id": "bootstrap_gather",
+              "extension_result": {
+                "task_id": "bootstrap_gather",
+                "summary": "Completed bootstrap gather and wrote one packet.",
+                "artifacts": ["raw/bootstrap/bootstrap.md"],
+                "memory_candidates": [],
+                "requires_review": true,
+                "notify_town": false,
+              },
+            },
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(calls.val, content="1")
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
+      result.outputs
+      .get("analyze")
+      .map(fn(output) { output.stringify().contains("source_materialize") })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "analysis_step_handler propagates missing-input policy into adaptive subplans" {
   @fsx.with_temporary_directory("job-analysis-adaptive-policy-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -1155,6 +1213,8 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
       cwd=Some(dir),
       metadata={
         "step_metadata": {
+          "timeout_ms": 600000,
+          "max_total_tokens": 24000,
           "disable_waiting_for_input": true,
           "best_effort_on_missing_input": true,
         },
@@ -1249,6 +1309,18 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
     inspect(
       child_proposal.profile_metadata
       .stringify()
+      .contains("\"timeout_ms\":600000"),
+      content="true",
+    )
+    inspect(
+      child_proposal.profile_metadata
+      .stringify()
+      .contains("\"max_total_tokens\":24000"),
+      content="true",
+    )
+    inspect(
+      child_proposal.profile_metadata
+      .stringify()
       .contains("\"disable_waiting_for_input\":true"),
       content="true",
     )
@@ -1256,6 +1328,18 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
       child_proposal.profile_metadata
       .stringify()
       .contains("\"best_effort_on_missing_input\":true"),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"timeout_ms\":600000"),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"max_total_tokens\":24000"),
       content="true",
     )
     inspect(
@@ -1954,6 +2038,64 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
         Ok(_) => false
       },
       content="true",
+    )
+  })
+}
+
+///|
+async test "analysis_step_handler bounds adaptive followup after persisted execution" {
+  @fsx.with_temporary_directory("job-analysis-adaptive-timeout-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let engine = analysis_test_engine(
+      root,
+      AnalysisStepConfig::new(
+        prompt="revise durable knowledge surfaces",
+        policy=AnalysisPolicy::new(timeout_ms=Some(10)),
+      ),
+    )
+    let requests : Ref[Int] = { val: 0 }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=async fn(_request) {
+          requests.val = requests.val + 1
+          if requests.val == 1 {
+            Ok(AnalysisExecution::{
+              model_name: "default",
+              content: "Updated durable knowledge surfaces and wiki pages.",
+              conversation_id: Some("conv-main"),
+              usage: None,
+              metadata: {},
+            })
+          } else {
+            @async.sleep(50)
+            Ok(AnalysisExecution::{
+              model_name: "default",
+              content: "{\"verdict\":\"completed\"}",
+              conversation_id: Some("conv-followup"),
+              usage: None,
+              metadata: {},
+            })
+          }
+        }),
+        now=fn() { 500 },
+      ),
+    )
+
+    let result = match engine.execute_run("run-analysis-1", fn() { 500 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    inspect(requests.val, content="2")
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
+      result.steps[0].status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    inspect(result.steps[0].summary.unwrap_or(""), content="Analysis completed")
+    inspect(
+      engine.runtime.store().list_artifacts(run_id="run-analysis-1").length(),
+      content="2",
     )
   })
 }

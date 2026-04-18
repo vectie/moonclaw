@@ -49,6 +49,17 @@ fn metadata_bool_with_step_metadata_option(
 }
 
 ///|
+fn metadata_int_with_step_metadata_option(
+  metadata : Json,
+  key : String,
+) -> Int? {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(Number(value, ..)) => Some(value.to_int())
+    _ => None
+  }
+}
+
+///|
 fn waiting_for_input_disabled_from_metadata(metadata : Json) -> Bool? {
   metadata_bool_with_step_metadata_option(metadata, "disable_waiting_for_input")
 }

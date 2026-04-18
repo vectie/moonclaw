@@ -1,5 +1,6 @@
 import {
   "moonbitlang/async",
+  "moonbitlang/async/fs",
   "moonbitlang/async/process",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",

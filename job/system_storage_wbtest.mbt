@@ -45,6 +45,32 @@ fn sample_workflow() -> WorkflowDefinition {
 }
 
 ///|
+fn sample_delegate_definition() -> JobDefinition {
+  JobDefinition::{
+    ..sample_definition(),
+    id: "job.sample.delegate",
+    workflow_id: Some("job.sample.delegate.workflow"),
+  }
+}
+
+///|
+fn sample_delegate_workflow() -> WorkflowDefinition {
+  WorkflowDefinition::{
+    id: "job.sample.delegate.workflow",
+    kind: "job",
+    steps: [
+      WorkflowStepDefinition::{
+        id: "delegate",
+        kind: "job.delegate",
+        config: {},
+        retry_policy: None,
+      },
+    ],
+    output_bindings: [],
+  }
+}
+
+///|
 fn sample_run() -> JobRun {
   JobRun::{
     id: "run-1",
@@ -387,6 +413,78 @@ async test "SystemStore persists notification preferences" {
 }
 
 ///|
+async test "SystemStore reconciles stale running delegate parent from terminal child run" {
+  @fsx.with_temporary_directory("job-system-reconcile-parent-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+    let definition = sample_delegate_definition()
+    let workflow = sample_delegate_workflow()
+    let parent_run = JobRun::{
+      ..sample_run(),
+      id: "run-parent",
+      job_id: definition.id,
+    }
+    let parent_step = JobStepRun::{
+      ..sample_step_run(),
+      id: "run-parent:delegate",
+      run_id: "run-parent",
+      step_id: "delegate",
+      status: RunStatus::Running,
+      completed_at: None,
+      summary: None,
+      output: None,
+      error: None,
+    }
+    let child_run = JobRun::{
+      ..sample_run(),
+      id: "run-child",
+      job_id: "job.child",
+      trigger: TriggerSource::Custom("subjob"),
+      parent_run_id: Some("run-parent"),
+      parent_step_id: Some("delegate"),
+      depth: 1,
+      status: RunStatus::Succeeded,
+      completed_at: Some(33),
+      summary: Some("done"),
+    }
+
+    store.save_definition(definition)
+    store.save_workflow(workflow)
+    store.save_run(parent_run)
+    store.save_step_run(parent_step)
+    store.save_run(child_run)
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(
+      reloaded
+      .get_run("run-parent")
+      .map(fn(run) { run.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Succeeded\"",
+    )
+    inspect(
+      reloaded
+      .get_step_run("run-parent", "delegate")
+      .map(fn(step) { step.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Succeeded\"",
+    )
+    inspect(
+      reloaded
+      .get_step_run("run-parent", "delegate")
+      .bind(fn(step) { step.output })
+      .map(fn(output) {
+        output.stringify().contains("\"child_run_id\":\"run-child\"")
+      })
+      .unwrap_or(false),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "SystemStore shortens step file names for long step ids" {
   @fsx.with_temporary_directory("job-system-long-step-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -429,6 +527,177 @@ async test "SystemStore shortens step file names for long step ids" {
       .map(fn(step) { step.step_id == long_step_id })
       .unwrap_or(false),
       content="true",
+    )
+  })
+}
+
+///|
+async test "SystemStore merges run index across concurrent store instances" {
+  @fsx.with_temporary_directory("job-system-merge-runs-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store_a = SystemStore::new(root~)
+    let store_b = SystemStore::new(root~)
+    let run_a = JobRun::{ ..sample_run(), id: "run-a", job_id: "job-a" }
+    let run_b = JobRun::{
+      ..sample_run(),
+      id: "run-b",
+      job_id: "job-b",
+      status: RunStatus::Succeeded,
+      completed_at: Some(20),
+      summary: Some("done"),
+    }
+    let step_a = JobStepRun::{
+      ..sample_step_run(),
+      id: "step-a",
+      run_id: "run-a",
+    }
+    let step_b = JobStepRun::{
+      ..sample_step_run(),
+      id: "step-b",
+      run_id: "run-b",
+    }
+
+    store_a.save_run(run_a)
+    store_a.save_step_run(step_a)
+    store_b.save_run(run_b)
+    store_b.save_step_run(step_b)
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(reloaded.list_runs().length(), content="2")
+    inspect(reloaded.list_step_runs("run-a").length(), content="1")
+    inspect(reloaded.list_step_runs("run-b").length(), content="1")
+    inspect(
+      reloaded
+      .get_run("run-b")
+      .map(fn(run) { run.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Succeeded\"",
+    )
+  })
+}
+
+///|
+async test "SystemStore rebuilds runs index from run metadata when runs index is malformed" {
+  @fsx.with_temporary_directory("job-system-rebuild-runs-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+
+    store.save_run(sample_run())
+    store.save_step_run(sample_step_run())
+    @fsx.write_to_file(
+      root |> @pathx.join("index") |> @pathx.join("runs.json"),
+      "{",
+    )
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(reloaded.list_runs().length(), content="1")
+    inspect(reloaded.list_step_runs("run-1").length(), content="1")
+    inspect(
+      reloaded
+      .get_run("run-1")
+      .map(fn(run) { run.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Running\"",
+    )
+    inspect(
+      reloaded
+      .get_step_run("run-1", "fetch")
+      .map(fn(step) { step.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Succeeded\"",
+    )
+  })
+}
+
+///|
+async test "SystemStore rebuilds missing runs index from per-run metadata" {
+  @fsx.with_temporary_directory("job-system-missing-runs-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+
+    store.save_run(sample_run())
+    store.save_step_run(sample_step_run())
+    @fsx.remove(root |> @pathx.join("index") |> @pathx.join("runs.json"))
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(reloaded.list_runs().length(), content="1")
+    inspect(reloaded.list_step_runs("run-1").length(), content="1")
+    inspect(
+      reloaded
+      .get_run("run-1")
+      .map(fn(run) { run.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Running\"",
+    )
+    inspect(
+      @fsx.exists(root |> @pathx.join("index") |> @pathx.join("runs.json")),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "SystemStore prefers per-run metadata over a stale but valid runs index" {
+  @fsx.with_temporary_directory("job-system-stale-runs-index-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let store = SystemStore::new(root~)
+
+    let stale_run = sample_run()
+    let authoritative_run = JobRun::{
+      ..sample_run(),
+      status: RunStatus::Failed,
+      completed_at: Some(22),
+      summary: Some("crashed"),
+      error: Some("disk truth"),
+    }
+    let stale_step = JobStepRun::{
+      ..sample_step_run(),
+      status: RunStatus::Running,
+    }
+    let authoritative_step = JobStepRun::{
+      ..sample_step_run(),
+      status: RunStatus::Succeeded,
+      summary: Some("authoritative"),
+    }
+
+    store.save_run(authoritative_run)
+    store.save_step_run(authoritative_step)
+    @fsx.write_to_file(
+      root |> @pathx.join("index") |> @pathx.join("runs.json"),
+      RunsIndexFile::{ runs: [stale_run], steps: [stale_step] }
+      .to_json()
+      .stringify(),
+    )
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(
+      reloaded
+      .get_run("run-1")
+      .map(fn(run) { run.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Failed\"",
+    )
+    inspect(
+      reloaded
+      .get_run("run-1")
+      .map(fn(run) { run.error.unwrap_or("") })
+      .unwrap_or(""),
+      content="disk truth",
+    )
+    inspect(
+      reloaded
+      .get_step_run("run-1", "fetch")
+      .map(fn(step) { step.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Succeeded\"",
     )
   })
 }
