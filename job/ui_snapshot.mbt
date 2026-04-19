@@ -102,8 +102,8 @@ fn timeline_from_events(
 }
 
 ///|
-fn node_updated_at(started_at : Int?, completed_at : Int?) -> Int? {
-  match completed_at {
+fn node_updated_at(started_at : Int?, finished_at : Int?) -> Int? {
+  match finished_at {
     Some(value) => Some(value)
     None => started_at
   }
@@ -331,7 +331,7 @@ fn step_node(
     memory_id: None,
     created_at: step_run.bind(fn(step) { step.started_at }),
     updated_at: step_run.bind(fn(step) {
-      node_updated_at(step.started_at, step.completed_at)
+      node_updated_at(step.started_at, step.finished_at)
     }),
     provisional: step_run is None,
     metadata: step_definition.config,
@@ -389,7 +389,7 @@ fn child_run_node(
     artifact_id: None,
     memory_id: None,
     created_at: run.started_at,
-    updated_at: node_updated_at(run.started_at, run.completed_at),
+    updated_at: node_updated_at(run.started_at, run.finished_at),
     provisional: false,
     metadata: {
       "depth": run.depth,
@@ -601,7 +601,7 @@ fn synthetic_run_output_artifact(
     path,
     content_type,
     metadata: { "synthetic": true, "run_output_kind": output_kind },
-    created_at: run.completed_at.unwrap_or(run.started_at.unwrap_or(0)),
+    created_at: run.finished_at.unwrap_or(run.started_at.unwrap_or(0)),
     archived_at: None,
     scope: ["run-output"],
   }
@@ -741,10 +741,8 @@ pub fn current_step_id_for_ui(
       } else {
         let sorted = steps.copy()
         sorted.sort_by(fn(left, right) {
-          let left_ts = left.completed_at.unwrap_or(
-            left.started_at.unwrap_or(0),
-          )
-          let right_ts = right.completed_at.unwrap_or(
+          let left_ts = left.finished_at.unwrap_or(left.started_at.unwrap_or(0))
+          let right_ts = right.finished_at.unwrap_or(
             right.started_at.unwrap_or(0),
           )
           right_ts.compare(left_ts)
@@ -840,7 +838,7 @@ pub async fn build_job_ui_snapshot(
     artifact_id: None,
     memory_id: None,
     created_at: run.started_at,
-    updated_at: node_updated_at(run.started_at, run.completed_at),
+    updated_at: node_updated_at(run.started_at, run.finished_at),
     provisional: false,
     metadata: {
       "job_id": definition.id,

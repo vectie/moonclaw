@@ -139,10 +139,8 @@ fn Gateway::latest_waiting_job_for_message(
       if score_compare != 0 {
         return score_compare
       }
-      let left_ts = left.2.completed_at.unwrap_or(
-        left.2.started_at.unwrap_or(0),
-      )
-      let right_ts = right.2.completed_at.unwrap_or(
+      let left_ts = left.2.finished_at.unwrap_or(left.2.started_at.unwrap_or(0))
+      let right_ts = right.2.finished_at.unwrap_or(
         right.2.started_at.unwrap_or(0),
       )
       right_ts.compare(left_ts)

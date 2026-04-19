@@ -46,7 +46,7 @@ async fn analysis_test_engine(
     attempt: 1,
     retry_of: None,
     started_at: None,
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   })

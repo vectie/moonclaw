@@ -44,7 +44,7 @@ async test "render_job_status_command_reply resolves run targets" {
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -111,7 +111,7 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: Some(20),
+    finished_at: Some(20),
     summary: Some("Waiting for input on step step-1: parcel size"),
     error: None,
   }
@@ -124,7 +124,7 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
     step_id: "step-1",
     status: RunStatus::WaitingForInput,
     started_at: Some(10),
-    completed_at: Some(20),
+    finished_at: Some(20),
     metrics: {},
     logs: [],
     retry_count: 0,
@@ -199,7 +199,7 @@ async test "render_job_status_command_reply splits multiple missing inputs into 
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: Some(20),
+    finished_at: Some(20),
     summary: Some("Waiting for input on step step-1"),
     error: None,
   }
@@ -212,7 +212,7 @@ async test "render_job_status_command_reply splits multiple missing inputs into 
     step_id: "step-1",
     status: RunStatus::WaitingForInput,
     started_at: Some(10),
-    completed_at: Some(20),
+    finished_at: Some(20),
     metrics: {},
     logs: [],
     retry_count: 0,
@@ -271,7 +271,7 @@ async test "render_job_status_command_reply avoids generic missing-input placeho
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: Some(20),
+    finished_at: Some(20),
     summary: Some("Waiting for input on step step-1"),
     error: None,
   }
@@ -284,7 +284,7 @@ async test "render_job_status_command_reply avoids generic missing-input placeho
     step_id: "step-1",
     status: RunStatus::WaitingForInput,
     started_at: Some(10),
-    completed_at: Some(20),
+    finished_at: Some(20),
     metrics: {},
     logs: [],
     retry_count: 0,
@@ -345,7 +345,7 @@ async test "render_job_status_command_reply includes workspace output links for 
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: Some(20),
+      finished_at: Some(20),
       summary: Some("Workflow completed"),
       error: None,
     }
@@ -408,7 +408,7 @@ async test "render_job_status_command_reply labels analysis-expanded child runs 
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -424,7 +424,7 @@ async test "render_job_status_command_reply labels analysis-expanded child runs 
     attempt: 1,
     retry_of: None,
     started_at: Some(20),
-    completed_at: None,
+    finished_at: None,
     summary: Some("Expanded from analysis"),
     error: None,
   }
@@ -468,7 +468,7 @@ async test "request_job_stop resolves run ids before calling cancel" {
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -516,7 +516,7 @@ async test "request_job_stop resolves waiting-for-input run ids before calling f
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: Some(20),
+    finished_at: Some(20),
     summary: Some("Waiting for input"),
     error: None,
   }
@@ -572,7 +572,7 @@ async test "render_job_workspace_command_reply shows workspace path" {
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }

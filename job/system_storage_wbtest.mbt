@@ -84,7 +84,7 @@ fn sample_run() -> JobRun {
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -98,7 +98,7 @@ fn sample_step_run() -> JobStepRun {
     step_id: "fetch",
     status: RunStatus::Succeeded,
     started_at: Some(11),
-    completed_at: Some(12),
+    finished_at: Some(12),
     metrics: { "paper_count": 4 },
     logs: ["started", "finished"],
     retry_count: 0,
@@ -430,7 +430,7 @@ async test "SystemStore reconciles stale running delegate parent from terminal c
       run_id: "run-parent",
       step_id: "delegate",
       status: RunStatus::Running,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       output: None,
       error: None,
@@ -444,7 +444,7 @@ async test "SystemStore reconciles stale running delegate parent from terminal c
       parent_step_id: Some("delegate"),
       depth: 1,
       status: RunStatus::Succeeded,
-      completed_at: Some(33),
+      finished_at: Some(33),
       summary: Some("done"),
     }
 
@@ -497,7 +497,7 @@ async test "SystemStore shortens step file names for long step ids" {
       step_id: long_step_id,
       status: RunStatus::Failed,
       started_at: Some(11),
-      completed_at: Some(12),
+      finished_at: Some(12),
       metrics: {},
       logs: ["failed"],
       retry_count: 0,
@@ -543,7 +543,7 @@ async test "SystemStore merges run index across concurrent store instances" {
       id: "run-b",
       job_id: "job-b",
       status: RunStatus::Succeeded,
-      completed_at: Some(20),
+      finished_at: Some(20),
       summary: Some("done"),
     }
     let step_a = JobStepRun::{
@@ -652,7 +652,7 @@ async test "SystemStore prefers per-run metadata over a stale but valid runs ind
     let authoritative_run = JobRun::{
       ..sample_run(),
       status: RunStatus::Failed,
-      completed_at: Some(22),
+      finished_at: Some(22),
       summary: Some("crashed"),
       error: Some("disk truth"),
     }

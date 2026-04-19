@@ -195,7 +195,7 @@ pub async fn RuntimeManager::create_run(
     attempt: 1,
     retry_of: None,
     started_at: None,
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -275,7 +275,7 @@ pub async fn RuntimeManager::mark_run_resumed(
   let updated = JobRun::{
     ..run,
     status: Running,
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -365,7 +365,7 @@ async fn RuntimeManager::finish_run_with_status(
   let updated = JobRun::{
     ..run,
     status,
-    completed_at: Some(now_ms),
+    finished_at: Some(now_ms),
     summary: match summary {
       Some(summary) => Some(summary)
       None => run.summary
@@ -546,7 +546,7 @@ pub async fn RuntimeManager::trigger_retry_run(
     attempt: checkpoint.retry_attempts + 1,
     retry_of: checkpoint.retry_source_run_id,
     started_at: None,
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -623,8 +623,8 @@ pub fn RuntimeManager::list_recent_runs(
 ) -> Array[JobRun] {
   let runs = self.store.list_runs()
   runs.sort_by(fn(left, right) {
-    let left_ts = left.completed_at.unwrap_or(left.started_at.unwrap_or(0))
-    let right_ts = right.completed_at.unwrap_or(right.started_at.unwrap_or(0))
+    let left_ts = left.finished_at.unwrap_or(left.started_at.unwrap_or(0))
+    let right_ts = right.finished_at.unwrap_or(right.started_at.unwrap_or(0))
     right_ts.compare(left_ts)
   })
   if limit >= runs.length() {

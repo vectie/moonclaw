@@ -67,7 +67,7 @@ async fn Gateway::child_run_step_started(
     step_id: step.id,
     status: @job.RunStatus::Running,
     started_at: Some(now_ms),
-    completed_at: None,
+    finished_at: None,
     metrics: {},
     logs: [],
     retry_count: 0,
@@ -96,7 +96,7 @@ async fn Gateway::finish_child_run_step(
   .save_step_run(@job.JobStepRun::{
     ..step_run,
     status,
-    completed_at: Some(now_ms),
+    finished_at: Some(now_ms),
     output,
     summary,
     error,

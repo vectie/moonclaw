@@ -12,7 +12,7 @@ test "decide_active_job_notifications emits verbose progress and heartbeat" {
     attempt: 1,
     retry_of: None,
     started_at: Some(1_000),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -68,7 +68,7 @@ test "decide_active_job_notifications warns once for long-running jobs" {
     attempt: 1,
     retry_of: None,
     started_at: Some(1_000),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -110,7 +110,7 @@ test "decide_active_job_notifications emits step start for normal verbosity" {
     attempt: 1,
     retry_of: None,
     started_at: Some(1_000),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }

@@ -35,8 +35,8 @@ pub fn current_step_label(
     }
   } else {
     steps.sort_by(fn(left, right) {
-      let left_ts = left.completed_at.unwrap_or(left.started_at.unwrap_or(0))
-      let right_ts = right.completed_at.unwrap_or(right.started_at.unwrap_or(0))
+      let left_ts = left.finished_at.unwrap_or(left.started_at.unwrap_or(0))
+      let right_ts = right.finished_at.unwrap_or(right.started_at.unwrap_or(0))
       right_ts.compare(left_ts)
     })
     steps[0].step_id

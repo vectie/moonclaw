@@ -152,7 +152,7 @@ async fn sync_manual_workspace_memory(
   source_workspace : String,
   workspace_dir : String,
 ) -> Unit {
-  let now_ms = run.completed_at.unwrap_or(run.started_at.unwrap_or(0))
+  let now_ms = run.finished_at.unwrap_or(run.started_at.unwrap_or(0))
   let memory_file = workspace_dir |> @pathx.join("MEMORY.md")
   let current_content = @fsx.read_file(memory_file) catch { _ => "" }
   let manual_content = manual_memory_content(current_content)

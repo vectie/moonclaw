@@ -43,7 +43,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     })
@@ -362,7 +362,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     })
@@ -551,7 +551,7 @@ async test "subjob_step_handler propagates missing-input policy into child propo
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     })
@@ -693,7 +693,7 @@ async test "subjob_step_handler fails when child run waits for input" {
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     })

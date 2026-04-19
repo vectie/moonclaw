@@ -266,7 +266,7 @@ pub(all) struct RunInfo {
   session_key : String
   status : String
   created_at : Int
-  completed_at : Int?
+  finished_at : Int?
   result : Json?
   error : @protocol.ErrorShape?
 }

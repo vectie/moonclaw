@@ -45,7 +45,7 @@ struct RunSummary {
   status : String
   depth : Int
   started_at : Int?
-  completed_at : Int?
+  finished_at : Int?
   summary : String?
 } derive(FromJson, Show)
 

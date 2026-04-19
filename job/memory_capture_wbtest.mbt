@@ -37,7 +37,7 @@ async test "capture_successful_run_memories stores run summary and report artifa
       attempt: 1,
       retry_of: None,
       started_at: Some(20),
-      completed_at: Some(30),
+      finished_at: Some(30),
       summary: Some("Captured daily VLA review summary."),
       error: None,
     }

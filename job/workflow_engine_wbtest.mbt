@@ -28,7 +28,7 @@ fn workflow_test_run() -> JobRun {
     attempt: 1,
     retry_of: None,
     started_at: None,
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }
@@ -728,7 +728,7 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
       ..workflow_test_run(),
       status: RunStatus::WaitingForInput,
       started_at: Some(1000),
-      completed_at: Some(2000),
+      finished_at: Some(2000),
       summary: Some("Waiting for input on step estimate"),
     })
     runtime
@@ -739,7 +739,7 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
       step_id: "preprocess",
       status: RunStatus::Succeeded,
       started_at: Some(1100),
-      completed_at: Some(1200),
+      finished_at: Some(1200),
       metrics: {},
       logs: [],
       retry_count: 0,
@@ -755,7 +755,7 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
       step_id: "estimate",
       status: RunStatus::WaitingForInput,
       started_at: Some(1300),
-      completed_at: Some(1400),
+      finished_at: Some(1400),
       metrics: {},
       logs: [],
       retry_count: 0,

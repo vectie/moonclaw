@@ -123,7 +123,7 @@ async test "execution_notification_hooks sends start and finish notifications" {
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }
@@ -145,7 +145,7 @@ async test "execution_notification_hooks sends start and finish notifications" {
     let finished = JobRun::{
       ..run,
       status: RunStatus::Succeeded,
-      completed_at: Some(120),
+      finished_at: Some(120),
     }
     (hooks.on_finished)(definition, finished)
     inspect(sent.length().to_string(), content="2")
@@ -202,7 +202,7 @@ async test "execute_run_lifecycle does not send stale start notification when re
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: Some(20),
+      finished_at: Some(20),
       summary: Some("waiting"),
       error: Some("Analysis requires input: parcel size"),
     })

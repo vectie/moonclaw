@@ -73,7 +73,7 @@ pub(all) struct JobRun {
   attempt : Int
   retry_of : String?
   started_at : Int?
-  completed_at : Int?
+  finished_at : Int?
   summary : String?
   error : String?
 } derive(ToJson, FromJson, Show)
@@ -85,7 +85,7 @@ pub(all) struct JobStepRun {
   step_id : String
   status : RunStatus
   started_at : Int?
-  completed_at : Int?
+  finished_at : Int?
   metrics : Json
   logs : Array[String]
   retry_count : Int

@@ -51,7 +51,7 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }
@@ -204,7 +204,7 @@ async test "prepare_run_workspace nests child runs under parent workspace" {
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }
@@ -220,7 +220,7 @@ async test "prepare_run_workspace nests child runs under parent workspace" {
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }

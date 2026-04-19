@@ -10,7 +10,7 @@ test "decode_ok_payload parses run and channel payloads" {
           "session_key": "direct:default",
           "status": "completed",
           "created_at": 1,
-          "completed_at": 2,
+          "finished_at": 2,
           "result": { "content": "done" },
           "error": {
             "code": "none",
@@ -113,7 +113,7 @@ test "decode_ok_payload parses run and channel payloads" {
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
-    completed_at: None,
+    finished_at: None,
     summary: None,
     error: None,
   }

@@ -45,7 +45,7 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
       attempt: 1,
       retry_of: None,
       started_at: Some(100),
-      completed_at: None,
+      finished_at: None,
       summary: Some("watching"),
       error: None,
     }
@@ -61,7 +61,7 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
       attempt: 1,
       retry_of: None,
       started_at: None,
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }
@@ -71,7 +71,7 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
       step_id: "step-a",
       status: Succeeded,
       started_at: Some(110),
-      completed_at: Some(130),
+      finished_at: Some(130),
       metrics: {},
       logs: [],
       retry_count: 0,
@@ -219,7 +219,7 @@ async test "artifact nodes surface execution isolation cleanup policy" {
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: Some(20),
+      finished_at: Some(20),
       summary: Some("done"),
       error: None,
     })
@@ -308,7 +308,7 @@ async test "proposal step report artifacts attach under the matching step" {
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: Some(20),
+      finished_at: Some(20),
       summary: Some("done"),
       error: None,
     })
@@ -381,7 +381,7 @@ async test "job report memories attach under the matching step via source artifa
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: Some(20),
+      finished_at: Some(20),
       summary: Some("done"),
       error: None,
     })
@@ -481,7 +481,7 @@ async test "build_job_ui_snapshot includes synthetic final run outputs from work
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
-      completed_at: Some(20),
+      finished_at: Some(20),
       summary: Some("done"),
       error: None,
     })
@@ -544,7 +544,7 @@ async test "build_job_ui_snapshot includes explicit handoffs when provided" {
       attempt: 1,
       retry_of: None,
       started_at: Some(100),
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }
@@ -627,7 +627,7 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       attempt: 1,
       retry_of: None,
       started_at: Some(100),
-      completed_at: None,
+      finished_at: None,
       summary: None,
       error: None,
     }
@@ -808,7 +808,7 @@ async test "build_job_ui_snapshot adds split and merge nodes for controller runs
       attempt: 1,
       retry_of: None,
       started_at: Some(100),
-      completed_at: None,
+      finished_at: None,
       summary: Some("shipping feature"),
       error: None,
     }
@@ -824,7 +824,7 @@ async test "build_job_ui_snapshot adds split and merge nodes for controller runs
       attempt: 1,
       retry_of: None,
       started_at: Some(120),
-      completed_at: None,
+      finished_at: None,
       summary: Some("implementing"),
       error: None,
     }
@@ -998,7 +998,7 @@ async test "build_job_ui_snapshot labels analysis-expanded child runs as subplan
     attempt: 1,
     retry_of: None,
     started_at: Some(100),
-    completed_at: None,
+    finished_at: None,
     summary: Some("Parent running"),
     error: None,
   }
@@ -1014,7 +1014,7 @@ async test "build_job_ui_snapshot labels analysis-expanded child runs as subplan
     attempt: 1,
     retry_of: None,
     started_at: Some(120),
-    completed_at: None,
+    finished_at: None,
     summary: Some("Expanded from analysis"),
     error: None,
   }
@@ -1092,7 +1092,7 @@ async test "build_job_ui_snapshot uses the proposal and workflow for the selecte
       attempt: 1,
       retry_of: None,
       started_at: Some(100),
-      completed_at: Some(140),
+      finished_at: Some(140),
       summary: Some("old run"),
       error: None,
     }
@@ -1108,7 +1108,7 @@ async test "build_job_ui_snapshot uses the proposal and workflow for the selecte
       attempt: 1,
       retry_of: None,
       started_at: Some(200),
-      completed_at: None,
+      finished_at: None,
       summary: Some("latest run"),
       error: None,
     }

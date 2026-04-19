@@ -415,8 +415,8 @@ fn SystemStore::delegate_child_runs_for_step(
     })
     .to_array()
   children.sort_by(fn(left, right) {
-    let left_time = left.completed_at.unwrap_or(left.started_at.unwrap_or(0))
-    let right_time = right.completed_at.unwrap_or(right.started_at.unwrap_or(0))
+    let left_time = left.finished_at.unwrap_or(left.started_at.unwrap_or(0))
+    let right_time = right.finished_at.unwrap_or(right.started_at.unwrap_or(0))
     right_time.compare(left_time)
   })
   children
@@ -429,7 +429,7 @@ fn reconciled_delegate_step_run(
   existing : JobStepRun?,
   child : JobRun,
 ) -> JobStepRun {
-  let completed_at = child.completed_at.unwrap_or(child.started_at.unwrap_or(0))
+  let finished_at = child.finished_at.unwrap_or(child.started_at.unwrap_or(0))
   let summary = match child.status {
     Succeeded =>
       Some("Recovered delegate completion from child run \{child.id}")
@@ -477,7 +477,7 @@ fn reconciled_delegate_step_run(
       JobStepRun::{
         ..existing,
         status: child.status,
-        completed_at: Some(completed_at),
+        finished_at: Some(finished_at),
         logs,
         summary: resolved_summary,
         output,
@@ -491,7 +491,7 @@ fn reconciled_delegate_step_run(
         step_id: step.id,
         status: child.status,
         started_at: child.started_at,
-        completed_at: Some(completed_at),
+        finished_at: Some(finished_at),
         metrics: {},
         logs,
         retry_count: 0,
@@ -613,10 +613,10 @@ async fn SystemStore::reconcile_delegate_parent_runs_unlocked(
     if !all_terminal {
       continue
     }
-    let completed_at = workflow.steps.fold(init=0, fn(max_time, step) {
+    let finished_at = workflow.steps.fold(init=0, fn(max_time, step) {
       let step_time = self.steps
         .get("\{run.id}:\{step.id}")
-        .bind(fn(step_run) { step_run.completed_at })
+        .bind(fn(step_run) { step_run.finished_at })
         .unwrap_or(0)
       if step_time > max_time {
         step_time
@@ -652,7 +652,7 @@ async fn SystemStore::reconcile_delegate_parent_runs_unlocked(
     self.save_reconciled_run_unlocked(JobRun::{
       ..run,
       status,
-      completed_at: Some(completed_at),
+      finished_at: Some(finished_at),
       summary: resolved_summary,
       error,
     })
