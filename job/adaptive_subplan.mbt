@@ -19,24 +19,98 @@ fn adaptive_subplan_summary(envelope : AdaptiveAnalysisEnvelope) -> String {
 }
 
 ///|
-fn adaptive_subplan_policy_metadata(step_metadata : Json) -> Json {
+fn adaptive_subplan_string_metadata(metadata : Json, key : String) -> String? {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      Some(value.trim().to_string())
+    _ => None
+  }
+}
+
+///|
+fn adaptive_subplan_string_array_metadata(
+  metadata : Json,
+  key : String,
+) -> Array[String] {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(Array(values)) => {
+      let items : Array[String] = []
+      for value in values {
+        guard value is String(text) else { continue }
+        let trimmed = text.trim().to_string()
+        if !trimmed.is_blank() {
+          items.push(trimmed)
+        }
+      }
+      items
+    }
+    _ => []
+  }
+}
+
+///|
+fn adaptive_subplan_provider_derived(request : AnalysisRequest) -> Bool {
+  provider_execution_requested(request.execution_mode) ||
+  metadata_with_step_metadata(request.step_metadata, "extension_task_id")
+  is Some(_) ||
+  metadata_with_step_metadata(request.step_metadata, "bookapi_task_id")
+  is Some(_)
+}
+
+///|
+fn adaptive_subplan_policy_metadata(
+  request : AnalysisRequest,
+  config : AnalysisStepConfig,
+) -> Json {
   let policy : Map[String, Json] = {}
-  match metadata_int_with_step_metadata_option(step_metadata, "timeout_ms") {
+  match
+    metadata_int_with_step_metadata_option(request.step_metadata, "timeout_ms") {
     Some(value) => policy.set("timeout_ms", value.to_json())
     None => ()
   }
   match
-    metadata_int_with_step_metadata_option(step_metadata, "max_total_tokens") {
+    metadata_int_with_step_metadata_option(
+      request.step_metadata,
+      "max_total_tokens",
+    ) {
     Some(value) => policy.set("max_total_tokens", value.to_json())
     None => ()
   }
-  match waiting_for_input_disabled_from_metadata(step_metadata) {
+  match waiting_for_input_disabled_from_metadata(request.step_metadata) {
     Some(value) => policy.set("disable_waiting_for_input", value.to_json())
     None => ()
   }
-  match best_effort_on_missing_input_from_metadata(step_metadata) {
+  match best_effort_on_missing_input_from_metadata(request.step_metadata) {
     Some(value) => policy.set("best_effort_on_missing_input", value.to_json())
     None => ()
+  }
+  match
+    requested_model_name_or_none(config.model.unwrap_or(request.model_name)) {
+    Some(model) => policy.set("model", model.to_json())
+    None => ()
+  }
+  let system_prompt = adaptive_subplan_string_metadata(
+    request.step_metadata,
+    "system_prompt",
+  ).unwrap_or(config.system_prompt.unwrap_or(""))
+  if !system_prompt.is_blank() {
+    policy.set("system_prompt", system_prompt.to_json())
+  }
+  let preferred_skills = if !config.preferred_skills.is_empty() {
+    config.preferred_skills
+  } else {
+    adaptive_subplan_string_array_metadata(
+      request.step_metadata,
+      "preferred_skills",
+    )
+  }
+  if !preferred_skills.is_empty() {
+    policy.set("preferred_skills", preferred_skills.to_json())
+  }
+  policy.set("enable_tools", config.enable_tools.to_json())
+  policy.set("web_search", config.web_search.to_json())
+  if adaptive_subplan_provider_derived(request) {
+    policy.set("provider_subplan_execution", true.to_json())
   }
   Json::object(policy)
 }
@@ -49,6 +123,8 @@ fn adaptive_subplan_proposal(
   summary : String,
   steps : Array[AdaptiveSubstepPayload],
   policy_metadata : Json,
+  execution_mode : String?,
+  execution_target : String?,
   now_ms : Int,
 ) -> JobProposal {
   let proposal_steps : Array[JobProposalStep] = []
@@ -70,8 +146,8 @@ fn adaptive_subplan_proposal(
         policy_metadata,
       ),
       child_profile: None,
-      execution_mode: None,
-      execution_target: None,
+      execution_mode,
+      execution_target,
       include_parent_outputs: None,
       max_depth: None,
     })
@@ -131,7 +207,17 @@ async fn execute_analysis_subplan(
   }
   let cwd = context.run.workspace_dir.unwrap_or(config.cwd.unwrap_or("."))
   let home = config.home.unwrap_or(".")
-  let policy_metadata = adaptive_subplan_policy_metadata(request.step_metadata)
+  let policy_metadata = adaptive_subplan_policy_metadata(request, config)
+  let execution_mode = if provider_execution_requested(request.execution_mode) {
+    None
+  } else {
+    request.execution_mode
+  }
+  let execution_target = if provider_execution_requested(request.execution_mode) {
+    None
+  } else {
+    request.execution_target
+  }
   let proposal = adaptive_subplan_proposal(
     human_readable_proposal_id(
       adaptive_subplan_title(config, context, envelope),
@@ -143,6 +229,8 @@ async fn execute_analysis_subplan(
     adaptive_subplan_summary(envelope),
     steps,
     policy_metadata,
+    execution_mode,
+    execution_target,
     now(),
   )
   let compilation = (compiler.run)(proposal, now(), cwd, home)

@@ -236,6 +236,66 @@ async test "analysis_step_handler projects tool journal into logs and result met
 }
 
 ///|
+async test "analysis_step_handler stamps running step with session journal before executor returns" {
+  @fsx.with_temporary_directory("job-analysis-session-journal-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Start session journal before the executor completes.",
+      cwd=Some(dir),
+      policy=AnalysisPolicy::new(timeout_ms=Some(1234)),
+      metadata={ "timeout_ms": 1234 },
+    )
+    let engine = analysis_test_engine(root, config)
+    let observed_logs : Ref[String] = { val: "" }
+    let observed_journal_path : Ref[String] = { val: "" }
+    let observed_journal_exists : Ref[Bool] = { val: false }
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=async fn(request) {
+          observed_journal_path.val = analysis_tool_journal_path(request)
+          observed_journal_exists.val = @fs.exists(observed_journal_path.val)
+          let step = engine.runtime
+            .store()
+            .get_step_run("run-analysis-1", "analyze")
+          observed_logs.val = match step {
+            Some(step) => step.logs.join("\n")
+            None => ""
+          }
+          Ok(AnalysisExecution::{
+            model_name: request.model_name,
+            content: "finished",
+            conversation_id: Some("conv-session-journal"),
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    inspect(observed_journal_exists.val, content="true")
+    inspect(
+      observed_logs.val.contains("analysis session journal: "),
+      content="true",
+    )
+    inspect(observed_logs.val.contains("analysis cwd: \{dir}"), content="true")
+    inspect(
+      observed_logs.val.contains("analysis timeout_ms: 1234"),
+      content="true",
+    )
+    let journal_text = @fs.read_file(observed_journal_path.val).text()
+    inspect(journal_text.contains("\"phase\": \"session\""), content="true")
+    inspect(journal_text.contains("\"event\": \"started\""), content="true")
+  })
+}
+
+///|
 async test "analysis_step_handler timeout points to tool journal path" {
   @fsx.with_temporary_directory("job-analysis-timeout-journal-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
@@ -995,6 +1055,11 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
     let config = AnalysisStepConfig::new(
       prompt="Produce a decision-ready land acquisition estimate.",
       cwd=Some(dir),
+      model=Some("gpt-5.4"),
+      system_prompt=Some("Stay source-grounded."),
+      preferred_skills=["research", "estimation"],
+      enable_tools=true,
+      web_search=true,
     )
     let engine = analysis_test_engine(root, config)
     let calls : Ref[Int] = { val: 0 }
@@ -1100,6 +1165,30 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
     inspect(
       child_proposal.steps[1].metadata.stringify().contains("git_worktree"),
       content="false",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"model\":\"gpt-5.4\""),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"system_prompt\":\"Stay source-grounded.\""),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"preferred_skills\":[\"research\",\"estimation\"]"),
+      content="true",
+    )
+    inspect(
+      child_proposal.steps[0].metadata
+      .stringify()
+      .contains("\"web_search\":true"),
+      content="true",
     )
   })
 }
@@ -2194,7 +2283,131 @@ async test "configure_analysis_agent_for_request registers runtime introspection
 }
 
 ///|
-test "provider task single response routing only applies to tool-free provider tasks" {
+async test "configure_analysis_agent_for_request disables todo and delegate_run for provider execution" {
+  let model = @model.Model::new(
+    api_key="",
+    base_url="https://example.invalid/v1",
+    name="test-model",
+    safe_zone_tokens=4096,
+  )
+  let agent = @agent.new(
+    model,
+    cwd="/tmp",
+    logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
+  )
+  let request = AnalysisRequest::{
+    job_id: "job-1",
+    run_id: "run-1",
+    step_id: "step-1",
+    source_prompt: "Provider task.",
+    prompt: "Provider task.",
+    model_name: "codex/gpt-5.4",
+    cwd: "/tmp",
+    home: Some("/tmp/home"),
+    execution_mode: Some("provider"),
+    execution_target: Some("moonbook"),
+    system_prompt: "system",
+    preferred_skills: [],
+    enable_tools: true,
+    web_search: false,
+    tool_contract: AnalysisToolContract::new(
+      shell=false,
+      list_files=false,
+      glob_files=false,
+      list_resources=false,
+      read_resource=false,
+      runtime_context=true,
+      list_worktrees=false,
+      delegate_run=true,
+      enter_worktree=false,
+      exit_worktree=false,
+      read_files=true,
+      search_files=true,
+      todo=true,
+      file_write=false,
+      patch_edit=true,
+      web_fetch=false,
+      web_search=false,
+    ),
+    step_metadata: {},
+    execution_isolation: Some({ "mode": "git_worktree" }),
+    role_runtime_contract: None,
+  }
+  configure_analysis_agent_for_request(agent, request)
+  inspect(agent.tools().contains("runtime_context"), content="true")
+  inspect(agent.tools().contains("execute_command"), content="false")
+  inspect(agent.tools().contains("list_resources"), content="false")
+  inspect(agent.tools().contains("read_resource"), content="false")
+  inspect(agent.tools().contains("list_worktrees"), content="false")
+  inspect(agent.tools().contains("todo"), content="false")
+  inspect(agent.tools().contains("delegate_run"), content="false")
+  inspect(agent.tools().contains("patch_edit"), content="true")
+}
+
+///|
+async test "configure_analysis_agent_for_request disables todo and delegate_run for provider-derived adaptive subplans" {
+  let model = @model.Model::new(
+    api_key="",
+    base_url="https://example.invalid/v1",
+    name="test-model",
+    safe_zone_tokens=4096,
+  )
+  let agent = @agent.new(
+    model,
+    cwd="/tmp",
+    logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
+  )
+  let request = AnalysisRequest::{
+    job_id: "job-1",
+    run_id: "run-1",
+    step_id: "step-1",
+    source_prompt: "Provider-derived child step.",
+    prompt: "Provider-derived child step.",
+    model_name: "codex/gpt-5.4",
+    cwd: "/tmp",
+    home: Some("/tmp/home"),
+    execution_mode: None,
+    execution_target: None,
+    system_prompt: "system",
+    preferred_skills: [],
+    enable_tools: true,
+    web_search: false,
+    tool_contract: AnalysisToolContract::new(
+      shell=false,
+      list_files=false,
+      glob_files=false,
+      list_resources=false,
+      read_resource=false,
+      runtime_context=true,
+      list_worktrees=false,
+      delegate_run=true,
+      enter_worktree=false,
+      exit_worktree=false,
+      read_files=true,
+      search_files=true,
+      todo=true,
+      file_write=false,
+      patch_edit=true,
+      web_fetch=false,
+      web_search=false,
+    ),
+    step_metadata: { "provider_subplan_execution": true },
+    execution_isolation: Some({ "mode": "git_worktree" }),
+    role_runtime_contract: None,
+  }
+  configure_analysis_agent_for_request(agent, request)
+  inspect(agent.tools().contains("runtime_context"), content="true")
+  inspect(agent.tools().contains("execute_command"), content="false")
+  inspect(agent.tools().contains("list_resources"), content="false")
+  inspect(agent.tools().contains("read_resource"), content="false")
+  inspect(agent.tools().contains("list_worktrees"), content="false")
+  inspect(agent.tools().contains("todo"), content="false")
+  inspect(agent.tools().contains("delegate_run"), content="false")
+  inspect(agent.tools().contains("patch_edit"), content="true")
+}
+
+///|
+test "provider task single response routing applies to provider execution tasks" {
   let provider_request = AnalysisRequest::{
     job_id: "job-1",
     run_id: "run-1",
@@ -2204,7 +2417,7 @@ test "provider task single response routing only applies to tool-free provider t
     model_name: "codex/gpt-5.4",
     cwd: "/tmp",
     home: None,
-    execution_mode: None,
+    execution_mode: Some("provider"),
     execution_target: None,
     system_prompt: "system",
     preferred_skills: [],
@@ -2235,7 +2448,7 @@ test "provider task single response routing only applies to tool-free provider t
   }
   let normal_request = AnalysisRequest::{
     ..provider_request,
-    enable_tools: true,
+    execution_mode: None,
   }
   inspect(
     provider_task_single_response_requested(provider_request),

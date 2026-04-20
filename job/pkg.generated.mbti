@@ -110,6 +110,8 @@ pub fn human_readable_run_id(Int, String) -> String
 
 pub fn initial_notification_runtime_state(Int, last_notified_event_count? : Int) -> JobNotificationRuntimeState
 
+pub async fn initialize_analysis_tool_journal(AnalysisRequest) -> String
+
 pub fn job_intake_json(String, Array[E2EStarterAttachment], channel_id? : String?, account_id? : String?, recipient? : String?, message_id? : String?, thread_id? : String?, content_type? : String?) -> Json
 
 pub async fn list_job_profiles(String, String) -> Array[JobProfile]

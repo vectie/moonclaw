@@ -367,10 +367,15 @@ async fn load_provider_task_task_batch(
   home : String?,
   target_id : String?,
   goal : String,
+  metadata? : Json = {},
 ) -> Result[(ProviderTaskCommand, ProviderTaskBatch), String] {
   let command = match resolve_provider_task_command(cwd, home, target_id) {
     Ok(command) => command
-    Err(error) => return Err(error)
+    Err(error) =>
+      match embedded_provider_task_command(metadata, target_id) {
+        Some(command) => command
+        None => return Err(error)
+      }
   }
   let stdout = match
     run_provider_task_stdout(command, "tasks", [goal], "tasks") {
@@ -383,6 +388,75 @@ async fn load_provider_task_task_batch(
     Err(error) => return Err(error)
   }
   Ok((command, batch))
+}
+
+///|
+fn embedded_provider_task_command(
+  metadata : Json,
+  target_id : String?,
+) -> ProviderTaskCommand? {
+  guard metadata is Object(obj) else { return None }
+  guard obj.get("provider_command") is Some(Object(command_obj)) else {
+    return None
+  }
+  let provider_name = match command_obj.get("provider_name") {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      value.trim().to_string()
+    _ => return None
+  }
+  match target_id {
+    Some(target) if !target.trim().to_string().is_blank() &&
+      target.trim().to_string() != provider_name => return None
+    _ => ()
+  }
+  let command = match command_obj.get("command") {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      value.trim().to_string()
+    _ => "moon"
+  }
+  let args = match command_obj.get("args") {
+    Some(Array(values)) => {
+      let items : Array[String] = []
+      for value in values {
+        guard value is String(text) else { continue }
+        let trimmed = text.trim().to_string()
+        if !trimmed.is_blank() {
+          items.push(trimmed)
+        }
+      }
+      items
+    }
+    _ => []
+  }
+  let cwd = match command_obj.get("cwd") {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      Some(value.trim().to_string())
+    _ => None
+  }
+  let workspace_root = match command_obj.get("workspace_root") {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      value.trim().to_string()
+    _ => return None
+  }
+  Some(ProviderTaskCommand::{
+    provider: @resource_providers.RegisteredResourceProvider::new(
+      name=provider_name,
+      title=provider_name,
+      description="Embedded provider task command",
+      kind="task-provider",
+      capabilities=["provider.task"],
+      metadata={
+        "command": command,
+        "args": args,
+        "cwd": cwd,
+        "workspace_root": workspace_root,
+      },
+    ),
+    command,
+    args,
+    cwd,
+    workspace_root,
+  })
 }
 
 ///|
@@ -432,6 +506,7 @@ fn provider_task_step_metadata(
   goal : String,
   goal_id : String,
   task : ProviderTaskSpec,
+  command : ProviderTaskCommand,
 ) -> Json {
   {
     // `bookapi_*` keys are compatibility aliases for older extension packs.
@@ -449,6 +524,13 @@ fn provider_task_step_metadata(
     "extension_priority": task.priority,
     "extension_requires_review": task.requires_review,
     "extension_target_pages": task.target_pages,
+    "provider_command": {
+      "provider_name": command.provider.name,
+      "command": command.command,
+      "args": command.args,
+      "cwd": command.cwd,
+      "workspace_root": command.workspace_root,
+    },
     // Provider-backed extension runs need a bounded execution window so they
     // fail cleanly instead of remaining Running indefinitely after partial tool
     // progress.
@@ -461,18 +543,25 @@ fn provider_task_step_metadata(
 fn provider_task_child_proposal(
   request_text : String,
   batch : ProviderTaskBatch,
+  command : ProviderTaskCommand,
   config : SubjobStepConfig,
   now_ms : Int,
 ) -> JobProposal {
   let execution_tasks = provider_task_execution_tasks(batch.tasks)
   let deferred_tasks = batch.tasks.length() - execution_tasks.length()
   let steps = execution_tasks.map(fn(task) {
+    let runtime_step_id = "provider-task-\{safe_step_file_segment(task.id)}"
     JobProposalStep::{
-      id: task.id,
-      title: task.title,
+      id: runtime_step_id,
+      title: compact_title(task.title),
       prompt: task.prompt,
       kind: "job.analysis",
-      metadata: provider_task_step_metadata(batch.goal, batch.goal_id, task),
+      metadata: provider_task_step_metadata(
+        batch.goal,
+        batch.goal_id,
+        task,
+        command,
+      ),
       child_profile: None,
       execution_mode: config.execution_mode,
       execution_target: config.execution_target,
@@ -564,6 +653,40 @@ fn join_bullets(items : Array[String]) -> String {
 }
 
 ///|
+fn compact_provider_prompt_text(
+  text : String,
+  max_chars? : Int = 600,
+) -> String {
+  let trimmed = text.trim().to_string()
+  if trimmed.is_blank() {
+    return ""
+  }
+  if trimmed.length() <= max_chars {
+    return trimmed
+  }
+  let prefix = trimmed[:max_chars].to_string().trim_end()
+  "\{prefix}\n...[truncated by MoonClaw runtime]"
+}
+
+///|
+fn provider_task_request_excerpt(
+  request : AnalysisRequest,
+  goal : String,
+) -> String? {
+  let prompt = request.prompt.trim().to_string()
+  if prompt.is_blank() {
+    return None
+  }
+  let compact_prompt = compact_provider_prompt_text(prompt, max_chars=1200)
+  let compact_goal = compact_provider_prompt_text(goal, max_chars=1200)
+  if compact_prompt == compact_goal {
+    None
+  } else {
+    Some(compact_prompt)
+  }
+}
+
+///|
 fn provider_task_preferred_skills(
   request : AnalysisRequest,
   repair? : Bool = false,
@@ -636,11 +759,12 @@ fn provider_task_prompt(
   let sections : Array[String] = [
     "Provider Scope: \{context.book_id}",
     "Workspace: \{context.workspace_root}",
-    "Goal: \{goal}",
+    "Goal Summary: \{compact_provider_prompt_text(goal, max_chars=600)}",
     "Task: \{task.title}",
+    "Task Kind: \{task.kind}",
     "",
-    "Task Prompt:",
-    context.prompt,
+    "Task Prompt Summary:",
+    compact_provider_prompt_text(context.prompt, max_chars=1400),
     "",
     "Policy:",
     join_bullets(context.policy),
@@ -664,7 +788,7 @@ fn provider_task_prompt(
     if context.memory_summary.trim().to_string().is_blank() {
       "none"
     } else {
-      context.memory_summary
+      compact_provider_prompt_text(context.memory_summary, max_chars=800)
     },
   ]
   if !context.skill_paths.is_empty() {
@@ -672,9 +796,14 @@ fn provider_task_prompt(
     sections.push("Available Skill Files:")
     sections.push(join_bullets(context.skill_paths))
   }
-  sections.push("")
-  sections.push("Original MoonClaw Request:")
-  sections.push(request.prompt)
+  match provider_task_request_excerpt(request, goal) {
+    Some(excerpt) => {
+      sections.push("")
+      sections.push("Original MoonClaw Request Excerpt:")
+      sections.push(excerpt)
+    }
+    None => ()
+  }
   sections.join("\n")
 }
 
@@ -932,6 +1061,29 @@ fn provider_task_followup_substeps(
       kind: Some("job.analysis"),
     }
   })
+}
+
+///|
+fn provider_task_requires_local_tool_loop(task : ProviderTaskSpec) -> Bool {
+  ignore(task)
+  false
+}
+
+///|
+fn provider_task_execution_step_metadata(
+  metadata : Json,
+  force_single_response : Bool,
+) -> Json {
+  let merged : Map[String, Json] = {}
+  match metadata {
+    Object(obj) =>
+      for key, value in obj {
+        merged.set(key, value)
+      }
+    _ => ()
+  }
+  merged.set("provider_force_single_response", force_single_response.to_json())
+  Json::object(merged)
 }
 
 ///|
@@ -1644,6 +1796,7 @@ async fn finalize_provider_task_subplan_execution(
       request.home,
       request.execution_target,
       goal,
+      metadata=request.step_metadata,
     ) {
     Ok(value) => value
     Err(error) => return Some(Err(error))
@@ -1709,6 +1862,7 @@ async fn run_provider_task_analysis_runner(
       request.home,
       request.execution_target,
       goal,
+      metadata=request.step_metadata,
     ) {
     Ok(value) => value
     Err(error) => return Err(error)
@@ -1722,6 +1876,7 @@ async fn run_provider_task_analysis_runner(
     Ok(context) => context
     Err(error) => return Err(error)
   }
+  let use_local_tool_loop = provider_task_requires_local_tool_loop(task)
   let preferred_skills = provider_task_preferred_skills(request)
   let loaded_skills = loaded_skills_prompt(
     request.cwd,
@@ -1735,12 +1890,16 @@ async fn run_provider_task_analysis_runner(
     .join("\n\n"),
     system_prompt: provider_task_system_prompt(request, task, context),
     source_prompt: goal,
-    enable_tools: request.enable_tools,
+    enable_tools: request.enable_tools && use_local_tool_loop,
     tool_contract: provider_task_tool_contract(request),
     execution_mode: None,
     execution_target: None,
-    web_search: request.web_search,
+    web_search: request.web_search && use_local_tool_loop,
     preferred_skills,
+    step_metadata: provider_task_execution_step_metadata(
+      request.step_metadata,
+      !use_local_tool_loop,
+    ),
   }
   let raw_execution = inner_runner(delegated_request)
   let raw_execution = match raw_execution {

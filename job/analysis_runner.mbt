@@ -13,10 +13,22 @@ fn analysis_execution_metadata(request : AnalysisRequest) -> Json {
 
 ///|
 fn provider_task_single_response_requested(request : AnalysisRequest) -> Bool {
-  !request.enable_tools &&
+  let provider_task_requested = provider_execution_requested(
+      request.execution_mode,
+    ) &&
+    (
+      metadata_string_value(request.step_metadata, "extension_task_id")
+      is Some(_) ||
+      metadata_string_value(request.step_metadata, "bookapi_task_id") is Some(_)
+    )
+  provider_task_requested &&
   (
-    metadata_string_value(request.step_metadata, "extension_task_id") is Some(_) ||
-    metadata_string_value(request.step_metadata, "bookapi_task_id") is Some(_)
+    metadata_bool_with_step_metadata(
+      request.step_metadata,
+      "provider_force_single_response",
+      false,
+    ) ||
+    !request.enable_tools
   )
 }
 

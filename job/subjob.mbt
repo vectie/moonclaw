@@ -210,7 +210,13 @@ async fn planned_subjob_proposal(
       execution_target: Some(command.provider.name),
     }
     Ok(
-      provider_task_child_proposal(request_text, batch, resolved_config, now()),
+      provider_task_child_proposal(
+        request_text,
+        batch,
+        command,
+        resolved_config,
+        now(),
+      ),
     )
   } else {
     Ok((planner.run)(request_text, cwd, home))

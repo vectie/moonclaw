@@ -14,6 +14,45 @@ fn analysis_tool_journal_path(request : AnalysisRequest) -> String {
 }
 
 ///|
+fn analysis_session_journal_entry(request : AnalysisRequest) -> Json {
+  {
+    "phase": "session",
+    "event": "started",
+    "job_id": request.job_id,
+    "run_id": request.run_id,
+    "step_id": request.step_id,
+    "cwd": request.cwd,
+    "execution_mode": request.execution_mode,
+    "execution_target": request.execution_target,
+    "enable_tools": request.enable_tools,
+    "enabled_tools": enabled_tool_names(
+      constrain_tool_contract_for_request(request),
+    ),
+    "web_search": request.web_search,
+    "timeout_ms": analysis_request_timeout_ms(request),
+  }
+}
+
+///|
+async fn write_analysis_tool_journal(
+  request : AnalysisRequest,
+  entries : Array[Json],
+) -> String {
+  let path = analysis_tool_journal_path(request)
+  @fsx.write_to_file(path, Json::array(entries).stringify(indent=2)) catch {
+    _ => ()
+  }
+  path
+}
+
+///|
+pub async fn initialize_analysis_tool_journal(
+  request : AnalysisRequest,
+) -> String {
+  write_analysis_tool_journal(request, [analysis_session_journal_entry(request)])
+}
+
+///|
 fn compact_tool_journal_text(text : String, limit? : Int = 240) -> String {
   let normalized = text.trim().to_string()
   if normalized.is_blank() {

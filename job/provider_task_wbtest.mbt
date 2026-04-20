@@ -252,7 +252,7 @@ async test "provider task batch maps provider-backed extension tasks into a chil
       execution_target=Some("wiki-main"),
     )
     let target_id : String? = Some("wiki-main")
-    let (_, batch) = match
+    let (command, batch) = match
       load_provider_task_task_batch(
         workspace,
         None,
@@ -263,7 +263,7 @@ async test "provider task batch maps provider-backed extension tasks into a chil
       Err(error) => fail(error)
     }
     let proposal = provider_task_child_proposal(
-      "Update the knowledge base", batch, config, 1000,
+      "Update the knowledge base", batch, command, config, 1000,
     )
 
     inspect(proposal.suggested_family.unwrap_or(""), content="extension")
@@ -341,12 +341,36 @@ test "provider task child proposal skips deferred planning task when executable 
     execution_mode=Some("provider"),
     execution_target=Some("wiki-main"),
   )
+  let command = ProviderTaskCommand::{
+    provider: @resource_providers.RegisteredResourceProvider::new(
+      name="wiki-main",
+      title="Wiki Main",
+      kind="task-provider",
+      capabilities=["provider.task"],
+      metadata={
+        "command": "moon",
+        "args": ["run", "cmd/main", "--"],
+        "cwd": "/tmp/provider-root",
+        "workspace_root": "/tmp/provider-workspace",
+      },
+    ),
+    command: "moon",
+    args: ["run", "cmd/main", "--"],
+    cwd: Some("/tmp/provider-root"),
+    workspace_root: "/tmp/provider-workspace",
+  }
   let proposal = provider_task_child_proposal(
-    "Bootstrap ingest", batch, config, 1000,
+    "Bootstrap ingest", batch, command, config, 1000,
   )
   inspect(proposal.steps.length(), content="2")
-  inspect(proposal.steps[0].id, content="bootstrap_gather")
-  inspect(proposal.steps[1].id, content="source_materialize")
+  inspect(
+    proposal.steps[0].id.has_prefix("provider-task-"),
+    content="true",
+  )
+  inspect(
+    proposal.steps[1].id.has_prefix("provider-task-"),
+    content="true",
+  )
   inspect(
     proposal.profile_metadata.stringify().contains("\"task_count\":2"),
     content="true",
@@ -355,6 +379,97 @@ test "provider task child proposal skips deferred planning task when executable 
     proposal.profile_metadata.stringify().contains("\"deferred_task_count\":1"),
     content="true",
   )
+}
+
+///|
+async test "provider task runner reuses embedded provider command when manifest is unavailable" {
+  @fsx.with_temporary_directory("job-book-harness-embedded-command-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(workspace, recursive=true, exists_ok=true)
+    write_provider_task_fixture(workspace, script_path, state_path)
+    let manifest_path = @pathx.join(workspace, ".moonclaw")
+      |> @pathx.join("providers.json")
+    @fsx.remove(manifest_path) catch {
+      _ => ()
+    }
+    @fsx.make_directory(
+      @pathx.join(workspace, "book-space") |> @pathx.join("wiki"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(
+      @pathx.join(workspace, "book-space")
+      |> @pathx.join("wiki")
+      |> @pathx.join("entity.md"),
+      "# entity\n",
+    )
+
+    let request = AnalysisRequest::{
+      prompt: "Please update the wiki from the current evidence.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Update the knowledge base",
+      step_metadata: {
+        "extension_goal": "Update the knowledge base",
+        "extension_goal_id": "goal-1",
+        "extension_task_id": "task-1",
+        "provider_command": {
+          "provider_name": "wiki-main",
+          "command": "sh",
+          "args": [script_path, state_path],
+          "workspace_root": @pathx.join(workspace, "book-space"),
+        },
+      },
+      cwd: workspace,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: false,
+      web_search: false,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: [],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: None,
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let execution = match
+      run_provider_task_analysis_runner(request, fn(inner_request) {
+        Ok(AnalysisExecution::{
+          model_name: inner_request.model_name,
+          content: (
+            #|{
+            #|  "task_id": "task-1",
+            #|  "summary": "Updated the wiki and captured the contradiction.",
+            #|  "artifacts": ["wiki/entity.md"],
+            #|  "memory_candidates": [],
+            #|  "requires_review": true,
+            #|  "notify_town": false
+            #|}
+          ),
+          conversation_id: Some("conv-provider-embedded"),
+          usage: None,
+          metadata: {},
+        })
+      }) {
+      Ok(execution) => execution
+      Err(error) => fail(error)
+    }
+    inspect(
+      execution.content.contains("# Extension Task Result"),
+      content="true",
+    )
+    let persisted_path = @fsx.read_file(state_path)
+    inspect(
+      persisted_path.contains(".moonclaw-provider-result-run-1-"),
+      content="true",
+    )
+  })
 }
 
 ///|
@@ -477,8 +592,8 @@ async test "provider task analysis runner hydrates context and persists structur
       captured_system_prompt.val.contains("raw/bootstrap/*"),
       content="true",
     )
-    inspect(captured_enable_tools.val, content="true")
-    inspect(captured_web_search.val, content="true")
+    inspect(captured_enable_tools.val, content="false")
+    inspect(captured_web_search.val, content="false")
     inspect(captured_todo_enabled.val, content="false")
     inspect(
       execution.content.contains("# Extension Task Result"),
@@ -509,6 +624,34 @@ async test "provider task analysis runner hydrates context and persists structur
       content="true",
     )
   })
+}
+
+///|
+test "provider task tool-loop policy defaults provider phases to single-response execution" {
+  inspect(
+    provider_task_requires_local_tool_loop(ProviderTaskSpec::{
+      id: "task-gather",
+      title: "Gather bootstrap materials",
+      kind: "bootstrap_gather",
+      prompt: "Inspect the source materials and write bootstrap packets.",
+      priority: 90,
+      requires_review: true,
+      target_pages: ["raw/bootstrap/demo.md"],
+    }),
+    content="false",
+  )
+  inspect(
+    provider_task_requires_local_tool_loop(ProviderTaskSpec::{
+      id: "task-review",
+      title: "Review pending changes",
+      kind: "review_finalize",
+      prompt: "Review the pending changes and emit the final result.",
+      priority: 40,
+      requires_review: false,
+      target_pages: ["wiki/review.md"],
+    }),
+    content="false",
+  )
 }
 
 ///|

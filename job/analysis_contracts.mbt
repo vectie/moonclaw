@@ -191,6 +191,38 @@ pub fn constrain_tool_contract_for_role(
 }
 
 ///|
+fn constrain_tool_contract_for_request(
+  request : AnalysisRequest,
+) -> AnalysisToolContract {
+  let constrained = constrain_tool_contract_for_role(
+    request.tool_contract,
+    request.role_runtime_contract,
+  )
+  let provider_derived = metadata_bool_with_step_metadata(
+    request.step_metadata,
+    "provider_subplan_execution",
+    false,
+  )
+  if provider_execution_requested(request.execution_mode) || provider_derived {
+    AnalysisToolContract::{
+      ..constrained,
+      shell: false,
+      list_resources: false,
+      read_resource: false,
+      list_worktrees: false,
+      delegate_run: false,
+      enter_worktree: false,
+      exit_worktree: false,
+      todo: false,
+      web_fetch: false,
+      web_search: false,
+    }
+  } else {
+    constrained
+  }
+}
+
+///|
 pub fn analysis_result_content_contract(config : AnalysisStepConfig) -> String? {
   metadata_string(config.metadata, "result_content_json_contract")
 }
@@ -301,10 +333,7 @@ fn runtime_context_tool_result(
     execution_target=request.execution_target,
     execution_isolation=request.execution_isolation,
     enabled_tools=enabled_tool_names(
-      constrain_tool_contract_for_role(
-        request.tool_contract,
-        request.role_runtime_contract,
-      ),
+      constrain_tool_contract_for_request(request),
     ),
   )
 }
@@ -378,10 +407,7 @@ pub fn configure_analysis_agent_for_request(
   agent : @agent.Agent,
   request : AnalysisRequest,
 ) -> Unit {
-  let constrained = constrain_tool_contract_for_role(
-    request.tool_contract,
-    request.role_runtime_contract,
-  )
+  let constrained = constrain_tool_contract_for_request(request)
   configure_analysis_agent_for_contract(
     agent,
     request.cwd,

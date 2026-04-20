@@ -237,6 +237,41 @@ fn timeout_error_message(step_id : String, timeout_ms : Int) -> String {
 }
 
 ///|
+async fn stamp_running_step_with_analysis_session(
+  store : SystemStore,
+  request : AnalysisRequest,
+) -> Unit {
+  let journal_path = initialize_analysis_tool_journal(request)
+  match store.get_step_run(request.run_id, request.step_id) {
+    Some(step) => {
+      let logs = step.logs
+      let journal_line = "analysis session journal: \{journal_path}"
+      if !logs.any(fn(line) { line == journal_line }) {
+        logs.push(journal_line)
+      }
+      let cwd_line = "analysis cwd: \{request.cwd}"
+      if !logs.any(fn(line) { line == cwd_line }) {
+        logs.push(cwd_line)
+      }
+      let timeout_line = match analysis_request_timeout_ms(request) {
+        Some(timeout_ms) if timeout_ms > 0 =>
+          Some("analysis timeout_ms: \{timeout_ms}")
+        _ => None
+      }
+      match timeout_line {
+        Some(timeout_line) =>
+          if !logs.any(fn(line) { line == timeout_line }) {
+            logs.push(timeout_line)
+          }
+        None => ()
+      }
+      store.save_step_run(JobStepRun::{ ..step, logs, })
+    }
+    None => ignore(journal_path)
+  }
+}
+
+///|
 pub fn default_analysis_executor() -> AnalysisExecutor {
   AnalysisExecutor::new(run=run_default_analysis_runner)
 }
@@ -271,6 +306,7 @@ pub fn analysis_step_handler(
     }
 
     let request = build_analysis_request(store, context, config)
+    stamp_running_step_with_analysis_session(store, request)
 
     let execution = execute_analysis_request(
       executor,
