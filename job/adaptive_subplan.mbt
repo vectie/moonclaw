@@ -261,6 +261,17 @@ async fn execute_analysis_subplan(
     Ok(run) => run
     Err(error) => return Err(error)
   }
+  let store = runtime.store()
+  record_controller_child_run(
+    store,
+    context.run,
+    context.step,
+    compilation.definition.id,
+    child_run.id,
+    compilation.family,
+    now(),
+  )
+  record_parent_child_run_started(store, context, compilation, child_run, now())
   let child_request = ChildRunExecutionRequest::{
     parent_context: context,
     child_run,
@@ -287,9 +298,31 @@ async fn execute_analysis_subplan(
               context.control,
             ) {
             Ok(result) => result
-            Err(error) => return Err(error)
+            Err(error) => {
+              record_parent_child_run_finished(
+                store,
+                context,
+                compilation,
+                child_run,
+                Failed,
+                "Child run \{child_run.id} failed: \{error}",
+                now(),
+              )
+              return Err(error)
+            }
           }
-        Err(error) => return Err(error)
+        Err(error) => {
+          record_parent_child_run_finished(
+            store,
+            context,
+            compilation,
+            child_run,
+            Failed,
+            "Child run \{child_run.id} failed: \{error}",
+            now(),
+          )
+          return Err(error)
+        }
       }
     None =>
       match
@@ -300,8 +333,28 @@ async fn execute_analysis_subplan(
           context.control,
         ) {
         Ok(result) => result
-        Err(error) => return Err(error)
+        Err(error) => {
+          record_parent_child_run_finished(
+            store,
+            context,
+            compilation,
+            child_run,
+            Failed,
+            "Child run \{child_run.id} failed: \{error}",
+            now(),
+          )
+          return Err(error)
+        }
       }
   }
+  record_parent_child_run_finished(
+    store,
+    context,
+    compilation,
+    child_run,
+    Succeeded,
+    "Child run \{child_run.id} completed",
+    now(),
+  )
   Ok((compilation.definition.id, child_run.id, child_result.outputs))
 }

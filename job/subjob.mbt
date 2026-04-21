@@ -84,6 +84,36 @@ fn proposal_with_execution_override(
 }
 
 ///|
+fn proposal_execution_override(
+  proposal : JobProposal,
+  config : SubjobStepConfig,
+) -> (String?, String?) {
+  if provider_execution_requested(config.execution_mode) {
+    let profile_target = match proposal.profile_metadata {
+      { "execution": { "target": String(target), .. }, .. } =>
+        Some(target.trim().to_string())
+      _ => None
+    }
+    let profile_mode = match proposal.profile_metadata {
+      { "execution": { "mode": String(mode), .. }, .. } =>
+        Some(mode.trim().to_string())
+      _ => None
+    }
+    let execution_mode = match profile_mode {
+      Some(mode) => Some(mode)
+      None => config.execution_mode
+    }
+    let execution_target = match profile_target {
+      Some(target) => Some(target)
+      None => config.execution_target
+    }
+    (execution_mode, execution_target)
+  } else {
+    (config.execution_mode, config.execution_target)
+  }
+}
+
+///|
 fn proposal_with_isolation_policy(proposal : JobProposal) -> JobProposal {
   let updated_steps = proposal.steps.map(fn(step) {
     let isolation_metadata = subtask_execution_isolation_metadata(
@@ -329,6 +359,79 @@ async fn execute_child_run_locally(
 }
 
 ///|
+async fn record_parent_child_run_event(
+  store : SystemStore,
+  context : WorkflowStepContext,
+  compilation : ProposalCompilation,
+  child_run : JobRun,
+  event_type : String,
+  status : RunStatus,
+  message : String,
+  now_ms : Int,
+) -> Unit {
+  store.append_run_event(JobRunEvent::{
+    run_id: context.run.id,
+    job_id: context.run.job_id,
+    event_type,
+    timestamp: now_ms,
+    step_id: Some(context.step.id),
+    status: Some(status),
+    message,
+    data: {
+      "child_job_id": compilation.definition.id,
+      "child_run_id": child_run.id,
+      "child_family": compilation.family,
+    },
+  })
+}
+
+///|
+async fn record_parent_child_run_started(
+  store : SystemStore,
+  context : WorkflowStepContext,
+  compilation : ProposalCompilation,
+  child_run : JobRun,
+  now_ms : Int,
+) -> Unit {
+  record_parent_child_run_event(
+    store,
+    context,
+    compilation,
+    child_run,
+    "child_run.started",
+    Running,
+    "Child run \{child_run.id} started for step \{context.step.id}",
+    now_ms,
+  )
+}
+
+///|
+async fn record_parent_child_run_finished(
+  store : SystemStore,
+  context : WorkflowStepContext,
+  compilation : ProposalCompilation,
+  child_run : JobRun,
+  status : RunStatus,
+  message : String,
+  now_ms : Int,
+) -> Unit {
+  record_parent_child_run_event(
+    store,
+    context,
+    compilation,
+    child_run,
+    if status is Succeeded {
+      "child_run.succeeded"
+    } else {
+      "child_run.failed"
+    },
+    status,
+    message,
+    now_ms,
+  )
+}
+
+///|
 pub fn subjob_step_handler(
   runtime~ : RuntimeManager,
   planner~ : ProposalPlanner,
@@ -371,10 +474,11 @@ pub fn subjob_step_handler(
       proposal, disable_waiting, best_effort_on_missing_input,
     )
     let proposal = proposal_with_isolation_policy(proposal)
+    let (execution_mode, execution_target) = proposal_execution_override(
+      proposal, config,
+    )
     let proposal = proposal_with_execution_override(
-      proposal,
-      config.execution_mode,
-      config.execution_target,
+      proposal, execution_mode, execution_target,
     )
     let compilation = (compiler.run)(proposal, now(), cwd, home.unwrap_or("."))
     store.save_job_proposal(JobProposal::{
@@ -411,6 +515,13 @@ pub fn subjob_step_handler(
       compilation.family,
       now(),
     )
+    record_parent_child_run_started(
+      store,
+      context,
+      compilation,
+      child_run,
+      now(),
+    )
     store.save_job_proposal(JobProposal::{
       ..proposal,
       status: JobProposalStatus::Confirmed,
@@ -439,9 +550,31 @@ pub fn subjob_step_handler(
                 context.control,
               ) {
               Ok(result) => result
-              Err(error) => return Err(error)
+              Err(error) => {
+                record_parent_child_run_finished(
+                  store,
+                  context,
+                  compilation,
+                  child_run,
+                  Failed,
+                  "Child run \{child_run.id} failed: \{error}",
+                  now(),
+                )
+                return Err(error)
+              }
             }
-          Err(error) => return Err(error)
+          Err(error) => {
+            record_parent_child_run_finished(
+              store,
+              context,
+              compilation,
+              child_run,
+              Failed,
+              "Child run \{child_run.id} failed: \{error}",
+              now(),
+            )
+            return Err(error)
+          }
         }
       None =>
         match
@@ -452,9 +585,29 @@ pub fn subjob_step_handler(
             context.control,
           ) {
           Ok(result) => result
-          Err(error) => return Err(error)
+          Err(error) => {
+            record_parent_child_run_finished(
+              store,
+              context,
+              compilation,
+              child_run,
+              Failed,
+              "Child run \{child_run.id} failed: \{error}",
+              now(),
+            )
+            return Err(error)
+          }
         }
     }
+    record_parent_child_run_finished(
+      store,
+      context,
+      compilation,
+      child_run,
+      Succeeded,
+      "Child run \{child_run.id} completed",
+      now(),
+    )
     let logs = [
       "spawned child run \{child_run.id}",
       "child family: \{compilation.family}",

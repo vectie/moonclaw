@@ -780,7 +780,7 @@ pub async fn GatewayJobApp::execute_definition(
     self
     .runtime()
     .trigger_definition(
-      human_readable_run_id(self.now(), self.next_id()),
+      self.next_run_id(),
       job_id,
       TriggerSource::Manual,
       self.now(),
@@ -815,6 +815,10 @@ pub async fn GatewayJobApp::execute_existing_run(
     Some(run) => run
     None => return Err("Unknown job run: \{run_id}")
   }
+  match self.ensure_existing_run_definition(existing) {
+    Ok(_) => ()
+    Err(error) => return Err(error)
+  }
   execute_run_lifecycle(
     self.runtime(),
     run_id,
@@ -831,6 +835,57 @@ pub async fn GatewayJobApp::execute_existing_run(
 }
 
 ///|
+fn proposal_matches_run(proposal : JobProposal, run : JobRun) -> Bool {
+  proposal.last_run_id == Some(run.id) || proposal.job_id == Some(run.job_id)
+}
+
+///|
+pub async fn GatewayJobApp::ensure_existing_run_definition(
+  self : GatewayJobApp,
+  run : JobRun,
+) -> Result[Unit, String] {
+  let store = self.runtime().store()
+  match store.get_definition(run.job_id) {
+    Some(definition) =>
+      match definition.workflow_id {
+        Some(workflow_id) if store.get_workflow(workflow_id) is None => ()
+        _ => return Ok(())
+      }
+    None => ()
+  }
+  let proposal = match
+    store
+    .list_job_proposals()
+    .iter()
+    .find_first(fn(proposal) { proposal_matches_run(proposal, run) }) {
+    Some(proposal) => proposal
+    None =>
+      return Err(
+        "Missing job definition: \{run.job_id}; no confirmed proposal found for run \{run.id}",
+      )
+  }
+  match proposal.status {
+    Confirmed => ()
+    _ =>
+      return Err(
+        "Missing job definition: \{run.job_id}; proposal \{proposal.id} is not confirmed",
+      )
+  }
+  let compilation = self.compile_proposal(proposal)
+  if compilation.definition.id != run.job_id {
+    return Err(
+      "Missing job definition: \{run.job_id}; confirmed proposal \{proposal.id} recompiles to \{compilation.definition.id}",
+    )
+  }
+  self.runtime().register_definition(compilation.definition)
+  self.runtime().register_workflow(compilation.workflow)
+  for binding in compilation.bindings {
+    store.save_chat_binding(binding)
+  }
+  Ok(())
+}
+
+///|
 pub async fn GatewayJobApp::launch_definition_detached(
   self : GatewayJobApp,
   job_id : String,
@@ -841,7 +896,7 @@ pub async fn GatewayJobApp::launch_definition_detached(
     self
     .runtime()
     .trigger_definition(
-      human_readable_run_id(self.now(), self.next_id()),
+      self.next_run_id(),
       job_id,
       TriggerSource::Manual,
       self.now(),

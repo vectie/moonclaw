@@ -480,3 +480,125 @@ async test "GatewayJobApp confirms external proposal packet with detached launch
     )
   })
 }
+
+///|
+async test "GatewayJobApp restores missing detached run definition from confirmed proposal" {
+  @fsx.with_temporary_directory("job-external-run-restore-XXXXXX", async fn(
+    dir,
+  ) {
+    @fsx.write_to_file(
+      @pathx.join(dir, "moonclaw.jobs.json"),
+      (
+        {
+          "jobs": {
+            "profiles": {
+              "simple_external": {
+                "family": "simple_external",
+                "role": "worker",
+                "steps": [
+                  {
+                    "id": "execute",
+                    "title": "Execute imported packet",
+                    "kind": "job.analysis",
+                    "prompt_template": "Execute ${request}",
+                  },
+                ],
+              },
+            },
+          },
+        } : Json).stringify(),
+    )
+    let workspace = @workspace.WorkspaceRuntime::new(home=dir, cwd=dir)
+    let app = GatewayJobApp::new(
+      root=@pathx.join(dir, "jobs"),
+      cwd=dir,
+      home=dir,
+      workspace~,
+      next_id=fn() { "packet-restore" },
+      now=fn() { 500 },
+    )
+    app.load()
+    let imported = match
+      app.import_external_proposal_packet(
+        ExternalProposalPacket::{
+          packet_id: Some("keeper-restore"),
+          title: Some("Ingest source into wiki"),
+          summary: Some("Review the source and update relevant pages."),
+          request_text: "Ingest source into wiki and revise the relevant pages.",
+          profile: "simple_external",
+          output_contract: Some({ "artifact": "wiki/report.md" }),
+          source_path: Some("/tmp/book/raw/demo.md"),
+          source_page: Some("wiki/sources/demo.md"),
+          context_pages: ["wiki/index.md"],
+          related_pages: ["wiki/entities/demo.md"],
+          skill_paths: ["skills/wiki-maintainer/SKILL.md"],
+          notes: ["Prefer concise citations."],
+          tags: [],
+          metadata: {},
+        },
+        "/tmp/book/keeper/jobs/ingest-restore.json",
+      ) {
+      Ok(imported) => imported
+      Err(error) => fail(error)
+    }
+    let confirmed = match
+      app.confirm_proposal_and_launch(imported.proposal, imported.proposal.id, spawn_runner=fn(
+        _exec_path,
+        _args,
+      ) {
+        ()
+      }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    @fsx.write_to_file(
+      @pathx.join(@pathx.join(dir, "jobs"), "definitions.json"),
+      ({ "definitions": [], "workflows": [] } : Json).stringify(),
+    )
+
+    let reloaded = GatewayJobApp::new(
+      root=@pathx.join(dir, "jobs"),
+      cwd=dir,
+      home=dir,
+      workspace~,
+      next_id=fn() { "packet-restore-reloaded" },
+      now=fn() { 600 },
+    )
+    reloaded.load()
+    inspect(
+      reloaded
+      .runtime()
+      .store()
+      .get_definition(confirmed.compilation.definition.id)
+      is None,
+      content="true",
+    )
+    let result = reloaded.execute_existing_run(
+      confirmed.run.id,
+      analysis_executor=Some(
+        AnalysisExecutor::new(run=fn(_request) {
+          Ok(AnalysisExecution::{
+            model_name: "mock",
+            content: "Restored definition executed.",
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+      ),
+    )
+    let run = match result {
+      Ok(run) => run
+      Err(error) => fail(error)
+    }
+    inspect(run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
+      reloaded
+      .runtime()
+      .store()
+      .get_definition(confirmed.compilation.definition.id)
+      is Some(_),
+      content="true",
+    )
+  })
+}

@@ -363,14 +363,8 @@ test "provider task child proposal skips deferred planning task when executable 
     "Bootstrap ingest", batch, command, config, 1000,
   )
   inspect(proposal.steps.length(), content="2")
-  inspect(
-    proposal.steps[0].id.has_prefix("provider-task-"),
-    content="true",
-  )
-  inspect(
-    proposal.steps[1].id.has_prefix("provider-task-"),
-    content="true",
-  )
+  inspect(proposal.steps[0].id.has_prefix("provider-task-"), content="true")
+  inspect(proposal.steps[1].id.has_prefix("provider-task-"), content="true")
   inspect(
     proposal.profile_metadata.stringify().contains("\"task_count\":2"),
     content="true",
@@ -378,6 +372,205 @@ test "provider task child proposal skips deferred planning task when executable 
   inspect(
     proposal.profile_metadata.stringify().contains("\"deferred_task_count\":1"),
     content="true",
+  )
+}
+
+///|
+test "provider task child proposal keeps bootstrap execution bounded" {
+  let batch = ProviderTaskBatch::{
+    goal_id: "goal-1",
+    goal: "Bootstrap ingest",
+    summary: "Out-of-order execution batch",
+    tasks: [
+      ProviderTaskSpec::{
+        id: "review",
+        title: "Review pending book updates",
+        kind: "review",
+        prompt: "Review",
+        priority: 100,
+        requires_review: true,
+        target_pages: ["wiki/reviews/pending.md"],
+      },
+      ProviderTaskSpec::{
+        id: "knowledge_revise",
+        title: "Revise knowledge pages",
+        kind: "knowledge_revise",
+        prompt: "Revise",
+        priority: 90,
+        requires_review: true,
+        target_pages: ["wiki/concepts/demo.md"],
+      },
+      ProviderTaskSpec::{
+        id: "bootstrap_gather",
+        title: "Gather bootstrap materials",
+        kind: "bootstrap_gather",
+        prompt: "Gather",
+        priority: 80,
+        requires_review: true,
+        target_pages: ["raw/bootstrap/demo.md"],
+      },
+      ProviderTaskSpec::{
+        id: "source_materialize",
+        title: "Materialize durable source pages",
+        kind: "source_materialize",
+        prompt: "Materialize",
+        priority: 70,
+        requires_review: true,
+        target_pages: ["wiki/sources/demo.md"],
+      },
+    ],
+  }
+  let config = SubjobStepConfig::new(
+    request_text="unused",
+    child_profile=None,
+    include_parent_outputs=true,
+    max_depth=4,
+    execution_mode=Some("provider"),
+    execution_target=Some("wiki-main"),
+  )
+  let command = ProviderTaskCommand::{
+    provider: @resource_providers.RegisteredResourceProvider::new(
+      name="wiki-main",
+      title="Wiki Main",
+      kind="task-provider",
+      capabilities=["provider.task"],
+      metadata={
+        "command": "moon",
+        "args": ["run", "cmd/main", "--"],
+        "cwd": "/tmp/provider-root",
+        "workspace_root": "/tmp/provider-workspace",
+      },
+    ),
+    command: "moon",
+    args: ["run", "cmd/main", "--"],
+    cwd: Some("/tmp/provider-root"),
+    workspace_root: "/tmp/provider-workspace",
+  }
+  let proposal = provider_task_child_proposal(
+    "Bootstrap ingest", batch, command, config, 1000,
+  )
+  inspect(proposal.steps.length(), content="4")
+  inspect(
+    proposal.steps[0].metadata
+    .stringify()
+    .contains("\"bookapi_task_kind\":\"bootstrap_gather\""),
+    content="true",
+  )
+  inspect(
+    proposal.steps[1].metadata
+    .stringify()
+    .contains("\"bookapi_task_kind\":\"source_materialize\""),
+    content="true",
+  )
+  inspect(
+    proposal.steps[2].metadata
+    .stringify()
+    .contains("\"bookapi_task_kind\":\"knowledge_revise\""),
+    content="true",
+  )
+  inspect(
+    proposal.steps[3].metadata
+    .stringify()
+    .contains("\"bookapi_task_kind\":\"review\""),
+    content="true",
+  )
+}
+
+///|
+test "provider task normalizes provider task kind and title from step metadata" {
+  let task = ProviderTaskSpec::{
+    id: "goal-demo-source_materialize",
+    title: "Review pending book updates",
+    kind: "review",
+    prompt: "Review",
+    priority: 10,
+    requires_review: false,
+    target_pages: ["reviews/pending.md"],
+  }
+  let normalized = normalize_provider_task_spec_from_metadata(
+    {
+      "extension_task_kind": "source_materialize",
+      "extension_priority": 90,
+      "extension_requires_review": true,
+      "extension_target_pages": ["sources/", "index.md", "log.md"],
+    },
+    task,
+  )
+  inspect(normalized.kind, content="source_materialize")
+  inspect(normalized.title, content="Materialize durable source pages")
+  inspect(normalized.priority.to_string(), content="90")
+  inspect(normalized.requires_review.to_string(), content="true")
+  inspect(normalized.target_pages.join(","), content="sources/,index.md,log.md")
+}
+
+///|
+test "provider task can pin full task spec in step metadata" {
+  let task = ProviderTaskSpec::{
+    id: "task-source",
+    title: "Materialize durable source pages",
+    kind: "source_materialize",
+    prompt: "Materialize durable source pages from bootstrap packets.",
+    priority: 90,
+    requires_review: true,
+    target_pages: ["wiki/sources/", "wiki/index.md", "wiki/log.md"],
+  }
+  let decoded = provider_task_spec_from_metadata({
+    "extension_task_spec": task.to_json(),
+  })
+  inspect(decoded is Some(_), content="true")
+  inspect(
+    decoded.map(fn(value) { value.kind }).unwrap_or(""),
+    content="source_materialize",
+  )
+  inspect(
+    decoded.map(fn(value) { value.target_pages.join(",") }).unwrap_or(""),
+    content="wiki/sources/,wiki/index.md,wiki/log.md",
+  )
+}
+
+///|
+test "provider task reads pinned spec from nested step metadata" {
+  let gather = ProviderTaskSpec::{
+    id: "task-gather",
+    title: "Gather bootstrap materials",
+    kind: "bootstrap_gather",
+    prompt: "Gather bootstrap packets.",
+    priority: 100,
+    requires_review: false,
+    target_pages: ["raw/bootstrap/"],
+  }
+  let materialize = ProviderTaskSpec::{
+    id: "task-materialize",
+    title: "Materialize durable source pages",
+    kind: "source_materialize",
+    prompt: "Materialize durable source pages from bootstrap packets.",
+    priority: 90,
+    requires_review: true,
+    target_pages: ["wiki/sources/", "wiki/index.md", "wiki/log.md"],
+  }
+  let nested_metadata : Json = {
+    "proposal_step_id": "step_2",
+    "step_metadata": {
+      "extension_task_id": materialize.id,
+      "extension_task_spec": materialize.to_json(),
+      "extension_task_kind": materialize.kind,
+      "extension_priority": materialize.priority,
+      "extension_requires_review": materialize.requires_review,
+      "extension_target_pages": materialize.target_pages,
+    },
+  }
+  let decoded = provider_task_spec_from_metadata(nested_metadata).unwrap_or(
+    gather,
+  )
+  let normalized = normalize_provider_task_spec_from_metadata(
+    nested_metadata, decoded,
+  )
+  inspect(normalized.id, content="task-materialize")
+  inspect(normalized.kind, content="source_materialize")
+  inspect(normalized.title, content="Materialize durable source pages")
+  inspect(
+    normalized.target_pages.join(","),
+    content="wiki/sources/,wiki/index.md,wiki/log.md",
   )
 }
 
@@ -592,8 +785,8 @@ async test "provider task analysis runner hydrates context and persists structur
       captured_system_prompt.val.contains("raw/bootstrap/*"),
       content="true",
     )
-    inspect(captured_enable_tools.val, content="false")
-    inspect(captured_web_search.val, content="false")
+    inspect(captured_enable_tools.val, content="true")
+    inspect(captured_web_search.val, content="true")
     inspect(captured_todo_enabled.val, content="false")
     inspect(
       execution.content.contains("# Extension Task Result"),
@@ -627,7 +820,7 @@ async test "provider task analysis runner hydrates context and persists structur
 }
 
 ///|
-test "provider task tool-loop policy defaults provider phases to single-response execution" {
+test "provider task tool-loop policy enables bounded local execution for provider phases" {
   inspect(
     provider_task_requires_local_tool_loop(ProviderTaskSpec::{
       id: "task-gather",
@@ -638,7 +831,7 @@ test "provider task tool-loop policy defaults provider phases to single-response
       requires_review: true,
       target_pages: ["raw/bootstrap/demo.md"],
     }),
-    content="false",
+    content="true",
   )
   inspect(
     provider_task_requires_local_tool_loop(ProviderTaskSpec::{
@@ -650,8 +843,543 @@ test "provider task tool-loop policy defaults provider phases to single-response
       requires_review: false,
       target_pages: ["wiki/review.md"],
     }),
+    content="true",
+  )
+}
+
+///|
+async test "provider task precompiles source materialize substeps from bootstrap packets" {
+  @fsx.with_temporary_directory("job-provider-precompiled-materialize-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let bootstrap_dir = @pathx.join(workspace, "raw")
+      |> @pathx.join("bootstrap")
+    @fsx.make_directory(bootstrap_dir, recursive=true, exists_ok=true)
+    let bootstrap_content =
+      #|# Demo Bootstrap
+      #|
+      #|## Candidate pages
+      #|
+      #|- `wiki/sources/demo-readme.md`
+      #|- `wiki/sources/demo-architecture.md`
+      #|- `wiki/entities/demo.md`
+      #|
+    @fsx.write_to_file(
+      @pathx.join(bootstrap_dir, "demo-bootstrap.md"),
+      bootstrap_content,
+    )
+    let context = ProviderTaskWorkerContext::{
+      book_id: "demo",
+      workspace_root: workspace,
+      task_id: "task-source",
+      prompt: "Materialize durable source pages.",
+      policy: [],
+      routines: [],
+      skill_paths: [],
+      context_pages: [],
+      active_memory: [],
+      user_memory: [],
+      working_memory: [],
+      memory_summary: "",
+      output_contract: [],
+    }
+    let envelope = provider_task_precompiled_envelope(
+      ProviderTaskSpec::{
+        id: "task-source",
+        title: "Materialize source pages",
+        kind: "source_materialize",
+        prompt: "Create durable source pages from bootstrap material.",
+        priority: 90,
+        requires_review: true,
+        target_pages: ["wiki/sources/"],
+      },
+      context,
+    )
+    inspect(envelope is Some(_), content="true")
+    let substeps = envelope
+      .map(fn(value) { adaptive_substeps(value) })
+      .unwrap_or([])
+    inspect(substeps.length().to_string(), content="2")
+    inspect(substeps[0].title.contains("demo-readme"), content="true")
+    inspect(
+      substeps[0].prompt.contains("raw/bootstrap/demo-bootstrap.md"),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "provider task gates knowledge revise behind source materialization" {
+  @fsx.with_temporary_directory("job-provider-phase-gate-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let bootstrap_dir = @pathx.join(workspace, "raw")
+      |> @pathx.join("bootstrap")
+    @fsx.make_directory(bootstrap_dir, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      @pathx.join(bootstrap_dir, "demo-bootstrap.md"),
+      (
+        #|# Demo Bootstrap
+        #|
+        #|## Candidate pages
+        #|
+        #|- `wiki/sources/demo-readme.md`
+        #|- `wiki/entities/demo.md`
+        #|,
+      ),
+    )
+    let context = ProviderTaskWorkerContext::{
+      book_id: "demo",
+      workspace_root: workspace,
+      task_id: "task-revise",
+      prompt: "Revise knowledge pages.",
+      policy: [],
+      routines: [],
+      skill_paths: [],
+      context_pages: [],
+      active_memory: [],
+      user_memory: [],
+      working_memory: [],
+      memory_summary: "",
+      output_contract: [],
+    }
+    let envelope = provider_task_precompiled_envelope(
+      ProviderTaskSpec::{
+        id: "task-revise",
+        title: "Revise knowledge surfaces",
+        kind: "knowledge_revise",
+        prompt: "Revise ontology and synthesis pages.",
+        priority: 70,
+        requires_review: true,
+        target_pages: ["wiki/entities/", "wiki/concepts/"],
+      },
+      context,
+    )
+    inspect(envelope is Some(_), content="true")
+    let substeps = envelope
+      .map(fn(value) { adaptive_substeps(value) })
+      .unwrap_or([])
+    inspect(substeps.length().to_string(), content="1")
+    inspect(substeps[0].title.contains("demo-readme"), content="true")
+    inspect(
+      substeps[0].prompt.contains(
+        "Materialize or revise only this durable page",
+      ),
+      content="true",
+    )
+  })
+}
+
+///|
+async test "provider task caps materialize fanout" {
+  @fsx.with_temporary_directory("job-provider-materialize-cap-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let bootstrap_dir = @pathx.join(workspace, "raw")
+      |> @pathx.join("bootstrap")
+    @fsx.make_directory(bootstrap_dir, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      @pathx.join(bootstrap_dir, "demo-bootstrap.md"),
+      (
+        #|# Demo Bootstrap
+        #|
+        #|## Candidate pages
+        #|
+        #|- `wiki/sources/one.md`
+        #|- `wiki/sources/two.md`
+        #|- `wiki/sources/three.md`
+        #|- `wiki/sources/four.md`
+        #|- `wiki/sources/five.md`
+        #|,
+      ),
+    )
+    let context = ProviderTaskWorkerContext::{
+      book_id: "demo",
+      workspace_root: workspace,
+      task_id: "task-source",
+      prompt: "Materialize durable source pages.",
+      policy: [],
+      routines: [],
+      skill_paths: [],
+      context_pages: [],
+      active_memory: [],
+      user_memory: [],
+      working_memory: [],
+      memory_summary: "",
+      output_contract: [],
+    }
+    let envelope = provider_task_precompiled_envelope(
+      ProviderTaskSpec::{
+        id: "task-source",
+        title: "Materialize source pages",
+        kind: "source_materialize",
+        prompt: "Create durable source pages from bootstrap material.",
+        priority: 90,
+        requires_review: true,
+        target_pages: ["wiki/sources/"],
+      },
+      context,
+    )
+    let substeps = envelope
+      .map(fn(value) { adaptive_substeps(value) })
+      .unwrap_or([])
+    inspect(substeps.length().to_string(), content="2")
+  })
+}
+
+///|
+async test "provider task derives knowledge revision targets from source pages" {
+  @fsx.with_temporary_directory(
+    "job-provider-knowledge-source-targets-XXXXXX",
+    async fn(dir) {
+      let workspace = @pathx.join(dir, "workspace")
+      let sources_dir = @pathx.join(workspace, "wiki") |> @pathx.join("sources")
+      @fsx.make_directory(sources_dir, recursive=true, exists_ok=true)
+      @fsx.write_to_file(@pathx.join(sources_dir, "alpha.md"), "# Alpha\n")
+      @fsx.write_to_file(@pathx.join(sources_dir, "beta.md"), "# Beta\n")
+      let context = ProviderTaskWorkerContext::{
+        book_id: "demo",
+        workspace_root: workspace,
+        task_id: "task-revise",
+        prompt: "Revise knowledge pages.",
+        policy: [],
+        routines: [],
+        skill_paths: [],
+        context_pages: [],
+        active_memory: [],
+        user_memory: [],
+        working_memory: [],
+        memory_summary: "",
+        output_contract: [],
+      }
+      let envelope = provider_task_precompiled_envelope(
+        ProviderTaskSpec::{
+          id: "task-revise",
+          title: "Revise knowledge surfaces",
+          kind: "knowledge_revise",
+          prompt: "Revise ontology and synthesis pages.",
+          priority: 70,
+          requires_review: true,
+          target_pages: ["wiki/entities/", "wiki/concepts/"],
+        },
+        context,
+      )
+      inspect(envelope is Some(_), content="true")
+      let substeps = envelope
+        .map(fn(value) { adaptive_substeps(value) })
+        .unwrap_or([])
+      inspect(substeps.length().to_string(), content="4")
+      let has_alpha = substeps
+        .iter()
+        .any(fn(step) { step.title.contains("alpha") })
+      inspect(has_alpha, content="true")
+      let has_entity = substeps
+        .iter()
+        .any(fn(step) { step.prompt.contains("wiki/entities/demo.md") })
+      inspect(has_entity, content="true")
+    },
+  )
+}
+
+///|
+async test "provider task precompiles review closeout when sources exist" {
+  @fsx.with_temporary_directory("job-provider-review-closeout-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let sources_dir = @pathx.join(workspace, "wiki") |> @pathx.join("sources")
+    @fsx.make_directory(sources_dir, recursive=true, exists_ok=true)
+    @fsx.write_to_file(@pathx.join(sources_dir, "alpha.md"), "# Alpha\n")
+    let context = ProviderTaskWorkerContext::{
+      book_id: "demo",
+      workspace_root: workspace,
+      task_id: "task-review",
+      prompt: "Finalize review.",
+      policy: [],
+      routines: [],
+      skill_paths: [],
+      context_pages: [],
+      active_memory: [],
+      user_memory: [],
+      working_memory: [],
+      memory_summary: "",
+      output_contract: [],
+    }
+    let envelope = provider_task_precompiled_envelope(
+      ProviderTaskSpec::{
+        id: "task-review",
+        title: "Review pending book updates",
+        kind: "review",
+        prompt: "Finalize the provider task.",
+        priority: 20,
+        requires_review: false,
+        target_pages: ["wiki/reviews/pending.md"],
+      },
+      context,
+    )
+    inspect(envelope is Some(_), content="true")
+    let substeps = envelope
+      .map(fn(value) { adaptive_substeps(value) })
+      .unwrap_or([])
+    inspect(substeps.length().to_string(), content="1")
+    inspect(substeps[0].title, content="Finalize provider review")
+    inspect(
+      substeps[0].prompt.contains("wiki/sources/alpha.md"),
+      content="true",
+    )
+  })
+}
+
+///|
+test "provider task can fast complete review from source inventory" {
+  let knowledge = ProviderTaskSpec::{
+    id: "knowledge",
+    title: "Revise knowledge surfaces",
+    kind: "knowledge_revise",
+    prompt: "",
+    priority: 10,
+    requires_review: true,
+    target_pages: [],
+  }
+  let review = ProviderTaskSpec::{
+    id: "review",
+    title: "Review pending updates",
+    kind: "review_finalize",
+    prompt: "",
+    priority: 10,
+    requires_review: false,
+    target_pages: [],
+  }
+  let source = ProviderTaskSpec::{
+    id: "source",
+    title: "Materialize source pages",
+    kind: "source_materialize",
+    prompt: "",
+    priority: 10,
+    requires_review: true,
+    target_pages: [],
+  }
+  inspect(
+    provider_task_can_complete_from_source_inventory(knowledge),
     content="false",
   )
+  inspect(
+    provider_task_can_complete_from_source_inventory(review),
+    content="true",
+  )
+  inspect(
+    provider_task_can_complete_from_source_inventory(source),
+    content="false",
+  )
+  let result = provider_task_source_inventory_result(review, [
+    "wiki/sources/alpha.md", "wiki/sources/beta.md",
+  ])
+  inspect(result.requires_review, content="false")
+  inspect(result.artifacts.length().to_string(), content="2")
+}
+
+///|
+test "provider task synthesized subplan result does not queue intermediate review" {
+  let task = ProviderTaskSpec::{
+    id: "gather",
+    title: "Gather bootstrap materials",
+    kind: "bootstrap_gather",
+    prompt: "",
+    priority: 90,
+    requires_review: true,
+    target_pages: [],
+  }
+  let result = provider_task_synthesized_subplan_result(
+    task,
+    AnalysisExecution::{
+      model_name: "test",
+      content: "{}",
+      conversation_id: None,
+      usage: None,
+      metadata: {},
+    },
+    ["raw/bootstrap/demo.md"],
+  )
+  inspect(result.requires_review, content="false")
+}
+
+///|
+async test "provider task uses command workspace root when provider context root drifts" {
+  @fsx.with_temporary_directory("job-provider-effective-root-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let wrong_root = @pathx.join(dir, "wrong-root")
+    let bootstrap_dir = @pathx.join(workspace, "raw")
+      |> @pathx.join("bootstrap")
+    @fsx.make_directory(bootstrap_dir, recursive=true, exists_ok=true)
+    @fsx.make_directory(wrong_root, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      @pathx.join(bootstrap_dir, "demo-bootstrap.md"),
+      (
+        #|# Demo Bootstrap
+        #|
+        #|## Candidate pages
+        #|
+        #|- `wiki/sources/demo-readme.md`
+        #|,
+      ),
+    )
+    let effective_root = provider_task_effective_workspace_root(
+      workspace,
+      wrong_root,
+      @pathx.join(dir, "request-cwd"),
+    )
+    let context = ProviderTaskWorkerContext::{
+      book_id: "demo",
+      workspace_root: effective_root,
+      task_id: "task-source",
+      prompt: "Materialize durable source pages.",
+      policy: [],
+      routines: [],
+      skill_paths: [],
+      context_pages: [],
+      active_memory: [],
+      user_memory: [],
+      working_memory: [],
+      memory_summary: "",
+      output_contract: [],
+    }
+    let envelope = provider_task_precompiled_envelope(
+      ProviderTaskSpec::{
+        id: "task-source",
+        title: "Materialize source pages",
+        kind: "source_materialize",
+        prompt: "Create durable source pages from bootstrap material.",
+        priority: 90,
+        requires_review: true,
+        target_pages: ["wiki/sources/"],
+      },
+      context,
+    )
+    inspect(effective_root == workspace, content="true")
+    inspect(envelope is Some(_), content="true")
+    let substeps = envelope
+      .map(fn(value) { adaptive_substeps(value) })
+      .unwrap_or([])
+    inspect(substeps.length().to_string(), content="1")
+    inspect(substeps[0].title.contains("demo-readme"), content="true")
+  })
+}
+
+///|
+async test "provider task precompiles bootstrap gather lanes from source hints" {
+  @fsx.with_temporary_directory("job-provider-precompiled-bootstrap-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let source_root = @pathx.join(dir, "demo")
+    let bootstrap_dir = @pathx.join(workspace, "raw")
+      |> @pathx.join("bootstrap")
+    @fsx.make_directory(
+      @pathx.join(source_root, "cmd") |> @pathx.join("main"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.make_directory(
+      @pathx.join(source_root, "roles"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.make_directory(
+      @pathx.join(source_root, "adapters"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(@pathx.join(source_root, "README.md"), "# Demo\n")
+    @fsx.write_to_file(@pathx.join(source_root, "AGENTS.md"), "# Agents\n")
+    @fsx.write_to_file(@pathx.join(source_root, "moon.mod.json"), "{ }\n")
+    @fsx.write_to_file(
+      @pathx.join(source_root, "cmd")
+      |> @pathx.join("main")
+      |> @pathx.join("main.mbt"),
+      "///|\n",
+    )
+    @fsx.write_to_file(
+      @pathx.join(source_root, "roles") |> @pathx.join("mayor.mbt"),
+      "///|\n",
+    )
+    @fsx.write_to_file(
+      @pathx.join(source_root, "roles") |> @pathx.join("lead.mbt"),
+      "///|\n",
+    )
+    @fsx.write_to_file(
+      @pathx.join(source_root, "adapters") |> @pathx.join("moonbook.mbt"),
+      "///|\n",
+    )
+    @fsx.write_to_file(
+      @pathx.join(source_root, "adapters") |> @pathx.join("moonclaw.mbt"),
+      "///|\n",
+    )
+    @fsx.write_to_file(
+      @pathx.join(source_root, "README.mbt.md"),
+      "# Demo API\n",
+    )
+    @fsx.make_directory(bootstrap_dir, recursive=true, exists_ok=true)
+    let hints =
+      #|# Source Hints
+      #|
+      #|## Local Repository Follow-Up
+      #|
+      #|- __SOURCE_ROOT__/README.md
+      #|- __SOURCE_ROOT__/AGENTS.md
+      #|- __SOURCE_ROOT__/moon.mod.json
+      #|- __SOURCE_ROOT__/cmd/main/main.mbt
+      #|- __SOURCE_ROOT__/roles/mayor.mbt
+      #|- __SOURCE_ROOT__/roles/lead.mbt
+      #|- __SOURCE_ROOT__/adapters/moonbook.mbt
+      #|- __SOURCE_ROOT__/adapters/moonclaw.mbt
+      #|- __SOURCE_ROOT__/README.mbt.md
+      #|
+    @fsx.write_to_file(
+      @pathx.join(bootstrap_dir, "SOURCE_HINTS.md"),
+      hints.replace(old="__SOURCE_ROOT__", new=source_root),
+    )
+    let context = ProviderTaskWorkerContext::{
+      book_id: "demo",
+      workspace_root: workspace,
+      task_id: "task-bootstrap",
+      prompt: "Gather bootstrap evidence.",
+      policy: [],
+      routines: [],
+      skill_paths: [],
+      context_pages: [],
+      active_memory: [],
+      user_memory: [],
+      working_memory: [],
+      memory_summary: "",
+      output_contract: [],
+    }
+    let envelope = provider_task_precompiled_envelope(
+      ProviderTaskSpec::{
+        id: "task-bootstrap",
+        title: "Gather bootstrap evidence",
+        kind: "bootstrap_gather",
+        prompt: "Inspect source hints and write bootstrap packets.",
+        priority: 90,
+        requires_review: true,
+        target_pages: ["raw/bootstrap/"],
+      },
+      context,
+    )
+    inspect(envelope is Some(_), content="true")
+    let substeps = envelope
+      .map(fn(value) { adaptive_substeps(value) })
+      .unwrap_or([])
+    inspect(substeps.length().to_string(), content="2")
+    inspect(substeps[0].title, content="Gather bootstrap lane 1")
+    inspect(substeps[0].prompt.contains("raw/bootstrap/"), content="true")
+    inspect(substeps[0].prompt.contains("mounted-sources/"), content="true")
+    inspect(substeps[0].prompt.contains(source_root), content="false")
+  })
 }
 
 ///|

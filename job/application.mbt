@@ -69,6 +69,21 @@ pub fn GatewayJobApp::next_id(self : GatewayJobApp) -> String {
 }
 
 ///|
+pub fn GatewayJobApp::next_run_id(self : GatewayJobApp) -> String {
+  let now_ms = self.now()
+  let seed = self.next_id()
+  let base = human_readable_run_id(now_ms, seed)
+  let store = self.runtime().store()
+  for i = 0; i < 1000; i = i + 1 {
+    let candidate = if i == 0 { base } else { "\{base}-\{i}" }
+    if store.get_run(candidate) is None {
+      return candidate
+    }
+  }
+  "\{base}-\{now_ms}-\{store.list_runs().length()}"
+}
+
+///|
 fn unique_memory_hits(
   hits : Array[MemorySearchHit],
   extra : Array[MemorySearchHit],
@@ -496,7 +511,7 @@ pub fn GatewayJobApp::new_workflow_engine_with_executors(
         )
       }),
       child_executor~,
-      next_run_id=fn() { human_readable_run_id(self.now(), self.next_id()) },
+      next_run_id=fn() { self.next_run_id() },
     ),
   )
   engine.register_handler(
@@ -512,7 +527,7 @@ pub fn GatewayJobApp::new_workflow_engine_with_executors(
       },
       child_executor~,
       now=fn() { self.now() },
-      next_run_id=fn() { human_readable_run_id(self.now(), self.next_id()) },
+      next_run_id=fn() { self.next_run_id() },
     ),
   )
   engine

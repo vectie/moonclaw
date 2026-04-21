@@ -85,7 +85,71 @@ async fn ensure_directory(path : String) -> Unit {
 
 ///|
 fn source_workspace_mount_names() -> Array[String] {
-  ["wiki", "raw", "skills", "RESOLVER.md", "AGENTS.md", "moonclaw.jobs.json"]
+  [
+    "wiki",
+    "raw",
+    "skills",
+    "RESOLVER.md",
+    "AGENTS.md",
+    "moonclaw.jobs.json",
+    source_hint_mount_dir_name(),
+  ]
+}
+
+///|
+fn source_hint_mount_dir_name() -> String {
+  "mounted-sources"
+}
+
+///|
+fn source_hint_mount_name(source_path : String) -> String {
+  let base = @pathx.basename(source_path).to_string()
+  let safe_base = safe_step_file_segment(base)
+  if safe_base.is_blank() {
+    "source-\{source_path.hash()}"
+  } else {
+    "\{safe_base}-\{source_path.hash()}"
+  }
+}
+
+///|
+fn source_hint_mounted_relative_path(source_path : String) -> String {
+  @pathx.join(source_hint_mount_dir_name(), source_hint_mount_name(source_path))
+}
+
+///|
+fn source_hint_followup_paths_from_markdown(content : String) -> Array[String] {
+  let paths : Array[String] = []
+  let mut in_section = false
+  for raw_line in content.split("\n") {
+    let line = raw_line.trim().to_string()
+    if line.has_prefix("## ") {
+      let normalized = line[3:].trim().to_lower()
+      if in_section && normalized != "local repository follow-up" {
+        break
+      }
+      in_section = normalized == "local repository follow-up"
+      continue
+    }
+    if !in_section || !line.has_prefix("- ") {
+      continue
+    }
+    let candidate = line[2:].trim().to_string()
+    if !candidate.is_blank() && !paths.contains(candidate) {
+      paths.push(candidate)
+    }
+  }
+  paths
+}
+
+///|
+async fn source_hint_followup_paths(source_workspace : String) -> Array[String] {
+  let path = source_workspace
+    |> @pathx.join("raw")
+    |> @pathx.join("bootstrap")
+    |> @pathx.join("SOURCE_HINTS.md")
+  let content = @fsx.read_file(path) catch { _ => return [] }
+  source_hint_followup_paths_from_markdown(content)
 }
 
 ///|
@@ -118,6 +182,48 @@ async fn create_source_workspace_mount(
 }
 
 ///|
+async fn create_external_source_mount(
+  source_path : String,
+  workspace_dir : String,
+) -> Unit {
+  let source_exists = @fsx.exists(source_path) catch { _ => false }
+  if !source_exists {
+    return
+  }
+  let relative = source_hint_mounted_relative_path(source_path)
+  let destination_path = workspace_dir |> @pathx.join(relative)
+  let parent_dir = @pathx.dirname(destination_path)
+  @fsx.make_directory(parent_dir, recursive=true, exists_ok=true) catch {
+    _ => return
+  }
+  let destination_exists = @fsx.exists(destination_path) catch { _ => false }
+  if destination_exists {
+    return
+  }
+  let command = @spawn.spawn(
+    "ln",
+    ["-s", source_path, destination_path],
+    cwd=workspace_dir,
+  ) catch {
+    _ => return
+  }
+  ignore(command)
+}
+
+///|
+async fn mount_source_hint_followup_entries(
+  source_workspace : String,
+  workspace_dir : String,
+) -> Unit {
+  if source_workspace == workspace_dir {
+    return
+  }
+  for source_path in source_hint_followup_paths(source_workspace) {
+    create_external_source_mount(source_path, workspace_dir)
+  }
+}
+
+///|
 async fn mount_source_workspace_entries(
   source_workspace : String,
   workspace_dir : String,
@@ -128,6 +234,7 @@ async fn mount_source_workspace_entries(
   for name in source_workspace_mount_names() {
     create_source_workspace_mount(source_workspace, workspace_dir, name)
   }
+  mount_source_hint_followup_entries(source_workspace, workspace_dir)
 }
 
 ///|

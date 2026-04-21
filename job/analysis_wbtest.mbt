@@ -1154,6 +1154,19 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
       .unwrap_or(false),
       content="true",
     )
+    let parent_events = engine.runtime.store().list_run_events("run-analysis-1")
+    inspect(
+      parent_events
+      .map(fn(event) { event.event_type })
+      .contains("child_run.started"),
+      content="true",
+    )
+    inspect(
+      parent_events
+      .map(fn(event) { event.event_type })
+      .contains("child_run.succeeded"),
+      content="true",
+    )
     let child_proposal = match captured_child_proposal.val {
       Some(proposal) => proposal
       None => fail("missing child proposal")
@@ -1483,9 +1496,7 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
     inspect(
       result.outputs
       .get("analyze")
-      .map(fn(output) {
-        output.stringify().contains("\"result_artifact_id\"")
-      })
+      .map(fn(output) { output.stringify().contains("\"result_artifact_id\"") })
       .unwrap_or(false),
       content="true",
     )

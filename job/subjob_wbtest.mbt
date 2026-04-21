@@ -131,6 +131,11 @@ async test "subjob_step_handler creates a child run with lineage and executes it
     inspect(child_run.parent_step_id.unwrap_or(""), content="delegate")
     inspect(child_run.depth, content="1")
     inspect(child_run.status.to_json().stringify(), content="\"Succeeded\"")
+    let parent_events = runtime.store().list_run_events("run-parent-1")
+    inspect(
+      parent_events.map(fn(event) { event.event_type }).join(","),
+      content="job.started,step.started,child_run.started,child_run.succeeded,step.succeeded,job.completed",
+    )
   })
 }
 
@@ -471,6 +476,24 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
       content="true",
     )
   })
+}
+
+///|
+test "proposal execution override keeps resolved provider target for provider subjobs" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal("proposal-provider-target-1", "run provider task", 100),
+    profile_metadata: {
+      "execution": { "mode": "provider", "target": "wiki-main" },
+    },
+  }
+  let config = SubjobStepConfig::new(
+    request_text="run provider task",
+    execution_mode=Some("provider"),
+    execution_target=Some("moonbook"),
+  )
+  let (mode, target) = proposal_execution_override(proposal, config)
+  inspect(mode.unwrap_or(""), content="provider")
+  inspect(target.unwrap_or(""), content="wiki-main")
 }
 
 ///|

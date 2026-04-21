@@ -32,6 +32,62 @@ async test "GatewayJobApp::revise_draft_proposal rejects non-draft proposals" {
 }
 
 ///|
+async test "GatewayJobApp::next_run_id avoids collisions for constant CLI seed" {
+  @fsx.with_temporary_directory("job-app-run-id-XXXXXX", async fn(dir) {
+    let root = @pathx.join(dir, "jobs")
+    let workspace = @workspace.WorkspaceRuntime::new(
+      home="/tmp/home",
+      cwd="/tmp/workspace",
+    )
+    let app = GatewayJobApp::new(
+      root~,
+      cwd="/tmp/workspace",
+      home="/tmp/home",
+      workspace~,
+      next_id=fn() { "constant-seed" },
+      now=fn() { 200 },
+    )
+    app
+    .runtime()
+    .register_definition(JobDefinition::{
+      id: "job.demo",
+      kind: "generic",
+      enabled: true,
+      config: {},
+      schedule: None,
+      retry_policy: None,
+      workflow_id: None,
+      created_at: 1,
+      updated_at: 1,
+      tags: [],
+    })
+    let first = app.next_run_id()
+    app
+    .runtime()
+    .store()
+    .save_run(JobRun::{
+      id: first,
+      job_id: "job.demo",
+      trigger: TriggerSource::Manual,
+      parent_run_id: None,
+      parent_step_id: None,
+      depth: 0,
+      workspace_dir: None,
+      status: RunStatus::Pending,
+      attempt: 1,
+      retry_of: None,
+      started_at: None,
+      finished_at: None,
+      summary: None,
+      error: None,
+    })
+    let second = app.next_run_id()
+    inspect(first == second, content="false")
+    inspect(app.runtime().store().get_run(second) is None, content="true")
+  })
+}
+
+///|
 async test "GatewayJobApp::confirm_proposal registers workflow and persists proposal state" {
   @fsx.with_temporary_directory("job-app-confirm-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

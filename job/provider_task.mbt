@@ -513,6 +513,7 @@ fn provider_task_step_metadata(
     "bookapi_goal": goal,
     "bookapi_goal_id": goal_id,
     "bookapi_task_id": task.id,
+    "bookapi_task_spec": task.to_json(),
     "bookapi_task_kind": task.kind,
     "bookapi_priority": task.priority,
     "bookapi_requires_review": task.requires_review,
@@ -520,6 +521,7 @@ fn provider_task_step_metadata(
     "extension_goal": goal,
     "extension_goal_id": goal_id,
     "extension_task_id": task.id,
+    "extension_task_spec": task.to_json(),
     "extension_task_kind": task.kind,
     "extension_priority": task.priority,
     "extension_requires_review": task.requires_review,
@@ -623,23 +625,200 @@ fn provider_task_execution_tasks(
     .iter()
     .filter(fn(task) { !provider_task_is_planning_kind(task.kind) })
     .to_array()
-  if executable.is_empty() {
-    tasks
+  let selected = if executable.is_empty() { tasks } else { executable }
+  let bootstrap_execution = selected
+    .iter()
+    .filter(fn(task) {
+      let rank = provider_task_phase_rank(task.kind)
+      rank >= 0 && rank <= 4
+    })
+    .to_array()
+  let selected = if bootstrap_execution.is_empty() {
+    selected
   } else {
-    executable
+    bootstrap_execution
+  }
+  let indexed : Array[(Int, Int, Int, ProviderTaskSpec)] = []
+  for i = 0; i < selected.length(); i = i + 1 {
+    let task = selected[i]
+    indexed.push((provider_task_phase_rank(task.kind), -task.priority, i, task))
+  }
+  indexed.sort_by(fn(a, b) {
+    let phase_order = a.0.compare(b.0)
+    if phase_order != 0 {
+      phase_order
+    } else {
+      let priority_order = a.1.compare(b.1)
+      if priority_order != 0 {
+        priority_order
+      } else {
+        a.2.compare(b.2)
+      }
+    }
+  })
+  indexed.map(fn(item) { item.3 })
+}
+
+///|
+fn provider_task_phase_rank(kind : String) -> Int {
+  match kind.trim().to_lower() {
+    "bootstrap_gather" => 0
+    "source_materialize" => 1
+    "knowledge_revise" => 2
+    "review_finalize" => 3
+    "review" => 4
+    _ => 10
   }
 }
 
 ///|
 fn metadata_string_value(metadata : Json, key : String) -> String? {
-  match metadata {
-    Object(obj) =>
-      match obj.get(key) {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
-          Some(value.trim().to_string())
-        _ => None
-      }
+  match metadata_with_step_metadata(metadata, key) {
+    Some(String(value)) if !value.trim().to_string().is_blank() =>
+      Some(value.trim().to_string())
     _ => None
+  }
+}
+
+///|
+fn metadata_bool_value(metadata : Json, key : String) -> Bool? {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(True) => Some(true)
+    Some(False) => Some(false)
+    _ => None
+  }
+}
+
+///|
+fn metadata_int_value(metadata : Json, key : String) -> Int? {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(Number(value, ..)) => Some(value.to_int())
+    _ => None
+  }
+}
+
+///|
+fn metadata_string_array_value(metadata : Json, key : String) -> Array[String] {
+  match metadata_with_step_metadata(metadata, key) {
+    Some(Array(values)) => {
+      let items : Array[String] = []
+      for value in values {
+        guard value is String(text) else { continue }
+        let trimmed = text.trim().to_string()
+        if !trimmed.is_blank() {
+          items.push(trimmed)
+        }
+      }
+      items
+    }
+    _ => []
+  }
+}
+
+///|
+fn provider_task_canonical_title(kind : String) -> String? {
+  match kind.trim().to_lower() {
+    "bootstrap_gather" => Some("Gather bootstrap materials")
+    "source_materialize" => Some("Materialize durable source pages")
+    "knowledge_revise" => Some("Revise knowledge surfaces")
+    "review_finalize" => Some("Finalize bootstrap review")
+    "review" => Some("Review pending book updates")
+    _ => None
+  }
+}
+
+///|
+fn provider_task_result_task_id(task : ProviderTaskSpec) -> String {
+  let task_id = task.id.trim().to_string()
+  if task_id.length() <= 80 {
+    task_id
+  } else {
+    let base = provider_task_canonical_title(task.kind).unwrap_or(task.kind)
+    let slug = safe_step_file_segment(base)
+    let suffix = task_id.hash().to_string().trim(chars="-").to_string()
+    "provider-\{slug}-\{suffix}"
+  }
+}
+
+///|
+fn provider_task_spec_from_metadata(metadata : Json) -> ProviderTaskSpec? {
+  fn decode(value : Json) -> ProviderTaskSpec? {
+    let decoded : ProviderTaskSpec = @json.from_json(value) catch {
+      _ => return None
+    }
+    Some(decoded)
+  }
+  match metadata_with_step_metadata(metadata, "extension_task_spec") {
+    Some(spec) =>
+      match decode(spec) {
+        Some(task) => return Some(task)
+        None => ()
+      }
+    None => ()
+  }
+  metadata_with_step_metadata(metadata, "bookapi_task_spec").bind(decode)
+}
+
+///|
+fn provider_task_effective_workspace_root(
+  command_workspace_root : String,
+  context_workspace_root : String,
+  request_cwd : String,
+) -> String {
+  let normalized_command = command_workspace_root.trim().to_string()
+  let normalized_context = context_workspace_root.trim().to_string()
+  if !normalized_command.is_blank() {
+    normalized_command
+  } else if !normalized_context.is_blank() {
+    normalized_context
+  } else {
+    request_cwd
+  }
+}
+
+///|
+fn normalize_provider_task_spec_from_metadata(
+  metadata : Json,
+  task : ProviderTaskSpec,
+) -> ProviderTaskSpec {
+  let kind = metadata_string_value(metadata, "extension_task_kind").unwrap_or(
+    metadata_string_value(metadata, "bookapi_task_kind").unwrap_or(task.kind),
+  )
+  let title = provider_task_canonical_title(kind).unwrap_or(task.title)
+  let priority = metadata_int_value(metadata, "extension_priority").unwrap_or(
+    metadata_int_value(metadata, "bookapi_priority").unwrap_or(task.priority),
+  )
+  let requires_review = metadata_bool_value(
+    metadata, "extension_requires_review",
+  ).unwrap_or(
+    metadata_bool_value(metadata, "bookapi_requires_review").unwrap_or(
+      task.requires_review,
+    ),
+  )
+  let target_pages = {
+    let extension_targets = metadata_string_array_value(
+      metadata, "extension_target_pages",
+    )
+    if !extension_targets.is_empty() {
+      extension_targets
+    } else {
+      let bookapi_targets = metadata_string_array_value(
+        metadata, "bookapi_target_pages",
+      )
+      if !bookapi_targets.is_empty() {
+        bookapi_targets
+      } else {
+        task.target_pages
+      }
+    }
+  }
+  ProviderTaskSpec::{
+    ..task,
+    kind,
+    title,
+    priority,
+    requires_review,
+    target_pages,
   }
 }
 
@@ -725,7 +904,7 @@ fn provider_task_system_prompt(
     "The loaded `provider-task-execution` skill defines the execution method.",
     "Return strict JSON only matching this shape:",
     "{\"task_id\":string,\"summary\":string,\"artifacts\":string[],\"memory_candidates\":[{\"kind\":string,\"title\":string,\"detail\":string,\"durable\":bool,\"target_page\":string|null}],\"requires_review\":bool,\"notify_town\":bool}",
-    "Use task_id = \{task.id}.",
+    "Use task_id = \{provider_task_result_task_id(task)}.",
     "Do not wrap the JSON in markdown fences.",
     "Output contract from the harness:",
     join_bullets(context.output_contract),
@@ -1020,7 +1199,7 @@ fn provider_task_substep_prompt(task : ProviderTaskSpec) -> String {
     task.prompt,
     "",
     "Provider-owned narrowed execution task:",
-    "- task_id: \{task.id}",
+    "- task_id: \{provider_task_result_task_id(task)}",
     "- task_kind: \{task.kind}",
     "",
     "Declared target surfaces:",
@@ -1064,9 +1243,619 @@ fn provider_task_followup_substeps(
 }
 
 ///|
+async fn provider_task_bootstrap_packet_paths(
+  workspace_root : String,
+) -> Array[String] {
+  let packet_dir = @pathx.join(workspace_root, "raw")
+    |> @pathx.join("bootstrap")
+  let entries = @fsx.list_directory(packet_dir) catch { _ => return [] }
+  let packets : Array[String] = []
+  for entry in entries {
+    guard entry.kind is Regular else { continue }
+    guard entry.name.has_suffix(".md") else { continue }
+    if entry.name == "RESEARCH_REQUEST.md" || entry.name == "SOURCE_HINTS.md" {
+      continue
+    }
+    packets.push(@pathx.join("raw/bootstrap", entry.name))
+  }
+  packets.sort()
+  packets
+}
+
+///|
+fn provider_task_extract_candidate_pages_from_markdown(
+  content : String,
+  prefixes : Array[String],
+) -> Array[String] {
+  let pages : Array[String] = []
+  for raw_line in content.split("\n") {
+    for path in provider_task_artifact_paths_from_line(raw_line.to_string()) {
+      if prefixes.iter().any(fn(prefix) { path.has_prefix(prefix) }) &&
+        path.has_suffix(".md") &&
+        !pages.contains(path) {
+        pages.push(path)
+      }
+    }
+  }
+  pages
+}
+
+///|
+async fn provider_task_packet_candidate_pages(
+  workspace_root : String,
+  prefixes : Array[String],
+) -> (Array[String], Array[String]) {
+  let packets = provider_task_bootstrap_packet_paths(workspace_root)
+  let pages : Array[String] = []
+  for packet in packets {
+    let absolute = @pathx.join(workspace_root, packet)
+    let content = @fsx.read_file(absolute) catch { _ => continue }
+    for
+      page in provider_task_extract_candidate_pages_from_markdown(
+        content, prefixes,
+      ) {
+      if !pages.contains(page) {
+        pages.push(page)
+      }
+    }
+  }
+  (packets, pages)
+}
+
+///|
+fn provider_task_markdown_bullet_section(
+  content : String,
+  heading : String,
+) -> Array[String] {
+  let section = heading.trim().to_lower()
+  let items : Array[String] = []
+  let mut in_section = false
+  for raw_line in content.split("\n") {
+    let line = raw_line.trim().to_string()
+    if line.has_prefix("## ") {
+      let normalized = line[3:].trim().to_lower()
+      if in_section && normalized != section {
+        break
+      }
+      in_section = normalized == section
+      continue
+    }
+    if !in_section {
+      continue
+    }
+    if line.has_prefix("- ") {
+      let item = line[2:].trim().to_string()
+      if !item.is_blank() {
+        items.push(item)
+      }
+    }
+  }
+  items
+}
+
+///|
+fn provider_task_chunk_strings(
+  items : Array[String],
+  chunk_size : Int,
+) -> Array[Array[String]] {
+  if items.is_empty() || chunk_size <= 0 {
+    return []
+  }
+  let chunks : Array[Array[String]] = []
+  let mut start = 0
+  while start < items.length() {
+    let end_ = Int::min(start + chunk_size, items.length())
+    chunks.push(items[start:end_].to_array())
+    start = end_
+  }
+  chunks
+}
+
+///|
+async fn provider_task_bootstrap_source_hints(
+  workspace_root : String,
+) -> Array[String] {
+  let path = @pathx.join(workspace_root, "raw")
+    |> @pathx.join("bootstrap")
+    |> @pathx.join("SOURCE_HINTS.md")
+  let content = @fsx.read_file(path) catch { _ => return [] }
+  let resolved : Array[String] = []
+  for
+    source_path in provider_task_markdown_bullet_section(
+      content, "Local Repository Follow-Up",
+    ) {
+    let source_exists = @fsx.exists(source_path) catch { _ => false }
+    resolved.push(
+      if source_exists && @pathx.is_absolute(source_path) {
+        source_hint_mounted_relative_path(source_path)
+      } else {
+        source_path
+      },
+    )
+  }
+  resolved
+}
+
+///|
+fn provider_task_bootstrap_packet_slug(
+  first_path : String,
+  index : Int,
+) -> String {
+  let stem = @pathx.basename(first_path)
+    .to_string()
+    .replace_all(old=".md", new="")
+  let normalized = safe_step_file_segment(stem)
+  if normalized.is_blank() {
+    "bootstrap-lane-\{index}"
+  } else {
+    "\{normalized}-lane-\{index}"
+  }
+}
+
+///|
+fn provider_task_bootstrap_gather_prompt(
+  task : ProviderTaskSpec,
+  lane_paths : Array[String],
+  packet_path : String,
+) -> String {
+  let path_list = lane_paths.map(fn(path) { "- \{path}" }).join("\n")
+  [
+    "Apply one bounded gather slice of the provider task \{task.title}.",
+    "Inspect only these high-signal local files first:",
+    path_list,
+    "Write exactly one bootstrap packet at:",
+    "- \{packet_path}",
+    "The packet must be durable markdown under `raw/bootstrap/` and include:",
+    "- a short summary",
+    "- evidence bullets with concrete source paths",
+    "- at least one candidate durable source page under `wiki/sources/*.md`",
+    "- any additional candidate durable pages such as `wiki/entities/*.md`, `wiki/concepts/*.md`, or `wiki/synthesis/*.md`",
+    "- explicit blockers or open gaps if the slice is weak",
+    "Do not claim wiki coverage. This step only gathers evidence and writes the packet.",
+  ].join("\n")
+}
+
+///|
+fn provider_task_default_source_page_from_packet(
+  packet_path : String,
+  content : String,
+) -> String {
+  let mut title : String? = None
+  for raw_line in content.split("\n") {
+    let line = raw_line.trim().to_string()
+    if line.has_prefix("# Bootstrap Packet:") {
+      title = Some(line["# Bootstrap Packet:".length():].trim().to_string())
+      break
+    }
+  }
+  let base = match title {
+    Some(name) if !name.is_blank() => name
+    _ => @pathx.basename(packet_path).to_string().replace_all(old=".md", new="")
+  }
+  let slug = safe_step_file_segment(base)
+  let file_name = if slug.is_blank() {
+    "bootstrap-source-\{packet_path.hash()}.md"
+  } else {
+    "\{slug}.md"
+  }
+  "wiki/sources/\{file_name}"
+}
+
+///|
+fn provider_task_materialize_substep_title(page : String) -> String {
+  let name = @pathx.basename(page).replace_all(old=".md", new="")
+  "Materialize \{name}"
+}
+
+///|
+fn provider_task_materialize_substep_prompt(
+  task : ProviderTaskSpec,
+  packets : Array[String],
+  target_page : String,
+) -> String {
+  let packet_list = if packets.is_empty() {
+    "- none"
+  } else {
+    packets.map(fn(path) { "- \{path}" }).join("\n")
+  }
+  [
+    "Apply one bounded slice of the provider task \{task.title}.",
+    "Read the gathered bootstrap packet(s):",
+    packet_list,
+    "Materialize or revise only this durable page:",
+    "- \{target_page}",
+    "Use only evidence that is already present in the bootstrap packets or mounted workspace files.",
+    "Update `wiki/index.md` and `wiki/log.md` if this page lands.",
+    "Do not claim success unless the target page was actually written or revised.",
+  ].join("\n")
+}
+
+///|
+fn provider_task_revision_substep_prompt(
+  task : ProviderTaskSpec,
+  packets : Array[String],
+  target_page : String,
+) -> String {
+  let packet_list = if packets.is_empty() {
+    "- none"
+  } else {
+    packets.map(fn(path) { "- \{path}" }).join("\n")
+  }
+  [
+    "Apply one bounded revision slice of the provider task \{task.title}.",
+    "Read the gathered bootstrap packet(s):",
+    packet_list,
+    "Revise only this durable page:",
+    "- \{target_page}",
+    "Cross-link to the strongest related source pages already present in the workspace.",
+    "Keep claims bounded to cited packet evidence and mounted workspace files.",
+    "If the page lands, update `wiki/index.md` and `wiki/log.md` so entity, concept, source, and synthesis sections reflect the actual durable files.",
+  ].join("\n")
+}
+
+///|
+fn provider_task_catalog_refresh_substep_prompt(
+  task : ProviderTaskSpec,
+  source_pages : Array[String],
+  revision_pages : Array[String],
+) -> String {
+  let source_list = if source_pages.is_empty() {
+    "- none"
+  } else {
+    source_pages.map(fn(path) { "- \{path}" }).join("\n")
+  }
+  let revision_list = if revision_pages.is_empty() {
+    "- none"
+  } else {
+    revision_pages.map(fn(path) { "- \{path}" }).join("\n")
+  }
+  [
+    "Apply the catalog closeout slice of provider task \{task.title}.",
+    "Durable source pages present:",
+    source_list,
+    "Durable knowledge pages expected from this revision:",
+    revision_list,
+    "Refresh only catalog and status surfaces:",
+    "- wiki/index.md",
+    "- wiki/log.md",
+    "- wiki/synthesis/map.md",
+    "Use actual files under `wiki/sources/`, `wiki/entities/`, `wiki/concepts/`, `wiki/queries/`, and `wiki/synthesis/`.",
+    "Do not leave Entities or Concepts as `_None yet._` when corresponding durable pages exist.",
+    "Do not invent prompt-derived titles. Use compact page titles derived from filenames and page headings.",
+    "Return a concise completion result after the catalog reflects the durable workspace state.",
+  ].join("\n")
+}
+
+///|
+async fn provider_task_source_materialize_substeps(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+) -> Array[AdaptiveSubstepPayload] {
+  let (packets, pages) = provider_task_packet_candidate_pages(
+    context.workspace_root,
+    ["wiki/sources/"],
+  )
+  let materialize_pages = if pages.is_empty() {
+    let synthesized : Array[String] = []
+    for packet in packets {
+      let absolute = @pathx.join(context.workspace_root, packet)
+      let content = @fsx.read_file(absolute) catch { _ => continue }
+      let page = provider_task_default_source_page_from_packet(packet, content)
+      if !synthesized.contains(page) {
+        synthesized.push(page)
+      }
+    }
+    synthesized
+  } else {
+    pages
+  }
+  let bounded_pages : Array[String] = []
+  for i = 0; i < materialize_pages.length() && i < 2; i = i + 1 {
+    bounded_pages.push(materialize_pages[i])
+  }
+  bounded_pages.map(fn(page) {
+    AdaptiveSubstepPayload::{
+      title: provider_task_materialize_substep_title(page),
+      prompt: provider_task_materialize_substep_prompt(task, packets, page),
+      kind: Some("job.analysis"),
+    }
+  })
+}
+
+///|
+async fn provider_task_existing_source_pages(
+  workspace_root : String,
+) -> Array[String] {
+  let source_dir = @pathx.join(workspace_root, "wiki") |> @pathx.join("sources")
+  let entries = @fsx.list_directory(source_dir) catch { _ => return [] }
+  let pages : Array[String] = []
+  for entry in entries {
+    guard entry.kind is Regular else { continue }
+    guard entry.name.has_suffix(".md") else { continue }
+    pages.push(@pathx.join("wiki/sources", entry.name))
+  }
+  pages.sort()
+  pages
+}
+
+///|
+fn provider_task_can_complete_from_source_inventory(
+  task : ProviderTaskSpec,
+) -> Bool {
+  let normalized_kind = task.kind.trim().to_lower()
+  normalized_kind == "review" || normalized_kind == "review_finalize"
+}
+
+///|
+fn provider_task_source_inventory_result(
+  task : ProviderTaskSpec,
+  source_pages : Array[String],
+) -> ProviderTaskResult {
+  ProviderTaskResult::{
+    task_id: provider_task_result_task_id(task),
+    summary: "Completed \{task.title} from durable source inventory: \{source_pages.length()} source page(s) present.",
+    artifacts: source_pages,
+    memory_candidates: [],
+    requires_review: false,
+    notify_town: false,
+  }
+}
+
+///|
+fn provider_task_synthesis_page_from_source(source_page : String) -> String {
+  let name = @pathx.basename(source_page).replace_all(old=".md", new="")
+  "wiki/synthesis/\{name}-notes.md"
+}
+
+///|
+fn provider_task_wiki_page_slug(text : String) -> String {
+  let buf = StringBuilder::new()
+  let mut chars_written = 0
+  let mut last_dash = true
+  for c in text.to_lower().to_array() {
+    let normalized = match c {
+      'a'..='z' => Some(c)
+      '0'..='9' => Some(c)
+      _ => None
+    }
+    match normalized {
+      Some(c) => {
+        if chars_written >= 64 {
+          break
+        }
+        buf.write_char(c)
+        chars_written += 1
+        last_dash = false
+      }
+      None =>
+        if !last_dash && chars_written < 64 {
+          buf.write_char('-')
+          chars_written += 1
+          last_dash = true
+        }
+    }
+  }
+  let slug = buf.to_string().trim(chars="-").to_string()
+  if slug.is_blank() {
+    "topic"
+  } else {
+    slug
+  }
+}
+
+///|
+fn provider_task_concept_page_from_source(source_page : String) -> String {
+  let name = @pathx.basename(source_page)
+    .replace_all(old=".md", new="")
+    .to_string()
+  "wiki/concepts/\{provider_task_wiki_page_slug(name)}.md"
+}
+
+///|
+fn provider_task_entity_page_from_context(
+  context : ProviderTaskWorkerContext,
+) -> String? {
+  let raw = context.book_id
+    .trim()
+    .to_string()
+    .to_lower()
+    .replace_all(old="research-", new="")
+  let slug = provider_task_wiki_page_slug(raw)
+  if slug.is_blank() {
+    None
+  } else {
+    Some("wiki/entities/\{slug}.md")
+  }
+}
+
+///|
+fn provider_task_bounded_pages(
+  pages : Array[String],
+  limit : Int,
+) -> Array[String] {
+  let bounded : Array[String] = []
+  for i = 0; i < pages.length() && i < limit; i = i + 1 {
+    bounded.push(pages[i])
+  }
+  bounded
+}
+
+///|
+fn provider_task_revision_pages_from_sources(
+  context : ProviderTaskWorkerContext,
+  source_pages : Array[String],
+) -> Array[String] {
+  let pages : Array[String] = []
+  match provider_task_entity_page_from_context(context) {
+    Some(page) => pages.push(page)
+    None => ()
+  }
+  for source_page in source_pages {
+    let concept_page = provider_task_concept_page_from_source(source_page)
+    if !pages.contains(concept_page) {
+      pages.push(concept_page)
+    }
+  }
+  for source_page in source_pages {
+    let page = provider_task_synthesis_page_from_source(source_page)
+    if !pages.contains(page) {
+      pages.push(page)
+    }
+  }
+  provider_task_bounded_pages(pages, 4)
+}
+
+///|
+fn provider_task_review_substep_prompt(
+  task : ProviderTaskSpec,
+  source_pages : Array[String],
+) -> String {
+  let source_list = if source_pages.is_empty() {
+    "- none"
+  } else {
+    source_pages.map(fn(path) { "- \{path}" }).join("\n")
+  }
+  [
+    "Apply the bounded closeout slice of provider task \{task.title}.",
+    "Durable source pages already present:",
+    source_list,
+    "Reconcile only the book status and review surfaces:",
+    "- wiki/index.md",
+    "- wiki/log.md",
+    "- wiki/synthesis/map.md",
+    "- wiki/history/journey.md",
+    "- wiki/history/debug-journal.md",
+    "- wiki/reviews/pending.md",
+    "If durable source pages exist, do not report that no substantive pages were updated.",
+    "Do not create new prompt-derived review titles. Use compact labels from existing page names.",
+    "Return a concise completion result after those files are consistent.",
+  ].join("\n")
+}
+
+///|
+async fn provider_task_precompiled_substeps(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+) -> Array[AdaptiveSubstepPayload] {
+  let normalized_kind = task.kind.trim().to_lower()
+  if normalized_kind == "bootstrap_gather" {
+    let hint_paths = provider_task_bootstrap_source_hints(
+      context.workspace_root,
+    )
+    let lanes = provider_task_chunk_strings(hint_paths, 2)
+    let substeps : Array[AdaptiveSubstepPayload] = []
+    for i = 0; i < lanes.length() && i < 2; i = i + 1 {
+      let lane_paths = lanes[i]
+      guard !lane_paths.is_empty() else { continue }
+      let packet_slug = provider_task_bootstrap_packet_slug(
+        lane_paths[0],
+        i + 1,
+      )
+      let packet_path = "raw/bootstrap/\{packet_slug}.md"
+      substeps.push(AdaptiveSubstepPayload::{
+        title: "Gather bootstrap lane \{i + 1}",
+        prompt: provider_task_bootstrap_gather_prompt(
+          task, lane_paths, packet_path,
+        ),
+        kind: Some("job.analysis"),
+      })
+    }
+    return substeps
+  }
+  if normalized_kind == "source_materialize" {
+    return provider_task_source_materialize_substeps(task, context)
+  }
+  if normalized_kind == "knowledge_revise" {
+    let existing_sources = provider_task_existing_source_pages(
+      context.workspace_root,
+    )
+    if existing_sources.is_empty() {
+      let materialize_substeps = provider_task_source_materialize_substeps(
+        task, context,
+      )
+      if !materialize_substeps.is_empty() {
+        return materialize_substeps
+      }
+    }
+    let (packets, pages) = provider_task_packet_candidate_pages(
+      context.workspace_root,
+      ["wiki/entities/", "wiki/concepts/", "wiki/queries/", "wiki/synthesis/"],
+    )
+    let revision_pages = if pages.is_empty() {
+      provider_task_bounded_pages(
+        provider_task_revision_pages_from_sources(context, existing_sources),
+        3,
+      )
+    } else {
+      provider_task_bounded_pages(pages, 3)
+    }
+    let substeps = revision_pages.map(fn(page) {
+      let name = @pathx.basename(page).replace_all(old=".md", new="")
+      AdaptiveSubstepPayload::{
+        title: "Revise \{name}",
+        prompt: provider_task_revision_substep_prompt(task, packets, page),
+        kind: Some("job.analysis"),
+      }
+    })
+    if !revision_pages.is_empty() {
+      substeps.push(AdaptiveSubstepPayload::{
+        title: "Refresh wiki catalog",
+        prompt: provider_task_catalog_refresh_substep_prompt(
+          task, existing_sources, revision_pages,
+        ),
+        kind: Some("job.analysis"),
+      })
+    }
+    return substeps
+  }
+  if normalized_kind == "review" || normalized_kind == "review_finalize" {
+    let existing_sources = provider_task_existing_source_pages(
+      context.workspace_root,
+    )
+    if existing_sources.is_empty() {
+      return provider_task_source_materialize_substeps(task, context)
+    }
+    return [
+      AdaptiveSubstepPayload::{
+        title: "Finalize provider review",
+        prompt: provider_task_review_substep_prompt(task, existing_sources),
+        kind: Some("job.analysis"),
+      },
+    ]
+  }
+  []
+}
+
+///|
+async fn provider_task_precompiled_envelope(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+) -> AdaptiveAnalysisEnvelope? {
+  let substeps = provider_task_precompiled_substeps(task, context)
+  if substeps.is_empty() {
+    None
+  } else {
+    Some(AdaptiveAnalysisEnvelope::{
+      verdict: "needs_subplan",
+      summary: Some(
+        "Split provider task \{task.title} into bounded workspace edits derived from gathered bootstrap material.",
+      ),
+      missing_inputs: None,
+      suggested_substeps: Some(substeps),
+      substeps: None,
+    })
+  }
+}
+
+///|
 fn provider_task_requires_local_tool_loop(task : ProviderTaskSpec) -> Bool {
+  // Provider-backed extension tasks are expected to read mounted workspace
+  // files and materialize durable outputs. Forcing single-response mode here
+  // blocks the very filesystem/tool work that imported bootstrap runs depend
+  // on. Keep the loop bounded with the existing timeout/guardrail path rather
+  // than disabling tools entirely.
   ignore(task)
-  false
+  true
 }
 
 ///|
@@ -1265,7 +2054,7 @@ fn normalize_provider_task_result(
     _ => []
   }
   Ok(ProviderTaskResult::{
-    task_id: task.id,
+    task_id: provider_task_result_task_id(task),
     summary,
     artifacts,
     memory_candidates,
@@ -1349,7 +2138,7 @@ fn provider_task_repair_system_prompt(task : ProviderTaskSpec) -> String {
     "Return strict JSON only.",
     "The required shape is:",
     "{\"task_id\":string,\"summary\":string,\"artifacts\":string[],\"memory_candidates\":[{\"kind\":string,\"title\":string,\"detail\":string,\"durable\":bool,\"target_page\":string|null}],\"requires_review\":bool,\"notify_town\":bool}",
-    "Use task_id = \{task.id}.",
+    "Use task_id = \{provider_task_result_task_id(task)}.",
   ].join("\n\n")
 }
 
@@ -1655,7 +2444,7 @@ async fn align_provider_task_result(
 ) -> ProviderTaskResult {
   ProviderTaskResult::{
     ..result,
-    task_id: task.id,
+    task_id: provider_task_result_task_id(task),
     artifacts: provider_task_existing_workspace_artifacts(
       workspace_root,
       result.artifacts,
@@ -1762,11 +2551,11 @@ fn provider_task_synthesized_subplan_result(
     "Adaptive subplan for \{task.title} completed and produced durable workspace outputs.",
   )
   ProviderTaskResult::{
-    task_id: task.id,
+    task_id: provider_task_result_task_id(task),
     summary,
     artifacts,
     memory_candidates: [],
-    requires_review: task.requires_review,
+    requires_review: false,
     notify_town: false,
   }
 }
@@ -1802,21 +2591,33 @@ async fn finalize_provider_task_subplan_execution(
     Err(error) => return Some(Err(error))
   }
   let resolved_target_id = command.provider.name
-  let task = match select_provider_task_task(batch, selected_task_id) {
-    Ok(task) => task
-    Err(error) => return Some(Err(error))
+  let task = match provider_task_spec_from_metadata(request.step_metadata) {
+    Some(task) => task
+    None =>
+      match select_provider_task_task(batch, selected_task_id) {
+        Ok(task) => task
+        Err(error) => return Some(Err(error))
+      }
   }
+  let task = normalize_provider_task_spec_from_metadata(
+    request.step_metadata,
+    task,
+  )
   let context = match load_provider_task_context(command, goal, task.id) {
     Ok(context) => context
     Err(error) => return Some(Err(error))
   }
+  let artifact_root = provider_task_effective_workspace_root(
+    command.workspace_root,
+    context.workspace_root,
+    request.cwd,
+  )
+  let context = ProviderTaskWorkerContext::{
+    ..context,
+    workspace_root: artifact_root,
+  }
   let artifacts : Array[String] = []
   provider_task_collect_artifacts_from_json(child_outputs, artifacts)
-  let artifact_root = if context.workspace_root.is_blank() {
-    request.cwd
-  } else {
-    context.workspace_root
-  }
   for path in provider_task_target_artifacts(artifact_root, task) {
     if !artifacts.contains(path) {
       artifacts.push(path)
@@ -1868,13 +2669,89 @@ async fn run_provider_task_analysis_runner(
     Err(error) => return Err(error)
   }
   let resolved_target_id = command.provider.name
-  let task = match select_provider_task_task(batch, selected_task_id) {
-    Ok(task) => task
-    Err(error) => return Err(error)
+  let task = match provider_task_spec_from_metadata(request.step_metadata) {
+    Some(task) => task
+    None =>
+      match select_provider_task_task(batch, selected_task_id) {
+        Ok(task) => task
+        Err(error) => return Err(error)
+      }
   }
+  let task = normalize_provider_task_spec_from_metadata(
+    request.step_metadata,
+    task,
+  )
   let context = match load_provider_task_context(command, goal, task.id) {
     Ok(context) => context
     Err(error) => return Err(error)
+  }
+  let artifact_root = provider_task_effective_workspace_root(
+    command.workspace_root,
+    context.workspace_root,
+    request.cwd,
+  )
+  let context = ProviderTaskWorkerContext::{
+    ..context,
+    workspace_root: artifact_root,
+  }
+  if provider_task_can_complete_from_source_inventory(task) {
+    let source_pages = provider_task_existing_source_pages(artifact_root)
+    if !source_pages.is_empty() {
+      let result = provider_task_source_inventory_result(task, source_pages)
+      let result = align_provider_task_result(artifact_root, task, result)
+      let result = enforce_provider_task_result_semantics(task, context, result)
+      let outcome = match
+        persist_provider_task_result(command, request, task, result) {
+        Ok(outcome) => outcome
+        Err(error) => return Err(error)
+      }
+      return Ok(
+        persisted_provider_task_execution(
+          AnalysisExecution::{
+            model_name: request.model_name,
+            content: "{}",
+            conversation_id: None,
+            usage: None,
+            metadata: {
+              "job_id": request.job_id,
+              "run_id": request.run_id,
+              "step_id": request.step_id,
+              "execution_isolation": request.execution_isolation,
+              "role_runtime_contract": request.role_runtime_contract,
+            },
+          },
+          task,
+          result,
+          outcome,
+          resolved_target_id,
+        ),
+      )
+    }
+  }
+  match provider_task_precompiled_envelope(task, context) {
+    Some(envelope) =>
+      return Ok(
+        provider_task_guardrail_split_execution(
+          AnalysisExecution::{
+            model_name: request.model_name,
+            content: "{}",
+            conversation_id: None,
+            usage: None,
+            metadata: {
+              "job_id": request.job_id,
+              "run_id": request.run_id,
+              "step_id": request.step_id,
+              "execution_isolation": request.execution_isolation,
+              "role_runtime_contract": request.role_runtime_contract,
+            },
+          },
+          request,
+          task,
+          envelope,
+          resolved_target_id,
+        ),
+      )
+    None => ()
   }
   let use_local_tool_loop = provider_task_requires_local_tool_loop(task)
   let preferred_skills = provider_task_preferred_skills(request)
@@ -1941,11 +2818,6 @@ async fn run_provider_task_analysis_runner(
           return Err("\{error} (raw response: \{debug_path})")
         }
       }
-  }
-  let artifact_root = if context.workspace_root.is_blank() {
-    request.cwd
-  } else {
-    context.workspace_root
   }
   let result = align_provider_task_result(artifact_root, task, result)
   let result = enforce_provider_task_result_semantics(task, context, result)

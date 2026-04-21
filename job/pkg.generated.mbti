@@ -762,6 +762,7 @@ pub fn GatewayJobApp::compile_proposal_in_workspace(Self, JobProposal, String, S
 pub async fn GatewayJobApp::confirm_proposal(Self, JobProposal, String, async (String, Json?) -> Result[JobRun, String]) -> Result[ConfirmProposalResult, String]
 pub async fn GatewayJobApp::confirm_proposal_and_execute(Self, JobProposal, String, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ConfirmProposalResult, String]
 pub async fn GatewayJobApp::confirm_proposal_and_launch(Self, JobProposal, String, spawn_runner? : async (String, Array[String]) -> Unit) -> Result[ConfirmProposalResult, String]
+pub async fn GatewayJobApp::ensure_existing_run_definition(Self, JobRun) -> Result[Unit, String]
 pub async fn GatewayJobApp::execute_definition(Self, String, initial_input? : Json?, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[JobRun, String]
 pub async fn GatewayJobApp::execute_existing_run(Self, String, initial_input? : Json?, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[JobRun, String]
 pub async fn GatewayJobApp::import_external_proposal_packet(Self, ExternalProposalPacket, String, confirm? : Bool, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> Result[ExternalProposalImportResult, String]
@@ -773,6 +774,7 @@ pub fn GatewayJobApp::new_workflow_engine(Self) -> WorkflowEngine
 pub fn GatewayJobApp::new_workflow_engine_with_child_executor(Self, child_executor? : ChildRunExecutor?) -> WorkflowEngine
 pub fn GatewayJobApp::new_workflow_engine_with_executors(Self, child_executor? : ChildRunExecutor?, analysis_executor? : AnalysisExecutor?) -> WorkflowEngine
 pub fn GatewayJobApp::next_id(Self) -> String
+pub fn GatewayJobApp::next_run_id(Self) -> String
 pub fn GatewayJobApp::now(Self) -> Int
 pub async fn GatewayJobApp::plan_e2e_proposal(Self, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
 pub async fn GatewayJobApp::plan_e2e_proposal_in_workspace(Self, String, String, String, intake? : Json?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, model? : String?) -> JobProposal
