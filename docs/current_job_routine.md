@@ -420,6 +420,12 @@ The run workspace and the durable store are separate on purpose:
   final assistant turn so the workflow engine can persist `step.succeeded`,
   advance to the next phase, and eventually finish the parent run instead of
   leaving it in `Running`
+- provider-backed child runs also mirror `child_run.started`,
+  `child_run.succeeded`, and `child_run.failed` events onto the parent run so
+  operators can see whether the active boundary is gather, materialization,
+  knowledge revision, review, or child-run closeout
+- long prompt-derived provider task ids are compacted before provider
+  persistence so debug journals and generated projections stay readable
 
 ## 12. Controller UI Routine
 

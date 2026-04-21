@@ -37,6 +37,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`
 - `2026-04-15`: shortened persisted per-step metadata filenames to a bounded slug-plus-hash form so long delegated requests no longer crash with `File name too long`; logical `step_id` values remain unchanged in run state and UI
 - `2026-04-13`: added external proposal packet import with `moonclaw proposal import <packet.json> [--confirm]`; imported packets are validated, converted into normal stored proposals, mapped onto configured job profiles, and optionally confirmed/executed through the standard workflow engine
@@ -67,6 +68,8 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - if a run reaches `WaitingForInput`, Feishu status replies now tell you to reply in-thread with `/resume` plus the missing text, optionally with attachments
 - normal Feishu chat uses the configured primary model from `~/.moonclaw/moonclaw.json`; stale thread-local bare model ids no longer override it
 - provider-backed adaptive phases are expected to close their event session after the final assistant turn so parent runs can move on to the next phase instead of remaining `Running`
+- provider-backed child runs emit parent `child_run.started`, `child_run.succeeded`, and `child_run.failed` events so operators can see which bounded child run is currently blocking or closing a provider phase
+- provider-task results use compact stable task ids for long prompt-derived provider tasks before they are persisted through extension providers; runtime step ids remain unique and hash-backed
 
 ## 🚀 Current Capabilities
 

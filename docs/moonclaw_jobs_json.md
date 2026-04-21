@@ -154,6 +154,8 @@ Important current routing behavior:
   - ask the provider for a task batch
   - hydrate worker context for the selected task
   - run the task through the normal analysis runtime
+  - split broad provider tasks into bounded child runs when the provider phase
+    contract makes the task executable
   - persist the structured result back through the provider
 
 Example:
@@ -225,6 +227,22 @@ Example provider manifest entry:
 The detailed provider-side handshake is documented in:
 
 - [docs/extension_task_protocol.md](/Users/kq/Workspace/moonclaw/docs/extension_task_protocol.md)
+
+Provider-backed bootstrap phases currently have built-in ordering and bounded
+runtime handling:
+
+1. `bootstrap_gather`
+2. `source_materialize`
+3. `knowledge_revise`
+4. `review_finalize`
+5. `review`
+
+This ordering is a generic execution affordance, not a domain ownership rule.
+The provider still decides what the workspace means, which files are
+substantive, and how results are persisted. MoonClaw only keeps the execution
+finite, records child-run lifecycle events, filters result artifacts to existing
+workspace-relative paths, and compacts very long provider task ids before they
+reach provider journals.
 
 ### `role_runtime`
 

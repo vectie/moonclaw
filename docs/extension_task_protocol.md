@@ -39,7 +39,9 @@ state transitions:
    child runs and executes them as ordinary workflow runs
 3. child completion is synthesized back into the parent provider step and
    persisted through the normal provider-result path
-4. when the final assistant turn has no tool calls, the event session must stop
+4. child run lifecycle is mirrored onto the parent run through
+   `child_run.started`, `child_run.succeeded`, and `child_run.failed` events
+5. when the final assistant turn has no tool calls, the event session must stop
    cleanly so the workflow engine can record `step.succeeded`, start the next
    phase, or finish the run
 
@@ -47,6 +49,21 @@ This matters because provider packs can shape domain phases such as
 `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and
 `review_finalize`, but core runtime is still responsible for actually moving the
 run from one phase to the next.
+
+MoonClaw treats the bootstrap phase names above as generic runtime phase hints,
+not as first-class wiki semantics. When a provider returns those task kinds,
+MoonClaw orders and bounds them as:
+
+1. `bootstrap_gather`
+2. `source_materialize`
+3. `knowledge_revise`
+4. `review_finalize`
+5. `review`
+
+The provider still owns the meaning of the workspace and the quality bar for
+source/entity/concept/query material. MoonClaw only turns broad provider tasks
+into smaller child jobs, harvests the resulting artifacts, refreshes catalog
+surfaces when requested by the phase, and persists the provider result.
 
 ## Routing
 
@@ -213,6 +230,18 @@ Expected result payload shape:
 }
 ```
 
+For long prompt-derived provider task ids, MoonClaw may compact the persisted
+`task_id` into a stable `provider-<phase-slug>-<hash>` form before handing the
+result to `persist`. This keeps provider journals and downstream projections
+readable. Short provider-owned task ids are preserved.
+
+Provider results should report workspace-relative artifacts that actually exist.
+MoonClaw filters out missing or non-workspace paths before persistence. For
+bootstrap-style flows, a successful materialization result should include
+durable pages such as `raw/bootstrap/*`, `wiki/sources/*`,
+`wiki/entities/*`, `wiki/concepts/*`, `wiki/queries/*`, `wiki/synthesis/*`,
+`wiki/index.md`, or `wiki/log.md` when those files were touched.
+
 Provider persist response:
 
 ```json
@@ -234,9 +263,23 @@ When routed through a provider:
 3. selects the intended task
 4. loads provider-owned worker context
 5. runs the task through the normal analysis runtime
-6. parses the structured result
-7. persists it back through the provider
-8. stores the operator-facing report and result metadata
+6. if the task is too broad, compiles bounded child runs from provider phase
+   hints and gathered workspace artifacts
+7. parses or synthesizes the structured result
+8. persists it back through the provider
+9. stores the operator-facing report and result metadata
+
+For bootstrap-like providers, the current runtime has deterministic shapers for:
+
+- gather lanes from source hints
+- durable source-page materialization from gathered bootstrap packets
+- entity/concept/synthesis revision targets from durable source pages
+- final catalog/status refresh for `wiki/index.md`, `wiki/log.md`, and
+  `wiki/synthesis/map.md`
+
+These shapers are intentionally bounded. They avoid asking the model to
+self-decompose one large provider task repeatedly, while still leaving the
+provider responsible for workspace semantics and persistence.
 
 ## Metadata Conventions
 
