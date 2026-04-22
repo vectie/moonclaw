@@ -1521,12 +1521,20 @@ fn provider_task_research_contract_requested(
 async fn provider_task_research_protocol_prompt(
   task : ProviderTaskSpec,
   context : ProviderTaskWorkerContext,
+  slice_goal : String,
+  requested_files : Array[String],
 ) -> String {
   let mounted_sources = provider_task_bootstrap_source_hints(
     context.workspace_root,
   )
+  let requested_file_list = requested_files
+    .map(fn(path) { "- \{path}" })
+    .join("\n")
   [
-    "Apply the bounded research dossier slice for provider task \{task.title}.",
+    "Apply this bounded research dossier slice for provider task \{task.title}.",
+    "",
+    "Slice goal: \{slice_goal}",
+    "",
     provider_task_contract_section(context),
     "Read first:",
     "- raw/bootstrap/RESEARCH_REQUEST.md",
@@ -1535,19 +1543,16 @@ async fn provider_task_research_protocol_prompt(
     provider_task_mounted_source_section(mounted_sources),
     "Use web_search before local-only conclusions when the runtime exposes it.",
     "If web_search or web_fetch is unavailable or fails, still write the required files and record the exact limitation.",
-    "Write or revise exactly these research dossier files in one pass:",
-    "- raw/bootstrap/research-question.md",
-    "- raw/bootstrap/search-log.md",
-    "- raw/bootstrap/source-screen.md",
-    "- raw/bootstrap/local-sources.md",
-    "- raw/bootstrap/evidence-matrix.md",
-    "- raw/bootstrap/synthesis-brief.md",
+    "Write or revise only these files for this slice:",
+    requested_file_list,
     "The search log must include attempted web queries, selected or rejected URLs when available, and local path discovery state.",
     "The source screen must classify web and local candidates as included, excluded, verified, or blocked with reasons.",
     "The local sources file must map original hint paths to mounted aliases and summarize inspected local evidence.",
     "Use source IDs such as W1/W2 for web evidence, L1/L2 for local evidence, and B1/B2 for blockers.",
     "Every claim row in the evidence matrix must include source IDs, confidence, and a gap or contradiction note.",
     "The synthesis brief must separate verified findings, web verification status, contradictions, blockers, and next research.",
+    "The marketing brief must be produced by the loaded marketing skill when available; do not fill it with deterministic fallback boilerplate.",
+    "Use file_write or patch_edit to create the requested files before finishing. A prose-only answer is a failure.",
     "List which durable wiki/source/entity/concept/synthesis pages should be materialized next.",
     "Do not materialize wiki/source/entity/concept pages in this slice; it prepares the handoff.",
   ].join("\n")
@@ -1563,8 +1568,36 @@ async fn provider_task_research_bootstrap_substeps(
   }
   [
     AdaptiveSubstepPayload::{
-      title: "Write research dossier",
-      prompt: provider_task_research_protocol_prompt(task, context),
+      title: "Write research evidence packet",
+      prompt: provider_task_research_protocol_prompt(
+        task,
+        context,
+        "Gather and screen sources, inspect mounted local evidence, and write the claim-level research envelope.",
+        [
+          "raw/bootstrap/research-question.md", "raw/bootstrap/search-log.md", "raw/bootstrap/source-screen.md",
+          "raw/bootstrap/local-sources.md", "raw/bootstrap/evidence-matrix.md", "raw/bootstrap/synthesis-brief.md",
+        ],
+      ),
+      kind: Some("job.analysis"),
+    },
+    AdaptiveSubstepPayload::{
+      title: "Write deep research report",
+      prompt: provider_task_research_protocol_prompt(
+        task,
+        context,
+        "Use the research-report skill to write the reader-facing deep research article from screened evidence and mounted sources.",
+        ["raw/bootstrap/deep-report.md"],
+      ),
+      kind: Some("job.analysis"),
+    },
+    AdaptiveSubstepPayload::{
+      title: "Write marketing brief",
+      prompt: provider_task_research_protocol_prompt(
+        task,
+        context,
+        "Use the wiki-marketing skill to write seller-facing product positioning from supported evidence, not backend status copy.",
+        ["raw/bootstrap/marketing-brief.md"],
+      ),
       kind: Some("job.analysis"),
     },
   ]
@@ -1794,6 +1827,7 @@ fn provider_task_required_research_artifacts() -> Array[String] {
   [
     "raw/bootstrap/research-question.md", "raw/bootstrap/search-log.md", "raw/bootstrap/source-screen.md",
     "raw/bootstrap/local-sources.md", "raw/bootstrap/evidence-matrix.md", "raw/bootstrap/synthesis-brief.md",
+    "raw/bootstrap/deep-report.md", "raw/bootstrap/marketing-brief.md",
   ]
 }
 
@@ -1838,6 +1872,55 @@ fn provider_task_research_topic(context : ProviderTaskWorkerContext) -> String {
     "research topic"
   } else {
     topic
+  }
+}
+
+///|
+fn provider_task_research_question_summary(
+  content : String,
+  fallback : String,
+) -> String {
+  for line in content.split("\n") {
+    let trimmed = line.trim().to_string()
+    if trimmed.contains("- Research question:") {
+      let parts = trimmed.split("- Research question:").collect()
+      if parts.length() > 1 {
+        return provider_task_trim_research_clause(parts[1].trim().to_string())
+      }
+    }
+    if trimmed.contains("Research question:") {
+      let parts = trimmed.split("Research question:").collect()
+      if parts.length() > 1 {
+        return provider_task_trim_research_clause(parts[1].trim().to_string())
+      }
+    }
+  }
+  if !fallback.trim().is_blank() {
+    fallback.trim().to_string()
+  } else if !content.trim().is_blank() {
+    provider_task_first_nonblank_lines(content, 3)
+  } else {
+    "Produce source-backed research coverage with explicit evidence and known gaps."
+  }
+}
+
+///|
+fn provider_task_trim_research_clause(text : String) -> String {
+  let stop_markers = [
+    " - Quality bar:", " - Required durable outputs:", " - Required raw outputs:",
+    " - Output contract:", " - Mode:",
+  ]
+  let mut value = text.trim().to_string()
+  for marker in stop_markers {
+    let parts = value.split(marker).collect()
+    if parts.length() > 1 {
+      value = parts[0].trim().to_string()
+    }
+  }
+  if value.is_blank() {
+    "Produce source-backed research coverage with explicit evidence and known gaps."
+  } else {
+    value
   }
 }
 
@@ -2157,11 +2240,7 @@ async fn provider_task_write_research_dossier_if_needed(
       "Task: \{task.title}",
       "",
       "Question:",
-      if request_content.trim().is_blank() {
-        context.prompt
-      } else {
-        provider_task_first_nonblank_lines(request_content, 6)
-      },
+      provider_task_research_question_summary(request_content, context.prompt),
       "",
       "Success criteria:",
       provider_task_markdown_list(materialization_targets),
@@ -2181,7 +2260,7 @@ async fn provider_task_write_research_dossier_if_needed(
       "Web evidence gathered by provider tools:",
       provider_task_markdown_list(web_notes),
       "",
-      "Local source aliases inspected deterministically before launching model substeps:",
+      "Local source aliases inspected before launching model substeps:",
       provider_task_markdown_list(local_notes),
       "",
       "Note: this bootstrap file records the executable search plan, local inspection state, and any web-source limitations exposed by the provider runtime.",
@@ -2239,7 +2318,7 @@ async fn provider_task_write_research_dossier_if_needed(
       if has_blocked_notes {
         "- One or more local source aliases were missing or unreadable; see `source-screen.md`."
       } else {
-        "- none detected in deterministic bootstrap."
+        "- none detected during local preflight."
       },
       "",
       "Next materialization:",
@@ -2272,6 +2351,48 @@ fn provider_task_research_artifact_result(
     artifacts,
     memory_candidates: [],
     requires_review: false,
+    notify_town: false,
+  }
+}
+
+///|
+fn provider_task_missing_research_artifacts(
+  present : Array[String],
+) -> Array[String] {
+  let missing : Array[String] = []
+  for path in provider_task_required_research_artifacts() {
+    if !present.contains(path) {
+      missing.push(path)
+    }
+  }
+  missing
+}
+
+///|
+fn provider_task_missing_research_artifact_result(
+  task : ProviderTaskSpec,
+  artifacts : Array[String],
+  missing : Array[String],
+) -> ProviderTaskResult {
+  let missing_text = if missing.is_empty() {
+    "none"
+  } else {
+    missing.join(", ")
+  }
+  ProviderTaskResult::{
+    task_id: provider_task_result_task_id(task),
+    summary: "Blocked \{task.title}: model-authored research dossier is incomplete. Missing required raw artifact(s): \{missing_text}.",
+    artifacts,
+    memory_candidates: [
+      ProviderTaskMemoryCandidate::{
+        kind: "blocker",
+        title: "Incomplete model-authored research dossier",
+        detail: "The provider/model did not produce all required raw/bootstrap research artifacts. Missing: \{missing_text}. Re-run the bounded research-report skill path instead of accepting deterministic fallback content.",
+        durable: false,
+        target_page: None,
+      },
+    ],
+    requires_review: true,
     notify_town: false,
   }
 }
@@ -2438,6 +2559,9 @@ async fn provider_task_precompiled_substeps(
   let normalized_kind = task.kind.trim().to_lower()
   if normalized_kind == "bootstrap_gather" {
     let substeps = provider_task_research_bootstrap_substeps(task, context)
+    if !substeps.is_empty() {
+      return substeps
+    }
     let hint_paths = provider_task_bootstrap_source_hints(
       context.workspace_root,
     )
@@ -3324,9 +3448,21 @@ async fn finalize_provider_task_subplan_execution(
       artifacts.push(path)
     }
   }
-  let result = provider_task_synthesized_subplan_result(
-    task, execution, artifacts,
-  )
+  let result = if provider_task_can_complete_from_research_artifacts(task) {
+    let research_artifacts = provider_task_existing_research_artifacts(
+      artifact_root,
+    )
+    let missing = provider_task_missing_research_artifacts(research_artifacts)
+    if missing.is_empty() {
+      provider_task_research_artifact_result(task, research_artifacts)
+    } else {
+      provider_task_missing_research_artifact_result(
+        task, research_artifacts, missing,
+      )
+    }
+  } else {
+    provider_task_synthesized_subplan_result(task, execution, artifacts)
+  }
   let result = align_provider_task_result(artifact_root, task, result)
   let result = enforce_provider_task_result_semantics(task, context, result)
   let outcome = match
@@ -3396,13 +3532,6 @@ async fn run_provider_task_analysis_runner(
     workspace_root: artifact_root,
   }
   let contract = provider_task_tool_contract(request)
-  let web_tools_enabled = request.enable_tools && request.web_search
-  let _ = provider_task_write_research_dossier_if_needed(
-    task,
-    context,
-    web_search_enabled=web_tools_enabled && contract.web_search,
-    web_fetch_enabled=web_tools_enabled && contract.web_fetch,
-  )
   if provider_task_can_complete_from_research_artifacts(task) {
     let research_artifacts = provider_task_existing_research_artifacts(
       artifact_root,
@@ -3442,6 +3571,7 @@ async fn run_provider_task_analysis_runner(
       )
     }
   }
+  let web_tools_enabled = request.enable_tools && request.web_search
   if provider_task_can_complete_from_source_inventory(task) {
     let source_pages = provider_task_existing_source_pages(artifact_root)
     if !source_pages.is_empty() {
@@ -3529,7 +3659,56 @@ async fn run_provider_task_analysis_runner(
   let raw_execution = inner_runner(delegated_request)
   let raw_execution = match raw_execution {
     Ok(execution) => execution
-    Err(error) => return Err(error)
+    Err(error) => {
+      let _ = provider_task_write_research_dossier_if_needed(
+        task,
+        context,
+        web_search_enabled=web_tools_enabled && contract.web_search,
+        web_fetch_enabled=web_tools_enabled && contract.web_fetch,
+      )
+      let research_artifacts = provider_task_existing_research_artifacts(
+        artifact_root,
+      )
+      if provider_task_can_complete_from_research_artifacts(task) &&
+        research_artifacts.length() ==
+        provider_task_required_research_artifacts().length() {
+        let result = provider_task_research_artifact_result(
+          task, research_artifacts,
+        )
+        let result = align_provider_task_result(artifact_root, task, result)
+        let result = enforce_provider_task_result_semantics(
+          task, context, result,
+        )
+        let outcome = match
+          persist_provider_task_result(command, request, task, result) {
+          Ok(outcome) => outcome
+          Err(persist_error) => return Err(persist_error)
+        }
+        return Ok(
+          persisted_provider_task_execution(
+            AnalysisExecution::{
+              model_name: request.model_name,
+              content: "{}",
+              conversation_id: None,
+              usage: None,
+              metadata: {
+                "job_id": request.job_id,
+                "run_id": request.run_id,
+                "step_id": request.step_id,
+                "execution_isolation": request.execution_isolation,
+                "role_runtime_contract": request.role_runtime_contract,
+                "provider_fallback": "deterministic_research_dossier_after_model_error",
+              },
+            },
+            task,
+            result,
+            outcome,
+            resolved_target_id,
+          ),
+        )
+      }
+      return Err(error)
+    }
   }
   match
     provider_task_breadth_envelope_from_content(

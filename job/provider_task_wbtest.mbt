@@ -1507,8 +1507,10 @@ async test "provider task precompiled substeps include loaded skill bodies" {
       let substeps = envelope
         .map(fn(value) { adaptive_substeps(value) })
         .unwrap_or([])
-      inspect(substeps.length().to_string(), content="2")
-      inspect(substeps[0].title, content="Write research dossier")
+      inspect(substeps.length().to_string(), content="3")
+      inspect(substeps[0].title, content="Write research evidence packet")
+      inspect(substeps[1].title, content="Write deep research report")
+      inspect(substeps[2].title, content="Write marketing brief")
       inspect(
         substeps[0].prompt.contains("Loaded provider skill bodies:"),
         content="true",
@@ -1525,7 +1527,14 @@ async test "provider task precompiled substeps include loaded skill bodies" {
         substeps[0].prompt.contains("raw/bootstrap/synthesis-brief.md"),
         content="true",
       )
-      inspect(substeps[1].title, content="Gather bootstrap lane 1")
+      inspect(
+        substeps[1].prompt.contains("raw/bootstrap/deep-report.md"),
+        content="true",
+      )
+      inspect(
+        substeps[2].prompt.contains("raw/bootstrap/marketing-brief.md"),
+        content="true",
+      )
     },
   )
 }
@@ -1576,7 +1585,8 @@ async test "provider task research dossier stays raw envelope only" {
       memory_summary: "",
       output_contract: [
         "Required raw/bootstrap/research-question.md", "Required raw/bootstrap/evidence-matrix.md",
-        "Required raw/bootstrap/synthesis-brief.md",
+        "Required raw/bootstrap/synthesis-brief.md", "Required raw/bootstrap/deep-report.md",
+        "Required raw/bootstrap/marketing-brief.md",
       ],
     }
     let artifacts = provider_task_write_research_dossier_if_needed(
@@ -1602,6 +1612,14 @@ async test "provider task research dossier stays raw envelope only" {
     )
     let brief = @fsx.read_file(@pathx.join(bootstrap_dir, "synthesis-brief.md"))
     inspect(brief.contains("Provisional findings"), content="false")
+    inspect(
+      @fsx.exists(@pathx.join(bootstrap_dir, "deep-report.md")).to_string(),
+      content="false",
+    )
+    inspect(
+      @fsx.exists(@pathx.join(bootstrap_dir, "marketing-brief.md")).to_string(),
+      content="false",
+    )
     let search = @fsx.read_file(@pathx.join(bootstrap_dir, "search-log.md"))
     inspect(search.contains("may enrich it later"), content="false")
   })
