@@ -658,6 +658,36 @@ fn external_packet_runtime_step_metadata(
 }
 
 ///|
+fn metadata_has_key(metadata : Json, key : String) -> Bool {
+  match metadata {
+    Object(fields) => fields.contains(key)
+    _ => false
+  }
+}
+
+///|
+fn external_packet_text_mentions_web_tools(
+  packet : ExternalProposalPacket,
+) -> Bool {
+  let mut combined = packet.request_text.to_lower()
+  for path in packet.skill_paths {
+    combined = combined + "\n" + path.to_lower()
+  }
+  for note in packet.notes {
+    combined = combined + "\n" + note.to_lower()
+  }
+  match packet.output_contract {
+    Some(contract) =>
+      combined = combined + "\n" + contract.stringify().to_lower()
+    None => ()
+  }
+  combined.contains("web_search") ||
+  combined.contains("web-fetch") ||
+  combined.contains("web_fetch") ||
+  combined.contains("web-first")
+}
+
+///|
 fn external_packet_step_metadata(
   step_metadata : Json,
   packet : ExternalProposalPacket,
@@ -732,10 +762,25 @@ fn external_packet_step_metadata(
     }
     None => ()
   }
-  let merged = merge_json_metadata(
-    step_metadata,
-    external_packet_runtime_step_metadata(packet),
-  )
+  let runtime_step_metadata = external_packet_runtime_step_metadata(packet)
+  if external_packet_text_mentions_web_tools(packet) {
+    if !metadata_has_key(step_metadata, "enable_tools") &&
+      !metadata_has_key(runtime_step_metadata, "enable_tools") {
+      extra.set("enable_tools", true.to_json())
+    }
+    if !metadata_has_key(step_metadata, "web_search") &&
+      !metadata_has_key(runtime_step_metadata, "web_search") {
+      extra.set("web_search", true.to_json())
+    }
+    if !metadata_has_key(step_metadata, "tool_contract") &&
+      !metadata_has_key(runtime_step_metadata, "tool_contract") {
+      extra.set(
+        "tool_contract",
+        AnalysisToolContract::new(web_fetch=true, web_search=true).to_json(),
+      )
+    }
+  }
+  let merged = merge_json_metadata(step_metadata, runtime_step_metadata)
   merge_json_metadata(merged, Json::object(extra))
 }
 

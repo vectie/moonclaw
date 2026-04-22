@@ -4,3 +4,9 @@ import {
   "vectie/moonclaw/internal/pathx",
   "moonbitlang/core/json",
 }
+
+import {
+  "moonbitlang/async",
+  "vectie/moonclaw/internal/mock",
+  "moonbitlang/core/test",
+} for "test"

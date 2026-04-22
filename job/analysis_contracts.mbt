@@ -214,8 +214,8 @@ fn constrain_tool_contract_for_request(
       enter_worktree: false,
       exit_worktree: false,
       todo: false,
-      web_fetch: false,
-      web_search: false,
+      web_fetch: constrained.web_fetch && request.web_search,
+      web_search: constrained.web_search && request.web_search,
     }
   } else {
     constrained

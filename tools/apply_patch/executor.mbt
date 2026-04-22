@@ -247,10 +247,36 @@ fn normalize_punctuation(s : String) -> String {
 }
 
 ///|
-fn resolve_path(cwd : String, path : String) -> String {
+fn has_parent_escape(path : String) -> Bool {
+  let normalized = path.replace(old="\\", new="/")
+  for segment in normalized.split("/") {
+    if segment == ".." {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn path_is_within_workspace(cwd : String, path : String) -> Bool {
+  path == cwd || path.has_prefix(cwd + "/")
+}
+
+///|
+fn resolve_path(cwd : String, path : String) -> String raise ApplyError {
   if @pathx.is_absolute(path) {
+    guard path_is_within_workspace(cwd, path) else {
+      raise ApplyError(
+        "Patch path must stay inside the current workspace: \{path}",
+      )
+    }
     path
   } else {
+    guard not(has_parent_escape(path)) else {
+      raise ApplyError(
+        "Patch path must not escape the current workspace: \{path}",
+      )
+    }
     @pathx.join(cwd, path)
   }
 }

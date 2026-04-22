@@ -2464,6 +2464,46 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
 }
 
 ///|
+async test "configure_analysis_agent_for_request keeps explicit web tools for provider adaptive subplans" {
+  let model = @model.Model::new(
+    api_key="",
+    base_url="https://example.invalid/v1",
+    name="test-model",
+    safe_zone_tokens=4096,
+  )
+  let agent = @agent.new(
+    model,
+    cwd="/tmp",
+    logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
+  )
+  let request = AnalysisRequest::{
+    job_id: "job-1",
+    run_id: "run-1",
+    step_id: "step-1",
+    source_prompt: "Provider-derived child step.",
+    prompt: "Provider-derived child step.",
+    model_name: "codex/gpt-5.4",
+    cwd: "/tmp",
+    home: Some("/tmp/home"),
+    execution_mode: None,
+    execution_target: None,
+    system_prompt: "system",
+    preferred_skills: [],
+    enable_tools: true,
+    web_search: true,
+    tool_contract: AnalysisToolContract::new(web_fetch=true, web_search=true),
+    step_metadata: { "provider_subplan_execution": true },
+    execution_isolation: Some({ "mode": "git_worktree" }),
+    role_runtime_contract: None,
+  }
+  configure_analysis_agent_for_request(agent, request)
+  inspect(agent.tools().contains("web_search"), content="true")
+  inspect(agent.tools().contains("web_fetch"), content="true")
+  inspect(agent.tools().contains("execute_command"), content="false")
+  inspect(agent.tools().contains("todo"), content="false")
+}
+
+///|
 test "provider task single response routing applies to provider execution tasks" {
   let provider_request = AnalysisRequest::{
     job_id: "job-1",

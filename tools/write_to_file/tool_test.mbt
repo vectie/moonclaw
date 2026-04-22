@@ -48,3 +48,45 @@ async test "write_to_file/no-write-permission" (t : @test.Test) {
     @fs.chmod(file_path, 0o644)
   })
 }
+
+///|
+async test "write_to_file rejects absolute path outside workspace" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let args = json_input(
+      path="/tmp/moonclaw-write-to-file-outside.txt",
+      content="escaped",
+      separator="\n",
+    )
+    let tool = new(mock.cwd.path())
+    let result = tool.call(args)
+    guard result is Error(_) else {
+      fail("Expected error result but got: \{result}")
+    }
+    inspect(
+      mock.text(result),
+      content="Path must stay inside the current workspace: /tmp/moonclaw-write-to-file-outside.txt",
+    )
+  })
+}
+
+///|
+async test "write_to_file rejects parent path escape" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let args = json_input(
+      path="../escape.txt",
+      content="escaped",
+      separator="\n",
+    )
+    let tool = new(mock.cwd.path())
+    let result = tool.call(args)
+    guard result is Error(_) else {
+      fail("Expected error result but got: \{result}")
+    }
+    inspect(
+      mock.text(result),
+      content="Path must stay inside the current workspace: ../escape.txt",
+    )
+  })
+}

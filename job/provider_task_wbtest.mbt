@@ -376,6 +376,71 @@ test "provider task child proposal skips deferred planning task when executable 
 }
 
 ///|
+test "provider task child proposal enables web tools for web-first tasks" {
+  let task = ProviderTaskSpec::{
+    id: "bootstrap_gather",
+    title: "Gather bootstrap materials",
+    kind: "bootstrap_gather",
+    prompt: "Run web_search first, then write raw/bootstrap/search-log.md.",
+    priority: 100,
+    requires_review: true,
+    target_pages: ["raw/bootstrap/search-log.md"],
+  }
+  let command = ProviderTaskCommand::{
+    provider: @resource_providers.RegisteredResourceProvider::new(
+      name="wiki-main",
+      title="Wiki Main",
+      kind="task-provider",
+      capabilities=["provider.task"],
+      metadata={},
+    ),
+    command: "moon",
+    args: [],
+    cwd: None,
+    workspace_root: "/tmp/provider-workspace",
+  }
+  let metadata = provider_task_step_metadata(
+    "Use web-first research before local-only conclusions.", "goal-1", task, command,
+  )
+  let serialized = metadata.stringify()
+  inspect(serialized.contains("\"enable_tools\":true"), content="true")
+  inspect(serialized.contains("\"web_search\":true"), content="true")
+  inspect(serialized.contains("\"web_fetch\":true"), content="true")
+}
+
+///|
+test "provider task child proposal enables web tools by default" {
+  let task = ProviderTaskSpec::{
+    id: "inspect",
+    title: "Inspect source material",
+    kind: "inspect",
+    prompt: "Inspect the assigned source material.",
+    priority: 100,
+    requires_review: false,
+    target_pages: ["raw/bootstrap/local-sources.md"],
+  }
+  let command = ProviderTaskCommand::{
+    provider: @resource_providers.RegisteredResourceProvider::new(
+      name="wiki-main",
+      title="Wiki Main",
+      kind="task-provider",
+      capabilities=["provider.task"],
+      metadata={},
+    ),
+    command: "moon",
+    args: [],
+    cwd: None,
+    workspace_root: "/tmp/provider-workspace",
+  }
+  let metadata = provider_task_step_metadata(
+    "Inspect source material", "goal-1", task, command,
+  )
+  let serialized = metadata.stringify()
+  inspect(serialized.contains("\"web_search\":true"), content="true")
+  inspect(serialized.contains("\"web_fetch\":true"), content="true")
+}
+
+///|
 test "provider task child proposal keeps bootstrap execution bounded" {
   let batch = ProviderTaskBatch::{
     goal_id: "goal-1",
@@ -1379,6 +1444,166 @@ async test "provider task precompiles bootstrap gather lanes from source hints" 
     inspect(substeps[0].prompt.contains("raw/bootstrap/"), content="true")
     inspect(substeps[0].prompt.contains("mounted-sources/"), content="true")
     inspect(substeps[0].prompt.contains(source_root), content="false")
+  })
+}
+
+///|
+async test "provider task precompiled substeps include loaded skill bodies" {
+  @fsx.with_temporary_directory(
+    "job-provider-precompiled-skill-bodies-XXXXXX",
+    async fn(dir) {
+      let workspace = @pathx.join(dir, "workspace")
+      let source_root = @pathx.join(dir, "demo")
+      let skill_dir = @pathx.join(workspace, "skills")
+        |> @pathx.join("wiki-ingest")
+      let bootstrap_dir = @pathx.join(workspace, "raw")
+        |> @pathx.join("bootstrap")
+      @fsx.make_directory(skill_dir, recursive=true, exists_ok=true)
+      @fsx.make_directory(source_root, recursive=true, exists_ok=true)
+      @fsx.make_directory(bootstrap_dir, recursive=true, exists_ok=true)
+      @fsx.write_to_file(@pathx.join(source_root, "README.md"), "# Demo\n")
+      @fsx.write_to_file(
+        @pathx.join(skill_dir, "SKILL.md"),
+        (
+          #|# Wiki Ingest
+          #|
+          #|Write `raw/bootstrap/research-question.md` before claiming completion.
+          #|Write `raw/bootstrap/evidence-matrix.md` before claiming completion.
+        ),
+      )
+      @fsx.write_to_file(
+        @pathx.join(bootstrap_dir, "SOURCE_HINTS.md"),
+        "# Source Hints\n\n## Local Repository Follow-Up\n\n- \{source_root}/README.md\n",
+      )
+      let context = ProviderTaskWorkerContext::{
+        book_id: "demo",
+        workspace_root: workspace,
+        task_id: "task-bootstrap",
+        prompt: "Gather bootstrap evidence.",
+        policy: [],
+        routines: [],
+        skill_paths: ["skills/wiki-ingest/SKILL.md"],
+        context_pages: [],
+        active_memory: [],
+        user_memory: [],
+        working_memory: [],
+        memory_summary: "",
+        output_contract: [
+          "Create research-method bootstrap artifacts", "Required: raw/bootstrap/research-question.md and raw/bootstrap/evidence-matrix.md",
+        ],
+      }
+      let envelope = provider_task_precompiled_envelope(
+        ProviderTaskSpec::{
+          id: "task-bootstrap",
+          title: "Gather bootstrap evidence",
+          kind: "bootstrap_gather",
+          prompt: "Inspect source hints and write bootstrap packets.",
+          priority: 90,
+          requires_review: true,
+          target_pages: ["raw/bootstrap/"],
+        },
+        context,
+      )
+      let substeps = envelope
+        .map(fn(value) { adaptive_substeps(value) })
+        .unwrap_or([])
+      inspect(substeps.length().to_string(), content="2")
+      inspect(substeps[0].title, content="Write research dossier")
+      inspect(
+        substeps[0].prompt.contains("Loaded provider skill bodies:"),
+        content="true",
+      )
+      inspect(
+        substeps[0].prompt.contains("raw/bootstrap/research-question.md"),
+        content="true",
+      )
+      inspect(
+        substeps[0].prompt.contains("raw/bootstrap/evidence-matrix.md"),
+        content="true",
+      )
+      inspect(
+        substeps[0].prompt.contains("raw/bootstrap/synthesis-brief.md"),
+        content="true",
+      )
+      inspect(substeps[1].title, content="Gather bootstrap lane 1")
+    },
+  )
+}
+
+///|
+async test "provider task research dossier stays raw envelope only" {
+  @fsx.with_temporary_directory("job-provider-raw-research-envelope-XXXXXX", async fn(
+    dir,
+  ) {
+    let workspace = @pathx.join(dir, "workspace")
+    let bootstrap_dir = @pathx.join(workspace, "raw")
+      |> @pathx.join("bootstrap")
+    @fsx.make_directory(bootstrap_dir, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      @pathx.join(bootstrap_dir, "RESEARCH_REQUEST.md"),
+      "# Research Request\n\nResearch MoonClaw runtime boundaries.\n",
+    )
+    @fsx.write_to_file(
+      @pathx.join(bootstrap_dir, "SOURCE_HINTS.md"),
+      (
+        #|# Source Hints
+        #|
+        #|## Web Search First
+        #|
+        #|- MoonClaw MoonBook Moontown architecture
+        #|
+        #|## High-Signal URLs
+        #|
+        #|- https://github.com/vectie/moonclaw
+        #|
+        #|## Materialization Target
+        #|
+        #|- MoonBook should materialize durable wiki pages from raw artifacts.
+      ),
+    )
+    let context = ProviderTaskWorkerContext::{
+      book_id: "research-moonclaw",
+      workspace_root: workspace,
+      task_id: "task-bootstrap",
+      prompt: "Research MoonClaw.",
+      policy: [],
+      routines: [],
+      skill_paths: ["skills/wiki-ingest/SKILL.md"],
+      context_pages: [],
+      active_memory: [],
+      user_memory: [],
+      working_memory: [],
+      memory_summary: "",
+      output_contract: [
+        "Required raw/bootstrap/research-question.md", "Required raw/bootstrap/evidence-matrix.md",
+        "Required raw/bootstrap/synthesis-brief.md",
+      ],
+    }
+    let artifacts = provider_task_write_research_dossier_if_needed(
+      ProviderTaskSpec::{
+        id: "task-bootstrap",
+        title: "Gather research envelope",
+        kind: "bootstrap_gather",
+        prompt: "Write raw/bootstrap research files.",
+        priority: 90,
+        requires_review: true,
+        target_pages: ["raw/bootstrap/"],
+      },
+      context,
+    )
+    inspect(artifacts.length().to_string(), content="6")
+    inspect(
+      @fsx.exists(@pathx.join(bootstrap_dir, "research-question.md")).to_string(),
+      content="true",
+    )
+    inspect(
+      @fsx.exists(@pathx.join(workspace, "wiki")).to_string(),
+      content="false",
+    )
+    let brief = @fsx.read_file(@pathx.join(bootstrap_dir, "synthesis-brief.md"))
+    inspect(brief.contains("Provisional findings"), content="false")
+    let search = @fsx.read_file(@pathx.join(bootstrap_dir, "search-log.md"))
+    inspect(search.contains("may enrich it later"), content="false")
   })
 }
 

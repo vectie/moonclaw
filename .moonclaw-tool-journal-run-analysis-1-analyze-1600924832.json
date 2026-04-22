@@ -1,0 +1,27 @@
+[
+  {
+    "phase": "session",
+    "event": "started",
+    "job_id": "job.analysis",
+    "run_id": "run-analysis-1",
+    "step_id": "analyze",
+    "cwd": ".",
+    "execution_mode": null,
+    "execution_target": null,
+    "enable_tools": true,
+    "enabled_tools": [
+      "execute_command",
+      "list_files",
+      "glob_files",
+      "list_resources",
+      "read_resource",
+      "read_file",
+      "todo",
+      "search_files",
+      "file_write",
+      "patch_edit"
+    ],
+    "web_search": false,
+    "timeout_ms": null
+  }
+]

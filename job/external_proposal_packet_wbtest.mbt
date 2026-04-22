@@ -316,6 +316,39 @@ async test "GatewayJobApp imports external proposal packet into proposal store" 
 }
 
 ///|
+test "external proposal packet enables web tools for web-first skills" {
+  let packet = ExternalProposalPacket::{
+    packet_id: Some("keeper-web"),
+    title: Some("Research source into wiki"),
+    summary: Some("Use web-first research before revision."),
+    request_text: "Research with web_search and web_fetch before writing wiki pages.",
+    profile: "wiki_ingest_controller",
+    output_contract: Some({ "required": ["raw/bootstrap/search-log.md"] }),
+    source_path: None,
+    source_page: None,
+    context_pages: ["wiki/index.md"],
+    related_pages: [],
+    skill_paths: ["skills/web-first-research/SKILL.md"],
+    notes: ["Use web_search when local sources are insufficient."],
+    tags: ["keeper"],
+    metadata: {},
+  }
+  let metadata = external_packet_step_metadata(
+    {},
+    packet,
+    "/tmp/book/keeper/jobs/ingest-web.json",
+  )
+  let serialized = metadata.stringify()
+  inspect(serialized.contains("\"enable_tools\":true"), content="true")
+  inspect(serialized.contains("\"web_search\":true"), content="true")
+  inspect(serialized.contains("\"web_fetch\":true"), content="true")
+  inspect(
+    serialized.contains("/tmp/book/skills/web-first-research/SKILL.md"),
+    content="true",
+  )
+}
+
+///|
 async test "GatewayJobApp imports and confirms external proposal packet" {
   @fsx.with_temporary_directory("job-external-confirm-XXXXXX", async fn(dir) {
     let provider_script = @pathx.join(dir, "provider_task.sh")

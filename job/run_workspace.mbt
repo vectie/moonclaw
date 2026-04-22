@@ -102,6 +102,18 @@ fn source_hint_mount_dir_name() -> String {
 }
 
 ///|
+fn source_hint_mount_manifest_name() -> String {
+  "MANIFEST.md"
+}
+
+///|
+fn source_hint_mount_manifest_path(workspace_dir : String) -> String {
+  workspace_dir
+  |> @pathx.join(source_hint_mount_dir_name())
+  |> @pathx.join(source_hint_mount_manifest_name())
+}
+
+///|
 fn source_hint_mount_name(source_path : String) -> String {
   let base = @pathx.basename(source_path).to_string()
   let safe_base = safe_step_file_segment(base)
@@ -218,8 +230,29 @@ async fn mount_source_hint_followup_entries(
   if source_workspace == workspace_dir {
     return
   }
+  let manifest_lines : Array[String] = [
+    "# Mounted Source Hints", "", "MoonClaw mounts external source hints here so isolated run worktrees can inspect them without reading absolute paths directly.",
+    "", "| Original path | Mounted path | Status |", "| --- | --- | --- |",
+  ]
   for source_path in source_hint_followup_paths(source_workspace) {
+    let relative = source_hint_mounted_relative_path(source_path)
+    let exists = @fsx.exists(source_path) catch { _ => false }
+    let status = if exists { "mounted" } else { "missing" }
+    manifest_lines.push("| `\{source_path}` | `\{relative}` | \{status} |")
     create_external_source_mount(source_path, workspace_dir)
+  }
+  if manifest_lines.length() > 6 {
+    let manifest_path = source_hint_mount_manifest_path(workspace_dir)
+    @fsx.make_directory(
+      @pathx.dirname(manifest_path),
+      recursive=true,
+      exists_ok=true,
+    ) catch {
+      _ => return
+    }
+    @fsx.write_to_file(manifest_path, manifest_lines.join("\n") + "\n") catch {
+      _ => ()
+    }
   }
 }
 

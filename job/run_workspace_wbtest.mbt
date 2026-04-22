@@ -25,6 +25,30 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
       |> @pathx.join("SKILL.md"),
       "# Skill\n",
     )
+    let external_source = dir
+      |> @pathx.join("external")
+      |> @pathx.join("README.md")
+    @fsx.make_directory(@pathx.dirname(external_source), recursive=true)
+    @fsx.write_to_file(external_source, "# External Source\n")
+    @fsx.make_directory(
+      workspace_root |> @pathx.join("raw") |> @pathx.join("bootstrap"),
+      recursive=true,
+    )
+    @fsx.write_to_file(
+      workspace_root
+      |> @pathx.join("raw")
+      |> @pathx.join("bootstrap")
+      |> @pathx.join("SOURCE_HINTS.md"),
+      [
+        "# Source Hints",
+        "",
+        "## Local Repository Follow-Up",
+        "",
+        "- \{external_source}",
+        "- /missing/source.md",
+        "",
+      ].join("\n"),
+    )
 
     let store = SystemStore::new(root=jobs_root)
     let definition = JobDefinition::{
@@ -134,6 +158,15 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
       ),
       content="# Skill\n",
     )
+    let manifest = @fsx.read_file(
+      workspace_dir
+      |> @pathx.join(source_hint_mount_dir_name())
+      |> @pathx.join(source_hint_mount_manifest_name()),
+    )
+    inspect(manifest.contains(external_source), content="true")
+    inspect(manifest.contains("mounted-sources/"), content="true")
+    inspect(manifest.contains("/missing/source.md"), content="true")
+    inspect(manifest.contains("missing"), content="true")
     inspect(@fsx.exists(run_workspace_meta_file(workspace_dir)), content="true")
 
     @fsx.write_to_file(

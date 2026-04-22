@@ -41,6 +41,37 @@ pub fn json_input(
 }
 
 ///|
+fn has_parent_escape(path : String) -> Bool {
+  let normalized = path.replace(old="\\", new="/")
+  for segment in normalized.split("/") {
+    if segment == ".." {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn path_is_within_workspace(cwd : String, path : String) -> Bool {
+  path == cwd || path.has_prefix(cwd + "/")
+}
+
+///|
+fn resolve_tool_path(cwd : String, path : String) -> String? {
+  if @pathx.is_absolute(path) {
+    if path_is_within_workspace(cwd, path) {
+      Some(path)
+    } else {
+      None
+    }
+  } else if has_parent_escape(path) {
+    None
+  } else {
+    Some(@pathx.join(cwd, path))
+  }
+}
+
+///|
 test {
   json_inspect(
     params(content="Hello, World!", path="example.txt", separator="\n"),
@@ -84,10 +115,12 @@ pub fn new(cwd : String) -> @tool.Tool[Result] {
       let { path, separator, content } : Params = @json.from_json(args) catch {
         error => return @tool.error("Invalid arguments: \{error}")
       }
-      let path = if @pathx.is_absolute(path) {
-        path
-      } else {
-        @pathx.join(cwd, path)
+      let path = match resolve_tool_path(cwd, path) {
+        Some(path) => path
+        None =>
+          return @tool.error(
+            "Path must stay inside the current workspace: \{path}",
+          )
       }
       let separator = separator.unwrap_or("\n")
       let content_to_append = if (@fsx.exists(path) catch {

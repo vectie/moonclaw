@@ -508,7 +508,7 @@ fn provider_task_step_metadata(
   task : ProviderTaskSpec,
   command : ProviderTaskCommand,
 ) -> Json {
-  {
+  let metadata : Map[String, Json] = {
     // `bookapi_*` keys are compatibility aliases for older extension packs.
     "bookapi_goal": goal,
     "bookapi_goal_id": goal_id,
@@ -539,6 +539,13 @@ fn provider_task_step_metadata(
     "timeout_ms": 600000,
     "max_total_tokens": 24000,
   }
+  metadata.set("enable_tools", true.to_json())
+  metadata.set("web_search", true.to_json())
+  metadata.set(
+    "tool_contract",
+    AnalysisToolContract::new(web_fetch=true, web_search=true).to_json(),
+  )
+  Json::object(metadata)
 }
 
 ///|
@@ -894,6 +901,100 @@ fn provider_task_tool_contract(
 }
 
 ///|
+fn provider_task_tool_availability_section(request : AnalysisRequest) -> String {
+  if !request.enable_tools {
+    return [
+      "Runtime tool availability:", "- tool execution is disabled for this provider task",
+      "- web_search is unavailable", "- web_fetch is unavailable",
+    ].join("\n")
+  }
+  let contract = provider_task_tool_contract(request)
+  let tools = enabled_tool_names(contract)
+  let enabled = if tools.is_empty() {
+    "- none"
+  } else {
+    tools.map(fn(tool) { "- \{tool}" }).join("\n")
+  }
+  [
+    "Runtime tool availability:",
+    enabled,
+    if contract.web_search {
+      "- web_search is available"
+    } else {
+      "- web_search is unavailable; write an explicit blocker if the provider contract requires web search"
+    },
+    if contract.web_fetch {
+      "- web_fetch is available"
+    } else {
+      "- web_fetch is unavailable; write an explicit blocker if the provider contract requires web fetch"
+    },
+  ].join("\n")
+}
+
+///|
+fn provider_task_skill_path_absolute(
+  workspace_root : String,
+  path : String,
+) -> String {
+  let trimmed = path.trim().to_string()
+  if @pathx.is_absolute(trimmed) {
+    @pathx.normalize(trimmed)
+  } else {
+    @pathx.join(workspace_root, trimmed)
+  }
+}
+
+///|
+async fn provider_task_loaded_skill_section(
+  context : ProviderTaskWorkerContext,
+) -> String {
+  if context.skill_paths.is_empty() {
+    return "Loaded provider skill bodies:\n- none"
+  }
+  let sections : Array[String] = ["Loaded provider skill bodies:"]
+  let mut total_chars = 0
+  for path in context.skill_paths {
+    if total_chars >= 12000 {
+      sections.push(
+        "- additional skill bodies omitted by MoonClaw runtime budget",
+      )
+      break
+    }
+    let absolute = provider_task_skill_path_absolute(
+      context.workspace_root,
+      path,
+    )
+    let exists = @fsx.exists(absolute) catch { _ => false }
+    if !exists {
+      sections.push("## \{path}\n\n_unavailable at \{absolute}_")
+      continue
+    }
+    let content = @fsx.read_file(absolute) catch { _ => continue }
+    let trimmed = content.trim().to_string()
+    let budget = Int::min(3000, 12000 - total_chars)
+    let excerpt = if trimmed.length() <= budget {
+      trimmed
+    } else {
+      "\{trimmed[:budget].to_string()}\n...[truncated by MoonClaw runtime]"
+    }
+    total_chars += excerpt.length()
+    sections.push("## \{path}\n\n\{excerpt}")
+  }
+  sections.join("\n\n")
+}
+
+///|
+async fn provider_task_contract_section(
+  context : ProviderTaskWorkerContext,
+) -> String {
+  [
+    "Provider output contract:",
+    join_bullets(context.output_contract),
+    provider_task_loaded_skill_section(context),
+  ].join("\n\n")
+}
+
+///|
 fn provider_task_system_prompt(
   request : AnalysisRequest,
   task : ProviderTaskSpec,
@@ -908,6 +1009,7 @@ fn provider_task_system_prompt(
     "Do not wrap the JSON in markdown fences.",
     "Output contract from the harness:",
     join_bullets(context.output_contract),
+    provider_task_tool_availability_section(request),
     "Execution discipline:",
     "- Treat `Relevant Pages` and `Available Skill Files` as the primary working set.",
     "- Read concrete candidate files directly before using broad repo-wide search tools.",
@@ -925,7 +1027,7 @@ fn provider_task_system_prompt(
 }
 
 ///|
-fn provider_task_prompt(
+async fn provider_task_prompt(
   request : AnalysisRequest,
   task : ProviderTaskSpec,
   context : ProviderTaskWorkerContext,
@@ -974,6 +1076,8 @@ fn provider_task_prompt(
     sections.push("")
     sections.push("Available Skill Files:")
     sections.push(join_bullets(context.skill_paths))
+    sections.push("")
+    sections.push(provider_task_loaded_skill_section(context))
   }
   match provider_task_request_excerpt(request, goal) {
     Some(excerpt) => {
@@ -1377,6 +1481,96 @@ async fn provider_task_bootstrap_source_hints(
 }
 
 ///|
+fn provider_task_mounted_source_section(paths : Array[String]) -> String {
+  if paths.is_empty() {
+    [
+      "Mounted local source aliases:", "- none detected", "", "If `raw/bootstrap/SOURCE_HINTS.md` lists absolute paths, first check `mounted-sources/MANIFEST.md` for safe aliases before declaring those paths inaccessible.",
+    ].join("\n")
+  } else {
+    [
+      "Mounted local source aliases:",
+      "- mounted-sources/MANIFEST.md",
+      ..paths.map(fn(path) { "- \{path}" }),
+      "",
+      "Use these mounted aliases instead of the original absolute hint paths. Treat an absolute path as blocked only after its mounted alias is missing or unreadable.",
+    ].join("\n")
+  }
+}
+
+///|
+fn provider_task_research_contract_requested(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+) -> Bool {
+  let combined = [
+      task.title,
+      task.prompt,
+      task.kind,
+      context.prompt,
+      context.output_contract.join("\n"),
+      context.skill_paths.join("\n"),
+    ]
+    .join("\n")
+    .to_lower()
+  combined.contains("raw/bootstrap/research-question.md") ||
+  combined.contains("raw/bootstrap/evidence-matrix.md") ||
+  combined.contains("web-first-research")
+}
+
+///|
+async fn provider_task_research_protocol_prompt(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+) -> String {
+  let mounted_sources = provider_task_bootstrap_source_hints(
+    context.workspace_root,
+  )
+  [
+    "Apply the bounded research dossier slice for provider task \{task.title}.",
+    provider_task_contract_section(context),
+    "Read first:",
+    "- raw/bootstrap/RESEARCH_REQUEST.md",
+    "- raw/bootstrap/SOURCE_HINTS.md",
+    "- mounted-sources/MANIFEST.md if present",
+    provider_task_mounted_source_section(mounted_sources),
+    "Use web_search before local-only conclusions when the runtime exposes it.",
+    "If web_search or web_fetch is unavailable or fails, still write the required files and record the exact limitation.",
+    "Write or revise exactly these research dossier files in one pass:",
+    "- raw/bootstrap/research-question.md",
+    "- raw/bootstrap/search-log.md",
+    "- raw/bootstrap/source-screen.md",
+    "- raw/bootstrap/local-sources.md",
+    "- raw/bootstrap/evidence-matrix.md",
+    "- raw/bootstrap/synthesis-brief.md",
+    "The search log must include attempted web queries, selected or rejected URLs when available, and local path discovery state.",
+    "The source screen must classify web and local candidates as included, excluded, verified, or blocked with reasons.",
+    "The local sources file must map original hint paths to mounted aliases and summarize inspected local evidence.",
+    "Use source IDs such as W1/W2 for web evidence, L1/L2 for local evidence, and B1/B2 for blockers.",
+    "Every claim row in the evidence matrix must include source IDs, confidence, and a gap or contradiction note.",
+    "The synthesis brief must separate verified findings, web verification status, contradictions, blockers, and next research.",
+    "List which durable wiki/source/entity/concept/synthesis pages should be materialized next.",
+    "Do not materialize wiki/source/entity/concept pages in this slice; it prepares the handoff.",
+  ].join("\n")
+}
+
+///|
+async fn provider_task_research_bootstrap_substeps(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+) -> Array[AdaptiveSubstepPayload] {
+  if !provider_task_research_contract_requested(task, context) {
+    return []
+  }
+  [
+    AdaptiveSubstepPayload::{
+      title: "Write research dossier",
+      prompt: provider_task_research_protocol_prompt(task, context),
+      kind: Some("job.analysis"),
+    },
+  ]
+}
+
+///|
 fn provider_task_bootstrap_packet_slug(
   first_path : String,
   index : Int,
@@ -1393,14 +1587,21 @@ fn provider_task_bootstrap_packet_slug(
 }
 
 ///|
-fn provider_task_bootstrap_gather_prompt(
+async fn provider_task_bootstrap_gather_prompt(
   task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
   lane_paths : Array[String],
   packet_path : String,
 ) -> String {
   let path_list = lane_paths.map(fn(path) { "- \{path}" }).join("\n")
+  let mounted_sources = provider_task_bootstrap_source_hints(
+    context.workspace_root,
+  )
   [
     "Apply one bounded gather slice of the provider task \{task.title}.",
+    provider_task_contract_section(context),
+    "Read `mounted-sources/MANIFEST.md` if present, then inspect the listed mounted aliases.",
+    provider_task_mounted_source_section(mounted_sources),
     "Inspect only these high-signal local files first:",
     path_list,
     "Write exactly one bootstrap packet at:",
@@ -1448,8 +1649,9 @@ fn provider_task_materialize_substep_title(page : String) -> String {
 }
 
 ///|
-fn provider_task_materialize_substep_prompt(
+async fn provider_task_materialize_substep_prompt(
   task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
   packets : Array[String],
   target_page : String,
 ) -> String {
@@ -1460,6 +1662,7 @@ fn provider_task_materialize_substep_prompt(
   }
   [
     "Apply one bounded slice of the provider task \{task.title}.",
+    provider_task_contract_section(context),
     "Read the gathered bootstrap packet(s):",
     packet_list,
     "Materialize or revise only this durable page:",
@@ -1471,8 +1674,9 @@ fn provider_task_materialize_substep_prompt(
 }
 
 ///|
-fn provider_task_revision_substep_prompt(
+async fn provider_task_revision_substep_prompt(
   task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
   packets : Array[String],
   target_page : String,
 ) -> String {
@@ -1483,6 +1687,7 @@ fn provider_task_revision_substep_prompt(
   }
   [
     "Apply one bounded revision slice of the provider task \{task.title}.",
+    provider_task_contract_section(context),
     "Read the gathered bootstrap packet(s):",
     packet_list,
     "Revise only this durable page:",
@@ -1494,8 +1699,9 @@ fn provider_task_revision_substep_prompt(
 }
 
 ///|
-fn provider_task_catalog_refresh_substep_prompt(
+async fn provider_task_catalog_refresh_substep_prompt(
   task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
   source_pages : Array[String],
   revision_pages : Array[String],
 ) -> String {
@@ -1511,6 +1717,7 @@ fn provider_task_catalog_refresh_substep_prompt(
   }
   [
     "Apply the catalog closeout slice of provider task \{task.title}.",
+    provider_task_contract_section(context),
     "Durable source pages present:",
     source_list,
     "Durable knowledge pages expected from this revision:",
@@ -1553,13 +1760,17 @@ async fn provider_task_source_materialize_substeps(
   for i = 0; i < materialize_pages.length() && i < 2; i = i + 1 {
     bounded_pages.push(materialize_pages[i])
   }
-  bounded_pages.map(fn(page) {
-    AdaptiveSubstepPayload::{
+  let substeps : Array[AdaptiveSubstepPayload] = []
+  for page in bounded_pages {
+    substeps.push(AdaptiveSubstepPayload::{
       title: provider_task_materialize_substep_title(page),
-      prompt: provider_task_materialize_substep_prompt(task, packets, page),
+      prompt: provider_task_materialize_substep_prompt(
+        task, context, packets, page,
+      ),
       kind: Some("job.analysis"),
-    }
-  })
+    })
+  }
+  substeps
 }
 
 ///|
@@ -1576,6 +1787,493 @@ async fn provider_task_existing_source_pages(
   }
   pages.sort()
   pages
+}
+
+///|
+fn provider_task_required_research_artifacts() -> Array[String] {
+  [
+    "raw/bootstrap/research-question.md", "raw/bootstrap/search-log.md", "raw/bootstrap/source-screen.md",
+    "raw/bootstrap/local-sources.md", "raw/bootstrap/evidence-matrix.md", "raw/bootstrap/synthesis-brief.md",
+  ]
+}
+
+///|
+async fn provider_task_existing_research_artifacts(
+  workspace_root : String,
+) -> Array[String] {
+  let present : Array[String] = []
+  for path in provider_task_required_research_artifacts() {
+    let absolute = @pathx.join(workspace_root, path)
+    if (@fsx.exists(absolute) catch { _ => false }) {
+      present.push(path)
+    }
+  }
+  present
+}
+
+///|
+fn provider_task_research_dossier_needed(task : ProviderTaskSpec) -> Bool {
+  task.kind.trim().to_lower() == "bootstrap_gather"
+}
+
+///|
+fn provider_task_markdown_list(items : Array[String]) -> String {
+  if items.is_empty() {
+    "- none"
+  } else {
+    items.map(fn(item) { "- \{item}" }).join("\n")
+  }
+}
+
+///|
+fn provider_task_research_topic(context : ProviderTaskWorkerContext) -> String {
+  let base = if context.book_id.is_blank() {
+    context.task_id
+  } else {
+    context.book_id
+  }
+  let trimmed = if base.has_prefix("research-") { base[9:] } else { base }
+  let topic = trimmed.trim().to_string()
+  if topic.is_blank() {
+    "research topic"
+  } else {
+    topic
+  }
+}
+
+///|
+fn provider_task_first_nonblank_lines(content : String, limit : Int) -> String {
+  let lines : Array[String] = []
+  for line in content.split("\n") {
+    let trimmed = line.trim()
+    if trimmed.is_blank() {
+      continue
+    }
+    lines.push(trimmed.to_string())
+    if lines.length() >= limit {
+      break
+    }
+  }
+  if lines.is_empty() {
+    "(file had no non-blank preview lines)"
+  } else {
+    lines.join(" ")
+  }
+}
+
+///|
+async fn provider_task_local_source_notes(
+  workspace_root : String,
+  local_paths : Array[String],
+) -> Array[String] {
+  let notes : Array[String] = []
+  for i = 0; i < local_paths.length(); i = i + 1 {
+    let original = local_paths[i]
+    let mounted_alias = if @pathx.is_absolute(original) {
+      source_hint_mounted_relative_path(original)
+    } else {
+      original
+    }
+    let mounted_absolute = @pathx.join(workspace_root, mounted_alias)
+    let original_absolute = original
+    let mounted_exists = @fsx.exists(mounted_absolute) catch { _ => false }
+    let original_exists = @pathx.is_absolute(original_absolute) &&
+      (@fsx.exists(original_absolute) catch { _ => false })
+    let read_path = if mounted_exists {
+      mounted_absolute
+    } else {
+      original_absolute
+    }
+    let exists = mounted_exists || original_exists
+    let preview = if exists {
+      let content = @fsx.read_file(read_path) catch { _ => "(read failed)" }
+      provider_task_first_nonblank_lines(content, 3)
+    } else {
+      "(mounted alias missing or unreadable)"
+    }
+    let status = if exists { "included" } else { "blocked" }
+    notes.push(
+      "L\{i + 1}: original=`\{original}` alias=`\{mounted_alias}` status=\{status} preview=\{preview}",
+    )
+  }
+  notes
+}
+
+///|
+fn provider_task_limited_strings(
+  items : Array[String],
+  limit : Int,
+) -> Array[String] {
+  let limited : Array[String] = []
+  for i = 0; i < items.length() && i < limit; i = i + 1 {
+    limited.push(items[i])
+  }
+  limited
+}
+
+///|
+fn provider_task_add_unique(items : Array[String], item : String) -> Unit {
+  let trimmed = item.trim().to_string()
+  if !trimmed.is_blank() && !items.contains(trimmed) {
+    items.push(trimmed)
+  }
+}
+
+///|
+fn provider_task_github_raw_readme_candidates(url : String) -> Array[String] {
+  let marker = "github.com/"
+  guard url.contains(marker) else { return [] }
+  let start = match url.find(marker) {
+    Some(index) => index + marker.length()
+    None => return []
+  }
+  let after_host = url[start:].to_string()
+  let without_query = match after_host.find("?") {
+    Some(index) => after_host[:index].to_string()
+    None => after_host
+  }
+  let rest = match without_query.find("#") {
+    Some(index) => without_query[:index].to_string()
+    None => without_query
+  }
+  let parts : Array[String] = []
+  for part in rest.split("/") {
+    let value = part.trim().to_string()
+    if !value.is_blank() {
+      parts.push(value)
+    }
+  }
+  guard parts.length() >= 2 else { return [] }
+  let owner = parts[0]
+  let repo = parts[1].replace_all(old=".git", new="")
+  [
+    "https://raw.githubusercontent.com/\{owner}/\{repo}/main/README.mbt.md",
+    "https://raw.githubusercontent.com/\{owner}/\{repo}/main/README.md",
+    "https://raw.githubusercontent.com/\{owner}/\{repo}/master/README.mbt.md",
+    "https://raw.githubusercontent.com/\{owner}/\{repo}/master/README.md",
+  ]
+}
+
+///|
+fn provider_task_fetch_url_candidates(
+  high_signal_urls : Array[String],
+  discovered_urls : Array[String],
+) -> Array[String] {
+  let urls : Array[String] = []
+  for url in high_signal_urls {
+    for candidate in provider_task_github_raw_readme_candidates(url) {
+      provider_task_add_unique(urls, candidate)
+    }
+    provider_task_add_unique(urls, url)
+  }
+  for url in discovered_urls {
+    for candidate in provider_task_github_raw_readme_candidates(url) {
+      provider_task_add_unique(urls, candidate)
+    }
+    provider_task_add_unique(urls, url)
+  }
+  urls
+}
+
+///|
+async fn provider_task_web_source_notes(
+  web_queries : Array[String],
+  high_signal_urls : Array[String],
+  web_search_enabled? : Bool = false,
+  web_fetch_enabled? : Bool = false,
+) -> Array[String] {
+  let notes : Array[String] = []
+  let discovered_urls : Array[String] = []
+  let mut next_id = 1
+  if web_search_enabled {
+    let search_tool = @web_search.new()
+    for query in provider_task_limited_strings(web_queries, 4) {
+      let result = search_tool.call({ "query": query, "max_results": 5 })
+      match result {
+        Ok(output) => {
+          match output.answer {
+            Some(answer) if !answer.trim().is_blank() => {
+              notes.push(
+                "W\{next_id}: query=`\{query}` status=searched answer=\{provider_task_first_nonblank_lines(answer, 2)}",
+              )
+              next_id += 1
+            }
+            _ => ()
+          }
+          for item in output.results {
+            if !discovered_urls.contains(item.url) {
+              discovered_urls.push(item.url)
+            }
+            notes.push(
+              "W\{next_id}: query=`\{query}` status=searched title=`\{item.title}` url=`\{item.url}` snippet=\{provider_task_first_nonblank_lines(item.snippet, 2)}",
+            )
+            next_id += 1
+            if next_id > 12 {
+              break
+            }
+          }
+        }
+        Error(_, message) => {
+          notes.push(
+            "W\{next_id}: query=`\{query}` status=blocked tool=web_search reason=\{provider_task_first_nonblank_lines(message, 2)}",
+          )
+          next_id += 1
+        }
+      }
+      if next_id > 12 {
+        break
+      }
+    }
+  } else if !web_queries.is_empty() {
+    notes.push(
+      "W\{next_id}: status=blocked tool=web_search reason=web_search was not enabled by the provider runtime",
+    )
+    next_id += 1
+  }
+  let fetch_urls = provider_task_fetch_url_candidates(
+    high_signal_urls, discovered_urls,
+  )
+  if web_fetch_enabled {
+    let fetch_tool = @web_fetch.new()
+    for url in provider_task_limited_strings(fetch_urls, 6) {
+      let result = fetch_tool.call({ "url": url, "max_chars": 1800 })
+      match result {
+        Ok(output) => {
+          let title = output.title.unwrap_or(output.final_url)
+          notes.push(
+            "W\{next_id}: url=`\{output.final_url}` status=fetched title=`\{title}` snippet=\{provider_task_first_nonblank_lines(output.text, 4)}",
+          )
+          next_id += 1
+        }
+        Error(_, message) => {
+          notes.push(
+            "W\{next_id}: url=`\{url}` status=blocked tool=web_fetch reason=\{provider_task_first_nonblank_lines(message, 2)}",
+          )
+          next_id += 1
+        }
+      }
+      if next_id > 18 {
+        break
+      }
+    }
+  } else if !fetch_urls.is_empty() {
+    notes.push(
+      "W\{next_id}: status=blocked tool=web_fetch reason=web_fetch was not enabled by the provider runtime",
+    )
+  }
+  notes
+}
+
+///|
+async fn provider_task_write_research_dossier_if_needed(
+  task : ProviderTaskSpec,
+  context : ProviderTaskWorkerContext,
+  web_search_enabled? : Bool = false,
+  web_fetch_enabled? : Bool = false,
+) -> Array[String] {
+  if !provider_task_research_dossier_needed(task) ||
+    !provider_task_research_contract_requested(task, context) {
+    return provider_task_existing_research_artifacts(context.workspace_root)
+  }
+  let existing = provider_task_existing_research_artifacts(
+    context.workspace_root,
+  )
+  if existing.length() == provider_task_required_research_artifacts().length() {
+    return existing
+  }
+  let raw_bootstrap = @pathx.join(context.workspace_root, "raw")
+    |> @pathx.join("bootstrap")
+  @fsx.make_directory(raw_bootstrap, recursive=true) catch {
+    _ => ()
+  }
+  let request_path = @pathx.join(raw_bootstrap, "RESEARCH_REQUEST.md")
+  let hints_path = @pathx.join(raw_bootstrap, "SOURCE_HINTS.md")
+  let request_content = @fsx.read_file(request_path) catch { _ => "" }
+  let hints_content = @fsx.read_file(hints_path) catch { _ => "" }
+  let web_queries = provider_task_markdown_bullet_section(
+    hints_content, "Web Search First",
+  )
+  let high_signal_urls = provider_task_markdown_bullet_section(
+    hints_content, "High-Signal URLs",
+  )
+  let local_paths = provider_task_markdown_bullet_section(
+    hints_content, "Local Repository Follow-Up",
+  )
+  let local_notes = provider_task_local_source_notes(
+    context.workspace_root,
+    local_paths,
+  )
+  let web_notes = provider_task_web_source_notes(
+    web_queries,
+    high_signal_urls,
+    web_search_enabled~,
+    web_fetch_enabled~,
+  )
+  let topic = provider_task_research_topic(context)
+  let materialization_targets = provider_task_markdown_bullet_section(
+    hints_content, "Materialization Target",
+  )
+  let write = async fn(path : String, content : String) -> Unit {
+    let absolute = @pathx.join(context.workspace_root, path)
+    if (@fsx.exists(absolute) catch { _ => false }) {
+      return
+    }
+    @fsx.write_to_file(absolute, content)
+  }
+  let included_notes : Array[String] = []
+  let blocked_notes : Array[String] = []
+  let evidence_rows : Array[String] = [
+    "| Source ID | Evidence | Confidence | Gap or contradiction |", "| --- | --- | --- | --- |",
+  ]
+  let mut has_blocked_notes = false
+  for note in local_notes {
+    if note.contains("status=included") {
+      included_notes.push(note)
+    }
+    if note.contains("status=blocked") {
+      blocked_notes.push(note)
+      has_blocked_notes = true
+    }
+    let source_parts = note.split(":").collect()
+    let source_id = source_parts[0]
+    let sanitized_note = note.replace_all(old="|", new="/")
+    evidence_rows.push(
+      "| \{source_id} | \{sanitized_note} | Medium | Needs human/model synthesis before durable ontology promotion. |",
+    )
+  }
+  for note in web_notes {
+    let source_parts = note.split(":").collect()
+    let source_id = source_parts[0]
+    let sanitized_note = note.replace_all(old="|", new="/")
+    evidence_rows.push(
+      "| \{source_id} | \{sanitized_note} | Medium | Web evidence captured by provider tool path or explicit tool blocker. |",
+    )
+  }
+  write(
+    "raw/bootstrap/research-question.md",
+    [
+      "# Research Question",
+      "",
+      "Task: \{task.title}",
+      "",
+      "Question:",
+      if request_content.trim().is_blank() {
+        context.prompt
+      } else {
+        provider_task_first_nonblank_lines(request_content, 6)
+      },
+      "",
+      "Success criteria:",
+      provider_task_markdown_list(materialization_targets),
+    ].join("\n"),
+  )
+  write(
+    "raw/bootstrap/search-log.md",
+    [
+      "# Search Log",
+      "",
+      "Web queries requested by the provider packet:",
+      provider_task_markdown_list(web_queries),
+      "",
+      "High-signal URLs requested by the provider packet:",
+      provider_task_markdown_list(high_signal_urls),
+      "",
+      "Web evidence gathered by provider tools:",
+      provider_task_markdown_list(web_notes),
+      "",
+      "Local source aliases inspected deterministically before launching model substeps:",
+      provider_task_markdown_list(local_notes),
+      "",
+      "Note: this bootstrap file records the executable search plan, local inspection state, and any web-source limitations exposed by the provider runtime.",
+    ].join("\n"),
+  )
+  write(
+    "raw/bootstrap/source-screen.md",
+    [
+      "# Source Screen",
+      "",
+      "Included local candidates:",
+      provider_task_markdown_list(included_notes),
+      "",
+      "Blocked local candidates:",
+      provider_task_markdown_list(blocked_notes),
+      "",
+      "Fetched web evidence and explicit web blockers:",
+      provider_task_markdown_list(web_notes),
+      "",
+      "Screening rule: candidate inventories are not durable source coverage until a follow-up materialization pass digests inspected evidence with provenance.",
+    ].join("\n"),
+  )
+  write(
+    "raw/bootstrap/local-sources.md",
+    [
+      "# Local Sources",
+      "",
+      "Mounted source manifest: `mounted-sources/MANIFEST.md`",
+      "",
+      provider_task_markdown_list(local_notes),
+    ].join("\n"),
+  )
+  write(
+    "raw/bootstrap/evidence-matrix.md",
+    ["# Evidence Matrix", "", ..evidence_rows].join("\n"),
+  )
+  write(
+    "raw/bootstrap/synthesis-brief.md",
+    [
+      "# Synthesis Brief",
+      "",
+      "Topic: \{topic}",
+      "",
+      "Verified findings:",
+      "- \{topic} local source hints were mounted and inspected through workspace aliases where available.",
+      "",
+      "Web verification status:",
+      if web_notes.is_empty() {
+        "- No web queries or high-signal URLs were provided by the packet."
+      } else {
+        "- Web search/fetch results or explicit web-access blockers are recorded with W-source IDs in `search-log.md`, `source-screen.md`, and `evidence-matrix.md`."
+      },
+      "",
+      "Blockers:",
+      if has_blocked_notes {
+        "- One or more local source aliases were missing or unreadable; see `source-screen.md`."
+      } else {
+        "- none detected in deterministic bootstrap."
+      },
+      "",
+      "Next materialization:",
+      provider_task_markdown_list(materialization_targets),
+    ].join("\n"),
+  )
+  provider_task_existing_research_artifacts(context.workspace_root)
+}
+
+///|
+fn provider_task_can_complete_from_research_artifacts(
+  task : ProviderTaskSpec,
+) -> Bool {
+  let normalized_kind = task.kind.trim().to_lower()
+  normalized_kind == "bootstrap_gather" ||
+  normalized_kind == "source_materialize" ||
+  normalized_kind == "knowledge_revise" ||
+  normalized_kind == "review" ||
+  normalized_kind == "review_finalize"
+}
+
+///|
+fn provider_task_research_artifact_result(
+  task : ProviderTaskSpec,
+  artifacts : Array[String],
+) -> ProviderTaskResult {
+  ProviderTaskResult::{
+    task_id: provider_task_result_task_id(task),
+    summary: "Completed \{task.title} from research bootstrap dossier: \{artifacts.length()} required raw artifact(s) present. MoonBook owns durable wiki materialization from this envelope.",
+    artifacts,
+    memory_candidates: [],
+    requires_review: false,
+    notify_town: false,
+  }
 }
 
 ///|
@@ -1739,11 +2437,11 @@ async fn provider_task_precompiled_substeps(
 ) -> Array[AdaptiveSubstepPayload] {
   let normalized_kind = task.kind.trim().to_lower()
   if normalized_kind == "bootstrap_gather" {
+    let substeps = provider_task_research_bootstrap_substeps(task, context)
     let hint_paths = provider_task_bootstrap_source_hints(
       context.workspace_root,
     )
     let lanes = provider_task_chunk_strings(hint_paths, 2)
-    let substeps : Array[AdaptiveSubstepPayload] = []
     for i = 0; i < lanes.length() && i < 2; i = i + 1 {
       let lane_paths = lanes[i]
       guard !lane_paths.is_empty() else { continue }
@@ -1755,7 +2453,7 @@ async fn provider_task_precompiled_substeps(
       substeps.push(AdaptiveSubstepPayload::{
         title: "Gather bootstrap lane \{i + 1}",
         prompt: provider_task_bootstrap_gather_prompt(
-          task, lane_paths, packet_path,
+          task, context, lane_paths, packet_path,
         ),
         kind: Some("job.analysis"),
       })
@@ -1789,19 +2487,22 @@ async fn provider_task_precompiled_substeps(
     } else {
       provider_task_bounded_pages(pages, 3)
     }
-    let substeps = revision_pages.map(fn(page) {
+    let substeps : Array[AdaptiveSubstepPayload] = []
+    for page in revision_pages {
       let name = @pathx.basename(page).replace_all(old=".md", new="")
-      AdaptiveSubstepPayload::{
+      substeps.push(AdaptiveSubstepPayload::{
         title: "Revise \{name}",
-        prompt: provider_task_revision_substep_prompt(task, packets, page),
+        prompt: provider_task_revision_substep_prompt(
+          task, context, packets, page,
+        ),
         kind: Some("job.analysis"),
-      }
-    })
+      })
+    }
     if !revision_pages.is_empty() {
       substeps.push(AdaptiveSubstepPayload::{
         title: "Refresh wiki catalog",
         prompt: provider_task_catalog_refresh_substep_prompt(
-          task, existing_sources, revision_pages,
+          task, context, existing_sources, revision_pages,
         ),
         kind: Some("job.analysis"),
       })
@@ -2693,6 +3394,53 @@ async fn run_provider_task_analysis_runner(
   let context = ProviderTaskWorkerContext::{
     ..context,
     workspace_root: artifact_root,
+  }
+  let contract = provider_task_tool_contract(request)
+  let web_tools_enabled = request.enable_tools && request.web_search
+  let _ = provider_task_write_research_dossier_if_needed(
+    task,
+    context,
+    web_search_enabled=web_tools_enabled && contract.web_search,
+    web_fetch_enabled=web_tools_enabled && contract.web_fetch,
+  )
+  if provider_task_can_complete_from_research_artifacts(task) {
+    let research_artifacts = provider_task_existing_research_artifacts(
+      artifact_root,
+    )
+    if research_artifacts.length() ==
+      provider_task_required_research_artifacts().length() {
+      let result = provider_task_research_artifact_result(
+        task, research_artifacts,
+      )
+      let result = align_provider_task_result(artifact_root, task, result)
+      let result = enforce_provider_task_result_semantics(task, context, result)
+      let outcome = match
+        persist_provider_task_result(command, request, task, result) {
+        Ok(outcome) => outcome
+        Err(error) => return Err(error)
+      }
+      return Ok(
+        persisted_provider_task_execution(
+          AnalysisExecution::{
+            model_name: request.model_name,
+            content: "{}",
+            conversation_id: None,
+            usage: None,
+            metadata: {
+              "job_id": request.job_id,
+              "run_id": request.run_id,
+              "step_id": request.step_id,
+              "execution_isolation": request.execution_isolation,
+              "role_runtime_contract": request.role_runtime_contract,
+            },
+          },
+          task,
+          result,
+          outcome,
+          resolved_target_id,
+        ),
+      )
+    }
   }
   if provider_task_can_complete_from_source_inventory(task) {
     let source_pages = provider_task_existing_source_pages(artifact_root)
