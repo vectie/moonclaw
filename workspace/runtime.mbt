@@ -153,7 +153,7 @@ fn excerpt_workspace_text(content : String, max_lines : Int) -> String {
 }
 
 ///|
-async fn render_wiki_workspace_prompt_context(root : String) -> String {
+async fn render_extension_workspace_prompt_context(root : String) -> String {
   let raw_dir = root |> @pathx.join("raw")
   let wiki_dir = root |> @pathx.join("wiki")
   let has_raw_dir = @fsx.exists(raw_dir) catch { _ => false }
@@ -199,7 +199,7 @@ async fn render_wiki_workspace_prompt_context(root : String) -> String {
     }
   }
   if !summary_lines.is_empty() {
-    let summary = ["Wiki workspace detected:", summary_lines.join("\n")].join(
+    let summary = ["Extension workspace detected:", summary_lines.join("\n")].join(
       "\n\n",
     )
     return [summary, ..sections].join("\n\n---\n\n")
@@ -219,9 +219,9 @@ async fn render_workspace_prompt_context(
     }
     sections.push(["Workspace file `\{file.name}`", file.content].join("\n\n"))
   }
-  let wiki_context = render_wiki_workspace_prompt_context(root)
-  if !wiki_context.is_blank() {
-    sections.push(wiki_context)
+  let extension_context = render_extension_workspace_prompt_context(root)
+  if !extension_context.is_blank() {
+    sections.push(extension_context)
   }
   if sections.is_empty() {
     ""

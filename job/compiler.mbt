@@ -119,7 +119,7 @@ fn merge_json_objects(base : Json, extras : Array[(String, Json)]) -> Json {
 
 ///|
 fn injected_step_metadata(family : String, step : JobProposalStep) -> Json {
-  if family == "wiki_ingest_controller" && step.id == "inspect_source" {
+  if provider_delegate_family_name(family) && step.id == "inspect_source" {
     merge_json_objects(step.metadata, [
       ("best_effort_on_missing_input", true.to_json()),
       ("disable_waiting_for_input", true.to_json()),
@@ -145,29 +145,42 @@ fn proposal_profile_metadata_string(
 }
 
 ///|
-fn wiki_ingest_extension_target(proposal : JobProposal) -> String? {
+fn provider_delegate_family_name(family : String) -> Bool {
+  family == "provider_delegate_controller" ||
+  family == "extension_delegate_controller" ||
+  family == "wiki_ingest_controller"
+}
+
+///|
+fn provider_delegate_enabled(proposal : JobProposal, family : String) -> Bool {
+  metadata_bool(proposal.profile_metadata, "provider_delegate", false) ||
+  metadata_bool(proposal.profile_metadata, "extension_delegate", false) ||
+  provider_delegate_family_name(family)
+}
+
+///|
+fn provider_delegate_target(proposal : JobProposal) -> String? {
   proposal_profile_metadata_string(proposal, [
-    "extension_target", "provider_target", "execution_target", "bookapi_target",
-    "moonbook_target",
+    "extension_target", "provider_target", "execution_target",
   ])
 }
 
 ///|
-fn wiki_ingest_extension_mode(proposal : JobProposal) -> String {
+fn provider_delegate_mode(proposal : JobProposal) -> String {
   proposal_profile_metadata_string(proposal, [
-    "extension_mode", "provider_mode", "execution_mode", "bookapi_mode",
+    "extension_mode", "provider_mode", "execution_mode",
   ]).unwrap_or("provider")
 }
 
 ///|
-fn wiki_ingest_extension_prompt(proposal : JobProposal) -> String {
+fn provider_delegate_prompt(proposal : JobProposal) -> String {
   [
-    "Run the domain-local ingest extension for this request.",
+    "Run the domain-local provider extension for this request.",
     "",
     "Request:",
     proposal.request_text,
     "",
-    "The extension owns source discovery, durable wiki updates, and readiness signals.",
+    "The provider owns domain semantics and readiness signals; MoonClaw owns execution and visibility.",
   ].join("\n")
 }
 
@@ -336,7 +349,7 @@ fn workflow_steps_for_proposal(
   } else {
     steps
   }
-  if family != "wiki_ingest_controller" {
+  if !provider_delegate_enabled(proposal, family) {
     return normalized_steps
   }
   let imported_external_packet = match
@@ -354,11 +367,11 @@ fn workflow_steps_for_proposal(
       kind: "job.delegate",
       config: merge_json_objects(
         SubjobStepConfig::new(
-          request_text=wiki_ingest_extension_prompt(proposal),
+          request_text=provider_delegate_prompt(proposal),
           cwd=Some(cwd),
           home=Some(home),
-          execution_mode=Some(wiki_ingest_extension_mode(proposal)),
-          execution_target=wiki_ingest_extension_target(proposal),
+          execution_mode=Some(provider_delegate_mode(proposal)),
+          execution_target=provider_delegate_target(proposal),
           include_parent_outputs=false,
           max_depth=2,
         ).to_json(),

@@ -21,7 +21,7 @@ async test "workspace runtime prefers configured workspace and bootstraps files"
 }
 
 ///|
-async test "workspace runtime includes wiki workspace context when detected" {
+async test "workspace runtime includes extension workspace context when detected" {
   let dir = "/tmp/moonclaw-workspace-wiki-runtime"
   let config_path = dir |> @pathx.join("moonclaw.json")
   let workspace_root = dir |> @pathx.join("wiki-home")
@@ -47,7 +47,7 @@ async test "workspace runtime includes wiki workspace context when detected" {
   let runtime = WorkspaceRuntime::new(home=dir, cwd=dir)
   let snapshot = runtime.snapshot()
   inspect(
-    snapshot.prompt_context.contains("Wiki workspace detected:"),
+    snapshot.prompt_context.contains("Extension workspace detected:"),
     content="true",
   )
   inspect(
