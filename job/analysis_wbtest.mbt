@@ -709,6 +709,69 @@ async test "analysis_step_handler passes execution routing hints into executor" 
 }
 
 ///|
+async test "default analysis runner launches acp target for cli execution" {
+  @fsx.with_temporary_directory("job-analysis-acp-runner-XXXXXX", dir => {
+    @fsx.write_to_file(
+      dir |> @pathx.join("moonclaw.json"),
+      (
+        {
+          "acp": {
+            "targets": {
+              "fake-acp": {
+                "backend": "codex",
+                "label": "Fake ACP",
+                "command": "/bin/echo",
+                "args": ["acp-executed"],
+                "cwd": dir,
+              },
+            },
+          },
+        } : Json).stringify(indent=2),
+    )
+    let request = AnalysisRequest::{
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      source_prompt: "Run through ACP.",
+      prompt: "Run through ACP.",
+      model_name: "default",
+      cwd: dir,
+      home: Some(dir),
+      execution_mode: Some("acp"),
+      execution_target: Some("fake-acp"),
+      system_prompt: "system",
+      preferred_skills: [],
+      enable_tools: false,
+      web_search: false,
+      tool_contract: AnalysisToolContract::new(
+        shell=false,
+        list_files=false,
+        read_files=false,
+        search_files=false,
+        todo=false,
+        file_write=false,
+        web_search=false,
+      ),
+      step_metadata: {},
+      execution_isolation: None,
+      role_runtime_contract: None,
+    }
+    let execution = match run_default_analysis_runner(request) {
+      Ok(execution) => execution
+      Err(error) => fail(error)
+    }
+    inspect(execution.model_name, content="Fake ACP")
+    inspect(execution.conversation_id.unwrap_or(""), content="acp-run-1-step-1")
+    inspect(execution.content.contains("acp-executed"), content="true")
+    inspect(execution.content.contains("Run through ACP."), content="true")
+    let state = @fsx.read_file(
+      dir |> @pathx.join(".moonclaw") |> @pathx.join("acp_sessions.json"),
+    )
+    inspect(state.contains("\"status\":\"completed\""), content="true")
+  })
+}
+
+///|
 async test "analysis_step_handler can trigger adaptive input verdict from followup model pass" {
   @fsx.with_temporary_directory("job-analysis-adaptive-judge-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

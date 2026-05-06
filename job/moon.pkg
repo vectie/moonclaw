@@ -3,6 +3,7 @@ import {
   "moonbitlang/async/fs",
   "moonbitlang/async/process",
   "vectie/moonclaw/agent",
+  "vectie/moonclaw/acp",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/event",
   "vectie/moonclaw/file",
