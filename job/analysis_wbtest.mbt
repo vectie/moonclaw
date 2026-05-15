@@ -332,6 +332,55 @@ async test "analysis_step_handler timeout points to tool journal path" {
 }
 
 ///|
+async test "analysis_step_handler can continue best effort after timeout" {
+  @fsx.with_temporary_directory("job-analysis-timeout-best-effort-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let config = AnalysisStepConfig::new(
+      prompt="Time out after writing workspace artifacts, but continue best effort.",
+      cwd=Some(dir),
+      policy=AnalysisPolicy::new(timeout_ms=Some(10)),
+      metadata={ "timeout_ms": 10, "best_effort_on_timeout": true },
+    )
+    let engine = analysis_test_engine(root, config)
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=async fn(request) {
+          ignore(request)
+          @async.sleep(50)
+          Ok(AnalysisExecution::{
+            model_name: "default",
+            content: "late result",
+            conversation_id: None,
+            usage: None,
+            metadata: {},
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    ignore(
+      match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+        Ok(result) => result
+        Err(error) => fail(error)
+      },
+    )
+    let step = engine.runtime
+      .store()
+      .get_step_run("run-analysis-1", "analyze")
+      .unwrap()
+    inspect(step.status, content="Succeeded")
+    let artifacts = ArtifactStore::new(store=engine.runtime.store())
+    let result_artifact = engine.runtime
+      .store()
+      .list_artifacts(run_id="run-analysis-1")
+      .filter(fn(artifact) { artifact.artifact_type == "analysis.result" })[0]
+    let payload = artifacts.read_text(result_artifact.id).unwrap_or("")
+    inspect(payload.contains("\"best_effort_on_timeout\":true"), content="true")
+  })
+}
+
+///|
 async test "analysis_step_handler parses structured presentation result payload when contract is declared" {
   @fsx.with_temporary_directory("job-analysis-presentation-result-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

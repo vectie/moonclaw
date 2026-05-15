@@ -28,9 +28,17 @@ pub async fn execute_analysis_request(
     Some(timeout_ms) =>
       @async.with_timeout(timeout_ms, () => (executor.run)(request)) catch {
         @async.TimeoutError =>
-          return Err(
-            "\{timeout_error_message(step_id, timeout_ms)} (tool journal: \{analysis_tool_journal_path(request)})",
-          )
+          if analysis_best_effort_on_timeout(request) {
+            Ok(
+              best_effort_timeout_analysis_execution(
+                request, step_id, timeout_ms,
+              ),
+            )
+          } else {
+            return Err(
+              "\{timeout_error_message(step_id, timeout_ms)} (tool journal: \{analysis_tool_journal_path(request)})",
+            )
+          }
         error => return Err("Analysis execution failed: \{error}")
       }
     None =>
@@ -46,6 +54,38 @@ pub async fn execute_analysis_request(
     return Err(error)
   }
   Ok(execution)
+}
+
+///|
+fn analysis_best_effort_on_timeout(request : AnalysisRequest) -> Bool {
+  metadata_bool_with_step_metadata(
+    request.step_metadata,
+    "best_effort_on_timeout",
+    false,
+  )
+}
+
+///|
+fn best_effort_timeout_analysis_execution(
+  request : AnalysisRequest,
+  step_id : String,
+  timeout_ms : Int,
+) -> AnalysisExecution {
+  let message = "\{timeout_error_message(step_id, timeout_ms)}; continuing because `best_effort_on_timeout` is enabled. Inspect workspace artifacts and blockers for the bounded result."
+  AnalysisExecution::{
+    model_name: request.model_name,
+    content: message,
+    conversation_id: None,
+    usage: None,
+    metadata: {
+      "job_id": request.job_id,
+      "run_id": request.run_id,
+      "step_id": request.step_id,
+      "best_effort_on_timeout": true,
+      "timeout_ms": timeout_ms,
+      "tool_call_journal_path": analysis_tool_journal_path(request),
+    },
+  }
 }
 
 ///|
