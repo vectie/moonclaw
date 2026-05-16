@@ -21,5 +21,10 @@ node_modules
 _build
 target
 .moonclaw/job-workspaces/
+.moonclaw-tool-journal-*.json
+.moontown/
+moonclaw-jobs/
+raw/bootstrap/
 bisect.coverage
 unused/
+unused-waiting/
