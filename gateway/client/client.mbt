@@ -1040,21 +1040,20 @@ async fn Client::send_rpc(
     Some(False) => false
     _ => false
   }
+  let payload = match obj.get("payload") {
+    Some(Null) | None => None
+    Some(payload) => Some(payload)
+  }
   let error = match obj.get("error") {
+    Some(Null) | None => None
     Some(error_json) => {
       let e = @json.from_json(error_json) catch {
         _ => return Err("Failed to parse error")
       }
       Some(e)
     }
-    None => None
   }
-  Ok(@protocol.Response::{
-    id: request.id,
-    ok,
-    payload: obj.get("payload"),
-    error,
-  })
+  Ok(@protocol.Response::{ id: request.id, ok, payload, error })
 }
 
 ///|

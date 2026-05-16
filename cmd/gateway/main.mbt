@@ -134,7 +134,14 @@ async fn start_gateway(args : Array[String]) -> Unit {
     configured_agent_cwd(config).unwrap_or(discovery_cwd),
   )
   logger.info("Starting MoonClaw Gateway on port \{port}")
-  let gateway = @server.Gateway::new(port~, cwd=cwd[:], home=home[:])
+  let gateway = match configured_gateway_token(config) {
+    Some(token) =>
+      @server.Gateway::new(port~, cwd=cwd[:], home=home[:], auth=@server.AuthConfig::{
+        token: Some(token),
+        _password: None,
+      })
+    None => @server.Gateway::new(port~, cwd=cwd[:], home=home[:])
+  }
   logger.info("Gateway started on port \{gateway.port()}")
   gateway.start()
 }

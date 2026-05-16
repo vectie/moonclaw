@@ -202,12 +202,14 @@ async fn Gateway::send_response(
     "type": "res",
     "id": response.id,
     "ok": response.ok,
-    "payload": response.payload,
-    "error": (
-      match response.error {
-        Some(e) => Some(e.to_json())
-        None => None
-      } : Json?),
+    "payload": match response.payload {
+      Some(payload) => payload
+      None => Json::null()
+    },
+    "error": match response.error {
+      Some(e) => e.to_json()
+      None => Json::null()
+    },
   }
   w.write(frame.stringify())
 }

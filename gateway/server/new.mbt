@@ -154,9 +154,6 @@ pub async fn Gateway::new(
     error =>
       gateway.logger.warn("Failed to register Weixin extension: \{error}")
   }
-  gateway.restore_channel_runtime() catch {
-    error => gateway.logger.warn("Failed to restore channel runtime: \{error}")
-  }
   gateway
 }
 
@@ -215,8 +212,8 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
   self.started_at = current_time_ms()
   self.logger.info("Gateway server starting on port \{self.port}")
   self.logger.info("Visit http://localhost:\{self.port}/")
-  if self.auth.token is Some(token) {
-    self.logger.info("Auth token: \{token}")
+  if self.auth.token is Some(_) {
+    self.logger.info("Auth token configured")
   }
   @async.with_task_group(group => {
     gateway_root_groups[self.port] = group
@@ -233,6 +230,16 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     )
     group.spawn_bg(
       () => self.acp_process_manager.start(),
+      no_wait=true,
+      allow_failure=true,
+    )
+    group.spawn_bg(
+      () => {
+        self.restore_channel_runtime() catch {
+          error =>
+            self.logger.warn("Failed to restore channel runtime: \{error}")
+        }
+      },
       no_wait=true,
       allow_failure=true,
     )

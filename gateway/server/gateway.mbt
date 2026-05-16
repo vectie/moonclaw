@@ -61,7 +61,7 @@ struct AgentRun {
 } derive(ToJson, FromJson, Show)
 
 ///|
-struct AuthConfig {
+pub(all) struct AuthConfig {
   token : String?
   _password : String?
 }

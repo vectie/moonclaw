@@ -1125,7 +1125,7 @@ fn FeishuChannel::ensure_websocket_runtime_client(
                   }
                 }
                 self.log_info(
-                  "Registering Feishu websocket client for account \{account_id} -> \{endpoint.url}",
+                  "Registering Feishu websocket client for account \{account_id}",
                 )
                 connector.connect(
                   feishu_websocket_dial_request(

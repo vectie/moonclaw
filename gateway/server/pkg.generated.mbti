@@ -142,7 +142,10 @@ pub impl Show for AgentRun
 pub impl ToJson for AgentRun
 pub impl @json.FromJson for AgentRun
 
-type AuthConfig
+pub(all) struct AuthConfig {
+  token : String?
+  _password : String?
+}
 
 pub struct ChannelManager {
   registry : @channel.ChannelRegistry
