@@ -71,11 +71,22 @@ moonclaw gateway start
       -> load `gateway/sessions/sessions.json`
       -> load `gateway/channels.json`
       -> register built-in channel extensions
-      -> restore enabled channel accounts
     -> Gateway::start()
       -> serve HTTP requests
       -> run tick loop
+      -> restore enabled channel accounts in a background task
       -> listen for shutdown event
+```
+
+Channel restore is intentionally part of `Gateway::start`, not `Gateway::new`.
+The HTTP/RPC surface should become observable even when a Feishu websocket
+endpoint is slow to resolve or temporarily blocked by network conditions.
+Use a dedicated port when checking a second instance:
+
+```bash
+moon run cmd/main -- gateway start --home ~/.moonclaw --cwd /path/to/workspace --port 18124
+moon run cmd/main -- gateway health --url http://localhost:18124 --home ~/.moonclaw --cwd /path/to/workspace
+moon run cmd/main -- gateway channels --url http://localhost:18124 --home ~/.moonclaw --cwd /path/to/workspace
 ```
 
 ## Basic Usage
@@ -515,6 +526,7 @@ Gateway::new
   -> channel_state.load()
   -> seed missing channel state from `.moonclaw/moonclaw.json`
   -> register extensions/channels
+Gateway::start
   -> restore_channel_runtime()
     -> configure all persisted channels
     -> start only accounts with auto_start=true
@@ -525,6 +537,24 @@ Operational consequence:
 - `channel-start` makes that account restart with the gateway
 - `channel-stop` keeps the config but disables auto-start for that account
 - removing an account from channel config prunes its persisted runtime entry
+- restore runs in the background, so a stuck channel restore should not prevent `/health`, `/v1/channels`, or RPC probes from answering
+- gateway startup uses the configured `gateway.auth.token` when present, so CLI probes and the running service share the same token source
+- startup logs report that auth is configured, but do not print the token; Feishu websocket logs also avoid printing endpoint URLs because they may contain short-lived credentials
+
+## Runtime Artifact Hygiene
+
+The repository ignores local runtime artifacts that are useful during live tests
+but should never be committed:
+
+- `.moonclaw-tool-journal-*.json`
+- `.moontown/`
+- `moonclaw-jobs/`
+- `raw/bootstrap/`
+- `unused-waiting/`
+
+These paths can be inspected locally during debugging, but durable behavior
+should be documented in source files or docs rather than by committing generated
+runtime state.
 
 ## SSE Event Flow
 

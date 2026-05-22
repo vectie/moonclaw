@@ -96,11 +96,18 @@ Gateway::new(...)
   -> seed missing channel state from `{cwd}/.moonclaw/moonclaw.json`
   -> fallback seed from `{home}/.moonclaw/moonclaw.json`
   -> register Feishu extension
+Gateway::start()
+  -> start HTTP/RPC/SSE surfaces
   -> restore_channel_runtime()
 ```
 
 That means a restart now preserves direct-run conversation continuity, channel-triggered conversation continuity, channel config, and which channel accounts should auto-start again.
 It also means a first gateway start can bootstrap built-in channels from the same `.moonclaw/moonclaw.json` file that the local CLI/model loader already uses.
+Runtime restore is intentionally started from `Gateway::start()` as a background task.
+That keeps dedicated gateway instances observable through `/health`, `/v1/channels`,
+and RPC probes even when an external channel such as Feishu is slow to restore.
+`gateway start` also passes the configured gateway auth token into the server when
+one exists, so CLI probes and the launched service use the same credential source.
 For Feishu websocket-mode accounts, restore now supports both:
 
 - manual `websocket_url` override
