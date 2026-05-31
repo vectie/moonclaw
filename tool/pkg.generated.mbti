@@ -15,12 +15,8 @@ type AgentTool
 pub async fn AgentTool::call(Self, Json) -> ToolResult[(Json, String)] noraise
 pub fn AgentTool::desc(Self) -> ToolDesc
 
-pub(all) struct JsonSchema(Json)
+pub(all) struct JsonSchema(Json) derive(Eq, Show)
 pub fn JsonSchema::from_json(Json) -> Self
-#deprecated
-pub fn JsonSchema::inner(Self) -> Json
-pub impl Eq for JsonSchema
-pub impl Show for JsonSchema
 pub impl ToJson for JsonSchema
 
 pub struct Tool[Output] {
@@ -37,26 +33,20 @@ pub struct ToolDesc {
   description : String
   name : String
   schema : JsonSchema
-}
+} derive(Eq, Show, ToJson)
 pub fn ToolDesc::to_openai(Self) -> @openai.ChatCompletionToolParam
-pub impl Eq for ToolDesc
-pub impl Show for ToolDesc
-pub impl ToJson for ToolDesc
 
 pub(all) struct ToolFn[Output](async (Json) -> ToolResult[Output] noraise)
-#deprecated
-pub fn[Output] ToolFn::inner(Self[Output]) -> async (Json) -> ToolResult[Output] noraise
 
 pub enum ToolResult[Output] {
   Ok(Output)
   Error(Error, String)
-}
+} derive(ToJson)
 #as_free_fn
 pub fn[Output] ToolResult::error(String, error? : Error) -> Self[Output]
 #as_free_fn
 pub fn[Output] ToolResult::ok(Output) -> Self[Output]
 pub impl[Output : Show] Show for ToolResult[Output]
-pub impl[Output : ToJson] ToJson for ToolResult[Output]
 
 // Type aliases
 

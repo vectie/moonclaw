@@ -1,0 +1,12 @@
+import {
+  "moonbitlang/core/json",
+  "vectie/moonclaw/internal/os",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/buildinfo",
+  "vectie/moonclaw/oauth/codex",
+}
+
+import {
+  "moonbitlang/async",
+} for "wbtest"

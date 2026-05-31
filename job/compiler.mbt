@@ -252,6 +252,14 @@ fn workflow_step_definition_for_proposal_step(
       board_extras,
     )
   } else {
+    let resolved_execution_mode = match step.execution_mode {
+      Some(value) => Some(value)
+      None => metadata_string(step_metadata, "execution_mode")
+    }
+    let resolved_execution_target = match step.execution_target {
+      Some(value) => Some(value)
+      None => metadata_string(step_metadata, "execution_target")
+    }
     let analysis_metadata = merge_json_objects(
       base_metadata,
       [("step_metadata", step_metadata), ..board_extras],
@@ -263,8 +271,8 @@ fn workflow_step_definition_for_proposal_step(
         cwd=Some(cwd),
         home=Some(home),
         workspace=Some(workspace_root),
-        execution_mode=step.execution_mode,
-        execution_target=step.execution_target,
+        execution_mode=resolved_execution_mode,
+        execution_target=resolved_execution_target,
         system_prompt=metadata_string(step_metadata, "system_prompt"),
         preferred_skills=metadata_string_array(
           step_metadata, "preferred_skills",

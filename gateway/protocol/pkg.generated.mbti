@@ -25,10 +25,7 @@ pub(all) struct AgentAcceptedPayload {
   run_id : String
   status : String
   accepted_at : Int
-}
-pub impl Show for AgentAcceptedPayload
-pub impl ToJson for AgentAcceptedPayload
-pub impl @json.FromJson for AgentAcceptedPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AgentEventPayload {
   run_id : String
@@ -36,10 +33,7 @@ pub(all) struct AgentEventPayload {
   delta : String?
   content : String?
   usage : Json?
-}
-pub impl Show for AgentEventPayload
-pub impl ToJson for AgentEventPayload
-pub impl @json.FromJson for AgentEventPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AgentParams {
   message : String
@@ -49,36 +43,24 @@ pub(all) struct AgentParams {
   provider : String?
   run_id : String?
   idempotency_key : String?
-}
-pub impl Show for AgentParams
-pub impl ToJson for AgentParams
-pub impl @json.FromJson for AgentParams
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AgentResultPayload {
   run_id : String
   status : String
   result : Json?
   error : ErrorShape?
-}
-pub impl Show for AgentResultPayload
-pub impl ToJson for AgentResultPayload
-pub impl @json.FromJson for AgentResultPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AuthCredentials {
   token : String?
   password : String?
-}
-pub impl Show for AuthCredentials
-pub impl ToJson for AuthCredentials
-pub impl @json.FromJson for AuthCredentials
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChallengePayload {
   nonce : String
   ts : Int
-}
-pub impl Show for ChallengePayload
-pub impl ToJson for ChallengePayload
-pub impl @json.FromJson for ChallengePayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ClientInfo {
   id : String
@@ -86,44 +68,27 @@ pub(all) struct ClientInfo {
   version : String?
   platform : String?
   mode : ClientMode
-}
-pub impl Show for ClientInfo
-pub impl ToJson for ClientInfo
-pub impl @json.FromJson for ClientInfo
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) enum ClientMode {
   Cli
   Backend
   Webchat
   Probe
-}
-pub impl Eq for ClientMode
-pub impl Show for ClientMode
-pub impl ToJson for ClientMode
-pub impl @json.FromJson for ClientMode
+} derive(Eq, Show, ToJson, @json.FromJson)
 
 pub(all) enum ClientRole {
   Operator
   Node
-}
-pub impl Eq for ClientRole
-pub impl Show for ClientRole
-pub impl ToJson for ClientRole
-pub impl @json.FromJson for ClientRole
+} derive(Eq, Show, ToJson, @json.FromJson)
 
 pub(all) struct ConfigGetPayload {
   config : Json
-}
-pub impl Show for ConfigGetPayload
-pub impl ToJson for ConfigGetPayload
-pub impl @json.FromJson for ConfigGetPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ConfigSetParams {
   config : Json
-}
-pub impl Show for ConfigSetParams
-pub impl ToJson for ConfigSetParams
-pub impl @json.FromJson for ConfigSetParams
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ConnectParams {
   min_protocol : Int
@@ -132,10 +97,7 @@ pub(all) struct ConnectParams {
   auth : AuthCredentials
   role : ClientRole
   scopes : Array[String]?
-}
-pub impl Show for ConnectParams
-pub impl ToJson for ConnectParams
-pub impl @json.FromJson for ConnectParams
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ErrorShape {
   code : String
@@ -143,47 +105,32 @@ pub(all) struct ErrorShape {
   details : Json?
   retryable : Bool?
   retry_after_ms : Int?
-}
-pub impl Show for ErrorShape
-pub impl ToJson for ErrorShape
-pub impl @json.FromJson for ErrorShape
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct EventFrame {
   event : String
   payload : Json?
   seq : Int?
   state_version : StateVersion?
-}
-pub impl Show for EventFrame
-pub impl ToJson for EventFrame
-pub impl @json.FromJson for EventFrame
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct Features {
   methods : Array[String]
   events : Array[String]
-}
-pub impl Show for Features
-pub impl ToJson for Features
-pub impl @json.FromJson for Features
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) enum Frame {
   Req(Request)
   Res(Response)
   Event(EventFrame)
-}
-pub impl Show for Frame
-pub impl ToJson for Frame
-pub impl @json.FromJson for Frame
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct HealthPayload {
   status : String
   uptime_ms : Int
   active_sessions : Int
   pending_requests : Int
-}
-pub impl Show for HealthPayload
-pub impl ToJson for HealthPayload
-pub impl @json.FromJson for HealthPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct HelloOk {
   protocol : Int
@@ -191,48 +138,33 @@ pub(all) struct HelloOk {
   features : Features
   snapshot : Snapshot
   policy : Policy
-}
-pub impl Show for HelloOk
-pub impl ToJson for HelloOk
-pub impl @json.FromJson for HelloOk
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct Policy {
   max_payload : Int
   max_buffered_bytes : Int
   tick_interval_ms : Int
-}
-pub impl Show for Policy
-pub impl ToJson for Policy
-pub impl @json.FromJson for Policy
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct Request {
   id : String
   rpc_method : String
   params : Json?
-}
-pub impl Show for Request
-pub impl ToJson for Request
-pub impl @json.FromJson for Request
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct Response {
   id : String
   ok : Bool
   payload : Json?
   error : ErrorShape?
-}
-pub impl Show for Response
-pub impl ToJson for Response
-pub impl @json.FromJson for Response
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ServerInfo {
   version : String
   commit : String?
   host : String?
   conn_id : String
-}
-pub impl Show for ServerInfo
-pub impl ToJson for ServerInfo
-pub impl @json.FromJson for ServerInfo
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct SessionInfo {
   session_id : String
@@ -240,34 +172,22 @@ pub(all) struct SessionInfo {
   channel : String?
   model_override : String?
   provider_override : String?
-}
-pub impl Show for SessionInfo
-pub impl ToJson for SessionInfo
-pub impl @json.FromJson for SessionInfo
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct SessionsListPayload {
   sessions : Array[SessionInfo]
-}
-pub impl Show for SessionsListPayload
-pub impl ToJson for SessionsListPayload
-pub impl @json.FromJson for SessionsListPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct Snapshot {
   presence : Json?
   health : Json?
   state_version : StateVersion?
-}
-pub impl Show for Snapshot
-pub impl ToJson for Snapshot
-pub impl @json.FromJson for Snapshot
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct StateVersion {
   presence : Int?
   health : Int?
-}
-pub impl Show for StateVersion
-pub impl ToJson for StateVersion
-pub impl @json.FromJson for StateVersion
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

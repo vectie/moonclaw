@@ -19,10 +19,7 @@ pub struct PluginRecord {
   version : String?
   install_path : String?
   metadata : Json
-}
-pub impl Show for PluginRecord
-pub impl ToJson for PluginRecord
-pub impl @json.FromJson for PluginRecord
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct PluginRuntime {
   home : String

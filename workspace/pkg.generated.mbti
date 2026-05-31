@@ -17,10 +17,7 @@ pub struct WorkspaceFile {
   name : String
   path : String
   content : String
-}
-pub impl Show for WorkspaceFile
-pub impl ToJson for WorkspaceFile
-pub impl @json.FromJson for WorkspaceFile
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct WorkspaceRuntime {
   home : String
@@ -38,10 +35,7 @@ pub struct WorkspaceSnapshot {
   configured_from : String
   files : Array[WorkspaceFile]
   prompt_context : String
-}
-pub impl Show for WorkspaceSnapshot
-pub impl ToJson for WorkspaceSnapshot
-pub impl @json.FromJson for WorkspaceSnapshot
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

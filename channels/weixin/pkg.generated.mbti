@@ -16,10 +16,7 @@ pub struct WeixinAccessTokenResponse {
   expires_in : Int?
   errcode : Int?
   errmsg : String?
-}
-pub impl Show for WeixinAccessTokenResponse
-pub impl ToJson for WeixinAccessTokenResponse
-pub impl @json.FromJson for WeixinAccessTokenResponse
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct WeixinAccountConfig {
   app_id : String
@@ -28,10 +25,7 @@ pub struct WeixinAccountConfig {
   original_id : String?
   api_base_url : String?
   enabled : Bool
-}
-pub impl Show for WeixinAccountConfig
-pub impl ToJson for WeixinAccountConfig
-pub impl @json.FromJson for WeixinAccountConfig
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct WeixinChannel {
   // private fields

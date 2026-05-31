@@ -19,9 +19,7 @@ pub struct WebSearchItem {
   source : String
   domain : String?
   rank : Int
-}
-pub impl ToJson for WebSearchItem
-pub impl @json.FromJson for WebSearchItem
+} derive(ToJson, @json.FromJson)
 
 pub struct WebSearchResult {
   query : String
@@ -29,10 +27,8 @@ pub struct WebSearchResult {
   answer : String?
   results : Array[WebSearchItem]
   source : String
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for WebSearchResult
-pub impl ToJson for WebSearchResult
-pub impl @json.FromJson for WebSearchResult
 
 // Type aliases
 

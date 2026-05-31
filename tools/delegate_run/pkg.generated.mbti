@@ -25,10 +25,7 @@ pub struct DelegateRunResult {
   step_kind : String
   step_config : Json
   summary : String
-}
-pub impl Show for DelegateRunResult
-pub impl ToJson for DelegateRunResult
-pub impl @json.FromJson for DelegateRunResult
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

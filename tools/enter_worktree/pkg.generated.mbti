@@ -17,10 +17,8 @@ pub struct EnterWorktreeResult {
   handle : @worktree.WorktreeHandle
   created : Bool
   note : String
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for EnterWorktreeResult
-pub impl ToJson for EnterWorktreeResult
-pub impl @json.FromJson for EnterWorktreeResult
 
 // Type aliases
 

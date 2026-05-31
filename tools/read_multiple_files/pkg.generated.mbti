@@ -13,10 +13,8 @@ pub fn new(@file.Manager) -> @tool.Tool[ReadMultipleFilesResult]
 // Errors
 
 // Types and methods
-type ReadMultipleFilesResult
+type ReadMultipleFilesResult derive(ToJson, @json.FromJson)
 pub impl Show for ReadMultipleFilesResult
-pub impl ToJson for ReadMultipleFilesResult
-pub impl @json.FromJson for ReadMultipleFilesResult
 
 // Type aliases
 

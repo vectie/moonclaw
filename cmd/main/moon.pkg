@@ -7,11 +7,11 @@ import {
   "vectie/moonclaw/cmd/main/exec",
   "vectie/moonclaw/cmd/main/proposal",
   "vectie/moonclaw/cmd/main/tui",
-  "vectie/moonclaw/cmd/acp",
-  "vectie/moonclaw/cmd/onboard",
+  "vectie/moonclaw/cmd/acp_command",
+  "vectie/moonclaw/cmd/onboard_command",
   "vectie/moonclaw/cmd/server",
   "vectie/moonclaw/cmd/daemon",
-  "vectie/moonclaw/cmd/gateway",
+  "vectie/moonclaw/cmd/gateway_command",
   "vectie/moonclaw/internal/buildinfo",
 }
 

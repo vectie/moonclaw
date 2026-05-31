@@ -24,11 +24,9 @@ pub struct RuntimeContextResult {
   workspace_dir : String?
   execution_isolation : Json?
   enabled_tools : Array[String]
-}
+} derive(ToJson, @json.FromJson)
 pub fn RuntimeContextResult::new(cwd~ : String, home? : String?, run_id? : String?, job_id? : String?, step_id? : String?, model_name? : String?, execution_mode? : String?, execution_target? : String?, workspace_dir? : String?, execution_isolation? : Json?, enabled_tools? : Array[String]) -> Self
 pub impl Show for RuntimeContextResult
-pub impl ToJson for RuntimeContextResult
-pub impl @json.FromJson for RuntimeContextResult
 
 // Type aliases
 

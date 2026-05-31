@@ -65,19 +65,14 @@ type AcpLiveOutput
 
 pub(all) struct AcpRunCancelParams {
   run_id : String
-}
-pub impl Show for AcpRunCancelParams
-pub impl ToJson for AcpRunCancelParams
-pub impl @json.FromJson for AcpRunCancelParams
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpSessionCreateParams {
   target_id : String
   session_key : String
   session_id : String?
   metadata : Json?
-}
-pub impl Show for AcpSessionCreateParams
-pub impl @json.FromJson for AcpSessionCreateParams
+} derive(Show, @json.FromJson)
 
 pub(all) struct AcpSessionRunParams {
   session_id : String
@@ -87,17 +82,12 @@ pub(all) struct AcpSessionRunParams {
   cwd : String?
   idempotency_key : String?
   metadata : Json?
-}
-pub impl Show for AcpSessionRunParams
-pub impl ToJson for AcpSessionRunParams
-pub impl @json.FromJson for AcpSessionRunParams
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct AdvanceStageParams {
   stage_name : String
   result : Json
-}
-pub impl ToJson for AdvanceStageParams
-pub impl @json.FromJson for AdvanceStageParams
+} derive(ToJson, @json.FromJson)
 
 pub struct AgentMailbox {
   agent_id : String
@@ -118,10 +108,7 @@ pub fn AgentMailbox::try_put(Self, AgentMessage) -> Bool
 pub struct AgentMailboxConfig {
   max_size : Int
   timeout_ms : Int
-}
-pub impl Show for AgentMailboxConfig
-pub impl ToJson for AgentMailboxConfig
-pub impl @json.FromJson for AgentMailboxConfig
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct AgentMessage {
   message_id : String
@@ -130,17 +117,11 @@ pub struct AgentMessage {
   topic : String
   payload : Json
   timestamp : Int
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn AgentMessage::is_broadcast(Self) -> Bool
 pub fn AgentMessage::is_directed(Self, String) -> Bool
-pub impl Show for AgentMessage
-pub impl ToJson for AgentMessage
-pub impl @json.FromJson for AgentMessage
 
-type AgentRun
-pub impl Show for AgentRun
-pub impl ToJson for AgentRun
-pub impl @json.FromJson for AgentRun
+type AgentRun derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AuthConfig {
   token : String?
@@ -173,11 +154,7 @@ pub enum CoordinationStatus {
   Completed
   Failed
   Cancelled
-}
-pub impl Eq for CoordinationStatus
-pub impl Show for CoordinationStatus
-pub impl ToJson for CoordinationStatus
-pub impl @json.FromJson for CoordinationStatus
+} derive(Eq, Show, ToJson, @json.FromJson)
 
 pub struct CoordinationTask {
   coordination_id : String
@@ -189,7 +166,7 @@ pub struct CoordinationTask {
   started_at : Int?
   completed_at : Int?
   metadata : Map[String, Json]
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn CoordinationTask::aggregate_results(Self) -> Json
 pub fn CoordinationTask::all_subtasks_done(Self) -> Bool
 pub fn CoordinationTask::cancel(Self) -> Self
@@ -203,9 +180,6 @@ pub fn CoordinationTask::is_done(Self) -> Bool
 pub fn CoordinationTask::pending_count(Self) -> Int
 pub fn CoordinationTask::start(Self) -> Self
 pub fn CoordinationTask::update_subtask(Self, String, CoordinationStatus, result? : Json?, error? : String?) -> Self
-pub impl Show for CoordinationTask
-pub impl ToJson for CoordinationTask
-pub impl @json.FromJson for CoordinationTask
 
 pub struct Coordinator {
   uuid : @uuid.Generator
@@ -227,67 +201,39 @@ pub fn Coordinator::start_task(Self, String) -> CoordinationTask?
 pub fn Coordinator::to_json(Self) -> Json
 pub fn Coordinator::update_subtask_status(Self, String, String, CoordinationStatus, result? : Json?, error? : String?) -> CoordinationTask?
 
-type CoworkConfigParams
-pub impl Show for CoworkConfigParams
-pub impl @json.FromJson for CoworkConfigParams
+type CoworkConfigParams derive(Show, @json.FromJson)
 
-type CoworkMessageParams
-pub impl Show for CoworkMessageParams
-pub impl @json.FromJson for CoworkMessageParams
+type CoworkMessageParams derive(Show, @json.FromJson)
 
-type CoworkPlanParams
-pub impl Show for CoworkPlanParams
-pub impl @json.FromJson for CoworkPlanParams
+type CoworkPlanParams derive(Show, @json.FromJson)
 
-type CoworkProposalRef
-pub impl Show for CoworkProposalRef
-pub impl ToJson for CoworkProposalRef
-pub impl @json.FromJson for CoworkProposalRef
+type CoworkProposalRef derive(Show, ToJson, @json.FromJson)
 
-type CoworkResumeParams
-pub impl Show for CoworkResumeParams
-pub impl @json.FromJson for CoworkResumeParams
+type CoworkResumeParams derive(Show, @json.FromJson)
 
-type CoworkRunRef
-pub impl Show for CoworkRunRef
-pub impl ToJson for CoworkRunRef
-pub impl @json.FromJson for CoworkRunRef
+type CoworkRunRef derive(Show, ToJson, @json.FromJson)
 
-type CoworkSessionCreateParams
-pub impl Show for CoworkSessionCreateParams
-pub impl @json.FromJson for CoworkSessionCreateParams
+type CoworkSessionCreateParams derive(Show, @json.FromJson)
 
-type CoworkSessionDetail
-pub impl Show for CoworkSessionDetail
-pub impl ToJson for CoworkSessionDetail
-pub impl @json.FromJson for CoworkSessionDetail
+type CoworkSessionDetail derive(Show, ToJson, @json.FromJson)
 
-type CoworkSessionSummary
-pub impl Show for CoworkSessionSummary
-pub impl ToJson for CoworkSessionSummary
-pub impl @json.FromJson for CoworkSessionSummary
+type CoworkSessionSummary derive(Show, ToJson, @json.FromJson)
 
 pub struct CreateCoordinationParams {
   parent_agent : String
   subtasks : Array[SubTaskParams]
   metadata : Map[String, Json]
-}
-pub impl ToJson for CreateCoordinationParams
-pub impl @json.FromJson for CreateCoordinationParams
+} derive(ToJson, @json.FromJson)
 
 pub struct CreateMailboxParams {
   agent_id : String
-}
-pub impl ToJson for CreateMailboxParams
-pub impl @json.FromJson for CreateMailboxParams
+} derive(ToJson, @json.FromJson)
 
 pub struct CreatePipelineParams {
   name : String
   stages : Array[PipelineStageParams]
   metadata : Map[String, Json]
-}
-pub impl ToJson for CreatePipelineParams
-pub impl @json.FromJson for CreatePipelineParams
+} derive(ToJson, @json.FromJson)
 
 type DedupeCache
 pub fn DedupeCache::clear_expired(Self, Int) -> Unit
@@ -299,9 +245,7 @@ type DedupeEntry
 pub struct FailStageParams {
   stage_name : String
   error : String
-}
-pub impl ToJson for FailStageParams
-pub impl @json.FromJson for FailStageParams
+} derive(ToJson, @json.FromJson)
 
 pub struct Gateway {
   clock : &@clock.Clock
@@ -373,20 +317,11 @@ pub fn MailboxManager::remove(Self, String) -> AgentMailbox?
 pub fn MailboxManager::size(Self) -> Int
 pub fn MailboxManager::to_json(Self) -> Json
 
-type PersistedChannelAccount
-pub impl Show for PersistedChannelAccount
-pub impl ToJson for PersistedChannelAccount
-pub impl @json.FromJson for PersistedChannelAccount
+type PersistedChannelAccount derive(Show, ToJson, @json.FromJson)
 
-type PersistedChannelState
-pub impl Show for PersistedChannelState
-pub impl ToJson for PersistedChannelState
-pub impl @json.FromJson for PersistedChannelState
+type PersistedChannelState derive(Show, ToJson, @json.FromJson)
 
-type PersistedSession
-pub impl Show for PersistedSession
-pub impl ToJson for PersistedSession
-pub impl @json.FromJson for PersistedSession
+type PersistedSession derive(Show, ToJson, @json.FromJson)
 
 pub struct Pipeline {
   pipeline_id : String
@@ -399,7 +334,7 @@ pub struct Pipeline {
   started_at : Int?
   completed_at : Int?
   metadata : Map[String, Json]
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn Pipeline::advance_stage(Self, String, Json) -> Self
 pub fn Pipeline::cancel(Self) -> Self
 pub fn Pipeline::complete(Self) -> Self
@@ -413,9 +348,6 @@ pub fn Pipeline::is_done(Self) -> Bool
 pub fn Pipeline::progress(Self) -> Double
 pub fn Pipeline::start(Self) -> Self
 pub fn Pipeline::total_stages(Self) -> Int
-pub impl Show for Pipeline
-pub impl ToJson for Pipeline
-pub impl @json.FromJson for Pipeline
 
 pub struct PipelineManager {
   uuid : @uuid.Generator
@@ -445,15 +377,12 @@ pub struct PipelineStage {
   error : String?
   started_at : Int?
   completed_at : Int?
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn PipelineStage::complete(Self, Json) -> Self
 pub fn PipelineStage::fail(Self, String) -> Self
 pub fn PipelineStage::is_done(Self) -> Bool
 pub fn PipelineStage::resolve_input(Self, Map[String, Json]) -> String
 pub fn PipelineStage::start(Self) -> Self
-pub impl Show for PipelineStage
-pub impl ToJson for PipelineStage
-pub impl @json.FromJson for PipelineStage
 
 pub struct PipelineStageParams {
   name : String
@@ -461,9 +390,7 @@ pub struct PipelineStageParams {
   model : String?
   cwd : String?
   input_template : String?
-}
-pub impl ToJson for PipelineStageParams
-pub impl @json.FromJson for PipelineStageParams
+} derive(ToJson, @json.FromJson)
 
 pub enum PipelineStatus {
   Pending
@@ -471,29 +398,18 @@ pub enum PipelineStatus {
   Completed
   Failed
   Cancelled
-}
-pub impl Eq for PipelineStatus
-pub impl Show for PipelineStatus
-pub impl ToJson for PipelineStatus
-pub impl @json.FromJson for PipelineStatus
+} derive(Eq, Show, ToJson, @json.FromJson)
 
-type PlanModeState
-pub impl Show for PlanModeState
-pub impl ToJson for PlanModeState
-pub impl @json.FromJson for PlanModeState
+type PlanModeState derive(Show, ToJson, @json.FromJson)
 
 pub struct SendMessageParams {
   from_agent : String
   to_agent : String?
   topic : String
   payload : Json
-}
-pub impl ToJson for SendMessageParams
-pub impl @json.FromJson for SendMessageParams
+} derive(ToJson, @json.FromJson)
 
-type SessionEntry
-pub impl Show for SessionEntry
-pub impl ToJson for SessionEntry
+type SessionEntry derive(Show, ToJson)
 
 type SessionManager
 pub fn SessionManager::count(Self) -> Int
@@ -513,10 +429,7 @@ pub struct SessionMessage {
   content : String
   timestamp : Int
   metadata : Json
-}
-pub impl Show for SessionMessage
-pub impl ToJson for SessionMessage
-pub impl @json.FromJson for SessionMessage
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct SubTask {
   task_id : String
@@ -529,31 +442,24 @@ pub struct SubTask {
   created_at : Int
   started_at : Int?
   completed_at : Int?
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn SubTask::complete(Self, Json) -> Self
 pub fn SubTask::fail(Self, String) -> Self
 pub fn SubTask::is_done(Self) -> Bool
 pub fn SubTask::start(Self) -> Self
-pub impl Show for SubTask
-pub impl ToJson for SubTask
-pub impl @json.FromJson for SubTask
 
 pub struct SubTaskParams {
   task_id : String
   message : String
   model : String?
   cwd : String?
-}
-pub impl ToJson for SubTaskParams
-pub impl @json.FromJson for SubTaskParams
+} derive(ToJson, @json.FromJson)
 
 pub struct UpdateSubTaskParams {
   status : CoordinationStatus
   result : Json?
   error : String?
-}
-pub impl ToJson for UpdateSubTaskParams
-pub impl @json.FromJson for UpdateSubTaskParams
+} derive(ToJson, @json.FromJson)
 
 // Type aliases
 

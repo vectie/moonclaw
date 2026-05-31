@@ -16,10 +16,8 @@ pub struct ListResourcesResult {
   resources : Array[ResourceSummary]
   total_resources : Int
   truncated : Bool
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for ListResourcesResult
-pub impl ToJson for ListResourcesResult
-pub impl @json.FromJson for ListResourcesResult
 
 pub struct ResourceSummary {
   uri : String
@@ -27,19 +25,14 @@ pub struct ResourceSummary {
   title : String
   description : String
   metadata : Json
-}
-pub impl ToJson for ResourceSummary
-pub impl @json.FromJson for ResourceSummary
+} derive(ToJson, @json.FromJson)
 
 pub enum ResourceSummaryKind {
   File
   Skill
   Worktree
   Provider
-}
-pub impl Show for ResourceSummaryKind
-pub impl ToJson for ResourceSummaryKind
-pub impl @json.FromJson for ResourceSummaryKind
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

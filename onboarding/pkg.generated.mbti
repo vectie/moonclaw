@@ -44,10 +44,7 @@ pub struct OnboardingApplyResult {
   created : Array[String]
   preserved : Array[String]
   onboarding : OnboardingStatus
-}
-pub impl Show for OnboardingApplyResult
-pub impl ToJson for OnboardingApplyResult
-pub impl @json.FromJson for OnboardingApplyResult
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct OnboardingAuthProviderStatus {
   provider : String
@@ -56,19 +53,13 @@ pub struct OnboardingAuthProviderStatus {
   detail : String?
   default_model : String?
   available_models : Array[String]
-}
-pub impl Show for OnboardingAuthProviderStatus
-pub impl ToJson for OnboardingAuthProviderStatus
-pub impl @json.FromJson for OnboardingAuthProviderStatus
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct OnboardingAuthStatus {
   providers : Array[OnboardingAuthProviderStatus]
   issues : Array[String]
   next_steps : Array[String]
-}
-pub impl Show for OnboardingAuthStatus
-pub impl ToJson for OnboardingAuthStatus
-pub impl @json.FromJson for OnboardingAuthStatus
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct OnboardingOptions {
   primary_model : String?
@@ -79,10 +70,7 @@ pub struct OnboardingOptions {
   feishu_enabled : Bool?
   feishu_app_id : String?
   feishu_app_secret : String?
-}
-pub impl Show for OnboardingOptions
-pub impl ToJson for OnboardingOptions
-pub impl @json.FromJson for OnboardingOptions
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct OnboardingStatus {
   home : String
@@ -103,10 +91,7 @@ pub struct OnboardingStatus {
   plugin_count : Int
   issues : Array[String]
   next_steps : Array[String]
-}
-pub impl Show for OnboardingStatus
-pub impl ToJson for OnboardingStatus
-pub impl @json.FromJson for OnboardingStatus
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

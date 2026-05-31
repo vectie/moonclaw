@@ -19,10 +19,8 @@ pub struct GlobFilesResult {
   total_matches : Int
   truncated : Bool
   respect_gitignore : Bool
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for GlobFilesResult
-pub impl ToJson for GlobFilesResult
-pub impl @json.FromJson for GlobFilesResult
 
 // Type aliases
 

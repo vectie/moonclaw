@@ -16,10 +16,8 @@ pub struct ExitWorktreeResult {
   path : String
   repo_root : String
   removed : Bool
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for ExitWorktreeResult
-pub impl ToJson for ExitWorktreeResult
-pub impl @json.FromJson for ExitWorktreeResult
 
 // Type aliases
 

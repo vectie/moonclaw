@@ -20,10 +20,7 @@ pub struct FeishuAccessTokenResponse {
   tenant_access_token : String?
   app_access_token : String?
   expire : Int?
-}
-pub impl Show for FeishuAccessTokenResponse
-pub impl ToJson for FeishuAccessTokenResponse
-pub impl @json.FromJson for FeishuAccessTokenResponse
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuAccountConfig {
   app_id : String
@@ -39,10 +36,7 @@ pub struct FeishuAccountConfig {
   verify_token : String?
   encryption_key : String?
   enabled : Bool
-}
-pub impl Show for FeishuAccountConfig
-pub impl ToJson for FeishuAccountConfig
-pub impl @json.FromJson for FeishuAccountConfig
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuChannel {
   // private fields
@@ -77,10 +71,7 @@ pub struct FeishuEvent {
   header : FeishuEventHeader
   event : Json
   token : String?
-}
-pub impl Show for FeishuEvent
-pub impl ToJson for FeishuEvent
-pub impl @json.FromJson for FeishuEvent
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuEventHeader {
   event_id : String
@@ -91,10 +82,7 @@ pub struct FeishuEventHeader {
   tenant_key : String?
   resource_id : String?
   user_list : Array[String]?
-}
-pub impl Show for FeishuEventHeader
-pub impl ToJson for FeishuEventHeader
-pub impl @json.FromJson for FeishuEventHeader
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuMessage {
   message_id : String
@@ -107,31 +95,19 @@ pub struct FeishuMessage {
   msg_parent_id : String?
   from_user_id : String?
   tenant_key : String?
-}
-pub impl Show for FeishuMessage
-pub impl ToJson for FeishuMessage
-pub impl @json.FromJson for FeishuMessage
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuMessageData {
   message_id : String
-}
-pub impl Show for FeishuMessageData
-pub impl ToJson for FeishuMessageData
-pub impl @json.FromJson for FeishuMessageData
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuMessageLookupBody {
   content : String?
-}
-pub impl Show for FeishuMessageLookupBody
-pub impl ToJson for FeishuMessageLookupBody
-pub impl @json.FromJson for FeishuMessageLookupBody
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuMessageLookupData {
   items : Array[FeishuMessageLookupItem]
-}
-pub impl Show for FeishuMessageLookupData
-pub impl ToJson for FeishuMessageLookupData
-pub impl @json.FromJson for FeishuMessageLookupData
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuMessageLookupItem {
   message_id : String
@@ -143,66 +119,48 @@ pub struct FeishuMessageLookupItem {
   msg_type : String?
   body : FeishuMessageLookupBody?
   sender : FeishuMessageLookupSender?
-}
-pub impl Show for FeishuMessageLookupItem
-pub impl ToJson for FeishuMessageLookupItem
-pub impl @json.FromJson for FeishuMessageLookupItem
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuMessageLookupResponse {
   code : Int
   msg : String
   data : FeishuMessageLookupData?
-}
-pub impl Show for FeishuMessageLookupResponse
-pub impl ToJson for FeishuMessageLookupResponse
-pub impl @json.FromJson for FeishuMessageLookupResponse
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuMessageLookupSender {
   id : String?
   sender_type : String?
-}
-pub impl Show for FeishuMessageLookupSender
-pub impl ToJson for FeishuMessageLookupSender
-pub impl @json.FromJson for FeishuMessageLookupSender
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuReactionIndicatorState {
   message_id : String
   reaction_id : String
   emoji_type : String
-}
-pub impl Show for FeishuReactionIndicatorState
+} derive(Show)
 
 pub struct FeishuSendMessageRequest {
   receive_id : String
   msg_type : String
   content : String
-}
-pub impl Show for FeishuSendMessageRequest
-pub impl ToJson for FeishuSendMessageRequest
-pub impl @json.FromJson for FeishuSendMessageRequest
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuSendMessageResponse {
   code : Int
   msg : String
   data : FeishuMessageData?
-}
-pub impl Show for FeishuSendMessageResponse
-pub impl ToJson for FeishuSendMessageResponse
-pub impl @json.FromJson for FeishuSendMessageResponse
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuStreamingCardSession {
   card_id : String
   message_id : String
   sequence : Int
   current_text : String
-}
-pub impl Show for FeishuStreamingCardSession
+} derive(Show)
 
 pub struct FeishuTypingIndicatorState {
   message_id : String
   reaction_id : String
-}
-pub impl Show for FeishuTypingIndicatorState
+} derive(Show)
 
 pub struct FeishuUser {
   open_id : String?
@@ -210,67 +168,45 @@ pub struct FeishuUser {
   display_name : String?
   nickname : String?
   en_name : String?
-}
-pub impl Show for FeishuUser
-pub impl ToJson for FeishuUser
-pub impl @json.FromJson for FeishuUser
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuUserBatchLookupData {
   items : Array[FeishuUser]
-}
-pub impl Show for FeishuUserBatchLookupData
-pub impl ToJson for FeishuUserBatchLookupData
-pub impl @json.FromJson for FeishuUserBatchLookupData
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuUserBatchLookupResponse {
   code : Int
   msg : String
   data : FeishuUserBatchLookupData?
-}
-pub impl Show for FeishuUserBatchLookupResponse
-pub impl ToJson for FeishuUserBatchLookupResponse
-pub impl @json.FromJson for FeishuUserBatchLookupResponse
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuUserLookupData {
   user : FeishuUser?
-}
-pub impl Show for FeishuUserLookupData
-pub impl ToJson for FeishuUserLookupData
-pub impl @json.FromJson for FeishuUserLookupData
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuUserLookupResponse {
   code : Int
   msg : String
   data : FeishuUserLookupData?
-}
-pub impl Show for FeishuUserLookupResponse
-pub impl ToJson for FeishuUserLookupResponse
-pub impl @json.FromJson for FeishuUserLookupResponse
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct FeishuWebSocketClientConfig {
   ping_interval : Int?
   reconnect_count : Int?
   reconnect_interval : Int?
   reconnect_nonce : Int?
-}
-pub impl Show for FeishuWebSocketClientConfig
-pub impl ToJson for FeishuWebSocketClientConfig
+} derive(Show, ToJson)
 
 pub struct FeishuWebSocketEndpointData {
   url : String
   client_config : FeishuWebSocketClientConfig?
-}
-pub impl Show for FeishuWebSocketEndpointData
-pub impl ToJson for FeishuWebSocketEndpointData
+} derive(Show, ToJson)
 
 pub struct FeishuWebSocketEndpointResponse {
   code : Int
   msg : String
   data : Json?
-}
-pub impl Show for FeishuWebSocketEndpointResponse
-pub impl ToJson for FeishuWebSocketEndpointResponse
-pub impl @json.FromJson for FeishuWebSocketEndpointResponse
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 pub type FeishuConnectionMode = String

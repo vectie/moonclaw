@@ -1,13 +1,8 @@
 import {
   "moonbitlang/async",
-  "moonbitlang/core/json",
-  "moonbitlang/core/strconv",
-  "vectie/moonclaw/onboarding",
   "vectie/moonclaw/internal/os",
-  "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/internal/buildinfo",
   "vectie/moonclaw/internal/backtrace",
+  "vectie/moonclaw/cmd/onboard_command",
 }
 
 options(

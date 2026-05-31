@@ -22,10 +22,8 @@ pub struct RegisteredResourceProvider {
   docs_uri : String?
   capabilities : Array[String]
   metadata : Json
-}
+} derive(Show, ToJson)
 pub fn RegisteredResourceProvider::new(name~ : String, title? : String, description? : String, kind? : String, endpoint? : String?, docs_uri? : String?, capabilities? : Array[String], metadata? : Json) -> Self
-pub impl Show for RegisteredResourceProvider
-pub impl ToJson for RegisteredResourceProvider
 pub impl @json.FromJson for RegisteredResourceProvider
 
 // Type aliases

@@ -22,39 +22,24 @@ import {
 pub(all) struct AcpRunMutationPayload {
   status : String
   run : @acp.AcpRun
-}
-pub impl Show for AcpRunMutationPayload
-pub impl ToJson for AcpRunMutationPayload
-pub impl @json.FromJson for AcpRunMutationPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpRunPayload {
   run : @acp.AcpRun
-}
-pub impl Show for AcpRunPayload
-pub impl ToJson for AcpRunPayload
-pub impl @json.FromJson for AcpRunPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpRunsPayload {
   runs : Array[@acp.AcpRun]
-}
-pub impl Show for AcpRunsPayload
-pub impl ToJson for AcpRunsPayload
-pub impl @json.FromJson for AcpRunsPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpSessionMutationPayload {
   status : String
   session : @acp.AcpSession
-}
-pub impl Show for AcpSessionMutationPayload
-pub impl ToJson for AcpSessionMutationPayload
-pub impl @json.FromJson for AcpSessionMutationPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpSessionPayload {
   session : @acp.AcpSession
-}
-pub impl Show for AcpSessionPayload
-pub impl ToJson for AcpSessionPayload
-pub impl @json.FromJson for AcpSessionPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpSessionRunPayload {
   status : String
@@ -63,61 +48,37 @@ pub(all) struct AcpSessionRunPayload {
   accepted : @protocol.AgentAcceptedPayload
   target : @acp.AcpTarget
   plan : @acp.AcpLaunchPlan
-}
-pub impl Show for AcpSessionRunPayload
-pub impl ToJson for AcpSessionRunPayload
-pub impl @json.FromJson for AcpSessionRunPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpSessionsPayload {
   sessions : Array[@acp.AcpSession]
-}
-pub impl Show for AcpSessionsPayload
-pub impl ToJson for AcpSessionsPayload
-pub impl @json.FromJson for AcpSessionsPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpTargetPayload {
   target : @acp.AcpTarget
-}
-pub impl Show for AcpTargetPayload
-pub impl ToJson for AcpTargetPayload
-pub impl @json.FromJson for AcpTargetPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpTargetsPayload {
   targets : Array[@acp.AcpTarget]
-}
-pub impl Show for AcpTargetsPayload
-pub impl ToJson for AcpTargetsPayload
-pub impl @json.FromJson for AcpTargetsPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpUiEventsPayload {
   timeline : Array[@acp.AcpUiTimelineEntry]
-}
-pub impl Show for AcpUiEventsPayload
-pub impl ToJson for AcpUiEventsPayload
-pub impl @json.FromJson for AcpUiEventsPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpUiSnapshotPayload {
   snapshot : @acp.AcpUiSnapshot
-}
-pub impl Show for AcpUiSnapshotPayload
-pub impl ToJson for AcpUiSnapshotPayload
-pub impl @json.FromJson for AcpUiSnapshotPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChannelMutationPayload {
   status : String
   channel_id : String
   account_id : String?
-}
-pub impl Show for ChannelMutationPayload
-pub impl ToJson for ChannelMutationPayload
-pub impl @json.FromJson for ChannelMutationPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChannelsListPayload {
   channels : Array[@channel.ChannelDock]
-}
-pub impl Show for ChannelsListPayload
-pub impl ToJson for ChannelsListPayload
-pub impl @json.FromJson for ChannelsListPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct Client {
   base_url : String
@@ -183,83 +144,50 @@ pub(all) struct JobMutationPayload {
   status : String
   job : @job.JobDefinition?
   run : @job.JobRun?
-}
-pub impl Show for JobMutationPayload
-pub impl ToJson for JobMutationPayload
-pub impl @json.FromJson for JobMutationPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct JobPayload {
   job : @job.JobDefinition
-}
-pub impl Show for JobPayload
-pub impl ToJson for JobPayload
-pub impl @json.FromJson for JobPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct JobRunDetails {
   run : @job.JobRun
   steps : Array[@job.JobStepRun]
   artifacts : Array[@job.ArtifactRecord]
-}
-pub impl Show for JobRunDetails
-pub impl ToJson for JobRunDetails
-pub impl @json.FromJson for JobRunDetails
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct JobRunsPayload {
   runs : Array[@job.JobRun]
-}
-pub impl Show for JobRunsPayload
-pub impl ToJson for JobRunsPayload
-pub impl @json.FromJson for JobRunsPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct JobUiEventsPayload {
   timeline : Array[@job.JobUiTimelineEntry]
-}
-pub impl Show for JobUiEventsPayload
-pub impl ToJson for JobUiEventsPayload
-pub impl @json.FromJson for JobUiEventsPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct JobUiSnapshotPayload {
   snapshot : @job.JobUiSnapshot
-}
-pub impl Show for JobUiSnapshotPayload
-pub impl ToJson for JobUiSnapshotPayload
-pub impl @json.FromJson for JobUiSnapshotPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct JobsListPayload {
   jobs : Array[@job.JobDefinition]
-}
-pub impl Show for JobsListPayload
-pub impl ToJson for JobsListPayload
-pub impl @json.FromJson for JobsListPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct MemoriesListPayload {
   memories : Array[@job.MemoryRecord]
-}
-pub impl Show for MemoriesListPayload
-pub impl ToJson for MemoriesListPayload
-pub impl @json.FromJson for MemoriesListPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct MemoryMutationPayload {
   status : String
   memory : @job.MemoryRecord
-}
-pub impl Show for MemoryMutationPayload
-pub impl ToJson for MemoryMutationPayload
-pub impl @json.FromJson for MemoryMutationPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct MemorySearchPayload {
   hits : Array[@job.MemorySearchHit]
-}
-pub impl Show for MemorySearchPayload
-pub impl ToJson for MemorySearchPayload
-pub impl @json.FromJson for MemorySearchPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct PluginsListPayload {
   plugins : Array[@plugin.PluginRecord]
-}
-pub impl Show for PluginsListPayload
-pub impl ToJson for PluginsListPayload
-pub impl @json.FromJson for PluginsListPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct RunInfo {
   run_id : String
@@ -269,24 +197,15 @@ pub(all) struct RunInfo {
   finished_at : Int?
   result : Json?
   error : @protocol.ErrorShape?
-}
-pub impl Show for RunInfo
-pub impl ToJson for RunInfo
-pub impl @json.FromJson for RunInfo
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct RunsListPayload {
   runs : Array[RunInfo]
-}
-pub impl Show for RunsListPayload
-pub impl ToJson for RunsListPayload
-pub impl @json.FromJson for RunsListPayload
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct WorkspacePayload {
   workspace : @workspace.WorkspaceSnapshot
-}
-pub impl Show for WorkspacePayload
-pub impl ToJson for WorkspacePayload
-pub impl @json.FromJson for WorkspacePayload
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

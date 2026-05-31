@@ -228,13 +228,158 @@ pub fn analysis_result_content_contract(config : AnalysisStepConfig) -> String? 
 }
 
 ///|
+fn has_text_prefix(text : String, prefix : String) -> Bool {
+  text.length() >= prefix.length() && text[:prefix.length()] == prefix
+}
+
+///|
+fn normalize_blocker_payload(value : String) -> String {
+  value.trim().trim(chars=" -[]{}'\"`.,;").to_owned()
+}
+
+///|
+fn blocker_payload_is_empty(value : String) -> Bool {
+  match normalize_blocker_payload(value) {
+    "" | "none" | "no" | "n/a" | "na" | "null" | "false" => true
+    _ => false
+  }
+}
+
+///|
+fn is_result_marker_line(line : String) -> Bool {
+  if has_text_prefix(line, "-") {
+    false
+  } else {
+    has_text_prefix(line, "planbook_decision:") ||
+    has_text_prefix(line, "repair_decision:") ||
+    has_text_prefix(line, "result_decision:") ||
+    has_text_prefix(line, "decision:") ||
+    has_text_prefix(line, "plan_path:") ||
+    has_text_prefix(line, "acceptance_criteria:") ||
+    has_text_prefix(line, "validation:") ||
+    has_text_prefix(line, "validation_commands:") ||
+    has_text_prefix(line, "changed_artifacts:") ||
+    has_text_prefix(line, "follow_up_gaps:") ||
+    has_text_prefix(line, "requires_review:") ||
+    has_text_prefix(line, "notify_town:")
+  }
+}
+
+///|
+fn remaining_blockers_has_content(lower : String) -> Bool {
+  let marker = "remaining_blockers:"
+  let mut reading_blockers = false
+  for raw in lower.split("\n") {
+    let line = raw.trim().to_owned()
+    if line.is_blank() {
+      continue
+    }
+    if has_text_prefix(line, marker) {
+      let payload = normalize_blocker_payload(line[marker.length():].to_owned())
+      if payload.is_blank() {
+        reading_blockers = true
+        continue
+      }
+      return !blocker_payload_is_empty(payload)
+    }
+    if reading_blockers {
+      if is_result_marker_line(line) {
+        return false
+      }
+      if !blocker_payload_is_empty(line) {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+fn json_remaining_blockers_has_content(lower : String) -> Bool {
+  let compact = lower
+    .replace(old=" ", new="")
+    .replace(old="\n", new="")
+    .replace(old="\r", new="")
+    .replace(old="\t", new="")
+  if !compact.contains("\"remaining_blockers\":") {
+    return false
+  }
+  if compact.contains("\"remaining_blockers\":[]") ||
+    compact.contains("\"remaining_blockers\":null") ||
+    compact.contains("\"remaining_blockers\":false") ||
+    compact.contains("\"remaining_blockers\":\"\"") ||
+    compact.contains("\"remaining_blockers\":\"none\"") ||
+    compact.contains("\"remaining_blockers\":[\"none\"]") ||
+    compact.contains("\"remaining_blockers\":[\"n/a\"]") ||
+    compact.contains("\"remaining_blockers\":[\"na\"]") {
+    false
+  } else {
+    compact.contains("\"remaining_blockers\":[") ||
+    compact.contains("\"remaining_blockers\":\"")
+  }
+}
+
+///|
+fn analysis_result_decision_from_text(content : String) -> String {
+  let lower = content.to_lower()
+  if lower.contains("repair_decision: needs_external_owner") ||
+    lower.contains("repair_decision: blocked") ||
+    remaining_blockers_has_content(lower) ||
+    json_remaining_blockers_has_content(lower) ||
+    lower.contains("\"result_decision\":\"blocked\"") ||
+    lower.contains("\"result_decision\": \"blocked\"") {
+    "blocked"
+  } else if lower.contains("repair_decision: no_change") ||
+    lower.contains("\"result_decision\":\"no_change\"") ||
+    lower.contains("\"result_decision\": \"no_change\"") {
+    "no_change"
+  } else if lower.contains("repair_decision: review") ||
+    lower.contains("\"result_decision\":\"review\"") ||
+    lower.contains("\"result_decision\": \"review\"") {
+    "review"
+  } else {
+    "accepted"
+  }
+}
+
+///|
+fn normalize_analysis_result_decision(value : String) -> String? {
+  match value.trim().to_lower() {
+    "accepted" => Some("accepted")
+    "no_change" => Some("no_change")
+    "review" => Some("review")
+    "blocked" => Some("blocked")
+    _ => None
+  }
+}
+
+///|
+fn analysis_result_decision(
+  config : AnalysisStepConfig,
+  execution : AnalysisExecution,
+) -> String {
+  match metadata_string(config.metadata, "result_decision") {
+    Some(value) =>
+      match normalize_analysis_result_decision(value) {
+        Some(decision) => decision
+        None => analysis_result_decision_from_text(execution.content)
+      }
+    None => analysis_result_decision_from_text(execution.content)
+  }
+}
+
+///|
 pub fn structured_analysis_result_payload(
   step_id : String,
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
 ) -> Json {
+  let decision = analysis_result_decision(config, execution)
   let payload : Map[String, Json] = {
     "step_id": step_id.to_json(),
+    "result_decision": decision.to_json(),
+    "requires_review": (decision == "review" || decision == "blocked").to_json(),
+    "notify_town": (decision != "no_change").to_json(),
     "model": execution.model_name.to_json(),
     "content": execution.content.to_json(),
     "conversation_id": execution.conversation_id.to_json(),

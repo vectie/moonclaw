@@ -17,11 +17,11 @@ pub struct Model {
 const PackageName = "@vectie/moonclaw/internal/openrouter"
 
 ///|
-pub impl @json.FromJson for Model with from_json(
+pub impl @json.FromJson for Model with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> Model raise @json.JsonDecodeError {
-  guard json is @json.Object(json) else {
+  guard json is Object(json) else {
     raise @json.JsonDecodeError(
       (path, "\{PackageName}.Model::from_json: expected object"),
     )
@@ -192,11 +192,11 @@ pub struct Architecture {
 } derive(ToJson)
 
 ///|
-pub impl @json.FromJson for Architecture with from_json(
+pub impl @json.FromJson for Architecture with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> Architecture raise @json.JsonDecodeError {
-  guard json is @json.Object(json) else {
+  guard json is Object(json) else {
     raise @json.JsonDecodeError(
       (path, "\{PackageName}.Architecture::from_json: expected object"),
     )
@@ -269,11 +269,11 @@ pub struct Pricing {
 } derive(ToJson)
 
 ///|
-pub impl @json.FromJson for Pricing with from_json(
+pub impl @json.FromJson for Pricing with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> Pricing raise @json.JsonDecodeError {
-  guard json is @json.Object(json) else {
+  guard json is Object(json) else {
     raise @json.JsonDecodeError(
       (path, "\{PackageName}.Pricing::from_json: expected object"),
     )
@@ -371,11 +371,11 @@ pub struct TopProvider {
 } derive(ToJson)
 
 ///|
-pub impl @json.FromJson for TopProvider with from_json(
+pub impl @json.FromJson for TopProvider with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> TopProvider raise @json.JsonDecodeError {
-  guard json is @json.Object(json) else {
+  guard json is Object(json) else {
     raise @json.JsonDecodeError(
       (path, "\{PackageName}.TopProvider::from_json: expected object"),
     )

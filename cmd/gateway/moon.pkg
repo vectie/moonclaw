@@ -1,19 +1,8 @@
 import {
-  "moonbitlang/core/json",
-  "moonbitlang/core/strconv",
   "moonbitlang/async",
-  "vectie/moonclaw/cmd/main/proposal",
-  "vectie/moonclaw/channel",
-  "vectie/moonclaw/job",
-  "vectie/moonclaw/gateway/server",
-  "vectie/moonclaw/gateway/client",
-  "vectie/moonclaw/gateway/protocol",
-  "vectie/moonclaw/internal/fsx",
   "vectie/moonclaw/internal/os",
-  "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/internal/buildinfo",
   "vectie/moonclaw/internal/backtrace",
+  "vectie/moonclaw/cmd/gateway_command",
 }
 
 options(

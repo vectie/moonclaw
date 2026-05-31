@@ -33,20 +33,14 @@ pub struct ApprovalRecord {
   status : String
   created_at : Int
   approved_at : Int?
-}
-pub impl Show for ApprovalRecord
-pub impl ToJson for ApprovalRecord
-pub impl @json.FromJson for ApprovalRecord
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct CommandPolicy {
   native : String
   native_skills : String
   restart : Bool
   owner_display : String
-}
-pub impl Show for CommandPolicy
-pub impl ToJson for CommandPolicy
-pub impl @json.FromJson for CommandPolicy
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct PairingRecord {
   key : String
@@ -56,15 +50,9 @@ pub struct PairingRecord {
   status : String
   created_at : Int
   approved_at : Int?
-}
-pub impl Show for PairingRecord
-pub impl ToJson for PairingRecord
-pub impl @json.FromJson for PairingRecord
+} derive(Show, ToJson, @json.FromJson)
 
-type PersistedSecurityState
-pub impl Show for PersistedSecurityState
-pub impl ToJson for PersistedSecurityState
-pub impl @json.FromJson for PersistedSecurityState
+type PersistedSecurityState derive(Show, ToJson, @json.FromJson)
 
 pub enum SecurityChatAction {
   Pair

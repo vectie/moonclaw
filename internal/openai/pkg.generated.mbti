@@ -72,17 +72,13 @@ pub struct AnthropicContentBlock {
   name : String?
   input : Json?
   id : String?
-}
-pub impl Show for AnthropicContentBlock
-pub impl @json.FromJson for AnthropicContentBlock
+} derive(Show, @json.FromJson)
 
 pub struct AnthropicDelta {
   type_ : String?
   text : String?
   stop_reason : String?
-}
-pub impl Show for AnthropicDelta
-pub impl @json.FromJson for AnthropicDelta
+} derive(Show, @json.FromJson)
 
 pub struct AnthropicMessage {
   role : String
@@ -109,9 +105,7 @@ pub struct AnthropicResponse {
   stop_reason : String?
   stop_sequence : String?
   usage : AnthropicUsage
-}
-pub impl Show for AnthropicResponse
-pub impl @json.FromJson for AnthropicResponse
+} derive(Show, @json.FromJson)
 
 pub struct AnthropicStreamEvent {
   type_ : String
@@ -119,9 +113,7 @@ pub struct AnthropicStreamEvent {
   delta : AnthropicDelta?
   content_block : AnthropicContentBlock?
   message : AnthropicResponse?
-}
-pub impl Show for AnthropicStreamEvent
-pub impl @json.FromJson for AnthropicStreamEvent
+} derive(Show, @json.FromJson)
 
 pub struct AnthropicTool {
   name : String
@@ -133,9 +125,7 @@ pub impl ToJson for AnthropicTool
 pub struct AnthropicUsage {
   input_tokens : Int
   output_tokens : Int
-}
-pub impl Show for AnthropicUsage
-pub impl @json.FromJson for AnthropicUsage
+} derive(Show, @json.FromJson)
 
 pub(all) enum CacheControl {
   Ephemeral
@@ -150,9 +140,8 @@ pub struct ChatCompletion {
   usage : CompletionUsage?
   system_fingerprint : String?
   service_tier : ChatCompletionServiceTier?
-}
+} derive(Show)
 pub fn ChatCompletion::new(id~ : String, choices~ : Array[ChatCompletionChoice], created~ : Int, model~ : String, usage? : CompletionUsage, system_fingerprint? : String, service_tier? : ChatCompletionServiceTier) -> Self
-pub impl Show for ChatCompletion
 pub impl ToJson for ChatCompletion
 pub impl @json.FromJson for ChatCompletion
 
@@ -176,9 +165,8 @@ pub struct ChatCompletionChoice {
   finish_reason : ChatCompletionChoiceFinishReason?
   index : Int
   message : ChatCompletionMessage
-}
+} derive(Show)
 pub fn ChatCompletionChoice::new(finish_reason? : ChatCompletionChoiceFinishReason, index~ : Int, message~ : ChatCompletionMessage) -> Self
-pub impl Show for ChatCompletionChoice
 
 pub(all) enum ChatCompletionChoiceFinishReason {
   Stop
@@ -186,8 +174,7 @@ pub(all) enum ChatCompletionChoiceFinishReason {
   ToolCalls
   ContentFilter
   FunctionCall
-}
-pub impl Show for ChatCompletionChoiceFinishReason
+} derive(Show)
 
 pub struct ChatCompletionChunk {
   id : String
@@ -198,37 +185,32 @@ pub struct ChatCompletionChunk {
   system_fingerprint : String?
   service_tier : ChatCompletionServiceTier?
   error : OpenRouterErrorResponse?
-}
-pub impl ToJson for ChatCompletionChunk
+} derive(ToJson)
 pub impl @json.FromJson for ChatCompletionChunk
 
 pub struct ChatCompletionChunkChoice {
   index : Int
   delta : ChatCompletionChunkChoiceDelta
   finish_reason : ChatCompletionChoiceFinishReason?
-}
-pub impl ToJson for ChatCompletionChunkChoice
+} derive(ToJson)
 
 pub struct ChatCompletionChunkChoiceDelta {
   content : String?
   refusal : String?
   role : ChatCompletionRole?
   tool_calls : Array[ChatCompletionChunkChoiceDeltaToolCall]?
-}
-pub impl ToJson for ChatCompletionChunkChoiceDelta
+} derive(ToJson)
 
 pub struct ChatCompletionChunkChoiceDeltaToolCall {
   index : Int
   id : String?
   function : ChatCompletionChunkChoiceDeltaToolCallFunction
-}
-pub impl ToJson for ChatCompletionChunkChoiceDeltaToolCall
+} derive(ToJson)
 
 pub struct ChatCompletionChunkChoiceDeltaToolCallFunction {
   arguments : String?
   name : String?
-}
-pub impl ToJson for ChatCompletionChunkChoiceDeltaToolCallFunction
+} derive(ToJson)
 
 pub enum ChatCompletionContentPartParam {
   Text(ChatCompletionContentPartTextParam)
@@ -255,11 +237,9 @@ pub struct ChatCompletionMessage {
   refusal : String?
   role : ChatCompletionMessageRole
   tool_calls : Array[ChatCompletionMessageToolCall]
-}
+} derive(Show, ToJson)
 pub fn ChatCompletionMessage::new(content? : String, refusal? : String, role? : ChatCompletionMessageRole, tool_calls? : Array[ChatCompletionMessageToolCall]) -> Self
 pub fn ChatCompletionMessage::to_param(Self) -> ChatCompletionMessageParam
-pub impl Show for ChatCompletionMessage
-pub impl ToJson for ChatCompletionMessage
 pub impl @json.FromJson for ChatCompletionMessage
 
 pub(all) enum ChatCompletionMessageParam {
@@ -273,24 +253,21 @@ pub impl @json.FromJson for ChatCompletionMessageParam
 
 pub enum ChatCompletionMessageRole {
   Assistant
-}
-pub impl Show for ChatCompletionMessageRole
+} derive(Show)
 pub impl ToJson for ChatCompletionMessageRole
 
 #alias(ChatCompletionMessageToolCallParam)
 pub struct ChatCompletionMessageToolCall {
   id : String
   function : ChatCompletionMessageToolCallFunction
-}
-pub impl Show for ChatCompletionMessageToolCall
+} derive(Show)
 pub impl ToJson for ChatCompletionMessageToolCall
 pub impl @json.FromJson for ChatCompletionMessageToolCall
 
 pub struct ChatCompletionMessageToolCallFunction {
   arguments : String?
   name : String
-}
-pub impl Show for ChatCompletionMessageToolCallFunction
+} derive(Show)
 
 pub(all) enum ChatCompletionReasoningEffort {
   None_
@@ -299,8 +276,7 @@ pub(all) enum ChatCompletionReasoningEffort {
   Medium
   High
   Xhigh
-}
-pub impl Show for ChatCompletionReasoningEffort
+} derive(Show)
 
 pub(all) enum ChatCompletionRole {
   Developer
@@ -308,8 +284,7 @@ pub(all) enum ChatCompletionRole {
   User
   Assistant
   Tool
-}
-pub impl ToJson for ChatCompletionRole
+} derive(ToJson)
 
 #alias(ChatCompletionChunkServiceTier)
 pub(all) enum ChatCompletionServiceTier {
@@ -318,8 +293,7 @@ pub(all) enum ChatCompletionServiceTier {
   Flex
   Scale
   Priority
-}
-pub impl Show for ChatCompletionServiceTier
+} derive(Show)
 
 pub struct ChatCompletionStreamOptionsParam {
   include_obfuscation : Bool?
@@ -359,9 +333,7 @@ pub fn ChatCompletionUserMessageParam::new(content~ : Array[ChatCompletionConten
 
 pub struct CompletionTokensDetails {
   reasoning_tokens : Int?
-}
-pub impl Show for CompletionTokensDetails
-pub impl ToJson for CompletionTokensDetails
+} derive(Show, ToJson)
 
 pub struct CompletionUsage {
   completion_tokens : Int
@@ -371,10 +343,8 @@ pub struct CompletionUsage {
   prompt_tokens : Int
   prompt_tokens_details : PromptTokensDetails?
   total_tokens : Int
-}
+} derive(Show, ToJson)
 pub fn CompletionUsage::new(completion_tokens~ : Int, completion_tokens_details? : CompletionTokensDetails, cost? : Double, cost_details? : CostDetails, prompt_tokens~ : Int, prompt_tokens_details? : PromptTokensDetails, total_tokens~ : Int) -> Self
-pub impl Show for CompletionUsage
-pub impl ToJson for CompletionUsage
 pub impl @json.FromJson for CompletionUsage
 
 pub struct CompletionUsageParam {
@@ -383,9 +353,7 @@ pub struct CompletionUsageParam {
 
 pub struct CostDetails {
   upstream_inference_cost : Double?
-}
-pub impl Show for CostDetails
-pub impl ToJson for CostDetails
+} derive(Show, ToJson)
 
 pub struct FunctionDefinition {
   name : String
@@ -400,17 +368,14 @@ pub struct OpenRouterErrorResponse {
   code : Int
   message : String
   metadata : Json
-}
-pub impl ToJson for OpenRouterErrorResponse
+} derive(ToJson)
 pub impl @json.FromJson for OpenRouterErrorResponse
 
 pub struct PromptTokensDetails {
   cached_tokens : Int?
   audio_tokens : Int?
-}
+} derive(Show, ToJson)
 pub fn PromptTokensDetails::new(cached_tokens? : Int, audio_tokens? : Int) -> Self
-pub impl Show for PromptTokensDetails
-pub impl ToJson for PromptTokensDetails
 
 pub struct Request {
   model : String
@@ -439,9 +404,9 @@ pub impl ToJson for ResponseFormat
 
 // Traits
 pub(open) trait Structural : @json.FromJson {
-  name() -> String
-  description() -> String
-  schema() -> @schema.Schema
+  fn name() -> String
+  fn description() -> String
+  fn schema() -> @schema.Schema
 }
 
 trait ToChatCompletionMessageParamContent

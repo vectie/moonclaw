@@ -271,6 +271,45 @@ test "compile_job_proposal preserves analysis execution routing hints" {
 }
 
 ///|
+test "compile_job_proposal reads analysis execution routing from step metadata" {
+  let proposal = JobProposal::{
+    ..draft_job_proposal(
+      "proposal-compiler-metadata-routing", "run analysis using metadata routing",
+      100,
+    ),
+    steps: [
+      JobProposalStep::{
+        id: "scope",
+        title: "Scope",
+        prompt: "Scope the work.",
+        kind: "job.analysis",
+        metadata: { "execution_mode": "acp", "execution_target": "codex-main" },
+        child_profile: None,
+        execution_mode: None,
+        execution_target: None,
+        include_parent_outputs: None,
+        max_depth: None,
+      },
+    ],
+  }
+  let compilation = compile_job_proposal(
+    proposal, 101, "/tmp/workspace", "/tmp/home",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_mode\":\"acp\""),
+    content="true",
+  )
+  inspect(
+    compilation.workflow.steps[0].config
+    .stringify()
+    .contains("\"execution_target\":\"codex-main\""),
+    content="true",
+  )
+}
+
+///|
 test "compile_job_proposal augments wiki ingest controller with provider delegate step" {
   let proposal = JobProposal::{
     ..draft_job_proposal(

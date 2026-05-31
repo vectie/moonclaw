@@ -23,10 +23,7 @@ pub(all) struct Attachment {
   url : String
   filename : String?
   size : Int?
-}
-pub impl Show for Attachment
-pub impl ToJson for Attachment
-pub impl @json.FromJson for Attachment
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChannelCapabilities {
   chat_types : Array[ChatType]
@@ -41,19 +38,13 @@ pub(all) struct ChannelCapabilities {
   media : Bool
   native_commands : Bool
   block_streaming : Bool
-}
-pub impl Show for ChannelCapabilities
-pub impl ToJson for ChannelCapabilities
-pub impl @json.FromJson for ChannelCapabilities
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChannelConfig {
   enabled : Bool
   accounts : Map[String, Json]
   global_settings : Json
-}
-pub impl Show for ChannelConfig
-pub impl ToJson for ChannelConfig
-pub impl @json.FromJson for ChannelConfig
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChannelDock {
   id : String
@@ -64,10 +55,7 @@ pub(all) struct ChannelDock {
   account_ids : Array[String]
   outbound : OutboundConfig?
   streaming : StreamingConfig?
-}
-pub impl Show for ChannelDock
-pub impl ToJson for ChannelDock
-pub impl @json.FromJson for ChannelDock
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChannelDockConfig {
   outbound : OutboundAdapter?
@@ -75,12 +63,9 @@ pub(all) struct ChannelDockConfig {
   mentions : MentionAdapter?
   streaming : StreamingAdapter?
   security : SecurityAdapter?
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn ChannelDockConfig::default_for_channel(String) -> Self
 pub fn ChannelDockConfig::new(outbound? : OutboundAdapter?, threading? : ThreadingAdapter?, mentions? : MentionAdapter?, streaming? : StreamingAdapter?, security? : SecurityAdapter?) -> Self
-pub impl Show for ChannelDockConfig
-pub impl ToJson for ChannelDockConfig
-pub impl @json.FromJson for ChannelDockConfig
 
 type ChannelEntry
 
@@ -91,10 +76,7 @@ pub(all) enum ChannelError {
   InvalidRecipient(message~ : String)
   RateLimited(message~ : String, retry_after_ms~ : Int?)
   Unknown(message~ : String)
-}
-pub impl Show for ChannelError
-pub impl ToJson for ChannelError
-pub impl @json.FromJson for ChannelError
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ChannelEvent {
   channel : String
@@ -102,10 +84,7 @@ pub(all) struct ChannelEvent {
   event_type : String
   payload : Json
   timestamp : Int
-}
-pub impl Show for ChannelEvent
-pub impl ToJson for ChannelEvent
-pub impl @json.FromJson for ChannelEvent
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) enum ChannelEventType {
   MessageReceived
@@ -130,10 +109,7 @@ pub(all) struct ChannelMeta {
   blurb : String
   order : Int?
   aliases : Array[String]
-}
-pub impl Show for ChannelMeta
-pub impl ToJson for ChannelMeta
-pub impl @json.FromJson for ChannelMeta
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct ChannelRegistry {
   // private fields
@@ -153,10 +129,7 @@ pub(all) enum ChatType {
   Group
   Channel
   Thread
-}
-pub impl Show for ChatType
-pub impl ToJson for ChatType
-pub impl @json.FromJson for ChatType
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ExtensionContext {
   gateway_url : String
@@ -267,11 +240,8 @@ pub(all) struct MentionAdapter {
   strip_patterns : Array[String]
   mention_prefix : String?
   mention_suffix : String?
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn MentionAdapter::new(strip_patterns? : Array[String], mention_prefix? : String?, mention_suffix? : String?) -> Self
-pub impl Show for MentionAdapter
-pub impl ToJson for MentionAdapter
-pub impl @json.FromJson for MentionAdapter
 
 pub(all) struct Message {
   id : String
@@ -284,49 +254,34 @@ pub(all) struct Message {
   thread_id : String?
   reply_to : String?
   attachments : Array[Attachment]
-}
-pub impl Show for Message
-pub impl ToJson for Message
-pub impl @json.FromJson for Message
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct OutboundAdapter {
   text_chunk_limit : Int
   delivery_mode : String
   chunker_mode : String
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn OutboundAdapter::new(text_chunk_limit? : Int, delivery_mode? : String, chunker_mode? : String) -> Self
-pub impl Show for OutboundAdapter
-pub impl ToJson for OutboundAdapter
-pub impl @json.FromJson for OutboundAdapter
 
 pub(all) struct OutboundConfig {
   delivery_mode : String
   chunker_mode : String
   text_chunk_limit : Int
-}
-pub impl Show for OutboundConfig
-pub impl ToJson for OutboundConfig
-pub impl @json.FromJson for OutboundConfig
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct SecurityAdapter {
   dm_policy : String
   allow_from : Array[String]
   require_mention_in_groups : Bool
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn SecurityAdapter::new(dm_policy? : String, allow_from? : Array[String], require_mention_in_groups? : Bool) -> Self
-pub impl Show for SecurityAdapter
-pub impl ToJson for SecurityAdapter
-pub impl @json.FromJson for SecurityAdapter
 
 pub(all) struct SendResult {
   channel : String
   message_id : String
   timestamp : Int
   status : String
-}
-pub impl Show for SendResult
-pub impl ToJson for SendResult
-pub impl @json.FromJson for SendResult
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct StreamingAdapter {
   enabled : Bool
@@ -334,30 +289,21 @@ pub(all) struct StreamingAdapter {
   chunk_delay_ms : Int
   min_chars : Int?
   idle_ms : Int?
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn StreamingAdapter::new(enabled? : Bool, chunk_size? : Int, chunk_delay_ms? : Int, min_chars? : Int?, idle_ms? : Int?) -> Self
-pub impl Show for StreamingAdapter
-pub impl ToJson for StreamingAdapter
-pub impl @json.FromJson for StreamingAdapter
 
 pub(all) struct StreamingConfig {
   enabled : Bool
   chunk_size : Int
   chunk_delay_ms : Int
-}
-pub impl Show for StreamingConfig
-pub impl ToJson for StreamingConfig
-pub impl @json.FromJson for StreamingConfig
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct ThreadingAdapter {
   reply_to_mode : String
   supports_threads : Bool
   thread_id_key : String?
-}
+} derive(Show, ToJson, @json.FromJson)
 pub fn ThreadingAdapter::new(reply_to_mode? : String, supports_threads? : Bool, thread_id_key? : String?) -> Self
-pub impl Show for ThreadingAdapter
-pub impl ToJson for ThreadingAdapter
-pub impl @json.FromJson for ThreadingAdapter
 
 pub(all) struct WebSocketClientConnector {
   connect : async (WebSocketDialRequest) -> Result[WebSocketManagedConnection, String]
@@ -436,30 +382,30 @@ pub type ChannelId = String
 
 // Traits
 pub(open) trait Channel {
-  id(Self) -> String
-  meta(Self) -> ChannelMeta
-  capabilities(Self) -> ChannelCapabilities
-  configure(Self, ChannelConfig) -> Unit
-  async start(Self, String, Json) -> Result[Unit, ChannelError]
-  async stop(Self, String) -> Result[Unit, ChannelError]
-  async send(Self, String, Message, String?) -> Result[SendResult, ChannelError]
-  handle_event(Self, ChannelEvent) -> Unit
-  is_running(Self, String) -> Bool
+  fn id(Self) -> String
+  fn meta(Self) -> ChannelMeta
+  fn capabilities(Self) -> ChannelCapabilities
+  fn configure(Self, ChannelConfig) -> Unit
+  async fn start(Self, String, Json) -> Result[Unit, ChannelError]
+  async fn stop(Self, String) -> Result[Unit, ChannelError]
+  async fn send(Self, String, Message, String?) -> Result[SendResult, ChannelError]
+  fn handle_event(Self, ChannelEvent) -> Unit
+  fn is_running(Self, String) -> Bool
 }
 
 pub(open) trait ChannelExtension : Channel {
-  webhook_path(Self) -> String
-  async handle_webhook(Self, ExtensionRequest) -> ExtensionResponse
-  supports_websocket(Self) -> Bool
-  handle_websocket(Self, WebSocketConnection) -> Unit
-  allowed_methods(Self) -> Array[String]
-  dock_config(Self) -> ChannelDockConfig
-  on_register(Self, ExtensionContext) -> Unit
-  on_unregister(Self) -> Unit
+  fn webhook_path(Self) -> String
+  async fn handle_webhook(Self, ExtensionRequest) -> ExtensionResponse
+  fn supports_websocket(Self) -> Bool
+  fn handle_websocket(Self, WebSocketConnection) -> Unit
+  fn allowed_methods(Self) -> Array[String]
+  fn dock_config(Self) -> ChannelDockConfig
+  fn on_register(Self, ExtensionContext) -> Unit
+  fn on_unregister(Self) -> Unit
 }
 
 pub(open) trait MessageHandler {
-  async handle_message(Self, String, String, Message) -> Message
-  async handle_event(Self, String, String, ChannelEvent) -> Unit
+  async fn handle_message(Self, String, String, Message) -> Message
+  async fn handle_event(Self, String, String, ChannelEvent) -> Unit
 }
 

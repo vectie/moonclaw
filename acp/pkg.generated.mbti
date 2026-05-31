@@ -49,17 +49,13 @@ pub(all) enum AcpChatAction {
   Attach(String)
   Detach(String)
   Run(String)
-}
-pub impl Show for AcpChatAction
+} derive(Show)
 
 pub struct AcpLaunchCommand {
   command : String
   args : Array[String]
   env : Map[String, String]
-}
-pub impl Show for AcpLaunchCommand
-pub impl ToJson for AcpLaunchCommand
-pub impl @json.FromJson for AcpLaunchCommand
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct AcpLaunchPlan {
   backend : String
@@ -73,10 +69,7 @@ pub struct AcpLaunchPlan {
   model : String?
   env : Json
   metadata : Json
-}
-pub impl Show for AcpLaunchPlan
-pub impl ToJson for AcpLaunchPlan
-pub impl @json.FromJson for AcpLaunchPlan
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct AcpRun {
   id : String
@@ -91,10 +84,7 @@ pub struct AcpRun {
   plan : Json
   result : Json?
   error : String?
-}
-pub impl Show for AcpRun
-pub impl ToJson for AcpRun
-pub impl @json.FromJson for AcpRun
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct AcpRunRequest {
   message : String
@@ -103,10 +93,7 @@ pub struct AcpRunRequest {
   cwd : String?
   idempotency_key : String?
   metadata : Json?
-}
-pub impl Show for AcpRunRequest
-pub impl ToJson for AcpRunRequest
-pub impl @json.FromJson for AcpRunRequest
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct AcpRuntime {
   home : String
@@ -144,10 +131,7 @@ pub struct AcpSession {
   updated_at : Int
   last_error : String?
   metadata : Json
-}
-pub impl Show for AcpSession
-pub impl ToJson for AcpSession
-pub impl @json.FromJson for AcpSession
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct AcpTarget {
   id : String
@@ -160,10 +144,7 @@ pub struct AcpTarget {
   model : String?
   status : String
   metadata : Json
-}
-pub impl Show for AcpTarget
-pub impl ToJson for AcpTarget
-pub impl @json.FromJson for AcpTarget
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpUiNode {
   id : String
@@ -179,19 +160,13 @@ pub(all) struct AcpUiNode {
   created_at : Int?
   updated_at : Int?
   metadata : Json
-}
-pub impl Show for AcpUiNode
-pub impl ToJson for AcpUiNode
-pub impl @json.FromJson for AcpUiNode
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) enum AcpUiNodeKind {
   Target
   Session
   Run
-}
-pub impl Show for AcpUiNodeKind
-pub impl ToJson for AcpUiNodeKind
-pub impl @json.FromJson for AcpUiNodeKind
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpUiSnapshot {
   targets : Array[AcpTarget]
@@ -199,10 +174,7 @@ pub(all) struct AcpUiSnapshot {
   runs : Array[AcpRun]
   nodes : Array[AcpUiNode]
   timeline : Array[AcpUiTimelineEntry]
-}
-pub impl Show for AcpUiSnapshot
-pub impl ToJson for AcpUiSnapshot
-pub impl @json.FromJson for AcpUiSnapshot
+} derive(Show, ToJson, @json.FromJson)
 
 pub(all) struct AcpUiTimelineEntry {
   id : String
@@ -215,15 +187,9 @@ pub(all) struct AcpUiTimelineEntry {
   run_id : String?
   status : String?
   data : Json
-}
-pub impl Show for AcpUiTimelineEntry
-pub impl ToJson for AcpUiTimelineEntry
-pub impl @json.FromJson for AcpUiTimelineEntry
+} derive(Show, ToJson, @json.FromJson)
 
-type PersistedAcpState
-pub impl Show for PersistedAcpState
-pub impl ToJson for PersistedAcpState
-pub impl @json.FromJson for PersistedAcpState
+type PersistedAcpState derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

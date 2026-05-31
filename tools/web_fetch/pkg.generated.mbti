@@ -23,10 +23,8 @@ pub struct WebFetchResult {
   truncated : Bool
   source : String
   metadata : Json
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for WebFetchResult
-pub impl ToJson for WebFetchResult
-pub impl @json.FromJson for WebFetchResult
 
 // Type aliases
 

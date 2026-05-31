@@ -15,10 +15,7 @@ pub fn new(String) -> @tool.Tool[PatchEditResult]
 pub enum PatchEditMode {
   Preview
   Apply
-}
-pub impl Show for PatchEditMode
-pub impl ToJson for PatchEditMode
-pub impl @json.FromJson for PatchEditMode
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct PatchEditResult {
   mode : PatchEditMode
@@ -29,10 +26,7 @@ pub struct PatchEditResult {
   modified : Array[String]
   deleted : Array[String]
   file_count : Int
-}
-pub impl Show for PatchEditResult
-pub impl ToJson for PatchEditResult
-pub impl @json.FromJson for PatchEditResult
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

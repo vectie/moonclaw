@@ -2668,3 +2668,82 @@ test "provider task single response routing applies to provider execution tasks"
     content="false",
   )
 }
+
+///|
+fn analysis_result_payload_for_test(content : String) -> String {
+  structured_analysis_result_payload(
+    "analyze",
+    AnalysisStepConfig::new(prompt="Classify result decision."),
+    AnalysisExecution::{
+      model_name: "test-model",
+      content,
+      conversation_id: None,
+      usage: None,
+      metadata: {},
+    },
+  ).stringify()
+}
+
+///|
+test "analysis result decision treats empty remaining blockers as accepted" {
+  let payload = analysis_result_payload_for_test(
+    [
+      "decision: ready_to_execute", "remaining_blockers: none", "validation: moon test passed",
+    ].join("\n"),
+  )
+  inspect(payload.contains("\"result_decision\":\"accepted\""), content="true")
+  inspect(payload.contains("\"requires_review\":false"), content="true")
+}
+
+///|
+test "analysis result decision treats bullet none blockers as accepted" {
+  let payload = analysis_result_payload_for_test(
+    [
+      "decision: ready_to_execute", "remaining_blockers:", "- none", "validation: moon test passed",
+    ].join("\n"),
+  )
+  inspect(payload.contains("\"result_decision\":\"accepted\""), content="true")
+  inspect(payload.contains("\"requires_review\":false"), content="true")
+}
+
+///|
+test "analysis result decision detects material remaining blockers" {
+  let payload = analysis_result_payload_for_test(
+    [
+      "decision: ready_to_execute", "remaining_blockers:", "- moonbook must expose planbook provider profile",
+      "validation: not run",
+    ].join("\n"),
+  )
+  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
+  inspect(payload.contains("\"requires_review\":true"), content="true")
+}
+
+///|
+test "analysis result decision detects YAML object remaining blockers" {
+  let payload = analysis_result_payload_for_test(
+    [
+      "decision: ready_to_execute", "remaining_blockers:", "owner: moonbook", "blocker: expose planbook provider profile",
+      "validation: not run",
+    ].join("\n"),
+  )
+  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
+  inspect(payload.contains("\"requires_review\":true"), content="true")
+}
+
+///|
+test "analysis result decision treats empty JSON remaining blockers as accepted" {
+  let payload = analysis_result_payload_for_test(
+    "{\"summary\":\"ready\",\"remaining_blockers\":[],\"validation\":\"passed\"}",
+  )
+  inspect(payload.contains("\"result_decision\":\"accepted\""), content="true")
+  inspect(payload.contains("\"requires_review\":false"), content="true")
+}
+
+///|
+test "analysis result decision detects material JSON remaining blockers" {
+  let payload = analysis_result_payload_for_test(
+    "{\"summary\":\"needs owner\",\"remaining_blockers\":[\"moonbook must expose planbook profile\"],\"validation\":\"not run\"}",
+  )
+  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
+  inspect(payload.contains("\"requires_review\":true"), content="true")
+}

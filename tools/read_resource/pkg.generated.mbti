@@ -20,20 +20,15 @@ pub struct ReadResourceResult {
   truncated : Bool
   content_type : String
   metadata : Json
-}
+} derive(ToJson, @json.FromJson)
 pub impl Show for ReadResourceResult
-pub impl ToJson for ReadResourceResult
-pub impl @json.FromJson for ReadResourceResult
 
 pub enum ResourceKind {
   File
   Skill
   Worktree
   Provider
-}
-pub impl Show for ResourceKind
-pub impl ToJson for ResourceKind
-pub impl @json.FromJson for ResourceKind
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 

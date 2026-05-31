@@ -13,8 +13,7 @@ pub suberror WebSocketClientError {
   ConnectFailed(String)
   SendFailed(String)
   ReceiveFailed(String)
-}
-pub impl Show for WebSocketClientError
+} derive(Show)
 
 // Types and methods
 pub struct Client {
@@ -39,28 +38,22 @@ type ClientCommand
 pub struct ClientConfig {
   url : String
   headers : Map[String, String]
-}
+} derive(Eq, Show)
 pub fn ClientConfig::new(url~ : String, headers? : Map[String, String]) -> Self
-pub impl Eq for ClientConfig
-pub impl Show for ClientConfig
 
 pub struct Message {
   kind : MessageKind
   data : Bytes
-}
+} derive(Eq, Show)
 pub fn Message::data(Self) -> Bytes
 pub fn Message::kind(Self) -> MessageKind
 pub fn Message::new(kind~ : MessageKind, data~ : Bytes) -> Self
 pub fn Message::text(Self) -> String raise
-pub impl Eq for Message
-pub impl Show for Message
 
 pub(all) enum MessageKind {
   Text
   Binary
-}
-pub impl Eq for MessageKind
-pub impl Show for MessageKind
+} derive(Eq, Show)
 
 // Type aliases
 

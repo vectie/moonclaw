@@ -26,19 +26,13 @@ pub struct WorktreeHandle {
   path : String
   branch_name : String
   task_key : String
-}
-pub impl Show for WorktreeHandle
-pub impl ToJson for WorktreeHandle
-pub impl @json.FromJson for WorktreeHandle
+} derive(Show, ToJson, @json.FromJson)
 
 pub struct WorktreeList {
   repo_root : String
   base_dir : String
   worktrees : Array[WorktreeHandle]
-}
-pub impl Show for WorktreeList
-pub impl ToJson for WorktreeList
-pub impl @json.FromJson for WorktreeList
+} derive(Show, ToJson, @json.FromJson)
 
 // Type aliases
 
