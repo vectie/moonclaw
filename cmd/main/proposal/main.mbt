@@ -4,6 +4,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   match arr[:] {
     ["import", packet_path, ..] => import_packet(arr, packet_path)
     ["run", run_id, ..] => run_packet_job(arr, run_id)
+    ["status", run_id, ..] => status_packet_job(arr, run_id)
     ["help"] | ["--help"] | ["-h"] | [] => print_help()
     ["version"] | ["--version"] | ["-v"] => println(@buildinfo.version)
     _ => print_help()
@@ -18,6 +19,7 @@ fn print_help() -> Unit {
   println("")
   println("Commands:")
   println("  import <packet.json>   Import an external proposal packet")
+  println("  status <run_id>        Load and print a run without executing it")
   println("  version                Show version")
   println("")
   println("Options:")
@@ -189,5 +191,60 @@ async fn run_packet_job(args : Array[String], run_id : String) -> Unit {
   match result {
     Ok(_) => ()
     Err(error) => fail("Detached proposal run failed: \{error}")
+  }
+}
+
+///|
+async fn status_packet_job(args : Array[String], run_id : String) -> Unit {
+  let home = resolve_home(args)
+  let cwd = resolve_cwd(args)
+  let json_mode = args.contains("--json")
+  let workspace = @workspace.WorkspaceRuntime::new(home~, cwd~)
+  let app = @job.GatewayJobApp::new(
+    root=@pathx.join(home, "jobs"),
+    cwd~,
+    home~,
+    workspace~,
+    next_id=fn() { "\{workspace.root()}-status-\{run_id}" },
+    now=fn() { @clock.epoch.now().ms().to_int() },
+  )
+  app.load()
+  let store = app.runtime().store()
+  let run = match store.get_run(run_id) {
+    Some(run) => run
+    None => fail("Unknown job run: \{run_id}")
+  }
+  let steps = store.list_step_runs(run_id)
+  if json_mode {
+    println(
+      (
+        {
+          "run": run.to_json(),
+          "steps": steps.map(fn(step) { step.to_json() }),
+        } : Json).stringify(indent=2),
+    )
+  } else {
+    println("Run: \{run.id}")
+    println("Job: \{run.job_id}")
+    println("Status: \{run.status.to_json().stringify()}")
+    match run.summary {
+      Some(summary) => println("Summary: \{summary}")
+      None => ()
+    }
+    match run.error {
+      Some(error) => println("Error: \{error}")
+      None => ()
+    }
+    for step in steps {
+      println("Step: \{step.step_id} \{step.status.to_json().stringify()}")
+      match step.summary {
+        Some(summary) => println("Step summary: \{summary}")
+        None => ()
+      }
+      match step.error {
+        Some(error) => println("Step error: \{error}")
+        None => ()
+      }
+    }
   }
 }

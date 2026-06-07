@@ -760,6 +760,10 @@ async test "analysis_step_handler passes execution routing hints into executor" 
 ///|
 async test "default analysis runner launches acp target for cli execution" {
   @fsx.with_temporary_directory("job-analysis-acp-runner-XXXXXX", dir => {
+    let source_root = dir |> @pathx.join("source-root")
+    let run_workspace = dir |> @pathx.join("run-workspace")
+    @fsx.make_directory(source_root, recursive=true)
+    @fsx.make_directory(run_workspace, recursive=true)
     @fsx.write_to_file(
       dir |> @pathx.join("moonclaw.json"),
       (
@@ -771,7 +775,7 @@ async test "default analysis runner launches acp target for cli execution" {
                 "label": "Fake ACP",
                 "command": "/bin/echo",
                 "args": ["acp-executed"],
-                "cwd": dir,
+                "cwd": source_root,
               },
             },
           },
@@ -784,7 +788,7 @@ async test "default analysis runner launches acp target for cli execution" {
       source_prompt: "Run through ACP.",
       prompt: "Run through ACP.",
       model_name: "default",
-      cwd: dir,
+      cwd: run_workspace,
       home: Some(dir),
       execution_mode: Some("acp"),
       execution_target: Some("fake-acp"),
@@ -813,6 +817,34 @@ async test "default analysis runner launches acp target for cli execution" {
     inspect(execution.conversation_id.unwrap_or(""), content="acp-run-1-step-1")
     inspect(execution.content.contains("acp-executed"), content="true")
     inspect(execution.content.contains("Run through ACP."), content="true")
+    inspect(
+      execution.metadata.stringify().contains("patch_receipt"),
+      content="true",
+    )
+    inspect(
+      execution.metadata
+      .stringify()
+      .contains("planbook.repair.patch_receipt.v1"),
+      content="true",
+    )
+    inspect(
+      execution.metadata
+      .stringify()
+      .contains("\"source_root\":\"\{source_root}\"") ||
+      execution.metadata
+      .stringify()
+      .contains("\"source_root\": \"\{source_root}\""),
+      content="true",
+    )
+    inspect(
+      execution.metadata
+      .stringify()
+      .contains("\"source_root\":\"\{run_workspace}\"") ||
+      execution.metadata
+      .stringify()
+      .contains("\"source_root\": \"\{run_workspace}\""),
+      content="false",
+    )
     let state = @fsx.read_file(
       dir |> @pathx.join(".moonclaw") |> @pathx.join("acp_sessions.json"),
     )
@@ -2693,6 +2725,23 @@ test "analysis result decision treats empty remaining blockers as accepted" {
   )
   inspect(payload.contains("\"result_decision\":\"accepted\""), content="true")
   inspect(payload.contains("\"requires_review\":false"), content="true")
+}
+
+///|
+test "analysis result decision follows execution metadata before text fallback" {
+  let payload = structured_analysis_result_payload(
+    "analyze",
+    AnalysisStepConfig::new(prompt="Classify result decision."),
+    AnalysisExecution::{
+      model_name: "test-model",
+      content: "repair_decision: accepted\nremaining_blockers: none",
+      conversation_id: None,
+      usage: None,
+      metadata: { "result_decision": "blocked" },
+    },
+  ).stringify()
+  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
+  inspect(payload.contains("\"requires_review\":true"), content="true")
 }
 
 ///|

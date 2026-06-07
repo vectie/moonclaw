@@ -31,6 +31,27 @@ fn analysis_acp_message(request : AnalysisRequest) -> String {
 }
 
 ///|
+fn analysis_acp_linkage_metadata(request : AnalysisRequest) -> Json {
+  let fields : Map[String, Json] = {}
+  fields["job_id"] = request.job_id.to_json()
+  fields["job_run_id"] = request.run_id.to_json()
+  fields["job_step_id"] = request.step_id.to_json()
+  fields["execution_mode"] = "acp".to_json()
+  match request.execution_target {
+    Some(target) => fields["execution_target"] = target.to_json()
+    None => ()
+  }
+  match request.step_metadata {
+    Object(object) =>
+      for key, value in object {
+        fields[key] = value
+      }
+    _ => ()
+  }
+  Json::object(fields)
+}
+
+///|
 fn acp_result_content(result : Json) -> String {
   match result {
     { "content": String(content), .. } => content
@@ -53,6 +74,26 @@ fn acp_result_error(result : Json) -> String? {
       Some(stderr.trim().to_string())
     { "content": String(content), .. } if !content.trim().is_blank() =>
       Some(content.trim().to_string())
+    _ => None
+  }
+}
+
+///|
+fn acp_result_patch_receipt(result : Json) -> Json? {
+  match result {
+    { "patch_receipt": receipt, .. } => Some(receipt)
+    _ => None
+  }
+}
+
+///|
+fn acp_patch_receipt_result_decision(receipt : Json) -> String? {
+  match receipt {
+    Object(object) =>
+      match object.get("result_decision") {
+        Some(String(decision)) => Some(decision)
+        _ => None
+      }
     _ => None
   }
 }
@@ -94,13 +135,7 @@ async fn run_acp_analysis_runner(
     None => return Err("Unknown ACP target: \{target_id}")
   }
   let acp_run_id = analysis_acp_run_id(request.run_id, request.step_id)
-  let metadata : Json = {
-    "job_id": request.job_id,
-    "job_run_id": request.run_id,
-    "job_step_id": request.step_id,
-    "execution_mode": "acp",
-    "execution_target": target_id,
-  }
+  let metadata = analysis_acp_linkage_metadata(request)
   let run_request = @acp.new_run_request(
     message=analysis_acp_message(request),
     run_id=acp_run_id,
@@ -109,7 +144,6 @@ async fn run_acp_analysis_runner(
     } else {
       Some(request.model_name)
     },
-    cwd=request.cwd,
     metadata~,
   )
   let launch = match @acp.prepare_launch_plan(target, session, run_request) {
@@ -177,19 +211,31 @@ async fn run_acp_analysis_runner(
   } else {
     request.model_name
   }
+  let execution_metadata : Map[String, Json] = {
+    "job_id": request.job_id,
+    "run_id": request.run_id,
+    "step_id": request.step_id,
+    "execution_mode": "acp",
+    "execution_target": target_id,
+    "acp_run_id": acp_run_id,
+    "acp_session_id": session.id,
+  }
+  match acp_result_patch_receipt(result) {
+    Some(receipt) => {
+      execution_metadata["patch_receipt"] = receipt
+      match acp_patch_receipt_result_decision(receipt) {
+        Some(decision) =>
+          execution_metadata["result_decision"] = decision.to_json()
+        None => ()
+      }
+    }
+    None => ()
+  }
   Ok(AnalysisExecution::{
     model_name,
     content: acp_result_content(result),
     conversation_id: Some(acp_run_id),
     usage: None,
-    metadata: {
-      "job_id": request.job_id,
-      "run_id": request.run_id,
-      "step_id": request.step_id,
-      "execution_mode": "acp",
-      "execution_target": target_id,
-      "acp_run_id": acp_run_id,
-      "acp_session_id": session.id,
-    },
+    metadata: Json::object(execution_metadata),
   })
 }

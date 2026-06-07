@@ -88,3 +88,307 @@ test "prepare_launch_command does not mutate stored plan args" {
   inspect(second.args.join("|"), content="exec|second prompt")
   inspect(plan.args.join("|"), content="exec")
 }
+
+///|
+test "changed file parser keeps path for raw and trimmed status lines" {
+  inspect(
+    acp_changed_file_from_status_line(" M adapters/moonclaw/run_polling.mbt").unwrap_or(
+      "",
+    ),
+    content="adapters/moonclaw/run_polling.mbt",
+  )
+  inspect(
+    acp_changed_file_from_status_line("M adapters/moonclaw/run_polling.mbt").unwrap_or(
+      "",
+    ),
+    content="adapters/moonclaw/run_polling.mbt",
+  )
+  inspect(
+    acp_changed_file_from_status_line("?? live_autonomy_wbtest.mbt").unwrap_or(
+      "",
+    ),
+    content="live_autonomy_wbtest.mbt",
+  )
+}
+
+///|
+async fn acp_test_git(cwd : String, args : Array[String]) -> Unit {
+  let process = @spawn.spawn("git", args.map(fn(arg) { arg[:] }), cwd~) catch {
+    error => fail(error.to_string())
+  }
+  if process.status != 0 {
+    fail(process.stderr)
+  }
+}
+
+///|
+async fn acp_test_init_repo(cwd : String) -> Unit {
+  acp_test_git(cwd, ["init"])
+  @fsx.write_to_file(
+    @path.Path(cwd).join(@path.Path("README.md")).to_string(),
+    "# Test\n",
+  )
+  acp_test_git(cwd, ["add", "README.md"])
+  acp_test_git(cwd, [
+    "-c", "user.name=MoonClaw Test", "-c", "user.email=moonclaw-test@local", "commit",
+    "-m", "Initial commit",
+  ])
+}
+
+///|
+async test "execute_launch_plan records committed git patch receipt" {
+  @fsx.with_temporary_directory("acp-patch-receipt-XXXXXX", async fn(dir) {
+    acp_test_init_repo(dir)
+    let plan = AcpLaunchPlan::{
+      backend: "codex",
+      target_id: "codex-main",
+      session_id: "acp-session-1",
+      session_key: "session:1",
+      cwd: dir,
+      workspace: Some(dir),
+      command: Some("sh"),
+      args: [
+        "-c", "printf 'patched\\n' > source.txt; git add source.txt; git -c user.name='MoonClaw Test' -c user.email='moonclaw-test@local' commit -m 'ACP patch' >/dev/null; printf done",
+        "runner",
+      ],
+      model: Some("gpt-5"),
+      env: {},
+      metadata: {},
+    }
+    let request = new_run_request(
+      message="repair",
+      run_id="acp-run-1",
+      cwd=dir,
+      metadata={
+        "criterion_id": "planbook-source-patch-loop",
+        "job_run_id": "run-1",
+        "required_validation_commands": ["moon check --no-render"],
+      },
+    )
+    let result = match execute_launch_plan(plan, request) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    let receipt = match result {
+      { "patch_receipt": receipt, .. } => receipt
+      _ => fail("missing patch receipt")
+    }
+    inspect(
+      acp_json_string_field(receipt, "contract").unwrap_or(""),
+      content="planbook.repair.patch_receipt.v1",
+    )
+    inspect(
+      acp_json_string_field(receipt, "result_decision").unwrap_or(""),
+      content="accepted",
+    )
+    inspect(
+      acp_json_string_field(receipt, "commit_status").unwrap_or(""),
+      content="committed",
+    )
+    inspect(
+      acp_json_string_field(receipt, "commit_message").unwrap_or(""),
+      content="ACP patch",
+    )
+    inspect(
+      match acp_json_array_field(receipt, "changed_files") {
+        Array(files) => files.length().to_string()
+        _ => "0"
+      },
+      content="1",
+    )
+    inspect(
+      acp_json_string_field(receipt, "criterion_id").unwrap_or(""),
+      content="planbook-source-patch-loop",
+    )
+    inspect(
+      match acp_json_array_field(receipt, "validation_commands") {
+        Array(files) => files.length().to_string()
+        _ => "0"
+      },
+      content="1",
+    )
+  })
+}
+
+///|
+async test "execute_launch_plan commits repair owned files after validation" {
+  @fsx.with_temporary_directory("acp-runner-owned-commit-XXXXXX", async fn(
+    dir,
+  ) {
+    acp_test_init_repo(dir)
+    @fsx.write_to_file(
+      @path.Path(dir).join(@path.Path("generated.txt")).to_string(),
+      "generated\n",
+    )
+    acp_test_git(dir, ["add", "generated.txt"])
+    acp_test_git(dir, [
+      "-c", "user.name=MoonClaw Test", "-c", "user.email=moonclaw-test@local", "commit",
+      "-m", "Add generated baseline",
+    ])
+    let target_path = @path.Path(dir).join(@path.Path("source.txt")).to_string()
+    let plan = AcpLaunchPlan::{
+      backend: "codex",
+      target_id: "codex-main",
+      session_id: "acp-session-1",
+      session_key: "session:1",
+      cwd: dir,
+      workspace: Some(dir),
+      command: Some("sh"),
+      args: [
+        "-c", "printf 'patched\\n' > source.txt; printf 'generated\\n\\n' > generated.txt; printf done",
+        "runner",
+      ],
+      model: Some("gpt-5"),
+      env: {},
+      metadata: {},
+    }
+    let result = match
+      execute_launch_plan(
+        plan,
+        new_run_request(message="repair", run_id="acp-run-1", cwd=dir, metadata={
+          "criterion_id": "planbook-source-patch-loop",
+          "job_run_id": "run-1",
+          "target_files": [target_path],
+          "git_policy": { "commit_after_validation": true },
+          "required_validation_commands": ["moon check --no-render"],
+          "commit_message": "Runner owned ACP commit",
+        }),
+      ) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    let receipt = match result {
+      { "patch_receipt": receipt, .. } => receipt
+      _ => fail("missing patch receipt")
+    }
+    inspect(
+      acp_json_string_field(receipt, "result_decision").unwrap_or(""),
+      content="accepted",
+    )
+    inspect(
+      acp_json_string_field(receipt, "commit_status").unwrap_or(""),
+      content="committed",
+    )
+    inspect(
+      acp_json_string_field(receipt, "commit_message").unwrap_or(""),
+      content="Runner owned ACP commit",
+    )
+    inspect(
+      match acp_json_array_field(receipt, "changed_files") {
+        Array([String(file), ..]) => file
+        _ => ""
+      },
+      content="source.txt",
+    )
+    inspect(acp_git_status(dir).contains("generated.txt"), content="false")
+  })
+}
+
+///|
+async test "execute_launch_plan keeps full changed file paths and blocks uncommitted patches" {
+  @fsx.with_temporary_directory("acp-uncommitted-receipt-XXXXXX", async fn(
+    dir,
+  ) {
+    acp_test_init_repo(dir)
+    @fsx.make_directory(
+      @path.Path(dir).join(@path.Path("adapters")).to_string(),
+      recursive=true,
+    )
+    let plan = AcpLaunchPlan::{
+      backend: "codex",
+      target_id: "codex-main",
+      session_id: "acp-session-1",
+      session_key: "session:1",
+      cwd: dir,
+      workspace: Some(dir),
+      command: Some("sh"),
+      args: [
+        "-c", "printf 'patched\\n' > adapters/source.txt; printf done", "runner",
+      ],
+      model: Some("gpt-5"),
+      env: {},
+      metadata: {},
+    }
+    let result = match
+      execute_launch_plan(
+        plan,
+        new_run_request(message="repair", run_id="acp-run-1", cwd=dir, metadata={
+          "step_metadata": {
+            "criterion_id": "planbook-source-patch-loop",
+            "required_validation_commands": ["moon check --no-render"],
+          },
+          "job_run_id": "run-1",
+        }),
+      ) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    let receipt = match result {
+      { "patch_receipt": receipt, .. } => receipt
+      _ => fail("missing patch receipt")
+    }
+    inspect(
+      acp_json_string_field(receipt, "result_decision").unwrap_or(""),
+      content="blocked",
+    )
+    inspect(
+      acp_json_string_field(receipt, "commit_status").unwrap_or(""),
+      content="ready_to_commit",
+    )
+    inspect(
+      match acp_json_array_field(receipt, "changed_files") {
+        Array([String(file), ..]) => file
+        _ => ""
+      },
+      content="adapters/source.txt",
+    )
+    inspect(
+      acp_json_string_field(receipt, "criterion_id").unwrap_or(""),
+      content="planbook-source-patch-loop",
+    )
+  })
+}
+
+///|
+async test "execute_launch_plan records no-change patch receipt without fake success" {
+  @fsx.with_temporary_directory("acp-no-change-receipt-XXXXXX", async fn(dir) {
+    acp_test_init_repo(dir)
+    let plan = AcpLaunchPlan::{
+      backend: "codex",
+      target_id: "codex-main",
+      session_id: "acp-session-1",
+      session_key: "session:1",
+      cwd: dir,
+      workspace: Some(dir),
+      command: Some("sh"),
+      args: ["-c", "printf unchanged", "runner"],
+      model: Some("gpt-5"),
+      env: {},
+      metadata: {},
+    }
+    let result = match
+      execute_launch_plan(plan, new_run_request(message="inspect", cwd=dir)) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    let receipt = match result {
+      { "patch_receipt": receipt, .. } => receipt
+      _ => fail("missing patch receipt")
+    }
+    inspect(
+      acp_json_string_field(receipt, "result_decision").unwrap_or(""),
+      content="no_change",
+    )
+    inspect(
+      acp_json_string_field(receipt, "commit_status").unwrap_or(""),
+      content="skipped_no_change",
+    )
+    inspect(
+      match acp_json_array_field(receipt, "changed_files") {
+        Array(files) => files.length().to_string()
+        _ => "1"
+      },
+      content="0",
+    )
+  })
+}

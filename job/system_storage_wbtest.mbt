@@ -485,6 +485,188 @@ async test "SystemStore reconciles stale running delegate parent from terminal c
 }
 
 ///|
+fn sample_analysis_recovery_definition() -> JobDefinition {
+  JobDefinition::{
+    ..sample_definition(),
+    id: "job.sample.analysis.recovery",
+    workflow_id: Some("workflow.sample.analysis.recovery"),
+  }
+}
+
+///|
+fn sample_analysis_recovery_step(
+  metadata? : Json = {},
+) -> WorkflowStepDefinition {
+  WorkflowStepDefinition::{
+    id: "repair_planbook_gap",
+    kind: "job.analysis",
+    config: AnalysisStepConfig::new(
+      prompt="repair",
+      metadata~,
+      artifacts=AnalysisArtifactConfig::new(append_only=false),
+    ).to_json(),
+    retry_policy: None,
+  }
+}
+
+///|
+fn sample_analysis_recovery_workflow(
+  step : WorkflowStepDefinition,
+) -> WorkflowDefinition {
+  WorkflowDefinition::{
+    id: "workflow.sample.analysis.recovery",
+    kind: "job.proposal",
+    steps: [step],
+    output_bindings: [],
+  }
+}
+
+///|
+async fn write_materialized_analysis_result(
+  workspace_dir : String,
+  step : WorkflowStepDefinition,
+  payload : Json,
+) -> Unit {
+  let outputs_dir = workspace_dir |> @pathx.join("outputs")
+  @fsx.make_directory(outputs_dir, recursive=true, exists_ok=true)
+  @fsx.write_to_file(
+    workspace_result_file_for_step(workspace_dir, step),
+    payload.stringify(),
+  )
+  @fsx.write_to_file(
+    workspace_report_file_for_step(workspace_dir, step),
+    "repair report",
+  )
+}
+
+///|
+async test "SystemStore reconciles materialized analysis output into terminal run" {
+  @fsx.with_temporary_directory("job-system-reconcile-analysis-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workspace_dir = @pathx.join(dir, "workspace")
+    let store = SystemStore::new(root~)
+    let definition = sample_analysis_recovery_definition()
+    let step = sample_analysis_recovery_step()
+    let workflow = sample_analysis_recovery_workflow(step)
+    let run = JobRun::{
+      ..sample_run(),
+      id: "run-analysis",
+      job_id: definition.id,
+      workspace_dir: Some(workspace_dir),
+      status: RunStatus::Running,
+    }
+    let step_run = JobStepRun::{
+      ..sample_step_run(),
+      id: "run-analysis:repair_planbook_gap",
+      run_id: "run-analysis",
+      step_id: "repair_planbook_gap",
+      status: RunStatus::Running,
+      finished_at: None,
+      output: None,
+      error: None,
+    }
+
+    store.save_definition(definition)
+    store.save_workflow(workflow)
+    store.save_run(run)
+    store.save_step_run(step_run)
+    write_materialized_analysis_result(workspace_dir, step, {
+      "content": "accepted",
+      "result_decision": "accepted",
+      "metadata": {},
+    })
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(
+      reloaded
+      .get_run("run-analysis")
+      .map(fn(run) { run.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Succeeded\"",
+    )
+    inspect(
+      reloaded
+      .get_step_run("run-analysis", "repair_planbook_gap")
+      .map(fn(step) { step.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Succeeded\"",
+    )
+  })
+}
+
+///|
+async test "SystemStore fails recovered patch repair output without receipt" {
+  @fsx.with_temporary_directory("job-system-reconcile-patch-receipt-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let workspace_dir = @pathx.join(dir, "workspace")
+    let store = SystemStore::new(root~)
+    let definition = sample_analysis_recovery_definition()
+    let step = sample_analysis_recovery_step(metadata={
+      "step_metadata": {
+        "execution_mode": "acp",
+        "criterion_id": "live-runtime-recovery",
+        "patch_receipt_contract": "planbook.repair.patch_receipt.v1",
+      },
+    })
+    let workflow = sample_analysis_recovery_workflow(step)
+    let run = JobRun::{
+      ..sample_run(),
+      id: "run-patch",
+      job_id: definition.id,
+      workspace_dir: Some(workspace_dir),
+      status: RunStatus::Running,
+    }
+    let step_run = JobStepRun::{
+      ..sample_step_run(),
+      id: "run-patch:repair_planbook_gap",
+      run_id: "run-patch",
+      step_id: "repair_planbook_gap",
+      status: RunStatus::Running,
+      finished_at: None,
+      output: None,
+      error: None,
+    }
+
+    store.save_definition(definition)
+    store.save_workflow(workflow)
+    store.save_run(run)
+    store.save_step_run(step_run)
+    write_materialized_analysis_result(workspace_dir, step, {
+      "content": "repair_decision: accepted",
+      "result_decision": "accepted",
+      "metadata": {},
+    })
+
+    let reloaded = SystemStore::new(root~)
+    reloaded.load()
+
+    inspect(
+      reloaded
+      .get_run("run-patch")
+      .map(fn(run) { run.status.to_json().stringify() })
+      .unwrap_or(""),
+      content="\"Failed\"",
+    )
+    inspect(
+      reloaded
+      .get_run("run-patch")
+      .map(fn(run) { run.error.unwrap_or("") })
+      .unwrap_or(""),
+      content="materialized analysis output failed receipt validation",
+    )
+    inspect(
+      reloaded
+      .get_step_run("run-patch", "repair_planbook_gap")
+      .bind(fn(step) { step.error })
+      .unwrap_or(""),
+      content="analysis output missing planbook.repair.patch_receipt.v1 evidence",
+    )
+  })
+}
+
+///|
 async test "SystemStore shortens step file names for long step ids" {
   @fsx.with_temporary_directory("job-system-long-step-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

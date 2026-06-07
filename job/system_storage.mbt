@@ -530,6 +530,274 @@ async fn SystemStore::save_reconciled_run_unlocked(
 }
 
 ///|
+fn workspace_result_file_for_step(
+  workspace_dir : String,
+  step : WorkflowStepDefinition,
+) -> String {
+  let config : AnalysisStepConfig = @json.from_json(step.config) catch {
+    _ =>
+      return workspace_dir
+        |> @pathx.join("outputs")
+        |> @pathx.join(workspace_result_file_name(step.id, step.id))
+  }
+  workspace_dir
+  |> @pathx.join("outputs")
+  |> @pathx.join(
+    config.artifacts.result_file_name.unwrap_or(
+      workspace_result_file_name(step.id, step.id),
+    ),
+  )
+}
+
+///|
+fn workspace_report_file_for_step(
+  workspace_dir : String,
+  step : WorkflowStepDefinition,
+) -> String {
+  let config : AnalysisStepConfig = @json.from_json(step.config) catch {
+    _ =>
+      return workspace_dir
+        |> @pathx.join("outputs")
+        |> @pathx.join(workspace_report_file_name(step.id, step.id))
+  }
+  workspace_dir
+  |> @pathx.join("outputs")
+  |> @pathx.join(
+    config.artifacts.report_file_name.unwrap_or(
+      workspace_report_file_name(step.id, step.id),
+    ),
+  )
+}
+
+///|
+fn json_nested_field(value : Json, key : String) -> Json? {
+  match value {
+    Object(object) =>
+      match object.get(key) {
+        Some(value) => Some(value)
+        None =>
+          match object.get("metadata") {
+            Some(metadata) => json_nested_field(metadata, key)
+            None => None
+          }
+      }
+    _ => None
+  }
+}
+
+///|
+fn json_nested_string_field(value : Json, key : String) -> String? {
+  match json_nested_field(value, key) {
+    Some(String(text)) => Some(text)
+    _ => None
+  }
+}
+
+///|
+fn json_nested_patch_receipt_contract(value : Json) -> String? {
+  match json_nested_field(value, "patch_receipt") {
+    Some(Object(receipt)) =>
+      match receipt.get("contract") {
+        Some(String(contract)) => Some(contract)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn analysis_step_requires_patch_receipt(step : WorkflowStepDefinition) -> Bool {
+  let config : AnalysisStepConfig = @json.from_json(step.config) catch {
+    _ => return false
+  }
+  match metadata_with_step_metadata(config.metadata, "patch_receipt_contract") {
+    Some(String(contract)) if contract == "planbook.repair.patch_receipt.v1" =>
+      true
+    _ => false
+  }
+}
+
+///|
+fn materialized_analysis_result_satisfies_patch_receipt(payload : Json) -> Bool {
+  json_nested_patch_receipt_contract(payload) ==
+  Some("planbook.repair.patch_receipt.v1")
+}
+
+///|
+fn reconciled_materialized_analysis_step_run(
+  run : JobRun,
+  step : WorkflowStepDefinition,
+  existing : JobStepRun?,
+  payload : Json,
+  report_path : String,
+  result_path : String,
+) -> JobStepRun {
+  let requires_receipt = analysis_step_requires_patch_receipt(step)
+  let has_receipt = materialized_analysis_result_satisfies_patch_receipt(
+    payload,
+  )
+  let status = if requires_receipt && !has_receipt {
+    RunStatus::Failed
+  } else {
+    RunStatus::Succeeded
+  }
+  let summary = if status is RunStatus::Failed {
+    "Recovered materialized analysis output without required patch receipt"
+  } else {
+    "Recovered materialized analysis output from run workspace"
+  }
+  let error = if status is RunStatus::Failed {
+    Some("analysis output missing planbook.repair.patch_receipt.v1 evidence")
+  } else {
+    None
+  }
+  let logs = match existing {
+    Some(existing) => existing.logs
+    None => []
+  }
+  logs.push(
+    "reconciled materialized analysis output report=\{report_path} result=\{result_path}",
+  )
+  match existing {
+    Some(existing) =>
+      JobStepRun::{
+        ..existing,
+        status,
+        finished_at: Some(run.started_at.unwrap_or(0)),
+        logs,
+        summary: Some(summary),
+        output: Some(payload),
+        error,
+      }
+    None =>
+      JobStepRun::{
+        id: "\{run.id}:\{step.id}",
+        run_id: run.id,
+        step_id: step.id,
+        status,
+        started_at: run.started_at,
+        finished_at: Some(run.started_at.unwrap_or(0)),
+        metrics: {},
+        logs,
+        retry_count: 0,
+        summary: Some(summary),
+        output: Some(payload),
+        error,
+      }
+  }
+}
+
+///|
+async fn SystemStore::reconcile_materialized_analysis_outputs_unlocked(
+  self : SystemStore,
+) -> Unit {
+  let runs = self.runs.values().to_array()
+  for run in runs {
+    match run.status {
+      Pending | Running => ()
+      _ => continue
+    }
+    let workspace_dir = match run.workspace_dir {
+      Some(workspace_dir) if !workspace_dir.trim().to_string().is_blank() =>
+        workspace_dir
+      _ => continue
+    }
+    let definition = match self.definitions.get(run.job_id) {
+      Some(definition) => definition
+      None => continue
+    }
+    let workflow_id = match definition.workflow_id {
+      Some(workflow_id) => workflow_id
+      None => continue
+    }
+    let workflow = match self.workflows.get(workflow_id) {
+      Some(workflow) => workflow
+      None => continue
+    }
+    let mut saw_materialized = false
+    let mut saw_failed = false
+    let mut all_steps_terminal = true
+    let mut latest_finished_at = run.started_at.unwrap_or(0)
+    for step in workflow.steps {
+      let key = "\{run.id}:\{step.id}"
+      let existing = self.steps.get(key)
+      let step_run = match existing {
+        Some(step_run) if run_status_is_terminal(step_run.status) =>
+          Some(step_run)
+        _ =>
+          if step.kind == "job.analysis" {
+            let result_path = workspace_result_file_for_step(
+              workspace_dir, step,
+            )
+            if @fsx.exists(result_path) {
+              let payload = @json.parse(@fsx.read_file(result_path)) catch {
+                _ => {
+                  all_steps_terminal = false
+                  continue
+                }
+              }
+              let report_path = workspace_report_file_for_step(
+                workspace_dir, step,
+              )
+              let reconciled = reconciled_materialized_analysis_step_run(
+                run, step, existing, payload, report_path, result_path,
+              )
+              self.save_reconciled_step_run_unlocked(reconciled)
+              saw_materialized = true
+              Some(reconciled)
+            } else {
+              existing
+            }
+          } else {
+            existing
+          }
+      }
+      match step_run {
+        Some(step_run) =>
+          if run_status_is_terminal(step_run.status) {
+            let finished_at = step_run.finished_at.unwrap_or(
+              step_run.started_at.unwrap_or(latest_finished_at),
+            )
+            if finished_at > latest_finished_at {
+              latest_finished_at = finished_at
+            }
+            if step_run.status is RunStatus::Failed {
+              saw_failed = true
+            }
+          } else {
+            all_steps_terminal = false
+          }
+        None => all_steps_terminal = false
+      }
+    }
+    if saw_materialized && all_steps_terminal {
+      let status = if saw_failed {
+        RunStatus::Failed
+      } else {
+        RunStatus::Succeeded
+      }
+      let summary = if saw_failed {
+        "Recovered workflow failure from materialized analysis outputs"
+      } else {
+        "Recovered workflow completion from materialized analysis outputs"
+      }
+      let error = if saw_failed {
+        Some("materialized analysis output failed receipt validation")
+      } else {
+        None
+      }
+      self.save_reconciled_run_unlocked(JobRun::{
+        ..run,
+        status,
+        finished_at: Some(latest_finished_at),
+        summary: Some(summary),
+        error,
+      })
+    }
+  }
+}
+
+///|
 async fn SystemStore::reconcile_delegate_parent_runs_unlocked(
   self : SystemStore,
 ) -> Unit {
@@ -788,6 +1056,7 @@ pub async fn SystemStore::load(self : SystemStore) -> Unit {
       }
     }
     self.reconcile_delegate_parent_runs_unlocked()
+    self.reconcile_materialized_analysis_outputs_unlocked()
     self.save_runs_index_unlocked()
   })
 }

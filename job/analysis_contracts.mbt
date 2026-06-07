@@ -358,6 +358,14 @@ fn analysis_result_decision(
   config : AnalysisStepConfig,
   execution : AnalysisExecution,
 ) -> String {
+  match metadata_with_step_metadata(execution.metadata, "result_decision") {
+    Some(String(value)) =>
+      match normalize_analysis_result_decision(value) {
+        Some(decision) => return decision
+        None => ()
+      }
+    _ => ()
+  }
   match metadata_string(config.metadata, "result_decision") {
     Some(value) =>
       match normalize_analysis_result_decision(value) {
