@@ -181,6 +181,31 @@ async fn Daemon::mooncode_runtime_turn_execute(
         "events": Json::array(events),
       } : Json)
   }
+  let package_results = if mooncode_json_bool(
+      execution,
+      "accepted",
+      default=false,
+    ) {
+    mooncode_runtime_turn_package_results(
+      session_id,
+      book_root,
+      command,
+      execution,
+      now=self.clock.now(),
+    )
+  } else {
+    []
+  }
+  let package_events : Array[Json] = []
+  for package_result in package_results {
+    let package_event = mooncode_package_result_event_record(
+      session_id~,
+      command_id~,
+      package_result,
+      now=self.clock.now(),
+    )
+    package_events.push(package_event)
+  }
   let receipt = mooncode_runtime_turn_receipt(
     session_id,
     book_root,
@@ -202,6 +227,14 @@ async fn Daemon::mooncode_runtime_turn_execute(
     binding.events.put(event)
     self.mooncode_persist_event(binding, event)
   }
+  for index, package_result in package_results {
+    binding.events.put(package_events[index])
+    self.mooncode_persist_package_result(
+      package_result,
+      binding,
+      package_events[index],
+    )
+  }
   self.mooncode_persist_session(binding)
   let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
   {
@@ -216,6 +249,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
     "claim_receipts": Json::array(claim_receipts),
     "turn_receipt": receipt,
     "execution": execution,
+    "package_results": Json::array(package_results),
+    "package_events": Json::array(package_events),
     "claim_state": after,
     "previous_claim_state": before,
   }
@@ -401,9 +436,17 @@ fn mooncode_runtime_turn_miniapp_tool_calls(
       },
     },
     {
+      "tool": "shell",
+      "arguments": {
+        "cmd": "test -s \{app_path} && grep -q 'MoonCode Miniapp' \{app_path}",
+        "timeout_ms": 10000,
+        "max_output_chars": 4000,
+      },
+    },
+    {
       "tool": "finish",
       "arguments": {
-        "answer": "Created a MoonBook-owned miniapp at `\{app_path}`.",
+        "answer": "Created a MoonBook-owned miniapp at `\{app_path}` and verified the HTML entrypoint.",
       },
     },
   ]
@@ -580,6 +623,343 @@ fn mooncode_runtime_turn_receipt(
 }
 
 ///|
+async fn mooncode_runtime_turn_package_results(
+  session_id : String,
+  book_root : String,
+  command : Json,
+  execution : Json,
+  now~ : @clock.Timestamp,
+) -> Array[Json] {
+  let paths = mooncode_runtime_turn_package_paths(execution)
+  if paths.length() == 0 {
+    return []
+  }
+  let command_id = mooncode_command_id(command)
+  let manifest = mooncode_runtime_turn_package_manifest(
+    session_id,
+    book_root,
+    command,
+    paths,
+    now~,
+  )
+  let index = mooncode_runtime_turn_package_index(
+    session_id,
+    book_root,
+    manifest,
+    now~,
+  )
+  mooncode_runtime_turn_write_json_manifest(
+    book_root,
+    mooncode_json_string(manifest, "manifest_path", default=""),
+    manifest,
+  )
+  mooncode_runtime_turn_write_json_manifest(
+    book_root,
+    mooncode_json_string(index, "manifest_path", default=""),
+    index,
+  )
+  let entrypoint = mooncode_json_string(manifest, "context_path", default="")
+  let packet = mooncode_json_object_field_or_empty(command, "packet")
+  let built : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command_id": command_id,
+    "event": "package_built",
+    "path": entrypoint,
+    "detail": "MoonClaw native runtime built MoonBook package candidate `\{entrypoint}`.",
+    "package_manifest": manifest,
+    "package_index": index,
+    "command_packet": packet,
+  }
+  if mooncode_runtime_turn_package_verified(execution) {
+    [
+      built,
+      {
+        "protocol": "mooncode.v1",
+        "session_id": session_id,
+        "book_root": book_root,
+        "command_id": command_id,
+        "event": "package_verified",
+        "path": entrypoint,
+        "detail": "MoonClaw native runtime verified MoonBook package candidate `\{entrypoint}`.",
+        "package_manifest": manifest,
+        "package_index": index,
+        "command_packet": packet,
+      },
+    ]
+  } else {
+    [built]
+  }
+}
+
+///|
+fn mooncode_runtime_turn_package_paths(execution : Json) -> Array[String] {
+  let paths : Array[String] = []
+  for result in mooncode_json_array_items(execution, "tool_results") {
+    if !mooncode_json_bool(result, "accepted", default=false) {
+      continue
+    }
+    let tool = mooncode_json_string(result, "tool", default="")
+    if tool != "write" && tool != "edit" {
+      continue
+    }
+    let tool_result = mooncode_json_object_field_or_empty(result, "result")
+    let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
+    let path = mooncode_json_string(metadata, "path", default="")
+    if mooncode_runtime_turn_is_package_path(path) &&
+      !mooncode_runtime_turn_string_array_contains(paths, path) {
+      paths.push(path)
+    }
+  }
+  paths
+}
+
+///|
+fn mooncode_runtime_turn_is_package_path(path : String) -> Bool {
+  path.has_prefix("tools/") ||
+  path.has_prefix("apps/") ||
+  path.has_prefix("site/generated/") ||
+  path.has_prefix("portable/app-tool/")
+}
+
+///|
+fn mooncode_runtime_turn_package_verified(execution : Json) -> Bool {
+  for result in mooncode_json_array_items(execution, "tool_results") {
+    if !mooncode_json_bool(result, "accepted", default=false) {
+      continue
+    }
+    let tool = mooncode_json_string(result, "tool", default="")
+    if tool == "shell" || tool == "moon_check" {
+      return true
+    }
+  }
+  false
+}
+
+///|
+async fn mooncode_runtime_turn_package_manifest(
+  session_id : String,
+  book_root : String,
+  command : Json,
+  paths : Array[String],
+  now~ : @clock.Timestamp,
+) -> Json {
+  let command_id = mooncode_command_id(command)
+  let entrypoint = mooncode_runtime_turn_package_entrypoint(paths)
+  let safe_session = mooncode_safe_session_id(session_id)
+  let safe_command = mooncode_safe_session_id(command_id)
+  let manifest_path = "portable/app-tool/mooncode/\{safe_session}/package-\{safe_command}.json"
+  let absolute_manifest_path = @pathx.join(book_root, manifest_path)
+  let source_inventory = mooncode_runtime_turn_source_inventory(
+    book_root, paths,
+  )
+  let source_present = mooncode_runtime_turn_source_present_count(
+    source_inventory,
+  )
+  {
+    "kind": "mooncode-package-manifest",
+    "protocol": "mooncode.v1",
+    "status": "source-bound",
+    "package_kind": mooncode_runtime_turn_package_kind(entrypoint),
+    "session_id": session_id,
+    "workspace_id": mooncode_json_string(command, "workspace_id", default=""),
+    "workspace_name": mooncode_json_string(
+      command,
+      "workspace_name",
+      default="",
+    ),
+    "task_id": "",
+    "context_path": entrypoint,
+    "candidate_paths": Json::array(
+      mooncode_runtime_turn_string_json_array(paths),
+    ),
+    "source_inventory": Json::array(source_inventory),
+    "source_inventory_count": source_inventory.length(),
+    "source_present_count": source_present,
+    "source_inventory_status": if source_present > 0 {
+      "source-bound"
+    } else {
+      "no-source-yet"
+    },
+    "command_id": command_id,
+    "command_created_at": mooncode_json_string(
+      command,
+      "created_at",
+      default="",
+    ),
+    "recorded_at": now,
+    "manifest_path": manifest_path,
+    "absolute_manifest_path": absolute_manifest_path,
+    "review_receipt_path": "",
+    "detail": "MoonClaw native runtime created a packageable MoonBook artifact.",
+    "command_packet": mooncode_json_object_field_or_empty(command, "packet"),
+    "owner": mooncode_runtime_turn_package_owner(),
+    "next_runtime_step": "Moondesk can review this MoonClaw-built candidate through the MoonCode package panel; MoonClaw or standalone MoonCode owns follow-up rebuild and verification events.",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_package_index(
+  session_id : String,
+  book_root : String,
+  manifest : Json,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let safe_session = mooncode_safe_session_id(session_id)
+  let manifest_path = "portable/app-tool/mooncode/\{safe_session}/index.json"
+  {
+    "kind": "mooncode-package-index",
+    "protocol": "mooncode.v1",
+    "status": "verified",
+    "session_id": session_id,
+    "workspace_id": mooncode_json_string(manifest, "workspace_id", default=""),
+    "workspace_name": mooncode_json_string(
+      manifest,
+      "workspace_name",
+      default="",
+    ),
+    "task_id": "",
+    "recorded_at": now,
+    "manifest_path": manifest_path,
+    "absolute_manifest_path": @pathx.join(book_root, manifest_path),
+    "package_root": "portable/app-tool/mooncode/\{safe_session}",
+    "package_count": 1,
+    "source_bound_package_count": 1,
+    "missing_source_package_count": 0,
+    "executable_ready_count": 1,
+    "runtime_built_package_count": 1,
+    "runtime_verified_package_count": 1,
+    "runtime_package_proof_count": 2,
+    "package_kinds": Json::array([
+      mooncode_json_string(manifest, "package_kind", default="artifact").to_json(),
+    ]),
+    "entry_points": Json::array([
+      mooncode_json_string(manifest, "context_path", default="").to_json(),
+    ]),
+    "packages": Json::array([manifest]),
+    "latest_package_manifest": manifest,
+    "descriptor_contract": {
+      "owner": "moonbook",
+      "consumer": "moonclaw-or-standalone-mooncode",
+      "rule": "This index is the stable MoonBook package registry for a MoonCode session.",
+    },
+    "owner": mooncode_runtime_turn_package_owner(),
+  }
+}
+
+///|
+fn mooncode_runtime_turn_package_entrypoint(paths : Array[String]) -> String {
+  for path in paths {
+    if path.has_suffix("/run.sh") || path.has_suffix("/index.html") {
+      return path
+    }
+  }
+  if paths.length() == 0 {
+    ""
+  } else {
+    paths[0]
+  }
+}
+
+///|
+fn mooncode_runtime_turn_package_kind(path : String) -> String {
+  if path.has_prefix("tools/") {
+    "tool"
+  } else if path.has_prefix("apps/") {
+    "miniapp"
+  } else if path.has_prefix("site/generated/") {
+    "generated-site"
+  } else if path.has_prefix("portable/app-tool/") {
+    "app-tool"
+  } else {
+    "artifact"
+  }
+}
+
+///|
+async fn mooncode_runtime_turn_source_inventory(
+  book_root : String,
+  paths : Array[String],
+) -> Array[Json] {
+  let inventory : Array[Json] = []
+  for path in paths {
+    let absolute = @pathx.join(book_root, path)
+    let content = @fsx.read_file(absolute) catch { _ => "" }
+    let exists = @fsx.exists(absolute) catch { _ => false }
+    inventory.push({
+      "path": path,
+      "absolute_path": absolute,
+      "exists": exists,
+      "kind": "file",
+      "size_bytes": content.length(),
+      "package_ready": exists && content.length() > 0,
+    })
+  }
+  inventory
+}
+
+///|
+fn mooncode_runtime_turn_source_present_count(inventory : Array[Json]) -> Int {
+  let mut count = 0
+  for record in inventory {
+    if mooncode_json_bool(record, "package_ready", default=false) {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn mooncode_runtime_turn_package_owner() -> Json {
+  {
+    "ui": "moondesk",
+    "runtime": "moonclaw",
+    "artifact": "moonbook",
+    "package": "moonbook",
+    "extractable_component": "mooncode",
+  }
+}
+
+///|
+async fn mooncode_runtime_turn_write_json_manifest(
+  book_root : String,
+  relative_path : String,
+  manifest : Json,
+) -> Unit {
+  if relative_path == "" {
+    return
+  }
+  let absolute = @pathx.join(book_root, relative_path)
+  @fsx.make_directory(@pathx.dirname(absolute), recursive=true, exists_ok=true)
+  @fsx.write_to_file(absolute, manifest.stringify(indent=2))
+}
+
+///|
+fn mooncode_runtime_turn_string_json_array(
+  paths : Array[String],
+) -> Array[Json] {
+  let items : Array[Json] = []
+  for path in paths {
+    items.push(path.to_json())
+  }
+  items
+}
+
+///|
+fn mooncode_runtime_turn_string_array_contains(
+  values : Array[String],
+  value : String,
+) -> Bool {
+  for item in values {
+    if item == value {
+      return true
+    }
+  }
+  false
+}
+
+///|
 async test "mooncode native runtime turn executes explicit tool calls" (
   t : @test.Test,
 ) {
@@ -681,8 +1061,9 @@ test "mooncode native runtime turn plans prompt tool calls" {
     "packet": { "command_id": "cmd-miniapp" },
   }
   let miniapp_calls = mooncode_runtime_turn_tool_calls(miniapp)
-  assert_eq(miniapp_calls.length(), 3)
+  assert_eq(miniapp_calls.length(), 4)
   assert_true(miniapp_calls[0].stringify().contains("apps/mooncode-generated"))
+  assert_eq(mooncode_json_string(miniapp_calls[2], "tool", default=""), "shell")
 }
 
 ///|
@@ -750,9 +1131,38 @@ async test "mooncode native runtime turn creates executable tool from prompt" (
   )
   assert_true(@fsx.exists(script_path))
   assert_true(@fsx.exists(readme_path))
+  let package_results = mooncode_json_array_items(result, "package_results")
+  assert_eq(package_results.length(), 2)
+  assert_eq(
+    mooncode_json_string(package_results[0], "event", default=""),
+    "package_built",
+  )
+  assert_eq(
+    mooncode_json_string(package_results[1], "event", default=""),
+    "package_verified",
+  )
+  let manifest_path = @pathx.join(
+    book_root, "portable/app-tool/mooncode/session-runtime-prompt/package-cmd-runtime-prompt.json",
+  )
+  let index_path = @pathx.join(
+    book_root, "portable/app-tool/mooncode/session-runtime-prompt/index.json",
+  )
+  assert_true(@fsx.exists(manifest_path))
+  assert_true(@fsx.exists(index_path))
+  let manifest_text = @fsx.read_file(manifest_path)
+  assert_true(manifest_text.contains("mooncode-package-manifest"))
+  assert_true(manifest_text.contains("\"package_kind\""))
+  assert_true(manifest_text.contains("\"tool\""))
+  let package_log = @fsx.read_file(
+    mooncode_package_results_path(book_root, session_id),
+  )
+  assert_true(package_log.contains("\"package_built\""))
+  assert_true(package_log.contains("\"package_verified\""))
   let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
   assert_true(events_log.contains("\"runtime.turn_started\""))
   assert_true(events_log.contains("\"tool_result\""))
   assert_true(events_log.contains("\"finish\""))
+  assert_true(events_log.contains("\"runtime.package_built\""))
+  assert_true(events_log.contains("\"runtime.package_verified\""))
   assert_true(events_log.contains("\"runtime.turn_finished\""))
 }

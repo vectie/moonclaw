@@ -297,6 +297,17 @@ evidence, returning `ok`, `required_harnesses`, `passed_count`,
 `failed_count`, and nested native harness results for Moondesk's Eval Report
 panel.
 
+### `POST /v1/mooncode/sessions/{id}/runtime-turn`
+
+Claims the next durable MoonCode command for the selected `book_root` and runs a
+bounded native turn. Explicit `runtime_tool_calls` are executed directly; prompt
+fallbacks can create MoonBook-owned tools or miniapps under `tools/` or `apps/`.
+When a generated artifact verifies successfully, MoonClaw writes
+`portable/app-tool/mooncode/{safe-session-id}/package-{safe-command-id}.json`,
+refreshes `portable/app-tool/mooncode/{safe-session-id}/index.json`, appends
+`package_built` and `package_verified` records to `package-results.jsonl`, and
+adds artifact-lane events for Moondesk's package review UI.
+
 ### `POST /v1/task/{id}/publish`
 
 Run `moon publish` in the task's working directory.

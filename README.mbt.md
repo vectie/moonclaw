@@ -90,7 +90,11 @@ MoonClaw is strongest when you want one system to handle:
   `prompt`/`steer` commands that ask for a tool, script, miniapp, generated
   site, or HTML app expand into native `write`, `shell`, and `finish` tool calls
   under MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can
-  create and verify an executable artifact without predeclared tool calls. The
+  create and verify an executable artifact without predeclared tool calls.
+  Successful native turns now also write MoonBook package manifests and an
+  index under `portable/app-tool/mooncode/<session-id>/`, append
+  `package_built` and `package_verified` proof to `package-results.jsonl`, and
+  emit artifact-lane package events for Moondesk's package review surface. The
   remaining MoonCode runtime gap is the full model-backed OpenSeek-style agent
   planner with broad tool selection, multi-turn steering, diff-aware edits, and
   broader model-backed coding eval coverage.
