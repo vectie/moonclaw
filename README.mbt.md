@@ -108,10 +108,10 @@ MoonClaw is strongest when you want one system to handle:
   transcript from MoonClaw-owned evidence. Unsupported or empty model plans fall
   back to the deterministic planner.
   Native `apply_patch` and `revert_patch` execute bounded reviewed text
-  replacements or single-file unified-diff hunks inside the selected MoonBook
-  root, infer the target path from diff headers when needed, and emit
-  `runtime.patch_applied` / `runtime.patch_reverted` proof events for Moondesk
-  review gates.
+  replacements plus single-file or multi-file unified-diff patchsets inside
+  the selected MoonBook root, infer target paths from diff headers when needed,
+  and emit `runtime.patch_applied` / `runtime.patch_reverted` proof events for
+  Moondesk review gates.
   Successful native turns now also write MoonBook package manifests and an
   index under `portable/app-tool/mooncode/<session-id>/`, append
   `package_built` and `package_verified` proof to `package-results.jsonl`, and

@@ -380,6 +380,21 @@ async fn mooncode_tool_patch_replace(
   arguments : Json,
   reverse~ : Bool,
 ) -> Json {
+  let before_string = mooncode_tool_patch_before(arguments)
+  let after_string = mooncode_tool_patch_after(arguments)
+  let diff_text = mooncode_tool_patch_diff_text(arguments)
+  if before_string == "" && after_string == "" && diff_text != "" {
+    let patch_files = mooncode_tool_patch_files_from_unified_diff(diff_text)
+    if patch_files.length() > 1 {
+      return mooncode_tool_apply_unified_patchset(
+        tool,
+        book_root,
+        patch_files,
+        diff_text,
+        reverse~,
+      )
+    }
+  }
   let path = mooncode_tool_patch_path(book_root, arguments)
   if mooncode_json_bool(path, "ok", default=false) == false {
     return mooncode_tool_error_result(
@@ -402,9 +417,6 @@ async fn mooncode_tool_patch_replace(
   } else {
     ""
   }
-  let before_string = mooncode_tool_patch_before(arguments)
-  let after_string = mooncode_tool_patch_after(arguments)
-  let diff_text = mooncode_tool_patch_diff_text(arguments)
   if before_string == "" && after_string == "" && diff_text != "" {
     return mooncode_tool_apply_unified_diff(
       tool,
@@ -612,6 +624,224 @@ fn mooncode_tool_first_split_piece(text : String, separator : String) -> String 
 }
 
 ///|
+fn mooncode_tool_patch_files_from_unified_diff(diff : String) -> Array[Json] {
+  let files : Array[Json] = []
+  let lines : Array[String] = []
+  let mut old_path = ""
+  let mut new_path = ""
+  let mut collecting = false
+  for line_view in diff.split("\n") {
+    let line = line_view.to_owned()
+    if line.has_prefix("--- ") {
+      mooncode_tool_patch_flush_file(files, old_path, new_path, lines)
+      old_path = mooncode_tool_patch_clean_diff_path(line[4:])
+      new_path = ""
+      lines.push(line)
+      collecting = true
+    } else if collecting {
+      if line.has_prefix("+++ ") && new_path == "" {
+        new_path = mooncode_tool_patch_clean_diff_path(line[4:])
+      }
+      lines.push(line)
+    }
+  }
+  mooncode_tool_patch_flush_file(files, old_path, new_path, lines)
+  files
+}
+
+///|
+fn mooncode_tool_patch_flush_file(
+  files : Array[Json],
+  old_path : String,
+  new_path : String,
+  lines : Array[String],
+) -> Unit {
+  if lines.length() == 0 {
+    return
+  }
+  let path = mooncode_tool_patch_file_path(old_path, new_path)
+  if path != "" {
+    files.push({
+      "path": path,
+      "old_path": old_path,
+      "new_path": new_path,
+      "diff": lines.join("\n") + "\n",
+    })
+  }
+  lines.clear()
+}
+
+///|
+fn mooncode_tool_patch_file_path(
+  old_path : String,
+  new_path : String,
+) -> String {
+  if new_path != "" && new_path != "/dev/null" {
+    new_path
+  } else if old_path != "" && old_path != "/dev/null" {
+    old_path
+  } else {
+    ""
+  }
+}
+
+///|
+async fn mooncode_tool_apply_unified_patchset(
+  tool : String,
+  book_root : String,
+  files : Array[Json],
+  diff_text : String,
+  reverse~ : Bool,
+) -> Json {
+  let plans : Array[Json] = []
+  let file_results : Array[Json] = []
+  let output_diffs : Array[String] = []
+  let mut total_hunks = 0
+  let mut changed = false
+  for file in files {
+    let path_text = mooncode_json_string(file, "path", default="")
+    let resolved = mooncode_resolve_book_path(book_root, path_text)
+    if mooncode_json_bool(resolved, "ok", default=false) == false {
+      return mooncode_tool_error_result(
+        tool,
+        message=mooncode_json_string(
+          resolved,
+          "message",
+          default="invalid patchset path",
+        ),
+        metadata={ "path": path_text, "patch_file": file },
+      )
+    }
+    let absolute = mooncode_json_string(resolved, "absolute_path", default="")
+    let relative = mooncode_json_string(resolved, "relative_path", default="")
+    let existed = @fsx.exists(absolute)
+    let content = if existed {
+      @fsx.read_file(absolute) catch {
+        error =>
+          return mooncode_tool_error_result(
+            tool,
+            message="error reading \{absolute}: \{error}",
+            metadata={ "path": relative, "absolute_path": absolute },
+          )
+      }
+    } else {
+      ""
+    }
+    let file_diff = mooncode_json_string(file, "diff", default="")
+    let chunks = mooncode_tool_patch_chunks_from_unified_diff(file_diff)
+    if chunks.length() == 0 {
+      return mooncode_tool_error_result(
+        tool,
+        message="unified patchset file contains no applicable hunks: \{relative}",
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+    }
+    let patched_result = mooncode_tool_apply_unified_chunks_to_content(
+      tool,
+      relative,
+      absolute,
+      content,
+      chunks,
+      reverse~,
+    )
+    if mooncode_json_bool(patched_result, "ok", default=false) == false {
+      return patched_result
+    }
+    let patched = mooncode_json_string(
+      patched_result,
+      "patched",
+      default=content,
+    )
+    let applied_count = mooncode_json_int(
+      patched_result,
+      "applied_hunk_count",
+      default=0,
+    )
+    let old_path = mooncode_json_string(file, "old_path", default="")
+    let new_path = mooncode_json_string(file, "new_path", default="")
+    let delete_file = (new_path == "/dev/null" && !reverse) ||
+      (old_path == "/dev/null" && reverse)
+    let file_changed = content != patched || (delete_file && existed)
+    total_hunks += applied_count
+    changed = changed || file_changed
+    let output_diff = mooncode_tool_unified_diff(
+      relative,
+      content,
+      patched,
+      existed~,
+    )
+    output_diffs.push(output_diff)
+    plans.push({
+      "path": relative,
+      "absolute_path": absolute,
+      "patched": patched,
+      "delete_file": delete_file,
+    })
+    file_results.push({
+      "path": relative,
+      "absolute_path": absolute,
+      "changed": file_changed,
+      "delete_file": delete_file,
+      "applied_hunk_count": applied_count,
+      "diff": output_diff,
+    })
+  }
+  for plan in plans {
+    let absolute = mooncode_json_string(plan, "absolute_path", default="")
+    if mooncode_json_bool(plan, "delete_file", default=false) {
+      if @fsx.exists(absolute) {
+        @fsx.remove(absolute) catch {
+          error =>
+            return mooncode_tool_error_result(
+              tool,
+              message="error removing \{absolute}: \{error}",
+              metadata={
+                "path": mooncode_json_string(plan, "path", default=""),
+                "absolute_path": absolute,
+              },
+            )
+        }
+      }
+    } else {
+      @fsx.make_directory(
+        @pathx.dirname(absolute),
+        recursive=true,
+        exists_ok=true,
+      )
+      @fsx.write_to_file(
+        absolute,
+        mooncode_json_string(plan, "patched", default=""),
+      ) catch {
+        error =>
+          return mooncode_tool_error_result(
+            tool,
+            message="error writing \{absolute}: \{error}",
+            metadata={
+              "path": mooncode_json_string(plan, "path", default=""),
+              "absolute_path": absolute,
+            },
+          )
+      }
+    }
+  }
+  mooncode_tool_ok_result(
+    tool,
+    message="\{tool} applied \{total_hunks} unified diff hunk(s) across \{file_results.length()} file(s)",
+    output="",
+    metadata={
+      "path": "patchset",
+      "changed": changed,
+      "diff": output_diffs.join(""),
+      "proof_event": mooncode_tool_patch_proof_event(tool),
+      "applied_hunk_count": total_hunks,
+      "patched_file_count": file_results.length(),
+      "files": Json::array(file_results),
+      "input_diff": diff_text,
+    },
+  )
+}
+
+///|
 async fn mooncode_tool_apply_unified_diff(
   tool : String,
   relative : String,
@@ -629,6 +859,57 @@ async fn mooncode_tool_apply_unified_diff(
       metadata={ "path": relative, "absolute_path": absolute },
     )
   }
+  let patched_result = mooncode_tool_apply_unified_chunks_to_content(
+    tool,
+    relative,
+    absolute,
+    content,
+    chunks,
+    reverse~,
+  )
+  if mooncode_json_bool(patched_result, "ok", default=false) == false {
+    return patched_result
+  }
+  let patched = mooncode_json_string(patched_result, "patched", default=content)
+  let applied_count = mooncode_json_int(
+    patched_result,
+    "applied_hunk_count",
+    default=0,
+  )
+  @fsx.make_directory(@pathx.dirname(absolute), recursive=true, exists_ok=true)
+  @fsx.write_to_file(absolute, patched) catch {
+    error =>
+      return mooncode_tool_error_result(
+        tool,
+        message="error writing \{absolute}: \{error}",
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+  }
+  mooncode_tool_ok_result(
+    tool,
+    message="\{tool} applied \{applied_count} unified diff hunk(s) to \{relative}",
+    output="",
+    metadata={
+      "path": relative,
+      "absolute_path": absolute,
+      "changed": content != patched,
+      "diff": mooncode_tool_unified_diff(relative, content, patched, existed~),
+      "proof_event": mooncode_tool_patch_proof_event(tool),
+      "applied_hunk_count": applied_count,
+      "input_diff": diff_text,
+    },
+  )
+}
+
+///|
+fn mooncode_tool_apply_unified_chunks_to_content(
+  tool : String,
+  relative : String,
+  absolute : String,
+  content : String,
+  chunks : Array[Json],
+  reverse~ : Bool,
+) -> Json {
   let mut patched = content
   let mut applied_count = 0
   for chunk in chunks {
@@ -677,29 +958,7 @@ async fn mooncode_tool_apply_unified_diff(
       applied_count += 1
     }
   }
-  @fsx.make_directory(@pathx.dirname(absolute), recursive=true, exists_ok=true)
-  @fsx.write_to_file(absolute, patched) catch {
-    error =>
-      return mooncode_tool_error_result(
-        tool,
-        message="error writing \{absolute}: \{error}",
-        metadata={ "path": relative, "absolute_path": absolute },
-      )
-  }
-  mooncode_tool_ok_result(
-    tool,
-    message="\{tool} applied \{applied_count} unified diff hunk(s) to \{relative}",
-    output="",
-    metadata={
-      "path": relative,
-      "absolute_path": absolute,
-      "changed": content != patched,
-      "diff": mooncode_tool_unified_diff(relative, content, patched, existed~),
-      "proof_event": mooncode_tool_patch_proof_event(tool),
-      "applied_hunk_count": applied_count,
-      "input_diff": diff_text,
-    },
-  )
+  { "ok": true, "patched": patched, "applied_hunk_count": applied_count }
 }
 
 ///|
@@ -1409,6 +1668,93 @@ async test "mooncode native patch tools apply and revert unified diffs" (
   assert_eq(
     @fsx.read_file(@pathx.join(book_root, "tools/diff.txt")),
     "alpha\nbeta\ngamma\n",
+  )
+  let revert_event = mooncode_json_object_field_or_empty(revert, "event")
+  assert_eq(
+    mooncode_json_string(revert_event, "kind", default=""),
+    "runtime.patch_reverted",
+  )
+}
+
+///|
+async test "mooncode native patch tools apply and revert unified patchsets" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patchset-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(@pathx.join(book_root, "tools/one.txt"), "one\nalpha\n")
+  @fsx.write_to_file(@pathx.join(book_root, "tools/two.txt"), "two\nbeta\n")
+  let diff = "--- a/tools/one.txt\n+++ b/tools/one.txt\n@@\n one\n-alpha\n+Alpha\n--- a/tools/two.txt\n+++ b/tools/two.txt\n@@\n two\n-beta\n+Beta\n"
+  let apply = mooncode_execute_tool_call(
+    "session-patchset",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-patchset",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply-patchset",
+      "arguments": { "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(50L),
+  )
+  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+  assert_true(mooncode_json_bool(apply_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/one.txt")),
+    "one\nAlpha\n",
+  )
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/two.txt")),
+    "two\nBeta\n",
+  )
+  let apply_event = mooncode_json_object_field_or_empty(apply, "event")
+  assert_eq(mooncode_json_string(apply_event, "path", default=""), "patchset")
+  assert_eq(
+    mooncode_json_string(apply_event, "kind", default=""),
+    "runtime.patch_applied",
+  )
+  let apply_metadata = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(apply_event, "tool_result"),
+    "metadata",
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "patched_file_count", default=0),
+    2,
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "applied_hunk_count", default=0),
+    2,
+  )
+  let revert = mooncode_execute_tool_call(
+    "session-patchset",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-patchset",
+      "book_root": book_root,
+      "tool": "revert_patch",
+      "command_id": "cmd-revert-patchset",
+      "arguments": { "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(51L),
+  )
+  let revert_result = mooncode_json_object_field_or_empty(revert, "result")
+  assert_true(mooncode_json_bool(revert_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/one.txt")),
+    "one\nalpha\n",
+  )
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/two.txt")),
+    "two\nbeta\n",
   )
   let revert_event = mooncode_json_object_field_or_empty(revert, "event")
   assert_eq(

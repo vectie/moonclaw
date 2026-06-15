@@ -103,6 +103,39 @@ async fn mooncode_native_eval_harness_report(
     expected_kind="runtime.patch_reverted",
     expected_detail="reverts a reviewed unified diff and emits runtime patch proof",
   )
+  @fsx.write_to_file(
+    @pathx.join(fixture_root, "tools/eval-patchset-a.txt"),
+    "a\nold\n",
+  )
+  @fsx.write_to_file(
+    @pathx.join(fixture_root, "tools/eval-patchset-b.txt"),
+    "b\nold\n",
+  )
+  let patchset_diff = "--- a/tools/eval-patchset-a.txt\n+++ b/tools/eval-patchset-a.txt\n@@\n a\n-old\n+new\n--- a/tools/eval-patchset-b.txt\n+++ b/tools/eval-patchset-b.txt\n@@\n b\n-old\n+new\n"
+  let apply_patchset_case = mooncode_eval_tool_case(
+    session_id,
+    fixture_root,
+    "apply_patch",
+    "eval-apply-patchset",
+    { "diff": patchset_diff },
+    now~,
+    expected_path="patchset",
+    expected_diff="+new",
+    expected_kind="runtime.patch_applied",
+    expected_detail="applies a reviewed multi-file unified diff patchset and emits runtime patch proof",
+  )
+  let revert_patchset_case = mooncode_eval_tool_case(
+    session_id,
+    fixture_root,
+    "revert_patch",
+    "eval-revert-patchset",
+    { "diff": patchset_diff },
+    now~,
+    expected_path="patchset",
+    expected_diff="+old",
+    expected_kind="runtime.patch_reverted",
+    expected_detail="reverts a reviewed multi-file unified diff patchset and emits runtime patch proof",
+  )
   let shell_case = mooncode_eval_tool_case(
     session_id,
     fixture_root,
@@ -137,6 +170,7 @@ async fn mooncode_native_eval_harness_report(
   ]
   let file_edit_cases = [
     edit_case, apply_patch_case, revert_patch_case, apply_unified_case, revert_unified_case,
+    apply_patchset_case, revert_patchset_case,
   ]
   let tool_harness = mooncode_eval_harness(
     "tool_harness", "Native tool harness", tool_cases,
