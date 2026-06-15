@@ -83,6 +83,12 @@ MoonClaw is strongest when you want one system to handle:
   needed, executes explicit `runtime_tool_calls` or deterministic built-in
   fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
   events, and closes the command with `runtime-completed` or `runtime-failed`.
+  `POST
+  /v1/mooncode/sessions/<id>/runtime-loop?book_root=<path>` now layers a
+  bounded queue supervisor over that turn primitive: it repeatedly runs native
+  turns until the durable command queue is idle, a turn fails, a cancel command
+  lands, or `max_turns` is reached, returning per-turn evidence plus the final
+  claim state.
   `/commands` now also accepts `native_dispatch_mode=queue-only`, which appends
   the durable command without spawning or messaging the legacy MoonClaw task
   bridge so a client can call `runtime-turn` without duplicate execution.

@@ -313,6 +313,14 @@ refreshes `portable/app-tool/mooncode/{safe-session-id}/index.json`, appends
 `package_built` and `package_verified` records to `package-results.jsonl`, and
 adds artifact-lane events for Moondesk's package review UI.
 
+### `POST /v1/mooncode/sessions/{id}/runtime-loop`
+
+Runs a bounded MoonCode queue supervisor for the selected `book_root`. The loop
+reuses the native `runtime-turn` primitive, so each command still records normal
+claim receipts, runtime events, tool results, package proof, and terminal
+`runtime-completed` or `runtime-failed` receipts. It stops when the queue is
+idle, a turn fails, a cancel command is processed, or `max_turns` is reached.
+
 ### `POST /v1/task/{id}/publish`
 
 Run `moon publish` in the task's working directory.
