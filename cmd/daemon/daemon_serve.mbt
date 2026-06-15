@@ -16,6 +16,7 @@
 /// - POST /v1/mooncode/sessions/{id}/commands → `mooncode_accept_command`
 /// - GET  /v1/mooncode/sessions/{id}/stream → `mooncode_stream`
 /// - GET  /v1/mooncode/sessions/{id}/eval-report → `mooncode_eval_report`
+/// - POST /v1/mooncode/sessions/{id}/package-result → `mooncode_package_result`
 /// - GET  /v1/auth/status → `get_auth_status`
 /// - POST /v1/auth/codex/start → `start_codex_auth` (callback on port 1455)
 /// - POST /v1/auth/codex/logout → `logout_codex`
@@ -60,6 +61,10 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.mooncode_stream(session_id~, w)
             (Get, ["", "v1", "mooncode", "sessions", session_id, "eval-report"]) =>
               self.mooncode_eval_report(session_id~, w)
+            (
+              Post,
+              ["", "v1", "mooncode", "sessions", session_id, "package-result"],
+            ) => self.mooncode_package_result(session_id~, r, w)
             (method_, ["", "v1", "task", id, .. paths]) =>
               self.forward_to_task(method_~, group~, id~, paths~, r, w)
             // Auth endpoints
