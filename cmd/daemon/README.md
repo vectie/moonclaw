@@ -314,7 +314,8 @@ emits MoonCode `reasoning_delta` progress, optional assistant transcript deltas,
 and pre-execution `tool_call` events before the matching `tool_result`, so
 clients can render live-style OpenSeek/Codex progress from the native event log.
 Native `apply_patch` and `revert_patch` execute bounded reviewed text
-replacements inside the selected MoonBook root and emit
+replacements or single-file unified-diff hunks inside the selected MoonBook
+root, infer the target path from diff headers when needed, and emit
 `runtime.patch_applied` / `runtime.patch_reverted` proof events.
 Unsupported or empty model plans fall back to deterministic planning.
 When a generated artifact verifies successfully, MoonClaw writes

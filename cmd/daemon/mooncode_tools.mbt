@@ -389,17 +389,6 @@ async fn mooncode_tool_patch_replace(
   }
   let absolute = mooncode_json_string(path, "absolute_path", default="")
   let relative = mooncode_json_string(path, "relative_path", default="")
-  let before_string = mooncode_tool_patch_before(arguments)
-  let after_string = mooncode_tool_patch_after(arguments)
-  let old_string = if reverse { after_string } else { before_string }
-  let new_string = if reverse { before_string } else { after_string }
-  if old_string == new_string {
-    return mooncode_tool_error_result(
-      tool,
-      message="patch before/after content must differ",
-      metadata={ "path": relative, "absolute_path": absolute },
-    )
-  }
   let existed = @fsx.exists(absolute)
   let content = if existed {
     @fsx.read_file(absolute) catch {
@@ -412,6 +401,29 @@ async fn mooncode_tool_patch_replace(
     }
   } else {
     ""
+  }
+  let before_string = mooncode_tool_patch_before(arguments)
+  let after_string = mooncode_tool_patch_after(arguments)
+  let diff_text = mooncode_tool_patch_diff_text(arguments)
+  if before_string == "" && after_string == "" && diff_text != "" {
+    return mooncode_tool_apply_unified_diff(
+      tool,
+      relative,
+      absolute,
+      content,
+      existed~,
+      diff_text,
+      reverse~,
+    )
+  }
+  let old_string = if reverse { after_string } else { before_string }
+  let new_string = if reverse { before_string } else { after_string }
+  if old_string == new_string {
+    return mooncode_tool_error_result(
+      tool,
+      message="patch before/after content must differ",
+      metadata={ "path": relative, "absolute_path": absolute },
+    )
   }
   if content == new_string {
     return mooncode_tool_ok_result(
@@ -501,7 +513,20 @@ fn mooncode_tool_patch_path(book_root : String, arguments : Json) -> Json {
     return mooncode_resolve_book_path(book_root, context_path)
   }
   let target = mooncode_json_string(arguments, "target", default="")
-  mooncode_resolve_book_path(book_root, target)
+  if target != "" {
+    return mooncode_resolve_book_path(book_root, target)
+  }
+  let diff_path = mooncode_tool_patch_path_from_diff(
+    mooncode_tool_patch_diff_text(arguments),
+  )
+  if diff_path != "" {
+    return mooncode_resolve_book_path(book_root, diff_path)
+  }
+  {
+    "ok": false,
+    "message": "patch path, context_path, target, or diff path is required",
+    "book_root": @pathx.normalize(book_root),
+  }
 }
 
 ///|
@@ -528,6 +553,213 @@ fn mooncode_tool_patch_after(arguments : Json) -> String {
     return after
   }
   mooncode_json_string(arguments, "content", default="")
+}
+
+///|
+fn mooncode_tool_patch_diff_text(arguments : Json) -> String {
+  let diff = mooncode_json_string(arguments, "diff", default="")
+  if diff != "" {
+    return diff
+  }
+  let patch = mooncode_json_string(arguments, "patch", default="")
+  if patch != "" {
+    return patch
+  }
+  mooncode_json_string(arguments, "unified_diff", default="")
+}
+
+///|
+fn mooncode_tool_patch_path_from_diff(diff : String) -> String {
+  for line in diff.split("\n") {
+    let text = line.to_owned()
+    if text.has_prefix("+++ ") {
+      let path = mooncode_tool_patch_clean_diff_path(text[4:])
+      if path != "" && path != "/dev/null" {
+        return path
+      }
+    }
+  }
+  for line in diff.split("\n") {
+    let text = line.to_owned()
+    if text.has_prefix("--- ") {
+      let path = mooncode_tool_patch_clean_diff_path(text[4:])
+      if path != "" && path != "/dev/null" {
+        return path
+      }
+    }
+  }
+  ""
+}
+
+///|
+fn mooncode_tool_patch_clean_diff_path(raw : StringView) -> String {
+  let trimmed = raw.trim().to_owned()
+  let first = mooncode_tool_first_split_piece(trimmed, "\t")
+  let without_timestamp = mooncode_tool_first_split_piece(first, " ")
+  if without_timestamp.has_prefix("a/") || without_timestamp.has_prefix("b/") {
+    without_timestamp[2:].to_owned()
+  } else {
+    without_timestamp
+  }
+}
+
+///|
+fn mooncode_tool_first_split_piece(text : String, separator : String) -> String {
+  for piece in text.split(separator) {
+    return piece.to_owned()
+  }
+  text
+}
+
+///|
+async fn mooncode_tool_apply_unified_diff(
+  tool : String,
+  relative : String,
+  absolute : String,
+  content : String,
+  existed~ : Bool,
+  diff_text : String,
+  reverse~ : Bool,
+) -> Json {
+  let chunks = mooncode_tool_patch_chunks_from_unified_diff(diff_text)
+  if chunks.length() == 0 {
+    return mooncode_tool_error_result(
+      tool,
+      message="unified diff contains no applicable hunks",
+      metadata={ "path": relative, "absolute_path": absolute },
+    )
+  }
+  let mut patched = content
+  let mut applied_count = 0
+  for chunk in chunks {
+    let forward_old = mooncode_json_string(chunk, "old_text", default="")
+    let forward_new = mooncode_json_string(chunk, "new_text", default="")
+    let old_text = if reverse { forward_new } else { forward_old }
+    let new_text = if reverse { forward_old } else { forward_new }
+    if old_text == new_text {
+      continue
+    }
+    if old_text == "" {
+      if patched != "" {
+        return mooncode_tool_error_result(
+          tool,
+          message="creation hunk can only apply to an empty or missing file",
+          metadata={ "path": relative, "absolute_path": absolute },
+        )
+      }
+      patched = new_text
+      applied_count += 1
+    } else {
+      let occurrences = patched.split(old_text).count() - 1
+      if occurrences == 0 {
+        return mooncode_tool_error_result(
+          tool,
+          message="unified diff hunk did not match \{relative}",
+          metadata={
+            "path": relative,
+            "absolute_path": absolute,
+            "hunk": chunk,
+          },
+        )
+      }
+      if occurrences > 1 {
+        return mooncode_tool_error_result(
+          tool,
+          message="unified diff hunk matched \{occurrences} times in \{relative}; refusing ambiguous patch",
+          metadata={
+            "path": relative,
+            "absolute_path": absolute,
+            "hunk": chunk,
+          },
+        )
+      }
+      patched = patched.replace(old=old_text, new=new_text)
+      applied_count += 1
+    }
+  }
+  @fsx.make_directory(@pathx.dirname(absolute), recursive=true, exists_ok=true)
+  @fsx.write_to_file(absolute, patched) catch {
+    error =>
+      return mooncode_tool_error_result(
+        tool,
+        message="error writing \{absolute}: \{error}",
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+  }
+  mooncode_tool_ok_result(
+    tool,
+    message="\{tool} applied \{applied_count} unified diff hunk(s) to \{relative}",
+    output="",
+    metadata={
+      "path": relative,
+      "absolute_path": absolute,
+      "changed": content != patched,
+      "diff": mooncode_tool_unified_diff(relative, content, patched, existed~),
+      "proof_event": mooncode_tool_patch_proof_event(tool),
+      "applied_hunk_count": applied_count,
+      "input_diff": diff_text,
+    },
+  )
+}
+
+///|
+fn mooncode_tool_patch_chunks_from_unified_diff(diff : String) -> Array[Json] {
+  let chunks : Array[Json] = []
+  let old_lines : Array[String] = []
+  let new_lines : Array[String] = []
+  let mut in_hunk = false
+  for line_view in diff.split("\n") {
+    let line = line_view.to_owned()
+    if line.has_prefix("@@") {
+      mooncode_tool_patch_flush_chunk(chunks, old_lines, new_lines)
+      in_hunk = true
+      continue
+    }
+    if !in_hunk {
+      continue
+    }
+    if line.has_prefix("\\ No newline") {
+      continue
+    } else if line.has_prefix("-") && !line.has_prefix("---") {
+      old_lines.push(line[1:].to_owned())
+    } else if line.has_prefix("+") && !line.has_prefix("+++") {
+      new_lines.push(line[1:].to_owned())
+    } else if line.has_prefix(" ") {
+      let context = line[1:].to_owned()
+      old_lines.push(context)
+      new_lines.push(context)
+    }
+  }
+  mooncode_tool_patch_flush_chunk(chunks, old_lines, new_lines)
+  chunks
+}
+
+///|
+fn mooncode_tool_patch_flush_chunk(
+  chunks : Array[Json],
+  old_lines : Array[String],
+  new_lines : Array[String],
+) -> Unit {
+  if old_lines.length() == 0 && new_lines.length() == 0 {
+    return
+  }
+  chunks.push({
+    "old_text": mooncode_tool_patch_join_hunk_lines(old_lines),
+    "new_text": mooncode_tool_patch_join_hunk_lines(new_lines),
+    "old_line_count": old_lines.length(),
+    "new_line_count": new_lines.length(),
+  })
+  old_lines.clear()
+  new_lines.clear()
+}
+
+///|
+fn mooncode_tool_patch_join_hunk_lines(lines : Array[String]) -> String {
+  if lines.length() == 0 {
+    ""
+  } else {
+    lines.join("\n") + "\n"
+  }
 }
 
 ///|
@@ -1102,6 +1334,86 @@ async test "mooncode native patch tools apply and revert reviewed replacements" 
   assert_eq(
     mooncode_json_string(revert_event, "event", default=""),
     "patch_reverted",
+  )
+}
+
+///|
+async test "mooncode native patch tools apply and revert unified diffs" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-unified-patch-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "tools/diff.txt"),
+    "alpha\nbeta\ngamma\n",
+  )
+  let diff = "--- a/tools/diff.txt\n+++ b/tools/diff.txt\n@@\n alpha\n-beta\n+Beta\n gamma\n"
+  let apply = mooncode_execute_tool_call(
+    "session-unified-patch",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-unified-patch",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply-unified",
+      "arguments": { "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(48L),
+  )
+  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+  assert_true(mooncode_json_bool(apply_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/diff.txt")),
+    "alpha\nBeta\ngamma\n",
+  )
+  let apply_event = mooncode_json_object_field_or_empty(apply, "event")
+  assert_eq(
+    mooncode_json_string(apply_event, "path", default=""),
+    "tools/diff.txt",
+  )
+  assert_eq(
+    mooncode_json_string(apply_event, "kind", default=""),
+    "runtime.patch_applied",
+  )
+  let apply_metadata = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(apply_event, "tool_result"),
+    "metadata",
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "applied_hunk_count", default=0),
+    1,
+  )
+  let revert = mooncode_execute_tool_call(
+    "session-unified-patch",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-unified-patch",
+      "book_root": book_root,
+      "tool": "revert_patch",
+      "command_id": "cmd-revert-unified",
+      "arguments": { "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(49L),
+  )
+  let revert_result = mooncode_json_object_field_or_empty(revert, "result")
+  assert_true(mooncode_json_bool(revert_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/diff.txt")),
+    "alpha\nbeta\ngamma\n",
+  )
+  let revert_event = mooncode_json_object_field_or_empty(revert, "event")
+  assert_eq(
+    mooncode_json_string(revert_event, "kind", default=""),
+    "runtime.patch_reverted",
   )
 }
 
