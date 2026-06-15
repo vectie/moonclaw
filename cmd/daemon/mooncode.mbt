@@ -39,12 +39,14 @@ fn mooncode_capabilities_payload() -> Json {
       "/v1/mooncode/capabilities", "/v1/mooncode/sessions?book_root=<path>", "/v1/mooncode/sessions/<id>?book_root=<path>",
       "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
       "/v1/mooncode/sessions/<id>/eval-report", "/v1/mooncode/sessions/<id>/package-result",
+      "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
     ],
     "control_commands": ["prompt", "steer", "cancel"],
     "tools": ["read", "edit", "write", "shell", "moon_check", "finish"],
     "execution_boundary": "MoonClaw accepts Moondesk MoonCode command packets and executes them through the existing MoonClaw task/agent runtime for the target book root.",
     "package_result_endpoint": "POST /v1/mooncode/sessions/<id>/package-result accepts package_built/package_verified proof packets for MoonBook-owned executable artifacts.",
-    "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
+    "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, runtime-dispatches.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
+    "runtime_claim_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-claim?book_root=<path> projects and appends native runtime-claimed receipts over the durable command queue without spawning a task.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
   }
 }
@@ -110,6 +112,79 @@ async fn Daemon::mooncode_get_session(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(record.stringify(indent=2))
+}
+
+///|
+async fn Daemon::mooncode_runtime_claim_state(
+  self : Daemon,
+  session_id~ : StringView,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let session_id = session_id.to_string()
+  let book_root = mooncode_request_book_root(r)
+  let state = self.mooncode_runtime_claim_state_payload(session_id, book_root)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(state.stringify(indent=2))
+}
+
+///|
+async fn Daemon::mooncode_runtime_claim(
+  self : Daemon,
+  session_id~ : StringView,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
+  let body : Json = reader.read() catch { _ => Json::object({}) }
+  let session_id = session_id.to_string()
+  let requested_book_root = mooncode_request_book_root(r)
+  let book_root = if requested_book_root == "" {
+    mooncode_json_string(body, "book_root", default="")
+  } else {
+    requested_book_root
+  }
+  if book_root == "" {
+    raise json_error(400, "Bad Request", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode runtime claim requires book_root query or JSON field",
+        "metadata": { "session_id": session_id },
+      },
+    })
+  }
+  let before = self.mooncode_runtime_claim_state_payload(session_id, book_root)
+  let receipts = mooncode_runtime_claim_receipts(
+    session_id,
+    book_root,
+    before,
+    body,
+    now=self.clock.now(),
+  )
+  for receipt in receipts {
+    mooncode_append_jsonl(
+      mooncode_runtime_dispatches_path(book_root, session_id),
+      receipt,
+    )
+  }
+  let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(202, reason="Accepted")
+  w.write(
+    (
+      {
+        "kind": "mooncode-runtime-claim",
+        "protocol": "mooncode.v1",
+        "owner": "moonclaw",
+        "session_id": session_id,
+        "book_root": book_root,
+        "claimed_count": receipts.length(),
+        "claimed_commands": Json::array(receipts),
+        "claim_state": after,
+        "previous_claim_state": before,
+      } : Json).stringify(indent=2),
+  )
 }
 
 ///|
@@ -644,6 +719,232 @@ async fn Daemon::mooncode_session_record(
 }
 
 ///|
+async fn Daemon::mooncode_runtime_claim_state_payload(
+  self : Daemon,
+  session_id : String,
+  book_root : String,
+) -> Json {
+  ignore(self)
+  let commands_path = mooncode_commands_path(book_root, session_id)
+  let dispatches_path = mooncode_runtime_dispatches_path(book_root, session_id)
+  let commands = mooncode_read_jsonl(commands_path)
+  let receipts = mooncode_read_jsonl(dispatches_path)
+  mooncode_runtime_claim_state_from_logs(
+    session_id,
+    book_root,
+    commands,
+    receipts,
+    commands_path~,
+    dispatches_path~,
+  )
+}
+
+///|
+fn mooncode_runtime_claim_state_from_logs(
+  session_id : String,
+  book_root : String,
+  commands : Array[Json],
+  receipts : Array[Json],
+  commands_path~ : String,
+  dispatches_path~ : String,
+) -> Json {
+  let latest_receipts : Map[String, Json] = {}
+  for receipt in receipts {
+    let command_id = mooncode_json_string(receipt, "command_id", default="")
+    if command_id != "" {
+      latest_receipts[command_id] = receipt
+    }
+  }
+  let claimable : Array[Json] = []
+  let claimed : Array[Json] = []
+  let delivered : Array[Json] = []
+  let invalid : Array[Json] = []
+  let order_blocked : Array[Json] = []
+  let mut active_blocker = ""
+  for index in 0..<commands.length() {
+    let command = commands[index]
+    let command_id = mooncode_runtime_command_entry_id(command)
+    let receipt = if command_id == "" {
+      None
+    } else {
+      latest_receipts.get(command_id)
+    }
+    let receipt_status = match receipt {
+      Some(value) => mooncode_json_string(value, "status", default="")
+      None => ""
+    }
+    if command_id == "" {
+      let item = mooncode_runtime_claim_item(
+        command,
+        index,
+        receipt,
+        claim_status="invalid",
+        order_blocked_by=active_blocker,
+      )
+      invalid.push(item)
+      if active_blocker == "" {
+        active_blocker = "invalid-command:\{index}"
+      }
+    } else if mooncode_runtime_receipt_status_delivered(receipt_status) {
+      let item = mooncode_runtime_claim_item(
+        command,
+        index,
+        receipt,
+        claim_status="delivered",
+        order_blocked_by=active_blocker,
+      )
+      delivered.push(item)
+    } else if receipt_status == "runtime-claimed" {
+      let item = mooncode_runtime_claim_item(
+        command,
+        index,
+        receipt,
+        claim_status="claimed",
+        order_blocked_by=active_blocker,
+      )
+      claimed.push(item)
+      if active_blocker == "" {
+        active_blocker = command_id
+      }
+    } else if active_blocker != "" {
+      let item = mooncode_runtime_claim_item(
+        command,
+        index,
+        receipt,
+        claim_status="order-blocked",
+        order_blocked_by=active_blocker,
+      )
+      order_blocked.push(item)
+    } else {
+      let item = mooncode_runtime_claim_item(
+        command,
+        index,
+        receipt,
+        claim_status="claimable",
+        order_blocked_by="",
+      )
+      claimable.push(item)
+      active_blocker = command_id
+    }
+  }
+  {
+    "kind": "mooncode-runtime-claim-state",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "runtime_command_log_path": commands_path,
+    "runtime_dispatch_log_path": dispatches_path,
+    "command_count": commands.length(),
+    "receipt_count": receipts.length(),
+    "claimable_command_count": claimable.length(),
+    "claimed_command_count": claimed.length(),
+    "delivered_command_count": delivered.length(),
+    "invalid_command_count": invalid.length(),
+    "order_blocked_command_count": order_blocked.length(),
+    "claim_ready": claimable.length() > 0,
+    "claim_endpoint": "/v1/mooncode/sessions/\{session_id}/runtime-claim?book_root=<path>",
+    "ordering_rule": "MoonClaw claims the next unresolved command from commands.jsonl in append order; active claims and invalid commands block later commands until a runtime-dispatch receipt resolves the blocker.",
+    "claimable_commands": Json::array(claimable),
+    "claimed_commands": Json::array(claimed),
+    "delivered_commands": Json::array(delivered),
+    "invalid_commands": Json::array(invalid),
+    "order_blocked_commands": Json::array(order_blocked),
+  }
+}
+
+///|
+fn mooncode_runtime_claim_item(
+  command_entry : Json,
+  index : Int,
+  receipt : Json?,
+  claim_status~ : String,
+  order_blocked_by~ : String,
+) -> Json {
+  let command = mooncode_json_object_field_or_empty(command_entry, "command")
+  let command_id = mooncode_runtime_command_entry_id(command_entry)
+  {
+    "kind": "mooncode-runtime-claim-item",
+    "protocol": "mooncode.v1",
+    "index": index,
+    "command_id": command_id,
+    "action": mooncode_json_string(command, "command", default="prompt"),
+    "session_id": mooncode_json_string(
+      command_entry,
+      "session_id",
+      default=mooncode_json_string(command, "session_id", default=""),
+    ),
+    "claim_status": claim_status,
+    "order_blocked_by": order_blocked_by,
+    "command": command,
+    "command_entry": command_entry,
+    "receipt": match receipt {
+      Some(value) => value
+      None => null
+    },
+  }
+}
+
+///|
+fn mooncode_runtime_command_entry_id(command_entry : Json) -> String {
+  let command_id = mooncode_json_string(command_entry, "command_id", default="")
+  if command_id != "" {
+    return command_id
+  }
+  let command = mooncode_json_object_field_or_empty(command_entry, "command")
+  mooncode_command_id(command)
+}
+
+///|
+fn mooncode_runtime_receipt_status_delivered(status : String) -> Bool {
+  status == "runtime-delivered" ||
+  status == "runtime-completed" ||
+  status == "runtime-succeeded" ||
+  status == "runtime-finished"
+}
+
+///|
+fn mooncode_runtime_claim_receipts(
+  session_id : String,
+  book_root : String,
+  claim_state : Json,
+  payload : Json,
+  now~ : @clock.Timestamp,
+) -> Array[Json] {
+  let consumer_id = mooncode_json_string(
+    payload,
+    "consumer_id",
+    default="moonclaw-daemon",
+  )
+  let claimable = mooncode_json_array_items(claim_state, "claimable_commands")
+  let receipts : Array[Json] = []
+  if claimable.length() == 0 {
+    return receipts
+  }
+  let item = claimable[0]
+  let command_id = mooncode_json_string(item, "command_id", default="")
+  if command_id == "" {
+    return receipts
+  }
+  receipts.push({
+    "kind": "mooncode.runtime-dispatch",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command_id": command_id,
+    "status": "runtime-claimed",
+    "dispatch_mode": "moonclaw-native-runtime-claim",
+    "claim_id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-\{now}",
+    "consumer_id": consumer_id,
+    "claimed_at": now,
+    "command": mooncode_json_object_field_or_empty(item, "command"),
+    "command_entry": mooncode_json_object_field_or_empty(item, "command_entry"),
+  })
+  receipts
+}
+
+///|
 async fn mooncode_durable_session_records(book_root : String) -> Array[Json] {
   let records = []
   let root = mooncode_sessions_root(book_root)
@@ -733,6 +1034,9 @@ fn mooncode_missing_session_snapshot(
       "commands_jsonl": mooncode_commands_path_by_safe_id(
         book_root, safe_session_id,
       ),
+      "runtime_dispatches_jsonl": mooncode_runtime_dispatches_path_by_safe_id(
+        book_root, safe_session_id,
+      ),
       "events_jsonl": mooncode_events_path_by_safe_id(
         book_root, safe_session_id,
       ),
@@ -772,6 +1076,9 @@ async fn mooncode_session_record_from_parts(
     book_root, safe_session_id,
   )
   let events_path = mooncode_events_path_by_safe_id(book_root, safe_session_id)
+  let runtime_dispatches_path = mooncode_runtime_dispatches_path_by_safe_id(
+    book_root, safe_session_id,
+  )
   let package_results_path = mooncode_package_results_path_by_safe_id(
     book_root, safe_session_id,
   )
@@ -798,10 +1105,14 @@ async fn mooncode_session_record_from_parts(
         book_root, safe_session_id,
       ),
       "commands_jsonl": commands_path,
+      "runtime_dispatches_jsonl": runtime_dispatches_path,
       "events_jsonl": events_path,
       "package_results_jsonl": package_results_path,
     },
     "command_log_count": mooncode_jsonl_line_count(commands_path),
+    "runtime_dispatch_log_count": mooncode_jsonl_line_count(
+      runtime_dispatches_path,
+    ),
     "event_log_count": mooncode_jsonl_line_count(events_path),
     "package_result_log_count": mooncode_jsonl_line_count(package_results_path),
     "resume_state": if live_binding is Some(_) {
@@ -832,6 +1143,24 @@ async fn mooncode_jsonl_line_count(path : String) -> Int {
     }
   }
   count
+}
+
+///|
+async fn mooncode_read_jsonl(path : String) -> Array[Json] {
+  let records : Array[Json] = []
+  if path == "" || !(@fsx.exists(path) catch { _ => false }) {
+    return records
+  }
+  let text = @fsx.read_file(path) catch { _ => return records }
+  for line in text.split("\n") {
+    let line = line.trim()
+    if line.is_empty() {
+      continue
+    }
+    let parsed = @json.parse(line) catch { _ => continue }
+    records.push(parsed)
+  }
+  records
 }
 
 ///|
@@ -1182,6 +1511,10 @@ fn mooncode_session_snapshot(binding : MoonCodeSessionBinding) -> Json {
         binding.book_root,
         binding.session_id,
       ),
+      "runtime_dispatches_jsonl": mooncode_runtime_dispatches_path(
+        binding.book_root,
+        binding.session_id,
+      ),
       "events_jsonl": mooncode_events_path(
         binding.book_root,
         binding.session_id,
@@ -1256,6 +1589,24 @@ fn mooncode_commands_path_by_safe_id(
 ) -> String {
   mooncode_session_dir_by_safe_id(book_root, safe_session_id)
   |> @pathx.join("commands.jsonl")
+}
+
+///|
+fn mooncode_runtime_dispatches_path(
+  book_root : String,
+  session_id : String,
+) -> String {
+  mooncode_session_dir(book_root, session_id)
+  |> @pathx.join("runtime-dispatches.jsonl")
+}
+
+///|
+fn mooncode_runtime_dispatches_path_by_safe_id(
+  book_root : String,
+  safe_session_id : String,
+) -> String {
+  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
+  |> @pathx.join("runtime-dispatches.jsonl")
 }
 
 ///|
@@ -1496,6 +1847,18 @@ fn mooncode_json_bool(json : Json, key : String, default~ : Bool) -> Bool {
 }
 
 ///|
+fn mooncode_json_array_items(json : Json, key : String) -> Array[Json] {
+  match json {
+    Json::Object(object) =>
+      match object.get(key) {
+        Some(Json::Array(items)) => items
+        _ => []
+      }
+    _ => []
+  }
+}
+
+///|
 fn mooncode_json_object_field_or_empty(json : Json, key : String) -> Json {
   match json {
     Json::Object(object) =>
@@ -1515,7 +1878,13 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("/v1/mooncode/sessions/<id>?book_root=<path>"))
   assert_true(payload.contains("/v1/mooncode/sessions/<id>/commands"))
   assert_true(payload.contains("/v1/mooncode/sessions/<id>/package-result"))
+  assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
+    ),
+  )
   assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
+  assert_true(payload.contains("runtime-dispatches.jsonl"))
   assert_true(payload.contains("\"native_runtime_ready\":true"))
   assert_true(
     payload.contains("\"control_commands\":[\"prompt\",\"steer\",\"cancel\"]"),
@@ -1692,6 +2061,10 @@ async test "mooncode durable session sidecars use book local storage" (
     { "kind": "mooncode-command", "command_id": "cmd-1" },
   )
   mooncode_append_jsonl(
+    mooncode_runtime_dispatches_path(binding.book_root, binding.session_id),
+    { "kind": "mooncode.runtime-dispatch", "command_id": "cmd-1" },
+  )
+  mooncode_append_jsonl(
     mooncode_events_path(binding.book_root, binding.session_id),
     { "kind": "assistant_delta", "command_id": "cmd-1" },
   )
@@ -1702,6 +2075,11 @@ async test "mooncode durable session sidecars use book local storage" (
     @fsx.read_file(
       mooncode_commands_path(binding.book_root, binding.session_id),
     ).contains("\"mooncode-command\""),
+  )
+  assert_true(
+    @fsx.read_file(
+      mooncode_runtime_dispatches_path(binding.book_root, binding.session_id),
+    ).contains("\"mooncode.runtime-dispatch\""),
   )
   assert_true(
     @fsx.read_file(mooncode_events_path(binding.book_root, binding.session_id)).contains(
@@ -1749,6 +2127,10 @@ async test "mooncode durable sidecars list and show without live binding" (
     mooncode_package_results_path(binding.book_root, binding.session_id),
     { "kind": "mooncode-package-result", "command_id": "cmd-resume" },
   )
+  mooncode_append_jsonl(
+    mooncode_runtime_dispatches_path(binding.book_root, binding.session_id),
+    { "kind": "mooncode.runtime-dispatch", "command_id": "cmd-resume" },
+  )
   let records = mooncode_durable_session_records(book_root)
   assert_eq(records.length(), 1)
   let record = records[0]
@@ -1763,9 +2145,95 @@ async test "mooncode durable sidecars list and show without live binding" (
   assert_eq(mooncode_json_string(record, "resume_state", default=""), "durable")
   let text = record.stringify()
   assert_true(text.contains("\"command_log_count\":1"))
+  assert_true(text.contains("\"runtime_dispatch_log_count\":1"))
   assert_true(text.contains("\"event_log_count\":1"))
   assert_true(text.contains("\"package_result_log_count\":1"))
   assert_true(text.contains("\"live_binding_ready\":false"))
+}
+
+///|
+test "mooncode runtime claim state leases next durable command" {
+  let commands : Array[Json] = [
+    {
+      "kind": "mooncode-command",
+      "protocol": "mooncode.v1",
+      "session_id": "session-claim",
+      "command_id": "cmd-1",
+      "command": {
+        "protocol": "mooncode.v1",
+        "session_id": "session-claim",
+        "book_root": "/tmp/book",
+        "command": "prompt",
+        "packet": { "command_id": "cmd-1" },
+      },
+    },
+    {
+      "kind": "mooncode-command",
+      "protocol": "mooncode.v1",
+      "session_id": "session-claim",
+      "command_id": "cmd-2",
+      "command": {
+        "protocol": "mooncode.v1",
+        "session_id": "session-claim",
+        "book_root": "/tmp/book",
+        "command": "steer",
+        "packet": { "command_id": "cmd-2" },
+      },
+    },
+  ]
+  let state = mooncode_runtime_claim_state_from_logs(
+    "session-claim",
+    "/tmp/book",
+    commands,
+    [],
+    commands_path="/tmp/book/commands.jsonl",
+    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+  )
+  assert_eq(
+    mooncode_json_string(state, "kind", default=""),
+    "mooncode-runtime-claim-state",
+  )
+  assert_true(mooncode_json_bool(state, "claim_ready", default=false))
+  assert_true(state.stringify().contains("\"claimable_command_count\":1"))
+  assert_true(state.stringify().contains("\"order_blocked_command_count\":1"))
+  let claimable = mooncode_json_array_items(state, "claimable_commands")
+  assert_eq(
+    mooncode_json_string(claimable[0], "command_id", default=""),
+    "cmd-1",
+  )
+  let blocked = mooncode_json_array_items(state, "order_blocked_commands")
+  assert_eq(
+    mooncode_json_string(blocked[0], "order_blocked_by", default=""),
+    "cmd-1",
+  )
+  let receipts = mooncode_runtime_claim_receipts(
+    "session-claim",
+    "/tmp/book",
+    state,
+    { "consumer_id": "test-consumer" },
+    now=@clock.Timestamp::from_ms(100L),
+  )
+  assert_eq(receipts.length(), 1)
+  assert_eq(
+    mooncode_json_string(receipts[0], "status", default=""),
+    "runtime-claimed",
+  )
+  assert_eq(
+    mooncode_json_string(receipts[0], "consumer_id", default=""),
+    "test-consumer",
+  )
+  let claimed_state = mooncode_runtime_claim_state_from_logs(
+    "session-claim",
+    "/tmp/book",
+    commands,
+    receipts,
+    commands_path="/tmp/book/commands.jsonl",
+    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+  )
+  assert_true(claimed_state.stringify().contains("\"claimed_command_count\":1"))
+  assert_true(
+    claimed_state.stringify().contains("\"claimable_command_count\":0"),
+  )
 }
 
 ///|

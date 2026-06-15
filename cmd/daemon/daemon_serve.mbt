@@ -16,6 +16,8 @@
 /// - GET  /v1/mooncode/sessions?book_root={path} → `mooncode_list_sessions`
 /// - GET  /v1/mooncode/sessions/{id}?book_root={path} → `mooncode_get_session`
 /// - POST /v1/mooncode/sessions/{id}/commands → `mooncode_accept_command`
+/// - GET  /v1/mooncode/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim_state`
+/// - POST /v1/mooncode/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim`
 /// - GET  /v1/mooncode/sessions/{id}/stream → `mooncode_stream`
 /// - GET  /v1/mooncode/sessions/{id}/eval-report → `mooncode_eval_report`
 /// - POST /v1/mooncode/sessions/{id}/package-result → `mooncode_package_result`
@@ -64,6 +66,14 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.mooncode_get_session(session_id~, r, w)
             (Post, ["", "v1", "mooncode", "sessions", session_id, "commands"]) =>
               self.mooncode_accept_command(group~, session_id~, r, w)
+            (
+              Get,
+              ["", "v1", "mooncode", "sessions", session_id, "runtime-claim"],
+            ) => self.mooncode_runtime_claim_state(session_id~, r, w)
+            (
+              Post,
+              ["", "v1", "mooncode", "sessions", session_id, "runtime-claim"],
+            ) => self.mooncode_runtime_claim(session_id~, r, w)
             (Get, ["", "v1", "mooncode", "sessions", session_id, "stream"]) =>
               self.mooncode_stream(session_id~, w)
             (Get, ["", "v1", "mooncode", "sessions", session_id, "eval-report"]) =>
