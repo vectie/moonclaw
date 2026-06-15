@@ -45,8 +45,9 @@ MoonClaw is strongest when you want one system to handle:
   `/v1/mooncode/sessions/<id>/package-result`. Commands bind a Moondesk MoonCode
   session to the MoonClaw task for the target book root and execute through the
   existing MoonClaw agent/task runtime. Native command handling now distinguishes
-  `prompt`, `steer`, and `cancel`; cancel targets the existing bound task
-  without spawning a new one. Package-result packets record command-scoped
+  `prompt`, `steer`, and `cancel`; runtime-turn emits `steer_applied` /
+  `steer_dropped` settlement events for steering commands, and cancel targets
+  the existing bound task without spawning a new one. Package-result packets record command-scoped
   `package_built` and `package_verified` runtime evidence for MoonBook-owned
   executable artifacts. Native package manifests also promote generated source
   files into
@@ -96,10 +97,12 @@ MoonClaw is strongest when you want one system to handle:
   the durable command without spawning or messaging the legacy MoonClaw task
   bridge so a client can call `runtime-turn` without duplicate execution.
   Runtime-turn now also includes the first bounded prompt planner: ordinary
-  `prompt`/`steer` commands that ask for a tool, script, miniapp, generated
-  site, or HTML app expand into native `write`, `shell`, and `finish` tool calls
-  under MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can
-  create and verify an executable artifact without predeclared tool calls. When
+  `prompt` commands that ask for a tool, script, miniapp, generated site, or
+  HTML app expand into native `write`, `shell`, and `finish` tool calls under
+  MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can create
+  and verify an executable artifact without predeclared tool calls. `steer`
+  commands settle as steering context by default instead of starting a new
+  artifact-generation plan. When
   a queued command carries an explicit selected model, runtime-turn can also ask
   that model for bounded OpenSeek-style tool-call batches over `read`, `write`,
   `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`;
@@ -128,7 +131,7 @@ MoonClaw is strongest when you want one system to handle:
   promote generated source files under the package root with source hashes, and
   emit artifact-lane package events for Moondesk's package review surface. The
   remaining MoonCode runtime gap is the full persistent OpenSeek-style agent
-  service with live steering/cancel protocol, diff-aware edit review, and
+  service with long-running live steering/cancel UX, diff-aware edit review, and
   broader model-backed coding eval coverage.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages

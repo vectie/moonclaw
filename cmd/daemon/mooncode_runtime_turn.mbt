@@ -182,6 +182,17 @@ async fn Daemon::mooncode_runtime_turn_execute(
     let accepted = tool_results.all(result => {
       mooncode_json_bool(result, "accepted", default=false)
     })
+    if mooncode_json_string(command, "command", default="prompt") == "steer" {
+      events.push(
+        mooncode_runtime_turn_steer_settlement_event(
+          session_id,
+          command_id,
+          command,
+          accepted~,
+          now=self.clock.now(),
+        ),
+      )
+    }
     let finished = mooncode_runtime_turn_finished_event(
       session_id,
       command_id,
@@ -335,7 +346,16 @@ fn mooncode_runtime_turn_tool_calls(command : Json) -> Array[Json] {
   }
   let action = mooncode_json_string(command, "command", default="prompt")
   match action {
-    "prompt" | "steer" => mooncode_runtime_turn_prompt_tool_calls(command)
+    "prompt" => mooncode_runtime_turn_prompt_tool_calls(command)
+    "steer" =>
+      [
+        {
+          "tool": "finish",
+          "arguments": {
+            "answer": "Native MoonCode runtime applied steering context to the active or next claimed turn.",
+          },
+        },
+      ]
     "run_tests" | "run_eval" =>
       [
         {
@@ -487,10 +507,7 @@ fn mooncode_runtime_turn_explicit_tool_calls(command : Json) -> Array[Json] {
 ///|
 fn mooncode_runtime_turn_model_planning_allowed(command : Json) -> Bool {
   let action = mooncode_json_string(command, "command", default="prompt")
-  action == "prompt" ||
-  action == "steer" ||
-  action == "package" ||
-  action == "accept"
+  action == "prompt" || action == "package" || action == "accept"
 }
 
 ///|
@@ -1002,6 +1019,53 @@ fn mooncode_runtime_turn_assistant_event(
     "detail": content,
     "content": content,
     "planner_step": step,
+    "created_at": now,
+    "source": "moonclaw-native-runtime-turn",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_steer_settlement_event(
+  session_id : String,
+  command_id : String,
+  command : Json,
+  accepted~ : Bool,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let steering = mooncode_runtime_turn_prompt_text(command)
+  let kind = if accepted { "steer_applied" } else { "steer_dropped" }
+  let title = if accepted {
+    "MoonCode steering applied"
+  } else {
+    "MoonCode steering dropped"
+  }
+  let detail = if accepted {
+    "MoonClaw applied steering for command \{command_id}."
+  } else {
+    "MoonClaw could not apply steering for command \{command_id}."
+  }
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-\{kind}-\{now}",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "lane": "runtime",
+    "kind": kind,
+    "event": kind,
+    "title": title,
+    "status": if accepted {
+      "done"
+    } else {
+      "failed"
+    },
+    "detail": detail,
+    "content": steering,
+    "steering_text": steering,
+    "settlement": if accepted {
+      "applied"
+    } else {
+      "dropped"
+    },
     "created_at": now,
     "source": "moonclaw-native-runtime-turn",
   }
@@ -1965,6 +2029,74 @@ async test "mooncode native runtime turn executes explicit tool calls" (
 }
 
 ///|
+async test "mooncode native runtime turn settles steer commands" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-runtime-steer-XXXXXX"),
+  )
+  let session_id = "session-runtime-steer"
+  let command_id = "cmd-runtime-steer"
+  let command : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "steer",
+    "text": "Keep the next patch inside tools/ and add tests.",
+    "packet": { "command_id": command_id },
+    "model": "unavailable-model",
+  }
+  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
+    "kind": "mooncode-command",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "created_at": @clock.Timestamp::from_ms(2L),
+    "command": command,
+  })
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+    "consumer_id": "test-runtime",
+  })
+  assert_true(mooncode_json_bool(result, "accepted", default=false))
+  let execution = mooncode_json_object_field_or_empty(result, "execution")
+  assert_eq(mooncode_json_string(execution, "control", default=""), "steer")
+  assert_eq(
+    mooncode_json_string(execution, "planner_mode", default=""),
+    "deterministic-fallback",
+  )
+  let tool_results = mooncode_json_array_items(execution, "tool_results")
+  assert_eq(tool_results.length(), 1)
+  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  assert_true(events_log.contains("\"steer_applied\""))
+  assert_true(events_log.contains("Keep the next patch inside tools/"))
+  assert_false(events_log.contains("runtime.planner_failed"))
+  let after = mooncode_json_object_field_or_empty(result, "claim_state")
+  assert_true(after.stringify().contains("\"delivered_command_count\":1"))
+}
+
+///|
 test "mooncode native runtime turn plans prompt tool calls" {
   let command : Json = {
     "protocol": "mooncode.v1",
@@ -1992,6 +2124,19 @@ test "mooncode native runtime turn plans prompt tool calls" {
   assert_eq(miniapp_calls.length(), 4)
   assert_true(miniapp_calls[0].stringify().contains("apps/mooncode-generated"))
   assert_eq(mooncode_json_string(miniapp_calls[2], "tool", default=""), "shell")
+  let steer : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": "session-planner",
+    "book_root": "/tmp/book",
+    "command": "steer",
+    "text": "Create an executable tool, but keep the next turn focused",
+    "packet": { "command_id": "cmd-steer" },
+    "model": "test-model",
+  }
+  let steer_calls = mooncode_runtime_turn_tool_calls(steer)
+  assert_eq(steer_calls.length(), 1)
+  assert_eq(mooncode_json_string(steer_calls[0], "tool", default=""), "finish")
+  assert_false(mooncode_runtime_turn_model_planning_allowed(steer))
 }
 
 ///|

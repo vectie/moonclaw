@@ -302,6 +302,9 @@ panel.
 Claims the next durable MoonCode command for the selected `book_root` and runs a
 bounded native turn. Explicit `runtime_tool_calls` are executed directly; prompt
 fallbacks can create MoonBook-owned tools or miniapps under `tools/` or `apps/`.
+Steer commands now settle with `steer_applied` / `steer_dropped` runtime
+events and do not start artifact generation unless explicit tool calls were
+provided.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded OpenSeek-style tool-call batches over `read`, `write`, `edit`,
 `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`. Successful
