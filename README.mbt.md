@@ -90,14 +90,19 @@ MoonClaw is strongest when you want one system to handle:
   `prompt`/`steer` commands that ask for a tool, script, miniapp, generated
   site, or HTML app expand into native `write`, `shell`, and `finish` tool calls
   under MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can
-  create and verify an executable artifact without predeclared tool calls.
+  create and verify an executable artifact without predeclared tool calls. When
+  a queued command carries an explicit selected model, runtime-turn can also ask
+  that model for one bounded OpenSeek-style tool-call batch over `read`, `write`,
+  `edit`, `shell`, `moon_check`, and `finish`; planner start/selection/failure
+  events are recorded, and unsupported or empty model plans fall back to the
+  deterministic planner.
   Successful native turns now also write MoonBook package manifests and an
   index under `portable/app-tool/mooncode/<session-id>/`, append
   `package_built` and `package_verified` proof to `package-results.jsonl`, and
   emit artifact-lane package events for Moondesk's package review surface. The
-  remaining MoonCode runtime gap is the full model-backed OpenSeek-style agent
-  planner with broad tool selection, multi-turn steering, diff-aware edits, and
-  broader model-backed coding eval coverage.
+  remaining MoonCode runtime gap is the full persistent OpenSeek-style agent
+  loop with multi-step model planning, multi-turn steering, diff-aware edits,
+  and broader model-backed coding eval coverage.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`

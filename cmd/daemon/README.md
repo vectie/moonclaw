@@ -302,6 +302,11 @@ panel.
 Claims the next durable MoonCode command for the selected `book_root` and runs a
 bounded native turn. Explicit `runtime_tool_calls` are executed directly; prompt
 fallbacks can create MoonBook-owned tools or miniapps under `tools/` or `apps/`.
+When a command carries an explicit selected model, MoonClaw can ask that model
+for one bounded OpenSeek-style tool-call batch over `read`, `write`, `edit`,
+`shell`, `moon_check`, and `finish`. Planner start/selection/failure events are
+included in the runtime event stream, and unsupported or empty model plans fall
+back to deterministic planning.
 When a generated artifact verifies successfully, MoonClaw writes
 `portable/app-tool/mooncode/{safe-session-id}/package-{safe-command-id}.json`,
 refreshes `portable/app-tool/mooncode/{safe-session-id}/index.json`, appends
