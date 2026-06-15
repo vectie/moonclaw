@@ -233,7 +233,16 @@ async fn mooncode_tool_write(book_root : String, arguments : Json) -> Json {
     )
   }
   let absolute = mooncode_json_string(path, "absolute_path", default="")
+  let relative = mooncode_json_string(path, "relative_path", default="")
   let content = mooncode_json_string(arguments, "content", default="")
+  let existed = @fsx.exists(absolute)
+  let before = if existed {
+    @fsx.read_file(absolute) catch {
+      _ => ""
+    }
+  } else {
+    ""
+  }
   @fsx.make_directory(@pathx.dirname(absolute), recursive=true, exists_ok=true)
   @fsx.write_to_file(absolute, content) catch {
     error =>
@@ -244,12 +253,14 @@ async fn mooncode_tool_write(book_root : String, arguments : Json) -> Json {
   }
   mooncode_tool_ok_result(
     "write",
-    message="wrote \{content.length()} chars to \{mooncode_json_string(path, "relative_path", default="")}",
+    message="wrote \{content.length()} chars to \{relative}",
     output="",
     metadata={
-      "path": mooncode_json_string(path, "relative_path", default=""),
+      "path": relative,
       "absolute_path": absolute,
       "char_count": content.length(),
+      "changed": before != content,
+      "diff": mooncode_tool_unified_diff(relative, before, content, existed~),
     },
   )
 }
@@ -321,6 +332,13 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
       "path": mooncode_json_string(path, "relative_path", default=""),
       "absolute_path": absolute,
       "replacement_count": replacement_count,
+      "changed": content != new_content,
+      "diff": mooncode_tool_unified_diff(
+        mooncode_json_string(path, "relative_path", default=""),
+        content,
+        new_content,
+        existed=true,
+      ),
     },
   )
 }
@@ -516,6 +534,47 @@ fn mooncode_cap_tool_output(text : String, limit : Int) -> Json {
 }
 
 ///|
+fn mooncode_tool_unified_diff(
+  path : String,
+  before : String,
+  after : String,
+  existed~ : Bool,
+) -> String {
+  if before == after {
+    return ""
+  }
+  let from_path = if existed { "a/\{path}" } else { "/dev/null" }
+  let to_path = "b/\{path}"
+  let lines : Array[String] = ["--- \{from_path}", "+++ \{to_path}", "@@"]
+  for line in mooncode_tool_diff_side("-", before) {
+    lines.push(line)
+  }
+  for line in mooncode_tool_diff_side("+", after) {
+    lines.push(line)
+  }
+  lines.join("\n") + "\n"
+}
+
+///|
+fn mooncode_tool_diff_side(prefix : String, text : String) -> Array[String] {
+  if text == "" {
+    return []
+  }
+  let lines : Array[String] = []
+  let mut count = 0
+  for part in text.split("\n") {
+    if count < 80 {
+      lines.push(prefix + part.to_string())
+    }
+    count += 1
+  }
+  if count > 80 {
+    lines.push(prefix + "... diff truncated after 80 lines")
+  }
+  lines
+}
+
+///|
 fn mooncode_tool_ok_result(
   tool : String,
   message~ : String,
@@ -559,13 +618,16 @@ fn mooncode_tool_result_event(
   now~ : @clock.Timestamp,
 ) -> Json {
   let ok = mooncode_json_bool(result, "ok", default=false)
+  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+  let path = mooncode_json_string(metadata, "path", default="")
+  let diff = mooncode_json_string(metadata, "diff", default="")
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-tool-\{tool}-\{now}",
     "protocol": "mooncode.v1",
     "session_id": session_id,
     "book_root": book_root,
     "command_id": command_id,
-    "lane": mooncode_tool_event_lane(tool),
+    "lane": mooncode_tool_event_lane(tool, path~, diff~),
     "kind": mooncode_tool_event_kind(tool),
     "title": "MoonCode tool `\{tool}` \{if ok { "completed" } else { "failed" }}",
     "status": if ok {
@@ -574,6 +636,8 @@ fn mooncode_tool_result_event(
       "failed"
     },
     "detail": mooncode_json_string(result, "message", default=""),
+    "path": path,
+    "diff": diff,
     "tool": tool,
     "tool_result": result,
     "created_at": now,
@@ -582,10 +646,16 @@ fn mooncode_tool_result_event(
 }
 
 ///|
-fn mooncode_tool_event_lane(tool : String) -> String {
+fn mooncode_tool_event_lane(
+  tool : String,
+  path? : String = "",
+  diff? : String = "",
+) -> String {
   match tool {
     "moon_check" => "test"
     "finish" => "review"
+    "write" | "edit" => "diff"
+    _ if diff != "" || path != "" => "diff"
     _ => "tool"
   }
 }
@@ -715,6 +785,24 @@ async test "mooncode native tool execution writes edits and reads book files" (
   )
   let event = mooncode_json_object_field_or_empty(read, "event")
   assert_eq(mooncode_json_string(event, "kind", default=""), "tool_result")
+  let write_event = mooncode_json_object_field_or_empty(write, "event")
+  assert_eq(mooncode_json_string(write_event, "lane", default=""), "diff")
+  assert_eq(
+    mooncode_json_string(write_event, "path", default=""),
+    "tools/demo.txt",
+  )
+  assert_true(
+    mooncode_json_string(write_event, "diff", default="").contains(
+      "+++ b/tools/demo.txt",
+    ),
+  )
+  let edit_event = mooncode_json_object_field_or_empty(edit, "event")
+  assert_eq(mooncode_json_string(edit_event, "lane", default=""), "diff")
+  assert_true(
+    mooncode_json_string(edit_event, "diff", default="").contains(
+      "-hello mooncode",
+    ),
+  )
 }
 
 ///|
