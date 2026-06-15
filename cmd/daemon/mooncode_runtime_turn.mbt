@@ -108,31 +108,65 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let tool_results : Array[Json] = []
   let events : Array[Json] = [started]
   let execution : Json = if mooncode_json_bool(report, "ok", default=false) {
-    let plan = self.mooncode_runtime_turn_plan_tool_calls(
+    let mut plan = self.mooncode_runtime_turn_plan_tool_calls(
       command,
       now=self.clock.now(),
     )
-    for event in mooncode_json_array_items(plan, "events") {
-      events.push(event)
-    }
-    let planned_tool_calls = mooncode_json_array_items(plan, "tool_calls")
-    let tool_calls = if planned_tool_calls.length() > 0 {
-      planned_tool_calls
-    } else {
-      mooncode_runtime_turn_tool_calls(command)
-    }
-    for tool_call in tool_calls {
-      let execution = mooncode_execute_tool_call(
-        session_id,
-        book_root,
-        mooncode_runtime_turn_tool_body(command, tool_call),
-        now=self.clock.now(),
-      )
-      tool_results.push(execution)
-      events.push(mooncode_json_object_field_or_empty(execution, "event"))
-      if !mooncode_json_bool(execution, "accepted", default=false) {
+    let planner_steps : Array[Json] = []
+    let max_model_steps = mooncode_runtime_turn_model_max_steps(command)
+    for step_index in 0..<max_model_steps {
+      planner_steps.push(plan)
+      for event in mooncode_json_array_items(plan, "events") {
+        events.push(event)
+      }
+      let planned_tool_calls = mooncode_json_array_items(plan, "tool_calls")
+      let tool_calls = if planned_tool_calls.length() > 0 {
+        planned_tool_calls
+      } else {
+        mooncode_runtime_turn_tool_calls(command)
+      }
+      let step_results : Array[Json] = []
+      for tool_call in tool_calls {
+        let execution = mooncode_execute_tool_call(
+          session_id,
+          book_root,
+          mooncode_runtime_turn_tool_body(command, tool_call),
+          now=self.clock.now(),
+        )
+        step_results.push(execution)
+        tool_results.push(execution)
+        events.push(mooncode_json_object_field_or_empty(execution, "event"))
+        if !mooncode_json_bool(execution, "accepted", default=false) {
+          break
+        }
+      }
+      let step_accepted = step_results.all(result => {
+        mooncode_json_bool(result, "accepted", default=false)
+      })
+      if !step_accepted ||
+        mooncode_json_string(plan, "planner_mode", default="") !=
+        "model-tool-calls" ||
+        mooncode_runtime_turn_tool_calls_include_finish(tool_calls) ||
+        step_index + 1 >= max_model_steps {
         break
       }
+      let next_plan = self.mooncode_runtime_turn_model_followup_plan(
+        command,
+        plan,
+        tool_calls,
+        step_results,
+        now=self.clock.now(),
+      )
+      let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
+      if next_calls.length() == 0 {
+        planner_steps.push(next_plan)
+        for event in mooncode_json_array_items(next_plan, "events") {
+          events.push(event)
+        }
+        plan = next_plan
+        break
+      }
+      plan = next_plan
     }
     let accepted = tool_results.all(result => {
       mooncode_json_bool(result, "accepted", default=false)
@@ -158,11 +192,14 @@ async fn Daemon::mooncode_runtime_turn_execute(
           "MoonClaw native runtime turn failed during tool execution"
         },
         "planner": plan,
+        "planner_steps": Json::array(planner_steps),
         "planner_mode": mooncode_json_string(
           plan,
           "planner_mode",
           default="deterministic-fallback",
         ),
+        "planner_step_count": planner_steps.length(),
+        "model_step_limit": max_model_steps,
         "tool_results": Json::array(tool_results),
         "events": Json::array(events),
       } : Json)
@@ -407,6 +444,12 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         "tool_call_count": tool_calls.length(),
         "tool_calls": Json::array(tool_calls),
         "events": Json::array([started, selected]),
+        "model_messages": Json::array(
+          mooncode_runtime_turn_model_initial_messages(command),
+        ),
+        "model_response_message": mooncode_runtime_turn_model_response_message(
+          completion.to_json(),
+        ),
       }
     }
     None =>
@@ -473,17 +516,37 @@ fn mooncode_runtime_turn_model_timeout_ms(command : Json) -> Int {
 }
 
 ///|
+fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int {
+  let payload = mooncode_json_object_field_or_empty(command, "payload")
+  let requested = mooncode_json_int(payload, "planner_max_steps", default=3)
+  if requested < 1 {
+    1
+  } else if requested > 8 {
+    8
+  } else {
+    requested
+  }
+}
+
+///|
 fn mooncode_runtime_turn_model_plan_request(
   model_name : String,
   command : Json,
 ) -> @openai.Request raise {
-  let messages : Array[@openai.ChatCompletionMessageParam] = @json.from_json([
-    {
-      "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose a bounded batch of MoonCode tools to satisfy the user's request inside the selected MoonBook only. Prefer small, reviewable edits. Use write/edit/read/shell/moon_check/finish. Never use paths outside the MoonBook root. Always finish with `finish` after the useful tool batch.",
-    },
-    { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
-  ])
+  mooncode_runtime_turn_model_plan_request_from_messages(
+    model_name,
+    mooncode_runtime_turn_model_initial_messages(command),
+  )
+}
+
+///|
+fn mooncode_runtime_turn_model_plan_request_from_messages(
+  model_name : String,
+  message_jsons : Array[Json],
+) -> @openai.Request raise {
+  let messages : Array[@openai.ChatCompletionMessageParam] = @json.from_json(
+    Json::array(message_jsons),
+  )
   @openai.chat_completion(
     model=model_name,
     messages~,
@@ -493,10 +556,21 @@ fn mooncode_runtime_turn_model_plan_request(
 }
 
 ///|
+fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
+  [
+    {
+      "role": "system",
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer small, reviewable edits. Use write/edit/read/shell/moon_check/finish. Never use paths outside the MoonBook root. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
+    },
+    { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
+  ]
+}
+
+///|
 fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   "MoonCode command JSON:\n" +
   command.stringify(indent=2) +
-  "\n\nReturn tool calls only when code, tests, or package work is useful. Keep generated artifacts under tools/, apps/, site/generated/, or portable/app-tool/."
+  "\n\nReturn tool calls only when code, tests, or package work is useful. Keep generated artifacts under tools/, apps/, site/generated/, or portable/app-tool/. After tool results, continue with another small batch or call finish."
 }
 
 ///|
@@ -621,6 +695,183 @@ fn mooncode_runtime_turn_tool_calls_from_model_response(
     }
   }
   calls
+}
+
+///|
+async fn Daemon::mooncode_runtime_turn_model_followup_plan(
+  self : Daemon,
+  command : Json,
+  previous_plan : Json,
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+  now~ : @clock.Timestamp,
+) -> Json {
+  let model_name = mooncode_json_string(previous_plan, "model", default="")
+  let session_id = mooncode_json_string(command, "session_id", default="")
+  let command_id = mooncode_command_id(command)
+  let started = mooncode_event(
+    session_id~,
+    command_id~,
+    lane="runtime",
+    kind="runtime.planner_started",
+    title="MoonCode model planner continued",
+    status="running",
+    detail="MoonClaw is feeding tool results back to model `\{model_name}` for another bounded MoonCode tool batch.",
+    now~,
+  )
+  let previous_messages = mooncode_json_array_items(
+    previous_plan, "model_messages",
+  )
+  let response_message = mooncode_json_object_field_or_empty(
+    previous_plan, "model_response_message",
+  )
+  if model_name == "" ||
+    previous_messages.length() == 0 ||
+    !mooncode_runtime_turn_model_message_present(response_message) {
+    return mooncode_runtime_turn_failed_planner_result(
+      command,
+      model_name,
+      "model planner cannot continue: missing prior model transcript",
+      started,
+      now~,
+    )
+  }
+  let messages = previous_messages
+  messages.push(response_message)
+  for index in 0..<tool_calls.length() {
+    if index < tool_results.length() {
+      messages.push(
+        mooncode_runtime_turn_model_tool_result_message(
+          tool_calls[index],
+          tool_results[index],
+        ),
+      )
+    }
+  }
+  let requested_model : String? = Some(model_name)
+  match self.models.get_model(name?=requested_model) {
+    Some(model) => {
+      let completion = @openai.chat(
+        model~,
+        mooncode_runtime_turn_model_plan_request_from_messages(
+          model.model_name,
+          messages,
+        ),
+        timeout_ms=Some(mooncode_runtime_turn_model_timeout_ms(command)),
+      ) catch {
+        error =>
+          return mooncode_runtime_turn_failed_planner_result(
+            command,
+            model_name,
+            "model planner follow-up failed: \{error}",
+            started,
+            now~,
+          )
+      }
+      let response_json = completion.to_json()
+      let next_tool_calls = mooncode_runtime_turn_tool_calls_from_model_response(
+        response_json,
+      )
+      if next_tool_calls.length() == 0 {
+        return mooncode_runtime_turn_failed_planner_result(
+          command,
+          model_name,
+          "model planner follow-up returned no usable MoonCode tool calls",
+          started,
+          now~,
+        )
+      }
+      let selected = mooncode_event(
+        session_id~,
+        command_id~,
+        lane="runtime",
+        kind="runtime.planner_selected",
+        title="MoonCode model planner continued with tools",
+        status="done",
+        detail="Model `\{model_name}` selected \{next_tool_calls.length()} follow-up MoonCode tool call(s).",
+        now~,
+      )
+      {
+        "kind": "mooncode-runtime-turn-planner",
+        "protocol": "mooncode.v1",
+        "planner_mode": "model-tool-calls",
+        "model": model_name,
+        "tool_call_count": next_tool_calls.length(),
+        "tool_calls": Json::array(next_tool_calls),
+        "events": Json::array([started, selected]),
+        "model_messages": Json::array(messages),
+        "model_response_message": mooncode_runtime_turn_model_response_message(
+          response_json,
+        ),
+      }
+    }
+    None =>
+      mooncode_runtime_turn_failed_planner_result(
+        command,
+        model_name,
+        "model planner follow-up unavailable: model not found",
+        started,
+        now~,
+      )
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_response_message(response : Json) -> Json {
+  let choices = match response {
+    { "choices": Array(items), .. } => items
+    _ => []
+  }
+  if choices.length() == 0 {
+    return {}
+  }
+  let message = mooncode_json_object_field_or_empty(choices[0], "message")
+  {
+    "role": "assistant",
+    "content": mooncode_json_string(message, "content", default=""),
+    "tool_calls": Json::array(mooncode_json_array_items(message, "tool_calls")),
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_message_present(message : Json) -> Bool {
+  mooncode_json_array_items(message, "tool_calls").length() > 0 ||
+  mooncode_json_string(message, "content", default="") != ""
+}
+
+///|
+fn mooncode_runtime_turn_model_tool_result_message(
+  tool_call : Json,
+  execution : Json,
+) -> Json {
+  {
+    "role": "tool",
+    "tool_call_id": mooncode_json_string(tool_call, "tool_call_id", default=""),
+    "content": mooncode_runtime_turn_model_tool_result_content(execution),
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  let text = result.stringify(indent=2)
+  if text.length() > 12000 {
+    text[:12000].to_owned() + "\n...[truncated]"
+  } else {
+    text
+  }
+}
+
+///|
+fn mooncode_runtime_turn_tool_calls_include_finish(
+  tool_calls : Array[Json],
+) -> Bool {
+  for tool_call in tool_calls {
+    if mooncode_json_string(tool_call, "tool", default="") == "finish" {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -1461,6 +1712,65 @@ test "mooncode native runtime turn decodes model-selected tool calls" {
     "tools/model-plan/run.sh",
   )
   assert_eq(mooncode_json_string(calls[1], "tool", default=""), "finish")
+}
+
+///|
+test "mooncode native runtime turn builds model follow-up transcript" {
+  let response : Json = {
+    "choices": [
+      {
+        "message": {
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call-read",
+              "type": "function",
+              "function": {
+                "name": "read",
+                "arguments": "{\"path\":\"README.md\"}",
+              },
+            },
+          ],
+        },
+      },
+    ],
+  }
+  let assistant = mooncode_runtime_turn_model_response_message(response)
+  assert_eq(mooncode_json_string(assistant, "role", default=""), "assistant")
+  assert_eq(mooncode_json_array_items(assistant, "tool_calls").length(), 1)
+  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
+  let tool_message = mooncode_runtime_turn_model_tool_result_message(calls[0], {
+    "accepted": true,
+    "result": { "ok": true, "message": "read README.md", "output": "# Book" },
+  })
+  assert_eq(mooncode_json_string(tool_message, "role", default=""), "tool")
+  assert_eq(
+    mooncode_json_string(tool_message, "tool_call_id", default=""),
+    "call-read",
+  )
+  assert_true(
+    mooncode_json_string(tool_message, "content", default="").contains(
+      "read README.md",
+    ),
+  )
+  assert_true(!mooncode_runtime_turn_tool_calls_include_finish(calls))
+  assert_true(
+    mooncode_runtime_turn_tool_calls_include_finish([
+      { "tool": "finish", "arguments": { "answer": "done" } },
+    ]),
+  )
+  assert_eq(
+    mooncode_runtime_turn_model_max_steps({
+      "payload": { "planner_max_steps": 0 },
+    }),
+    1,
+  )
+  assert_eq(
+    mooncode_runtime_turn_model_max_steps({
+      "payload": { "planner_max_steps": 99 },
+    }),
+    8,
+  )
 }
 
 ///|
