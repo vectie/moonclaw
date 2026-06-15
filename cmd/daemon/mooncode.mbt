@@ -36,7 +36,8 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_owner": "moonclaw",
     "session_owner": "moondesk",
     "endpoints": [
-      "/v1/mooncode/capabilities", "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
+      "/v1/mooncode/capabilities", "/v1/mooncode/sessions?book_root=<path>", "/v1/mooncode/sessions/<id>?book_root=<path>",
+      "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
       "/v1/mooncode/sessions/<id>/eval-report", "/v1/mooncode/sessions/<id>/package-result",
     ],
     "control_commands": ["prompt", "steer", "cancel"],
@@ -57,6 +58,58 @@ async fn Daemon::mooncode_capabilities(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(mooncode_capabilities_payload().stringify())
+}
+
+///|
+async fn Daemon::mooncode_list_sessions(
+  self : Daemon,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let book_root = mooncode_request_book_root(r)
+  let records = self.mooncode_session_records(book_root)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(
+    (
+      {
+        "kind": "mooncode-session-list",
+        "protocol": "mooncode.v1",
+        "owner": "moonclaw",
+        "book_root": book_root,
+        "durable_store": mooncode_sessions_root(book_root),
+        "durable_store_loaded": book_root != "",
+        "session_count": records.length(),
+        "sessions": Json::array(records),
+      } : Json).stringify(indent=2),
+  )
+}
+
+///|
+async fn Daemon::mooncode_get_session(
+  self : Daemon,
+  session_id~ : StringView,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let session_id = session_id.to_string()
+  let book_root = mooncode_request_book_root(r)
+  guard self.mooncode_session_record(session_id, book_root) is Some(record) else {
+    raise json_error(404, "Not Found", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode session not found",
+        "metadata": {
+          "session_id": session_id,
+          "book_root": book_root,
+          "durable_store": mooncode_sessions_root(book_root),
+        },
+      },
+    })
+  }
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(record.stringify(indent=2))
 }
 
 ///|
@@ -517,6 +570,281 @@ fn Daemon::mooncode_task_for_existing_session(
 }
 
 ///|
+async fn Daemon::mooncode_session_records(
+  self : Daemon,
+  book_root : String,
+) -> Array[Json] {
+  let records = []
+  let seen : Map[String, Bool] = {}
+  if book_root != "" {
+    for record in mooncode_durable_session_records(book_root) {
+      let session_id = mooncode_json_string(record, "session_id", default="")
+      if session_id != "" {
+        seen[session_id] = true
+      }
+      records.push(record)
+    }
+  }
+  for binding in self.mooncode_sessions.values() {
+    if book_root == "" || binding.book_root == book_root {
+      if !seen.contains(binding.session_id) {
+        records.push(
+          mooncode_session_record_from_parts(
+            binding.session_id,
+            binding.book_root,
+            Some(binding),
+            None,
+            source="memory",
+          ),
+        )
+      }
+    }
+  }
+  records
+}
+
+///|
+async fn Daemon::mooncode_session_record(
+  self : Daemon,
+  session_id : String,
+  book_root : String,
+) -> Json? {
+  match self.mooncode_sessions.get(session_id) {
+    Some(binding) if book_root == "" || binding.book_root == book_root =>
+      return Some(
+        mooncode_session_record_from_parts(
+          session_id,
+          binding.book_root,
+          Some(binding),
+          Some(mooncode_load_session_snapshot(binding.book_root, session_id)),
+          source="memory",
+        ),
+      )
+    _ => ()
+  }
+  if book_root == "" {
+    return None
+  }
+  let snapshot = mooncode_load_session_snapshot(book_root, session_id)
+  if mooncode_json_string(snapshot, "load_status", default="") == "missing" {
+    None
+  } else {
+    Some(
+      mooncode_session_record_from_parts(
+        session_id,
+        book_root,
+        self.mooncode_sessions.get(
+          mooncode_json_string(snapshot, "session_id", default=session_id),
+        ),
+        Some(snapshot),
+        source="sidecar",
+      ),
+    )
+  }
+}
+
+///|
+async fn mooncode_durable_session_records(book_root : String) -> Array[Json] {
+  let records = []
+  let root = mooncode_sessions_root(book_root)
+  if !(@fsx.exists(root) catch { _ => false }) {
+    return records
+  }
+  let entries = @fsx.list_directory(root) catch { _ => return records }
+  for entry in entries {
+    if entry.kind is @fsx.FileKind::Directory {
+      let snapshot = mooncode_load_session_snapshot_by_safe_id(
+        book_root,
+        entry.name,
+      )
+      let session_id = mooncode_json_string(
+        snapshot,
+        "session_id",
+        default=entry.name,
+      )
+      records.push(
+        mooncode_session_record_from_parts(
+          session_id,
+          book_root,
+          None,
+          Some(snapshot),
+          source="sidecar",
+        ),
+      )
+    }
+  }
+  records
+}
+
+///|
+async fn mooncode_load_session_snapshot(
+  book_root : String,
+  session_id : String,
+) -> Json {
+  mooncode_load_session_snapshot_by_safe_id(
+    book_root,
+    mooncode_safe_session_id(session_id),
+  )
+}
+
+///|
+async fn mooncode_load_session_snapshot_by_safe_id(
+  book_root : String,
+  safe_session_id : String,
+) -> Json {
+  let path = mooncode_session_snapshot_path_by_safe_id(
+    book_root, safe_session_id,
+  )
+  if book_root == "" || !(@fsx.exists(path) catch { _ => false }) {
+    return mooncode_missing_session_snapshot(
+      book_root,
+      safe_session_id,
+      path,
+      load_status="missing",
+    )
+  }
+  @json.parse(@fsx.read_file(path)) catch {
+    _ =>
+      mooncode_missing_session_snapshot(
+        book_root,
+        safe_session_id,
+        path,
+        load_status="invalid-json",
+      )
+  }
+}
+
+///|
+fn mooncode_missing_session_snapshot(
+  book_root : String,
+  safe_session_id : String,
+  path : String,
+  load_status~ : String,
+) -> Json {
+  {
+    "kind": "mooncode-session-snapshot",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "session_id": safe_session_id,
+    "book_root": book_root,
+    "load_status": load_status,
+    "storage": {
+      "session_json": path,
+      "commands_jsonl": mooncode_commands_path_by_safe_id(
+        book_root, safe_session_id,
+      ),
+      "events_jsonl": mooncode_events_path_by_safe_id(
+        book_root, safe_session_id,
+      ),
+      "package_results_jsonl": mooncode_package_results_path_by_safe_id(
+        book_root, safe_session_id,
+      ),
+    },
+  }
+}
+
+///|
+async fn mooncode_session_record_from_parts(
+  session_id : String,
+  book_root : String,
+  live_binding : MoonCodeSessionBinding?,
+  snapshot : Json?,
+  source~ : String,
+) -> Json {
+  let safe_session_id = mooncode_safe_session_id(session_id)
+  let resolved_snapshot = match snapshot {
+    Some(value) => value
+    None =>
+      match live_binding {
+        Some(binding) => mooncode_session_snapshot(binding)
+        None =>
+          mooncode_missing_session_snapshot(
+            book_root,
+            safe_session_id,
+            mooncode_session_snapshot_path_by_safe_id(
+              book_root, safe_session_id,
+            ),
+            load_status="not-loaded",
+          )
+      }
+  }
+  let commands_path = mooncode_commands_path_by_safe_id(
+    book_root, safe_session_id,
+  )
+  let events_path = mooncode_events_path_by_safe_id(book_root, safe_session_id)
+  let package_results_path = mooncode_package_results_path_by_safe_id(
+    book_root, safe_session_id,
+  )
+  {
+    "kind": "mooncode-session-record",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "source": source,
+    "session_id": mooncode_json_string(
+      resolved_snapshot,
+      "session_id",
+      default=session_id,
+    ),
+    "safe_session_id": safe_session_id,
+    "book_root": book_root,
+    "live_binding_ready": live_binding is Some(_),
+    "binding": match live_binding {
+      Some(binding) => binding.to_json()
+      None => null
+    },
+    "snapshot": resolved_snapshot,
+    "storage": {
+      "session_json": mooncode_session_snapshot_path_by_safe_id(
+        book_root, safe_session_id,
+      ),
+      "commands_jsonl": commands_path,
+      "events_jsonl": events_path,
+      "package_results_jsonl": package_results_path,
+    },
+    "command_log_count": mooncode_jsonl_line_count(commands_path),
+    "event_log_count": mooncode_jsonl_line_count(events_path),
+    "package_result_log_count": mooncode_jsonl_line_count(package_results_path),
+    "resume_state": if live_binding is Some(_) {
+      "live"
+    } else if mooncode_json_string(
+        resolved_snapshot,
+        "load_status",
+        default="loaded",
+      ) ==
+      "missing" {
+      "missing"
+    } else {
+      "durable"
+    },
+  }
+}
+
+///|
+async fn mooncode_jsonl_line_count(path : String) -> Int {
+  if path == "" || !(@fsx.exists(path) catch { _ => false }) {
+    return 0
+  }
+  let text = @fsx.read_file(path) catch { _ => return 0 }
+  let mut count = 0
+  for line in text.split("\n") {
+    if !line.trim().is_empty() {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn mooncode_request_book_root(r : @httpx.RequestReader) -> String {
+  let parts = r.path.split("?").to_array()
+  if parts.length() < 2 {
+    return ""
+  }
+  let query = @codex.parse_query_string(parts[1])
+  query.get("book_root").unwrap_or("")
+}
+
+///|
 fn mooncode_validate_command_body(session_id : String, body : Json) -> Json {
   let protocol = mooncode_json_string(body, "protocol", default="")
   let body_session = mooncode_json_string(body, "session_id", default="")
@@ -877,11 +1205,26 @@ async fn mooncode_append_jsonl(path : String, entry : Json) -> Unit {
 
 ///|
 fn mooncode_session_dir(book_root : String, session_id : String) -> String {
+  mooncode_session_dir_by_safe_id(
+    book_root,
+    mooncode_safe_session_id(session_id),
+  )
+}
+
+///|
+fn mooncode_sessions_root(book_root : String) -> String {
   book_root
   |> @pathx.join(".moonclaw")
   |> @pathx.join("mooncode")
   |> @pathx.join("sessions")
-  |> @pathx.join(mooncode_safe_session_id(session_id))
+}
+
+///|
+fn mooncode_session_dir_by_safe_id(
+  book_root : String,
+  safe_session_id : String,
+) -> String {
+  mooncode_sessions_root(book_root) |> @pathx.join(safe_session_id)
 }
 
 ///|
@@ -893,8 +1236,26 @@ fn mooncode_session_snapshot_path(
 }
 
 ///|
+fn mooncode_session_snapshot_path_by_safe_id(
+  book_root : String,
+  safe_session_id : String,
+) -> String {
+  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
+  |> @pathx.join("session.json")
+}
+
+///|
 fn mooncode_commands_path(book_root : String, session_id : String) -> String {
   mooncode_session_dir(book_root, session_id) |> @pathx.join("commands.jsonl")
+}
+
+///|
+fn mooncode_commands_path_by_safe_id(
+  book_root : String,
+  safe_session_id : String,
+) -> String {
+  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
+  |> @pathx.join("commands.jsonl")
 }
 
 ///|
@@ -903,11 +1264,29 @@ fn mooncode_events_path(book_root : String, session_id : String) -> String {
 }
 
 ///|
+fn mooncode_events_path_by_safe_id(
+  book_root : String,
+  safe_session_id : String,
+) -> String {
+  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
+  |> @pathx.join("events.jsonl")
+}
+
+///|
 fn mooncode_package_results_path(
   book_root : String,
   session_id : String,
 ) -> String {
   mooncode_session_dir(book_root, session_id)
+  |> @pathx.join("package-results.jsonl")
+}
+
+///|
+fn mooncode_package_results_path_by_safe_id(
+  book_root : String,
+  safe_session_id : String,
+) -> String {
+  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
   |> @pathx.join("package-results.jsonl")
 }
 
@@ -1132,6 +1511,8 @@ fn mooncode_json_object_field_or_empty(json : Json, key : String) -> Json {
 test "mooncode capabilities expose native daemon endpoints" {
   let payload = mooncode_capabilities_payload().stringify()
   assert_true(payload.contains("/v1/mooncode/capabilities"))
+  assert_true(payload.contains("/v1/mooncode/sessions?book_root=<path>"))
+  assert_true(payload.contains("/v1/mooncode/sessions/<id>?book_root=<path>"))
   assert_true(payload.contains("/v1/mooncode/sessions/<id>/commands"))
   assert_true(payload.contains("/v1/mooncode/sessions/<id>/package-result"))
   assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
@@ -1327,6 +1708,64 @@ async test "mooncode durable session sidecars use book local storage" (
       "\"assistant_delta\"",
     ),
   )
+}
+
+///|
+async test "mooncode durable sidecars list and show without live binding" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-sidecar-list-XXXXXX"),
+  )
+  let binding = MoonCodeSessionBinding::{
+    session_id: "session/resume:1",
+    task_id: @uuid.nil,
+    book_root,
+    command_count: 1,
+    last_command_id: "cmd-resume",
+    last_updated: @clock.Timestamp::from_ms(77L),
+    persisted_task_event_count: 0,
+    events: @broadcast.Broadcast::new(),
+  }
+  @fsx.make_directory(
+    mooncode_session_dir(binding.book_root, binding.session_id),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    mooncode_session_snapshot_path(binding.book_root, binding.session_id),
+    mooncode_session_snapshot(binding).stringify(),
+  )
+  mooncode_append_jsonl(
+    mooncode_commands_path(binding.book_root, binding.session_id),
+    { "kind": "mooncode-command", "command_id": "cmd-resume" },
+  )
+  mooncode_append_jsonl(
+    mooncode_events_path(binding.book_root, binding.session_id),
+    { "kind": "assistant_delta", "command_id": "cmd-resume" },
+  )
+  mooncode_append_jsonl(
+    mooncode_package_results_path(binding.book_root, binding.session_id),
+    { "kind": "mooncode-package-result", "command_id": "cmd-resume" },
+  )
+  let records = mooncode_durable_session_records(book_root)
+  assert_eq(records.length(), 1)
+  let record = records[0]
+  assert_eq(
+    mooncode_json_string(record, "kind", default=""),
+    "mooncode-session-record",
+  )
+  assert_eq(
+    mooncode_json_string(record, "session_id", default=""),
+    "session/resume:1",
+  )
+  assert_eq(mooncode_json_string(record, "resume_state", default=""), "durable")
+  let text = record.stringify()
+  assert_true(text.contains("\"command_log_count\":1"))
+  assert_true(text.contains("\"event_log_count\":1"))
+  assert_true(text.contains("\"package_result_log_count\":1"))
+  assert_true(text.contains("\"live_binding_ready\":false"))
 }
 
 ///|

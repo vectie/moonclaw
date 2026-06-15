@@ -13,6 +13,8 @@
 /// - GET  /v1/task/{id}  → `get_task`
 /// - ANY  /v1/task/{id}/... → `forward_to_task`
 /// - GET  /v1/mooncode/capabilities → `mooncode_capabilities`
+/// - GET  /v1/mooncode/sessions?book_root={path} → `mooncode_list_sessions`
+/// - GET  /v1/mooncode/sessions/{id}?book_root={path} → `mooncode_get_session`
 /// - POST /v1/mooncode/sessions/{id}/commands → `mooncode_accept_command`
 /// - GET  /v1/mooncode/sessions/{id}/stream → `mooncode_stream`
 /// - GET  /v1/mooncode/sessions/{id}/eval-report → `mooncode_eval_report`
@@ -30,7 +32,8 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
     group.spawn_bg(() => self.process.start())
     self.httpx.serve(
       @httpx.cors((r, w) => {
-        let paths = r.path.split("/").collect()
+        let route_path = r.path.split("?").head().unwrap_or(r.path)
+        let paths = route_path.split("/").collect()
         logger.info("Received request: \{r.method_} \{r.path}")
         logger.info("Handling request paths: \{paths}")
         try {
@@ -55,6 +58,10 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.get_task_events(id~, w)
             (Get, ["", "v1", "mooncode", "capabilities"]) =>
               self.mooncode_capabilities(w)
+            (Get, ["", "v1", "mooncode", "sessions"]) =>
+              self.mooncode_list_sessions(r, w)
+            (Get, ["", "v1", "mooncode", "sessions", session_id]) =>
+              self.mooncode_get_session(session_id~, r, w)
             (Post, ["", "v1", "mooncode", "sessions", session_id, "commands"]) =>
               self.mooncode_accept_command(group~, session_id~, r, w)
             (Get, ["", "v1", "mooncode", "sessions", session_id, "stream"]) =>
