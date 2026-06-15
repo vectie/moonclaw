@@ -1,0 +1,78 @@
+///|
+async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-runtime-eval-XXXXXX"),
+  )
+  mooncode_prepare_eval_fixture(book_root)
+  let session_id = "session-runtime-eval"
+  let command_id = "cmd-runtime-eval"
+  let command : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "run_eval",
+    "text": "Run native MoonCode eval proof",
+    "packet": { "command_id": command_id, "action": "run_eval" },
+    "model": "unavailable-model",
+  }
+  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
+    "kind": "mooncode-command",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "created_at": @clock.Timestamp::from_ms(6L),
+    "command": command,
+  })
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+    "consumer_id": "test-runtime",
+  })
+  assert_true(mooncode_json_bool(result, "accepted", default=false))
+  let execution = mooncode_json_object_field_or_empty(result, "execution")
+  assert_eq(mooncode_json_string(execution, "control", default=""), "run_eval")
+  let eval_results = mooncode_json_array_items(execution, "eval_results")
+  assert_eq(eval_results.length(), 1)
+  assert_true(mooncode_json_bool(eval_results[0], "accepted", default=false))
+  let manifest_path = mooncode_json_string(
+    eval_results[0],
+    "manifest_path",
+    default="",
+  )
+  assert_eq(
+    manifest_path, "wiki/reviews/mooncode/session-runtime-eval/eval-report.json",
+  )
+  let manifest_absolute = @pathx.join(book_root, manifest_path)
+  assert_true(@fsx.exists(manifest_absolute))
+  let manifest_text = @fsx.read_file(manifest_absolute)
+  assert_true(manifest_text.contains("\"mooncode-eval-report\""))
+  assert_true(manifest_text.contains("\"native_eval_evidence_ready\": true"))
+  assert_true(manifest_text.contains("tool_harness"))
+  assert_true(manifest_text.contains("file_edit"))
+  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  assert_true(events_log.contains("\"eval_report.manifest\""))
+  assert_true(events_log.contains("tool_harness"))
+  assert_true(events_log.contains("file_edit"))
+  let after = mooncode_json_object_field_or_empty(result, "claim_state")
+  assert_true(after.stringify().contains("\"delivered_command_count\":1"))
+}

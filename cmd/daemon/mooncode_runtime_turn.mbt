@@ -183,6 +183,31 @@ async fn Daemon::mooncode_runtime_turn_execute(
       mooncode_json_bool(result, "accepted", default=false)
     })
     let action = mooncode_json_string(command, "command", default="prompt")
+    let eval_results = if tool_accepted && action == "run_eval" {
+      mooncode_runtime_turn_eval_results(
+        session_id,
+        book_root,
+        command,
+        now=self.clock.now(),
+      )
+    } else {
+      []
+    }
+    let eval_events : Array[Json] = []
+    for eval_result in eval_results {
+      let eval_event = mooncode_runtime_turn_eval_event(
+        session_id,
+        command_id,
+        command,
+        eval_result,
+        now=self.clock.now(),
+      )
+      eval_events.push(eval_event)
+      events.push(eval_event)
+    }
+    let eval_accepted = eval_results.all(result => {
+      mooncode_json_bool(result, "accepted", default=false)
+    })
     let commit_results = if tool_accepted && action == "commit" {
       mooncode_runtime_turn_commit_results(
         session_id,
@@ -208,7 +233,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
     let commit_accepted = commit_results.all(result => {
       mooncode_json_bool(result, "accepted", default=false)
     })
-    let accepted = tool_accepted && commit_accepted
+    let accepted = tool_accepted && eval_accepted && commit_accepted
     if action == "steer" {
       events.push(
         mooncode_runtime_turn_steer_settlement_event(
@@ -275,6 +300,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
         "planner_step_count": planner_steps.length(),
         "model_step_limit": max_model_steps,
         "tool_results": Json::array(tool_results),
+        "eval_results": Json::array(eval_results),
+        "eval_events": Json::array(eval_events),
         "commit_results": Json::array(commit_results),
         "commit_events": Json::array(commit_events),
         "review_receipts": Json::array(review_receipts),

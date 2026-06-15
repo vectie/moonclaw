@@ -110,7 +110,11 @@ MoonClaw is strongest when you want one system to handle:
   status/add/commit/rev-parse, exclude `.moonclaw`, `.moontown`, and
   `moonclaw-jobs` runtime sidecars from staging, and emit review-lane
   `runtime.commit_created` proof with the resulting SHA only after the commit
-  succeeds. When
+  succeeds. `run_eval` commands now run MoonClaw's native OpenSeek-style
+  tool/file-edit harnesses from runtime-turn, write
+  `wiki/reviews/mooncode/<session-id>/eval-report.json`, and emit
+  `eval_report.manifest` proof with `tool_harness` and `file_edit` results.
+  When
   a queued command carries an explicit selected model, runtime-turn can also ask
   that model for bounded OpenSeek-style tool-call batches over `read`, `write`,
   `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`;

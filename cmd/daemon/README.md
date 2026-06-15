@@ -315,6 +315,11 @@ stages only book-local content, excluding `.moonclaw`, `.moontown`, and
 `moonclaw-jobs` runtime sidecars, runs `git commit` inside the selected
 MoonBook root, verifies `HEAD`, and emits `runtime.commit_created` with the
 commit SHA only after the git operation succeeds.
+Run-eval commands now run the native OpenSeek-style tool/file-edit harnesses
+from runtime-turn, write `wiki/reviews/mooncode/{safe-session-id}/eval-report.json`
+inside the selected MoonBook, and emit `eval_report.manifest` evidence with
+`tool_harness` and `file_edit` results so Moondesk can gate review/package work
+on MoonClaw-owned eval proof.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded OpenSeek-style tool-call batches over `read`, `write`, `edit`,
 `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`. Successful
