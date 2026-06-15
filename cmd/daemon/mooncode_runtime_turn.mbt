@@ -179,10 +179,36 @@ async fn Daemon::mooncode_runtime_turn_execute(
       }
       plan = next_plan
     }
-    let accepted = tool_results.all(result => {
+    let tool_accepted = tool_results.all(result => {
       mooncode_json_bool(result, "accepted", default=false)
     })
     let action = mooncode_json_string(command, "command", default="prompt")
+    let commit_results = if tool_accepted && action == "commit" {
+      mooncode_runtime_turn_commit_results(
+        session_id,
+        book_root,
+        command,
+        now=self.clock.now(),
+      )
+    } else {
+      []
+    }
+    let commit_events : Array[Json] = []
+    for commit_result in commit_results {
+      let commit_event = mooncode_runtime_turn_commit_event(
+        session_id,
+        command_id,
+        command,
+        commit_result,
+        now=self.clock.now(),
+      )
+      commit_events.push(commit_event)
+      events.push(commit_event)
+    }
+    let commit_accepted = commit_results.all(result => {
+      mooncode_json_bool(result, "accepted", default=false)
+    })
+    let accepted = tool_accepted && commit_accepted
     if action == "steer" {
       events.push(
         mooncode_runtime_turn_steer_settlement_event(
@@ -249,6 +275,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
         "planner_step_count": planner_steps.length(),
         "model_step_limit": max_model_steps,
         "tool_results": Json::array(tool_results),
+        "commit_results": Json::array(commit_results),
+        "commit_events": Json::array(commit_events),
         "review_receipts": Json::array(review_receipts),
         "review_events": Json::array(review_events),
         "events": Json::array(events),
@@ -421,6 +449,15 @@ fn mooncode_runtime_turn_tool_calls(command : Json) -> Array[Json] {
           "tool": "finish",
           "arguments": {
             "answer": "Native MoonCode runtime recorded reject review and wrote a MoonBook review receipt.",
+          },
+        },
+      ]
+    "commit" =>
+      [
+        {
+          "tool": "finish",
+          "arguments": {
+            "answer": "Native MoonCode runtime is creating a book-local git commit and proof event.",
           },
         },
       ]
@@ -2478,6 +2515,18 @@ test "mooncode native runtime turn plans prompt tool calls" {
   assert_eq(accept_calls.length(), 1)
   assert_eq(mooncode_json_string(accept_calls[0], "tool", default=""), "finish")
   assert_false(mooncode_runtime_turn_model_planning_allowed(accept))
+  let commit : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": "session-planner",
+    "book_root": "/tmp/book",
+    "command": "commit",
+    "packet": { "command_id": "cmd-commit" },
+    "model": "test-model",
+  }
+  let commit_calls = mooncode_runtime_turn_tool_calls(commit)
+  assert_eq(commit_calls.length(), 1)
+  assert_eq(mooncode_json_string(commit_calls[0], "tool", default=""), "finish")
+  assert_false(mooncode_runtime_turn_model_planning_allowed(commit))
 }
 
 ///|

@@ -106,7 +106,11 @@ MoonClaw is strongest when you want one system to handle:
   deterministically by writing MoonBook-owned review receipts under
   `wiki/reviews/mooncode/<session-id>/` and emitting review-lane
   `receipt.accept` / `receipt.reject` evidence instead of asking a model to
-  reinterpret the operator decision. When
+  reinterpret the operator decision. `commit` commands now run book-local git
+  status/add/commit/rev-parse, exclude `.moonclaw`, `.moontown`, and
+  `moonclaw-jobs` runtime sidecars from staging, and emit review-lane
+  `runtime.commit_created` proof with the resulting SHA only after the commit
+  succeeds. When
   a queued command carries an explicit selected model, runtime-turn can also ask
   that model for bounded OpenSeek-style tool-call batches over `read`, `write`,
   `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`;

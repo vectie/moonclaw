@@ -310,6 +310,11 @@ MoonClaw writes `mooncode-review-receipt` JSON under
 `wiki/reviews/mooncode/{safe-session-id}/`, emits review-lane
 `receipt.accept` / `receipt.reject` events, and avoids model planning unless
 the command explicitly provides tool calls.
+Commit commands now settle as deterministic git proof: MoonClaw checks and
+stages only book-local content, excluding `.moonclaw`, `.moontown`, and
+`moonclaw-jobs` runtime sidecars, runs `git commit` inside the selected
+MoonBook root, verifies `HEAD`, and emits `runtime.commit_created` with the
+commit SHA only after the git operation succeeds.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded OpenSeek-style tool-call batches over `read`, `write`, `edit`,
 `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`. Successful
