@@ -40,7 +40,7 @@ fn mooncode_capabilities_payload() -> Json {
       "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
       "/v1/mooncode/sessions/<id>/eval-report", "/v1/mooncode/sessions/<id>/package-result",
       "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
-      "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
+      "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>", "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>",
     ],
     "control_commands": ["prompt", "steer", "cancel"],
     "tools": ["read", "edit", "write", "shell", "moon_check", "finish"],
@@ -50,6 +50,7 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_claim_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-claim?book_root=<path> projects and appends native runtime-claimed receipts over the durable command queue without spawning a task.",
     "runtime_dispatch_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path> claims the next durable command if needed, forwards it to the MoonClaw task runtime, and appends a runtime-delivered receipt.",
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
+    "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
   }
 }
@@ -2126,6 +2127,9 @@ test "mooncode capabilities expose native daemon endpoints" {
     payload.contains(
       "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
     ),
+  )
+  assert_true(
+    payload.contains("/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>"),
   )
   assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
   assert_true(payload.contains("runtime-dispatches.jsonl"))
