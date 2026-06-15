@@ -40,6 +40,7 @@ fn mooncode_capabilities_payload() -> Json {
       "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
       "/v1/mooncode/sessions/<id>/eval-report", "/v1/mooncode/sessions/<id>/package-result",
       "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
+      "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
     ],
     "control_commands": ["prompt", "steer", "cancel"],
     "tools": ["read", "edit", "write", "shell", "moon_check", "finish"],
@@ -48,6 +49,7 @@ fn mooncode_capabilities_payload() -> Json {
     "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, runtime-dispatches.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
     "runtime_claim_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-claim?book_root=<path> projects and appends native runtime-claimed receipts over the durable command queue without spawning a task.",
     "runtime_dispatch_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path> claims the next durable command if needed, forwards it to the MoonClaw task runtime, and appends a runtime-delivered receipt.",
+    "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
   }
 }
@@ -2118,6 +2120,11 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(
     payload.contains(
       "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
+    ),
+  )
+  assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
     ),
   )
   assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
