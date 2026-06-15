@@ -81,9 +81,15 @@ MoonClaw is strongest when you want one system to handle:
   events, and closes the command with `runtime-completed` or `runtime-failed`.
   `/commands` now also accepts `native_dispatch_mode=queue-only`, which appends
   the durable command without spawning or messaging the legacy MoonClaw task
-  bridge so a client can call `runtime-turn` without duplicate execution. The
-  remaining MoonCode runtime gap is autonomous OpenSeek-style planning that
-  chooses tools from a prompt without predeclared tool calls.
+  bridge so a client can call `runtime-turn` without duplicate execution.
+  Runtime-turn now also includes the first bounded prompt planner: ordinary
+  `prompt`/`steer` commands that ask for a tool, script, miniapp, generated
+  site, or HTML app expand into native `write`, `shell`, and `finish` tool calls
+  under MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can
+  create and verify an executable artifact without predeclared tool calls. The
+  remaining MoonCode runtime gap is the full model-backed OpenSeek-style agent
+  planner with broad tool selection, diff-aware edits, and eval-proven coding
+  reliability.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`

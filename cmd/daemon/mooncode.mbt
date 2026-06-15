@@ -54,6 +54,7 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
     "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events.",
     "queue_only_command_mode": "POST /v1/mooncode/sessions/<id>/commands with native_dispatch_mode=queue-only appends the durable command and command.queued_for_runtime_turn event without spawning or messaging a legacy MoonClaw task; callers can then invoke runtime-turn for non-duplicating native execution.",
+    "prompt_planner": "runtime-turn expands bounded prompt/steer requests for tools, scripts, miniapps, generated sites, and html apps into native write/shell/finish tool calls under MoonBook-owned tools/ or apps/ paths.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
   }
 }
@@ -2199,6 +2200,7 @@ test "mooncode capabilities expose native daemon endpoints" {
     payload.contains("\"control_commands\":[\"prompt\",\"steer\",\"cancel\"]"),
   )
   assert_true(payload.contains("native_dispatch_mode=queue-only"))
+  assert_true(payload.contains("\"prompt_planner\""))
 }
 
 ///|
