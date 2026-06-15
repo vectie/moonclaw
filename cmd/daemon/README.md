@@ -316,8 +316,12 @@ clients can render live-style OpenSeek/Codex progress from the native event log.
 Native `apply_patch` and `revert_patch` execute bounded reviewed text
 replacements plus single-file or multi-file unified-diff patchsets inside the
 selected MoonBook root, infer target paths from diff headers when needed, and
-emit `runtime.patch_applied` / `runtime.patch_reverted` proof events. Patch
-tool packets can request post-change verification with `verification_command`,
+emit `runtime.patch_applied` / `runtime.patch_reverted` proof events. They
+also accept `hunk_index`/`hunk_id` or hunk targets such as
+`tools/demo/main.mbt#hunk-2`, apply only that selected hunk, and report
+`hunk_dispatch_scope`, `selected_hunk_index`, `available_hunk_count`, and
+`file_path` metadata. Patch tool packets can request post-change verification
+with `verification_command`,
 `test_command`, `verify_after`, or `moon_check_target`; MoonClaw records the
 command, status, capped output, and pass/fail result under the patch proof
 metadata.

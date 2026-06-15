@@ -525,15 +525,24 @@ async fn mooncode_tool_patch_replace(
 fn mooncode_tool_patch_path(book_root : String, arguments : Json) -> Json {
   let path = mooncode_json_string(arguments, "path", default="")
   if path != "" {
-    return mooncode_resolve_book_path(book_root, path)
+    return mooncode_resolve_book_path(
+      book_root,
+      mooncode_tool_patch_file_target(path),
+    )
   }
   let context_path = mooncode_json_string(arguments, "context_path", default="")
   if context_path != "" {
-    return mooncode_resolve_book_path(book_root, context_path)
+    return mooncode_resolve_book_path(
+      book_root,
+      mooncode_tool_patch_file_target(context_path),
+    )
   }
   let target = mooncode_json_string(arguments, "target", default="")
   if target != "" {
-    return mooncode_resolve_book_path(book_root, target)
+    return mooncode_resolve_book_path(
+      book_root,
+      mooncode_tool_patch_file_target(target),
+    )
   }
   let diff_path = mooncode_tool_patch_path_from_diff(
     mooncode_tool_patch_diff_text(arguments),
@@ -693,6 +702,112 @@ fn mooncode_tool_patch_file_path(
 }
 
 ///|
+fn mooncode_tool_patch_explicit_file_target(arguments : Json) -> String {
+  let path = mooncode_json_string(arguments, "path", default="")
+  if path != "" {
+    return mooncode_tool_patch_file_target(path)
+  }
+  let context_path = mooncode_json_string(arguments, "context_path", default="")
+  if context_path != "" {
+    return mooncode_tool_patch_file_target(context_path)
+  }
+  let target = mooncode_json_string(arguments, "target", default="")
+  if target != "" {
+    return mooncode_tool_patch_file_target(target)
+  }
+  ""
+}
+
+///|
+fn mooncode_tool_patch_file_target(target : String) -> String {
+  let file = mooncode_tool_first_split_piece(target, "#hunk-")
+  mooncode_tool_patch_clean_diff_path(file[:])
+}
+
+///|
+fn mooncode_tool_patch_selected_hunk_index(arguments : Json) -> Int {
+  let hunk_index = mooncode_json_int(arguments, "hunk_index", default=0)
+  if hunk_index > 0 {
+    return hunk_index
+  }
+  let selected_hunk_index = mooncode_json_int(
+    arguments,
+    "selected_hunk_index",
+    default=0,
+  )
+  if selected_hunk_index > 0 {
+    return selected_hunk_index
+  }
+  let hunk_id = mooncode_json_string(arguments, "hunk_id", default="")
+  if hunk_id != "" {
+    return mooncode_tool_patch_hunk_index_from_text(hunk_id)
+  }
+  let selected_hunk_id = mooncode_json_string(
+    arguments,
+    "selected_hunk_id",
+    default="",
+  )
+  if selected_hunk_id != "" {
+    return mooncode_tool_patch_hunk_index_from_text(selected_hunk_id)
+  }
+  let path = mooncode_json_string(arguments, "path", default="")
+  if path != "" {
+    let index = mooncode_tool_patch_hunk_index_from_target(path)
+    if index > 0 {
+      return index
+    }
+  }
+  let context_path = mooncode_json_string(arguments, "context_path", default="")
+  if context_path != "" {
+    let index = mooncode_tool_patch_hunk_index_from_target(context_path)
+    if index > 0 {
+      return index
+    }
+  }
+  let target = mooncode_json_string(arguments, "target", default="")
+  if target != "" {
+    return mooncode_tool_patch_hunk_index_from_target(target)
+  }
+  0
+}
+
+///|
+fn mooncode_tool_patch_hunk_index_from_target(target : String) -> Int {
+  let mut seen_marker = false
+  for piece in target.split("#hunk-") {
+    if seen_marker {
+      return mooncode_tool_patch_hunk_index_from_text(piece.to_owned())
+    }
+    seen_marker = true
+  }
+  0
+}
+
+///|
+fn mooncode_tool_patch_hunk_index_from_text(text : String) -> Int {
+  let raw = if text.has_prefix("hunk-") {
+    text[5:].to_owned()
+  } else {
+    mooncode_tool_first_split_piece(text, "#")
+  }
+  @strconv.parse_int(raw) catch {
+    _ => 0
+  }
+}
+
+///|
+fn mooncode_tool_patch_hunk_target(
+  relative : String,
+  selected_hunk_index : Int,
+) -> String {
+  if selected_hunk_index > 0 {
+    "\{relative}#hunk-\{selected_hunk_index}"
+  } else {
+    relative
+  }
+}
+
+///|
 async fn mooncode_tool_apply_unified_patchset(
   tool : String,
   book_root : String,
@@ -704,10 +819,28 @@ async fn mooncode_tool_apply_unified_patchset(
   let plans : Array[Json] = []
   let file_results : Array[Json] = []
   let output_diffs : Array[String] = []
+  let selected_hunk_index = mooncode_tool_patch_selected_hunk_index(arguments)
+  let selected_file_target = mooncode_tool_patch_explicit_file_target(arguments)
+  if selected_hunk_index > 0 && selected_file_target == "" {
+    return mooncode_tool_error_result(
+      tool,
+      message="selected hunk patchsets require path, context_path, or target",
+      metadata={
+        "path": "patchset",
+        "selected_hunk_index": selected_hunk_index,
+        "available_file_count": files.length(),
+      },
+    )
+  }
   let mut total_hunks = 0
   let mut changed = false
+  let mut matched_selected_file = selected_hunk_index == 0
   for file in files {
     let path_text = mooncode_json_string(file, "path", default="")
+    if selected_hunk_index > 0 && path_text != selected_file_target {
+      continue
+    }
+    matched_selected_file = true
     let resolved = mooncode_resolve_book_path(book_root, path_text)
     if mooncode_json_bool(resolved, "ok", default=false) == false {
       return mooncode_tool_error_result(
@@ -737,6 +870,7 @@ async fn mooncode_tool_apply_unified_patchset(
     }
     let file_diff = mooncode_json_string(file, "diff", default="")
     let chunks = mooncode_tool_patch_chunks_from_unified_diff(file_diff)
+    let available_hunk_count = chunks.length()
     if chunks.length() == 0 {
       return mooncode_tool_error_result(
         tool,
@@ -744,12 +878,36 @@ async fn mooncode_tool_apply_unified_patchset(
         metadata={ "path": relative, "absolute_path": absolute },
       )
     }
+    if selected_hunk_index > available_hunk_count {
+      return mooncode_tool_error_result(
+        tool,
+        message="selected hunk \{selected_hunk_index} is outside \{relative}'s \{available_hunk_count} hunk(s)",
+        metadata={
+          "path": mooncode_tool_patch_hunk_target(relative, selected_hunk_index),
+          "file_path": relative,
+          "absolute_path": absolute,
+          "selected_hunk_index": selected_hunk_index,
+          "available_hunk_count": available_hunk_count,
+        },
+      )
+    }
+    let selected_chunks : Array[Json] = []
+    if selected_hunk_index > 0 {
+      selected_chunks.push(chunks[selected_hunk_index - 1])
+    } else {
+      for chunk in chunks {
+        selected_chunks.push(chunk)
+      }
+    }
+    let proof_path = mooncode_tool_patch_hunk_target(
+      relative, selected_hunk_index,
+    )
     let patched_result = mooncode_tool_apply_unified_chunks_to_content(
       tool,
-      relative,
+      proof_path,
       absolute,
       content,
-      chunks,
+      selected_chunks,
       reverse~,
     )
     if mooncode_json_bool(patched_result, "ok", default=false) == false {
@@ -781,18 +939,43 @@ async fn mooncode_tool_apply_unified_patchset(
     output_diffs.push(output_diff)
     plans.push({
       "path": relative,
+      "proof_path": proof_path,
       "absolute_path": absolute,
       "patched": patched,
       "delete_file": delete_file,
     })
     file_results.push({
-      "path": relative,
+      "path": proof_path,
+      "file_path": relative,
       "absolute_path": absolute,
       "changed": file_changed,
       "delete_file": delete_file,
       "applied_hunk_count": applied_count,
+      "available_hunk_count": available_hunk_count,
+      "selected_hunk_index": selected_hunk_index,
+      "selected_hunk_id": if selected_hunk_index > 0 {
+        "hunk-\{selected_hunk_index}"
+      } else {
+        ""
+      },
+      "hunk_dispatch_scope": if selected_hunk_index > 0 {
+        "selected-hunk"
+      } else {
+        "all-hunks"
+      },
       "diff": output_diff,
     })
+  }
+  if selected_hunk_index > 0 && !matched_selected_file {
+    return mooncode_tool_error_result(
+      tool,
+      message="selected patchset file not found: \{selected_file_target}",
+      metadata={
+        "path": selected_file_target,
+        "selected_hunk_index": selected_hunk_index,
+        "available_file_count": files.length(),
+      },
+    )
   }
   for plan in plans {
     let absolute = mooncode_json_string(plan, "absolute_path", default="")
@@ -839,11 +1022,36 @@ async fn mooncode_tool_apply_unified_patchset(
     message="\{tool} applied \{total_hunks} unified diff hunk(s) across \{file_results.length()} file(s)",
     output="",
     metadata={
-      "path": "patchset",
+      "path": if selected_hunk_index > 0 && file_results.length() == 1 {
+        mooncode_json_string(file_results[0], "path", default="patchset")
+      } else {
+        "patchset"
+      },
       "changed": changed,
       "diff": output_diffs.join(""),
       "proof_event": mooncode_tool_patch_proof_event(tool),
       "applied_hunk_count": total_hunks,
+      "available_hunk_count": if selected_hunk_index > 0 &&
+        file_results.length() == 1 {
+        mooncode_json_int(
+          file_results[0],
+          "available_hunk_count",
+          default=total_hunks,
+        )
+      } else {
+        total_hunks
+      },
+      "selected_hunk_index": selected_hunk_index,
+      "selected_hunk_id": if selected_hunk_index > 0 {
+        "hunk-\{selected_hunk_index}"
+      } else {
+        ""
+      },
+      "hunk_dispatch_scope": if selected_hunk_index > 0 {
+        "selected-hunk"
+      } else {
+        "all-hunks"
+      },
       "patched_file_count": file_results.length(),
       "files": Json::array(file_results),
       "input_diff": diff_text,
@@ -864,6 +1072,7 @@ async fn mooncode_tool_apply_unified_diff(
   reverse~ : Bool,
 ) -> Json {
   let chunks = mooncode_tool_patch_chunks_from_unified_diff(diff_text)
+  let available_hunk_count = chunks.length()
   if chunks.length() == 0 {
     return mooncode_tool_error_result(
       tool,
@@ -871,12 +1080,37 @@ async fn mooncode_tool_apply_unified_diff(
       metadata={ "path": relative, "absolute_path": absolute },
     )
   }
+  let selected_hunk_index = mooncode_tool_patch_selected_hunk_index(arguments)
+  if selected_hunk_index > available_hunk_count {
+    return mooncode_tool_error_result(
+      tool,
+      message="selected hunk \{selected_hunk_index} is outside \{relative}'s \{available_hunk_count} hunk(s)",
+      metadata={
+        "path": mooncode_tool_patch_hunk_target(relative, selected_hunk_index),
+        "file_path": relative,
+        "absolute_path": absolute,
+        "selected_hunk_index": selected_hunk_index,
+        "available_hunk_count": available_hunk_count,
+      },
+    )
+  }
+  let selected_chunks : Array[Json] = []
+  if selected_hunk_index > 0 {
+    selected_chunks.push(chunks[selected_hunk_index - 1])
+  } else {
+    for chunk in chunks {
+      selected_chunks.push(chunk)
+    }
+  }
+  let proof_path = mooncode_tool_patch_hunk_target(
+    relative, selected_hunk_index,
+  )
   let patched_result = mooncode_tool_apply_unified_chunks_to_content(
     tool,
-    relative,
+    proof_path,
     absolute,
     content,
-    chunks,
+    selected_chunks,
     reverse~,
   )
   if mooncode_json_bool(patched_result, "ok", default=false) == false {
@@ -904,12 +1138,25 @@ async fn mooncode_tool_apply_unified_diff(
     message="\{tool} applied \{applied_count} unified diff hunk(s) to \{relative}",
     output="",
     metadata={
-      "path": relative,
+      "path": proof_path,
+      "file_path": relative,
       "absolute_path": absolute,
       "changed": content != patched,
       "diff": mooncode_tool_unified_diff(relative, content, patched, existed~),
       "proof_event": mooncode_tool_patch_proof_event(tool),
       "applied_hunk_count": applied_count,
+      "available_hunk_count": available_hunk_count,
+      "selected_hunk_index": selected_hunk_index,
+      "selected_hunk_id": if selected_hunk_index > 0 {
+        "hunk-\{selected_hunk_index}"
+      } else {
+        ""
+      },
+      "hunk_dispatch_scope": if selected_hunk_index > 0 {
+        "selected-hunk"
+      } else {
+        "all-hunks"
+      },
       "input_diff": diff_text,
     },
   )
@@ -1857,6 +2104,102 @@ async test "mooncode native patch tools apply and revert unified diffs" (
 }
 
 ///|
+async test "mooncode native patch tools dispatch selected unified diff hunks" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-selected-hunk-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "tools/hunks.txt"),
+    "one\nalpha\n\nsecond\nbeta\n",
+  )
+  let diff = "--- a/tools/hunks.txt\n+++ b/tools/hunks.txt\n@@\n one\n-alpha\n+Alpha\n \n@@\n second\n-beta\n+Beta\n"
+  let apply = mooncode_execute_tool_call(
+    "session-selected-hunk",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-selected-hunk",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply-hunk-2",
+      "arguments": { "context_path": "tools/hunks.txt#hunk-2", "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(54L),
+  )
+  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+  assert_true(mooncode_json_bool(apply_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/hunks.txt")),
+    "one\nalpha\n\nsecond\nBeta\n",
+  )
+  let apply_event = mooncode_json_object_field_or_empty(apply, "event")
+  assert_eq(
+    mooncode_json_string(apply_event, "path", default=""),
+    "tools/hunks.txt#hunk-2",
+  )
+  let apply_metadata = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(apply_event, "tool_result"),
+    "metadata",
+  )
+  assert_eq(
+    mooncode_json_string(apply_metadata, "file_path", default=""),
+    "tools/hunks.txt",
+  )
+  assert_eq(
+    mooncode_json_string(apply_metadata, "hunk_dispatch_scope", default=""),
+    "selected-hunk",
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "selected_hunk_index", default=0),
+    2,
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "applied_hunk_count", default=0),
+    1,
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "available_hunk_count", default=0),
+    2,
+  )
+  let revert = mooncode_execute_tool_call(
+    "session-selected-hunk",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-selected-hunk",
+      "book_root": book_root,
+      "tool": "revert_patch",
+      "command_id": "cmd-revert-hunk-2",
+      "arguments": { "context_path": "tools/hunks.txt#hunk-2", "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(55L),
+  )
+  let revert_result = mooncode_json_object_field_or_empty(revert, "result")
+  assert_true(mooncode_json_bool(revert_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/hunks.txt")),
+    "one\nalpha\n\nsecond\nbeta\n",
+  )
+  let revert_event = mooncode_json_object_field_or_empty(revert, "event")
+  assert_eq(
+    mooncode_json_string(revert_event, "path", default=""),
+    "tools/hunks.txt#hunk-2",
+  )
+  assert_eq(
+    mooncode_json_string(revert_event, "kind", default=""),
+    "runtime.patch_reverted",
+  )
+}
+
+///|
 async test "mooncode native patch tools apply and revert unified patchsets" (
   t : @test.Test,
 ) {
@@ -1940,6 +2283,71 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
   assert_eq(
     mooncode_json_string(revert_event, "kind", default=""),
     "runtime.patch_reverted",
+  )
+}
+
+///|
+async test "mooncode native patchsets dispatch selected file hunks" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patchset-hunk-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(@pathx.join(book_root, "tools/one.txt"), "one\nalpha\n")
+  @fsx.write_to_file(
+    @pathx.join(book_root, "tools/two.txt"),
+    "first\nbeta\n\nsecond\ngamma\n",
+  )
+  let diff = "--- a/tools/one.txt\n+++ b/tools/one.txt\n@@\n one\n-alpha\n+Alpha\n--- a/tools/two.txt\n+++ b/tools/two.txt\n@@\n first\n-beta\n+Beta\n \n@@\n second\n-gamma\n+Gamma\n"
+  let apply = mooncode_execute_tool_call(
+    "session-patchset-hunk",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-patchset-hunk",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply-patchset-hunk",
+      "arguments": { "context_path": "tools/two.txt#hunk-2", "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(56L),
+  )
+  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+  assert_true(mooncode_json_bool(apply_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/one.txt")),
+    "one\nalpha\n",
+  )
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/two.txt")),
+    "first\nbeta\n\nsecond\nGamma\n",
+  )
+  let apply_event = mooncode_json_object_field_or_empty(apply, "event")
+  assert_eq(
+    mooncode_json_string(apply_event, "path", default=""),
+    "tools/two.txt#hunk-2",
+  )
+  let apply_metadata = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(apply_event, "tool_result"),
+    "metadata",
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "patched_file_count", default=0),
+    1,
+  )
+  assert_eq(
+    mooncode_json_int(apply_metadata, "applied_hunk_count", default=0),
+    1,
+  )
+  assert_eq(
+    mooncode_json_string(apply_metadata, "hunk_dispatch_scope", default=""),
+    "selected-hunk",
   )
 }
 
