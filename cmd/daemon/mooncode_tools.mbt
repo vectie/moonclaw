@@ -389,6 +389,7 @@ async fn mooncode_tool_patch_replace(
       return mooncode_tool_apply_unified_patchset(
         tool,
         book_root,
+        arguments,
         patch_files,
         diff_text,
         reverse~,
@@ -420,6 +421,8 @@ async fn mooncode_tool_patch_replace(
   if before_string == "" && after_string == "" && diff_text != "" {
     return mooncode_tool_apply_unified_diff(
       tool,
+      book_root,
+      arguments,
       relative,
       absolute,
       content,
@@ -438,8 +441,10 @@ async fn mooncode_tool_patch_replace(
     )
   }
   if content == new_string {
-    return mooncode_tool_ok_result(
+    return mooncode_tool_patch_result(
       tool,
+      book_root,
+      arguments,
       message="\{tool} already reflected in \{relative}",
       output="",
       metadata={
@@ -500,8 +505,10 @@ async fn mooncode_tool_patch_replace(
         metadata={ "path": relative, "absolute_path": absolute },
       )
   }
-  mooncode_tool_ok_result(
+  mooncode_tool_patch_result(
     tool,
+    book_root,
+    arguments,
     message="\{tool} updated \{relative}",
     output="",
     metadata={
@@ -689,6 +696,7 @@ fn mooncode_tool_patch_file_path(
 async fn mooncode_tool_apply_unified_patchset(
   tool : String,
   book_root : String,
+  arguments : Json,
   files : Array[Json],
   diff_text : String,
   reverse~ : Bool,
@@ -824,8 +832,10 @@ async fn mooncode_tool_apply_unified_patchset(
       }
     }
   }
-  mooncode_tool_ok_result(
+  mooncode_tool_patch_result(
     tool,
+    book_root,
+    arguments,
     message="\{tool} applied \{total_hunks} unified diff hunk(s) across \{file_results.length()} file(s)",
     output="",
     metadata={
@@ -844,6 +854,8 @@ async fn mooncode_tool_apply_unified_patchset(
 ///|
 async fn mooncode_tool_apply_unified_diff(
   tool : String,
+  book_root : String,
+  arguments : Json,
   relative : String,
   absolute : String,
   content : String,
@@ -885,8 +897,10 @@ async fn mooncode_tool_apply_unified_diff(
         metadata={ "path": relative, "absolute_path": absolute },
       )
   }
-  mooncode_tool_ok_result(
+  mooncode_tool_patch_result(
     tool,
+    book_root,
+    arguments,
     message="\{tool} applied \{applied_count} unified diff hunk(s) to \{relative}",
     output="",
     metadata={
@@ -1028,6 +1042,172 @@ fn mooncode_tool_patch_proof_event(tool : String) -> String {
   } else {
     "patch_applied"
   }
+}
+
+///|
+async fn mooncode_tool_patch_result(
+  tool : String,
+  book_root : String,
+  arguments : Json,
+  message~ : String,
+  output? : String = "",
+  metadata? : Json = {},
+) -> Json {
+  if !mooncode_tool_patch_verification_requested(arguments) {
+    return mooncode_tool_ok_result(tool, message~, output~, metadata~)
+  }
+  let verification = mooncode_tool_run_patch_verification(book_root, arguments)
+  let metadata = mooncode_json_object_with_field(
+    metadata, "verification", verification,
+  )
+  if mooncode_json_bool(verification, "ok", default=false) {
+    mooncode_tool_ok_result(tool, message~, output~, metadata~)
+  } else {
+    mooncode_tool_error_result(
+      tool,
+      message="\{message}; post-change verification failed",
+      output~,
+      metadata~,
+    )
+  }
+}
+
+///|
+fn mooncode_tool_patch_verification_requested(arguments : Json) -> Bool {
+  mooncode_json_bool(arguments, "verify_after", default=false) ||
+  mooncode_json_bool(arguments, "run_verification", default=false) ||
+  mooncode_json_string(arguments, "verification_command", default="") != "" ||
+  mooncode_json_string(arguments, "test_command", default="") != "" ||
+  mooncode_json_string(arguments, "moon_check_target", default="") != ""
+}
+
+///|
+async fn mooncode_tool_run_patch_verification(
+  book_root : String,
+  arguments : Json,
+) -> Json {
+  let command = mooncode_tool_patch_verification_command(arguments)
+  let timeout = mooncode_json_int(
+    arguments,
+    "verification_timeout_ms",
+    default=mooncode_json_int(arguments, "timeout_ms", default=60000),
+  )
+  let max_output_chars = mooncode_json_int(
+    arguments,
+    "verification_max_output_chars",
+    default=mooncode_json_int(arguments, "max_output_chars", default=12000),
+  )
+  if command != "" {
+    let process = @spawn.spawn("sh", ["-lc", command], timeout~, cwd=book_root) catch {
+      error =>
+        return {
+          "ok": false,
+          "tool": "shell",
+          "command": command,
+          "message": "error running post-change verification: \{error}",
+        }
+    }
+    return mooncode_tool_patch_verification_result(
+      "shell",
+      command,
+      process.status,
+      process.elapsed,
+      process.stdout + process.stderr,
+      max_output_chars,
+    )
+  }
+  let target = mooncode_json_string(arguments, "moon_check_target", default="")
+  let args : Array[StringView] = if target == "" {
+    ["check"]
+  } else {
+    ["check", target]
+  }
+  let process = @spawn.spawn("moon", args, timeout~, cwd=book_root) catch {
+    error =>
+      return {
+        "ok": false,
+        "tool": "moon_check",
+        "target": target,
+        "command": if target == "" {
+          "moon check"
+        } else {
+          "moon check \{target}"
+        },
+        "message": "error running post-change moon check: \{error}",
+      }
+  }
+  mooncode_tool_patch_verification_result(
+    "moon_check",
+    if target == "" {
+      "moon check"
+    } else {
+      "moon check \{target}"
+    },
+    process.status,
+    process.elapsed,
+    process.stdout + process.stderr,
+    max_output_chars,
+    target~,
+  )
+}
+
+///|
+fn mooncode_tool_patch_verification_command(arguments : Json) -> String {
+  let verification = mooncode_json_string(
+    arguments,
+    "verification_command",
+    default="",
+  )
+  if verification != "" {
+    return verification
+  }
+  mooncode_json_string(arguments, "test_command", default="")
+}
+
+///|
+fn mooncode_tool_patch_verification_result(
+  tool : String,
+  command : String,
+  status : Int,
+  elapsed_ms : Int,
+  output : String,
+  max_output_chars : Int,
+  target? : String = "",
+) -> Json {
+  let capped = mooncode_cap_tool_output(output, max_output_chars)
+  {
+    "ok": status == 0,
+    "tool": tool,
+    "command": command,
+    "target": target,
+    "status": status,
+    "elapsed_ms": elapsed_ms,
+    "output": mooncode_json_string(capped, "output", default=""),
+    "truncated": mooncode_json_bool(capped, "truncated", default=false),
+    "message": if status == 0 {
+      "post-change verification passed"
+    } else {
+      "post-change verification failed with status \{status}"
+    },
+  }
+}
+
+///|
+fn mooncode_json_object_with_field(
+  json : Json,
+  key : String,
+  value : Json,
+) -> Json {
+  let object : Map[String, Json] = {}
+  match json {
+    Json::Object(existing) =>
+      for name, field in existing.iter2() {
+        object[name] = field
+      }
+    _ => ()
+  }
+  object[key] = value
+  object.to_json()
 }
 
 ///|
@@ -1761,6 +1941,111 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
     mooncode_json_string(revert_event, "kind", default=""),
     "runtime.patch_reverted",
   )
+}
+
+///|
+async test "mooncode native patch tools attach post-change verification" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patch-verify-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "tools/demo.txt"),
+    "hello mooncode\n",
+  )
+  let apply = mooncode_execute_tool_call(
+    "session-patch-verify",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-patch-verify",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply-verify",
+      "arguments": {
+        "path": "tools/demo.txt",
+        "old_string": "hello mooncode",
+        "new_string": "hello MoonCode",
+        "verification_command": "grep 'hello MoonCode' tools/demo.txt",
+      },
+    },
+    now=@clock.Timestamp::from_ms(52L),
+  )
+  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+  assert_true(mooncode_json_bool(apply_result, "ok", default=false))
+  let metadata = mooncode_json_object_field_or_empty(apply_result, "metadata")
+  let verification = mooncode_json_object_field_or_empty(
+    metadata, "verification",
+  )
+  assert_true(mooncode_json_bool(verification, "ok", default=false))
+  assert_eq(mooncode_json_string(verification, "tool", default=""), "shell")
+  assert_eq(mooncode_json_int(verification, "status", default=-1), 0)
+  assert_true(
+    mooncode_json_string(verification, "output", default="").contains(
+      "hello MoonCode",
+    ),
+  )
+}
+
+///|
+async test "mooncode native patch verification failure fails the tool result" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patch-verify-fail-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "tools/demo.txt"),
+    "hello mooncode\n",
+  )
+  let apply = mooncode_execute_tool_call(
+    "session-patch-verify-fail",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-patch-verify-fail",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply-verify-fail",
+      "arguments": {
+        "path": "tools/demo.txt",
+        "old_string": "hello mooncode",
+        "new_string": "hello MoonCode",
+        "verification_command": "grep 'not present' tools/demo.txt",
+      },
+    },
+    now=@clock.Timestamp::from_ms(53L),
+  )
+  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+  assert_false(mooncode_json_bool(apply_result, "ok", default=true))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/demo.txt")),
+    "hello MoonCode\n",
+  )
+  let apply_event = mooncode_json_object_field_or_empty(apply, "event")
+  assert_eq(
+    mooncode_json_string(apply_event, "kind", default=""),
+    "runtime.patch_applied",
+  )
+  assert_eq(mooncode_json_string(apply_event, "status", default=""), "failed")
+  let metadata = mooncode_json_object_field_or_empty(apply_result, "metadata")
+  let verification = mooncode_json_object_field_or_empty(
+    metadata, "verification",
+  )
+  assert_false(mooncode_json_bool(verification, "ok", default=true))
 }
 
 ///|

@@ -51,12 +51,13 @@ async fn mooncode_native_eval_harness_report(
       "path": "tools/eval.txt",
       "old_string": "hello MoonCode",
       "new_string": "hello MoonCode patched",
+      "verification_command": "grep 'hello MoonCode patched' tools/eval.txt",
     },
     now~,
     expected_path="tools/eval.txt",
     expected_diff="+hello MoonCode patched",
     expected_kind="runtime.patch_applied",
-    expected_detail="applies a reviewed text patch and emits runtime patch proof",
+    expected_detail="applies a reviewed text patch, verifies it, and emits runtime patch proof",
   )
   let revert_patch_case = mooncode_eval_tool_case(
     session_id,

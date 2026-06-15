@@ -111,7 +111,10 @@ MoonClaw is strongest when you want one system to handle:
   replacements plus single-file or multi-file unified-diff patchsets inside
   the selected MoonBook root, infer target paths from diff headers when needed,
   and emit `runtime.patch_applied` / `runtime.patch_reverted` proof events for
-  Moondesk review gates.
+  Moondesk review gates. Patch tool packets can request post-change
+  verification with `verification_command`, `test_command`, `verify_after`, or
+  `moon_check_target`; MoonClaw records the command, status, capped output, and
+  pass/fail result under the patch proof metadata.
   Successful native turns now also write MoonBook package manifests and an
   index under `portable/app-tool/mooncode/<session-id>/`, append
   `package_built` and `package_verified` proof to `package-results.jsonl`, and
