@@ -49,7 +49,7 @@ fn mooncode_capabilities_payload() -> Json {
       "finish",
     ],
     "execution_boundary": "MoonClaw accepts Moondesk MoonCode command packets and executes them through the existing MoonClaw task/agent runtime for the target book root.",
-    "package_result_endpoint": "POST /v1/mooncode/sessions/<id>/package-result accepts package_built/package_verified proof packets for MoonBook-owned executable artifacts.",
+    "package_result_endpoint": "POST /v1/mooncode/sessions/<id>/package-result accepts package_built/package_verified proof packets for MoonBook-owned executable artifacts; native package manifests also promote generated source files under portable/app-tool/mooncode/<session>/sources/<command>/ with hash metadata.",
     "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, runtime-dispatches.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
     "runtime_claim_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-claim?book_root=<path> projects and appends native runtime-claimed receipts over the durable command queue without spawning a task.",
     "runtime_dispatch_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path> claims the next durable command if needed, forwards it to the MoonClaw task runtime, and appends a runtime-delivered receipt.",

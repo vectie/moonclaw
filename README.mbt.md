@@ -48,8 +48,11 @@ MoonClaw is strongest when you want one system to handle:
   `prompt`, `steer`, and `cancel`; cancel targets the existing bound task
   without spawning a new one. Package-result packets record command-scoped
   `package_built` and `package_verified` runtime evidence for MoonBook-owned
-  executable artifacts, and the native MoonCode stream now normalizes bound
-  MoonClaw task events into MoonCode transcript/tool/review/runtime lanes.
+  executable artifacts. Native package manifests also promote generated source
+  files into
+  `portable/app-tool/mooncode/<session-id>/sources/<command-id>/...`, and the
+  native MoonCode stream now normalizes bound MoonClaw task events into
+  MoonCode transcript/tool/review/runtime lanes.
   Eval reports now run a first native OpenSeek-style harness slice over
   `read`, `write`, `edit`, `shell`, `moon_check`, `finish`, and file-edit diff
   evidence before returning `ok`, `required_harnesses`, and nested native
@@ -117,7 +120,8 @@ MoonClaw is strongest when you want one system to handle:
   pass/fail result under the patch proof metadata.
   Successful native turns now also write MoonBook package manifests and an
   index under `portable/app-tool/mooncode/<session-id>/`, append
-  `package_built` and `package_verified` proof to `package-results.jsonl`, and
+  `package_built` and `package_verified` proof to `package-results.jsonl`,
+  promote generated source files under the package root with source hashes, and
   emit artifact-lane package events for Moondesk's package review surface. The
   remaining MoonCode runtime gap is the full persistent OpenSeek-style agent
   service with live steering/cancel protocol, diff-aware edit review, and

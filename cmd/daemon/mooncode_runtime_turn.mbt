@@ -1556,12 +1556,19 @@ async fn mooncode_runtime_turn_package_manifest(
   let entrypoint = mooncode_runtime_turn_package_entrypoint(paths)
   let safe_session = mooncode_safe_session_id(session_id)
   let safe_command = mooncode_safe_session_id(command_id)
-  let manifest_path = "portable/app-tool/mooncode/\{safe_session}/package-\{safe_command}.json"
+  let package_root = "portable/app-tool/mooncode/\{safe_session}"
+  let manifest_path = "\{package_root}/package-\{safe_command}.json"
   let absolute_manifest_path = @pathx.join(book_root, manifest_path)
   let source_inventory = mooncode_runtime_turn_source_inventory(
-    book_root, paths,
+    book_root,
+    paths,
+    package_root~,
+    safe_command~,
   )
   let source_present = mooncode_runtime_turn_source_present_count(
+    source_inventory,
+  )
+  let source_promoted = mooncode_runtime_turn_source_promoted_count(
     source_inventory,
   )
   {
@@ -1582,8 +1589,19 @@ async fn mooncode_runtime_turn_package_manifest(
       mooncode_runtime_turn_string_json_array(paths),
     ),
     "source_inventory": Json::array(source_inventory),
+    "promoted_sources": Json::array(source_inventory),
     "source_inventory_count": source_inventory.length(),
     "source_present_count": source_present,
+    "promoted_source_count": source_promoted,
+    "source_promotion_status": if source_promoted == paths.length() &&
+      paths.length() > 0 {
+      "promoted"
+    } else if source_promoted > 0 {
+      "partially-promoted"
+    } else {
+      "not-promoted"
+    },
+    "promoted_source_root": "\{package_root}/sources/\{safe_command}",
     "source_inventory_status": if source_present > 0 {
       "source-bound"
     } else {
@@ -1688,12 +1706,22 @@ fn mooncode_runtime_turn_package_kind(path : String) -> String {
 async fn mooncode_runtime_turn_source_inventory(
   book_root : String,
   paths : Array[String],
+  package_root~ : String,
+  safe_command~ : String,
 ) -> Array[Json] {
   let inventory : Array[Json] = []
   for path in paths {
     let absolute = @pathx.join(book_root, path)
     let content = @fsx.read_file(absolute) catch { _ => "" }
     let exists = @fsx.exists(absolute) catch { _ => false }
+    let promoted = mooncode_runtime_turn_promote_source(
+      book_root,
+      package_root,
+      safe_command,
+      path,
+      content,
+      exists~,
+    )
     inventory.push({
       "path": path,
       "absolute_path": absolute,
@@ -1701,9 +1729,91 @@ async fn mooncode_runtime_turn_source_inventory(
       "kind": "file",
       "size_bytes": content.length(),
       "package_ready": exists && content.length() > 0,
+      "sha256_base64": if exists {
+        mooncode_runtime_turn_sha256_base64(content)
+      } else {
+        ""
+      },
+      "promotion": promoted,
+      "promoted": mooncode_json_bool(promoted, "promoted", default=false),
+      "promoted_path": mooncode_json_string(
+        promoted,
+        "promoted_path",
+        default="",
+      ),
+      "promoted_absolute_path": mooncode_json_string(
+        promoted,
+        "promoted_absolute_path",
+        default="",
+      ),
     })
   }
   inventory
+}
+
+///|
+fn mooncode_runtime_turn_sha256_base64(content : String) -> String {
+  @base64.encode(
+    Bytes::from_array(@crypto.sha256(@encoding/utf8.encode(content))),
+    url_safe=false,
+  )
+}
+
+///|
+async fn mooncode_runtime_turn_promote_source(
+  book_root : String,
+  package_root : String,
+  safe_command : String,
+  path : String,
+  content : String,
+  exists~ : Bool,
+) -> Json {
+  let promoted_path = "\{package_root}/sources/\{safe_command}/\{path}"
+  let promoted_absolute = @pathx.join(book_root, promoted_path)
+  if !exists || content.length() == 0 {
+    return {
+      "promoted": false,
+      "source_path": path,
+      "promoted_path": promoted_path,
+      "promoted_absolute_path": promoted_absolute,
+      "status": "missing-source",
+    }
+  }
+  @fsx.make_directory(
+    @pathx.dirname(promoted_absolute),
+    recursive=true,
+    exists_ok=true,
+  ) catch {
+    error =>
+      return {
+        "promoted": false,
+        "source_path": path,
+        "promoted_path": promoted_path,
+        "promoted_absolute_path": promoted_absolute,
+        "status": "failed",
+        "error": "\{error}",
+      }
+  }
+  @fsx.write_to_file(promoted_absolute, content) catch {
+    error =>
+      return {
+        "promoted": false,
+        "source_path": path,
+        "promoted_path": promoted_path,
+        "promoted_absolute_path": promoted_absolute,
+        "status": "failed",
+        "error": "\{error}",
+      }
+  }
+  {
+    "promoted": true,
+    "source_path": path,
+    "promoted_path": promoted_path,
+    "promoted_absolute_path": promoted_absolute,
+    "status": "promoted",
+    "size_bytes": content.length(),
+    "sha256_base64": mooncode_runtime_turn_sha256_base64(content),
+  }
 }
 
 ///|
@@ -1711,6 +1821,17 @@ fn mooncode_runtime_turn_source_present_count(inventory : Array[Json]) -> Int {
   let mut count = 0
   for record in inventory {
     if mooncode_json_bool(record, "package_ready", default=false) {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn mooncode_runtime_turn_source_promoted_count(inventory : Array[Json]) -> Int {
+  let mut count = 0
+  for record in inventory {
+    if mooncode_json_bool(record, "promoted", default=false) {
       count += 1
     }
   }
@@ -2126,6 +2247,21 @@ async test "mooncode native runtime turn creates executable tool from prompt" (
   assert_true(manifest_text.contains("mooncode-package-manifest"))
   assert_true(manifest_text.contains("\"package_kind\""))
   assert_true(manifest_text.contains("\"tool\""))
+  assert_true(
+    manifest_text.contains("\"source_promotion_status\": \"promoted\""),
+  )
+  assert_true(manifest_text.contains("\"promoted_source_count\": 2"))
+  assert_true(manifest_text.contains("\"sha256_base64\""))
+  assert_true(manifest_text.contains("\"promoted_path\""))
+  let promoted_script_path = @pathx.join(
+    book_root, "portable/app-tool/mooncode/session-runtime-prompt/sources/cmd-runtime-prompt/tools/mooncode-generated/cmd-runtime-prompt/run.sh",
+  )
+  let promoted_readme_path = @pathx.join(
+    book_root, "portable/app-tool/mooncode/session-runtime-prompt/sources/cmd-runtime-prompt/tools/mooncode-generated/cmd-runtime-prompt/README.md",
+  )
+  assert_true(@fsx.exists(promoted_script_path))
+  assert_true(@fsx.exists(promoted_readme_path))
+  assert_eq(@fsx.read_file(promoted_script_path), @fsx.read_file(script_path))
   let package_log = @fsx.read_file(
     mooncode_package_results_path(book_root, session_id),
   )

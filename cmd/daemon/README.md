@@ -326,7 +326,11 @@ When a generated artifact verifies successfully, MoonClaw writes
 `portable/app-tool/mooncode/{safe-session-id}/package-{safe-command-id}.json`,
 refreshes `portable/app-tool/mooncode/{safe-session-id}/index.json`, appends
 `package_built` and `package_verified` records to `package-results.jsonl`, and
-adds artifact-lane events for Moondesk's package review UI.
+adds artifact-lane events for Moondesk's package review UI. The package
+manifest also promotes generated source files into
+`portable/app-tool/mooncode/{safe-session-id}/sources/{safe-command-id}/...`
+and records source hashes, promoted paths, and promotion status so the package
+candidate is reviewable from a MoonBook-owned artifact root.
 
 ### `POST /v1/mooncode/sessions/{id}/runtime-loop`
 
