@@ -50,6 +50,10 @@ MoonClaw is strongest when you want one system to handle:
   `package_built` and `package_verified` runtime evidence for MoonBook-owned
   executable artifacts, and the native MoonCode stream now normalizes bound
   MoonClaw task events into MoonCode transcript/tool/review/runtime lanes.
+  Eval reports now run a first native OpenSeek-style harness slice over
+  `read`, `write`, `edit`, `shell`, `moon_check`, `finish`, and file-edit diff
+  evidence before returning `ok`, `required_harnesses`, and nested native
+  harness results.
   MoonClaw also persists native MoonCode sidecars under the selected book root
   at `.moonclaw/mooncode/sessions/<session-id>/`, including `session.json`,
   `commands.jsonl`, `runtime-dispatches.jsonl`, `events.jsonl`, and
@@ -88,8 +92,8 @@ MoonClaw is strongest when you want one system to handle:
   under MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can
   create and verify an executable artifact without predeclared tool calls. The
   remaining MoonCode runtime gap is the full model-backed OpenSeek-style agent
-  planner with broad tool selection, diff-aware edits, and eval-proven coding
-  reliability.
+  planner with broad tool selection, multi-turn steering, diff-aware edits, and
+  broader model-backed coding eval coverage.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`

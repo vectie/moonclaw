@@ -714,6 +714,7 @@ async fn Daemon::mooncode_eval_report(
     session_id,
     self.mooncode_sessions.get(session_id),
     record,
+    Some(mooncode_native_eval_harness_report(session_id, now=self.clock.now())),
     now=self.clock.now(),
   )
   w.header().set("Content-Type", "application/json")
@@ -2275,6 +2276,7 @@ fn mooncode_eval_report_payload(
   session_id : String,
   binding : MoonCodeSessionBinding?,
   record : Json?,
+  native_eval : Json?,
   now~ : @clock.Timestamp,
 ) -> Json {
   let record_value = record.unwrap_or(Json::object({}))
@@ -2294,10 +2296,20 @@ fn mooncode_eval_report_payload(
   )
   let record_ready = mooncode_json_string(record_value, "kind", default="") ==
     "mooncode-session-record"
+  let eval_status = mooncode_eval_harness_status(native_eval)
+  let native_harnesses = mooncode_eval_harnesses_or_empty(native_eval)
+  let harness_status = if eval_status == "passed" {
+    "accepted"
+  } else if command_count > 0 {
+    "partial"
+  } else {
+    "pending"
+  }
   {
     "kind": "mooncode-native-eval-report",
     "protocol": "mooncode.v1",
     "session_id": session_id,
+    "ok": eval_status == "passed",
     "book_root": mooncode_json_string(record_value, "book_root", default=""),
     "source": if record_ready && binding is None {
       "moonclaw-native-sidecar"
@@ -2306,12 +2318,32 @@ fn mooncode_eval_report_payload(
     } else {
       "moonclaw-native-runtime"
     },
-    "status": if command_count > 0 {
+    "status": if eval_status == "passed" {
+      "accepted"
+    } else if command_count > 0 {
       "accepted"
     } else {
       "pending"
     },
     "generated_at": now,
+    "required_harnesses": ["tool_harness", "file_edit"],
+    "passed_count": if eval_status == "passed" {
+      native_harnesses.length()
+    } else {
+      0
+    },
+    "failed_count": if eval_status == "passed" {
+      0
+    } else {
+      native_harnesses.length()
+    },
+    "evidence": [
+      if native_harnesses.length() > 0 {
+        "MoonClaw native eval harness status: \{eval_status}"
+      } else {
+        "MoonClaw native eval harness has not run."
+      },
+    ],
     "harnesses": [
       {
         "id": "native-command-ingest",
@@ -2333,10 +2365,15 @@ fn mooncode_eval_report_payload(
       },
       {
         "id": "tool-loop-execution",
-        "status": "delegated",
-        "evidence": "Execution is delegated to the existing MoonClaw task agent and its tool runtime.",
+        "status": harness_status,
+        "evidence": if native_harnesses.length() > 0 {
+          "MoonClaw ran \{native_harnesses.length()} native OpenSeek-style tool/file-edit harness(es); status=\{eval_status}."
+        } else {
+          "MoonClaw has not published native OpenSeek-style tool/file-edit harness evidence yet."
+        },
       },
     ],
+    "native_eval": native_eval.unwrap_or(Json::object({})),
     "binding": match binding {
       Some(binding) => binding.to_json()
       None => Json::object({})
@@ -3030,6 +3067,7 @@ test "mooncode eval report records delegated task execution" {
     "session-demo",
     None,
     None,
+    None,
     now=@clock.Timestamp::from_ms(42L),
   )
   assert_eq(mooncode_json_string(report, "status", default=""), "pending")
@@ -3048,6 +3086,7 @@ test "mooncode eval report accepts durable sidecar evidence" {
       "event_log_count": 5,
       "package_result_log_count": 1,
     }),
+    None,
     now=@clock.Timestamp::from_ms(42L),
   )
   assert_eq(mooncode_json_string(report, "status", default=""), "accepted")
@@ -3057,4 +3096,31 @@ test "mooncode eval report accepts durable sidecar evidence" {
   )
   assert_true(report.stringify().contains("durable-sidecar-replay"))
   assert_true(report.stringify().contains("5 event(s)"))
+}
+
+///|
+test "mooncode eval report embeds native harness evidence" {
+  let report = mooncode_eval_report_payload(
+    "session-demo",
+    None,
+    Some({
+      "kind": "mooncode-session-record",
+      "book_root": "/tmp/book",
+      "command_log_count": 1,
+    }),
+    Some({
+      "kind": "mooncode-native-eval-harness-report",
+      "protocol": "mooncode.v1",
+      "status": "passed",
+      "harnesses": [
+        { "id": "tool_harness", "status": "passed" },
+        { "id": "file_edit", "status": "passed" },
+      ],
+    }),
+    now=@clock.Timestamp::from_ms(42L),
+  )
+  assert_eq(mooncode_json_string(report, "status", default=""), "accepted")
+  assert_true(report.stringify().contains("tool_harness"))
+  assert_true(report.stringify().contains("file_edit"))
+  assert_true(report.stringify().contains("status=passed"))
 }

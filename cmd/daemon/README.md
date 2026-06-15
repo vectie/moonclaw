@@ -290,7 +290,12 @@ the same payloads as `event: meta`, `event: event`, and `event: done` chunks.
 Reports native MoonCode eval/readiness evidence for a session. Pass
 `book_root=<path>` to load evidence from the selected MoonBook's durable
 `.moonclaw/mooncode/sessions/{safe-session-id}/` sidecar after daemon restart;
-without `book_root`, the report only reflects the daemon's live binding.
+without `book_root`, the report only reflects the daemon's live binding. The
+report also runs MoonClaw's first deterministic native eval harness over
+`read`, `write`, `edit`, `shell`, `moon_check`, `finish`, and file-edit diff
+evidence, returning `ok`, `required_harnesses`, `passed_count`,
+`failed_count`, and nested native harness results for Moondesk's Eval Report
+panel.
 
 ### `POST /v1/task/{id}/publish`
 
