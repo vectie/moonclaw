@@ -39,7 +39,7 @@ fn mooncode_capabilities_payload() -> Json {
       "/v1/mooncode/capabilities", "/v1/mooncode/sessions?book_root=<path>", "/v1/mooncode/sessions/<id>?book_root=<path>",
       "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
       "/v1/mooncode/sessions/<id>/eval-report", "/v1/mooncode/sessions/<id>/package-result",
-      "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
+      "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
     ],
     "control_commands": ["prompt", "steer", "cancel"],
     "tools": ["read", "edit", "write", "shell", "moon_check", "finish"],
@@ -47,6 +47,7 @@ fn mooncode_capabilities_payload() -> Json {
     "package_result_endpoint": "POST /v1/mooncode/sessions/<id>/package-result accepts package_built/package_verified proof packets for MoonBook-owned executable artifacts.",
     "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, runtime-dispatches.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
     "runtime_claim_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-claim?book_root=<path> projects and appends native runtime-claimed receipts over the durable command queue without spawning a task.",
+    "runtime_dispatch_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path> claims the next durable command if needed, forwards it to the MoonClaw task runtime, and appends a runtime-delivered receipt.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
   }
 }
@@ -188,6 +189,141 @@ async fn Daemon::mooncode_runtime_claim(
 }
 
 ///|
+async fn Daemon::mooncode_runtime_dispatch(
+  self : Daemon,
+  group~ : @async.TaskGroup[Unit],
+  session_id~ : StringView,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
+  let body : Json = reader.read() catch { _ => Json::object({}) }
+  let session_id = session_id.to_string()
+  let requested_book_root = mooncode_request_book_root(r)
+  let book_root = if requested_book_root == "" {
+    mooncode_json_string(body, "book_root", default="")
+  } else {
+    requested_book_root
+  }
+  if book_root == "" {
+    raise json_error(400, "Bad Request", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode runtime dispatch requires book_root query or JSON field",
+        "metadata": { "session_id": session_id },
+      },
+    })
+  }
+  let consumer_id = mooncode_json_string(
+    body,
+    "consumer_id",
+    default="moonclaw-daemon",
+  )
+  let before = self.mooncode_runtime_claim_state_payload(session_id, book_root)
+  let claim_receipts = if mooncode_json_array_items(before, "claimed_commands").length() ==
+    0 {
+    mooncode_runtime_claim_receipts(
+      session_id,
+      book_root,
+      before,
+      body,
+      now=self.clock.now(),
+    )
+  } else {
+    []
+  }
+  for receipt in claim_receipts {
+    mooncode_append_jsonl(
+      mooncode_runtime_dispatches_path(book_root, session_id),
+      receipt,
+    )
+  }
+  let claimed_state = self.mooncode_runtime_claim_state_payload(
+    session_id, book_root,
+  )
+  let claimed = mooncode_json_array_items(claimed_state, "claimed_commands")
+  if claimed.length() == 0 {
+    w.header().set("Content-Type", "application/json")
+    w.write_header(200)
+    w.write(
+      (
+        {
+          "kind": "mooncode-runtime-dispatch",
+          "protocol": "mooncode.v1",
+          "owner": "moonclaw",
+          "session_id": session_id,
+          "book_root": book_root,
+          "dispatched": false,
+          "message": "No claimable or claimed MoonCode command is ready for dispatch.",
+          "claim_receipts": Json::array(claim_receipts),
+          "claim_state": claimed_state,
+          "previous_claim_state": before,
+        } : Json).stringify(indent=2),
+    )
+    return
+  }
+  let item = claimed[0]
+  let command = mooncode_json_object_field_or_empty(item, "command")
+  let report = mooncode_validate_command_body(session_id, command)
+  let execution = if mooncode_json_bool(report, "ok", default=false) {
+    self.mooncode_forward_command_to_task(
+      group~,
+      session_id~,
+      command,
+      persist_command=false,
+      dispatch_source="moonclaw-native-runtime-dispatch",
+    )
+  } else {
+    {
+      "accepted": false,
+      "protocol": "mooncode.v1",
+      "session_id": session_id,
+      "command_id": mooncode_json_string(item, "command_id", default=""),
+      "control": "invalid",
+      "message": mooncode_json_string(
+        report,
+        "message",
+        default="Invalid MoonCode command",
+      ),
+      "validation": report,
+      "events": Json::array([]),
+    }
+  }
+  let receipt = mooncode_runtime_dispatch_receipt(
+    session_id,
+    book_root,
+    item,
+    execution,
+    consumer_id~,
+    now=self.clock.now(),
+  )
+  mooncode_append_jsonl(
+    mooncode_runtime_dispatches_path(book_root, session_id),
+    receipt,
+  )
+  let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(202, reason="Accepted")
+  w.write(
+    (
+      {
+        "kind": "mooncode-runtime-dispatch",
+        "protocol": "mooncode.v1",
+        "owner": "moonclaw",
+        "session_id": session_id,
+        "book_root": book_root,
+        "dispatched": mooncode_json_bool(execution, "accepted", default=false),
+        "command_id": mooncode_json_string(item, "command_id", default=""),
+        "claim_receipts": Json::array(claim_receipts),
+        "dispatch_receipt": receipt,
+        "execution": execution,
+        "claim_state": after,
+        "previous_claim_state": before,
+      } : Json).stringify(indent=2),
+  )
+}
+
+///|
 async fn Daemon::mooncode_accept_command(
   self : Daemon,
   group~ : @async.TaskGroup[Unit],
@@ -220,12 +356,34 @@ async fn Daemon::mooncode_accept_command(
       },
     })
   }
-  let command_id = mooncode_command_id(body)
   let action = mooncode_json_string(body, "command", default="prompt")
   if action == "cancel" {
     self.mooncode_cancel_command(session_id~, body, w)
     return
   }
+  let response = self.mooncode_forward_command_to_task(
+    group~,
+    session_id~,
+    body,
+    persist_command=true,
+    dispatch_source="moonclaw-native-command-endpoint",
+  )
+  w.header().set("Content-Type", "application/json")
+  w.write_header(202, reason="Accepted")
+  w.write(response.stringify(indent=2))
+}
+
+///|
+async fn Daemon::mooncode_forward_command_to_task(
+  self : Daemon,
+  group~ : @async.TaskGroup[Unit],
+  session_id~ : String,
+  body : Json,
+  persist_command~ : Bool,
+  dispatch_source~ : String,
+) -> Json {
+  let command_id = mooncode_command_id(body)
+  let action = mooncode_json_string(body, "command", default="prompt")
   let task = self.mooncode_ensure_task(group~, session_id~, body)
   let text = mooncode_runtime_message(body)
   let response = task.create_message(
@@ -263,26 +421,29 @@ async fn Daemon::mooncode_accept_command(
   for event in events {
     binding.events.put(event)
   }
-  self.mooncode_persist_command(body, binding, events)
-  w.header().set("Content-Type", "application/json")
-  w.write_header(202, reason="Accepted")
-  w.write(
-    (
-      {
-        "accepted": true,
-        "protocol": "mooncode.v1",
-        "session_id": session_id,
-        "command_id": command_id,
-        "task": task,
-        "task_id": task.id,
-        "message_id": mooncode_json_string(response_json, "id", default=""),
-        "queued": mooncode_json_bool(response_json, "queued", default=false),
-        "message": "MoonClaw MoonCode runtime accepted `\{action}`",
-        "control": mooncode_command_control(action),
-        "binding": binding.to_json(),
-        "events": Json::array(events),
-      } : Json).stringify(indent=2),
-  )
+  if persist_command {
+    self.mooncode_persist_command(body, binding, events)
+  } else {
+    self.mooncode_persist_session(binding)
+    for event in events {
+      self.mooncode_persist_event(binding, event)
+    }
+  }
+  {
+    "accepted": true,
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "task": task,
+    "task_id": task.id,
+    "message_id": mooncode_json_string(response_json, "id", default=""),
+    "queued": mooncode_json_bool(response_json, "queued", default=false),
+    "message": "MoonClaw MoonCode runtime accepted `\{action}`",
+    "control": mooncode_command_control(action),
+    "dispatch_source": dispatch_source,
+    "binding": binding.to_json(),
+    "events": Json::array(events),
+  }
 }
 
 ///|
@@ -900,7 +1061,10 @@ fn mooncode_runtime_receipt_status_delivered(status : String) -> Bool {
   status == "runtime-delivered" ||
   status == "runtime-completed" ||
   status == "runtime-succeeded" ||
-  status == "runtime-finished"
+  status == "runtime-finished" ||
+  status == "runtime-failed" ||
+  status == "runtime-cancelled" ||
+  status == "runtime-rejected"
 }
 
 ///|
@@ -942,6 +1106,45 @@ fn mooncode_runtime_claim_receipts(
     "command_entry": mooncode_json_object_field_or_empty(item, "command_entry"),
   })
   receipts
+}
+
+///|
+fn mooncode_runtime_dispatch_receipt(
+  session_id : String,
+  book_root : String,
+  claim_item : Json,
+  execution : Json,
+  consumer_id~ : String,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let command_id = mooncode_json_string(claim_item, "command_id", default="")
+  let accepted = mooncode_json_bool(execution, "accepted", default=false)
+  let receipt = mooncode_json_object_field_or_empty(claim_item, "receipt")
+  let claim_id = mooncode_json_string(receipt, "claim_id", default="")
+  let status = if accepted { "runtime-delivered" } else { "runtime-failed" }
+  {
+    "kind": "mooncode.runtime-dispatch",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command_id": command_id,
+    "status": status,
+    "dispatch_mode": "moonclaw-native-runtime-dispatch",
+    "claim_id": claim_id,
+    "consumer_id": consumer_id,
+    "delivered_at": now,
+    "task_id": mooncode_json_string(execution, "task_id", default=""),
+    "message_id": mooncode_json_string(execution, "message_id", default=""),
+    "control": mooncode_json_string(execution, "control", default=""),
+    "message": mooncode_json_string(execution, "message", default=""),
+    "command": mooncode_json_object_field_or_empty(claim_item, "command"),
+    "command_entry": mooncode_json_object_field_or_empty(
+      claim_item, "command_entry",
+    ),
+    "execution": execution,
+    "events": Json::array(mooncode_json_array_items(execution, "events")),
+  }
 }
 
 ///|
@@ -1883,6 +2086,11 @@ test "mooncode capabilities expose native daemon endpoints" {
       "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
     ),
   )
+  assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
+    ),
+  )
   assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
   assert_true(payload.contains("runtime-dispatches.jsonl"))
   assert_true(payload.contains("\"native_runtime_ready\":true"))
@@ -2233,6 +2441,95 @@ test "mooncode runtime claim state leases next durable command" {
   assert_true(claimed_state.stringify().contains("\"claimed_command_count\":1"))
   assert_true(
     claimed_state.stringify().contains("\"claimable_command_count\":0"),
+  )
+}
+
+///|
+test "mooncode runtime delivery receipt resolves claimed command" {
+  let commands : Array[Json] = [
+    {
+      "kind": "mooncode-command",
+      "protocol": "mooncode.v1",
+      "session_id": "session-deliver",
+      "command_id": "cmd-1",
+      "command": {
+        "protocol": "mooncode.v1",
+        "session_id": "session-deliver",
+        "book_root": "/tmp/book",
+        "command": "prompt",
+        "packet": { "command_id": "cmd-1" },
+      },
+    },
+    {
+      "kind": "mooncode-command",
+      "protocol": "mooncode.v1",
+      "session_id": "session-deliver",
+      "command_id": "cmd-2",
+      "command": {
+        "protocol": "mooncode.v1",
+        "session_id": "session-deliver",
+        "book_root": "/tmp/book",
+        "command": "run_tests",
+        "packet": { "command_id": "cmd-2" },
+      },
+    },
+  ]
+  let claimed = {
+    "kind": "mooncode.runtime-dispatch",
+    "protocol": "mooncode.v1",
+    "session_id": "session-deliver",
+    "book_root": "/tmp/book",
+    "command_id": "cmd-1",
+    "status": "runtime-claimed",
+    "claim_id": "claim-1",
+    "consumer_id": "test-consumer",
+  }
+  let claimed_state = mooncode_runtime_claim_state_from_logs(
+    "session-deliver",
+    "/tmp/book",
+    commands,
+    [claimed],
+    commands_path="/tmp/book/commands.jsonl",
+    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+  )
+  let claimed_items = mooncode_json_array_items(
+    claimed_state, "claimed_commands",
+  )
+  let delivered = mooncode_runtime_dispatch_receipt(
+    "session-deliver",
+    "/tmp/book",
+    claimed_items[0],
+    {
+      "accepted": true,
+      "command_id": "cmd-1",
+      "task_id": "task-1",
+      "message_id": "message-1",
+      "control": "prompt",
+      "message": "accepted",
+      "events": [{ "kind": "command.accepted" }],
+    },
+    consumer_id="test-consumer",
+    now=@clock.Timestamp::from_ms(120L),
+  )
+  assert_eq(
+    mooncode_json_string(delivered, "status", default=""),
+    "runtime-delivered",
+  )
+  assert_eq(mooncode_json_string(delivered, "claim_id", default=""), "claim-1")
+  let after = mooncode_runtime_claim_state_from_logs(
+    "session-deliver",
+    "/tmp/book",
+    commands,
+    [claimed, delivered],
+    commands_path="/tmp/book/commands.jsonl",
+    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+  )
+  assert_true(after.stringify().contains("\"delivered_command_count\":1"))
+  assert_true(after.stringify().contains("\"claimable_command_count\":1"))
+  let claimable = mooncode_json_array_items(after, "claimable_commands")
+  assert_eq(
+    mooncode_json_string(claimable[0], "command_id", default=""),
+    "cmd-2",
   )
 }
 
