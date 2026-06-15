@@ -42,6 +42,38 @@ async fn mooncode_native_eval_harness_report(
     expected_diff="+hello MoonCode",
     expected_detail="edits a file and emits source-bounded diff evidence",
   )
+  let apply_patch_case = mooncode_eval_tool_case(
+    session_id,
+    fixture_root,
+    "apply_patch",
+    "eval-apply-patch",
+    {
+      "path": "tools/eval.txt",
+      "old_string": "hello MoonCode",
+      "new_string": "hello MoonCode patched",
+    },
+    now~,
+    expected_path="tools/eval.txt",
+    expected_diff="+hello MoonCode patched",
+    expected_kind="runtime.patch_applied",
+    expected_detail="applies a reviewed text patch and emits runtime patch proof",
+  )
+  let revert_patch_case = mooncode_eval_tool_case(
+    session_id,
+    fixture_root,
+    "revert_patch",
+    "eval-revert-patch",
+    {
+      "path": "tools/eval.txt",
+      "old_string": "hello MoonCode",
+      "new_string": "hello MoonCode patched",
+    },
+    now~,
+    expected_path="tools/eval.txt",
+    expected_diff="+hello MoonCode",
+    expected_kind="runtime.patch_reverted",
+    expected_detail="reverts a reviewed text patch and emits runtime patch proof",
+  )
   let shell_case = mooncode_eval_tool_case(
     session_id,
     fixture_root,
@@ -74,7 +106,7 @@ async fn mooncode_native_eval_harness_report(
   let tool_cases = [
     write_case, read_case, shell_case, moon_check_case, finish_case,
   ]
-  let file_edit_cases = [edit_case]
+  let file_edit_cases = [edit_case, apply_patch_case, revert_patch_case]
   let tool_harness = mooncode_eval_harness(
     "tool_harness", "Native tool harness", tool_cases,
   )
@@ -127,6 +159,7 @@ async fn mooncode_eval_tool_case(
   expected_output? : String = "",
   expected_path? : String = "",
   expected_diff? : String = "",
+  expected_kind? : String = "",
   expected_detail~ : String,
 ) -> Json {
   let execution = mooncode_execute_tool_call(
@@ -148,10 +181,12 @@ async fn mooncode_eval_tool_case(
   let output = mooncode_json_string(result, "output", default="")
   let path = mooncode_json_string(event, "path", default="")
   let diff = mooncode_json_string(event, "diff", default="")
+  let kind = mooncode_json_string(event, "kind", default="")
   let output_ok = expected_output == "" || output.contains(expected_output)
   let path_ok = expected_path == "" || path == expected_path
   let diff_ok = expected_diff == "" || diff.contains(expected_diff)
-  let passed = accepted && output_ok && path_ok && diff_ok
+  let kind_ok = expected_kind == "" || kind == expected_kind
+  let passed = accepted && output_ok && path_ok && diff_ok && kind_ok
   {
     "id": tool,
     "tool": tool,
@@ -166,6 +201,7 @@ async fn mooncode_eval_tool_case(
     "output_ok": output_ok,
     "path_ok": path_ok,
     "diff_ok": diff_ok,
+    "kind_ok": kind_ok,
     "event": event,
   }
 }

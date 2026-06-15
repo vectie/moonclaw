@@ -99,14 +99,18 @@ MoonClaw is strongest when you want one system to handle:
   create and verify an executable artifact without predeclared tool calls. When
   a queued command carries an explicit selected model, runtime-turn can also ask
   that model for bounded OpenSeek-style tool-call batches over `read`, `write`,
-  `edit`, `shell`, `moon_check`, and `finish`; successful tool results are fed
-  back to the model until it calls `finish`, a tool fails, the command is
-  cancelled, or `planner_max_steps` is reached. Planner
+  `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`;
+  successful tool results are fed back to the model until it calls `finish`, a
+  tool fails, the command is cancelled, or `planner_max_steps` is reached. Planner
   start/selection/failure events, `planner_steps`, the step limit, native
   `reasoning_delta` progress, optional assistant deltas, and pre-execution
   `tool_call` events are recorded so Moondesk can render a Codex/OpenSeek-style
   transcript from MoonClaw-owned evidence. Unsupported or empty model plans fall
   back to the deterministic planner.
+  Native `apply_patch` and `revert_patch` execute bounded reviewed text
+  replacements inside the selected MoonBook root and emit
+  `runtime.patch_applied` / `runtime.patch_reverted` proof events for Moondesk
+  review gates.
   Successful native turns now also write MoonBook package manifests and an
   index under `portable/app-tool/mooncode/<session-id>/`, append
   `package_built` and `package_verified` proof to `package-results.jsonl`, and

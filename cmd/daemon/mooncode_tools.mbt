@@ -118,6 +118,8 @@ async fn mooncode_execute_tool_call(
     "read" => mooncode_tool_read(book_root, arguments)
     "write" => mooncode_tool_write(book_root, arguments)
     "edit" => mooncode_tool_edit(book_root, arguments)
+    "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
+    "revert_patch" => mooncode_tool_revert_patch(book_root, arguments)
     "shell" => mooncode_tool_shell(book_root, arguments)
     "moon_check" => mooncode_tool_moon_check(book_root, arguments)
     "finish" => mooncode_tool_finish(arguments)
@@ -155,6 +157,8 @@ fn mooncode_tool_supported(tool : String) -> Bool {
   tool == "read" ||
   tool == "edit" ||
   tool == "write" ||
+  tool == "apply_patch" ||
+  tool == "revert_patch" ||
   tool == "shell" ||
   tool == "moon_check" ||
   tool == "finish"
@@ -341,6 +345,198 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
       ),
     },
   )
+}
+
+///|
+async fn mooncode_tool_apply_patch(
+  book_root : String,
+  arguments : Json,
+) -> Json {
+  mooncode_tool_patch_replace(
+    "apply_patch",
+    book_root,
+    arguments,
+    reverse=false,
+  )
+}
+
+///|
+async fn mooncode_tool_revert_patch(
+  book_root : String,
+  arguments : Json,
+) -> Json {
+  mooncode_tool_patch_replace(
+    "revert_patch",
+    book_root,
+    arguments,
+    reverse=true,
+  )
+}
+
+///|
+async fn mooncode_tool_patch_replace(
+  tool : String,
+  book_root : String,
+  arguments : Json,
+  reverse~ : Bool,
+) -> Json {
+  let path = mooncode_tool_patch_path(book_root, arguments)
+  if mooncode_json_bool(path, "ok", default=false) == false {
+    return mooncode_tool_error_result(
+      tool,
+      message=mooncode_json_string(path, "message", default="invalid path"),
+    )
+  }
+  let absolute = mooncode_json_string(path, "absolute_path", default="")
+  let relative = mooncode_json_string(path, "relative_path", default="")
+  let before_string = mooncode_tool_patch_before(arguments)
+  let after_string = mooncode_tool_patch_after(arguments)
+  let old_string = if reverse { after_string } else { before_string }
+  let new_string = if reverse { before_string } else { after_string }
+  if old_string == new_string {
+    return mooncode_tool_error_result(
+      tool,
+      message="patch before/after content must differ",
+      metadata={ "path": relative, "absolute_path": absolute },
+    )
+  }
+  let existed = @fsx.exists(absolute)
+  let content = if existed {
+    @fsx.read_file(absolute) catch {
+      error =>
+        return mooncode_tool_error_result(
+          tool,
+          message="error reading \{absolute}: \{error}",
+          metadata={ "path": relative, "absolute_path": absolute },
+        )
+    }
+  } else {
+    ""
+  }
+  if content == new_string {
+    return mooncode_tool_ok_result(
+      tool,
+      message="\{tool} already reflected in \{relative}",
+      output="",
+      metadata={
+        "path": relative,
+        "absolute_path": absolute,
+        "changed": false,
+        "diff": "",
+        "proof_event": mooncode_tool_patch_proof_event(tool),
+      },
+    )
+  }
+  let patched = if old_string == "" {
+    if existed && content != "" {
+      return mooncode_tool_error_result(
+        tool,
+        message="empty patch before-content can only create or replace an empty file",
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+    }
+    new_string
+  } else {
+    let occurrences = content.split(old_string).count() - 1
+    if occurrences == 0 {
+      return mooncode_tool_error_result(
+        tool,
+        message="patch before-content not found in \{relative}",
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+    }
+    let replace_all = mooncode_json_bool(
+      arguments,
+      "replace_all",
+      default=false,
+    )
+    if occurrences > 1 && !replace_all {
+      return mooncode_tool_error_result(
+        tool,
+        message="patch before-content matched \{occurrences} times; set replace_all=true to replace all occurrences",
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+    }
+    if replace_all {
+      content
+      .split(old_string)
+      .map(part => part.to_owned())
+      .collect()
+      .join(new_string)
+    } else {
+      content.replace(old=old_string, new=new_string)
+    }
+  }
+  @fsx.make_directory(@pathx.dirname(absolute), recursive=true, exists_ok=true)
+  @fsx.write_to_file(absolute, patched) catch {
+    error =>
+      return mooncode_tool_error_result(
+        tool,
+        message="error writing \{absolute}: \{error}",
+        metadata={ "path": relative, "absolute_path": absolute },
+      )
+  }
+  mooncode_tool_ok_result(
+    tool,
+    message="\{tool} updated \{relative}",
+    output="",
+    metadata={
+      "path": relative,
+      "absolute_path": absolute,
+      "changed": content != patched,
+      "diff": mooncode_tool_unified_diff(relative, content, patched, existed~),
+      "proof_event": mooncode_tool_patch_proof_event(tool),
+    },
+  )
+}
+
+///|
+fn mooncode_tool_patch_path(book_root : String, arguments : Json) -> Json {
+  let path = mooncode_json_string(arguments, "path", default="")
+  if path != "" {
+    return mooncode_resolve_book_path(book_root, path)
+  }
+  let context_path = mooncode_json_string(arguments, "context_path", default="")
+  if context_path != "" {
+    return mooncode_resolve_book_path(book_root, context_path)
+  }
+  let target = mooncode_json_string(arguments, "target", default="")
+  mooncode_resolve_book_path(book_root, target)
+}
+
+///|
+fn mooncode_tool_patch_before(arguments : Json) -> String {
+  let old_string = mooncode_json_string(arguments, "old_string", default="")
+  if old_string != "" {
+    return old_string
+  }
+  let before = mooncode_json_string(arguments, "before", default="")
+  if before != "" {
+    return before
+  }
+  mooncode_json_string(arguments, "from", default="")
+}
+
+///|
+fn mooncode_tool_patch_after(arguments : Json) -> String {
+  let new_string = mooncode_json_string(arguments, "new_string", default="")
+  if new_string != "" {
+    return new_string
+  }
+  let after = mooncode_json_string(arguments, "after", default="")
+  if after != "" {
+    return after
+  }
+  mooncode_json_string(arguments, "content", default="")
+}
+
+///|
+fn mooncode_tool_patch_proof_event(tool : String) -> String {
+  if tool == "revert_patch" {
+    "patch_reverted"
+  } else {
+    "patch_applied"
+  }
 }
 
 ///|
@@ -629,6 +825,7 @@ fn mooncode_tool_result_event(
     "command_id": command_id,
     "lane": mooncode_tool_event_lane(tool, path~, diff~),
     "kind": mooncode_tool_event_kind(tool),
+    "event": mooncode_tool_event_name(tool),
     "title": "MoonCode tool `\{tool}` \{if ok { "completed" } else { "failed" }}",
     "status": if ok {
       "done"
@@ -654,6 +851,7 @@ fn mooncode_tool_event_lane(
   match tool {
     "moon_check" => "test"
     "finish" => "review"
+    "apply_patch" | "revert_patch" => "review"
     "write" | "edit" => "diff"
     _ if diff != "" || path != "" => "diff"
     _ => "tool"
@@ -664,6 +862,19 @@ fn mooncode_tool_event_lane(
 fn mooncode_tool_event_kind(tool : String) -> String {
   match tool {
     "moon_check" => "moon_check.finished"
+    "finish" => "finish"
+    "apply_patch" => "runtime.patch_applied"
+    "revert_patch" => "runtime.patch_reverted"
+    _ => "tool_result"
+  }
+}
+
+///|
+fn mooncode_tool_event_name(tool : String) -> String {
+  match tool {
+    "apply_patch" => "patch_applied"
+    "revert_patch" => "patch_reverted"
+    "moon_check" => "tool_result"
     "finish" => "finish"
     _ => "tool_result"
   }
@@ -802,6 +1013,95 @@ async test "mooncode native tool execution writes edits and reads book files" (
     mooncode_json_string(edit_event, "diff", default="").contains(
       "-hello mooncode",
     ),
+  )
+}
+
+///|
+async test "mooncode native patch tools apply and revert reviewed replacements" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patch-tools-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "tools/demo.txt"),
+    "hello mooncode\n",
+  )
+  let apply = mooncode_execute_tool_call(
+    "session-patch",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-patch",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply",
+      "arguments": {
+        "path": "tools/demo.txt",
+        "old_string": "hello mooncode",
+        "new_string": "hello MoonCode",
+      },
+    },
+    now=@clock.Timestamp::from_ms(46L),
+  )
+  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+  assert_true(mooncode_json_bool(apply_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/demo.txt")),
+    "hello MoonCode\n",
+  )
+  let apply_event = mooncode_json_object_field_or_empty(apply, "event")
+  assert_eq(
+    mooncode_json_string(apply_event, "kind", default=""),
+    "runtime.patch_applied",
+  )
+  assert_eq(
+    mooncode_json_string(apply_event, "event", default=""),
+    "patch_applied",
+  )
+  assert_eq(mooncode_json_string(apply_event, "lane", default=""), "review")
+  assert_true(
+    mooncode_json_string(apply_event, "diff", default="").contains(
+      "+hello MoonCode",
+    ),
+  )
+  let revert = mooncode_execute_tool_call(
+    "session-patch",
+    book_root,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": "session-patch",
+      "book_root": book_root,
+      "tool": "revert_patch",
+      "command_id": "cmd-revert",
+      "arguments": {
+        "path": "tools/demo.txt",
+        "old_string": "hello mooncode",
+        "new_string": "hello MoonCode",
+      },
+    },
+    now=@clock.Timestamp::from_ms(47L),
+  )
+  let revert_result = mooncode_json_object_field_or_empty(revert, "result")
+  assert_true(mooncode_json_bool(revert_result, "ok", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/demo.txt")),
+    "hello mooncode\n",
+  )
+  let revert_event = mooncode_json_object_field_or_empty(revert, "event")
+  assert_eq(
+    mooncode_json_string(revert_event, "kind", default=""),
+    "runtime.patch_reverted",
+  )
+  assert_eq(
+    mooncode_json_string(revert_event, "event", default=""),
+    "patch_reverted",
   )
 }
 

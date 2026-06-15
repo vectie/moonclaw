@@ -44,7 +44,10 @@ fn mooncode_capabilities_payload() -> Json {
       "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>", "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>",
     ],
     "control_commands": ["prompt", "steer", "cancel"],
-    "tools": ["read", "edit", "write", "shell", "moon_check", "finish"],
+    "tools": [
+      "read", "edit", "write", "apply_patch", "revert_patch", "shell", "moon_check",
+      "finish",
+    ],
     "execution_boundary": "MoonClaw accepts Moondesk MoonCode command packets and executes them through the existing MoonClaw task/agent runtime for the target book root.",
     "package_result_endpoint": "POST /v1/mooncode/sessions/<id>/package-result accepts package_built/package_verified proof packets for MoonBook-owned executable artifacts.",
     "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, runtime-dispatches.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
@@ -55,7 +58,7 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
     "stream_endpoint": "GET /v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n> replays durable book-local MoonCode events from events.jsonl with resumable sequence records.",
     "eval_report_endpoint": "GET /v1/mooncode/sessions/<id>/eval-report?book_root=<path> reports native eval/readiness evidence from the live binding or the selected book's durable sidecar.",
-    "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events.",
+    "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/apply_patch/revert_patch/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events, including runtime.patch_applied and runtime.patch_reverted.",
     "queue_only_command_mode": "POST /v1/mooncode/sessions/<id>/commands with native_dispatch_mode=queue-only appends the durable command and command.queued_for_runtime_turn event without spawning or messaging a legacy MoonClaw task; callers can then invoke runtime-turn for non-duplicating native execution.",
     "prompt_planner": "runtime-turn expands bounded prompt/steer requests for tools, scripts, miniapps, generated sites, and html apps into native write/shell/finish tool calls under MoonBook-owned tools/ or apps/ paths.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
@@ -2477,6 +2480,10 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(
     payload.contains("\"control_commands\":[\"prompt\",\"steer\",\"cancel\"]"),
   )
+  assert_true(payload.contains("\"apply_patch\""))
+  assert_true(payload.contains("\"revert_patch\""))
+  assert_true(payload.contains("runtime.patch_applied"))
+  assert_true(payload.contains("runtime.patch_reverted"))
   assert_true(payload.contains("native_dispatch_mode=queue-only"))
   assert_true(payload.contains("\"prompt_planner\""))
 }
