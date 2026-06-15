@@ -79,7 +79,10 @@ MoonClaw is strongest when you want one system to handle:
   needed, executes explicit `runtime_tool_calls` or deterministic built-in
   fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
   events, and closes the command with `runtime-completed` or `runtime-failed`.
-  The remaining MoonCode runtime gap is autonomous OpenSeek-style planning that
+  `/commands` now also accepts `native_dispatch_mode=queue-only`, which appends
+  the durable command without spawning or messaging the legacy MoonClaw task
+  bridge so a client can call `runtime-turn` without duplicate execution. The
+  remaining MoonCode runtime gap is autonomous OpenSeek-style planning that
   chooses tools from a prompt without predeclared tool calls.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages

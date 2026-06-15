@@ -53,6 +53,7 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_turn_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path> claims the next durable command if needed, executes explicit or deterministic native MoonCode tool calls, appends runtime events, and closes the command with a terminal runtime-completed or runtime-failed receipt.",
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
     "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events.",
+    "queue_only_command_mode": "POST /v1/mooncode/sessions/<id>/commands with native_dispatch_mode=queue-only appends the durable command and command.queued_for_runtime_turn event without spawning or messaging a legacy MoonClaw task; callers can then invoke runtime-turn for non-duplicating native execution.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
   }
 }
@@ -372,6 +373,18 @@ async fn Daemon::mooncode_accept_command(
     })
   }
   let action = mooncode_json_string(body, "command", default="prompt")
+  if mooncode_json_string(body, "native_dispatch_mode", default="") ==
+    "queue-only" {
+    let response = self.mooncode_queue_command_response(
+      session_id~,
+      body,
+      dispatch_source="moonclaw-native-command-queue-only",
+    )
+    w.header().set("Content-Type", "application/json")
+    w.write_header(202, reason="Accepted")
+    w.write(response.stringify(indent=2))
+    return
+  }
   if action == "cancel" {
     let response = self.mooncode_cancel_command_response(
       session_id~,
@@ -394,6 +407,52 @@ async fn Daemon::mooncode_accept_command(
   w.header().set("Content-Type", "application/json")
   w.write_header(202, reason="Accepted")
   w.write(response.stringify(indent=2))
+}
+
+///|
+async fn Daemon::mooncode_queue_command_response(
+  self : Daemon,
+  session_id~ : String,
+  body : Json,
+  dispatch_source~ : String,
+) -> Json {
+  let command_id = mooncode_command_id(body)
+  let action = mooncode_json_string(body, "command", default="prompt")
+  let book_root = mooncode_book_root(body)
+  let now = self.clock.now()
+  let binding = self.mooncode_binding_for_session(session_id)
+  if binding.book_root == "" {
+    binding.book_root = book_root
+  }
+  binding.command_count += 1
+  binding.last_command_id = command_id
+  binding.last_updated = now
+  let event = mooncode_event(
+    session_id~,
+    command_id~,
+    lane="runtime",
+    kind="command.queued_for_runtime_turn",
+    title="MoonCode command queued for native runtime turn",
+    status="queued",
+    detail="Queued `\{action}` for MoonClaw native runtime-turn execution without spawning a legacy task.",
+    now~,
+  )
+  binding.events.put(event)
+  self.mooncode_persist_command(body, binding, [event])
+  {
+    "accepted": true,
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "queued": true,
+    "control": mooncode_command_control(action),
+    "message": "MoonClaw queued `\{action}` for native runtime-turn execution",
+    "dispatch_source": dispatch_source,
+    "native_dispatch_mode": "queue-only",
+    "runtime_turn_endpoint": "/v1/mooncode/sessions/\{session_id}/runtime-turn?book_root=<path>",
+    "binding": binding.to_json(),
+    "events": Json::array([event]),
+  }
 }
 
 ///|
@@ -2139,6 +2198,7 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(
     payload.contains("\"control_commands\":[\"prompt\",\"steer\",\"cancel\"]"),
   )
+  assert_true(payload.contains("native_dispatch_mode=queue-only"))
 }
 
 ///|
@@ -2183,6 +2243,67 @@ test "mooncode native controls classify prompt steer and cancel" {
     mooncode_accept_event_title("steer"),
     "MoonClaw accepted MoonCode steering",
   )
+}
+
+///|
+async test "mooncode queue-only command persists durable command without task" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-queue-only-XXXXXX"),
+  )
+  let session_id = "session-queue-only"
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let response = daemon.mooncode_queue_command_response(
+    session_id~,
+    {
+      "protocol": "mooncode.v1",
+      "session_id": session_id,
+      "book_root": book_root,
+      "command": "run_tests",
+      "native_dispatch_mode": "queue-only",
+      "packet": { "command_id": "cmd-queue-only" },
+    },
+    dispatch_source="test-queue-only",
+  )
+  assert_true(mooncode_json_bool(response, "accepted", default=false))
+  assert_eq(
+    mooncode_json_string(response, "native_dispatch_mode", default=""),
+    "queue-only",
+  )
+  assert_true(
+    response
+    .stringify()
+    .contains("\"task_id\":\"00000000-0000-0000-0000-000000000000\""),
+  )
+  let command_log = @fsx.read_file(
+    mooncode_commands_path(book_root, session_id),
+  )
+  assert_true(command_log.contains("\"cmd-queue-only\""))
+  assert_true(command_log.contains("\"native_dispatch_mode\":\"queue-only\""))
+  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  assert_true(events_log.contains("\"command.queued_for_runtime_turn\""))
 }
 
 ///|
