@@ -266,13 +266,23 @@ async fn Daemon::mooncode_runtime_dispatch(
   let command = mooncode_json_object_field_or_empty(item, "command")
   let report = mooncode_validate_command_body(session_id, command)
   let execution = if mooncode_json_bool(report, "ok", default=false) {
-    self.mooncode_forward_command_to_task(
-      group~,
-      session_id~,
-      command,
-      persist_command=false,
-      dispatch_source="moonclaw-native-runtime-dispatch",
-    )
+    let action = mooncode_json_string(command, "command", default="prompt")
+    if action == "cancel" {
+      self.mooncode_cancel_command_response(
+        session_id~,
+        command,
+        persist_command=false,
+        dispatch_source="moonclaw-native-runtime-dispatch",
+      )
+    } else {
+      self.mooncode_forward_command_to_task(
+        group~,
+        session_id~,
+        command,
+        persist_command=false,
+        dispatch_source="moonclaw-native-runtime-dispatch",
+      )
+    }
   } else {
     {
       "accepted": false,
@@ -358,7 +368,15 @@ async fn Daemon::mooncode_accept_command(
   }
   let action = mooncode_json_string(body, "command", default="prompt")
   if action == "cancel" {
-    self.mooncode_cancel_command(session_id~, body, w)
+    let response = self.mooncode_cancel_command_response(
+      session_id~,
+      body,
+      persist_command=true,
+      dispatch_source="moonclaw-native-command-endpoint",
+    )
+    w.header().set("Content-Type", "application/json")
+    w.write_header(202, reason="Accepted")
+    w.write(response.stringify(indent=2))
     return
   }
   let response = self.mooncode_forward_command_to_task(
@@ -447,12 +465,13 @@ async fn Daemon::mooncode_forward_command_to_task(
 }
 
 ///|
-async fn Daemon::mooncode_cancel_command(
+async fn Daemon::mooncode_cancel_command_response(
   self : Daemon,
   session_id~ : String,
   body : Json,
-  w : @httpx.ResponseWriter,
-) -> Unit {
+  persist_command~ : Bool,
+  dispatch_source~ : String,
+) -> Json {
   let command_id = mooncode_command_id(body)
   let now = self.clock.now()
   guard self.mooncode_task_for_existing_session(session_id, body) is Some(task) else {
@@ -467,28 +486,30 @@ async fn Daemon::mooncode_cancel_command(
       now~,
     )
     let binding = self.mooncode_binding_for_session(session_id)
+    if binding.book_root == "" {
+      binding.book_root = mooncode_book_root(body)
+    }
     binding.command_count += 1
     binding.last_command_id = command_id
     binding.last_updated = now
     binding.events.put(event)
-    self.mooncode_persist_event(binding, event)
-    self.mooncode_persist_session(binding)
-    w.header().set("Content-Type", "application/json")
-    w.write_header(202, reason="Accepted")
-    w.write(
-      (
-        {
-          "accepted": false,
-          "protocol": "mooncode.v1",
-          "session_id": session_id,
-          "command_id": command_id,
-          "control": "cancel",
-          "message": "MoonCode cancel has no active MoonClaw task",
-          "binding": binding.to_json(),
-          "events": Json::array([event]),
-        } : Json).stringify(indent=2),
-    )
-    return
+    if persist_command {
+      self.mooncode_persist_command(body, binding, [event])
+    } else {
+      self.mooncode_persist_event(binding, event)
+      self.mooncode_persist_session(binding)
+    }
+    return {
+      "accepted": false,
+      "protocol": "mooncode.v1",
+      "session_id": session_id,
+      "command_id": command_id,
+      "control": "cancel",
+      "message": "MoonCode cancel has no active MoonClaw task",
+      "dispatch_source": dispatch_source,
+      "binding": binding.to_json(),
+      "events": Json::array([event]),
+    }
   }
   let cancel_payload = task.cancel()
   let binding = self.mooncode_binding_for_session(session_id)
@@ -506,25 +527,26 @@ async fn Daemon::mooncode_cancel_command(
     now~,
   )
   binding.events.put(event)
-  self.mooncode_persist_command(body, binding, [event])
-  w.header().set("Content-Type", "application/json")
-  w.write_header(202, reason="Accepted")
-  w.write(
-    (
-      {
-        "accepted": true,
-        "protocol": "mooncode.v1",
-        "session_id": session_id,
-        "command_id": command_id,
-        "control": "cancel",
-        "task": task,
-        "task_id": task.id,
-        "message": "MoonClaw MoonCode runtime accepted `cancel`",
-        "cancel": cancel_payload,
-        "binding": binding.to_json(),
-        "events": Json::array([event]),
-      } : Json).stringify(indent=2),
-  )
+  if persist_command {
+    self.mooncode_persist_command(body, binding, [event])
+  } else {
+    self.mooncode_persist_session(binding)
+    self.mooncode_persist_event(binding, event)
+  }
+  {
+    "accepted": true,
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "control": "cancel",
+    "task": task,
+    "task_id": task.id,
+    "message": "MoonClaw MoonCode runtime accepted `cancel`",
+    "dispatch_source": dispatch_source,
+    "cancel": cancel_payload,
+    "binding": binding.to_json(),
+    "events": Json::array([event]),
+  }
 }
 
 ///|
@@ -1119,9 +1141,16 @@ fn mooncode_runtime_dispatch_receipt(
 ) -> Json {
   let command_id = mooncode_json_string(claim_item, "command_id", default="")
   let accepted = mooncode_json_bool(execution, "accepted", default=false)
+  let control = mooncode_json_string(execution, "control", default="")
   let receipt = mooncode_json_object_field_or_empty(claim_item, "receipt")
   let claim_id = mooncode_json_string(receipt, "claim_id", default="")
-  let status = if accepted { "runtime-delivered" } else { "runtime-failed" }
+  let status = if control == "cancel" && accepted {
+    "runtime-cancelled"
+  } else if accepted {
+    "runtime-delivered"
+  } else {
+    "runtime-failed"
+  }
   {
     "kind": "mooncode.runtime-dispatch",
     "protocol": "mooncode.v1",
@@ -1136,7 +1165,7 @@ fn mooncode_runtime_dispatch_receipt(
     "delivered_at": now,
     "task_id": mooncode_json_string(execution, "task_id", default=""),
     "message_id": mooncode_json_string(execution, "message_id", default=""),
-    "control": mooncode_json_string(execution, "control", default=""),
+    "control": control,
     "message": mooncode_json_string(execution, "message", default=""),
     "command": mooncode_json_object_field_or_empty(claim_item, "command"),
     "command_entry": mooncode_json_object_field_or_empty(
@@ -2531,6 +2560,52 @@ test "mooncode runtime delivery receipt resolves claimed command" {
     mooncode_json_string(claimable[0], "command_id", default=""),
     "cmd-2",
   )
+}
+
+///|
+test "mooncode runtime dispatch receipt classifies cancel as terminal" {
+  let item : Json = {
+    "kind": "mooncode-runtime-claim-item",
+    "protocol": "mooncode.v1",
+    "command_id": "cmd-cancel",
+    "command": {
+      "protocol": "mooncode.v1",
+      "session_id": "session-cancel",
+      "book_root": "/tmp/book",
+      "command": "cancel",
+      "packet": { "command_id": "cmd-cancel" },
+    },
+    "receipt": {
+      "kind": "mooncode.runtime-dispatch",
+      "status": "runtime-claimed",
+      "claim_id": "claim-cancel",
+    },
+  }
+  let receipt = mooncode_runtime_dispatch_receipt(
+    "session-cancel",
+    "/tmp/book",
+    item,
+    {
+      "accepted": true,
+      "command_id": "cmd-cancel",
+      "task_id": "task-cancel",
+      "control": "cancel",
+      "message": "MoonClaw MoonCode runtime accepted `cancel`",
+      "events": [{ "kind": "cancel.requested" }],
+    },
+    consumer_id="test-consumer",
+    now=@clock.Timestamp::from_ms(160L),
+  )
+  assert_eq(
+    mooncode_json_string(receipt, "status", default=""),
+    "runtime-cancelled",
+  )
+  assert_true(
+    mooncode_runtime_receipt_status_delivered(
+      mooncode_json_string(receipt, "status", default=""),
+    ),
+  )
+  assert_eq(mooncode_json_string(receipt, "control", default=""), "cancel")
 }
 
 ///|
