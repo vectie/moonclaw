@@ -37,9 +37,10 @@ fn mooncode_capabilities_payload() -> Json {
       "/v1/mooncode/capabilities", "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
       "/v1/mooncode/sessions/<id>/eval-report",
     ],
+    "control_commands": ["prompt", "steer", "cancel"],
     "tools": ["read", "edit", "write", "shell", "moon_check", "finish"],
     "execution_boundary": "MoonClaw accepts Moondesk MoonCode command packets and executes them through the existing MoonClaw task/agent runtime for the target book root.",
-    "ordering_rule": "Commands are accepted per session and forwarded to the bound MoonClaw task in request order.",
+    "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task.",
   }
 }
 
@@ -87,9 +88,13 @@ async fn Daemon::mooncode_accept_command(
       },
     })
   }
-  let task = self.mooncode_ensure_task(group~, session_id~, body)
   let command_id = mooncode_command_id(body)
   let action = mooncode_json_string(body, "command", default="prompt")
+  if action == "cancel" {
+    self.mooncode_cancel_command(session_id~, body, w)
+    return
+  }
+  let task = self.mooncode_ensure_task(group~, session_id~, body)
   let text = mooncode_runtime_message(body)
   let response = task.create_message(
     @server.CreateMessageRequest::new(
@@ -112,8 +117,8 @@ async fn Daemon::mooncode_accept_command(
       session_id~,
       command_id~,
       lane="runtime",
-      kind="command.accepted",
-      title="MoonClaw accepted MoonCode command",
+      kind=mooncode_accept_event_kind(action),
+      title=mooncode_accept_event_title(action),
       status=if mooncode_json_bool(response_json, "queued", default=false) {
         "queued"
       } else {
@@ -140,8 +145,87 @@ async fn Daemon::mooncode_accept_command(
         "message_id": mooncode_json_string(response_json, "id", default=""),
         "queued": mooncode_json_bool(response_json, "queued", default=false),
         "message": "MoonClaw MoonCode runtime accepted `\{action}`",
+        "control": mooncode_command_control(action),
         "binding": binding.to_json(),
         "events": Json::array(events),
+      } : Json).stringify(indent=2),
+  )
+}
+
+///|
+async fn Daemon::mooncode_cancel_command(
+  self : Daemon,
+  session_id~ : String,
+  body : Json,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let command_id = mooncode_command_id(body)
+  let now = self.clock.now()
+  guard self.mooncode_task_for_existing_session(session_id, body) is Some(task) else {
+    let event = mooncode_event(
+      session_id~,
+      command_id~,
+      lane="runtime",
+      kind="cancel.no_active_task",
+      title="MoonCode cancel had no active MoonClaw task",
+      status="failed",
+      detail="No bound MoonClaw task exists for this MoonCode session, so native cancel did not spawn or stop anything.",
+      now~,
+    )
+    let binding = self.mooncode_binding_for_session(session_id)
+    binding.command_count += 1
+    binding.last_command_id = command_id
+    binding.last_updated = now
+    binding.events.put(event)
+    w.header().set("Content-Type", "application/json")
+    w.write_header(202, reason="Accepted")
+    w.write(
+      (
+        {
+          "accepted": false,
+          "protocol": "mooncode.v1",
+          "session_id": session_id,
+          "command_id": command_id,
+          "control": "cancel",
+          "message": "MoonCode cancel has no active MoonClaw task",
+          "binding": binding.to_json(),
+          "events": Json::array([event]),
+        } : Json).stringify(indent=2),
+    )
+    return
+  }
+  let cancel_payload = task.cancel()
+  let binding = self.mooncode_binding_for_session(session_id)
+  binding.command_count += 1
+  binding.last_command_id = command_id
+  binding.last_updated = now
+  let event = mooncode_event(
+    session_id~,
+    command_id~,
+    lane="runtime",
+    kind="cancel.requested",
+    title="MoonCode cancel requested",
+    status="cancelled",
+    detail="Requested cooperative cancellation for MoonClaw task \{task.id}",
+    now~,
+  )
+  binding.events.put(event)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(202, reason="Accepted")
+  w.write(
+    (
+      {
+        "accepted": true,
+        "protocol": "mooncode.v1",
+        "session_id": session_id,
+        "command_id": command_id,
+        "control": "cancel",
+        "task": task,
+        "task_id": task.id,
+        "message": "MoonClaw MoonCode runtime accepted `cancel`",
+        "cancel": cancel_payload,
+        "binding": binding.to_json(),
+        "events": Json::array([event]),
       } : Json).stringify(indent=2),
   )
 }
@@ -302,6 +386,32 @@ fn Daemon::mooncode_binding_for_session(
 }
 
 ///|
+fn Daemon::mooncode_task_for_existing_session(
+  self : Daemon,
+  session_id : String,
+  body : Json,
+) -> Running? {
+  match self.mooncode_sessions.get(session_id) {
+    Some(binding) =>
+      match self.by_id.get(binding.task_id) {
+        Some(Running(task)) => return Some(task)
+        _ => ()
+      }
+    None => ()
+  }
+  let packet = mooncode_json_object_field_or_empty(body, "packet")
+  let task_id = mooncode_json_string(packet, "task_id", default="")
+  if task_id == "" {
+    return None
+  }
+  let id = @uuid.parse(task_id) catch { _ => return None }
+  match self.by_id.get(id) {
+    Some(Running(task)) => Some(task)
+    _ => None
+  }
+}
+
+///|
 fn mooncode_validate_command_body(session_id : String, body : Json) -> Json {
   let protocol = mooncode_json_string(body, "protocol", default="")
   let body_session = mooncode_json_string(body, "session_id", default="")
@@ -349,6 +459,31 @@ fn mooncode_runtime_message(body : Json) -> String {
   "- selected path: \{if context_path == "" { "not provided" } else { context_path }}\n\n" +
   "User request:\n\{text}\n\n" +
   "Command packet:\n\{packet.stringify(indent=2)}"
+}
+
+///|
+fn mooncode_command_control(action : String) -> String {
+  match action {
+    "steer" => "steer"
+    "cancel" => "cancel"
+    _ => "prompt"
+  }
+}
+
+///|
+fn mooncode_accept_event_kind(action : String) -> String {
+  match action {
+    "steer" => "steer.accepted"
+    _ => "command.accepted"
+  }
+}
+
+///|
+fn mooncode_accept_event_title(action : String) -> String {
+  match action {
+    "steer" => "MoonClaw accepted MoonCode steering"
+    _ => "MoonClaw accepted MoonCode command"
+  }
 }
 
 ///|
@@ -473,6 +608,9 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("/v1/mooncode/capabilities"))
   assert_true(payload.contains("/v1/mooncode/sessions/<id>/commands"))
   assert_true(payload.contains("\"native_runtime_ready\":true"))
+  assert_true(
+    payload.contains("\"control_commands\":[\"prompt\",\"steer\",\"cancel\"]"),
+  )
 }
 
 ///|
@@ -503,6 +641,20 @@ test "mooncode validation reports mismatched session and missing command id" {
   let payload = report.stringify()
   assert_true(payload.contains("session_id"))
   assert_true(payload.contains("command_id"))
+}
+
+///|
+test "mooncode native controls classify prompt steer and cancel" {
+  assert_eq(mooncode_command_control("prompt"), "prompt")
+  assert_eq(mooncode_command_control("run_tests"), "prompt")
+  assert_eq(mooncode_command_control("steer"), "steer")
+  assert_eq(mooncode_command_control("cancel"), "cancel")
+  assert_eq(mooncode_accept_event_kind("prompt"), "command.accepted")
+  assert_eq(mooncode_accept_event_kind("steer"), "steer.accepted")
+  assert_eq(
+    mooncode_accept_event_title("steer"),
+    "MoonClaw accepted MoonCode steering",
+  )
 }
 
 ///|

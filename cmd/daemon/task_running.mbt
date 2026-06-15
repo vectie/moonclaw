@@ -78,7 +78,7 @@ fn Running::new(
 }
 
 ///|
-impl @json.FromJson for Running with from_json(
+impl @json.FromJson for Running with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Running {
@@ -192,7 +192,7 @@ impl @json.FromJson for Running with from_json(
 }
 
 ///|
-impl ToJson for Running with to_json(self : Running) -> Json {
+impl ToJson for Running with fn to_json(self : Running) -> Json {
   let object : Map[String, Json] = {
     "id": self.id.to_string(),
     "cwd": self.cwd,
@@ -239,4 +239,22 @@ async fn Running::create_message(
       })
   }
   msg_ret
+}
+
+///|
+async fn Running::cancel(self : Running) -> Json {
+  let (r, b) = @httpx.post_json(
+    "http://localhost:\{self.port}/v1/cancel",
+    Json::null(),
+  )
+  guard r.code is (200..=299) else {
+    raise json_error(500, "Internal Server Error", {
+      "error": {
+        "code": r.code,
+        "message": "Failed to cancel MoonCode task: \{r.code} \{r.reason}",
+        "metadata": { "code": r.code, "reason": r.reason, "body": b.json() },
+      },
+    })
+  }
+  b.json()
 }
