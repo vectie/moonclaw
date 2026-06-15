@@ -125,6 +125,17 @@ async fn Daemon::mooncode_runtime_turn_execute(
       } else {
         mooncode_runtime_turn_tool_calls(command)
       }
+      for
+        event in mooncode_runtime_turn_planner_progress_events(
+          session_id,
+          command_id,
+          plan,
+          tool_calls,
+          step_index~,
+          now=self.clock.now(),
+        ) {
+        events.push(event)
+      }
       let step_results : Array[Json] = []
       for tool_call in tool_calls {
         let execution = mooncode_execute_tool_call(
@@ -872,6 +883,201 @@ fn mooncode_runtime_turn_tool_calls_include_finish(
     }
   }
   false
+}
+
+///|
+fn mooncode_runtime_turn_planner_progress_events(
+  session_id : String,
+  command_id : String,
+  plan : Json,
+  tool_calls : Array[Json],
+  step_index~ : Int,
+  now~ : @clock.Timestamp,
+) -> Array[Json] {
+  let step = step_index + 1
+  let mode = mooncode_json_string(
+    plan,
+    "planner_mode",
+    default="deterministic-fallback",
+  )
+  let model = mooncode_json_string(plan, "model", default="")
+  let events : Array[Json] = [
+    mooncode_runtime_turn_reasoning_event(
+      session_id,
+      command_id,
+      step~,
+      mode~,
+      model~,
+      tool_count=tool_calls.length(),
+      now~,
+    ),
+  ]
+  let response_message = mooncode_json_object_field_or_empty(
+    plan, "model_response_message",
+  )
+  let assistant_content = mooncode_json_string(
+    response_message,
+    "content",
+    default="",
+  )
+  if assistant_content != "" {
+    events.push(
+      mooncode_runtime_turn_assistant_event(
+        session_id,
+        command_id,
+        step~,
+        content=assistant_content,
+        now~,
+      ),
+    )
+  }
+  for index in 0..<tool_calls.length() {
+    events.push(
+      mooncode_runtime_turn_tool_call_event(
+        session_id,
+        command_id,
+        tool_calls[index],
+        step~,
+        index~,
+        mode~,
+        model~,
+        now~,
+      ),
+    )
+  }
+  events
+}
+
+///|
+fn mooncode_runtime_turn_reasoning_event(
+  session_id : String,
+  command_id : String,
+  step~ : Int,
+  mode~ : String,
+  model~ : String,
+  tool_count~ : Int,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let model_detail = if model == "" { "" } else { " with model `\{model}`" }
+  let content = "Planner step \{step} used \{mode}\{model_detail} and selected \{tool_count} tool call(s)."
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-step-\{step}-\{now}",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "lane": "runtime",
+    "kind": "reasoning_delta",
+    "event": "reasoning_delta",
+    "title": "MoonCode planner step \{step}",
+    "status": "running",
+    "detail": content,
+    "content": content,
+    "planner_step": step,
+    "planner_mode": mode,
+    "model": model,
+    "tool_call_count": tool_count,
+    "created_at": now,
+    "source": "moonclaw-native-runtime-turn",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_assistant_event(
+  session_id : String,
+  command_id : String,
+  step~ : Int,
+  content~ : String,
+  now~ : @clock.Timestamp,
+) -> Json {
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-assistant-step-\{step}-\{now}",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "lane": "transcript",
+    "kind": "assistant_delta",
+    "event": "assistant_delta",
+    "title": "MoonCode assistant update",
+    "status": "running",
+    "detail": content,
+    "content": content,
+    "planner_step": step,
+    "created_at": now,
+    "source": "moonclaw-native-runtime-turn",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_tool_call_event(
+  session_id : String,
+  command_id : String,
+  tool_call : Json,
+  step~ : Int,
+  index~ : Int,
+  mode~ : String,
+  model~ : String,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  let tool_call_id = mooncode_runtime_turn_tool_call_id(
+    tool_call,
+    step~,
+    index~,
+  )
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  let path = mooncode_json_string(arguments, "path", default="")
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-tool-call-\{step}-\{index}-\{tool}-\{now}",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": command_id,
+    "lane": mooncode_runtime_turn_tool_call_lane(tool, path),
+    "kind": "tool_call",
+    "event": "tool_call",
+    "title": "Tool started: \{tool}",
+    "status": "running",
+    "detail": arguments.stringify(indent=2),
+    "content": arguments.stringify(indent=2),
+    "tool": tool,
+    "tool_name": tool,
+    "tool_call_id": tool_call_id,
+    "arguments": arguments.stringify(indent=2),
+    "tool_call": {
+      "id": tool_call_id,
+      "type": "function",
+      "function": { "name": tool, "arguments": arguments.stringify(indent=2) },
+    },
+    "path": path,
+    "planner_step": step,
+    "planner_mode": mode,
+    "model": model,
+    "created_at": now,
+    "source": "moonclaw-native-runtime-turn",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_tool_call_id(
+  tool_call : Json,
+  step~ : Int,
+  index~ : Int,
+) -> String {
+  let id = mooncode_json_string(tool_call, "tool_call_id", default="")
+  if id != "" {
+    return id
+  }
+  "runtime-step-\{step}-tool-\{index}"
+}
+
+///|
+fn mooncode_runtime_turn_tool_call_lane(tool : String, path : String) -> String {
+  match tool {
+    "moon_check" => "test"
+    "write" | "edit" => "diff"
+    "finish" => "review"
+    _ if path != "" => "diff"
+    _ => "tool"
+  }
 }
 
 ///|
@@ -1770,6 +1976,66 @@ test "mooncode native runtime turn builds model follow-up transcript" {
       "payload": { "planner_max_steps": 99 },
     }),
     8,
+  )
+}
+
+///|
+test "mooncode native runtime turn emits planner progress events" {
+  let plan : Json = {
+    "planner_mode": "model-tool-calls",
+    "model": "test-model",
+    "model_response_message": {
+      "role": "assistant",
+      "content": "I will inspect the file and then finish.",
+    },
+  }
+  let events = mooncode_runtime_turn_planner_progress_events(
+    "session-progress",
+    "cmd-progress",
+    plan,
+    [
+      {
+        "tool": "read",
+        "tool_call_id": "call-read",
+        "arguments": { "path": "README.md" },
+      },
+      {
+        "tool": "finish",
+        "tool_call_id": "call-finish",
+        "arguments": { "answer": "done" },
+      },
+    ],
+    step_index=0,
+    now=@clock.Timestamp::from_ms(42L),
+  )
+  assert_eq(events.length(), 4)
+  assert_eq(
+    mooncode_json_string(events[0], "kind", default=""),
+    "reasoning_delta",
+  )
+  assert_eq(mooncode_json_string(events[0], "lane", default=""), "runtime")
+  assert_eq(mooncode_json_int(events[0], "planner_step", default=0), 1)
+  assert_eq(
+    mooncode_json_string(events[1], "kind", default=""),
+    "assistant_delta",
+  )
+  assert_true(
+    mooncode_json_string(events[1], "content", default="").contains("inspect"),
+  )
+  assert_eq(mooncode_json_string(events[2], "kind", default=""), "tool_call")
+  assert_eq(mooncode_json_string(events[2], "lane", default=""), "diff")
+  assert_eq(
+    mooncode_json_string(events[2], "tool_call_id", default=""),
+    "call-read",
+  )
+  assert_eq(mooncode_json_string(events[3], "lane", default=""), "review")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(events[3], "tool_call"),
+      "id",
+      default="",
+    ),
+    "call-finish",
   )
 }
 

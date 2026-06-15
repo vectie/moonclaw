@@ -308,8 +308,11 @@ for bounded OpenSeek-style tool-call batches over `read`, `write`, `edit`,
 the model until it calls `finish`, a tool fails, the command is cancelled, or
 the bounded `planner_max_steps` limit is reached. Planner
 start/selection/failure events, `planner_steps`, `planner_step_count`, and
-`model_step_limit` are included in the runtime result, and unsupported or empty
-model plans fall back to deterministic planning.
+`model_step_limit` are included in the runtime result. Each planner step also
+emits MoonCode `reasoning_delta` progress, optional assistant transcript deltas,
+and pre-execution `tool_call` events before the matching `tool_result`, so
+clients can render live-style OpenSeek/Codex progress from the native event log.
+Unsupported or empty model plans fall back to deterministic planning.
 When a generated artifact verifies successfully, MoonClaw writes
 `portable/app-tool/mooncode/{safe-session-id}/package-{safe-command-id}.json`,
 refreshes `portable/app-tool/mooncode/{safe-session-id}/index.json`, appends
