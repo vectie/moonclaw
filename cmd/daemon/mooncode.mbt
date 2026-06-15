@@ -38,7 +38,7 @@ fn mooncode_capabilities_payload() -> Json {
     "endpoints": [
       "/v1/mooncode/capabilities", "/v1/mooncode/sessions?book_root=<path>", "/v1/mooncode/sessions/<id>?book_root=<path>",
       "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>",
-      "/v1/mooncode/sessions/<id>/eval-report", "/v1/mooncode/sessions/<id>/package-result",
+      "/v1/mooncode/sessions/<id>/eval-report?book_root=<path>", "/v1/mooncode/sessions/<id>/package-result",
       "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
       "/v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
       "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>",
@@ -53,6 +53,7 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_turn_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path> claims the next durable command if needed, executes explicit or deterministic native MoonCode tool calls, appends runtime events, and closes the command with a terminal runtime-completed or runtime-failed receipt.",
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
     "stream_endpoint": "GET /v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n> replays durable book-local MoonCode events from events.jsonl with resumable sequence records.",
+    "eval_report_endpoint": "GET /v1/mooncode/sessions/<id>/eval-report?book_root=<path> reports native eval/readiness evidence from the live binding or the selected book's durable sidecar.",
     "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events.",
     "queue_only_command_mode": "POST /v1/mooncode/sessions/<id>/commands with native_dispatch_mode=queue-only appends the durable command and command.queued_for_runtime_turn event without spawning or messaging a legacy MoonClaw task; callers can then invoke runtime-turn for non-duplicating native execution.",
     "prompt_planner": "runtime-turn expands bounded prompt/steer requests for tools, scripts, miniapps, generated sites, and html apps into native write/shell/finish tool calls under MoonBook-owned tools/ or apps/ paths.",
@@ -699,13 +700,20 @@ async fn Daemon::mooncode_sync_live_task_events(
 async fn Daemon::mooncode_eval_report(
   self : Daemon,
   session_id~ : StringView,
+  r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let session_id = session_id.to_string()
-  let binding = self.mooncode_sessions.get(session_id)
+  let book_root = mooncode_request_book_root(r)
+  let record = if book_root == "" {
+    None
+  } else {
+    self.mooncode_session_record(session_id, book_root)
+  }
   let report = mooncode_eval_report_payload(
     session_id,
-    binding,
+    self.mooncode_sessions.get(session_id),
+    record,
     now=self.clock.now(),
   )
   w.header().set("Content-Type", "application/json")
@@ -2266,16 +2274,38 @@ fn mooncode_event(
 fn mooncode_eval_report_payload(
   session_id : String,
   binding : MoonCodeSessionBinding?,
+  record : Json?,
   now~ : @clock.Timestamp,
 ) -> Json {
+  let record_value = record.unwrap_or(Json::object({}))
   let command_count = match binding {
     Some(binding) => binding.command_count
-    None => 0
+    None => mooncode_json_int(record_value, "command_log_count", default=0)
   }
+  let event_count = mooncode_json_int(
+    record_value,
+    "event_log_count",
+    default=0,
+  )
+  let package_result_count = mooncode_json_int(
+    record_value,
+    "package_result_log_count",
+    default=0,
+  )
+  let record_ready = mooncode_json_string(record_value, "kind", default="") ==
+    "mooncode-session-record"
   {
     "kind": "mooncode-native-eval-report",
     "protocol": "mooncode.v1",
     "session_id": session_id,
+    "book_root": mooncode_json_string(record_value, "book_root", default=""),
+    "source": if record_ready && binding is None {
+      "moonclaw-native-sidecar"
+    } else if binding is Some(_) {
+      "moonclaw-native-live-binding"
+    } else {
+      "moonclaw-native-runtime"
+    },
     "status": if command_count > 0 {
       "accepted"
     } else {
@@ -2293,6 +2323,15 @@ fn mooncode_eval_report_payload(
         "evidence": "MoonClaw accepted \{command_count} native MoonCode command(s) for this session.",
       },
       {
+        "id": "durable-sidecar-replay",
+        "status": if record_ready {
+          "passed"
+        } else {
+          "pending"
+        },
+        "evidence": "MoonClaw replayed \{event_count} event(s) and \{package_result_count} package result(s) from the selected book's native sidecar.",
+      },
+      {
         "id": "tool-loop-execution",
         "status": "delegated",
         "evidence": "Execution is delegated to the existing MoonClaw task agent and its tool runtime.",
@@ -2302,6 +2341,7 @@ fn mooncode_eval_report_payload(
       Some(binding) => binding.to_json()
       None => Json::object({})
     },
+    "session_record": record_value,
   }
 }
 
@@ -2372,6 +2412,9 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("/v1/mooncode/sessions/<id>?book_root=<path>"))
   assert_true(payload.contains("/v1/mooncode/sessions/<id>/commands"))
   assert_true(payload.contains("/v1/mooncode/sessions/<id>/package-result"))
+  assert_true(
+    payload.contains("/v1/mooncode/sessions/<id>/eval-report?book_root=<path>"),
+  )
   assert_true(
     payload.contains(
       "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
@@ -2986,8 +3029,32 @@ test "mooncode eval report records delegated task execution" {
   let report = mooncode_eval_report_payload(
     "session-demo",
     None,
+    None,
     now=@clock.Timestamp::from_ms(42L),
   )
   assert_eq(mooncode_json_string(report, "status", default=""), "pending")
   assert_true(report.stringify().contains("tool-loop-execution"))
+}
+
+///|
+test "mooncode eval report accepts durable sidecar evidence" {
+  let report = mooncode_eval_report_payload(
+    "session-demo",
+    None,
+    Some({
+      "kind": "mooncode-session-record",
+      "book_root": "/tmp/book",
+      "command_log_count": 2,
+      "event_log_count": 5,
+      "package_result_log_count": 1,
+    }),
+    now=@clock.Timestamp::from_ms(42L),
+  )
+  assert_eq(mooncode_json_string(report, "status", default=""), "accepted")
+  assert_eq(
+    mooncode_json_string(report, "source", default=""),
+    "moonclaw-native-sidecar",
+  )
+  assert_true(report.stringify().contains("durable-sidecar-replay"))
+  assert_true(report.stringify().contains("5 event(s)"))
 }

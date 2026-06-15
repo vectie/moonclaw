@@ -100,7 +100,7 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
             (Get, ["", "v1", "mooncode", "sessions", session_id, "stream"]) =>
               self.mooncode_stream(session_id~, r, w)
             (Get, ["", "v1", "mooncode", "sessions", session_id, "eval-report"]) =>
-              self.mooncode_eval_report(session_id~, w)
+              self.mooncode_eval_report(session_id~, r, w)
             (
               Post,
               ["", "v1", "mooncode", "sessions", session_id, "package-result"],

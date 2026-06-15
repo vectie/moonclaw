@@ -41,7 +41,7 @@ MoonClaw is strongest when you want one system to handle:
   Moondesk: `/v1/mooncode/capabilities`,
   `/v1/mooncode/sessions/<id>/commands`,
   `/v1/mooncode/sessions/<id>/stream`, and
-  `/v1/mooncode/sessions/<id>/eval-report`, plus package proof ingestion at
+  `/v1/mooncode/sessions/<id>/eval-report?book_root=<path>`, plus package proof ingestion at
   `/v1/mooncode/sessions/<id>/package-result`. Commands bind a Moondesk MoonCode
   session to the MoonClaw task for the target book root and execute through the
   existing MoonClaw agent/task runtime. Native command handling now distinguishes

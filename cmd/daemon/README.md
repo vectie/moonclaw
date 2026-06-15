@@ -285,6 +285,13 @@ Query parameters:
 JSONL responses contain `meta`, `event`, and `done` records. SSE responses use
 the same payloads as `event: meta`, `event: event`, and `event: done` chunks.
 
+### `GET /v1/mooncode/sessions/{id}/eval-report`
+
+Reports native MoonCode eval/readiness evidence for a session. Pass
+`book_root=<path>` to load evidence from the selected MoonBook's durable
+`.moonclaw/mooncode/sessions/{safe-session-id}/` sidecar after daemon restart;
+without `book_root`, the report only reflects the daemon's live binding.
+
 ### `POST /v1/task/{id}/publish`
 
 Run `moon publish` in the task's working directory.
