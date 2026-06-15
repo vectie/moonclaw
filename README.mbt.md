@@ -73,8 +73,14 @@ MoonClaw is strongest when you want one system to handle:
   /v1/mooncode/sessions/<id>/tool-exec?book_root=<path>` now executes the
   native MoonCode `read`, `edit`, `write`, `shell`, `moon_check`, and `finish`
   tool contract inside the selected MoonBook root and appends command-scoped
-  proof events. The full typed agent loop that chooses these tools from claimed
-  commands is still being extracted.
+  proof events. `POST
+  /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>` now provides the
+  first book-local native runtime turn: it claims the next durable command if
+  needed, executes explicit `runtime_tool_calls` or deterministic built-in
+  fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
+  events, and closes the command with `runtime-completed` or `runtime-failed`.
+  The remaining MoonCode runtime gap is autonomous OpenSeek-style planning that
+  chooses tools from a prompt without predeclared tool calls.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`
