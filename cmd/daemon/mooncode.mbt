@@ -53,14 +53,15 @@ fn mooncode_capabilities_payload() -> Json {
     "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, runtime-dispatches.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
     "runtime_claim_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-claim?book_root=<path> projects and appends native runtime-claimed receipts over the durable command queue without spawning a task.",
     "runtime_dispatch_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path> claims the next durable command if needed, forwards it to the MoonClaw task runtime, and appends a runtime-delivered receipt.",
-    "runtime_turn_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path> claims the next durable command if needed, executes explicit, deterministic, or bounded model-planned native MoonCode tool calls, appends planner reasoning/tool-call/tool-result events plus steer_applied/steer_dropped settlement events for steer commands, and closes the command with a terminal runtime-completed or runtime-failed receipt.",
+    "runtime_turn_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path> claims the next durable command if needed, executes explicit, deterministic, or bounded model-planned native MoonCode tool calls, appends planner reasoning/tool-call/tool-result events plus steer_applied/steer_dropped settlement events for steer commands and receipt.accept/receipt.reject review evidence for review commands, and closes the command with a terminal runtime-completed or runtime-failed receipt.",
     "runtime_loop_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-loop?book_root=<path> repeatedly runs bounded native runtime-turns over the durable queue until idle, failure, cancel, or max_turns.",
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
     "stream_endpoint": "GET /v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n> replays durable book-local MoonCode events from events.jsonl with resumable sequence records.",
     "eval_report_endpoint": "GET /v1/mooncode/sessions/<id>/eval-report?book_root=<path> reports native eval/readiness evidence from the live binding or the selected book's durable sidecar.",
     "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/apply_patch/revert_patch/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events, including runtime.patch_applied and runtime.patch_reverted for reviewed text replacements plus single-file or multi-file unified-diff patchsets; selected hunk targets can be addressed with hunk_index/hunk_id or path#hunk-N and report hunk_dispatch_scope plus file_path metadata; patch tools can attach post-change verification from verification_command/test_command, verify_after, or moon_check_target.",
     "queue_only_command_mode": "POST /v1/mooncode/sessions/<id>/commands with native_dispatch_mode=queue-only appends the durable command and command.queued_for_runtime_turn event without spawning or messaging a legacy MoonClaw task; callers can then invoke runtime-turn for non-duplicating native execution.",
-    "prompt_planner": "runtime-turn expands bounded prompt requests for tools, scripts, miniapps, generated sites, and html apps into native write/shell/finish tool calls under MoonBook-owned tools/ or apps/ paths; steer commands settle as steering context unless explicit tool calls are provided.",
+    "prompt_planner": "runtime-turn expands bounded prompt requests for tools, scripts, miniapps, generated sites, and html apps into native write/shell/finish tool calls under MoonBook-owned tools/ or apps/ paths; steer and review commands settle as deterministic context unless explicit tool calls are provided.",
+    "review_receipts": "runtime-turn writes accept/reject review receipts under wiki/reviews/mooncode/<session-id>/ and emits review-lane receipt.accept/receipt.reject events so Moondesk can clear pending diffs from MoonClaw-owned evidence.",
     "ordering_rule": "Prompt and command packets are accepted per session and forwarded to the bound MoonClaw task in request order. Steer packets are delivered as steering context to the same task. Cancel packets target an existing bound task and never spawn a new task. Package-result proof packets append command-scoped runtime evidence for already accepted package commands.",
   }
 }
@@ -2486,6 +2487,8 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("runtime.patch_reverted"))
   assert_true(payload.contains("hunk_dispatch_scope"))
   assert_true(payload.contains("steer_applied"))
+  assert_true(payload.contains("receipt.accept"))
+  assert_true(payload.contains("\"review_receipts\""))
   assert_true(payload.contains("native_dispatch_mode=queue-only"))
   assert_true(payload.contains("\"prompt_planner\""))
 }

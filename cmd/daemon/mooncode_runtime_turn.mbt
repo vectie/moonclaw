@@ -182,7 +182,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
     let accepted = tool_results.all(result => {
       mooncode_json_bool(result, "accepted", default=false)
     })
-    if mooncode_json_string(command, "command", default="prompt") == "steer" {
+    let action = mooncode_json_string(command, "command", default="prompt")
+    if action == "steer" {
       events.push(
         mooncode_runtime_turn_steer_settlement_event(
           session_id,
@@ -192,6 +193,31 @@ async fn Daemon::mooncode_runtime_turn_execute(
           now=self.clock.now(),
         ),
       )
+    }
+    let review_receipts = if accepted &&
+      mooncode_runtime_turn_writes_review_receipt(action) {
+      mooncode_runtime_turn_review_receipts(
+        session_id,
+        book_root,
+        command,
+        action~,
+        now=self.clock.now(),
+      )
+    } else {
+      []
+    }
+    let review_events : Array[Json] = []
+    for receipt in review_receipts {
+      let review_event = mooncode_runtime_turn_review_receipt_event(
+        session_id,
+        command_id,
+        command,
+        receipt,
+        action~,
+        now=self.clock.now(),
+      )
+      review_events.push(review_event)
+      events.push(review_event)
     }
     let finished = mooncode_runtime_turn_finished_event(
       session_id,
@@ -223,6 +249,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
         "planner_step_count": planner_steps.length(),
         "model_step_limit": max_model_steps,
         "tool_results": Json::array(tool_results),
+        "review_receipts": Json::array(review_receipts),
+        "review_events": Json::array(review_events),
         "events": Json::array(events),
       } : Json)
   } else {
@@ -378,6 +406,24 @@ fn mooncode_runtime_turn_tool_calls(command : Json) -> Array[Json] {
           },
         },
       ]
+    "accept" =>
+      [
+        {
+          "tool": "finish",
+          "arguments": {
+            "answer": "Native MoonCode runtime recorded accept review and wrote a MoonBook review receipt.",
+          },
+        },
+      ]
+    "reject" =>
+      [
+        {
+          "tool": "finish",
+          "arguments": {
+            "answer": "Native MoonCode runtime recorded reject review and wrote a MoonBook review receipt.",
+          },
+        },
+      ]
     _ =>
       [
         {
@@ -507,7 +553,7 @@ fn mooncode_runtime_turn_explicit_tool_calls(command : Json) -> Array[Json] {
 ///|
 fn mooncode_runtime_turn_model_planning_allowed(command : Json) -> Bool {
   let action = mooncode_json_string(command, "command", default="prompt")
-  action == "prompt" || action == "package" || action == "accept"
+  action == "prompt" || action == "package"
 }
 
 ///|
@@ -1068,6 +1114,154 @@ fn mooncode_runtime_turn_steer_settlement_event(
     },
     "created_at": now,
     "source": "moonclaw-native-runtime-turn",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_writes_review_receipt(action : String) -> Bool {
+  action == "accept" || action == "reject"
+}
+
+///|
+async fn mooncode_runtime_turn_review_receipts(
+  session_id : String,
+  book_root : String,
+  command : Json,
+  action~ : String,
+  now~ : @clock.Timestamp,
+) -> Array[Json] {
+  let command_id = mooncode_command_id(command)
+  let relative = mooncode_runtime_turn_review_receipt_relative_path(
+    session_id, command_id, action,
+  )
+  let absolute = @pathx.join(book_root, relative)
+  let context_path = mooncode_runtime_turn_context_path(command)
+  let receipt : Json = {
+    "kind": "mooncode-review-receipt",
+    "protocol": "mooncode.v1",
+    "status": "recorded",
+    "action": action,
+    "decision": if action == "reject" {
+      "rejected"
+    } else {
+      "accepted"
+    },
+    "session_id": session_id,
+    "workspace_id": mooncode_json_string(command, "workspace_id", default=""),
+    "workspace_name": mooncode_json_string(
+      command,
+      "workspace_name",
+      default="",
+    ),
+    "task_id": "",
+    "book_root": book_root,
+    "context_path": context_path,
+    "command_id": command_id,
+    "command_created_at": mooncode_json_string(
+      command,
+      "created_at",
+      default="",
+    ),
+    "recorded_at": now,
+    "receipt_path": relative,
+    "absolute_receipt_path": absolute,
+    "detail": mooncode_runtime_turn_review_detail(action, context_path),
+    "command_packet": mooncode_json_object_field_or_empty(command, "packet"),
+    "owner": {
+      "ui": "moondesk",
+      "runtime": "moonclaw",
+      "artifact": "moonbook",
+      "review": "moonbook",
+      "extractable_component": "mooncode",
+    },
+  }
+  mooncode_runtime_turn_write_json_manifest(book_root, relative, receipt)
+  [receipt]
+}
+
+///|
+fn mooncode_runtime_turn_review_receipt_event(
+  session_id : String,
+  command_id : String,
+  command : Json,
+  receipt : Json,
+  action~ : String,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let receipt_path = mooncode_json_string(receipt, "receipt_path", default="")
+  let context_path = mooncode_json_string(receipt, "context_path", default="")
+  let status = if action == "reject" { "rejected" } else { "accepted" }
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-receipt-\{action}-\{now}",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "book_root": mooncode_book_root(command),
+    "command_id": command_id,
+    "lane": "review",
+    "kind": "receipt.\{action}",
+    "event": "review_receipt",
+    "title": "MoonBook review receipt",
+    "status": status,
+    "detail": "MoonClaw recorded `\{action}` review receipt at \{receipt_path}.",
+    "path": if context_path == "" {
+      receipt_path
+    } else {
+      context_path
+    },
+    "receipt_path": receipt_path,
+    "review_receipt": receipt,
+    "command": action,
+    "command_packet": mooncode_json_object_field_or_empty(command, "packet"),
+    "created_at": now,
+    "source": "moonclaw-native-runtime-turn",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_review_receipt_relative_path(
+  session_id : String,
+  command_id : String,
+  action : String,
+) -> String {
+  let safe_session = mooncode_safe_session_id(session_id)
+  let safe_command = mooncode_safe_session_id(command_id)
+  let safe_action = if action == "reject" { "reject" } else { "accept" }
+  "wiki/reviews/mooncode/\{safe_session}/\{safe_action}-\{safe_command}.json"
+}
+
+///|
+fn mooncode_runtime_turn_context_path(command : Json) -> String {
+  let direct = mooncode_json_string(command, "context_path", default="")
+  if direct != "" {
+    return direct
+  }
+  let payload = mooncode_json_object_field_or_empty(command, "payload")
+  let payload_path = mooncode_json_string(payload, "context_path", default="")
+  if payload_path != "" {
+    return payload_path
+  }
+  let packet = mooncode_json_object_field_or_empty(command, "packet")
+  let packet_path = mooncode_json_string(packet, "context_path", default="")
+  if packet_path != "" {
+    return packet_path
+  }
+  mooncode_json_string(packet, "path", default="")
+}
+
+///|
+fn mooncode_runtime_turn_review_detail(
+  action : String,
+  context_path : String,
+) -> String {
+  let target = if context_path == "" {
+    "the selected MoonCode result"
+  } else {
+    "`\{context_path}`"
+  }
+  if action == "reject" {
+    "MoonClaw recorded operator rejection for \{target}."
+  } else {
+    "MoonClaw recorded operator acceptance for \{target}."
   }
 }
 
@@ -2097,6 +2291,141 @@ async test "mooncode native runtime turn settles steer commands" (
 }
 
 ///|
+async test "mooncode native runtime turn records review receipts" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-runtime-review-XXXXXX"),
+  )
+  let session_id = "session-runtime-review"
+  let accept_id = "cmd-runtime-accept"
+  let reject_id = "cmd-runtime-reject"
+  let accept_command : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "accept",
+    "context_path": "tools/demo/run.sh",
+    "packet": { "command_id": accept_id, "context_path": "tools/demo/run.sh" },
+    "model": "unavailable-model",
+  }
+  let reject_command : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "reject",
+    "context_path": "apps/demo/index.html",
+    "packet": {
+      "command_id": reject_id,
+      "context_path": "apps/demo/index.html",
+    },
+  }
+  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
+    "kind": "mooncode-command",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": accept_id,
+    "created_at": @clock.Timestamp::from_ms(3L),
+    "command": accept_command,
+  })
+  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
+    "kind": "mooncode-command",
+    "protocol": "mooncode.v1",
+    "session_id": session_id,
+    "command_id": reject_id,
+    "created_at": @clock.Timestamp::from_ms(4L),
+    "command": reject_command,
+  })
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let accepted = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+    "consumer_id": "test-runtime",
+  })
+  assert_true(mooncode_json_bool(accepted, "accepted", default=false))
+  let accepted_execution = mooncode_json_object_field_or_empty(
+    accepted, "execution",
+  )
+  assert_eq(
+    mooncode_json_string(accepted_execution, "control", default=""),
+    "accept",
+  )
+  assert_eq(
+    mooncode_json_string(accepted_execution, "planner_mode", default=""),
+    "deterministic-fallback",
+  )
+  assert_false(
+    accepted_execution.stringify().contains("runtime.planner_failed"),
+  )
+  let accept_receipts = mooncode_json_array_items(
+    accepted_execution, "review_receipts",
+  )
+  assert_eq(accept_receipts.length(), 1)
+  assert_eq(
+    mooncode_json_string(accept_receipts[0], "action", default=""),
+    "accept",
+  )
+  let accept_path = @pathx.join(
+    book_root, "wiki/reviews/mooncode/session-runtime-review/accept-cmd-runtime-accept.json",
+  )
+  assert_true(@fsx.exists(accept_path))
+  let accept_text = @fsx.read_file(accept_path)
+  assert_true(accept_text.contains("\"mooncode-review-receipt\""))
+  assert_true(accept_text.contains("\"decision\": \"accepted\""))
+  let rejected = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+    "consumer_id": "test-runtime",
+  })
+  assert_true(mooncode_json_bool(rejected, "accepted", default=false))
+  let rejected_execution = mooncode_json_object_field_or_empty(
+    rejected, "execution",
+  )
+  assert_eq(
+    mooncode_json_string(rejected_execution, "control", default=""),
+    "reject",
+  )
+  let reject_receipts = mooncode_json_array_items(
+    rejected_execution, "review_receipts",
+  )
+  assert_eq(reject_receipts.length(), 1)
+  assert_eq(
+    mooncode_json_string(reject_receipts[0], "action", default=""),
+    "reject",
+  )
+  let reject_path = @pathx.join(
+    book_root, "wiki/reviews/mooncode/session-runtime-review/reject-cmd-runtime-reject.json",
+  )
+  assert_true(@fsx.exists(reject_path))
+  let reject_text = @fsx.read_file(reject_path)
+  assert_true(reject_text.contains("\"decision\": \"rejected\""))
+  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  assert_true(events_log.contains("\"receipt.accept\""))
+  assert_true(events_log.contains("\"receipt.reject\""))
+  assert_true(events_log.contains("\"command\":\"accept\""))
+  assert_true(events_log.contains("\"command\":\"reject\""))
+  let after = mooncode_json_object_field_or_empty(rejected, "claim_state")
+  assert_true(after.stringify().contains("\"delivered_command_count\":2"))
+}
+
+///|
 test "mooncode native runtime turn plans prompt tool calls" {
   let command : Json = {
     "protocol": "mooncode.v1",
@@ -2137,6 +2466,18 @@ test "mooncode native runtime turn plans prompt tool calls" {
   assert_eq(steer_calls.length(), 1)
   assert_eq(mooncode_json_string(steer_calls[0], "tool", default=""), "finish")
   assert_false(mooncode_runtime_turn_model_planning_allowed(steer))
+  let accept : Json = {
+    "protocol": "mooncode.v1",
+    "session_id": "session-planner",
+    "book_root": "/tmp/book",
+    "command": "accept",
+    "packet": { "command_id": "cmd-accept" },
+    "model": "test-model",
+  }
+  let accept_calls = mooncode_runtime_turn_tool_calls(accept)
+  assert_eq(accept_calls.length(), 1)
+  assert_eq(mooncode_json_string(accept_calls[0], "tool", default=""), "finish")
+  assert_false(mooncode_runtime_turn_model_planning_allowed(accept))
 }
 
 ///|

@@ -102,7 +102,11 @@ MoonClaw is strongest when you want one system to handle:
   MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can create
   and verify an executable artifact without predeclared tool calls. `steer`
   commands settle as steering context by default instead of starting a new
-  artifact-generation plan. When
+  artifact-generation plan. `accept` and `reject` commands settle
+  deterministically by writing MoonBook-owned review receipts under
+  `wiki/reviews/mooncode/<session-id>/` and emitting review-lane
+  `receipt.accept` / `receipt.reject` evidence instead of asking a model to
+  reinterpret the operator decision. When
   a queued command carries an explicit selected model, runtime-turn can also ask
   that model for bounded OpenSeek-style tool-call batches over `read`, `write`,
   `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`;

@@ -305,6 +305,11 @@ fallbacks can create MoonBook-owned tools or miniapps under `tools/` or `apps/`.
 Steer commands now settle with `steer_applied` / `steer_dropped` runtime
 events and do not start artifact generation unless explicit tool calls were
 provided.
+Accept and reject commands now settle as deterministic review decisions:
+MoonClaw writes `mooncode-review-receipt` JSON under
+`wiki/reviews/mooncode/{safe-session-id}/`, emits review-lane
+`receipt.accept` / `receipt.reject` events, and avoids model planning unless
+the command explicitly provides tool calls.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded OpenSeek-style tool-call batches over `read`, `write`, `edit`,
 `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`. Successful
