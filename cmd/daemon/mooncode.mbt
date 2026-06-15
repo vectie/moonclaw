@@ -37,7 +37,7 @@ fn mooncode_capabilities_payload() -> Json {
     "session_owner": "moondesk",
     "endpoints": [
       "/v1/mooncode/capabilities", "/v1/mooncode/sessions?book_root=<path>", "/v1/mooncode/sessions/<id>?book_root=<path>",
-      "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream",
+      "/v1/mooncode/sessions/<id>/commands", "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>",
       "/v1/mooncode/sessions/<id>/eval-report", "/v1/mooncode/sessions/<id>/package-result",
       "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
       "/v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
@@ -52,6 +52,7 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_dispatch_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path> claims the next durable command if needed, forwards it to the MoonClaw task runtime, and appends a runtime-delivered receipt.",
     "runtime_turn_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path> claims the next durable command if needed, executes explicit or deterministic native MoonCode tool calls, appends runtime events, and closes the command with a terminal runtime-completed or runtime-failed receipt.",
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
+    "stream_endpoint": "GET /v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n> replays durable book-local MoonCode events from events.jsonl with resumable sequence records.",
     "tool_execution_endpoint": "POST /v1/mooncode/sessions/<id>/tool-exec?book_root=<path> executes the native MoonCode read/edit/write/shell/moon_check/finish tool contract against the selected MoonBook root and appends command-scoped proof events.",
     "queue_only_command_mode": "POST /v1/mooncode/sessions/<id>/commands with native_dispatch_mode=queue-only appends the durable command and command.queued_for_runtime_turn event without spawning or messaging a legacy MoonClaw task; callers can then invoke runtime-turn for non-duplicating native execution.",
     "prompt_planner": "runtime-turn expands bounded prompt/steer requests for tools, scripts, miniapps, generated sites, and html apps into native write/shell/finish tool calls under MoonBook-owned tools/ or apps/ paths.",
@@ -618,44 +619,67 @@ async fn Daemon::mooncode_cancel_command_response(
 async fn Daemon::mooncode_stream(
   self : Daemon,
   session_id~ : StringView,
+  r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let session_id = session_id.to_string()
-  guard self.mooncode_sessions.get(session_id) is Some(binding) else {
+  let binding = self.mooncode_sessions.get(session_id)
+  let requested_book_root = mooncode_request_book_root(r)
+  let book_root = if requested_book_root != "" {
+    requested_book_root
+  } else {
+    match binding {
+      Some(binding) => binding.book_root
+      None => ""
+    }
+  }
+  if book_root == "" {
+    raise json_error(400, "Bad Request", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode stream requires book_root query or an existing live binding",
+        "metadata": { "session_id": session_id },
+      },
+    })
+  }
+  match binding {
+    Some(binding) => self.mooncode_sync_live_task_events(binding)
+    None => ()
+  }
+  let events = mooncode_read_jsonl(mooncode_events_path(book_root, session_id))
+  let since = mooncode_request_int(r, "since", default=0)
+  let format = mooncode_request_string(r, "format", default="jsonl")
+  if format == "sse" {
+    w.header().set("Content-Type", "text/event-stream")
+    w.header().set("Cache-Control", "no-cache")
+    w.write_header(200)
+    w.write(mooncode_stream_sse_payload(session_id, book_root, events, since~))
+  } else {
     w.header().set("Content-Type", "application/x-ndjson")
     w.write_header(200)
     w.write(
-      mooncode_event(
-        session_id~,
-        command_id="",
-        lane="runtime",
-        kind="session.idle",
-        title="MoonCode session has no MoonClaw command yet",
-        status="idle",
-        detail="No native MoonCode command has been accepted for this session in the current daemon lifetime.",
-        now=self.clock.now(),
-      ).stringify() +
-      "\n",
+      mooncode_stream_jsonl_payload(session_id, book_root, events, since~),
     )
-    return
   }
-  w.header().set("Content-Type", "application/x-ndjson")
-  w.write_header(200)
-  for event in binding.events.values() {
-    w.write(event.stringify() + "\n")
-  }
+  w.flush()
+}
+
+///|
+async fn Daemon::mooncode_sync_live_task_events(
+  self : Daemon,
+  binding : MoonCodeSessionBinding,
+) -> Unit {
   match self.by_id.get(binding.task_id) {
     Some(Running(task)) => {
       let mut persisted_task_event_count = binding.persisted_task_event_count
       for index, event in task.broadcast.values() {
         let mooncode_event = mooncode_event_from_task_stream(
-          session_id~,
+          session_id=binding.session_id,
           command_id=binding.last_command_id,
           task_id=task.id.to_string(),
           event,
           index~,
         )
-        w.write(mooncode_event.stringify() + "\n")
         if index >= binding.persisted_task_event_count {
           self.mooncode_persist_event(binding, mooncode_event)
           persisted_task_event_count = index + 1
@@ -669,7 +693,6 @@ async fn Daemon::mooncode_stream(
     }
     _ => ()
   }
-  w.flush()
 }
 
 ///|
@@ -1462,12 +1485,186 @@ async fn mooncode_read_jsonl(path : String) -> Array[Json] {
 
 ///|
 fn mooncode_request_book_root(r : @httpx.RequestReader) -> String {
+  mooncode_request_string(r, "book_root", default="")
+}
+
+///|
+fn mooncode_request_string(
+  r : @httpx.RequestReader,
+  key : String,
+  default~ : String,
+) -> String {
   let parts = r.path.split("?").to_array()
   if parts.length() < 2 {
-    return ""
+    return default
   }
   let query = @codex.parse_query_string(parts[1])
-  query.get("book_root").unwrap_or("")
+  query.get(key).unwrap_or(default)
+}
+
+///|
+fn mooncode_request_int(
+  r : @httpx.RequestReader,
+  key : String,
+  default~ : Int,
+) -> Int {
+  let value = mooncode_request_string(r, key, default="")
+  if value == "" {
+    return default
+  }
+  @strconv.parse_int(value) catch {
+    _ => default
+  }
+}
+
+///|
+fn mooncode_stream_jsonl_payload(
+  session_id : String,
+  book_root : String,
+  events : Array[Json],
+  since? : Int = 0,
+) -> String {
+  let records = mooncode_stream_records(session_id, book_root, events, since~)
+  records.map(record => record.stringify()).join("\n") + "\n"
+}
+
+///|
+fn mooncode_stream_sse_payload(
+  session_id : String,
+  book_root : String,
+  events : Array[Json],
+  since? : Int = 0,
+) -> String {
+  let chunks : Array[String] = []
+  for record in mooncode_stream_records(session_id, book_root, events, since~) {
+    chunks.push(
+      "event: \{mooncode_json_string(record, "type", default="message")}\n" +
+      "data: \{record.stringify()}\n",
+    )
+  }
+  chunks.join("\n") + "\n"
+}
+
+///|
+fn mooncode_stream_records(
+  session_id : String,
+  book_root : String,
+  events : Array[Json],
+  since? : Int = 0,
+) -> Array[Json] {
+  let latest_sequence = events.length()
+  let clamped_since = if since < 0 {
+    0
+  } else if since > latest_sequence {
+    latest_sequence
+  } else {
+    since
+  }
+  let emitted_count = latest_sequence - clamped_since
+  let records : Array[Json] = [
+    mooncode_stream_meta_record(
+      session_id,
+      book_root,
+      event_count=latest_sequence,
+      since=clamped_since,
+      emitted_count~,
+      latest_sequence~,
+    ),
+  ]
+  for index in clamped_since..<events.length() {
+    records.push(
+      mooncode_stream_event_record(
+        session_id,
+        book_root,
+        events[index],
+        sequence=index + 1,
+        since=clamped_since,
+      ),
+    )
+  }
+  records.push(
+    mooncode_stream_done_record(
+      session_id,
+      book_root,
+      latest_sequence~,
+      since=clamped_since,
+      emitted_count~,
+    ),
+  )
+  records
+}
+
+///|
+fn mooncode_stream_meta_record(
+  session_id : String,
+  book_root : String,
+  event_count~ : Int,
+  since~ : Int,
+  emitted_count~ : Int,
+  latest_sequence~ : Int,
+) -> Json {
+  {
+    "type": "meta",
+    "kind": "mooncode-stream-meta",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "event_count": event_count,
+    "since": since,
+    "emitted_count": emitted_count,
+    "latest_sequence": latest_sequence,
+    "next_since": latest_sequence,
+    "source": "moonclaw-durable-mooncode-events",
+  }
+}
+
+///|
+fn mooncode_stream_event_record(
+  session_id : String,
+  book_root : String,
+  event : Json,
+  sequence~ : Int,
+  since~ : Int,
+) -> Json {
+  {
+    "type": "event",
+    "kind": "mooncode-stream-event",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "sequence": sequence,
+    "since": since,
+    "event": event,
+    "event_id": mooncode_json_string(event, "id", default=""),
+    "event_kind": mooncode_json_string(event, "kind", default=""),
+    "event_lane": mooncode_json_string(event, "lane", default="runtime"),
+    "source": "moonclaw-durable-mooncode-events",
+  }
+}
+
+///|
+fn mooncode_stream_done_record(
+  session_id : String,
+  book_root : String,
+  latest_sequence~ : Int,
+  since~ : Int,
+  emitted_count~ : Int,
+) -> Json {
+  {
+    "type": "done",
+    "kind": "mooncode-stream-done",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "sequence": latest_sequence,
+    "since": since,
+    "emitted_count": emitted_count,
+    "next_since": latest_sequence,
+    "source": "moonclaw-durable-mooncode-events",
+  }
 }
 
 ///|
@@ -2394,6 +2591,46 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
   assert_eq(mooncode_json_string(tool, "lane", default=""), "tool")
   assert_eq(mooncode_json_string(tool, "kind", default=""), "tool_result")
   assert_eq(mooncode_json_string(tool, "detail", default=""), "read_file")
+}
+
+///|
+test "mooncode durable stream records support resumable sequence replay" {
+  let first : Json = {
+    "id": "event-1",
+    "kind": "assistant_delta",
+    "lane": "transcript",
+  }
+  let second : Json = { "id": "event-2", "kind": "tool_result", "lane": "tool" }
+  let records = mooncode_stream_records(
+    "session-stream",
+    "/tmp/book",
+    [first, second],
+    since=1,
+  )
+  assert_eq(records.length(), 3)
+  assert_eq(mooncode_json_string(records[0], "type", default=""), "meta")
+  assert_eq(mooncode_json_int(records[0], "event_count", default=0), 2)
+  assert_eq(mooncode_json_int(records[0], "emitted_count", default=0), 1)
+  assert_eq(mooncode_json_string(records[1], "type", default=""), "event")
+  assert_eq(mooncode_json_int(records[1], "sequence", default=0), 2)
+  assert_eq(mooncode_json_string(records[1], "event_id", default=""), "event-2")
+  assert_eq(mooncode_json_string(records[2], "type", default=""), "done")
+  assert_eq(mooncode_json_int(records[2], "next_since", default=0), 2)
+}
+
+///|
+test "mooncode durable stream serializes jsonl and sse envelopes" {
+  let event : Json = { "id": "event-1", "kind": "tool_result", "lane": "tool" }
+  let jsonl = mooncode_stream_jsonl_payload("session-stream", "/tmp/book", [
+    event,
+  ])
+  assert_true(jsonl.contains("\"type\":\"meta\""))
+  assert_true(jsonl.contains("\"type\":\"event\""))
+  assert_true(jsonl.contains("\"type\":\"done\""))
+  let sse = mooncode_stream_sse_payload("session-stream", "/tmp/book", [event])
+  assert_true(sse.contains("event: meta\n"))
+  assert_true(sse.contains("event: event\n"))
+  assert_true(sse.contains("data: {"))
 }
 
 ///|

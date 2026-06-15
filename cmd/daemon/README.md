@@ -269,6 +269,22 @@ Found:
 }
 ```
 
+### `GET /v1/mooncode/sessions/{id}/stream`
+
+Replays the durable MoonCode event log for a selected MoonBook session. The
+event source is book-local:
+`.moonclaw/mooncode/sessions/{safe-session-id}/events.jsonl`.
+
+Query parameters:
+
+- `book_root`: required unless the daemon has a live binding for the session.
+- `format`: `jsonl` by default, or `sse` for server-sent event envelopes.
+- `since`: last seen 1-based sequence number. The response includes events with
+  a higher sequence and returns `next_since` for resumable polling.
+
+JSONL responses contain `meta`, `event`, and `done` records. SSE responses use
+the same payloads as `event: meta`, `event: event`, and `event: done` chunks.
+
 ### `POST /v1/task/{id}/publish`
 
 Run `moon publish` in the task's working directory.
