@@ -37,6 +37,13 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-06-15`: added the first native MoonCode daemon endpoint slice for
+  Moondesk: `/v1/mooncode/capabilities`,
+  `/v1/mooncode/sessions/<id>/commands`,
+  `/v1/mooncode/sessions/<id>/stream`, and
+  `/v1/mooncode/sessions/<id>/eval-report`. Commands bind a Moondesk MoonCode
+  session to the MoonClaw task for the target book root and execute through the
+  existing MoonClaw agent/task runtime.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`

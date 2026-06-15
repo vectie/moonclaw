@@ -20,6 +20,7 @@ struct Daemon {
   home : String
   /// Pending Codex PKCE flows, keyed by state parameter
   pending_codex_auth : Map[String, PendingCodexAuth]
+  mooncode_sessions : Map[String, MoonCodeSessionBinding]
 }
 
 ///|
@@ -119,6 +120,7 @@ pub async fn Daemon::new(
     conversations: @conversation.Manager::new(home~, uuid~),
     home,
     pending_codex_auth: {},
+    mooncode_sessions: {},
   }
   daemon.load_stopped()
   Some(daemon)

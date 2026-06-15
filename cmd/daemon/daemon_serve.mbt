@@ -12,6 +12,10 @@
 /// - POST /v1/task       → `create_task`
 /// - GET  /v1/task/{id}  → `get_task`
 /// - ANY  /v1/task/{id}/... → `forward_to_task`
+/// - GET  /v1/mooncode/capabilities → `mooncode_capabilities`
+/// - POST /v1/mooncode/sessions/{id}/commands → `mooncode_accept_command`
+/// - GET  /v1/mooncode/sessions/{id}/stream → `mooncode_stream`
+/// - GET  /v1/mooncode/sessions/{id}/eval-report → `mooncode_eval_report`
 /// - GET  /v1/auth/status → `get_auth_status`
 /// - POST /v1/auth/codex/start → `start_codex_auth` (callback on port 1455)
 /// - POST /v1/auth/codex/logout → `logout_codex`
@@ -48,6 +52,14 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
             (Get, ["", "v1", "task", id]) => self.get_task(id, w)
             (Get, ["", "v1", "task", id, "events"]) =>
               self.get_task_events(id~, w)
+            (Get, ["", "v1", "mooncode", "capabilities"]) =>
+              self.mooncode_capabilities(w)
+            (Post, ["", "v1", "mooncode", "sessions", session_id, "commands"]) =>
+              self.mooncode_accept_command(group~, session_id~, r, w)
+            (Get, ["", "v1", "mooncode", "sessions", session_id, "stream"]) =>
+              self.mooncode_stream(session_id~, w)
+            (Get, ["", "v1", "mooncode", "sessions", session_id, "eval-report"]) =>
+              self.mooncode_eval_report(session_id~, w)
             (method_, ["", "v1", "task", id, .. paths]) =>
               self.forward_to_task(method_~, group~, id~, paths~, r, w)
             // Auth endpoints
