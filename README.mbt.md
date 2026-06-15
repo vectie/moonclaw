@@ -114,6 +114,11 @@ MoonClaw is strongest when you want one system to handle:
   tool/file-edit harnesses from runtime-turn, write
   `wiki/reviews/mooncode/<session-id>/eval-report.json`, and emit
   `eval_report.manifest` proof with `tool_harness` and `file_edit` results.
+  `run_tests` commands now convert the native `moon_check` execution into a
+  first-class command-scoped `test_result` proof event with pass/fail status,
+  exit status, capped output, and the original command packet, so Moondesk can
+  close test gates from MoonClaw-owned evidence instead of inferring from a
+  generic tool result.
   When
   a queued command carries an explicit selected model, runtime-turn can also ask
   that model for bounded OpenSeek-style tool-call batches over `read`, `write`,

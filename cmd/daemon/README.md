@@ -320,6 +320,11 @@ from runtime-turn, write `wiki/reviews/mooncode/{safe-session-id}/eval-report.js
 inside the selected MoonBook, and emit `eval_report.manifest` evidence with
 `tool_harness` and `file_edit` results so Moondesk can gate review/package work
 on MoonClaw-owned eval proof.
+Run-tests commands now turn native `moon_check` execution into a first-class
+command-scoped `test_result` event that carries pass/fail status, exit status,
+capped output, and the original command packet. This gives Moondesk a durable
+test proof event without asking the desktop shell to infer test state from a
+generic tool result.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded OpenSeek-style tool-call batches over `read`, `write`, `edit`,
 `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`. Successful
