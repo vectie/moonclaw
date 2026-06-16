@@ -450,12 +450,7 @@ test "Event::Roundtrip/PreToolCall" {
     PreToolCall(tc) => {
       inspect(tc.id, content="tool_call_1")
       inspect(tc.name, content="example_tool")
-      inspect(
-        tc.arguments,
-        content=(
-          #|Some("{\"param1\": \"value1\", \"param2\": 123}")
-        ),
-      )
+      assert_eq(tc.arguments, Some("{\"param1\": \"value1\", \"param2\": 123}"))
     }
     _ => fail("Expected PreToolCall")
   }
@@ -479,12 +474,10 @@ test "Event::Roundtrip/PostToolCall/Ok" {
     PostToolCall(tc, result~, rendered~) => {
       inspect(tc.id, content="tool_call_1")
       inspect(tc.name, content="example_tool")
-      inspect(
-        result,
-        content=(
-          #|Ok(Object({"output": String("success")}))
-        ),
-      )
+      match result {
+        Ok(json) => assert_eq(json.stringify(), "{\"output\":\"success\"}")
+        Err(_) => fail("Expected successful tool result")
+      }
       inspect(rendered, content="Tool output: success")
     }
     _ => fail("Expected PostToolCall")
@@ -508,12 +501,11 @@ test "Event::Roundtrip/PostToolCall/Err" {
   match roundtripped {
     PostToolCall(tc, result~, rendered~) => {
       inspect(tc.id, content="tool_call_2")
-      inspect(
-        result,
-        content=(
-          #|Err(Object({"error": String("Something went wrong")}))
-        ),
-      )
+      match result {
+        Err(json) =>
+          assert_eq(json.stringify(), "{\"error\":\"Something went wrong\"}")
+        Ok(_) => fail("Expected failed tool result")
+      }
       inspect(rendered, content="Error occurred")
     }
     _ => fail("Expected PostToolCall")
@@ -528,13 +520,7 @@ test "Event::Roundtrip/SystemPromptSet/Some" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    SystemPromptSet(msg) =>
-      inspect(
-        msg,
-        content=(
-          #|Some("You are a helpful assistant.")
-        ),
-      )
+    SystemPromptSet(msg) => assert_eq(msg, Some("You are a helpful assistant."))
     _ => fail("Expected SystemPromptSet")
   }
 }
@@ -590,12 +576,7 @@ test "Event::Roundtrip/ToolAdded" {
     ToolAdded(desc) => {
       inspect(desc.name, content="sample_tool")
       inspect(desc.description, content="A sample tool")
-      inspect(
-        desc.schema.to_json(),
-        content=(
-          #|Object({"type": String("object")})
-        ),
-      )
+      assert_eq(desc.schema.to_json().stringify(), "{\"type\":\"object\"}")
     }
     _ => fail("Expected ToolAdded")
   }
