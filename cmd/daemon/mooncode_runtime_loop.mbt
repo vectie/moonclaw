@@ -59,6 +59,10 @@ async fn Daemon::mooncode_runtime_loop_execute(
   let mut failed_turn_count = 0
   let mut stopped_by = "max_turns"
   for index in 0..<max_turns {
+    if @async.is_being_cancelled() {
+      stopped_by = "cancelled"
+      break
+    }
     let turn = self.mooncode_runtime_turn_execute(session_id, book_root, {
       "consumer_id": consumer_id,
       "runtime_loop": true,

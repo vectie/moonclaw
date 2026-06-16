@@ -93,6 +93,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let item = claimed[0]
   let command = mooncode_json_object_field_or_empty(item, "command")
   let command_id = mooncode_json_string(item, "command_id", default="")
+  let web_search = mooncode_command_web_search(command)
   let report = mooncode_validate_command_body(session_id, command)
   let now = self.clock.now()
   let started = mooncode_event(
@@ -300,6 +301,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
         "protocol": "mooncode.v1",
         "session_id": session_id,
         "command_id": command_id,
+        "web_search": web_search,
         "control": mooncode_json_string(command, "command", default="prompt"),
         "message": if accepted {
           "MoonClaw native runtime turn completed `\{mooncode_json_string(command, "command", default="prompt")}`"
@@ -348,6 +350,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
         "protocol": "mooncode.v1",
         "session_id": session_id,
         "command_id": command_id,
+        "web_search": web_search,
         "control": "invalid",
         "message": mooncode_json_string(
           report,
@@ -1812,6 +1815,9 @@ fn mooncode_runtime_turn_receipt(
     "session_id": session_id,
     "book_root": book_root,
     "command_id": command_id,
+    "web_search": mooncode_command_web_search(
+      mooncode_json_object_field_or_empty(claim_item, "command"),
+    ),
     "status": if accepted {
       "runtime-completed"
     } else {
@@ -2306,6 +2312,7 @@ async test "mooncode native runtime turn executes explicit tool calls" (
     "session_id": session_id,
     "book_root": book_root,
     "command": "prompt",
+    "web_search": true,
     "packet": { "command_id": command_id },
     "runtime_tool_calls": [
       { "tool": "read", "arguments": { "path": "README.md" } },
@@ -2351,6 +2358,7 @@ async test "mooncode native runtime turn executes explicit tool calls" (
   assert_true(mooncode_json_bool(result, "accepted", default=false))
   assert_eq(mooncode_json_string(result, "command_id", default=""), command_id)
   let execution = mooncode_json_object_field_or_empty(result, "execution")
+  assert_true(mooncode_json_bool(execution, "web_search", default=false))
   let tool_results = mooncode_json_array_items(execution, "tool_results")
   assert_eq(tool_results.length(), 3)
   assert_true(execution.stringify().contains("turn-ok"))
@@ -2359,6 +2367,7 @@ async test "mooncode native runtime turn executes explicit tool calls" (
   )
   assert_true(dispatch_log.contains("\"runtime-claimed\""))
   assert_true(dispatch_log.contains("\"runtime-completed\""))
+  assert_true(dispatch_log.contains("\"web_search\":true"))
   let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
   assert_true(events_log.contains("\"runtime.turn_started\""))
   assert_true(events_log.contains("\"tool_result\""))

@@ -48,6 +48,11 @@ fn mooncode_capabilities_payload() -> Json {
       "read", "edit", "write", "apply_patch", "revert_patch", "shell", "moon_check",
       "finish",
     ],
+    "event_lifecycle": [
+      "PreConversation", "AssistantMessage", "PreToolCall", "PostToolCall", "PostConversation",
+    ],
+    "first_class_events": ["Cancelled", "Failed", "ContextPruned", "Pruned"],
+    "command_scoped_web_search": "MoonCode commands persist web_search intent in commands.jsonl and runtime receipts so research work does not depend on global defaults.",
     "execution_boundary": "MoonClaw accepts Moondesk MoonCode command packets and executes them through the existing MoonClaw task/agent runtime for the target book root.",
     "package_result_endpoint": "POST /v1/mooncode/sessions/<id>/package-result accepts package_built/package_verified proof packets for MoonBook-owned executable artifacts; native package manifests also promote generated source files under portable/app-tool/mooncode/<session>/sources/<command>/ with hash metadata.",
     "durable_session_store": ".moonclaw/mooncode/sessions/<session-id>/session.json plus commands.jsonl, runtime-dispatches.jsonl, events.jsonl, and package-results.jsonl under the selected book root.",
@@ -87,8 +92,27 @@ async fn Daemon::mooncode_list_sessions(
 ) -> Unit {
   let book_root = mooncode_request_book_root(r)
   let records = self.mooncode_session_records(book_root)
+  let format = mooncode_request_string(r, "format", default="")
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
+  if format == "listing" {
+    w.write(
+      (
+        {
+          "kind": "mooncode-session-listing",
+          "protocol": "mooncode.v1",
+          "owner": "moonclaw",
+          "book_root": book_root,
+          "durable_store": mooncode_sessions_root(book_root),
+          "durable_store_loaded": book_root != "",
+          "session_count": records.length(),
+          "sessions": Json::array(
+            records.map(record => mooncode_session_listing_row(record)),
+          ),
+        } : Json).stringify(indent=2),
+    )
+    return
+  }
   w.write(
     (
       {
@@ -481,11 +505,7 @@ async fn Daemon::mooncode_forward_command_to_task(
   let response = task.create_message(
     @server.CreateMessageRequest::new(
       message=@ai.user_message(content=text),
-      web_search=mooncode_json_bool(
-        mooncode_json_object_field_or_empty(body, "payload"),
-        "web_search",
-        default=false,
-      ),
+      web_search=mooncode_command_web_search(body),
     ),
   )
   let response_json = response.to_json()
@@ -843,11 +863,7 @@ async fn Daemon::mooncode_ensure_task(
     group~,
     name="MoonCode - \{session_id}",
     model=model_value,
-    web_search=mooncode_json_bool(
-      mooncode_json_object_field_or_empty(body, "payload"),
-      "web_search",
-      default=false,
-    ),
+    web_search=mooncode_command_web_search(body),
     cwd=book_root,
   )
   task_lock.running = Some(task)
@@ -1002,6 +1018,144 @@ async fn Daemon::mooncode_session_record(
         source="sidecar",
       ),
     )
+  }
+}
+
+///|
+fn mooncode_session_listing_row(record : Json) -> Json {
+  let session_id = mooncode_json_string(record, "session_id", default="")
+  let book_root = mooncode_json_string(record, "book_root", default="")
+  let source = mooncode_json_string(record, "source", default="")
+  let last_command_id = mooncode_session_listing_last_command_id(record)
+  let command_count = mooncode_json_int(record, "command_log_count", default=0)
+  let event_count = mooncode_json_int(record, "event_log_count", default=0)
+  let package_result_count = mooncode_json_int(
+    record,
+    "package_result_log_count",
+    default=0,
+  )
+  let status = if mooncode_json_bool(
+      record,
+      "live_binding_ready",
+      default=false,
+    ) {
+    "live"
+  } else if mooncode_json_string(record, "resume_state", default="") ==
+    "durable" {
+    "durable"
+  } else {
+    "unknown"
+  }
+  {
+    "id": session_id,
+    "title": mooncode_session_listing_title(record),
+    "updated_at": mooncode_session_listing_updated_at(record),
+    "updated_at_ms": null,
+    "workspace_id": session_id,
+    "workspace_name": mooncode_session_listing_workspace_name(book_root),
+    "workspace_root": book_root,
+    "book_root": book_root,
+    "status": status,
+    "model": mooncode_json_string(record, "model", default=""),
+    "last_message": mooncode_session_listing_last_message(record),
+    "last_command_id": last_command_id,
+    "command_count": command_count,
+    "event_count": event_count,
+    "package_result_count": package_result_count,
+    "session_url": "/v1/mooncode/sessions/\{session_id}?book_root=<path>",
+    "stream_url": "/v1/mooncode/sessions/\{session_id}/stream?book_root=<path>&format=jsonl",
+    "source": if source == "" {
+      "moonclaw"
+    } else {
+      source
+    },
+    "protocol": "mooncode.v1",
+    "component": "mooncode",
+  }
+}
+
+///|
+fn mooncode_session_listing_title(record : Json) -> String {
+  let last_message = mooncode_session_listing_last_message(record)
+  if last_message != "" {
+    return mooncode_session_listing_trim_title(last_message)
+  }
+  let last_command_id = mooncode_session_listing_last_command_id(record)
+  if last_command_id != "" {
+    return last_command_id
+  }
+  let session_id = mooncode_json_string(record, "session_id", default="")
+  if session_id == "" {
+    "Untitled MoonCode Session"
+  } else {
+    session_id
+  }
+}
+
+///|
+fn mooncode_session_listing_last_message(record : Json) -> String {
+  let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
+  let text = mooncode_json_string(snapshot, "last_text", default="")
+  if text != "" {
+    return text
+  }
+  let command = mooncode_json_object_field_or_empty(snapshot, "last_command")
+  let command_text = mooncode_json_string(command, "text", default="")
+  if command_text != "" {
+    return command_text
+  }
+  mooncode_session_listing_last_command_id(record)
+}
+
+///|
+fn mooncode_session_listing_last_command_id(record : Json) -> String {
+  let value = mooncode_json_string(record, "last_command_id", default="")
+  if value != "" {
+    return value
+  }
+  let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
+  mooncode_json_string(snapshot, "last_command_id", default="")
+}
+
+///|
+fn mooncode_session_listing_updated_at(record : Json) -> Json {
+  match record {
+    Json::Object(object) =>
+      match object.get("last_updated") {
+        Some(value) => value
+        None => {
+          let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
+          match snapshot {
+            Json::Object(snapshot_object) =>
+              snapshot_object.get("last_updated").unwrap_or(null)
+            _ => null
+          }
+        }
+      }
+    _ => null
+  }
+}
+
+///|
+fn mooncode_session_listing_workspace_name(book_root : String) -> String {
+  if book_root == "" {
+    return ""
+  }
+  let name = @pathx.basename(book_root)
+  if name == "" || name == "/" {
+    book_root
+  } else {
+    name.to_string()
+  }
+}
+
+///|
+fn mooncode_session_listing_trim_title(text : String) -> String {
+  let trimmed = text.trim()
+  if trimmed.length() <= 80 {
+    trimmed.to_string()
+  } else {
+    trimmed[:80].to_string() + "..."
   }
 }
 
@@ -1262,6 +1416,9 @@ fn mooncode_runtime_dispatch_receipt(
     "session_id": session_id,
     "book_root": book_root,
     "command_id": command_id,
+    "web_search": mooncode_command_web_search(
+      mooncode_json_object_field_or_empty(claim_item, "command"),
+    ),
     "status": status,
     "dispatch_mode": "moonclaw-native-runtime-dispatch",
     "claim_id": claim_id,
@@ -1890,6 +2047,8 @@ fn mooncode_event_from_task_stream(
         "title": mooncode_task_event_title(msg),
         "status": mooncode_task_event_status(msg),
         "detail": mooncode_task_event_detail(desc_json),
+        "rendered_text": mooncode_task_event_rendered_text(desc_json),
+        "structured_result": mooncode_task_event_structured_result(desc_json),
         "created_at": created,
         "source": "moonclaw-task-stream",
         "moonclaw_event_id": id,
@@ -1934,6 +2093,7 @@ async fn Daemon::mooncode_persist_command(
       "session_id": binding.session_id,
       "command_id": mooncode_command_id(body),
       "created_at": self.clock.now(),
+      "web_search": mooncode_command_web_search(body),
       "command": body,
     },
   )
@@ -2170,8 +2330,10 @@ fn mooncode_safe_session_id(session_id : String) -> String {
 ///|
 fn mooncode_task_event_lane(msg : String) -> String {
   match msg {
+    "PreConversation" | "PostConversation" => "runtime"
     "AssistantMessage" | "AssistantMessageDelta" => "transcript"
     "PreToolCall" | "PostToolCall" => "tool"
+    "ContextPruned" | "Pruned" => "runtime"
     "Cancelled" | "Failed" => "review"
     _ => "runtime"
   }
@@ -2180,10 +2342,14 @@ fn mooncode_task_event_lane(msg : String) -> String {
 ///|
 fn mooncode_task_event_kind(msg : String) -> String {
   match msg {
+    "PreConversation" => "conversation_started"
     "AssistantMessageDelta" => "assistant_delta"
     "AssistantMessage" => "assistant_message"
     "PreToolCall" => "tool_call"
     "PostToolCall" => "tool_result"
+    "PostConversation" => "conversation_finished"
+    "ContextPruned" => "context_pruned"
+    "Pruned" => "context_event_pruned"
     "Cancelled" => "agent_aborted"
     "Failed" => "agent_aborted"
     _ => "runtime.\{msg}"
@@ -2193,10 +2359,14 @@ fn mooncode_task_event_kind(msg : String) -> String {
 ///|
 fn mooncode_task_event_title(msg : String) -> String {
   match msg {
+    "PreConversation" => "Conversation started"
     "AssistantMessageDelta" => "Assistant streaming"
     "AssistantMessage" => "Assistant message"
     "PreToolCall" => "Tool call started"
     "PostToolCall" => "Tool result"
+    "PostConversation" => "Conversation finished"
+    "ContextPruned" => "Context pruned"
+    "Pruned" => "Context event pruned"
     "Cancelled" => "MoonClaw task cancelled"
     "Failed" => "MoonClaw task failed"
     _ => "MoonClaw runtime event"
@@ -2206,7 +2376,7 @@ fn mooncode_task_event_title(msg : String) -> String {
 ///|
 fn mooncode_task_event_status(msg : String) -> String {
   match msg {
-    "AssistantMessageDelta" | "PreToolCall" => "running"
+    "PreConversation" | "AssistantMessageDelta" | "PreToolCall" => "running"
     "Cancelled" => "cancelled"
     "Failed" => "failed"
     _ => "done"
@@ -2217,13 +2387,39 @@ fn mooncode_task_event_status(msg : String) -> String {
 fn mooncode_task_event_detail(desc : Json) -> String {
   let msg = mooncode_json_string(desc, "msg", default="")
   match msg {
+    "PreConversation" => "MoonClaw task conversation started"
     "AssistantMessageDelta" | "AssistantMessage" =>
       mooncode_json_string(desc, "content", default="")
     "PreToolCall" | "PostToolCall" =>
       mooncode_json_string(desc, "name", default="tool")
+    "PostConversation" => "MoonClaw task conversation finished"
+    "ContextPruned" =>
+      "Context pruned from \{mooncode_json_int(desc, "origin_token_count", default=0)} to \{mooncode_json_int(desc, "pruned_token_count", default=0)} tokens"
+    "Pruned" => "Pruned event \{mooncode_json_string(desc, "id", default="")}"
     "Failed" => "MoonClaw task failed"
     "Cancelled" => "MoonClaw task was cancelled"
     _ => msg
+  }
+}
+
+///|
+fn mooncode_task_event_rendered_text(desc : Json) -> String {
+  mooncode_json_string(desc, "text", default="")
+}
+
+///|
+fn mooncode_task_event_structured_result(desc : Json) -> Json {
+  match desc {
+    Json::Object(object) =>
+      match object.get("result") {
+        Some(value) => value
+        None =>
+          match object.get("error") {
+            Some(value) => value
+            None => Json::object({})
+          }
+      }
+    _ => Json::object({})
   }
 }
 
@@ -2401,6 +2597,16 @@ fn mooncode_book_root(body : Json) -> String {
 }
 
 ///|
+fn mooncode_command_web_search(body : Json) -> Bool {
+  let payload = mooncode_json_object_field_or_empty(body, "payload")
+  mooncode_json_bool(
+    body,
+    "web_search",
+    default=mooncode_json_bool(payload, "web_search", default=false),
+  )
+}
+
+///|
 fn mooncode_json_string(json : Json, key : String, default~ : String) -> String {
   match json {
     Json::Object(object) =>
@@ -2493,6 +2699,10 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("\"review_receipts\""))
   assert_true(payload.contains("native_dispatch_mode=queue-only"))
   assert_true(payload.contains("\"prompt_planner\""))
+  assert_true(payload.contains("\"event_lifecycle\""))
+  assert_true(payload.contains("\"ContextPruned\""))
+  assert_true(payload.contains("\"Pruned\""))
+  assert_true(payload.contains("\"command_scoped_web_search\""))
 }
 
 ///|
@@ -2576,6 +2786,7 @@ async test "mooncode queue-only command persists durable command without task" (
       "session_id": session_id,
       "book_root": book_root,
       "command": "run_tests",
+      "web_search": true,
       "native_dispatch_mode": "queue-only",
       "packet": { "command_id": "cmd-queue-only" },
     },
@@ -2596,6 +2807,7 @@ async test "mooncode queue-only command persists durable command without task" (
   )
   assert_true(command_log.contains("\"cmd-queue-only\""))
   assert_true(command_log.contains("\"native_dispatch_mode\":\"queue-only\""))
+  assert_true(command_log.contains("\"web_search\":true"))
   let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
   assert_true(events_log.contains("\"command.queued_for_runtime_turn\""))
 }
@@ -2647,7 +2859,7 @@ test "mooncode package result rejects missing path and unsupported event" {
 
 ///|
 test "mooncode stream normalizes moonclaw task events into lanes" {
-  let assistant = mooncode_event_from_task_stream(
+  let pre_conversation = mooncode_event_from_task_stream(
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
@@ -2655,18 +2867,20 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(42L),
-        @event.AssistantMessageDelta("working"),
+        @event.PreConversation,
       ),
     ),
     index=0,
   )
-  assert_eq(mooncode_json_string(assistant, "lane", default=""), "transcript")
   assert_eq(
-    mooncode_json_string(assistant, "kind", default=""),
-    "assistant_delta",
+    mooncode_json_string(pre_conversation, "kind", default=""),
+    "conversation_started",
   )
-  assert_eq(mooncode_json_string(assistant, "detail", default=""), "working")
-  let tool = mooncode_event_from_task_stream(
+  assert_eq(
+    mooncode_json_string(pre_conversation, "status", default=""),
+    "running",
+  )
+  let assistant = mooncode_event_from_task_stream(
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
@@ -2674,6 +2888,67 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(43L),
+        @event.AssistantMessageDelta("working"),
+      ),
+    ),
+    index=1,
+  )
+  assert_eq(mooncode_json_string(assistant, "lane", default=""), "transcript")
+  assert_eq(
+    mooncode_json_string(assistant, "kind", default=""),
+    "assistant_delta",
+  )
+  assert_eq(mooncode_json_string(assistant, "detail", default=""), "working")
+  let assistant_message = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(43L),
+        @event.AssistantMessage(usage=None, tool_calls=[], "final answer"),
+      ),
+    ),
+    index=2,
+  )
+  assert_eq(
+    mooncode_json_string(assistant_message, "kind", default=""),
+    "assistant_message",
+  )
+  assert_eq(
+    mooncode_json_string(assistant_message, "status", default=""),
+    "done",
+  )
+  assert_eq(
+    mooncode_json_string(assistant_message, "detail", default=""),
+    "final answer",
+  )
+  let pre_tool = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(44L),
+        @event.PreToolCall(@ai.tool_call(id="tc-1", name="read_file")),
+      ),
+    ),
+    index=3,
+  )
+  assert_eq(mooncode_json_string(pre_tool, "lane", default=""), "tool")
+  assert_eq(mooncode_json_string(pre_tool, "kind", default=""), "tool_call")
+  assert_eq(mooncode_json_string(pre_tool, "status", default=""), "running")
+  assert_eq(mooncode_json_string(pre_tool, "detail", default=""), "read_file")
+  let tool = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(45L),
         @event.PostToolCall(
           @ai.tool_call(id="tc-1", name="read_file"),
           result=Ok({ "ok": true }),
@@ -2681,11 +2956,114 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
         ),
       ),
     ),
-    index=1,
+    index=4,
   )
   assert_eq(mooncode_json_string(tool, "lane", default=""), "tool")
   assert_eq(mooncode_json_string(tool, "kind", default=""), "tool_result")
   assert_eq(mooncode_json_string(tool, "detail", default=""), "read_file")
+  assert_eq(mooncode_json_string(tool, "rendered_text", default=""), "ok")
+  assert_true(
+    mooncode_json_object_field_or_empty(tool, "structured_result")
+    .stringify()
+    .contains("\"ok\":true"),
+  )
+  let pruned = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(46L),
+        @event.ContextPruned(origin_token_count=100, pruned_token_count=40),
+      ),
+    ),
+    index=5,
+  )
+  assert_eq(mooncode_json_string(pruned, "lane", default=""), "runtime")
+  assert_eq(mooncode_json_string(pruned, "kind", default=""), "context_pruned")
+  assert_eq(
+    mooncode_json_string(pruned, "detail", default=""),
+    "Context pruned from 100 to 40 tokens",
+  )
+  let pruned_event = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(47L),
+        @event.Pruned(id=@uuid.nil),
+      ),
+    ),
+    index=6,
+  )
+  assert_eq(
+    mooncode_json_string(pruned_event, "kind", default=""),
+    "context_event_pruned",
+  )
+  let cancelled = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(48L),
+        @event.Cancelled,
+      ),
+    ),
+    index=7,
+  )
+  assert_eq(mooncode_json_string(cancelled, "lane", default=""), "review")
+  assert_eq(
+    mooncode_json_string(cancelled, "kind", default=""),
+    "agent_aborted",
+  )
+  assert_eq(mooncode_json_string(cancelled, "status", default=""), "cancelled")
+  let failed = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(49L),
+        @event.Failed({ "code": "boom" }),
+      ),
+    ),
+    index=8,
+  )
+  assert_eq(mooncode_json_string(failed, "lane", default=""), "review")
+  assert_eq(mooncode_json_string(failed, "kind", default=""), "agent_aborted")
+  assert_eq(mooncode_json_string(failed, "status", default=""), "failed")
+  assert_true(
+    mooncode_json_object_field_or_empty(failed, "structured_result")
+    .stringify()
+    .contains("\"code\":\"boom\""),
+  )
+  let post_conversation = mooncode_event_from_task_stream(
+    session_id="session-demo",
+    command_id="cmd-1",
+    task_id="task-1",
+    @server.Moonclaw(
+      @event.Event::new(
+        id=@uuid.nil,
+        created=@clock.Timestamp::from_ms(50L),
+        @event.PostConversation,
+      ),
+    ),
+    index=9,
+  )
+  assert_eq(
+    mooncode_json_string(post_conversation, "kind", default=""),
+    "conversation_finished",
+  )
+  assert_eq(
+    mooncode_json_string(post_conversation, "status", default=""),
+    "done",
+  )
 }
 
 ///|
@@ -2854,6 +3232,25 @@ async test "mooncode durable sidecars list and show without live binding" (
   assert_true(text.contains("\"event_log_count\":1"))
   assert_true(text.contains("\"package_result_log_count\":1"))
   assert_true(text.contains("\"live_binding_ready\":false"))
+  let listing = mooncode_session_listing_row(record)
+  assert_eq(mooncode_json_string(listing, "id", default=""), "session/resume:1")
+  assert_eq(mooncode_json_string(listing, "status", default=""), "durable")
+  assert_eq(
+    mooncode_json_string(listing, "workspace_root", default=""),
+    book_root,
+  )
+  assert_eq(
+    mooncode_json_string(listing, "last_command_id", default=""),
+    "cmd-resume",
+  )
+  assert_eq(mooncode_json_int(listing, "command_count", default=0), 1)
+  assert_eq(mooncode_json_int(listing, "event_count", default=0), 1)
+  assert_eq(mooncode_json_int(listing, "package_result_count", default=0), 1)
+  assert_true(
+    mooncode_json_string(listing, "stream_url", default="").contains(
+      "format=jsonl",
+    ),
+  )
 }
 
 ///|

@@ -269,6 +269,24 @@ Found:
 }
 ```
 
+### `GET /v1/mooncode/sessions`
+
+Lists MoonCode sessions for a selected MoonBook root. Pass
+`book_root=<path>` to replay the durable book-local sidecar under
+`.moonclaw/mooncode/sessions/`. The default response returns full
+`mooncode-session-record` entries for diagnostics and recovery.
+
+Query parameters:
+
+- `book_root`: optional, but required to include durable sidecar sessions after
+  daemon restart.
+- `format`: omit for full diagnostic records, or use `listing` for compact
+  OpenSeek-style rows suited to Moondesk session lists.
+
+`format=listing` preserves the same session ids and stream URLs while projecting
+only stable desktop fields such as `id`, `title`, `workspace_root`, `status`,
+`model`, `last_message`, command/event counts, `session_url`, and `stream_url`.
+
 ### `GET /v1/mooncode/sessions/{id}/stream`
 
 Replays the durable MoonCode event log for a selected MoonBook session. The
