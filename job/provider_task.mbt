@@ -251,6 +251,16 @@ fn provider_task_result_task_id(task : ProviderTaskSpec) -> String {
 }
 
 ///|
+fn provider_task_cancelled_error() -> String {
+  "Provider task cancelled before completion"
+}
+
+///|
+fn provider_task_cancellation_requested() -> Bool {
+  @async.is_being_cancelled()
+}
+
+///|
 fn provider_task_spec_from_metadata(metadata : Json) -> ProviderTaskSpec? {
   fn decode(value : Json) -> ProviderTaskSpec? {
     let decoded : ProviderTaskSpec = @json.from_json(value) catch {
@@ -991,6 +1001,12 @@ async fn provider_task_local_source_notes(
 ) -> Array[String] {
   let notes : Array[String] = []
   for i = 0; i < local_paths.length(); i = i + 1 {
+    if provider_task_cancellation_requested() {
+      notes.push(
+        "L\{i + 1}: status=cancelled reason=\{provider_task_cancelled_error()}",
+      )
+      return notes
+    }
     let original = local_paths[i]
     let mounted_alias = if @pathx.is_absolute(original) {
       source_hint_mounted_relative_path(original)
@@ -1111,6 +1127,12 @@ async fn provider_task_web_source_notes(
   if web_search_enabled {
     let search_tool = @web_search.new()
     for query in provider_task_limited_strings(web_queries, 4) {
+      if provider_task_cancellation_requested() {
+        notes.push(
+          "W\{next_id}: status=cancelled tool=web_search reason=\{provider_task_cancelled_error()}",
+        )
+        return notes
+      }
       let result = search_tool.call({ "query": query, "max_results": 5 })
       match result {
         Ok(output) => {
@@ -1159,6 +1181,12 @@ async fn provider_task_web_source_notes(
   if web_fetch_enabled {
     let fetch_tool = @web_fetch.new()
     for url in provider_task_limited_strings(fetch_urls, 6) {
+      if provider_task_cancellation_requested() {
+        notes.push(
+          "W\{next_id}: status=cancelled tool=web_fetch reason=\{provider_task_cancelled_error()}",
+        )
+        return notes
+      }
       let result = fetch_tool.call({ "url": url, "max_chars": 1800 })
       match result {
         Ok(output) => {
@@ -2284,6 +2312,9 @@ async fn finalize_provider_task_subplan_execution(
     ..context,
     workspace_root: artifact_root,
   }
+  if provider_task_cancellation_requested() {
+    return Some(Err(provider_task_cancelled_error()))
+  }
   let artifacts : Array[String] = []
   provider_task_collect_artifacts_from_json(child_outputs, artifacts)
   for path in provider_task_target_artifacts(artifact_root, task) {
@@ -2308,6 +2339,9 @@ async fn finalize_provider_task_subplan_execution(
   }
   let result = align_provider_task_result(artifact_root, task, result)
   let result = enforce_provider_task_result_semantics(task, context, result)
+  if provider_task_cancellation_requested() {
+    return Some(Err(provider_task_cancelled_error()))
+  }
   let outcome = match
     persist_provider_task_result(command, request, task, result) {
     Ok(outcome) => outcome
@@ -2374,6 +2408,9 @@ async fn run_provider_task_analysis_runner(
     ..context,
     workspace_root: artifact_root,
   }
+  if provider_task_cancellation_requested() {
+    return Err(provider_task_cancelled_error())
+  }
   let contract = provider_task_tool_contract(request)
   if provider_task_can_complete_from_research_artifacts(task) {
     let research_artifacts = provider_task_existing_research_artifacts(
@@ -2415,6 +2452,9 @@ async fn run_provider_task_analysis_runner(
     }
   }
   let web_tools_enabled = request.enable_tools && request.web_search
+  if provider_task_cancellation_requested() {
+    return Err(provider_task_cancelled_error())
+  }
   if provider_task_can_complete_from_source_inventory(task) {
     let source_pages = provider_task_existing_source_pages(artifact_root)
     if !source_pages.is_empty() {
@@ -2474,6 +2514,9 @@ async fn run_provider_task_analysis_runner(
       )
     None => ()
   }
+  if provider_task_cancellation_requested() {
+    return Err(provider_task_cancelled_error())
+  }
   let use_local_tool_loop = provider_task_requires_local_tool_loop(task)
   let preferred_skills = provider_task_preferred_skills(request)
   let loaded_skills = loaded_skills_prompt(
@@ -2498,6 +2541,9 @@ async fn run_provider_task_analysis_runner(
       request.step_metadata,
       !use_local_tool_loop,
     ),
+  }
+  if provider_task_cancellation_requested() {
+    return Err(provider_task_cancelled_error())
   }
   let raw_execution = inner_runner(delegated_request)
   let raw_execution = match raw_execution {
@@ -2553,6 +2599,9 @@ async fn run_provider_task_analysis_runner(
       return Err(error)
     }
   }
+  if provider_task_cancellation_requested() {
+    return Err(provider_task_cancelled_error())
+  }
   match
     provider_task_breadth_envelope_from_content(
       batch,
@@ -2591,6 +2640,9 @@ async fn run_provider_task_analysis_runner(
   }
   let result = align_provider_task_result(artifact_root, task, result)
   let result = enforce_provider_task_result_semantics(task, context, result)
+  if provider_task_cancellation_requested() {
+    return Err(provider_task_cancelled_error())
+  }
   let outcome = match
     persist_provider_task_result(command, request, task, result) {
     Ok(outcome) => outcome
