@@ -1,6 +1,5 @@
 #include "moonbit.h"
 #include <errno.h>
-#include <fcntl.h>
 #include <sys/ioctl.h>
 #if defined(__APPLE__)
 #include <sys/ttycom.h>
@@ -30,11 +29,6 @@ moonbit_moonclaw_tty_get_win_size(int32_t *size) {
 MOONBIT_FFI_EXPORT
 int32_t
 moonbit_moonclaw_tty_set_raw_mode(int32_t fd) {
-  int32_t flags = fcntl(fd, F_GETFL);
-  flags |= O_NONBLOCK;
-  if (fcntl(fd, F_SETFL, flags) == -1) {
-    return errno;
-  }
   struct termios term;
   if (tcgetattr(fd, &term) == -1) {
     return errno;
