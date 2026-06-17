@@ -173,7 +173,7 @@ fn mooncode_runtime_turn_commit_result(
 ) -> Json {
   {
     "kind": "mooncode-commit-result",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "event": if accepted {
       "commit_created"
     } else {
@@ -212,7 +212,7 @@ fn mooncode_runtime_turn_commit_event(
   let commit_sha = mooncode_json_string(commit_result, "commit_sha", default="")
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-commit-\{now}",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": mooncode_book_root(command),
     "command_id": command_id,

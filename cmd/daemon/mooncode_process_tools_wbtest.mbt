@@ -1,0 +1,271 @@
+///|
+async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-XXXXXX"),
+  )
+  let execution = mooncode_execute_tool_call(
+    "session-shell",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-shell",
+      "book_root": book_root,
+      "tool": "shell",
+      "command_id": "cmd-shell",
+      "arguments": { "cmd": "pwd", "timeout_ms": 5000 },
+    },
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  assert_true(mooncode_json_bool(result, "ok", default=false))
+  assert_true(
+    mooncode_json_string(result, "output", default="").contains(book_root),
+  )
+}
+
+///|
+async test "mooncode moon_check records reusable watcher state" (t : @test.Test) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-check-watch-XXXXXX"),
+  )
+  mooncode_prepare_eval_fixture(book_root)
+  let first = mooncode_execute_tool_call(
+    "session-check-watch",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-check-watch",
+      "book_root": book_root,
+      "tool": "moon_check",
+      "command_id": "cmd-check-start",
+      "arguments": { "timeout_ms": 30000 },
+    },
+    now=@clock.Timestamp::from_ms(61L),
+  )
+  let first_result = mooncode_json_object_field_or_empty(first, "result")
+  assert_true(mooncode_json_bool(first_result, "ok", default=false))
+  let first_metadata = mooncode_json_object_field_or_empty(
+    first_result, "metadata",
+  )
+  assert_eq(
+    mooncode_json_string(first_metadata, "watcher", default=""),
+    "started",
+  )
+  assert_eq(
+    mooncode_json_string(first_metadata, "status", default=""),
+    "running",
+  )
+  assert_eq(mooncode_json_int(first_metadata, "seq", default=0), 1)
+  assert_true(@fsx.exists(mooncode_moon_check_state_path(book_root)))
+  let second = mooncode_execute_tool_call(
+    "session-check-watch",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-check-watch",
+      "book_root": book_root,
+      "tool": "moon_check",
+      "command_id": "cmd-check-reuse",
+      "arguments": { "timeout_ms": 30000 },
+    },
+    now=@clock.Timestamp::from_ms(62L),
+  )
+  let second_metadata = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(second, "result"),
+    "metadata",
+  )
+  assert_eq(
+    mooncode_json_string(second_metadata, "watcher", default=""),
+    "reused",
+  )
+  assert_eq(mooncode_json_int(second_metadata, "seq", default=0), 2)
+  let third = mooncode_execute_tool_call(
+    "session-check-watch",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-check-watch",
+      "book_root": book_root,
+      "tool": "moon_check",
+      "command_id": "cmd-check-replace",
+      "arguments": { "target": ".", "timeout_ms": 30000 },
+    },
+    now=@clock.Timestamp::from_ms(63L),
+  )
+  let third_metadata = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(third, "result"),
+    "metadata",
+  )
+  assert_eq(
+    mooncode_json_string(third_metadata, "watcher", default=""),
+    "replaced",
+  )
+  assert_eq(mooncode_json_int(third_metadata, "restart_count", default=0), 1)
+  assert_eq(mooncode_json_int(third_metadata, "seq", default=0), 3)
+}
+
+///|
+async test "mooncode executes moon_ide and moon_cmd tools in book root" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-moon-tools-XXXXXX"),
+  )
+  mooncode_prepare_eval_fixture(book_root)
+  let ide_execution = mooncode_execute_tool_call(
+    "session-moon-tools",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-moon-tools",
+      "book_root": book_root,
+      "tool": "moon_ide",
+      "command_id": "cmd-moon-ide",
+      "arguments": {
+        "action": "outline",
+        "path": ".",
+        "target": "native",
+        "timeout_ms": 30000,
+      },
+    },
+    now=@clock.Timestamp::from_ms(71L),
+  )
+  assert_true(mooncode_json_bool(ide_execution, "accepted", default=false))
+  let ide_result = mooncode_json_object_field_or_empty(ide_execution, "result")
+  assert_true(mooncode_json_bool(ide_result, "ok", default=false))
+  assert_true(
+    mooncode_json_string(ide_result, "output", default="").contains("answer"),
+  )
+  let ide_metadata = mooncode_json_object_field_or_empty(ide_result, "metadata")
+  assert_eq(
+    mooncode_json_string(ide_metadata, "command", default=""),
+    "moon ide outline --target native .",
+  )
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(ide_execution, "event"),
+      "kind",
+      default="",
+    ),
+    "moon_ide.finished",
+  )
+  let cmd_execution = mooncode_execute_tool_call(
+    "session-moon-tools",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-moon-tools",
+      "book_root": book_root,
+      "tool": "moon_cmd",
+      "command_id": "cmd-moon-cmd",
+      "arguments": {
+        "command": "check",
+        "target": "native",
+        "timeout_ms": 30000,
+      },
+    },
+    now=@clock.Timestamp::from_ms(72L),
+  )
+  assert_true(mooncode_json_bool(cmd_execution, "accepted", default=false))
+  let cmd_result = mooncode_json_object_field_or_empty(cmd_execution, "result")
+  assert_true(mooncode_json_bool(cmd_result, "ok", default=false))
+  let cmd_metadata = mooncode_json_object_field_or_empty(cmd_result, "metadata")
+  assert_eq(
+    mooncode_json_string(cmd_metadata, "command", default=""),
+    "moon check --target native",
+  )
+  assert_eq(mooncode_json_int(cmd_metadata, "status", default=-1), 0)
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(cmd_execution, "event"),
+      "lane",
+      default="",
+    ),
+    "test",
+  )
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(cmd_execution, "event"),
+      "kind",
+      default="",
+    ),
+    "moon_cmd.finished",
+  )
+}
+
+///|
+async test "mooncode validates moon_ide and moon_cmd arguments before process spawn" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-tool-validation-XXXXXX"),
+  )
+  let missing_ide_input = mooncode_execute_tool_call(
+    "session-tool-validation",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-tool-validation",
+      "book_root": book_root,
+      "tool": "moon_ide",
+      "command_id": "cmd-bad-ide",
+      "arguments": { "action": "hover", "query": "answer" },
+    },
+    now=@clock.Timestamp::from_ms(73L),
+  )
+  assert_false(mooncode_json_bool(missing_ide_input, "accepted", default=true))
+  let ide_result = mooncode_json_object_field_or_empty(
+    missing_ide_input, "result",
+  )
+  assert_false(mooncode_json_bool(ide_result, "ok", default=true))
+  assert_eq(
+    mooncode_json_string(ide_result, "message", default=""),
+    "moon_ide hover requires loc",
+  )
+  let invalid_target = mooncode_execute_tool_call(
+    "session-tool-validation",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-tool-validation",
+      "book_root": book_root,
+      "tool": "moon_ide",
+      "command_id": "cmd-bad-target",
+      "arguments": { "action": "outline", "path": ".", "target": "python" },
+    },
+    now=@clock.Timestamp::from_ms(74L),
+  )
+  let target_result = mooncode_json_object_field_or_empty(
+    invalid_target, "result",
+  )
+  assert_false(mooncode_json_bool(target_result, "ok", default=true))
+  assert_eq(
+    mooncode_json_string(target_result, "message", default=""),
+    "unsupported moon_ide target: python",
+  )
+  let invalid_program_args = mooncode_execute_tool_call(
+    "session-tool-validation",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-tool-validation",
+      "book_root": book_root,
+      "tool": "moon_cmd",
+      "command_id": "cmd-bad-program-args",
+      "arguments": { "command": "test", "program_args": ["--bad"] },
+    },
+    now=@clock.Timestamp::from_ms(75L),
+  )
+  let cmd_result = mooncode_json_object_field_or_empty(
+    invalid_program_args, "result",
+  )
+  assert_false(mooncode_json_bool(cmd_result, "ok", default=true))
+  assert_eq(
+    mooncode_json_string(cmd_result, "message", default=""),
+    "moon_cmd program_args are only valid for moon run",
+  )
+}

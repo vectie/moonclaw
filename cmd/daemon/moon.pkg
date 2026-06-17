@@ -29,11 +29,13 @@ import {
   "vectie/moonclaw/oauth/copilot",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
   "moonbitlang/core/strconv",
   "moonbitlang/x/codec/base64",
   "moonbitlang/x/crypto",
   "moonbitlang/core/test",
   "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/mooncode/core" @mooncode_core,
 }
 
 import {

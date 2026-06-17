@@ -1,0 +1,24 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/mooncode/core"
+
+// Values
+pub fn native_capability_contract_id() -> String
+
+pub fn native_capability_required_endpoints() -> Array[String]
+
+pub fn native_capability_required_tools() -> Array[String]
+
+pub fn native_capability_surface_fingerprint() -> String
+
+pub fn native_capability_surface_json() -> Json
+
+pub fn protocol_version() -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

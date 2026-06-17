@@ -8,7 +8,7 @@ async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
   let session_id = "session-runtime-eval"
   let command_id = "cmd-runtime-eval"
   let command : Json = {
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": book_root,
     "command": "run_eval",
@@ -18,7 +18,7 @@ async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
   }
   mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
     "kind": "mooncode-command",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "command_id": command_id,
     "created_at": @clock.Timestamp::from_ms(6L),

@@ -96,7 +96,7 @@ async fn Daemon::mooncode_runtime_loop_execute(
   let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
   {
     "kind": "mooncode-runtime-loop",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "accepted": ran_turn_count > 0 && failed_turn_count == 0,
     "session_id": session_id,
@@ -160,7 +160,7 @@ async test "mooncode native runtime loop drains queued commands" (
   )
   let session_id = "session-runtime-loop"
   let first_command : Json = {
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": book_root,
     "command": "prompt",
@@ -174,7 +174,7 @@ async test "mooncode native runtime loop drains queued commands" (
     ],
   }
   let second_command : Json = {
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": book_root,
     "command": "prompt",
@@ -189,7 +189,7 @@ async test "mooncode native runtime loop drains queued commands" (
   }
   mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
     "kind": "mooncode-command",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "command_id": "cmd-loop-1",
     "created_at": @clock.Timestamp::from_ms(10L),
@@ -197,7 +197,7 @@ async test "mooncode native runtime loop drains queued commands" (
   })
   mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
     "kind": "mooncode-command",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "command_id": "cmd-loop-2",
     "created_at": @clock.Timestamp::from_ms(20L),

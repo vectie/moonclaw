@@ -8,7 +8,7 @@ async fn mooncode_runtime_turn_eval_results(
   let native_eval = mooncode_native_eval_harness_report(session_id, now~)
   let record : Json = {
     "kind": "mooncode-session-record",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": book_root,
     "command_log_count": 1,
@@ -34,7 +34,7 @@ async fn mooncode_runtime_turn_eval_results(
   [
     {
       "kind": "mooncode-eval-result",
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "event": "eval_report.manifest",
       "accepted": mooncode_json_bool(report, "ok", default=false),
       "session_id": session_id,
@@ -62,7 +62,7 @@ fn mooncode_runtime_turn_eval_manifest(
   let relative = mooncode_runtime_turn_eval_manifest_relative_path(session_id)
   {
     "kind": "mooncode-eval-report",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "status": if mooncode_json_bool(report, "ok", default=false) {
       "accepted"
     } else {
@@ -111,7 +111,7 @@ fn mooncode_runtime_turn_eval_event(
   let path = mooncode_json_string(eval_result, "manifest_path", default="")
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-eval-report-\{now}",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": mooncode_book_root(command),
     "command_id": command_id,

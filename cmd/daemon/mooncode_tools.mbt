@@ -15,7 +15,7 @@ async fn Daemon::mooncode_tool_execute(
         },
       })
   }
-  let session_id = session_id.to_string()
+  let session_id = session_id.to_owned()
   let requested_book_root = mooncode_request_book_root(r)
   let book_root = if requested_book_root == "" {
     mooncode_json_string(body, "book_root", default="")
@@ -73,7 +73,7 @@ fn mooncode_validate_tool_call_body(
   let command_id = mooncode_tool_command_id(body)
   let tool = mooncode_tool_name(body)
   let missing : Array[Json] = []
-  if protocol != "mooncode.v1" {
+  if protocol != mooncode_protocol_version() {
     missing.push("protocol".to_json())
   }
   if body_session != session_id {
@@ -90,7 +90,7 @@ fn mooncode_validate_tool_call_body(
   }
   {
     "ok": missing.length() == 0,
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": book_root,
     "command_id": command_id,
@@ -121,6 +121,8 @@ async fn mooncode_execute_tool_call(
     "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
     "revert_patch" => mooncode_tool_revert_patch(book_root, arguments)
     "shell" => mooncode_tool_shell(book_root, arguments)
+    "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
+    "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
     "moon_check" => mooncode_tool_moon_check(book_root, arguments)
     "finish" => mooncode_tool_finish(arguments)
     _ =>
@@ -140,7 +142,7 @@ async fn mooncode_execute_tool_call(
   {
     "accepted": !mooncode_json_bool(result, "is_error", default=false),
     "kind": "mooncode-tool-execution",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
@@ -160,6 +162,8 @@ fn mooncode_tool_supported(tool : String) -> Bool {
   tool == "apply_patch" ||
   tool == "revert_patch" ||
   tool == "shell" ||
+  tool == "moon_ide" ||
+  tool == "moon_cmd" ||
   tool == "moon_check" ||
   tool == "finish"
 }
@@ -790,7 +794,7 @@ fn mooncode_tool_patch_hunk_index_from_text(text : String) -> Int {
   } else {
     mooncode_tool_first_split_piece(text, "#")
   }
-  @strconv.parse_int(raw) catch {
+  @string.parse_int(raw) catch {
     _ => 0
   }
 }
@@ -1458,111 +1462,6 @@ fn mooncode_json_object_with_field(
 }
 
 ///|
-async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
-  let cmd = mooncode_json_string(arguments, "cmd", default="")
-  if cmd == "" {
-    return mooncode_tool_error_result("shell", message="cmd must be non-empty")
-  }
-  let cwd = mooncode_tool_cwd(book_root, arguments)
-  if mooncode_json_bool(cwd, "ok", default=false) == false {
-    return mooncode_tool_error_result(
-      "shell",
-      message=mooncode_json_string(cwd, "message", default="invalid cwd"),
-    )
-  }
-  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  let timeout = mooncode_json_int(arguments, "timeout_ms", default=30000)
-  let process = @spawn.spawn("sh", ["-lc", cmd], timeout~, cwd=cwd_path) catch {
-    error =>
-      return mooncode_tool_error_result(
-        "shell",
-        message="error running shell: \{error}",
-      )
-  }
-  let output = process.stdout + process.stderr
-  let capped = mooncode_cap_tool_output(
-    output,
-    mooncode_json_int(arguments, "max_output_chars", default=12000),
-  )
-  let result = if process.status == 0 {
-    mooncode_tool_ok_result(
-      "shell",
-      message="shell exited 0",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "cmd": cmd,
-        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
-    )
-  } else {
-    mooncode_tool_error_result(
-      "shell",
-      message="shell exited \{process.status}",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "cmd": cmd,
-        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
-    )
-  }
-  result
-}
-
-///|
-async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json {
-  let target = mooncode_json_string(arguments, "target", default="")
-  let args : Array[StringView] = if target == "" {
-    ["check"]
-  } else {
-    ["check", target]
-  }
-  let timeout = mooncode_json_int(arguments, "timeout_ms", default=60000)
-  let process = @spawn.spawn("moon", args, timeout~, cwd=book_root) catch {
-    error =>
-      return mooncode_tool_error_result(
-        "moon_check",
-        message="error running moon check: \{error}",
-      )
-  }
-  let output = process.stdout + process.stderr
-  let capped = mooncode_cap_tool_output(
-    output,
-    mooncode_json_int(arguments, "max_output_chars", default=12000),
-  )
-  if process.status == 0 {
-    mooncode_tool_ok_result(
-      "moon_check",
-      message="moon check passed",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "target": target,
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
-    )
-  } else {
-    mooncode_tool_error_result(
-      "moon_check",
-      message="moon check failed with status \{process.status}",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "target": target,
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
-    )
-  }
-}
-
-///|
 fn mooncode_tool_finish(arguments : Json) -> Json {
   let answer = mooncode_json_string(arguments, "answer", default="")
   mooncode_tool_ok_result("finish", message="finished", output=answer, metadata={
@@ -1614,7 +1513,7 @@ fn mooncode_resolve_book_path(book_root : String, path : String) -> Json {
       "relative_path": if absolute == root {
         "."
       } else {
-        absolute[root.length() + 1:].to_string()
+        absolute[root.length() + 1:].to_owned()
       },
       "absolute_path": absolute,
     }
@@ -1632,7 +1531,7 @@ fn mooncode_cap_tool_output(text : String, limit : Int) -> Json {
   }
   if text.length() > limit {
     {
-      "output": text[:limit].to_string(),
+      "output": text[:limit].to_owned(),
       "truncated": true,
       "max_output_chars": limit,
       "char_count": text.length(),
@@ -1678,7 +1577,7 @@ fn mooncode_tool_diff_side(prefix : String, text : String) -> Array[String] {
   let mut count = 0
   for part in text.split("\n") {
     if count < 80 {
-      lines.push(prefix + part.to_string())
+      lines.push(prefix + part.to_owned())
     }
     count += 1
   }
@@ -1737,7 +1636,7 @@ fn mooncode_tool_result_event(
   let diff = mooncode_json_string(metadata, "diff", default="")
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-tool-\{tool}-\{now}",
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": book_root,
     "command_id": command_id,
@@ -1767,6 +1666,7 @@ fn mooncode_tool_event_lane(
   diff? : String = "",
 ) -> String {
   match tool {
+    "moon_cmd" => "test"
     "moon_check" => "test"
     "finish" => "review"
     "apply_patch" | "revert_patch" => "review"
@@ -1779,6 +1679,8 @@ fn mooncode_tool_event_lane(
 ///|
 fn mooncode_tool_event_kind(tool : String) -> String {
   match tool {
+    "moon_ide" => "moon_ide.finished"
+    "moon_cmd" => "moon_cmd.finished"
     "moon_check" => "moon_check.finished"
     "finish" => "finish"
     "apply_patch" => "runtime.patch_applied"
@@ -1792,6 +1694,7 @@ fn mooncode_tool_event_name(tool : String) -> String {
   match tool {
     "apply_patch" => "patch_applied"
     "revert_patch" => "patch_reverted"
+    "moon_cmd" => "tool_result"
     "moon_check" => "tool_result"
     "finish" => "finish"
     _ => "tool_result"
@@ -1813,7 +1716,7 @@ fn mooncode_json_int(json : Json, key : String, default~ : Int) -> Int {
 ///|
 test "mooncode tool validation requires supported tool and command id" {
   let report = mooncode_validate_tool_call_body("session-demo", "/tmp/book", {
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": "session-demo",
     "tool": "read",
     "arguments": { "path": "README.md" },
@@ -1821,7 +1724,7 @@ test "mooncode tool validation requires supported tool and command id" {
   })
   assert_true(mooncode_json_bool(report, "ok", default=false))
   let rejected = mooncode_validate_tool_call_body("session-demo", "/tmp/book", {
-    "protocol": "mooncode.v1",
+    "protocol": mooncode_protocol_version(),
     "session_id": "session-demo",
     "tool": "delete_everything",
   })
@@ -1854,7 +1757,7 @@ async test "mooncode native tool execution writes edits and reads book files" (
     "session-tools",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-tools",
       "book_root": book_root,
       "tool": "write",
@@ -1874,7 +1777,7 @@ async test "mooncode native tool execution writes edits and reads book files" (
     "session-tools",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-tools",
       "book_root": book_root,
       "tool": "edit",
@@ -1898,7 +1801,7 @@ async test "mooncode native tool execution writes edits and reads book files" (
     "session-tools",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-tools",
       "book_root": book_root,
       "tool": "read",
@@ -1955,7 +1858,7 @@ async test "mooncode native patch tools apply and revert reviewed replacements" 
     "session-patch",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-patch",
       "book_root": book_root,
       "tool": "apply_patch",
@@ -1993,7 +1896,7 @@ async test "mooncode native patch tools apply and revert reviewed replacements" 
     "session-patch",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-patch",
       "book_root": book_root,
       "tool": "revert_patch",
@@ -2045,7 +1948,7 @@ async test "mooncode native patch tools apply and revert unified diffs" (
     "session-unified-patch",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-unified-patch",
       "book_root": book_root,
       "tool": "apply_patch",
@@ -2081,7 +1984,7 @@ async test "mooncode native patch tools apply and revert unified diffs" (
     "session-unified-patch",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-unified-patch",
       "book_root": book_root,
       "tool": "revert_patch",
@@ -2125,7 +2028,7 @@ async test "mooncode native patch tools dispatch selected unified diff hunks" (
     "session-selected-hunk",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-selected-hunk",
       "book_root": book_root,
       "tool": "apply_patch",
@@ -2173,7 +2076,7 @@ async test "mooncode native patch tools dispatch selected unified diff hunks" (
     "session-selected-hunk",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-selected-hunk",
       "book_root": book_root,
       "tool": "revert_patch",
@@ -2219,7 +2122,7 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
     "session-patchset",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-patchset",
       "book_root": book_root,
       "tool": "apply_patch",
@@ -2260,7 +2163,7 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
     "session-patchset",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-patchset",
       "book_root": book_root,
       "tool": "revert_patch",
@@ -2309,7 +2212,7 @@ async test "mooncode native patchsets dispatch selected file hunks" (
     "session-patchset-hunk",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-patchset-hunk",
       "book_root": book_root,
       "tool": "apply_patch",
@@ -2372,7 +2275,7 @@ async test "mooncode native patch tools attach post-change verification" (
     "session-patch-verify",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-patch-verify",
       "book_root": book_root,
       "tool": "apply_patch",
@@ -2423,7 +2326,7 @@ async test "mooncode native patch verification failure fails the tool result" (
     "session-patch-verify-fail",
     book_root,
     {
-      "protocol": "mooncode.v1",
+      "protocol": mooncode_protocol_version(),
       "session_id": "session-patch-verify-fail",
       "book_root": book_root,
       "tool": "apply_patch",
@@ -2454,30 +2357,4 @@ async test "mooncode native patch verification failure fails the tool result" (
     metadata, "verification",
   )
   assert_false(mooncode_json_bool(verification, "ok", default=true))
-}
-
-///|
-async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
-  ignore(t)
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-XXXXXX"),
-  )
-  let execution = mooncode_execute_tool_call(
-    "session-shell",
-    book_root,
-    {
-      "protocol": "mooncode.v1",
-      "session_id": "session-shell",
-      "book_root": book_root,
-      "tool": "shell",
-      "command_id": "cmd-shell",
-      "arguments": { "cmd": "pwd", "timeout_ms": 5000 },
-    },
-    now=@clock.Timestamp::from_ms(45L),
-  )
-  let result = mooncode_json_object_field_or_empty(execution, "result")
-  assert_true(mooncode_json_bool(result, "ok", default=false))
-  assert_true(
-    mooncode_json_string(result, "output", default="").contains(book_root),
-  )
 }

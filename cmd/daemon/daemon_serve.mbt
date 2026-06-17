@@ -16,6 +16,7 @@
 /// - GET  /v1/mooncode/sessions?book_root={path} → `mooncode_list_sessions`
 /// - GET  /v1/mooncode/sessions/{id}?book_root={path} → `mooncode_get_session`
 /// - POST /v1/mooncode/sessions/{id}/commands → `mooncode_accept_command`
+/// - GET  /v1/mooncode/sessions/{id}/serve-scheduler?book_root={path} → `mooncode_serve_scheduler`
 /// - GET  /v1/mooncode/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim_state`
 /// - POST /v1/mooncode/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim`
 /// - POST /v1/mooncode/sessions/{id}/runtime-dispatch?book_root={path} → `mooncode_runtime_dispatch`
@@ -26,7 +27,7 @@
 /// - POST /v1/mooncode/sessions/{id}/tool-exec?book_root={path} → `mooncode_tool_execute`
 /// - GET  /v1/mooncode/sessions/{id}/stream → `mooncode_stream`
 /// - GET  /v1/mooncode/sessions/{id}/eval-report → `mooncode_eval_report`
-/// - POST /v1/mooncode/sessions/{id}/package-result → `mooncode_package_result`
+/// - POST /v1/mooncode/sessions/{id}/package-result?book_root={path} → `mooncode_package_result`
 /// - GET  /v1/auth/status → `get_auth_status`
 /// - POST /v1/auth/codex/start → `start_codex_auth` (callback on port 1455)
 /// - POST /v1/auth/codex/logout → `logout_codex`
@@ -72,6 +73,10 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.mooncode_get_session(session_id~, r, w)
             (Post, ["", "v1", "mooncode", "sessions", session_id, "commands"]) =>
               self.mooncode_accept_command(group~, session_id~, r, w)
+            (
+              Get,
+              ["", "v1", "mooncode", "sessions", session_id, "serve-scheduler"],
+            ) => self.mooncode_serve_scheduler(session_id~, r, w)
             (
               Get,
               ["", "v1", "mooncode", "sessions", session_id, "runtime-claim"],

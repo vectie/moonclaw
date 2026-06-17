@@ -45,9 +45,12 @@ MoonClaw is strongest when you want one system to handle:
   `/v1/mooncode/sessions/<id>/package-result`. Commands bind a Moondesk MoonCode
   session to the MoonClaw task for the target book root and execute through the
   existing MoonClaw agent/task runtime. Native command handling now distinguishes
-  `prompt`, `steer`, and `cancel`; runtime-turn emits `steer_applied` /
-  `steer_dropped` settlement events for steering commands, and cancel targets
-  the existing bound task without spawning a new one. Package-result packets record command-scoped
+  `prompt`, `steer`, and `cancel`; runtime-turn now consults the same
+  OpenSeek-style serve scheduler it exposes through `serve-scheduler`, returns
+  the scheduler state/decision in the turn payload, emits `steer_applied` /
+  `steer_dropped` settlement events for steering commands, and records
+  `cancel_dropped` for idle cancel commands instead of running fallback tools.
+  Package-result packets record command-scoped
   `package_built` and `package_verified` runtime evidence for MoonBook-owned
   executable artifacts. Native package manifests also promote generated source
   files into
@@ -86,7 +89,11 @@ MoonClaw is strongest when you want one system to handle:
   first book-local native runtime turn: it claims the next durable command if
   needed, executes explicit `runtime_tool_calls` or deterministic built-in
   fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
-  events, and closes the command with `runtime-completed` or `runtime-failed`.
+  events, returns the serve-scheduler state/decision that authorized or dropped
+  the claimed command, and closes the command with `runtime-completed` or
+  `runtime-failed`. Idle `steer` and `cancel` controls are finalized as
+  `steer_dropped` / `cancel_dropped` evidence without invoking tools, matching
+  the scheduler projection instead of treating them as ordinary prompts.
   `POST
   /v1/mooncode/sessions/<id>/runtime-loop?book_root=<path>` now layers a
   bounded queue supervisor over that turn primitive: it repeatedly runs native

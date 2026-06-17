@@ -1,0 +1,141 @@
+///|
+test "mooncode capabilities expose native daemon endpoints" {
+  assert_true(
+    mooncode_capability_endpoints().contains(
+      "/v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>",
+    ),
+  )
+  assert_true(
+    mooncode_native_capability_required_endpoints().contains(
+      "/v1/mooncode/sessions/<id>/package-result?book_root=<path>",
+    ),
+  )
+  assert_true(
+    mooncode_native_capability_optional_endpoints().contains(
+      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>",
+    ),
+  )
+  assert_eq(
+    mooncode_capability_endpoints().length(),
+    mooncode_native_capability_endpoints().length(),
+  )
+  assert_true(
+    mooncode_native_capability_endpoints().contains(
+      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>",
+    ),
+  )
+  assert_true(
+    mooncode_capability_endpoints().contains(
+      "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>",
+    ),
+  )
+  assert_true(mooncode_capability_tools().contains("moon_ide"))
+  assert_true(mooncode_capability_tools().contains("moon_cmd"))
+  assert_eq(
+    mooncode_capability_tools().length(),
+    mooncode_native_capability_tools().length(),
+  )
+  assert_true(mooncode_native_capability_tools().contains("apply_patch"))
+  assert_eq(
+    mooncode_native_capability_contract_id(),
+    "mooncode-native-capability-surface.v1",
+  )
+  assert_eq(mooncode_native_capability_surface_fingerprint().length(), 64)
+  let surface = mooncode_native_capability_surface_json().stringify()
+  assert_true(
+    surface.contains("\"kind\":\"mooncode-native-capability-surface\""),
+  )
+  assert_true(surface.contains("\"capability_surface_fingerprint\""))
+  assert_true(surface.contains("\"required_endpoints\""))
+  assert_true(surface.contains("\"optional_endpoints\""))
+  assert_true(surface.contains("\"advertised_endpoints\""))
+  let payload_json = mooncode_capabilities_payload()
+  let payload_surface = mooncode_json_object_field_or_empty(
+    payload_json, "capability_surface",
+  )
+  assert_eq(
+    mooncode_json_string(payload_surface, "capability_contract_id", default=""),
+    mooncode_native_capability_contract_id(),
+  )
+  assert_eq(
+    mooncode_json_string(
+      payload_surface,
+      "capability_surface_fingerprint",
+      default="",
+    ),
+    mooncode_native_capability_surface_fingerprint(),
+  )
+  assert_eq(
+    mooncode_json_string(
+      payload_json,
+      "capability_surface_fingerprint",
+      default="",
+    ),
+    mooncode_native_capability_surface_fingerprint(),
+  )
+  assert_eq(
+    mooncode_json_array_items(payload_json, "endpoints").length(),
+    mooncode_json_array_items(payload_surface, "advertised_endpoints").length(),
+  )
+  assert_eq(
+    mooncode_json_array_items(payload_json, "tools").length(),
+    mooncode_json_array_items(payload_surface, "required_tools").length(),
+  )
+  let payload = payload_json.stringify()
+  assert_true(payload.contains("/v1/mooncode/capabilities"))
+  assert_true(payload.contains("/v1/mooncode/sessions?book_root=<path>"))
+  assert_true(payload.contains("/v1/mooncode/sessions/<id>?book_root=<path>"))
+  assert_true(payload.contains("/v1/mooncode/sessions/<id>/commands"))
+  assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/package-result?book_root=<path>",
+    ),
+  )
+  assert_true(
+    payload.contains("/v1/mooncode/sessions/<id>/eval-report?book_root=<path>"),
+  )
+  assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
+    ),
+  )
+  assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
+    ),
+  )
+  assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
+    ),
+  )
+  assert_true(
+    payload.contains("/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>"),
+  )
+  assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
+  assert_true(payload.contains("runtime-dispatches.jsonl"))
+  assert_true(
+    payload.contains(
+      "\"capability_contract_id\":\"mooncode-native-capability-surface.v1\"",
+    ),
+  )
+  assert_true(payload.contains("\"capability_surface\""))
+  assert_true(payload.contains("\"native_runtime_ready\":true"))
+  assert_true(
+    payload.contains("\"control_commands\":[\"prompt\",\"steer\",\"cancel\"]"),
+  )
+  assert_true(payload.contains("\"apply_patch\""))
+  assert_true(payload.contains("\"revert_patch\""))
+  assert_true(payload.contains("runtime.patch_applied"))
+  assert_true(payload.contains("runtime.patch_reverted"))
+  assert_true(payload.contains("hunk_dispatch_scope"))
+  assert_true(payload.contains("steer_applied"))
+  assert_true(payload.contains("receipt.accept"))
+  assert_true(payload.contains("\"review_receipts\""))
+  assert_true(payload.contains("native_dispatch_mode=queue-only"))
+  assert_true(payload.contains("\"prompt_planner\""))
+  assert_true(payload.contains("\"event_lifecycle\""))
+  assert_true(payload.contains("\"ContextPruned\""))
+  assert_true(payload.contains("\"Pruned\""))
+  assert_true(payload.contains("\"command_scoped_web_search\""))
+}
