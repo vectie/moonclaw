@@ -1,6 +1,6 @@
 import {
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/spawn",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/spawn",
 }
 
 import {

@@ -7,7 +7,7 @@ import {
   "moonbitlang/async/io",
   "vectie/moonclaw/internal/tty",
   "vectie/moonclaw/internal/signal",
-  "vectie/moonclaw/internal/spawn",
+  "vectie/moonlib/spawn",
   "vectie/moonclaw/internal/readline/unicode/width" @unicode/width,
   "moonbitlang/core/buffer",
   "moonbitlang/core/cmp",

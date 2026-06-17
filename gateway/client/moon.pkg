@@ -8,8 +8,8 @@ import {
   "vectie/moonclaw/plugin",
   "vectie/moonclaw/workspace",
   "vectie/moonclaw/gateway/protocol",
-  "vectie/moonclaw/internal/uuid",
-  "vectie/moonclaw/internal/rand",
+  "vectie/moonlib/uuid",
+  "vectie/moonlib/rand",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/buildinfo",
 }

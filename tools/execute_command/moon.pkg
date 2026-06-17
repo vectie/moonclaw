@@ -1,7 +1,7 @@
 import {
   "vectie/moonclaw/tool",
-  "vectie/moonclaw/internal/spawn",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/spawn",
+  "vectie/moonlib/pathx",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

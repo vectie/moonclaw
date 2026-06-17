@@ -3,8 +3,8 @@ import {
   "vectie/moonclaw/workspace",
   "vectie/moonclaw/clock",
   "vectie/moonclaw/internal/buildinfo",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/os",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/os",
+  "vectie/moonlib/pathx",
   "moonbitlang/core/json",
 }

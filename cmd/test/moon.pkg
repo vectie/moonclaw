@@ -1,7 +1,7 @@
 import {
-  "vectie/moonclaw/internal/os",
+  "vectie/moonlib/os",
   "moonbitlang/async",
-  "vectie/moonclaw/internal/fsx",
+  "vectie/moonlib/fsx",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw",
   "vectie/moonclaw/internal/backtrace",

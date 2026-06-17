@@ -1,8 +1,8 @@
 import {
-  "vectie/moonclaw/internal/os",
-  "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/spawn",
+  "vectie/moonlib/os",
+  "vectie/moonlib/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/spawn",
   "moonbitlang/async/http",
   "moonbitlang/async",
   "moonbitlang/core/json",

@@ -2,7 +2,7 @@ import {
   "vectie/moonclaw/tool",
   "vectie/moonclaw/job",
   "moonbitlang/async",
-  "vectie/moonclaw/internal/fsx",
+  "vectie/moonlib/fsx",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

@@ -9,5 +9,5 @@ import {
   "vectie/moonclaw/model",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/uuid",
 }

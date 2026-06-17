@@ -1,7 +1,7 @@
 import {
   "moonbitlang/async/process",
   "moonbitlang/async/io",
-  "vectie/moonclaw/internal/errno",
+  "vectie/moonlib/errno",
   "moonbitlang/async/aqueue",
   "moonbitlang/async",
   "vectie/moonclaw/clock",

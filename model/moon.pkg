@@ -1,7 +1,7 @@
 import {
-  "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/os",
+  "vectie/moonlib/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/os",
   "vectie/moonclaw/oauth/codex",
   "vectie/moonclaw/oauth/copilot",
   "moonbitlang/core/json",

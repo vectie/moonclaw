@@ -1,8 +1,8 @@
 import {
   "vectie/moonclaw/file",
   "vectie/moonclaw/tool",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
   "vectie/moonclaw/internal/tiktoken",
   "moonbitlang/core/json",
   "moonbitlang/core/test",

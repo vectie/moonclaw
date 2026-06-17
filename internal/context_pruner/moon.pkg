@@ -3,7 +3,7 @@ import {
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/token_counter",
   "vectie/moonclaw/internal/conversation",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/uuid",
   "vectie/moonclaw/event",
   "vectie/moonclaw/ai",
   "moonbitlang/core/json",

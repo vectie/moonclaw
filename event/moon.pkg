@@ -1,10 +1,10 @@
 import {
   "moonbitlang/async/aqueue",
   "vectie/moonclaw/tool",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/uuid",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/openai",
-  "vectie/moonclaw/internal/rand",
+  "vectie/moonlib/rand",
   "vectie/moonclaw/clock",
   "vectie/moonclaw/internal/jsonx",
   "moonbitlang/core/json",
@@ -14,5 +14,5 @@ import {
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
-  "vectie/moonclaw/internal/rand",
+  "vectie/moonlib/rand",
 } for "test"

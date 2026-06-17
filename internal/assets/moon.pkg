@@ -1,6 +1,6 @@
 import {
   "moonbitlang/async/fs",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
   "vectie/moonclaw/internal/pino",
 }

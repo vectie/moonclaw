@@ -7,7 +7,7 @@ import {
   "vectie/moonclaw/security",
   "vectie/moonclaw/oauth/codex",
   "vectie/moonclaw/oauth/copilot",
-  "vectie/moonclaw/internal/rand",
-  "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/internal/fsx",
+  "vectie/moonlib/rand",
+  "vectie/moonlib/pathx",
+  "vectie/moonlib/fsx",
 }

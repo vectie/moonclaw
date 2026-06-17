@@ -1,9 +1,9 @@
 import {
   "moonbitlang/async",
-  "vectie/moonclaw/internal/os",
+  "vectie/moonlib/os",
   "vectie/moonclaw/internal/backtrace",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
   "vectie/moonclaw/internal/git",
   "moonbitlang/x/time",
   "moonbitlang/regexp",

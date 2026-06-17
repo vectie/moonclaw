@@ -1,6 +1,6 @@
 import {
   "moonbitlang/core/json",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/pathx",
 }
 
 import {

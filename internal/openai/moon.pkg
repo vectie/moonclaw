@@ -13,7 +13,7 @@ import {
 }
 
 import {
-  "vectie/moonclaw/internal/os",
+  "vectie/moonlib/os",
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/tool",

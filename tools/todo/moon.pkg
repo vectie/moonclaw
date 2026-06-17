@@ -1,7 +1,7 @@
 import {
-  "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/uuid",
   "vectie/moonclaw/clock",
   "vectie/moonclaw/tool",
   "moonbitlang/core/json",

@@ -1,8 +1,8 @@
 import {
   "vectie/moonclaw/internal/git",
-  "vectie/moonclaw/internal/pathx",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/spawn",
+  "vectie/moonlib/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/spawn",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

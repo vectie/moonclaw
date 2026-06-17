@@ -1,6 +1,6 @@
 import {
-  "vectie/moonclaw/internal/errno",
-  "vectie/moonclaw/internal/c",
+  "vectie/moonlib/errno",
+  "vectie/moonlib/c",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/env",
   "moonbitlang/core/json",
@@ -9,7 +9,7 @@ import {
 }
 
 import {
-  "vectie/moonclaw/internal/spawn",
+  "vectie/moonlib/spawn",
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
 } for "test"

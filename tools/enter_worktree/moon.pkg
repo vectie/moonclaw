@@ -1,7 +1,7 @@
 import {
   "vectie/moonclaw/tool",
   "vectie/moonclaw/internal/worktree",
-  "vectie/moonclaw/internal/fsx",
+  "vectie/moonlib/fsx",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
@@ -10,6 +10,6 @@ import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/internal/git",
-  "vectie/moonclaw/internal/fsx",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
 } for "test"

@@ -2,7 +2,7 @@ import {
   "vectie/moonclaw/event",
   "moonbitlang/async/http",
   "vectie/moonclaw/ai",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/uuid",
   "vectie/moonclaw/internal/httpx",
   "vectie/moonclaw/clock",
   "moonbitlang/core/json",

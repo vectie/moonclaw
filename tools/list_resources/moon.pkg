@@ -11,8 +11,8 @@ import {
 
 import {
   "moonbitlang/async",
-  "vectie/moonclaw/internal/fsx",
+  "vectie/moonlib/fsx",
   "vectie/moonclaw/internal/git",
   "vectie/moonclaw/internal/mock",
-  "vectie/moonclaw/internal/pathx",
+  "vectie/moonlib/pathx",
 } for "test"

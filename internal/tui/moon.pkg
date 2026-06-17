@@ -2,7 +2,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/stdio",
   "moonbitlang/async/os_error",
-  "vectie/moonclaw/internal/errno",
+  "vectie/moonlib/errno",
   "vectie/moonclaw/internal/tty",
   "vectie/moonclaw/internal/readline/unicode/width" @unicode/width,
   "moonbitlang/core/buffer",

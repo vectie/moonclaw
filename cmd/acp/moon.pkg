@@ -1,6 +1,6 @@
 import {
   "moonbitlang/async",
-  "vectie/moonclaw/internal/os",
+  "vectie/moonlib/os",
   "vectie/moonclaw/internal/backtrace",
   "vectie/moonclaw/cmd/acp_command",
 }

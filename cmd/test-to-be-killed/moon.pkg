@@ -2,9 +2,9 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
   "moonbitlang/async/io",
-  "vectie/moonclaw/internal/os",
+  "vectie/moonlib/os",
   "vectie/moonclaw/cmd/daemon",
-  "vectie/moonclaw/internal/spawn",
+  "vectie/moonlib/spawn",
   "vectie/moonclaw/internal/httpx",
   "vectie/moonclaw/internal/pino",
 }

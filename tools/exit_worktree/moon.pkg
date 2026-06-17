@@ -9,5 +9,5 @@ import {
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",
-  "vectie/moonclaw/internal/fsx",
+  "vectie/moonlib/fsx",
 } for "test"
