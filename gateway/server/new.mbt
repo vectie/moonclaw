@@ -201,6 +201,31 @@ pub fn Gateway::unregister_extension(
 }
 
 ///|
+fn moonstat_startup_ready_message(base_url : String) -> String {
+  "Moonstat available at \{base_url}; gateway usage/statistics bridge enabled"
+}
+
+///|
+fn moonstat_startup_unavailable_message(
+  base_url : String,
+  error : String,
+) -> String {
+  "Moonstat unavailable at \{base_url}; continuing without usage/statistics bridge: \{error}"
+}
+
+///|
+async fn Gateway::connect_moonstat_on_startup(self : Gateway) -> Unit {
+  let client = @moonstat.discover()
+  match client.health() {
+    Ok(_) => self.logger.info(moonstat_startup_ready_message(client.base_url()))
+    Err(error) =>
+      self.logger.warn(
+        moonstat_startup_unavailable_message(client.base_url(), error),
+      )
+  }
+}
+
+///|
 fn generate_token(uuid~ : @uuid.Generator) -> String raise {
   ignore(uuid)
   let random_bytes = @rand.bytes(32)
@@ -220,6 +245,11 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     self.resume_pending_job_runs() catch {
       error => self.logger.warn("Failed to resume pending job runs: \{error}")
     }
+    group.spawn_bg(
+      () => self.connect_moonstat_on_startup(),
+      no_wait=true,
+      allow_failure=true,
+    )
     let session = self.events.spawn_in(group)
     let agent_session = self.agent_events.spawn_in(group)
     group.spawn_bg(() => self.run_tick_interval())

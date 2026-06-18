@@ -22,6 +22,7 @@ import {
   "vectie/moonclaw/internal/buildinfo",
   "vectie/moonclaw/internal/spawn",
   "vectie/moonclaw/internal/signal",
+  "vectie/moonclaw/plugin/moonstat",
   "vectie/moonclaw/oauth/codex",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
