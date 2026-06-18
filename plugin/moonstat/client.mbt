@@ -126,7 +126,7 @@ pub async fn Client::usage_trends(self : Client) -> Result[Json, String] {
 
 ///|
 pub async fn Client::provider_presets(self : Client) -> Result[Json, String] {
-  self.get("/get_provider_presets")
+  self.get("/providers/presets")
 }
 
 ///|
