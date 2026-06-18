@@ -3,5 +3,4 @@ import {
   "moonbitlang/core/json",
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
-  "moonbitlang/async",
 }
