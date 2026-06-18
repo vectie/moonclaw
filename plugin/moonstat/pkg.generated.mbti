@@ -8,6 +8,8 @@ pub const DEFAULT_PORT : Int = 15721
 
 pub async fn discover() -> Client
 
+pub fn moonstat_models_from_json(Json) -> Result[Array[MoonstatModel], String]
+
 // Errors
 
 // Types and methods
@@ -19,13 +21,35 @@ pub async fn Client::get(Self, String) -> Result[Json, String]
 pub async fn Client::get_text(Self, String) -> Result[String, String]
 pub async fn Client::health(Self) -> Result[Json, String]
 pub async fn Client::metrics(Self) -> Result[String, String]
+pub async fn Client::model_catalog(Self) -> Result[Array[MoonstatModel], String]
 pub async fn Client::models(Self) -> Result[Json, String]
 pub async fn Client::post(Self, String, Json) -> Result[Json, String]
 pub async fn Client::provider_presets(Self) -> Result[Json, String]
 pub async fn Client::stats(Self) -> Result[Json, String]
 pub async fn Client::status(Self) -> Result[Json, String]
 pub async fn Client::usage_summary(Self) -> Result[Json, String]
+pub async fn Client::usage_summary_typed(Self) -> Result[MoonstatUsageSummary, String]
 pub async fn Client::usage_trends(Self) -> Result[Json, String]
+
+pub struct MoonstatModel {
+  id : String
+  owner : String?
+  context_window : Int?
+}
+pub fn MoonstatModel::from_json(Json) -> Result[Self, String]
+
+pub struct MoonstatUsageSummary {
+  total_requests : Int
+  total_cost : String
+  total_input_tokens : Int64
+  total_output_tokens : Int64
+  total_cache_creation_tokens : Int64
+  total_cache_read_tokens : Int64
+  real_total_tokens : Int64
+  success_rate : Double
+  cache_hit_rate : Double
+}
+pub fn MoonstatUsageSummary::from_json(Json) -> Result[Self, String]
 
 // Type aliases
 

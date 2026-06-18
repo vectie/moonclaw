@@ -1,8 +1,8 @@
 ///|
 /// Optional moonstat client plugin for moonclaw.
 ///
-/// This package is NOT imported by moonclaw's core. It is an opt-in
-/// plugin that moonclaw can use when a moonstat instance is available.
+/// This package is used by gateway startup and remains a small optional bridge
+/// for callers that want moonstat health, routing, and usage data.
 pub const DEFAULT_PORT : Int = 15721
 
 ///|
@@ -14,6 +14,26 @@ const DEFAULT_BASE_URL : String = "http://127.0.0.1:15721"
 ///|
 pub struct Client {
   base_url : String
+}
+
+///|
+pub struct MoonstatModel {
+  id : String
+  owner : String?
+  context_window : Int?
+}
+
+///|
+pub struct MoonstatUsageSummary {
+  total_requests : Int
+  total_cost : String
+  total_input_tokens : Int64
+  total_output_tokens : Int64
+  total_cache_creation_tokens : Int64
+  total_cache_read_tokens : Int64
+  real_total_tokens : Int64
+  success_rate : Double
+  cache_hit_rate : Double
 }
 
 ///|
@@ -56,8 +76,28 @@ pub async fn Client::models(self : Client) -> Result[Json, String] {
 }
 
 ///|
+pub async fn Client::model_catalog(
+  self : Client,
+) -> Result[Array[MoonstatModel], String] {
+  match self.models() {
+    Ok(json) => moonstat_models_from_json(json)
+    Err(err) => Err(err)
+  }
+}
+
+///|
 pub async fn Client::usage_summary(self : Client) -> Result[Json, String] {
   self.get("/usage/summary")
+}
+
+///|
+pub async fn Client::usage_summary_typed(
+  self : Client,
+) -> Result[MoonstatUsageSummary, String] {
+  match self.usage_summary() {
+    Ok(json) => MoonstatUsageSummary::from_json(json)
+    Err(err) => Err(err)
+  }
 }
 
 ///|
@@ -132,6 +172,126 @@ pub async fn Client::post(
     Ok(parsed)
   } else {
     Err("HTTP \{response.code}")
+  }
+}
+
+///|
+pub fn moonstat_models_from_json(
+  json : Json,
+) -> Result[Array[MoonstatModel], String] {
+  let rows = match json {
+    Object(obj) =>
+      match obj.get("models") {
+        Some(Array(models)) => models
+        Some(Object(models)) => models.values().to_array()
+        Some(_) => return Err("moonstat models field is not an array or object")
+        None =>
+          match obj.get("data") {
+            Some(Array(models)) => models
+            Some(_) => return Err("moonstat data field is not an array")
+            None => return Err("moonstat models response has no models")
+          }
+      }
+    Array(models) => models
+    _ => return Err("moonstat models response is not an object or array")
+  }
+  let parsed : Array[MoonstatModel] = []
+  for row in rows {
+    match MoonstatModel::from_json(row) {
+      Ok(model) => parsed.push(model)
+      Err(err) => return Err(err)
+    }
+  }
+  Ok(parsed)
+}
+
+///|
+pub fn MoonstatModel::from_json(json : Json) -> Result[MoonstatModel, String] {
+  let obj = match json {
+    Object(obj) => obj
+    _ => return Err("moonstat model entry is not an object")
+  }
+  let id = match moonstat_json_string_field(obj, "id") {
+    Some(value) => value
+    None =>
+      match moonstat_json_string_field(obj, "slug") {
+        Some(value) => value
+        None =>
+          match moonstat_json_string_field(obj, "name") {
+            Some(value) => value
+            None => return Err("moonstat model entry has no id")
+          }
+      }
+  }
+  Ok({
+    id,
+    owner: moonstat_json_string_field(obj, "owned_by"),
+    context_window: moonstat_json_int_field(obj, "context_window"),
+  })
+}
+
+///|
+pub fn MoonstatUsageSummary::from_json(
+  json : Json,
+) -> Result[MoonstatUsageSummary, String] {
+  let obj = match json {
+    Object(obj) => obj
+    _ => return Err("moonstat usage summary is not an object")
+  }
+  Ok({
+    total_requests: moonstat_json_int_field(obj, "totalRequests").unwrap_or(0),
+    total_cost: moonstat_json_string_field(obj, "totalCost").unwrap_or("0"),
+    total_input_tokens: moonstat_json_int64_field(obj, "totalInputTokens").unwrap_or(
+      0L,
+    ),
+    total_output_tokens: moonstat_json_int64_field(obj, "totalOutputTokens").unwrap_or(
+      0L,
+    ),
+    total_cache_creation_tokens: moonstat_json_int64_field(
+      obj, "totalCacheCreationTokens",
+    ).unwrap_or(0L),
+    total_cache_read_tokens: moonstat_json_int64_field(
+      obj, "totalCacheReadTokens",
+    ).unwrap_or(0L),
+    real_total_tokens: moonstat_json_int64_field(obj, "realTotalTokens").unwrap_or(
+      0L,
+    ),
+    success_rate: moonstat_json_double_field(obj, "successRate").unwrap_or(0.0),
+    cache_hit_rate: moonstat_json_double_field(obj, "cacheHitRate").unwrap_or(
+      0.0,
+    ),
+  })
+}
+
+///|
+fn moonstat_json_string_field(obj : Map[String, Json], key : String) -> String? {
+  match obj.get(key) {
+    Some(String(value)) if !value.trim().is_empty() => Some(value)
+    _ => None
+  }
+}
+
+///|
+fn moonstat_json_double_field(obj : Map[String, Json], key : String) -> Double? {
+  match obj.get(key) {
+    Some(Number(value, ..)) => Some(value)
+    _ => None
+  }
+}
+
+///|
+fn moonstat_json_int_field(obj : Map[String, Json], key : String) -> Int? {
+  match moonstat_json_double_field(obj, key) {
+    Some(value) => Some(value.trunc().to_int())
+    None => None
+  }
+}
+
+///|
+fn moonstat_json_int64_field(obj : Map[String, Json], key : String) -> Int64? {
+  match moonstat_json_double_field(obj, key) {
+    Some(value) => Some(value.trunc().to_int64())
+    None => None
   }
 }
 
