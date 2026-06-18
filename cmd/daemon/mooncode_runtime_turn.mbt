@@ -205,7 +205,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
         mooncode_json_bool(result, "accepted", default=false)
       })
       let action = mooncode_json_string(command, "command", default="prompt")
-      let test_results = if action == "run_tests" {
+      let test_results = if action == "run_tests" || action == "run_build" {
         mooncode_runtime_turn_test_results(
           session_id,
           book_root,

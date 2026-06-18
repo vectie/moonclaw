@@ -21,7 +21,7 @@ fn mooncode_runtime_turn_tool_calls(command : Json) -> Array[Json] {
           },
         },
       ]
-    "run_tests" | "run_eval" =>
+    "run_tests" | "run_build" | "run_eval" =>
       [
         {
           "tool": "moon_cmd",
@@ -325,10 +325,12 @@ fn mooncode_runtime_turn_moon_check_arguments(command : Json) -> Json {
 ///|
 fn mooncode_runtime_turn_moon_cmd_arguments(command : Json) -> Json {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
+  let action = mooncode_json_string(command, "command", default="prompt")
+  let default_command = if action == "run_build" { "build" } else { "check" }
   let moon_command = mooncode_json_string(
     payload,
     "moon_cmd_command",
-    default="check",
+    default=default_command,
   )
   let target = mooncode_json_string(payload, "moon_cmd_target", default="")
   let target = if target == "" {

@@ -527,9 +527,10 @@ navigation actions (`doc`, `outline`, `peek_def`, `hover`, and
 `moon_ide.finished` proof event. `moon_cmd` runs selected structured `moon`
 commands (`check`, `test`, `run`, `info`, `fmt`, and `build`) with bounded
 output, snapshot-update guard metadata, test-lane events, and
-`moon_cmd.finished` proof. Runtime `run_tests` and `run_eval` deterministic
-plans run `moon_cmd` before `moon_check`, so MoonBit validation has a typed
-path rather than depending on arbitrary shell commands.
+`moon_cmd.finished` proof. Runtime `run_tests`, `run_build`, and `run_eval`
+deterministic plans run `moon_cmd` before `moon_check`; `run_build` defaults to
+`moon build`, so MoonBit validation has a typed path rather than depending on
+arbitrary shell commands.
 These process-backed tools live in `mooncode_process_tools.mbt`, with focused
 coverage in `mooncode_process_tools_wbtest.mbt`, while the generic tool
 endpoint and patch/file tools stay in `mooncode_tools.mbt`.
