@@ -51,8 +51,27 @@ pub async fn discover() -> Client {
 }
 
 ///|
+pub async fn discover_from_suite_status() -> Client? {
+  let home = @os.home() catch { _ => "." }
+  let status_path = home + "/.moonsuite/suite-status.json"
+  let content = @fsx.read_file(status_path) catch { _ => "" }
+  if content.is_empty() {
+    return None
+  }
+  let parsed = @json.parse(content) catch { _ => Json::null() }
+  moonstat_base_url_from_status(parsed).map(fn(base_url) {
+    Client::{ base_url, }
+  })
+}
+
+///|
 pub fn Client::base_url(self : Client) -> String {
   self.base_url
+}
+
+///|
+pub fn Client::route_openclaw_chat_url(self : Client) -> String {
+  self.base_url + "/openclaw/v1/chat/completions"
 }
 
 ///|
@@ -173,6 +192,14 @@ pub async fn Client::post(
   } else {
     Err("HTTP \{response.code}")
   }
+}
+
+///|
+pub async fn Client::route_openclaw_chat(
+  self : Client,
+  body : Json,
+) -> Result[Json, String] {
+  self.post("/openclaw/v1/chat/completions", body)
 }
 
 ///|
