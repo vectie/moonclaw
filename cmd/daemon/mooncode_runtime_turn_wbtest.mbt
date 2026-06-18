@@ -399,7 +399,7 @@ test "mooncode native runtime turn plans prompt tool calls" {
   let steer_calls = mooncode_runtime_turn_tool_calls(steer)
   assert_eq(steer_calls.length(), 1)
   assert_eq(mooncode_json_string(steer_calls[0], "tool", default=""), "finish")
-  assert_false(mooncode_runtime_turn_model_planning_allowed(steer))
+  assert_true(mooncode_runtime_turn_model_planning_allowed(steer))
   let accept : Json = {
     "protocol": mooncode_protocol_version(),
     "session_id": "session-planner",

@@ -485,8 +485,9 @@ keeping generated artifact planning separate from runtime-turn orchestration.
 The response includes `serve_scheduler_state` and `serve_scheduler_decision`,
 and the runtime uses that decision before planning or executing tools.
 Steer commands now settle with `steer_applied` / `steer_dropped` runtime
-events and do not start artifact generation unless explicit tool calls were
-provided.
+events. Idle steer is scheduler-dropped before planning, while delivered steer
+can run explicit or bounded model-planned tool batches against the active
+MoonBook context.
 Idle steer and cancel controls are closed as scheduler-owned
 `steer_dropped` / `cancel_dropped` evidence with no tool execution, so
 `runtime-loop` can advance the queue without misclassifying stale controls as

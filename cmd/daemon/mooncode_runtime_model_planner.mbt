@@ -115,7 +115,7 @@ fn mooncode_runtime_turn_explicit_tool_calls(command : Json) -> Array[Json] {
 ///|
 fn mooncode_runtime_turn_model_planning_allowed(command : Json) -> Bool {
   let action = mooncode_json_string(command, "command", default="prompt")
-  action == "prompt" || action == "package"
+  action == "prompt" || action == "steer" || action == "package"
 }
 
 ///|
