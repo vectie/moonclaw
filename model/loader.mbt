@@ -34,7 +34,7 @@ pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
     Some(cwd) => cwd
     None => @os.cwd()
   }
-  let loader = Loader::{ home, cwd, models: [], providers: Map::new() }
+  let loader = Loader::{ home, cwd, models: [], providers: Map([]) }
   loader.load()
   loader
 }
@@ -99,32 +99,32 @@ async fn Loader::load(self : Loader) -> Unit {
   async fn load_providers_from_path(
     path : StringView,
   ) -> Map[String, ProviderConfig] {
-    let text = @fsx.read_file(path) catch { _ => return Map::new() }
-    let json = @json.parse(text) catch { _ => return Map::new() }
-    guard json is Object(obj) else { return Map::new() }
+    let text = @fsx.read_file(path) catch { _ => return Map([]) }
+    let json = @json.parse(text) catch { _ => return Map([]) }
+    guard json is Object(obj) else { return Map([]) }
     if obj.get("providers") is Some(_) {
       let providers_file : ProvidersFile = @json.from_json(json) catch {
-        _ => return Map::new()
+        _ => return Map([])
       }
       providers_file.providers
     } else {
-      Map::new()
+      Map([])
     }
   }
 
   async fn load_providers_from_moonclaw_config(
     path : StringView,
   ) -> Map[String, ProviderConfig] {
-    let text = @fsx.read_file(path) catch { _ => return Map::new() }
-    let json = @json.parse(text) catch { _ => return Map::new() }
-    guard json is Object(obj) else { return Map::new() }
-    guard obj.get("models") is Some(models_json) else { return Map::new() }
-    guard models_json is Object(models_obj) else { return Map::new() }
+    let text = @fsx.read_file(path) catch { _ => return Map([]) }
+    let json = @json.parse(text) catch { _ => return Map([]) }
+    guard json is Object(obj) else { return Map([]) }
+    guard obj.get("models") is Some(models_json) else { return Map([]) }
+    guard models_json is Object(models_obj) else { return Map([]) }
     guard models_obj.get("providers") is Some(providers_json) else {
-      return Map::new()
+      return Map([])
     }
     @json.from_json(providers_json) catch {
-      _ => Map::new()
+      _ => Map([])
     }
   }
 
@@ -155,7 +155,7 @@ async fn Loader::load(self : Loader) -> Unit {
 ///|
 async fn Loader::load_moonclaw_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if not(@fsx.exists(path)) {
+    if !@fsx.exists(path) {
       return None
     }
     let text = @fsx.read_file(path) catch { _ => return None }
@@ -200,7 +200,7 @@ async fn Loader::load_moonclaw_api_key(self : Loader) -> String? {
 ///|
 async fn Loader::load_qwen_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if not(@fsx.exists(path)) {
+    if !@fsx.exists(path) {
       return None
     }
     let text = @fsx.read_file(path) catch { _ => return None }
@@ -247,7 +247,7 @@ async fn Loader::load_qwen_api_key(self : Loader) -> String? {
 ///|
 async fn Loader::load_kimi_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if not(@fsx.exists(path)) {
+    if !@fsx.exists(path) {
       return None
     }
     let text = @fsx.read_file(path) catch { _ => return None }
@@ -294,7 +294,7 @@ async fn Loader::load_kimi_api_key(self : Loader) -> String? {
 ///|
 async fn Loader::load_kimi_coding_api_key(self : Loader) -> String? {
   async fn load_from_path(path : String) -> String? {
-    if not(@fsx.exists(path)) {
+    if !@fsx.exists(path) {
       return None
     }
     let text = @fsx.read_file(path) catch { _ => return None }
@@ -335,8 +335,8 @@ async fn Loader::load_kimi_coding_api_key(self : Loader) -> String? {
 async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
   let (target_provider, model_id) = if name.contains("/") {
     let parts = name.split("/").to_array()
-    let provider_name = parts.get(0).unwrap_or("").to_string()
-    let id = parts.get(1).unwrap_or(name).to_string()
+    let provider_name = parts.get(0).unwrap_or("").to_owned()
+    let id = parts.get(1).unwrap_or(name).to_owned()
     (Some(provider_name), id)
   } else {
     (None, name)
@@ -563,7 +563,7 @@ async fn Loader::load_codex_model(
 ) -> Model? {
   let credentials = @codex.load_credentials() catch {
     _ => {
-      if not(allow_auto_login) {
+      if !allow_auto_login {
         return None
       }
       logger.info("Codex OAuth credentials not found, starting login...")
@@ -606,7 +606,7 @@ async fn Loader::load_copilot_model(
 ) -> Model? {
   let credentials = @copilot.get_valid_credentials() catch {
     _ => {
-      if not(allow_auto_login) {
+      if !allow_auto_login {
         return None
       }
       logger.info("Copilot credentials not found, starting login...")
@@ -679,7 +679,7 @@ async fn Loader::load_qwen_model(self : Loader, name : String) -> Model? {
     "qwen/qwen-turbo" => ("qwen-turbo", 128_000)
     "qwen/qwen-long" => ("qwen-long", 1_000_000)
     _ => {
-      let model_name = name.strip_prefix("qwen/").unwrap_or(name).to_string()
+      let model_name = name.strip_prefix("qwen/").unwrap_or(name).to_owned()
       (model_name, 128_000)
     }
   }
@@ -707,7 +707,7 @@ async fn Loader::load_kimi_model(self : Loader, name : String) -> Model? {
     "kimi/moonshot-v1-32k" => ("moonshot-v1-32k", 32_000)
     "kimi/moonshot-v1-128k" => ("moonshot-v1-128k", 128_000)
     _ => {
-      let model_name = name.strip_prefix("kimi/").unwrap_or(name).to_string()
+      let model_name = name.strip_prefix("kimi/").unwrap_or(name).to_owned()
       (model_name, 128_000)
     }
   }
@@ -735,7 +735,7 @@ async fn Loader::load_kimi_coding_model(self : Loader, name : String) -> Model? 
       let model_name = name
         .strip_prefix("kimi-coding/")
         .unwrap_or(name)
-        .to_string()
+        .to_owned()
       (model_name, 262_144)
     }
   }

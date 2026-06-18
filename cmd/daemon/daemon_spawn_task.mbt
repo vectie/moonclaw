@@ -60,7 +60,7 @@ async fn Daemon::spawn_task(
     args.push("--web-search")
   }
   logger.info(
-    "Spawning task (\{self.exec_path}) process at \{cwd.to_json().stringify(indent=2)} with args: \{args}",
+    "Spawning task (\{self.exec_path}) process at \{cwd.to_json().stringify(indent=2)} with args: \{to_repr(args)}",
   )
   let process = self.process.spawn(self.exec_path, args, cwd~, env={
     "HOME": self.home,

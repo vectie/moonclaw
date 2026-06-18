@@ -4,14 +4,14 @@ pub struct WorktreeHandle {
   path : String
   branch_name : String
   task_key : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct WorktreeList {
   repo_root : String
   base_dir : String
   worktrees : Array[WorktreeHandle]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 fn worktree_slug(text : String) -> String {
@@ -41,7 +41,7 @@ fn worktree_slug(text : String) -> String {
         }
     }
   }
-  let slug = buf.to_string().trim(chars="-").to_string()
+  let slug = buf.to_string().trim(chars="-").to_owned()
   if slug.is_blank() {
     "task"
   } else {
@@ -86,23 +86,23 @@ fn parse_worktree_list_output(
     }
   }
   for raw_line in stdout.split("\n") {
-    let line = raw_line.trim_end().to_string()
+    let line = raw_line.trim_end().to_owned()
     if line.is_blank() {
       flush()
       current_path = None
       current_branch_name = ""
       current_task_key = ""
     } else if line.has_prefix("worktree ") {
-      current_path = Some(line["worktree ".length():].trim().to_string())
+      current_path = Some(line["worktree ".length():].trim().to_owned())
       current_branch_name = ""
       current_task_key = match current_path {
-        Some(path) => @pathx.basename(path).to_string()
+        Some(path) => @pathx.basename(path).to_owned()
         None => ""
       }
     } else if line.has_prefix("branch refs/heads/") {
       current_branch_name = line["branch refs/heads/".length():]
         .trim()
-        .to_string()
+        .to_owned()
     }
   }
   flush()

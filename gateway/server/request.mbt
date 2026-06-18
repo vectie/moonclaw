@@ -12,12 +12,12 @@ pub async fn Gateway::handle_request(
       (Get, ["", ""]) => self.handle_index(r, w)
       (Get, ["", "ui"]) => self.handle_operator_ui(r, w, [])
       (Get, ["", "ui", .. rest]) =>
-        self.handle_operator_ui(r, w, rest.map(fn(part) { part.to_string() }))
+        self.handle_operator_ui(r, w, rest.map(fn(part) { part.to_owned() }))
       (Get, ["", "assets", .. rest]) =>
         self.handle_operator_ui(
           r,
           w,
-          ["assets", ..rest.map(fn(part) { part.to_string() })],
+          ["assets", ..rest.map(fn(part) { part.to_owned() })],
         )
       (Get, ["", "health"]) => self.handle_health(r, w)
       (Get, ["", "v1", "events"]) => self.handle_events_stream(r, w)
@@ -36,13 +36,13 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "jobs", _job_id]) => self.handle_get_job(r, w)
       (Post, ["", "v1", "jobs"]) => self.handle_create_job(r, w)
       (Post, ["", "v1", "jobs", job_id, "update"]) =>
-        self.handle_update_job(r, w, job_id.to_string())
+        self.handle_update_job(r, w, job_id.to_owned())
       (Post, ["", "v1", "jobs", job_id, "run"]) =>
-        self.handle_run_job(r, w, job_id.to_string())
+        self.handle_run_job(r, w, job_id.to_owned())
       (Post, ["", "v1", "jobs", job_id, "cancel"]) =>
-        self.handle_cancel_job(r, w, job_id.to_string(), false)
+        self.handle_cancel_job(r, w, job_id.to_owned(), false)
       (Post, ["", "v1", "jobs", job_id, "force-cancel"]) =>
-        self.handle_cancel_job(r, w, job_id.to_string(), true)
+        self.handle_cancel_job(r, w, job_id.to_owned(), true)
       (Get, ["", "v1", "artifacts"]) => self.handle_list_artifacts(r, w)
       (Get, ["", "v1", "artifacts", _artifact_id]) =>
         self.handle_get_artifact(r, w)
@@ -52,17 +52,17 @@ pub async fn Gateway::handle_request(
       (Post, ["", "v1", "cowork", "sessions"]) =>
         self.handle_create_cowork_session(r, w)
       (Get, ["", "v1", "cowork", "sessions", session_key]) =>
-        self.handle_get_cowork_session(r, w, session_key.to_string())
+        self.handle_get_cowork_session(r, w, session_key.to_owned())
       (Post, ["", "v1", "cowork", "sessions", session_key, "config"]) =>
-        self.handle_update_cowork_config(r, w, session_key.to_string())
+        self.handle_update_cowork_config(r, w, session_key.to_owned())
       (Post, ["", "v1", "cowork", "sessions", session_key, "messages"]) =>
-        self.handle_cowork_send_message(r, w, session_key.to_string())
+        self.handle_cowork_send_message(r, w, session_key.to_owned())
       (Post, ["", "v1", "cowork", "sessions", session_key, "plan"]) =>
-        self.handle_cowork_plan(r, w, session_key.to_string())
+        self.handle_cowork_plan(r, w, session_key.to_owned())
       (Post, ["", "v1", "cowork", "sessions", session_key, "preview"]) =>
-        self.handle_cowork_preview(r, w, session_key.to_string())
+        self.handle_cowork_preview(r, w, session_key.to_owned())
       (Post, ["", "v1", "cowork", "sessions", session_key, "promote"]) =>
-        self.handle_cowork_promote(r, w, session_key.to_string())
+        self.handle_cowork_promote(r, w, session_key.to_owned())
       (
         Post,
         [
@@ -79,8 +79,8 @@ pub async fn Gateway::handle_request(
         self.handle_cowork_confirm_proposal(
           r,
           w,
-          session_key.to_string(),
-          proposal_id.to_string(),
+          session_key.to_owned(),
+          proposal_id.to_owned(),
         )
       (
         Post,
@@ -89,8 +89,8 @@ pub async fn Gateway::handle_request(
         self.handle_cowork_resume_run(
           r,
           w,
-          session_key.to_string(),
-          run_id.to_string(),
+          session_key.to_owned(),
+          run_id.to_owned(),
         )
       (Get, ["", "v1", "plugins"]) => self.handle_list_plugins(r, w)
       (Get, ["", "v1", "plugins", _plugin_id]) => self.handle_get_plugin(r, w)
@@ -127,11 +127,11 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "channels", _channel_id]) =>
         self.handle_get_channel(r, w)
       (Post, ["", "v1", "channels", channel_id, "configure"]) =>
-        self.handle_configure_channel(r, w, channel_id.to_string())
+        self.handle_configure_channel(r, w, channel_id.to_owned())
       (Post, ["", "v1", "channels", channel_id, "start"]) =>
-        self.handle_start_channel(r, w, channel_id.to_string())
+        self.handle_start_channel(r, w, channel_id.to_owned())
       (Post, ["", "v1", "channels", channel_id, "stop"]) =>
-        self.handle_stop_channel(r, w, channel_id.to_string())
+        self.handle_stop_channel(r, w, channel_id.to_owned())
       (Get, ["", "v1", "extensions"]) => self.handle_list_extensions(r, w)
       (Get, ["", "v1", "extensions", _extension_id]) =>
         self.handle_get_extension(r, w)
@@ -416,7 +416,7 @@ async fn Gateway::handle_get_channel(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let channel_id = match paths {
-    ["", "v1", "channels", id] => id.to_string()
+    ["", "v1", "channels", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -475,7 +475,7 @@ async fn Gateway::handle_get_extension(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let extension_id = match paths {
-    ["", "v1", "extensions", id] => id.to_string()
+    ["", "v1", "extensions", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -518,7 +518,7 @@ async fn Gateway::handle_webhook(
   channel_id : StringView,
   _rest : ArrayView[StringView],
 ) -> Unit {
-  let webhook_path = "/webhook/" + channel_id.to_string()
+  let webhook_path = "/webhook/" + channel_id.to_owned()
   if !self.extension_registry.has_path(webhook_path) {
     raise json_error(404, "NotFound", {
       "error": {
@@ -535,7 +535,7 @@ async fn Gateway::handle_webhook(
 
   let request = @channel.ExtensionRequest::new(
     http_method=r.method_.to_string(),
-    path=r.path.to_string(),
+    path=r.path.to_owned(),
     headers~,
     body~,
     query_params~,

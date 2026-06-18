@@ -2,6 +2,7 @@
 package "vectie/moonclaw/workspace"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -17,7 +18,7 @@ pub struct WorkspaceFile {
   name : String
   path : String
   content : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct WorkspaceRuntime {
   home : String
@@ -35,7 +36,7 @@ pub struct WorkspaceSnapshot {
   configured_from : String
   files : Array[WorkspaceFile]
   prompt_context : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

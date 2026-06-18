@@ -120,7 +120,7 @@ fn provider_task_child_proposal(
 
 ///|
 fn provider_task_is_planning_kind(kind : String) -> Bool {
-  let normalized = kind.trim().to_string().to_lower()
+  let normalized = kind.trim().to_owned().to_lower()
   normalized == "planning" ||
   normalized == "plan" ||
   normalized.has_suffix(".planning") ||
@@ -184,8 +184,8 @@ fn provider_task_phase_rank(kind : String) -> Int {
 ///|
 fn metadata_string_value(metadata : Json, key : String) -> String? {
   match metadata_with_step_metadata(metadata, key) {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      Some(value.trim().to_string())
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      Some(value.trim().to_owned())
     _ => None
   }
 }
@@ -214,7 +214,7 @@ fn metadata_string_array_value(metadata : Json, key : String) -> Array[String] {
       let items : Array[String] = []
       for value in values {
         guard value is String(text) else { continue }
-        let trimmed = text.trim().to_string()
+        let trimmed = text.trim().to_owned()
         if !trimmed.is_blank() {
           items.push(trimmed)
         }
@@ -239,13 +239,13 @@ fn provider_task_canonical_title(kind : String) -> String? {
 
 ///|
 fn provider_task_result_task_id(task : ProviderTaskSpec) -> String {
-  let task_id = task.id.trim().to_string()
+  let task_id = task.id.trim().to_owned()
   if task_id.length() <= 80 {
     task_id
   } else {
     let base = provider_task_canonical_title(task.kind).unwrap_or(task.kind)
     let slug = safe_step_file_segment(base)
-    let suffix = task_id.hash().to_string().trim(chars="-").to_string()
+    let suffix = task_id.hash().to_string().trim(chars="-").to_owned()
     "provider-\{slug}-\{suffix}"
   }
 }
@@ -285,8 +285,8 @@ fn provider_task_effective_workspace_root(
   context_workspace_root : String,
   request_cwd : String,
 ) -> String {
-  let normalized_command = command_workspace_root.trim().to_string()
-  let normalized_context = context_workspace_root.trim().to_string()
+  let normalized_command = command_workspace_root.trim().to_owned()
+  let normalized_context = context_workspace_root.trim().to_owned()
   if !normalized_command.is_blank() {
     normalized_command
   } else if !normalized_context.is_blank() {
@@ -423,7 +423,7 @@ fn provider_task_extract_candidate_pages_from_markdown(
 ) -> Array[String] {
   let pages : Array[String] = []
   for raw_line in content.split("\n") {
-    for path in provider_task_artifact_paths_from_line(raw_line.to_string()) {
+    for path in provider_task_artifact_paths_from_line(raw_line.to_owned()) {
       if prefixes.iter().any(fn(prefix) { path.has_prefix(prefix) }) &&
         path.has_suffix(".md") &&
         !pages.contains(path) {
@@ -465,7 +465,7 @@ fn provider_task_markdown_bullet_section(
   let items : Array[String] = []
   let mut in_section = false
   for raw_line in content.split("\n") {
-    let line = raw_line.trim().to_string()
+    let line = raw_line.trim().to_owned()
     if line.has_prefix("## ") {
       let normalized = line[3:].trim().to_lower()
       if in_section && normalized != section {
@@ -478,7 +478,7 @@ fn provider_task_markdown_bullet_section(
       continue
     }
     if line.has_prefix("- ") {
-      let item = line[2:].trim().to_string()
+      let item = line[2:].trim().to_owned()
       if !item.is_blank() {
         items.push(item)
       }
@@ -499,7 +499,7 @@ fn provider_task_chunk_strings(
   let mut start = 0
   while start < items.length() {
     let end_ = Int::min(start + chunk_size, items.length())
-    chunks.push(items[start:end_].to_array())
+    chunks.push(items[start:end_].to_owned())
     start = end_
   }
   chunks
@@ -659,7 +659,7 @@ fn provider_task_bootstrap_packet_slug(
   index : Int,
 ) -> String {
   let stem = @pathx.basename(first_path)
-    .to_string()
+    .to_owned()
     .replace_all(old=".md", new="")
   let normalized = safe_step_file_segment(stem)
   if normalized.is_blank() {
@@ -706,15 +706,15 @@ fn provider_task_default_source_page_from_packet(
 ) -> String {
   let mut title : String? = None
   for raw_line in content.split("\n") {
-    let line = raw_line.trim().to_string()
+    let line = raw_line.trim().to_owned()
     if line.has_prefix("# Bootstrap Packet:") {
-      title = Some(line["# Bootstrap Packet:".length():].trim().to_string())
+      title = Some(line["# Bootstrap Packet:".length():].trim().to_owned())
       break
     }
   }
   let base = match title {
     Some(name) if !name.is_blank() => name
-    _ => @pathx.basename(packet_path).to_string().replace_all(old=".md", new="")
+    _ => @pathx.basename(packet_path).to_owned().replace_all(old=".md", new="")
   }
   let slug = safe_step_file_segment(base)
   let file_name = if slug.is_blank() {
@@ -917,7 +917,7 @@ fn provider_task_research_topic(context : ProviderTaskWorkerContext) -> String {
     context.book_id
   }
   let trimmed = if base.has_prefix("research-") { base[9:] } else { base }
-  let topic = trimmed.trim().to_string()
+  let topic = trimmed.trim().to_owned()
   if topic.is_blank() {
     "research topic"
   } else {
@@ -931,22 +931,22 @@ fn provider_task_research_question_summary(
   fallback : String,
 ) -> String {
   for line in content.split("\n") {
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
     if trimmed.contains("- Research question:") {
       let parts = trimmed.split("- Research question:").collect()
       if parts.length() > 1 {
-        return provider_task_trim_research_clause(parts[1].trim().to_string())
+        return provider_task_trim_research_clause(parts[1].trim().to_owned())
       }
     }
     if trimmed.contains("Research question:") {
       let parts = trimmed.split("Research question:").collect()
       if parts.length() > 1 {
-        return provider_task_trim_research_clause(parts[1].trim().to_string())
+        return provider_task_trim_research_clause(parts[1].trim().to_owned())
       }
     }
   }
   if !fallback.trim().is_blank() {
-    fallback.trim().to_string()
+    fallback.trim().to_owned()
   } else if !content.trim().is_blank() {
     provider_task_first_nonblank_lines(content, 3)
   } else {
@@ -960,11 +960,11 @@ fn provider_task_trim_research_clause(text : String) -> String {
     " - Quality bar:", " - Required durable outputs:", " - Required raw outputs:",
     " - Output contract:", " - Mode:",
   ]
-  let mut value = text.trim().to_string()
+  let mut value = text.trim().to_owned()
   for marker in stop_markers {
     let parts = value.split(marker).collect()
     if parts.length() > 1 {
-      value = parts[0].trim().to_string()
+      value = parts[0].trim().to_owned()
     }
   }
   if value.is_blank() {
@@ -982,7 +982,7 @@ fn provider_task_first_nonblank_lines(content : String, limit : Int) -> String {
     if trimmed.is_blank() {
       continue
     }
-    lines.push(trimmed.to_string())
+    lines.push(trimmed.to_owned())
     if lines.length() >= limit {
       break
     }
@@ -1052,7 +1052,7 @@ fn provider_task_limited_strings(
 
 ///|
 fn provider_task_add_unique(items : Array[String], item : String) -> Unit {
-  let trimmed = item.trim().to_string()
+  let trimmed = item.trim().to_owned()
   if !trimmed.is_blank() && !items.contains(trimmed) {
     items.push(trimmed)
   }
@@ -1066,18 +1066,18 @@ fn provider_task_github_raw_readme_candidates(url : String) -> Array[String] {
     Some(index) => index + marker.length()
     None => return []
   }
-  let after_host = url[start:].to_string()
+  let after_host = url[start:].to_owned()
   let without_query = match after_host.find("?") {
-    Some(index) => after_host[:index].to_string()
+    Some(index) => after_host[:index].to_owned()
     None => after_host
   }
   let rest = match without_query.find("#") {
-    Some(index) => without_query[:index].to_string()
+    Some(index) => without_query[:index].to_owned()
     None => without_query
   }
   let parts : Array[String] = []
   for part in rest.split("/") {
-    let value = part.trim().to_string()
+    let value = part.trim().to_owned()
     if !value.is_blank() {
       parts.push(value)
     }
@@ -1522,7 +1522,7 @@ fn provider_task_wiki_page_slug(text : String) -> String {
         }
     }
   }
-  let slug = buf.to_string().trim(chars="-").to_string()
+  let slug = buf.to_string().trim(chars="-").to_owned()
   if slug.is_blank() {
     "topic"
   } else {
@@ -1534,7 +1534,7 @@ fn provider_task_wiki_page_slug(text : String) -> String {
 fn provider_task_concept_page_from_source(source_page : String) -> String {
   let name = @pathx.basename(source_page)
     .replace_all(old=".md", new="")
-    .to_string()
+    .to_owned()
   "wiki/concepts/\{provider_task_wiki_page_slug(name)}.md"
 }
 
@@ -1544,7 +1544,7 @@ fn provider_task_entity_page_from_context(
 ) -> String? {
   let raw = context.book_id
     .trim()
-    .to_string()
+    .to_owned()
     .to_lower()
     .replace_all(old="research-", new="")
   let slug = provider_task_wiki_page_slug(raw)
@@ -1775,7 +1775,7 @@ fn provider_task_breadth_envelope_from_content(
   content : String,
 ) -> AdaptiveAnalysisEnvelope? {
   let trimmed = match extract_first_json_object(content) {
-    Some(payload) => payload.trim().to_string()
+    Some(payload) => payload.trim().to_owned()
     None => return None
   }
   let json = @json.parse(trimmed) catch { _ => return None }
@@ -1920,7 +1920,7 @@ fn normalize_provider_task_result(
   content : String,
 ) -> Result[ProviderTaskResult, String] {
   let trimmed = match extract_first_json_object(content) {
-    Some(payload) => payload.trim().to_string()
+    Some(payload) => payload.trim().to_owned()
     None => return Err("Provider task analysis must return a JSON object")
   }
   let json = match parse_provider_task_payload(trimmed, "analysis") {

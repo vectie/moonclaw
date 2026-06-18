@@ -3,20 +3,20 @@ pub(all) enum RolePlanningLayer {
   Strategic
   Domain
   Execution
-} derive(ToJson, FromJson, Show, Eq)
+} derive(ToJson, FromJson, Debug, Eq)
 
 ///|
 pub(all) enum RoleRuntimeMode {
   PlannerOnly
   Executor
-} derive(ToJson, FromJson, Show, Eq)
+} derive(ToJson, FromJson, Debug, Eq)
 
 ///|
 pub(all) enum RoleToolAccess {
   Disabled
   Limited
   Full
-} derive(ToJson, FromJson, Show, Eq)
+} derive(ToJson, FromJson, Debug, Eq)
 
 ///|
 pub(all) enum RoleMemoryScope {
@@ -24,7 +24,7 @@ pub(all) enum RoleMemoryScope {
   Workspace
   Domain
   Global
-} derive(ToJson, FromJson, Show, Eq)
+} derive(ToJson, FromJson, Debug, Eq)
 
 ///|
 pub(all) struct RoleRuntimeContract {
@@ -38,7 +38,7 @@ pub(all) struct RoleRuntimeContract {
   allow_execution_tools : Bool
   output_contract : String?
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) enum RoleHandoffKind {
@@ -46,7 +46,7 @@ pub(all) enum RoleHandoffKind {
   DomainToExecution
   ExecutionToDomain
   DomainToStrategic
-} derive(ToJson, FromJson, Show, Eq)
+} derive(ToJson, FromJson, Debug, Eq)
 
 ///|
 pub(all) struct RoleHandoffPacket {
@@ -57,7 +57,7 @@ pub(all) struct RoleHandoffPacket {
   output_contract : String?
   review_required : Bool
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn RoleRuntimeContract::new(
@@ -112,7 +112,7 @@ fn role_runtime_string(value : Json, key : String) -> String? {
   match value {
     Object(obj) =>
       match obj.get(key) {
-        Some(String(text)) => Some(text.trim().to_string())
+        Some(String(text)) => Some(text.trim().to_owned())
         _ => None
       }
     _ => None
@@ -174,7 +174,7 @@ fn default_role_runtime_contract(
   role : String?,
   profile_metadata : Json,
 ) -> RoleRuntimeContract {
-  let normalized_role = role.unwrap_or("worker").trim().to_string().to_lower()
+  let normalized_role = role.unwrap_or("worker").trim().to_owned().to_lower()
   match normalized_role {
     "controller" =>
       RoleRuntimeContract::new(

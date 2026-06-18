@@ -3,7 +3,7 @@
 priv struct PostEnabledToolsRequest(Array[String])
 
 ///|
-impl @json.FromJson for PostEnabledToolsRequest with from_json(
+impl @json.FromJson for PostEnabledToolsRequest with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> PostEnabledToolsRequest raise @json.JsonDecodeError {
@@ -29,7 +29,7 @@ async fn Server::set_enabled_tools(
         },
       })
   }
-  let tools = Set::new()
+  let tools = Set([])
   for tool_name in request.0 {
     if tools.contains(tool_name) {
       raise json_error(400, "BadRequest", {

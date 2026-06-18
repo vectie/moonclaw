@@ -39,7 +39,7 @@ fn gateway_websocket_connector() -> @channel.WebSocketClientConnector {
         headers=websocket_request_headers(request),
       ),
     ) catch {
-      error => return Err(error.to_string())
+      error => return Err("\{to_repr(error)}")
     }
     let mut message_handler : (async (Bytes) -> Unit)? = None
     let mut close_handler : (() -> Unit)? = None
@@ -60,7 +60,9 @@ fn gateway_websocket_connector() -> @channel.WebSocketClientConnector {
         connection=@channel.WebSocketConnection::new(
           id=request.client_id(),
           send=fn(data) {
-            let text : Result[String, Error] = try? @encoding/utf8.decode(data)
+            let text : Result[String, Error] = Ok(@encoding/utf8.decode(data)) catch {
+              error => Err(error)
+            }
             match text {
               Ok(text) => client.send_text(text)
               Err(_) => client.send_binary(data)

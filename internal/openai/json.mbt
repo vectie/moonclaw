@@ -88,27 +88,27 @@ pub fn text_content_part(
 
 ///|
 trait ToChatCompletionMessageParamContent {
-  to_chat_completion_message_param_content(self : Self) -> Array[
+  fn to_chat_completion_message_param_content(self : Self) -> Array[
     ChatCompletionContentPartParam,
   ]
 }
 
 ///|
-pub impl ToChatCompletionMessageParamContent for String with to_chat_completion_message_param_content(
+pub impl ToChatCompletionMessageParamContent for String with fn to_chat_completion_message_param_content(
   self : String,
 ) -> Array[ChatCompletionContentPartParam] {
   [text_content_part(self)]
 }
 
 ///|
-pub impl ToChatCompletionMessageParamContent for StringView with to_chat_completion_message_param_content(
+pub impl ToChatCompletionMessageParamContent for StringView with fn to_chat_completion_message_param_content(
   self : StringView,
 ) -> Array[ChatCompletionContentPartParam] {
-  [text_content_part(self.to_string())]
+  [text_content_part(self.to_owned())]
 }
 
 ///|
-pub impl ToChatCompletionMessageParamContent for ChatCompletionContentPartParam with to_chat_completion_message_param_content(
+pub impl ToChatCompletionMessageParamContent for ChatCompletionContentPartParam with fn to_chat_completion_message_param_content(
   self : ChatCompletionContentPartParam,
 ) -> Array[ChatCompletionContentPartParam] {
   [self]
@@ -117,7 +117,7 @@ pub impl ToChatCompletionMessageParamContent for ChatCompletionContentPartParam 
 ///|
 pub impl[T : ToChatCompletionMessageParamContent] ToChatCompletionMessageParamContent for Array[
   T,
-] with to_chat_completion_message_param_content(self : Array[T]) -> Array[
+] with fn to_chat_completion_message_param_content(self : Array[T]) -> Array[
   ChatCompletionContentPartParam,
 ] {
   let parts = []

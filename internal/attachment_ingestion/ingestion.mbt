@@ -9,7 +9,7 @@ pub struct MaterializedStarterAttachment {
   status : String
   note : String?
   size : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn MaterializedStarterAttachment::new(
@@ -70,7 +70,7 @@ fn sanitized_attachment_name(text : String) -> String {
       builder.write_char(char)
     }
   }
-  builder.to_string().trim().to_string()
+  builder.to_string().trim().to_owned()
 }
 
 ///|
@@ -79,8 +79,8 @@ pub fn starter_attachment_file_name(
   filename : String?,
 ) -> String {
   let base = match filename {
-    Some(filename) if !filename.trim().to_string().is_blank() =>
-      sanitized_attachment_name(filename.trim().to_string())
+    Some(filename) if !filename.trim().to_owned().is_blank() =>
+      sanitized_attachment_name(filename.trim().to_owned())
     _ => ""
   }
   if base.is_blank() {
@@ -108,8 +108,8 @@ pub fn starter_attachment_extracted_text_path(saved_path : String) -> String {
 ///|
 pub fn starter_attachment_summary_file_name(filename : String?) -> String {
   match filename {
-    Some(filename) if !filename.trim().to_string().is_blank() =>
-      "\{sanitized_attachment_name(filename.trim().to_string())}.summary.md"
+    Some(filename) if !filename.trim().to_owned().is_blank() =>
+      "\{sanitized_attachment_name(filename.trim().to_owned())}.summary.md"
     None => "starter_attachment.summary.md"
     _ => "starter_attachment.summary.md"
   }
@@ -121,9 +121,9 @@ pub fn starter_attachment_summary_markdown(
   extracted_text : String,
 ) -> String {
   let title = attachment.filename.unwrap_or(attachment.id)
-  let trimmed = extracted_text.trim().to_string()
+  let trimmed = extracted_text.trim().to_owned()
   let excerpt = if trimmed.length() > 600 {
-    trimmed[:600].to_string() + "..."
+    trimmed[:600].to_owned() + "..."
   } else {
     trimmed
   }
@@ -147,7 +147,7 @@ pub fn starter_attachment_summary_markdown(
   } else {
     lines.push(excerpt)
   }
-  lines.join("\n").trim_end().to_string() + "\n"
+  lines.join("\n").trim_end().to_owned() + "\n"
 }
 
 ///|
@@ -161,7 +161,7 @@ pub fn starter_attachment_digest_markdown(
   ]
   if attachments.is_empty() {
     lines.push("No starter attachments were materialized.")
-    return lines.join("\n").trim_end().to_string() + "\n"
+    return lines.join("\n").trim_end().to_owned() + "\n"
   }
   for attachment in attachments {
     let title = attachment.filename.unwrap_or(attachment.id)
@@ -179,8 +179,8 @@ pub fn starter_attachment_digest_markdown(
       None => ()
     }
     match attachment.note {
-      Some(note) if !note.trim().to_string().is_blank() =>
-        lines.push("- Note: \{note.trim().to_string()}")
+      Some(note) if !note.trim().to_owned().is_blank() =>
+        lines.push("- Note: \{note.trim().to_owned()}")
       _ => ()
     }
     let mut matched_summary : String? = None
@@ -192,7 +192,7 @@ pub fn starter_attachment_digest_markdown(
     }
     match matched_summary {
       Some(summary_markdown) => {
-        let excerpt = summary_markdown.trim().to_string()
+        let excerpt = summary_markdown.trim().to_owned()
         if !excerpt.is_blank() {
           lines.push("")
           lines.push("### Summary")
@@ -204,7 +204,7 @@ pub fn starter_attachment_digest_markdown(
     }
     lines.push("")
   }
-  lines.join("\n").trim_end().to_string() + "\n"
+  lines.join("\n").trim_end().to_owned() + "\n"
 }
 
 ///|
@@ -212,11 +212,11 @@ pub fn starter_attachment_digest_excerpt(
   digest_markdown : String,
   limit? : Int = 2000,
 ) -> String {
-  let trimmed = digest_markdown.trim().to_string()
+  let trimmed = digest_markdown.trim().to_owned()
   if trimmed.length() <= limit {
     trimmed
   } else {
-    trimmed[:limit].to_string() + "..."
+    trimmed[:limit].to_owned() + "..."
   }
 }
 
@@ -285,11 +285,11 @@ pub fn render_materialized_attachment_manifest(
       None => ()
     }
     match attachment.note {
-      Some(note) if !note.trim().to_string().is_blank() =>
-        lines.push("- Note: \{note.trim().to_string()}")
+      Some(note) if !note.trim().to_owned().is_blank() =>
+        lines.push("- Note: \{note.trim().to_owned()}")
       _ => ()
     }
     lines.push("")
   }
-  lines.join("\n").trim_end().to_string() + "\n"
+  lines.join("\n").trim_end().to_owned() + "\n"
 }

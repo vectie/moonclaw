@@ -5,7 +5,7 @@ pub struct ChatCompletionMessage {
   refusal : String?
   role : ChatCompletionMessageRole
   tool_calls : Array[ChatCompletionMessageToolCall]
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 pub fn ChatCompletionMessage::new(
@@ -29,7 +29,7 @@ pub fn ChatCompletionMessage::to_param(
 }
 
 ///|
-pub impl @json.FromJson for ChatCompletionMessage with from_json(
+pub impl @json.FromJson for ChatCompletionMessage with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionMessage {

@@ -10,7 +10,7 @@ pub struct AcpTarget {
   model : String?
   status : String
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct AcpSession {
@@ -24,7 +24,7 @@ pub struct AcpSession {
   updated_at : Int
   last_error : String?
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct AcpRun {
@@ -40,13 +40,13 @@ pub struct AcpRun {
   plan : Json
   result : Json?
   error : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct PersistedAcpState {
   sessions : Array[AcpSession]
   runs : Array[AcpRun]?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct AcpRuntime {
@@ -127,7 +127,7 @@ fn json_string(value : Json?, field : String) -> String? {
     Some(Object(obj)) =>
       match obj.get(field) {
         Some(String(text)) if !text.trim().is_empty() =>
-          Some(text.trim().to_string())
+          Some(text.trim().to_owned())
         _ => None
       }
     _ => None
@@ -143,7 +143,7 @@ fn json_array_strings(value : Json?, field : String) -> Array[String] {
           items.filter_map(fn(item) {
             match item {
               String(text) if !text.trim().is_empty() =>
-                Some(text.trim().to_string())
+                Some(text.trim().to_owned())
               _ => None
             }
           })

@@ -13,7 +13,7 @@ pub struct WebFetchResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for WebFetchResult with output(
+pub impl Show for WebFetchResult with fn output(
   result : WebFetchResult,
   logger : &Logger,
 ) -> Unit {
@@ -49,18 +49,18 @@ priv struct FetchUri {
 ///|
 priv suberror WebFetchError {
   InvalidUrl(message~ : String)
-} derive(Show)
+} derive(Debug)
 
 ///|
 fn parse_fetch_uri(url : String) -> FetchUri raise WebFetchError {
   guard url.find("://") is Some(index) else {
     raise WebFetchError::InvalidUrl(message="URL must include a scheme")
   }
-  let scheme = url[:index].to_string()
-  let remainder = url[index + 3:].to_string()
+  let scheme = url[:index].to_owned()
+  let remainder = url[index + 3:].to_owned()
   let (host, path) = match remainder.find("/") {
     Some(path_index) =>
-      (remainder[:path_index].to_string(), remainder[path_index:].to_string())
+      (remainder[:path_index].to_owned(), remainder[path_index:].to_owned())
     None => (remainder, "/")
   }
   guard !scheme.trim().is_empty() else {
@@ -75,8 +75,8 @@ fn parse_fetch_uri(url : String) -> FetchUri raise WebFetchError {
 ///|
 fn normalized_content_type(headers : Map[String, String]) -> String? {
   match headers.get("content-type") {
-    Some(value) if !value.trim().to_string().is_blank() =>
-      Some(value.trim().to_string())
+    Some(value) if !value.trim().to_owned().is_blank() =>
+      Some(value.trim().to_owned())
     _ => None
   }
 }
@@ -92,7 +92,7 @@ fn html_title(text : String) -> String? {
     Some(offset) => start + offset
     None => return None
   }
-  let title = text[start:end].trim().to_string()
+  let title = text[start:end].trim().to_owned()
   if title.is_blank() {
     None
   } else {
@@ -112,7 +112,7 @@ fn html_body_text(text : String) -> String {
             Some(body_end_offset) => content_start + body_end_offset
             None => text.length()
           }
-          text[content_start:content_end].to_string()
+          text[content_start:content_end].to_owned()
         }
         None => text
       }
@@ -167,7 +167,7 @@ fn strip_html_tags(text : String) -> String {
         }
         match entity_end {
           Some(end_index) => {
-            let entity = String::from_array(chars[i + 1:end_index].to_array())
+            let entity = String::from_array(chars[i + 1:end_index].to_owned())
             match decode_html_entity(entity) {
               Some(decoded) => {
                 buf.write_string(decoded)
@@ -195,7 +195,7 @@ fn strip_html_tags(text : String) -> String {
     }
     i = i + 1
   }
-  buf.to_string().trim().to_string()
+  buf.to_string().trim().to_owned()
 }
 
 ///|
@@ -206,7 +206,7 @@ fn truncate_text(text : String, max_chars : Int) -> (String, Bool) {
   if text.length() <= max_chars {
     return (text, false)
   }
-  let truncated = text[:max_chars].trim().to_string()
+  let truncated = text[:max_chars].trim().to_owned()
   (truncated, true)
 }
 
@@ -218,13 +218,13 @@ fn extracted_fetch_text(
   match content_type {
     Some(content_type) if content_type.to_lower().contains("html") =>
       (strip_html_tags(html_body_text(body)), html_title(body))
-    _ => (body.trim().to_string(), None)
+    _ => (body.trim().to_owned(), None)
   }
 }
 
 ///|
 async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
-  let uri = parse_fetch_uri(url) catch { error => fail(error.to_string()) }
+  let uri = parse_fetch_uri(url) catch { error => fail("\{to_repr(error)}") }
   let client = @http.Client::new("\{uri.scheme}://\{uri.host}", headers={
     "Accept": "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.8",
     "Connection": "close",
@@ -283,7 +283,7 @@ pub fn new() -> @tool.Tool[WebFetchResult] {
       guard args is { "url": String(url), .. } else {
         return @tool.error("Error: 'url' parameter is required")
       }
-      let trimmed = url.trim().to_string()
+      let trimmed = url.trim().to_owned()
       guard !trimmed.is_blank() else {
         return @tool.error("Error: 'url' must not be blank")
       }

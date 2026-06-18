@@ -5,7 +5,7 @@ pub enum CoordinationStatus {
   Completed
   Failed
   Cancelled
-} derive(ToJson, FromJson, Eq, Show)
+} derive(ToJson, FromJson, Eq, Debug)
 
 ///|
 pub struct SubTask {
@@ -19,7 +19,7 @@ pub struct SubTask {
   created_at : Int
   started_at : Int?
   completed_at : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn sub_task(
@@ -88,21 +88,21 @@ pub struct CoordinationTask {
   started_at : Int?
   completed_at : Int?
   metadata : Map[String, Json]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn coordination_task(
   coordination_id~ : String,
   parent_agent~ : String,
   subtasks~ : Array[SubTask],
-  metadata? : Map[String, Json] = Map::new(),
+  metadata? : Map[String, Json] = Map([]),
 ) -> CoordinationTask {
   CoordinationTask::{
     coordination_id,
     parent_agent,
     subtasks,
     status: Pending,
-    results: Map::new(),
+    results: Map([]),
     created_at: current_time_ms(),
     started_at: None,
     completed_at: None,

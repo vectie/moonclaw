@@ -7,7 +7,7 @@ fn provider_task_runtime_artifact_root(
   request : AnalysisRequest,
   workspace_root : String,
 ) -> String {
-  let provider_root = workspace_root.trim().to_string()
+  let provider_root = workspace_root.trim().to_owned()
   if !provider_root.is_blank() {
     provider_root
   } else {
@@ -58,7 +58,7 @@ async fn provider_task_failure_debug_path(
 
 ///|
 fn is_provider_result_artifact_path(path : String) -> Bool {
-  let normalized = path.trim().to_string()
+  let normalized = path.trim().to_owned()
   !normalized.is_blank() &&
   !normalized.has_prefix("/") &&
   !normalized.contains("://") &&
@@ -68,7 +68,7 @@ fn is_provider_result_artifact_path(path : String) -> Bool {
 
 ///|
 fn is_provider_result_workspace_artifact(path : String) -> Bool {
-  let normalized = path.trim().to_string()
+  let normalized = path.trim().to_owned()
   normalized.has_prefix("wiki/") ||
   normalized.has_prefix("raw/") ||
   normalized.has_prefix("keeper/")
@@ -81,7 +81,7 @@ async fn provider_task_existing_workspace_artifacts(
 ) -> Array[String] {
   let sanitized : Array[String] = []
   for artifact in artifacts {
-    let normalized = artifact.trim().to_string()
+    let normalized = artifact.trim().to_owned()
     if !is_provider_result_artifact_path(normalized) ||
       !is_provider_result_workspace_artifact(normalized) {
       continue
@@ -128,7 +128,7 @@ fn provider_task_artifact_paths_from_line(line : String) -> Array[String] {
     .replace_all(old="{", new=" ")
     .replace_all(old="}", new=" ")
   for token in normalized.split(" ") {
-    let candidate = token.trim().trim(chars=".'\"").to_string()
+    let candidate = token.trim().trim(chars=".'\"").to_owned()
     if candidate.is_blank() {
       continue
     }
@@ -147,7 +147,7 @@ fn provider_task_collect_artifacts_from_json(
   match value {
     String(text) =>
       for raw_line in text.split("\n") {
-        for path in provider_task_artifact_paths_from_line(raw_line.to_string()) {
+        for path in provider_task_artifact_paths_from_line(raw_line.to_owned()) {
           if !artifacts.contains(path) {
             artifacts.push(path)
           }
@@ -172,7 +172,7 @@ async fn provider_task_target_artifacts(
 ) -> Array[String] {
   let artifacts : Array[String] = []
   for path in task.target_pages {
-    let normalized = path.trim().to_string()
+    let normalized = path.trim().to_owned()
     if normalized.is_blank() {
       continue
     }

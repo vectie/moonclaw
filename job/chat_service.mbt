@@ -7,7 +7,7 @@ pub(all) struct JobNotifyTarget {
   verbosity : NotificationVerbosity
   heartbeat_interval_ms : Int
   warn_after_ms : Int
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub(all) enum JobChatAction {
@@ -29,7 +29,7 @@ pub(all) enum JobChatAction {
   Remember(String)
   Memories
   MemorySearch(String)
-} derive(Show)
+} derive(Debug)
 
 ///|
 fn is_plan_mode_command(command : String) -> Bool {
@@ -50,7 +50,7 @@ fn is_e2e_job_command(command : String) -> Bool {
 pub(all) struct ChildRunStatus {
   run_id : String
   status : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct JobStatusSnapshot {
@@ -71,7 +71,7 @@ pub(all) struct JobStatusSnapshot {
   child_runs : Array[ChildRunStatus]
   latest_event_line : String
   output_lines : Array[String]
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct ActiveJobSnapshot {
@@ -83,20 +83,20 @@ pub(all) struct ActiveJobSnapshot {
   family : String
   depth : Int
   current_step : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct JobNotificationRuntimeState {
   last_sent_at : Int
   last_notified_event_count : Int
   long_running_warned : Bool
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct JobNotificationDecision {
   messages : Array[String]
   next_state : JobNotificationRuntimeState
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub fn notification_preference_id(
@@ -241,7 +241,7 @@ pub fn resolve_target_proposal(
   proposal_id : String,
   reply_to_message_id : String?,
 ) -> JobProposal? {
-  let trimmed = proposal_id.trim().to_string()
+  let trimmed = proposal_id.trim().to_owned()
   if !trimmed.is_blank() {
     return store.get_job_proposal(trimmed)
   }
@@ -373,7 +373,7 @@ pub fn parse_notification_verbosity(text : String) -> NotificationVerbosity? {
 
 ///|
 pub fn parse_reply_thread_job_action(text : String) -> (String, String)? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return None
   }
@@ -385,10 +385,10 @@ pub fn parse_reply_thread_job_action(text : String) -> (String, String)? {
     return Some(("reject", ""))
   }
   if lower.has_prefix("revise ") {
-    return Some(("revise", trimmed[7:].to_string().trim().to_string()))
+    return Some(("revise", trimmed[7:].to_owned().trim().to_owned()))
   }
   if lower.has_prefix("/revise ") {
-    return Some(("revise", trimmed[8:].to_string().trim().to_string()))
+    return Some(("revise", trimmed[8:].to_owned().trim().to_owned()))
   }
   None
 }
@@ -398,8 +398,8 @@ pub fn split_job_chat_command(text : String) -> (String, String) {
   let trimmed = text.trim()
   match trimmed.find(" ") {
     Some(index) =>
-      (trimmed[:index].to_string(), trimmed[index + 1:].trim().to_string())
-    None => (trimmed.to_string(), "")
+      (trimmed[:index].to_owned(), trimmed[index + 1:].trim().to_owned())
+    None => (trimmed.to_owned(), "")
   }
 }
 
@@ -408,7 +408,7 @@ pub fn parse_job_chat_action(
   text : String,
   in_reply_thread : Bool,
 ) -> JobChatAction? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if in_reply_thread {
     match parse_reply_thread_job_action(trimmed) {
       Some(("confirm", _)) => return Some(JobChatAction::Confirm(""))
@@ -489,10 +489,10 @@ pub async fn[T] dispatch_job_chat_action(
 
 ///|
 pub fn parse_revise_args(text : String) -> (String, String)? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   guard trimmed.find(" ") is Some(index) else { return None }
-  let proposal_id = trimmed[:index].to_string().trim().to_string()
-  let guidance = trimmed[index + 1:].to_string().trim().to_string()
+  let proposal_id = trimmed[:index].to_owned().trim().to_owned()
+  let guidance = trimmed[index + 1:].to_owned().trim().to_owned()
   guard !proposal_id.is_blank() && !guidance.is_blank() else { return None }
   Some((proposal_id, guidance))
 }
@@ -520,10 +520,10 @@ pub fn render_job_status(
   }
   let missing_input_lines = match snapshot.missing_input_line {
     Some(line) if line.has_prefix("Missing inputs: ") => {
-      let detail = line["Missing inputs: ".length():].trim().to_string()
+      let detail = line["Missing inputs: ".length():].trim().to_owned()
       let items : Array[String] = detail
         .split(";")
-        .map(fn(part) { part.trim().to_string() })
+        .map(fn(part) { part.trim().to_owned() })
         .filter(fn(part) { !part.is_blank() })
         .to_array()
       if items.is_empty() {
@@ -537,8 +537,8 @@ pub fn render_job_status(
   }
   let missing_input_detail = match snapshot.missing_input_line {
     Some(line) if line.has_prefix("Missing inputs: ") =>
-      Some(line["Missing inputs: ".length():].trim().to_string())
-    Some(line) if !line.trim().is_blank() => Some(line.trim().to_string())
+      Some(line["Missing inputs: ".length():].trim().to_owned())
+    Some(line) if !line.trim().is_blank() => Some(line.trim().to_owned())
     _ => None
   }
   let summary_line = match snapshot.summary {
@@ -547,7 +547,7 @@ pub fn render_job_status(
         Some(detail) if text.contains(detail) =>
           match text.find(": \{detail}") {
             Some(index) =>
-              Some("Summary: \{text[:index].to_string().trim().to_string()}")
+              Some("Summary: \{text[:index].to_owned().trim().to_owned()}")
             None => Some("Summary: \{text}")
           }
         _ => Some("Summary: \{text}")

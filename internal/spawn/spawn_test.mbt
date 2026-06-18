@@ -32,7 +32,7 @@ async test "spawn/env" (t : @test.Test) {
       "TEST_ENV_VAR": "hello_world",
     })
     json_inspect(process.status, content=0)
-    json_inspect(process.stdout.to_string(), content="hello_world\n")
+    json_inspect(process.stdout, content="hello_world\n")
   })
 }
 
@@ -41,7 +41,7 @@ async test "redirect-stdin" (t : @test.Test) {
   @mock.run(t, _ => {
     let process = @spawn.spawn("cat", [], stdin="Hello, World!\n")
     json_inspect(process.status, content=0)
-    inspect(
+    debug_inspect(
       process.stdout,
       content=(
         #|Hello, World!
@@ -56,7 +56,7 @@ async test "spawn/failed" (t : @test.Test) {
   @mock.run(t, _ => {
     let process = @spawn.spawn("sh", ["-c", "exit 42"])
     json_inspect(
-      (try? process.check())
+      (Ok(process.check()) catch { error => Err(error) })
       .to_json()
       .transform(@json.Replacer::exclude(["elapsed"])),
       content={

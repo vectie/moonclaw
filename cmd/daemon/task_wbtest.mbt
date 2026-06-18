@@ -71,10 +71,10 @@ test "Task::from_json for Running variant with idle status" {
   }
   let task : Task = @json.from_json(json)
   guard task is Running(running) else { fail("Expected Running variant") }
-  assert_eq(running.name, Some("running-task"))
-  assert_eq(running.id, @uuid.parse("123e4567-e89b-12d3-a456-426614174000"))
-  assert_eq(running.cwd, "/tmp/running")
-  assert_eq(running.port, 8080)
+  assert_true(running.name == Some("running-task"))
+  assert_true(running.id == @uuid.parse("123e4567-e89b-12d3-a456-426614174000"))
+  assert_true(running.cwd == "/tmp/running")
+  assert_true(running.port == 8080)
   assert_true(running.status is @server.Idle)
 }
 
@@ -94,7 +94,7 @@ test "Task::from_json for Running variant with generating status" {
   }
   let task : Task = @json.from_json(json)
   guard task is Running(running) else { fail("Expected Running variant") }
-  assert_eq(running.name, Some("generating-task"))
+  assert_true(running.name == Some("generating-task"))
   assert_true(running.status is @server.Busy)
 }
 
@@ -111,10 +111,10 @@ test "Task::from_json for Stopped variant" {
   }
   let task : Task = @json.from_json(json)
   guard task is Stopped(stopped) else { fail("Expected Stopped variant") }
-  assert_eq(stopped.name, Some("stopped-task"))
-  assert_eq(stopped.id, @uuid.parse("223e4567-e89b-12d3-a456-426614174000"))
-  assert_eq(stopped.cwd, "/tmp/stopped")
-  assert_eq(stopped.web_search, true)
+  assert_true(stopped.name == Some("stopped-task"))
+  assert_true(stopped.id == @uuid.parse("223e4567-e89b-12d3-a456-426614174000"))
+  assert_true(stopped.cwd == "/tmp/stopped")
+  assert_true(stopped.web_search == true)
 }
 
 ///|
@@ -138,14 +138,13 @@ test "Task roundtrip: Running -> JSON -> Task" {
   guard restored is Running(restored_running) else {
     fail("Expected Running variant after roundtrip")
   }
-  assert_eq(restored_running.name, Some("roundtrip-running"))
-  assert_eq(
-    restored_running.id,
-    @uuid.parse("323e4567-e89b-12d3-a456-426614174000"),
+  assert_true(restored_running.name == Some("roundtrip-running"))
+  assert_true(
+    restored_running.id == @uuid.parse("323e4567-e89b-12d3-a456-426614174000"),
   )
-  assert_eq(restored_running.cwd, "/tmp/roundtrip")
-  assert_eq(restored_running.port, 7070)
-  assert_eq(restored_running.web_search, true)
+  assert_true(restored_running.cwd == "/tmp/roundtrip")
+  assert_true(restored_running.port == 7070)
+  assert_true(restored_running.web_search == true)
 }
 
 ///|
@@ -165,13 +164,12 @@ test "Task roundtrip: Stopped -> JSON -> Task" {
   guard restored is Stopped(restored_stopped) else {
     fail("Expected Stopped variant after roundtrip")
   }
-  assert_eq(restored_stopped.name, Some("roundtrip-stopped"))
-  assert_eq(
-    restored_stopped.id,
-    @uuid.parse("423e4567-e89b-12d3-a456-426614174000"),
+  assert_true(restored_stopped.name == Some("roundtrip-stopped"))
+  assert_true(
+    restored_stopped.id == @uuid.parse("423e4567-e89b-12d3-a456-426614174000"),
   )
-  assert_eq(restored_stopped.cwd, "/tmp/roundtrip-stopped")
-  assert_eq(restored_stopped.web_search, false)
+  assert_true(restored_stopped.cwd == "/tmp/roundtrip-stopped")
+  assert_true(restored_stopped.web_search == false)
 }
 
 ///|
@@ -181,7 +179,10 @@ test "Task::from_json with missing status field" {
     "id": "123e4567-e89b-12d3-a456-426614174000",
     "cwd": "/tmp/no-status",
   }
-  guard (try? (@json.from_json(json) : Task)) is Err(_) else {
+  let result : Result[Task, @json.JsonDecodeError] = Ok(@json.from_json(json)) catch {
+    error => Err(error)
+  }
+  guard result is Err(_) else {
     fail("Expected JsonDecodeError for missing status field")
   }
 }
@@ -196,7 +197,10 @@ test "Task::from_json with unknown status" {
     "created": 1000,
     "updated": 2000,
   }
-  guard (try? (@json.from_json(json) : Task)) is Err(_) else {
+  let result : Result[Task, @json.JsonDecodeError] = Ok(@json.from_json(json)) catch {
+    error => Err(error)
+  }
+  guard result is Err(_) else {
     fail("Expected JsonDecodeError for unknown status")
   }
 }

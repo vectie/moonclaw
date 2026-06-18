@@ -70,7 +70,7 @@ pub impl @json.FromJson for Model with fn from_json(
     }
     match created_json {
       Number(_, repr=Some(created_repr)) =>
-        @strconv.parse_int64(created_repr) catch {
+        @string.parse_int64(created_repr) catch {
           error =>
             raise @json.JsonDecodeError(
               (
@@ -80,7 +80,7 @@ pub impl @json.FromJson for Model with fn from_json(
             )
         }
       Number(created_number, repr=None) =>
-        @strconv.parse_int64(created_number.to_string()) catch {
+        @string.parse_int64(created_number.to_string()) catch {
           error =>
             raise @json.JsonDecodeError(
               (

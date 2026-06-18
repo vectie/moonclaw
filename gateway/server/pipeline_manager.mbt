@@ -6,7 +6,7 @@ pub struct PipelineManager {
 
 ///|
 pub fn pipeline_manager(uuid~ : @uuid.Generator) -> PipelineManager {
-  PipelineManager::{ uuid, pipelines: Map::new() }
+  PipelineManager::{ uuid, pipelines: Map([]) }
 }
 
 ///|
@@ -14,7 +14,7 @@ pub fn PipelineManager::create(
   self : PipelineManager,
   name~ : String,
   stages~ : Array[PipelineStage],
-  metadata? : Map[String, Json] = Map::new(),
+  metadata? : Map[String, Json] = Map([]),
 ) -> Pipeline {
   let pipeline_id = self.uuid.v4().to_string()
   let p = pipeline(pipeline_id~, name~, stages~, metadata~)

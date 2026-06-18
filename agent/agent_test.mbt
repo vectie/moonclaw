@@ -7,9 +7,9 @@ async test "agent/initialization" (t : @test.Test) {
     let agent = @agent.new(model, cwd=mock.cwd.path())
 
     // Verify agent was created successfully
-    inspect(agent.cwd, content=mock.cwd.path())
-    inspect(agent.model.name, content="anthropic/claude-haiku-4.5")
-    inspect(agent.model.model_name, content="anthropic/claude-haiku-4.5")
+    debug_inspect(agent.cwd, content=mock.cwd.path())
+    debug_inspect(agent.model.name, content="anthropic/claude-haiku-4.5")
+    debug_inspect(agent.model.model_name, content="anthropic/claude-haiku-4.5")
   })
 }
 
@@ -42,10 +42,10 @@ async test "agent/simple_conversation" (t : @test.Test) {
     agent.start()
 
     // Verify conversation lifecycle
-    inspect(conversation_started, content="true")
+    debug_inspect(conversation_started, content="true")
     // Event timing is async, PostConversation may not be processed immediately
-    inspect(message_count > 0, content="true")
-    inspect(conversation_ended, content="true")
+    debug_inspect(message_count > 0, content="true")
+    debug_inspect(conversation_ended, content="true")
   })
 }
 
@@ -98,8 +98,8 @@ async test "agent/single_tool_call" (t : @test.Test) {
     agent.start()
 
     // Verify tool was called
-    inspect(tool_called, content="true")
-    inspect(tool_name, content="add_numbers")
+    debug_inspect(tool_called, content="true")
+    debug_inspect(tool_name, content="add_numbers")
     json_inspect(result, content=[8])
   })
 }
@@ -157,9 +157,9 @@ async test "agent/multiple_tool_calls" (t : @test.Test) {
     agent.start()
 
     // Verify both tools were called
-    inspect(tool_calls.length() >= 2, content="true")
-    inspect(tool_calls.contains("add"), content="true")
-    inspect(tool_calls.contains("multiply"), content="true")
+    debug_inspect(tool_calls.length() >= 2, content="true")
+    debug_inspect(tool_calls.contains("add"), content="true")
+    debug_inspect(tool_calls.contains("multiply"), content="true")
   })
 }
 
@@ -197,12 +197,12 @@ async test "agent/event_system" (t : @test.Test) {
     // @async.sleep(100)
 
     // Verify all expected events fired
-    inspect(pre_conversation, content="true")
+    debug_inspect(pre_conversation, content="true")
     // Event timing is async, PostConversation may not be processed immediately
-    inspect(message_added, content="true")
-    inspect(token_counted, content="true")
-    inspect(post_conversation, content="true")
-    inspect(assistant_response, content="true")
+    debug_inspect(message_added, content="true")
+    debug_inspect(token_counted, content="true")
+    debug_inspect(post_conversation, content="true")
+    debug_inspect(assistant_response, content="true")
   })
 }
 
@@ -242,11 +242,11 @@ async test "agent/file_operations" (t : @test.Test) {
     agent.start()
 
     // Verify file operations occurred
-    inspect(file_written, content="true")
+    debug_inspect(file_written, content="true")
 
     // Verify file was actually created
     let file_content = @fsx.read_file(@pathx.join(mock.cwd.path(), "test.txt"))
-    inspect(file_content.contains("Hello"), content="true")
+    debug_inspect(file_content.contains("Hello"), content="true")
   })
 }
 
@@ -268,7 +268,10 @@ async test "agent/token_management" (t : @test.Test) {
         TokenCounted(count) => token_count = count
         ContextPruned(origin_token_count~, pruned_token_count~) => {
           _context_pruned = true
-          inspect(origin_token_count >= pruned_token_count, content="true")
+          debug_inspect(
+            origin_token_count >= pruned_token_count,
+            content="true",
+          )
         }
         _ => ()
       }
@@ -276,7 +279,7 @@ async test "agent/token_management" (t : @test.Test) {
     agent.start()
 
     // Verify token counting occurred
-    inspect(token_count > 0, content="true")
+    debug_inspect(token_count > 0, content="true")
   })
 }
 
@@ -320,7 +323,7 @@ async test "agent/tool_error_handling" (t : @test.Test) {
           match result {
             Err(_) => {
               error_encountered = true
-              inspect(rendered, content="Division by zero")
+              debug_inspect(rendered, content="Division by zero")
             }
             _ => ()
           }
@@ -330,7 +333,7 @@ async test "agent/tool_error_handling" (t : @test.Test) {
     agent.start()
 
     // Verify error was handled
-    inspect(error_encountered, content="true")
+    debug_inspect(error_encountered, content="true")
   })
 }
 
@@ -387,7 +390,7 @@ async test "agent/batch_tool_registration" (t : @test.Test) {
     agent.start()
 
     // Verify at least one tool was available and called
-    inspect(tool_names.length() > 0, content="true")
+    debug_inspect(tool_names.length() > 0, content="true")
   })
 }
 
@@ -486,18 +489,18 @@ async test "agent/read_multiple_files" (t : @test.Test) {
     agent.start()
 
     // Verify file operations occurred
-    inspect(file_written, content="true")
-    inspect(multiple_files_read, content="true")
+    debug_inspect(file_written, content="true")
+    debug_inspect(multiple_files_read, content="true")
     // Verify file was actually created
     let file_content = @fsx.read_file(@pathx.join(mock.cwd.path(), "foo.txt"))
-    inspect(file_content.contains("Foo"), content="true")
+    debug_inspect(file_content.contains("Foo"), content="true")
     let file_content = @fsx.read_file(@pathx.join(mock.cwd.path(), "bar.txt"))
-    inspect(file_content.contains("Bar"), content="true")
+    debug_inspect(file_content.contains("Bar"), content="true")
     let file_content = @fsx.read_file(
       @pathx.join(mock.cwd.path(), "foo_bar.txt"),
     )
-    inspect(file_content.contains("Foo"), content="true")
-    inspect(file_content.contains("Bar"), content="true")
+    debug_inspect(file_content.contains("Foo"), content="true")
+    debug_inspect(file_content.contains("Bar"), content="true")
   })
 }
 

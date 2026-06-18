@@ -2,6 +2,7 @@
 package "vectie/moonclaw/tools/delegate_run"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonclaw/tool",
 }
@@ -25,7 +26,8 @@ pub struct DelegateRunResult {
   step_kind : String
   step_config : Json
   summary : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub impl Show for DelegateRunResult
 
 // Type aliases
 

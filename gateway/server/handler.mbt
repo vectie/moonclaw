@@ -296,7 +296,7 @@ async fn Gateway::handle_get_run(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let run_id = match paths {
-    ["", "v1", "runs", id] => id.to_string()
+    ["", "v1", "runs", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -357,7 +357,7 @@ async fn Gateway::handle_get_artifact(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let artifact_id = match paths {
-    ["", "v1", "artifacts", id] => id.to_string()
+    ["", "v1", "artifacts", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -380,7 +380,7 @@ async fn Gateway::handle_get_artifact(
     None => {
       let synthetic = match artifact_id.split(":").collect() {
         ["synthetic", run_id, output_kind] =>
-          Some((run_id.to_string(), output_kind.to_string()))
+          Some((run_id.to_owned(), output_kind.to_owned()))
         _ => None
       }
       match synthetic {
@@ -519,7 +519,7 @@ async fn Gateway::handle_get_plugin(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let plugin_id = match paths {
-    ["", "v1", "plugins", id] => id.to_string()
+    ["", "v1", "plugins", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -553,7 +553,7 @@ async fn Gateway::handle_get_memory(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let memory_id = match paths {
-    ["", "v1", "memories", id] => id.to_string()
+    ["", "v1", "memories", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {

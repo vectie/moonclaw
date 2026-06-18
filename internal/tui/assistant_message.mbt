@@ -127,7 +127,7 @@ pub fn SystemMessage::render(
     output.write(cursor_to(x, current_y))
     output.write(ClearLineRight)
     output.write(
-      theme.dim_style(truncate_to_width(text_lines[i].to_string(), width)),
+      theme.dim_style(truncate_to_width(text_lines[i].to_owned(), width)),
     )
     current_y += 1
   }

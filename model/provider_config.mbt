@@ -7,7 +7,7 @@ pub struct ModelConfig {
   cost : CostConfig?
   contextWindow : Int?
   maxTokens : Int?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
 pub struct CostConfig {
@@ -15,7 +15,7 @@ pub struct CostConfig {
   output : Double?
   cacheRead : Double?
   cacheWrite : Double?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
 pub struct ProviderConfig {
@@ -23,9 +23,9 @@ pub struct ProviderConfig {
   api : String?
   models : Array[ModelConfig]
   apiKey : String?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
 pub struct ProvidersFile {
   providers : Map[String, ProviderConfig]
-} derive(ToJson, Show)
+} derive(ToJson, Debug)

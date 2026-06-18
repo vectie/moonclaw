@@ -2,7 +2,7 @@
 pub(all) struct JobProfileMatchRules {
   any : Array[String]?
   all : Array[String]?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobProfileStep {
@@ -17,7 +17,7 @@ pub(all) struct JobProfileStep {
   include_parent_outputs : Bool?
   max_depth : Int?
   metadata : Json?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobProfile {
@@ -30,7 +30,7 @@ pub(all) struct JobProfile {
   match_rules : JobProfileMatchRules?
   steps : Array[JobProfileStep]
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct JobProfileConfigPayload {
@@ -42,7 +42,7 @@ struct JobProfileConfigPayload {
   match_rules : JobProfileMatchRules?
   steps : Array[JobProfileStep]?
   metadata : Json?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 fn parse_string_array(value : Json) -> Array[String]? {
@@ -259,7 +259,7 @@ fn configured_job_profiles(json : Json?) -> Array[JobProfile] {
 
 ///|
 fn normalized_profile_term(term : String) -> String {
-  term.trim().to_string().to_lower()
+  term.trim().to_owned().to_lower()
 }
 
 ///|
@@ -323,7 +323,7 @@ pub async fn load_job_profile(
   cwd : String,
   family : String,
 ) -> JobProfile? {
-  let target = family.trim().to_string()
+  let target = family.trim().to_owned()
   if target.is_blank() {
     return None
   }

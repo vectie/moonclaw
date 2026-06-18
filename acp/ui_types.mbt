@@ -3,7 +3,7 @@ pub(all) enum AcpUiNodeKind {
   Target
   Session
   Run
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpUiNode {
@@ -20,7 +20,7 @@ pub(all) struct AcpUiNode {
   created_at : Int?
   updated_at : Int?
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpUiTimelineEntry {
@@ -34,7 +34,7 @@ pub(all) struct AcpUiTimelineEntry {
   run_id : String?
   status : String?
   data : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpUiSnapshot {
@@ -43,4 +43,4 @@ pub(all) struct AcpUiSnapshot {
   runs : Array[AcpRun]
   nodes : Array[AcpUiNode]
   timeline : Array[AcpUiTimelineEntry]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)

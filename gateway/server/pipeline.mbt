@@ -5,7 +5,7 @@ pub enum PipelineStatus {
   Completed
   Failed
   Cancelled
-} derive(ToJson, FromJson, Eq, Show)
+} derive(ToJson, FromJson, Eq, Debug)
 
 ///|
 pub struct PipelineStage {
@@ -19,7 +19,7 @@ pub struct PipelineStage {
   error : String?
   started_at : Int?
   completed_at : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn pipeline_stage(
@@ -121,14 +121,14 @@ pub struct Pipeline {
   started_at : Int?
   completed_at : Int?
   metadata : Map[String, Json]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn pipeline(
   pipeline_id~ : String,
   name~ : String,
   stages~ : Array[PipelineStage],
-  metadata? : Map[String, Json] = Map::new(),
+  metadata? : Map[String, Json] = Map([]),
 ) -> Pipeline {
   Pipeline::{
     pipeline_id,
@@ -136,7 +136,7 @@ pub fn pipeline(
     stages,
     current_stage: 0,
     status: Pending,
-    results: Map::new(),
+    results: Map([]),
     created_at: current_time_ms(),
     started_at: None,
     completed_at: None,

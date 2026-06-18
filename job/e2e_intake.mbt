@@ -5,10 +5,7 @@ fn inline_output_format_suffix(text : String) -> String? {
   for marker in markers {
     match lower.find(marker) {
       Some(index) => {
-        let value = text[index + marker.length():]
-          .to_string()
-          .trim()
-          .to_string()
+        let value = text[index + marker.length():].to_owned().trim().to_owned()
         if !value.is_blank() {
           return Some(value)
         }
@@ -22,29 +19,29 @@ fn inline_output_format_suffix(text : String) -> String? {
 ///|
 pub fn extract_output_format_hint(request_text : String) -> String? {
   for line in request_text.split("\n") {
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
     let lower = trimmed.to_lower()
     if lower.has_prefix("output format:") {
-      let value = trimmed[14:].to_string().trim().to_string()
+      let value = trimmed[14:].to_owned().trim().to_owned()
       if !value.is_blank() {
         return Some(value)
       }
     }
     if lower.has_prefix("format:") {
-      let value = trimmed[7:].to_string().trim().to_string()
+      let value = trimmed[7:].to_owned().trim().to_owned()
       if !value.is_blank() {
         return Some(value)
       }
     }
   }
-  inline_output_format_suffix(request_text.trim().to_string())
+  inline_output_format_suffix(request_text.trim().to_owned())
 }
 
 ///|
 pub fn normalized_request_text(request_text : String) -> String {
   let lines : Array[String] = []
   for line in request_text.split("\n") {
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
     let lower = trimmed.to_lower()
     if lower.has_prefix("output format:") || lower.has_prefix("format:") {
       continue
@@ -52,10 +49,10 @@ pub fn normalized_request_text(request_text : String) -> String {
     let without_suffix = match inline_output_format_suffix(trimmed) {
       Some(_) =>
         match lower.find(" output format:") {
-          Some(index) => trimmed[:index].to_string().trim().to_string()
+          Some(index) => trimmed[:index].to_owned().trim().to_owned()
           None =>
             match lower.find(" format:") {
-              Some(index) => trimmed[:index].to_string().trim().to_string()
+              Some(index) => trimmed[:index].to_owned().trim().to_owned()
               None => trimmed
             }
         }
@@ -65,7 +62,7 @@ pub fn normalized_request_text(request_text : String) -> String {
       lines.push(without_suffix)
     }
   }
-  lines.join("\n").trim().to_string()
+  lines.join("\n").trim().to_owned()
 }
 
 ///|

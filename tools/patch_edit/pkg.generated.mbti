@@ -2,6 +2,7 @@
 package "vectie/moonclaw/tools/patch_edit"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonclaw/tool",
 }
@@ -15,7 +16,7 @@ pub fn new(String) -> @tool.Tool[PatchEditResult]
 pub enum PatchEditMode {
   Preview
   Apply
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct PatchEditResult {
   mode : PatchEditMode
@@ -26,7 +27,8 @@ pub struct PatchEditResult {
   modified : Array[String]
   deleted : Array[String]
   file_count : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub impl Show for PatchEditResult
 
 // Type aliases
 

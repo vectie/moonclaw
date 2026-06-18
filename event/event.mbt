@@ -31,7 +31,7 @@ pub struct Event {
   id : @uuid.Uuid
   created : @clock.Timestamp
   desc : EventDesc
-} derive(Eq, Show)
+} derive(Eq)
 
 ///|
 /// Creates a new `Event` with the specified parameters.
@@ -116,10 +116,10 @@ pub(all) enum EventDesc {
   /// Event triggered when a PostToolCall event is pruned from context.
   /// The `id` field references the pruned PostToolCall event's id.
   Pruned(id~ : @uuid.Uuid)
-} derive(Eq, Show)
+} derive(Eq)
 
 ///|
-pub impl ToJson for EventDesc with to_json(self : EventDesc) -> Json {
+pub impl ToJson for EventDesc with fn to_json(self : EventDesc) -> Json {
   match self {
     ModelLoaded(name~) => { "msg": "ModelLoaded", "name": name.to_json() }
     TokenCounted(token_count) =>
@@ -219,7 +219,7 @@ pub impl ToJson for EventDesc with to_json(self : EventDesc) -> Json {
 }
 
 ///|
-pub impl @json.FromJson for EventDesc with from_json(
+pub impl @json.FromJson for EventDesc with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> EventDesc raise @json.JsonDecodeError {
@@ -490,7 +490,7 @@ pub impl @json.FromJson for EventDesc with from_json(
 ///
 /// Note: this implementation behaves identically to the derived version.
 /// We manually implement it here to ensure the stability of the JSON format.
-pub impl ToJson for Event with to_json(self : Event) -> Json {
+pub impl ToJson for Event with fn to_json(self : Event) -> Json {
   { "id": self.id.to_json(), "created": self.created, "desc": self.desc }
 }
 
@@ -499,7 +499,7 @@ pub impl ToJson for Event with to_json(self : Event) -> Json {
 ///
 /// Note: this implementation behaves identically to the derived version.
 /// We manually implement it here to ensure the stability of the JSON format.
-pub impl @json.FromJson for Event with from_json(
+pub impl @json.FromJson for Event with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Event raise @json.JsonDecodeError {

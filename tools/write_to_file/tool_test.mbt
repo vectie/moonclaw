@@ -38,7 +38,7 @@ async test "write_to_file/no-write-permission" (t : @test.Test) {
     let result = tool.call(args)
     // Verify that an error is returned
     guard result is Error(_) else {
-      fail("Expected Err result but got: \{result}")
+      fail("Expected Err result but got: \{mock.text(result)}")
     }
     inspect(
       mock.text(result),
@@ -62,7 +62,7 @@ async test "write_to_file rejects absolute path outside workspace" (
     let tool = new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Error(_) else {
-      fail("Expected error result but got: \{result}")
+      fail("Expected error result but got: \{mock.text(result)}")
     }
     inspect(
       mock.text(result),
@@ -82,7 +82,7 @@ async test "write_to_file rejects parent path escape" (t : @test.Test) {
     let tool = new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Error(_) else {
-      fail("Expected error result but got: \{result}")
+      fail("Expected error result but got: \{mock.text(result)}")
     }
     inspect(
       mock.text(result),

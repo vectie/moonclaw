@@ -1,6 +1,6 @@
 ///|
 test "stdio_content_preview prefers stdout over stderr" {
-  inspect(
+  debug_inspect(
     stdio_content_preview({ "stdout": "hello\n", "stderr": "warn\n" }),
     content="Some(hello)",
   )
@@ -26,7 +26,7 @@ test "live_acp_output_timeline_entry emits live output event with linkage" {
     },
     "plan": {},
   })
-  inspect(
+  debug_inspect(
     live_acp_output_timeline_entry(
       run,
       { "stdout": "partial output", "stderr": "" },

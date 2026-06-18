@@ -186,7 +186,7 @@ fn WorkflowEngine::control_message(
 fn waiting_for_input_message(error : String) -> String? {
   let prefix = "Analysis requires input: "
   if error.has_prefix(prefix) {
-    Some(error[prefix.length():].trim().to_string())
+    Some(error[prefix.length():].trim().to_owned())
   } else {
     None
   }
@@ -261,7 +261,7 @@ fn workflow_best_effort_on_missing_input(
 fn waiting_message_items(message : String) -> Array[String] {
   let items : Array[String] = []
   for raw in message.split(";") {
-    let trimmed = raw.trim().to_string()
+    let trimmed = raw.trim().to_owned()
     if !trimmed.is_blank() {
       items.push(trimmed)
     }

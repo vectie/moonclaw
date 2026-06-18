@@ -7,7 +7,7 @@ pub(all) enum ChatType {
   Group
   Channel
   Thread
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct ChannelCapabilities {
@@ -23,7 +23,7 @@ pub(all) struct ChannelCapabilities {
   media : Bool
   native_commands : Bool
   block_streaming : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn default_capabilities() -> ChannelCapabilities {
@@ -53,7 +53,7 @@ pub(all) struct ChannelMeta {
   blurb : String
   order : Int?
   aliases : Array[String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct Attachment {
@@ -62,7 +62,7 @@ pub(all) struct Attachment {
   url : String
   filename : String?
   size : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct Message {
@@ -76,7 +76,7 @@ pub(all) struct Message {
   thread_id : String?
   reply_to : String?
   attachments : Array[Attachment]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct SendResult {
@@ -84,7 +84,7 @@ pub(all) struct SendResult {
   message_id : String
   timestamp : Int
   status : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) enum ChannelError {
@@ -94,14 +94,34 @@ pub(all) enum ChannelError {
   InvalidRecipient(message~ : String)
   RateLimited(message~ : String, retry_after_ms~ : Int?)
   Unknown(message~ : String)
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
+
+///|
+pub impl Show for ChannelError with fn output(
+  self : ChannelError,
+  logger : &Logger,
+) -> Unit {
+  let message = match self {
+    NotConfigured(message~) => message
+    ConnectionFailed(message~) => message
+    SendMessageFailed(message~) => message
+    InvalidRecipient(message~) => message
+    RateLimited(message~, retry_after_ms~) =>
+      match retry_after_ms {
+        Some(ms) => "\{message} (retry after \{ms}ms)"
+        None => message
+      }
+    Unknown(message~) => message
+  }
+  logger.write_string(message)
+}
 
 ///|
 pub(all) struct ChannelConfig {
   enabled : Bool
   accounts : Map[String, Json]
   global_settings : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn default_config() -> ChannelConfig {
@@ -115,7 +135,7 @@ pub(all) struct ChannelEvent {
   event_type : String
   payload : Json
   timestamp : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) enum ChannelEventType {
@@ -134,21 +154,21 @@ pub(all) enum ChannelEventType {
 
 ///|
 pub(open) trait Channel {
-  id(Self) -> ChannelId
-  meta(Self) -> ChannelMeta
-  capabilities(Self) -> ChannelCapabilities
-  configure(Self, ChannelConfig) -> Unit
-  async start(Self, account_id : String, config : Json) -> Result[
+  fn id(Self) -> ChannelId
+  fn meta(Self) -> ChannelMeta
+  fn capabilities(Self) -> ChannelCapabilities
+  fn configure(Self, ChannelConfig) -> Unit
+  async fn start(Self, account_id : String, config : Json) -> Result[
     Unit,
     ChannelError,
   ]
-  async stop(Self, account_id : String) -> Result[Unit, ChannelError]
-  async send(Self, to : String, message : Message, account_id : String?) -> Result[
+  async fn stop(Self, account_id : String) -> Result[Unit, ChannelError]
+  async fn send(Self, to : String, message : Message, account_id : String?) -> Result[
     SendResult,
     ChannelError,
   ]
-  handle_event(Self, event : ChannelEvent) -> Unit
-  is_running(Self, account_id : String) -> Bool
+  fn handle_event(Self, event : ChannelEvent) -> Unit
+  fn is_running(Self, account_id : String) -> Bool
 }
 
 ///|
@@ -161,18 +181,18 @@ pub(all) struct ChannelDock {
   account_ids : Array[String]
   outbound : OutboundConfig?
   streaming : StreamingConfig?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct OutboundConfig {
   delivery_mode : String
   chunker_mode : String
   text_chunk_limit : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct StreamingConfig {
   enabled : Bool
   chunk_size : Int
   chunk_delay_ms : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)

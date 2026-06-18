@@ -4,7 +4,7 @@ pub(all) struct AcpSessionCreateParams {
   session_key : String
   session_id : String?
   metadata : Json?
-} derive(FromJson, Show)
+} derive(FromJson, Debug)
 
 ///|
 pub(all) struct AcpSessionRunParams {
@@ -15,7 +15,7 @@ pub(all) struct AcpSessionRunParams {
   cwd : String?
   idempotency_key : String?
   metadata : Json?
-} derive(FromJson, ToJson, Show)
+} derive(FromJson, ToJson, Debug)
 
 ///|
 fn acp_session_run_payload_with_session_id(
@@ -52,9 +52,9 @@ fn acp_run_error_shape(code : String, message : String) -> @protocol.ErrorShape 
 fn stdio_content_preview(stdio : Json) -> String? {
   match stdio {
     { "stdout": String(stdout), .. } if !stdout.trim().is_blank() =>
-      Some(stdout.trim().to_string())
+      Some(stdout.trim().to_owned())
     { "stderr": String(stderr), .. } if !stderr.trim().is_blank() =>
-      Some(stderr.trim().to_string())
+      Some(stderr.trim().to_owned())
     _ => None
   }
 }
@@ -426,7 +426,7 @@ async fn Gateway::execute_acp_agent_async(
 ///|
 pub(all) struct AcpRunCancelParams {
   run_id : String
-} derive(FromJson, ToJson, Show)
+} derive(FromJson, ToJson, Debug)
 
 ///|
 async fn Gateway::handle_acp_runs_cancel_method(
@@ -1236,7 +1236,7 @@ async fn Gateway::handle_get_acp_target(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let target_id = match paths {
-    ["", "v1", "acp", "targets", id] => id.to_string()
+    ["", "v1", "acp", "targets", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -1295,7 +1295,7 @@ async fn Gateway::handle_get_acp_session(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let session_id = match paths {
-    ["", "v1", "acp", "sessions", id] => id.to_string()
+    ["", "v1", "acp", "sessions", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -1328,7 +1328,7 @@ async fn Gateway::handle_get_acp_run(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let run_id = match paths {
-    ["", "v1", "acp", "runs", id] => id.to_string()
+    ["", "v1", "acp", "runs", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -1423,7 +1423,7 @@ async fn Gateway::handle_cancel_acp_run(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let run_id = match paths {
-    ["", "v1", "acp", "runs", id, "cancel"] => id.to_string()
+    ["", "v1", "acp", "runs", id, "cancel"] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -1494,7 +1494,7 @@ async fn Gateway::handle_reset_acp_session(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let session_id = match paths {
-    ["", "v1", "acp", "sessions", id, "reset"] => id.to_string()
+    ["", "v1", "acp", "sessions", id, "reset"] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -1544,7 +1544,7 @@ async fn Gateway::handle_detach_acp_session(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let session_id = match paths {
-    ["", "v1", "acp", "sessions", id, "detach"] => id.to_string()
+    ["", "v1", "acp", "sessions", id, "detach"] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -1640,7 +1640,7 @@ async fn Gateway::handle_run_acp_session(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let session_id = match paths {
-    ["", "v1", "acp", "sessions", id, "run"] => id.to_string()
+    ["", "v1", "acp", "sessions", id, "run"] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {

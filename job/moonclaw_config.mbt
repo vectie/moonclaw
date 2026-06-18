@@ -31,7 +31,7 @@ fn configured_primary_model_from_json(json : Json?) -> String? {
                 Some(Object(model)) =>
                   match model.get("primary") {
                     Some(String(primary)) if !primary.trim().is_empty() =>
-                      Some(primary.trim().to_string())
+                      Some(primary.trim().to_owned())
                     _ => None
                   }
                 _ => None

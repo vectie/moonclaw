@@ -52,11 +52,11 @@ fn summarize_memory_content(
   content : String,
   max_chars? : Int = 4000,
 ) -> String {
-  let trimmed = content.trim().to_string()
+  let trimmed = content.trim().to_owned()
   if trimmed.length() <= max_chars {
     trimmed
   } else {
-    trimmed[:max_chars].to_string()
+    trimmed[:max_chars].to_owned()
   }
 }
 
@@ -103,7 +103,7 @@ pub async fn capture_successful_run_memories(
   let saved : Array[MemoryRecord] = []
 
   match run.summary {
-    Some(summary) if !summary.trim().to_string().is_blank() =>
+    Some(summary) if !summary.trim().to_owned().is_blank() =>
       saved.push(
         memories.remember(
           MemoryWriteRequest::new(
@@ -142,7 +142,7 @@ pub async fn capture_successful_run_memories(
   for artifact in reports {
     guard report_like_artifact(artifact) else { continue }
     match artifacts.read_text(artifact.id) {
-      Some(content) if !content.trim().to_string().is_blank() =>
+      Some(content) if !content.trim().to_owned().is_blank() =>
         saved.push(
           memories.remember(
             MemoryWriteRequest::new(

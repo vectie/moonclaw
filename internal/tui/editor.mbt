@@ -262,11 +262,11 @@ pub fn Editor::handle_key(self : Editor, key : Key) -> Bool {
       true
     }
     Ctrl('k') => {
-      self.text = self.text[:self.cursor].to_string()
+      self.text = self.text[:self.cursor].to_owned()
       true
     }
     Ctrl('u') => {
-      self.text = self.text[self.cursor:].to_string()
+      self.text = self.text[self.cursor:].to_owned()
       self.cursor = 0
       true
     }

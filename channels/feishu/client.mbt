@@ -9,20 +9,20 @@ pub struct FeishuStreamingCardSession {
   message_id : String
   sequence : Int
   current_text : String
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub struct FeishuTypingIndicatorState {
   message_id : String
   reaction_id : String
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub struct FeishuReactionIndicatorState {
   message_id : String
   reaction_id : String
   emoji_type : String
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub fn FeishuClient::new(config : FeishuAccountConfig) -> FeishuClient {
@@ -71,8 +71,8 @@ pub async fn FeishuClient::download_message_resource(
     .get("content-type")
     .map(fn(value) {
       match value.find(";") {
-        Some(index) => value[:index].to_string().trim().to_string()
-        None => value.trim().to_string()
+        Some(index) => value[:index].to_owned().trim().to_owned()
+        None => value.trim().to_owned()
       }
     })
   Ok((body, content_type))
@@ -124,8 +124,7 @@ fn parse_feishu_websocket_endpoint_data(
 fn parse_json_int(json : Json) -> Int? {
   match json {
     Number(number, ..) => Some(number.to_int())
-    String(number) =>
-      Some(@strconv.parse_int(number) catch { _ => return None })
+    String(number) => Some(@string.parse_int(number) catch { _ => return None })
     _ => None
   }
 }
@@ -147,13 +146,13 @@ fn feishu_base_url(domain : String) -> String {
 ///|
 fn detect_receive_id_type(target : String) -> (String, String) {
   if target.has_prefix("chat:") {
-    ("chat_id", target[5:].to_string())
+    ("chat_id", target[5:].to_owned())
   } else if target.has_prefix("user:") {
-    ("open_id", target[5:].to_string())
+    ("open_id", target[5:].to_owned())
   } else if target.has_prefix("open_id:") {
-    ("open_id", target[8:].to_string())
+    ("open_id", target[8:].to_owned())
   } else if target.has_prefix("user_id:") {
-    ("user_id", target[8:].to_string())
+    ("user_id", target[8:].to_owned())
   } else if target.has_prefix("ou_") {
     ("open_id", target)
   } else {
@@ -193,13 +192,13 @@ fn build_streaming_card_json(initial_text : String) -> Json {
 
 ///|
 fn truncate_stream_summary(text : String, max_chars? : Int = 50) -> String {
-  let clean = text.replace(old="\n", new=" ").trim().to_string()
+  let clean = text.replace(old="\n", new=" ").trim().to_owned()
   if clean.is_blank() {
     "[Generating...]"
   } else if clean.length() <= max_chars {
     clean
   } else {
-    clean[:max_chars - 3].trim().to_string() + "..."
+    clean[:max_chars - 3].trim().to_owned() + "..."
   }
 }
 
@@ -211,7 +210,7 @@ fn parse_json_code_msg(
   let code = match response_json {
     { "code": Number(code, ..), .. } => code.to_int()
     { "code": String(code), .. } =>
-      @strconv.parse_int(code) catch {
+      @string.parse_int(code) catch {
         _ =>
           return Err(
             @channel.ChannelError::SendMessageFailed(

@@ -28,7 +28,7 @@ struct ReadMultipleFilesResult(Array[ReadFileToolResult]) derive (
 )
 
 ///|
-pub impl Show for ReadMultipleFilesResult with output(self, logger) {
+pub impl Show for ReadMultipleFilesResult with fn output(self, logger) {
   for content in self.0 {
     logger.write_object(content)
     logger.write_string("\n\n")
@@ -36,7 +36,7 @@ pub impl Show for ReadMultipleFilesResult with output(self, logger) {
 }
 
 ///|
-impl Show for ReadFileToolResult with output(
+impl Show for ReadFileToolResult with fn output(
   self : ReadFileToolResult,
   logger : &Logger,
 ) -> Unit {
@@ -140,7 +140,7 @@ async fn execute_read_file_tool(
 ///|
 priv suberror MultipleErrors {
   MultipleErrors(Array[(Error, String)])
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 fn to_path(rdr : ReadFileToolResult) -> String {

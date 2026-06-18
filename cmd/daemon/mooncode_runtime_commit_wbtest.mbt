@@ -121,7 +121,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     max_output_chars=4000,
   )
   assert_eq(
-    mooncode_json_string(git_head, "output", default="").trim().to_string(),
+    mooncode_json_string(git_head, "output", default="").trim().to_owned(),
     commit_sha,
   )
   let git_status = mooncode_runtime_turn_git(

@@ -162,12 +162,12 @@ pub fn FeishuChannel::with_extension(
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with id(_self : FeishuChannel) -> @channel.ChannelId {
+impl @channel.Channel for FeishuChannel with fn id(_self : FeishuChannel) -> @channel.ChannelId {
   "feishu"
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with meta(_self : FeishuChannel) -> @channel.ChannelMeta {
+impl @channel.Channel for FeishuChannel with fn meta(_self : FeishuChannel) -> @channel.ChannelMeta {
   @channel.ChannelMeta::{
     id: "feishu",
     label: "Feishu",
@@ -181,7 +181,9 @@ impl @channel.Channel for FeishuChannel with meta(_self : FeishuChannel) -> @cha
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with capabilities(_self : FeishuChannel) -> @channel.ChannelCapabilities {
+impl @channel.Channel for FeishuChannel with fn capabilities(
+  _self : FeishuChannel,
+) -> @channel.ChannelCapabilities {
   @channel.ChannelCapabilities::{
     chat_types: [@channel.ChatType::Direct, @channel.ChatType::Channel],
     polls: false,
@@ -199,7 +201,7 @@ impl @channel.Channel for FeishuChannel with capabilities(_self : FeishuChannel)
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with configure(
+impl @channel.Channel for FeishuChannel with fn configure(
   self : FeishuChannel,
   config : @channel.ChannelConfig,
 ) -> Unit {
@@ -220,7 +222,7 @@ impl @channel.Channel for FeishuChannel with configure(
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with start(
+impl @channel.Channel for FeishuChannel with fn start(
   self : FeishuChannel,
   account_id : String,
   config : Json,
@@ -245,7 +247,7 @@ impl @channel.Channel for FeishuChannel with start(
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with stop(
+impl @channel.Channel for FeishuChannel with fn stop(
   self : FeishuChannel,
   account_id : String,
 ) -> Result[Unit, @channel.ChannelError] {
@@ -262,7 +264,7 @@ impl @channel.Channel for FeishuChannel with stop(
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with send(
+impl @channel.Channel for FeishuChannel with fn send(
   self : FeishuChannel,
   to : String,
   message : @channel.Message,
@@ -314,7 +316,7 @@ impl @channel.Channel for FeishuChannel with send(
         Ok(result) => Ok(result)
         Err(error) => {
           self.log_warn(
-            "Feishu reply send failed for \{actual_account_id}, falling back to plain send: \{error}",
+            "Feishu reply send failed for \{actual_account_id}, falling back to plain send: \{to_repr(error)}",
           )
           client.send_text_message(to, message.content)
         }
@@ -376,7 +378,7 @@ async fn FeishuChannel::ensure_progress_reaction(
               self.state.active_progress_reactions[stream_key] = updated
             Err(error) =>
               self.log_warn(
-                "Failed to add Feishu progress reaction for \{account_id}: \{error}",
+                "Failed to add Feishu progress reaction for \{account_id}: \{to_repr(error)}",
               )
           }
         }
@@ -386,7 +388,7 @@ async fn FeishuChannel::ensure_progress_reaction(
               self.state.active_progress_reactions[stream_key] = state
             Err(error) =>
               self.log_warn(
-                "Failed to add Feishu progress reaction for \{account_id}: \{error}",
+                "Failed to add Feishu progress reaction for \{account_id}: \{to_repr(error)}",
               )
           }
       }
@@ -408,7 +410,7 @@ async fn FeishuChannel::clear_progress_reaction(
         Ok(_) => ()
         Err(error) =>
           self.log_warn(
-            "Failed to remove Feishu progress reaction for \{account_id}: \{error}",
+            "Failed to remove Feishu progress reaction for \{account_id}: \{to_repr(error)}",
           )
       }
     }
@@ -440,7 +442,7 @@ async fn FeishuChannel::send_stream_progress(
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with handle_event(
+impl @channel.Channel for FeishuChannel with fn handle_event(
   _self : FeishuChannel,
   _event : @channel.ChannelEvent,
 ) -> Unit {
@@ -448,7 +450,7 @@ impl @channel.Channel for FeishuChannel with handle_event(
 }
 
 ///|
-impl @channel.Channel for FeishuChannel with is_running(
+impl @channel.Channel for FeishuChannel with fn is_running(
   self : FeishuChannel,
   account_id : String,
 ) -> Bool {
@@ -459,14 +461,14 @@ impl @channel.Channel for FeishuChannel with is_running(
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with webhook_path(
+impl @channel.ChannelExtension for FeishuChannel with fn webhook_path(
   _self : FeishuChannel,
 ) -> String {
   "/webhook/feishu"
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with handle_webhook(
+impl @channel.ChannelExtension for FeishuChannel with fn handle_webhook(
   self : FeishuChannel,
   request : @channel.ExtensionRequest,
 ) -> @channel.ExtensionResponse {
@@ -595,7 +597,7 @@ async fn FeishuChannel::handle_feishu_message(
 
   let timestamp_ms = match message_data {
     { "create_time": String(ts), .. } =>
-      @strconv.parse_int64(ts) catch {
+      @string.parse_int64(ts) catch {
         _ => 0
       }
     _ => 0
@@ -786,7 +788,7 @@ async fn FeishuChannel::handle_reaction_event(
       }
       let timestamp = match event_data {
         { "action_time": String(ts), .. } =>
-          @strconv.parse_int(ts) catch {
+          @string.parse_int(ts) catch {
             _ => 0
           }
         _ => 0
@@ -927,14 +929,14 @@ async fn FeishuChannel::handle_card_action_event(
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with supports_websocket(
+impl @channel.ChannelExtension for FeishuChannel with fn supports_websocket(
   self : FeishuChannel,
 ) -> Bool {
   !self.websocket_monitor_accounts().is_empty()
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with handle_websocket(
+impl @channel.ChannelExtension for FeishuChannel with fn handle_websocket(
   self : FeishuChannel,
   conn : @channel.WebSocketConnection,
 ) -> Unit {
@@ -958,21 +960,21 @@ impl @channel.ChannelExtension for FeishuChannel with handle_websocket(
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with allowed_methods(
+impl @channel.ChannelExtension for FeishuChannel with fn allowed_methods(
   _self : FeishuChannel,
 ) -> Array[String] {
   ["POST", "GET"]
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with dock_config(
+impl @channel.ChannelExtension for FeishuChannel with fn dock_config(
   _self : FeishuChannel,
 ) -> @channel.ChannelDockConfig {
   @channel.ChannelDockConfig::default_for_channel("feishu")
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with on_register(
+impl @channel.ChannelExtension for FeishuChannel with fn on_register(
   self : FeishuChannel,
   context : @channel.ExtensionContext,
 ) -> Unit {
@@ -984,7 +986,7 @@ impl @channel.ChannelExtension for FeishuChannel with on_register(
 }
 
 ///|
-impl @channel.ChannelExtension for FeishuChannel with on_unregister(
+impl @channel.ChannelExtension for FeishuChannel with fn on_unregister(
   self : FeishuChannel,
 ) -> Unit {
   for account_id in self.state.feishu_configs.keys() {
@@ -1119,7 +1121,7 @@ fn FeishuChannel::ensure_websocket_runtime_client(
                 let endpoint = match endpoint {
                   Ok(endpoint) => endpoint
                   Err(error) => {
-                    let message = "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{error}"
+                    let message = "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{to_repr(error)}"
                     self.log_warn(message)
                     return Err(message)
                   }
@@ -1165,18 +1167,21 @@ pub fn FeishuChannel::set_test_websocket_endpoint_sequence(
 
 ///|
 fn parse_feishu_text_content(raw : String) -> String {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  let parsed = try @json.parse(raw) catch {
+    _ => return raw
+  } noraise {
+    json => json
+  }
   match parsed {
-    Ok({ "text": String(text), .. }) => {
+    { "text": String(text), .. } => {
       let stripped = strip_feishu_mentions(text)
       if stripped.is_blank() {
-        text.trim().to_string()
+        text.trim().to_owned()
       } else {
         stripped
       }
     }
-    Ok(json) => json.stringify()
-    Err(_) => raw
+    json => json.stringify()
   }
 }
 
@@ -1218,11 +1223,12 @@ fn parse_feishu_attachments(
   raw : String,
   message_type : String,
 ) -> Array[@channel.Attachment] {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
-  match parsed {
-    Ok(json) => build_feishu_attachments(json, message_type)
-    Err(_) => []
+  let parsed = try @json.parse(raw) catch {
+    _ => return []
+  } noraise {
+    json => json
   }
+  build_feishu_attachments(parsed, message_type)
 }
 
 ///|
@@ -1303,44 +1309,43 @@ fn build_feishu_attachments(
 
 ///|
 fn parse_feishu_post_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
-  match parsed {
-    Ok(json) => {
-      let post = unwrap_feishu_post(json)
-      match post {
-        Some(post) => {
-          let title = match post {
-            { "title": String(title), .. } if !title.is_blank() =>
-              Some("**\{title}**")
-            _ => None
-          }
-          let body = match post {
-            { "content": Array(content), .. } =>
-              content
-              .map(render_feishu_post_paragraph)
-              .filter(fn(line) { !line.is_blank() })
-              .join("\n")
-            _ => ""
-          }
-          let pieces = []
-          match title {
-            Some(title) => pieces.push(title)
-            None => ()
-          }
-          if !body.is_blank() {
-            pieces.push(body)
-          }
-          let rendered = pieces.join("\n\n").trim().to_string()
-          if rendered.is_blank() {
-            Some("[rich text message]")
-          } else {
-            Some(rendered)
-          }
-        }
-        None => Some("[rich text message]")
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("[rich text message]")
+  } noraise {
+    json => json
+  }
+  let post = unwrap_feishu_post(parsed)
+  match post {
+    Some(post) => {
+      let title = match post {
+        { "title": String(title), .. } if !title.is_blank() =>
+          Some("**\{title}**")
+        _ => None
+      }
+      let body = match post {
+        { "content": Array(content), .. } =>
+          content
+          .map(render_feishu_post_paragraph)
+          .filter(fn(line) { !line.is_blank() })
+          .join("\n")
+        _ => ""
+      }
+      let pieces = []
+      match title {
+        Some(title) => pieces.push(title)
+        None => ()
+      }
+      if !body.is_blank() {
+        pieces.push(body)
+      }
+      let rendered = pieces.join("\n\n").trim().to_owned()
+      if rendered.is_blank() {
+        Some("[rich text message]")
+      } else {
+        Some(rendered)
       }
     }
-    Err(_) => Some("[rich text message]")
+    None => Some("[rich text message]")
   }
 }
 
@@ -1366,7 +1371,7 @@ fn unwrap_feishu_post(json : Json) -> Json? {
 fn render_feishu_post_paragraph(paragraph : Json) -> String {
   match paragraph {
     Array(elements) =>
-      elements.map(render_feishu_post_element).join("").trim().to_string()
+      elements.map(render_feishu_post_element).join("").trim().to_owned()
     _ => ""
   }
 }
@@ -1398,32 +1403,35 @@ fn render_feishu_post_element(element : Json) -> String {
 
 ///|
 fn parse_feishu_interactive_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
-  match parsed {
-    Ok(json) => {
-      let title = extract_feishu_card_title(json)
-      let summary = extract_feishu_card_summary(json)
-      let parts = []
-      if !title.is_blank() {
-        parts.push("<card title=\"\{title}\">")
-      } else {
-        parts.push("<card>")
-      }
-      if !summary.is_blank() {
-        parts.push(summary)
-      }
-      parts.push("</card>")
-      Some(parts.join("\n"))
-    }
-    Err(_) => Some("<card>\n[interactive card]\n</card>")
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("<card>\n[interactive card]\n</card>")
+  } noraise {
+    json => json
   }
+  let title = extract_feishu_card_title(parsed)
+  let summary = extract_feishu_card_summary(parsed)
+  let parts = []
+  if !title.is_blank() {
+    parts.push("<card title=\"\{title}\">")
+  } else {
+    parts.push("<card>")
+  }
+  if !summary.is_blank() {
+    parts.push(summary)
+  }
+  parts.push("</card>")
+  Some(parts.join("\n"))
 }
 
 ///|
 fn parse_feishu_image_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("[image]")
+  } noraise {
+    json => json
+  }
   match parsed {
-    Ok({ "image_key": String(image_key), .. }) if !image_key.is_blank() =>
+    { "image_key": String(image_key), .. } if !image_key.is_blank() =>
       Some("![image](\{image_key})")
     _ => Some("[image]")
   }
@@ -1431,50 +1439,68 @@ fn parse_feishu_image_content(raw : String) -> String? {
 
 ///|
 fn parse_feishu_file_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("[file]")
+  } noraise {
+    json => json
+  }
   match parsed {
-    Ok({ "file_name": String(file_name), "file_key": String(file_key), .. }) =>
+    { "file_name": String(file_name), "file_key": String(file_key), .. } =>
       Some("[file] \{file_name} (\{file_key})")
-    Ok({ "file_name": String(file_name), .. }) => Some("[file] \{file_name}")
-    Ok({ "file_key": String(file_key), .. }) => Some("[file] \{file_key}")
+    { "file_name": String(file_name), .. } => Some("[file] \{file_name}")
+    { "file_key": String(file_key), .. } => Some("[file] \{file_key}")
     _ => Some("[file]")
   }
 }
 
 ///|
 fn parse_feishu_audio_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("[audio]")
+  } noraise {
+    json => json
+  }
   match parsed {
-    Ok({ "file_key": String(file_key), .. }) => Some("[audio] \{file_key}")
+    { "file_key": String(file_key), .. } => Some("[audio] \{file_key}")
     _ => Some("[audio]")
   }
 }
 
 ///|
 fn parse_feishu_video_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("[video]")
+  } noraise {
+    json => json
+  }
   match parsed {
-    Ok({ "file_key": String(file_key), .. }) => Some("[video] \{file_key}")
+    { "file_key": String(file_key), .. } => Some("[video] \{file_key}")
     _ => Some("[video]")
   }
 }
 
 ///|
 fn parse_feishu_share_chat_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("[shared chat]")
+  } noraise {
+    json => json
+  }
   match parsed {
-    Ok({ "chat_name": String(chat_name), .. }) =>
-      Some("[shared chat] \{chat_name}")
+    { "chat_name": String(chat_name), .. } => Some("[shared chat] \{chat_name}")
     _ => Some("[shared chat]")
   }
 }
 
 ///|
 fn parse_feishu_share_user_content(raw : String) -> String? {
-  let parsed : Result[Json, Error] = try? @json.parse(raw)
+  let parsed = try @json.parse(raw) catch {
+    _ => return Some("[shared user]")
+  } noraise {
+    json => json
+  }
   match parsed {
-    Ok({ "user_name": String(user_name), .. }) =>
-      Some("[shared user] \{user_name}")
+    { "user_name": String(user_name), .. } => Some("[shared user] \{user_name}")
     _ => Some("[shared user]")
   }
 }
@@ -1871,7 +1897,7 @@ fn parse_feishu_ws_header_int(
   key : String,
 ) -> Int? {
   match feishu_ws_header(frame, key) {
-    Some(value) => Some(@strconv.parse_int(value) catch { _ => return None })
+    Some(value) => Some(@string.parse_int(value) catch { _ => return None })
     None => None
   }
 }
@@ -1906,7 +1932,7 @@ fn FeishuChannel::merge_platform_event_chunks(
   if chunk_state.chunks.length() != total {
     return None
   }
-  let merged = @buffer.new()
+  let merged = Buffer()
   for index in 0..<total {
     match chunk_state.chunks.get(index) {
       Some(chunk) => merged.write_bytes(chunk)
@@ -2035,7 +2061,7 @@ fn extract_feishu_card_title(json : Json) -> String {
 fn extract_feishu_card_summary(json : Json) -> String {
   let lines = []
   collect_feishu_card_text(json, lines)
-  lines.filter(fn(line) { !line.is_blank() }).join("\n").trim().to_string()
+  lines.filter(fn(line) { !line.is_blank() }).join("\n").trim().to_owned()
 }
 
 ///|
@@ -2089,14 +2115,14 @@ fn strip_feishu_mentions(text : String) -> String {
     .replace(old="\t", new=" ")
   let parts = normalized
     .split(" ")
-    .map(fn(part) { part.trim().to_string() })
+    .map(fn(part) { part.trim().to_owned() })
     .filter(fn(part) { !part.is_blank() })
     .collect()
   parts
   .filter(fn(part) { !part.has_prefix("@_user_") })
   .join(" ")
   .trim()
-  .to_string()
+  .to_owned()
 }
 
 ///|
@@ -2152,7 +2178,7 @@ fn normalize_abort_text(text : String) -> String {
   .replace(old="!", new=" ")
   .replace(old="?", new=" ")
   .split(" ")
-  .map(fn(part) { part.to_string() })
+  .map(fn(part) { part.to_owned() })
   .filter(fn(part) { !part.is_blank() })
   .join(" ")
 }
@@ -2314,7 +2340,7 @@ fn FeishuChannel::dequeue_message(
   match self.state.pending_messages.get(queue_key) {
     Some(queue) if !queue.is_empty() => {
       let next = queue[0]
-      let remaining = queue[1:].to_array()
+      let remaining = queue[1:].to_owned()
       if remaining.is_empty() {
         self.state.pending_messages.remove(queue_key) |> ignore()
       } else {
@@ -2414,7 +2440,7 @@ async fn FeishuChannel::process_queued_messages(
         Ok(_) => last_response = @channel.ExtensionResponse::ok()
         Err(e) =>
           last_response = @channel.ExtensionResponse::internal_error(
-            message="Failed to send response: \{e}",
+            message="Failed to send response: \{to_repr(e)}",
           )
       }
     } catch {
@@ -2455,7 +2481,9 @@ async fn FeishuChannel::send_cancel_acknowledgement(
         ) {
         Ok(_) => ()
         Err(error) =>
-          self.log_warn("Failed to send Feishu stop acknowledgement: \{error}")
+          self.log_warn(
+            "Failed to send Feishu stop acknowledgement: \{to_repr(error)}",
+          )
       }
     None => ()
   }

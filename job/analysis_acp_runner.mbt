@@ -1,7 +1,7 @@
 ///|
 fn acp_analysis_execution_requested(mode : String?) -> Bool {
   match mode {
-    Some(mode) => mode.trim().to_string() == "acp"
+    Some(mode) => mode.trim().to_owned() == "acp"
     None => false
   }
 }
@@ -24,10 +24,10 @@ fn analysis_acp_run_id(run_id : String, step_id : String) -> String {
 ///|
 fn analysis_acp_message(request : AnalysisRequest) -> String {
   let builder = StringBuilder::new()
-  builder.write_string(request.system_prompt.trim().to_string())
+  builder.write_string(request.system_prompt.trim().to_owned())
   builder.write_string("\n\n")
-  builder.write_string(request.prompt.trim().to_string())
-  builder.to_string().trim().to_string()
+  builder.write_string(request.prompt.trim().to_owned())
+  builder.to_string().trim().to_owned()
 }
 
 ///|
@@ -71,9 +71,9 @@ fn acp_result_status(result : Json) -> String {
 fn acp_result_error(result : Json) -> String? {
   match result {
     { "stderr": String(stderr), .. } if !stderr.trim().is_blank() =>
-      Some(stderr.trim().to_string())
+      Some(stderr.trim().to_owned())
     { "content": String(content), .. } if !content.trim().is_blank() =>
-      Some(content.trim().to_string())
+      Some(content.trim().to_owned())
     _ => None
   }
 }
@@ -108,8 +108,8 @@ async fn run_acp_analysis_runner(
   request : AnalysisRequest,
 ) -> Result[AnalysisExecution, String] {
   let target_id = match request.execution_target {
-    Some(target_id) if !target_id.trim().to_string().is_blank() =>
-      target_id.trim().to_string()
+    Some(target_id) if !target_id.trim().to_owned().is_blank() =>
+      target_id.trim().to_owned()
     _ => return Err("ACP analysis execution requires execution_target")
   }
   let home = request.home.unwrap_or(request.cwd)

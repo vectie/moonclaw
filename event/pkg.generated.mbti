@@ -18,7 +18,7 @@ pub struct Event {
   id : @uuid.Uuid
   created : @clock.Timestamp
   desc : EventDesc
-} derive(Eq, Show)
+} derive(Eq)
 pub fn Event::is_cancellation(Self) -> Bool
 pub fn Event::is_incoming(Self) -> Bool
 pub fn Event::is_starting(Self) -> Bool
@@ -45,7 +45,7 @@ pub(all) enum EventDesc {
   Cancelled
   Failed(Json)
   Pruned(id~ : @uuid.Uuid)
-} derive(Eq, Show)
+} derive(Eq)
 pub impl ToJson for EventDesc
 pub impl @json.FromJson for EventDesc
 

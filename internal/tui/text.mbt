@@ -61,7 +61,7 @@ pub fn TextStyle::underline(style : TextStyle) -> TextStyle {
 pub fn Text::new(content : String) -> Text {
   Text::{
     content,
-    lines: content.split("\n").map(fn(v) { v.to_string() }).collect(),
+    lines: content.split("\n").map(fn(v) { v.to_owned() }).collect(),
     style: TextStyle::default(),
   }
 }
@@ -70,7 +70,7 @@ pub fn Text::new(content : String) -> Text {
 pub fn Text::with_style(content : String, style : TextStyle) -> Text {
   Text::{
     content,
-    lines: content.split("\n").map(fn(v) { v.to_string() }).collect(),
+    lines: content.split("\n").map(fn(v) { v.to_owned() }).collect(),
     style,
   }
 }
@@ -78,7 +78,7 @@ pub fn Text::with_style(content : String, style : TextStyle) -> Text {
 ///|
 pub fn Text::set_text(self : Text, content : String) -> Unit {
   self.content = content
-  self.lines = content.split("\n").map(fn(v) { v.to_string() }).collect()
+  self.lines = content.split("\n").map(fn(v) { v.to_owned() }).collect()
 }
 
 ///|
@@ -167,7 +167,7 @@ pub fn wrap_text(text : String, max_width : Int) -> Array[String] {
   let lines : Array[String] = []
   let max_width = max_width.max(1) // Ensure max_width is at least 1
   for line in text.split("\n") {
-    let line = line.to_string()
+    let line = line.to_owned()
     if @unicode/width.string(line) <= max_width {
       lines.push(line)
     } else {
@@ -256,7 +256,7 @@ pub fn Box::set_content(self : Box, content : String) -> Unit {
 pub fn Box::get_preferred_height(self : Box, width : Int) -> Int {
   let content_lines : Array[String] = self.content
     .split("\n")
-    .map(fn(v) { v.to_string() })
+    .map(fn(v) { v.to_owned() })
     .collect()
   let inner_width = width - 2
   let mut height = 2
@@ -293,7 +293,7 @@ pub fn Box::render(
   output.write("┐")
   let content_lines : Array[String] = self.content
     .split("\n")
-    .map(fn(v) { v.to_string() })
+    .map(fn(v) { v.to_owned() })
     .collect()
   let mut current_y = y + 1
   let max_content_height = height - 2

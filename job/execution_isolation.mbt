@@ -2,7 +2,7 @@
 pub(all) enum ExecutionIsolationMode {
   SharedWorkspace
   GitWorktree
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct ExecutionIsolationSpec {
@@ -13,7 +13,7 @@ pub(all) struct ExecutionIsolationSpec {
   commit : String?
   cleanup_policy : String?
   force_new_branch : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn ExecutionIsolationSpec::new(
@@ -40,7 +40,7 @@ pub fn ExecutionIsolationSpec::new(
 pub(all) struct ExecutionIsolationResolution {
   cwd : String
   metadata : Json?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn ExecutionIsolationResolution::new(
@@ -52,7 +52,7 @@ pub fn ExecutionIsolationResolution::new(
 
 ///|
 fn normalized_isolation_text(text : String) -> String {
-  text.to_lower().trim().to_string()
+  text.to_lower().trim().to_owned()
 }
 
 ///|
@@ -71,7 +71,7 @@ pub fn subtask_prefers_git_worktree(
   prompt : String,
   kind : String?,
 ) -> Bool {
-  let kind = kind.unwrap_or("job.analysis").trim().to_string()
+  let kind = kind.unwrap_or("job.analysis").trim().to_owned()
   if kind != "job.analysis" {
     return false
   }
@@ -129,27 +129,27 @@ pub fn analysis_execution_isolation_spec(
       }
       let task_key = match obj.get("task_key") {
         Some(String(task_key)) if !task_key.trim().is_blank() =>
-          task_key.trim().to_string()
+          task_key.trim().to_owned()
         _ => default_execution_isolation_task_key(context)
       }
       let base_dir = match obj.get("base_dir") {
         Some(String(base_dir)) if !base_dir.trim().is_blank() =>
-          Some(base_dir.trim().to_string())
+          Some(base_dir.trim().to_owned())
         _ => None
       }
       let branch_name = match obj.get("branch_name") {
         Some(String(branch_name)) if !branch_name.trim().is_blank() =>
-          Some(branch_name.trim().to_string())
+          Some(branch_name.trim().to_owned())
         _ => None
       }
       let commit = match obj.get("commit") {
         Some(String(commit)) if !commit.trim().is_blank() =>
-          Some(commit.trim().to_string())
+          Some(commit.trim().to_owned())
         _ => None
       }
       let cleanup_policy = match obj.get("cleanup_policy") {
         Some(String(cleanup_policy)) if !cleanup_policy.trim().is_blank() =>
-          Some(cleanup_policy.trim().to_lower().to_string())
+          Some(cleanup_policy.trim().to_lower().to_owned())
         _ => None
       }
       let force_new_branch = match obj.get("force_new_branch") {

@@ -4,14 +4,14 @@ pub struct PresentationRenderHandoff {
   theme : String?
   delivery_notes : String?
   asset_requests : Array[String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct PresentationRenderArtifact {
   role : String
   path : String
   description : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct PresentationRenderPackage {
@@ -24,7 +24,7 @@ pub struct PresentationRenderPackage {
   produced_artifacts : Array[PresentationRenderArtifact]
   handoff_summary : String
   notes : Array[String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct PresentationPageSpec {
@@ -39,7 +39,7 @@ pub struct PresentationPageSpec {
   layout_instruction : String
   look_and_feel : String
   speaker_notes : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct PresentationDeckSpec {
@@ -52,7 +52,7 @@ pub struct PresentationDeckSpec {
   vendor_notes : String?
   pages : Array[PresentationPageSpec]
   render_handoff : PresentationRenderHandoff?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn presentation_contract_version() -> String {
@@ -98,7 +98,7 @@ pub fn presentation_render_package_schema_prompt() -> String {
 pub fn parse_presentation_deck_spec_text(
   text : String,
 ) -> PresentationDeckSpec? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return None
   }
@@ -108,15 +108,15 @@ pub fn parse_presentation_deck_spec_text(
   }
   let mut end = trimmed.length()
   while end > first {
-    let candidate = trimmed[first:end].to_string()
+    let candidate = trimmed[first:end].to_owned()
     if !candidate.has_suffix("}") {
       end = end - 1
       continue
     }
-    let parsed_json = try? @json.parse(candidate)
+    let parsed_json = Ok(@json.parse(candidate)) catch { error => Err(error) }
     match parsed_json {
       Ok(json) => {
-        let payload = try? @json.from_json(json)
+        let payload = Ok(@json.from_json(json)) catch { error => Err(error) }
         match payload {
           Ok(payload) => return Some(payload)
           Err(_) => ()
@@ -133,7 +133,7 @@ pub fn parse_presentation_deck_spec_text(
 pub fn parse_presentation_render_package_text(
   text : String,
 ) -> PresentationRenderPackage? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return None
   }
@@ -143,15 +143,15 @@ pub fn parse_presentation_render_package_text(
   }
   let mut end = trimmed.length()
   while end > first {
-    let candidate = trimmed[first:end].to_string()
+    let candidate = trimmed[first:end].to_owned()
     if !candidate.has_suffix("}") {
       end = end - 1
       continue
     }
-    let parsed_json = try? @json.parse(candidate)
+    let parsed_json = Ok(@json.parse(candidate)) catch { error => Err(error) }
     match parsed_json {
       Ok(json) => {
-        let payload = try? @json.from_json(json)
+        let payload = Ok(@json.from_json(json)) catch { error => Err(error) }
         match payload {
           Ok(payload) => return Some(payload)
           Err(_) => ()

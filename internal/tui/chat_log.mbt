@@ -465,7 +465,7 @@ fn render_component_lines(
       let text_lines = m
         .text()
         .split("\n")
-        .map(fn(v) { v.to_string() })
+        .map(fn(v) { v.to_owned() })
         .collect()
       let system_prefix = theme.system(" System: ")
       let lines : Array[String] = []
@@ -500,7 +500,7 @@ fn render_component_lines(
       lines.push(theme.dim_style("  Args:"))
       let inner_width = (width - 4).max(1)
       for line in t.args().split("\n") {
-        for wrapped in wrap_text(line.to_string(), inner_width) {
+        for wrapped in wrap_text(line.to_owned(), inner_width) {
           lines.push("  \{theme.tool_output_style(wrapped)}")
         }
       }
@@ -511,7 +511,7 @@ fn render_component_lines(
           _ => false
         }
         for line in t.result().split("\n") {
-          for wrapped in wrap_text(line.to_string(), inner_width) {
+          for wrapped in wrap_text(line.to_owned(), inner_width) {
             let styled = if is_error {
               theme.error_style(wrapped)
             } else {

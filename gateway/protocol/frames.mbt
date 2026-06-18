@@ -3,14 +3,14 @@ pub(all) enum Frame {
   Req(Request)
   Res(Response)
   Event(EventFrame)
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct Request {
   id : String
   rpc_method : String
   params : Json?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct Response {
@@ -18,7 +18,7 @@ pub(all) struct Response {
   ok : Bool
   payload : Json?
   error : ErrorShape?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct EventFrame {
@@ -26,7 +26,7 @@ pub(all) struct EventFrame {
   payload : Json?
   seq : Int?
   state_version : StateVersion?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct ErrorShape {
@@ -35,10 +35,10 @@ pub(all) struct ErrorShape {
   details : Json?
   retryable : Bool?
   retry_after_ms : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct StateVersion {
   presence : Int?
   health : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)

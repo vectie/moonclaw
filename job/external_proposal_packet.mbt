@@ -14,7 +14,7 @@ pub struct ExternalProposalPacket {
   notes : Array[String]
   tags : Array[String]
   metadata : Json
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
 pub struct ExternalProposalImportResult {
@@ -65,7 +65,7 @@ fn external_packet_string_field(
 ) -> String? {
   match obj.get(key) {
     Some(String(value)) => {
-      let trimmed = value.trim().to_string()
+      let trimmed = value.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -80,7 +80,7 @@ fn external_packet_string_field(
 fn external_packet_string_list(value : Json?) -> Array[String] {
   match value {
     Some(String(text)) => {
-      let trimmed = text.trim().to_string()
+      let trimmed = text.trim().to_owned()
       if trimmed.is_blank() {
         []
       } else {
@@ -92,7 +92,7 @@ fn external_packet_string_list(value : Json?) -> Array[String] {
       for item in items {
         match item {
           String(text) => {
-            let trimmed = text.trim().to_string()
+            let trimmed = text.trim().to_owned()
             if !trimmed.is_blank() {
               values.push(trimmed)
             }
@@ -119,7 +119,7 @@ fn external_packet_required_string_list(
       for item in items {
         match item {
           String(text) => {
-            let trimmed = text.trim().to_string()
+            let trimmed = text.trim().to_owned()
             if trimmed.is_blank() {
               raise @json.JsonDecodeError(
                 (
@@ -171,7 +171,7 @@ fn external_packet_output_contract(
 ) -> Json raise @json.JsonDecodeError {
   match value {
     Some(String(text)) => {
-      let trimmed = text.trim().to_string()
+      let trimmed = text.trim().to_owned()
       if trimmed.is_blank() {
         raise @json.JsonDecodeError(
           (
@@ -196,7 +196,7 @@ fn external_packet_output_contract(
       for item in items {
         match item {
           String(text) => {
-            let trimmed = text.trim().to_string()
+            let trimmed = text.trim().to_owned()
             if trimmed.is_blank() {
               raise @json.JsonDecodeError(
                 (
@@ -265,7 +265,7 @@ fn external_packet_request_text(
 }
 
 ///|
-pub impl @json.FromJson for ExternalProposalPacket with from_json(
+pub impl @json.FromJson for ExternalProposalPacket with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ExternalProposalPacket raise @json.JsonDecodeError {
@@ -374,7 +374,7 @@ pub fn parse_external_proposal_packet_json(
 
 ///|
 fn external_packet_skill_name(path : String) -> String? {
-  let trimmed = path.trim().to_string()
+  let trimmed = path.trim().to_owned()
   if trimmed.is_blank() {
     return None
   }
@@ -386,11 +386,11 @@ fn external_packet_skill_name(path : String) -> String? {
   let name = if last == "SKILL.md" && segments.length() >= 2 {
     segments[segments.length() - 2]
   } else if last.has_suffix(".md") && last.length() > 3 {
-    last[:last.length() - 3].to_string()
+    last[:last.length() - 3].to_owned()
   } else {
-    last.to_string()
+    last.to_owned()
   }
-  let normalized = name.trim().to_string()
+  let normalized = name.trim().to_owned()
   if normalized.is_blank() {
     None
   } else {
@@ -406,7 +406,7 @@ fn external_packet_preferred_skills(
   let merged : Array[String] = []
   let seen : Map[String, Bool] = {}
   for skill in existing {
-    let trimmed = skill.trim().to_string()
+    let trimmed = skill.trim().to_owned()
     if !trimmed.is_blank() && !seen.contains(trimmed) {
       seen.set(trimmed, true)
       merged.push(trimmed)
@@ -429,7 +429,7 @@ fn keeper_packet_workspace_root(packet_file_path : String) -> String? {
   let normalized = @pathx.normalize(packet_file_path)
   let marker = "/keeper/jobs/"
   match normalized.find(marker) {
-    Some(index) if index > 0 => Some(normalized[:index].to_string())
+    Some(index) if index > 0 => Some(normalized[:index].to_owned())
     _ => None
   }
 }
@@ -441,7 +441,7 @@ fn source_path_workspace_root(source_path : String?) -> String? {
       let normalized = @pathx.normalize(source_path)
       let marker = "/raw/"
       match normalized.find(marker) {
-        Some(index) if index > 0 => Some(normalized[:index].to_string())
+        Some(index) if index > 0 => Some(normalized[:index].to_owned())
         _ => None
       }
     }
@@ -699,7 +699,7 @@ fn external_packet_step_metadata(
       items.filter_map(fn(item) {
         match item {
           String(value) => {
-            let trimmed = value.trim().to_string()
+            let trimmed = value.trim().to_owned()
             if trimmed.is_blank() {
               None
             } else {

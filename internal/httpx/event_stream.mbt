@@ -127,7 +127,7 @@ pub fn Event::new(event? : String, data~ : String) -> Event {
 }
 
 ///|
-pub impl Show for Event with output(self : Event, w : &Logger) -> Unit {
+pub impl Show for Event with fn output(self : Event, w : &Logger) -> Unit {
   if self.event is Some(event) {
     w.write_string("event: \{event}\n")
   }
@@ -140,7 +140,7 @@ pub impl Show for Event with output(self : Event, w : &Logger) -> Unit {
 /// Implementors can define custom parsing logic to convert SSE events
 /// into domain-specific types.
 pub(open) trait FromEvent {
-  from_event(Event) -> Self raise
+  fn from_event(Event) -> Self raise
 }
 
 ///|
@@ -156,7 +156,7 @@ pub(open) trait FromEvent {
 /// * `to_event(self: Self) -> Event`: Converts the instance to an SSE `Event`
 ///   with appropriate event type and data payload.
 pub(open) trait ToEvent {
-  to_event(self : Self) -> Event
+  fn to_event(self : Self) -> Event
 }
 
 ///|
@@ -171,13 +171,13 @@ pub async fn EventStreamReader::read_event(self : EventStreamReader) -> Event? {
   while self.r.read_until("\n") is Some(line) {
     match line {
       [.. "event: ", .. event] => {
-        self.last_event = Some(event.to_string())
+        self.last_event = Some(event.to_owned())
         continue
       }
       [.. "data: ", .. data] => {
         let event = self.last_event
         self.last_event = None
-        return Some(Event::{ event, data: data.to_string() })
+        return Some(Event::{ event, data: data.to_owned() })
       }
       _ => continue
     }

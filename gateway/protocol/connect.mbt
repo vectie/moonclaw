@@ -4,7 +4,7 @@ pub(all) enum ClientMode {
   Backend
   Webchat
   Probe
-} derive(ToJson, FromJson, Show, Eq)
+} derive(ToJson, FromJson, Debug, Eq)
 
 ///|
 pub(all) struct ClientInfo {
@@ -13,19 +13,19 @@ pub(all) struct ClientInfo {
   version : String?
   platform : String?
   mode : ClientMode
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AuthCredentials {
   token : String?
   password : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) enum ClientRole {
   Operator
   Node
-} derive(ToJson, FromJson, Show, Eq)
+} derive(ToJson, FromJson, Debug, Eq)
 
 ///|
 pub(all) struct ConnectParams {
@@ -35,7 +35,7 @@ pub(all) struct ConnectParams {
   auth : AuthCredentials
   role : ClientRole
   scopes : Array[String]?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct HelloOk {
@@ -44,7 +44,7 @@ pub(all) struct HelloOk {
   features : Features
   snapshot : Snapshot
   policy : Policy
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct ServerInfo {
@@ -52,24 +52,24 @@ pub(all) struct ServerInfo {
   commit : String?
   host : String?
   conn_id : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct Features {
   methods : Array[String]
   events : Array[String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct Snapshot {
   presence : Json?
   health : Json?
   state_version : StateVersion?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct Policy {
   max_payload : Int
   max_buffered_bytes : Int
   tick_interval_ms : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)

@@ -52,7 +52,7 @@ fn configured_primary_model_from_json(json : Json?) -> String? {
                 Some(Object(model)) =>
                   match model.get("primary") {
                     Some(String(primary)) if !primary.trim().is_empty() =>
-                      Some(primary.trim().to_string())
+                      Some(primary.trim().to_owned())
                     _ => None
                   }
                 _ => None
@@ -109,7 +109,7 @@ fn channel_model_provider_override(model : @model.Model) -> String? {
 fn channel_model_session_name(model : @model.Model) -> String {
   match channel_model_provider_override(model) {
     Some(prefix) => {
-      let model_name = model.model_name.trim().to_string()
+      let model_name = model.model_name.trim().to_owned()
       if model_name.has_prefix("\{prefix}/") {
         model_name
       } else {
@@ -128,12 +128,12 @@ fn resolve_channel_model_override(
 ) -> String? {
   match model_override {
     Some(model_name) if model_name.contains("/") =>
-      Some(model_name.trim().to_string())
+      Some(model_name.trim().to_owned())
     Some(model_name) => {
-      let bare = model_name.trim().to_string()
+      let bare = model_name.trim().to_owned()
       match provider_override {
         Some(provider) if !provider.trim().is_empty() =>
-          Some("\{provider.trim().to_string()}/\{bare}")
+          Some("\{provider.trim().to_owned()}/\{bare}")
         _ =>
           match configured_primary {
             Some(primary) => Some(primary)
@@ -484,7 +484,7 @@ async fn Gateway::handle_acp_chat_command(
         ),
       )
     Some(@acp.AcpChatAction::Attach(args)) => {
-      let target_id = args.trim().to_string()
+      let target_id = args.trim().to_owned()
       guard !target_id.is_blank() else {
         return Some(
           self.channel_reply_message(
@@ -527,7 +527,7 @@ async fn Gateway::handle_acp_chat_command(
     }
     Some(@acp.AcpChatAction::Detach(args)) => {
       let sessions = self.acp_runtime().list_sessions_for_key(session_key)
-      let trimmed = args.trim().to_string()
+      let trimmed = args.trim().to_owned()
       let target_session = if trimmed.is_blank() {
         if sessions.length() != 1 {
           return Some(
@@ -643,7 +643,7 @@ async fn Gateway::handle_acp_chat_command(
       )
     }
     Some(@acp.AcpChatAction::Run(args)) => {
-      let content = args.trim().to_string()
+      let content = args.trim().to_owned()
       guard !content.is_blank() else {
         return Some(
           self.channel_reply_message(
@@ -828,7 +828,7 @@ async fn Gateway::handle_security_chat_command(
 }
 
 ///|
-impl @channel.MessageHandler for Gateway with handle_message(
+impl @channel.MessageHandler for Gateway with fn handle_message(
   self : Gateway,
   channel_id : String,
   account_id : String,
@@ -894,7 +894,7 @@ impl @channel.MessageHandler for Gateway with handle_message(
       )
     None => configured_primary_model
   }
-  if message.content.trim().to_string().is_blank() &&
+  if message.content.trim().to_owned().is_blank() &&
     message.attachments.is_empty() {
     return self.channel_reply_message(
       channel_id, account_id, message, "I could not parse any text from that message. Please resend it as plain text.",
@@ -905,7 +905,7 @@ impl @channel.MessageHandler for Gateway with handle_message(
       channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/plan ...`, `/plan-job ...`, or `/e2e ...` to start a job flow with them.",
     )
   }
-  if message.content.trim().to_string().is_blank() &&
+  if message.content.trim().to_owned().is_blank() &&
     !message.attachments.is_empty() {
     return self.channel_reply_message(
       channel_id, account_id, message, "Files saved for this thread. They are not sent to normal chat automatically. Use `/plan ...`, `/plan-job ...`, or `/e2e ...` to start a job flow with them.",
@@ -1005,7 +1005,7 @@ impl @channel.MessageHandler for Gateway with handle_message(
 }
 
 ///|
-impl @channel.MessageHandler for Gateway with handle_event(
+impl @channel.MessageHandler for Gateway with fn handle_event(
   self : Gateway,
   channel_id : String,
   account_id : String,

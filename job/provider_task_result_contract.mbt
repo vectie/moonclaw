@@ -5,7 +5,7 @@
 /// structured blocker. Planning-shaped responses are parsed only to support
 /// safe decomposition, not as successful provider completion.
 fn extract_first_json_object(content : String) -> String? {
-  let trimmed = content.trim().to_string()
+  let trimmed = content.trim().to_owned()
   if trimmed.is_blank() {
     return None
   }
@@ -59,7 +59,7 @@ fn parse_provider_task_result(
   content : String,
 ) -> Result[ProviderTaskResult, String] {
   let trimmed = match extract_first_json_object(content) {
-    Some(payload) => payload.trim().to_string()
+    Some(payload) => payload.trim().to_owned()
     None => return Err("Provider task analysis must return a JSON object")
   }
   if trimmed.is_blank() || !trimmed.has_prefix("{") {
@@ -83,8 +83,8 @@ fn provider_task_json_string_field(json : Json, key : String) -> String? {
   match json {
     Object(obj) =>
       match obj.get(key) {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
-          Some(value.trim().to_string())
+        Some(String(value)) if !value.trim().to_owned().is_blank() =>
+          Some(value.trim().to_owned())
         _ => None
       }
     _ => None
@@ -116,7 +116,7 @@ fn provider_task_json_string_array_field(
           let items : Array[String] = []
           for value in values {
             guard value is String(text) else { continue }
-            let trimmed = text.trim().to_string()
+            let trimmed = text.trim().to_owned()
             if !trimmed.is_blank() {
               items.push(trimmed)
             }
@@ -180,8 +180,8 @@ fn provider_task_plan_substeps_from_json(
         ),
       )
       let kind = match step.get("kind") {
-        Some(String(kind)) if !kind.trim().to_string().is_blank() =>
-          Some(kind.trim().to_string())
+        Some(String(kind)) if !kind.trim().to_owned().is_blank() =>
+          Some(kind.trim().to_owned())
         _ => None
       }
       substeps.push(AdaptiveSubstepPayload::{ title, prompt, kind })

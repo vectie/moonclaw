@@ -2,6 +2,7 @@
 package "vectie/moonclaw/channels/weixin"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonclaw/channel",
 }
@@ -16,7 +17,7 @@ pub struct WeixinAccessTokenResponse {
   expires_in : Int?
   errcode : Int?
   errmsg : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct WeixinAccountConfig {
   app_id : String
@@ -25,7 +26,7 @@ pub struct WeixinAccountConfig {
   original_id : String?
   api_base_url : String?
   enabled : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct WeixinChannel {
   // private fields

@@ -78,7 +78,7 @@ async fn Gateway::handle_get_messages(
   w : @httpx.ResponseWriter,
   agent_id : StringView,
 ) -> Unit {
-  let mailbox = match self.mailbox_manager.get(agent_id.to_string()) {
+  let mailbox = match self.mailbox_manager.get(agent_id.to_owned()) {
     Some(m) => m
     None =>
       raise json_error(404, "NotFound", {
@@ -92,7 +92,7 @@ async fn Gateway::handle_get_messages(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   let result : Json = {
-    "agent_id": agent_id.to_string().to_json(),
+    "agent_id": agent_id.to_owned().to_json(),
     "messages": match messages {
       Some(msg) => [msg.to_json()].to_json()
       None => ([] : Array[Json]).to_json()
@@ -156,13 +156,13 @@ async fn Gateway::handle_delete_mailbox(
   w : @httpx.ResponseWriter,
   mailbox_id : StringView,
 ) -> Unit {
-  match self.mailbox_manager.remove(mailbox_id.to_string()) {
+  match self.mailbox_manager.remove(mailbox_id.to_owned()) {
     Some(_) => {
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       let result : Json = {
         "deleted": true.to_json(),
-        "agent_id": mailbox_id.to_string().to_json(),
+        "agent_id": mailbox_id.to_owned().to_json(),
       }
       w.write(result.stringify())
     }

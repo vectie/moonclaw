@@ -5,14 +5,16 @@ pub(all) enum ServerEvent {
 } derive(ToJson)
 
 ///|
-pub impl @httpx.FromEvent for ServerEvent with from_event(event : @httpx.Event) -> ServerEvent raise {
+pub impl @httpx.FromEvent for ServerEvent with fn from_event(
+  event : @httpx.Event,
+) -> ServerEvent raise {
   let { event, data } = event
   let data = @json.parse(data)
   match event {
     Some("moonclaw.queued_messages.synchronized") =>
       ServerEvent::MoonclawQueuedMessagesSynchronized(@json.from_json(data))
     Some("moonclaw") => ServerEvent::Moonclaw(@json.from_json(data))
-    _ => fail("unrecognized event type: \{event}")
+    _ => fail("unrecognized event type: \{to_repr(event)}")
   }
 }
 

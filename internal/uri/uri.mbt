@@ -5,7 +5,7 @@ pub struct Authority {
   mut userinfo : StringView?
   mut host : StringView
   mut port : Int?
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 pub struct Uri {
@@ -14,7 +14,7 @@ pub struct Uri {
   path : Array[StringView]
   mut query : StringView?
   mut fragment : StringView?
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 suberror ParseError {
@@ -34,20 +34,22 @@ fn Uri::parse_scheme(
 ) -> StringView raise ParseError {
   match source {
     ['a'..='z' | 'A'..='Z', .. s] =>
-      scheme~: loop s {
-        ['a'..='z' | 'A'..='Z' | '0'..='9' | '+' | '-' | '.', .. s] =>
-          continue scheme~ s
-        [':', .. rest] as view => {
-          uri.scheme = source
-            .data()
-            .view(
-              start_offset=source.start_offset(),
-              end_offset=view.start_offset(),
-            )
-          return rest
+      for rest = s {
+        match rest {
+          ['a'..='z' | 'A'..='Z' | '0'..='9' | '+' | '-' | '.', .. rest] =>
+            continue rest
+          [':', .. rest] as view => {
+            uri.scheme = source
+              .data()
+              .view(
+                start_offset=source.start_offset(),
+                end_offset=view.start_offset(),
+              )
+            return rest
+          }
+          [_, ..] as rest => raise ParseError::InvalidScheme(rest)
+          [] => raise ParseError::MissingColon
         }
-        [_, ..] as s => raise ParseError::InvalidScheme(s)
-        [] => raise ParseError::MissingColon
       }
     [_, ..] as s => raise ParseError::InvalidScheme(s)
     [] => raise ParseError::Eof
@@ -88,94 +90,95 @@ fn parse_authority(
       return source
     }
     let s = source
-    loop (0, s) {
-      (port, ['/', .. k]) => {
-        authority.port = Some(port)
-        return parse_path_abempty(k, uri)
+    for port = 0, rest = s {
+      match (port, rest) {
+        (port, ['/', .. k]) => {
+          authority.port = Some(port)
+          return parse_path_abempty(k, uri)
+        }
+        (port, ['0'..='9' as c, .. k]) =>
+          continue port * 10 + c.to_int() - '0', k
+        (port, [] as rest) => {
+          authority.port = Some(port)
+          return rest
+        }
+        (_, [_, ..] as rest) => raise ParseError::InvalidPort(rest)
       }
-      (port, ['0'..='9' as c, .. k]) =>
-        continue (port * 10 + c.to_int() - '0', k)
-      (port, [] as s) => {
-        authority.port = Some(port)
-        return s
-      }
-      (_, [_, ..] as s) => raise ParseError::InvalidPort(s)
     }
   }
 
   fn parse_host(source : StringView) -> StringView raise ParseError {
     let s = source
-    loop s {
-      [':', .. k] as s => {
-        authority.host = source.slice_until(s)
-        return parse_port(k)
+    for rest = s {
+      match rest {
+        [':', .. k] as rest => {
+          authority.host = source.slice_until(rest)
+          return parse_port(k)
+        }
+        ['/', .. k] as rest => {
+          authority.host = source.slice_until(rest)
+          return parse_path_abempty(k, uri)
+        }
+        [] as rest => {
+          authority.host = source.slice_until(rest)
+          return rest
+        }
+        [_, .. rest] => continue rest
       }
-      ['/', .. k] as s => {
-        authority.host = source.slice_until(s)
-        return parse_path_abempty(k, uri)
-      }
-      [] as s => {
-        authority.host = source.slice_until(s)
-        return s
-      }
-      [_, .. s] => continue s
     }
   }
 
   let s = source
-  let host = @buffer.new()
   let mut port_k = None
-  loop s {
-    ['@', .. k] as s => {
-      authority.userinfo = Some(source.slice_until(s))
-      return parse_host(k)
-    }
-    ['/', .. k] as s =>
-      if port_k is Some(port_k) {
-        return parse_port(port_k)
-      } else {
-        authority.host = source.slice_until(s)
-        return parse_path_abempty(k, uri)
+  for rest = s {
+    match rest {
+      ['@', .. k] as rest => {
+        authority.userinfo = Some(source.slice_until(rest))
+        return parse_host(k)
       }
-    [':', .. k] as s => {
-      authority.host = source.slice_until(s)
-      port_k = Some(k)
-      continue k
-    }
-    [] as s => {
-      authority.host = source.slice_until(s)
-      return s
-    }
-    ['%', .. k] => {
-      let mut b = 0
-      let k = match k {
-        ['0'..='9' as c0, .. k] => {
-          b = (c0.to_int() - '0') * 16
-          k
+      ['/', .. k] as rest =>
+        if port_k is Some(port_k) {
+          return parse_port(port_k)
+        } else {
+          authority.host = source.slice_until(rest)
+          return parse_path_abempty(k, uri)
         }
-        ['A'..='F' as c0, .. k] => {
-          b = (c0.to_int() - 'A' + 10) * 16
-          k
-        }
-        _ => raise ParseError::InvalidPercentEncoding(k)
+      [':', .. k] as rest => {
+        authority.host = source.slice_until(rest)
+        port_k = Some(k)
+        continue k
       }
-      let k = match k {
-        ['0'..='9' as c1, .. k] => {
-          b = b + (c1.to_int() - '0')
-          k
-        }
-        ['A'..='F' as c1, .. k] => {
-          b = b + (c1.to_int() - 'A' + 10)
-          k
-        }
-        _ => raise ParseError::InvalidPercentEncoding(k)
+      [] as rest => {
+        authority.host = source.slice_until(rest)
+        return rest
       }
-      host.write_byte(b.to_byte())
-      continue k
-    }
-    [c, .. s] => {
-      host.write_char(c)
-      continue s
+      ['%', .. k] => {
+        let mut b = 0
+        let k = match k {
+          ['0'..='9' as c0, .. k] => {
+            b = (c0.to_int() - '0') * 16
+            k
+          }
+          ['A'..='F' as c0, .. k] => {
+            b = (c0.to_int() - 'A' + 10) * 16
+            k
+          }
+          _ => raise ParseError::InvalidPercentEncoding(k)
+        }
+        let k = match k {
+          ['0'..='9' as c1, .. k] => {
+            b = b + (c1.to_int() - '0')
+            k
+          }
+          ['A'..='F' as c1, .. k] => {
+            b = b + (c1.to_int() - 'A' + 10)
+            k
+          }
+          _ => raise ParseError::InvalidPercentEncoding(k)
+        }
+        continue k
+      }
+      [_, .. rest] => continue rest
     }
   }
 }
@@ -183,54 +186,60 @@ fn parse_authority(
 ///|
 fn parse_fragment(source : StringView, uri : Uri) -> StringView {
   let s = source
-  loop s {
-    [] as s => {
-      uri.fragment = Some(source)
-      return s
+  for rest = s {
+    match rest {
+      [] as rest => {
+        uri.fragment = Some(source)
+        return rest
+      }
+      [_, .. rest] => continue rest
     }
-    [_, .. s] => continue s
   }
 }
 
 ///|
 fn parse_query(source : StringView, uri : Uri) -> StringView {
   let s = source
-  loop s {
-    ['#', .. k] as s => {
-      uri.query = Some(source.slice_until(s))
-      return parse_fragment(k, uri)
+  for rest = s {
+    match rest {
+      ['#', .. k] as rest => {
+        uri.query = Some(source.slice_until(rest))
+        return parse_fragment(k, uri)
+      }
+      [] as rest => return rest
+      [_, .. rest] => continue rest
     }
-    [] as s => return s
-    [_, .. s] => continue s
   }
 }
 
 ///|
 fn parse_path_abempty(source : StringView, uri : Uri) -> StringView {
   let mut path = source
-  loop source {
-    ['/', .. k] as s => {
-      uri.path.push(path.slice_until(s))
-      path = k
-      continue k
-    }
-    ['?', .. k] as s => {
-      uri.path.push(path.slice_until(s))
-      return parse_query(k, uri)
-    }
-    ['#', .. k] as s => {
-      uri.path.push(path.slice_until(s))
-      uri.fragment = Some(k)
-      return k
-    }
-    [] as s => {
-      let part = path.slice_until(s)
-      if !part.is_empty() {
-        uri.path.push(part)
+  for rest = source {
+    match rest {
+      ['/', .. k] as rest => {
+        uri.path.push(path.slice_until(rest))
+        path = k
+        continue k
       }
-      return s
+      ['?', .. k] as rest => {
+        uri.path.push(path.slice_until(rest))
+        return parse_query(k, uri)
+      }
+      ['#', .. k] as rest => {
+        uri.path.push(path.slice_until(rest))
+        uri.fragment = Some(k)
+        return k
+      }
+      [] as rest => {
+        let part = path.slice_until(rest)
+        if !part.is_empty() {
+          uri.path.push(part)
+        }
+        return rest
+      }
+      [_, .. rest] => continue rest
     }
-    [_, .. s] => continue s
   }
 }
 
@@ -266,15 +275,17 @@ fn parse_uri(uri : Uri, source : StringView) -> StringView raise ParseError {
   ) -> StringView raise ParseError {
     match k {
       ['a'..='z' | 'A'..='Z', .. s] =>
-        scheme~: loop s {
-          ['a'..='z' | 'A'..='Z' | '0'..='9' | '+' | '-' | '.', .. s] =>
-            continue scheme~ s
-          [':', .. k] as s => {
-            uri.scheme = source.slice_until(s)
-            return parse_hier_part(k)
+        for rest = s {
+          match rest {
+            ['a'..='z' | 'A'..='Z' | '0'..='9' | '+' | '-' | '.', .. rest] =>
+              continue rest
+            [':', .. k] as rest => {
+              uri.scheme = source.slice_until(rest)
+              return parse_hier_part(k)
+            }
+            [_, ..] as rest => raise ParseError::InvalidScheme(rest)
+            [] => raise ParseError::MissingColon
           }
-          [_, ..] as s => raise ParseError::InvalidScheme(s)
-          [] => raise ParseError::MissingColon
         }
       [_, ..] as s => raise ParseError::InvalidScheme(s)
       [] => raise ParseError::Eof
@@ -297,22 +308,21 @@ test {
     query: None,
     fragment: None,
   }
-  inspect(
+  assert_true(
     parse_uri(
       uri, "http://username:password@example.com:8443/path/to/resource?query=parameter#fragment",
-    ),
-    content="",
+    ).is_empty(),
   )
-  assert_eq(uri.scheme, "http")
+  assert_true(uri.scheme == "http")
   let authority = uri.authority.unwrap_or_error(
     Failure::Failure("Missing authority"),
   )
-  assert_eq(authority.userinfo, Some("username:password"))
-  assert_eq(authority.host, "example.com")
-  assert_eq(authority.port, Some(8443))
-  assert_eq(uri.path, ["path", "to", "resource"])
-  assert_eq(uri.query, Some("query=parameter"))
-  assert_eq(uri.fragment, Some("fragment"))
+  assert_true(authority.userinfo == Some("username:password"))
+  assert_true(authority.host == "example.com")
+  assert_true(authority.port == Some(8443))
+  assert_true(uri.path == ["path", "to", "resource"])
+  assert_true(uri.query == Some("query=parameter"))
+  assert_true(uri.fragment == Some("fragment"))
 }
 
 ///|
@@ -324,18 +334,17 @@ test {
     query: None,
     fragment: None,
   }
-  inspect(
-    parse_uri(uri, "http://username:password@example.com:8443/path/to/resource"),
-    content="",
+  assert_true(
+    parse_uri(uri, "http://username:password@example.com:8443/path/to/resource").is_empty(),
   )
-  assert_eq(uri.scheme, "http")
+  assert_true(uri.scheme == "http")
   let authority = uri.authority.unwrap_or_error(
     Failure::Failure("Missing authority"),
   )
-  assert_eq(authority.userinfo, Some("username:password"))
-  assert_eq(authority.host, "example.com")
-  assert_eq(authority.port, Some(8443))
-  assert_eq(uri.path, ["path", "to", "resource"])
-  assert_eq(uri.query, None)
-  assert_eq(uri.fragment, None)
+  assert_true(authority.userinfo == Some("username:password"))
+  assert_true(authority.host == "example.com")
+  assert_true(authority.port == Some(8443))
+  assert_true(uri.path == ["path", "to", "resource"])
+  assert_true(uri.query == None)
+  assert_true(uri.fragment == None)
 }

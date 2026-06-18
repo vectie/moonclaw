@@ -9,13 +9,16 @@ test "Stopped::to_json" {
     web_search: true,
     broadcast: @broadcast.Broadcast::new(),
   }
-  assert_eq(task.to_json(), {
-    "name": "example",
-    "id": "123e4567-e89b-12d3-a456-426614174000",
-    "cwd": "/tmp/example",
-    "status": "stopped",
-    "created": 0,
-    "updated": 100,
-    "web_search": true,
-  })
+  assert_true(
+    task.to_json() ==
+    {
+      "name": "example",
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "cwd": "/tmp/example",
+      "status": "stopped",
+      "created": 0,
+      "updated": 100,
+      "web_search": true,
+    },
+  )
 }

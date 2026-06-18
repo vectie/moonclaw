@@ -33,9 +33,11 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
             Some(error_json) =>
               match error_json {
                 Object(_) => {
-                  let error_result : Result[@protocol.ErrorShape, Error] = try? @json.from_json(
-                    error_json,
-                  )
+                  let error_result : Result[@protocol.ErrorShape, Error] = Ok(
+                    @json.from_json(error_json),
+                  ) catch {
+                    error => Err(error)
+                  }
                   match error_result {
                     Ok(e) => Some(e)
                     Err(_) => None

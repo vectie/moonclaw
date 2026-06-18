@@ -73,12 +73,12 @@ fn format_message_content(
       format_content_parts(user_msg.content, lines)
     @openai.ChatCompletionMessageParam::Assistant(assistant_msg) => {
       // Add assistant content
-      if not(assistant_msg.content.is_empty()) {
+      if !assistant_msg.content.is_empty() {
         format_content_parts(assistant_msg.content, lines)
       }
 
       // Handle tool calls
-      if not(assistant_msg.tool_calls.is_empty()) {
+      if !assistant_msg.tool_calls.is_empty() {
         for tool_call in assistant_msg.tool_calls {
           lines.push("")
           let tool_name = tool_call.function.name
@@ -91,13 +91,15 @@ fn format_message_content(
             lines.push("**Parameters:**")
 
             // Try to parse arguments as JSON and format nicely
-            let args_result = try? @json.parse(arguments)
+            let args_result = Ok(@json.parse(arguments)) catch {
+              error => Err(error)
+            }
             match args_result {
               Ok(Json::Object(args_map)) =>
                 for key, value in args_map {
                   let value_str = match value {
                     Json::String(s) => s
-                    other => other.to_string()
+                    other => other.stringify()
                   }
                   lines.push("- **\{key}:** \{value_str}")
                 }
@@ -133,7 +135,7 @@ fn format_content_parts(
   for part in content_parts {
     match part {
       @openai.ChatCompletionContentPartParam::Text(text_part) =>
-        if not(text_part.text.is_empty()) {
+        if !text_part.text.is_empty() {
           lines.push(text_part.text)
         }
     }

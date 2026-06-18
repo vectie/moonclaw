@@ -15,7 +15,7 @@ fn RecordingHandler::new() -> RecordingHandler {
 }
 
 ///|
-impl @channel.MessageHandler for RecordingHandler with handle_message(
+impl @channel.MessageHandler for RecordingHandler with fn handle_message(
   self : RecordingHandler,
   channel_id : String,
   account_id : String,
@@ -40,7 +40,7 @@ impl @channel.MessageHandler for RecordingHandler with handle_message(
 }
 
 ///|
-impl @channel.MessageHandler for RecordingHandler with handle_event(
+impl @channel.MessageHandler for RecordingHandler with fn handle_event(
   self : RecordingHandler,
   channel_id : String,
   account_id : String,
@@ -210,15 +210,15 @@ test "feishu_stream_key is stable for reply target" {
     reply_to: Some("incoming-1"),
     attachments: [],
   }
-  inspect(
+  assert_eq(
     feishu_stream_key("default", message),
-    content="default:chat-1:incoming-1:thread-1",
+    "default:chat-1:incoming-1:thread-1",
   )
 }
 
 ///|
 test "feishu_typing_message_id uses reply target only" {
-  inspect(
+  assert_true(
     feishu_typing_message_id(@channel.Message::{
       id: "reply-1",
       channel: "feishu",
@@ -230,10 +230,10 @@ test "feishu_typing_message_id uses reply target only" {
       thread_id: Some("thread-1"),
       reply_to: Some("incoming-1"),
       attachments: [],
-    }),
-    content="Some(\"incoming-1\")",
+    }) ==
+    Some("incoming-1"),
   )
-  inspect(
+  assert_true(
     feishu_typing_message_id(@channel.Message::{
       id: "reply-2",
       channel: "feishu",
@@ -245,24 +245,24 @@ test "feishu_typing_message_id uses reply target only" {
       thread_id: None,
       reply_to: None,
       attachments: [],
-    }),
-    content="None",
+    })
+    is None,
   )
 }
 
 ///|
 test "feishu_progress_emoji_type maps phases to emoji names" {
-  inspect(feishu_progress_emoji_type("thinking"), content="THINKING")
-  inspect(feishu_progress_emoji_type("tool"), content="HAMMER")
-  inspect(feishu_progress_emoji_type("drafting"), content="OnIt")
-  inspect(feishu_progress_emoji_type("unknown"), content="THINKING")
+  assert_eq(feishu_progress_emoji_type("thinking"), "THINKING")
+  assert_eq(feishu_progress_emoji_type("tool"), "HAMMER")
+  assert_eq(feishu_progress_emoji_type("drafting"), "OnIt")
+  assert_eq(feishu_progress_emoji_type("unknown"), "THINKING")
 }
 
 ///|
 test "build_streaming_card_json contains content element" {
-  inspect(
+  assert_eq(
     build_streaming_card_json("Thinking...").stringify(),
-    content="{\"schema\":\"2.0\",\"config\":{\"streaming_mode\":true,\"summary\":{\"content\":\"[Generating...]\"},\"streaming_config\":{\"print_frequency_ms\":{\"default\":50},\"print_step\":{\"default\":1}}},\"body\":{\"elements\":[{\"tag\":\"markdown\",\"content\":\"Thinking...\",\"element_id\":\"content\"}]}}",
+    "{\"schema\":\"2.0\",\"config\":{\"streaming_mode\":true,\"summary\":{\"content\":\"[Generating...]\"},\"streaming_config\":{\"print_frequency_ms\":{\"default\":50},\"print_step\":{\"default\":1}}},\"body\":{\"elements\":[{\"tag\":\"markdown\",\"content\":\"Thinking...\",\"element_id\":\"content\"}]}}",
   )
 }
 
@@ -282,8 +282,8 @@ async test "Feishu webhook routes abort text to cancel events without invoking m
     ),
   )
 
-  inspect(response.status_code(), content="200")
-  inspect(handler.handled_message_ids.length(), content="0")
+  assert_eq(response.status_code(), 200)
+  assert_eq(handler.handled_message_ids.length(), 0)
   json_inspect(handler.event_types, content=["cancel"])
 }
 
@@ -303,8 +303,8 @@ async test "Feishu webhook routes force-stop text to force_cancel events without
     ),
   )
 
-  inspect(response.status_code(), content="200")
-  inspect(handler.handled_message_ids.length(), content="0")
+  assert_eq(response.status_code(), 200)
+  assert_eq(handler.handled_message_ids.length(), 0)
   json_inspect(handler.event_types, content=["force_cancel"])
 }
 
@@ -331,8 +331,8 @@ test "Feishu queue cancel clears pending work and marks active queue for stop" {
 
   channel.request_queue_cancel(queue_key)
 
-  inspect(channel.dequeue_message(queue_key) is None, content="true")
-  inspect(channel.is_queue_cancelled(queue_key), content="true")
+  assert_true(channel.dequeue_message(queue_key) is None)
+  assert_true(channel.is_queue_cancelled(queue_key))
 }
 
 ///|
@@ -359,8 +359,8 @@ async test "Feishu webhook deduplicates duplicate message ids before handler exe
     ),
   )
 
-  inspect(first.status_code(), content="500")
-  inspect(second.status_code(), content="200")
+  assert_eq(first.status_code(), 500)
+  assert_eq(second.status_code(), 200)
   json_inspect(handler.handled_message_ids, content=["message-1"])
 }
 
@@ -403,21 +403,21 @@ async test "Feishu webhook resolves accounts from camelCase appId/appSecret conf
     ),
   )
 
-  inspect(response.status_code(), content="500")
+  assert_eq(response.status_code(), 500)
   json_inspect(handler.handled_message_ids, content=["message-camel"])
 }
 
 ///|
 test "strip_feishu_mentions preserves text after newline-separated mention" {
-  inspect(strip_feishu_mentions("@_user_1\nhello there"), content="hello there")
-  inspect(strip_feishu_mentions("@_user_1\tplease help"), content="please help")
+  assert_eq(strip_feishu_mentions("@_user_1\nhello there"), "hello there")
+  assert_eq(strip_feishu_mentions("@_user_1\tplease help"), "please help")
 }
 
 ///|
 test "parse_feishu_text_content falls back to original text when stripping would erase everything" {
-  inspect(
+  assert_eq(
     parse_feishu_text_content(Json::object({ "text": "@_user_1" }).stringify()),
-    content="@_user_1",
+    "@_user_1",
   )
 }
 
@@ -431,9 +431,9 @@ async test "Feishu webhook ignores stale replayed messages" {
     feishu_message_request("event-expired", "message-expired", "old hello", "1"),
   )
 
-  inspect(response.status_code(), content="200")
-  inspect(handler.handled_message_ids.length(), content="0")
-  inspect(channel.state.pending_messages.length(), content="0")
+  assert_eq(response.status_code(), 200)
+  assert_eq(handler.handled_message_ids.length(), 0)
+  assert_eq(channel.state.pending_messages.length(), 0)
 }
 
 ///|
@@ -467,7 +467,7 @@ async test "Feishu webhook accepts post messages and normalizes them to text" {
     ),
   )
 
-  inspect(response.status_code(), content="500")
+  assert_eq(response.status_code(), 500)
   json_inspect(handler.handled_message_ids, content=["message-post"])
 }
 
@@ -498,7 +498,7 @@ async test "Feishu webhook accepts interactive card messages and normalizes them
     ),
   )
 
-  inspect(response.status_code(), content="500")
+  assert_eq(response.status_code(), 500)
   json_inspect(handler.handled_message_ids, content=["message-card"])
 }
 
@@ -519,7 +519,7 @@ async test "Feishu webhook accepts image messages and normalizes them to text" {
     ),
   )
 
-  inspect(response.status_code(), content="500")
+  assert_eq(response.status_code(), 500)
   json_inspect(handler.handled_message_ids, content=["message-image"])
   json_inspect(handler.attachment_counts, content=[1])
 }
@@ -541,7 +541,7 @@ async test "Feishu webhook accepts file messages and normalizes them to text" {
     ),
   )
 
-  inspect(response.status_code(), content="500")
+  assert_eq(response.status_code(), 500)
   json_inspect(handler.handled_message_ids, content=["message-file"])
   json_inspect(handler.attachment_counts, content=[1])
 }
@@ -562,9 +562,9 @@ async test "Feishu webhook ignores reaction events when lookup context is unavai
     }),
   )
 
-  inspect(response.status_code(), content="200")
-  inspect(handler.event_types.length(), content="0")
-  inspect(handler.handled_message_ids.length(), content="0")
+  assert_eq(response.status_code(), 200)
+  assert_eq(handler.event_types.length(), 0)
+  assert_eq(handler.handled_message_ids.length(), 0)
 }
 
 ///|
@@ -593,9 +593,9 @@ async test "Feishu webhook forwards bot membership events through the channel ev
     }),
   )
 
-  inspect(added.status_code(), content="200")
-  inspect(removed.status_code(), content="200")
-  inspect(deleted.status_code(), content="200")
+  assert_eq(added.status_code(), 200)
+  assert_eq(removed.status_code(), 200)
+  assert_eq(deleted.status_code(), 200)
   json_inspect(handler.event_types, content=[
     "bot.added", "bot.removed", "bot.removed",
   ])
@@ -617,12 +617,12 @@ async test "Feishu webhook forwards card actions and returns a Feishu-compatible
     }),
   )
 
-  inspect(response.status_code(), content="200")
-  inspect(
+  assert_eq(response.status_code(), 200)
+  assert_eq(
     @encoding/utf8.decode(response.body()) catch {
       _ => ""
     },
-    content="{\"toast\":{\"type\":\"success\",\"content\":\"Action received\"}}",
+    "{\"toast\":{\"type\":\"success\",\"content\":\"Action received\"}}",
   )
   json_inspect(handler.event_types, content=["card.action"])
 }
@@ -632,29 +632,26 @@ test "Feishu reaction helpers ignore unsupported operators and enforce own-messa
   let channel = FeishuChannel::new()
   channel.configure(feishu_test_config())
 
-  inspect(channel.reaction_notifications_mode("default"), content="own")
-  inspect(
+  assert_eq(channel.reaction_notifications_mode("default"), "own")
+  assert_true(
     channel.should_ignore_reaction_event(
       Some("app"),
       Some("ou_app"),
       Some("THUMBSUP"),
     ),
-    content="true",
   )
-  inspect(
+  assert_true(
     channel.should_ignore_reaction_event(None, Some("ou_user"), Some("Typing")),
-    content="true",
   )
-  inspect(
+  assert_false(
     channel.should_ignore_reaction_event(
       None,
       Some("ou_user"),
       Some("THUMBSUP"),
     ),
-    content="false",
   )
 
-  inspect(
+  assert_true(
     is_own_reaction_target(
       ResolvedReactionTarget::{
         chat_id: "chat-test",
@@ -667,9 +664,8 @@ test "Feishu reaction helpers ignore unsupported operators and enforce own-messa
       },
       "app-test",
     ),
-    content="true",
   )
-  inspect(
+  assert_false(
     is_own_reaction_target(
       ResolvedReactionTarget::{
         chat_id: "chat-test",
@@ -682,7 +678,6 @@ test "Feishu reaction helpers ignore unsupported operators and enforce own-messa
       },
       "app-test",
     ),
-    content="false",
   )
 }
 
@@ -751,9 +746,8 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
     },
   ])
 
-  inspect(
-    rendered,
-    content="<forwarded_messages>\n[1000] ou_first:\n    first\n[2000] ou_nested:\n    <forwarded_messages>\n    [3000] ou_child:\n        nested\n    </forwarded_messages>\n</forwarded_messages>",
+  assert_eq(
+    rendered, "<forwarded_messages>\n[1000] ou_first:\n    first\n[2000] ou_nested:\n    <forwarded_messages>\n    [3000] ou_child:\n        nested\n    </forwarded_messages>\n</forwarded_messages>",
   )
 }
 
@@ -796,9 +790,8 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
     sender_names={ "ou_sender": "Alice" },
   )
 
-  inspect(
-    rendered,
-    content="<forwarded_messages>\n[1000] Alice:\n    hello\n</forwarded_messages>",
+  assert_eq(
+    rendered, "<forwarded_messages>\n[1000] Alice:\n    hello\n</forwarded_messages>",
   )
 }
 
@@ -854,21 +847,17 @@ test "Feishu forward sender helpers deduplicate ids and use account scoped cache
   let channel = FeishuChannel::new()
   channel.cache_user_name("account-a", "ou_sender", "Alice")
   channel.cache_user_name("account-b", "ou_sender", "Bob")
-  inspect(
-    channel.cached_user_name("account-a", "ou_sender"),
-    content="Some(\"Alice\")",
+  assert_true(
+    channel.cached_user_name("account-a", "ou_sender") == Some("Alice"),
   )
-  inspect(
-    channel.cached_user_name("account-b", "ou_sender"),
-    content="Some(\"Bob\")",
-  )
+  assert_true(channel.cached_user_name("account-b", "ou_sender") == Some("Bob"))
 }
 
 ///|
 test "Feishu websocket monitor support follows configured websocket accounts" {
   let channel = FeishuChannel::new()
   channel.configure(feishu_test_config())
-  inspect(channel.supports_websocket(), content="false")
+  assert_false(channel.supports_websocket())
 
   channel.configure(@channel.ChannelConfig::{
     enabled: true,
@@ -884,7 +873,7 @@ test "Feishu websocket monitor support follows configured websocket accounts" {
     },
     global_settings: {},
   })
-  inspect(channel.supports_websocket(), content="true")
+  assert_true(channel.supports_websocket())
   json_inspect(channel.websocket_monitor_accounts(), content=["websocket"])
 }
 
@@ -920,9 +909,9 @@ async test "Feishu websocket monitor connections receive ready and status update
   )
 
   channel.handle_websocket(conn)
-  inspect(sent.length(), content="1")
-  inspect(sent[0].contains("\"type\":\"feishu.monitor.ready\""), content="true")
-  inspect(sent[0].contains("\"account_id\":\"websocket\""), content="true")
+  assert_eq(sent.length(), 1)
+  assert_true(sent[0].contains("\"type\":\"feishu.monitor.ready\""))
+  assert_true(sent[0].contains("\"account_id\":\"websocket\""))
 
   let _ = channel.start(
     "websocket",
@@ -935,20 +924,17 @@ async test "Feishu websocket monitor connections receive ready and status update
       "enabled": true,
     }),
   )
-  inspect(sent.length(), content="2")
-  inspect(
-    sent[1].contains("\"type\":\"feishu.monitor.status\""),
-    content="true",
-  )
-  inspect(sent[1].contains("\"running\":true"), content="true")
+  assert_eq(sent.length(), 2)
+  assert_true(sent[1].contains("\"type\":\"feishu.monitor.status\""))
+  assert_true(sent[1].contains("\"running\":true"))
 
   channel.on_unregister()
-  inspect(close_calls.length(), content="1")
+  assert_eq(close_calls.length(), 1)
   match on_close {
     Some(handler) => handler()
     None => ()
   }
-  inspect(channel.state.active_monitor_connections.is_empty(), content="true")
+  assert_true(channel.state.active_monitor_connections.is_empty())
 }
 
 ///|
@@ -1007,11 +993,11 @@ async test "Feishu websocket monitor routes inbound message events and ping fram
     None => abort("expected inbound websocket handler")
   }
 
-  inspect(handler.handled_message_ids.length(), content="1")
-  inspect(handler.handled_message_ids[0], content="message-monitor")
-  inspect(sent[1].contains("\"type\":\"pong\""), content="true")
-  inspect(sent[2].contains("\"type\":\"feishu.monitor.error\""), content="true")
-  inspect(sent[2].contains("\"code\":\"event_rejected\""), content="true")
+  assert_eq(handler.handled_message_ids.length(), 1)
+  assert_eq(handler.handled_message_ids[0], "message-monitor")
+  assert_true(sent[1].contains("\"type\":\"pong\""))
+  assert_true(sent[2].contains("\"type\":\"feishu.monitor.error\""))
+  assert_true(sent[2].contains("\"code\":\"event_rejected\""))
 }
 
 ///|
@@ -1042,32 +1028,29 @@ async test "Feishu websocket runtime starts websocket accounts through extension
   let sent : Array[Bytes] = []
   let mut inbound : (async (Bytes) -> Unit)? = None
   let connector = @channel.WebSocketClientConnector::new(connect=request => {
-    inspect(request.protocol(), content="feishu")
-    inspect(request.client_id(), content="feishu:websocket")
-    inspect(
+    assert_eq(request.protocol(), "feishu")
+    assert_eq(request.client_id(), "feishu:websocket")
+    assert_true(
       request
       .metadata()
       .stringify()
       .contains("\"url\":\"ws://127.0.0.1:18080/feishu\""),
-      content="true",
     )
-    inspect(
+    assert_true(
       request
       .metadata()
       .stringify()
       .contains("\"Authorization\":\"Bearer test-token\""),
-      content="true",
     )
-    Ok(
-      @channel.WebSocketManagedConnection::new(
-        connection=@channel.WebSocketConnection::new(
-          id="runtime-monitor",
-          send=fn(bytes) { sent.push(bytes) },
-          close=fn() {  },
-          on_message=fn(handler) { inbound = Some(handler) },
-        ),
+    let managed = @channel.WebSocketManagedConnection::new(
+      connection=@channel.WebSocketConnection::new(
+        id="runtime-monitor",
+        send=fn(bytes) { sent.push(bytes) },
+        close=fn() {  },
+        on_message=fn(handler) { inbound = Some(handler) },
       ),
     )
+    Ok(managed)
   })
 
   @async.with_task_group(group => {
@@ -1159,8 +1142,8 @@ async test "Feishu websocket runtime starts websocket accounts through extension
       None => abort("expected runtime websocket inbound handler")
     }
     @async.sleep(50)
-    inspect(handler.handled_message_ids[0], content="message-runtime-monitor")
-    inspect(sent.length() >= 1, content="true")
+    assert_eq(handler.handled_message_ids[0], "message-runtime-monitor")
+    assert_true(sent.length() >= 1)
     let ack = sent
       .map(fn(bytes) { decode_feishu_websocket_frame(bytes) })
       .filter_map(fn(result) {
@@ -1171,13 +1154,12 @@ async test "Feishu websocket runtime starts websocket accounts through extension
       })
       .get(0)
       .unwrap()
-    inspect(ack.method_id, content="1")
-    inspect(
+    assert_eq(ack.method_id, 1)
+    assert_true(
       match ack.payload {
         Some(payload) => payload.length() > 0
         None => false
       },
-      content="true",
     )
     runtime.stop_all()
     group.return_immediately(())
@@ -1242,7 +1224,7 @@ async test "Feishu websocket runtime requires websocket_url or platform endpoint
       }),
     )
     @async.sleep(50)
-    inspect(connect_calls.length(), content="0")
+    assert_eq(connect_calls.length(), 0)
     runtime.stop_all()
     group.return_immediately(())
   })
@@ -1313,9 +1295,9 @@ async test "Feishu websocket runtime refreshes resolved endpoint on reconnect" {
       }),
     )
     @async.sleep(2_250)
-    inspect(dialed_urls.length() >= 2, content="true")
-    inspect(dialed_urls[0], content="ws://127.0.0.1:18080/first")
-    inspect(dialed_urls[1], content="ws://127.0.0.1:18080/second")
+    assert_true(dialed_urls.length() >= 2)
+    assert_eq(dialed_urls[0], "ws://127.0.0.1:18080/first")
+    assert_eq(dialed_urls[1], "ws://127.0.0.1:18080/second")
     runtime.stop_all()
     group.return_immediately(())
   })

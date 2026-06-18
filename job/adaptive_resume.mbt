@@ -1,6 +1,6 @@
 ///|
 fn adaptive_resume_instruction_text(text : String) -> String? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     None
   } else {
@@ -13,10 +13,10 @@ fn resume_instruction_from_serialized_json(text : String) -> String? {
   let marker = "\"resume_content\":\""
   match text.find(marker) {
     Some(start) => {
-      let remainder = text[start + marker.length():].to_string()
+      let remainder = text[start + marker.length():].to_owned()
       match remainder.find("\"") {
         Some(end) =>
-          adaptive_resume_instruction_text(remainder[:end].to_string())
+          adaptive_resume_instruction_text(remainder[:end].to_owned())
         None => None
       }
     }
@@ -28,7 +28,7 @@ fn resume_instruction_from_serialized_json(text : String) -> String? {
 fn resume_instruction_from_json(input : Json) -> String? {
   match input {
     { "resume_content": String(text), .. } => {
-      let trimmed = text.trim().to_string()
+      let trimmed = text.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -44,7 +44,7 @@ fn resume_instruction_from_json(input : Json) -> String? {
 fn resume_instruction_from_input(input : Json?) -> String? {
   match input {
     Some({ "resume_content": String(text), .. }) => {
-      let trimmed = text.trim().to_string()
+      let trimmed = text.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -75,7 +75,7 @@ fn should_preserve_first_pass_on_empty_subplan(
       resume_instruction_from_input(context.initial_input),
       parse_adaptive_analysis_envelope(execution.content),
     ) {
-    (Some(_), None) if !execution.content.trim().to_string().is_blank() => true
+    (Some(_), None) if !execution.content.trim().to_owned().is_blank() => true
     _ => false
   }
 }

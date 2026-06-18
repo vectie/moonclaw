@@ -25,89 +25,89 @@ pub(all) struct RunInfo {
   finished_at : Int?
   result : Json?
   error : @protocol.ErrorShape?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct RunsListPayload {
   runs : Array[RunInfo]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobsListPayload {
   jobs : Array[@job.JobDefinition]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobRunsPayload {
   runs : Array[@job.JobRun]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct MemoriesListPayload {
   memories : Array[@job.MemoryRecord]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct WorkspacePayload {
   workspace : @workspace.WorkspaceSnapshot
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct PluginsListPayload {
   plugins : Array[@plugin.PluginRecord]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpTargetsPayload {
   targets : Array[@acp.AcpTarget]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpTargetPayload {
   target : @acp.AcpTarget
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpSessionsPayload {
   sessions : Array[@acp.AcpSession]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpSessionPayload {
   session : @acp.AcpSession
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpSessionMutationPayload {
   status : String
   session : @acp.AcpSession
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpRunsPayload {
   runs : Array[@acp.AcpRun]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpRunPayload {
   run : @acp.AcpRun
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpRunMutationPayload {
   status : String
   run : @acp.AcpRun
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpUiSnapshotPayload {
   snapshot : @acp.AcpUiSnapshot
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpUiEventsPayload {
   timeline : Array[@acp.AcpUiTimelineEntry]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AcpSessionRunPayload {
@@ -117,59 +117,59 @@ pub(all) struct AcpSessionRunPayload {
   accepted : @protocol.AgentAcceptedPayload
   target : @acp.AcpTarget
   plan : @acp.AcpLaunchPlan
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct MemoryMutationPayload {
   status : String
   memory : @job.MemoryRecord
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct MemorySearchPayload {
   hits : Array[@job.MemorySearchHit]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobMutationPayload {
   status : String
   job : @job.JobDefinition?
   run : @job.JobRun?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobPayload {
   job : @job.JobDefinition
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobRunDetails {
   run : @job.JobRun
   steps : Array[@job.JobStepRun]
   artifacts : Array[@job.ArtifactRecord]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobUiSnapshotPayload {
   snapshot : @job.JobUiSnapshot
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobUiEventsPayload {
   timeline : Array[@job.JobUiTimelineEntry]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct ChannelsListPayload {
   channels : Array[@channel.ChannelDock]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct ChannelMutationPayload {
   status : String
   channel_id : String
   account_id : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub async fn Client::new(config : ClientConfig) -> Client {

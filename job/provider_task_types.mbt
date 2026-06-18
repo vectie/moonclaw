@@ -13,7 +13,7 @@ pub(all) struct ProviderTaskSpec {
   priority : Int
   requires_review : Bool
   target_pages : Array[String]
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct ProviderTaskBatch {
@@ -21,7 +21,7 @@ pub(all) struct ProviderTaskBatch {
   goal : String
   summary : String
   tasks : Array[ProviderTaskSpec]
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 /// Provider-owned context schema. Some field names remain wiki-shaped for
@@ -41,7 +41,7 @@ pub(all) struct ProviderTaskWorkerContext {
   working_memory : Array[String]
   memory_summary : String
   output_contract : Array[String]
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct ProviderTaskMemoryCandidate {
@@ -50,7 +50,7 @@ pub(all) struct ProviderTaskMemoryCandidate {
   detail : String
   durable : Bool
   target_page : String?
-} derive(Show, Eq, ToJson, FromJson)
+} derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 pub(all) struct ProviderTaskResult {
@@ -60,7 +60,7 @@ pub(all) struct ProviderTaskResult {
   memory_candidates : Array[ProviderTaskMemoryCandidate]
   requires_review : Bool
   notify_town : Bool
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct ProviderTaskPersistOutcome {
@@ -69,7 +69,7 @@ pub(all) struct ProviderTaskPersistOutcome {
   review_queued : Bool
   notify_town : Bool
   evidence_id : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub(all) struct ProviderTaskCommand {
@@ -78,4 +78,4 @@ pub(all) struct ProviderTaskCommand {
   args : Array[String]
   cwd : String?
   workspace_root : String
-} derive(Show)
+} derive(Debug)

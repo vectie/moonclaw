@@ -22,5 +22,12 @@ async test "Transport::parse" {
     Transport::parse("file:/tmp/log.txt") is File(path="/tmp/log.txt", ..),
     content=true,
   )
-  json_inspect((try? Transport::parse("channel:")) is Err(_), content=true)
+  json_inspect(
+    try Transport::parse("channel:") catch {
+      _ => true
+    } noraise {
+      _ => false
+    },
+    content=true,
+  )
 }

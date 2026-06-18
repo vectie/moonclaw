@@ -8,7 +8,7 @@ pub(all) enum JobUiNodeKind {
   ChildRun
   Artifact
   Memory
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobUiNode {
@@ -27,7 +27,7 @@ pub(all) struct JobUiNode {
   updated_at : Int?
   provisional : Bool
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobUiTimelineEntry {
@@ -40,7 +40,7 @@ pub(all) struct JobUiTimelineEntry {
   step_id : String?
   status : String?
   data : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobUiRemoteLink {
@@ -51,14 +51,14 @@ pub(all) struct JobUiRemoteLink {
   summary : String?
   detail : String?
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobUiHandoff {
   node_id : String
   step_id : String?
   remote : Array[JobUiRemoteLink]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct JobUiSnapshot {
@@ -75,4 +75,4 @@ pub(all) struct JobUiSnapshot {
   handoffs : Array[JobUiHandoff]
   nodes : Array[JobUiNode]
   timeline : Array[JobUiTimelineEntry]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)

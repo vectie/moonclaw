@@ -773,13 +773,12 @@ fn parse_string_arg(args : Array[String], name : String) -> String? {
 ///|
 fn parse_int_arg(args : Array[String], name : String, default~ : Int) -> Int {
   match parse_string_arg(args, name) {
-    Some(s) => {
-      let result : Result[Int, Error] = try? @string.parse_int(s[:], base=10)
-      match result {
-        Ok(n) => n
-        Err(_) => default
+    Some(s) =>
+      try @string.parse_int(s[:], base=10) catch {
+        _ => default
+      } noraise {
+        n => n
       }
-    }
     None => default
   }
 }

@@ -2,7 +2,7 @@
 pub enum PatchEditMode {
   Preview
   Apply
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct PatchEditResult {
@@ -14,7 +14,15 @@ pub struct PatchEditResult {
   modified : Array[String]
   deleted : Array[String]
   file_count : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
+
+///|
+pub impl Show for PatchEditResult with fn output(
+  self : PatchEditResult,
+  logger : &Logger,
+) -> Unit {
+  logger.write_string(self.to_json().stringify())
+}
 
 ///|
 priv struct Params {
@@ -104,7 +112,7 @@ pub fn new(cwd : String) -> @tool.Tool[PatchEditResult] {
         InvalidHunk(message~, line_number~) =>
           return @tool.error("Invalid hunk at line \{line_number}: \{message}")
       }
-      match params.mode.unwrap_or("preview").trim().to_string() {
+      match params.mode.unwrap_or("preview").trim().to_owned() {
         "preview" => @tool.ok(preview_patch_edit_result(parsed))
         "apply" => {
           let result = @apply_patch.apply_hunks(parsed.hunks[:], cwd) catch {

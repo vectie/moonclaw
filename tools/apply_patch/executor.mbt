@@ -1,7 +1,7 @@
 ///|
 pub(all) suberror ApplyError {
   ApplyError(String)
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub async fn apply_hunks(
@@ -26,7 +26,7 @@ async fn apply_one_hunk(
     AddFile(path~, contents~) => {
       let full_path = resolve_path(cwd, path)
       let parent = @pathx.dirname(full_path)
-      if not(parent.is_empty()) {
+      if !parent.is_empty() {
         @fsx.make_directory(parent, recursive=true, exists_ok=true) catch {
           err =>
             raise ApplyError("Failed to create directory \{parent}: \{err}")
@@ -56,7 +56,7 @@ async fn apply_one_hunk(
       }
       if move_path is Some(_) {
         let parent = @pathx.dirname(dest_path)
-        if not(parent.is_empty()) {
+        if !parent.is_empty() {
           @fsx.make_directory(parent, recursive=true, exists_ok=true) catch {
             err =>
               raise ApplyError("Failed to create directory \{parent}: \{err}")
@@ -87,7 +87,7 @@ fn apply_chunks(
 ) -> String raise ApplyError {
   let lines : Array[String] = original
     .split("\n")
-    .map(fn(sv) { sv.to_string() })
+    .map(fn(sv) { sv.to_owned() })
     .collect()
   if lines.length() > 0 && lines[lines.length() - 1].is_empty() {
     let _ = lines.pop()
@@ -144,7 +144,7 @@ fn apply_chunks(
       lines.insert(start_idx + j, new_line)
     }
   }
-  if lines.length() == 0 || not(lines[lines.length() - 1].is_empty()) {
+  if lines.length() == 0 || !lines[lines.length() - 1].is_empty() {
     lines.push("")
   }
   lines.join("\n")
@@ -215,7 +215,7 @@ fn matches_at_fuzzy(
     return false
   }
   for j in 0..<pattern.length() {
-    if not(fuzzy_equals(lines[pos + j], pattern[j])) {
+    if !fuzzy_equals(lines[pos + j], pattern[j]) {
       return false
     }
   }
@@ -272,7 +272,7 @@ fn resolve_path(cwd : String, path : String) -> String raise ApplyError {
     }
     path
   } else {
-    guard not(has_parent_escape(path)) else {
+    guard !has_parent_escape(path) else {
       raise ApplyError(
         "Patch path must not escape the current workspace: \{path}",
       )

@@ -8,7 +8,7 @@ pub struct RegisteredResourceProvider {
   docs_uri : String?
   capabilities : Array[String]
   metadata : Json
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
 pub fn RegisteredResourceProvider::new(
@@ -22,19 +22,19 @@ pub fn RegisteredResourceProvider::new(
   metadata? : Json = {},
 ) -> RegisteredResourceProvider {
   RegisteredResourceProvider::{
-    name: name.trim().to_string(),
-    title: title.trim().to_string(),
-    description: description.trim().to_string(),
-    kind: kind.trim().to_string(),
-    endpoint: endpoint.map(fn(value) { value.trim().to_string() }),
-    docs_uri: docs_uri.map(fn(value) { value.trim().to_string() }),
+    name: name.trim().to_owned(),
+    title: title.trim().to_owned(),
+    description: description.trim().to_owned(),
+    kind: kind.trim().to_owned(),
+    endpoint: endpoint.map(fn(value) { value.trim().to_owned() }),
+    docs_uri: docs_uri.map(fn(value) { value.trim().to_owned() }),
     capabilities,
     metadata,
   }
 }
 
 ///|
-pub impl @json.FromJson for RegisteredResourceProvider with from_json(
+pub impl @json.FromJson for RegisteredResourceProvider with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> RegisteredResourceProvider raise @json.JsonDecodeError {
@@ -158,7 +158,7 @@ pub async fn find_resource_provider(
   home? : String?,
 ) -> RegisteredResourceProvider? {
   let resolved_home = home.unwrap_or(None)
-  let needle = name.trim().to_string()
+  let needle = name.trim().to_owned()
   if needle.is_blank() {
     return None
   }

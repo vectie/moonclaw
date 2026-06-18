@@ -2,6 +2,7 @@
 package "vectie/moonclaw/internal/attachment_ingestion"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -47,7 +48,7 @@ pub struct MaterializedStarterAttachment {
   status : String
   note : String?
   size : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn MaterializedStarterAttachment::new(id~ : String, mime_type~ : String, source_url~ : String, filename? : String?, saved_path? : String?, extracted_text_path? : String?, status? : String, note? : String?, size? : Int?) -> Self
 
 // Type aliases

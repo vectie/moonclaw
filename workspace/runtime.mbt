@@ -3,7 +3,7 @@ pub struct WorkspaceFile {
   name : String
   path : String
   content : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct WorkspaceSnapshot {
@@ -11,7 +11,7 @@ pub struct WorkspaceSnapshot {
   configured_from : String
   files : Array[WorkspaceFile]
   prompt_context : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct WorkspaceRuntime {
@@ -52,7 +52,7 @@ fn workspace_path_from_json(json : Json) -> String? {
   guard agents.get("defaults") is Some(Object(defaults)) else { return None }
   match defaults.get("workspace") {
     Some(String(path)) if !path.trim().is_empty() =>
-      Some(path.trim().to_string())
+      Some(path.trim().to_owned())
     _ => None
   }
 }
@@ -140,7 +140,7 @@ async fn load_workspace_files(root : String) -> Array[WorkspaceFile] {
 fn excerpt_workspace_text(content : String, max_lines : Int) -> String {
   let lines : Array[String] = []
   for line in content.split("\n") {
-    let trimmed = line.trim_end().to_string()
+    let trimmed = line.trim_end().to_owned()
     if !trimmed.is_blank() {
       lines.push(trimmed)
     }

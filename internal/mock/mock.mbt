@@ -20,14 +20,14 @@ priv struct Clock {
 }
 
 ///|
-impl @clock.Clock for Clock with now(self : Clock) -> @clock.Timestamp {
+impl @clock.Clock for Clock with fn now(self : Clock) -> @clock.Timestamp {
   let ts = self.timestamp
   self.timestamp += 1
   @clock.Timestamp::from_ms(ts)
 }
 
 ///|
-impl @clock.Clock for Clock with now_str(self : Clock) -> String {
+impl @clock.Clock for Clock with fn now_str(self : Clock) -> String {
   let t = self.now()
   "Tick:\{t.ms()}"
 }
@@ -213,7 +213,7 @@ pub async fn Directory::add_json_tree(
       }
       _ =>
         fail(
-          "Invalid JSON tree: expected String (file content) or Object (directory), got \{value}",
+          "Invalid JSON tree: expected String (file content) or Object (directory), got \{to_repr(value)}",
         )
     }
   }
@@ -328,8 +328,14 @@ async fn eprintln(msg : String) -> Unit {
 
 ///|
 fn init {
-  if (try? @os.getenv("CI")) is Ok(Some("1" | "true")) {
-    @os.atexit(() => println("\{os_args} exited"))
+  let is_ci = try @os.getenv("CI") catch {
+    _ => false
+  } noraise {
+    Some("1" | "true") => true
+    _ => false
+  }
+  if is_ci {
+    @os.atexit(() => println("\{to_repr(os_args)} exited"))
   }
 }
 

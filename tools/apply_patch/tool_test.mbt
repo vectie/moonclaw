@@ -12,7 +12,9 @@ async test "apply_patch rejects absolute path outside workspace" (
     let tool = new(mock.cwd.path())
     let result = tool.call({ "patch": patch })
     guard result is Error(_) else {
-      fail("Expected tool error for absolute path escape, got: \{result}")
+      fail(
+        "Expected tool error for absolute path escape, got: \{mock.text(result)}",
+      )
     }
     inspect(
       mock.text(result),
@@ -33,7 +35,9 @@ async test "apply_patch rejects parent path escape" (t : @test.Test) {
     let tool = new(mock.cwd.path())
     let result = tool.call({ "patch": patch })
     guard result is Error(_) else {
-      fail("Expected tool error for parent path escape, got: \{result}")
+      fail(
+        "Expected tool error for parent path escape, got: \{mock.text(result)}",
+      )
     }
     inspect(
       mock.text(result),

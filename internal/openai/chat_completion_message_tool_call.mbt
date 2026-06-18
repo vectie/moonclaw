@@ -4,17 +4,17 @@
 pub struct ChatCompletionMessageToolCall {
   id : String
   function : ChatCompletionMessageToolCallFunction
-} derive(Show)
+} derive(Debug)
 
 ///|
-pub impl ToJson for ChatCompletionMessageToolCall with to_json(
+pub impl ToJson for ChatCompletionMessageToolCall with fn to_json(
   self : ChatCompletionMessageToolCall,
 ) -> Json {
   { "id": self.id, "function": self.function, "type": "function" }
 }
 
 ///|
-pub impl @json.FromJson for ChatCompletionMessageToolCall with from_json(
+pub impl @json.FromJson for ChatCompletionMessageToolCall with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionMessageToolCall {

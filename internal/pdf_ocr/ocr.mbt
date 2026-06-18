@@ -63,7 +63,7 @@ pub async fn extract_text_from_pdf(
   }
   let sections : Array[String] = []
   for page in pages {
-    let output_base = page.path[:page.path.length() - 4].to_string()
+    let output_base = page.path[:page.path.length() - 4].to_owned()
     let ocr = run_command("tesseract", [page.path, output_base], None)
     match ocr {
       Ok(process) if process.status == 0 => {
@@ -71,10 +71,10 @@ pub async fn extract_text_from_pdf(
         let page_text_exists = @fsx.exists(page_text_path) catch { _ => false }
         if page_text_exists {
           let page_text = @fsx.read_file(page_text_path)
-          if !page_text.trim().to_string().is_blank() {
+          if !page_text.trim().to_owned().is_blank() {
             sections.push("## \{page.name}")
             sections.push("")
-            sections.push(page_text.trim_end().to_string())
+            sections.push(page_text.trim_end().to_owned())
             sections.push("")
           }
         }

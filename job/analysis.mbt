@@ -3,7 +3,7 @@ pub(all) struct AnalysisPolicy {
   timeout_ms : Int?
   max_total_tokens : Int?
   skip_if_artifact_exists : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn AnalysisPolicy::new(
@@ -23,7 +23,7 @@ pub(all) struct AnalysisArtifactConfig {
   result_file_name : String?
   scope : Array[String]
   append_only : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn AnalysisArtifactConfig::new(
@@ -62,7 +62,7 @@ pub(all) struct AnalysisStepConfig {
   policy : AnalysisPolicy
   artifacts : AnalysisArtifactConfig
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn AnalysisStepConfig::new(
@@ -119,7 +119,7 @@ pub(all) struct AnalysisRequest {
   step_metadata : Json
   execution_isolation : Json?
   role_runtime_contract : RoleRuntimeContract?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AnalysisExecution {
@@ -128,7 +128,7 @@ pub(all) struct AnalysisExecution {
   conversation_id : String?
   usage : @ai.Usage?
   metadata : Json
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub(all) struct AnalysisExecutor {
@@ -144,7 +144,7 @@ pub fn AnalysisExecutor::new(
 
 ///|
 fn requested_model_name_or_none(name : String) -> String? {
-  let trimmed = name.trim().to_string()
+  let trimmed = name.trim().to_owned()
   if trimmed.is_blank() || trimmed == "default" {
     None
   } else {

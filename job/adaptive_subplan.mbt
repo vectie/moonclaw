@@ -21,8 +21,8 @@ fn adaptive_subplan_summary(envelope : AdaptiveAnalysisEnvelope) -> String {
 ///|
 fn adaptive_subplan_string_metadata(metadata : Json, key : String) -> String? {
   match metadata_with_step_metadata(metadata, key) {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      Some(value.trim().to_string())
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      Some(value.trim().to_owned())
     _ => None
   }
 }
@@ -37,7 +37,7 @@ fn adaptive_subplan_string_array_metadata(
       let items : Array[String] = []
       for value in values {
         guard value is String(text) else { continue }
-        let trimmed = text.trim().to_string()
+        let trimmed = text.trim().to_owned()
         if !trimmed.is_blank() {
           items.push(trimmed)
         }
@@ -133,8 +133,8 @@ fn adaptive_subplan_proposal(
     let step_id = "step_\{index + 1}"
     proposal_steps.push(JobProposalStep::{
       id: step_id,
-      title: step.title.trim().to_string(),
-      prompt: step.prompt.trim().to_string(),
+      title: step.title.trim().to_owned(),
+      prompt: step.prompt.trim().to_owned(),
       kind: step.kind.unwrap_or("job.analysis"),
       metadata: merge_json_metadata(
         subtask_execution_isolation_metadata(

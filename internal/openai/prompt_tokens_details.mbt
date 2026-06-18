@@ -3,7 +3,7 @@
 pub struct PromptTokensDetails {
   cached_tokens : Int?
   audio_tokens : Int?
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 pub fn PromptTokensDetails::new(
@@ -14,7 +14,7 @@ pub fn PromptTokensDetails::new(
 }
 
 ///|
-impl @json.FromJson for PromptTokensDetails with from_json(
+impl @json.FromJson for PromptTokensDetails with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> PromptTokensDetails {

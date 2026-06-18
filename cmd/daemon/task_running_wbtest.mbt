@@ -15,18 +15,21 @@ test "Running::ToJson" {
     model: "gpt-4",
     broadcast: @broadcast.Broadcast::new(),
   }
-  assert_eq(task.to_json(), {
-    "id": "123e4567-e89b-12d3-a456-426614174000",
-    "cwd": "/tmp/example",
-    "port": 8080,
-    "status": "idle",
-    "updated": 0,
-    "created": 0,
-    "web_search": true,
-    "queued_messages": [{ "id": "msg1", "message": { "text": "Hello" } }],
-    "model": "gpt-4",
-    "name": "example",
-  })
+  assert_true(
+    task.to_json() ==
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "cwd": "/tmp/example",
+      "port": 8080,
+      "status": "idle",
+      "updated": 0,
+      "created": 0,
+      "web_search": true,
+      "queued_messages": [{ "id": "msg1", "message": { "text": "Hello" } }],
+      "model": "gpt-4",
+      "name": "example",
+    },
+  )
 }
 
 ///|
@@ -44,15 +47,15 @@ test "Running::from_json" {
     "model": "gpt-4",
   }
   let task : Running = @json.from_json(json)
-  assert_eq(task.name, Some("example"))
-  assert_eq(task.id, @uuid.parse("123e4567-e89b-12d3-a456-426614174000"))
-  assert_eq(task.cwd, "/tmp/example")
-  assert_eq(task.port, 8080)
+  assert_true(task.name == Some("example"))
+  assert_true(task.id == @uuid.parse("123e4567-e89b-12d3-a456-426614174000"))
+  assert_true(task.cwd == "/tmp/example")
+  assert_true(task.port == 8080)
   assert_true(task.status is @server.Idle)
-  assert_eq(task.created, @clock.Timestamp::from_ms(0))
-  assert_eq(task.web_search, true)
-  assert_eq(task.model, "gpt-4")
-  assert_eq(task.queued_messages.length(), 1)
-  assert_eq(task.queued_messages[0].id, "msg1")
-  assert_eq(task.queued_messages[0].message, { "text": "Hello" })
+  assert_true(task.created == @clock.Timestamp::from_ms(0))
+  assert_true(task.web_search == true)
+  assert_true(task.model == "gpt-4")
+  assert_true(task.queued_messages.length() == 1)
+  assert_true(task.queued_messages[0].id == "msg1")
+  assert_true(task.queued_messages[0].message == { "text": "Hello" })
 }

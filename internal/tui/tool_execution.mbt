@@ -179,7 +179,7 @@ pub fn ToolExecution::render(
     output.write(cursor_to(x + 2, current_y))
     output.write(ClearLineRight)
     output.write(
-      theme.tool_output_style(truncate_to_width(line.to_string(), inner_width)),
+      theme.tool_output_style(truncate_to_width(line.to_owned(), inner_width)),
     )
     current_y += 1
     line_idx += 1
@@ -202,11 +202,9 @@ pub fn ToolExecution::render(
         _ => false
       }
       let styled = if is_error {
-        theme.error_style(truncate_to_width(line.to_string(), inner_width))
+        theme.error_style(truncate_to_width(line.to_owned(), inner_width))
       } else {
-        theme.tool_output_style(
-          truncate_to_width(line.to_string(), inner_width),
-        )
+        theme.tool_output_style(truncate_to_width(line.to_owned(), inner_width))
       }
       output.write(styled)
       current_y += 1

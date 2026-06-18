@@ -124,7 +124,7 @@ fn verify_weixin_signature(
   nonce : String,
 ) -> Bool {
   weixin_signature(token, timestamp, nonce) ==
-  signature.trim().to_lower().to_string()
+  signature.trim().to_lower().to_owned()
 }
 
 ///|
@@ -140,7 +140,7 @@ fn xml_tag_value(xml : String, tag : String) -> String? {
   if end_parts.is_empty() {
     None
   } else {
-    Some(strip_xml_cdata(end_parts[0].to_string()).trim().to_string())
+    Some(strip_xml_cdata(end_parts[0].to_owned()).trim().to_owned())
   }
 }
 
@@ -151,19 +151,19 @@ fn strip_xml_cdata(text : String) -> String {
   if !text.has_prefix(start) {
     return text
   }
-  let tail = text[start.length():].to_string()
+  let tail = text[start.length():].to_owned()
   let parts = tail.split(end).collect()
   if parts.is_empty() {
     text
   } else {
-    parts[0].to_string()
+    parts[0].to_owned()
   }
 }
 
 ///|
 fn parse_weixin_timestamp_ms(raw : String?) -> Int {
   match raw {
-    Some(value) => (@strconv.parse_int(value) catch { _ => 0 }) * 1000
+    Some(value) => (@string.parse_int(value) catch { _ => 0 }) * 1000
     None => 0
   }
 }
@@ -253,12 +253,12 @@ fn weixin_incoming_message(xml : String) -> @channel.Message? {
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with id(_self : WeixinChannel) -> @channel.ChannelId {
+impl @channel.Channel for WeixinChannel with fn id(_self : WeixinChannel) -> @channel.ChannelId {
   "weixin"
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with meta(_self : WeixinChannel) -> @channel.ChannelMeta {
+impl @channel.Channel for WeixinChannel with fn meta(_self : WeixinChannel) -> @channel.ChannelMeta {
   @channel.ChannelMeta::{
     id: "weixin",
     label: "Weixin",
@@ -272,7 +272,9 @@ impl @channel.Channel for WeixinChannel with meta(_self : WeixinChannel) -> @cha
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with capabilities(_self : WeixinChannel) -> @channel.ChannelCapabilities {
+impl @channel.Channel for WeixinChannel with fn capabilities(
+  _self : WeixinChannel,
+) -> @channel.ChannelCapabilities {
   @channel.ChannelCapabilities::{
     chat_types: [@channel.ChatType::Direct],
     polls: false,
@@ -290,7 +292,7 @@ impl @channel.Channel for WeixinChannel with capabilities(_self : WeixinChannel)
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with configure(
+impl @channel.Channel for WeixinChannel with fn configure(
   self : WeixinChannel,
   config : @channel.ChannelConfig,
 ) -> Unit {
@@ -303,7 +305,7 @@ impl @channel.Channel for WeixinChannel with configure(
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with start(
+impl @channel.Channel for WeixinChannel with fn start(
   self : WeixinChannel,
   account_id : String,
   config : Json,
@@ -320,7 +322,7 @@ impl @channel.Channel for WeixinChannel with start(
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with stop(
+impl @channel.Channel for WeixinChannel with fn stop(
   self : WeixinChannel,
   account_id : String,
 ) -> Result[Unit, @channel.ChannelError] {
@@ -330,7 +332,7 @@ impl @channel.Channel for WeixinChannel with stop(
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with send(
+impl @channel.Channel for WeixinChannel with fn send(
   self : WeixinChannel,
   to : String,
   message : @channel.Message,
@@ -369,7 +371,7 @@ impl @channel.Channel for WeixinChannel with send(
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with handle_event(
+impl @channel.Channel for WeixinChannel with fn handle_event(
   _self : WeixinChannel,
   _event : @channel.ChannelEvent,
 ) -> Unit {
@@ -377,7 +379,7 @@ impl @channel.Channel for WeixinChannel with handle_event(
 }
 
 ///|
-impl @channel.Channel for WeixinChannel with is_running(
+impl @channel.Channel for WeixinChannel with fn is_running(
   self : WeixinChannel,
   account_id : String,
 ) -> Bool {
@@ -388,14 +390,14 @@ impl @channel.Channel for WeixinChannel with is_running(
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with webhook_path(
+impl @channel.ChannelExtension for WeixinChannel with fn webhook_path(
   _self : WeixinChannel,
 ) -> String {
   "/webhook/weixin"
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with handle_webhook(
+impl @channel.ChannelExtension for WeixinChannel with fn handle_webhook(
   self : WeixinChannel,
   request : @channel.ExtensionRequest,
 ) -> @channel.ExtensionResponse {
@@ -446,7 +448,7 @@ impl @channel.ChannelExtension for WeixinChannel with handle_webhook(
                   Ok(_) => @channel.ExtensionResponse::text("success")
                   Err(error) =>
                     @channel.ExtensionResponse::internal_error(
-                      message="Failed to send Weixin response: \{error}",
+                      message="Failed to send Weixin response: \{to_repr(error)}",
                     )
                 }
               } catch {
@@ -493,14 +495,14 @@ impl @channel.ChannelExtension for WeixinChannel with handle_webhook(
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with supports_websocket(
+impl @channel.ChannelExtension for WeixinChannel with fn supports_websocket(
   _self : WeixinChannel,
 ) -> Bool {
   false
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with handle_websocket(
+impl @channel.ChannelExtension for WeixinChannel with fn handle_websocket(
   _self : WeixinChannel,
   _conn : @channel.WebSocketConnection,
 ) -> Unit {
@@ -508,21 +510,21 @@ impl @channel.ChannelExtension for WeixinChannel with handle_websocket(
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with allowed_methods(
+impl @channel.ChannelExtension for WeixinChannel with fn allowed_methods(
   _self : WeixinChannel,
 ) -> Array[String] {
   ["GET", "POST"]
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with dock_config(
+impl @channel.ChannelExtension for WeixinChannel with fn dock_config(
   _self : WeixinChannel,
 ) -> @channel.ChannelDockConfig {
   @channel.ChannelDockConfig::default_for_channel("weixin")
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with on_register(
+impl @channel.ChannelExtension for WeixinChannel with fn on_register(
   self : WeixinChannel,
   context : @channel.ExtensionContext,
 ) -> Unit {
@@ -531,7 +533,7 @@ impl @channel.ChannelExtension for WeixinChannel with on_register(
 }
 
 ///|
-impl @channel.ChannelExtension for WeixinChannel with on_unregister(
+impl @channel.ChannelExtension for WeixinChannel with fn on_unregister(
   self : WeixinChannel,
 ) -> Unit {
   ignore(self)

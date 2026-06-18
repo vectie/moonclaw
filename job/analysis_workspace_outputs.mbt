@@ -3,7 +3,7 @@ fn workspace_output_slug(text : String) -> String {
   let buf = StringBuilder::new()
   let mut chars_written = 0
   let mut last_dash = true
-  for c in text.to_lower().to_array() {
+  for c in text.to_lower() {
     let normalized = match c {
       'a'..='z' => Some(c)
       '0'..='9' => Some(c)
@@ -26,7 +26,7 @@ fn workspace_output_slug(text : String) -> String {
         }
     }
   }
-  let slug = buf.to_string().trim(chars="-").to_string()
+  let slug = buf.to_string().trim(chars="-").to_owned()
   if slug.is_blank() {
     "step"
   } else {
@@ -86,7 +86,7 @@ pub async fn materialize_analysis_outputs_to_workspace(
   report_content : String,
 ) -> Unit {
   let workspace_dir = match context.run.workspace_dir {
-    Some(workspace_dir) if !workspace_dir.trim().to_string().is_blank() =>
+    Some(workspace_dir) if !workspace_dir.trim().to_owned().is_blank() =>
       workspace_dir
     _ => return
   }
@@ -113,7 +113,7 @@ pub async fn materialize_analysis_outputs_to_workspace(
     _ => ()
   }
   match config.artifacts.report_file_name {
-    Some(file_name) if !file_name.trim().to_string().is_blank() =>
+    Some(file_name) if !file_name.trim().to_owned().is_blank() =>
       @fsx.write_to_file(
         workspace_dir |> @pathx.join(file_name),
         report_content,
@@ -123,7 +123,7 @@ pub async fn materialize_analysis_outputs_to_workspace(
     _ => ()
   }
   match config.artifacts.result_file_name {
-    Some(file_name) if !file_name.trim().to_string().is_blank() =>
+    Some(file_name) if !file_name.trim().to_owned().is_blank() =>
       @fsx.write_to_file(
         workspace_dir |> @pathx.join(file_name),
         result_payload.stringify(),

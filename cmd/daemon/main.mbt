@@ -6,12 +6,12 @@ priv struct DaemonInfo {
 }
 
 ///|
-impl ToJson for DaemonInfo with to_json(self) {
+impl ToJson for DaemonInfo with fn to_json(self) {
   { "version": self.version.to_string(), "pid": self.pid, "port": self.port }
 }
 
 ///|
-impl @json.FromJson for DaemonInfo with from_json(
+impl @json.FromJson for DaemonInfo with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> DaemonInfo raise {
@@ -31,7 +31,7 @@ impl @json.FromJson for DaemonInfo with from_json(
       raise @json.JsonDecodeError(
         (
           json_path.add_key("version"),
-          "Invalid version string in 'version' field: " + error.to_string(),
+          "Invalid version string in 'version' field: " + "\{to_repr(error)}",
         ),
       )
   }
@@ -69,7 +69,7 @@ pub async fn detach(
   }
   if serve is Some(serve) {
     args.push("--serve")
-    args.push(serve.to_string())
+    args.push(serve.to_owned())
   }
   if exec_path is Some(exec_path) {
     args.push(exec_path)
@@ -130,28 +130,34 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   let mut serve = @os.cwd()
   let mut exec_path = None
   let mut to_detach = false
-  loop args {
-    ["-p" | "--port", p, .. args] => {
-      port = @strconv.parse_int(p)
-      continue args
-    }
-    ["-s" | "--serve", s, .. args] => {
-      serve = if @pathx.is_absolute(s) { s } else { @pathx.join(@os.cwd(), s) }
-      continue args
-    }
-    ["-d" | "--detach", .. args] => {
-      to_detach = true
-      continue args
-    }
-    [e, .. args] => {
-      exec_path = if @pathx.is_absolute(e) {
-        Some(e)
-      } else {
-        Some(@pathx.join(@os.cwd(), e))
+  for args = args {
+    match args {
+      ["-p" | "--port", p, .. args] => {
+        port = @string.parse_int(p)
+        continue args
       }
-      continue args
+      ["-s" | "--serve", s, .. args] => {
+        serve = if @pathx.is_absolute(s) {
+          s
+        } else {
+          @pathx.join(@os.cwd(), s)
+        }
+        continue args
+      }
+      ["-d" | "--detach", .. args] => {
+        to_detach = true
+        continue args
+      }
+      [e, .. args] => {
+        exec_path = if @pathx.is_absolute(e) {
+          Some(e)
+        } else {
+          Some(@pathx.join(@os.cwd(), e))
+        }
+        continue args
+      }
+      [] => break
     }
-    [] => break
   }
   guard @model.load(home=@os.home(), cwd=@os.cwd()) is Some(_) else {
     @os.exit(-1)

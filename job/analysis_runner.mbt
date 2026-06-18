@@ -79,11 +79,11 @@ async fn run_single_response_analysis_runner(
     return Err("Analysis agent failed: empty choices")
   }
   let message = response.choices[0].message
-  let content = message.content.unwrap_or("").trim().to_string()
+  let content = message.content.unwrap_or("").trim().to_owned()
   let final_content = if !content.is_blank() {
     content
   } else {
-    final_content.trim().to_string()
+    final_content.trim().to_owned()
   }
   Ok(AnalysisExecution::{
     model_name: model.name,
@@ -171,7 +171,7 @@ async fn run_local_analysis_runner(
           let partial = if !final_content.is_blank() {
             final_content
           } else {
-            delta_content.to_string().trim().to_string()
+            delta_content.to_string().trim().to_owned()
           }
           if partial.is_blank() {
             return Err(
@@ -190,7 +190,7 @@ async fn run_local_analysis_runner(
     return Err(error)
   }
   if final_content.is_blank() {
-    let fallback = delta_content.to_string().trim().to_string()
+    let fallback = delta_content.to_string().trim().to_owned()
     if !fallback.is_blank() {
       final_content = fallback
     }

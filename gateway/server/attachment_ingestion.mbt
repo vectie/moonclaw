@@ -10,8 +10,8 @@ fn intake_string_field(input : Json?, key : String) -> String? {
   match input {
     Some(Object(obj)) =>
       match obj.get(key) {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
-          Some(value.trim().to_string())
+        Some(String(value)) if !value.trim().to_owned().is_blank() =>
+          Some(value.trim().to_owned())
         _ => None
       }
     _ => None
@@ -396,7 +396,7 @@ async fn Gateway::fetch_starter_attachment(
           resource_type,
         ) {
         Ok(result) => result
-        Err(error) => return Err(error.to_string())
+        Err(error) => return Err("\{to_repr(error)}")
       }
       Ok(StarterAttachmentFetchResult::{
         content,
@@ -465,7 +465,7 @@ async fn materialize_starter_attachments_for_workspace(
           @fsx.write_bytes_to_file(saved_path, result.content)
           None
         } catch {
-          error => Some(error.to_string())
+          error => Some("\{to_repr(error)}")
         }
         match write_error {
           Some(error) => {
@@ -488,7 +488,9 @@ async fn materialize_starter_attachments_for_workspace(
             resolved_mime_type,
             filename=attachment.filename,
           ) {
-          let decoded_text = try? @encoding/utf8.decode(result.content)
+          let decoded_text = Ok(@encoding/utf8.decode(result.content)) catch {
+            error => Err(error)
+          }
           match decoded_text {
             Ok(text) => {
               let text_path = @attachment_ingestion.starter_attachment_extracted_text_path(
@@ -517,7 +519,7 @@ async fn materialize_starter_attachments_for_workspace(
             },
           )
           let merged_note = match (result.note, extraction_note) {
-            (Some(left), Some(right)) if !left.trim().to_string().is_blank() =>
+            (Some(left), Some(right)) if !left.trim().to_owned().is_blank() =>
               Some("\{left}; \{right}")
             (Some(left), _) => Some(left)
             (_, Some(right)) => Some(right)

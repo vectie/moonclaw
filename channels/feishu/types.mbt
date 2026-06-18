@@ -25,7 +25,7 @@ pub struct FeishuAccountConfig {
   verify_token : String?
   encryption_key : String?
   enabled : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuMessage {
@@ -39,7 +39,7 @@ pub struct FeishuMessage {
   msg_parent_id : String?
   from_user_id : String?
   tenant_key : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuEvent {
@@ -47,7 +47,7 @@ pub struct FeishuEvent {
   header : FeishuEventHeader
   event : Json
   token : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuEventHeader {
@@ -59,38 +59,38 @@ pub struct FeishuEventHeader {
   tenant_key : String?
   resource_id : String?
   user_list : Array[String]?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuSendMessageRequest {
   receive_id : String
   msg_type : String
   content : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuSendMessageResponse {
   code : Int
   msg : String
   data : FeishuMessageData?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuMessageData {
   message_id : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuMessageLookupResponse {
   code : Int
   msg : String
   data : FeishuMessageLookupData?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuMessageLookupData {
   items : Array[FeishuMessageLookupItem]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuMessageLookupItem {
@@ -103,42 +103,42 @@ pub struct FeishuMessageLookupItem {
   msg_type : String?
   body : FeishuMessageLookupBody?
   sender : FeishuMessageLookupSender?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuMessageLookupBody {
   content : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuMessageLookupSender {
   id : String?
   sender_type : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuUserLookupResponse {
   code : Int
   msg : String
   data : FeishuUserLookupData?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuUserLookupData {
   user : FeishuUser?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuUserBatchLookupResponse {
   code : Int
   msg : String
   data : FeishuUserBatchLookupData?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuUserBatchLookupData {
   items : Array[FeishuUser]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuUser {
@@ -147,7 +147,7 @@ pub struct FeishuUser {
   display_name : String?
   nickname : String?
   en_name : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuAccessTokenResponse {
@@ -156,20 +156,20 @@ pub struct FeishuAccessTokenResponse {
   tenant_access_token : String?
   app_access_token : String?
   expire : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuWebSocketEndpointResponse {
   code : Int
   msg : String
   data : Json?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct FeishuWebSocketEndpointData {
   url : String
   client_config : FeishuWebSocketClientConfig?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
 pub struct FeishuWebSocketClientConfig {
@@ -177,4 +177,4 @@ pub struct FeishuWebSocketClientConfig {
   reconnect_count : Int?
   reconnect_interval : Int?
   reconnect_nonce : Int?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)

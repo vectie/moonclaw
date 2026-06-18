@@ -2,6 +2,7 @@
 package "vectie/moonclaw/tools/list_resources"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonclaw/tool",
 }
@@ -32,7 +33,7 @@ pub enum ResourceSummaryKind {
   Skill
   Worktree
   Provider
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

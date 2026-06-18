@@ -16,14 +16,14 @@ fn compact_provider_prompt_text(
   text : String,
   max_chars? : Int = 600,
 ) -> String {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return ""
   }
   if trimmed.length() <= max_chars {
     return trimmed
   }
-  let prefix = trimmed[:max_chars].to_string().trim_end()
+  let prefix = trimmed[:max_chars].to_owned().trim_end()
   "\{prefix}\n...[truncated by MoonClaw runtime]"
 }
 
@@ -32,7 +32,7 @@ fn provider_task_request_excerpt(
   request : AnalysisRequest,
   goal : String,
 ) -> String? {
-  let prompt = request.prompt.trim().to_string()
+  let prompt = request.prompt.trim().to_owned()
   if prompt.is_blank() {
     return None
   }
@@ -109,7 +109,7 @@ fn provider_task_skill_path_absolute(
   workspace_root : String,
   path : String,
 ) -> String {
-  let trimmed = path.trim().to_string()
+  let trimmed = path.trim().to_owned()
   if @pathx.is_absolute(trimmed) {
     @pathx.normalize(trimmed)
   } else {
@@ -143,12 +143,12 @@ async fn provider_task_loaded_skill_section(
       continue
     }
     let content = @fsx.read_file(absolute) catch { _ => continue }
-    let trimmed = content.trim().to_string()
+    let trimmed = content.trim().to_owned()
     let budget = Int::min(3000, 12000 - total_chars)
     let excerpt = if trimmed.length() <= budget {
       trimmed
     } else {
-      "\{trimmed[:budget].to_string()}\n...[truncated by MoonClaw runtime]"
+      "\{trimmed[:budget].to_owned()}\n...[truncated by MoonClaw runtime]"
     }
     total_chars += excerpt.length()
     sections.push("## \{path}\n\n\{excerpt}")
@@ -189,13 +189,13 @@ fn provider_task_system_prompt(
     "- Only use broad search to fill a named gap after the primary working set is exhausted.",
     "- Ignore generated or dependency trees such as `.git`, `.moonclaw`, `.mooncakes`, `_build`, `node_modules`, `dist`, and temporary output directories unless the task explicitly requires them.",
     "- For bootstrap gather work, produce at least one `raw/bootstrap/*` artifact before claiming durable wiki revision success.",
-    if request.system_prompt.trim().to_string().is_blank() {
+    if request.system_prompt.trim().to_owned().is_blank() {
       ""
     } else {
       "Additional runtime instruction:\n\{request.system_prompt}"
     },
   ]
-  .filter(fn(line) { !line.trim().to_string().is_blank() })
+  .filter(fn(line) { !line.trim().to_owned().is_blank() })
   .join("\n\n")
 }
 
@@ -239,7 +239,7 @@ async fn provider_task_prompt(
     join_bullets(context.working_memory),
     "",
     "Memory Summary:",
-    if context.memory_summary.trim().to_string().is_blank() {
+    if context.memory_summary.trim().to_owned().is_blank() {
       "none"
     } else {
       compact_provider_prompt_text(context.memory_summary, max_chars=800)

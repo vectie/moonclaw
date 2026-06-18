@@ -237,8 +237,8 @@ fn WidthInfo::set_emoji_presentation(self : WidthInfo) -> WidthInfo {
     (self.0 & 0b1001_0000_0000_0000) == 0b0001_0000_0000_0000 {
     WidthInfo(
       (self.0 | variation_selector_16_width_info.0) &
-      (variation_selector_15_width_info.0 ^ @uint16.max_value) &
-      (variation_selector_1_or_2_width_info.0 ^ @uint16.max_value),
+      (variation_selector_15_width_info.0 ^ @uint16.MAX_VALUE) &
+      (variation_selector_1_or_2_width_info.0 ^ @uint16.MAX_VALUE),
     )
   } else {
     variation_selector_16_width_info
@@ -248,7 +248,7 @@ fn WidthInfo::set_emoji_presentation(self : WidthInfo) -> WidthInfo {
 ///|
 fn WidthInfo::unset_emoji_presentation(self : WidthInfo) -> WidthInfo {
   if (self.0 & ligature_transparent_mask) == ligature_transparent_mask {
-    WidthInfo(self.0 & (variation_selector_16_width_info.0 ^ @uint16.max_value))
+    WidthInfo(self.0 & (variation_selector_16_width_info.0 ^ @uint16.MAX_VALUE))
   } else {
     default_width_info
   }
@@ -265,8 +265,8 @@ fn WidthInfo::set_text_presentation(self : WidthInfo) -> WidthInfo {
   if (self.0 & ligature_transparent_mask) == ligature_transparent_mask {
     WidthInfo(
       (self.0 | variation_selector_15_width_info.0) &
-      (variation_selector_16_width_info.0 ^ @uint16.max_value) &
-      (variation_selector_1_or_2_width_info.0 ^ @uint16.max_value),
+      (variation_selector_16_width_info.0 ^ @uint16.MAX_VALUE) &
+      (variation_selector_1_or_2_width_info.0 ^ @uint16.MAX_VALUE),
     )
   } else {
     variation_selector_15_width_info
@@ -276,7 +276,7 @@ fn WidthInfo::set_text_presentation(self : WidthInfo) -> WidthInfo {
 ///|
 fn WidthInfo::unset_text_presentation(self : WidthInfo) -> WidthInfo {
   if (self.0 & ligature_transparent_mask) == ligature_transparent_mask {
-    WidthInfo(self.0 & (variation_selector_15_width_info.0 ^ @uint16.max_value))
+    WidthInfo(self.0 & (variation_selector_15_width_info.0 ^ @uint16.MAX_VALUE))
   } else {
     default_width_info
   }
@@ -293,8 +293,8 @@ fn WidthInfo::set_vs1_2(self : WidthInfo) -> WidthInfo {
   if (self.0 & ligature_transparent_mask) == ligature_transparent_mask {
     WidthInfo(
       (self.0 | variation_selector_1_or_2_width_info.0) &
-      (variation_selector_15_width_info.0 ^ @uint16.max_value) &
-      (variation_selector_16_width_info.0 ^ @uint16.max_value),
+      (variation_selector_15_width_info.0 ^ @uint16.MAX_VALUE) &
+      (variation_selector_16_width_info.0 ^ @uint16.MAX_VALUE),
     )
   } else {
     variation_selector_1_or_2_width_info
@@ -305,7 +305,7 @@ fn WidthInfo::set_vs1_2(self : WidthInfo) -> WidthInfo {
 fn WidthInfo::unset_vs1_2(self : WidthInfo) -> WidthInfo {
   if (self.0 & ligature_transparent_mask) == ligature_transparent_mask {
     WidthInfo(
-      self.0 & (variation_selector_1_or_2_width_info.0 ^ @uint16.max_value),
+      self.0 & (variation_selector_1_or_2_width_info.0 ^ @uint16.MAX_VALUE),
     )
   } else {
     default_width_info
@@ -24419,17 +24419,17 @@ let normalization_test_data : Array[(String, String, String, String, String)] = 
 test "normalization_test_data_accessibility" {
   // Test that we can access the normalization test data
   let data_length = normalization_test_data.length()
-  inspect(data_length > 0, content="true")
+  debug_inspect(data_length > 0, content="true")
 
   // Test that each entry has 5 components (orig, nfc, nfd, nfkc, nfkd)
   let test_count = if data_length < 10 { data_length } else { 10 }
   for i = 0; i < test_count; i = i + 1 {
     let (orig, nfc, nfd, nfkc, nfkd) = normalization_test_data[i]
-    inspect(orig.length() >= 0, content="true")
-    inspect(nfc.length() >= 0, content="true")
-    inspect(nfd.length() >= 0, content="true")
-    inspect(nfkc.length() >= 0, content="true")
-    inspect(nfkd.length() >= 0, content="true")
+    debug_inspect(orig.length() >= 0, content="true")
+    debug_inspect(nfc.length() >= 0, content="true")
+    debug_inspect(nfd.length() >= 0, content="true")
+    debug_inspect(nfkc.length() >= 0, content="true")
+    debug_inspect(nfkd.length() >= 0, content="true")
   }
 }
 
@@ -24457,6 +24457,6 @@ test "normalization_specific_cases" {
       found_composition = true
     }
   }
-  inspect(found_decomposition, content="true")
-  inspect(found_composition, content="true")
+  debug_inspect(found_decomposition, content="true")
+  debug_inspect(found_composition, content="true")
 }

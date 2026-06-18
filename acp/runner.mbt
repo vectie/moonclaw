@@ -3,7 +3,7 @@ pub struct AcpLaunchCommand {
   command : String
   args : Array[String]
   env : Map[String, String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 fn launch_arguments(
@@ -44,8 +44,8 @@ pub fn process_output_summary(
   stderr : String,
   status : Int,
 ) -> String {
-  let stdout = stdout.trim().to_string()
-  let stderr = stderr.trim().to_string()
+  let stdout = stdout.trim().to_owned()
+  let stderr = stderr.trim().to_owned()
   if !stdout.is_blank() {
     stdout
   } else if !stderr.is_blank() {
@@ -66,7 +66,7 @@ async fn acp_git_stdout(cwd : String, args : Array[String]) -> String? {
     _ => return None
   }
   if process.status == 0 {
-    Some(process.stdout.trim().to_string())
+    Some(process.stdout.trim().to_owned())
   } else {
     None
   }
@@ -111,7 +111,7 @@ async fn acp_git_commit_message(
 ///|
 fn acp_changed_file_from_status_line(line : String) -> String? {
   let raw = line.to_string()
-  if raw.trim().to_string().is_blank() {
+  if raw.trim().to_owned().is_blank() {
     return None
   }
   let chars = raw.to_array()
@@ -131,14 +131,14 @@ fn acp_changed_file_from_status_line(line : String) -> String? {
   for index in path_start..<chars.length() {
     builder.write_char(chars[index])
   }
-  Some(builder.to_string().trim().to_string())
+  Some(builder.to_string().trim().to_owned())
 }
 
 ///|
 fn acp_changed_files_from_status(status : String) -> Array[String] {
   let files : Array[String] = []
   for line in status.split("\n") {
-    match acp_changed_file_from_status_line(line.to_string()) {
+    match acp_changed_file_from_status_line(line.to_owned()) {
       Some(file) if !file.is_blank() => files.push(file)
       _ => ()
     }
@@ -159,7 +159,7 @@ async fn acp_changed_files_between_heads(
     Some(output) => {
       let files : Array[String] = []
       for line in output.split("\n") {
-        let file = line.trim().to_string()
+        let file = line.trim().to_owned()
         if !file.is_blank() {
           files.push(file)
         }
@@ -280,13 +280,13 @@ fn acp_git_policy_commit_after_validation(linkage : Json) -> Bool {
 
 ///|
 fn acp_source_relative_target_file(cwd : String, target : String) -> String? {
-  let target = target.trim().to_string()
+  let target = target.trim().to_owned()
   if target.is_blank() {
     return None
   }
   let source_prefix = "\{cwd}/"
   if target.has_prefix(source_prefix) {
-    let relative = target[source_prefix.length():].to_string()
+    let relative = target[source_prefix.length():].to_owned()
     if relative.contains("../") {
       None
     } else {
@@ -359,8 +359,8 @@ async fn acp_restore_tracked_files(cwd : String, files : Array[String]) -> Unit 
 ///|
 fn acp_repair_commit_message(linkage : Json) -> String {
   match acp_json_string_field_with_step_metadata(linkage, "commit_message") {
-    Some(message) if !message.trim().to_string().is_blank() =>
-      message.trim().to_string()
+    Some(message) if !message.trim().to_owned().is_blank() =>
+      message.trim().to_owned()
     _ => {
       let criterion = acp_json_string_field_with_step_metadata(
         linkage, "criterion_id",
@@ -535,8 +535,8 @@ async fn acp_patch_receipt(
 
 ///|
 fn codex_output_summary(process : @spawn.CompletedProcess) -> String {
-  let stdout = process.stdout.trim().to_string()
-  let stderr = process.stderr.trim().to_string()
+  let stdout = process.stdout.trim().to_owned()
+  let stderr = process.stderr.trim().to_owned()
   process_output_summary(stdout, stderr, process.status)
 }
 

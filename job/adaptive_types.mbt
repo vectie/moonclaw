@@ -3,7 +3,7 @@ pub(all) struct AdaptiveSubstepPayload {
   title : String
   prompt : String
   kind : String?
-} derive(FromJson, ToJson, Show)
+} derive(FromJson, ToJson, Debug)
 
 ///|
 pub(all) struct AdaptiveAnalysisEnvelope {
@@ -12,7 +12,7 @@ pub(all) struct AdaptiveAnalysisEnvelope {
   missing_inputs : Array[String]?
   suggested_substeps : Array[AdaptiveSubstepPayload]?
   substeps : Array[AdaptiveSubstepPayload]?
-} derive(FromJson, ToJson, Show)
+} derive(FromJson, ToJson, Debug)
 
 ///|
 fn adaptive_json_string_field(
@@ -21,7 +21,7 @@ fn adaptive_json_string_field(
 ) -> String? {
   match object.get(key) {
     Some(String(value)) if !value.trim().is_empty() =>
-      Some(value.trim().to_string())
+      Some(value.trim().to_owned())
     _ => None
   }
 }
@@ -36,7 +36,7 @@ fn adaptive_json_string_array_field(
       let items : Array[String] = []
       for value in values {
         guard value is String(text) else { continue }
-        let trimmed = text.trim().to_string()
+        let trimmed = text.trim().to_owned()
         if !trimmed.is_blank() {
           items.push(trimmed)
         }
@@ -94,7 +94,7 @@ fn adaptive_json_substeps_field(
 fn parse_adaptive_analysis_envelope(
   content : String,
 ) -> AdaptiveAnalysisEnvelope? {
-  let trimmed = content.trim().to_string()
+  let trimmed = content.trim().to_owned()
   if trimmed.is_blank() || !trimmed.has_prefix("{") {
     return None
   }
@@ -117,7 +117,7 @@ fn parse_adaptive_analysis_envelope(
 
 ///|
 fn is_completed_keeper_plan_packet(content : String) -> Bool {
-  let trimmed = content.trim().to_string()
+  let trimmed = content.trim().to_owned()
   if trimmed.is_blank() || !trimmed.has_prefix("{") {
     return false
   }

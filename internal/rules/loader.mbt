@@ -24,7 +24,7 @@ async fn Loader::load_rules_from_directory(
     e.kind is @fsx.FileKind::Regular && e.name.has_suffix(".md")
   })
   for rule_path in dir {
-    let name = @pathx.stem(rule_path.name).to_string()
+    let name = @pathx.stem(rule_path.name).to_owned()
     self.rules[name] = Rule::parse(@fsx.read_file(rule_path.path), source~)
   }
 }
@@ -52,9 +52,11 @@ pub fn Loader::apply(self : Loader, messages : Array[@ai.Message]) -> Unit {
     return
   }
   let usr_msg = @ai.user_message(content=self.format())
-  let ins_pos : ArrayView[@ai.Message] = loop messages[:] {
-    [System(_), .. rest] => continue rest
-    msgs => break msgs
+  let ins_pos : ArrayView[@ai.Message] = for messages = messages[:] {
+    match messages {
+      [System(_), .. rest] => continue rest
+      msgs => break msgs
+    }
   }
   messages.insert(ins_pos.start_offset(), usr_msg)
 }
@@ -63,7 +65,7 @@ pub fn Loader::apply(self : Loader, messages : Array[@ai.Message]) -> Unit {
 pub enum Source {
   Global
   Local
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 pub struct Rule {
@@ -72,7 +74,7 @@ pub struct Rule {
   always_apply : Bool
   content : String
   source : Source
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 fn Rule::parse(content : String, source~ : Source) -> Rule raise {
@@ -113,7 +115,7 @@ test "Rule::parse" {
     #|
     #|console.log("Hello, world!");
     #|
-  let rule = Rule::parse(content.to_string(), source=Global)
+  let rule = Rule::parse(content, source=Global)
   json_inspect(rule, content={
     "description": "This is a test rule",
     "globs": ["**/*.js", "**/*.ts"],

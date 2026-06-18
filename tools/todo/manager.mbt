@@ -5,7 +5,7 @@ fn Todo::todos(self : Todo) -> ArrayView[Item] {
 
 ///|
 fn Config::uuid(self : Config) -> String {
-  self.uuid.v4().to_string()[:8].to_string()
+  self.uuid.v4().to_string()[:8].to_owned()
 }
 
 ///|
@@ -60,7 +60,7 @@ pub fn new(
   cwd~ : StringView,
 ) -> Todo {
   Todo::{
-    config: { uuid, clock, cwd: cwd.to_string() },
+    config: { uuid, clock, cwd: cwd.to_owned() },
     items: {
       todos: [],
       created_at: clock.now_str(),
@@ -107,25 +107,27 @@ async fn Todo::save(self : Todo) -> Unit {
 fn extract_task_tags(content : String) -> Array[String] {
   let tasks = []
   let mut task = None
-  loop content[:] {
-    [.. "<task>", .. rest] => {
-      task = Some(StringBuilder::new())
-      continue rest
-    }
-    [.. "</task>", .. rest] => {
-      if task is Some(t) {
-        tasks.push(t.to_string())
-        task = None
+  for content = content[:] {
+    match content {
+      [.. "<task>", .. rest] => {
+        task = Some(StringBuilder::new())
+        continue rest
       }
-      continue rest
-    }
-    [c, .. rest] => {
-      if task is Some(t) {
-        t.write_char(c)
+      [.. "</task>", .. rest] => {
+        if task is Some(t) {
+          tasks.push(t.to_string())
+          task = None
+        }
+        continue rest
       }
-      continue rest
+      [c, .. rest] => {
+        if task is Some(t) {
+          t.write_char(c)
+        }
+        continue rest
+      }
+      [] => break
     }
-    [] => break
   }
   tasks
 }
@@ -242,7 +244,7 @@ fn Items::parse(
       let trimmed = task_content.trim(char_set=" \t\r\n")
       if trimmed.length() > 0 {
         let todo = Item::new(
-          content=trimmed.to_string(),
+          content=trimmed.to_owned(),
           notes?,
           priority~,
           status=Pending,
@@ -265,7 +267,7 @@ fn Items::parse(
       let clean_line = remove_list_prefixes(trimmed_line)
       if clean_line.length() > 0 {
         let todo = Item::new(
-          content=clean_line.to_string(),
+          content=clean_line.to_owned(),
           notes?,
           priority~,
           status=Pending,

@@ -105,8 +105,8 @@ fn controller_next_iteration_field(
   match controller_policy_metadata(definition) {
     Some({ "next_iteration_fields": Object(fields), .. }) =>
       match fields.get(key) {
-        Some(String(field)) if !field.trim().to_string().is_blank() =>
-          field.trim().to_string()
+        Some(String(field)) if !field.trim().to_owned().is_blank() =>
+          field.trim().to_owned()
         _ => fallback
       }
     _ => fallback
@@ -120,7 +120,7 @@ fn controller_allowed_verdicts(definition : JobDefinition) -> Array[String] {
       let allowed : Array[String] = []
       for verdict in verdicts {
         match verdict {
-          String(value) => allowed.push(value.trim().to_string().to_lower())
+          String(value) => allowed.push(value.trim().to_owned().to_lower())
           _ => ()
         }
       }
@@ -141,8 +141,8 @@ fn controller_verdict_aliases(
         match value {
           String(target) =>
             normalized.set(
-              key.trim().to_string().to_lower(),
-              target.trim().to_string().to_lower(),
+              key.trim().to_owned().to_lower(),
+              target.trim().to_owned().to_lower(),
             )
           _ => ()
         }
@@ -185,9 +185,9 @@ fn controller_step_title(step : WorkflowStepDefinition) -> String {
   match step.config {
     { "metadata": { "proposal_step_title": String(title), .. }, .. } => title
     { "request_text": String(request_text), .. } =>
-      request_text.split("\n").head().unwrap_or(step.id).trim().to_string()
+      request_text.split("\n").head().unwrap_or(step.id).trim().to_owned()
     { "prompt": String(prompt), .. } =>
-      prompt.split("\n").head().unwrap_or(step.id).trim().to_string()
+      prompt.split("\n").head().unwrap_or(step.id).trim().to_owned()
     _ => step.id
   }
 }
@@ -367,7 +367,7 @@ fn controller_next_iteration_id(
   provided? : String? = None,
 ) -> String {
   match provided {
-    Some(id) if !id.trim().to_string().is_blank() => id.trim().to_string()
+    Some(id) if !id.trim().to_owned().is_blank() => id.trim().to_owned()
     _ => "\{run_id}:iter:\{step_id}:next"
   }
 }
@@ -419,7 +419,7 @@ fn normalized_verdict(
   definition : JobDefinition,
   verdict : String,
 ) -> (String, String?) {
-  let raw = verdict.trim().to_string()
+  let raw = verdict.trim().to_owned()
   let normalized = raw.to_lower()
   let aliases = controller_verdict_aliases(definition)
   let canonical = aliases.get(normalized).unwrap_or(normalized)
@@ -478,13 +478,13 @@ fn mapped_object_string(
   match object {
     Object(fields) =>
       match fields.get(primary) {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
+        Some(String(value)) if !value.trim().to_owned().is_blank() =>
           Some(value)
         _ =>
           match secondary {
             Some(secondary) =>
               match fields.get(secondary) {
-                Some(String(value)) if !value.trim().to_string().is_blank() =>
+                Some(String(value)) if !value.trim().to_owned().is_blank() =>
                   Some(value)
                 _ => None
               }

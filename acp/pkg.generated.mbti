@@ -2,6 +2,7 @@
 package "vectie/moonclaw/acp"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -49,13 +50,13 @@ pub(all) enum AcpChatAction {
   Attach(String)
   Detach(String)
   Run(String)
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct AcpLaunchCommand {
   command : String
   args : Array[String]
   env : Map[String, String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct AcpLaunchPlan {
   backend : String
@@ -69,7 +70,7 @@ pub struct AcpLaunchPlan {
   model : String?
   env : Json
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct AcpRun {
   id : String
@@ -84,7 +85,7 @@ pub struct AcpRun {
   plan : Json
   result : Json?
   error : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct AcpRunRequest {
   message : String
@@ -93,7 +94,7 @@ pub struct AcpRunRequest {
   cwd : String?
   idempotency_key : String?
   metadata : Json?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct AcpRuntime {
   home : String
@@ -131,7 +132,7 @@ pub struct AcpSession {
   updated_at : Int
   last_error : String?
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct AcpTarget {
   id : String
@@ -144,7 +145,7 @@ pub struct AcpTarget {
   model : String?
   status : String
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AcpUiNode {
   id : String
@@ -160,13 +161,13 @@ pub(all) struct AcpUiNode {
   created_at : Int?
   updated_at : Int?
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum AcpUiNodeKind {
   Target
   Session
   Run
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AcpUiSnapshot {
   targets : Array[AcpTarget]
@@ -174,7 +175,7 @@ pub(all) struct AcpUiSnapshot {
   runs : Array[AcpRun]
   nodes : Array[AcpUiNode]
   timeline : Array[AcpUiTimelineEntry]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AcpUiTimelineEntry {
   id : String
@@ -187,9 +188,9 @@ pub(all) struct AcpUiTimelineEntry {
   run_id : String?
   status : String?
   data : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
-type PersistedAcpState derive(Show, ToJson, @json.FromJson)
+type PersistedAcpState derive(ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

@@ -1,4 +1,15 @@
 ///|
+priv struct DiffLineNumberState {
+  original_start : Int
+  mut original_line : Int
+  original_count : Int
+  modified_start : Int
+  mut modified_line : Int
+  modified_count : Int
+  mut marker : Char
+}
+
+///|
 /// Adds line numbers to unified diff output, displaying both original and
 /// modified line numbers side by side. This function should only be used for
 /// displaying diffs for human consumption. It is not sure if the output can be
@@ -15,18 +26,9 @@
 /// Throws an error if the diff text contains malformed hunk headers that cannot
 /// be parsed.
 fn add_line_number_to_diff(diff_text : String) -> String raise {
-  struct State {
-    original_start : Int
-    mut original_line : Int
-    original_count : Int
-    modified_start : Int
-    mut modified_line : Int
-    modified_count : Int
-    mut marker : Char
-  }
   let lines = diff_text.split("\n")
-  let mut last_state : State? = None
-  let mut state : State? = None
+  let mut last_state : DiffLineNumberState? = None
+  let mut state : DiffLineNumberState? = None
   let numbered_lines = []
   for line in lines {
     if state is Some(s) {
@@ -85,7 +87,7 @@ fn add_line_number_to_diff(diff_text : String) -> String raise {
             "\{state.marker} \{original_line_number} \{modified_line_number} \\\{line}",
           )
         }
-        line => numbered_lines.push(line.to_string())
+        line => numbered_lines.push(line.to_owned())
       }
     } else if last_state is Some(state) && line is ['\\', .. line] {
       let number_width = @cmp.maximum(
@@ -98,7 +100,7 @@ fn add_line_number_to_diff(diff_text : String) -> String raise {
         "\{state.marker} \{original_line_number} \{modified_line_number} \\\{line}",
       )
     } else {
-      lexmatch line {
+      lexmatch line with longest {
         (
           "@@[[:space:]]+-"
           ("[[:digit:]]+" as os)
@@ -111,10 +113,10 @@ fn add_line_number_to_diff(diff_text : String) -> String raise {
           "[[:space:]]+@@",
           _
         ) => {
-          let original_start = @strconv.parse_int(os)
-          let original_count = @strconv.parse_int(oc)
-          let modified_start = @strconv.parse_int(ms)
-          let modified_count = @strconv.parse_int(mc)
+          let original_start = @string.parse_int(os)
+          let original_count = @string.parse_int(oc)
+          let modified_start = @string.parse_int(ms)
+          let modified_count = @string.parse_int(mc)
           state = Some({
             original_start,
             original_line: original_start,
@@ -124,9 +126,9 @@ fn add_line_number_to_diff(diff_text : String) -> String raise {
             modified_count,
             marker: ' ',
           })
-          numbered_lines.push(line.to_string())
+          numbered_lines.push(line.to_owned())
         }
-        line => numbered_lines.push(line.to_string())
+        line => numbered_lines.push(line.to_owned())
       }
     }
   }
@@ -147,7 +149,7 @@ test "add_line_number_to_diff" {
     #|\ No newline at end of file
     #|
   let numbered = add_line_number_to_diff(content)
-  inspect(
+  debug_inspect(
     numbered,
     content=(
       #|@@ -1,3 +1,4 @@
@@ -198,13 +200,13 @@ test "add_line_number_to_diff_insert" {
     #|-  let color : Color = Blue
     #|+fn main {
     #|+  let color : Color = Color::Blue
-    #|   println(color.to_string())
+    #|   println(color.to_owned())
     #|-}
     #|+}
     #|\ No newline at end of file
     #|
   let numbered = add_line_number_to_diff(content)
-  inspect(
+  debug_inspect(
     numbered,
     content=(
       #|diff --git original modified
@@ -238,7 +240,7 @@ test "add_line_number_to_diff_insert" {
       #|- 17    │  let color : Color = Blue
       #|+    15 │fn main {
       #|+    16 │  let color : Color = Color::Blue
-      #|  18 17 │  println(color.to_string())
+      #|  18 17 │  println(color.to_owned())
       #|- 19    │}
       #|+    18 │}
       #|+       \ No newline at end of file
@@ -256,7 +258,7 @@ test "add_line_number_to_diff_no_hunks" {
     #|+++ b/file.txt
     #|
   let numbered = add_line_number_to_diff(content)
-  inspect(
+  debug_inspect(
     numbered,
     content=(
       #|diff --git a/file.txt b/file.txt
@@ -284,7 +286,7 @@ async test "add_line_number_to_diff_slash" (t : @test.Test) {
       #|line 4
       #|line 5 modified
       #|line 6 added
-    inspect(
+    debug_inspect(
       generate_git_diff(original~, modified~, line_number=false),
       content=(
         #|diff --git original modified
@@ -304,7 +306,7 @@ async test "add_line_number_to_diff_slash" (t : @test.Test) {
         #|\ No newline at end of file
       ),
     )
-    inspect(
+    debug_inspect(
       generate_git_diff(original~, modified~, line_number=true),
       content=(
         #|diff --git original modified
@@ -362,7 +364,7 @@ async test "add_line_number_to_diff_multiple_hunks" (t : @test.Test) {
       #|line 13
       #|line 14 modified
       #|line 15
-    inspect(
+    debug_inspect(
       generate_git_diff(original~, modified~, line_number=false),
       content=(
         #|diff --git original modified
@@ -386,7 +388,7 @@ async test "add_line_number_to_diff_multiple_hunks" (t : @test.Test) {
         #|\ No newline at end of file
       ),
     )
-    inspect(
+    debug_inspect(
       generate_git_diff(original~, modified~, line_number=true),
       content=(
         #|diff --git original modified

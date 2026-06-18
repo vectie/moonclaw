@@ -4,7 +4,7 @@ pub enum ResourceKind {
   Skill
   Worktree
   Provider
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct ReadResourceResult {
@@ -18,7 +18,7 @@ pub struct ReadResourceResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for ReadResourceResult with output(
+pub impl Show for ReadResourceResult with fn output(
   result : ReadResourceResult,
   logger : &Logger,
 ) -> Unit {
@@ -48,28 +48,28 @@ priv enum ResourceUri {
 ///|
 fn parse_resource_uri(uri : String) -> ResourceUri raise {
   if uri.has_prefix("file://") {
-    let path = uri[7:].to_string()
-    guard !path.trim().to_string().is_blank() else {
+    let path = uri[7:].to_owned()
+    guard !path.trim().to_owned().is_blank() else {
       fail("file:// URI must include a path")
     }
     return File(path)
   }
   if uri.has_prefix("skill://") {
-    let name = uri[8:].trim().to_string()
+    let name = uri[8:].trim().to_owned()
     guard !name.is_blank() else {
       fail("skill:// URI must include a skill name")
     }
     return Skill(name)
   }
   if uri.has_prefix("worktree://") {
-    let key = uri[11:].trim().to_string()
+    let key = uri[11:].trim().to_owned()
     guard !key.is_blank() else {
       fail("worktree:// URI must include a worktree key")
     }
     return Worktree(key)
   }
   if uri.has_prefix("provider://") {
-    let name = uri[11:].trim().to_string()
+    let name = uri[11:].trim().to_owned()
     guard !name.is_blank() else {
       fail("provider:// URI must include a provider name")
     }
@@ -88,7 +88,7 @@ fn truncate_resource_text(text : String, max_chars : Int) -> (String, Bool) {
   if text.length() <= max_chars {
     return (text, false)
   }
-  (text[:max_chars].trim().to_string(), true)
+  (text[:max_chars].trim().to_owned(), true)
 }
 
 ///|

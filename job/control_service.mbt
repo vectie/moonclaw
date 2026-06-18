@@ -69,7 +69,7 @@ pub async fn request_job_stop(
   force? : Bool = false,
   active_run_id? : String? = None,
 ) -> Result[String, String] {
-  let trimmed = job_or_run_id.trim().to_string()
+  let trimmed = job_or_run_id.trim().to_owned()
   let (definition, _run) = match
     resolve_status_target(store, trimmed, active_run_id~) {
     Some(resolved) => resolved

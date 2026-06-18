@@ -159,7 +159,7 @@ fn Agent::add_agent_tool(
 /// * `agent` : The agent instance to add the tool to.
 /// * `tool` : The tool to be added, which will be indexed by its name for
 ///   future tool calls.
-pub fn[Output : ToJson + Show] Agent::add_tool(
+pub fn[Output : ToJson] Agent::add_tool(
   agent : Agent,
   tool : @tool.Tool[Output],
   enabled? : Bool = true,

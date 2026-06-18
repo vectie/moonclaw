@@ -12,7 +12,7 @@ import {
   "vectie/moonclaw/clock",
   "moonbitlang/core/cmp",
   "moonbitlang/core/json",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/core/test",
 }
 

@@ -9,7 +9,7 @@ pub struct CreatePipelineParams {
 pub fn create_pipeline_params(
   name~ : String,
   stages~ : Array[PipelineStageParams],
-  metadata? : Map[String, Json] = Map::new(),
+  metadata? : Map[String, Json] = Map([], capacity=0),
 ) -> CreatePipelineParams {
   CreatePipelineParams::{ name, stages, metadata }
 }
@@ -119,7 +119,7 @@ async fn Gateway::handle_get_pipeline(
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {
-  let p = match self.pipeline_manager.get(pipeline_id.to_string()) {
+  let p = match self.pipeline_manager.get(pipeline_id.to_owned()) {
     Some(p) => p
     None =>
       raise json_error(404, "NotFound", {
@@ -157,7 +157,7 @@ async fn Gateway::handle_start_pipeline(
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {
-  let p = match self.pipeline_manager.start_pipeline(pipeline_id.to_string()) {
+  let p = match self.pipeline_manager.start_pipeline(pipeline_id.to_owned()) {
     Some(p) => p
     None =>
       raise json_error(404, "NotFound", {
@@ -172,7 +172,7 @@ async fn Gateway::handle_start_pipeline(
   w.write(p.to_json().stringify())
   @async.with_task_group(group => {
     group.spawn_bg(
-      () => self.run_pipeline(pipeline_id.to_string()),
+      () => self.run_pipeline(pipeline_id.to_owned()),
       no_wait=true,
     )
   })
@@ -185,7 +185,7 @@ async fn Gateway::handle_cancel_pipeline(
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {
-  let p = match self.pipeline_manager.cancel_pipeline(pipeline_id.to_string()) {
+  let p = match self.pipeline_manager.cancel_pipeline(pipeline_id.to_owned()) {
     Some(p) => p
     None =>
       raise json_error(404, "NotFound", {
@@ -232,7 +232,7 @@ async fn Gateway::handle_advance_pipeline_stage(
         },
       })
   }
-  let existing = match self.pipeline_manager.get(pipeline_id.to_string()) {
+  let existing = match self.pipeline_manager.get(pipeline_id.to_owned()) {
     Some(pipeline) => pipeline
     None =>
       raise json_error(404, "NotFound", {
@@ -252,7 +252,7 @@ async fn Gateway::handle_advance_pipeline_stage(
   }
   let p = match
     self.pipeline_manager.advance_stage(
-      pipeline_id.to_string(),
+      pipeline_id.to_owned(),
       params.stage_name,
       params.result,
     ) {
@@ -302,7 +302,7 @@ async fn Gateway::handle_fail_pipeline_stage(
         },
       })
   }
-  let existing = match self.pipeline_manager.get(pipeline_id.to_string()) {
+  let existing = match self.pipeline_manager.get(pipeline_id.to_owned()) {
     Some(pipeline) => pipeline
     None =>
       raise json_error(404, "NotFound", {
@@ -322,7 +322,7 @@ async fn Gateway::handle_fail_pipeline_stage(
   }
   let p = match
     self.pipeline_manager.fail_stage(
-      pipeline_id.to_string(),
+      pipeline_id.to_owned(),
       params.stage_name,
       params.error,
     ) {
@@ -347,7 +347,7 @@ async fn Gateway::handle_pipeline_next_task(
   w : @httpx.ResponseWriter,
   pipeline_id : StringView,
 ) -> Unit {
-  let p = match self.pipeline_manager.get(pipeline_id.to_string()) {
+  let p = match self.pipeline_manager.get(pipeline_id.to_owned()) {
     Some(p) => p
     None =>
       raise json_error(404, "NotFound", {

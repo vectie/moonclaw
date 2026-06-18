@@ -2,6 +2,7 @@
 package "vectie/moonclaw/internal/skills"
 
 import {
+  "moonbitlang/core/debug",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/pino",
 }
@@ -25,7 +26,7 @@ pub struct Skill {
   allowed_tools : Array[String]
   metadata : Json?
   location : String
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 
 // Type aliases
 

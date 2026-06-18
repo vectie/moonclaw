@@ -16,7 +16,7 @@ fn count_file_tokens(content : String) -> Int raise {
 }
 
 ///|
-pub impl Show for ReadFileToolResult with output(
+pub impl Show for ReadFileToolResult with fn output(
   self : ReadFileToolResult,
   logger : &Logger,
 ) -> Unit {
@@ -33,7 +33,7 @@ pub impl Show for ReadFileToolResult with output(
       let selected_lines = if lines.length() == expected_lines {
         lines
       } else {
-        lines[start_line - 1:end_line].to_array()
+        lines[start_line - 1:end_line].to_owned()
       }
       let width = end_line.to_string().length()
       let selected_content = selected_lines

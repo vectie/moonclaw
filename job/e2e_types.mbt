@@ -5,7 +5,7 @@ pub struct E2EStarterAttachment {
   url : String
   filename : String?
   size : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn E2EStarterAttachment::new(
@@ -29,7 +29,7 @@ pub struct E2EJobIntake {
   message_id : String?
   thread_id : String?
   content_type : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn E2EJobIntake::new(

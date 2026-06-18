@@ -41,7 +41,7 @@ fn gateway_child_acp_run_id(child_run_id : String) -> String {
 ///|
 fn acp_execution_requested(config : @job.SubjobStepConfig) -> Bool {
   match config.execution_mode {
-    Some(mode) => mode.trim().to_string() == "acp"
+    Some(mode) => mode.trim().to_owned() == "acp"
     None => false
   }
 }
@@ -49,7 +49,7 @@ fn acp_execution_requested(config : @job.SubjobStepConfig) -> Bool {
 ///|
 fn acp_analysis_execution_requested(request : @job.AnalysisRequest) -> Bool {
   match request.execution_mode {
-    Some(mode) => mode.trim().to_string() == "acp"
+    Some(mode) => mode.trim().to_owned() == "acp"
     None => false
   }
 }
@@ -107,7 +107,7 @@ async fn Gateway::finish_child_run_step(
 ///|
 fn acp_child_run_message(request : @job.AnalysisRequest) -> String {
   [request.system_prompt, request.prompt]
-  .filter(fn(section) { !section.trim().to_string().is_blank() })
+  .filter(fn(section) { !section.trim().to_owned().is_blank() })
   .join("\n\n")
 }
 
@@ -132,7 +132,7 @@ async fn Gateway::execute_analysis_via_acp(
   request : @job.AnalysisRequest,
 ) -> Result[@job.AnalysisExecution, String] {
   let target_id = match request.execution_target {
-    Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
+    Some(target_id) if !target_id.trim().to_owned().is_blank() => target_id
     _ => return Err("ACP analysis execution requires execution_target")
   }
   let now_ms = current_time_ms()
@@ -264,7 +264,7 @@ async fn Gateway::execute_child_run_via_acp(
   request : @job.ChildRunExecutionRequest,
 ) -> Result[@job.ChildRunExecutionResult, String] {
   let target_id = match request.config.execution_target {
-    Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
+    Some(target_id) if !target_id.trim().to_owned().is_blank() => target_id
     _ => return Err("ACP child execution requires execution_target")
   }
   let workflow = request.compilation.workflow

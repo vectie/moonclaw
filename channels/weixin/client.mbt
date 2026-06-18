@@ -26,7 +26,7 @@ pub fn WeixinClient::test_sent_messages(self : WeixinClient) -> Array[Json] {
 ///|
 fn weixin_api_base_url(config : WeixinAccountConfig) -> String {
   match config.api_base_url {
-    Some(url) if !url.trim().to_string().is_blank() => url.trim().to_string()
+    Some(url) if !url.trim().to_owned().is_blank() => url.trim().to_owned()
     _ => "https://api.weixin.qq.com"
   }
 }

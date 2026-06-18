@@ -15,21 +15,21 @@ fn infer_job_tags(request_text : String) -> Array[String] {
 
 ///|
 fn compact_title(text : String) -> String {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.length() <= 72 {
     trimmed
   } else {
-    "\{trimmed[:69].to_string()}..."
+    "\{trimmed[:69].to_owned()}..."
   }
 }
 
 ///|
 fn compact_preview(text : String, max_len : Int) -> String {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.length() <= max_len {
     trimmed
   } else {
-    "\{trimmed[:max_len - 3].to_string()}..."
+    "\{trimmed[:max_len - 3].to_owned()}..."
   }
 }
 
@@ -60,7 +60,7 @@ fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
 fn non_blank_string_or_none(value : Json?) -> String? {
   match value {
     Some(String(text)) => {
-      let trimmed = text.trim().to_string()
+      let trimmed = text.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -79,7 +79,7 @@ fn non_blank_string_array_lines(value : Json?) -> String? {
       for item in items {
         match item {
           String(text) => {
-            let trimmed = text.trim().to_string()
+            let trimmed = text.trim().to_owned()
             if !trimmed.is_blank() {
               lines.push(trimmed)
             }
@@ -102,8 +102,8 @@ fn proposal_requested_output_format(proposal : JobProposal) -> String? {
   match proposal_initial_input(proposal) {
     Some(Object(obj)) =>
       match obj.get("requested_output_format") {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
-          Some(value.trim().to_string())
+        Some(String(value)) if !value.trim().to_owned().is_blank() =>
+          Some(value.trim().to_owned())
         _ => None
       }
     _ => None
@@ -121,12 +121,12 @@ fn proposal_starter_file_labels(proposal : JobProposal) -> Array[String] {
             match item {
               Object(attachment) => {
                 let label = match attachment.get("filename") {
-                  Some(String(name)) if !name.trim().to_string().is_blank() =>
-                    name.trim().to_string()
+                  Some(String(name)) if !name.trim().to_owned().is_blank() =>
+                    name.trim().to_owned()
                   _ =>
                     match attachment.get("id") {
-                      Some(String(id)) if !id.trim().to_string().is_blank() =>
-                        id.trim().to_string()
+                      Some(String(id)) if !id.trim().to_owned().is_blank() =>
+                        id.trim().to_owned()
                       _ => ""
                     }
                 }
@@ -157,10 +157,10 @@ struct ProposalPlanStepPayload {
   execution_target : String?
   include_parent_outputs : Bool?
   max_depth : Int?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
-impl @json.FromJson for ProposalPlanStepPayload with from_json(
+impl @json.FromJson for ProposalPlanStepPayload with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ProposalPlanStepPayload raise @json.JsonDecodeError {
@@ -177,7 +177,7 @@ impl @json.FromJson for ProposalPlanStepPayload with from_json(
     Some(String(title)) => title
     _ =>
       match obj.get("step") {
-        Some(String(step)) if !step.trim().to_string().is_blank() => step
+        Some(String(step)) if !step.trim().to_owned().is_blank() => step
         _ =>
           raise @json.JsonDecodeError(
             (path, "ProposalPlanStepPayload: missing 'title'/'step'"),
@@ -226,18 +226,18 @@ impl @json.FromJson for ProposalPlanStepPayload with from_json(
     _ => None
   }
   let child_profile : String? = match obj.get("child_profile") {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      Some(value.trim().to_string())
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      Some(value.trim().to_owned())
     _ => None
   }
   let execution_mode : String? = match obj.get("execution_mode") {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      Some(value.trim().to_string())
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      Some(value.trim().to_owned())
     _ => None
   }
   let execution_target : String? = match obj.get("execution_target") {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      Some(value.trim().to_string())
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      Some(value.trim().to_owned())
     _ => None
   }
   let include_parent_outputs : Bool? = match obj.get("include_parent_outputs") {
@@ -269,10 +269,10 @@ struct ProposalPlanPayload {
   summary : String?
   tags : Array[String]?
   steps : Array[ProposalPlanStepPayload]?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
-impl @json.FromJson for ProposalPlanPayload with from_json(
+impl @json.FromJson for ProposalPlanPayload with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ProposalPlanPayload raise @json.JsonDecodeError {
@@ -284,11 +284,11 @@ impl @json.FromJson for ProposalPlanPayload with from_json(
     None => non_blank_string_or_none(obj.get("job"))
   }
   let summary : String? = match obj.get("summary") {
-    Some(String(summary)) if !summary.trim().to_string().is_blank() =>
+    Some(String(summary)) if !summary.trim().to_owned().is_blank() =>
       Some(summary)
     _ =>
       match obj.get("overview") {
-        Some(String(overview)) if !overview.trim().to_string().is_blank() =>
+        Some(String(overview)) if !overview.trim().to_owned().is_blank() =>
           Some(overview)
         _ => None
       }
@@ -318,7 +318,7 @@ fn normalize_proposal_step_id(
   step : ProposalPlanStepPayload,
 ) -> String {
   match step.id {
-    Some(id) if !id.trim().to_string().is_blank() => id.trim().to_string()
+    Some(id) if !id.trim().to_owned().is_blank() => id.trim().to_owned()
     _ => "step_\{index + 1}"
   }
 }
@@ -366,7 +366,7 @@ fn step_metadata_with_aliases(step : ProposalPlanStepPayload) -> Json {
 ///|
 fn step_kind_or_default(step : ProposalPlanStepPayload) -> String {
   match step.kind {
-    Some(kind) if !kind.trim().to_string().is_blank() => kind.trim().to_string()
+    Some(kind) if !kind.trim().to_owned().is_blank() => kind.trim().to_owned()
     _ => "job.analysis"
   }
 }
@@ -384,8 +384,8 @@ fn normalized_plan_steps(
       for step in steps {
         normalized.push(JobProposalStep::{
           id: normalize_proposal_step_id(index, step),
-          title: step.title.trim().to_string(),
-          prompt: step.prompt.trim().to_string(),
+          title: step.title.trim().to_owned(),
+          prompt: step.prompt.trim().to_owned(),
           kind: step_kind_or_default(step),
           metadata: step_metadata_with_aliases(step),
           child_profile: step.child_profile,
@@ -493,7 +493,7 @@ fn proposal_with_planner_diagnostic(
   preview? : String? = None,
 ) -> JobProposal {
   let diagnostic = match preview {
-    Some(preview) if !preview.trim().to_string().is_blank() =>
+    Some(preview) if !preview.trim().to_owned().is_blank() =>
       "Planner fallback used: \{reason}. Planner output preview: \{compact_preview(preview, 240)}"
     _ => "Planner fallback used: \{reason}."
   }
@@ -527,7 +527,7 @@ fn proposal_payload_to_proposal(
   }
   let title = payload.title.map(compact_title).unwrap_or(fallback.title)
   let summary = payload.summary
-    .map(fn(text) { text.trim().to_string() })
+    .map(fn(text) { text.trim().to_owned() })
     .unwrap_or(fallback.summary)
   let steps = normalized_plan_steps(payload, request_text)
   let tags = payload.tags.unwrap_or(fallback.tags)
@@ -686,12 +686,12 @@ fn planner_request_prompt(
     parts
   }
   let parts = match workspace {
-    Some(workspace) if !workspace.trim().to_string().is_blank() =>
+    Some(workspace) if !workspace.trim().to_owned().is_blank() =>
       [..parts, "Workspace root: \{workspace}"]
     _ => parts
   }
   let parts = match memory_context {
-    Some(memory_context) if !memory_context.trim().to_string().is_blank() =>
+    Some(memory_context) if !memory_context.trim().to_owned().is_blank() =>
       [..parts, memory_context]
     _ => parts
   }
@@ -724,7 +724,7 @@ fn planner_request_prompt(
     None => parts
   }
   let parts = match revision {
-    Some(revision) if !revision.trim().to_string().is_blank() =>
+    Some(revision) if !revision.trim().to_owned().is_blank() =>
       [..parts, "Revise the draft with this extra guidance:", revision]
     _ => parts
   }
@@ -736,7 +736,7 @@ fn planner_request_prompt(
 
 ///|
 fn maybe_parse_payload(text : String) -> ProposalPlanPayload? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return None
   }
@@ -746,15 +746,17 @@ fn maybe_parse_payload(text : String) -> ProposalPlanPayload? {
   }
   let mut end = trimmed.length()
   while end > first {
-    let candidate = trimmed[first:end].to_string()
+    let candidate = trimmed[first:end].to_owned()
     if !candidate.has_suffix("}") {
       end = end - 1
       continue
     }
-    let parsed_json = try? @json.parse(candidate)
+    let parsed_json = Ok(@json.parse(candidate)) catch { error => Err(error) }
     match parsed_json {
       Ok(json) => {
-        let payload_result = try? @json.from_json(json)
+        let payload_result = Ok(@json.from_json(json)) catch {
+          error => Err(error)
+        }
         match payload_result {
           Ok(payload) => return Some(payload)
           Err(_) => ()
@@ -932,7 +934,7 @@ async fn plan_job_proposal_with_mode(
 pub struct JobPlanPreviewStep {
   id : String
   title : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub struct JobPlanPreview {
@@ -943,7 +945,7 @@ pub struct JobPlanPreview {
   requested_output_format : String?
   starter_files : Array[String]
   source : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 fn proposal_to_plan_preview(

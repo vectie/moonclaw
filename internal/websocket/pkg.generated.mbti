@@ -3,6 +3,7 @@ package "vectie/moonclaw/internal/websocket"
 
 import {
   "moonbitlang/async/aqueue",
+  "moonbitlang/core/debug",
   "moonbitlang/core/ref",
 }
 
@@ -13,7 +14,7 @@ pub suberror WebSocketClientError {
   ConnectFailed(String)
   SendFailed(String)
   ReceiveFailed(String)
-} derive(Show)
+} derive(@debug.Debug)
 
 // Types and methods
 pub struct Client {
@@ -38,13 +39,13 @@ type ClientCommand
 pub struct ClientConfig {
   url : String
   headers : Map[String, String]
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 pub fn ClientConfig::new(url~ : String, headers? : Map[String, String]) -> Self
 
 pub struct Message {
   kind : MessageKind
   data : Bytes
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 pub fn Message::data(Self) -> Bytes
 pub fn Message::kind(Self) -> MessageKind
 pub fn Message::new(kind~ : MessageKind, data~ : Bytes) -> Self
@@ -53,7 +54,7 @@ pub fn Message::text(Self) -> String raise
 pub(all) enum MessageKind {
   Text
   Binary
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

@@ -2,5 +2,5 @@ import {
   "moonbitlang/async",
   "moonbitlang/x/time",
   "moonbitlang/core/json",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
 }

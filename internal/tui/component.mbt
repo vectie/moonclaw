@@ -79,39 +79,39 @@ pub fn Key::to_char(self : Key) -> Char? {
 ///|
 pub fn parse_key(bytes : BytesView) -> Key {
   match bytes {
-    ['\r' | '\n', ..] => return Enter
-    ['\b' | 0x7f, ..] => return Backspace
-    ['\t', ..] => return Tab
+    [b'\r' | b'\n', ..] => return Enter
+    [b'\b' | 0x7f, ..] => return Backspace
+    [b'\t', ..] => return Tab
     [0x1b, .. rest] =>
       match rest {
-        ['[', 'A', ..] => return Up
-        ['[', 'B', ..] => return Down
-        ['[', 'C', ..] => return Right
-        ['[', 'D', ..] => return Left
-        ['[', '3', '~', ..] => return Delete
-        ['[', 'H', ..] => return Home
-        ['[', 'F', ..] => return End
-        ['[', '5', '~', ..] => return PageUp
-        ['[', '6', '~', ..] => return PageDown
-        ['[', 'Z', ..] => return ShiftTab
-        ['[', '1', '1', '~', ..] => return F1
-        ['[', '1', '2', '~', ..] => return F2
-        ['[', '1', '3', '~', ..] => return F3
-        ['[', '1', '4', '~', ..] => return F4
-        ['[', '1', '5', '~', ..] => return F5
-        ['[', '1', '7', '~', ..] => return F6
-        ['[', '1', '8', '~', ..] => return F7
-        ['[', '1', '9', '~', ..] => return F8
-        ['[', '2', '0', '~', ..] => return F9
-        ['[', '2', '1', '~', ..] => return F10
-        ['[', '2', '3', '~', ..] => return F11
-        ['[', '2', '4', '~', ..] => return F12
-        ['[', '2', '0', '0', '~', ..] => return PasteStart
-        ['[', '2', '0', '1', '~', ..] => return PasteEnd
-        ['O', 'P', ..] => return F1
-        ['O', 'Q', ..] => return F2
-        ['O', 'R', ..] => return F3
-        ['O', 'S', ..] => return F4
+        [b'[', b'A', ..] => return Up
+        [b'[', b'B', ..] => return Down
+        [b'[', b'C', ..] => return Right
+        [b'[', b'D', ..] => return Left
+        [b'[', b'3', b'~', ..] => return Delete
+        [b'[', b'H', ..] => return Home
+        [b'[', b'F', ..] => return End
+        [b'[', b'5', b'~', ..] => return PageUp
+        [b'[', b'6', b'~', ..] => return PageDown
+        [b'[', b'Z', ..] => return ShiftTab
+        [b'[', b'1', b'1', b'~', ..] => return F1
+        [b'[', b'1', b'2', b'~', ..] => return F2
+        [b'[', b'1', b'3', b'~', ..] => return F3
+        [b'[', b'1', b'4', b'~', ..] => return F4
+        [b'[', b'1', b'5', b'~', ..] => return F5
+        [b'[', b'1', b'7', b'~', ..] => return F6
+        [b'[', b'1', b'8', b'~', ..] => return F7
+        [b'[', b'1', b'9', b'~', ..] => return F8
+        [b'[', b'2', b'0', b'~', ..] => return F9
+        [b'[', b'2', b'1', b'~', ..] => return F10
+        [b'[', b'2', b'3', b'~', ..] => return F11
+        [b'[', b'2', b'4', b'~', ..] => return F12
+        [b'[', b'2', b'0', b'0', b'~', ..] => return PasteStart
+        [b'[', b'2', b'0', b'1', b'~', ..] => return PasteEnd
+        [b'O', b'P', ..] => return F1
+        [b'O', b'Q', ..] => return F2
+        [b'O', b'R', ..] => return F3
+        [b'O', b'S', ..] => return F4
         [c, ..] if c.to_int() >= 'a'.to_int() && c.to_int() <= 'z'.to_int() => {
           let ch = c.to_char()
           return Alt(ch)

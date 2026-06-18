@@ -2,6 +2,7 @@
 package "vectie/moonclaw/job"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
@@ -305,7 +306,7 @@ pub(all) struct ActiveJobSnapshot {
   family : String
   depth : Int
   current_step : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AdaptiveAnalysisEnvelope {
   verdict : String
@@ -313,13 +314,13 @@ pub(all) struct AdaptiveAnalysisEnvelope {
   missing_inputs : Array[String]?
   suggested_substeps : Array[AdaptiveSubstepPayload]?
   substeps : Array[AdaptiveSubstepPayload]?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AdaptiveSubstepPayload {
   title : String
   prompt : String
   kind : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AnalysisArtifactConfig {
   report_artifact_type : String
@@ -329,7 +330,7 @@ pub(all) struct AnalysisArtifactConfig {
   result_file_name : String?
   scope : Array[String]
   append_only : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn AnalysisArtifactConfig::new(report_artifact_type? : String, result_artifact_type? : String, logical_key? : String?, report_file_name? : String?, result_file_name? : String?, scope? : Array[String], append_only? : Bool) -> Self
 
 pub(all) struct AnalysisExecution {
@@ -338,7 +339,7 @@ pub(all) struct AnalysisExecution {
   conversation_id : String?
   usage : @ai.Usage?
   metadata : Json
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) struct AnalysisExecutor {
   run : async (AnalysisRequest) -> Result[AnalysisExecution, String]
@@ -349,7 +350,7 @@ pub(all) struct AnalysisPolicy {
   timeout_ms : Int?
   max_total_tokens : Int?
   skip_if_artifact_exists : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn AnalysisPolicy::new(timeout_ms? : Int?, max_total_tokens? : Int?, skip_if_artifact_exists? : Bool) -> Self
 
 pub(all) struct AnalysisRequest {
@@ -371,7 +372,7 @@ pub(all) struct AnalysisRequest {
   step_metadata : Json
   execution_isolation : Json?
   role_runtime_contract : RoleRuntimeContract?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AnalysisStepConfig {
   prompt : String
@@ -388,7 +389,7 @@ pub(all) struct AnalysisStepConfig {
   policy : AnalysisPolicy
   artifacts : AnalysisArtifactConfig
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn AnalysisStepConfig::new(prompt~ : String, model? : String?, cwd? : String?, home? : String?, workspace? : String?, execution_mode? : String?, execution_target? : String?, system_prompt? : String?, preferred_skills? : Array[String], enable_tools? : Bool, web_search? : Bool, policy? : AnalysisPolicy, artifacts? : AnalysisArtifactConfig, metadata? : Json) -> Self
 
 pub(all) struct AnalysisToolContract {
@@ -409,7 +410,7 @@ pub(all) struct AnalysisToolContract {
   patch_edit : Bool
   web_fetch : Bool
   web_search : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, delegate_run? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, patch_edit? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 
 type ArtifactBytesWriteRequest
@@ -417,7 +418,7 @@ type ArtifactBytesWriteRequest
 pub(all) struct ArtifactCleanupReport {
   archived_ids : Array[String]
   deleted_ids : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ArtifactQuery {
   job_id : String?
@@ -426,7 +427,7 @@ pub(all) struct ArtifactQuery {
   logical_key : String?
   scope : String?
   status : ArtifactStatus?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ArtifactQuery::new(job_id? : String?, run_id? : String?, artifact_type? : String?, logical_key? : String?, scope? : String?, status? : ArtifactStatus?) -> Self
 
 pub(all) struct ArtifactRecord {
@@ -443,7 +444,7 @@ pub(all) struct ArtifactRecord {
   created_at : Int
   archived_at : Int?
   scope : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ArtifactRetentionPolicy {
   artifact_type : String?
@@ -451,13 +452,13 @@ pub(all) struct ArtifactRetentionPolicy {
   keep_latest : Int?
   max_age_ms : Int?
   archive_before_delete : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ArtifactRetentionPolicy::new(artifact_type? : String?, scope? : String?, keep_latest? : Int?, max_age_ms? : Int?, archive_before_delete? : Bool) -> Self
 
 pub(all) enum ArtifactStatus {
   Active
   Archived
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct ArtifactStore {
   store : SystemStore
@@ -482,10 +483,10 @@ pub(all) struct ArtifactWriteRequest {
   scope : Array[String]
   content : String
   append_only : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ArtifactWriteRequest::new(run_id~ : String, job_id~ : String, artifact_type~ : String, content~ : String, logical_key? : String?, content_type? : String, file_name? : String?, metadata? : Json, scope? : Array[String], append_only? : Bool) -> Self
 
-type ArtifactsIndexFile derive(Show, ToJson, @json.FromJson)
+type ArtifactsIndexFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChatAnswer {
   binding_id : String?
@@ -494,7 +495,7 @@ pub(all) struct ChatAnswer {
   citations : Array[ChatCitation]
   hits : Array[RetrievalHit]
   memory_hits : Array[MemorySearchHit]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChatBinding {
   id : String
@@ -503,9 +504,9 @@ pub(all) struct ChatBinding {
   scope : Array[String]
   created_at : Int
   updated_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
-type ChatBindingsFile derive(Show, ToJson, @json.FromJson)
+type ChatBindingsFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChatCitation {
   artifact_id : String
@@ -514,7 +515,7 @@ pub(all) struct ChatCitation {
   snippet : String
   path : String
   scope : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct ChatService {
   store : SystemStore
@@ -535,7 +536,7 @@ pub(all) struct CheckpointRecord {
   retry_attempts : Int
   next_retry_at : Int?
   retry_source_run_id : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct CheckpointStore {
   root : String
@@ -568,22 +569,22 @@ pub fn ChildRunExecutor::new(run~ : async (ChildRunExecutionRequest) -> Result[C
 pub(all) struct ChildRunStatus {
   run_id : String
   status : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct ConfirmProposalResult {
   compilation : ProposalCompilation
   run : JobRun
 }
 
-type ControllerDecisionsFile derive(Show, ToJson, @json.FromJson)
+type ControllerDecisionsFile derive(ToJson, @debug.Debug, @json.FromJson)
 
-type ControllerIterationsFile derive(Show, ToJson, @json.FromJson)
+type ControllerIterationsFile derive(ToJson, @debug.Debug, @json.FromJson)
 
-type ControllerLineageFile derive(Show, ToJson, @json.FromJson)
+type ControllerLineageFile derive(ToJson, @debug.Debug, @json.FromJson)
 
-type ControllerStateFile derive(Show, ToJson, @json.FromJson)
+type ControllerStateFile derive(ToJson, @debug.Debug, @json.FromJson)
 
-type DefinitionsIndexFile derive(Show, ToJson, @json.FromJson)
+type DefinitionsIndexFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct E2EJobIntake {
   request_text : String
@@ -595,7 +596,7 @@ pub struct E2EJobIntake {
   message_id : String?
   thread_id : String?
   content_type : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn E2EJobIntake::new(request_text~ : String, requested_output_format? : String?, starter_attachments? : Array[E2EStarterAttachment], channel_id? : String?, account_id? : String?, recipient? : String?, message_id? : String?, thread_id? : String?, content_type? : String?) -> Self
 
 pub struct E2EStarterAttachment {
@@ -604,18 +605,18 @@ pub struct E2EStarterAttachment {
   url : String
   filename : String?
   size : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn E2EStarterAttachment::new(id~ : String, mime_type~ : String, url~ : String, filename? : String?, size? : Int?) -> Self
 
 pub(all) enum ExecutionIsolationMode {
   SharedWorkspace
   GitWorktree
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ExecutionIsolationResolution {
   cwd : String
   metadata : Json?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ExecutionIsolationResolution::new(cwd~ : String, metadata? : Json?) -> Self
 
 pub(all) struct ExecutionIsolationSpec {
@@ -626,7 +627,7 @@ pub(all) struct ExecutionIsolationSpec {
   commit : String?
   cleanup_policy : String?
   force_new_branch : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ExecutionIsolationSpec::new(mode? : ExecutionIsolationMode, task_key? : String, base_dir? : String?, branch_name? : String?, commit? : String?, cleanup_policy? : String?, force_new_branch? : Bool) -> Self
 
 pub struct ExternalProposalImportResult {
@@ -649,7 +650,7 @@ pub struct ExternalProposalPacket {
   notes : Array[String]
   tags : Array[String]
   metadata : Json
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub impl @json.FromJson for ExternalProposalPacket
 
 pub struct GatewayJobApp {
@@ -737,7 +738,7 @@ pub(all) struct JobAskParams {
   binding_id : String?
   artifact_query : ArtifactQuery?
   max_hits : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum JobChatAction {
   Plan(String)
@@ -758,7 +759,7 @@ pub(all) enum JobChatAction {
   Remember(String)
   Memories
   MemorySearch(String)
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) struct JobControllerDecision {
   id : String
@@ -772,7 +773,7 @@ pub(all) struct JobControllerDecision {
   metadata : Json
   created_at : Int
   updated_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobControllerIteration {
   id : String
@@ -788,7 +789,7 @@ pub(all) struct JobControllerIteration {
   metadata : Json
   created_at : Int
   updated_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobControllerLineageEdge {
   id : String
@@ -798,7 +799,7 @@ pub(all) struct JobControllerLineageEdge {
   edge_kind : String
   metadata : Json
   created_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobControllerState {
   controller_job_id : String
@@ -814,7 +815,7 @@ pub(all) struct JobControllerState {
   metadata : Json
   created_at : Int
   updated_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobDefinition {
   id : String
@@ -827,12 +828,12 @@ pub(all) struct JobDefinition {
   created_at : Int
   updated_at : Int
   tags : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobNotificationDecision {
   messages : Array[String]
   next_state : JobNotificationRuntimeState
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobNotificationPreference {
   id : String
@@ -845,13 +846,13 @@ pub(all) struct JobNotificationPreference {
   warn_after_ms : Int?
   created_at : Int
   updated_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobNotificationRuntimeState {
   last_sent_at : Int
   last_notified_event_count : Int
   long_running_warned : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobNotifyTarget {
   channel_id : String
@@ -861,7 +862,7 @@ pub(all) struct JobNotifyTarget {
   verbosity : NotificationVerbosity
   heartbeat_interval_ms : Int
   warn_after_ms : Int
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct JobPlanPreview {
   title : String
@@ -871,12 +872,12 @@ pub struct JobPlanPreview {
   requested_output_format : String?
   starter_files : Array[String]
   source : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct JobPlanPreviewStep {
   id : String
   title : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobProfile {
   id : String
@@ -888,14 +889,14 @@ pub(all) struct JobProfile {
   match_rules : JobProfileMatchRules?
   steps : Array[JobProfileStep]
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
-type JobProfileConfigPayload derive(Show, ToJson, @json.FromJson)
+type JobProfileConfigPayload derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobProfileMatchRules {
   any : Array[String]?
   all : Array[String]?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobProfileStep {
   id : String
@@ -909,7 +910,7 @@ pub(all) struct JobProfileStep {
   include_parent_outputs : Bool?
   max_depth : Int?
   metadata : Json?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobProposal {
   id : String
@@ -934,13 +935,13 @@ pub(all) struct JobProposal {
   last_run_id : String?
   created_at : Int
   updated_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum JobProposalStatus {
   Draft
   Confirmed
   Rejected
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobProposalStep {
   id : String
@@ -953,9 +954,9 @@ pub(all) struct JobProposalStep {
   execution_target : String?
   include_parent_outputs : Bool?
   max_depth : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
-type JobProposalsFile derive(Show, ToJson, @json.FromJson)
+type JobProposalsFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobRun {
   id : String
@@ -972,7 +973,7 @@ pub(all) struct JobRun {
   finished_at : Int?
   summary : String?
   error : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobRunEvent {
   run_id : String
@@ -983,7 +984,7 @@ pub(all) struct JobRunEvent {
   status : RunStatus?
   message : String
   data : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobStatusSnapshot {
   definition_id : String
@@ -1003,7 +1004,7 @@ pub(all) struct JobStatusSnapshot {
   child_runs : Array[ChildRunStatus]
   latest_event_line : String
   output_lines : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobStepRun {
   id : String
@@ -1018,13 +1019,13 @@ pub(all) struct JobStepRun {
   summary : String?
   output : Json?
   error : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobUiHandoff {
   node_id : String
   step_id : String?
   remote : Array[JobUiRemoteLink]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobUiNode {
   id : String
@@ -1042,7 +1043,7 @@ pub(all) struct JobUiNode {
   updated_at : Int?
   provisional : Bool
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum JobUiNodeKind {
   Proposal
@@ -1053,7 +1054,7 @@ pub(all) enum JobUiNodeKind {
   ChildRun
   Artifact
   Memory
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobUiRemoteLink {
   id : String
@@ -1063,7 +1064,7 @@ pub(all) struct JobUiRemoteLink {
   summary : String?
   detail : String?
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobUiSnapshot {
   run : JobRun
@@ -1079,7 +1080,7 @@ pub(all) struct JobUiSnapshot {
   handoffs : Array[JobUiHandoff]
   nodes : Array[JobUiNode]
   timeline : Array[JobUiTimelineEntry]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct JobUiTimelineEntry {
   id : String
@@ -1091,7 +1092,7 @@ pub(all) struct JobUiTimelineEntry {
   step_id : String?
   status : String?
   data : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct Manager {
   cwd : String
@@ -1104,7 +1105,7 @@ pub async fn Manager::spawn(Self, name~ : String, description? : String, command
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int
 
-type MemoriesFile derive(Show, ToJson, @json.FromJson)
+type MemoriesFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MemoryQuery {
   kind : String?
@@ -1118,7 +1119,7 @@ pub(all) struct MemoryQuery {
   thread_id : String?
   source_artifact_id : String?
   status : MemoryStatus?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn MemoryQuery::new(kind? : String?, tag? : String?, scope? : String?, workspace? : String?, agent_id? : String?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, source_artifact_id? : String?, status? : MemoryStatus?) -> Self
 
 pub(all) struct MemoryRecord {
@@ -1140,7 +1141,7 @@ pub(all) struct MemoryRecord {
   created_at : Int
   updated_at : Int
   archived_at : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MemorySearchHit {
   memory_id : String
@@ -1155,7 +1156,7 @@ pub(all) struct MemorySearchHit {
   account_id : String?
   recipient : String?
   thread_id : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct MemoryService {
   store : SystemStore
@@ -1170,7 +1171,7 @@ pub fn MemoryService::search(Self, String, query? : MemoryQuery, max_hits? : Int
 pub(all) enum MemoryStatus {
   Active
   Archived
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct MemoryWriteRequest {
   kind : String
@@ -1186,16 +1187,16 @@ pub(all) struct MemoryWriteRequest {
   recipient : String?
   thread_id : String?
   source_artifact_id : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn MemoryWriteRequest::new(kind~ : String, content~ : String, title? : String?, metadata? : Json, tags? : Array[String], scope? : Array[String], workspace? : String?, agent_id? : String?, channel_id? : String?, account_id? : String?, recipient? : String?, thread_id? : String?, source_artifact_id? : String?) -> Self
 
-type NotificationPreferencesFile derive(Show, ToJson, @json.FromJson)
+type NotificationPreferencesFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum NotificationVerbosity {
   Off
   Normal
   Verbose
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PersistedAnalysisExecution {
   execution : AnalysisExecution
@@ -1215,7 +1216,7 @@ pub struct PresentationDeckSpec {
   vendor_notes : String?
   pages : Array[PresentationPageSpec]
   render_handoff : PresentationRenderHandoff?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct PresentationPageSpec {
   page_number : Int
@@ -1229,20 +1230,20 @@ pub struct PresentationPageSpec {
   layout_instruction : String
   look_and_feel : String
   speaker_notes : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct PresentationRenderArtifact {
   role : String
   path : String
   description : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct PresentationRenderHandoff {
   renderer_target : String?
   theme : String?
   delivery_notes : String?
   asset_requests : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct PresentationRenderPackage {
   provider : String?
@@ -1254,7 +1255,7 @@ pub struct PresentationRenderPackage {
   produced_artifacts : Array[PresentationRenderArtifact]
   handoff_summary : String
   notes : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ProposalCompilation {
   family : String
@@ -1268,9 +1269,9 @@ pub(all) struct ProposalCompiler {
 }
 pub fn ProposalCompiler::new(run~ : (JobProposal, Int, String, String) -> ProposalCompilation) -> Self
 
-type ProposalPlanPayload derive(Show, ToJson)
+type ProposalPlanPayload derive(ToJson, @debug.Debug)
 
-type ProposalPlanStepPayload derive(Show, ToJson)
+type ProposalPlanStepPayload derive(ToJson, @debug.Debug)
 
 pub(all) struct ProposalPlanner {
   run : async (String, String, String?) -> JobProposal
@@ -1282,7 +1283,7 @@ pub(all) struct ProviderTaskBatch {
   goal : String
   summary : String
   tasks : Array[ProviderTaskSpec]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ProviderTaskCommand {
   provider : @resource_providers.RegisteredResourceProvider
@@ -1290,7 +1291,7 @@ pub(all) struct ProviderTaskCommand {
   args : Array[String]
   cwd : String?
   workspace_root : String
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) struct ProviderTaskMemoryCandidate {
   kind : String
@@ -1298,7 +1299,7 @@ pub(all) struct ProviderTaskMemoryCandidate {
   detail : String
   durable : Bool
   target_page : String?
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ProviderTaskPersistOutcome {
   log_path : String
@@ -1306,7 +1307,7 @@ pub(all) struct ProviderTaskPersistOutcome {
   review_queued : Bool
   notify_town : Bool
   evidence_id : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ProviderTaskResult {
   task_id : String
@@ -1315,7 +1316,7 @@ pub(all) struct ProviderTaskResult {
   memory_candidates : Array[ProviderTaskMemoryCandidate]
   requires_review : Bool
   notify_town : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ProviderTaskSpec {
   id : String
@@ -1325,7 +1326,7 @@ pub(all) struct ProviderTaskSpec {
   priority : Int
   requires_review : Bool
   target_pages : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ProviderTaskWorkerContext {
   book_id : String
@@ -1341,7 +1342,7 @@ pub(all) struct ProviderTaskWorkerContext {
   working_memory : Array[String]
   memory_summary : String
   output_contract : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RetrievalHit {
   artifact_id : String
@@ -1351,19 +1352,19 @@ pub(all) struct RetrievalHit {
   snippet : String
   path : String
   scope : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RetryPolicy {
   max_attempts : Int
   backoff_ms : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum RoleHandoffKind {
   StrategicToDomain
   DomainToExecution
   ExecutionToDomain
   DomainToStrategic
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RoleHandoffPacket {
   kind : RoleHandoffKind
@@ -1373,7 +1374,7 @@ pub(all) struct RoleHandoffPacket {
   output_contract : String?
   review_required : Bool
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn RoleHandoffPacket::new(kind~ : RoleHandoffKind, objective~ : String, scope_summary~ : String, constraints? : Array[String], output_contract? : String?, review_required? : Bool, metadata? : Json) -> Self
 
 pub(all) enum RoleMemoryScope {
@@ -1381,13 +1382,13 @@ pub(all) enum RoleMemoryScope {
   Workspace
   Domain
   Global
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum RolePlanningLayer {
   Strategic
   Domain
   Execution
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RoleRuntimeContract {
   role_id : String
@@ -1400,19 +1401,19 @@ pub(all) struct RoleRuntimeContract {
   allow_execution_tools : Bool
   output_contract : String?
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn RoleRuntimeContract::new(role_id~ : String, planning_layer? : RolePlanningLayer, runtime_mode? : RoleRuntimeMode, tool_access? : RoleToolAccess, memory_scope? : RoleMemoryScope, allow_delegate? : Bool, allow_workspace_write? : Bool, allow_execution_tools? : Bool, output_contract? : String?, metadata? : Json) -> Self
 
 pub(all) enum RoleRuntimeMode {
   PlannerOnly
   Executor
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum RoleToolAccess {
   Disabled
   Limited
   Full
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct RunExecutionHooks {
   on_started : async (JobDefinition, JobRun) -> Unit
@@ -1429,9 +1430,9 @@ pub(all) enum RunStatus {
   Succeeded
   Failed
   Cancelled
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
-type RunsIndexFile derive(Show, ToJson, @json.FromJson)
+type RunsIndexFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct RuntimeManager {
   store : SystemStore
@@ -1464,7 +1465,7 @@ pub(all) struct SchedulePolicy {
   kind : String
   interval_minutes : Int?
   timezone : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct SubjobStepConfig {
   request_text : String
@@ -1475,7 +1476,7 @@ pub(all) struct SubjobStepConfig {
   execution_target : String?
   include_parent_outputs : Bool
   max_depth : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn SubjobStepConfig::new(request_text~ : String, cwd? : String?, home? : String?, child_profile? : String?, execution_mode? : String?, execution_target? : String?, include_parent_outputs? : Bool, max_depth? : Int) -> Self
 
 pub struct SystemStore {
@@ -1549,14 +1550,14 @@ pub(all) enum TriggerSource {
   Webhook
   Recovery
   Custom(String)
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct WorkflowDefinition {
   id : String
   kind : String
   steps : Array[WorkflowStepDefinition]
   output_bindings : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct WorkflowEngine {
   runtime : RuntimeManager
@@ -1594,7 +1595,7 @@ pub(all) struct WorkflowStepDefinition {
   kind : String
   config : Json
   retry_policy : RetryPolicy?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct WorkflowStepHandler {
   kind : String

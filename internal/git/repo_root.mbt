@@ -18,16 +18,18 @@ pub async fn find_repo_root(path : StringView) -> String? {
   } else {
     start
   }
-  loop start_dir {
-    dir if (@fsx.exists(@pathx.join(dir, ".git")) catch { _ => false }) =>
-      Some(dir)
-    dir => {
-      let parent : String = [..@pathx.dirname(dir)]
-      // Reached filesystem root (dirname("/") == "/") or an unresolvable state.
-      if parent == dir || parent == "." {
-        None
-      } else {
-        continue parent
+  for dir = start_dir {
+    match dir {
+      dir if (@fsx.exists(@pathx.join(dir, ".git")) catch { _ => false }) =>
+        break Some(dir)
+      dir => {
+        let parent : String = [..@pathx.dirname(dir)]
+        // Reached filesystem root (dirname("/") == "/") or an unresolvable state.
+        if parent == dir || parent == "." {
+          break None
+        } else {
+          continue parent
+        }
       }
     }
   }

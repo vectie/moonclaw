@@ -112,11 +112,11 @@ pub fn interface(
 ) -> Interface raise {
   @tty.set_raw_mode(input.fd())
   Interface::{
-    line: "",
+    line: b"",
     input,
     output,
-    prompt: "",
-    old_prompt: "",
+    prompt: b"",
+    old_prompt: b"",
     tab_size: 4,
     cursor: 0,
     previous_cursor: 0,
@@ -124,19 +124,19 @@ pub fn interface(
     is_multiline: false,
     prev_rows: 0,
     previous_prev_rows: 0,
-    undo_stack: @deque.new(),
-    redo_stack: @deque.new(),
-    kill_ring: @deque.new(),
+    undo_stack: @deque.Deque([]),
+    redo_stack: @deque.Deque([]),
+    kill_ring: @deque.Deque([]),
     kill_ring_cursor: 0,
     yanking: false,
     substring_search: None,
-    history: @deque.new(),
+    history: @deque.Deque([]),
     history_index: -1,
     previous_key: None,
     events: Events::new(),
     history_manager: HistoryManager::new(1000),
     saw_return_at: 0,
-    previous_line: "",
+    previous_line: b"",
     last_command_errored: false,
     crlf_delay: 500,
     is_completion_enabled: false,
@@ -155,13 +155,15 @@ pub fn Interface::close(_ : Interface) -> Unit {
 /// Replace the current line buffer and update multiline state.
 pub fn Interface::set_line(self : Interface, line : BytesView) -> Unit {
   self.line = line
-  loop line[:] {
-    [] => break
-    ['\n', ..] => {
-      self.is_multiline = true
-      break
+  for rest = line[:] {
+    match rest {
+      [] => break
+      [b'\n', ..] => {
+        self.is_multiline = true
+        break
+      }
+      [_, .. rest] => continue rest
     }
-    [_, .. rest] => continue rest
   }
 }
 
@@ -171,28 +173,28 @@ async fn Interface::write_move_cursor(
   dx : Int,
   dy : Int,
 ) -> Unit {
-  let buffer = @buffer.new()
+  let buffer = Buffer()
   if dx < 0 {
     buffer.write_byte(@csi.Escape)
-    buffer.write_byte('[')
+    buffer.write_byte(b'[')
     buffer.write_bytes(@encoding/utf8.encode((-dx).to_string()))
-    buffer.write_byte('D')
+    buffer.write_byte(b'D')
   } else if dx > 0 {
     buffer.write_byte(@csi.Escape)
-    buffer.write_byte('[')
+    buffer.write_byte(b'[')
     buffer.write_bytes(@encoding/utf8.encode(dx.to_string()))
-    buffer.write_byte('C')
+    buffer.write_byte(b'C')
   }
   if dy < 0 {
     buffer.write_byte(@csi.Escape)
-    buffer.write_byte('[')
+    buffer.write_byte(b'[')
     buffer.write_bytes(@encoding/utf8.encode((-dy).to_string()))
-    buffer.write_byte('A')
+    buffer.write_byte(b'A')
   } else if dy > 0 {
     buffer.write_byte(@csi.Escape)
-    buffer.write_byte('[')
+    buffer.write_byte(b'[')
     buffer.write_bytes(@encoding/utf8.encode(dy.to_string()))
-    buffer.write_byte('B')
+    buffer.write_byte(b'B')
   }
   self.output.write(buffer.to_bytes())
 }
@@ -205,21 +207,21 @@ async fn @stdio.Output::cursor_to(
 ) -> Unit {
   match row {
     None => {
-      let buffer = @buffer.new()
+      let buffer = Buffer()
       buffer.write_byte(@csi.Escape)
-      buffer.write_byte('[')
+      buffer.write_byte(b'[')
       buffer.write_bytes(@encoding/utf8.encode((col + 1).to_string()))
-      buffer.write_byte('G')
+      buffer.write_byte(b'G')
       self.write(buffer.to_bytes())
     }
     Some(row) => {
-      let buffer = @buffer.new()
+      let buffer = Buffer()
       buffer.write_byte(@csi.Escape)
-      buffer.write_byte('[')
+      buffer.write_byte(b'[')
       buffer.write_bytes(@encoding/utf8.encode((row + 1).to_string()))
-      buffer.write_byte(';')
+      buffer.write_byte(b';')
       buffer.write_bytes(@encoding/utf8.encode((col + 1).to_string()))
-      buffer.write_byte('H')
+      buffer.write_byte(b'H')
       self.write(buffer.to_bytes())
     }
   }
@@ -245,15 +247,17 @@ async fn Interface::refresh_line(self : Interface) -> Unit {
   self.output.clear_screen_down()
   if self.is_multiline {
     let lines = []
-    loop self.line[:] {
-      ['\n', .. rest] as view => {
-        lines.push(self.line[:view.start_offset()])
-        continue rest
-      }
-      [_, .. rest] => continue rest
-      [] => {
-        lines.push(self.line)
-        break
+    for rest = self.line[:] {
+      match rest {
+        [b'\n', .. rest] as view => {
+          lines.push(self.line[:view.start_offset()])
+          continue rest
+        }
+        [_, .. rest] => continue rest
+        [] => {
+          lines.push(self.line)
+          break
+        }
       }
     }
     self.output.write(self.prompt)
@@ -299,74 +303,76 @@ fn display_position(
 ) -> Position {
   let mut offset = 0
   let mut rows = 0
-  loop str[:] {
-    [] => break
-    ['\n', .. rest] => {
-      rows += (offset + col - 1) / col
-      offset = if is_multiline { MultilinePrompt.length() } else { 0 }
-      continue rest
-    }
-    ['\t', .. rest] => {
-      offset += tab_size - offset % tab_size
-      continue rest
-    }
-    [0x00..=0x7F, .. rest] => {
-      offset += 1
-      continue rest
-    }
-    [0xC2..=0xDF as b0, 0x80..=0xBF as b1, .. rest] => {
-      let b0 = b0.to_int()
-      let b1 = b1.to_int()
-      let char = (((b0 & 0x1F) << 6) | (b1 & 0x3F)).unsafe_to_char()
-      offset += @unicode/width.char(char).unwrap_or(1)
-      continue rest
-    }
-    [0xE0 as b0, 0xA0..=0xBF as b1, 0x80..=0xBF as b2, .. rest]
-    | [0xE1..=0xEC as b0, 0x80..=0xBF as b1, 0x80..=0xBF as b2, .. rest]
-    | [0xED as b0, 0x80..=0x9F as b1, 0x80..=0xBF as b2, .. rest]
-    | [0xEE..=0xEF as b0, 0x80..=0xBF as b1, 0x80..=0xBF as b2, .. rest] => {
-      let b0 = b0.to_int()
-      let b1 = b1.to_int()
-      let b2 = b2.to_int()
-      let char = (((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F)).unsafe_to_char()
-      offset += @unicode/width.char(char).unwrap_or(1)
-      continue rest
-    }
-    [
-      0xF0 as b0,
-      0x90..=0xBF as b1,
-      0x80..=0xBF as b2,
-      0x80..=0xBF as b3,
-      .. rest,
-    ]
-    | [
-      0xF1..=0xF3 as b0,
-      0x80..=0xBF as b1,
-      0x80..=0xBF as b2,
-      0x80..=0xBF as b3,
-      .. rest,
-    ]
-    | [
-      0xF4 as b0,
-      0x80..=0x8F as b1,
-      0x80..=0xBF as b2,
-      0x80..=0xBF as b3,
-      .. rest,
-    ] => {
-      let b0 = b0.to_int()
-      let b1 = b1.to_int()
-      let b2 = b2.to_int()
-      let b3 = b3.to_int()
-      let char = (((b0 & 0x07) << 18) |
-      ((b1 & 0x3F) << 12) |
-      ((b2 & 0x3F) << 6) |
-      (b3 & 0x3F)).unsafe_to_char()
-      offset += @unicode/width.char(char).unwrap_or(1)
-      continue rest
-    }
-    [_, .. rest] => {
-      offset += 1
-      continue rest
+  for rest = str[:] {
+    match rest {
+      [] => break
+      [b'\n', .. rest] => {
+        rows += (offset + col - 1) / col
+        offset = if is_multiline { MultilinePrompt.length() } else { 0 }
+        continue rest
+      }
+      [b'\t', .. rest] => {
+        offset += tab_size - offset % tab_size
+        continue rest
+      }
+      [0x00..=0x7F, .. rest] => {
+        offset += 1
+        continue rest
+      }
+      [0xC2..=0xDF as b0, 0x80..=0xBF as b1, .. rest] => {
+        let b0 = b0.to_int()
+        let b1 = b1.to_int()
+        let char = (((b0 & 0x1F) << 6) | (b1 & 0x3F)).unsafe_to_char()
+        offset += @unicode/width.char(char).unwrap_or(1)
+        continue rest
+      }
+      [0xE0 as b0, 0xA0..=0xBF as b1, 0x80..=0xBF as b2, .. rest]
+      | [0xE1..=0xEC as b0, 0x80..=0xBF as b1, 0x80..=0xBF as b2, .. rest]
+      | [0xED as b0, 0x80..=0x9F as b1, 0x80..=0xBF as b2, .. rest]
+      | [0xEE..=0xEF as b0, 0x80..=0xBF as b1, 0x80..=0xBF as b2, .. rest] => {
+        let b0 = b0.to_int()
+        let b1 = b1.to_int()
+        let b2 = b2.to_int()
+        let char = (((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F)).unsafe_to_char()
+        offset += @unicode/width.char(char).unwrap_or(1)
+        continue rest
+      }
+      [
+        0xF0 as b0,
+        0x90..=0xBF as b1,
+        0x80..=0xBF as b2,
+        0x80..=0xBF as b3,
+        .. rest,
+      ]
+      | [
+        0xF1..=0xF3 as b0,
+        0x80..=0xBF as b1,
+        0x80..=0xBF as b2,
+        0x80..=0xBF as b3,
+        .. rest,
+      ]
+      | [
+        0xF4 as b0,
+        0x80..=0x8F as b1,
+        0x80..=0xBF as b2,
+        0x80..=0xBF as b3,
+        .. rest,
+      ] => {
+        let b0 = b0.to_int()
+        let b1 = b1.to_int()
+        let b2 = b2.to_int()
+        let b3 = b3.to_int()
+        let char = (((b0 & 0x07) << 18) |
+        ((b1 & 0x3F) << 12) |
+        ((b2 & 0x3F) << 6) |
+        (b3 & 0x3F)).unsafe_to_char()
+        offset += @unicode/width.char(char).unwrap_or(1)
+        continue rest
+      }
+      [_, .. rest] => {
+        offset += 1
+        continue rest
+      }
     }
   }
   let cols = offset % col
@@ -376,7 +382,7 @@ fn display_position(
 
 ///|
 fn Interface::get_cursor_pos(self : Interface) -> Position raise {
-  let string_before_cursor = @buffer.new()
+  let string_before_cursor = Buffer()
   string_before_cursor.write_bytes(self.prompt)
   string_before_cursor.write_bytesview(self.line[:self.cursor])
   self.get_display_position(string_before_cursor.to_bytes())
@@ -443,7 +449,7 @@ async fn Interface::insert_string(self : Interface, string : BytesView) -> Unit 
   if self.cursor < self.line.length() {
     let begin = self.line[:self.cursor]
     let end = self.line[self.cursor:]
-    let buffer = @buffer.new()
+    let buffer = Buffer()
     buffer.write_bytesview(begin)
     buffer.write_bytesview(string)
     buffer.write_bytesview(end)
@@ -490,7 +496,7 @@ fn Interface::push_to_kill_ring(
   self : Interface,
   del : BytesView,
 ) -> Unit noraise {
-  if del == "" || self.kill_ring.back() == Some(del) {
+  if del == b"" || self.kill_ring.back() == Some(del) {
     return
   }
   self.kill_ring.push_back(del)
@@ -505,7 +511,7 @@ async fn Interface::delete_left(self : Interface) -> Unit {
   if self.cursor > 0 && self.line.length() > 0 {
     self.before_edit(self.line, self.cursor)
     let char_size = @unicode.char_size_left(self.line, self.cursor)
-    let buffer = @buffer.new()
+    let buffer = Buffer()
     buffer.write_bytesview(self.line[:self.cursor - char_size])
     buffer.write_bytesview(self.line[self.cursor:])
     self.line = buffer.to_bytes()
@@ -519,7 +525,7 @@ async fn Interface::delete_right(self : Interface) -> Unit {
   if self.cursor < self.line.length() {
     self.before_edit(self.line, self.cursor)
     let char_size = @unicode.char_size_right(self.line, self.cursor)
-    let buffer = @buffer.new()
+    let buffer = Buffer()
     buffer.write_bytesview(self.line[:self.cursor])
     buffer.write_bytesview(self.line[self.cursor + char_size:])
     self.line = buffer.to_bytes()
@@ -541,8 +547,8 @@ async fn Interface::history_next(self : Interface) -> Unit {
   self.before_edit(self.line, self.cursor)
   self.set_line(
     self.history_manager
-    .navigate_to_next(self.substring_search.unwrap_or(""))
-    .unwrap_or(""),
+    .navigate_to_next(self.substring_search.unwrap_or(b""))
+    .unwrap_or(b""),
   )
   self.cursor = self.line.length()
   self.refresh_line()
@@ -556,8 +562,8 @@ async fn Interface::history_prev(self : Interface) -> Unit {
   self.before_edit(self.line, self.cursor)
   self.set_line(
     self.history_manager
-    .navigate_to_previous(self.substring_search.unwrap_or(""))
-    .unwrap_or(""),
+    .navigate_to_previous(self.substring_search.unwrap_or(b""))
+    .unwrap_or(b""),
   )
   self.cursor = self.line.length()
   self.refresh_line()
@@ -576,7 +582,7 @@ async fn Interface::yank_pop(self : Interface) -> Unit {
   if self.yanking && self.kill_ring.length() > 1 {
     self.before_edit(self.line, self.cursor)
     let current = self.kill_ring[self.kill_ring_cursor]
-    let buffer = @buffer.new()
+    let buffer = Buffer()
     buffer.write_bytesview(self.line[:self.cursor - current.length()])
     self.kill_ring_cursor = (self.kill_ring_cursor + 1) %
       self.kill_ring.length()
@@ -595,7 +601,7 @@ fn word_size_left(string : BytesView, index : Int) -> Int {
     return 0
   }
   let reversed = string[:index]
-    .to_bytes()
+    .to_owned()
     .to_fixedarray()
     .rev()
     .unsafe_reinterpret_as_bytes()
@@ -611,7 +617,7 @@ fn word_right_left(string : BytesView, index : Int) -> Int {
     return 0
   }
   let forward = string[index:]
-    .to_bytes()
+    .to_owned()
     .to_fixedarray()
     .unsafe_reinterpret_as_bytes()
   lexmatch forward with longest {
@@ -626,11 +632,11 @@ async fn Interface::delete_word_left(self : Interface) -> Unit {
     self.before_edit(self.line, self.cursor)
     let leading = self.line[:self.cursor]
     let reversed = leading
-      .to_bytes()
+      .to_owned()
       .to_fixedarray()
       .rev()
       .unsafe_reinterpret_as_bytes()
-    let buffer = @buffer.new()
+    let buffer = Buffer()
     lexmatch reversed with longest {
       ("[[:space:]]*([^[:word:][:space:]]+|[[:word:]]+)", rest) =>
         buffer.write_bytesview(leading[:rest.length()])
@@ -648,7 +654,7 @@ async fn Interface::delete_word_right(self : Interface) -> Unit {
   if self.cursor < self.line.length() {
     self.before_edit(self.line, self.cursor)
     let trailing = self.line[self.cursor:]
-    let buffer = @buffer.new()
+    let buffer = Buffer()
     buffer.write_bytesview(self.line[:self.cursor])
     lexmatch trailing with longest {
       ("([^[:word:][:space:]]+|[[:word:]]+)[[:space:]]*", rest) =>
@@ -719,7 +725,7 @@ pub fn Interface::add_new_line_on_tty(self : Interface) -> Unit {
   self.restore_previous_state()
   let before_cursor = self.line[:self.cursor]
   let after_cursor = self.line[self.cursor:]
-  self.set_line([..before_cursor, '\n', ..after_cursor])
+  self.set_line([..before_cursor, b'\n', ..after_cursor])
   self.cursor += 1
 }
 
@@ -736,7 +742,7 @@ fn Interface::add_history(self : Interface) -> BytesView {
 async fn Interface::clear_line(self : Interface) -> Unit {
   self.move_cursor(self.line.length() - self.cursor)
   self.output.write("\r\n")
-  self.set_line("")
+  self.set_line(b"")
   self.cursor = 0
   self.prev_rows = 0
 }
@@ -755,17 +761,19 @@ async fn Interface::line(self : Interface) -> Unit {
 fn BytesView::split(self : BytesView, sep : Byte) -> Array[BytesView] {
   let parts = []
   let mut start = 0
-  loop self[:] {
-    [] => {
-      parts.push(self[start:])
-      break
+  for rest = self[:] {
+    match rest {
+      [] => {
+        parts.push(self[start:])
+        break
+      }
+      [b, .. rest] as view if b == sep => {
+        parts.push(self[start:view.start_offset()])
+        start = rest.start_offset()
+        continue rest
+      }
+      [_, .. rest] => continue rest
     }
-    [b, .. rest] as view if b == sep => {
-      parts.push(self[start:view.start_offset()])
-      start = rest.start_offset()
-      continue rest
-    }
-    [_, .. rest] => continue rest
   }
   return parts
 }
@@ -817,7 +825,7 @@ async fn Interface::multiline_move(
 async fn Interface::move_up_or_history_prev(self : Interface) -> Unit {
   let cursor_pos = self.get_cursor_pos()
   if self.is_multiline && cursor_pos.rows > 0 {
-    let split_lines = self.line.split('\n')
+    let split_lines = self.line.split(b'\n')
     self.multiline_move(-1, split_lines, cursor_pos)
     return
   }
@@ -828,7 +836,7 @@ async fn Interface::move_up_or_history_prev(self : Interface) -> Unit {
 ///|
 async fn Interface::move_down_or_history_next(self : Interface) -> Unit {
   let cursor_pos = self.get_cursor_pos()
-  let split_lines = self.line.split('\n')
+  let split_lines = self.line.split(b'\n')
   if self.is_multiline && cursor_pos.rows + 1 < split_lines.length() {
     self.multiline_move(1, split_lines, cursor_pos)
     return
@@ -858,7 +866,7 @@ priv struct KeyPress {
 ///|
 async fn Interface::emit_keypress(self : Interface) -> Unit {
   let mut ch = self.read_byte()
-  let s = @buffer.new()
+  let s = Buffer()
   s.write_byte(ch)
   let mut escaped = false
   let key = Key::{
@@ -866,7 +874,7 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
     name: Undefined,
     ctrl: false,
     shift: false,
-    sequence: "",
+    sequence: b"",
   }
   if ch is @csi.Escape {
     escaped = true
@@ -877,43 +885,43 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
       s.write_byte(ch)
     }
   }
-  if escaped && ch is ('O' | '[') {
+  if escaped && ch is (b'O' | b'[') {
     // ANSI escape sequence
-    let code = @buffer.new()
+    let code = Buffer()
     let mut modifier = 0
-    if ch is 'O' {
+    if ch is b'O' {
       // ESC O letter
       // ESC O modifier letter
       ch = self.read_byte()
       s.write_byte(ch)
-      if ch is ('0'..='9') {
+      if ch is (b'0'..=b'9') {
         modifier = ch.to_int() - '0' - 1
         ch = self.read_byte()
         s.write_byte(ch)
       }
       code.write_byte(ch)
-    } else if ch is '[' {
+    } else if ch is b'[' {
       // ESC [ sequences
       ch = self.read_byte()
       s.write_byte(ch)
-      if ch is '[' {
+      if ch is b'[' {
         // Double bracket sequences like \x1b[[A
         code.write_byte(ch)
         ch = self.read_byte()
         s.write_byte(ch)
       }
-      let cmd = @buffer.new()
+      let cmd = Buffer()
 
       // Skip one or two leading digits
-      if ch is ('0'..='9') {
+      if ch is (b'0'..=b'9') {
         ch = self.read_byte()
         s.write_byte(ch)
         cmd.write_byte(ch)
-        if ch is ('0'..='9') {
+        if ch is (b'0'..=b'9') {
           ch = self.read_byte()
           s.write_byte(ch)
           cmd.write_byte(ch)
-          if ch is ('0'..='9') {
+          if ch is (b'0'..=b'9') {
             ch = self.read_byte()
             s.write_byte(ch)
             cmd.write_byte(ch)
@@ -922,11 +930,11 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
       }
 
       // skip modifier
-      if ch is ';' {
+      if ch is b';' {
         ch = self.read_byte()
         s.write_byte(ch)
         cmd.write_byte(ch)
-        if ch is ('0'..='9') {
+        if ch is (b'0'..=b'9') {
           let ch = self.read_byte()
           s.write_byte(ch)
           cmd.write_byte(ch)
@@ -936,44 +944,45 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
       match cmd {
         // (\d\d?)(;(\d))?([~^$])
         [
-          '0'..='9' as d0,
-          '0'..='9' as d1,
-          ';',
-          '0'..='9' as m0,
-          '~'
-          | '^'
-          | '$' as s0,
+          b'0'..=b'9' as d0,
+          b'0'..=b'9' as d1,
+          b';',
+          b'0'..=b'9' as m0,
+          b'~'
+          | b'^'
+          | b'$' as s0,
         ] => {
           code.write_byte(d0)
           code.write_byte(d1)
           code.write_byte(s0)
           modifier = m0.to_int() - '0' - 1
         }
-        ['0'..='9' as d0, '0'..='9' as d1, '~' | '^' | '$' as s0] => {
+        [b'0'..=b'9' as d0, b'0'..=b'9' as d1, b'~' | b'^' | b'$' as s0] => {
           code.write_byte(d0)
           code.write_byte(d1)
           code.write_byte(s0)
           modifier = 0
         }
-        ['0'..='9' as d0, ';', '0'..='9' as m0, '~' | '^' | '$' as s0] => {
+        [b'0'..=b'9' as d0, b';', b'0'..=b'9' as m0, b'~' | b'^' | b'$' as s0] => {
           code.write_byte(d0)
           code.write_byte(s0)
           modifier = m0.to_int() - '0' - 1
         }
-        ['0'..='9' as d0, '~' | '^' | '$' as s0] => {
+        [b'0'..=b'9' as d0, b'~' | b'^' | b'$' as s0] => {
           code.write_byte(d0)
           code.write_byte(s0)
           modifier = 0
         }
         // (\d{3}~)
-        ['0'..='9', '0'..='9', '0'..='9', '~'] => code.write_bytesview(cmd)
+        [b'0'..=b'9', b'0'..=b'9', b'0'..=b'9', b'~'] =>
+          code.write_bytesview(cmd)
         // ((\d;)?(\d))?([A-Za-z])
-        ['0'..='9', ';', '0'..='9' as m0, 'a'..='z' | 'A'..='z' as c0]
-        | ['0'..='9' as m0, 'a'..='z' | 'A'..='z' as c0] => {
+        [b'0'..=b'9', b';', b'0'..=b'9' as m0, b'a'..=b'z' | b'A'..=b'z' as c0]
+        | [b'0'..=b'9' as m0, b'a'..=b'z' | b'A'..=b'z' as c0] => {
           code.write_byte(c0)
           modifier = m0.to_int() - '0' - 1
         }
-        ['a'..='z' | 'A'..='z' as c0] => {
+        [b'a'..=b'z' | b'A'..=b'z' as c0] => {
           code.write_byte(c0)
           modifier = 0
         }
@@ -988,166 +997,166 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
     let code = code.to_bytes()
     match code {
       // xterm/gnome ESC [ letter (with modifier)
-      "[P" => key.name = F1
-      "[Q" => key.name = F2
-      "[R" => key.name = F3
-      "[S" => key.name = F4
+      b"[P" => key.name = F1
+      b"[Q" => key.name = F2
+      b"[R" => key.name = F3
+      b"[S" => key.name = F4
 
       // xterm/gnome ESC O letter (without modifier)
-      "OP" => key.name = F1
-      "OQ" => key.name = F2
-      "OR" => key.name = F3
-      "OS" => key.name = F4
+      b"OP" => key.name = F1
+      b"OQ" => key.name = F2
+      b"OR" => key.name = F3
+      b"OS" => key.name = F4
 
       // xterm/rxvt ESC [ number ~
-      "[11~" => key.name = F1
-      "[12~" => key.name = F2
-      "[13~" => key.name = F3
-      "[14~" => key.name = F4
-      "[15~" => key.name = F5
-      "[17~" => key.name = F6
-      "[18~" => key.name = F7
-      "[19~" => key.name = F8
-      "[20~" => key.name = F9
-      "[21~" => key.name = F10
-      "[23~" => key.name = F11
-      "[24~" => key.name = F12
+      b"[11~" => key.name = F1
+      b"[12~" => key.name = F2
+      b"[13~" => key.name = F3
+      b"[14~" => key.name = F4
+      b"[15~" => key.name = F5
+      b"[17~" => key.name = F6
+      b"[18~" => key.name = F7
+      b"[19~" => key.name = F8
+      b"[20~" => key.name = F9
+      b"[21~" => key.name = F10
+      b"[23~" => key.name = F11
+      b"[24~" => key.name = F12
 
       // paste bracket mode
-      "[200~" => key.name = PasteStart
-      "[201~" => key.name = PasteEnd
+      b"[200~" => key.name = PasteStart
+      b"[201~" => key.name = PasteEnd
 
       // from Cygwin and used in libuv
-      "[[A" => key.name = F1
-      "[[B" => key.name = F2
-      "[[C" => key.name = F3
-      "[[D" => key.name = F4
-      "[[E" => key.name = F5
+      b"[[A" => key.name = F1
+      b"[[B" => key.name = F2
+      b"[[C" => key.name = F3
+      b"[[D" => key.name = F4
+      b"[[E" => key.name = F5
 
       // xterm ESC [ letter
-      "[A" => key.name = Up
-      "[B" => key.name = Down
-      "[C" => key.name = Right
-      "[D" => key.name = Left
-      "[E" => key.name = Clear
-      "[F" => key.name = End
-      "[H" => key.name = Home
+      b"[A" => key.name = Up
+      b"[B" => key.name = Down
+      b"[C" => key.name = Right
+      b"[D" => key.name = Left
+      b"[E" => key.name = Clear
+      b"[F" => key.name = End
+      b"[H" => key.name = Home
 
       // xterm/gnome ESC O letter
-      "OA" => key.name = Up
-      "OB" => key.name = Down
-      "OC" => key.name = Right
-      "OD" => key.name = Left
-      "OE" => key.name = Clear
-      "OF" => key.name = End
-      "OH" => key.name = Home
+      b"OA" => key.name = Up
+      b"OB" => key.name = Down
+      b"OC" => key.name = Right
+      b"OD" => key.name = Left
+      b"OE" => key.name = Clear
+      b"OF" => key.name = End
+      b"OH" => key.name = Home
 
       // xterm/rxvt ESC [ number ~
-      "[1~" => key.name = Home
-      "[2~" => key.name = Insert
-      "[3~" => key.name = Delete
-      "[4~" => key.name = End
-      "[5~" => key.name = PageUp
-      "[6~" => key.name = PageDown
-      "[7~" => key.name = Home
-      "[8~" => key.name = End
+      b"[1~" => key.name = Home
+      b"[2~" => key.name = Insert
+      b"[3~" => key.name = Delete
+      b"[4~" => key.name = End
+      b"[5~" => key.name = PageUp
+      b"[6~" => key.name = PageDown
+      b"[7~" => key.name = Home
+      b"[8~" => key.name = End
 
       // putty
-      "[[5~" => key.name = PageUp
-      "[[6~" => key.name = PageDown
+      b"[[5~" => key.name = PageUp
+      b"[[6~" => key.name = PageDown
 
       // rxvt keys with modifiers
-      "[a" => {
+      b"[a" => {
         key.shift = true
         key.name = Up
       }
-      "[b" => {
+      b"[b" => {
         key.shift = true
         key.name = Down
       }
-      "[c" => {
+      b"[c" => {
         key.shift = true
         key.name = Right
       }
-      "[d" => {
+      b"[d" => {
         key.shift = true
         key.name = Left
       }
-      "[e" => {
+      b"[e" => {
         key.shift = true
         key.name = Clear
       }
-      "[2$" => {
+      b"[2$" => {
         key.shift = true
         key.name = Insert
       }
-      "[3$" => {
+      b"[3$" => {
         key.shift = true
         key.name = Delete
       }
-      "[5$" => {
+      b"[5$" => {
         key.shift = true
         key.name = PageUp
       }
-      "[6$" => {
+      b"[6$" => {
         key.shift = true
         key.name = PageDown
       }
-      "[7$" => {
+      b"[7$" => {
         key.shift = true
         key.name = Home
       }
-      "[8$" => {
+      b"[8$" => {
         key.shift = true
         key.name = End
       }
-      "Oa" => {
+      b"Oa" => {
         key.ctrl = true
         key.name = Up
       }
-      "Ob" => {
+      b"Ob" => {
         key.ctrl = true
         key.name = Down
       }
-      "Oc" => {
+      b"Oc" => {
         key.ctrl = true
         key.name = Right
       }
-      "Od" => {
+      b"Od" => {
         key.ctrl = true
         key.name = Left
       }
-      "Oe" => {
+      b"Oe" => {
         key.ctrl = true
         key.name = Clear
       }
-      "[2^" => {
+      b"[2^" => {
         key.ctrl = true
         key.name = Insert
       }
-      "[3^" => {
+      b"[3^" => {
         key.ctrl = true
         key.name = Delete
       }
-      "[5^" => {
+      b"[5^" => {
         key.ctrl = true
         key.name = PageUp
       }
-      "[6^" => {
+      b"[6^" => {
         key.ctrl = true
         key.name = PageDown
       }
-      "[7^" => {
+      b"[7^" => {
         key.ctrl = true
         key.name = Home
       }
-      "[8^" => {
+      b"[8^" => {
         key.ctrl = true
         key.name = End
       }
 
       // misc
-      "[Z" => {
+      b"[Z" => {
         key.shift = true
         key.name = Tab
       }
@@ -1155,24 +1164,24 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
     }
   } else {
     match ch {
-      '\r' => {
+      b'\r' => {
         key.name = Return
         key.meta = escaped
       }
-      '\n' => {
+      b'\n' => {
         key.name = Enter
         key.meta = escaped
       }
-      '\t' => {
+      b'\t' => {
         key.name = Tab
         key.meta = escaped
       }
-      '\b' | 0x7f => key.name = Backspace
+      b'\b' | 0x7f => key.name = Backspace
       @csi.Escape => {
         key.name = Escape
         key.meta = escaped
       }
-      ' ' => {
+      b' ' => {
         key.name = Space
         key.meta = escaped
       }
@@ -1180,12 +1189,12 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
         key.name = Byte((ch.to_int() + b'a'.to_int() - 1).to_byte())
         key.ctrl = true
       }
-      'A'..='Z' => {
+      b'A'..=b'Z' => {
         key.name = Byte((ch.to_int() + b'a'.to_int() - b'A'.to_int()).to_byte())
         key.shift = true
         key.meta = escaped
       }
-      '0'..='9' | 'a'..='z' => {
+      b'0'..=b'9' | b'a'..=b'z' => {
         key.name = Byte(ch)
         key.shift = false
         key.meta = escaped
@@ -1247,12 +1256,14 @@ fn common_prefix(array : Array[StringView]) -> StringView {
     [string] => string
     [min, .., max] => {
       let prefix = StringBuilder::new()
-      loop (min, max) {
-        ([min_c, .. min], [max_c, .. max]) if min_c == max_c => {
-          prefix.write_char(min_c)
-          continue (min, max)
+      for min = min, max = max {
+        match (min, max) {
+          ([min_c, .. min], [max_c, .. max]) if min_c == max_c => {
+            prefix.write_char(min_c)
+            continue min, max
+          }
+          _ => return prefix.to_string()
         }
-        _ => return prefix.to_string()
       }
     }
   }
@@ -1294,28 +1305,28 @@ async fn Interface::tab_completer(
   }
   width = width + 2
   let max_columns = @cmp.maximum(1, self.columns() / width)
-  let output = @buffer.new()
-  output.write_bytes("\r\n")
+  let output = Buffer()
+  output.write_bytes(b"\r\n")
   let mut line_index = 0
   let mut whitespace = 0
   for i, completion in completions {
     if completion is "" || line_index == max_columns {
-      output.write_bytes("\r\n")
+      output.write_bytes(b"\r\n")
       line_index = 0
       whitespace = 0
     } else {
-      output.write_bytesview(Bytes::make(whitespace, ' '))
+      output.write_bytesview(Bytes::make(whitespace, b' '))
     }
     if completion.length() > 0 {
       output.write_bytes(@encoding/utf8.encode(completion))
       whitespace = width - completion_widths[i]
       line_index += 1
     } else {
-      output.write_bytes("\r\n")
+      output.write_bytes(b"\r\n")
     }
   }
   if line_index != 0 {
-    output.write_bytes("\r\n\r\n")
+    output.write_bytes(b"\r\n\r\n")
   }
   self.output.write(output.to_bytes())
   self.refresh_line()
@@ -1331,7 +1342,7 @@ async fn Interface::handle_keypress(
   let previous_key = self.previous_key
   self.previous_key = Some(key)
   let mut should_reset_previous_cursor_cols = true
-  if !key.meta || !(key.name is Byte('y')) {
+  if !key.meta || !(key.name is Byte(b'y')) {
     self.yanking = false
   }
   if key.name is (Up | Down) && !key.ctrl && !key.meta && !key.shift {
@@ -1360,32 +1371,32 @@ async fn Interface::handle_keypress(
     }
   } else if key.ctrl {
     match key.name {
-      Byte('c') => raise Aborted::CtrlC
-      Byte('h') => self.delete_left()
-      Byte('d') =>
+      Byte(b'c') => raise Aborted::CtrlC
+      Byte(b'h') => self.delete_left()
+      Byte(b'd') =>
         if self.cursor == 0 && self.line.length() == 0 {
           raise EOF
         } else if self.cursor < self.line.length() {
           self.delete_right()
         }
-      Byte('u') => self.delete_line_left()
-      Byte('k') => self.delete_line_right()
-      Byte('a') => self.move_cursor(-self.cursor)
-      Byte('e') => self.move_cursor(self.line.length() - self.cursor)
-      Byte('b') =>
+      Byte(b'u') => self.delete_line_left()
+      Byte(b'k') => self.delete_line_right()
+      Byte(b'a') => self.move_cursor(-self.cursor)
+      Byte(b'e') => self.move_cursor(self.line.length() - self.cursor)
+      Byte(b'b') =>
         self.move_cursor(-@unicode.char_size_left(self.line, self.cursor))
-      Byte('f') =>
+      Byte(b'f') =>
         self.move_cursor(@unicode.char_size_right(self.line, self.cursor))
-      Byte('l') => {
+      Byte(b'l') => {
         self.output.cursor_to(col=0, row=0)
         self.output.clear_screen_down()
         self.refresh_line()
       }
-      Byte('n') => self.history_next()
-      Byte('p') => self.history_prev()
-      Byte('y') => self.yank()
-      Byte('z') => @spawn.kill(@spawn.getppid(), @signal.sigtstp)
-      Byte('w') | Backspace => self.delete_word_left()
+      Byte(b'n') => self.history_next()
+      Byte(b'p') => self.history_prev()
+      Byte(b'y') => self.yank()
+      Byte(b'z') => @spawn.kill(@spawn.getppid(), @signal.sigtstp)
+      Byte(b'w') | Backspace => self.delete_word_left()
       Delete => self.delete_word_right()
       Left => self.word_left()
       Right => self.word_right()
@@ -1393,11 +1404,11 @@ async fn Interface::handle_keypress(
     }
   } else if key.meta {
     match key.name {
-      Byte('b') => self.word_left()
-      Byte('f') => self.word_right()
-      Byte('d') | Delete => self.delete_word_right()
+      Byte(b'b') => self.word_left()
+      Byte(b'f') => self.word_right()
+      Byte(b'd') | Delete => self.delete_word_right()
       Backspace => self.delete_word_left()
-      Byte('y') => self.yank_pop()
+      Byte(b'y') => self.yank_pop()
       _ => ()
     }
   } else {

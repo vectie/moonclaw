@@ -7,9 +7,7 @@ async test "delegate_run returns bounded child-run config" {
     "include_parent_outputs": true,
     "max_depth": 2,
   })
-  guard result is Ok(output) else {
-    fail("Expected Ok result but got: \{result}")
-  }
+  guard result is Ok(output) else { fail("Expected Ok result") }
   inspect(output.step_kind, content="job.delegate")
   inspect(output.max_depth.to_string(), content="2")
   inspect(

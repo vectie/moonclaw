@@ -9,7 +9,7 @@ pub struct GlobFilesResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for GlobFilesResult with output(
+pub impl Show for GlobFilesResult with fn output(
   result : GlobFilesResult,
   logger : &Logger,
 ) -> Unit {
@@ -136,20 +136,20 @@ fn glob_matches_segments(
 
 ///|
 fn glob_matches(pattern : String, relative_path : String) -> Bool {
-  let normalized_pattern = pattern.trim().to_string()
-  let normalized_path = relative_path.trim().to_string()
+  let normalized_pattern = pattern.trim().to_owned()
+  let normalized_path = relative_path.trim().to_owned()
   if normalized_pattern.is_empty() || normalized_path.is_empty() {
     return false
   }
   let pattern_segments = normalized_pattern
     .split("/")
     .filter(fn(segment) { !segment.is_empty() })
-    .map(fn(segment) { segment.to_string() })
+    .map(fn(segment) { segment.to_owned() })
     .collect()
   let path_segments = normalized_path
     .split("/")
     .filter(fn(segment) { !segment.is_empty() })
-    .map(fn(segment) { segment.to_string() })
+    .map(fn(segment) { segment.to_owned() })
     .collect()
   glob_matches_segments(pattern_segments, path_segments, 0, 0)
 }
@@ -183,7 +183,10 @@ async fn collect_glob_matches(
       continue
     }
     if respect_gitignore {
-      if (try? @git.is_ignored(absolute_path, cwd~)) is Ok(ignored) {
+      let ignored_result = Ok(@git.is_ignored(absolute_path, cwd~)) catch {
+        error => Err(error)
+      }
+      if ignored_result is Ok(ignored) {
         if ignored {
           continue
         }
@@ -246,8 +249,8 @@ async fn execute_glob_files(
   let include_hidden = input.include_hidden.unwrap_or(false)
   let include_directories = input.include_directories.unwrap_or(false)
   let matches = []
-  let total_matches = Ref::new(0)
-  let does_respect_gitignore = Ref::new(true)
+  let total_matches = Ref::Ref(0)
+  let does_respect_gitignore = Ref::Ref(true)
   collect_glob_matches(
     absolute_root,
     ".",

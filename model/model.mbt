@@ -14,7 +14,7 @@ pub struct Model {
   account_id : String?
   refresh_token : String?
   id_token : String?
-} derive(ToJson, Eq, Show)
+} derive(ToJson, Eq, Debug)
 
 ///|
 pub(all) enum Provider {
@@ -25,12 +25,29 @@ pub(all) enum Provider {
   Qwen
   Kimi
   KimiCoding
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 pub(all) enum Type {
   SaaS(Provider)
-} derive(Eq, Show)
+} derive(Eq, Debug)
+
+///|
+pub impl Show for Type with fn output(self : Type, logger : &Logger) -> Unit {
+  let text = match self {
+    SaaS(provider) =>
+      match provider {
+        OpenAI => "SaaS(OpenAI)"
+        Anthropic => "SaaS(Anthropic)"
+        CodexOAuth => "SaaS(CodexOAuth)"
+        Copilot => "SaaS(Copilot)"
+        Qwen => "SaaS(Qwen)"
+        Kimi => "SaaS(Kimi)"
+        KimiCoding => "SaaS(KimiCoding)"
+      }
+  }
+  logger.write_string(text)
+}
 
 ///|
 /// Create a new model configuration describing how to reach a provider
@@ -152,7 +169,7 @@ pub(all) enum CommonModels {
 }
 
 ///|
-pub impl Show for CommonModels with output(
+pub impl Show for CommonModels with fn output(
   self : CommonModels,
   logger : &Logger,
 ) -> Unit {
@@ -221,7 +238,10 @@ pub(all) enum CodexModels {
 }
 
 ///|
-pub impl Show for CodexModels with output(self : CodexModels, logger : &Logger) -> Unit {
+pub impl Show for CodexModels with fn output(
+  self : CodexModels,
+  logger : &Logger,
+) -> Unit {
   match self {
     Gpt5_4 => logger.write_string("gpt-5.4")
     Gpt5_3Codex => logger.write_string("gpt-5.3-codex")
@@ -321,7 +341,7 @@ pub(all) enum CopilotModels {
 }
 
 ///|
-pub impl Show for CopilotModels with output(
+pub impl Show for CopilotModels with fn output(
   self : CopilotModels,
   logger : &Logger,
 ) -> Unit {
@@ -419,7 +439,7 @@ pub(all) enum QwenModels {
 }
 
 ///|
-pub impl Show for QwenModels with output(self : QwenModels, logger : &Logger) -> Unit {
+pub impl Show for QwenModels with fn output(self : QwenModels, logger : &Logger) -> Unit {
   match self {
     Qwen3CoderPlus => logger.write_string("qwen3-coder-plus")
     Qwen3CoderFlash => logger.write_string("qwen3-coder-flash")
@@ -471,7 +491,7 @@ pub(all) enum KimiModels {
 }
 
 ///|
-pub impl Show for KimiModels with output(self : KimiModels, logger : &Logger) -> Unit {
+pub impl Show for KimiModels with fn output(self : KimiModels, logger : &Logger) -> Unit {
   match self {
     KimiK2_0905 => logger.write_string("kimi-k2-0905")
     KimiK2P5 => logger.write_string("kimi-k2.5")
@@ -511,7 +531,7 @@ pub(all) enum KimiCodingModels {
 }
 
 ///|
-pub impl Show for KimiCodingModels with output(
+pub impl Show for KimiCodingModels with fn output(
   self : KimiCodingModels,
   logger : &Logger,
 ) -> Unit {

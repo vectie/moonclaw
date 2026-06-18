@@ -2,15 +2,14 @@
 fn run_result_content(run : AcpRun) -> String? {
   match run.result {
     Some({ "content": String(content), .. }) if !content.trim().is_blank() =>
-      Some(content.trim().to_string())
+      Some(content.trim().to_owned())
     Some({ "stdout": String(stdout), .. }) if !stdout.trim().is_blank() =>
-      Some(stdout.trim().to_string())
+      Some(stdout.trim().to_owned())
     Some({ "stderr": String(stderr), .. }) if !stderr.trim().is_blank() =>
-      Some(stderr.trim().to_string())
+      Some(stderr.trim().to_owned())
     _ =>
       match run.error {
-        Some(error) if !error.trim().is_blank() =>
-          Some(error.trim().to_string())
+        Some(error) if !error.trim().is_blank() => Some(error.trim().to_owned())
         _ => None
       }
   }

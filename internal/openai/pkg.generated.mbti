@@ -2,6 +2,7 @@
 package "vectie/moonclaw/internal/openai"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/schema",
@@ -72,13 +73,13 @@ pub struct AnthropicContentBlock {
   name : String?
   input : Json?
   id : String?
-} derive(Show, @json.FromJson)
+} derive(@debug.Debug, @json.FromJson)
 
 pub struct AnthropicDelta {
   type_ : String?
   text : String?
   stop_reason : String?
-} derive(Show, @json.FromJson)
+} derive(@debug.Debug, @json.FromJson)
 
 pub struct AnthropicMessage {
   role : String
@@ -105,7 +106,7 @@ pub struct AnthropicResponse {
   stop_reason : String?
   stop_sequence : String?
   usage : AnthropicUsage
-} derive(Show, @json.FromJson)
+} derive(@debug.Debug, @json.FromJson)
 
 pub struct AnthropicStreamEvent {
   type_ : String
@@ -113,7 +114,7 @@ pub struct AnthropicStreamEvent {
   delta : AnthropicDelta?
   content_block : AnthropicContentBlock?
   message : AnthropicResponse?
-} derive(Show, @json.FromJson)
+} derive(@debug.Debug, @json.FromJson)
 
 pub struct AnthropicTool {
   name : String
@@ -125,7 +126,7 @@ pub impl ToJson for AnthropicTool
 pub struct AnthropicUsage {
   input_tokens : Int
   output_tokens : Int
-} derive(Show, @json.FromJson)
+} derive(@debug.Debug, @json.FromJson)
 
 pub(all) enum CacheControl {
   Ephemeral
@@ -140,7 +141,7 @@ pub struct ChatCompletion {
   usage : CompletionUsage?
   system_fingerprint : String?
   service_tier : ChatCompletionServiceTier?
-} derive(Show)
+} derive(@debug.Debug)
 pub fn ChatCompletion::new(id~ : String, choices~ : Array[ChatCompletionChoice], created~ : Int, model~ : String, usage? : CompletionUsage, system_fingerprint? : String, service_tier? : ChatCompletionServiceTier) -> Self
 pub impl ToJson for ChatCompletion
 pub impl @json.FromJson for ChatCompletion
@@ -165,7 +166,7 @@ pub struct ChatCompletionChoice {
   finish_reason : ChatCompletionChoiceFinishReason?
   index : Int
   message : ChatCompletionMessage
-} derive(Show)
+} derive(@debug.Debug)
 pub fn ChatCompletionChoice::new(finish_reason? : ChatCompletionChoiceFinishReason, index~ : Int, message~ : ChatCompletionMessage) -> Self
 
 pub(all) enum ChatCompletionChoiceFinishReason {
@@ -174,7 +175,7 @@ pub(all) enum ChatCompletionChoiceFinishReason {
   ToolCalls
   ContentFilter
   FunctionCall
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct ChatCompletionChunk {
   id : String
@@ -237,7 +238,7 @@ pub struct ChatCompletionMessage {
   refusal : String?
   role : ChatCompletionMessageRole
   tool_calls : Array[ChatCompletionMessageToolCall]
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub fn ChatCompletionMessage::new(content? : String, refusal? : String, role? : ChatCompletionMessageRole, tool_calls? : Array[ChatCompletionMessageToolCall]) -> Self
 pub fn ChatCompletionMessage::to_param(Self) -> ChatCompletionMessageParam
 pub impl @json.FromJson for ChatCompletionMessage
@@ -253,21 +254,21 @@ pub impl @json.FromJson for ChatCompletionMessageParam
 
 pub enum ChatCompletionMessageRole {
   Assistant
-} derive(Show)
+} derive(@debug.Debug)
 pub impl ToJson for ChatCompletionMessageRole
 
 #alias(ChatCompletionMessageToolCallParam)
 pub struct ChatCompletionMessageToolCall {
   id : String
   function : ChatCompletionMessageToolCallFunction
-} derive(Show)
+} derive(@debug.Debug)
 pub impl ToJson for ChatCompletionMessageToolCall
 pub impl @json.FromJson for ChatCompletionMessageToolCall
 
 pub struct ChatCompletionMessageToolCallFunction {
   arguments : String?
   name : String
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) enum ChatCompletionReasoningEffort {
   None_
@@ -276,7 +277,7 @@ pub(all) enum ChatCompletionReasoningEffort {
   Medium
   High
   Xhigh
-} derive(Show)
+} derive(@debug.Debug)
 
 pub(all) enum ChatCompletionRole {
   Developer
@@ -293,7 +294,7 @@ pub(all) enum ChatCompletionServiceTier {
   Flex
   Scale
   Priority
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct ChatCompletionStreamOptionsParam {
   include_obfuscation : Bool?
@@ -333,7 +334,7 @@ pub fn ChatCompletionUserMessageParam::new(content~ : Array[ChatCompletionConten
 
 pub struct CompletionTokensDetails {
   reasoning_tokens : Int?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 
 pub struct CompletionUsage {
   completion_tokens : Int
@@ -343,7 +344,7 @@ pub struct CompletionUsage {
   prompt_tokens : Int
   prompt_tokens_details : PromptTokensDetails?
   total_tokens : Int
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub fn CompletionUsage::new(completion_tokens~ : Int, completion_tokens_details? : CompletionTokensDetails, cost? : Double, cost_details? : CostDetails, prompt_tokens~ : Int, prompt_tokens_details? : PromptTokensDetails, total_tokens~ : Int) -> Self
 pub impl @json.FromJson for CompletionUsage
 
@@ -353,7 +354,7 @@ pub struct CompletionUsageParam {
 
 pub struct CostDetails {
   upstream_inference_cost : Double?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 
 pub struct FunctionDefinition {
   name : String
@@ -374,7 +375,7 @@ pub impl @json.FromJson for OpenRouterErrorResponse
 pub struct PromptTokensDetails {
   cached_tokens : Int?
   audio_tokens : Int?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub fn PromptTokensDetails::new(cached_tokens? : Int, audio_tokens? : Int) -> Self
 
 pub struct Request {

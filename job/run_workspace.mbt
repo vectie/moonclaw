@@ -2,7 +2,7 @@
 fn configured_workspace_root(definition : JobDefinition) -> String? {
   match definition.config {
     { "workspace": String(workspace), .. } if !workspace.trim().is_blank() =>
-      Some(workspace.trim().to_string())
+      Some(workspace.trim().to_owned())
     _ => None
   }
 }
@@ -115,7 +115,7 @@ fn source_hint_mount_manifest_path(workspace_dir : String) -> String {
 
 ///|
 fn source_hint_mount_name(source_path : String) -> String {
-  let base = @pathx.basename(source_path).to_string()
+  let base = @pathx.basename(source_path).to_owned()
   let safe_base = safe_step_file_segment(base)
   if safe_base.is_blank() {
     "source-\{source_path.hash()}"
@@ -134,7 +134,7 @@ fn source_hint_followup_paths_from_markdown(content : String) -> Array[String] {
   let paths : Array[String] = []
   let mut in_section = false
   for raw_line in content.split("\n") {
-    let line = raw_line.trim().to_string()
+    let line = raw_line.trim().to_owned()
     if line.has_prefix("## ") {
       let normalized = line[3:].trim().to_lower()
       if in_section && normalized != "local repository follow-up" {
@@ -146,7 +146,7 @@ fn source_hint_followup_paths_from_markdown(content : String) -> Array[String] {
     if !in_section || !line.has_prefix("- ") {
       continue
     }
-    let candidate = line[2:].trim().to_string()
+    let candidate = line[2:].trim().to_owned()
     if !candidate.is_blank() && !paths.contains(candidate) {
       paths.push(candidate)
     }
@@ -276,11 +276,11 @@ fn manual_memory_content(current_content : String) -> String {
   let end_marker = "<!-- moonclaw:memory:end -->"
   match (current_content.find(start_marker), current_content.find(end_marker)) {
     (Some(start), Some(end)) if end >= start =>
-      (current_content[:start].to_string() +
-      current_content[end + end_marker.length():].to_string())
+      (current_content[:start].to_owned() +
+      current_content[end + end_marker.length():].to_owned())
       .trim()
-      .to_string()
-    _ => current_content.trim().to_string()
+      .to_owned()
+    _ => current_content.trim().to_owned()
   }
 }
 
@@ -384,19 +384,19 @@ async fn git_with_local_identity(
     ..args.map(fn(arg) { arg[:] }),
   ]
   let command = @spawn.spawn("git", spawn_args, cwd=workspace_dir) catch {
-    error => return Err(error.to_string())
+    error => return Err("\{to_repr(error)}")
   }
   if command.status == 0 {
     Ok(command)
   } else {
-    Err(command.stderr.trim().to_string())
+    Err(command.stderr.trim().to_owned())
   }
 }
 
 ///|
 async fn git_stdout(workspace_dir : String, args : Array[String]) -> String {
   match git_with_local_identity(workspace_dir, args) {
-    Ok(process) => process.stdout.trim().to_string()
+    Ok(process) => process.stdout.trim().to_owned()
     Err(error) => error
   }
 }

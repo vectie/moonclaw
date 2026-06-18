@@ -35,8 +35,8 @@ fn requested_output_format_from_preprocess_intake(intake : Json?) -> String? {
   match intake {
     Some(Object(obj)) =>
       match obj.get("requested_output_format") {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
-          Some(value.trim().to_string())
+        Some(String(value)) if !value.trim().to_owned().is_blank() =>
+          Some(value.trim().to_owned())
         _ => None
       }
     _ => None
@@ -128,7 +128,7 @@ pub fn with_e2e_preprocess_steps(proposal : JobProposal) -> JobProposal {
     has_context_preprocess_step(proposal) {
     return proposal
   }
-  if proposal.request_text.trim().to_string().is_blank() {
+  if proposal.request_text.trim().to_owned().is_blank() {
     return proposal
   }
   JobProposal::{

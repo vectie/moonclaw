@@ -5,7 +5,7 @@ async fn Daemon::mooncode_runtime_events_state(
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let session_id = session_id.to_string()
+  let session_id = session_id.to_owned()
   let book_root = self.mooncode_runtime_events_book_root(session_id, r, {})
   if book_root == "" {
     raise json_error(400, "Bad Request", {
@@ -39,7 +39,7 @@ async fn Daemon::mooncode_runtime_events(
         },
       })
   }
-  let session_id = session_id.to_string()
+  let session_id = session_id.to_owned()
   let book_root = self.mooncode_runtime_events_book_root(session_id, r, body)
   if book_root == "" {
     raise json_error(400, "Bad Request", {

@@ -12,14 +12,24 @@ test "parse" {
     @uuid.parse("12345678-1234-1234-1234-ABCDEF098765"),
     content="12345678-1234-1234-1234-abcdef098765",
   )
-  json_inspect(try? @uuid.parse("13cb"), content={ "Err": "UnexpectedEnd" })
-  json_inspect(try? @uuid.parse("13cb501c-99a8-c889-3234"), content={
-    "Err": ["MissingDash", ""],
+  json_inspect(Ok(@uuid.parse("13cb")) catch { error => Err(error) }, content={
+    "Err": "UnexpectedEnd",
   })
-  json_inspect(try? @uuid.parse("g"), content={ "Err": ["InvalidOctet", "g"] })
-  json_inspect(try? @uuid.parse("13cb501c-1234-5678-9034-abcdef937e20g"), content={
-    "Err": ["ExtraContent", "g"],
+  json_inspect(
+    Ok(@uuid.parse("13cb501c-99a8-c889-3234")) catch {
+      error => Err(error)
+    },
+    content={ "Err": ["MissingDash", ""] },
+  )
+  json_inspect(Ok(@uuid.parse("g")) catch { error => Err(error) }, content={
+    "Err": ["InvalidOctet", "g"],
   })
+  json_inspect(
+    Ok(@uuid.parse("13cb501c-1234-5678-9034-abcdef937e20g")) catch {
+      error => Err(error)
+    },
+    content={ "Err": ["ExtraContent", "g"] },
+  )
 }
 
 ///|

@@ -58,7 +58,7 @@ struct AgentRun {
   completed_at : Int?
   result : Json?
   error : @protocol.ErrorShape?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub(all) struct AuthConfig {
@@ -80,7 +80,7 @@ pub struct SessionMessage {
   content : String
   timestamp : Int
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct SessionEntry {
@@ -95,10 +95,10 @@ struct SessionEntry {
   messages : Array[SessionMessage]
   linked_proposal_id : String?
   linked_run_id : String?
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
-impl @json.FromJson for SessionEntry with from_json(
+impl @json.FromJson for SessionEntry with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> SessionEntry raise @json.JsonDecodeError {
@@ -190,7 +190,7 @@ struct PlanModeState {
   notes : Array[String]
   latest_candidate : @job.JobProposal
   updated_at : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct DedupeCache {
@@ -223,14 +223,14 @@ struct PersistedChannelAccount {
   account_id : String
   config : Json
   auto_start : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct PersistedChannelState {
   channel_id : String
   config : @channel.ChannelConfig
   accounts : Array[PersistedChannelAccount]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct ChannelStateStore {
@@ -496,13 +496,12 @@ fn merged_acp_run_metadata(
 fn run_result_summary(run : @acp.AcpRun) -> String? {
   match run.result {
     Some({ "content": String(content), .. }) if !content.trim().is_blank() =>
-      Some(content.trim().to_string())
+      Some(content.trim().to_owned())
     Some({ "stdout": String(stdout), .. }) if !stdout.trim().is_blank() =>
-      Some(stdout.trim().to_string())
+      Some(stdout.trim().to_owned())
     _ =>
       match run.error {
-        Some(error) if !error.trim().is_blank() =>
-          Some(error.trim().to_string())
+        Some(error) if !error.trim().is_blank() => Some(error.trim().to_owned())
         _ => None
       }
   }

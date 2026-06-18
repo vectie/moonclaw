@@ -8,7 +8,7 @@ pub struct OnboardingOptions {
   feishu_enabled : Bool?
   feishu_app_id : String?
   feishu_app_secret : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct OnboardingAuthProviderStatus {
@@ -18,14 +18,14 @@ pub struct OnboardingAuthProviderStatus {
   detail : String?
   default_model : String?
   available_models : Array[String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct OnboardingAuthStatus {
   providers : Array[OnboardingAuthProviderStatus]
   issues : Array[String]
   next_steps : Array[String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct OnboardingStatus {
@@ -47,7 +47,7 @@ pub struct OnboardingStatus {
   plugin_count : Int
   issues : Array[String]
   next_steps : Array[String]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct OnboardingApplyResult {
@@ -57,7 +57,7 @@ pub struct OnboardingApplyResult {
   created : Array[String]
   preserved : Array[String]
   onboarding : OnboardingStatus
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 fn default_onboarding_options() -> OnboardingOptions {
@@ -141,7 +141,7 @@ fn json_string_field(value : Json, field : String) -> String? {
     Object(obj) =>
       match obj.get(field) {
         Some(String(text)) if !text.trim().is_empty() =>
-          Some(text.trim().to_string())
+          Some(text.trim().to_owned())
         _ => None
       }
     _ => None
@@ -435,7 +435,7 @@ fn json_set_path(json : Json, path : Array[String], value : Json) -> Json {
   }
   let current = json_object_copy(Some(json))
   let head = path[0]
-  let tail = path[1:].to_array()
+  let tail = path[1:].to_owned()
   current[head] = match current.get(head) {
     Some(existing) => json_set_path(existing, tail, value)
     None => json_set_path(Json::object({}), tail, value)
@@ -451,7 +451,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       configured = json_set_path(
         configured,
         ["agents", "defaults", "model", "primary"],
-        Json::string(model.trim().to_string()),
+        Json::string(model.trim().to_owned()),
       )
     _ => ()
   }
@@ -460,7 +460,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       configured = json_set_path(
         configured,
         ["agents", "defaults", "cwd"],
-        Json::string(working_directory.trim().to_string()),
+        Json::string(working_directory.trim().to_owned()),
       )
     _ => ()
   }
@@ -469,7 +469,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       configured = json_set_path(
         configured,
         ["agents", "defaults", "workspace"],
-        Json::string(workspace_root.trim().to_string()),
+        Json::string(workspace_root.trim().to_owned()),
       )
     _ => ()
   }
@@ -487,7 +487,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       configured = json_set_path(
         configured,
         ["gateway", "auth", "token"],
-        Json::string(token.trim().to_string()),
+        Json::string(token.trim().to_owned()),
       )
     _ => ()
   }
@@ -505,7 +505,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       configured = json_set_path(
         configured,
         ["channels", "feishu", "appId"],
-        Json::string(app_id.trim().to_string()),
+        Json::string(app_id.trim().to_owned()),
       )
       if options.feishu_enabled is None {
         configured = json_set_path(
@@ -522,7 +522,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
       configured = json_set_path(
         configured,
         ["channels", "feishu", "appSecret"],
-        Json::string(app_secret.trim().to_string()),
+        Json::string(app_secret.trim().to_owned()),
       )
       if options.feishu_enabled is None {
         configured = json_set_path(
@@ -617,7 +617,7 @@ fn collect_preserved_keys(
 
 ///|
 fn config_dir(path : String) -> String {
-  @pathx.dirname(path).to_string()
+  @pathx.dirname(path).to_owned()
 }
 
 ///|

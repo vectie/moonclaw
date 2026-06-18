@@ -1,6 +1,6 @@
 ///|
 pub async fn start(args : ArrayView[String]) -> Unit {
-  let arr = args.to_array()
+  let arr = args.to_owned()
   match arr[:] {
     ["import", packet_path, ..] => import_packet(arr, packet_path)
     ["run", run_id, ..] => run_packet_job(arr, run_id)

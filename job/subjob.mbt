@@ -8,7 +8,7 @@ pub(all) struct SubjobStepConfig {
   execution_target : String?
   include_parent_outputs : Bool
   max_depth : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn SubjobStepConfig::new(
@@ -39,9 +39,9 @@ fn proposal_with_execution_override(
   execution_mode : String?,
   execution_target : String?,
 ) -> JobProposal {
-  let trimmed_mode = execution_mode.map(fn(mode) { mode.trim().to_string() })
+  let trimmed_mode = execution_mode.map(fn(mode) { mode.trim().to_owned() })
   let trimmed_target = execution_target.map(fn(target) {
-    target.trim().to_string()
+    target.trim().to_owned()
   })
   if trimmed_mode.unwrap_or("").is_blank() &&
     trimmed_target.unwrap_or("").is_blank() {
@@ -91,12 +91,12 @@ fn proposal_execution_override(
   if provider_execution_requested(config.execution_mode) {
     let profile_target = match proposal.profile_metadata {
       { "execution": { "target": String(target), .. }, .. } =>
-        Some(target.trim().to_string())
+        Some(target.trim().to_owned())
       _ => None
     }
     let profile_mode = match proposal.profile_metadata {
       { "execution": { "mode": String(mode), .. }, .. } =>
-        Some(mode.trim().to_string())
+        Some(mode.trim().to_owned())
       _ => None
     }
     let execution_mode = match profile_mode {
@@ -613,12 +613,12 @@ pub fn subjob_step_handler(
       "child family: \{compilation.family}",
     ]
     match config.execution_mode {
-      Some(mode) if !mode.trim().to_string().is_blank() =>
+      Some(mode) if !mode.trim().to_owned().is_blank() =>
         logs.push("child execution mode: \{mode}")
       _ => ()
     }
     match config.execution_target {
-      Some(target) if !target.trim().to_string().is_blank() =>
+      Some(target) if !target.trim().to_owned().is_blank() =>
         logs.push("child execution target: \{target}")
       _ => ()
     }

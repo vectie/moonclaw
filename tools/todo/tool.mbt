@@ -5,7 +5,7 @@ enum TodoResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for TodoResult with output(self : TodoResult, logger : &Logger) -> Unit {
+pub impl Show for TodoResult with fn output(self : TodoResult, logger : &Logger) -> Unit {
   match self {
     Read(result) => result.output(logger)
     Write(result) => result.output(logger)
@@ -19,7 +19,7 @@ priv struct TodoReadResult {
 } derive(ToJson, FromJson)
 
 ///|
-impl Show for TodoReadResult with output(
+impl Show for TodoReadResult with fn output(
   self : TodoReadResult,
   logger : &Logger,
 ) -> Unit {
@@ -80,7 +80,7 @@ priv struct TodoWriteResult {
 } derive(ToJson, FromJson)
 
 ///|
-impl Show for TodoWriteResult with output(
+impl Show for TodoWriteResult with fn output(
   self : TodoWriteResult,
   logger : &Logger,
 ) -> Unit {
@@ -138,7 +138,7 @@ priv enum Action {
   Update
   MarkProgress
   MarkCompleted
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 /// Parsed arguments from JSON input for todo operations
@@ -149,13 +149,13 @@ struct TodoArgs {
   priority : Priority
   status : Status
   notes : String?
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 /// Parse error type for todo arguments
 suberror TodoArgsError {
   TodoArgsError(String)
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// Parse JSON arguments into TodoArgs
@@ -194,7 +194,7 @@ pub fn parse_todo_args(args : Json) -> TodoArgs raise TodoArgsError {
         "low" => Low
         _ =>
           raise TodoArgsError(
-            "Error: Invalid priority '\{p}'. Must be 'high', 'medium', or 'low'.",
+            "Error: Invalid priority '\{to_repr(p)}'. Must be 'high', 'medium', or 'low'.",
           )
       }
     _ => Medium
@@ -207,7 +207,7 @@ pub fn parse_todo_args(args : Json) -> TodoArgs raise TodoArgsError {
         "completed" => Completed
         _ =>
           raise TodoArgsError(
-            "Error: Invalid status '\{s}'. Must be 'pending', 'in_progress', or 'completed'.",
+            "Error: Invalid status '\{to_repr(s)}'. Must be 'pending', 'in_progress', or 'completed'.",
           )
       }
     _ => Pending

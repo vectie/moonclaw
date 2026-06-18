@@ -16,14 +16,14 @@ pub fn ChatService::new(store~ : SystemStore) -> ChatService {
 
 ///|
 fn normalize_term(term : String) -> String {
-  term.trim().to_string().to_lower()
+  term.trim().to_owned().to_lower()
 }
 
 ///|
 fn tokenize_question(question : String) -> Array[String] {
   question
   .split(" ")
-  .map(fn(term) { normalize_term(term.to_string()) })
+  .map(fn(term) { normalize_term(term.to_owned()) })
   .filter(fn(term) { !term.is_blank() && term.length() > 1 })
   .collect()
 }
@@ -106,13 +106,13 @@ fn snippet_for_content(content : String, terms : Array[String]) -> String {
       } else {
         content.length()
       }
-      return content[start:end].trim().to_string()
+      return content[start:end].trim().to_owned()
     }
   }
   if content.length() <= 180 {
-    content.trim().to_string()
+    content.trim().to_owned()
   } else {
-    content[:180].trim().to_string()
+    content[:180].trim().to_owned()
   }
 }
 
@@ -188,7 +188,7 @@ async fn ChatService::retrieve_merged(
   } else {
     hits.length()
   }
-  hits[:limit].to_array()
+  hits[:limit].to_owned()
 }
 
 ///|

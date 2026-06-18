@@ -47,11 +47,13 @@ pub fn[T] Broadcast::put(self : Broadcast[T], data : T) -> Unit {
 ///
 /// Returns the value at the specified index in the broadcast history.
 pub async fn[T] Broadcast::read(self : Broadcast[T], index : Int) -> T {
-  loop self.values.get(index) {
-    Some(value) => return value
-    None => {
-      self.read.wait()
-      continue self.values.get(index)
+  for item = self.values.get(index) {
+    match item {
+      Some(value) => return value
+      None => {
+        self.read.wait()
+        continue self.values.get(index)
+      }
     }
   }
 }
@@ -176,26 +178,28 @@ pub async fn[T, G] Broadcast::spawn_in(
               start.arrive()
               for ;; {
                 let index = reader.index
-                loop self.values.get(index) {
-                  Some(value) => {
-                    // It is possible that other coroutines have already processed
-                    // this value (using flush), so we need to check the index
-                    // again.
-                    if index == reader.index {
-                      (reader.f)(value)
-                      reader.index = index + 1
+                for item = self.values.get(index) {
+                  match item {
+                    Some(value) => {
+                      // It is possible that other coroutines have already processed
+                      // this value (using flush), so we need to check the index
+                      // again.
+                      if index == reader.index {
+                        (reader.f)(value)
+                        reader.index = index + 1
+                      }
+                      break
                     }
-                    break
-                  }
-                  None => {
-                    if session.stopped {
-                      return
+                    None => {
+                      if session.stopped {
+                        return
+                      }
+                      self.read.wait()
+                      if session.stopped {
+                        return
+                      }
+                      continue self.values.get(index)
                     }
-                    self.read.wait()
-                    if session.stopped {
-                      return
-                    }
-                    continue self.values.get(index)
                   }
                 }
               }

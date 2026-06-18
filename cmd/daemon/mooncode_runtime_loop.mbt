@@ -7,7 +7,7 @@ async fn Daemon::mooncode_runtime_loop(
 ) -> Unit {
   let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
   let body : Json = reader.read() catch { _ => Json::object({}) }
-  let session_id = session_id.to_string()
+  let session_id = session_id.to_owned()
   let requested_book_root = mooncode_request_book_root(r)
   let book_root = if requested_book_root == "" {
     mooncode_json_string(body, "book_root", default="")

@@ -22,7 +22,7 @@ fn heuristic_missing_inputs_from_text(text : String) -> Array[String] {
   let lines = text.split("\n")
   let items : Array[String] = []
   for raw_line in lines {
-    let line = raw_line.trim().to_string()
+    let line = raw_line.trim().to_owned()
     guard !line.is_blank() else { continue }
     let mut candidate = ""
     let is_bullet = line.has_prefix("- ") ||
@@ -34,9 +34,9 @@ fn heuristic_missing_inputs_from_text(text : String) -> Array[String] {
       line[1] == '.' &&
       line[2] == ' '
     if is_bullet {
-      candidate = line[2:].trim().to_string()
+      candidate = line[2:].trim().to_owned()
     } else if is_numbered {
-      candidate = line[3:].trim().to_string()
+      candidate = line[3:].trim().to_owned()
     }
     guard !candidate.is_blank() else { continue }
     guard !generic_missing_input_text(candidate) else { continue }
@@ -371,7 +371,7 @@ async fn resolve_adaptive_analysis_result(
   match adaptive_envelope {
     Some(envelope) => {
       let envelope = enriched_missing_inputs_envelope(execution, envelope)
-      let verdict = envelope.verdict.trim().to_string().to_lower()
+      let verdict = envelope.verdict.trim().to_owned().to_lower()
       match verdict {
         "completed" => None
         "needs_input" => {

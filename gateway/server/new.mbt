@@ -8,10 +8,10 @@ pub async fn Gateway::new(
 ) -> Gateway {
   let home = match home {
     None => @path.Path(@os.home()).join(@path.Path(".moonclaw")).to_string()
-    Some(home) => home.to_string()
+    Some(home) => home.to_owned()
   }
   let cwd = match cwd {
-    Some(cwd) => cwd.to_string()
+    Some(cwd) => cwd.to_owned()
     None => @os.cwd()
   }
   let uuid = match uuid {
@@ -37,9 +37,11 @@ pub async fn Gateway::new(
       let token_file = @path.Path(gateway_dir)
         .join(@path.Path("token"))
         .to_string()
-      let token_result : Result[String, Error] = try? @fsx.read_file(token_file)
+      let token_result : Result[String, Error] = Ok(@fsx.read_file(token_file)) catch {
+        error => Err(error)
+      }
       let token = match token_result {
-        Ok(content) => Some(content.trim().to_string())
+        Ok(content) => Some(content.trim().to_owned())
         Err(_) => {
           let new_token = generate_token(uuid~)
           @fsx.make_directory(gateway_dir, recursive=true) catch {

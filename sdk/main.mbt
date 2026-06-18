@@ -79,7 +79,7 @@ async fn execute(prompt~ : String, model? : String) -> Unit {
     @io.ReaderClosed => ()
     error => {
       let error : Json = {
-        "error": { "code": -1, "message": error.to_string() },
+        "error": { "code": -1, "message": "\{to_repr(error)}" },
       }
       println(error.stringify())
     }
@@ -92,52 +92,52 @@ async fn main {
   let args = @os.args()
   let mut prompt = None
   let mut model = None
-  loop args[1:] {
-    ["exec" | "execute" | "-p" | "--prompt", p, .. args] =>
-      if p.has_prefix("-") {
+  for args = args[1:] {
+    match args {
+      ["exec" | "execute" | "-p" | "--prompt", p, .. args] =>
+        if p.has_prefix("-") {
+          let error : Json = {
+            "error": {
+              "code": -1,
+              "message": "\{to_repr(Failure::Failure("Expect <prompt> after -p/--prompt"))}",
+            },
+          }
+          println(error.stringify())
+        } else {
+          prompt = Some(p)
+          continue args
+        }
+      ["-m" | "--model", m, .. args] =>
+        if m.has_prefix("-") {
+          let error : Json = {
+            "error": {
+              "code": -1,
+              "message": "\{to_repr(Failure::Failure("Expect <model> after -m/--model"))}",
+            },
+          }
+          println(error.stringify())
+        } else {
+          model = Some(m)
+          continue args
+        }
+      [unknown, ..] => {
         let error : Json = {
           "error": {
             "code": -1,
-            "message": Failure::Failure("Expect <prompt> after -p/--prompt").to_string(),
+            "message": "\{to_repr(Failure::Failure("Unknown argument: \{unknown}"))}",
           },
         }
         println(error.stringify())
-      } else {
-        prompt = Some(p)
-        continue args
       }
-    ["-m" | "--model", m, .. args] =>
-      if m.has_prefix("-") {
-        let error : Json = {
-          "error": {
-            "code": -1,
-            "message": Failure::Failure("Expect <model> after -m/--model").to_string(),
-          },
-        }
-        println(error.stringify())
-      } else {
-        model = Some(m)
-        continue args
-      }
-    [unknown, ..] => {
-      let error : Json = {
-        "error": {
-          "code": -1,
-          "message": Failure::Failure("Unknown argument: \{unknown}").to_string(),
-        },
-      }
-      println(error.stringify())
+      [] => break
     }
-    [] => break
   }
   guard prompt is Some(prompt) else {
+    let failure = Failure::Failure(
+      "Missing required argument: -p/--prompt <prompt>",
+    )
     let error : Json = {
-      "error": {
-        "code": -1,
-        "message": Failure::Failure(
-          "Missing required argument: -p/--prompt <prompt>",
-        ).to_string(),
-      },
+      "error": { "code": -1, "message": "\{to_repr(failure)}" },
     }
     println(error.stringify())
     return

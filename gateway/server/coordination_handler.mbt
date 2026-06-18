@@ -9,7 +9,7 @@ pub struct CreateCoordinationParams {
 pub fn create_coordination_params(
   parent_agent~ : String,
   subtasks~ : Array[SubTaskParams],
-  metadata? : Map[String, Json] = Map::new(),
+  metadata? : Map[String, Json] = Map([]),
 ) -> CreateCoordinationParams {
   CreateCoordinationParams::{ parent_agent, subtasks, metadata }
 }
@@ -105,7 +105,7 @@ async fn Gateway::handle_get_coordination(
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {
-  let task = match self.coordinator.get(coordination_id.to_string()) {
+  let task = match self.coordinator.get(coordination_id.to_owned()) {
     Some(t) => t
     None =>
       raise json_error(404, "NotFound", {
@@ -151,7 +151,7 @@ async fn Gateway::handle_start_coordination(
       },
     })
   }
-  let task = match self.coordinator.start_task(coordination_id.to_string()) {
+  let task = match self.coordinator.start_task(coordination_id.to_owned()) {
     Some(t) => t
     None =>
       raise json_error(404, "NotFound", {
@@ -166,7 +166,7 @@ async fn Gateway::handle_start_coordination(
   w.write(task.to_json().stringify())
   @async.with_task_group(group => {
     group.spawn_bg(
-      () => self.run_coordination(coordination_id.to_string()),
+      () => self.run_coordination(coordination_id.to_owned()),
       no_wait=true,
     )
   })
@@ -179,7 +179,7 @@ async fn Gateway::handle_cancel_coordination(
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {
-  let task = match self.coordinator.cancel_task(coordination_id.to_string()) {
+  let task = match self.coordinator.cancel_task(coordination_id.to_owned()) {
     Some(t) => t
     None =>
       raise json_error(404, "NotFound", {
@@ -227,7 +227,7 @@ async fn Gateway::handle_update_subtask(
         },
       })
   }
-  let existing = match self.coordinator.get(coordination_id.to_string()) {
+  let existing = match self.coordinator.get(coordination_id.to_owned()) {
     Some(task) => task
     None =>
       raise json_error(404, "NotFound", {
@@ -237,7 +237,7 @@ async fn Gateway::handle_update_subtask(
         },
       })
   }
-  if !existing.has_subtask(task_id.to_string()) {
+  if !existing.has_subtask(task_id.to_owned()) {
     raise json_error(404, "NotFound", {
       "error": {
         "code": "subtask_not_found",
@@ -247,8 +247,8 @@ async fn Gateway::handle_update_subtask(
   }
   let task = match
     self.coordinator.update_subtask_status(
-      coordination_id.to_string(),
-      task_id.to_string(),
+      coordination_id.to_owned(),
+      task_id.to_owned(),
       params.status,
       result=params.result,
       error=params.error,
@@ -274,7 +274,7 @@ async fn Gateway::handle_coordination_results(
   w : @httpx.ResponseWriter,
   coordination_id : StringView,
 ) -> Unit {
-  let task = match self.coordinator.get(coordination_id.to_string()) {
+  let task = match self.coordinator.get(coordination_id.to_owned()) {
     Some(t) => t
     None =>
       raise json_error(404, "NotFound", {

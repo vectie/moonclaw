@@ -107,7 +107,7 @@ async test "analysis_step_handler prefers run workspace over config cwd" {
         Err(error) => fail(error)
       },
     )
-    inspect(captured.val, content=run_workspace)
+    debug_inspect(captured.val, content=run_workspace)
   })
 }
 
@@ -151,9 +151,12 @@ async test "analysis_step_handler persists report and result artifacts" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(requests.val, content="2")
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(requests.val, content="2")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) { output.stringify().contains("report_artifact_id") })
@@ -161,8 +164,8 @@ async test "analysis_step_handler persists report and result artifacts" {
       content="true",
     )
     let stored_artifacts = engine.runtime.store().list_artifacts()
-    inspect(stored_artifacts.length(), content="2")
-    inspect(
+    debug_inspect(stored_artifacts.length(), content="2")
+    debug_inspect(
       stored_artifacts.map(fn(artifact) { artifact.artifact_type }).join(","),
       content="analysis.report,analysis.result",
     )
@@ -211,14 +214,20 @@ async test "analysis_step_handler projects tool journal into logs and result met
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
     let step = result.steps[0]
-    inspect(step.logs.join("\n").contains("tool journal: "), content="true")
-    inspect(
+    debug_inspect(
+      step.logs.join("\n").contains("tool journal: "),
+      content="true",
+    )
+    debug_inspect(
       step.logs.join("\n").contains("tool[start]: read_file"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       step.logs.join("\n").contains("tool[finish]: read_file ok"),
       content="true",
     )
@@ -228,10 +237,16 @@ async test "analysis_step_handler projects tool journal into logs and result met
       .list_artifacts(run_id="run-analysis-1")
       .filter(fn(artifact) { artifact.artifact_type == "analysis.result" })[0]
     let payload = artifacts.read_text(result_artifact.id).unwrap_or("")
-    inspect(payload.contains("\"tool_call_journal\""), content="true")
-    inspect(payload.contains("\"tool_call_journal_path\""), content="true")
-    inspect(payload.contains("\"tool_call_journal_count\""), content="true")
-    inspect(payload.contains("\"result\""), content="false")
+    debug_inspect(payload.contains("\"tool_call_journal\""), content="true")
+    debug_inspect(
+      payload.contains("\"tool_call_journal_path\""),
+      content="true",
+    )
+    debug_inspect(
+      payload.contains("\"tool_call_journal_count\""),
+      content="true",
+    )
+    debug_inspect(payload.contains("\"result\""), content="false")
   })
 }
 
@@ -279,19 +294,28 @@ async test "analysis_step_handler stamps running step with session journal befor
         Err(error) => fail(error)
       },
     )
-    inspect(observed_journal_exists.val, content="true")
-    inspect(
+    debug_inspect(observed_journal_exists.val, content="true")
+    debug_inspect(
       observed_logs.val.contains("analysis session journal: "),
       content="true",
     )
-    inspect(observed_logs.val.contains("analysis cwd: \{dir}"), content="true")
-    inspect(
+    debug_inspect(
+      observed_logs.val.contains("analysis cwd: \{dir}"),
+      content="true",
+    )
+    debug_inspect(
       observed_logs.val.contains("analysis timeout_ms: 1234"),
       content="true",
     )
     let journal_text = @fs.read_file(observed_journal_path.val).text()
-    inspect(journal_text.contains("\"phase\": \"session\""), content="true")
-    inspect(journal_text.contains("\"event\": \"started\""), content="true")
+    debug_inspect(
+      journal_text.contains("\"phase\": \"session\""),
+      content="true",
+    )
+    debug_inspect(
+      journal_text.contains("\"event\": \"started\""),
+      content="true",
+    )
   })
 }
 
@@ -326,8 +350,8 @@ async test "analysis_step_handler timeout points to tool journal path" {
       Ok(_) => fail("expected timeout")
       Err(error) => error
     }
-    inspect(error.contains("tool journal:"), content="true")
-    inspect(error.contains(".moonclaw-tool-journal-"), content="true")
+    debug_inspect(error.contains("tool journal:"), content="true")
+    debug_inspect(error.contains(".moonclaw-tool-journal-"), content="true")
   })
 }
 
@@ -369,14 +393,17 @@ async test "analysis_step_handler can continue best effort after timeout" {
       .store()
       .get_step_run("run-analysis-1", "analyze")
       .unwrap()
-    inspect(step.status, content="Succeeded")
+    debug_inspect(step.status, content="Succeeded")
     let artifacts = ArtifactStore::new(store=engine.runtime.store())
     let result_artifact = engine.runtime
       .store()
       .list_artifacts(run_id="run-analysis-1")
       .filter(fn(artifact) { artifact.artifact_type == "analysis.result" })[0]
     let payload = artifacts.read_text(result_artifact.id).unwrap_or("")
-    inspect(payload.contains("\"best_effort_on_timeout\":true"), content="true")
+    debug_inspect(
+      payload.contains("\"best_effort_on_timeout\":true"),
+      content="true",
+    )
   })
 }
 
@@ -414,18 +441,21 @@ async test "analysis_step_handler parses structured presentation result payload 
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
     let artifacts = ArtifactStore::new(store=engine.runtime.store())
     let artifact = engine.runtime.store().list_artifacts()[1]
     let content = artifacts.read_text(artifact.id).unwrap_or("")
-    inspect(artifact.artifact_type, content="analysis.result")
-    inspect(content.contains("\"content_contract\""), content="true")
-    inspect(
+    debug_inspect(artifact.artifact_type, content="analysis.result")
+    debug_inspect(content.contains("\"content_contract\""), content="true")
+    debug_inspect(
       content.contains("\"content_contract\":\"presentation_deck_spec.v1\""),
       content="true",
     )
-    inspect(content.contains("\"parsed_content\""), content="true")
-    inspect(
+    debug_inspect(content.contains("\"parsed_content\""), content="true")
+    debug_inspect(
       content.contains("\"title\":\"Land acquisition deck\""),
       content="true",
     )
@@ -468,19 +498,22 @@ async test "analysis_step_handler parses structured presentation render payload 
         Ok(result) => result
         Err(error) => fail(error)
       }
-      inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+      debug_inspect(
+        result.run.status.to_json().stringify(),
+        content="\"Succeeded\"",
+      )
       let artifacts = ArtifactStore::new(store=engine.runtime.store())
       let artifact = engine.runtime.store().list_artifacts()[1]
       let content = artifacts.read_text(artifact.id).unwrap_or("")
-      inspect(artifact.artifact_type, content="analysis.result")
-      inspect(
+      debug_inspect(artifact.artifact_type, content="analysis.result")
+      debug_inspect(
         content.contains(
           "\"content_contract\":\"presentation_render_package.v1\"",
         ),
         content="true",
       )
-      inspect(content.contains("\"parsed_content\""), content="true")
-      inspect(
+      debug_inspect(content.contains("\"parsed_content\""), content="true")
+      debug_inspect(
         content.contains("\"output_kind\":\"vendor_handoff\""),
         content="true",
       )
@@ -521,7 +554,7 @@ async test "analysis_step_handler materializes outputs into run workspace" {
         Err(error) => fail(error)
       },
     )
-    inspect(
+    debug_inspect(
       @fsx.read_file(
         run_workspace
         |> @pathx.join("outputs")
@@ -529,11 +562,11 @@ async test "analysis_step_handler materializes outputs into run workspace" {
       ),
       content="A concise final report.",
     )
-    inspect(
+    debug_inspect(
       @fsx.read_file(run_workspace |> @pathx.join("report.md")),
       content="A concise final report.",
     )
-    inspect(
+    debug_inspect(
       @fsx.read_file(run_workspace |> @pathx.join("result.json")).contains(
         "\"status\":\"completed\"",
       ),
@@ -569,8 +602,11 @@ async test "analysis_step_handler honors nested disable_adaptive metadata" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) {
@@ -594,15 +630,15 @@ test "analysis_tool_contract defaults from legacy booleans" {
       web_search=true,
     ),
   )
-  inspect(enabled.shell.to_json().stringify(), content="true")
-  inspect(enabled.glob_files.to_json().stringify(), content="true")
-  inspect(enabled.list_resources.to_json().stringify(), content="true")
-  inspect(enabled.read_resource.to_json().stringify(), content="true")
-  inspect(enabled.delegate_run.to_json().stringify(), content="true")
-  inspect(enabled.read_files.to_json().stringify(), content="true")
-  inspect(enabled.patch_edit.to_json().stringify(), content="true")
-  inspect(enabled.web_fetch.to_json().stringify(), content="true")
-  inspect(enabled.web_search.to_json().stringify(), content="true")
+  debug_inspect(enabled.shell.to_json().stringify(), content="true")
+  debug_inspect(enabled.glob_files.to_json().stringify(), content="true")
+  debug_inspect(enabled.list_resources.to_json().stringify(), content="true")
+  debug_inspect(enabled.read_resource.to_json().stringify(), content="true")
+  debug_inspect(enabled.delegate_run.to_json().stringify(), content="true")
+  debug_inspect(enabled.read_files.to_json().stringify(), content="true")
+  debug_inspect(enabled.patch_edit.to_json().stringify(), content="true")
+  debug_inspect(enabled.web_fetch.to_json().stringify(), content="true")
+  debug_inspect(enabled.web_search.to_json().stringify(), content="true")
 
   let disabled = analysis_tool_contract(
     AnalysisStepConfig::new(
@@ -611,15 +647,15 @@ test "analysis_tool_contract defaults from legacy booleans" {
       web_search=true,
     ),
   )
-  inspect(disabled.shell.to_json().stringify(), content="false")
-  inspect(disabled.glob_files.to_json().stringify(), content="false")
-  inspect(disabled.list_resources.to_json().stringify(), content="false")
-  inspect(disabled.read_resource.to_json().stringify(), content="false")
-  inspect(disabled.delegate_run.to_json().stringify(), content="false")
-  inspect(disabled.read_files.to_json().stringify(), content="false")
-  inspect(disabled.patch_edit.to_json().stringify(), content="false")
-  inspect(disabled.web_fetch.to_json().stringify(), content="false")
-  inspect(disabled.web_search.to_json().stringify(), content="false")
+  debug_inspect(disabled.shell.to_json().stringify(), content="false")
+  debug_inspect(disabled.glob_files.to_json().stringify(), content="false")
+  debug_inspect(disabled.list_resources.to_json().stringify(), content="false")
+  debug_inspect(disabled.read_resource.to_json().stringify(), content="false")
+  debug_inspect(disabled.delegate_run.to_json().stringify(), content="false")
+  debug_inspect(disabled.read_files.to_json().stringify(), content="false")
+  debug_inspect(disabled.patch_edit.to_json().stringify(), content="false")
+  debug_inspect(disabled.web_fetch.to_json().stringify(), content="false")
+  debug_inspect(disabled.web_search.to_json().stringify(), content="false")
 }
 
 ///|
@@ -647,18 +683,18 @@ test "analysis_tool_contract prefers structured metadata contract" {
       },
     }),
   )
-  inspect(contract.list_files.to_json().stringify(), content="true")
-  inspect(contract.glob_files.to_json().stringify(), content="true")
-  inspect(contract.list_resources.to_json().stringify(), content="true")
-  inspect(contract.read_resource.to_json().stringify(), content="true")
-  inspect(contract.runtime_context.to_json().stringify(), content="true")
-  inspect(contract.list_worktrees.to_json().stringify(), content="true")
-  inspect(contract.delegate_run.to_json().stringify(), content="true")
-  inspect(contract.read_files.to_json().stringify(), content="true")
-  inspect(contract.patch_edit.to_json().stringify(), content="true")
-  inspect(contract.web_fetch.to_json().stringify(), content="true")
-  inspect(contract.web_search.to_json().stringify(), content="true")
-  inspect(contract.shell.to_json().stringify(), content="false")
+  debug_inspect(contract.list_files.to_json().stringify(), content="true")
+  debug_inspect(contract.glob_files.to_json().stringify(), content="true")
+  debug_inspect(contract.list_resources.to_json().stringify(), content="true")
+  debug_inspect(contract.read_resource.to_json().stringify(), content="true")
+  debug_inspect(contract.runtime_context.to_json().stringify(), content="true")
+  debug_inspect(contract.list_worktrees.to_json().stringify(), content="true")
+  debug_inspect(contract.delegate_run.to_json().stringify(), content="true")
+  debug_inspect(contract.read_files.to_json().stringify(), content="true")
+  debug_inspect(contract.patch_edit.to_json().stringify(), content="true")
+  debug_inspect(contract.web_fetch.to_json().stringify(), content="true")
+  debug_inspect(contract.web_search.to_json().stringify(), content="true")
+  debug_inspect(contract.shell.to_json().stringify(), content="false")
 }
 
 ///|
@@ -696,7 +732,7 @@ async test "analysis_step_handler honors nested skip_primary_workspace_output me
         Err(error) => fail(error)
       },
     )
-    inspect(
+    debug_inspect(
       @fsx.exists(
         run_workspace
         |> @pathx.join("outputs")
@@ -704,11 +740,11 @@ async test "analysis_step_handler honors nested skip_primary_workspace_output me
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       @fsx.exists(run_workspace |> @pathx.join("report.md")),
       content="false",
     )
-    inspect(
+    debug_inspect(
       @fsx.exists(run_workspace |> @pathx.join("result.json")),
       content="false",
     )
@@ -752,8 +788,8 @@ async test "analysis_step_handler passes execution routing hints into executor" 
         Err(error) => fail(error)
       },
     )
-    inspect(captured_mode.val, content="acp")
-    inspect(captured_target.val, content="codex-main")
+    debug_inspect(captured_mode.val, content="acp")
+    debug_inspect(captured_target.val, content="codex-main")
   })
 }
 
@@ -813,21 +849,27 @@ async test "default analysis runner launches acp target for cli execution" {
       Ok(execution) => execution
       Err(error) => fail(error)
     }
-    inspect(execution.model_name, content="Fake ACP")
-    inspect(execution.conversation_id.unwrap_or(""), content="acp-run-1-step-1")
-    inspect(execution.content.contains("acp-executed"), content="true")
-    inspect(execution.content.contains("Run through ACP."), content="true")
-    inspect(
+    debug_inspect(execution.model_name, content="Fake ACP")
+    debug_inspect(
+      execution.conversation_id.unwrap_or(""),
+      content="acp-run-1-step-1",
+    )
+    debug_inspect(execution.content.contains("acp-executed"), content="true")
+    debug_inspect(
+      execution.content.contains("Run through ACP."),
+      content="true",
+    )
+    debug_inspect(
       execution.metadata.stringify().contains("patch_receipt"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       execution.metadata
       .stringify()
       .contains("planbook.repair.patch_receipt.v1"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       execution.metadata
       .stringify()
       .contains("\"source_root\":\"\{source_root}\"") ||
@@ -836,7 +878,7 @@ async test "default analysis runner launches acp target for cli execution" {
       .contains("\"source_root\": \"\{source_root}\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       execution.metadata
       .stringify()
       .contains("\"source_root\":\"\{run_workspace}\"") ||
@@ -848,7 +890,7 @@ async test "default analysis runner launches acp target for cli execution" {
     let state = @fsx.read_file(
       dir |> @pathx.join(".moonclaw") |> @pathx.join("acp_sessions.json"),
     )
-    inspect(state.contains("\"status\":\"completed\""), content="true")
+    debug_inspect(state.contains("\"status\":\"completed\""), content="true")
   })
 }
 
@@ -888,16 +930,16 @@ async test "analysis_step_handler can trigger adaptive input verdict from follow
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="2")
-    inspect(
+    debug_inspect(calls.val, content="2")
+    debug_inspect(
       result.run.status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    inspect(
+    debug_inspect(
       result.steps[0].status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    inspect(
+    debug_inspect(
       result.run.summary.unwrap_or(""),
       content="Waiting for input on step analyze: parcel location; parcel size",
     )
@@ -953,22 +995,22 @@ async test "analysis_step_handler treats blocker-style prose as non-complete in 
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="2")
-    inspect(
+    debug_inspect(calls.val, content="2")
+    debug_inspect(
       followup_prompt.val.contains(
         "If the current output mainly reports blockers, missing facts, provisional screening status, or next actions, it is not completed.",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       result.run.status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    inspect(
+    debug_inspect(
       result.steps[0].status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    inspect(
+    debug_inspect(
       result.run.summary.unwrap_or(""),
       content="Waiting for input on step analyze: parcel location; parcel size; comparable sales",
     )
@@ -1031,8 +1073,8 @@ async test "analysis_step_handler loads analysis-adaptation skill into followup 
         Err(error) => fail(error)
       },
     )
-    inspect(calls.val, content="2")
-    inspect(
+    debug_inspect(calls.val, content="2")
+    debug_inspect(
       followup_prompt.val.contains("ADAPTIVE_SKILL_MARKER"),
       content="true",
     )
@@ -1076,12 +1118,12 @@ async test "analysis_step_handler degrades empty needs_subplan verdict into wait
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="3")
-    inspect(
+    debug_inspect(calls.val, content="3")
+    debug_inspect(
       result.run.status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    inspect(
+    debug_inspect(
       result.run.summary.unwrap_or(""),
       content="Waiting for input on step analyze: Split this into narrower research tasks before estimating.",
     )
@@ -1130,9 +1172,12 @@ async test "analysis_step_handler preserves first-pass result on empty needs_sub
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="3")
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(calls.val, content="3")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) { output.stringify().contains("screening-level summary") })
@@ -1180,12 +1225,12 @@ async test "analysis_step_handler asks AI to fill explicit missing inputs for wa
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="3")
-    inspect(
+    debug_inspect(calls.val, content="3")
+    debug_inspect(
       result.run.status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    inspect(
+    debug_inspect(
       result.run.summary.unwrap_or(""),
       content="Waiting for input on step analyze: parcel location; parcel size; comparable sales",
     )
@@ -1287,9 +1332,12 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="3")
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(calls.val, content="3")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) {
@@ -1299,13 +1347,13 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
       content="true",
     )
     let parent_events = engine.runtime.store().list_run_events("run-analysis-1")
-    inspect(
+    debug_inspect(
       parent_events
       .map(fn(event) { event.event_type })
       .contains("child_run.started"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       parent_events
       .map(fn(event) { event.event_type })
       .contains("child_run.succeeded"),
@@ -1315,33 +1363,33 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
       Some(proposal) => proposal
       None => fail("missing child proposal")
     }
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata.stringify().contains("git_worktree"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[1].metadata.stringify().contains("git_worktree"),
       content="false",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"model\":\"gpt-5.4\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"system_prompt\":\"Stay source-grounded.\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"preferred_skills\":[\"research\",\"estimation\"]"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"web_search\":true"),
@@ -1351,7 +1399,7 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
 }
 
 ///|
-async test "analysis_step_handler treats keeper plan packet as completed output" {
+async test "analysis_step_handler treats keeper plan packet as completed output with final packet" {
   @fsx.with_temporary_directory("job-analysis-keeper-packet-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
     let config = AnalysisStepConfig::new(
@@ -1382,9 +1430,12 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="1")
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(calls.val, content="1")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) { output.stringify().contains("\"result_artifact_id\"") })
@@ -1438,9 +1489,12 @@ async test "analysis_step_handler does not adaptive-subplan persisted provider c
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="1")
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(calls.val, content="1")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) { output.stringify().contains("source_materialize") })
@@ -1547,54 +1601,57 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
     let child_proposal = match captured_child_proposal.val {
       Some(proposal) => proposal
       None => fail("missing child proposal")
     }
-    inspect(
+    debug_inspect(
       child_proposal.profile_metadata
       .stringify()
       .contains("\"timeout_ms\":600000"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.profile_metadata
       .stringify()
       .contains("\"max_total_tokens\":24000"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.profile_metadata
       .stringify()
       .contains("\"disable_waiting_for_input\":true"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.profile_metadata
       .stringify()
       .contains("\"best_effort_on_missing_input\":true"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"timeout_ms\":600000"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"max_total_tokens\":24000"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"disable_waiting_for_input\":true"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"best_effort_on_missing_input\":true"),
@@ -1635,9 +1692,12 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="1")
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(calls.val, content="1")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) { output.stringify().contains("\"result_artifact_id\"") })
@@ -1687,12 +1747,12 @@ async test "analysis_step_handler repairs invalid followup judge output" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(calls.val, content="3")
-    inspect(
+    debug_inspect(calls.val, content="3")
+    debug_inspect(
       result.run.status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    inspect(
+    debug_inspect(
       result.run.summary.unwrap_or(""),
       content="Waiting for input on step analyze: parcel location; comparable sales",
     )
@@ -1706,7 +1766,7 @@ async test "analysis_step_handler honors adaptive max depth from moonclaw.json" 
       dir |> @pathx.join("moonclaw.json"),
       "{\n  \"jobs\": {\n    \"analysis\": {\n      \"adaptive\": {\n        \"max_depth\": 5\n      }\n    }\n  }\n}\n",
     )
-    inspect(
+    debug_inspect(
       configured_adaptive_subplan_max_depth(dir, None).unwrap_or(0),
       content="5",
     )
@@ -1753,13 +1813,13 @@ async test "build_analysis_request turns resume guess instruction into explicit 
         Err(error) => fail(error)
       },
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Resume instruction from user:\nguess missing data",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains("authoritative operator guidance"),
       content="true",
     )
@@ -1823,59 +1883,59 @@ async test "build_analysis_request renders starter attachment artifacts" {
         Err(error) => fail(error)
       },
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Starter attachment digest excerpt:\n# Starter Attachment Digest\n\nParcel overview",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Aggregate starter attachment digest path: /tmp/ws/digest.md",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Aggregate starter attachment digest artifact: artifact-run-1-starter-digest",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains("Starter attachment artifacts:"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Prefer `starter_attachment_digest_excerpt` first when present as the immediate compact starter-document overview.",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Prefer `starter_attachment_digest_path` first when present as the directly readable aggregate starter-document overview.",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Use `starter_attachment_digest_artifact_id` next when artifact-oriented tooling is available.",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "parcel.pdf: artifact-run-1-starter-file-1-summary, artifact-run-1-starter-file-1-text",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "Prefer `starter_attachment.summary` artifact ids first when available",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains(
         "manifest_markdown: artifact-run-1-starter-manifest-markdown",
       ),
@@ -1932,8 +1992,11 @@ async test "analysis_step_handler keeps guessed deliverable completed after resu
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(calls.val, content="2")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(calls.val, content="2")
   })
 }
 
@@ -1977,7 +2040,7 @@ async test "analysis_step_handler loads local skill file content into prompt" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(
+    debug_inspect(
       result.outputs
       .get("analyze")
       .map(fn(output) { output.stringify().contains("SKILL_SUMMARY_MARKER") })
@@ -2024,7 +2087,10 @@ async test "resolved_model_name uses configured primary model for default" {
       execution_isolation: None,
       role_runtime_contract: None,
     }
-    inspect(resolved_model_name(request).unwrap_or(""), content="codex/gpt-5.4")
+    debug_inspect(
+      resolved_model_name(request).unwrap_or(""),
+      content="codex/gpt-5.4",
+    )
   })
 }
 
@@ -2069,8 +2135,8 @@ async test "build_analysis_request can isolate execution in a git worktree" {
         Err(error) => fail(error)
       },
     )
-    inspect(captured.val.contains(".moonclaw-worktrees"), content="true")
-    inspect(captured.val != dir, content="true")
+    debug_inspect(captured.val.contains(".moonclaw-worktrees"), content="true")
+    debug_inspect(captured.val != dir, content="true")
     @worktree.remove_worktree_path(dir, captured.val)
   })
 }
@@ -2125,7 +2191,7 @@ async test "analysis_step_handler persists execution isolation metadata" {
       Some(artifact) => artifact
       None => fail("missing analysis result artifact")
     }
-    inspect(
+    debug_inspect(
       artifact.metadata.stringify().contains("git_worktree"),
       content="true",
     )
@@ -2189,11 +2255,11 @@ async test "analysis_step_handler includes relevant memory context in prompt" {
         query=ArtifactQuery::new(artifact_type=Some("analysis.report")),
       )[0]
     let report_text = artifacts.read_text(report_artifact.id).unwrap_or("")
-    inspect(
+    debug_inspect(
       report_text.contains("Relevant long-term memory for this step"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       report_text.contains("action-conditioned evaluation"),
       content="true",
     )
@@ -2202,9 +2268,9 @@ async test "analysis_step_handler includes relevant memory context in prompt" {
 
 ///|
 test "requested_model_name_or_none treats default as auto-detect" {
-  inspect(requested_model_name_or_none("default") is None, content="true")
-  inspect(requested_model_name_or_none("  ") is None, content="true")
-  inspect(
+  debug_inspect(requested_model_name_or_none("default") is None, content="true")
+  debug_inspect(requested_model_name_or_none("  ") is None, content="true")
+  debug_inspect(
     requested_model_name_or_none("qwen/qwen3-coder-plus").unwrap_or(""),
     content="qwen/qwen3-coder-plus",
   )
@@ -2256,8 +2322,8 @@ async test "analysis_step_handler skips when matching artifact already exists" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(requests.val, content="0")
-    inspect(
+    debug_inspect(requests.val, content="0")
+    debug_inspect(
       result.steps[0].summary.unwrap_or(""),
       content="Skipped existing analysis artifact",
     )
@@ -2291,7 +2357,7 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
         now=fn() { 300 },
       ),
     )
-    inspect(
+    debug_inspect(
       match timeout_engine.execute_run("run-analysis-1", fn() { 300 }) {
         Err(error) =>
           error.contains("Analysis step analyze timed out after 10ms")
@@ -2322,7 +2388,7 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
         now=fn() { 400 },
       ),
     )
-    inspect(
+    debug_inspect(
       match budget_engine.execute_run("run-analysis-1", fn() { 400 }) {
         Err(error) => error.contains("Analysis exceeded token budget: 70 > 50")
         Ok(_) => false
@@ -2376,14 +2442,20 @@ async test "analysis_step_handler bounds adaptive followup after persisted execu
       Ok(result) => result
       Err(error) => fail(error)
     }
-    inspect(requests.val, content="2")
-    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
-    inspect(
+    debug_inspect(requests.val, content="2")
+    debug_inspect(
+      result.run.status.to_json().stringify(),
+      content="\"Succeeded\"",
+    )
+    debug_inspect(
       result.steps[0].status.to_json().stringify(),
       content="\"Succeeded\"",
     )
-    inspect(result.steps[0].summary.unwrap_or(""), content="Analysis completed")
-    inspect(
+    debug_inspect(
+      result.steps[0].summary.unwrap_or(""),
+      content="Analysis completed",
+    )
+    debug_inspect(
       engine.runtime.store().list_artifacts(run_id="run-analysis-1").length(),
       content="2",
     )
@@ -2403,10 +2475,10 @@ async test "configure_analysis_agent_tools registers execute_command tool" {
     logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
   )
   configure_analysis_agent_tools(agent, "/tmp")
-  inspect(agent.tools().contains("execute_command"), content="true")
-  inspect(agent.tools().contains("glob_files"), content="true")
-  inspect(agent.tools().contains("list_resources"), content="true")
-  inspect(agent.tools().contains("read_resource"), content="true")
+  debug_inspect(agent.tools().contains("execute_command"), content="true")
+  debug_inspect(agent.tools().contains("glob_files"), content="true")
+  debug_inspect(agent.tools().contains("list_resources"), content="true")
+  debug_inspect(agent.tools().contains("read_resource"), content="true")
 }
 
 ///|
@@ -2422,7 +2494,7 @@ async test "configure_analysis_agent_tools registers web_search tool when enable
     logger=@pino.logger("job-analysis-test", @pino.Transport::console()),
   )
   configure_analysis_agent_tools(agent, "/tmp", web_search=true)
-  inspect(agent.tools().contains("web_search"), content="true")
+  debug_inspect(agent.tools().contains("web_search"), content="true")
 }
 
 ///|
@@ -2477,10 +2549,10 @@ async test "configure_analysis_agent_for_request registers runtime introspection
     role_runtime_contract: None,
   }
   configure_analysis_agent_for_request(agent, request)
-  inspect(agent.tools().contains("runtime_context"), content="true")
-  inspect(agent.tools().contains("list_worktrees"), content="true")
-  inspect(agent.tools().contains("delegate_run"), content="true")
-  inspect(agent.tools().contains("patch_edit"), content="true")
+  debug_inspect(agent.tools().contains("runtime_context"), content="true")
+  debug_inspect(agent.tools().contains("list_worktrees"), content="true")
+  debug_inspect(agent.tools().contains("delegate_run"), content="true")
+  debug_inspect(agent.tools().contains("patch_edit"), content="true")
 }
 
 ///|
@@ -2535,14 +2607,14 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
     role_runtime_contract: None,
   }
   configure_analysis_agent_for_request(agent, request)
-  inspect(agent.tools().contains("runtime_context"), content="true")
-  inspect(agent.tools().contains("execute_command"), content="false")
-  inspect(agent.tools().contains("list_resources"), content="false")
-  inspect(agent.tools().contains("read_resource"), content="false")
-  inspect(agent.tools().contains("list_worktrees"), content="false")
-  inspect(agent.tools().contains("todo"), content="false")
-  inspect(agent.tools().contains("delegate_run"), content="false")
-  inspect(agent.tools().contains("patch_edit"), content="true")
+  debug_inspect(agent.tools().contains("runtime_context"), content="true")
+  debug_inspect(agent.tools().contains("execute_command"), content="false")
+  debug_inspect(agent.tools().contains("list_resources"), content="false")
+  debug_inspect(agent.tools().contains("read_resource"), content="false")
+  debug_inspect(agent.tools().contains("list_worktrees"), content="false")
+  debug_inspect(agent.tools().contains("todo"), content="false")
+  debug_inspect(agent.tools().contains("delegate_run"), content="false")
+  debug_inspect(agent.tools().contains("patch_edit"), content="true")
 }
 
 ///|
@@ -2597,14 +2669,14 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
     role_runtime_contract: None,
   }
   configure_analysis_agent_for_request(agent, request)
-  inspect(agent.tools().contains("runtime_context"), content="true")
-  inspect(agent.tools().contains("execute_command"), content="false")
-  inspect(agent.tools().contains("list_resources"), content="false")
-  inspect(agent.tools().contains("read_resource"), content="false")
-  inspect(agent.tools().contains("list_worktrees"), content="false")
-  inspect(agent.tools().contains("todo"), content="false")
-  inspect(agent.tools().contains("delegate_run"), content="false")
-  inspect(agent.tools().contains("patch_edit"), content="true")
+  debug_inspect(agent.tools().contains("runtime_context"), content="true")
+  debug_inspect(agent.tools().contains("execute_command"), content="false")
+  debug_inspect(agent.tools().contains("list_resources"), content="false")
+  debug_inspect(agent.tools().contains("read_resource"), content="false")
+  debug_inspect(agent.tools().contains("list_worktrees"), content="false")
+  debug_inspect(agent.tools().contains("todo"), content="false")
+  debug_inspect(agent.tools().contains("delegate_run"), content="false")
+  debug_inspect(agent.tools().contains("patch_edit"), content="true")
 }
 
 ///|
@@ -2641,10 +2713,10 @@ async test "configure_analysis_agent_for_request keeps explicit web tools for pr
     role_runtime_contract: None,
   }
   configure_analysis_agent_for_request(agent, request)
-  inspect(agent.tools().contains("web_search"), content="true")
-  inspect(agent.tools().contains("web_fetch"), content="true")
-  inspect(agent.tools().contains("execute_command"), content="false")
-  inspect(agent.tools().contains("todo"), content="false")
+  debug_inspect(agent.tools().contains("web_search"), content="true")
+  debug_inspect(agent.tools().contains("web_fetch"), content="true")
+  debug_inspect(agent.tools().contains("execute_command"), content="false")
+  debug_inspect(agent.tools().contains("todo"), content="false")
 }
 
 ///|
@@ -2691,11 +2763,11 @@ test "provider task single response routing applies to provider execution tasks"
     ..provider_request,
     execution_mode: None,
   }
-  inspect(
+  debug_inspect(
     provider_task_single_response_requested(provider_request),
     content="true",
   )
-  inspect(
+  debug_inspect(
     provider_task_single_response_requested(normal_request),
     content="false",
   )
@@ -2723,8 +2795,11 @@ test "analysis result decision treats empty remaining blockers as accepted" {
       "decision: ready_to_execute", "remaining_blockers: none", "validation: moon test passed",
     ].join("\n"),
   )
-  inspect(payload.contains("\"result_decision\":\"accepted\""), content="true")
-  inspect(payload.contains("\"requires_review\":false"), content="true")
+  debug_inspect(
+    payload.contains("\"result_decision\":\"accepted\""),
+    content="true",
+  )
+  debug_inspect(payload.contains("\"requires_review\":false"), content="true")
 }
 
 ///|
@@ -2740,8 +2815,11 @@ test "analysis result decision follows execution metadata before text fallback" 
       metadata: { "result_decision": "blocked" },
     },
   ).stringify()
-  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
-  inspect(payload.contains("\"requires_review\":true"), content="true")
+  debug_inspect(
+    payload.contains("\"result_decision\":\"blocked\""),
+    content="true",
+  )
+  debug_inspect(payload.contains("\"requires_review\":true"), content="true")
 }
 
 ///|
@@ -2751,8 +2829,11 @@ test "analysis result decision treats bullet none blockers as accepted" {
       "decision: ready_to_execute", "remaining_blockers:", "- none", "validation: moon test passed",
     ].join("\n"),
   )
-  inspect(payload.contains("\"result_decision\":\"accepted\""), content="true")
-  inspect(payload.contains("\"requires_review\":false"), content="true")
+  debug_inspect(
+    payload.contains("\"result_decision\":\"accepted\""),
+    content="true",
+  )
+  debug_inspect(payload.contains("\"requires_review\":false"), content="true")
 }
 
 ///|
@@ -2763,8 +2844,11 @@ test "analysis result decision detects material remaining blockers" {
       "validation: not run",
     ].join("\n"),
   )
-  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
-  inspect(payload.contains("\"requires_review\":true"), content="true")
+  debug_inspect(
+    payload.contains("\"result_decision\":\"blocked\""),
+    content="true",
+  )
+  debug_inspect(payload.contains("\"requires_review\":true"), content="true")
 }
 
 ///|
@@ -2775,8 +2859,11 @@ test "analysis result decision detects YAML object remaining blockers" {
       "validation: not run",
     ].join("\n"),
   )
-  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
-  inspect(payload.contains("\"requires_review\":true"), content="true")
+  debug_inspect(
+    payload.contains("\"result_decision\":\"blocked\""),
+    content="true",
+  )
+  debug_inspect(payload.contains("\"requires_review\":true"), content="true")
 }
 
 ///|
@@ -2784,8 +2871,11 @@ test "analysis result decision treats empty JSON remaining blockers as accepted"
   let payload = analysis_result_payload_for_test(
     "{\"summary\":\"ready\",\"remaining_blockers\":[],\"validation\":\"passed\"}",
   )
-  inspect(payload.contains("\"result_decision\":\"accepted\""), content="true")
-  inspect(payload.contains("\"requires_review\":false"), content="true")
+  debug_inspect(
+    payload.contains("\"result_decision\":\"accepted\""),
+    content="true",
+  )
+  debug_inspect(payload.contains("\"requires_review\":false"), content="true")
 }
 
 ///|
@@ -2793,6 +2883,9 @@ test "analysis result decision detects material JSON remaining blockers" {
   let payload = analysis_result_payload_for_test(
     "{\"summary\":\"needs owner\",\"remaining_blockers\":[\"moonbook must expose planbook profile\"],\"validation\":\"not run\"}",
   )
-  inspect(payload.contains("\"result_decision\":\"blocked\""), content="true")
-  inspect(payload.contains("\"requires_review\":true"), content="true")
+  debug_inspect(
+    payload.contains("\"result_decision\":\"blocked\""),
+    content="true",
+  )
+  debug_inspect(payload.contains("\"requires_review\":true"), content="true")
 }

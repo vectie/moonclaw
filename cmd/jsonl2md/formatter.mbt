@@ -238,66 +238,74 @@ fn recover_diagnostics(content : String) -> String raise {
   // File content:
   // <moonbit-source>
   // `````
-  loop lines[:] {
-    [title, "", "````markdown", "File content:", .. rest] if title.has_suffix(
-        "Tool call result: <read_file>",
-      ) =>
-      continue source~: loop rest {
-          ["````", .. rest] => break rest
-          [line, .. rest] => {
-            source.write_string([..line, '\n'])
-            continue source~ rest
+  for remaining = lines[:] {
+    match remaining {
+      [title, "", "````markdown", "File content:", .. rest] if title.has_suffix(
+          "Tool call result: <read_file>",
+        ) => {
+        let rest = for rest = rest {
+          match rest {
+            ["````", .. rest] => break rest
+            [line, .. rest] => {
+              source.write_string([..line, '\n'])
+              continue rest
+            }
+            [] => break []
           }
-          [] => break []
         }
-    [_, .. rest] => continue rest
-    [] => break
+        continue rest
+      }
+      [_, .. rest] => continue rest
+      [] => break
+    }
   }
   let source_lines = source.to_string().split("\n").collect()
   // 2. Recover diagnostics
   let recovered = []
-  loop lines[:] {
-    [] => break
-    [line, .. rest] => {
-      recovered.push(line)
-      // Matches
-      // error[<code>]: <file>:<line>:<column>: ...
-      lexmatch line with longest {
-        (
-          "error\["
-          "[[:digit:]]{4}"
-          "\]:[[:space:]]+"
-          "[^:]*"
-          ":"
-          ("[[:digit:]]+" as line)
-          ":"
-          ("[[:digit:]]+" as column)
-          ":[[:space:]]+",
-          _
-        ) => {
-          let line = @strconv.parse_int(line) - 1
-          let context_start = @cmp.maximum(0, line - ContextLines)
-          let context_end = @cmp.minimum(
-            source_lines.length() - 1,
-            line + ContextLines,
-          )
-          let column = @strconv.parse_int(column)
-          let line_number = (line + 1).to_string()
-          let line_number_width = (line + 1).to_string().length()
-          let indent = " ".repeat(line_number_width)
-          for i in context_start..<line {
-            recovered.push("\{indent} │\{source_lines[i]}")
+  for remaining = lines[:] {
+    match remaining {
+      [] => break
+      [line, .. rest] => {
+        recovered.push(line)
+        // Matches
+        // error[<code>]: <file>:<line>:<column>: ...
+        lexmatch line with longest {
+          (
+            "error\["
+            "[[:digit:]]{4}"
+            "\]:[[:space:]]+"
+            "[^:]*"
+            ":"
+            ("[[:digit:]]+" as line)
+            ":"
+            ("[[:digit:]]+" as column)
+            ":[[:space:]]+",
+            _
+          ) => {
+            let line = @string.parse_int(line) - 1
+            let context_start = @cmp.maximum(0, line - ContextLines)
+            let context_end = @cmp.minimum(
+              source_lines.length() - 1,
+              line + ContextLines,
+            )
+            let column = @string.parse_int(column)
+            let line_number = (line + 1).to_string()
+            let line_number_width = (line + 1).to_string().length()
+            let indent = " ".repeat(line_number_width)
+            for i in context_start..<line {
+              recovered.push("\{indent} │\{source_lines[i]}")
+            }
+            recovered.push("\{line_number} │\{source_lines[line]}")
+            let padding = " ".repeat(column - 1)
+            recovered.push("\{indent} │\{padding}^")
+            for i in (line + 1)..<=context_end {
+              recovered.push("\{indent} │\{source_lines[i]}")
+            }
           }
-          recovered.push("\{line_number} │\{source_lines[line]}")
-          let padding = " ".repeat(column - 1)
-          recovered.push("\{indent} │\{padding}^")
-          for i in (line + 1)..<=context_end {
-            recovered.push("\{indent} │\{source_lines[i]}")
-          }
+          _ => ()
         }
-        _ => ()
+        continue rest
       }
-      continue rest
     }
   }
   recovered.join("\n")
@@ -357,18 +365,24 @@ fn Formatter::format_user_message(
   }
   if self.id is Some(_) {
     let lines = []
-    loop content.split("\n").collect()[:] {
-      ["**File Content:**", "", "```moonbit", .. rest] =>
-        continue source~: loop rest {
-            ["```", .. rest] => break rest
-            [line, .. rest] => {
-              lines.push(line)
-              continue source~ rest
+    for remaining = content.split("\n").collect()[:] {
+      match remaining {
+        ["**File Content:**", "", "```moonbit", .. rest] => {
+          let rest = for rest = rest {
+            match rest {
+              ["```", .. rest] => break rest
+              [line, .. rest] => {
+                lines.push(line)
+                continue rest
+              }
+              [] => break []
             }
-            [] => break []
           }
-      [_, .. rest] => continue rest
-      [] => break
+          continue rest
+        }
+        [_, .. rest] => continue rest
+        [] => break
+      }
     }
     let original_content = lines.join("\n")
     if !original_content.is_blank() {
@@ -520,7 +534,7 @@ async fn Formatter::format_log_entry(self : Formatter, json : Json) -> Unit {
     (event : @event.Event) =>
       match event.desc {
         AssistantMessage(content, tool_calls~, ..) => {
-          let content = content.trim(char_set=" \n\r\t").to_string()
+          let content = content.trim(char_set=" \n\r\t").to_owned()
           let title = content
             .split("\n")
             .drop_while(line => line.is_blank())

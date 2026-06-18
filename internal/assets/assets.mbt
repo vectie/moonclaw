@@ -3,7 +3,7 @@
 pub(all) struct Asset {
   path : String
   content : String
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 /// Installs embedded assets into `root`, guarded by a marker fingerprint.
@@ -45,7 +45,7 @@ pub async fn install_assets(
       continue
     }
     let dest = @pathx.join(root, asset.path)
-    let parent = @pathx.dirname(dest).to_string()
+    let parent = @pathx.dirname(dest).to_owned()
     @fsx.make_directory(parent, recursive=true, exists_ok=true) catch {
       error => {
         logger.warn("Failed to create asset directory '\{parent}': \{error}")

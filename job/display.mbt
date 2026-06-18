@@ -38,11 +38,11 @@ fn display_zone() -> @time.Zone {
 
 ///|
 fn compact_title_for_display(text : String) -> String {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.length() <= 72 {
     trimmed
   } else {
-    "\{trimmed[:69].to_string()}..."
+    "\{trimmed[:69].to_owned()}..."
   }
 }
 
@@ -57,7 +57,7 @@ fn slugify_id_segment(
   let mut words = 0
   let mut last_dash = true
   for raw_word in text.split(" ") {
-    let word = raw_word.trim().to_string()
+    let word = raw_word.trim().to_owned()
     if word.is_blank() {
       continue
     }
@@ -94,7 +94,7 @@ fn slugify_id_segment(
     }
     words += 1
   }
-  let slug = buf.to_string().trim(chars="-").to_string()
+  let slug = buf.to_string().trim(chars="-").to_owned()
   if slug.is_blank() {
     "job"
   } else {
@@ -162,7 +162,7 @@ fn compact_timestamp(now_ms : Int) -> String {
   }
   let value = buf.to_string()
   if value.length() >= 15 {
-    value[:15].to_string()
+    value[:15].to_owned()
   } else {
     now_ms.to_string()
   }
@@ -185,11 +185,11 @@ pub fn human_readable_run_id(now_ms : Int, seed : String) -> String {
 ///|
 pub fn definition_display_title(definition : JobDefinition) -> String {
   match definition.config {
-    { "title": String(title), .. } if !title.trim().to_string().is_blank() =>
+    { "title": String(title), .. } if !title.trim().to_owned().is_blank() =>
       compact_title_for_display(title)
     _ => {
       let proposal_title = match definition.config {
-        { "proposal_title": String(title), .. } => title.trim().to_string()
+        { "proposal_title": String(title), .. } => title.trim().to_owned()
         _ => ""
       }
       if proposal_title.is_blank() {

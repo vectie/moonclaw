@@ -2,7 +2,7 @@
 pub struct ClientConfig {
   url : String
   headers : Map[String, String]
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn ClientConfig::new(
@@ -16,13 +16,13 @@ pub fn ClientConfig::new(
 pub(all) enum MessageKind {
   Text
   Binary
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub struct Message {
   kind : MessageKind
   data : Bytes
-} derive(Show, Eq)
+} derive(Debug, Eq)
 
 ///|
 pub fn Message::new(kind~ : MessageKind, data~ : Bytes) -> Message {
@@ -49,7 +49,7 @@ pub suberror WebSocketClientError {
   ConnectFailed(String)
   SendFailed(String)
   ReceiveFailed(String)
-} derive(Show)
+} derive(Debug)
 
 ///|
 enum ClientCommand {
@@ -76,7 +76,7 @@ pub async fn Client::connect(config : ClientConfig) -> Client {
       outbox: @aqueue.Queue::new(kind=Unbounded),
       on_message: None,
       on_close: None,
-      closed: Ref::new(false),
+      closed: Ref::Ref(false),
     }
   } catch {
     error => raise ConnectFailed(error.to_string())

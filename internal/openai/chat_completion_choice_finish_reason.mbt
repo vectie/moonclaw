@@ -6,10 +6,10 @@ pub(all) enum ChatCompletionChoiceFinishReason {
   ToolCalls
   ContentFilter
   FunctionCall
-} derive(Show)
+} derive(Debug)
 
 ///|
-impl ToJson for ChatCompletionChoiceFinishReason with to_json(
+impl ToJson for ChatCompletionChoiceFinishReason with fn to_json(
   self : ChatCompletionChoiceFinishReason,
 ) -> Json {
   match self {
@@ -22,7 +22,7 @@ impl ToJson for ChatCompletionChoiceFinishReason with to_json(
 }
 
 ///|
-impl @json.FromJson for ChatCompletionChoiceFinishReason with from_json(
+impl @json.FromJson for ChatCompletionChoiceFinishReason with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionChoiceFinishReason {

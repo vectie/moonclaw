@@ -1,11 +1,11 @@
 ///|
 test "parse_acp_chat_action recognizes control commands" {
-  inspect(parse_acp_chat_action("/acp-targets"), content="Some(Targets)")
-  inspect(
+  debug_inspect(parse_acp_chat_action("/acp-targets"), content="Some(Targets)")
+  debug_inspect(
     parse_acp_chat_action("/acp-attach codex-main"),
     content="Some(Attach(\"codex-main\"))",
   )
-  inspect(
+  debug_inspect(
     parse_acp_chat_action("/acp-run review this repo"),
     content="Some(Run(\"review this repo\"))",
   )
@@ -13,11 +13,11 @@ test "parse_acp_chat_action recognizes control commands" {
 
 ///|
 test "render_acp_status reports missing and attached sessions" {
-  inspect(
+  debug_inspect(
     render_acp_status("channel:feishu:chat-1", [], []),
     content="No ACP session is bound to this chat.\nUse /acp-attach <target_id>.",
   )
-  inspect(
+  debug_inspect(
     render_acp_status(
       "channel:feishu:chat-1",
       [

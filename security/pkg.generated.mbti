@@ -2,6 +2,7 @@
 package "vectie/moonclaw/security"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -33,14 +34,14 @@ pub struct ApprovalRecord {
   status : String
   created_at : Int
   approved_at : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct CommandPolicy {
   native : String
   native_skills : String
   restart : Bool
   owner_display : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct PairingRecord {
   key : String
@@ -50,9 +51,9 @@ pub struct PairingRecord {
   status : String
   created_at : Int
   approved_at : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
-type PersistedSecurityState derive(Show, ToJson, @json.FromJson)
+type PersistedSecurityState derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub enum SecurityChatAction {
   Pair

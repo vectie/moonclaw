@@ -19,7 +19,7 @@ import {
   "vectie/moonclaw/event",
   "vectie/moonclaw/model",
   "moonbitlang/core/json",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/core/test",
   "vectie/moonclaw/internal/pino",
 }

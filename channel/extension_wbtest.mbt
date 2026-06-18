@@ -20,7 +20,7 @@ async test "WebSocketClientRuntimeManager reconnects closed clients and stops re
           connect_calls = connect_calls + 1
           let connection_id = "conn-\{connect_calls}"
           let mut on_close : (() -> Unit)? = None
-          let closed = Ref::new(false)
+          let closed = Ref::Ref(false)
           close_hooks.push(fn() {
             closed.val = true
             match on_close {
@@ -51,17 +51,17 @@ async test "WebSocketClientRuntimeManager reconnects closed clients and stops re
       ),
     )
     @async.sleep(50)
-    inspect(connect_calls, content="1")
+    debug_inspect(connect_calls, content="1")
     json_inspect(connected_ids, content=["conn-1"])
 
     close_hooks[0]()
     @async.sleep(150)
-    inspect(connect_calls, content="2")
+    debug_inspect(connect_calls, content="2")
     json_inspect(connected_ids, content=["conn-1", "conn-2"])
 
     runtime.remove("feishu:runtime-test")
     @async.sleep(50)
-    inspect(closed_ids.contains("conn-2"), content="true")
+    debug_inspect(closed_ids.contains("conn-2"), content="true")
     runtime.stop_all()
     group.return_immediately(())
   })

@@ -45,7 +45,7 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
         let route_path = r.path.split("?").head().unwrap_or(r.path)
         let paths = route_path.split("/").collect()
         logger.info("Received request: \{r.method_} \{r.path}")
-        logger.info("Handling request paths: \{paths}")
+        logger.info("Handling request paths: \{to_repr(paths)}")
         try {
           match (r.method_, paths) {
             (Options, _) => w.write_header(204)

@@ -11,39 +11,41 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
   let mut log_file : String? = None
   let mut resume_id : @uuid.Uuid? = None
   let mut use_tui : Bool = false
-  loop args {
-    ["--prompt" | "-p", value, .. rest] => {
-      prompt = Some(value)
-      continue rest
-    }
-    ["--model" | "-m", value, .. rest] => {
-      model = Some(value)
-      continue rest
-    }
-    ["--web-search", .. rest] => {
-      web_search = true
-      continue rest
-    }
-    ["--log-file", value, .. rest] => {
-      log_file = Some(value)
-      continue rest
-    }
-    ["--resume" | "-r", value, .. rest] => {
-      let value = @uuid.parse(value) catch {
-        _ =>
-          raise @argument.InvalidArgument(
-            "Invalid resume ID: '\{value}' is not a valid UUID.",
-          )
+  for args = args {
+    match args {
+      ["--prompt" | "-p", value, .. rest] => {
+        prompt = Some(value)
+        continue rest
       }
-      resume_id = Some(value)
-      continue rest
+      ["--model" | "-m", value, .. rest] => {
+        model = Some(value)
+        continue rest
+      }
+      ["--web-search", .. rest] => {
+        web_search = true
+        continue rest
+      }
+      ["--log-file", value, .. rest] => {
+        log_file = Some(value)
+        continue rest
+      }
+      ["--resume" | "-r", value, .. rest] => {
+        let value = @uuid.parse(value) catch {
+          _ =>
+            raise @argument.InvalidArgument(
+              "Invalid resume ID: '\{value}' is not a valid UUID.",
+            )
+        }
+        resume_id = Some(value)
+        continue rest
+      }
+      ["--tui", .. rest] => {
+        use_tui = true
+        continue rest
+      }
+      [unknown, ..] => raise @argument.InvalidArgument(unknown)
+      [] => break
     }
-    ["--tui", .. rest] => {
-      use_tui = true
-      continue rest
-    }
-    [unknown, ..] => raise @argument.InvalidArgument(unknown)
-    [] => break
   }
 
   if use_tui {
@@ -99,7 +101,7 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
     ) -> Unit {
       let qms = moonclaw.agent.clear_inputs()
       for qm in qms {
-        rl.set_prompt("$ ")
+        rl.set_prompt(b"$ ")
         rl.set_line(@encoding/utf8.encode(qm.message.content()))
         rl.prompt()
         break
@@ -118,9 +120,9 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
             } else {
               // Clear the current input line
               println("")
-              rl.set_line("")
+              rl.set_line(b"")
               // Re-prompt the user
-              rl.set_prompt("$ ")
+              rl.set_prompt(b"$ ")
               rl.prompt()
               continue
             }
@@ -150,7 +152,7 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
       }
     }
     while true {
-      rl.set_prompt("$ ")
+      rl.set_prompt(b"$ ")
       rl.prompt()
       let prompt = rl.read_line()
       let round = group.spawn(

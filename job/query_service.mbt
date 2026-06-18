@@ -94,7 +94,7 @@ fn output_missing_input_detail(output : Json?) -> String? {
       let items : Array[String] = []
       for value in values {
         guard value is String(text) else { continue }
-        let item = text.trim().to_string()
+        let item = text.trim().to_owned()
         if !item.is_blank() && !generic_missing_input_detail(item) {
           items.push(item)
         }
@@ -119,7 +119,7 @@ fn waiting_input_line(steps : Array[JobStepRun]) -> String? {
   let detail = output_missing_input_detail(step.output).unwrap_or(
     match step.error {
       Some(error) if error.has_prefix("Analysis requires input: ") =>
-        error["Analysis requires input: ".length():].trim().to_string()
+        error["Analysis requires input: ".length():].trim().to_owned()
       _ => step.summary.unwrap_or("")
     },
   )
@@ -245,7 +245,7 @@ pub fn resolve_status_target(
   job_or_run_id : String,
   active_run_id? : String? = None,
 ) -> (JobDefinition, JobRun)? {
-  let trimmed = job_or_run_id.trim().to_string()
+  let trimmed = job_or_run_id.trim().to_owned()
   match store.get_definition(trimmed) {
     Some(definition) =>
       match active_run_id {

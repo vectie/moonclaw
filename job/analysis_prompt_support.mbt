@@ -127,7 +127,7 @@ fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
   let digest_lines : Array[String] = []
   match input {
     { "starter_attachment_digest_excerpt": String(text), .. } => {
-      let trimmed = text.trim().to_string()
+      let trimmed = text.trim().to_owned()
       if !trimmed.is_blank() {
         digest_lines.push("Starter attachment digest excerpt:")
         digest_lines.push(trimmed)
@@ -281,7 +281,7 @@ pub fn analysis_memory_prompt(
   let fallback = memories.list(query~)
   fallback.sort_by(fn(left, right) { right.updated_at.compare(left.updated_at) })
   let fallback = if fallback.length() > 4 {
-    fallback[:4].to_array()
+    fallback[:4].to_owned()
   } else {
     fallback
   }

@@ -83,7 +83,7 @@ fn write_length_delimited_field(
 
 ///|
 fn encode_header_message(header : FeishuWebSocketHeader) -> Bytes {
-  let buffer = @buffer.new()
+  let buffer = Buffer()
   write_length_delimited_field(buffer, 1, @encoding/utf8.encode(header.key))
   write_length_delimited_field(buffer, 2, @encoding/utf8.encode(header.value))
   buffer.to_bytes()
@@ -91,7 +91,7 @@ fn encode_header_message(header : FeishuWebSocketHeader) -> Bytes {
 
 ///|
 fn encode_feishu_websocket_frame(frame : FeishuWebSocketFrame) -> Bytes {
-  let buffer = @buffer.new()
+  let buffer = Buffer()
   write_varint(buffer, encode_field_key(1, 0))
   write_varint(buffer, frame.seq_id)
   write_varint(buffer, encode_field_key(2, 0))
@@ -155,7 +155,7 @@ fn read_length_delimited(bytes : BytesView, start : Int) -> (Bytes, Int)? {
   if end > bytes.length() {
     return None
   }
-  Some((bytes[next_index:end].to_bytes(), end))
+  Some((bytes[next_index:end].to_owned(), end))
 }
 
 ///|

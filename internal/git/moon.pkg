@@ -6,7 +6,7 @@ import {
   "vectie/moonclaw/internal/mock",
   "moonbitlang/core/cmp",
   "moonbitlang/core/json",
-  "moonbitlang/core/strconv",
+  "moonbitlang/core/string",
   "moonbitlang/core/test",
 }
 

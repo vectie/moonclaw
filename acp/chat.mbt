@@ -5,21 +5,20 @@ pub(all) enum AcpChatAction {
   Attach(String)
   Detach(String)
   Run(String)
-} derive(Show)
+} derive(Debug)
 
 ///|
 fn chat_run_summary(run : AcpRun) -> String? {
   match run.result {
     Some({ "content": String(content), .. }) if !content.trim().is_blank() =>
-      Some(content.trim().to_string())
+      Some(content.trim().to_owned())
     Some({ "stdout": String(stdout), .. }) if !stdout.trim().is_blank() =>
-      Some(stdout.trim().to_string())
+      Some(stdout.trim().to_owned())
     Some({ "stderr": String(stderr), .. }) if !stderr.trim().is_blank() =>
-      Some(stderr.trim().to_string())
+      Some(stderr.trim().to_owned())
     _ =>
       match run.error {
-        Some(error) if !error.trim().is_blank() =>
-          Some(error.trim().to_string())
+        Some(error) if !error.trim().is_blank() => Some(error.trim().to_owned())
         _ => None
       }
   }
@@ -29,8 +28,8 @@ fn chat_run_summary(run : AcpRun) -> String? {
 fn chat_stdio_preview(run : AcpRun) -> String {
   match run.result {
     Some({ "stdout": String(stdout), "stderr": String(stderr), .. }) => {
-      let stdout = stdout.trim().to_string()
-      let stderr = stderr.trim().to_string()
+      let stdout = stdout.trim().to_owned()
+      let stderr = stderr.trim().to_owned()
       if !stdout.is_blank() && !stderr.is_blank() {
         "stdout=\{stdout}\nstderr=\{stderr}"
       } else if !stdout.is_blank() {
@@ -87,14 +86,14 @@ fn split_acp_chat_command(text : String) -> (String, String) {
   let trimmed = text.trim()
   match trimmed.find(" ") {
     Some(index) =>
-      (trimmed[:index].to_string(), trimmed[index + 1:].trim().to_string())
-    None => (trimmed.to_string(), "")
+      (trimmed[:index].to_owned(), trimmed[index + 1:].trim().to_owned())
+    None => (trimmed.to_owned(), "")
   }
 }
 
 ///|
 pub fn parse_acp_chat_action(text : String) -> AcpChatAction? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   guard trimmed.has_prefix("/") else { return None }
   let (command, args) = split_acp_chat_command(trimmed)
   match command {

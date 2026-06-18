@@ -46,7 +46,7 @@ async fn Gateway::handle_get_job(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let job_id = match paths {
-    ["", "v1", "jobs", id] => id.to_string()
+    ["", "v1", "jobs", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -209,7 +209,7 @@ async fn Gateway::handle_get_job_run(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let run_id = match paths {
-    ["", "v1", "jobs", "runs", id] => id.to_string()
+    ["", "v1", "jobs", "runs", id] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -249,7 +249,7 @@ async fn Gateway::handle_get_job_ui(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let run_id = match paths {
-    ["", "v1", "jobs", "runs", id, "ui"] => id.to_string()
+    ["", "v1", "jobs", "runs", id, "ui"] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -290,7 +290,7 @@ async fn Gateway::handle_get_job_ui_events(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let run_id = match paths {
-    ["", "v1", "jobs", "runs", id, "events"] => id.to_string()
+    ["", "v1", "jobs", "runs", id, "events"] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {
@@ -336,7 +336,7 @@ async fn Gateway::handle_stream_job_ui_events(
 ) -> Unit {
   let paths = r.path.split("/").collect()
   let run_id = match paths {
-    ["", "v1", "jobs", "runs", id, "events", "stream"] => id.to_string()
+    ["", "v1", "jobs", "runs", id, "events", "stream"] => id.to_owned()
     _ =>
       raise json_error(400, "BadRequest", {
         "error": {

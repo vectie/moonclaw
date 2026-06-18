@@ -3,8 +3,8 @@ fn requested_output_format_from_intake(intake : Json?) -> String? {
   match intake {
     Some(Object(obj)) =>
       match obj.get("requested_output_format") {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
-          Some(value.trim().to_string())
+        Some(String(value)) if !value.trim().to_owned().is_blank() =>
+          Some(value.trim().to_owned())
         _ => None
       }
     _ => None

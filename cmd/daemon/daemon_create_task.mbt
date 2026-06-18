@@ -19,7 +19,7 @@ priv struct CreateTaskRequest {
 }
 
 ///|
-impl @json.FromJson for CreateTaskRequest with from_json(
+impl @json.FromJson for CreateTaskRequest with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> CreateTaskRequest raise @json.JsonDecodeError {
@@ -107,7 +107,10 @@ async fn Daemon::create_task(
   // Load model
   guard self.models.get_model(name?=request.model) is Some(model) else {
     raise json_error(404, "Not Found", {
-      "error": { "code": -1, "message": "Model not found: \{request.model}" },
+      "error": {
+        "code": -1,
+        "message": "Model not found: \{to_repr(request.model)}",
+      },
     })
   }
   // Create temporary working directory if not specified
@@ -175,7 +178,7 @@ priv struct CreateTaskResponse {
 }
 
 ///|
-impl ToJson for CreateTaskResponse with to_json(self : CreateTaskResponse) -> Json {
+impl ToJson for CreateTaskResponse with fn to_json(self : CreateTaskResponse) -> Json {
   let object : Map[String, Json] = { "task": self.task.to_json() }
   if self.message is Some(message) {
     object["message"] = message.to_json()

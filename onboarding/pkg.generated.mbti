@@ -2,6 +2,7 @@
 package "vectie/moonclaw/onboarding"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -44,7 +45,7 @@ pub struct OnboardingApplyResult {
   created : Array[String]
   preserved : Array[String]
   onboarding : OnboardingStatus
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct OnboardingAuthProviderStatus {
   provider : String
@@ -53,13 +54,13 @@ pub struct OnboardingAuthProviderStatus {
   detail : String?
   default_model : String?
   available_models : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct OnboardingAuthStatus {
   providers : Array[OnboardingAuthProviderStatus]
   issues : Array[String]
   next_steps : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct OnboardingOptions {
   primary_model : String?
@@ -70,7 +71,7 @@ pub struct OnboardingOptions {
   feishu_enabled : Bool?
   feishu_app_id : String?
   feishu_app_secret : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct OnboardingStatus {
   home : String
@@ -91,7 +92,7 @@ pub struct OnboardingStatus {
   plugin_count : Int
   issues : Array[String]
   next_steps : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

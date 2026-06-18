@@ -10,7 +10,7 @@ pub fn coordinator(
   uuid~ : @uuid.Generator,
   max_concurrent? : Int = 10,
 ) -> Coordinator {
-  Coordinator::{ uuid, tasks: Map::new(), max_concurrent }
+  Coordinator::{ uuid, tasks: Map([]), max_concurrent }
 }
 
 ///|
@@ -18,7 +18,7 @@ pub fn Coordinator::create(
   self : Coordinator,
   parent_agent~ : String,
   subtasks~ : Array[SubTask],
-  metadata? : Map[String, Json] = Map::new(),
+  metadata? : Map[String, Json] = Map([]),
 ) -> CoordinationTask {
   let coordination_id = self.uuid.v4().to_string()
   let task = coordination_task(

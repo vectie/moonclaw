@@ -4,14 +4,14 @@ pub(all) struct Credentials {
   accessToken : String
   refreshToken : String
   accountId : String
-} derive(Show, ToJson, FromJson)
+} derive(Debug, ToJson, FromJson)
 
 ///|
 pub struct IdTokenClaims {
   email : String
   chatgptAccountId : String
   chatgptPlanType : String
-} derive(Show)
+} derive(Debug)
 
 ///|
 fn add_base64_padding(s : String) -> String {
@@ -34,7 +34,7 @@ fn parse_jwt(token : String) -> Json raise Error {
   if parts.length() != 3 {
     raise ParseError("Invalid JWT format")
   }
-  let padded = add_base64_padding(parts[1].to_string())
+  let padded = add_base64_padding(parts[1].to_owned())
   let payload = @base64.decode(padded, url_safe=true) catch {
     err => {
       println("ERROR in base64.decode: \{err}")
@@ -132,7 +132,7 @@ pub async fn save_credentials(credentials : Credentials) -> Unit {
 ///|
 async fn try_load_from_codex() -> Credentials? {
   let codex_path = get_codex_auth_path()
-  if not(@fsx.exists_as_file(codex_path)) {
+  if !@fsx.exists_as_file(codex_path) {
     return None
   }
   try {

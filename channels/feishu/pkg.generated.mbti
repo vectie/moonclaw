@@ -2,6 +2,7 @@
 package "vectie/moonclaw/channels/feishu"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
   "vectie/moonclaw/channel",
 }
@@ -20,7 +21,7 @@ pub struct FeishuAccessTokenResponse {
   tenant_access_token : String?
   app_access_token : String?
   expire : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuAccountConfig {
   app_id : String
@@ -36,7 +37,7 @@ pub struct FeishuAccountConfig {
   verify_token : String?
   encryption_key : String?
   enabled : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuChannel {
   // private fields
@@ -71,7 +72,7 @@ pub struct FeishuEvent {
   header : FeishuEventHeader
   event : Json
   token : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuEventHeader {
   event_id : String
@@ -82,7 +83,7 @@ pub struct FeishuEventHeader {
   tenant_key : String?
   resource_id : String?
   user_list : Array[String]?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuMessage {
   message_id : String
@@ -95,19 +96,19 @@ pub struct FeishuMessage {
   msg_parent_id : String?
   from_user_id : String?
   tenant_key : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuMessageData {
   message_id : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuMessageLookupBody {
   content : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuMessageLookupData {
   items : Array[FeishuMessageLookupItem]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuMessageLookupItem {
   message_id : String
@@ -119,48 +120,48 @@ pub struct FeishuMessageLookupItem {
   msg_type : String?
   body : FeishuMessageLookupBody?
   sender : FeishuMessageLookupSender?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuMessageLookupResponse {
   code : Int
   msg : String
   data : FeishuMessageLookupData?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuMessageLookupSender {
   id : String?
   sender_type : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuReactionIndicatorState {
   message_id : String
   reaction_id : String
   emoji_type : String
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct FeishuSendMessageRequest {
   receive_id : String
   msg_type : String
   content : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuSendMessageResponse {
   code : Int
   msg : String
   data : FeishuMessageData?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuStreamingCardSession {
   card_id : String
   message_id : String
   sequence : Int
   current_text : String
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct FeishuTypingIndicatorState {
   message_id : String
   reaction_id : String
-} derive(Show)
+} derive(@debug.Debug)
 
 pub struct FeishuUser {
   open_id : String?
@@ -168,45 +169,45 @@ pub struct FeishuUser {
   display_name : String?
   nickname : String?
   en_name : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuUserBatchLookupData {
   items : Array[FeishuUser]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuUserBatchLookupResponse {
   code : Int
   msg : String
   data : FeishuUserBatchLookupData?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuUserLookupData {
   user : FeishuUser?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuUserLookupResponse {
   code : Int
   msg : String
   data : FeishuUserLookupData?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct FeishuWebSocketClientConfig {
   ping_interval : Int?
   reconnect_count : Int?
   reconnect_interval : Int?
   reconnect_nonce : Int?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 
 pub struct FeishuWebSocketEndpointData {
   url : String
   client_config : FeishuWebSocketClientConfig?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 
 pub struct FeishuWebSocketEndpointResponse {
   code : Int
   msg : String
   data : Json?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 pub type FeishuConnectionMode = String

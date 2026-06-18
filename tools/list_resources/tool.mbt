@@ -4,7 +4,7 @@ pub enum ResourceSummaryKind {
   Skill
   Worktree
   Provider
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct ResourceSummary {
@@ -23,7 +23,7 @@ pub struct ListResourcesResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for ListResourcesResult with output(
+pub impl Show for ListResourcesResult with fn output(
   result : ListResourcesResult,
   logger : &Logger,
 ) -> Unit {

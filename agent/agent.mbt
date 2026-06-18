@@ -6,7 +6,7 @@ pub struct QueuedMessage {
 }
 
 ///|
-pub impl ToJson for QueuedMessage with to_json(self : QueuedMessage) -> Json {
+pub impl ToJson for QueuedMessage with fn to_json(self : QueuedMessage) -> Json {
   {
     "id": self.id.to_string(),
     "message": self.message.to_openai().to_json(),
@@ -15,7 +15,7 @@ pub impl ToJson for QueuedMessage with to_json(self : QueuedMessage) -> Json {
 }
 
 ///|
-pub impl @json.FromJson for QueuedMessage with from_json(
+pub impl @json.FromJson for QueuedMessage with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> QueuedMessage raise @json.JsonDecodeError {
@@ -393,7 +393,7 @@ pub async fn new(
   request_timeout_ms? : Int? = None,
 ) -> Agent {
   let home = match home {
-    Some(home) => home.to_string()
+    Some(home) => home.to_owned()
     None => @os.home()
   }
   // FIXME:(upstream) function with error not allowed in optional expression
@@ -402,7 +402,7 @@ pub async fn new(
     None => @uuid.generator(@rand.chacha8())
   }
   let session_manager = @conversation.Manager::new(uuid~, home~)
-  let rules = @rules.Loader::new(cwd.to_string(), logger~)
+  let rules = @rules.Loader::new(cwd.to_owned(), logger~)
   let event_target : @broadcast.Broadcast[@event.Event] = @broadcast.Broadcast::new()
   event_target.add_listener(event => {
     let is_delta = match event.desc {
@@ -425,7 +425,7 @@ pub async fn new(
     None =>
       session_manager.new_conversation(
         name=name.unwrap_or("New Conversation"),
-        cwd=cwd.to_string(),
+        cwd=cwd.to_owned(),
         web_search~,
       )
   }
@@ -433,16 +433,16 @@ pub async fn new(
     Some(queue) => queue
     None => @event.ExternalEventQueue::new()
   }
-  let skills = @skills.Loader::new(cwd=cwd.to_string(), logger~)
+  let skills = @skills.Loader::new(cwd=cwd.to_owned(), logger~)
   let agent = Agent::{
     logger,
     uuid,
     history,
-    cwd: cwd.to_string(),
+    cwd: cwd.to_owned(),
     model,
     tools: {},
     input_queue: [],
-    pending_queue: @deque.Deque::new(),
+    pending_queue: @deque.Deque([]),
     event_target,
     token_counter: @token_counter.Counter::new(logger~),
     context_pruner: @context_pruner.Pruner::new(

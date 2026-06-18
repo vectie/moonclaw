@@ -8,7 +8,7 @@ pub struct CompletionUsage {
   prompt_tokens : Int
   prompt_tokens_details : PromptTokensDetails?
   total_tokens : Int
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 pub fn CompletionUsage::new(
@@ -32,7 +32,7 @@ pub fn CompletionUsage::new(
 }
 
 ///|
-pub impl @json.FromJson for CompletionUsage with from_json(
+pub impl @json.FromJson for CompletionUsage with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> CompletionUsage {

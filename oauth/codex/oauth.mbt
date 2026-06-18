@@ -3,10 +3,10 @@ pub struct TokenResponse {
   id_token : String
   access_token : String
   refresh_token : String
-} derive(Show)
+} derive(Debug)
 
 ///|
-impl @json.FromJson for TokenResponse with from_json(
+impl @json.FromJson for TokenResponse with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> TokenResponse raise @json.JsonDecodeError {
@@ -183,9 +183,9 @@ pub fn parse_query_string(query : StringView) -> Map[String, String] {
 pub async fn start_oauth_flow() -> Credentials raise Error {
   let pkce = generate_pkce()
   let state = generate_state()
-  let result : Ref[Credentials?] = Ref::new(None)
-  let error_ref : Ref[Error?] = Ref::new(None)
-  let done = Ref::new(false)
+  let result : Ref[Credentials?] = Ref::Ref(None)
+  let error_ref : Ref[Error?] = Ref::Ref(None)
+  let done = Ref::Ref(false)
   let auth_url = build_authorize_url(pkce, state)
   println("\nOpen this URL in your browser to login:\n")
   println("   \{auth_url}\n")
@@ -275,7 +275,7 @@ pub async fn start_oauth_flow() -> Credentials raise Error {
   @async.with_task_group(group => {
     group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
     @async.with_timeout(300_000, error=OAuthError("Login timeout"), () => {
-      while not(done.val) {
+      while !done.val {
         @async.sleep(100)
       }
     })

@@ -8,7 +8,7 @@ pub struct PluginRecord {
   version : String?
   install_path : String?
   metadata : Json
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct PluginRuntime {
@@ -87,7 +87,7 @@ fn plugin_string(value : Json?, field : String) -> String? {
     Some(Object(obj)) =>
       match obj.get(field) {
         Some(String(text)) if !text.trim().is_empty() =>
-          Some(text.trim().to_string())
+          Some(text.trim().to_owned())
         _ => None
       }
     _ => None

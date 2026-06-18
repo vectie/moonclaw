@@ -2,6 +2,7 @@
 package "vectie/moonclaw/internal/rules"
 
 import {
+  "moonbitlang/core/debug",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/pino",
 }
@@ -22,12 +23,12 @@ pub struct Rule {
   always_apply : Bool
   content : String
   source : Source
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 
 pub enum Source {
   Global
   Local
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 
 // Type aliases
 

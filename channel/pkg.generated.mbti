@@ -3,6 +3,7 @@ package "vectie/moonclaw/channel"
 
 import {
   "moonbitlang/async/aqueue",
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -23,7 +24,7 @@ pub(all) struct Attachment {
   url : String
   filename : String?
   size : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChannelCapabilities {
   chat_types : Array[ChatType]
@@ -38,13 +39,13 @@ pub(all) struct ChannelCapabilities {
   media : Bool
   native_commands : Bool
   block_streaming : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChannelConfig {
   enabled : Bool
   accounts : Map[String, Json]
   global_settings : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChannelDock {
   id : String
@@ -55,7 +56,7 @@ pub(all) struct ChannelDock {
   account_ids : Array[String]
   outbound : OutboundConfig?
   streaming : StreamingConfig?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChannelDockConfig {
   outbound : OutboundAdapter?
@@ -63,7 +64,7 @@ pub(all) struct ChannelDockConfig {
   mentions : MentionAdapter?
   streaming : StreamingAdapter?
   security : SecurityAdapter?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ChannelDockConfig::default_for_channel(String) -> Self
 pub fn ChannelDockConfig::new(outbound? : OutboundAdapter?, threading? : ThreadingAdapter?, mentions? : MentionAdapter?, streaming? : StreamingAdapter?, security? : SecurityAdapter?) -> Self
 
@@ -76,7 +77,8 @@ pub(all) enum ChannelError {
   InvalidRecipient(message~ : String)
   RateLimited(message~ : String, retry_after_ms~ : Int?)
   Unknown(message~ : String)
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub impl Show for ChannelError
 
 pub(all) struct ChannelEvent {
   channel : String
@@ -84,7 +86,7 @@ pub(all) struct ChannelEvent {
   event_type : String
   payload : Json
   timestamp : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum ChannelEventType {
   MessageReceived
@@ -109,7 +111,7 @@ pub(all) struct ChannelMeta {
   blurb : String
   order : Int?
   aliases : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct ChannelRegistry {
   // private fields
@@ -129,7 +131,7 @@ pub(all) enum ChatType {
   Group
   Channel
   Thread
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ExtensionContext {
   gateway_url : String
@@ -240,7 +242,7 @@ pub(all) struct MentionAdapter {
   strip_patterns : Array[String]
   mention_prefix : String?
   mention_suffix : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn MentionAdapter::new(strip_patterns? : Array[String], mention_prefix? : String?, mention_suffix? : String?) -> Self
 
 pub(all) struct Message {
@@ -254,26 +256,26 @@ pub(all) struct Message {
   thread_id : String?
   reply_to : String?
   attachments : Array[Attachment]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct OutboundAdapter {
   text_chunk_limit : Int
   delivery_mode : String
   chunker_mode : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn OutboundAdapter::new(text_chunk_limit? : Int, delivery_mode? : String, chunker_mode? : String) -> Self
 
 pub(all) struct OutboundConfig {
   delivery_mode : String
   chunker_mode : String
   text_chunk_limit : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct SecurityAdapter {
   dm_policy : String
   allow_from : Array[String]
   require_mention_in_groups : Bool
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn SecurityAdapter::new(dm_policy? : String, allow_from? : Array[String], require_mention_in_groups? : Bool) -> Self
 
 pub(all) struct SendResult {
@@ -281,7 +283,7 @@ pub(all) struct SendResult {
   message_id : String
   timestamp : Int
   status : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct StreamingAdapter {
   enabled : Bool
@@ -289,20 +291,20 @@ pub(all) struct StreamingAdapter {
   chunk_delay_ms : Int
   min_chars : Int?
   idle_ms : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn StreamingAdapter::new(enabled? : Bool, chunk_size? : Int, chunk_delay_ms? : Int, min_chars? : Int?, idle_ms? : Int?) -> Self
 
 pub(all) struct StreamingConfig {
   enabled : Bool
   chunk_size : Int
   chunk_delay_ms : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ThreadingAdapter {
   reply_to_mode : String
   supports_threads : Bool
   thread_id_key : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn ThreadingAdapter::new(reply_to_mode? : String, supports_threads? : Bool, thread_id_key? : String?) -> Self
 
 pub(all) struct WebSocketClientConnector {

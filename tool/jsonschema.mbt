@@ -1,5 +1,5 @@
 ///|
-pub(all) struct JsonSchema(Json) derive(Eq, Show)
+pub(all) struct JsonSchema(Json) derive(Eq, Debug)
 
 ///|
 pub fn JsonSchema::from_json(schema : Json) -> JsonSchema {
@@ -7,7 +7,7 @@ pub fn JsonSchema::from_json(schema : Json) -> JsonSchema {
 }
 
 ///|
-pub impl ToJson for JsonSchema with to_json(self : JsonSchema) -> Json {
+pub impl ToJson for JsonSchema with fn to_json(self : JsonSchema) -> Json {
   let JsonSchema(schema) = self
   schema
 }

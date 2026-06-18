@@ -325,11 +325,11 @@ pub async fn TUI::render(self : TUI) -> Unit {
   } else {
     let body_lines = body_frame
       .split("\n")
-      .map(fn(v) { v.to_string() })
+      .map(fn(v) { v.to_owned() })
       .collect()
     let previous_body_lines = self.last_body_frame
       .split("\n")
-      .map(fn(v) { v.to_string() })
+      .map(fn(v) { v.to_owned() })
       .collect()
     output.write(CursorHide)
     if self.needs_full_redraw || resized {
@@ -445,10 +445,10 @@ pub fn TUI::submit(self : TUI, text : String) -> Unit {
   }
   if trimmed.has_prefix("/") {
     if self.on_command is Some(cb) {
-      cb(trimmed.to_string())
+      cb(trimmed.to_owned())
     }
   } else if self.on_submit is Some(cb) {
-    cb(trimmed.to_string())
+    cb(trimmed.to_owned())
   }
   self.editor.add_to_history(text)
   self.editor.clear()
@@ -460,7 +460,9 @@ pub async fn TUI::run_event_loop(self : TUI) -> Unit {
     self.terminal.update_size() catch {
       _ => ()
     }
-    let result : Result[Bytes, Error] = try? self.terminal.input.read_exactly(1)
+    let result : Result[Bytes, Error] = Ok(self.terminal.input.read_exactly(1)) catch {
+      error => Err(error)
+    }
     match result {
       Ok(bytes) =>
         if bytes.length() > 0 {

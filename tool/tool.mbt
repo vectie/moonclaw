@@ -3,7 +3,7 @@ pub struct ToolDesc {
   description : String
   name : String
   schema : JsonSchema
-} derive(ToJson, Eq, Show)
+} derive(ToJson, Eq, Debug)
 
 ///|
 pub fn ToolDesc::to_openai(
@@ -47,7 +47,7 @@ pub fn[Output] ToolResult::ok(output : Output) -> ToolResult[Output] {
 }
 
 ///|
-pub impl[Output : Show] Show for ToolResult[Output] with output(
+pub impl[Output : Show] Show for ToolResult[Output] with fn output(
   self : ToolResult[Output],
   logger : &Logger,
 ) -> Unit {
@@ -119,14 +119,15 @@ pub async fn AgentTool::call(
 
 ///|
 /// Convert a Tool[Output] to Tool[Json] by converting outputs to Json
-pub fn[Output : ToJson + Show] Tool::to_agent_tool(
-  self : Tool[Output],
-) -> AgentTool {
+pub fn[Output : ToJson] Tool::to_agent_tool(self : Tool[Output]) -> AgentTool {
   Tool::{
     desc: self.desc,
     f: args => {
       match self.call(args) {
-        Ok(output) => Ok((output.to_json(), output.to_string()))
+        Ok(output) => {
+          let json = output.to_json()
+          Ok((json, json.stringify()))
+        }
         Error(error, output) => Error(error, output)
       }
     },

@@ -1,4 +1,15 @@
 ///|
+fn parse_skill_from_content_result(
+  content : String,
+  directory~ : String,
+  location~ : String,
+) -> Result[Skill, Error] {
+  Ok(parse_skill_from_content(content, directory~, location~)) catch {
+    error => Err(error)
+  }
+}
+
+///|
 test "parse_skill_from_content" {
   let content =
     #|---
@@ -65,7 +76,7 @@ test "parse_skill_from_content/invalid-allowed-tools" {
     #|---
     #|
     #|This is a sample skill.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="sample-skill",
     location="/tmp/skill/SKILL.md",
@@ -86,7 +97,7 @@ test "parse_skill_from_content/empty-description" {
     #|---
     #|
     #|This skill has an invalid description.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="invalid-skill",
     location="/tmp/skill/SKILL.md",
@@ -107,7 +118,7 @@ test "parse_skill_from_content/invalid-name" {
     #|---
     #|
     #|This skill has an invalid name.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="invalid--name",
     location="/tmp/skill/SKILL.md",
@@ -126,7 +137,7 @@ test "parse_skill_from_content/name-mismatches-directory" {
     #|---
     #|
     #|This skill has a mismatched directory name.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="different-directory",
     location="/tmp/skill/SKILL.md",
@@ -146,7 +157,7 @@ test "parse_skill_from_content/long-name" {
     $|---
     $|
     $|This skill has a name that is too long.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory=long_skill_name,
     location="/tmp/skill/SKILL.md",
@@ -166,7 +177,7 @@ test "parse_skill_from_content/long-description" {
     $|---
     $|
     $|This skill has a description that is too long.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="long-description-skill",
     location="/tmp/skill/SKILL.md",
@@ -185,7 +196,7 @@ test "parse_skill_from_content/empty-name" {
     #|---
     #|
     #|This skill has an empty name.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="",
     location="/tmp/skill/SKILL.md",
@@ -204,7 +215,7 @@ test "parse_skill_from_content/name-starts-with-hyphen" {
     #|---
     #|
     #|This skill has a name that starts with a hyphen.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="-invalidname",
     location="/tmp/skill/SKILL.md",
@@ -223,7 +234,7 @@ test "parse_skill_from_content/name-ends-with-hyphen" {
     #|---
     #|
     #|This skill has a name that ends with a hyphen.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="invalidname-",
     location="/tmp/skill/SKILL.md",
@@ -241,7 +252,7 @@ test "parse_skill_from_content/missing-name" {
     #|---
     #|
     #|This skill is missing the name field.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="missing-name",
     location="/tmp/skill/SKILL.md",
@@ -259,7 +270,7 @@ test "parse_skill_from_content/missing-description" {
     #|---
     #|
     #|This skill is missing the description field.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="missing-description",
     location="/tmp/skill/SKILL.md",
@@ -273,7 +284,7 @@ test "parse_skill_from_content/missing-description" {
 test "parse_skill_from_content/missing-frontmatter" {
   let content =
     #|This skill file is missing frontmatter.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="missing-frontmatter",
     location="/tmp/skill/SKILL.md",
@@ -292,7 +303,7 @@ test "parse_skill_from_content/non-string-name" {
     #|---
     #|
     #|This skill has a non-string name.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="12345",
     location="/tmp/skill/SKILL.md",
@@ -311,7 +322,7 @@ test "parse_skill_from_content/non-string-description" {
     #|---
     #|
     #|This skill has a non-string description.
-  let result = try? parse_skill_from_content(
+  let result = parse_skill_from_content_result(
     content,
     directory="non-string-description",
     location="/tmp/skill/SKILL.md",

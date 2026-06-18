@@ -7,10 +7,10 @@ pub(all) enum ChatCompletionReasoningEffort {
   Medium
   High
   Xhigh
-} derive(Show)
+} derive(Debug)
 
 ///|
-impl ToJson for ChatCompletionReasoningEffort with to_json(
+impl ToJson for ChatCompletionReasoningEffort with fn to_json(
   self : ChatCompletionReasoningEffort,
 ) -> Json {
   match self {

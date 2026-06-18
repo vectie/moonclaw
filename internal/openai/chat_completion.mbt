@@ -8,7 +8,7 @@ pub struct ChatCompletion {
   usage : CompletionUsage?
   system_fingerprint : String?
   service_tier : ChatCompletionServiceTier?
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub fn ChatCompletion::new(
@@ -24,7 +24,7 @@ pub fn ChatCompletion::new(
 }
 
 ///|
-pub impl ToJson for ChatCompletion with to_json(self : ChatCompletion) -> Json {
+pub impl ToJson for ChatCompletion with fn to_json(self : ChatCompletion) -> Json {
   let json : Map[String, Json] = {
     "id": self.id,
     "choices": self.choices,
@@ -44,7 +44,7 @@ pub impl ToJson for ChatCompletion with to_json(self : ChatCompletion) -> Json {
 }
 
 ///|
-pub impl @json.FromJson for ChatCompletion with from_json(
+pub impl @json.FromJson for ChatCompletion with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletion {

@@ -414,7 +414,7 @@ test "Event::Roundtrip/TokenCounted" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    TokenCounted(count) => inspect(count, content="42")
+    TokenCounted(count) => debug_inspect(count, content="42")
     _ => fail("Expected TokenCounted")
   }
 }
@@ -429,8 +429,8 @@ test "Event::Roundtrip/ContextPruned" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     ContextPruned(origin_token_count~, pruned_token_count~) => {
-      inspect(origin_token_count, content="100")
-      inspect(pruned_token_count, content="20")
+      debug_inspect(origin_token_count, content="100")
+      debug_inspect(pruned_token_count, content="20")
     }
     _ => fail("Expected ContextPruned")
   }
@@ -448,9 +448,11 @@ test "Event::Roundtrip/PreToolCall" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     PreToolCall(tc) => {
-      inspect(tc.id, content="tool_call_1")
-      inspect(tc.name, content="example_tool")
-      assert_eq(tc.arguments, Some("{\"param1\": \"value1\", \"param2\": 123}"))
+      debug_inspect(tc.id, content="tool_call_1")
+      debug_inspect(tc.name, content="example_tool")
+      assert_true(
+        tc.arguments == Some("{\"param1\": \"value1\", \"param2\": 123}"),
+      )
     }
     _ => fail("Expected PreToolCall")
   }
@@ -472,13 +474,13 @@ test "Event::Roundtrip/PostToolCall/Ok" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     PostToolCall(tc, result~, rendered~) => {
-      inspect(tc.id, content="tool_call_1")
-      inspect(tc.name, content="example_tool")
+      debug_inspect(tc.id, content="tool_call_1")
+      debug_inspect(tc.name, content="example_tool")
       match result {
-        Ok(json) => assert_eq(json.stringify(), "{\"output\":\"success\"}")
+        Ok(json) => assert_true(json.stringify() == "{\"output\":\"success\"}")
         Err(_) => fail("Expected successful tool result")
       }
-      inspect(rendered, content="Tool output: success")
+      debug_inspect(rendered, content="Tool output: success")
     }
     _ => fail("Expected PostToolCall")
   }
@@ -500,13 +502,15 @@ test "Event::Roundtrip/PostToolCall/Err" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     PostToolCall(tc, result~, rendered~) => {
-      inspect(tc.id, content="tool_call_2")
+      debug_inspect(tc.id, content="tool_call_2")
       match result {
         Err(json) =>
-          assert_eq(json.stringify(), "{\"error\":\"Something went wrong\"}")
+          assert_true(
+            json.stringify() == "{\"error\":\"Something went wrong\"}",
+          )
         Ok(_) => fail("Expected failed tool result")
       }
-      inspect(rendered, content="Error occurred")
+      debug_inspect(rendered, content="Error occurred")
     }
     _ => fail("Expected PostToolCall")
   }
@@ -520,7 +524,8 @@ test "Event::Roundtrip/SystemPromptSet/Some" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    SystemPromptSet(msg) => assert_eq(msg, Some("You are a helpful assistant."))
+    SystemPromptSet(msg) =>
+      assert_true(msg == Some("You are a helpful assistant."))
     _ => fail("Expected SystemPromptSet")
   }
 }
@@ -531,7 +536,7 @@ test "Event::Roundtrip/SystemPromptSet/None" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    SystemPromptSet(msg) => inspect(msg, content="None")
+    SystemPromptSet(msg) => debug_inspect(msg, content="None")
     _ => fail("Expected SystemPromptSet")
   }
 }
@@ -544,7 +549,7 @@ test "Event::Roundtrip/MessageQueued" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     MessageQueued(id=roundtrip_id) =>
-      inspect(roundtrip_id == id, content="true")
+      debug_inspect(roundtrip_id == id, content="true")
     _ => fail("Expected MessageQueued")
   }
 }
@@ -557,7 +562,7 @@ test "Event::Roundtrip/MessageUnqueued" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     MessageUnqueued(id=roundtrip_id) =>
-      inspect(roundtrip_id == id, content="true")
+      debug_inspect(roundtrip_id == id, content="true")
     _ => fail("Expected MessageUnqueued")
   }
 }
@@ -574,9 +579,9 @@ test "Event::Roundtrip/ToolAdded" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     ToolAdded(desc) => {
-      inspect(desc.name, content="sample_tool")
-      inspect(desc.description, content="A sample tool")
-      assert_eq(desc.schema.to_json().stringify(), "{\"type\":\"object\"}")
+      debug_inspect(desc.name, content="sample_tool")
+      debug_inspect(desc.description, content="A sample tool")
+      assert_true(desc.schema.to_json().stringify() == "{\"type\":\"object\"}")
     }
     _ => fail("Expected ToolAdded")
   }
@@ -602,7 +607,7 @@ test "Event::Roundtrip/AssistantMessage/WithUsage" {
     },
   })
   let roundtripped : @event.EventDesc = @json.from_json(json)
-  assert_eq(roundtripped, event)
+  assert_true(roundtripped == event)
 }
 
 ///|
@@ -610,7 +615,7 @@ test "Event::Roundtrip/AssistantMessageDelta" {
   let event : @event.EventDesc = AssistantMessageDelta("partial response")
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
-  assert_eq(roundtripped, event)
+  assert_true(roundtripped == event)
 }
 
 ///|
@@ -624,7 +629,7 @@ test "Event::Roundtrip/AssistantMessage/NoUsage" {
   )
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
-  assert_eq(roundtripped, event)
+  assert_true(roundtripped == event)
 }
 
 ///|
@@ -644,7 +649,7 @@ test "Event::Roundtrip/ModelLoaded" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    ModelLoaded(name~) => inspect(name, content="my_model")
+    ModelLoaded(name~) => debug_inspect(name, content="my_model")
     _ => fail("Expected ModelLoaded")
   }
 }
@@ -666,7 +671,7 @@ test "ExternalEvent::Roundtrip/UserMessage" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    UserMessage(msg) => inspect(msg, content="Stop the current task")
+    UserMessage(msg) => debug_inspect(msg, content="Stop the current task")
     _ => fail("Expected UserMessage")
   }
 }
@@ -719,6 +724,6 @@ test "Event::Roundtrip" {
   for event in events {
     let event = @event.Event::new(id=uuid.v4(), event)
     let roundtripped : @event.Event = @json.from_json(event.to_json())
-    assert_eq(roundtripped, event)
+    assert_true(roundtripped == event)
   }
 }

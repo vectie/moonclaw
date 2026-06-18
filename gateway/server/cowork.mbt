@@ -13,7 +13,7 @@ struct CoworkSessionSummary {
   has_plan_mode : Bool
   linked_proposal_id : String?
   linked_run_id : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct CoworkProposalRef {
@@ -23,7 +23,7 @@ struct CoworkProposalRef {
   status : String
   request_text : String
   updated_at : Int
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct CoworkRunRef {
@@ -34,7 +34,7 @@ struct CoworkRunRef {
   error : String?
   current_step_id : String?
   workspace_dir : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct CoworkSessionDetail {
@@ -43,20 +43,20 @@ struct CoworkSessionDetail {
   plan_preview : String?
   linked_proposal : CoworkProposalRef?
   linked_run : CoworkRunRef?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct CoworkSessionCreateParams {
   cwd : String?
   title : String?
-} derive(FromJson, Show)
+} derive(FromJson, Debug)
 
 ///|
 struct CoworkMessageParams {
   content : String
   cwd : String?
   model : String?
-} derive(FromJson, Show)
+} derive(FromJson, Debug)
 
 ///|
 struct CoworkConfigParams {
@@ -64,19 +64,19 @@ struct CoworkConfigParams {
   cwd : String?
   model : String?
   provider : String?
-} derive(FromJson, Show)
+} derive(FromJson, Debug)
 
 ///|
 struct CoworkPlanParams {
   request_text : String?
   guidance : String?
   cwd : String?
-} derive(FromJson, Show)
+} derive(FromJson, Debug)
 
 ///|
 struct CoworkResumeParams {
   content : String
-} derive(FromJson, Show)
+} derive(FromJson, Debug)
 
 ///|
 async fn read_json_request_body(
@@ -139,11 +139,11 @@ async fn Gateway::write_json(
 
 ///|
 fn compact_cowork_preview(text : String, max_len : Int) -> String {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.length() <= max_len {
     trimmed
   } else {
-    "\{trimmed[:max_len - 3].to_string()}..."
+    "\{trimmed[:max_len - 3].to_owned()}..."
   }
 }
 
@@ -164,8 +164,8 @@ fn last_matching_message(
 ///|
 fn cowork_message_title(entry : SessionEntry) -> String {
   match entry.title {
-    Some(title) if !title.trim().to_string().is_blank() =>
-      return title.trim().to_string()
+    Some(title) if !title.trim().to_owned().is_blank() =>
+      return title.trim().to_owned()
     _ => ()
   }
   match entry.plan_mode {
@@ -177,13 +177,13 @@ fn cowork_message_title(entry : SessionEntry) -> String {
           match
             last_matching_message(entry.messages, fn(message) {
               message.role == "user" &&
-              !message.content.trim().to_string().is_blank()
+              !message.content.trim().to_owned().is_blank()
             }) {
             Some(message) => compact_cowork_preview(message.content, 64)
             None =>
               match
                 last_matching_message(entry.messages, fn(message) {
-                  !message.content.trim().to_string().is_blank()
+                  !message.content.trim().to_owned().is_blank()
                 }) {
                 Some(message) => compact_cowork_preview(message.content, 64)
                 None => "New chat"
@@ -197,7 +197,7 @@ fn cowork_message_title(entry : SessionEntry) -> String {
 fn session_last_message_preview(messages : Array[SessionMessage]) -> String? {
   match
     last_matching_message(messages, fn(message) {
-      !message.content.trim().to_string().is_blank()
+      !message.content.trim().to_owned().is_blank()
     }) {
     Some(message) => Some(compact_cowork_preview(message.content, 120))
     None => None
@@ -242,7 +242,7 @@ fn cowork_session_summary(
 ///|
 fn cowork_effective_cwd(entry : SessionEntry, fallback : String) -> String {
   match entry.cwd {
-    Some(cwd) if !cwd.trim().to_string().is_blank() => cwd
+    Some(cwd) if !cwd.trim().to_owned().is_blank() => cwd
     _ => fallback
   }
 }
@@ -429,7 +429,7 @@ async fn Gateway::handle_create_cowork_session(
   let mut entry = cowork_session_for_write(self, session_key, cwd)
   match params.title {
     Some(title) => {
-      let trimmed = title.trim().to_string()
+      let trimmed = title.trim().to_owned()
       if !trimmed.is_blank() {
         entry = { ..entry, title: Some(trimmed) }
         entry = self.append_session_message(
@@ -495,7 +495,7 @@ async fn Gateway::handle_update_cowork_config(
   }
   let title = match params.title {
     Some(value) => {
-      let trimmed = value.trim().to_string()
+      let trimmed = value.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -506,7 +506,7 @@ async fn Gateway::handle_update_cowork_config(
   }
   let cwd = match params.cwd {
     Some(value) => {
-      let trimmed = value.trim().to_string()
+      let trimmed = value.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -517,7 +517,7 @@ async fn Gateway::handle_update_cowork_config(
   }
   let model_override = match params.model {
     Some(value) => {
-      let trimmed = value.trim().to_string()
+      let trimmed = value.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -528,7 +528,7 @@ async fn Gateway::handle_update_cowork_config(
   }
   let provider_override = match params.provider {
     Some(value) => {
-      let trimmed = value.trim().to_string()
+      let trimmed = value.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {
@@ -553,11 +553,11 @@ async fn Gateway::handle_update_cowork_config(
 
 ///|
 fn cowork_trimmed_text(text : String, max_len : Int) -> String {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.length() <= max_len {
     trimmed
   } else {
-    "\{trimmed[:max_len - 3].to_string()}..."
+    "\{trimmed[:max_len - 3].to_owned()}..."
   }
 }
 
@@ -710,7 +710,7 @@ async fn Gateway::handle_cowork_send_message(
   let params : CoworkMessageParams = decode_request_body(
     r, "cowork message params",
   )
-  let content = params.content.trim().to_string()
+  let content = params.content.trim().to_owned()
   if content.is_blank() {
     raise json_error(400, "BadRequest", {
       "error": {
@@ -768,12 +768,12 @@ async fn Gateway::handle_cowork_send_message(
     }
     None => {
       let model_name = match params.model {
-        Some(value) if !value.trim().to_string().is_blank() =>
-          value.trim().to_string()
+        Some(value) if !value.trim().to_owned().is_blank() =>
+          value.trim().to_owned()
         _ =>
           match final_session.model_override {
-            Some(value) if !value.trim().to_string().is_blank() =>
-              value.trim().to_string()
+            Some(value) if !value.trim().to_owned().is_blank() =>
+              value.trim().to_owned()
             _ => "default"
           }
       }
@@ -814,8 +814,8 @@ async fn Gateway::handle_cowork_send_message(
 ///|
 fn cowork_plan_request_text(params : CoworkPlanParams) -> String {
   match params.request_text {
-    Some(text) if !text.trim().to_string().is_blank() => text.trim().to_string()
-    _ => params.guidance.unwrap_or("").trim().to_string()
+    Some(text) if !text.trim().to_owned().is_blank() => text.trim().to_owned()
+    _ => params.guidance.unwrap_or("").trim().to_owned()
   }
 }
 
@@ -902,7 +902,7 @@ async fn Gateway::handle_cowork_preview(
         },
       })
   }
-  let guidance = params.guidance.unwrap_or("").trim().to_string()
+  let guidance = params.guidance.unwrap_or("").trim().to_owned()
   let next_state = if guidance.is_blank() {
     state
   } else {
@@ -969,7 +969,7 @@ async fn Gateway::handle_cowork_promote(
         },
       })
   }
-  let guidance = params.guidance.unwrap_or("").trim().to_string()
+  let guidance = params.guidance.unwrap_or("").trim().to_owned()
   let promoted_state = if guidance.is_blank() {
     state
   } else {
@@ -1153,7 +1153,7 @@ async fn Gateway::handle_cowork_resume_run(
         },
       })
   }
-  let resume_content = params.content.trim().to_string()
+  let resume_content = params.content.trim().to_owned()
   if resume_content.is_blank() {
     raise json_error(400, "BadRequest", {
       "error": {

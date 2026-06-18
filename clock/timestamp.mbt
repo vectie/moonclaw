@@ -4,7 +4,7 @@
 struct Timestamp(Int64) derive(Eq)
 
 ///|
-pub impl Show for Timestamp with output(self : Timestamp, logger : &Logger) -> Unit {
+pub impl Show for Timestamp with fn output(self : Timestamp, logger : &Logger) -> Unit {
   self.0.output(logger)
 }
 
@@ -65,12 +65,12 @@ pub fn Timestamp::ms_since(self : Timestamp, other : Timestamp) -> Int64 {
 }
 
 ///|
-pub impl ToJson for Timestamp with to_json(self : Timestamp) -> Json {
+pub impl ToJson for Timestamp with fn to_json(self : Timestamp) -> Json {
   Json::number(self.0.to_double(), repr=self.0.to_string())
 }
 
 ///|
-pub impl @json.FromJson for Timestamp with from_json(
+pub impl @json.FromJson for Timestamp with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Timestamp {
@@ -85,7 +85,7 @@ pub impl @json.FromJson for Timestamp with from_json(
     }
     Number(_, repr=Some(num_str)) | String(num_str) =>
       Timestamp(
-        @strconv.parse_int64(num_str) catch {
+        @string.parse_int64(num_str) catch {
           error =>
             raise @json.JsonDecodeError(
               (

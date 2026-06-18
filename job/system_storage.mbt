@@ -2,58 +2,58 @@
 struct DefinitionsIndexFile {
   definitions : Array[JobDefinition]
   workflows : Array[WorkflowDefinition]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct RunsIndexFile {
   runs : Array[JobRun]
   steps : Array[JobStepRun]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct ArtifactsIndexFile {
   artifacts : Array[ArtifactRecord]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct MemoriesFile {
   memories : Array[MemoryRecord]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct ChatBindingsFile {
   bindings : Array[ChatBinding]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct NotificationPreferencesFile {
   preferences : Array[JobNotificationPreference]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct JobProposalsFile {
   proposals : Array[JobProposal]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct ControllerStateFile {
   states : Array[JobControllerState]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct ControllerIterationsFile {
   iterations : Array[JobControllerIteration]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct ControllerLineageFile {
   edges : Array[JobControllerLineageEdge]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct ControllerDecisionsFile {
   decisions : Array[JobControllerDecision]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct SystemStore {
@@ -178,7 +178,7 @@ fn safe_step_file_segment(step_id : String) -> String {
   let buf = StringBuilder::new()
   let mut chars_written = 0
   let mut last_dash = true
-  for c in step_id.to_lower().to_array() {
+  for c in step_id.to_lower() {
     let normalized = match c {
       'a'..='z' => Some(c)
       '0'..='9' => Some(c)
@@ -201,9 +201,9 @@ fn safe_step_file_segment(step_id : String) -> String {
         }
     }
   }
-  let slug = buf.to_string().trim(chars="-").to_string()
+  let slug = buf.to_string().trim(chars="-").to_owned()
   let prefix = if slug.is_blank() { "step" } else { slug }
-  let suffix = step_id.hash().to_string().trim(chars="-").to_string()
+  let suffix = step_id.hash().to_string().trim(chars="-").to_owned()
   "\{prefix}-\{suffix}"
 }
 
@@ -586,14 +586,6 @@ fn json_nested_field(value : Json, key : String) -> Json? {
 }
 
 ///|
-fn json_nested_string_field(value : Json, key : String) -> String? {
-  match json_nested_field(value, key) {
-    Some(String(text)) => Some(text)
-    _ => None
-  }
-}
-
-///|
 fn json_nested_patch_receipt_contract(value : Json) -> String? {
   match json_nested_field(value, "patch_receipt") {
     Some(Object(receipt)) =>
@@ -698,7 +690,7 @@ async fn SystemStore::reconcile_materialized_analysis_outputs_unlocked(
       _ => continue
     }
     let workspace_dir = match run.workspace_dir {
-      Some(workspace_dir) if !workspace_dir.trim().to_string().is_blank() =>
+      Some(workspace_dir) if !workspace_dir.trim().to_owned().is_blank() =>
         workspace_dir
       _ => continue
     }
@@ -1626,7 +1618,7 @@ pub async fn SystemStore::list_run_events(
   guard @fsx.exists(path) else { return [] }
   let events : Array[JobRunEvent] = []
   for raw_line in @fsx.read_file(path).split("\n") {
-    let line = raw_line.to_string().trim().to_string()
+    let line = raw_line.to_owned().trim().to_owned()
     if line.is_blank() {
       continue
     }

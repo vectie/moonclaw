@@ -17,7 +17,7 @@ pub(all) struct AnalysisToolContract {
   patch_edit : Bool
   web_fetch : Bool
   web_search : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub fn AnalysisToolContract::new(

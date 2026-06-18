@@ -2,6 +2,7 @@
 package "vectie/moonclaw/gateway/protocol"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -25,7 +26,7 @@ pub(all) struct AgentAcceptedPayload {
   run_id : String
   status : String
   accepted_at : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AgentEventPayload {
   run_id : String
@@ -33,7 +34,7 @@ pub(all) struct AgentEventPayload {
   delta : String?
   content : String?
   usage : Json?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AgentParams {
   message : String
@@ -43,24 +44,24 @@ pub(all) struct AgentParams {
   provider : String?
   run_id : String?
   idempotency_key : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AgentResultPayload {
   run_id : String
   status : String
   result : Json?
   error : ErrorShape?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct AuthCredentials {
   token : String?
   password : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ChallengePayload {
   nonce : String
   ts : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ClientInfo {
   id : String
@@ -68,27 +69,27 @@ pub(all) struct ClientInfo {
   version : String?
   platform : String?
   mode : ClientMode
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum ClientMode {
   Cli
   Backend
   Webchat
   Probe
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum ClientRole {
   Operator
   Node
-} derive(Eq, Show, ToJson, @json.FromJson)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ConfigGetPayload {
   config : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ConfigSetParams {
   config : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ConnectParams {
   min_protocol : Int
@@ -97,7 +98,7 @@ pub(all) struct ConnectParams {
   auth : AuthCredentials
   role : ClientRole
   scopes : Array[String]?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ErrorShape {
   code : String
@@ -105,32 +106,32 @@ pub(all) struct ErrorShape {
   details : Json?
   retryable : Bool?
   retry_after_ms : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct EventFrame {
   event : String
   payload : Json?
   seq : Int?
   state_version : StateVersion?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct Features {
   methods : Array[String]
   events : Array[String]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum Frame {
   Req(Request)
   Res(Response)
   Event(EventFrame)
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct HealthPayload {
   status : String
   uptime_ms : Int
   active_sessions : Int
   pending_requests : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct HelloOk {
   protocol : Int
@@ -138,33 +139,33 @@ pub(all) struct HelloOk {
   features : Features
   snapshot : Snapshot
   policy : Policy
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct Policy {
   max_payload : Int
   max_buffered_bytes : Int
   tick_interval_ms : Int
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct Request {
   id : String
   rpc_method : String
   params : Json?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct Response {
   id : String
   ok : Bool
   payload : Json?
   error : ErrorShape?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ServerInfo {
   version : String
   commit : String?
   host : String?
   conn_id : String
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct SessionInfo {
   session_id : String
@@ -172,22 +173,22 @@ pub(all) struct SessionInfo {
   channel : String?
   model_override : String?
   provider_override : String?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct SessionsListPayload {
   sessions : Array[SessionInfo]
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct Snapshot {
   presence : Json?
   health : Json?
   state_version : StateVersion?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct StateVersion {
   presence : Int?
   health : Int?
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

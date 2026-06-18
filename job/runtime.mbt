@@ -9,7 +9,7 @@ pub(all) struct CheckpointRecord {
   retry_attempts : Int
   next_retry_at : Int?
   retry_source_run_id : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct CheckpointStore {
@@ -630,7 +630,7 @@ pub fn RuntimeManager::list_recent_runs(
   if limit >= runs.length() {
     runs
   } else {
-    runs[:limit].to_array()
+    runs[:limit].to_owned()
   }
 }
 

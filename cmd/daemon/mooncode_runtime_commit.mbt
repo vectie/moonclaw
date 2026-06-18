@@ -34,7 +34,7 @@ async fn mooncode_runtime_turn_commit_results(
     ]
   }
   let status_before = mooncode_json_string(status, "output", default="")
-  if status_before.trim().to_string() == "" {
+  if status_before.trim().to_owned() == "" {
     return [
       mooncode_runtime_turn_commit_result(
         session_id,
@@ -106,7 +106,7 @@ async fn mooncode_runtime_turn_commit_results(
   )
   let commit_sha = mooncode_json_string(head, "output", default="")
     .trim()
-    .to_string()
+    .to_owned()
   if !mooncode_json_bool(head, "ok", default=false) || commit_sha == "" {
     return [
       mooncode_runtime_turn_commit_result(
@@ -321,18 +321,18 @@ fn mooncode_runtime_turn_commit_message(
 
 ///|
 fn mooncode_runtime_turn_commit_message_clean(text : String) -> String {
-  let clean = text.trim().to_string()
+  let clean = text.trim().to_owned()
   if clean == "" {
     return ""
   }
   let mut first = clean
   for line in clean.split("\n") {
-    first = line.to_string()
+    first = line.to_owned()
     break
   }
-  let first = first.trim().to_string()
+  let first = first.trim().to_owned()
   if first.length() > 180 {
-    first[:180].to_string()
+    first[:180].to_owned()
   } else {
     first
   }

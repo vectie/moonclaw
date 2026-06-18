@@ -111,7 +111,7 @@ pub fn parse_command(input : String) -> (String, String) {
   if parts.length() == 0 {
     return ("", "")
   }
-  let name = parts[0].to_string()
+  let name = parts[0].to_owned()
   let args = if parts.length() > 1 {
     parts[1:].join(" ").to_string()
   } else {

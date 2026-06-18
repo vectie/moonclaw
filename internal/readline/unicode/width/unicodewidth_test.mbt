@@ -13,9 +13,8 @@ fn assert_str_width(
   cjk : Int,
   loc~ : SourceLoc,
 ) -> Unit raise {
-  assert_eq(
-    (@width.string(s, cjk=false), @width.string(s, cjk=true)),
-    (nocjk, cjk),
+  assert_true(
+    (@width.string(s, cjk=false), @width.string(s, cjk=true)) == (nocjk, cjk),
     loc~,
   )
 }
@@ -28,9 +27,8 @@ fn assert_char_width(
   cjk : Int?,
   loc~ : SourceLoc,
 ) -> Unit raise {
-  assert_eq(
-    (@width.char(c, cjk=false), @width.char(c, cjk=true)),
-    (nocjk, cjk),
+  assert_true(
+    (@width.char(c, cjk=false), @width.char(c, cjk=true)) == (nocjk, cjk),
     loc~,
   )
 }
@@ -234,12 +232,12 @@ test "test_control_line_break" {
 test "char_str_consistent" {
   for i in 0..<=0x10FFFF {
     let c = i.unsafe_to_char()
-    assert_eq(
-      @width.char(c, cjk=false).unwrap_or(1),
+    assert_true(
+      @width.char(c, cjk=false).unwrap_or(1) ==
       @width.string(c.to_string(), cjk=false),
     )
-    assert_eq(
-      @width.char(c, cjk=true).unwrap_or(1),
+    assert_true(
+      @width.char(c, cjk=true).unwrap_or(1) ==
       @width.string(c.to_string(), cjk=true),
     )
   }
@@ -509,7 +507,7 @@ async test "emoji_test_file" {
       .trim(char_set=" \t\n")
       .split(" ")
       .map(s => {
-        (try! @strconv.parse_uint(s, base=16))
+        (try! @string.parse_uint(s, base=16))
         .reinterpret_as_int()
         .unsafe_to_char()
       })
@@ -540,13 +538,11 @@ test "test_vs1_vs2" {
       continue
     }
     for cjk in [false, true] {
-      assert_eq(
-        @width.string("\{c}\u{FE00}", cjk~),
-        @width.char(c, cjk~).unwrap_or(1),
+      assert_true(
+        @width.string("\{c}\u{FE00}", cjk~) == @width.char(c, cjk~).unwrap_or(1),
       )
-      assert_eq(
-        @width.string("\{c}\u{FE01}", cjk~),
-        @width.char(c, cjk~).unwrap_or(1),
+      assert_true(
+        @width.string("\{c}\u{FE01}", cjk~) == @width.char(c, cjk~).unwrap_or(1),
       )
     }
   }

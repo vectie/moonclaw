@@ -4,7 +4,7 @@ pub struct CommandPolicy {
   native_skills : String
   restart : Bool
   owner_display : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct PairingRecord {
@@ -15,7 +15,7 @@ pub struct PairingRecord {
   status : String
   created_at : Int
   approved_at : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct ApprovalRecord {
@@ -26,13 +26,13 @@ pub struct ApprovalRecord {
   status : String
   created_at : Int
   approved_at : Int?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 struct PersistedSecurityState {
   pairings : Array[PairingRecord]
   approvals : Array[ApprovalRecord]
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub enum SecurityChatAction {
@@ -123,7 +123,7 @@ fn json_string_at(value : Json, field : String) -> String? {
     Object(obj) =>
       match obj.get(field) {
         Some(String(text)) if !text.trim().is_empty() =>
-          Some(text.trim().to_string())
+          Some(text.trim().to_owned())
         _ => None
       }
     _ => None
@@ -440,12 +440,12 @@ pub async fn SecurityRuntime::consume_approval(
 
 ///|
 pub fn parse_security_chat_action(text : String) -> SecurityChatAction? {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   guard trimmed.has_prefix("/") else { return None }
   let parts = trimmed.split(" ").collect()
   let command = parts.get(0).unwrap_or("")
   let arg = if parts.length() > 1 {
-    parts[1:].join(" ").trim().to_string()
+    parts[1:].join(" ").trim().to_owned()
   } else {
     ""
   }

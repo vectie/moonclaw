@@ -13,7 +13,7 @@ fn proposal_family(proposal : JobProposal) -> String {
 
 ///|
 fn normalized_step_kind(kind : String) -> String {
-  let trimmed = kind.trim().to_string()
+  let trimmed = kind.trim().to_owned()
   if trimmed.is_blank() {
     "job.analysis"
   } else {
@@ -136,8 +136,8 @@ fn proposal_profile_metadata_string(
 ) -> String? {
   for key in keys {
     match metadata_string(proposal.profile_metadata, key) {
-      Some(value) if !value.trim().to_string().is_blank() =>
-        return Some(value.trim().to_string())
+      Some(value) if !value.trim().to_owned().is_blank() =>
+        return Some(value.trim().to_owned())
       _ => ()
     }
   }

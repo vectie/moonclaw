@@ -2,6 +2,7 @@
 package "vectie/moonclaw/model"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -84,7 +85,7 @@ pub struct CostConfig {
   output : Double?
   cacheRead : Double?
   cacheWrite : Double?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub impl @json.FromJson for CostConfig
 
 pub(all) enum KimiCodingModels {
@@ -121,7 +122,7 @@ pub struct Model {
   account_id : String?
   refresh_token : String?
   id_token : String?
-} derive(Eq, Show, ToJson)
+} derive(Eq, ToJson, @debug.Debug)
 #as_free_fn
 pub fn Model::new(api_key~ : String, base_url~ : String, name~ : String, safe_zone_tokens~ : Int, model_name? : String, model_type? : Type, description? : String, supports_anthropic_prompt_caching? : Bool, access_token? : String, account_id? : String, refresh_token? : String, id_token? : String) -> Self
 pub impl @json.FromJson for Model
@@ -134,7 +135,7 @@ pub struct ModelConfig {
   cost : CostConfig?
   contextWindow : Int?
   maxTokens : Int?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub impl @json.FromJson for ModelConfig
 
 pub(all) enum Provider {
@@ -145,19 +146,19 @@ pub(all) enum Provider {
   Qwen
   Kimi
   KimiCoding
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub struct ProviderConfig {
   baseUrl : String?
   api : String?
   models : Array[ModelConfig]
   apiKey : String?
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub impl @json.FromJson for ProviderConfig
 
 pub struct ProvidersFile {
   providers : Map[String, ProviderConfig]
-} derive(Show, ToJson)
+} derive(ToJson, @debug.Debug)
 pub impl @json.FromJson for ProvidersFile
 
 pub(all) enum QwenModels {
@@ -174,7 +175,8 @@ pub impl Show for QwenModels
 
 pub(all) enum Type {
   SaaS(Provider)
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
+pub impl Show for Type
 pub impl ToJson for Type
 pub impl @json.FromJson for Type
 

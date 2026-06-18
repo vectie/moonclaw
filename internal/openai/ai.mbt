@@ -1,7 +1,7 @@
 ///|
 priv suberror HttpError {
   HttpError(code~ : Int, body~ : String)
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 /// Execute a chat completion request with the OpenAI API.
@@ -268,9 +268,9 @@ async fn chat_codex(
           )
       }
   }
-  let has_refreshed = Ref::new(false)
-  let current_access_token = Ref::new(access_token)
-  let current_account_id = Ref::new(account_id)
+  let has_refreshed = Ref::Ref(false)
+  let current_access_token = Ref::Ref(access_token)
+  let current_account_id = Ref::Ref(account_id)
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
     max_retry=5,
@@ -302,7 +302,7 @@ async fn chat_codex(
         codex_request,
         on_text_delta~,
       ) catch {
-        HttpError(code=401, ..) as err if not(has_refreshed.val) => {
+        HttpError(code=401, ..) as err if !has_refreshed.val => {
           logger.info("Received 401, attempting to refresh token")
           has_refreshed.val = true // Mark as refreshed to prevent infinite loop
           // Try refresh first, then re-login if refresh fails
@@ -368,8 +368,8 @@ async fn chat_copilot(
         body="Failed to get Copilot credentials: \{err}",
       )
   }
-  let has_refreshed = Ref::new(false)
-  let current_token = Ref::new(credentials.copilot_token)
+  let has_refreshed = Ref::Ref(false)
+  let current_token = Ref::Ref(credentials.copilot_token)
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
     max_retry=5,
@@ -416,7 +416,7 @@ async fn chat_copilot(
       guard response.code is (200..=299) else {
         let error_body = client.read_all().text()
         // Try to refresh token on 401
-        if response.code == 401 && not(has_refreshed.val) {
+        if response.code == 401 && !has_refreshed.val {
           has_refreshed.val = true // Mark as refreshed to prevent infinite loop
           logger.info("Received 401, attempting to refresh Copilot token")
           let refresh_result : @copilot.Credentials? = Some(
@@ -584,7 +584,7 @@ async fn ResponseStreamEventReader::read(
   for ;; {
     guard self.0.read_until("\n") is Some(line) else { return None }
     guard line is [.. "data: ", .. rest] else { continue }
-    let data = rest.trim().to_string()
+    let data = rest.trim().to_owned()
     if data == "[DONE]" {
       return Some(Completed)
     }
@@ -791,7 +791,7 @@ fn extract_first_json_block(content : String) -> String? {
     .split("```")
     .take(1)
     .next()
-    .map(s => s.trim(char_set=" \r\n\t").to_string())
+    .map(s => s.trim(char_set=" \r\n\t").to_owned())
   })
 }
 

@@ -23,8 +23,8 @@ fn provider_metadata_string(metadata : Json, key : String) -> String? {
   match metadata {
     Object(obj) =>
       match obj.get(key) {
-        Some(String(value)) if !value.trim().to_string().is_blank() =>
-          Some(value.trim().to_string())
+        Some(String(value)) if !value.trim().to_owned().is_blank() =>
+          Some(value.trim().to_owned())
         _ => None
       }
     _ => None
@@ -43,7 +43,7 @@ fn provider_metadata_string_array(
           let items : Array[String] = []
           for value in values {
             guard value is String(text) else { continue }
-            let trimmed = text.trim().to_string()
+            let trimmed = text.trim().to_owned()
             if !trimmed.is_blank() {
               items.push(trimmed)
             }
@@ -118,7 +118,7 @@ async fn resolve_provider_task_command(
   target_id : String?,
 ) -> Result[ProviderTaskCommand, String] {
   let provider = match target_id {
-    Some(target_id) if !target_id.trim().to_string().is_blank() =>
+    Some(target_id) if !target_id.trim().to_owned().is_blank() =>
       match @resource_providers.find_resource_provider(cwd, target_id, home~) {
         Some(provider) => provider
         None => return Err("Unknown provider task target: \{target_id}")
@@ -180,7 +180,7 @@ fn parse_provider_task_payload(
   text : String,
   context : String,
 ) -> Result[Json, String] {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return Err("Provider task \{context} returned empty stdout")
   }
@@ -269,8 +269,8 @@ async fn run_provider_task_stdout(
     error => return Err("Failed to launch provider task \{context}: \{error}")
   }
   if process.status != 0 {
-    let stderr = process.stderr.trim().to_string()
-    let stdout = process.stdout.trim().to_string()
+    let stderr = process.stderr.trim().to_owned()
+    let stdout = process.stdout.trim().to_owned()
     let reason = if !stderr.is_blank() {
       stderr
     } else if !stdout.is_blank() {
@@ -322,18 +322,18 @@ fn embedded_provider_task_command(
     return None
   }
   let provider_name = match command_obj.get("provider_name") {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      value.trim().to_string()
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      value.trim().to_owned()
     _ => return None
   }
   match target_id {
-    Some(target) if !target.trim().to_string().is_blank() &&
-      target.trim().to_string() != provider_name => return None
+    Some(target) if !target.trim().to_owned().is_blank() &&
+      target.trim().to_owned() != provider_name => return None
     _ => ()
   }
   let command = match command_obj.get("command") {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      value.trim().to_string()
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      value.trim().to_owned()
     _ => "moon"
   }
   let args = match command_obj.get("args") {
@@ -341,7 +341,7 @@ fn embedded_provider_task_command(
       let items : Array[String] = []
       for value in values {
         guard value is String(text) else { continue }
-        let trimmed = text.trim().to_string()
+        let trimmed = text.trim().to_owned()
         if !trimmed.is_blank() {
           items.push(trimmed)
         }
@@ -351,13 +351,13 @@ fn embedded_provider_task_command(
     _ => []
   }
   let cwd = match command_obj.get("cwd") {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      Some(value.trim().to_string())
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      Some(value.trim().to_owned())
     _ => None
   }
   let workspace_root = match command_obj.get("workspace_root") {
-    Some(String(value)) if !value.trim().to_string().is_blank() =>
-      value.trim().to_string()
+    Some(String(value)) if !value.trim().to_owned().is_blank() =>
+      value.trim().to_owned()
     _ => return None
   }
   Some(ProviderTaskCommand::{
@@ -409,7 +409,7 @@ fn select_provider_task_task(
   task_id : String?,
 ) -> Result[ProviderTaskSpec, String] {
   match task_id {
-    Some(task_id) if !task_id.trim().to_string().is_blank() =>
+    Some(task_id) if !task_id.trim().to_owned().is_blank() =>
       match batch.tasks.iter().find_first(fn(task) { task.id == task_id }) {
         Some(task) => Ok(task)
         None => Err("Provider task task batch does not contain task \{task_id}")

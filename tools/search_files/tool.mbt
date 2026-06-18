@@ -12,7 +12,7 @@ priv struct SearchResult {
 priv suberror SearchError {
   FileReadError(path~ : String, error~ : String)
   MoonAnalysisError(query~ : String, error~ : String)
-} derive(ToJson, Show)
+} derive(ToJson, Debug)
 
 ///|
 /// Search kind enumeration
@@ -49,7 +49,10 @@ async fn collect_files_recursive(
       if entry.name is ".git" {
         continue
       }
-      if (try? @git.is_ignored(entry.path, cwd=base_dir)) is Ok(ignored) {
+      let ignored_result = Ok(@git.is_ignored(entry.path, cwd=base_dir)) catch {
+        error => Err(error)
+      }
+      if ignored_result is Ok(ignored) {
         if ignored {
           continue
         }
@@ -90,7 +93,7 @@ fn matches_pattern(filename : String, pattern : String) -> Bool {
 
   // Handle simple *.ext patterns
   if pattern.has_prefix("*.") {
-    let extension = pattern[2:].to_string()
+    let extension = pattern[2:].to_owned()
     return filename.has_suffix(".\{extension}")
   }
 
@@ -109,7 +112,10 @@ async fn search_in_file(
   let content = @fsx.read_file(file_path) catch {
     @encoding/utf8.Malformed(_) => return []
     error =>
-      raise SearchError::FileReadError(path=file_path, error=error.to_string())
+      raise SearchError::FileReadError(
+        path=file_path,
+        error="\{to_repr(error)}",
+      )
   }
   let lines = content.split("\n").collect() // Convert to Array
   let results = []
@@ -130,7 +136,7 @@ async fn search_in_file(
       let result = SearchResult::{
         context: context_lines_arr.join("\n"),
         line_number: i + 1,
-        match_line: line.to_string(), // Convert StringView to String
+        match_line: line.to_owned(), // Convert StringView to String
         path: relative_path,
       }
       results.push(result)
@@ -151,16 +157,16 @@ async fn goto_definition(
     cwd=working_dir,
   ) catch {
     error =>
-      raise SearchError::MoonAnalysisError(query~, error=error.to_string())
+      raise SearchError::MoonAnalysisError(query~, error="\{to_repr(error)}")
   }
   if process.status != 0 {
-    process.stdout.to_string()
+    process.stdout
   } else {
     (
       $|Search completed using fuzzy symbolic search for MoonBit definitions.
       $|Note: The search pattern "\{query}" was used for fuzzy matching of symbol names.
       $|
-      $|\{process.stdout.to_string()}
+      $|\{process.stdout}
     )
   }
 }
@@ -177,7 +183,7 @@ async fn find_references(
     cwd=working_dir,
   ) catch {
     error =>
-      raise SearchError::MoonAnalysisError(query~, error=error.to_string())
+      raise SearchError::MoonAnalysisError(query~, error="\{to_repr(error)}")
   }
   if process.status != 0 {
     raise SearchError::MoonAnalysisError(
@@ -185,7 +191,7 @@ async fn find_references(
       error="moon ide find-references failed with exit code \{process.status}",
     )
   }
-  let result = process.stdout.to_string()
+  let result = process.stdout
   if result.is_empty() {
     "No references found for query '\{query}'"
   } else {
@@ -239,7 +245,7 @@ enum SearchFilesResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for SearchFilesResult with output(
+pub impl Show for SearchFilesResult with fn output(
   self : SearchFilesResult,
   logger : &Logger,
 ) -> Unit {
@@ -339,7 +345,7 @@ async fn search_files_impl(
         let path_result = check_path(absolute_search_path)
         let exists = path_result.0
         let is_file = path_result.1
-        if not(exists) {
+        if !exists {
           @tool.error("Error: Directory not found: \{search_path}")
         } else if is_file {
           @tool.error(
@@ -371,7 +377,7 @@ async fn search_files_impl(
         let path_result = check_path(absolute_search_path)
         let exists = path_result.0
         let is_file = path_result.1
-        if not(exists) {
+        if !exists {
           @tool.error("Error: Directory not found: \{search_path}")
         } else if is_file {
           @tool.error(
@@ -404,14 +410,14 @@ async fn search_files_impl(
         let path_result = check_path(absolute_search_path)
         let exists = path_result.0
         let is_file = path_result.1
-        if not(exists) {
+        if !exists {
           @tool.error("Error: Search path not found: \{search_path}")
         } else {
           // Compile regex
           let regex_result = @regexp.compile(search_pattern) catch {
             error => return @tool.error("Invalid regex pattern: \{error}")
           }
-          let does_respect_gitignore = Ref::new(true)
+          let does_respect_gitignore = Ref::Ref(true)
 
           // Collect files to search
           let files_to_search = if is_file {
@@ -602,7 +608,7 @@ pub let prompt : String =
   #|  "fibonacci"
   #|- ❌ **Incorrect**: `"regex": "Array.*length"` - This will search for a symbol
   #|  literally containing "Array.*length", not symbols matching the pattern
-  #|- ❌ **Incorrect**: `"regex": "@int.max_value"` - This is not a valid MoonBit
+  #|- ❌ **Incorrect**: `"regex": "MAX_VALUE"` - This is not a valid MoonBit
   #|  definition search query, as will cause the tool to fail.
   #|
   #|The fuzzy search will automatically find partial matches, so there's no need for

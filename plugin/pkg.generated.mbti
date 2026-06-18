@@ -2,6 +2,7 @@
 package "vectie/moonclaw/plugin"
 
 import {
+  "moonbitlang/core/debug",
   "moonbitlang/core/json",
 }
 
@@ -19,7 +20,7 @@ pub struct PluginRecord {
   version : String?
   install_path : String?
   metadata : Json
-} derive(Show, ToJson, @json.FromJson)
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct PluginRuntime {
   home : String

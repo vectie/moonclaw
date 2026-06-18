@@ -199,9 +199,9 @@ fn thread_attachment_key(
   message : @channel.Message,
 ) -> String? {
   match message.thread_id {
-    Some(thread_id) if !thread_id.trim().to_string().is_blank() =>
+    Some(thread_id) if !thread_id.trim().to_owned().is_blank() =>
       Some(
-        "\{channel_id}:\{account_id}:\{message.to}:\{thread_id.trim().to_string()}",
+        "\{channel_id}:\{account_id}:\{message.to}:\{thread_id.trim().to_owned()}",
       )
     _ => Some("\{channel_id}:\{account_id}:\{message.to}:chat")
   }
@@ -311,12 +311,12 @@ fn plan_job_input(
 
 ///|
 fn slash_resume_text(message : @channel.Message) -> String {
-  let trimmed = message.content.trim().to_string()
+  let trimmed = message.content.trim().to_owned()
   let lower = trimmed.to_lower()
   if lower == "/resume" {
     ""
   } else if lower.has_prefix("/resume ") {
-    trimmed[8:].to_string().trim().to_string()
+    trimmed[8:].to_owned().trim().to_owned()
   } else {
     trimmed
   }
@@ -324,7 +324,7 @@ fn slash_resume_text(message : @channel.Message) -> String {
 
 ///|
 fn is_slash_resume_reply(message : @channel.Message) -> Bool {
-  let lower = message.content.trim().to_string().to_lower()
+  let lower = message.content.trim().to_owned().to_lower()
   lower == "/resume" || lower.has_prefix("/resume ")
 }
 
@@ -452,15 +452,17 @@ async fn Gateway::send_job_notification(
     reply_to: None,
     attachments: [],
   }
-  let result = try? self.channel_manager.send_message(
-    target.channel_id,
-    target.recipient,
-    message,
-    Some(target.account_id),
-  )
-  match result {
-    Ok(_) => ()
-    Err(error) => self.logger.warn("Failed to send job notification: \{error}")
+  try
+    self.channel_manager.send_message(
+      target.channel_id,
+      target.recipient,
+      message,
+      Some(target.account_id),
+    )
+  catch {
+    error => self.logger.warn("Failed to send job notification: \{error}")
+  } noraise {
+    _ => ()
   }
 }
 
@@ -507,7 +509,7 @@ async fn Gateway::handle_job_stop_command(
   args : String,
   force? : Bool = false,
 ) -> @channel.Message {
-  let trimmed = args.trim().to_string()
+  let trimmed = args.trim().to_owned()
   guard !trimmed.is_blank() else {
     return self.job_reply_message(
       channel_id,
@@ -573,7 +575,7 @@ async fn Gateway::handle_remember_command(
   message : @channel.Message,
   args : String,
 ) -> @channel.Message {
-  let content = args.trim().to_string()
+  let content = args.trim().to_owned()
   guard !content.is_blank() else {
     return self.job_reply_message(
       channel_id,
@@ -587,7 +589,7 @@ async fn Gateway::handle_remember_command(
     @job.MemoryWriteRequest::new(
       kind="note",
       content~,
-      title=Some(content[:preview_len].trim().to_string()),
+      title=Some(content[:preview_len].trim().to_owned()),
       tags=["chat", "remember"],
       scope=[
         "channel:\{channel_id}",
@@ -642,7 +644,7 @@ fn Gateway::handle_memory_search_command(
   message : @channel.Message,
   args : String,
 ) -> @channel.Message {
-  let question = args.trim().to_string()
+  let question = args.trim().to_owned()
   guard !question.is_blank() else {
     return self.job_reply_message(
       channel_id,
@@ -845,7 +847,7 @@ async fn Gateway::handle_plan_mode_followup(
   session_key : String,
   state : PlanModeState,
 ) -> @channel.Message {
-  let note = message.content.trim().to_string()
+  let note = message.content.trim().to_owned()
   let notes = if note.is_blank() { state.notes } else { [..state.notes, note] }
   let effective_request = planning_request_text(state.request_text, notes)
   let intake = Some(
@@ -925,10 +927,10 @@ async fn Gateway::handle_promote_plan_command(
         channel_id, account_id, message, "No active `/plan` mode found for this thread. Start one with `/plan <job description>`.",
       )
   }
-  let promoted_state = if args.trim().to_string().is_blank() {
+  let promoted_state = if args.trim().to_owned().is_blank() {
     state
   } else {
-    let notes = [..state.notes, args.trim().to_string()]
+    let notes = [..state.notes, args.trim().to_owned()]
     let effective_request = planning_request_text(state.request_text, notes)
     let intake = Some(
       plan_job_input(
@@ -1021,10 +1023,10 @@ async fn Gateway::handle_preview_plan_command(
         channel_id, account_id, message, "No active `/plan` mode found for this thread. Start one with `/plan <job description>`.",
       )
   }
-  let preview_state = if args.trim().to_string().is_blank() {
+  let preview_state = if args.trim().to_owned().is_blank() {
     state
   } else {
-    let notes = [..state.notes, args.trim().to_string()]
+    let notes = [..state.notes, args.trim().to_owned()]
     let effective_request = planning_request_text(state.request_text, notes)
     let intake = Some(
       plan_job_input(
@@ -1206,8 +1208,8 @@ async fn Gateway::handle_revise_job_command(
   let (proposal_id, guidance) = match @job.parse_revise_args(args) {
     Some(parts) => parts
     None =>
-      if message.reply_to is Some(_) && !args.trim().to_string().is_blank() {
-        ("", args.trim().to_string())
+      if message.reply_to is Some(_) && !args.trim().to_owned().is_blank() {
+        ("", args.trim().to_owned())
       } else {
         return self.job_reply_message(
           channel_id,
@@ -1251,7 +1253,7 @@ async fn Gateway::handle_job_status_command(
   message : @channel.Message,
   job_or_run_id : String,
 ) -> @channel.Message {
-  let trimmed = job_or_run_id.trim().to_string()
+  let trimmed = job_or_run_id.trim().to_owned()
   let content = @job.render_job_status_command_reply(
     self.job_runtime().store(),
     trimmed,
@@ -1275,7 +1277,7 @@ async fn Gateway::handle_job_workspace_command(
   message : @channel.Message,
   job_or_run_id : String,
 ) -> @channel.Message {
-  let trimmed = job_or_run_id.trim().to_string()
+  let trimmed = job_or_run_id.trim().to_owned()
   guard !trimmed.is_blank() else {
     return self.job_reply_message(
       channel_id,
@@ -1353,7 +1355,7 @@ async fn Gateway::handle_job_chat_command(
   account_id : String,
   message : @channel.Message,
 ) -> @channel.Message? {
-  let trimmed = message.content.trim().to_string()
+  let trimmed = message.content.trim().to_owned()
   let session_key = plan_mode_session_key(
     channel_id,
     account_id,

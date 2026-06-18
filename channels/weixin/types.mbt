@@ -9,7 +9,7 @@ pub struct WeixinAccountConfig {
   original_id : WeixinOriginalId?
   api_base_url : String?
   enabled : Bool
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
 
 ///|
 pub struct WeixinAccessTokenResponse {
@@ -17,4 +17,4 @@ pub struct WeixinAccessTokenResponse {
   expires_in : Int?
   errcode : Int?
   errmsg : String?
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)

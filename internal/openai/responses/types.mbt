@@ -13,7 +13,7 @@ pub struct ResponsesRequest {
   tool_choice : String
   stream : Bool?
   store : Bool?
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// This is the minimal subset of Responses API content we currently need.
@@ -21,10 +21,10 @@ pub(all) enum ContentType {
   InputText
   OutputText
   Text
-} derive(Show)
+} derive(Debug)
 
 ///|
-pub impl ToJson for ContentType with to_json(self : ContentType) -> Json {
+pub impl ToJson for ContentType with fn to_json(self : ContentType) -> Json {
   match self {
     InputText => "input_text"
     OutputText => "output_text"
@@ -33,7 +33,7 @@ pub impl ToJson for ContentType with to_json(self : ContentType) -> Json {
 }
 
 ///|
-pub impl @json.FromJson for ContentType with from_json(
+pub impl @json.FromJson for ContentType with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ContentType raise @json.JsonDecodeError {
@@ -53,7 +53,7 @@ pub impl @json.FromJson for ContentType with from_json(
 pub struct ContentPart {
   type_ : ContentType
   text : String
-} derive(Show)
+} derive(Debug)
 
 ///|
 pub fn ContentPart::new(type_~ : ContentType, text~ : String) -> ContentPart {
@@ -61,12 +61,12 @@ pub fn ContentPart::new(type_~ : ContentType, text~ : String) -> ContentPart {
 }
 
 ///|
-pub impl ToJson for ContentPart with to_json(self : ContentPart) -> Json {
+pub impl ToJson for ContentPart with fn to_json(self : ContentPart) -> Json {
   { "type": self.type_, "text": self.text }
 }
 
 ///|
-pub impl @json.FromJson for ContentPart with from_json(
+pub impl @json.FromJson for ContentPart with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ContentPart raise @json.JsonDecodeError {
@@ -100,7 +100,7 @@ pub fn ResponsesRequest::new(
 }
 
 ///|
-pub impl ToJson for ResponsesRequest with to_json(self : ResponsesRequest) -> Json {
+pub impl ToJson for ResponsesRequest with fn to_json(self : ResponsesRequest) -> Json {
   let obj = {
     "model": self.model.to_json(),
     "input": self.input.to_json(),
@@ -122,10 +122,10 @@ pub(all) enum ResponseInputItem {
   Message(role~ : String, content~ : Array[ContentPart])
   FunctionCall(call_id~ : String, name~ : String, arguments~ : String)
   FunctionCallOutput(call_id~ : String, output~ : String)
-} derive(Show)
+} derive(Debug)
 
 ///|
-pub impl ToJson for ResponseInputItem with to_json(self : ResponseInputItem) -> Json {
+pub impl ToJson for ResponseInputItem with fn to_json(self : ResponseInputItem) -> Json {
   match self {
     Message(role~, content~) =>
       { "type": "message", "role": role, "content": content.to_json() }
@@ -145,10 +145,10 @@ pub impl ToJson for ResponseInputItem with to_json(self : ResponseInputItem) -> 
 pub(all) enum ResponseItem {
   Message(role~ : String, content~ : Array[ContentPart])
   FunctionCall(call_id~ : String, name~ : String, arguments~ : String)
-} derive(Show)
+} derive(Debug)
 
 ///|
-pub impl @json.FromJson for ResponseItem with from_json(
+pub impl @json.FromJson for ResponseItem with fn from_json(
   json : Json,
   path : @json.JsonPath,
 ) -> ResponseItem raise @json.JsonDecodeError {

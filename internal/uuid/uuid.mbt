@@ -20,18 +20,20 @@ struct Uuid {
 } derive(Eq, Compare, Hash)
 
 ///|
-pub impl ToJson for Uuid with to_json(self : Uuid) -> Json {
+pub impl ToJson for Uuid with fn to_json(self : Uuid) -> Json {
   self.to_string().to_json()
 }
 
 ///|
-pub impl @json.FromJson for Uuid with from_json(json, json_path) -> Uuid raise {
+pub impl @json.FromJson for Uuid with fn from_json(json, json_path) -> Uuid raise {
   guard json is String(string) else {
     raise @json.JsonDecodeError((json_path, "Uuid::from_json: expected string"))
   }
   parse(string) catch {
     error =>
-      raise @json.JsonDecodeError((json_path, "Uuid::from_json: \{error}"))
+      raise @json.JsonDecodeError(
+        (json_path, "Uuid::from_json: \{to_repr(error)}"),
+      )
   }
 }
 
@@ -40,7 +42,7 @@ struct Generator(&Source)
 
 ///|
 pub(open) trait Source {
-  uint64(self : Self) -> UInt64
+  fn uint64(self : Self) -> UInt64
 }
 
 ///|
@@ -53,7 +55,7 @@ pub fn Generator::v4(self : Generator) -> Uuid {
 }
 
 ///|
-pub impl Source for @random.Rand with uint64(self : @random.Rand) -> UInt64 {
+pub impl Source for @random.Rand with fn uint64(self : @random.Rand) -> UInt64 {
   self.uint64()
 }
 
@@ -121,7 +123,7 @@ suberror ParseError {
   InvalidOctet(StringView)
   MissingDash(StringView)
   ExtraContent(StringView)
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 pub fn parse(hex : StringView) -> Uuid raise ParseError {
@@ -209,11 +211,11 @@ pub fn Uuid::to_string(self : Uuid) -> String {
 
 ///|
 test {
-  inspect(b'a'.to_char(), content="a")
+  assert_eq(b'a'.to_char(), 'a')
 }
 
 ///|
-pub impl Show for Uuid with output(self : Uuid, logger : &Logger) -> Unit {
+pub impl Show for Uuid with fn output(self : Uuid, logger : &Logger) -> Unit {
   logger.write_string(self.to_string())
 }
 
@@ -223,7 +225,7 @@ pub enum Variant {
   RFC9562(Version)
   ReservedMicrosoft
   ReservedFuture
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 pub(all) enum Version {
@@ -243,7 +245,7 @@ pub(all) enum Version {
   V13 = 13
   V14 = 14
   V15 = 15
-} derive(Show, ToJson)
+} derive(Debug, ToJson)
 
 ///|
 fn Version::from_uint64_unchecked(value : UInt64) -> Version = "%identity"

@@ -58,7 +58,7 @@ pub async fn Server::new(
   let broadcast = @broadcast.Broadcast::new()
   let uuid = @uuid.generator(@rand.chacha8())
   guard @model.load(home~, name?=model) is Some(model) else {
-    fail("Failed to load model '\{model}' from cwd '\{cwd}'")
+    fail("Failed to load model '\{to_repr(model)}' from cwd '\{to_repr(cwd)}'")
   }
   let moonclaw = if resume_id is Some(resume_id) {
     @moonclaw.Moonclaw::resume_(model~, resume_id, web_search~)
@@ -276,7 +276,7 @@ pub(all) enum ServerStreamEvent {
 }
 
 ///|
-pub impl @httpx.FromEvent for ServerStreamEvent with from_event(
+pub impl @httpx.FromEvent for ServerStreamEvent with fn from_event(
   event : @httpx.Event,
 ) -> ServerStreamEvent raise {
   let { event, data } = event
@@ -287,12 +287,12 @@ pub impl @httpx.FromEvent for ServerStreamEvent with from_event(
         @json.from_json(data),
       )
     Some("moonclaw") => ServerStreamEvent::Moonclaw(@json.from_json(data))
-    _ => fail("unrecognized event type: \{event}")
+    _ => fail("unrecognized event type: \{to_repr(event)}")
   }
 }
 
 ///|
-pub impl @httpx.ToEvent for ServerStreamEvent with to_event(
+pub impl @httpx.ToEvent for ServerStreamEvent with fn to_event(
   self : ServerStreamEvent,
 ) -> @httpx.Event {
   match self {

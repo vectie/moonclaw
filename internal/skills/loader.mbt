@@ -178,7 +178,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
         if cur == root_norm {
           break
         }
-        let parent = @pathx.dirname(cur).to_string()
+        let parent = @pathx.dirname(cur).to_owned()
         // Safety: if we can't reach root for some reason, stop at filesystem root.
         if parent == cur {
           break

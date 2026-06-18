@@ -266,31 +266,34 @@ async test "provider task batch maps provider-backed extension tasks into a chil
       "Update the knowledge base", batch, command, config, 1000,
     )
 
-    inspect(proposal.suggested_family.unwrap_or(""), content="extension")
-    inspect(proposal.steps.length(), content="2")
-    inspect(proposal.steps[0].kind, content="job.analysis")
-    inspect(proposal.steps[0].execution_mode.unwrap_or(""), content="provider")
-    inspect(
+    debug_inspect(proposal.suggested_family.unwrap_or(""), content="extension")
+    debug_inspect(proposal.steps.length(), content="2")
+    debug_inspect(proposal.steps[0].kind, content="job.analysis")
+    debug_inspect(
+      proposal.steps[0].execution_mode.unwrap_or(""),
+      content="provider",
+    )
+    debug_inspect(
       proposal.steps[0].execution_target.unwrap_or(""),
       content="wiki-main",
     )
-    inspect(
+    debug_inspect(
       proposal.steps[0].metadata
       .stringify()
       .contains("\"bookapi_task_id\":\"task-1\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       proposal.steps[0].metadata.stringify().contains("\"timeout_ms\":600000"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       proposal.steps[0].metadata
       .stringify()
       .contains("\"max_total_tokens\":24000"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       proposal.profile_metadata.stringify().contains("\"task_count\":2"),
       content="true",
     )
@@ -362,14 +365,20 @@ test "provider task child proposal skips deferred planning task when executable 
   let proposal = provider_task_child_proposal(
     "Bootstrap ingest", batch, command, config, 1000,
   )
-  inspect(proposal.steps.length(), content="2")
-  inspect(proposal.steps[0].id.has_prefix("provider-task-"), content="true")
-  inspect(proposal.steps[1].id.has_prefix("provider-task-"), content="true")
-  inspect(
+  debug_inspect(proposal.steps.length(), content="2")
+  debug_inspect(
+    proposal.steps[0].id.has_prefix("provider-task-"),
+    content="true",
+  )
+  debug_inspect(
+    proposal.steps[1].id.has_prefix("provider-task-"),
+    content="true",
+  )
+  debug_inspect(
     proposal.profile_metadata.stringify().contains("\"task_count\":2"),
     content="true",
   )
-  inspect(
+  debug_inspect(
     proposal.profile_metadata.stringify().contains("\"deferred_task_count\":1"),
     content="true",
   )
@@ -403,9 +412,9 @@ test "provider task child proposal enables web tools for web-first tasks" {
     "Use web-first research before local-only conclusions.", "goal-1", task, command,
   )
   let serialized = metadata.stringify()
-  inspect(serialized.contains("\"enable_tools\":true"), content="true")
-  inspect(serialized.contains("\"web_search\":true"), content="true")
-  inspect(serialized.contains("\"web_fetch\":true"), content="true")
+  debug_inspect(serialized.contains("\"enable_tools\":true"), content="true")
+  debug_inspect(serialized.contains("\"web_search\":true"), content="true")
+  debug_inspect(serialized.contains("\"web_fetch\":true"), content="true")
 }
 
 ///|
@@ -436,8 +445,8 @@ test "provider task child proposal enables web tools by default" {
     "Inspect source material", "goal-1", task, command,
   )
   let serialized = metadata.stringify()
-  inspect(serialized.contains("\"web_search\":true"), content="true")
-  inspect(serialized.contains("\"web_fetch\":true"), content="true")
+  debug_inspect(serialized.contains("\"web_search\":true"), content="true")
+  debug_inspect(serialized.contains("\"web_fetch\":true"), content="true")
 }
 
 ///|
@@ -514,26 +523,26 @@ test "provider task child proposal keeps bootstrap execution bounded" {
   let proposal = provider_task_child_proposal(
     "Bootstrap ingest", batch, command, config, 1000,
   )
-  inspect(proposal.steps.length(), content="4")
-  inspect(
+  debug_inspect(proposal.steps.length(), content="4")
+  debug_inspect(
     proposal.steps[0].metadata
     .stringify()
     .contains("\"bookapi_task_kind\":\"bootstrap_gather\""),
     content="true",
   )
-  inspect(
+  debug_inspect(
     proposal.steps[1].metadata
     .stringify()
     .contains("\"bookapi_task_kind\":\"source_materialize\""),
     content="true",
   )
-  inspect(
+  debug_inspect(
     proposal.steps[2].metadata
     .stringify()
     .contains("\"bookapi_task_kind\":\"knowledge_revise\""),
     content="true",
   )
-  inspect(
+  debug_inspect(
     proposal.steps[3].metadata
     .stringify()
     .contains("\"bookapi_task_kind\":\"review\""),
@@ -561,11 +570,14 @@ test "provider task normalizes provider task kind and title from step metadata" 
     },
     task,
   )
-  inspect(normalized.kind, content="source_materialize")
-  inspect(normalized.title, content="Materialize durable source pages")
-  inspect(normalized.priority.to_string(), content="90")
-  inspect(normalized.requires_review.to_string(), content="true")
-  inspect(normalized.target_pages.join(","), content="sources/,index.md,log.md")
+  debug_inspect(normalized.kind, content="source_materialize")
+  debug_inspect(normalized.title, content="Materialize durable source pages")
+  debug_inspect(normalized.priority.to_string(), content="90")
+  debug_inspect(normalized.requires_review.to_string(), content="true")
+  debug_inspect(
+    normalized.target_pages.join(","),
+    content="sources/,index.md,log.md",
+  )
 }
 
 ///|
@@ -582,12 +594,12 @@ test "provider task can pin full task spec in step metadata" {
   let decoded = provider_task_spec_from_metadata({
     "extension_task_spec": task.to_json(),
   })
-  inspect(decoded is Some(_), content="true")
-  inspect(
+  debug_inspect(decoded is Some(_), content="true")
+  debug_inspect(
     decoded.map(fn(value) { value.kind }).unwrap_or(""),
     content="source_materialize",
   )
-  inspect(
+  debug_inspect(
     decoded.map(fn(value) { value.target_pages.join(",") }).unwrap_or(""),
     content="wiki/sources/,wiki/index.md,wiki/log.md",
   )
@@ -630,10 +642,10 @@ test "provider task reads pinned spec from nested step metadata" {
   let normalized = normalize_provider_task_spec_from_metadata(
     nested_metadata, decoded,
   )
-  inspect(normalized.id, content="task-materialize")
-  inspect(normalized.kind, content="source_materialize")
-  inspect(normalized.title, content="Materialize durable source pages")
-  inspect(
+  debug_inspect(normalized.id, content="task-materialize")
+  debug_inspect(normalized.kind, content="source_materialize")
+  debug_inspect(normalized.title, content="Materialize durable source pages")
+  debug_inspect(
     normalized.target_pages.join(","),
     content="wiki/sources/,wiki/index.md,wiki/log.md",
   )
@@ -718,12 +730,12 @@ async test "provider task runner reuses embedded provider command when manifest 
       Ok(execution) => execution
       Err(error) => fail(error)
     }
-    inspect(
+    debug_inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
     )
     let persisted_path = @fsx.read_file(state_path)
-    inspect(
+    debug_inspect(
       persisted_path.contains(".moonclaw-provider-result-run-1-"),
       content="true",
     )
@@ -823,46 +835,55 @@ async test "provider task analysis runner hydrates context and persists structur
       Err(error) => fail(error)
     }
 
-    inspect(captured_prompt.val.contains("Relevant Pages:"), content="true")
-    inspect(captured_prompt.val.contains("wiki/entity.md"), content="true")
-    inspect(
+    debug_inspect(
+      captured_prompt.val.contains("Relevant Pages:"),
+      content="true",
+    )
+    debug_inspect(
+      captured_prompt.val.contains("wiki/entity.md"),
+      content="true",
+    )
+    debug_inspect(
       captured_system_prompt.val.contains(
         "loaded `provider-task-execution` skill defines the execution method.",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_prompt.val.contains("provider-task-execution"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_system_prompt.val.contains("Base system prompt."),
       content="true",
     )
-    inspect(
+    debug_inspect(
       captured_system_prompt.val.contains(
         "Read concrete candidate files directly before using broad repo-wide search tools.",
       ),
       content="true",
     )
-    inspect(captured_system_prompt.val.contains(".mooncakes"), content="true")
-    inspect(
+    debug_inspect(
+      captured_system_prompt.val.contains(".mooncakes"),
+      content="true",
+    )
+    debug_inspect(
       captured_system_prompt.val.contains("raw/bootstrap/*"),
       content="true",
     )
-    inspect(captured_enable_tools.val, content="true")
-    inspect(captured_web_search.val, content="true")
-    inspect(captured_todo_enabled.val, content="false")
-    inspect(
+    debug_inspect(captured_enable_tools.val, content="true")
+    debug_inspect(captured_web_search.val, content="true")
+    debug_inspect(captured_todo_enabled.val, content="false")
+    debug_inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
     )
-    inspect(execution.content.contains("evidence-1"), content="true")
-    inspect(
+    debug_inspect(execution.content.contains("evidence-1"), content="true")
+    debug_inspect(
       execution.metadata.stringify().contains("\"execution_mode\":\"provider\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
@@ -870,14 +891,14 @@ async test "provider task analysis runner hydrates context and persists structur
     )
     let persisted_path = @fsx.read_file(state_path)
     let persisted_step_key = safe_step_file_segment("step-1")
-    inspect(
+    debug_inspect(
       persisted_path.contains(
         ".moonclaw-provider-result-run-1-\{persisted_step_key}.json",
       ),
       content="true",
     )
     let persisted_payload = @fsx.read_file(persisted_path.trim())
-    inspect(
+    debug_inspect(
       persisted_payload.contains("\"summary\": \"Updated the wiki"),
       content="true",
     )
@@ -886,7 +907,7 @@ async test "provider task analysis runner hydrates context and persists structur
 
 ///|
 test "provider task tool-loop policy enables bounded local execution for provider phases" {
-  inspect(
+  debug_inspect(
     provider_task_requires_local_tool_loop(ProviderTaskSpec::{
       id: "task-gather",
       title: "Gather bootstrap materials",
@@ -898,7 +919,7 @@ test "provider task tool-loop policy enables bounded local execution for provide
     }),
     content="true",
   )
-  inspect(
+  debug_inspect(
     provider_task_requires_local_tool_loop(ProviderTaskSpec::{
       id: "task-review",
       title: "Review pending changes",
@@ -961,13 +982,13 @@ async test "provider task precompiles source materialize substeps from bootstrap
       },
       context,
     )
-    inspect(envelope is Some(_), content="true")
+    debug_inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    inspect(substeps.length().to_string(), content="2")
-    inspect(substeps[0].title.contains("demo-readme"), content="true")
-    inspect(
+    debug_inspect(substeps.length().to_string(), content="2")
+    debug_inspect(substeps[0].title.contains("demo-readme"), content="true")
+    debug_inspect(
       substeps[0].prompt.contains("raw/bootstrap/demo-bootstrap.md"),
       content="true",
     )
@@ -1022,13 +1043,13 @@ async test "provider task gates knowledge revise behind source materialization" 
       },
       context,
     )
-    inspect(envelope is Some(_), content="true")
+    debug_inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    inspect(substeps.length().to_string(), content="1")
-    inspect(substeps[0].title.contains("demo-readme"), content="true")
-    inspect(
+    debug_inspect(substeps.length().to_string(), content="1")
+    debug_inspect(substeps[0].title.contains("demo-readme"), content="true")
+    debug_inspect(
       substeps[0].prompt.contains(
         "Materialize or revise only this durable page",
       ),
@@ -1091,7 +1112,7 @@ async test "provider task caps materialize fanout" {
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    inspect(substeps.length().to_string(), content="2")
+    debug_inspect(substeps.length().to_string(), content="2")
   })
 }
 
@@ -1132,19 +1153,19 @@ async test "provider task derives knowledge revision targets from source pages" 
         },
         context,
       )
-      inspect(envelope is Some(_), content="true")
+      debug_inspect(envelope is Some(_), content="true")
       let substeps = envelope
         .map(fn(value) { adaptive_substeps(value) })
         .unwrap_or([])
-      inspect(substeps.length().to_string(), content="4")
+      debug_inspect(substeps.length().to_string(), content="4")
       let has_alpha = substeps
         .iter()
         .any(fn(step) { step.title.contains("alpha") })
-      inspect(has_alpha, content="true")
+      debug_inspect(has_alpha, content="true")
       let has_entity = substeps
         .iter()
         .any(fn(step) { step.prompt.contains("wiki/entities/demo.md") })
-      inspect(has_entity, content="true")
+      debug_inspect(has_entity, content="true")
     },
   )
 }
@@ -1185,13 +1206,13 @@ async test "provider task precompiles review closeout when sources exist" {
       },
       context,
     )
-    inspect(envelope is Some(_), content="true")
+    debug_inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    inspect(substeps.length().to_string(), content="1")
-    inspect(substeps[0].title, content="Finalize provider review")
-    inspect(
+    debug_inspect(substeps.length().to_string(), content="1")
+    debug_inspect(substeps[0].title, content="Finalize provider review")
+    debug_inspect(
       substeps[0].prompt.contains("wiki/sources/alpha.md"),
       content="true",
     )
@@ -1227,23 +1248,23 @@ test "provider task can fast complete review from source inventory" {
     requires_review: true,
     target_pages: [],
   }
-  inspect(
+  debug_inspect(
     provider_task_can_complete_from_source_inventory(knowledge),
     content="false",
   )
-  inspect(
+  debug_inspect(
     provider_task_can_complete_from_source_inventory(review),
     content="true",
   )
-  inspect(
+  debug_inspect(
     provider_task_can_complete_from_source_inventory(source),
     content="false",
   )
   let result = provider_task_source_inventory_result(review, [
     "wiki/sources/alpha.md", "wiki/sources/beta.md",
   ])
-  inspect(result.requires_review, content="false")
-  inspect(result.artifacts.length().to_string(), content="2")
+  debug_inspect(result.requires_review, content="false")
+  debug_inspect(result.artifacts.length().to_string(), content="2")
 }
 
 ///|
@@ -1268,7 +1289,7 @@ test "provider task synthesized subplan result does not queue intermediate revie
     },
     ["raw/bootstrap/demo.md"],
   )
-  inspect(result.requires_review, content="false")
+  debug_inspect(result.requires_review, content="false")
 }
 
 ///|
@@ -1325,13 +1346,13 @@ async test "provider task uses command workspace root when provider context root
       },
       context,
     )
-    inspect(effective_root == workspace, content="true")
-    inspect(envelope is Some(_), content="true")
+    debug_inspect(effective_root == workspace, content="true")
+    debug_inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    inspect(substeps.length().to_string(), content="1")
-    inspect(substeps[0].title.contains("demo-readme"), content="true")
+    debug_inspect(substeps.length().to_string(), content="1")
+    debug_inspect(substeps[0].title.contains("demo-readme"), content="true")
   })
 }
 
@@ -1435,15 +1456,18 @@ async test "provider task precompiles bootstrap gather lanes from source hints" 
       },
       context,
     )
-    inspect(envelope is Some(_), content="true")
+    debug_inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    inspect(substeps.length().to_string(), content="2")
-    inspect(substeps[0].title, content="Gather bootstrap lane 1")
-    inspect(substeps[0].prompt.contains("raw/bootstrap/"), content="true")
-    inspect(substeps[0].prompt.contains("mounted-sources/"), content="true")
-    inspect(substeps[0].prompt.contains(source_root), content="false")
+    debug_inspect(substeps.length().to_string(), content="2")
+    debug_inspect(substeps[0].title, content="Gather bootstrap lane 1")
+    debug_inspect(substeps[0].prompt.contains("raw/bootstrap/"), content="true")
+    debug_inspect(
+      substeps[0].prompt.contains("mounted-sources/"),
+      content="true",
+    )
+    debug_inspect(substeps[0].prompt.contains(source_root), content="false")
   })
 }
 
@@ -1507,31 +1531,31 @@ async test "provider task precompiled substeps include loaded skill bodies" {
       let substeps = envelope
         .map(fn(value) { adaptive_substeps(value) })
         .unwrap_or([])
-      inspect(substeps.length().to_string(), content="3")
-      inspect(substeps[0].title, content="Write research evidence packet")
-      inspect(substeps[1].title, content="Write deep research report")
-      inspect(substeps[2].title, content="Write marketing brief")
-      inspect(
+      debug_inspect(substeps.length().to_string(), content="3")
+      debug_inspect(substeps[0].title, content="Write research evidence packet")
+      debug_inspect(substeps[1].title, content="Write deep research report")
+      debug_inspect(substeps[2].title, content="Write marketing brief")
+      debug_inspect(
         substeps[0].prompt.contains("Loaded provider skill bodies:"),
         content="true",
       )
-      inspect(
+      debug_inspect(
         substeps[0].prompt.contains("raw/bootstrap/research-question.md"),
         content="true",
       )
-      inspect(
+      debug_inspect(
         substeps[0].prompt.contains("raw/bootstrap/evidence-matrix.md"),
         content="true",
       )
-      inspect(
+      debug_inspect(
         substeps[0].prompt.contains("raw/bootstrap/synthesis-brief.md"),
         content="true",
       )
-      inspect(
+      debug_inspect(
         substeps[1].prompt.contains("raw/bootstrap/deep-report.md"),
         content="true",
       )
-      inspect(
+      debug_inspect(
         substeps[2].prompt.contains("raw/bootstrap/marketing-brief.md"),
         content="true",
       )
@@ -1601,27 +1625,27 @@ async test "provider task research dossier stays raw envelope only" {
       },
       context,
     )
-    inspect(artifacts.length().to_string(), content="6")
-    inspect(
+    debug_inspect(artifacts.length().to_string(), content="6")
+    debug_inspect(
       @fsx.exists(@pathx.join(bootstrap_dir, "research-question.md")).to_string(),
       content="true",
     )
-    inspect(
+    debug_inspect(
       @fsx.exists(@pathx.join(workspace, "wiki")).to_string(),
       content="false",
     )
     let brief = @fsx.read_file(@pathx.join(bootstrap_dir, "synthesis-brief.md"))
-    inspect(brief.contains("Provisional findings"), content="false")
-    inspect(
+    debug_inspect(brief.contains("Provisional findings"), content="false")
+    debug_inspect(
       @fsx.exists(@pathx.join(bootstrap_dir, "deep-report.md")).to_string(),
       content="false",
     )
-    inspect(
+    debug_inspect(
       @fsx.exists(@pathx.join(bootstrap_dir, "marketing-brief.md")).to_string(),
       content="false",
     )
     let search = @fsx.read_file(@pathx.join(bootstrap_dir, "search-log.md"))
-    inspect(search.contains("may enrich it later"), content="false")
+    debug_inspect(search.contains("may enrich it later"), content="false")
   })
 }
 
@@ -1692,13 +1716,13 @@ async test "provider task result persistence falls back to provider workspace wh
       Err(error) => fail(error)
     }
 
-    inspect(outcome.evidence_id, content="evidence-1")
-    let persisted_path = @fsx.read_file(state_path).trim().to_string()
-    inspect(
+    debug_inspect(outcome.evidence_id, content="evidence-1")
+    let persisted_path = @fsx.read_file(state_path).trim().to_owned()
+    debug_inspect(
       persisted_path.contains("book-space/.moonclaw/provider-task/"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       @fsx.read_file(persisted_path).contains(
         "\"summary\": \"Updated the wiki from durable evidence.\"",
       ),
@@ -1725,8 +1749,8 @@ test "parse_provider_task_result accepts fenced or prefixed JSON object output" 
     Ok(result) => result
     Err(error) => fail(error)
   }
-  inspect(result.task_id, content="task-1")
-  inspect(result.requires_review, content="true")
+  debug_inspect(result.task_id, content="task-1")
+  debug_inspect(result.requires_review, content="true")
 }
 
 ///|
@@ -1739,8 +1763,8 @@ test "parse_provider_task_persist_outcome_json accepts prefixed stdout" {
     Ok(outcome) => outcome
     Err(error) => fail(error)
   }
-  inspect(outcome.log_path, content="wiki/log.md")
-  inspect(outcome.review_queued, content="true")
+  debug_inspect(outcome.log_path, content="wiki/log.md")
+  debug_inspect(outcome.review_queued, content="true")
 }
 
 ///|
@@ -1807,14 +1831,14 @@ async test "provider task analysis runner converts planner-shaped output into ad
       Err(error) => fail(error)
     }
 
-    inspect(call_count.val, content="1")
+    debug_inspect(call_count.val, content="1")
     let envelope = match parse_adaptive_analysis_envelope(execution.content) {
       Some(envelope) => envelope
       None => fail("expected adaptive split envelope: \{execution.content}")
     }
-    inspect(envelope.verdict, content="needs_subplan")
-    inspect(adaptive_substeps(envelope).length(), content="2")
-    inspect(
+    debug_inspect(envelope.verdict, content="needs_subplan")
+    debug_inspect(adaptive_substeps(envelope).length(), content="2")
+    debug_inspect(
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
@@ -1874,8 +1898,11 @@ async test "provider task analysis runner rejects over-broad task without execut
       Err(error) => error
     }
 
-    inspect(error.contains("too broad to execute directly"), content="true")
-    inspect(error.contains("no executable substeps"), content="true")
+    debug_inspect(
+      error.contains("too broad to execute directly"),
+      content="true",
+    )
+    debug_inspect(error.contains("no executable substeps"), content="true")
   })
 }
 
@@ -1934,11 +1961,14 @@ async test "provider task analysis runner derives deterministic followup substep
       None => fail("expected adaptive split envelope: \{execution.content}")
     }
     let substeps = adaptive_substeps(envelope)
-    inspect(envelope.verdict, content="needs_subplan")
-    inspect(substeps.length(), content="1")
-    inspect(substeps[0].title, content="Queue follow-up review")
-    inspect(substeps[0].prompt.contains("task_id: task-2"), content="true")
-    inspect(substeps[0].prompt.contains("wiki/review.md"), content="true")
+    debug_inspect(envelope.verdict, content="needs_subplan")
+    debug_inspect(substeps.length(), content="1")
+    debug_inspect(substeps[0].title, content="Queue follow-up review")
+    debug_inspect(
+      substeps[0].prompt.contains("task_id: task-2"),
+      content="true",
+    )
+    debug_inspect(substeps[0].prompt.contains("wiki/review.md"), content="true")
   })
 }
 
@@ -1977,9 +2007,12 @@ async test "provider task target artifacts resolve durable pages from provider w
       target_pages: ["wiki/entities/moonclaw.md", "wiki/synthesis/map.md"],
     })
 
-    inspect(artifacts.length(), content="2")
-    inspect(artifacts.contains("wiki/entities/moonclaw.md"), content="true")
-    inspect(artifacts.contains("wiki/synthesis/map.md"), content="true")
+    debug_inspect(artifacts.length(), content="2")
+    debug_inspect(
+      artifacts.contains("wiki/entities/moonclaw.md"),
+      content="true",
+    )
+    debug_inspect(artifacts.contains("wiki/synthesis/map.md"), content="true")
   })
 }
 
@@ -2073,31 +2106,31 @@ async test "provider task subplan finalizer persists durable artifacts back thro
       None => fail("expected provider subplan finalizer to persist result")
     }
 
-    inspect(
+    debug_inspect(
       finalized.content.contains("# Extension Task Result"),
       content="true",
     )
-    inspect(
+    debug_inspect(
       finalized.metadata.stringify().contains("\"extension_persist_outcome\""),
       content="true",
     )
-    let persisted_path = @fsx.read_file(state_path).trim().to_string()
+    let persisted_path = @fsx.read_file(state_path).trim().to_owned()
     let persisted_payload = @fsx.read_file(persisted_path)
-    inspect(
+    debug_inspect(
       persisted_payload.contains("\"task_id\": \"task-1\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       persisted_payload.contains(
         "\"summary\": \"Materialized durable wiki outputs after bootstrap gather.\"",
       ),
       content="true",
     )
-    inspect(
+    debug_inspect(
       persisted_payload.contains("\"wiki/sources/demo.md\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       persisted_payload.contains("\"raw/bootstrap/demo.md\""),
       content="true",
     )
@@ -2190,8 +2223,8 @@ async test "provider task repair loads repo provider-task-repair skill" {
         Err(error) => fail(error)
       },
     )
-    inspect(call_count.val, content="1")
-    inspect(
+    debug_inspect(call_count.val, content="1")
+    debug_inspect(
       repair_prompt.val.contains("PROVIDER_REPAIR_SKILL_MARKER"),
       content="false",
     )
@@ -2261,14 +2294,14 @@ async test "provider task analysis runner normalizes repaired json missing summa
       Err(error) => fail(error)
     }
 
-    inspect(call_count.val, content="2")
-    inspect(
+    debug_inspect(call_count.val, content="2")
+    debug_inspect(
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
       content="true",
     )
-    inspect(
+    debug_inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
     )
@@ -2330,13 +2363,13 @@ async test "provider task analysis runner persists raw response on parse failure
       Err(error) => error
     }
 
-    inspect(
+    debug_inspect(
       error.contains("Provider task analysis must return a JSON object"),
       content="true",
     )
     let step_key = safe_step_file_segment("step-1")
     let debug_file = ".moonclaw-provider-failure-run-1-\{step_key}.json"
-    inspect(error.contains(debug_file), content="true")
+    debug_inspect(error.contains(debug_file), content="true")
     let debug_path = match
       provider_task_failure_debug_path(
         request,
@@ -2345,9 +2378,9 @@ async test "provider task analysis runner persists raw response on parse failure
       Ok(path) => path
       Err(path_error) => fail(path_error)
     }
-    inspect(@fsx.exists(debug_path), content="true")
+    debug_inspect(@fsx.exists(debug_path), content="true")
     let debug_payload = @fsx.read_file(debug_path)
-    inspect(
+    debug_inspect(
       debug_payload.contains("\"raw_content\": \"not valid provider json\""),
       content="true",
     )
@@ -2414,21 +2447,30 @@ async test "provider task analysis runner converts empty generic completion into
       Err(error) => fail(error)
     }
 
-    inspect(execution.content.contains("Blocked provider task"), content="true")
-    let persisted_path = @fsx.read_file(state_path).trim().to_string()
+    debug_inspect(
+      execution.content.contains("Blocked provider task"),
+      content="true",
+    )
+    let persisted_path = @fsx.read_file(state_path).trim().to_owned()
     let persisted_payload = @fsx.read_file(persisted_path)
-    inspect(
+    debug_inspect(
       persisted_payload.contains(
         "\"summary\": \"Blocked provider task Extract durable updates:",
       ),
       content="true",
     )
-    inspect(persisted_payload.contains("\"kind\": \"blocker\""), content="true")
-    inspect(
+    debug_inspect(
+      persisted_payload.contains("\"kind\": \"blocker\""),
+      content="true",
+    )
+    debug_inspect(
       persisted_payload.contains("\"kind\": \"next_step\""),
       content="true",
     )
-    inspect(persisted_payload.contains("\"durable\": false"), content="true")
+    debug_inspect(
+      persisted_payload.contains("\"durable\": false"),
+      content="true",
+    )
   })
 }
 
@@ -2519,24 +2561,33 @@ async test "provider task analysis runner aligns task id and filters junk artifa
       Err(error) => fail(error)
     }
 
-    inspect(execution.content.contains("Updated the wiki"), content="true")
-    let persisted_path = @fsx.read_file(state_path).trim().to_string()
+    debug_inspect(
+      execution.content.contains("Updated the wiki"),
+      content="true",
+    )
+    let persisted_path = @fsx.read_file(state_path).trim().to_owned()
     let persisted_payload = @fsx.read_file(persisted_path)
-    inspect(
+    debug_inspect(
       persisted_payload.contains("\"task_id\": \"task-1\""),
       content="true",
     )
-    inspect(persisted_payload.contains("\"wiki/entity.md\""), content="true")
-    inspect(
+    debug_inspect(
+      persisted_payload.contains("\"wiki/entity.md\""),
+      content="true",
+    )
+    debug_inspect(
       persisted_payload.contains("\"raw/bootstrap/packet.md\""),
       content="true",
     )
-    inspect(persisted_payload.contains("\"gpt-5.4\""), content="false")
-    inspect(
+    debug_inspect(persisted_payload.contains("\"gpt-5.4\""), content="false")
+    debug_inspect(
       persisted_payload.contains("\"skills/wiki-ingest/SKILL.md\""),
       content="false",
     )
-    inspect(persisted_payload.contains("\"moon.mod.json\""), content="false")
+    debug_inspect(
+      persisted_payload.contains("\"moon.mod.json\""),
+      content="false",
+    )
   })
 }
 
@@ -2562,8 +2613,8 @@ async test "provider task batch resolves a single registered provider when targe
       Err(error) => fail(error)
     }
 
-    inspect(command.provider.name, content="wiki-main")
-    inspect(batch.tasks.length().to_string(), content="2")
+    debug_inspect(command.provider.name, content="wiki-main")
+    debug_inspect(batch.tasks.length().to_string(), content="2")
   })
 }
 
@@ -2627,7 +2678,7 @@ async test "provider task analysis runner resolves a single registered provider 
       Err(error) => fail(error)
     }
 
-    inspect(
+    debug_inspect(
       execution.metadata
       .stringify()
       .contains("\"execution_target\":\"wiki-main\""),
@@ -2663,7 +2714,7 @@ async test "provider task resolves workspace-affine provider when multiple targe
       Err(error) => fail(error)
     }
 
-    inspect(command.provider.name, content="coding-main")
-    inspect(batch.tasks.length().to_string(), content="1")
+    debug_inspect(command.provider.name, content="coding-main")
+    debug_inspect(batch.tasks.length().to_string(), content="1")
   })
 }

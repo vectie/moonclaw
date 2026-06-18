@@ -100,32 +100,32 @@ pub fn ExtensionContext::websocket_runtime(
 pub(open) trait ChannelExtension: Channel {
   /// Returns the webhook path for this channel extension
   /// e.g., "/webhook/feishu" or "/webhook/slack"
-  webhook_path(Self) -> String
+  fn webhook_path(Self) -> String
 
   /// Handles incoming webhook requests from external services
   /// Returns a response to be sent back to the caller
-  async handle_webhook(Self, request : ExtensionRequest) -> ExtensionResponse
+  async fn handle_webhook(Self, request : ExtensionRequest) -> ExtensionResponse
 
   /// Returns true if this extension supports WebSocket connections
-  supports_websocket(Self) -> Bool
+  fn supports_websocket(Self) -> Bool
 
   /// Handles WebSocket connections for real-time communication
-  handle_websocket(Self, conn : WebSocketConnection) -> Unit
+  fn handle_websocket(Self, conn : WebSocketConnection) -> Unit
 
   /// Returns the list of HTTP methods supported by this extension's webhook
-  allowed_methods(Self) -> Array[String]
+  fn allowed_methods(Self) -> Array[String]
 
   /// Returns the dock configuration for this channel
   /// This includes outbound, threading, mentions, streaming, and security settings
-  dock_config(Self) -> ChannelDockConfig
+  fn dock_config(Self) -> ChannelDockConfig
 
   /// Called when the extension is registered with the gateway
   /// Allows the extension to initialize resources
-  on_register(Self, context : ExtensionContext) -> Unit
+  fn on_register(Self, context : ExtensionContext) -> Unit
 
   /// Called when the extension is unregistered from the gateway
   /// Allows the extension to cleanup resources
-  on_unregister(Self) -> Unit
+  fn on_unregister(Self) -> Unit
 }
 
 ///|
@@ -591,7 +591,7 @@ async fn run_websocket_client(
       Ok(managed) => {
         let connection = managed.connection()
         control.connection = Some(connection)
-        let closed = Ref::new(false)
+        let closed = Ref::Ref(false)
         connection.on_close(fn() {
           closed.val = true
           control.connection = None
@@ -706,7 +706,7 @@ pub fn ExtensionMeta::new(
 pub(open) trait MessageHandler {
   /// Process an incoming message from a channel
   /// Returns the response message to send back
-  async handle_message(
+  async fn handle_message(
     Self,
     channel_id : String,
     account_id : String,
@@ -714,7 +714,7 @@ pub(open) trait MessageHandler {
   ) -> Message
 
   /// Handle a message that doesn't need a response (fire-and-forget)
-  async handle_event(
+  async fn handle_event(
     Self,
     channel_id : String,
     account_id : String,

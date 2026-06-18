@@ -7,10 +7,10 @@ pub(all) enum ChatCompletionServiceTier {
   Flex
   Scale
   Priority
-} derive(Show)
+} derive(Debug)
 
 ///|
-impl @json.FromJson for ChatCompletionServiceTier with from_json(
+impl @json.FromJson for ChatCompletionServiceTier with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionServiceTier {
@@ -29,7 +29,7 @@ impl @json.FromJson for ChatCompletionServiceTier with from_json(
 }
 
 ///|
-impl ToJson for ChatCompletionServiceTier with to_json(
+impl ToJson for ChatCompletionServiceTier with fn to_json(
   self : ChatCompletionServiceTier,
 ) -> Json {
   match self {

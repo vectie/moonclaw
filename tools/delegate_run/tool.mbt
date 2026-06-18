@@ -12,7 +12,15 @@ pub struct DelegateRunResult {
   step_kind : String
   step_config : Json
   summary : String
-} derive(ToJson, FromJson, Show)
+} derive(ToJson, FromJson, Debug)
+
+///|
+pub impl Show for DelegateRunResult with fn output(
+  self : DelegateRunResult,
+  logger : &Logger,
+) -> Unit {
+  logger.write_string(self.to_json().stringify())
+}
 
 ///|
 pub fn new() -> @tool.Tool[DelegateRunResult] {
@@ -40,8 +48,8 @@ pub fn new() -> @tool.Tool[DelegateRunResult] {
           "Error: 'title' and 'request_text' parameters are required",
         )
       }
-      let title = title.trim().to_string()
-      let request_text = request_text.trim().to_string()
+      let title = title.trim().to_owned()
+      let request_text = request_text.trim().to_owned()
       guard !title.is_blank() else {
         return @tool.error("Error: 'title' must not be blank")
       }
@@ -51,29 +59,29 @@ pub fn new() -> @tool.Tool[DelegateRunResult] {
       let expected_output = match args {
         { "expected_output": String(value), .. } if !value
           .trim()
-          .to_string()
-          .is_blank() => Some(value.trim().to_string())
+          .to_owned()
+          .is_blank() => Some(value.trim().to_owned())
         _ => None
       }
       let child_profile = match args {
         { "child_profile": String(value), .. } if !value
           .trim()
-          .to_string()
-          .is_blank() => Some(value.trim().to_string())
+          .to_owned()
+          .is_blank() => Some(value.trim().to_owned())
         _ => None
       }
       let execution_mode = match args {
         { "execution_mode": String(value), .. } if !value
           .trim()
-          .to_string()
-          .is_blank() => Some(value.trim().to_string())
+          .to_owned()
+          .is_blank() => Some(value.trim().to_owned())
         _ => None
       }
       let execution_target = match args {
         { "execution_target": String(value), .. } if !value
           .trim()
-          .to_string()
-          .is_blank() => Some(value.trim().to_string())
+          .to_owned()
+          .is_blank() => Some(value.trim().to_owned())
         _ => None
       }
       let include_parent_outputs = match args {
