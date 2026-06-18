@@ -2,6 +2,8 @@
 package "vectie/moonclaw/mooncode/core"
 
 // Values
+pub fn extraction_boundary_json() -> Json
+
 pub fn native_capability_contract_id() -> String
 
 pub fn native_capability_required_endpoints() -> Array[String]

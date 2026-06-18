@@ -16,3 +16,33 @@ test "mooncode core protocol surface is stable" {
   )
   assert_true(surface.contains("\"capability_surface_fingerprint\""))
 }
+
+///|
+test "mooncode core names extraction package boundaries" {
+  let payload = extraction_boundary_json().stringify()
+  assert_true(payload.contains("\"kind\":\"mooncode-extraction-boundary\""))
+  assert_true(payload.contains("\"protocol\":\"mooncode.v1\""))
+  assert_true(
+    payload.contains(
+      "\"portable_core_package\":\"vectie/moondesk/mooncode/core\"",
+    ),
+  )
+  assert_true(
+    payload.contains(
+      "\"moondesk_projection_package\":\"vectie/moondesk/internal/mooncode\"",
+    ),
+  )
+  assert_true(
+    payload.contains(
+      "\"moonwiki_host_package\":\"vectie/moondesk/internal/moonwiki\"",
+    ),
+  )
+  assert_true(payload.contains("\"future_standalone_package\":\"mooncode\""))
+  assert_true(payload.contains("\"id\":\"portable-core\""))
+  assert_true(payload.contains("\"id\":\"moondesk-projection\""))
+  assert_true(payload.contains("\"id\":\"moonwiki-host\""))
+  assert_true(payload.contains("\"id\":\"runtime-engine\""))
+  assert_true(
+    payload.contains("mooncode/core must not import internal/mooncode"),
+  )
+}
