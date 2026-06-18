@@ -156,7 +156,7 @@ test "mooncode serve scheduler targets active claimed prompt" {
 }
 
 ///|
-test "mooncode serve scheduler treats delivered prompt as terminal" {
+test "mooncode serve scheduler treats delivered prompt as terminal and defers idle steer" {
   let commands : Array[Json] = [
     {
       "kind": "mooncode-command",
@@ -210,6 +210,6 @@ test "mooncode serve scheduler treats delivered prompt as terminal" {
   )
   assert_eq(
     mooncode_json_string(decisions[1], "effect", default=""),
-    "drop-steer",
+    "defer-steer",
   )
 }

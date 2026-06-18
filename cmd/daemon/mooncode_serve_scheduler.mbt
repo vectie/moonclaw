@@ -87,7 +87,7 @@ fn mooncode_serve_scheduler_state_from_logs(
     "decisions": Json::array(decisions),
     "lifecycle_commands": Json::array(lifecycle_items),
     "contract": mooncode_serve_scheduler_contract(),
-    "ordering_rule": "MoonClaw projects OpenSeek serve-mode semantics from one append-only command queue: turn-starting commands run one at a time, steer targets the active or next pending turn, and cancel targets the active turn or withdraws the next pending turn.",
+    "ordering_rule": "MoonClaw projects OpenSeek serve-mode semantics from one append-only command queue: turn-starting commands run one at a time, steer targets the active or next pending turn, idle steer is deferred into the next turn, and cancel targets the active turn or withdraws the next pending turn.",
   }
 }
 
@@ -218,7 +218,7 @@ fn mooncode_serve_scheduler_decisions(
           pending_turn_ids,
           active_effect="deliver-steer",
           pending_effect="queue-steer",
-          idle_effect="drop-steer",
+          idle_effect="defer-steer",
         )
       "cancel" =>
         mooncode_serve_scheduler_control_decision(
@@ -496,11 +496,11 @@ fn mooncode_serve_scheduler_contract() -> Json {
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "reference": "../openseek/cmd/openseek/serve.mbt",
-    "rule": "Prompt and command actions start turns, steer targets the active turn or next pending turn, and cancel targets the active turn or withdraws the next pending turn.",
+    "rule": "Prompt and command actions start turns, steer targets the active turn, next pending turn, or defers into the next future turn, and cancel targets the active turn or withdraws the next pending turn.",
     "wire_effects": [
-      "start-turn", "queue-turn", "deliver-steer", "queue-steer", "drop-steer", "cancel-active",
-      "withdraw-pending", "drop-cancel", "record-note", "already-completed", "failed",
-      "blocked",
+      "start-turn", "queue-turn", "deliver-steer", "queue-steer", "defer-steer",
+      "cancel-active", "withdraw-pending", "drop-cancel", "record-note", "already-completed",
+      "failed", "blocked",
     ],
   }
 }

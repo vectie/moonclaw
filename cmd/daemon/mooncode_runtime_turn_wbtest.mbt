@@ -79,7 +79,7 @@ async test "mooncode native runtime turn executes explicit tool calls" (
 }
 
 ///|
-async test "mooncode native runtime turn drops idle steer commands" (
+async test "mooncode native runtime turn defers idle steer into next command" (
   t : @test.Test,
 ) {
   ignore(t)
@@ -88,6 +88,7 @@ async test "mooncode native runtime turn drops idle steer commands" (
   )
   let session_id = "session-runtime-steer"
   let command_id = "cmd-runtime-steer"
+  let prompt_id = "cmd-runtime-prompt"
   let command : Json = {
     "protocol": mooncode_protocol_version(),
     "session_id": session_id,
@@ -131,7 +132,10 @@ async test "mooncode native runtime turn drops idle steer commands" (
   })
   assert_true(mooncode_json_bool(result, "accepted", default=false))
   let execution = mooncode_json_object_field_or_empty(result, "execution")
-  assert_eq(mooncode_json_string(execution, "control", default=""), "steer")
+  assert_eq(
+    mooncode_json_string(execution, "control", default=""),
+    "steer_deferred",
+  )
   assert_eq(
     mooncode_json_string(execution, "planner_mode", default=""),
     "serve-scheduler-control",
@@ -139,16 +143,61 @@ async test "mooncode native runtime turn drops idle steer commands" (
   let decision = mooncode_json_object_field_or_empty(
     result, "serve_scheduler_decision",
   )
-  assert_eq(mooncode_json_string(decision, "effect", default=""), "drop-steer")
+  assert_eq(mooncode_json_string(decision, "effect", default=""), "defer-steer")
   let tool_results = mooncode_json_array_items(execution, "tool_results")
   assert_eq(tool_results.length(), 0)
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
-  assert_true(events_log.contains("\"steer_dropped\""))
-  assert_false(events_log.contains("\"steer_applied\""))
-  assert_true(events_log.contains("Keep the next patch inside tools/"))
-  assert_false(events_log.contains("runtime.planner_failed"))
+  let events_log_before = @fsx.read_file(
+    mooncode_events_path(book_root, session_id),
+  )
+  assert_true(events_log_before.contains("\"steer_deferred\""))
+  assert_false(events_log_before.contains("\"steer_dropped\""))
+  assert_false(events_log_before.contains("\"steer_applied\""))
+  assert_true(events_log_before.contains("Keep the next patch inside tools/"))
+  assert_false(events_log_before.contains("runtime.planner_failed"))
   let after = mooncode_json_object_field_or_empty(result, "claim_state")
   assert_true(after.stringify().contains("\"delivered_command_count\":1"))
+  let prompt : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "prompt",
+    "text": "Record this MoonCode prompt.",
+    "packet": { "command_id": prompt_id },
+  }
+  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
+    "kind": "mooncode-command",
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "command_id": prompt_id,
+    "created_at": @clock.Timestamp::from_ms(4L),
+    "command": prompt,
+  })
+  let prompt_result = daemon.mooncode_runtime_turn_execute(
+    session_id,
+    book_root,
+    { "consumer_id": "test-runtime" },
+  )
+  assert_true(mooncode_json_bool(prompt_result, "accepted", default=false))
+  let prompt_execution = mooncode_json_object_field_or_empty(
+    prompt_result, "execution",
+  )
+  let deferred = mooncode_json_array_items(
+    prompt_execution, "deferred_steering",
+  )
+  assert_eq(deferred.length(), 1)
+  assert_eq(
+    mooncode_json_string(deferred[0], "command_id", default=""),
+    command_id,
+  )
+  let events_log_after = @fsx.read_file(
+    mooncode_events_path(book_root, session_id),
+  )
+  assert_true(events_log_after.contains("\"steer_deferred\""))
+  assert_true(events_log_after.contains("\"steer_applied\""))
+  assert_true(
+    events_log_after.contains("\"applied_to_command_id\":\"\{prompt_id}\""),
+  )
+  assert_true(events_log_after.contains("Keep the next patch inside tools/"))
 }
 
 ///|

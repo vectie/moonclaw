@@ -91,8 +91,20 @@ async fn Daemon::mooncode_runtime_turn_execute(
     }
   }
   let item = claimed[0]
-  let command = mooncode_json_object_field_or_empty(item, "command")
+  let raw_command = mooncode_json_object_field_or_empty(item, "command")
   let command_id = mooncode_json_string(item, "command_id", default="")
+  let action = mooncode_json_string(raw_command, "command", default="prompt")
+  let existing_events = mooncode_read_jsonl(
+    mooncode_events_path(book_root, session_id),
+  )
+  let deferred_steering = if action == "steer" || action == "cancel" {
+    []
+  } else {
+    mooncode_runtime_turn_pending_deferred_steering(existing_events)
+  }
+  let command = mooncode_runtime_turn_command_with_deferred_steering(
+    raw_command, deferred_steering,
+  )
   let scheduler_state = self.mooncode_serve_scheduler_payload(
     session_id, book_root,
   )
@@ -129,7 +141,26 @@ async fn Daemon::mooncode_runtime_turn_execute(
         events,
         now=self.clock.now(),
       )
+    } else if mooncode_runtime_turn_defers_idle_steer(command, scheduler_effect) {
+      mooncode_runtime_turn_deferred_steer_execution(
+        session_id,
+        command_id,
+        command,
+        scheduler_decision,
+        events,
+        now=self.clock.now(),
+      )
     } else {
+      for deferred in deferred_steering {
+        events.push(
+          mooncode_runtime_turn_applied_deferred_steer_event(
+            session_id,
+            command_id,
+            deferred,
+            now=self.clock.now(),
+          ),
+        )
+      }
       let mut plan = self.mooncode_runtime_turn_plan_tool_calls(
         command,
         now=self.clock.now(),
@@ -204,7 +235,6 @@ async fn Daemon::mooncode_runtime_turn_execute(
       let tool_accepted = tool_results.all(result => {
         mooncode_json_bool(result, "accepted", default=false)
       })
-      let action = mooncode_json_string(command, "command", default="prompt")
       let test_results = if action == "run_tests" || action == "run_build" {
         mooncode_runtime_turn_test_results(
           session_id,
@@ -348,6 +378,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
           "commit_events": Json::array(commit_events),
           "review_receipts": Json::array(review_receipts),
           "review_events": Json::array(review_events),
+          "deferred_steering": Json::array(deferred_steering),
           "events": Json::array(events),
         } : Json)
     }

@@ -105,6 +105,11 @@ fn mooncode_event_steer_dropped() -> String {
 }
 
 ///|
+fn mooncode_event_steer_deferred() -> String {
+  "steer_deferred"
+}
+
+///|
 fn mooncode_event_cancel_dropped() -> String {
   "cancel_dropped"
 }

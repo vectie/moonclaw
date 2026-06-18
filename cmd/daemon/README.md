@@ -378,7 +378,8 @@ endpoint is read-only and does not spawn, claim, or dispatch work.
 The response is built from `commands.jsonl` plus `runtime-dispatches.jsonl` and
 reports one active turn, pending turn ids, lifecycle rows, and per-command
 effects such as `start-turn`, `queue-turn`, `deliver-steer`, `queue-steer`,
-`cancel-active`, `withdraw-pending`, `drop-steer`, and `drop-cancel`. This
+`defer-steer`, `cancel-active`, `withdraw-pending`, and `drop-cancel`. Deferred
+steering is persisted as runtime evidence and injected into the next turn. This
 mirrors OpenSeek serve-mode ordering while keeping MoonClaw responsible for the
 runtime interpretation of durable MoonCode command logs.
 The implementation lives in `mooncode_serve_scheduler.mbt`, with focused
@@ -484,14 +485,14 @@ Those deterministic fallbacks live in `mooncode_runtime_prompt_fallback.mbt`,
 keeping generated artifact planning separate from runtime-turn orchestration.
 The response includes `serve_scheduler_state` and `serve_scheduler_decision`,
 and the runtime uses that decision before planning or executing tools.
-Steer commands now settle with `steer_applied` / `steer_dropped` runtime
-events. Idle steer is scheduler-dropped before planning, while delivered steer
-can run explicit or bounded model-planned tool batches against the active
-MoonBook context.
-Idle steer and cancel controls are closed as scheduler-owned
-`steer_dropped` / `cancel_dropped` evidence with no tool execution, so
-`runtime-loop` can advance the queue without misclassifying stale controls as
-new work.
+Steer commands now settle with `steer_applied`, `steer_deferred`, or
+`steer_dropped` runtime events. Idle steer is persisted as deferred steering
+context before planning and then injected into the next eligible MoonCode turn,
+while delivered steer can run explicit or bounded model-planned tool batches
+against the active MoonBook context.
+Idle cancel controls are closed as scheduler-owned `cancel_dropped` evidence
+with no tool execution, so `runtime-loop` can advance the queue without
+misclassifying stale controls as new work.
 Control decision and settlement event projection live in
 `mooncode_runtime_controls.mbt`; runtime-turn only asks whether the current
 claimed command should execute or settle as an idle control.

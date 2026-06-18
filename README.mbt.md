@@ -48,7 +48,8 @@ MoonClaw is strongest when you want one system to handle:
   `prompt`, `steer`, and `cancel`; runtime-turn now consults the same
   OpenSeek-style serve scheduler it exposes through `serve-scheduler`, returns
   the scheduler state/decision in the turn payload, emits `steer_applied` /
-  `steer_dropped` settlement events for steering commands, and records
+  `steer_deferred` / `steer_dropped` settlement events for steering commands,
+  injects deferred steering into the next eligible turn, and records
   `cancel_dropped` for idle cancel commands instead of running fallback tools.
   Package-result packets record command-scoped
   `package_built` and `package_verified` runtime evidence for MoonBook-owned
@@ -91,9 +92,10 @@ MoonClaw is strongest when you want one system to handle:
   fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
   events, returns the serve-scheduler state/decision that authorized or dropped
   the claimed command, and closes the command with `runtime-completed` or
-  `runtime-failed`. Idle `steer` and `cancel` controls are finalized as
-  `steer_dropped` / `cancel_dropped` evidence without invoking tools, matching
-  the scheduler projection instead of treating them as ordinary prompts.
+  `runtime-failed`. Idle `steer` controls are persisted as `steer_deferred`
+  context for the next eligible turn, and idle `cancel` controls are finalized
+  as `cancel_dropped` evidence without invoking tools, matching the scheduler
+  projection instead of treating controls as ordinary prompts.
   `POST
   /v1/mooncode/sessions/<id>/runtime-loop?book_root=<path>` now layers a
   bounded queue supervisor over that turn primitive: it repeatedly runs native
