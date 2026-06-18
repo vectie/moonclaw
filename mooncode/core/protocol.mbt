@@ -16,9 +16,9 @@ pub fn native_capability_required_endpoints() -> Array[String] {
     "/v1/mooncode/sessions/<id>/serve-scheduler?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
     "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
     "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>",
-    "/v1/mooncode/sessions/<id>/runtime-loop?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
-    "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>", "/v1/mooncode/sessions/<id>/eval-report?book_root=<path>",
-    "/v1/mooncode/sessions/<id>/package-result?book_root=<path>",
+    "/v1/mooncode/sessions/<id>/runtime-loop?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-service?book_root=<path>",
+    "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>", "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>",
+    "/v1/mooncode/sessions/<id>/eval-report?book_root=<path>", "/v1/mooncode/sessions/<id>/package-result?book_root=<path>",
   ]
 }
 

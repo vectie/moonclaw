@@ -618,6 +618,16 @@ includes `live_wait_attempt_count`, `live_wait_elapsed_ms`, and per-iteration
 `waits` records so Moondesk can render whether the loop actually waited or
 found work immediately.
 
+### `POST /v1/mooncode/sessions/{id}/runtime-service`
+
+Starts the bounded runtime loop in the daemon task group instead of holding the
+HTTP request open. The endpoint writes `runtime.service_started` immediately,
+returns `202 Accepted`, then records `runtime.service_finished` or
+`runtime.service_failed` in the selected book's `events.jsonl`. It uses the
+same durable queue, claim receipts, turn execution, and `max_turns` /
+`live_wait_ms` / `poll_ms` limits as `runtime-loop`, with a default
+`live_wait_ms` of 5000 ms for live steering.
+
 ### `POST /v1/task/{id}/publish`
 
 Run `moon publish` in the task's working directory.

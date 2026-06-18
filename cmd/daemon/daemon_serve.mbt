@@ -22,6 +22,7 @@
 /// - POST /v1/mooncode/sessions/{id}/runtime-dispatch?book_root={path} → `mooncode_runtime_dispatch`
 /// - POST /v1/mooncode/sessions/{id}/runtime-turn?book_root={path} → `mooncode_runtime_turn`
 /// - POST /v1/mooncode/sessions/{id}/runtime-loop?book_root={path} → `mooncode_runtime_loop`
+/// - POST /v1/mooncode/sessions/{id}/runtime-service?book_root={path} → `mooncode_runtime_service`
 /// - GET  /v1/mooncode/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events_state`
 /// - POST /v1/mooncode/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events`
 /// - POST /v1/mooncode/sessions/{id}/tool-exec?book_root={path} → `mooncode_tool_execute`
@@ -97,6 +98,10 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               Post,
               ["", "v1", "mooncode", "sessions", session_id, "runtime-loop"],
             ) => self.mooncode_runtime_loop(session_id~, r, w)
+            (
+              Post,
+              ["", "v1", "mooncode", "sessions", session_id, "runtime-service"],
+            ) => self.mooncode_runtime_service(group~, session_id~, r, w)
             (
               Get,
               ["", "v1", "mooncode", "sessions", session_id, "runtime-events"],

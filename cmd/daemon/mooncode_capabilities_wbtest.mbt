@@ -11,6 +11,11 @@ test "mooncode capabilities expose native daemon endpoints" {
     ),
   )
   assert_true(
+    mooncode_native_capability_required_endpoints().contains(
+      "/v1/mooncode/sessions/<id>/runtime-service?book_root=<path>",
+    ),
+  )
+  assert_true(
     mooncode_native_capability_optional_endpoints().contains(
       "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
     ),
@@ -110,6 +115,11 @@ test "mooncode capabilities expose native daemon endpoints" {
     ),
   )
   assert_true(
+    payload.contains(
+      "/v1/mooncode/sessions/<id>/runtime-service?book_root=<path>",
+    ),
+  )
+  assert_true(
     payload.contains("/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>"),
   )
   assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
@@ -132,6 +142,9 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("steer_applied"))
   assert_true(payload.contains("steer_deferred"))
   assert_true(payload.contains("\"runtime_loop_options\""))
+  assert_true(payload.contains("\"runtime_service_endpoint\""))
+  assert_true(payload.contains("\"runtime_service_options\""))
+  assert_true(payload.contains("runtime.service_started"))
   assert_true(payload.contains("\"live_wait_ms\""))
   assert_true(payload.contains("\"stream_options\""))
   assert_true(payload.contains("\"wait_ms\""))

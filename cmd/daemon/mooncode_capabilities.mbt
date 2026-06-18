@@ -38,6 +38,12 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_turn_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path> claims the next durable command if needed, includes serve_scheduler_state and serve_scheduler_decision, executes explicit, deterministic, or bounded model-planned native MoonCode tool calls only when the scheduler permits work, appends planner reasoning/tool-call/tool-result events plus steer_applied/steer_deferred/steer_dropped/cancel_dropped settlement events for control commands, test_result evidence for run_tests/run_build commands, eval_report.manifest evidence for run_eval commands, receipt.accept/receipt.reject review evidence for review commands, and runtime.commit_created proof for commit commands, then closes the command with a terminal runtime-completed or runtime-failed receipt.",
     "runtime_loop_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-loop?book_root=<path> repeatedly runs bounded native runtime-turns over the durable queue until idle, failure, cancel, or max_turns; callers may pass live_wait_ms and poll_ms to opt into bounded live polling for newly appended prompt/steer/cancel commands before returning idle.",
     "runtime_loop_options": mooncode_native_capability_runtime_loop_options(),
+    "runtime_service_endpoint": "POST /v1/mooncode/sessions/<id>/runtime-service?book_root=<path> starts a daemon task-group supervisor that records runtime.service_started/runtime.service_finished events and runs the bounded native runtime-loop outside the request lifecycle.",
+    "runtime_service_options": {
+      "max_turns": { "default": 8, "min": 1, "max": 32 },
+      "live_wait_ms": { "default": 5000, "min": 0, "max": 30000 },
+      "poll_ms": { "default": 250, "min": 25, "max": 2000 },
+    },
     "runtime_events_endpoint": "GET/POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path> reads or appends normalized MoonCode runtime evidence into events.jsonl.",
     "stream_endpoint": "GET /v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms> replays durable book-local MoonCode events from events.jsonl with resumable sequence records; wait_ms enables bounded long-poll live tailing for new stream records.",
     "eval_report_endpoint": "GET /v1/mooncode/sessions/<id>/eval-report?book_root=<path> reports native eval/readiness evidence from the live binding or the selected book's durable sidecar.",

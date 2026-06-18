@@ -8,6 +8,11 @@ test "mooncode core protocol surface is stable" {
   assert_true(
     native_capability_required_endpoints().contains("/v1/mooncode/capabilities"),
   )
+  assert_true(
+    native_capability_required_endpoints().contains(
+      "/v1/mooncode/sessions/<id>/runtime-service?book_root=<path>",
+    ),
+  )
   assert_true(native_capability_required_tools().contains("apply_patch"))
   assert_eq(native_capability_surface_fingerprint().length(), 64)
   let surface = native_capability_surface_json().stringify()
