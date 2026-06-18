@@ -15,6 +15,9 @@ test "mooncode core protocol surface is stable" {
     surface.contains("\"kind\":\"mooncode-native-capability-surface\""),
   )
   assert_true(surface.contains("\"capability_surface_fingerprint\""))
+  assert_true(surface.contains("\"runtime_loop_options\""))
+  assert_true(surface.contains("\"live_wait_ms\""))
+  assert_true(surface.contains("\"poll_ms\""))
 }
 
 ///|

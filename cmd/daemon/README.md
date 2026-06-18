@@ -604,6 +604,13 @@ reuses the native `runtime-turn` primitive, so each command still records normal
 claim receipts, runtime events, tool results, package proof, and terminal
 `runtime-completed` or `runtime-failed` receipts. It stops when the queue is
 idle, a turn fails, a cancel command is processed, or `max_turns` is reached.
+By default it preserves immediate-idle behavior. Callers that need an
+OpenSeek-style live supervisor can pass `live_wait_ms` and `poll_ms` in the
+JSON body; the loop then polls the durable `commands.jsonl` queue for newly
+appended prompt, steer, or cancel commands before returning idle. The response
+includes `live_wait_attempt_count`, `live_wait_elapsed_ms`, and per-iteration
+`waits` records so Moondesk can render whether the loop actually waited or
+found work immediately.
 
 ### `POST /v1/task/{id}/publish`
 

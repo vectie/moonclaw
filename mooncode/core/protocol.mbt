@@ -30,9 +30,29 @@ pub fn native_capability_required_tools() -> Array[String] {
 }
 
 ///|
+pub fn native_capability_runtime_loop_options() -> Json {
+  {
+    "live_wait_ms": {
+      "default": 0,
+      "min": 0,
+      "max": 30000,
+      "purpose": "Opt-in bounded wait for new prompt, steer, or cancel commands before the native runtime loop returns idle.",
+    },
+    "poll_ms": {
+      "default": 250,
+      "min": 25,
+      "max": 2000,
+      "purpose": "Polling interval while live_wait_ms is active.",
+    },
+    "idle_semantics": "When live_wait_ms is zero, runtime-loop preserves immediate idle behavior; when positive, it polls commands.jsonl until a claimable command appears or the wait budget expires.",
+  }
+}
+
+///|
 fn native_capability_surface_fingerprint_source() -> String {
   let required_endpoints = native_capability_required_endpoints().join("\n")
   let required_tools = native_capability_required_tools().join("\n")
+  let loop_options = native_capability_runtime_loop_options().stringify()
   [
     "kind=mooncode-native-capability-surface",
     "component=mooncode",
@@ -40,6 +60,7 @@ fn native_capability_surface_fingerprint_source() -> String {
     "capability_contract_id=\{native_capability_contract_id()}",
     "required_endpoints=\{required_endpoints}",
     "required_tools=\{required_tools}",
+    "runtime_loop_options=\{loop_options}",
   ].join("\n")
 }
 
@@ -62,6 +83,7 @@ pub fn native_capability_surface_json() -> Json {
     "capability_surface_fingerprint": native_capability_surface_fingerprint(),
     "required_endpoints": native_capability_required_endpoints(),
     "required_tools": native_capability_required_tools(),
+    "runtime_loop_options": native_capability_runtime_loop_options(),
   }
 }
 

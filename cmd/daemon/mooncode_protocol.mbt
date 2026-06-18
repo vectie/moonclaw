@@ -35,6 +35,11 @@ fn mooncode_native_capability_tools() -> Array[String] {
 }
 
 ///|
+fn mooncode_native_capability_runtime_loop_options() -> Json {
+  @mooncode_core.native_capability_runtime_loop_options()
+}
+
+///|
 fn mooncode_native_capability_surface_fingerprint() -> String {
   @mooncode_core.native_capability_surface_fingerprint()
 }
@@ -51,6 +56,7 @@ fn mooncode_native_capability_surface_json() -> Json {
     "optional_endpoints": mooncode_native_capability_optional_endpoints(),
     "advertised_endpoints": mooncode_native_capability_endpoints(),
     "required_tools": mooncode_native_capability_tools(),
+    "runtime_loop_options": mooncode_native_capability_runtime_loop_options(),
   }
 }
 
