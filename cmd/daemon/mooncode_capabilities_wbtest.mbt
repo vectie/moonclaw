@@ -130,6 +130,7 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("runtime.patch_reverted"))
   assert_true(payload.contains("hunk_dispatch_scope"))
   assert_true(payload.contains("steer_applied"))
+  assert_true(payload.contains("steer_deferred"))
   assert_true(payload.contains("receipt.accept"))
   assert_true(payload.contains("\"review_receipts\""))
   assert_true(payload.contains("native_dispatch_mode=queue-only"))
