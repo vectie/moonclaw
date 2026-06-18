@@ -68,6 +68,10 @@ async fn chat_openai(
   extra_body~ : Map[String, Json],
   on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
+  let moonstat_client = @moonstat.discover_from_suite_status()
+  let moonstat_chat_url = moonstat_client.map(fn(client) {
+    client.route_openclaw_chat_url()
+  })
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
     max_retry=5,
@@ -78,18 +82,17 @@ async fn chat_openai(
       }
     },
     () => {
+      let route = openai_chat_route_for_model(model, moonstat_chat_url)
       logger.debug("RequestSent", data={
         "model": { "name": model.model_name, "base_url": model.base_url },
+        "route": { "url": route.url, "via_moonstat": route.via_moonstat },
         "request": request,
       })
-      let url = "\{model.base_url}/chat/completions"
-      let uri = Uri::parse(url)
-      let client = @http.Client::new("\{uri.schema}://\{uri.host}", headers={
-        "Authorization": "Bearer \{model.api_key}",
-        "Content-Type": "application/json",
-        "Connection": "close",
-        "User-Agent": "openclaw",
-      })
+      let uri = Uri::parse(route.url)
+      let client = @http.Client::new(
+        "\{uri.schema}://\{uri.host}",
+        headers=route.headers,
+      )
       defer client.close()
       let body = request.to_json()
       guard body is Object(body) else {
@@ -130,6 +133,49 @@ async fn chat_openai(
       }
     },
   )
+}
+
+///|
+priv struct OpenAIChatRoute {
+  url : String
+  headers : Map[String, String]
+  via_moonstat : Bool
+}
+
+///|
+fn openai_chat_route_for_model(
+  model : @model.Model,
+  moonstat_chat_url : String?,
+) -> OpenAIChatRoute {
+  match moonstat_chat_url {
+    Some(url) =>
+      { url, headers: openclaw_moonstat_chat_headers(), via_moonstat: true }
+    None =>
+      {
+        url: "\{model.base_url}/chat/completions",
+        headers: openai_direct_chat_headers(model.api_key),
+        via_moonstat: false,
+      }
+  }
+}
+
+///|
+fn openai_direct_chat_headers(api_key : String) -> Map[String, String] {
+  {
+    "Authorization": "Bearer \{api_key}",
+    "Content-Type": "application/json",
+    "Connection": "close",
+    "User-Agent": "openclaw",
+  }
+}
+
+///|
+fn openclaw_moonstat_chat_headers() -> Map[String, String] {
+  {
+    "Content-Type": "application/json",
+    "Connection": "close",
+    "User-Agent": "openclaw",
+  }
 }
 
 ///|
@@ -812,9 +858,9 @@ pub async fn json(model~ : @model.Model, prompt~ : String) -> Json {
 /// and JSON schema, allowing the model to generate responses that conform to
 /// the expected structure.
 pub(open) trait Structural: @json.FromJson {
-  name() -> String
-  description() -> String
-  schema() -> @schema.Schema
+  fn name() -> String
+  fn description() -> String
+  fn schema() -> @schema.Schema
 }
 
 ///|
