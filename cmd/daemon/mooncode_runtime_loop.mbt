@@ -82,7 +82,7 @@ async fn Daemon::mooncode_runtime_loop_execute(
     }
     let execution = mooncode_json_object_field_or_empty(turn, "execution")
     let control = mooncode_json_string(execution, "control", default="")
-    if control == "cancel" {
+    if mooncode_runtime_loop_cancel_control(control) {
       stopped_by = "cancelled"
       break
     }
@@ -114,6 +114,11 @@ async fn Daemon::mooncode_runtime_loop_execute(
     "claim_state": after,
     "previous_claim_state": before,
   }
+}
+
+///|
+fn mooncode_runtime_loop_cancel_control(control : String) -> Bool {
+  control == "cancel" || control == "cancel_dropped" || control == "cancelled"
 }
 
 ///|
