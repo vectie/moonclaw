@@ -7,7 +7,7 @@ import {
   "vectie/moonclaw/ai",
   "vectie/moonclaw/event",
   "vectie/moonclaw/internal/httpx",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/uuid",
 }
 
 // Values

@@ -2,7 +2,7 @@
 test "stdio_content_preview prefers stdout over stderr" {
   inspect(
     stdio_content_preview({ "stdout": "hello\n", "stderr": "warn\n" }),
-    content="Some(\"hello\")",
+    content="Some(hello)",
   )
 }
 

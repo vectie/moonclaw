@@ -3,7 +3,7 @@ package "vectie/moonclaw/internal/rand"
 
 import {
   "moonbitlang/core/random",
-  "vectie/moonclaw/internal/errno",
+  "vectie/moonlib/errno",
 }
 
 // Values

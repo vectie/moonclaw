@@ -13,12 +13,12 @@ import {
   "vectie/moonclaw/internal/httpx",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/spawn",
-  "vectie/moonclaw/internal/uuid",
   "vectie/moonclaw/job",
   "vectie/moonclaw/model",
   "vectie/moonclaw/plugin",
   "vectie/moonclaw/security",
   "vectie/moonclaw/workspace",
+  "vectie/moonlib/uuid",
 }
 
 // Values

@@ -9,7 +9,7 @@ import {
   "vectie/moonclaw/file",
   "vectie/moonclaw/model",
   "vectie/moonclaw/prompt",
-  "vectie/moonlib/spawn",
+  "vectie/moonclaw/internal/spawn",
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",

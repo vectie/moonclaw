@@ -5,4 +5,4 @@
 ///|
 /// Version string following semver format with build metadata
 /// Format: MAJOR.MINOR.PATCH+BUILD_NUMBER.COMMIT_SHA
-let version_string : String = "0.0.0+2393.7a8609a8"
+let version_string : String = "0.0.0+2397.fab811ed"

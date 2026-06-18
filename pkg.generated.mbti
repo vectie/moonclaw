@@ -4,8 +4,8 @@ package "vectie/moonclaw"
 import {
   "vectie/moonclaw/agent",
   "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/internal/uuid",
   "vectie/moonclaw/model",
+  "vectie/moonlib/uuid",
 }
 
 // Values

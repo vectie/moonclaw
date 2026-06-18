@@ -4,8 +4,8 @@ package "vectie/moonclaw/tools/todo"
 import {
   "moonbitlang/core/json",
   "vectie/moonclaw/clock",
-  "vectie/moonclaw/internal/uuid",
   "vectie/moonclaw/tool",
+  "vectie/moonlib/uuid",
 }
 
 // Values

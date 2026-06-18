@@ -9,9 +9,9 @@ import {
   "vectie/moonclaw/internal/broadcast",
   "vectie/moonclaw/internal/conversation",
   "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/internal/uuid",
   "vectie/moonclaw/model",
   "vectie/moonclaw/tool",
+  "vectie/moonlib/uuid",
 }
 
 // Values

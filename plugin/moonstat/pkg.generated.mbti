@@ -1,0 +1,33 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/plugin/moonstat"
+
+// Values
+pub const DEFAULT_HOST : String = "127.0.0.1"
+
+pub const DEFAULT_PORT : Int = 15721
+
+pub async fn discover() -> Client
+
+// Errors
+
+// Types and methods
+pub struct Client {
+  base_url : String
+}
+pub fn Client::base_url(Self) -> String
+pub async fn Client::get(Self, String) -> Result[Json, String]
+pub async fn Client::get_text(Self, String) -> Result[String, String]
+pub async fn Client::health(Self) -> Result[Json, String]
+pub async fn Client::metrics(Self) -> Result[String, String]
+pub async fn Client::models(Self) -> Result[Json, String]
+pub async fn Client::post(Self, String, Json) -> Result[Json, String]
+pub async fn Client::provider_presets(Self) -> Result[Json, String]
+pub async fn Client::stats(Self) -> Result[Json, String]
+pub async fn Client::status(Self) -> Result[Json, String]
+pub async fn Client::usage_summary(Self) -> Result[Json, String]
+pub async fn Client::usage_trends(Self) -> Result[Json, String]
+
+// Type aliases
+
+// Traits
+

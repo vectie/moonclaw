@@ -4,7 +4,7 @@ package "vectie/moonclaw/cmd/daemon"
 import {
   "moonbitlang/async/fs",
   "moonbitlang/core/json",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/uuid",
 }
 
 // Values

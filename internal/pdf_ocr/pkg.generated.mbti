@@ -2,7 +2,7 @@
 package "vectie/moonclaw/internal/pdf_ocr"
 
 import {
-  "vectie/moonclaw/internal/spawn",
+  "vectie/moonlib/spawn",
 }
 
 // Values

@@ -5,7 +5,7 @@ import {
   "vectie/moonclaw/internal/conversation",
   "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/pino",
-  "vectie/moonclaw/internal/uuid",
+  "vectie/moonlib/uuid",
 }
 
 // Values
