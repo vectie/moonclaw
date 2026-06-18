@@ -16,6 +16,7 @@ import {
   "vectie/moonlib/uuid",
   "vectie/moonlib/rand",
   "vectie/moonclaw/internal/httpx",
+  "vectie/moonclaw/cmd/internal/moonstat_startup",
   "vectie/moonclaw/event",
   "vectie/moonclaw/model",
   "moonbitlang/core/json",

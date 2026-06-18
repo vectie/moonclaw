@@ -1,0 +1,4 @@
+import {
+  "moonbitlang/async/stdio",
+  "vectie/moonclaw/plugin/moonstat",
+}

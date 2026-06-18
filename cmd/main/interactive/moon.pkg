@@ -5,6 +5,7 @@ import {
   "vectie/moonclaw",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/cmd/main/argument",
+  "vectie/moonclaw/cmd/internal/moonstat_startup",
   "vectie/moonclaw/cmd/main/tui",
   "vectie/moonclaw/event",
   "vectie/moonclaw/model",

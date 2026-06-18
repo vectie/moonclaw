@@ -53,6 +53,7 @@ pub async fn interactive(args : ArrayView[String]) -> Unit {
     return
   }
 
+  @moonstat_startup.print_status()
   let logger = match log_file {
     Some(log_file) =>
       Some(@pino.logger("moonclaw", @pino.Transport::file(log_file)))

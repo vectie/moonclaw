@@ -52,6 +52,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       [] => break
     }
   }
+  @moonstat_startup.print_status()
   let logger = match log_file {
     Some(log_file) =>
       Some(@pino.logger("moonclaw", @pino.Transport::file(log_file)))
