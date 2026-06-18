@@ -418,9 +418,15 @@ Query parameters:
 - `format`: `jsonl` by default, or `sse` for server-sent event envelopes.
 - `since`: last seen 1-based sequence number. The response includes events with
   a higher sequence and returns `next_since` for resumable polling.
+- `wait_ms`: optional bounded long-poll budget. The default `0` preserves
+  immediate replay; positive values wait for a sequence newer than `since`.
+- `poll_ms`: polling interval while `wait_ms` is active, clamped to a bounded
+  runtime-safe range.
 
 JSONL responses contain `meta`, `event`, and `done` records. SSE responses use
 the same payloads as `event: meta`, `event: event`, and `event: done` chunks.
+The meta and done records include wait metadata so Moondesk can distinguish an
+immediate replay from a live-tail wait that timed out with no new events.
 The transport and live task-event sync live in `mooncode_stream.mbt`, with
 event projection and resumable replay coverage in `mooncode_stream_wbtest.mbt`.
 

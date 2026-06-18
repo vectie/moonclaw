@@ -12,7 +12,7 @@ test "mooncode capabilities expose native daemon endpoints" {
   )
   assert_true(
     mooncode_native_capability_optional_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>",
+      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
     ),
   )
   assert_eq(
@@ -21,7 +21,7 @@ test "mooncode capabilities expose native daemon endpoints" {
   )
   assert_true(
     mooncode_native_capability_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>",
+      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
     ),
   )
   assert_true(
@@ -133,6 +133,8 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("steer_deferred"))
   assert_true(payload.contains("\"runtime_loop_options\""))
   assert_true(payload.contains("\"live_wait_ms\""))
+  assert_true(payload.contains("\"stream_options\""))
+  assert_true(payload.contains("\"wait_ms\""))
   assert_true(payload.contains("\"poll_ms\""))
   assert_true(payload.contains("receipt.accept"))
   assert_true(payload.contains("\"review_receipts\""))

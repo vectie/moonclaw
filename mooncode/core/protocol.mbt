@@ -14,6 +14,7 @@ pub fn native_capability_required_endpoints() -> Array[String] {
     "/v1/mooncode/capabilities", "/v1/mooncode/sessions?book_root=<path>", "/v1/mooncode/sessions?book_root=<path>&format=json",
     "/v1/mooncode/sessions/<id>?book_root=<path>", "/v1/mooncode/sessions/<id>/commands",
     "/v1/mooncode/sessions/<id>/serve-scheduler?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
+    "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
     "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>",
     "/v1/mooncode/sessions/<id>/runtime-loop?book_root=<path>", "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
     "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>", "/v1/mooncode/sessions/<id>/eval-report?book_root=<path>",
@@ -49,10 +50,30 @@ pub fn native_capability_runtime_loop_options() -> Json {
 }
 
 ///|
+pub fn native_capability_stream_options() -> Json {
+  {
+    "wait_ms": {
+      "default": 0,
+      "min": 0,
+      "max": 30000,
+      "purpose": "Opt-in bounded long-poll wait for new durable MoonCode events after the requested stream sequence.",
+    },
+    "poll_ms": {
+      "default": 100,
+      "min": 25,
+      "max": 2000,
+      "purpose": "Polling interval while wait_ms is active.",
+    },
+    "snapshot_semantics": "When wait_ms is zero, stream preserves immediate replay behavior; when positive, it polls events.jsonl until a sequence newer than since appears or the wait budget expires.",
+  }
+}
+
+///|
 fn native_capability_surface_fingerprint_source() -> String {
   let required_endpoints = native_capability_required_endpoints().join("\n")
   let required_tools = native_capability_required_tools().join("\n")
   let loop_options = native_capability_runtime_loop_options().stringify()
+  let stream_options = native_capability_stream_options().stringify()
   [
     "kind=mooncode-native-capability-surface",
     "component=mooncode",
@@ -61,6 +82,7 @@ fn native_capability_surface_fingerprint_source() -> String {
     "required_endpoints=\{required_endpoints}",
     "required_tools=\{required_tools}",
     "runtime_loop_options=\{loop_options}",
+    "stream_options=\{stream_options}",
   ].join("\n")
 }
 
@@ -84,6 +106,7 @@ pub fn native_capability_surface_json() -> Json {
     "required_endpoints": native_capability_required_endpoints(),
     "required_tools": native_capability_required_tools(),
     "runtime_loop_options": native_capability_runtime_loop_options(),
+    "stream_options": native_capability_stream_options(),
   }
 }
 

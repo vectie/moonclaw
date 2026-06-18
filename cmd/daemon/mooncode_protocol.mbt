@@ -16,7 +16,7 @@ fn mooncode_native_capability_required_endpoints() -> Array[String] {
 ///|
 fn mooncode_native_capability_optional_endpoints() -> Array[String] {
   [
-    "/v1/mooncode/sessions?book_root=<path>&format=listing", "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>",
+    "/v1/mooncode/sessions?book_root=<path>&format=listing", "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
   ]
 }
 
@@ -40,6 +40,11 @@ fn mooncode_native_capability_runtime_loop_options() -> Json {
 }
 
 ///|
+fn mooncode_native_capability_stream_options() -> Json {
+  @mooncode_core.native_capability_stream_options()
+}
+
+///|
 fn mooncode_native_capability_surface_fingerprint() -> String {
   @mooncode_core.native_capability_surface_fingerprint()
 }
@@ -57,6 +62,7 @@ fn mooncode_native_capability_surface_json() -> Json {
     "advertised_endpoints": mooncode_native_capability_endpoints(),
     "required_tools": mooncode_native_capability_tools(),
     "runtime_loop_options": mooncode_native_capability_runtime_loop_options(),
+    "stream_options": mooncode_native_capability_stream_options(),
   }
 }
 

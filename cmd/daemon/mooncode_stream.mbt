@@ -25,26 +25,116 @@ async fn Daemon::mooncode_stream(
       },
     })
   }
-  match binding {
-    Some(binding) => self.mooncode_sync_live_task_events(binding)
-    None => ()
-  }
-  let events = mooncode_read_jsonl(mooncode_events_path(book_root, session_id))
   let since = mooncode_request_int(r, "since", default=0)
   let format = mooncode_request_string(r, "format", default="jsonl")
+  let wait_ms = mooncode_stream_wait_ms_value(
+    mooncode_request_int(r, "wait_ms", default=0),
+  )
+  let poll_ms = mooncode_stream_poll_ms_value(
+    mooncode_request_int(r, "poll_ms", default=100),
+  )
+  let wait = self.mooncode_stream_wait_for_events(
+    binding, session_id, book_root, since, wait_ms, poll_ms,
+  )
+  let events = mooncode_json_array_items(wait, "events")
   if format == "sse" {
     w.header().set("Content-Type", "text/event-stream")
     w.header().set("Cache-Control", "no-cache")
     w.write_header(200)
-    w.write(mooncode_stream_sse_payload(session_id, book_root, events, since~))
+    w.write(
+      mooncode_stream_sse_payload(
+        session_id,
+        book_root,
+        events,
+        since~,
+        wait_ms~,
+        poll_ms~,
+        wait_elapsed_ms=mooncode_json_int(wait, "wait_elapsed_ms", default=0),
+        wait_attempt_count=mooncode_json_int(
+          wait,
+          "wait_attempt_count",
+          default=0,
+        ),
+      ),
+    )
   } else {
     w.header().set("Content-Type", "application/x-ndjson")
     w.write_header(200)
     w.write(
-      mooncode_stream_jsonl_payload(session_id, book_root, events, since~),
+      mooncode_stream_jsonl_payload(
+        session_id,
+        book_root,
+        events,
+        since~,
+        wait_ms~,
+        poll_ms~,
+        wait_elapsed_ms=mooncode_json_int(wait, "wait_elapsed_ms", default=0),
+        wait_attempt_count=mooncode_json_int(
+          wait,
+          "wait_attempt_count",
+          default=0,
+        ),
+      ),
     )
   }
   w.flush()
+}
+
+///|
+async fn Daemon::mooncode_stream_wait_for_events(
+  self : Daemon,
+  binding : MoonCodeSessionBinding?,
+  session_id : String,
+  book_root : String,
+  since : Int,
+  wait_ms : Int,
+  poll_ms : Int,
+) -> Json {
+  let mut elapsed_ms = 0
+  let mut attempt_count = 0
+  let mut events = self.mooncode_stream_current_events(
+    binding, book_root, session_id,
+  )
+  while wait_ms > 0 && events.length() <= since && elapsed_ms < wait_ms {
+    if @async.is_being_cancelled() {
+      break
+    }
+    let remaining = wait_ms - elapsed_ms
+    let delay = if remaining < poll_ms { remaining } else { poll_ms }
+    @async.sleep(delay)
+    elapsed_ms += delay
+    attempt_count += 1
+    events = self.mooncode_stream_current_events(binding, book_root, session_id)
+  }
+  {
+    "kind": "mooncode-stream-wait",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "since": since,
+    "wait_ms": wait_ms,
+    "poll_ms": poll_ms,
+    "wait_elapsed_ms": elapsed_ms,
+    "wait_attempt_count": attempt_count,
+    "ready": events.length() > since,
+    "event_count": events.length(),
+    "events": Json::array(events),
+  }
+}
+
+///|
+async fn Daemon::mooncode_stream_current_events(
+  self : Daemon,
+  binding : MoonCodeSessionBinding?,
+  book_root : String,
+  session_id : String,
+) -> Array[Json] {
+  match binding {
+    Some(binding) => self.mooncode_sync_live_task_events(binding)
+    None => ()
+  }
+  mooncode_read_jsonl(mooncode_events_path(book_root, session_id))
 }
 
 ///|
@@ -84,8 +174,21 @@ fn mooncode_stream_jsonl_payload(
   book_root : String,
   events : Array[Json],
   since? : Int = 0,
+  wait_ms? : Int = 0,
+  poll_ms? : Int = 100,
+  wait_elapsed_ms? : Int = 0,
+  wait_attempt_count? : Int = 0,
 ) -> String {
-  let records = mooncode_stream_records(session_id, book_root, events, since~)
+  let records = mooncode_stream_records(
+    session_id,
+    book_root,
+    events,
+    since~,
+    wait_ms~,
+    poll_ms~,
+    wait_elapsed_ms~,
+    wait_attempt_count~,
+  )
   records.map(record => record.stringify()).join("\n") + "\n"
 }
 
@@ -95,9 +198,23 @@ fn mooncode_stream_sse_payload(
   book_root : String,
   events : Array[Json],
   since? : Int = 0,
+  wait_ms? : Int = 0,
+  poll_ms? : Int = 100,
+  wait_elapsed_ms? : Int = 0,
+  wait_attempt_count? : Int = 0,
 ) -> String {
   let chunks : Array[String] = []
-  for record in mooncode_stream_records(session_id, book_root, events, since~) {
+  for
+    record in mooncode_stream_records(
+      session_id,
+      book_root,
+      events,
+      since~,
+      wait_ms~,
+      poll_ms~,
+      wait_elapsed_ms~,
+      wait_attempt_count~,
+    ) {
     chunks.push(
       "event: \{mooncode_json_string(record, "type", default="message")}\n" +
       "data: \{record.stringify()}\n",
@@ -112,6 +229,10 @@ fn mooncode_stream_records(
   book_root : String,
   events : Array[Json],
   since? : Int = 0,
+  wait_ms? : Int = 0,
+  poll_ms? : Int = 100,
+  wait_elapsed_ms? : Int = 0,
+  wait_attempt_count? : Int = 0,
 ) -> Array[Json] {
   let latest_sequence = events.length()
   let clamped_since = if since < 0 {
@@ -130,6 +251,10 @@ fn mooncode_stream_records(
       since=clamped_since,
       emitted_count~,
       latest_sequence~,
+      wait_ms~,
+      poll_ms~,
+      wait_elapsed_ms~,
+      wait_attempt_count~,
     ),
   ]
   for index in clamped_since..<events.length() {
@@ -150,6 +275,10 @@ fn mooncode_stream_records(
       latest_sequence~,
       since=clamped_since,
       emitted_count~,
+      wait_ms~,
+      poll_ms~,
+      wait_elapsed_ms~,
+      wait_attempt_count~,
     ),
   )
   records
@@ -163,6 +292,10 @@ fn mooncode_stream_meta_record(
   since~ : Int,
   emitted_count~ : Int,
   latest_sequence~ : Int,
+  wait_ms~ : Int,
+  poll_ms~ : Int,
+  wait_elapsed_ms~ : Int,
+  wait_attempt_count~ : Int,
 ) -> Json {
   {
     "type": "meta",
@@ -176,6 +309,10 @@ fn mooncode_stream_meta_record(
     "emitted_count": emitted_count,
     "latest_sequence": latest_sequence,
     "next_since": latest_sequence,
+    "wait_ms": wait_ms,
+    "poll_ms": poll_ms,
+    "wait_elapsed_ms": wait_elapsed_ms,
+    "wait_attempt_count": wait_attempt_count,
     "source": "moonclaw-durable-mooncode-events",
   }
 }
@@ -212,6 +349,10 @@ fn mooncode_stream_done_record(
   latest_sequence~ : Int,
   since~ : Int,
   emitted_count~ : Int,
+  wait_ms~ : Int,
+  poll_ms~ : Int,
+  wait_elapsed_ms~ : Int,
+  wait_attempt_count~ : Int,
 ) -> Json {
   {
     "type": "done",
@@ -224,7 +365,33 @@ fn mooncode_stream_done_record(
     "since": since,
     "emitted_count": emitted_count,
     "next_since": latest_sequence,
+    "wait_ms": wait_ms,
+    "poll_ms": poll_ms,
+    "wait_elapsed_ms": wait_elapsed_ms,
+    "wait_attempt_count": wait_attempt_count,
     "source": "moonclaw-durable-mooncode-events",
+  }
+}
+
+///|
+fn mooncode_stream_wait_ms_value(requested : Int) -> Int {
+  if requested < 0 {
+    0
+  } else if requested > 30000 {
+    30000
+  } else {
+    requested
+  }
+}
+
+///|
+fn mooncode_stream_poll_ms_value(requested : Int) -> Int {
+  if requested < 25 {
+    25
+  } else if requested > 2000 {
+    2000
+  } else {
+    requested
   }
 }
 

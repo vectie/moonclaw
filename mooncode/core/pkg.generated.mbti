@@ -12,6 +12,8 @@ pub fn native_capability_required_tools() -> Array[String]
 
 pub fn native_capability_runtime_loop_options() -> Json
 
+pub fn native_capability_stream_options() -> Json
+
 pub fn native_capability_surface_fingerprint() -> String
 
 pub fn native_capability_surface_json() -> Json
