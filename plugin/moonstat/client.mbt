@@ -335,7 +335,7 @@ fn moonstat_base_url_from_status(status : Json) -> String? {
     Object(obj) if moonstat_status_contract_valid(obj) =>
       match obj.get("manifest") {
         Some(Object(manifest)) if moonstat_manifest_contract_valid(manifest) =>
-          match manifest.get("base_url") {
+          match manifest.get("baseUrl") {
             Some(String(url)) if !url.trim().is_empty() => Some(url)
             _ => None
           }
