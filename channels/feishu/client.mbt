@@ -26,7 +26,7 @@ pub struct FeishuReactionIndicatorState {
 
 ///|
 pub fn FeishuClient::new(config : FeishuAccountConfig) -> FeishuClient {
-  FeishuClient::{ config, }
+  { config, }
 }
 
 ///|
@@ -46,7 +46,7 @@ pub async fn FeishuClient::download_message_resource(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to download Feishu message resource: \{error}",
         ),
       )
@@ -54,7 +54,7 @@ pub async fn FeishuClient::download_message_resource(
   let body = client.read_all().binary() catch {
       error =>
         return Err(
-          @channel.ChannelError::ConnectionFailed(
+          ConnectionFailed(
             message="Failed to read Feishu message resource: \{error}",
           ),
         )
@@ -62,7 +62,7 @@ pub async fn FeishuClient::download_message_resource(
   guard response.code is (200..=299) else {
     let body_text = @encoding/utf8.decode_lossy(body)
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu resource API error \{response.code}: \{body_text}",
       ),
     )
@@ -92,7 +92,7 @@ fn parse_feishu_websocket_client_config(
 ) -> FeishuWebSocketClientConfig? {
   match json {
     Object(obj) =>
-      Some(FeishuWebSocketClientConfig::{
+      Some({
         ping_interval: obj.get("PingInterval").bind(parse_json_int),
         reconnect_count: obj.get("ReconnectCount").bind(parse_json_int),
         reconnect_interval: obj.get("ReconnectInterval").bind(parse_json_int),
@@ -108,7 +108,7 @@ fn parse_feishu_websocket_endpoint_data(
 ) -> FeishuWebSocketEndpointData? {
   match json {
     { "URL": String(url), .. } if !url.is_blank() =>
-      Some(FeishuWebSocketEndpointData::{
+      Some({
         url,
         client_config: match json {
           { "ClientConfig": client_config, .. } =>
@@ -213,16 +213,12 @@ fn parse_json_code_msg(
       @string.parse_int(code) catch {
         _ =>
           return Err(
-            @channel.ChannelError::SendMessageFailed(
-              message="\{error_prefix}: invalid response code",
-            ),
+            SendMessageFailed(message="\{error_prefix}: invalid response code"),
           )
       }
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="\{error_prefix}: missing response code",
-        ),
+        SendMessageFailed(message="\{error_prefix}: missing response code"),
       )
   }
   let msg = match response_json {
@@ -240,12 +236,7 @@ fn parse_card_id(
   match response_json {
     { "data": { "card_id": String(card_id), .. }, .. } if !card_id.is_blank() =>
       Ok(card_id)
-    _ =>
-      Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="\{error_prefix}: missing card_id",
-        ),
-      )
+    _ => Err(SendMessageFailed(message="\{error_prefix}: missing card_id"))
   }
 }
 
@@ -257,12 +248,7 @@ fn parse_reaction_id(
   match response_json {
     { "data": { "reaction_id": String(reaction_id), .. }, .. } if !reaction_id.is_blank() =>
       Ok(reaction_id)
-    _ =>
-      Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="\{error_prefix}: missing reaction_id",
-        ),
-      )
+    _ => Err(SendMessageFailed(message="\{error_prefix}: missing reaction_id"))
   }
 }
 
@@ -282,7 +268,7 @@ async fn authed_feishu_http_client(
   }) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to create Feishu HTTP client: \{error}",
         ),
       )
@@ -323,14 +309,14 @@ async fn parse_send_response(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::SendMessageFailed(
+          SendMessageFailed(
             message="Failed to read Feishu response body: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Feishu API error \{response.code}: \{body_text}",
       ),
     )
@@ -338,27 +324,21 @@ async fn parse_send_response(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="Invalid Feishu response: \{body_text}",
-        ),
+        SendMessageFailed(message="Invalid Feishu response: \{body_text}"),
       )
   }
   let parsed : FeishuSendMessageResponse = @json.from_json(response_json) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Failed to decode Feishu response: \{body_text}",
         ),
       )
   }
   if parsed.code != 0 {
-    return Err(
-      @channel.ChannelError::SendMessageFailed(
-        message="Feishu send failed: \{parsed.msg}",
-      ),
-    )
+    return Err(SendMessageFailed(message="Feishu send failed: \{parsed.msg}"))
   }
-  Ok(@channel.SendResult::{
+  Ok({
     channel: "feishu",
     message_id: parsed.data.map(fn(data) { data.message_id }).unwrap_or(""),
     timestamp: 0,
@@ -374,14 +354,14 @@ async fn parse_lookup_response(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::ConnectionFailed(
+          ConnectionFailed(
             message="Failed to read Feishu lookup response body: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu lookup API error \{response.code}: \{body_text}",
       ),
     )
@@ -389,25 +369,19 @@ async fn parse_lookup_response(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
-          message="Invalid Feishu lookup response: \{body_text}",
-        ),
+        ConnectionFailed(message="Invalid Feishu lookup response: \{body_text}"),
       )
   }
   let parsed : FeishuMessageLookupResponse = @json.from_json(response_json) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to decode Feishu lookup response: \{body_text}",
         ),
       )
   }
   if parsed.code != 0 {
-    return Err(
-      @channel.ChannelError::ConnectionFailed(
-        message="Feishu lookup failed: \{parsed.msg}",
-      ),
-    )
+    return Err(ConnectionFailed(message="Feishu lookup failed: \{parsed.msg}"))
   }
   Ok(parsed.data.bind(fn(data) { data.items.get(0) }))
 }
@@ -420,14 +394,14 @@ async fn parse_lookup_items_response(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::ConnectionFailed(
+          ConnectionFailed(
             message="Failed to read Feishu lookup response body: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu lookup API error \{response.code}: \{body_text}",
       ),
     )
@@ -435,25 +409,19 @@ async fn parse_lookup_items_response(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
-          message="Invalid Feishu lookup response: \{body_text}",
-        ),
+        ConnectionFailed(message="Invalid Feishu lookup response: \{body_text}"),
       )
   }
   let parsed : FeishuMessageLookupResponse = @json.from_json(response_json) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to decode Feishu lookup response: \{body_text}",
         ),
       )
   }
   if parsed.code != 0 {
-    return Err(
-      @channel.ChannelError::ConnectionFailed(
-        message="Feishu lookup failed: \{parsed.msg}",
-      ),
-    )
+    return Err(ConnectionFailed(message="Feishu lookup failed: \{parsed.msg}"))
   }
   Ok(parsed.data.map(fn(data) { data.items }).unwrap_or([]))
 }
@@ -466,14 +434,14 @@ async fn parse_user_lookup_response(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::ConnectionFailed(
+          ConnectionFailed(
             message="Failed to read Feishu user lookup response body: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu user lookup API error \{response.code}: \{body_text}",
       ),
     )
@@ -481,7 +449,7 @@ async fn parse_user_lookup_response(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Invalid Feishu user lookup response: \{body_text}",
         ),
       )
@@ -489,16 +457,14 @@ async fn parse_user_lookup_response(
   let parsed : FeishuUserLookupResponse = @json.from_json(response_json) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to decode Feishu user lookup response: \{body_text}",
         ),
       )
   }
   if parsed.code != 0 {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
-        message="Feishu user lookup failed: \{parsed.msg}",
-      ),
+      ConnectionFailed(message="Feishu user lookup failed: \{parsed.msg}"),
     )
   }
   let user = parsed.data.bind(fn(data) { data.user })
@@ -523,7 +489,7 @@ pub async fn resolve_websocket_endpoint(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to fetch Feishu websocket endpoint: \{error}",
         ),
       )
@@ -531,7 +497,7 @@ pub async fn resolve_websocket_endpoint(
   let body_text = data.text()
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu websocket endpoint API error \{response.code}: \{body_text}",
       ),
     )
@@ -539,7 +505,7 @@ pub async fn resolve_websocket_endpoint(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Invalid Feishu websocket endpoint response: \{body_text}",
         ),
       )
@@ -547,14 +513,14 @@ pub async fn resolve_websocket_endpoint(
   let parsed : FeishuWebSocketEndpointResponse = @json.from_json(response_json) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to decode Feishu websocket endpoint response: \{body_text}",
         ),
       )
   }
   if parsed.code != 0 {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu websocket endpoint lookup failed: \{parsed.msg}",
       ),
     )
@@ -565,14 +531,14 @@ pub async fn resolve_websocket_endpoint(
         Some(endpoint_data) => Ok(endpoint_data)
         None =>
           Err(
-            @channel.ChannelError::ConnectionFailed(
+            ConnectionFailed(
               message="Feishu websocket endpoint response is missing data.URL",
             ),
           )
       }
     None =>
       Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Feishu websocket endpoint response is missing data.URL",
         ),
       )
@@ -587,14 +553,14 @@ async fn parse_user_batch_lookup_response(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::ConnectionFailed(
+          ConnectionFailed(
             message="Failed to read Feishu user batch lookup response body: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu user batch lookup API error \{response.code}: \{body_text}",
       ),
     )
@@ -602,7 +568,7 @@ async fn parse_user_batch_lookup_response(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Invalid Feishu user batch lookup response: \{body_text}",
         ),
       )
@@ -610,16 +576,14 @@ async fn parse_user_batch_lookup_response(
   let parsed : FeishuUserBatchLookupResponse = @json.from_json(response_json) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to decode Feishu user batch lookup response: \{body_text}",
         ),
       )
   }
   if parsed.code != 0 {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
-        message="Feishu user batch lookup failed: \{parsed.msg}",
-      ),
+      ConnectionFailed(message="Feishu user batch lookup failed: \{parsed.msg}"),
     )
   }
   let resolved : Map[String, String] = {}
@@ -649,14 +613,12 @@ async fn FeishuClient::load_tenant_access_token(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
-          message="Failed to load Feishu access token: \{error}",
-        ),
+        ConnectionFailed(message="Failed to load Feishu access token: \{error}"),
       )
   }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Feishu auth failed: \{response.code} - \{data.text()}",
       ),
     )
@@ -664,23 +626,17 @@ async fn FeishuClient::load_tenant_access_token(
   let parsed : FeishuAccessTokenResponse = @json.from_json(data.json()) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
-          message="Failed to decode Feishu auth response",
-        ),
+        ConnectionFailed(message="Failed to decode Feishu auth response"),
       )
   }
   if parsed.code != 0 {
-    return Err(
-      @channel.ChannelError::ConnectionFailed(
-        message="Feishu auth failed: \{parsed.msg}",
-      ),
-    )
+    return Err(ConnectionFailed(message="Feishu auth failed: \{parsed.msg}"))
   }
   match parsed.tenant_access_token {
     Some(token) if token.length() > 0 => Ok(token)
     _ =>
       Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Feishu auth response missing tenant_access_token",
         ),
       )
@@ -696,10 +652,7 @@ pub async fn FeishuClient::add_typing_indicator(
     Ok(state) => state
     Err(error) => return Err(error)
   }
-  Ok(FeishuTypingIndicatorState::{
-    message_id: state.message_id,
-    reaction_id: state.reaction_id,
-  })
+  Ok({ message_id: state.message_id, reaction_id: state.reaction_id })
 }
 
 ///|
@@ -720,22 +673,20 @@ pub async fn FeishuClient::add_message_reaction(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="Failed to add Feishu reaction: \{error}",
-        ),
+        SendMessageFailed(message="Failed to add Feishu reaction: \{error}"),
       )
   }
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::SendMessageFailed(
+          SendMessageFailed(
             message="Failed to read Feishu reaction response: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Feishu reaction API error \{response.code}: \{body_text}",
       ),
     )
@@ -743,7 +694,7 @@ pub async fn FeishuClient::add_message_reaction(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Invalid Feishu reaction response: \{body_text}",
         ),
       )
@@ -754,18 +705,14 @@ pub async fn FeishuClient::add_message_reaction(
     Err(error) => return Err(error)
   }
   if code != 0 {
-    return Err(
-      @channel.ChannelError::SendMessageFailed(
-        message="Feishu reaction failed: \{msg}",
-      ),
-    )
+    return Err(SendMessageFailed(message="Feishu reaction failed: \{msg}"))
   }
   let reaction_id = match
     parse_reaction_id(response_json, "Failed to add Feishu reaction") {
     Ok(reaction_id) => reaction_id
     Err(error) => return Err(error)
   }
-  Ok(FeishuReactionIndicatorState::{ message_id, reaction_id, emoji_type })
+  Ok({ message_id, reaction_id, emoji_type })
 }
 
 ///|
@@ -773,7 +720,7 @@ pub async fn FeishuClient::remove_typing_indicator(
   self : FeishuClient,
   state : FeishuTypingIndicatorState,
 ) -> Result[Unit, @channel.ChannelError] {
-  self.remove_message_reaction(FeishuReactionIndicatorState::{
+  self.remove_message_reaction({
     message_id: state.message_id,
     reaction_id: state.reaction_id,
     emoji_type: "Typing",
@@ -792,20 +739,18 @@ pub async fn FeishuClient::remove_message_reaction(
   defer client.close()
 
   client.request(
-    @http.RequestMethod::Delete,
+    Delete,
     "/open-apis/im/v1/messages/\{state.message_id}/reactions/\{state.reaction_id}",
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="Failed to remove Feishu reaction: \{error}",
-        ),
+        SendMessageFailed(message="Failed to remove Feishu reaction: \{error}"),
       )
   }
   let response = client.end_request() catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Failed to finish Feishu reaction removal request: \{error}",
         ),
       )
@@ -813,14 +758,14 @@ pub async fn FeishuClient::remove_message_reaction(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::SendMessageFailed(
+          SendMessageFailed(
             message="Failed to read Feishu reaction removal response: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Feishu reaction removal API error \{response.code}: \{body_text}",
       ),
     )
@@ -828,7 +773,7 @@ pub async fn FeishuClient::remove_message_reaction(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Invalid Feishu reaction removal response: \{body_text}",
         ),
       )
@@ -840,9 +785,7 @@ pub async fn FeishuClient::remove_message_reaction(
   }
   if code != 0 {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
-        message="Feishu reaction removal failed: \{msg}",
-      ),
+      SendMessageFailed(message="Feishu reaction removal failed: \{msg}"),
     )
   }
   Ok(())
@@ -868,7 +811,7 @@ pub async fn FeishuClient::send_text_message(
   }) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to create Feishu HTTP client: \{error}",
         ),
       )
@@ -887,9 +830,7 @@ pub async fn FeishuClient::send_text_message(
       ) catch {
         error =>
           return Err(
-            @channel.ChannelError::SendMessageFailed(
-              message="Failed to send Feishu reply: \{error}",
-            ),
+            SendMessageFailed(message="Failed to send Feishu reply: \{error}"),
           )
       }
     _ => {
@@ -904,9 +845,7 @@ pub async fn FeishuClient::send_text_message(
       ) catch {
         error =>
           return Err(
-            @channel.ChannelError::SendMessageFailed(
-              message="Failed to send Feishu message: \{error}",
-            ),
+            SendMessageFailed(message="Failed to send Feishu message: \{error}"),
           )
       }
     }
@@ -938,7 +877,7 @@ pub async fn FeishuClient::start_streaming_card(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Failed to create Feishu streaming card: \{error}",
         ),
       )
@@ -946,14 +885,14 @@ pub async fn FeishuClient::start_streaming_card(
   let card_body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::SendMessageFailed(
+          SendMessageFailed(
             message="Failed to read Feishu streaming card response: \{error}",
           ),
         )
     }
   guard card_response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Feishu streaming card API error \{card_response.code}: \{card_body_text}",
       ),
     )
@@ -961,7 +900,7 @@ pub async fn FeishuClient::start_streaming_card(
   let card_json : Json = @json.parse(card_body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Invalid Feishu streaming card response: \{card_body_text}",
         ),
       )
@@ -973,7 +912,7 @@ pub async fn FeishuClient::start_streaming_card(
   }
   if card_code != 0 {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Feishu streaming card creation failed: \{card_msg}",
       ),
     )
@@ -996,7 +935,7 @@ pub async fn FeishuClient::start_streaming_card(
       ) catch {
         error =>
           return Err(
-            @channel.ChannelError::SendMessageFailed(
+            SendMessageFailed(
               message="Failed to send Feishu streaming card reply: \{error}",
             ),
           )
@@ -1013,7 +952,7 @@ pub async fn FeishuClient::start_streaming_card(
       ) catch {
         error =>
           return Err(
-            @channel.ChannelError::SendMessageFailed(
+            SendMessageFailed(
               message="Failed to send Feishu streaming card message: \{error}",
             ),
           )
@@ -1024,7 +963,7 @@ pub async fn FeishuClient::start_streaming_card(
     Ok(sent) => sent
     Err(error) => return Err(error)
   }
-  Ok(FeishuStreamingCardSession::{
+  Ok({
     card_id,
     message_id: sent.message_id,
     sequence: 1,
@@ -1055,7 +994,7 @@ pub async fn FeishuClient::update_streaming_card(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Failed to update Feishu streaming card: \{error}",
         ),
       )
@@ -1063,14 +1002,14 @@ pub async fn FeishuClient::update_streaming_card(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::SendMessageFailed(
+          SendMessageFailed(
             message="Failed to read Feishu streaming card update response: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Feishu streaming card update API error \{response.code}: \{body_text}",
       ),
     )
@@ -1078,7 +1017,7 @@ pub async fn FeishuClient::update_streaming_card(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Invalid Feishu streaming card update response: \{body_text}",
         ),
       )
@@ -1090,16 +1029,10 @@ pub async fn FeishuClient::update_streaming_card(
   }
   if code != 0 {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
-        message="Feishu streaming card update failed: \{msg}",
-      ),
+      SendMessageFailed(message="Feishu streaming card update failed: \{msg}"),
     )
   }
-  Ok(FeishuStreamingCardSession::{
-    ..session,
-    sequence: next_sequence,
-    current_text: text,
-  })
+  Ok({ ..session, sequence: next_sequence, current_text: text })
 }
 
 ///|
@@ -1119,12 +1052,12 @@ pub async fn FeishuClient::close_streaming_card(
   defer client.close()
   let next_sequence = session.sequence + 1
   client.request(
-    @http.RequestMethod::Patch,
+    Patch,
     "/open-apis/cardkit/v1/cards/\{session.card_id}/settings",
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Failed to close Feishu streaming card: \{error}",
         ),
       )
@@ -1144,7 +1077,7 @@ pub async fn FeishuClient::close_streaming_card(
   let response = client.end_request() catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Failed to finish Feishu streaming card close request: \{error}",
         ),
       )
@@ -1152,14 +1085,14 @@ pub async fn FeishuClient::close_streaming_card(
   let body_text = client.read_all().text() catch {
       error =>
         return Err(
-          @channel.ChannelError::SendMessageFailed(
+          SendMessageFailed(
             message="Failed to read Feishu streaming card close response: \{error}",
           ),
         )
     }
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Feishu streaming card close API error \{response.code}: \{body_text}",
       ),
     )
@@ -1167,7 +1100,7 @@ pub async fn FeishuClient::close_streaming_card(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Invalid Feishu streaming card close response: \{body_text}",
         ),
       )
@@ -1179,12 +1112,10 @@ pub async fn FeishuClient::close_streaming_card(
   }
   if code != 0 {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
-        message="Feishu streaming card close failed: \{msg}",
-      ),
+      SendMessageFailed(message="Feishu streaming card close failed: \{msg}"),
     )
   }
-  Ok(@channel.SendResult::{
+  Ok({
     channel: "feishu",
     message_id: session.message_id,
     timestamp: 0,
@@ -1208,7 +1139,7 @@ pub async fn FeishuClient::get_message(
   }) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to create Feishu HTTP client: \{error}",
         ),
       )
@@ -1220,9 +1151,7 @@ pub async fn FeishuClient::get_message(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
-          message="Failed to fetch Feishu message: \{error}",
-        ),
+        ConnectionFailed(message="Failed to fetch Feishu message: \{error}"),
       )
   }
   parse_lookup_response(response, client)
@@ -1244,7 +1173,7 @@ pub async fn FeishuClient::get_message_items(
   }) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to create Feishu HTTP client: \{error}",
         ),
       )
@@ -1256,7 +1185,7 @@ pub async fn FeishuClient::get_message_items(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to fetch Feishu message items: \{error}",
         ),
       )
@@ -1280,7 +1209,7 @@ pub async fn FeishuClient::get_user_display_name(
   }) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to create Feishu HTTP client: \{error}",
         ),
       )
@@ -1292,9 +1221,7 @@ pub async fn FeishuClient::get_user_display_name(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
-          message="Failed to fetch Feishu user: \{error}",
-        ),
+        ConnectionFailed(message="Failed to fetch Feishu user: \{error}"),
       )
   }
   parse_user_lookup_response(response, client)
@@ -1319,7 +1246,7 @@ pub async fn FeishuClient::get_user_display_names(
   }) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to create Feishu HTTP client: \{error}",
         ),
       )
@@ -1338,9 +1265,7 @@ pub async fn FeishuClient::get_user_display_names(
     ) catch {
       error =>
         return Err(
-          @channel.ChannelError::ConnectionFailed(
-            message="Failed to fetch Feishu users: \{error}",
-          ),
+          ConnectionFailed(message="Failed to fetch Feishu users: \{error}"),
         )
     }
     match parse_user_batch_lookup_response(response, client) {

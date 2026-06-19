@@ -108,7 +108,7 @@ fn preprocess_step_metadata() -> Json {
 
 ///|
 fn context_preprocess_step(proposal : JobProposal) -> JobProposalStep {
-  JobProposalStep::{
+  {
     id: "context_preprocess",
     title: "Gather context and public facts",
     prompt: preprocess_step_prompt(proposal),
@@ -131,8 +131,5 @@ pub fn with_e2e_preprocess_steps(proposal : JobProposal) -> JobProposal {
   if proposal.request_text.trim().to_owned().is_blank() {
     return proposal
   }
-  JobProposal::{
-    ..proposal,
-    steps: [context_preprocess_step(proposal), ..proposal.steps],
-  }
+  { ..proposal, steps: [context_preprocess_step(proposal), ..proposal.steps] }
 }

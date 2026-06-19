@@ -11,7 +11,7 @@ fn Config::uuid(self : Config) -> String {
 ///|
 fn Item::new(
   content~ : String,
-  notes? : String,
+  notes~ : String?,
   priority~ : Priority,
   status~ : Status,
   // config : Config,
@@ -33,7 +33,7 @@ fn Item::update(
   self : Item,
   content? : String,
   notes? : String?,
-  status? : Status,
+  status~ : Status?,
   priority? : Priority,
   updated_at~ : String,
 ) -> Item {
@@ -59,7 +59,7 @@ pub fn new(
   clock? : &@clock.Clock = @clock.epoch,
   cwd~ : StringView,
 ) -> Todo {
-  Todo::{
+  {
     config: { uuid, clock, cwd: cwd.to_owned() },
     items: {
       todos: [],
@@ -107,24 +107,28 @@ async fn Todo::save(self : Todo) -> Unit {
 fn extract_task_tags(content : String) -> Array[String] {
   let tasks = []
   let mut task = None
-  for content = content[:] {
-    match content {
+  let mut remaining = content[:]
+  while true {
+    match remaining {
       [.. "<task>", .. rest] => {
         task = Some(StringBuilder::new())
-        continue rest
+        remaining = rest
+        continue
       }
       [.. "</task>", .. rest] => {
         if task is Some(t) {
           tasks.push(t.to_string())
           task = None
         }
-        continue rest
+        remaining = rest
+        continue
       }
       [c, .. rest] => {
         if task is Some(t) {
           t.write_char(c)
         }
-        continue rest
+        remaining = rest
+        continue
       }
       [] => break
     }
@@ -147,9 +151,9 @@ test "extract_task_tags" {
 fn Todo::add_task(
   self : Todo,
   content : String,
-  status? : Status = Pending,
-  priority? : Priority = Medium,
-  notes? : String? = None,
+  status~ : Status,
+  priority~ : Priority,
+  notes~ : String?,
 ) -> Item {
   let content = match extract_task_tags(content) {
     [] => content
@@ -157,7 +161,7 @@ fn Todo::add_task(
   }
   let item = Item::new(
     content~,
-    notes?,
+    notes~,
     priority~,
     status~,
     created_at=self.now(),
@@ -192,11 +196,21 @@ fn Todo::get(self : Todo, index : Int) -> Item {
 ///|
 /// Remove common list prefixes from a line
 fn remove_list_prefixes(line : StringView) -> StringView {
-  lexmatch line with longest {
-    ("[0-9]+\.[[:space:]]*", rest) => rest
-    ("-[[:space:]]*", rest) => rest
-    ("\*[[:space:]]*", rest) => rest
-    _ => line
+  let text = line.to_owned()
+  if text.has_prefix("-") || text.has_prefix("*") {
+    return text[1:].trim_start().to_owned()
+  }
+  let mut index = 0
+  for char in text {
+    match char {
+      '0'..='9' => index += 1
+      _ => break
+    }
+  }
+  if index > 0 && index < text.length() && text[index] == '.' {
+    text[index + 1:].trim_start().to_owned()
+  } else {
+    line
   }
 }
 
@@ -245,7 +259,7 @@ fn Items::parse(
       if trimmed.length() > 0 {
         let todo = Item::new(
           content=trimmed.to_owned(),
-          notes?,
+          notes~,
           priority~,
           status=Pending,
           created_at=config.now(),
@@ -268,7 +282,7 @@ fn Items::parse(
       if clean_line.length() > 0 {
         let todo = Item::new(
           content=clean_line.to_owned(),
-          notes?,
+          notes~,
           priority~,
           status=Pending,
           // self.config,

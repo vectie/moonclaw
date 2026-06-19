@@ -119,7 +119,7 @@ fn Daemon::mooncode_bind_session(
       binding.last_command_id = binding.last_command_id
     }
     None =>
-      self.mooncode_sessions[session_id] = MoonCodeSessionBinding::{
+      self.mooncode_sessions[session_id] = {
         session_id,
         task_id: task.id,
         book_root,

@@ -191,9 +191,7 @@ pub fn new(manager : @file.Manager) -> @tool.Tool[ReadFileToolResult] {
     ),
     name="read_file",
     schema~,
-    @tool.ToolFn(async fn(
-      args,
-    ) -> @tool.ToolResult[ReadFileToolResult] noraise {
+    ToolFn(async fn(args) -> @tool.ToolResult[ReadFileToolResult] noraise {
       execute_read_file_tool(manager, args)
     }),
   )

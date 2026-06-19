@@ -17,7 +17,7 @@ pub(all) struct Editor {
 
 ///|
 pub fn Editor::new() -> Editor {
-  Editor::{
+  {
     text: "",
     cursor: 0,
     history: [],
@@ -36,7 +36,7 @@ pub fn Editor::new() -> Editor {
 
 ///|
 pub fn Editor::with_prompt(prompt : String) -> Editor {
-  Editor::{
+  {
     text: "",
     cursor: 0,
     history: [],
@@ -55,7 +55,7 @@ pub fn Editor::with_prompt(prompt : String) -> Editor {
 
 ///|
 pub fn Editor::with_placeholder(placeholder : String) -> Editor {
-  Editor::{
+  {
     text: "",
     cursor: 0,
     history: [],
@@ -173,7 +173,7 @@ pub fn Editor::render(
 ) -> Unit {
   output.write(cursor_to(x, y))
   output.write(ClearLineRight)
-  output.write(colorize(self.prompt, Color::BrightGreen))
+  output.write(colorize(self.prompt, BrightGreen))
   let display_text = if self.text.length() == 0 {
     dim(self.placeholder)
   } else {

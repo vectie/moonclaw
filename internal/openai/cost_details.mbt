@@ -10,16 +10,16 @@ impl @json.FromJson for CostDetails with fn from_json(
   json_path : @json.JsonPath,
 ) -> CostDetails {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   let upstream_inference_cost = match json.get("upstream_inference_cost") {
     Some(Null) => None
     Some(Number(upstream_inference_cost, ..)) => Some(upstream_inference_cost)
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "Expected 'upstream_inference_cost' to be a number"),
       )
     None => None
   }
-  CostDetails::{ upstream_inference_cost, }
+  { upstream_inference_cost, }
 }

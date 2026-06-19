@@ -8,3 +8,5 @@ import {
   "vectie/moonlib/pathx",
   "moonbitlang/core/json",
 }
+
+supported_targets = "native"

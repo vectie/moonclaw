@@ -34,7 +34,7 @@ pub impl @json.FromJson for ChatCompletionMessage with fn from_json(
   json_path : @json.JsonPath,
 ) -> ChatCompletionMessage {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   let content = match json.get("content") {
     Some(Null) => None
@@ -68,5 +68,5 @@ pub impl @json.FromJson for ChatCompletionMessage with fn from_json(
     }
     None => []
   }
-  ChatCompletionMessage::{ content, refusal, role: Assistant, tool_calls }
+  { content, refusal, role: Assistant, tool_calls }
 }

@@ -204,7 +204,7 @@ async test "replace_in_file/no-write-permission" (t : @test.Test) {
       fail("Expected Error result but got: \{result}")
     }
     inspect(
-      mock.text(result),
+      mock.show(result),
       content="Permission denied: Cannot write to file file.txt. The file does not have write permissions.",
     )
     // Restore write permission for cleanup

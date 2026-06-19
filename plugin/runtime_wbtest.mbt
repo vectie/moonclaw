@@ -16,7 +16,7 @@ async test "plugin runtime loads entries and install state from config" {
           "installs": {
             "feishu": {
               "source": "npm",
-              "spec": "@openclaw/feishu",
+              "spec": "@moonclaw/feishu",
               "installPath": install_path,
               "resolvedVersion": "1.0.0",
             },

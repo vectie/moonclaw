@@ -80,6 +80,7 @@ async test "Conversation::FromJson" (t : @test.Test) {
       "created_at": "0",
       "updated_at": "2",
       "cwd": "/home/user/project",
+      "web_search": false,
     }
     let conversation : @conversation.Conversation = @json.from_json(json)
     json_inspect(conversation.messages().map(fn(m) { m.to_openai() }), content=[
@@ -186,6 +187,7 @@ async test "Conversation::display" (t : @test.Test) {
       "created_at": "0",
       "updated_at": "5",
       "cwd": "/home/user/project",
+      "web_search": false,
     }
     let conversation : @conversation.Conversation = @json.from_json(json)
     inspect(

@@ -725,7 +725,7 @@ fn mooncode_tool_patch_explicit_file_target(arguments : Json) -> String {
 ///|
 fn mooncode_tool_patch_file_target(target : String) -> String {
   let file = mooncode_tool_first_split_piece(target, "#hunk-")
-  mooncode_tool_patch_clean_diff_path(file[:])
+  mooncode_tool_patch_clean_diff_path(file)
 }
 
 ///|
@@ -1301,8 +1301,8 @@ async fn mooncode_tool_patch_result(
   book_root : String,
   arguments : Json,
   message~ : String,
-  output? : String = "",
-  metadata? : Json = {},
+  output~ : String,
+  metadata~ : Json,
 ) -> Json {
   if !mooncode_tool_patch_verification_requested(arguments) {
     return mooncode_tool_ok_result(tool, message~, output~, metadata~)
@@ -1451,7 +1451,7 @@ fn mooncode_json_object_with_field(
 ) -> Json {
   let object : Map[String, Json] = {}
   match json {
-    Json::Object(existing) =>
+    Object(existing) =>
       for name, field in existing.iter2() {
         object[name] = field
       }
@@ -1662,8 +1662,8 @@ fn mooncode_tool_result_event(
 ///|
 fn mooncode_tool_event_lane(
   tool : String,
-  path? : String = "",
-  diff? : String = "",
+  path~ : String,
+  diff~ : String,
 ) -> String {
   match tool {
     "moon_cmd" => "test"
@@ -1704,7 +1704,7 @@ fn mooncode_tool_event_name(tool : String) -> String {
 ///|
 fn mooncode_json_int(json : Json, key : String, default~ : Int) -> Int {
   match json {
-    Json::Object(object) =>
+    Object(object) =>
       match object.get(key) {
         Some(value) => @json.from_json(value) catch { _ => default }
         None => default

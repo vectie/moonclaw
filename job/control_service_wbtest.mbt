@@ -17,30 +17,20 @@ async test "render_job_status_command_reply resolves run targets" {
     id: "workflow-1",
     kind: "job.proposal",
     steps: [
-      WorkflowStepDefinition::{
-        id: "step-1",
-        kind: "job.analysis",
-        config: {},
-        retry_policy: None,
-      },
-      WorkflowStepDefinition::{
-        id: "step-2",
-        kind: "job.analysis",
-        config: {},
-        retry_policy: None,
-      },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
+      { id: "step-2", kind: "job.analysis", config: {}, retry_policy: None },
     ],
     output_bindings: [],
   }
   let run = JobRun::{
     id: "run-1",
     job_id: "job-1",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -90,24 +80,19 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
     id: "workflow-1",
     kind: "job.proposal",
     steps: [
-      WorkflowStepDefinition::{
-        id: "step-1",
-        kind: "job.analysis",
-        config: {},
-        retry_policy: None,
-      },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
     ],
     output_bindings: [],
   }
   let run = JobRun::{
     id: "run-1",
     job_id: "job-1",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::WaitingForInput,
+    status: WaitingForInput,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -118,11 +103,11 @@ async test "render_job_status_command_reply resolves waiting-for-input runs by d
   store.save_definition(definition)
   store.save_workflow(workflow)
   store.save_run(run)
-  store.save_step_run(JobStepRun::{
+  store.save_step_run({
     id: "run-1:step-1",
     run_id: "run-1",
     step_id: "step-1",
-    status: RunStatus::WaitingForInput,
+    status: WaitingForInput,
     started_at: Some(10),
     finished_at: Some(20),
     metrics: {},
@@ -178,24 +163,19 @@ async test "render_job_status_command_reply splits multiple missing inputs into 
     id: "workflow-2",
     kind: "job.proposal",
     steps: [
-      WorkflowStepDefinition::{
-        id: "step-1",
-        kind: "job.analysis",
-        config: {},
-        retry_policy: None,
-      },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
     ],
     output_bindings: [],
   }
   let run = JobRun::{
     id: "run-2",
     job_id: "job-2",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::WaitingForInput,
+    status: WaitingForInput,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -206,11 +186,11 @@ async test "render_job_status_command_reply splits multiple missing inputs into 
   store.save_definition(definition)
   store.save_workflow(workflow)
   store.save_run(run)
-  store.save_step_run(JobStepRun::{
+  store.save_step_run({
     id: "run-2:step-1",
     run_id: "run-2",
     step_id: "step-1",
-    status: RunStatus::WaitingForInput,
+    status: WaitingForInput,
     started_at: Some(10),
     finished_at: Some(20),
     metrics: {},
@@ -250,24 +230,19 @@ async test "render_job_status_command_reply avoids generic missing-input placeho
     id: "workflow-3",
     kind: "job.proposal",
     steps: [
-      WorkflowStepDefinition::{
-        id: "step-1",
-        kind: "job.analysis",
-        config: {},
-        retry_policy: None,
-      },
+      { id: "step-1", kind: "job.analysis", config: {}, retry_policy: None },
     ],
     output_bindings: [],
   }
   let run = JobRun::{
     id: "run-3",
     job_id: "job-3",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::WaitingForInput,
+    status: WaitingForInput,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -278,11 +253,11 @@ async test "render_job_status_command_reply avoids generic missing-input placeho
   store.save_definition(definition)
   store.save_workflow(workflow)
   store.save_run(run)
-  store.save_step_run(JobStepRun::{
+  store.save_step_run({
     id: "run-3:step-1",
     run_id: "run-3",
     step_id: "step-1",
-    status: RunStatus::WaitingForInput,
+    status: WaitingForInput,
     started_at: Some(10),
     finished_at: Some(20),
     metrics: {},
@@ -336,12 +311,12 @@ async test "render_job_status_command_reply includes workspace output links for 
     let run = JobRun::{
       id: "run-1",
       job_id: "job-1",
-      trigger: TriggerSource::Manual,
+      trigger: Manual,
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
       workspace_dir: Some(workspace_dir),
-      status: RunStatus::Succeeded,
+      status: Succeeded,
       attempt: 1,
       retry_of: None,
       started_at: Some(10),
@@ -399,12 +374,12 @@ async test "render_job_status_command_reply labels analysis-expanded child runs 
   let run = JobRun::{
     id: "run-parent",
     job_id: "job-parent",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -415,12 +390,12 @@ async test "render_job_status_command_reply labels analysis-expanded child runs 
   let child_run = JobRun::{
     id: "run-child",
     job_id: "job-child",
-    trigger: TriggerSource::Custom("analysis-subplan"),
+    trigger: Custom("analysis-subplan"),
     parent_run_id: Some("run-parent"),
     parent_step_id: Some("analyze"),
     depth: 1,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(20),
@@ -459,12 +434,12 @@ async test "request_job_stop resolves run ids before calling cancel" {
   let run = JobRun::{
     id: "run-1",
     job_id: "job-1",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -507,12 +482,12 @@ async test "request_job_stop resolves waiting-for-input run ids before calling f
   let run = JobRun::{
     id: "run-1",
     job_id: "job-1",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::WaitingForInput,
+    status: WaitingForInput,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -563,12 +538,12 @@ async test "render_job_workspace_command_reply shows workspace path" {
     let run = JobRun::{
       id: "run-1",
       job_id: "job-1",
-      trigger: TriggerSource::Manual,
+      trigger: Manual,
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
       workspace_dir: None,
-      status: RunStatus::Running,
+      status: Running,
       attempt: 1,
       retry_of: None,
       started_at: Some(10),

@@ -3,5 +3,5 @@
 pub struct ChatCompletionAssistantMessageParam {
   content : Array[ChatCompletionContentPartParam]
   name : String?
-  tool_calls : Array[ChatCompletionMessageToolCallParam]
+  tool_calls : Array[ChatCompletionMessageToolCall]
 }

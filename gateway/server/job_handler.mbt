@@ -325,7 +325,7 @@ async fn Gateway::handle_get_job_ui_events(
 
 ///|
 fn Gateway::job_run_is_live(_self : Gateway, run : @job.JobRun) -> Bool {
-  run.status is @job.RunStatus::Pending || run.status is @job.RunStatus::Running
+  run.status is Pending || run.status is Running
 }
 
 ///|

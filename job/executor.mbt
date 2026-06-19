@@ -13,7 +13,7 @@ pub fn RunExecutionHooks::new(
   on_info? : async (String) -> Unit = _ => (),
   on_warn? : async (String) -> Unit = _ => (),
 ) -> RunExecutionHooks {
-  RunExecutionHooks::{ on_started, on_finished, on_info, on_warn }
+  { on_started, on_finished, on_info, on_warn }
 }
 
 ///|
@@ -34,7 +34,7 @@ async fn notify_run_started(
     Some(target) => target
     None => return
   }
-  if target.verbosity is NotificationVerbosity::Off {
+  if target.verbosity is Off {
     return
   }
   send(
@@ -78,7 +78,7 @@ async fn notify_run_finished(
     Some(target) => target
     None => return
   }
-  if !(target.verbosity is NotificationVerbosity::Off) {
+  if !(target.verbosity is Off) {
     send(
       target,
       render_status_text(
@@ -106,7 +106,7 @@ async fn cleanup_run_execution_isolation_artifacts(
   }
   runtime
   .store()
-  .append_run_event(JobRunEvent::{
+  .append_run_event({
     run_id: run.id,
     job_id: run.job_id,
     event_type: "execution_isolation.cleaned",

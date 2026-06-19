@@ -52,7 +52,7 @@ pub(all) struct ChatLog {
 
 ///|
 pub fn ChatLog::new() -> ChatLog {
-  ChatLog::{
+  {
     components: [],
     tool_by_id: {},
     streaming_by_id: {},
@@ -65,7 +65,7 @@ pub fn ChatLog::new() -> ChatLog {
 
 ///|
 pub fn ChatLog::with_max_components(max : Int) -> ChatLog {
-  ChatLog::{
+  {
     components: [],
     tool_by_id: {},
     streaming_by_id: {},
@@ -259,7 +259,7 @@ pub fn ChatLog::start_tool(
     None => ()
   }
   let component = ToolExecution::new(tool_name, args)
-  component.set_status(ToolStatus::Running)
+  component.set_status(Running)
   component.set_expanded(self.tools_expanded)
   let idx = self.components.length()
   self.tool_by_id[tool_call_id] = idx

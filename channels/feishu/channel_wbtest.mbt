@@ -7,11 +7,7 @@ struct RecordingHandler {
 
 ///|
 fn RecordingHandler::new() -> RecordingHandler {
-  RecordingHandler::{
-    handled_message_ids: [],
-    attachment_counts: [],
-    event_types: [],
-  }
+  { handled_message_ids: [], attachment_counts: [], event_types: [] }
 }
 
 ///|
@@ -25,7 +21,7 @@ impl @channel.MessageHandler for RecordingHandler with fn handle_message(
   ignore(account_id)
   self.handled_message_ids.push(message.id)
   self.attachment_counts.push(message.attachments.length())
-  @channel.Message::{
+  {
     id: "reply-\{message.id}",
     channel: message.channel,
     from: "bot",
@@ -67,7 +63,7 @@ fn feishu_test_account_config() -> Json {
 
 ///|
 fn feishu_test_config() -> @channel.ChannelConfig {
-  @channel.ChannelConfig::{
+  {
     enabled: true,
     accounts: { "default": feishu_test_account_config() },
     global_settings: {},
@@ -76,7 +72,7 @@ fn feishu_test_config() -> @channel.ChannelConfig {
 
 ///|
 fn feishu_camelcase_config() -> @channel.ChannelConfig {
-  @channel.ChannelConfig::{
+  {
     enabled: true,
     accounts: {
       "default": {
@@ -219,7 +215,7 @@ test "feishu_stream_key is stable for reply target" {
 ///|
 test "feishu_typing_message_id uses reply target only" {
   assert_true(
-    feishu_typing_message_id(@channel.Message::{
+    feishu_typing_message_id({
       id: "reply-1",
       channel: "feishu",
       from: "bot",
@@ -234,7 +230,7 @@ test "feishu_typing_message_id uses reply target only" {
     Some("incoming-1"),
   )
   assert_true(
-    feishu_typing_message_id(@channel.Message::{
+    feishu_typing_message_id({
       id: "reply-2",
       channel: "feishu",
       from: "bot",
@@ -312,9 +308,9 @@ async test "Feishu webhook routes force-stop text to force_cancel events without
 test "Feishu queue cancel clears pending work and marks active queue for stop" {
   let channel = FeishuChannel::new()
   let queue_key = feishu_queue_key("default", "chat-1", None)
-  channel.enqueue_message(queue_key, QueuedFeishuMessage::{
+  channel.enqueue_message(queue_key, {
     account_id: "default",
-    message: @channel.Message::{
+    message: {
       id: "msg-1",
       channel: "feishu",
       from: "user",
@@ -653,7 +649,7 @@ test "Feishu reaction helpers ignore unsupported operators and enforce own-messa
 
   assert_true(
     is_own_reaction_target(
-      ResolvedReactionTarget::{
+      {
         chat_id: "chat-test",
         chat_type: Some("group"),
         thread_id: None,
@@ -667,7 +663,7 @@ test "Feishu reaction helpers ignore unsupported operators and enforce own-messa
   )
   assert_false(
     is_own_reaction_target(
-      ResolvedReactionTarget::{
+      {
         chat_id: "chat-test",
         chat_type: Some("group"),
         thread_id: None,
@@ -684,7 +680,7 @@ test "Feishu reaction helpers ignore unsupported operators and enforce own-messa
 ///|
 test "Feishu merge_forward formatter expands nested forwarded messages in place" {
   let rendered = format_merge_forward_items("root", [
-    FeishuMessageLookupItem::{
+    {
       message_id: "root",
       chat_id: "chat-test",
       chat_type: Some("group"),
@@ -692,13 +688,10 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       thread_id: None,
       upper_message_id: None,
       msg_type: Some("merge_forward"),
-      body: Some(FeishuMessageLookupBody::{ content: Some("{}") }),
-      sender: Some(FeishuMessageLookupSender::{
-        id: Some("ou_root"),
-        sender_type: Some("user"),
-      }),
+      body: Some({ content: Some("{}") }),
+      sender: Some({ id: Some("ou_root"), sender_type: Some("user") }),
     },
-    FeishuMessageLookupItem::{
+    {
       message_id: "text-1",
       chat_id: "chat-test",
       chat_type: Some("group"),
@@ -706,15 +699,12 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       thread_id: None,
       upper_message_id: None,
       msg_type: Some("text"),
-      body: Some(FeishuMessageLookupBody::{
+      body: Some({
         content: Some(Json::object({ "text": "first" }).stringify()),
       }),
-      sender: Some(FeishuMessageLookupSender::{
-        id: Some("ou_first"),
-        sender_type: Some("user"),
-      }),
+      sender: Some({ id: Some("ou_first"), sender_type: Some("user") }),
     },
-    FeishuMessageLookupItem::{
+    {
       message_id: "nested-root",
       chat_id: "chat-test",
       chat_type: Some("group"),
@@ -722,13 +712,10 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       thread_id: None,
       upper_message_id: None,
       msg_type: Some("merge_forward"),
-      body: Some(FeishuMessageLookupBody::{ content: Some("{}") }),
-      sender: Some(FeishuMessageLookupSender::{
-        id: Some("ou_nested"),
-        sender_type: Some("user"),
-      }),
+      body: Some({ content: Some("{}") }),
+      sender: Some({ id: Some("ou_nested"), sender_type: Some("user") }),
     },
-    FeishuMessageLookupItem::{
+    {
       message_id: "text-2",
       chat_id: "chat-test",
       chat_type: Some("group"),
@@ -736,13 +723,10 @@ test "Feishu merge_forward formatter expands nested forwarded messages in place"
       thread_id: None,
       upper_message_id: Some("nested-root"),
       msg_type: Some("text"),
-      body: Some(FeishuMessageLookupBody::{
+      body: Some({
         content: Some(Json::object({ "text": "nested" }).stringify()),
       }),
-      sender: Some(FeishuMessageLookupSender::{
-        id: Some("ou_child"),
-        sender_type: Some("user"),
-      }),
+      sender: Some({ id: Some("ou_child"), sender_type: Some("user") }),
     },
   ])
 
@@ -756,7 +740,7 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
   let rendered = format_merge_forward_items(
     "root",
     [
-      FeishuMessageLookupItem::{
+      {
         message_id: "root",
         chat_id: "chat-test",
         chat_type: Some("group"),
@@ -764,13 +748,10 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
         thread_id: None,
         upper_message_id: None,
         msg_type: Some("merge_forward"),
-        body: Some(FeishuMessageLookupBody::{ content: Some("{}") }),
-        sender: Some(FeishuMessageLookupSender::{
-          id: Some("ou_root"),
-          sender_type: Some("user"),
-        }),
+        body: Some({ content: Some("{}") }),
+        sender: Some({ id: Some("ou_root"), sender_type: Some("user") }),
       },
-      FeishuMessageLookupItem::{
+      {
         message_id: "text-1",
         chat_id: "chat-test",
         chat_type: Some("group"),
@@ -778,13 +759,10 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
         thread_id: None,
         upper_message_id: None,
         msg_type: Some("text"),
-        body: Some(FeishuMessageLookupBody::{
+        body: Some({
           content: Some(Json::object({ "text": "hello" }).stringify()),
         }),
-        sender: Some(FeishuMessageLookupSender::{
-          id: Some("ou_sender"),
-          sender_type: Some("user"),
-        }),
+        sender: Some({ id: Some("ou_sender"), sender_type: Some("user") }),
       },
     ],
     sender_names={ "ou_sender": "Alice" },
@@ -798,7 +776,7 @@ test "Feishu merge_forward formatter prefers resolved sender names over raw ids"
 ///|
 test "Feishu forward sender helpers deduplicate ids and use account scoped cache keys" {
   let sender_ids = collect_forward_sender_ids([
-    FeishuMessageLookupItem::{
+    {
       message_id: "a",
       chat_id: "chat-test",
       chat_type: Some("group"),
@@ -807,12 +785,9 @@ test "Feishu forward sender helpers deduplicate ids and use account scoped cache
       upper_message_id: None,
       msg_type: Some("text"),
       body: None,
-      sender: Some(FeishuMessageLookupSender::{
-        id: Some("ou_sender"),
-        sender_type: Some("user"),
-      }),
+      sender: Some({ id: Some("ou_sender"), sender_type: Some("user") }),
     },
-    FeishuMessageLookupItem::{
+    {
       message_id: "b",
       chat_id: "chat-test",
       chat_type: Some("group"),
@@ -821,12 +796,9 @@ test "Feishu forward sender helpers deduplicate ids and use account scoped cache
       upper_message_id: None,
       msg_type: Some("text"),
       body: None,
-      sender: Some(FeishuMessageLookupSender::{
-        id: Some("ou_sender"),
-        sender_type: Some("user"),
-      }),
+      sender: Some({ id: Some("ou_sender"), sender_type: Some("user") }),
     },
-    FeishuMessageLookupItem::{
+    {
       message_id: "c",
       chat_id: "chat-test",
       chat_type: Some("group"),
@@ -835,10 +807,7 @@ test "Feishu forward sender helpers deduplicate ids and use account scoped cache
       upper_message_id: None,
       msg_type: Some("text"),
       body: None,
-      sender: Some(FeishuMessageLookupSender::{
-        id: Some("bot-id"),
-        sender_type: Some("app"),
-      }),
+      sender: Some({ id: Some("bot-id"), sender_type: Some("app") }),
     },
   ])
 
@@ -859,7 +828,7 @@ test "Feishu websocket monitor support follows configured websocket accounts" {
   channel.configure(feishu_test_config())
   assert_false(channel.supports_websocket())
 
-  channel.configure(@channel.ChannelConfig::{
+  channel.configure({
     enabled: true,
     accounts: {
       "websocket": {
@@ -880,7 +849,7 @@ test "Feishu websocket monitor support follows configured websocket accounts" {
 ///|
 async test "Feishu websocket monitor connections receive ready and status updates" {
   let channel = FeishuChannel::new()
-  channel.configure(@channel.ChannelConfig::{
+  channel.configure({
     enabled: true,
     accounts: {
       "websocket": {
@@ -1005,7 +974,7 @@ async test "Feishu websocket runtime starts websocket accounts through extension
   let manager = @channel.WebSocketClientRuntimeManager::new()
   let runtime = manager.controller()
   let channel = FeishuChannel::new()
-  channel.configure(@channel.ChannelConfig::{
+  channel.configure({
     enabled: true,
     accounts: {
       "websocket": {
@@ -1082,26 +1051,20 @@ async test "Feishu websocket runtime starts websocket accounts through extension
     match inbound {
       Some(handle_frame) =>
         handle_frame(
-          encode_feishu_websocket_frame(FeishuWebSocketFrame::{
+          encode_feishu_websocket_frame({
             seq_id: 1,
             log_id: 2,
             service: 3,
             method_id: feishu_ws_data_frame,
             headers: [
-              FeishuWebSocketHeader::{
-                key: feishu_ws_header_type,
-                value: feishu_ws_type_event,
-              },
-              FeishuWebSocketHeader::{
+              { key: feishu_ws_header_type, value: feishu_ws_type_event },
+              {
                 key: feishu_ws_header_message_id,
                 value: "runtime-monitor-message",
               },
-              FeishuWebSocketHeader::{ key: feishu_ws_header_sum, value: "1" },
-              FeishuWebSocketHeader::{ key: feishu_ws_header_seq, value: "0" },
-              FeishuWebSocketHeader::{
-                key: feishu_ws_header_trace_id,
-                value: "trace-1",
-              },
+              { key: feishu_ws_header_sum, value: "1" },
+              { key: feishu_ws_header_seq, value: "0" },
+              { key: feishu_ws_header_trace_id, value: "trace-1" },
             ],
             payload_encoding: None,
             payload_type: None,
@@ -1171,7 +1134,7 @@ async test "Feishu websocket runtime requires websocket_url or platform endpoint
   let manager = @channel.WebSocketClientRuntimeManager::new()
   let runtime = manager.controller()
   let channel = FeishuChannel::new()
-  channel.configure(@channel.ChannelConfig::{
+  channel.configure({
     enabled: true,
     accounts: {
       "websocket": {
@@ -1235,7 +1198,7 @@ async test "Feishu websocket runtime refreshes resolved endpoint on reconnect" {
   let manager = @channel.WebSocketClientRuntimeManager::new()
   let runtime = manager.controller()
   let channel = FeishuChannel::new()
-  channel.configure(@channel.ChannelConfig::{
+  channel.configure({
     enabled: true,
     accounts: {
       "websocket": {

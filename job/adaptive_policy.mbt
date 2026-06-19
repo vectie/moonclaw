@@ -324,7 +324,6 @@ async fn resolved_adaptive_envelope(
 ) -> AdaptiveAnalysisEnvelope? {
   let has_persisted_provider_result = match execution.metadata {
     { "extension_result": _, .. } => true
-    { "bookapi_result": _, .. } => true
     _ => false
   }
   if analysis_adaptive_disabled(config) {

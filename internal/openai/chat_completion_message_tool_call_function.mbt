@@ -18,18 +18,14 @@ impl @json.FromJson for ChatCompletionMessageToolCallFunction with fn from_json(
   json_path : @json.JsonPath,
 ) -> ChatCompletionMessageToolCallFunction {
   guard json is { "name": String(name), "arguments"? : arguments, .. } else {
-    raise @json.JsonDecodeError(
-      (json_path, "Expected an object with 'name' field"),
-    )
+    raise JsonDecodeError((json_path, "Expected an object with 'name' field"))
   }
   let arguments = match arguments {
     Some(String(arguments)) => Some(arguments)
     Some(Null) => None
     Some(_) =>
-      raise @json.JsonDecodeError(
-        (json_path, "Expected 'arguments' to be a string"),
-      )
+      raise JsonDecodeError((json_path, "Expected 'arguments' to be a string"))
     None => None
   }
-  ChatCompletionMessageToolCallFunction::{ arguments, name }
+  { arguments, name }
 }

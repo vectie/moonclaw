@@ -25,8 +25,10 @@ async fn Daemon::get_task_events(
   w.header().set("X-Accel-Buffering", "no")
   let w = @httpx.EventStreamWriter::new(w)
   w.write_header(200)
-  for i = 0; ; i = i + 1 {
+  let mut i = 0
+  while true {
     let event = broadcast.read(i)
     w.write(event)
+    i += 1
   }
 }

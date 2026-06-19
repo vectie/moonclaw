@@ -65,7 +65,7 @@ async fn Gateway::child_run_step_started(
     id: "\{child_run.id}:\{step.id}",
     run_id: child_run.id,
     step_id: step.id,
-    status: @job.RunStatus::Running,
+    status: Running,
     started_at: Some(now_ms),
     finished_at: None,
     metrics: {},
@@ -93,7 +93,7 @@ async fn Gateway::finish_child_run_step(
   self
   .job_runtime()
   .store()
-  .save_step_run(@job.JobStepRun::{
+  .save_step_run({
     ..step_run,
     status,
     finished_at: Some(now_ms),
@@ -237,7 +237,7 @@ async fn Gateway::execute_analysis_via_acp(
     { "content": String(content), .. } => content
     _ => outcome.result.stringify()
   }
-  Ok(@job.AnalysisExecution::{
+  Ok({
     model_name: if request.model_name == "default" {
       target.label.unwrap_or(target.id)
     } else {
@@ -318,7 +318,7 @@ async fn Gateway::execute_child_run_via_acp(
     Err(error) => {
       self.finish_child_run_step(
         step_run,
-        @job.RunStatus::Failed,
+        Failed,
         now_ms,
         summary=Some("ACP child execution failed"),
         error=Some(error),
@@ -388,7 +388,7 @@ async fn Gateway::execute_child_run_via_acp(
       let failed_at = current_time_ms()
       self.finish_child_run_step(
         step_run,
-        @job.RunStatus::Failed,
+        Failed,
         failed_at,
         summary=Some("ACP child execution failed"),
         error=Some(error),
@@ -444,7 +444,7 @@ async fn Gateway::execute_child_run_via_acp(
     let error = outcome.error.unwrap_or("ACP child execution failed")
     self.finish_child_run_step(
       step_run,
-      @job.RunStatus::Failed,
+      Failed,
       finished_at,
       summary=Some("ACP child execution failed"),
       error=Some(error),
@@ -477,7 +477,7 @@ async fn Gateway::execute_child_run_via_acp(
   }
   self.finish_child_run_step(
     step_run,
-    @job.RunStatus::Succeeded,
+    Succeeded,
     finished_at,
     output=Some(output),
     summary=Some("ACP analysis completed"),
@@ -498,7 +498,7 @@ async fn Gateway::execute_child_run_via_acp(
   )
   let outputs : Map[String, Json] = {}
   outputs.set(step.id, output)
-  Ok(@job.ChildRunExecutionResult::{ outputs, })
+  Ok({ outputs, })
 }
 
 ///|
@@ -539,8 +539,7 @@ async fn Gateway::refresh_proposal_definition_if_present(
   job_id : String,
 ) -> Unit {
   for proposal in self.job_runtime().store().list_job_proposals() {
-    if proposal.job_id == Some(job_id) &&
-      proposal.status is @job.JobProposalStatus::Confirmed {
+    if proposal.job_id == Some(job_id) && proposal.status is Confirmed {
       let compilation = self.job_app.compile_proposal(proposal)
       self.job_runtime().register_definition(compilation.definition)
       self.job_runtime().register_workflow(compilation.workflow)
@@ -581,7 +580,7 @@ async fn Gateway::resume_pending_job_runs(self : Gateway) -> Unit {
     .job_runtime()
     .store()
     .list_runs()
-    .filter(fn(run) { run.status is @job.RunStatus::Pending })
+    .filter(fn(run) { run.status is Pending })
   for run in pending_runs {
     self.refresh_proposal_definition_if_present(run.job_id)
     self.launch_job_run(run.id)
@@ -635,9 +634,9 @@ fn Gateway::job_run_for_definition(
         .filter(fn(run) {
           run.job_id == job_id &&
           (
-            run.status is @job.RunStatus::Pending ||
-            run.status is @job.RunStatus::Running ||
-            run.status is @job.RunStatus::WaitingForInput
+            run.status is Pending ||
+            run.status is Running ||
+            run.status is WaitingForInput
           )
         })
       if candidates.is_empty() {
@@ -658,7 +657,7 @@ fn Gateway::job_run_for_definition(
 async fn Gateway::trigger_job_definition(
   self : Gateway,
   job_id : String,
-  trigger? : @job.TriggerSource = @job.TriggerSource::Manual,
+  trigger? : @job.TriggerSource = Manual,
   initial_input? : Json? = None,
 ) -> Result[@job.JobRun, String] {
   self.refresh_proposal_definition_if_present(job_id)
@@ -696,7 +695,7 @@ async fn Gateway::cancel_job_definition_run(
     None => return Err("No pending or running job found for \{job_id}")
   }
   match run.status {
-    @job.RunStatus::Pending => {
+    Pending => {
       let cancelled = match
         self
         .job_runtime()
@@ -717,7 +716,7 @@ async fn Gateway::cancel_job_definition_run(
       self.clear_job_control_requests(run.id)
       Ok(cancelled)
     }
-    @job.RunStatus::Running => {
+    Running => {
       self.job_app.state().request_stop(run.id, force~)
       if force {
         ignore(self.cancel_active_job_task(run.id))
@@ -738,7 +737,7 @@ async fn Gateway::cancel_job_definition_run(
         Ok(run)
       }
     }
-    @job.RunStatus::WaitingForInput => {
+    WaitingForInput => {
       let cancelled = match
         self
         .job_runtime()

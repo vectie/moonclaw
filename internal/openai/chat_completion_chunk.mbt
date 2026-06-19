@@ -6,33 +6,33 @@ pub struct ChatCompletionChunk {
   model : String
   usage : CompletionUsage?
   system_fingerprint : String?
-  service_tier : ChatCompletionChunkServiceTier?
+  service_tier : ChatCompletionServiceTier?
   error : OpenRouterErrorResponse?
 } derive(ToJson)
 
 ///|
-pub impl @json.FromJson for ChatCompletionChunk with from_json(
+pub impl @json.FromJson for ChatCompletionChunk with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionChunk {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   guard json.get("id") is Some(String(id)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'id' field"))
+    raise JsonDecodeError((json_path, "Missing 'id' field"))
   }
   guard json.get("choices") is Some(choices) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'choices' field"))
+    raise JsonDecodeError((json_path, "Missing 'choices' field"))
   }
   let choices : Array[ChatCompletionChunkChoice] = @json.from_json(
     choices,
     path=json_path.add_key("choices"),
   )
   guard json.get("created") is Some(Number(created, ..)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'created' field"))
+    raise JsonDecodeError((json_path, "Missing 'created' field"))
   }
   guard json.get("model") is Some(String(model)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'model' field"))
+    raise JsonDecodeError((json_path, "Missing 'model' field"))
   }
   let usage = match json.get("usage") {
     Some(Null) => None
@@ -49,7 +49,7 @@ pub impl @json.FromJson for ChatCompletionChunk with from_json(
     Some(Null) => None
     Some(String(fingerprint)) => Some(fingerprint)
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "Expected 'system_fingerprint' to be a string"),
       )
     None => None
@@ -57,7 +57,7 @@ pub impl @json.FromJson for ChatCompletionChunk with from_json(
   let service_tier = match json.get("service_tier") {
     Some(Null) => None
     Some(service_tier) => {
-      let service_tier : ChatCompletionChunkServiceTier = @json.from_json(
+      let service_tier : ChatCompletionServiceTier = @json.from_json(
         service_tier,
         path=json_path.add_key("service_tier"),
       )
@@ -76,7 +76,7 @@ pub impl @json.FromJson for ChatCompletionChunk with from_json(
     }
     None => None
   }
-  ChatCompletionChunk::{
+  {
     id,
     choices,
     created: created.to_int(),

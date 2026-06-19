@@ -50,7 +50,7 @@ async test "add_json_tree" (t : @test.Test) {
     inspect(@fs.read_file(deep_b_path).text(), content="bbb")
     // Verify empty directory exists
     let empty_dir_path = @pathx.join(mock.cwd.path(), "empty_dir")
-    inspect(@fs.kind(empty_dir_path) is @fs.FileKind::Directory, content="true")
+    inspect(@fs.kind(empty_dir_path) is Directory, content="true")
   })
 }
 

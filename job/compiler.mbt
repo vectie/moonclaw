@@ -193,7 +193,7 @@ fn proposal_step_retry_policy(
   let requested_backoff_ms = metadata_int(metadata, "retry_backoff_ms")
   match requested_attempts {
     Some(max_attempts) =>
-      Some(RetryPolicy::{
+      Some({
         max_attempts: if max_attempts > 0 {
           max_attempts
         } else {
@@ -204,7 +204,7 @@ fn proposal_step_retry_policy(
     None =>
       match step_kind {
         "job.analysis" | "job.delegate" =>
-          Some(RetryPolicy::{ max_attempts: 2, backoff_ms: Some(2000) })
+          Some({ max_attempts: 2, backoff_ms: Some(2000) })
         _ => None
       }
   }
@@ -306,7 +306,7 @@ fn workflow_step_definition_for_proposal_step(
       board_extras,
     )
   }
-  WorkflowStepDefinition::{ id: step.id, kind, config, retry_policy }
+  { id: step.id, kind, config, retry_policy }
 }
 
 ///|
@@ -370,7 +370,7 @@ fn workflow_steps_for_proposal(
   }
   let augmented : Array[WorkflowStepDefinition] = []
   if !has_step("extension_ingest") {
-    augmented.push(WorkflowStepDefinition::{
+    augmented.push({
       id: "extension_ingest",
       kind: "job.delegate",
       config: merge_json_objects(
@@ -450,5 +450,5 @@ pub fn compile_job_proposal(
     steps,
     output_bindings: steps.map(fn(step) { step.id }),
   }
-  ProposalCompilation::{ family, definition, workflow, bindings: [] }
+  { family, definition, workflow, bindings: [] }
 }

@@ -14,30 +14,30 @@ priv struct MethodSet {
 ///|
 fn MethodSet::op_get(self : MethodSet, method_ : Method) -> Bool {
   match method_ {
-    Method::Get => self.get
-    Method::Head => self.head
-    Method::Post => self.post
-    Method::Put => self.put
-    Method::Delete => self.delete
-    Method::Connect => self.connect
-    Method::Options => self.options
-    Method::Trace => self.trace
-    Method::Patch => self.patch
+    Get => self.get
+    Head => self.head
+    Post => self.post
+    Put => self.put
+    Delete => self.delete
+    Connect => self.connect
+    Options => self.options
+    Trace => self.trace
+    Patch => self.patch
   }
 }
 
 ///|
 fn MethodSet::op_set(self : MethodSet, method_ : Method, value : Bool) -> Unit {
   match method_ {
-    Method::Get => self.get = value
-    Method::Head => self.head = value
-    Method::Post => self.post = value
-    Method::Put => self.put = value
-    Method::Delete => self.delete = value
-    Method::Connect => self.connect = value
-    Method::Options => self.options = value
-    Method::Trace => self.trace = value
-    Method::Patch => self.patch = value
+    Get => self.get = value
+    Head => self.head = value
+    Post => self.post = value
+    Put => self.put = value
+    Delete => self.delete = value
+    Connect => self.connect = value
+    Options => self.options = value
+    Trace => self.trace = value
+    Patch => self.patch = value
   }
 }
 
@@ -48,7 +48,7 @@ fn MethodSet::iterator(self : MethodSet) -> Iter[Method] {
 
 ///|
 fn MethodSet::new() -> MethodSet {
-  MethodSet::{
+  {
     get: false,
     head: false,
     post: false,

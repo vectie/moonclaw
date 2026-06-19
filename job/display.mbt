@@ -49,8 +49,8 @@ fn compact_title_for_display(text : String) -> String {
 ///|
 fn slugify_id_segment(
   text : String,
-  max_words? : Int = 5,
-  max_chars? : Int = 32,
+  max_words~ : Int,
+  max_chars~ : Int,
 ) -> String {
   let buf = StringBuilder::new()
   let mut chars_written = 0
@@ -103,7 +103,7 @@ fn slugify_id_segment(
 }
 
 ///|
-fn short_id_suffix(seed : String, max_chars? : Int = 6) -> String {
+fn short_id_suffix(seed : String, max_chars~ : Int) -> String {
   let buf = StringBuilder::new()
   let mut count = 0
   for c in seed.to_lower().to_array() {
@@ -174,12 +174,12 @@ pub fn human_readable_proposal_id(
   now_ms : Int,
   seed : String,
 ) -> String {
-  "\{compact_timestamp(now_ms)}-\{slugify_id_segment(request_text)}-\{short_id_suffix(seed)}"
+  "\{compact_timestamp(now_ms)}-\{slugify_id_segment(request_text, max_words=5, max_chars=32)}-\{short_id_suffix(seed, max_chars=6)}"
 }
 
 ///|
 pub fn human_readable_run_id(now_ms : Int, seed : String) -> String {
-  "run-\{compact_timestamp(now_ms)}-\{short_id_suffix(seed)}"
+  "run-\{compact_timestamp(now_ms)}-\{short_id_suffix(seed, max_chars=6)}"
 }
 
 ///|

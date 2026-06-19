@@ -173,11 +173,11 @@ fn mooncode_stream_jsonl_payload(
   session_id : String,
   book_root : String,
   events : Array[Json],
-  since? : Int = 0,
-  wait_ms? : Int = 0,
-  poll_ms? : Int = 100,
-  wait_elapsed_ms? : Int = 0,
-  wait_attempt_count? : Int = 0,
+  since~ : Int,
+  wait_ms~ : Int,
+  poll_ms~ : Int,
+  wait_elapsed_ms~ : Int,
+  wait_attempt_count~ : Int,
 ) -> String {
   let records = mooncode_stream_records(
     session_id,
@@ -197,11 +197,11 @@ fn mooncode_stream_sse_payload(
   session_id : String,
   book_root : String,
   events : Array[Json],
-  since? : Int = 0,
-  wait_ms? : Int = 0,
-  poll_ms? : Int = 100,
-  wait_elapsed_ms? : Int = 0,
-  wait_attempt_count? : Int = 0,
+  since~ : Int,
+  wait_ms~ : Int,
+  poll_ms~ : Int,
+  wait_elapsed_ms~ : Int,
+  wait_attempt_count~ : Int,
 ) -> String {
   let chunks : Array[String] = []
   for
@@ -228,11 +228,11 @@ fn mooncode_stream_records(
   session_id : String,
   book_root : String,
   events : Array[Json],
-  since? : Int = 0,
-  wait_ms? : Int = 0,
-  poll_ms? : Int = 100,
-  wait_elapsed_ms? : Int = 0,
-  wait_attempt_count? : Int = 0,
+  since~ : Int,
+  wait_ms~ : Int,
+  poll_ms~ : Int,
+  wait_elapsed_ms~ : Int,
+  wait_attempt_count~ : Int,
 ) -> Array[Json] {
   let latest_sequence = events.length()
   let clamped_since = if since < 0 {
@@ -404,7 +404,7 @@ fn mooncode_event_from_task_stream(
   index~ : Int,
 ) -> Json {
   match event {
-    @server.Moonclaw({ id, created, desc }) => {
+    Moonclaw({ id, created, desc }) => {
       let desc_json = desc.to_json()
       let msg = mooncode_json_string(desc_json, "msg", default="")
       {
@@ -426,7 +426,7 @@ fn mooncode_event_from_task_stream(
         "moonclaw_event": desc_json,
       }
     }
-    @server.MoonclawQueuedMessagesSynchronized(messages) =>
+    MoonclawQueuedMessagesSynchronized(messages) =>
       {
         "id": "moonclaw-\{session_id}-\{task_id}-queued-\{index}",
         "protocol": mooncode_protocol_version(),

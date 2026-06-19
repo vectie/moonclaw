@@ -21,6 +21,7 @@ test "message" {
     { "role": "system", "content": "You are a helpful assistant." },
     {
       "role": "assistant",
+      "content": "Here is the information you requested.",
       "tool_calls": [
         {
           "id": "tool_call_1",
@@ -31,7 +32,6 @@ test "message" {
           "type": "function",
         },
       ],
-      "content": "Here is the information you requested.",
     },
     {
       "role": "tool",

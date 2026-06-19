@@ -15,8 +15,8 @@ pub struct WeixinChannel {
 
 ///|
 pub fn WeixinChannel::new() -> WeixinChannel {
-  WeixinChannel::{
-    state: WeixinChannelState::{
+  {
+    state: {
       _config: @channel.default_config(),
       weixin_configs: {},
       clients: {},
@@ -44,7 +44,7 @@ fn get_weixin_config(config : Json) -> WeixinAccountConfig {
       "token": String(token),
       ..
     } =>
-      WeixinAccountConfig::{
+      {
         app_id,
         app_secret,
         token,
@@ -238,7 +238,7 @@ fn weixin_incoming_message(xml : String) -> @channel.Message? {
     "text" => xml_tag_value(xml, "Content").unwrap_or("")
     _ => return None
   }
-  Some(@channel.Message::{
+  Some({
     id: message_id,
     channel: "weixin",
     from: from_user,
@@ -259,7 +259,7 @@ impl @channel.Channel for WeixinChannel with fn id(_self : WeixinChannel) -> @ch
 
 ///|
 impl @channel.Channel for WeixinChannel with fn meta(_self : WeixinChannel) -> @channel.ChannelMeta {
-  @channel.ChannelMeta::{
+  {
     id: "weixin",
     label: "Weixin",
     selection_label: "Weixin Official Account (微信公众平台)",
@@ -275,8 +275,8 @@ impl @channel.Channel for WeixinChannel with fn meta(_self : WeixinChannel) -> @
 impl @channel.Channel for WeixinChannel with fn capabilities(
   _self : WeixinChannel,
 ) -> @channel.ChannelCapabilities {
-  @channel.ChannelCapabilities::{
-    chat_types: [@channel.ChatType::Direct],
+  {
+    chat_types: [Direct],
     polls: false,
     reactions: false,
     edit: false,
@@ -312,9 +312,7 @@ impl @channel.Channel for WeixinChannel with fn start(
 ) -> Result[Unit, @channel.ChannelError] {
   let weixin_config = get_weixin_config(config)
   if !weixin_config.enabled {
-    return Err(
-      @channel.ChannelError::NotConfigured(message="Channel is not enabled"),
-    )
+    return Err(NotConfigured(message="Channel is not enabled"))
   }
   self.state.clients[account_id] = WeixinClient::new(weixin_config)
   self.state.running[account_id] = true
@@ -339,7 +337,7 @@ impl @channel.Channel for WeixinChannel with fn send(
   account_id : String?,
 ) -> Result[@channel.SendResult, @channel.ChannelError] {
   if message.content_type == "progress" {
-    return Ok(@channel.SendResult::{
+    return Ok({
       channel: "weixin",
       message_id: message.id,
       timestamp: 0,
@@ -353,9 +351,7 @@ impl @channel.Channel for WeixinChannel with fn send(
         Some(id) => id
         None =>
           return Err(
-            @channel.ChannelError::NotConfigured(
-              message="No configured Weixin account available",
-            ),
+            NotConfigured(message="No configured Weixin account available"),
           )
       }
   }
@@ -363,7 +359,7 @@ impl @channel.Channel for WeixinChannel with fn send(
     Some(client) => client.send_text_message(to, message.content)
     None =>
       Err(
-        @channel.ChannelError::NotConfigured(
+        NotConfigured(
           message="Client not initialized for account: \{actual_account_id}",
         ),
       )

@@ -21,7 +21,7 @@ pub fn Pruner::new(
   safe_zone_tokens~ : Int,
   logger~ : @pino.Logger,
 ) -> Pruner raise {
-  Pruner::{
+  {
     logger,
     token_counter: @token_counter.Counter::new(logger~),
     safe_zone_tokens,

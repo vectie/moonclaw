@@ -15,10 +15,7 @@ async test "system/install-writes-assets" (t : @test.Test) {
           #|Hello.
         ),
       },
-      @assets.Asset::{
-        path: "demo/scripts/helper.py",
-        content: "print('ok')\n",
-      },
+      { path: "demo/scripts/helper.py", content: "print('ok')\n" },
     ]
     let fingerprint = "test-fingerprint"
     let root = system_skills_root(home)

@@ -8,7 +8,7 @@ pub(all) enum ChatCompletionMessageParam {
 }
 
 ///|
-pub impl ToJson for ChatCompletionMessageParam with to_json(
+pub impl ToJson for ChatCompletionMessageParam with fn to_json(
   self : ChatCompletionMessageParam,
 ) {
   fn content_parts_to_json(
@@ -61,7 +61,7 @@ pub impl ToJson for ChatCompletionMessageParam with to_json(
 }
 
 ///|
-pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
+pub impl @json.FromJson for ChatCompletionMessageParam with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionMessageParam {
@@ -77,7 +77,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
       "tool_call_id"? : tool_call_id,
       ..
     } else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (
         json_path, "Expected an object with a 'role' field which is one of 'user', 'assistant', 'system', or 'tool' and a 'content' field",
       ),
@@ -90,7 +90,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
         Array(_) as parts =>
           @json.from_json(parts, path=json_path.add_key("content"))
         _ =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (json_path, "Expected 'content' to be a string or array"),
           )
       }
@@ -98,11 +98,9 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
         None | Some(Null) => None
         Some(String(name)) => Some(name)
         Some(_) =>
-          raise @json.JsonDecodeError(
-            (json_path, "Expected 'name' to be a string"),
-          )
+          raise JsonDecodeError((json_path, "Expected 'name' to be a string"))
       }
-      ChatCompletionMessageParam::User({ content, name })
+      User({ content, name })
     }
     "assistant" => {
       let content : Array[ChatCompletionContentPartParam] = match content {
@@ -110,7 +108,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
         Array(_) as parts =>
           @json.from_json(parts, path=json_path.add_key("content"))
         _ =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (json_path, "Expected 'content' to be a string or array"),
           )
       }
@@ -118,18 +116,16 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
         None | Some(Null) => None
         Some(String(name)) => Some(name)
         Some(_) =>
-          raise @json.JsonDecodeError(
-            (json_path, "Expected 'name' to be a string"),
-          )
+          raise JsonDecodeError((json_path, "Expected 'name' to be a string"))
       }
       guard tool_calls is Some(tool_calls) else {
-        raise @json.JsonDecodeError((json_path, "Missing 'tool_calls' field"))
+        raise JsonDecodeError((json_path, "Missing 'tool_calls' field"))
       }
-      let tool_calls : Array[ChatCompletionMessageToolCallParam] = @json.from_json(
+      let tool_calls : Array[ChatCompletionMessageToolCall] = @json.from_json(
         tool_calls,
         path=json_path.add_key("tool_calls"),
       )
-      ChatCompletionMessageParam::Assistant({ content, name, tool_calls })
+      Assistant({ content, name, tool_calls })
     }
     "system" => {
       let content : Array[ChatCompletionContentPartParam] = match content {
@@ -137,7 +133,7 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
         Array(_) as parts =>
           @json.from_json(parts, path=json_path.add_key("content"))
         _ =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (json_path, "Expected 'content' to be a string or array"),
           )
       }
@@ -145,11 +141,9 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
         None | Some(Null) => None
         Some(String(name)) => Some(name)
         Some(_) =>
-          raise @json.JsonDecodeError(
-            (json_path, "Expected 'name' to be a string"),
-          )
+          raise JsonDecodeError((json_path, "Expected 'name' to be a string"))
       }
-      ChatCompletionMessageParam::System({ content, name })
+      System({ content, name })
     }
     "tool" => {
       let content : Array[ChatCompletionContentPartParam] = match content {
@@ -157,14 +151,14 @@ pub impl @json.FromJson for ChatCompletionMessageParam with from_json(
         Array(_) as parts =>
           @json.from_json(parts, path=json_path.add_key("content"))
         _ =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (json_path, "Expected 'content' to be a string or array"),
           )
       }
       guard tool_call_id is Some(String(tool_call_id)) else {
-        raise @json.JsonDecodeError((json_path, "Missing 'tool_call_id' field"))
+        raise JsonDecodeError((json_path, "Missing 'tool_call_id' field"))
       }
-      ChatCompletionMessageParam::Tool({ content, tool_call_id })
+      Tool({ content, tool_call_id })
     }
     _ => abort("unreachable")
   }

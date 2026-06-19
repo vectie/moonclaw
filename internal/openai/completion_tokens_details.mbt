@@ -10,16 +10,16 @@ impl @json.FromJson for CompletionTokensDetails with fn from_json(
   json_path : @json.JsonPath,
 ) -> CompletionTokensDetails {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   let reasoning_tokens = match json.get("reasoning_tokens") {
     Some(Null) => None
     Some(Number(reasoning_tokens, ..)) => Some(reasoning_tokens.to_int())
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "Expected 'reasoning_tokens' to be a number"),
       )
     None => None
   }
-  CompletionTokensDetails::{ reasoning_tokens, }
+  { reasoning_tokens, }
 }

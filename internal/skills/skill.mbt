@@ -117,7 +117,7 @@ fn parse_skill_from_content(
     _ => []
   }
   let metadata : Json? = meta.get("metadata")
-  Skill::{
+  {
     name,
     description,
     license,

@@ -87,7 +87,7 @@ fn mooncode_serve_scheduler_state_from_logs(
     "decisions": Json::array(decisions),
     "lifecycle_commands": Json::array(lifecycle_items),
     "contract": mooncode_serve_scheduler_contract(),
-    "ordering_rule": "MoonClaw projects OpenSeek serve-mode semantics from one append-only command queue: turn-starting commands run one at a time, steer targets the active or next pending turn, idle steer is deferred into the next turn, and cancel targets the active turn or withdraws the next pending turn.",
+    "ordering_rule": "MoonClaw projects MoonCode serve-mode semantics from one append-only command queue: turn-starting commands run one at a time, steer targets the active or next pending turn, idle steer is deferred into the next turn, and cancel targets the active turn or withdraws the next pending turn.",
   }
 }
 
@@ -414,7 +414,7 @@ fn mooncode_serve_scheduler_decision(
     "target_state": target_state,
     "text": mooncode_serve_scheduler_command_text(command),
     "created_at": mooncode_json_string(command_entry, "created_at", default=""),
-    "openseek_wire_command": mooncode_serve_scheduler_wire_command(command),
+    "command_projection": mooncode_serve_scheduler_command_projection(command),
     "detail": detail,
   }
 }
@@ -472,7 +472,7 @@ fn mooncode_serve_scheduler_command_text(command : Json) -> String {
 }
 
 ///|
-fn mooncode_serve_scheduler_wire_command(command : Json) -> Json {
+fn mooncode_serve_scheduler_command_projection(command : Json) -> Json {
   let action = mooncode_json_string(command, "command", default="prompt")
   match action {
     "steer" =>
@@ -495,9 +495,9 @@ fn mooncode_serve_scheduler_contract() -> Json {
     "kind": "mooncode-serve-scheduler-contract",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
-    "reference": "../openseek/cmd/openseek/serve.mbt",
+    "reference": "MoonCode command scheduler",
     "rule": "Prompt and command actions start turns, steer targets the active turn, next pending turn, or defers into the next future turn, and cancel targets the active turn or withdraws the next pending turn.",
-    "wire_effects": [
+    "command_effects": [
       "start-turn", "queue-turn", "deliver-steer", "queue-steer", "defer-steer",
       "cancel-active", "withdraw-pending", "drop-cancel", "record-note", "already-completed",
       "failed", "blocked",

@@ -145,8 +145,7 @@ function extractMessageContent(message) {
 }
 
 function formatLogEntry(data) {
-  // Extract desc from the new event format
-  const desc = data.desc || data; // Fallback to data for backward compatibility
+  const desc = data.desc || {};
   const timestamp = data.time ? formatTimestamp(data.time) : "";
 
   // Handle different message types
@@ -472,7 +471,7 @@ function connectToTask(taskId) {
     // Clear existing messages and render all historical events
     messagesDiv.innerHTML = "";
     historyData.forEach((data) => {
-      const desc = data.desc || data;
+      const desc = data.desc || {};
       if (desc.msg === "TokenCounted") {
         return;
       }
@@ -503,8 +502,7 @@ function connectToTask(taskId) {
 
   eventSource.addEventListener("maria", (event) => {
     const data = JSON.parse(event.data);
-    // Extract desc from the new event format
-    const desc = data.desc || data; // Fallback to data for backward compatibility
+    const desc = data.desc || {};
     
     if (desc.msg === "TokenCounted") {
       // There are too many of these events; ignore them to reduce noise

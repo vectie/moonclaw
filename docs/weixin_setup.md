@@ -112,5 +112,5 @@ So a single gateway instance can host both if both are configured.
 
 ## Related Docs
 
-- [docs/openclaw_weixin_reference.md](/Users/kq/Workspace/moonclaw/docs/openclaw_weixin_reference.md)
+- [docs/moonclaw_weixin_reference.md](/Users/kq/Workspace/moonclaw/docs/moonclaw_weixin_reference.md)
 - [docs/GATEWAY_USAGE.md](/Users/kq/Workspace/moonclaw/docs/GATEWAY_USAGE.md)

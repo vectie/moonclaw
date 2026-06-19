@@ -1,15 +1,15 @@
 ///|
 test "configured dm policy prefers runtime account config" {
   let store = ChannelStateStore::{ path: "unused", states: {} }
-  store.states["feishu"] = PersistedChannelState::{
+  store.states["feishu"] = {
     channel_id: "feishu",
-    config: @channel.ChannelConfig::{
+    config: {
       enabled: true,
       accounts: { "default": { "dm_policy": "open" } },
       global_settings: {},
     },
     accounts: [
-      PersistedChannelAccount::{
+      {
         account_id: "default",
         config: { "dm_policy": "pairing" },
         auto_start: true,
@@ -22,9 +22,9 @@ test "configured dm policy prefers runtime account config" {
 ///|
 test "configured dm policy falls back to persisted channel config" {
   let store = ChannelStateStore::{ path: "unused", states: {} }
-  store.states["feishu"] = PersistedChannelState::{
+  store.states["feishu"] = {
     channel_id: "feishu",
-    config: @channel.ChannelConfig::{
+    config: {
       enabled: true,
       accounts: { "default": { "dmPolicy": "open" } },
       global_settings: {},

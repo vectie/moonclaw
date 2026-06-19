@@ -2,22 +2,22 @@
 test "mooncode capabilities expose native daemon endpoints" {
   assert_true(
     mooncode_capability_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>",
+      "/v1/code/sessions/<id>/runtime-turn?book_root=<path>",
     ),
   )
   assert_true(
     mooncode_native_capability_required_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/package-result?book_root=<path>",
+      "/v1/code/sessions/<id>/package-result?book_root=<path>",
     ),
   )
   assert_true(
     mooncode_native_capability_required_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/runtime-service?book_root=<path>",
+      "/v1/code/sessions/<id>/runtime-service?book_root=<path>",
     ),
   )
   assert_true(
     mooncode_native_capability_optional_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
+      "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
     ),
   )
   assert_eq(
@@ -26,12 +26,12 @@ test "mooncode capabilities expose native daemon endpoints" {
   )
   assert_true(
     mooncode_native_capability_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
+      "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
     ),
   )
   assert_true(
     mooncode_capability_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>",
+      "/v1/code/sessions/<id>/tool-exec?book_root=<path>",
     ),
   )
   assert_true(mooncode_capability_tools().contains("moon_ide"))
@@ -87,40 +87,30 @@ test "mooncode capabilities expose native daemon endpoints" {
     mooncode_json_array_items(payload_surface, "required_tools").length(),
   )
   let payload = payload_json.stringify()
-  assert_true(payload.contains("/v1/mooncode/capabilities"))
-  assert_true(payload.contains("/v1/mooncode/sessions?book_root=<path>"))
-  assert_true(payload.contains("/v1/mooncode/sessions/<id>?book_root=<path>"))
-  assert_true(payload.contains("/v1/mooncode/sessions/<id>/commands"))
+  assert_true(payload.contains("/v1/code/capabilities"))
+  assert_true(payload.contains("/v1/code/sessions?book_root=<path>"))
+  assert_true(payload.contains("/v1/code/sessions/<id>?book_root=<path>"))
+  assert_true(payload.contains("/v1/code/sessions/<id>/commands"))
   assert_true(
-    payload.contains(
-      "/v1/mooncode/sessions/<id>/package-result?book_root=<path>",
-    ),
+    payload.contains("/v1/code/sessions/<id>/package-result?book_root=<path>"),
   )
   assert_true(
-    payload.contains("/v1/mooncode/sessions/<id>/eval-report?book_root=<path>"),
+    payload.contains("/v1/code/sessions/<id>/eval-report?book_root=<path>"),
   )
   assert_true(
-    payload.contains(
-      "/v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>",
-    ),
+    payload.contains("/v1/code/sessions/<id>/runtime-claim?book_root=<path>"),
   )
   assert_true(
-    payload.contains(
-      "/v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>",
-    ),
+    payload.contains("/v1/code/sessions/<id>/runtime-dispatch?book_root=<path>"),
   )
   assert_true(
-    payload.contains(
-      "/v1/mooncode/sessions/<id>/runtime-events?book_root=<path>",
-    ),
+    payload.contains("/v1/code/sessions/<id>/runtime-events?book_root=<path>"),
   )
   assert_true(
-    payload.contains(
-      "/v1/mooncode/sessions/<id>/runtime-service?book_root=<path>",
-    ),
+    payload.contains("/v1/code/sessions/<id>/runtime-service?book_root=<path>"),
   )
   assert_true(
-    payload.contains("/v1/mooncode/sessions/<id>/tool-exec?book_root=<path>"),
+    payload.contains("/v1/code/sessions/<id>/tool-exec?book_root=<path>"),
   )
   assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
   assert_true(payload.contains("runtime-dispatches.jsonl"))
@@ -131,6 +121,11 @@ test "mooncode capabilities expose native daemon endpoints" {
   )
   assert_true(payload.contains("\"capability_surface\""))
   assert_true(payload.contains("\"native_runtime_ready\":true"))
+  assert_true(
+    payload.contains("\"runtime_mode\":\"moonclaw-daemon-native-mooncode\""),
+  )
+  let old_field = "\"bridge" + "_mode\""
+  assert_false(payload.contains(old_field))
   assert_true(
     payload.contains("\"control_commands\":[\"prompt\",\"steer\",\"cancel\"]"),
   )

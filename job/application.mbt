@@ -23,14 +23,7 @@ pub fn GatewayJobApp::new(
   next_id~ : () -> String,
   now~ : () -> Int,
 ) -> GatewayJobApp {
-  GatewayJobApp::{
-    state: GatewayJobState::new(root~),
-    cwd,
-    home,
-    workspace,
-    next_id,
-    now,
-  }
+  { state: GatewayJobState::new(root~), cwd, home, workspace, next_id, now }
 }
 
 ///|
@@ -74,11 +67,13 @@ pub fn GatewayJobApp::next_run_id(self : GatewayJobApp) -> String {
   let seed = self.next_id()
   let base = human_readable_run_id(now_ms, seed)
   let store = self.runtime().store()
-  for i = 0; i < 1000; i = i + 1 {
+  let mut i = 0
+  while i < 1000 {
     let candidate = if i == 0 { base } else { "\{base}-\{i}" }
     if store.get_run(candidate) is None {
       return candidate
     }
+    i += 1
   }
   "\{base}-\{now_ms}-\{store.list_runs().length()}"
 }
@@ -131,16 +126,13 @@ async fn GatewayJobApp::planning_memory_context(
       account_id~,
       recipient~,
       thread_id~,
-      status=Some(MemoryStatus::Active),
+      status=Some(Active),
     ),
     max_hits=4,
   )
   let workspace_hits = memories.search(
     request_text,
-    query=MemoryQuery::new(
-      workspace=Some(workspace_root),
-      status=Some(MemoryStatus::Active),
-    ),
+    query=MemoryQuery::new(workspace=Some(workspace_root), status=Some(Active)),
     max_hits=4,
   )
   let workspace_snapshot = @workspace.load_workspace_snapshot_from_root(
@@ -451,7 +443,7 @@ pub async fn GatewayJobApp::confirm_proposal(
     run.id,
     self.now(),
   )
-  Ok(ConfirmProposalResult::{ compilation, run })
+  Ok({ compilation, run })
 }
 
 ///|

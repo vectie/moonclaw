@@ -17,7 +17,7 @@ pub struct TextStyle {
 
 ///|
 pub fn TextStyle::default() -> TextStyle {
-  TextStyle::{
+  {
     fg: None,
     bg: None,
     bold: false,
@@ -59,7 +59,7 @@ pub fn TextStyle::underline(style : TextStyle) -> TextStyle {
 
 ///|
 pub fn Text::new(content : String) -> Text {
-  Text::{
+  {
     content,
     lines: content.split("\n").map(fn(v) { v.to_owned() }).collect(),
     style: TextStyle::default(),
@@ -68,7 +68,7 @@ pub fn Text::new(content : String) -> Text {
 
 ///|
 pub fn Text::with_style(content : String, style : TextStyle) -> Text {
-  Text::{
+  {
     content,
     lines: content.split("\n").map(fn(v) { v.to_owned() }).collect(),
     style,
@@ -199,7 +199,7 @@ pub(all) struct Spacer {
 
 ///|
 pub fn Spacer::new(height? : Int = 1) -> Spacer {
-  Spacer::{ height, }
+  { height, }
 }
 
 ///|
@@ -233,7 +233,7 @@ pub(all) struct Box {
 
 ///|
 pub fn Box::new(title : String, content : String) -> Box {
-  Box::{
+  {
     title,
     content,
     border_style: TextStyle::default(),

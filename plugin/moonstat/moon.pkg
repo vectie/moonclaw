@@ -4,3 +4,5 @@ import {
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
 }
+
+supported_targets = "native"

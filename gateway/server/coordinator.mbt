@@ -10,7 +10,7 @@ pub fn coordinator(
   uuid~ : @uuid.Generator,
   max_concurrent? : Int = 10,
 ) -> Coordinator {
-  Coordinator::{ uuid, tasks: Map([]), max_concurrent }
+  { uuid, tasks: Map([]), max_concurrent }
 }
 
 ///|

@@ -11,11 +11,11 @@ pub fn CreateMessageRequest::new(
   message~ : @ai.Message,
   web_search? : Bool,
 ) -> CreateMessageRequest {
-  CreateMessageRequest::{ message, web_search }
+  { message, web_search }
 }
 
 ///|
-pub impl ToJson for CreateMessageRequest with to_json(
+pub impl ToJson for CreateMessageRequest with fn to_json(
   self : CreateMessageRequest,
 ) -> Json {
   let object : Map[String, Json] = {
@@ -28,12 +28,12 @@ pub impl ToJson for CreateMessageRequest with to_json(
 }
 
 ///|
-impl @json.FromJson for CreateMessageRequest with from_json(
+impl @json.FromJson for CreateMessageRequest with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> CreateMessageRequest raise @json.JsonDecodeError {
   guard json is { "message": message, .. } else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path.add_key("message"), "Missing 'message' field in request body"),
     )
   }
@@ -67,29 +67,29 @@ pub fn CreateMessageResponse::new(
   id~ : @uuid.Uuid,
   queued~ : Bool,
 ) -> CreateMessageResponse {
-  CreateMessageResponse::{ id, queued }
+  { id, queued }
 }
 
 ///|
-pub impl ToJson for CreateMessageResponse with to_json(
+pub impl ToJson for CreateMessageResponse with fn to_json(
   self : CreateMessageResponse,
 ) -> Json {
   { "id": self.id, "queued": self.queued }
 }
 
 ///|
-pub impl @json.FromJson for CreateMessageResponse with from_json(
+pub impl @json.FromJson for CreateMessageResponse with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> CreateMessageResponse raise @json.JsonDecodeError {
   guard json is { "id": id, "queued": queued, .. } else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "Expected JSON object for CreateMessageResponse"),
     )
   }
   let id : @uuid.Uuid = @json.from_json(id)
   let queued : Bool = @json.from_json(queued)
-  CreateMessageResponse::{ id, queued }
+  { id, queued }
 }
 
 ///|
@@ -102,7 +102,7 @@ async fn Server::create_message(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let request : CreateMessageRequest = @json.from_json(body_json) catch {
-    @json.JsonDecodeError(_) as error =>
+    JsonDecodeError(_) as error =>
       raise json_error(400, "BadRequest", {
         "error": {
           "code": -1,
@@ -116,6 +116,6 @@ async fn Server::create_message(
     self.message_queue.put((request, idq))
     idq.get()
   }
-  let response : CreateMessageResponse = CreateMessageResponse::{ id, queued }
+  let response : CreateMessageResponse = { id, queued }
   w.send_json(code=200, response.to_json())
 }

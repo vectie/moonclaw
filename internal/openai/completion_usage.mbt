@@ -37,12 +37,10 @@ pub impl @json.FromJson for CompletionUsage with fn from_json(
   json_path : @json.JsonPath,
 ) -> CompletionUsage {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   guard json.get("completion_tokens") is Some(Number(completion_tokens, ..)) else {
-    raise @json.JsonDecodeError(
-      (json_path, "Missing 'completion_tokens' field"),
-    )
+    raise JsonDecodeError((json_path, "Missing 'completion_tokens' field"))
   }
   let completion_tokens_details = match json.get("completion_tokens_details") {
     Some(Null) => None
@@ -59,7 +57,7 @@ pub impl @json.FromJson for CompletionUsage with fn from_json(
     Some(Null) => None
     Some(Number(cost, ..)) => Some(cost)
     Some(_) =>
-      raise @json.JsonDecodeError((json_path, "Expected 'cost' to be a number"))
+      raise JsonDecodeError((json_path, "Expected 'cost' to be a number"))
     None => None
   }
   let cost_details = match json.get("cost_details") {
@@ -74,7 +72,7 @@ pub impl @json.FromJson for CompletionUsage with fn from_json(
     None => None
   }
   guard json.get("prompt_tokens") is Some(Number(prompt_tokens, ..)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'prompt_tokens' field"))
+    raise JsonDecodeError((json_path, "Missing 'prompt_tokens' field"))
   }
   let prompt_tokens_details = match json.get("prompt_tokens_details") {
     Some(Null) => None
@@ -88,9 +86,9 @@ pub impl @json.FromJson for CompletionUsage with fn from_json(
     None => None
   }
   guard json.get("total_tokens") is Some(Number(total_tokens, ..)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'total_tokens' field"))
+    raise JsonDecodeError((json_path, "Missing 'total_tokens' field"))
   }
-  CompletionUsage::{
+  {
     completion_tokens: completion_tokens.to_int(),
     completion_tokens_details,
     cost,

@@ -72,11 +72,6 @@ Analysis or delegate steps can route into a provider through:
 - `execution_mode: "provider"`
 - `execution_mode: "extension"`
 
-Compatibility aliases currently still accepted:
-
-- `execution_mode: "bookapi"`
-- `execution_mode: "moonbook.bookapi"`
-
 Each routed step must also provide:
 
 - `execution_target`
@@ -107,13 +102,6 @@ Recommended generic capabilities:
 - `provider.task`
 - `extension.task`
 
-Compatibility values still accepted:
-
-- `kind: "moonbook"`
-- `kind: "book-harness"`
-- `capabilities: ["bookapi"]`
-- `capabilities: ["moonbook.bookapi"]`
-
 Required provider metadata:
 
 - `command`
@@ -129,7 +117,7 @@ Optional provider metadata:
 MoonClaw invokes the provider as:
 
 ```text
-<command> <args...> wiki book <subcommand> <workspace_root> <subcommand-args...>
+<command> <args...> wiki extension <subcommand> <workspace_root> <subcommand-args...>
 ```
 
 Current subcommands:
@@ -293,16 +281,6 @@ MoonClaw currently emits both:
   - `extension_priority`
   - `extension_requires_review`
   - `extension_target_pages`
-- compatibility metadata fields:
-  - `bookapi_goal`
-  - `bookapi_goal_id`
-  - `bookapi_task_id`
-  - `bookapi_task_kind`
-  - `bookapi_priority`
-  - `bookapi_requires_review`
-  - `bookapi_target_pages`
-
-New configs should prefer the `extension_*` names.
 
 ## Design Rule
 

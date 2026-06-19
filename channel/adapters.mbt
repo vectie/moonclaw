@@ -11,7 +11,7 @@ pub fn OutboundAdapter::new(
   delivery_mode? : String = "default",
   chunker_mode? : String = "sentence",
 ) -> OutboundAdapter {
-  OutboundAdapter::{ text_chunk_limit, delivery_mode, chunker_mode }
+  { text_chunk_limit, delivery_mode, chunker_mode }
 }
 
 ///|
@@ -27,7 +27,7 @@ pub fn ThreadingAdapter::new(
   supports_threads? : Bool = false,
   thread_id_key? : String? = None,
 ) -> ThreadingAdapter {
-  ThreadingAdapter::{ reply_to_mode, supports_threads, thread_id_key }
+  { reply_to_mode, supports_threads, thread_id_key }
 }
 
 ///|
@@ -43,7 +43,7 @@ pub fn MentionAdapter::new(
   mention_prefix? : String? = None,
   mention_suffix? : String? = None,
 ) -> MentionAdapter {
-  MentionAdapter::{ strip_patterns, mention_prefix, mention_suffix }
+  { strip_patterns, mention_prefix, mention_suffix }
 }
 
 ///|
@@ -63,7 +63,7 @@ pub fn StreamingAdapter::new(
   min_chars? : Int? = None,
   idle_ms? : Int? = None,
 ) -> StreamingAdapter {
-  StreamingAdapter::{ enabled, chunk_size, chunk_delay_ms, min_chars, idle_ms }
+  { enabled, chunk_size, chunk_delay_ms, min_chars, idle_ms }
 }
 
 ///|
@@ -79,7 +79,7 @@ pub fn SecurityAdapter::new(
   allow_from? : Array[String] = [],
   require_mention_in_groups? : Bool = true,
 ) -> SecurityAdapter {
-  SecurityAdapter::{ dm_policy, allow_from, require_mention_in_groups }
+  { dm_policy, allow_from, require_mention_in_groups }
 }
 
 ///|
@@ -99,7 +99,7 @@ pub fn ChannelDockConfig::new(
   streaming? : StreamingAdapter? = None,
   security? : SecurityAdapter? = None,
 ) -> ChannelDockConfig {
-  ChannelDockConfig::{ outbound, threading, mentions, streaming, security }
+  { outbound, threading, mentions, streaming, security }
 }
 
 ///|

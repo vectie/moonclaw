@@ -47,7 +47,7 @@ pub impl Show for ListResourcesResult with fn output(
 
 ///|
 fn file_resource_summary(path : String) -> ResourceSummary {
-  ResourceSummary::{
+  {
     uri: "file://\{path}",
     kind: File,
     title: path,
@@ -58,7 +58,7 @@ fn file_resource_summary(path : String) -> ResourceSummary {
 
 ///|
 fn skill_resource_summary(skill : @skills.Skill) -> ResourceSummary {
-  ResourceSummary::{
+  {
     uri: "skill://\{skill.name}",
     kind: Skill,
     title: skill.name,
@@ -75,7 +75,7 @@ fn skill_resource_summary(skill : @skills.Skill) -> ResourceSummary {
 fn worktree_resource_summary(
   handle : @worktree.WorktreeHandle,
 ) -> ResourceSummary {
-  ResourceSummary::{
+  {
     uri: "worktree://\{handle.task_key}",
     kind: Worktree,
     title: handle.task_key,
@@ -93,7 +93,7 @@ fn worktree_resource_summary(
 fn provider_resource_summary(
   provider : @resource_providers.RegisteredResourceProvider,
 ) -> ResourceSummary {
-  ResourceSummary::{
+  {
     uri: "provider://\{provider.name}",
     kind: Provider,
     title: provider.title,
@@ -129,7 +129,7 @@ async fn list_file_resources(
     Error(_, message) => fail(message)
   }
   let resources = result.matches.map(file_resource_summary)
-  ListResourcesResult::{
+  {
     resources,
     total_resources: result.total_matches,
     truncated: result.truncated,
@@ -158,7 +158,7 @@ async fn list_skill_resources(
     }
     resources.push(skill_resource_summary(skill))
   }
-  ListResourcesResult::{
+  {
     resources,
     total_resources: skills.length(),
     truncated: skills.length() > resources.length(),
@@ -179,7 +179,7 @@ async fn list_worktree_resources(
     }
     resources.push(worktree_resource_summary(handle))
   }
-  ListResourcesResult::{
+  {
     resources,
     total_resources: result.worktrees.length(),
     truncated: result.worktrees.length() > resources.length(),
@@ -200,7 +200,7 @@ async fn list_provider_resources(
     }
     resources.push(provider_resource_summary(provider))
   }
-  ListResourcesResult::{
+  {
     resources,
     total_resources: providers.length(),
     truncated: providers.length() > resources.length(),

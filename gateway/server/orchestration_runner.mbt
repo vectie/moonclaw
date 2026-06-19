@@ -42,7 +42,7 @@ fn Gateway::subtask_agent_params(
   coordination_id : String,
   task : SubTask,
 ) -> @protocol.AgentParams {
-  @protocol.AgentParams::{
+  {
     message: task.message,
     session_key: Some(coordination_session_key(coordination_id, task.task_id)),
     cwd: task.cwd,
@@ -62,7 +62,7 @@ fn Gateway::pipeline_stage_agent_params(
   model : String?,
   cwd : String?,
 ) -> @protocol.AgentParams {
-  @protocol.AgentParams::{
+  {
     message: input,
     session_key: Some(pipeline_stage_session_key(pipeline_id, stage_name)),
     cwd,

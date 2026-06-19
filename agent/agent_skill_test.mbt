@@ -142,8 +142,8 @@ async test "skill" (t : @test.Test) {
         if tool_call.name == "read_file" {
           guard tool_call.arguments is Some(arguments) else { continue }
           let args = @json.parse(arguments)
-          guard args is Json::Object(obj) else { continue }
-          guard obj.get("path") is Some(Json::String(path)) else { continue }
+          guard args is Object(obj) else { continue }
+          guard obj.get("path") is Some(String(path)) else { continue }
           if path.has_suffix("SKILL.md") || path.has_suffix("skill.md") {
             return true
           }
@@ -157,10 +157,8 @@ async test "skill" (t : @test.Test) {
         if tool_call.name == "execute_command" {
           guard tool_call.arguments is Some(arguments) else { continue }
           let args = @json.parse(arguments)
-          guard args is Json::Object(obj) else { continue }
-          guard obj.get("command") is Some(Json::String(command)) else {
-            continue
-          }
+          guard args is Object(obj) else { continue }
+          guard obj.get("command") is Some(String(command)) else { continue }
           if command.contains("moon doc") {
             return true
           }

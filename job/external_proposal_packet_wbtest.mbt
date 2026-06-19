@@ -216,7 +216,7 @@ async test "GatewayJobApp imports external proposal packet into proposal store" 
     )
     app.load()
     let result = app.import_external_proposal_packet(
-      ExternalProposalPacket::{
+      {
         packet_id: Some("keeper-1"),
         title: Some("Ingest source into wiki"),
         summary: Some("Review the source and update relevant pages."),
@@ -368,7 +368,7 @@ async test "GatewayJobApp imports and confirms external proposal packet" {
     )
     app.load()
     let result = app.import_external_proposal_packet(
-      ExternalProposalPacket::{
+      {
         packet_id: Some("keeper-2"),
         title: Some("Ingest source into wiki"),
         summary: Some("Review the source and update relevant pages."),
@@ -388,7 +388,7 @@ async test "GatewayJobApp imports and confirms external proposal packet" {
       confirm=true,
       analysis_executor=Some(
         AnalysisExecutor::new(run=fn(_request) {
-          Ok(AnalysisExecution::{
+          Ok({
             model_name: "mock",
             content: (
               #|{
@@ -461,7 +461,7 @@ async test "GatewayJobApp confirms external proposal packet with detached launch
     app.load()
     let imported = match
       app.import_external_proposal_packet(
-        ExternalProposalPacket::{
+        {
           packet_id: Some("keeper-3"),
           title: Some("Ingest source into wiki"),
           summary: Some("Review the source and update relevant pages."),
@@ -553,7 +553,7 @@ async test "GatewayJobApp restores missing detached run definition from confirme
     app.load()
     let imported = match
       app.import_external_proposal_packet(
-        ExternalProposalPacket::{
+        {
           packet_id: Some("keeper-restore"),
           title: Some("Ingest source into wiki"),
           summary: Some("Review the source and update relevant pages."),
@@ -610,7 +610,7 @@ async test "GatewayJobApp restores missing detached run definition from confirme
       confirmed.run.id,
       analysis_executor=Some(
         AnalysisExecutor::new(run=fn(_request) {
-          Ok(AnalysisExecution::{
+          Ok({
             model_name: "mock",
             content: "Restored definition executed.",
             conversation_id: None,

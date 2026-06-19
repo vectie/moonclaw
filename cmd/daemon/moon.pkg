@@ -38,6 +38,8 @@ import {
   "vectie/moonclaw/mooncode/core" @mooncode_core,
 }
 
+supported_targets = "native"
+
 import {
   "vectie/moonclaw/internal/mock",
   "vectie/moonclaw/cmd/internal/test_utils",

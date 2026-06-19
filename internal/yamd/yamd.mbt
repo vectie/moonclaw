@@ -1,7 +1,4 @@
 ///|
-using @yaml {type Yaml}
-
-///|
 pub struct Document {
   meta : Map[String, Json]
   text : String
@@ -14,16 +11,19 @@ fn tokenize_markdown_with_yaml_front_matter(
   let lines = content.split("\n").collect()
   let mut open_index : Int? = None
   let mut close_index : Int? = None
-  for i = 0; i < lines.length(); i = i + 1 {
+  let mut i = 0
+  while i < lines.length() {
     let line = lines[i].trim()
     if line == "---" {
       if open_index is None {
         open_index = Some(i)
+        i += 1
         continue
       }
       close_index = Some(i)
       break
     }
+    i += 1
   }
   match (open_index, close_index) {
     (Some(open), Some(close)) if close > open => {
@@ -33,7 +33,7 @@ fn tokenize_markdown_with_yaml_front_matter(
       } else {
         ""
       }
-      (front_matter[:], rest[:])
+      (front_matter, rest)
     }
     _ => ("", "")
   }
@@ -43,13 +43,13 @@ fn tokenize_markdown_with_yaml_front_matter(
 pub fn parse(content : String) -> Document raise @yaml.YamlError {
   let (front_matter, text) = tokenize_markdown_with_yaml_front_matter(content)
   if front_matter.is_empty() {
-    Document::{ meta: {}, text: text.to_owned() }
+    { meta: {}, text: text.to_owned() }
   } else {
-    let yaml_value = Yaml::load_from_string(front_matter.to_owned())[0]
+    let yaml_value = @yaml.Yaml::load_from_string(front_matter.to_owned())[0]
     guard yaml_value.to_json() is Object(meta) else {
       abort("assume yaml value must be Map")
     }
     let text = text.to_owned()
-    Document::{ meta, text }
+    { meta, text }
   }
 }

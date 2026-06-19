@@ -6,3 +6,5 @@ import {
   "vectie/moonclaw/cmd/main/argument",
   "vectie/moonlib/fsx",
 }
+
+supported_targets = "native"

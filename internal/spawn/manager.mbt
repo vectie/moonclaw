@@ -19,12 +19,7 @@ pub struct Manager {
 
 ///|
 pub fn Manager::new(cwd~ : String) -> Manager {
-  Manager::{
-    id: 0,
-    cwd,
-    process: {},
-    spawn: @aqueue.Queue::new(kind=Unbounded),
-  }
+  { id: 0, cwd, process: {}, spawn: @aqueue.Queue::new(kind=Unbounded) }
 }
 
 ///|
@@ -68,7 +63,7 @@ struct Buffer {
 
 ///|
 pub fn Buffer::new() -> Buffer {
-  Buffer::{ chunks: [] }
+  { chunks: [] }
 }
 
 ///|
@@ -102,7 +97,7 @@ pub async fn Manager::spawn(
   env? : Map[String, String],
 ) -> Process {
   let process = @aqueue.Queue::new(kind=Unbounded)
-  self.spawn.put(Spawn::{
+  self.spawn.put({
     command,
     arguments,
     stderr,

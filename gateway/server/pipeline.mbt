@@ -29,7 +29,7 @@ pub fn pipeline_stage(
   cwd? : String? = None,
   input_template? : String? = None,
 ) -> PipelineStage {
-  PipelineStage::{
+  {
     name,
     message,
     model,
@@ -130,7 +130,7 @@ pub fn pipeline(
   stages~ : Array[PipelineStage],
   metadata? : Map[String, Json] = Map([]),
 ) -> Pipeline {
-  Pipeline::{
+  {
     pipeline_id,
     name,
     stages,

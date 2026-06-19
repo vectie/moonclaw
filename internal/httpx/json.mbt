@@ -71,7 +71,7 @@ pub async fn[T : @json.FromJson] JsonRequestReader::read(
 ) -> T {
   let json = self.read_json()
   @json.from_json(json) catch {
-    @json.JsonDecodeError(_) as error =>
+    JsonDecodeError(_) as error =>
       raise JsonError::new(400, error, message="Invalid request body")
   }
 }

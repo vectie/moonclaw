@@ -44,21 +44,15 @@ test "supported_rpc_methods advertises the implemented channel and run methods" 
 }
 
 ///|
-test "channel lookup params accept both legacy string and object shapes" {
-  let legacy : Json = "feishu"
-  let modern : Json = { "channel_id": "feishu" }
-  let legacy_id = match legacy {
-    String(id) => id
-    _ => fail("legacy shape should parse")
-  }
-  let modern_id = match modern {
+test "channel lookup params use object shape" {
+  let params : Json = { "channel_id": "feishu" }
+  let channel_id = match params {
     Object(obj) =>
       match obj.get("channel_id") {
         Some(String(id)) => id
-        _ => fail("modern shape should parse")
+        _ => fail("channel_id should parse")
       }
-    _ => fail("modern shape should be object")
+    _ => fail("channel params should be object")
   }
-  inspect(legacy_id, content="feishu")
-  inspect(modern_id, content="feishu")
+  inspect(channel_id, content="feishu")
 }

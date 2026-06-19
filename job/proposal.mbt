@@ -36,7 +36,7 @@ fn compact_preview(text : String, max_len : Int) -> String {
 ///|
 fn generic_proposal_steps(request_text : String) -> Array[JobProposalStep] {
   [
-    JobProposalStep::{
+    {
       id: "execute",
       title: "Execute requested work",
       kind: "job.analysis",
@@ -165,9 +165,7 @@ impl @json.FromJson for ProposalPlanStepPayload with fn from_json(
   path : @json.JsonPath,
 ) -> ProposalPlanStepPayload raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError(
-      (path, "ProposalPlanStepPayload: expected object"),
-    )
+    raise JsonDecodeError((path, "ProposalPlanStepPayload: expected object"))
   }
   let id : String? = match obj.get("id") {
     Some(String(id)) => Some(id)
@@ -179,7 +177,7 @@ impl @json.FromJson for ProposalPlanStepPayload with fn from_json(
       match obj.get("step") {
         Some(String(step)) if !step.trim().to_owned().is_blank() => step
         _ =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (path, "ProposalPlanStepPayload: missing 'title'/'step'"),
           )
       }
@@ -205,7 +203,7 @@ impl @json.FromJson for ProposalPlanStepPayload with fn from_json(
                           match non_blank_string_or_none(obj.get("step")) {
                             Some(step) => step
                             None =>
-                              raise @json.JsonDecodeError(
+                              raise JsonDecodeError(
                                 (
                                   path, "ProposalPlanStepPayload: missing 'prompt'/'details'/'description'/'instruction'/'objective'/'step'",
                                 ),
@@ -277,7 +275,7 @@ impl @json.FromJson for ProposalPlanPayload with fn from_json(
   path : @json.JsonPath,
 ) -> ProposalPlanPayload raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "ProposalPlanPayload: expected object"))
+    raise JsonDecodeError((path, "ProposalPlanPayload: expected object"))
   }
   let title : String? = match non_blank_string_or_none(obj.get("title")) {
     Some(title) => Some(title)
@@ -490,14 +488,14 @@ fn planner_repair_prompt(
 fn proposal_with_planner_diagnostic(
   proposal : JobProposal,
   reason : String,
-  preview? : String? = None,
+  preview~ : String?,
 ) -> JobProposal {
   let diagnostic = match preview {
     Some(preview) if !preview.trim().to_owned().is_blank() =>
       "Planner fallback used: \{reason}. Planner output preview: \{compact_preview(preview, 240)}"
     _ => "Planner fallback used: \{reason}."
   }
-  JobProposal::{ ..proposal, summary: diagnostic }
+  { ..proposal, summary: diagnostic }
 }
 
 ///|
@@ -531,7 +529,7 @@ fn proposal_payload_to_proposal(
     .unwrap_or(fallback.summary)
   let steps = normalized_plan_steps(payload, request_text)
   let tags = payload.tags.unwrap_or(fallback.tags)
-  JobProposal::{
+  {
     ..fallback,
     title,
     request_text,
@@ -635,7 +633,7 @@ pub async fn apply_named_job_profile(
           ),
         }
       })
-      JobProposal::{
+      {
         ..proposal,
         suggested_family: Some(family),
         profile_id: Some(profile.id),
@@ -653,7 +651,7 @@ pub async fn apply_named_job_profile(
 }
 
 ///|
-fn planner_system_prompt(e2e_mode? : Bool = false) -> String {
+fn planner_system_prompt(e2e_mode~ : Bool) -> String {
   [
     "You design safe draft job plans for an automation system.",
     "Never execute the job.",
@@ -671,13 +669,13 @@ fn planner_system_prompt(e2e_mode? : Bool = false) -> String {
 ///|
 fn planner_request_prompt(
   request_text : String,
-  intake? : Json? = None,
-  skills_prompt? : String = "",
+  intake~ : Json?,
+  skills_prompt~ : String,
   revision? : String? = None,
   existing? : JobProposal? = None,
-  workspace? : String? = None,
-  memory_context? : String? = None,
-  e2e_mode? : Bool = false,
+  workspace~ : String?,
+  memory_context~ : String?,
+  e2e_mode~ : Bool,
 ) -> String {
   let parts = ["Create a draft plan for this requested job:", request_text]
   let parts = if e2e_mode {
@@ -788,17 +786,17 @@ async fn plan_job_proposal_with_mode(
   request_text : String,
   now_ms : Int,
   e2e_mode : Bool,
-  executor? : AnalysisExecutor = default_analysis_executor(),
-  intake? : Json? = None,
-  channel_id? : String? = None,
-  account_id? : String? = None,
-  recipient? : String? = None,
-  thread_id? : String? = None,
-  model? : String? = None,
-  cwd? : String = ".",
-  home? : String? = None,
-  workspace? : String? = None,
-  memory_context? : String? = None,
+  executor~ : AnalysisExecutor,
+  intake~ : Json?,
+  channel_id~ : String?,
+  account_id~ : String?,
+  recipient~ : String?,
+  thread_id~ : String?,
+  model~ : String?,
+  cwd~ : String,
+  home~ : String?,
+  workspace~ : String?,
+  memory_context~ : String?,
 ) -> JobProposal {
   let preferred_skills = planner_preferred_skills()
   let loaded_skills = loaded_skills_prompt(cwd, home, preferred_skills)
@@ -952,13 +950,11 @@ fn proposal_to_plan_preview(
   proposal : JobProposal,
   source : String,
 ) -> JobPlanPreview {
-  JobPlanPreview::{
+  {
     title: proposal.title,
     request_text: proposal.request_text,
     summary: proposal.summary,
-    steps: proposal.steps.map(fn(step) {
-      JobPlanPreviewStep::{ id: step.id, title: step.title }
-    }),
+    steps: proposal.steps.map(fn(step) { { id: step.id, title: step.title } }),
     requested_output_format: proposal_requested_output_format(proposal),
     starter_files: proposal_starter_file_labels(proposal),
     source,
@@ -1020,7 +1016,7 @@ pub fn promote_plan_candidate(
   recipient? : String? = None,
   thread_id? : String? = None,
 ) -> JobProposal {
-  JobProposal::{
+  {
     ..candidate,
     id: proposal_id,
     title: compact_title(request_text),
@@ -1167,7 +1163,7 @@ pub async fn revise_job_proposal(
   let execution = match (executor.run)(request) {
     Ok(execution) => execution
     Err(_) =>
-      return JobProposal::{
+      return {
         ..proposal,
         revision_history: [..proposal.revision_history, revision],
         updated_at: now_ms,
@@ -1202,7 +1198,7 @@ pub async fn revise_job_proposal(
       }
     }
     None =>
-      JobProposal::{
+      {
         ..proposal,
         revision_history: [..proposal.revision_history, revision],
         updated_at: now_ms,
@@ -1231,7 +1227,7 @@ pub async fn save_confirmed_job_proposal(
   run_id : String,
   now_ms : Int,
 ) -> Unit {
-  store.save_job_proposal(JobProposal::{
+  store.save_job_proposal({
     ..proposal,
     suggested_family: Some(compilation.family),
     status: Confirmed,
@@ -1248,11 +1244,7 @@ pub async fn save_rejected_job_proposal(
   proposal : JobProposal,
   now_ms : Int,
 ) -> Unit {
-  store.save_job_proposal(JobProposal::{
-    ..proposal,
-    status: Rejected,
-    updated_at: now_ms,
-  })
+  store.save_job_proposal({ ..proposal, status: Rejected, updated_at: now_ms })
 }
 
 ///|
@@ -1267,7 +1259,7 @@ pub fn draft_job_proposal(
 ) -> JobProposal {
   let steps = generic_proposal_steps(request_text)
   let tags = infer_job_tags(request_text)
-  JobProposal::{
+  {
     id: proposal_id,
     title: compact_title(request_text),
     request_text,

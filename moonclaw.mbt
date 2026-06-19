@@ -135,7 +135,7 @@ pub async fn Moonclaw::resume_(
     model,
     conversation,
     logger~,
-    home=home[:],
+    home~,
     user_message?,
     web_search~,
   )

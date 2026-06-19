@@ -27,8 +27,8 @@ pub(all) struct ChannelCapabilities {
 
 ///|
 pub fn default_capabilities() -> ChannelCapabilities {
-  ChannelCapabilities::{
-    chat_types: [ChatType::Direct],
+  {
+    chat_types: [Direct],
     polls: false,
     reactions: false,
     edit: false,
@@ -125,7 +125,7 @@ pub(all) struct ChannelConfig {
 
 ///|
 pub fn default_config() -> ChannelConfig {
-  ChannelConfig::{ enabled: false, accounts: {}, global_settings: {} }
+  { enabled: false, accounts: {}, global_settings: {} }
 }
 
 ///|

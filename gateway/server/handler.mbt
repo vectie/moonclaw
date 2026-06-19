@@ -47,12 +47,7 @@ async fn Gateway::handle_agent(
           error: None,
         }
       } else {
-        @protocol.Response::{
-          id: run_id,
-          ok: false,
-          payload: None,
-          error: entry.error,
-        }
+        { id: run_id, ok: false, payload: None, error: entry.error }
       }
       return self.send_response(w, response)
     }
@@ -86,14 +81,14 @@ async fn Gateway::execute_agent_async(
   self.pending_requests = self.pending_requests - 1
   match result {
     Ok(output) =>
-      self.dedupe.set(idempotency_key, DedupeEntry::{
+      self.dedupe.set(idempotency_key, {
         ts: current_time_ms(),
         ok: true,
         payload: Some(output),
         error: None,
       })
     Err(error) =>
-      self.dedupe.set(idempotency_key, DedupeEntry::{
+      self.dedupe.set(idempotency_key, {
         ts: current_time_ms(),
         ok: false,
         payload: None,
@@ -114,7 +109,7 @@ async fn Gateway::execute_agent(
   }
   let session_key = direct_session_key(params.session_key, run_id)
   let session = self.sessions.get_or_create(session_key~, cwd~)
-  self.sessions.save_entry(session_key, SessionEntry::{
+  self.sessions.save_entry(session_key, {
     session_id: session.session_id,
     title: session.title,
     updated_at: current_time_ms(),
@@ -138,7 +133,7 @@ async fn Gateway::execute_agent(
 
   self.logger.info("Spawning agent for run \{run_id} with model \{model_name}")
   let created_at = current_time_ms()
-  self.agent_runs[run_id] = AgentRun::{
+  self.agent_runs[run_id] = {
     run_id,
     session_key,
     status: "running",
@@ -158,7 +153,7 @@ async fn Gateway::execute_agent(
         retryable: None,
         retry_after_ms: None,
       }
-      self.agent_runs[run_id] = AgentRun::{
+      self.agent_runs[run_id] = {
         run_id,
         session_key,
         status: "failed",
@@ -167,7 +162,7 @@ async fn Gateway::execute_agent(
         result: None,
         error: Some(error_shape),
       }
-      self.sessions.save_entry(session_key, SessionEntry::{
+      self.sessions.save_entry(session_key, {
         session_id: session.session_id,
         title: session.title,
         updated_at: current_time_ms(),
@@ -230,7 +225,7 @@ async fn Gateway::execute_agent(
 
   let completed_at = current_time_ms()
   let conversation_id = agent.id().to_string()
-  self.agent_runs[run_id] = AgentRun::{
+  self.agent_runs[run_id] = {
     run_id,
     session_key,
     status: "completed",
@@ -247,7 +242,7 @@ async fn Gateway::execute_agent(
     }),
     error: None,
   }
-  self.sessions.save_entry(session_key, SessionEntry::{
+  self.sessions.save_entry(session_key, {
     session_id: conversation_id,
     title: session.title,
     updated_at: completed_at,
@@ -393,14 +388,14 @@ async fn Gateway::handle_get_artifact(
                     "report" =>
                       (
                         @path.Path(workspace_dir)
-                        .join(@path.Path("report.md"))
+                        .join(Path("report.md"))
                         .to_string(),
                         "text/markdown",
                       )
                     "result" =>
                       (
                         @path.Path(workspace_dir)
-                        .join(@path.Path("result.json"))
+                        .join(Path("result.json"))
                         .to_string(),
                         "application/json",
                       )

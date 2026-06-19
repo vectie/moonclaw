@@ -63,7 +63,7 @@ priv struct Events {
 
 ///|
 fn Events::new() -> Events {
-  Events::{
+  {
     line: @aqueue.Queue::new(kind=Unbounded),
     keypress: @aqueue.Queue::new(kind=Unbounded),
     key: @aqueue.Queue::new(kind=Unbounded),
@@ -111,7 +111,7 @@ pub fn interface(
   output? : @stdio.Output = @stdio.stdout,
 ) -> Interface raise {
   @tty.set_raw_mode(input.fd())
-  Interface::{
+  {
     line: b"",
     input,
     output,
@@ -124,13 +124,13 @@ pub fn interface(
     is_multiline: false,
     prev_rows: 0,
     previous_prev_rows: 0,
-    undo_stack: @deque.Deque([]),
-    redo_stack: @deque.Deque([]),
-    kill_ring: @deque.Deque([]),
+    undo_stack: Deque([]),
+    redo_stack: Deque([]),
+    kill_ring: Deque([]),
     kill_ring_cursor: 0,
     yanking: false,
     substring_search: None,
-    history: @deque.Deque([]),
+    history: Deque([]),
     history_index: -1,
     previous_key: None,
     events: Events::new(),
@@ -1215,12 +1215,12 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
   key.sequence = s
   if s.length() != 0 && (!(key.name is Undefined) || escaped) {
     if escaped {
-      self.events.keypress.put(KeyPress::{ sequence: None, key })
+      self.events.keypress.put({ sequence: None, key })
     } else {
-      self.events.keypress.put(KeyPress::{ sequence: Some(s), key })
+      self.events.keypress.put({ sequence: Some(s), key })
     }
   } else if s.length() == 1 {
-    self.events.keypress.put(KeyPress::{ sequence: Some(s), key })
+    self.events.keypress.put({ sequence: Some(s), key })
   }
 }
 

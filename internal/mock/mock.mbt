@@ -110,7 +110,6 @@ pub fn[T : ToJson] Context::json(self : Context, value : T) -> Json {
 
 ///|
 /// Formats a value into a filtered string suited for deterministic snapshots.
-#alias(text)
 pub fn[T : Show] Context::show(self : Context, value : T) -> String {
   self.filter.apply_string(value.to_string())
 }
@@ -280,7 +279,7 @@ pub async fn Directory::list(self : Directory) -> Array[Entry] {
   for name in dir.read_all() {
     let path = @pathx.join(self.0, name)
     let entry : Entry = match @fs.kind(path, follow_symlink=false) {
-      @fs.FileKind::Directory => Directory(path)
+      Directory => Directory(path)
       _ => File(path)
     }
     entries.push(entry)
@@ -313,7 +312,7 @@ pub fn Context::getenv(
 ///|
 pub fn Context::model(
   self : Context,
-  name? : @model.CommonModels = @model.Qwen3CoderPlus,
+  name? : @model.CommonModels = Qwen3CoderPlus,
 ) -> @model.Model raise {
   @model.open_router_model(api_key=self.getenv("OPENROUTER_API_KEY"), name~)
 }

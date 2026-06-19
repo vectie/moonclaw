@@ -202,7 +202,7 @@ fn mooncode_runtime_service_attach(
     "poll_ms": mooncode_runtime_loop_poll_ms(loop_payload),
   }
   match event {
-    Json::Object(event_object) =>
+    Object(event_object) =>
       match event_object.get("created_at") {
         Some(value) => object["created_at"] = value
         None => ()
@@ -221,7 +221,7 @@ fn mooncode_runtime_service_finish_event(
 ) -> Json {
   let base = mooncode_runtime_service_attach(event, book_root, payload)
   match base {
-    Json::Object(object) => {
+    Object(object) => {
       object["runtime_loop"] = result
       object["ran_turn_count"] = mooncode_json_int(
         result,

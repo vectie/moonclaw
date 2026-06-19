@@ -92,9 +92,7 @@ async fn execute_read_file_tool(
         }
       })
       let display = entries.join("\n")
-      return @tool.ok(
-        ReadDirectoryResult(ReadDirectoryResult::{ path, entries, display }),
-      )
+      return @tool.ok(ReadDirectoryResult({ path, entries, display }))
     }
 
     // Open and read the file
@@ -129,9 +127,7 @@ async fn execute_read_file_tool(
       }
       None => lines.length()
     }
-    return @tool.ok(
-      ReadFileResult(ReadFileResult::{ path, content, start_line, end_line }),
-    )
+    return @tool.ok(ReadFileResult({ path, content, start_line, end_line }))
   } catch {
     error => @tool.error("Error reading file: \{error}", error~)
   }
@@ -192,9 +188,7 @@ pub fn new(manager : @file.Manager) -> @tool.Tool[ReadMultipleFilesResult] {
     description~,
     name="read_multiple_files",
     schema~,
-    @tool.ToolFn(async fn(
-      args,
-    ) -> @tool.ToolResult[ReadMultipleFilesResult] noraise {
+    ToolFn(async fn(args) -> @tool.ToolResult[ReadMultipleFilesResult] noraise {
       execute_read_multiple_files_tool(manager, args)
     }),
   )

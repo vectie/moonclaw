@@ -19,7 +19,6 @@ test "user_message" {
 test "assistant_message" {
   json_inspect(assistant_message(content="Hi there!"), content={
     "role": "assistant",
-    "tool_calls": [],
     "content": "Hi there!",
   })
 }

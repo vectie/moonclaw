@@ -14,6 +14,7 @@
 /// Errors:
 ///
 /// - 400 Bad Request: Invalid UTF-8, invalid JSON, or cannot decode `RegisterRequest`.
+#warnings("-unnecessary_annotation")
 async fn Daemon::register_task(
   self : Daemon,
   r : @httpx.RequestReader,
@@ -21,7 +22,7 @@ async fn Daemon::register_task(
 ) -> Unit {
   let request_bytes = r.body.read_all().binary()
   let request_text = @encoding/utf8.decode(request_bytes) catch {
-    @encoding/utf8.Malformed(bytes) =>
+    Malformed(bytes) =>
       raise json_error(
         400,
         "Bad Request",

@@ -17,7 +17,7 @@ impl @json.FromJson for People with fn from_json(
   let age : Int = object.required("age", path~)
   let active : Bool = object.required("active", path~)
   let nickname : String? = object.optional("nickname", path~)
-  People::{ name, age, active, nickname }
+  { name, age, active, nickname }
 }
 
 ///|

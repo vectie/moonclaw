@@ -3,7 +3,7 @@ async test "ACP UI timeline orders newest entries first" {
   let dir = "/tmp/moonclaw-acp-ui-events"
   @fsx.make_directory(dir, recursive=true)
   @fsx.write_to_file(
-    @path.Path(dir).join(@path.Path("moonclaw.json")).to_string(),
+    @path.Path(dir).join(Path("moonclaw.json")).to_string(),
     ({ "acp": { "targets": { "codex-main": { "backend": "codex" } } } } : Json).stringify(),
   )
   let runtime = AcpRuntime::new(home=dir, cwd=dir)

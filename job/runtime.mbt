@@ -19,7 +19,7 @@ pub struct CheckpointStore {
 
 ///|
 pub fn CheckpointStore::new(root~ : String) -> CheckpointStore {
-  CheckpointStore::{ root, checkpoints: {} }
+  { root, checkpoints: {} }
 }
 
 ///|
@@ -38,8 +38,7 @@ pub async fn CheckpointStore::load(self : CheckpointStore) -> Unit {
   }
   let entries = @fsx.list_directory(self.root)
   for entry in entries {
-    if !(entry.kind is @fsx.FileKind::Regular) ||
-      !entry.name.has_suffix(".json") {
+    if !(entry.kind is Regular) || !entry.name.has_suffix(".json") {
       continue
     }
     let content = @fsx.read_file(entry.path)
@@ -101,7 +100,7 @@ pub struct RuntimeManager {
 
 ///|
 pub fn RuntimeManager::new(root~ : String) -> RuntimeManager {
-  RuntimeManager::{
+  {
     store: SystemStore::new(root~),
     checkpoints: CheckpointStore::new(root=root |> @pathx.join("checkpoints")),
     active_runs: {},
@@ -209,7 +208,7 @@ pub async fn RuntimeManager::create_run(
         last_run_id: Some(run_id),
       }
     None =>
-      CheckpointRecord::{
+      {
         job_id,
         last_triggered_at: Some(now_ms),
         last_started_at: None,
@@ -246,7 +245,7 @@ pub async fn RuntimeManager::mark_run_started(
         last_run_id: Some(updated.id),
       }
     None =>
-      CheckpointRecord::{
+      {
         job_id: updated.job_id,
         last_triggered_at: Some(now_ms),
         last_started_at: Some(now_ms),
@@ -289,7 +288,7 @@ pub async fn RuntimeManager::mark_run_resumed(
         last_run_id: Some(updated.id),
       }
     None =>
-      CheckpointRecord::{
+      {
         job_id: updated.job_id,
         last_triggered_at: updated.started_at,
         last_started_at: Some(now_ms),
@@ -319,7 +318,7 @@ fn RuntimeManager::definition_retry_policy(
 fn RuntimeManager::clear_retry_state(
   checkpoint : CheckpointRecord,
 ) -> CheckpointRecord {
-  CheckpointRecord::{
+  {
     ..checkpoint,
     retry_attempts: 0,
     next_retry_at: None,
@@ -338,7 +337,7 @@ fn RuntimeManager::with_failure_retry_state(
     Some(policy) if policy.max_attempts > checkpoint.retry_attempts => {
       let next_attempt = checkpoint.retry_attempts + 1
       let delay_ms = policy.backoff_ms.unwrap_or(0)
-      CheckpointRecord::{
+      {
         ..checkpoint,
         retry_attempts: next_attempt,
         next_retry_at: Some(now_ms + delay_ms),
@@ -431,7 +430,7 @@ pub async fn RuntimeManager::mark_run_succeeded(
 ) -> JobRun? {
   self.finish_run_with_status(
     run_id,
-    RunStatus::Succeeded,
+    Succeeded,
     now_ms,
     summary.unwrap_or(None),
     None,
@@ -448,7 +447,7 @@ pub async fn RuntimeManager::mark_run_failed(
 ) -> JobRun? {
   self.finish_run_with_status(
     run_id,
-    RunStatus::Failed,
+    Failed,
     now_ms,
     summary.unwrap_or(None),
     Some(error),
@@ -464,7 +463,7 @@ pub async fn RuntimeManager::cancel_run(
 ) -> JobRun? {
   self.finish_run_with_status(
     run_id,
-    RunStatus::Cancelled,
+    Cancelled,
     now_ms,
     summary.unwrap_or(None),
     None,
@@ -480,7 +479,7 @@ pub async fn RuntimeManager::mark_run_waiting_for_input(
 ) -> JobRun? {
   self.finish_run_with_status(
     run_id,
-    RunStatus::WaitingForInput,
+    WaitingForInput,
     now_ms,
     summary.unwrap_or(None),
     None,
@@ -537,7 +536,7 @@ pub async fn RuntimeManager::trigger_retry_run(
   let run = JobRun::{
     id: run_id,
     job_id,
-    trigger: TriggerSource::Recovery,
+    trigger: Recovery,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
@@ -551,7 +550,7 @@ pub async fn RuntimeManager::trigger_retry_run(
     error: None,
   }
   self.store.save_run(run)
-  self.checkpoints.save_checkpoint(CheckpointRecord::{
+  self.checkpoints.save_checkpoint({
     ..checkpoint,
     last_triggered_at: Some(now_ms),
     last_run_id: Some(run_id),
@@ -589,13 +588,7 @@ pub async fn RuntimeManager::trigger_due_definitions(
     if scheduled_job_ids.contains(definition.id) {
       continue
     }
-    match
-      self.create_run(
-        next_run_id(),
-        definition.id,
-        TriggerSource::Scheduled,
-        now_ms,
-      ) {
+    match self.create_run(next_run_id(), definition.id, Scheduled, now_ms) {
       Ok(run) => created.push(run)
       Err(_) => ()
     }

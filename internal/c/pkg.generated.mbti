@@ -20,7 +20,6 @@ pub fn strlen(Pointer[Byte]) -> UInt64
 #external
 pub type Null
 
-#alias(Ptr)
 #external
 pub type Pointer[_]
 pub fn[T, U] Pointer::cast(Self[T]) -> Self[U]

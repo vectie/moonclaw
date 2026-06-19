@@ -1,16 +1,16 @@
 ///|
 fn sample_definition() -> JobDefinition {
-  JobDefinition::{
+  {
     id: "job.sample.sync",
     kind: "job.sample.sync",
     enabled: true,
     config: { "query": "llm agents", "limit": 20 },
-    schedule: Some(SchedulePolicy::{
+    schedule: Some({
       kind: "interval",
       interval_minutes: Some(360),
       timezone: Some("Asia/Shanghai"),
     }),
-    retry_policy: Some(RetryPolicy::{ max_attempts: 2, backoff_ms: Some(5000) }),
+    retry_policy: Some({ max_attempts: 2, backoff_ms: Some(5000) }),
     workflow_id: Some("job.sample.workflow"),
     created_at: 1,
     updated_at: 2,
@@ -20,25 +20,17 @@ fn sample_definition() -> JobDefinition {
 
 ///|
 fn sample_workflow() -> WorkflowDefinition {
-  WorkflowDefinition::{
+  {
     id: "job.sample.workflow",
     kind: "job",
     steps: [
-      WorkflowStepDefinition::{
+      {
         id: "fetch",
         kind: "job.analysis",
         config: { "source": "arxiv" },
-        retry_policy: Some(RetryPolicy::{
-          max_attempts: 2,
-          backoff_ms: Some(5000),
-        }),
+        retry_policy: Some({ max_attempts: 2, backoff_ms: Some(5000) }),
       },
-      WorkflowStepDefinition::{
-        id: "parse",
-        kind: "job.analysis",
-        config: {},
-        retry_policy: None,
-      },
+      { id: "parse", kind: "job.analysis", config: {}, retry_policy: None },
     ],
     output_bindings: ["papers", "chunks"],
   }
@@ -46,7 +38,7 @@ fn sample_workflow() -> WorkflowDefinition {
 
 ///|
 fn sample_delegate_definition() -> JobDefinition {
-  JobDefinition::{
+  {
     ..sample_definition(),
     id: "job.sample.delegate",
     workflow_id: Some("job.sample.delegate.workflow"),
@@ -55,16 +47,11 @@ fn sample_delegate_definition() -> JobDefinition {
 
 ///|
 fn sample_delegate_workflow() -> WorkflowDefinition {
-  WorkflowDefinition::{
+  {
     id: "job.sample.delegate.workflow",
     kind: "job",
     steps: [
-      WorkflowStepDefinition::{
-        id: "delegate",
-        kind: "job.delegate",
-        config: {},
-        retry_policy: None,
-      },
+      { id: "delegate", kind: "job.delegate", config: {}, retry_policy: None },
     ],
     output_bindings: [],
   }
@@ -72,15 +59,15 @@ fn sample_delegate_workflow() -> WorkflowDefinition {
 
 ///|
 fn sample_run() -> JobRun {
-  JobRun::{
+  {
     id: "run-1",
     job_id: "job.sample.sync",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -92,11 +79,11 @@ fn sample_run() -> JobRun {
 
 ///|
 fn sample_step_run() -> JobStepRun {
-  JobStepRun::{
+  {
     id: "step-run-1",
     run_id: "run-1",
     step_id: "fetch",
-    status: RunStatus::Succeeded,
+    status: Succeeded,
     started_at: Some(11),
     finished_at: Some(12),
     metrics: { "paper_count": 4 },
@@ -110,14 +97,14 @@ fn sample_step_run() -> JobStepRun {
 
 ///|
 fn sample_artifact(root : String) -> ArtifactRecord {
-  ArtifactRecord::{
+  {
     id: "artifact-1",
     run_id: "run-1",
     job_id: "job.sample.sync",
     artifact_type: "paper.meta",
     logical_key: Some("paper:2501.01234v1"),
     version: 1,
-    status: ArtifactStatus::Active,
+    status: Active,
     path: root
     |> @pathx.join("artifacts")
     |> @pathx.join("artifact-1")
@@ -132,7 +119,7 @@ fn sample_artifact(root : String) -> ArtifactRecord {
 
 ///|
 fn sample_memory() -> MemoryRecord {
-  MemoryRecord::{
+  {
     id: "memory-1",
     kind: "note",
     title: Some("daily digest"),
@@ -147,7 +134,7 @@ fn sample_memory() -> MemoryRecord {
     recipient: Some("oc_chat_123"),
     thread_id: None,
     source_artifact_id: Some("artifact-1"),
-    status: MemoryStatus::Active,
+    status: Active,
     created_at: 14,
     updated_at: 14,
     archived_at: None,
@@ -156,7 +143,7 @@ fn sample_memory() -> MemoryRecord {
 
 ///|
 fn sample_proposal() -> JobProposal {
-  JobProposal::{
+  {
     id: "proposal-1",
     title: "Track recent agent papers",
     request_text: "Track recent agent papers and summarize findings.",
@@ -166,9 +153,9 @@ fn sample_proposal() -> JobProposal {
     profile_id: None,
     profile_role: None,
     profile_metadata: {},
-    status: JobProposalStatus::Draft,
+    status: Draft,
     steps: [
-      JobProposalStep::{
+      {
         id: "collect",
         title: "Collect sources",
         prompt: "Collect relevant papers.",
@@ -334,13 +321,13 @@ async test "SystemStore persists job proposals and run events" {
     let proposal = sample_proposal()
 
     store.save_job_proposal(proposal)
-    store.append_run_event(JobRunEvent::{
+    store.append_run_event({
       run_id: "run-1",
       job_id: "job.sample.sync",
       event_type: "job.started",
       timestamp: 30,
       step_id: None,
-      status: Some(RunStatus::Running),
+      status: Some(Running),
       message: "Run started",
       data: {},
     })
@@ -385,13 +372,13 @@ async test "SystemStore persists notification preferences" {
   @fsx.with_temporary_directory("job-system-notify-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
     let store = SystemStore::new(root~)
-    store.save_notification_preference(JobNotificationPreference::{
+    store.save_notification_preference({
       id: "feishu:default:oc_chat_123",
       channel_id: "feishu",
       account_id: "default",
       recipient: "oc_chat_123",
       thread_id: None,
-      verbosity: NotificationVerbosity::Verbose,
+      verbosity: Verbose,
       heartbeat_interval_ms: Some(60_000),
       warn_after_ms: Some(180_000),
       created_at: 50,
@@ -429,7 +416,7 @@ async test "SystemStore reconciles stale running delegate parent from terminal c
       id: "run-parent:delegate",
       run_id: "run-parent",
       step_id: "delegate",
-      status: RunStatus::Running,
+      status: Running,
       finished_at: None,
       summary: None,
       output: None,
@@ -439,11 +426,11 @@ async test "SystemStore reconciles stale running delegate parent from terminal c
       ..sample_run(),
       id: "run-child",
       job_id: "job.child",
-      trigger: TriggerSource::Custom("subjob"),
+      trigger: Custom("subjob"),
       parent_run_id: Some("run-parent"),
       parent_step_id: Some("delegate"),
       depth: 1,
-      status: RunStatus::Succeeded,
+      status: Succeeded,
       finished_at: Some(33),
       summary: Some("done"),
     }
@@ -486,7 +473,7 @@ async test "SystemStore reconciles stale running delegate parent from terminal c
 
 ///|
 fn sample_analysis_recovery_definition() -> JobDefinition {
-  JobDefinition::{
+  {
     ..sample_definition(),
     id: "job.sample.analysis.recovery",
     workflow_id: Some("workflow.sample.analysis.recovery"),
@@ -497,7 +484,7 @@ fn sample_analysis_recovery_definition() -> JobDefinition {
 fn sample_analysis_recovery_step(
   metadata? : Json = {},
 ) -> WorkflowStepDefinition {
-  WorkflowStepDefinition::{
+  {
     id: "repair_planbook_gap",
     kind: "job.analysis",
     config: AnalysisStepConfig::new(
@@ -513,7 +500,7 @@ fn sample_analysis_recovery_step(
 fn sample_analysis_recovery_workflow(
   step : WorkflowStepDefinition,
 ) -> WorkflowDefinition {
-  WorkflowDefinition::{
+  {
     id: "workflow.sample.analysis.recovery",
     kind: "job.proposal",
     steps: [step],
@@ -553,14 +540,14 @@ async test "SystemStore reconciles materialized analysis output into terminal ru
       id: "run-analysis",
       job_id: definition.id,
       workspace_dir: Some(workspace_dir),
-      status: RunStatus::Running,
+      status: Running,
     }
     let step_run = JobStepRun::{
       ..sample_step_run(),
       id: "run-analysis:repair_planbook_gap",
       run_id: "run-analysis",
       step_id: "repair_planbook_gap",
-      status: RunStatus::Running,
+      status: Running,
       finished_at: None,
       output: None,
       error: None,
@@ -616,14 +603,14 @@ async test "SystemStore fails recovered patch repair output without receipt" {
       id: "run-patch",
       job_id: definition.id,
       workspace_dir: Some(workspace_dir),
-      status: RunStatus::Running,
+      status: Running,
     }
     let step_run = JobStepRun::{
       ..sample_step_run(),
       id: "run-patch:repair_planbook_gap",
       run_id: "run-patch",
       step_id: "repair_planbook_gap",
-      status: RunStatus::Running,
+      status: Running,
       finished_at: None,
       output: None,
       error: None,
@@ -673,11 +660,11 @@ async test "SystemStore shortens step file names for long step ids" {
     let store = SystemStore::new(root~)
     store.save_run(sample_run())
     let long_step_id = "goal-run-the-domain-local-ingest-extension-for-this-request-request-load-skills-wiki-ingest-skill-md-inspect-raw-wiki-sources-and-wiki-synthesis-maintenance-plan-md-then-bootstrap-durable-book-coverage-for-the-goal-discover-or-stage-high-signal-sources-populate-maintained-source-pages-and-revise-the-wiki-so-later-synthesis-can-cite-durable-pages-research-moontown-moonbook-and-moonclaw-the-extension-owns-source-discovery-durable-wiki-updates-and-readiness-signals-ingest-followup"
-    store.save_step_run(JobStepRun::{
+    store.save_step_run({
       id: "step-run-long",
       run_id: "run-1",
       step_id: long_step_id,
-      status: RunStatus::Failed,
+      status: Failed,
       started_at: Some(11),
       finished_at: Some(12),
       metrics: {},
@@ -724,7 +711,7 @@ async test "SystemStore merges run index across concurrent store instances" {
       ..sample_run(),
       id: "run-b",
       job_id: "job-b",
-      status: RunStatus::Succeeded,
+      status: Succeeded,
       finished_at: Some(20),
       summary: Some("done"),
     }
@@ -833,18 +820,15 @@ async test "SystemStore prefers per-run metadata over a stale but valid runs ind
     let stale_run = sample_run()
     let authoritative_run = JobRun::{
       ..sample_run(),
-      status: RunStatus::Failed,
+      status: Failed,
       finished_at: Some(22),
       summary: Some("crashed"),
       error: Some("disk truth"),
     }
-    let stale_step = JobStepRun::{
-      ..sample_step_run(),
-      status: RunStatus::Running,
-    }
+    let stale_step = JobStepRun::{ ..sample_step_run(), status: Running }
     let authoritative_step = JobStepRun::{
       ..sample_step_run(),
-      status: RunStatus::Succeeded,
+      status: Succeeded,
       summary: Some("authoritative"),
     }
 

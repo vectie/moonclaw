@@ -49,7 +49,7 @@ async test "GatewayJobApp::next_run_id avoids collisions for constant CLI seed" 
     )
     app
     .runtime()
-    .register_definition(JobDefinition::{
+    .register_definition({
       id: "job.demo",
       kind: "generic",
       enabled: true,
@@ -65,15 +65,15 @@ async test "GatewayJobApp::next_run_id avoids collisions for constant CLI seed" 
     app
     .runtime()
     .store()
-    .save_run(JobRun::{
+    .save_run({
       id: first,
       job_id: "job.demo",
-      trigger: TriggerSource::Manual,
+      trigger: Manual,
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
       workspace_dir: None,
-      status: RunStatus::Pending,
+      status: Pending,
       attempt: 1,
       retry_of: None,
       started_at: None,
@@ -118,9 +118,7 @@ async test "GatewayJobApp::confirm_proposal registers workflow and persists prop
       initial_input,
     ) {
       captured_input.val = initial_input
-      app
-      .runtime()
-      .trigger_definition("run-2", job_id, TriggerSource::Manual, 200)
+      app.runtime().trigger_definition("run-2", job_id, Manual, 200)
     })
     let confirmed = match result {
       Ok(confirmed) => confirmed
@@ -177,7 +175,7 @@ async test "GatewayJobApp::confirm_proposal initializes generic controller recor
       profile_role: Some("controller"),
       profile_metadata: { "domain": "research" },
       steps: [
-        JobProposalStep::{
+        {
           id: "collect",
           title: "Collect evidence",
           prompt: "Collect evidence for ${request}",
@@ -189,7 +187,7 @@ async test "GatewayJobApp::confirm_proposal initializes generic controller recor
           include_parent_outputs: None,
           max_depth: None,
         },
-        JobProposalStep::{
+        {
           id: "evaluate",
           title: "Evaluate",
           prompt: "Evaluate outputs.",
@@ -208,9 +206,7 @@ async test "GatewayJobApp::confirm_proposal initializes generic controller recor
       job_id,
       _initial_input,
     ) {
-      app
-      .runtime()
-      .trigger_definition("run-controller", job_id, TriggerSource::Manual, 200)
+      app.runtime().trigger_definition("run-controller", job_id, Manual, 200)
     })
     let confirmed = match result {
       Ok(confirmed) => confirmed
@@ -260,9 +256,7 @@ async test "GatewayJobApp::confirm_proposal passes proposal intake into launch c
       seen_input.val = initial_input
         .map(fn(json) { json.stringify() })
         .unwrap_or("")
-      app
-      .runtime()
-      .trigger_definition("run-intake", job_id, TriggerSource::Manual, 200)
+      app.runtime().trigger_definition("run-intake", job_id, Manual, 200)
     })
     inspect(result is Ok(_), content="true")
     inspect(
@@ -308,7 +302,7 @@ async test "compile_job_proposal preserves presentation postprocess artifact fil
       "proposal-presentation-files", "Prepare a presentation.", 100,
     ),
     steps: [
-      JobProposalStep::{
+      {
         id: "presentation_postprocess",
         title: "Generate presentation plan",
         prompt: "Generate presentation plan",
@@ -354,7 +348,7 @@ async test "compile_job_proposal preserves presentation renderer execution targe
       "proposal-presentation-render", "Prepare a rendered presentation.", 100,
     ),
     steps: [
-      JobProposalStep::{
+      {
         id: "presentation_render",
         title: "Render presentation package",
         prompt: "Render presentation package",

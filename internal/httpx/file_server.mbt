@@ -80,11 +80,7 @@ pub fn FileServer::new(path : StringView) -> FileServer {
       w.write(content)
     }
   }
-  FileServer::{
-    path: path.to_owned(),
-    middleware,
-    handler: middleware(not_found),
-  }
+  { path: path.to_owned(), middleware, handler: middleware(not_found) }
 }
 
 ///|

@@ -5,7 +5,7 @@ pub(all) struct UserMessage {
 
 ///|
 pub fn UserMessage::new(text : String) -> UserMessage {
-  UserMessage::{ text, }
+  { text, }
 }
 
 ///|

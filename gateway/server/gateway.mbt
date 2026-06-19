@@ -103,11 +103,11 @@ impl @json.FromJson for SessionEntry with fn from_json(
   path : @json.JsonPath,
 ) -> SessionEntry raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "SessionEntry: expected object"))
+    raise JsonDecodeError((path, "SessionEntry: expected object"))
   }
   let session_id = match obj.get("session_id") {
     Some(String(value)) => value
-    _ => raise @json.JsonDecodeError((path, "SessionEntry: missing session_id"))
+    _ => raise JsonDecodeError((path, "SessionEntry: missing session_id"))
   }
   let title = match obj.get("title") {
     Some(String(value)) => Some(value)
@@ -139,9 +139,7 @@ impl @json.FromJson for SessionEntry with fn from_json(
       Some(
         @json.from_json(plan_json, path~) catch {
           error =>
-            raise @json.JsonDecodeError(
-              (path, "SessionEntry.plan_mode: \{error}"),
-            )
+            raise JsonDecodeError((path, "SessionEntry.plan_mode: \{error}"))
         },
       )
   }
@@ -151,9 +149,7 @@ impl @json.FromJson for SessionEntry with fn from_json(
       for item in items {
         let message : SessionMessage = @json.from_json(item, path~) catch {
           error =>
-            raise @json.JsonDecodeError(
-              (path, "SessionEntry.messages: \{error}"),
-            )
+            raise JsonDecodeError((path, "SessionEntry.messages: \{error}"))
         }
         parsed.push(message)
       }
@@ -246,7 +242,7 @@ enum GatewayEvent {
 
 ///|
 pub fn Gateway::request_shutdown(self : Gateway) -> Unit {
-  self.events.put(GatewayEvent::Shutdown)
+  self.events.put(Shutdown)
 }
 
 ///|
@@ -269,10 +265,7 @@ fn Gateway::active_job_runs(self : Gateway) -> Array[@job.JobRun] {
   .job_runtime()
   .store()
   .list_runs()
-  .filter(fn(run) {
-    run.status is @job.RunStatus::Running ||
-    run.status is @job.RunStatus::Pending
-  })
+  .filter(fn(run) { run.status is Running || run.status is Pending })
 }
 
 ///|
@@ -337,7 +330,7 @@ fn Gateway::register_active_acp_run(
   stderr : @spawn.Buffer,
 ) -> Unit {
   self.active_acp_runs[run_id] = process
-  self.active_acp_output[run_id] = AcpLiveOutput::{ stdout, stderr }
+  self.active_acp_output[run_id] = { stdout, stderr }
 }
 
 ///|
@@ -543,7 +536,7 @@ fn append_handoff(
       return
     }
   }
-  handoffs.push(@job.JobUiHandoff::{ node_id, step_id, remote: [link] })
+  handoffs.push({ node_id, step_id, remote: [link] })
 }
 
 ///|

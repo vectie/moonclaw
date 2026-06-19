@@ -11,7 +11,7 @@ pub fn create_pipeline_params(
   stages~ : Array[PipelineStageParams],
   metadata? : Map[String, Json] = Map([], capacity=0),
 ) -> CreatePipelineParams {
-  CreatePipelineParams::{ name, stages, metadata }
+  { name, stages, metadata }
 }
 
 ///|
@@ -31,7 +31,7 @@ pub fn pipeline_stage_params(
   cwd? : String,
   input_template? : String,
 ) -> PipelineStageParams {
-  PipelineStageParams::{ name, message, model, cwd, input_template }
+  { name, message, model, cwd, input_template }
 }
 
 ///|
@@ -45,7 +45,7 @@ pub fn advance_stage_params(
   stage_name~ : String,
   result~ : Json,
 ) -> AdvanceStageParams {
-  AdvanceStageParams::{ stage_name, result }
+  { stage_name, result }
 }
 
 ///|
@@ -59,7 +59,7 @@ pub fn fail_stage_params(
   stage_name~ : String,
   error~ : String,
 ) -> FailStageParams {
-  FailStageParams::{ stage_name, error }
+  { stage_name, error }
 }
 
 ///|

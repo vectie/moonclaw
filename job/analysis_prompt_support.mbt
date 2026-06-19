@@ -166,7 +166,7 @@ fn render_starter_attachment_artifacts_prompt(input : Json) -> String {
             let ids = artifact_ids
               .map(fn(value) {
                 match value {
-                  String(id) => id
+                  String(artifact_id) => artifact_id
                   _ => ""
                 }
               })
@@ -226,7 +226,7 @@ pub fn analysis_memory_query(
   MemoryQuery::new(
     workspace~,
     scope=config.artifacts.scope.get(0),
-    status=Some(MemoryStatus::Active),
+    status=Some(Active),
   )
 }
 

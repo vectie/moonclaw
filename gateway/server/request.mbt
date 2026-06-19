@@ -219,27 +219,22 @@ fn ui_not_built_html(ui_root : String, build_dir : String) -> String {
 ///|
 fn gateway_operator_ui_dist_root(root : String) -> String {
   @path.Path(root)
-  .join(@path.Path("ui"))
-  .join(@path.Path("rabbita-job"))
-  .join(@path.Path("dist"))
+  .join(Path("ui"))
+  .join(Path("rabbita-job"))
+  .join(Path("dist"))
   .to_string()
 }
 
 ///|
 fn gateway_operator_ui_build_dir(root : String) -> String {
-  @path.Path(root)
-  .join(@path.Path("ui"))
-  .join(@path.Path("rabbita-job"))
-  .to_string()
+  @path.Path(root).join(Path("ui")).join(Path("rabbita-job")).to_string()
 }
 
 ///|
 async fn Gateway::operator_ui_dist_root(self : Gateway) -> (String, String) {
   let cwd_root = self.cwd
   let cwd_ui_root = gateway_operator_ui_dist_root(cwd_root)
-  let cwd_index = @path.Path(cwd_ui_root)
-    .join(@path.Path("index.html"))
-    .to_string()
+  let cwd_index = @path.Path(cwd_ui_root).join(Path("index.html")).to_string()
   let cwd_exists = @fsx.exists_as_file(cwd_index) catch { _ => false }
   if cwd_exists {
     return (cwd_ui_root, gateway_operator_ui_build_dir(cwd_root))
@@ -289,7 +284,7 @@ async fn Gateway::handle_operator_ui(
   }
   let is_spa_route = !path_parts.is_empty() && !relative_path.contains(".")
   let asset_path = if is_spa_route { "index.html" } else { relative_path }
-  let full_path = @path.Path(ui_root).join(@path.Path(asset_path)).to_string()
+  let full_path = @path.Path(ui_root).join(Path(asset_path)).to_string()
   if !full_path.has_prefix(ui_root) {
     raise json_error(404, "NotFound", {
       "error": { "code": "ui_not_found", "message": "Unknown UI asset path" },

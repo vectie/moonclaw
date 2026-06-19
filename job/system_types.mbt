@@ -136,7 +136,7 @@ pub fn ArtifactQuery::new(
   scope? : String? = None,
   status? : ArtifactStatus? = None,
 ) -> ArtifactQuery {
-  ArtifactQuery::{ job_id, run_id, artifact_type, logical_key, scope, status }
+  { job_id, run_id, artifact_type, logical_key, scope, status }
 }
 
 ///|
@@ -166,7 +166,7 @@ pub fn ArtifactWriteRequest::new(
   scope? : Array[String] = [],
   append_only? : Bool = true,
 ) -> ArtifactWriteRequest {
-  ArtifactWriteRequest::{
+  {
     run_id,
     job_id,
     artifact_type,
@@ -197,13 +197,7 @@ pub fn ArtifactRetentionPolicy::new(
   max_age_ms? : Int? = None,
   archive_before_delete? : Bool = true,
 ) -> ArtifactRetentionPolicy {
-  ArtifactRetentionPolicy::{
-    artifact_type,
-    scope,
-    keep_latest,
-    max_age_ms,
-    archive_before_delete,
-  }
+  { artifact_type, scope, keep_latest, max_age_ms, archive_before_delete }
 }
 
 ///|
@@ -273,7 +267,7 @@ pub fn MemoryWriteRequest::new(
   thread_id? : String? = None,
   source_artifact_id? : String? = None,
 ) -> MemoryWriteRequest {
-  MemoryWriteRequest::{
+  {
     kind,
     title,
     content,
@@ -319,7 +313,7 @@ pub fn MemoryQuery::new(
   source_artifact_id? : String? = None,
   status? : MemoryStatus? = None,
 ) -> MemoryQuery {
-  MemoryQuery::{
+  {
     kind,
     tag,
     scope,

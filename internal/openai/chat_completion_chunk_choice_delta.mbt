@@ -8,12 +8,12 @@ pub struct ChatCompletionChunkChoiceDelta {
 } derive(ToJson)
 
 ///|
-impl @json.FromJson for ChatCompletionChunkChoiceDelta with from_json(
+impl @json.FromJson for ChatCompletionChunkChoiceDelta with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionChunkChoiceDelta {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   let content = match json.get("content") {
     Some(Null) => None
@@ -57,5 +57,5 @@ impl @json.FromJson for ChatCompletionChunkChoiceDelta with from_json(
     }
     None => None
   }
-  ChatCompletionChunkChoiceDelta::{ content, refusal, role, tool_calls }
+  { content, refusal, role, tool_calls }
 }

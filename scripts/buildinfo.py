@@ -8,7 +8,6 @@ This script creates a MoonBit package that exports build information constants.
 
 import subprocess
 import sys
-import json
 import re
 from pathlib import Path
 
@@ -47,31 +46,22 @@ def get_commit_sha():
 
 
 def get_version_from_moon_mod(project_root):
-    """Read version from moon.mod, falling back to legacy moon.mod.json."""
+    """Read version from moon.mod."""
     moon_mod_path = project_root / "moon.mod"
-    if moon_mod_path.exists():
-        try:
-            version_pattern = re.compile(r'^\s*version\s*=\s*"([^"]+)"\s*$')
-            with open(moon_mod_path, "r") as f:
-                for line in f:
-                    match = version_pattern.match(line)
-                    if match:
-                        return match.group(1)
-            print(
-                "Error reading version from moon.mod: version field not found",
-                file=sys.stderr,
-            )
-            return "0.0.0"
-        except OSError as e:
-            print(f"Error reading version from moon.mod: {e}", file=sys.stderr)
-            return "0.0.0"
-    moon_mod_json_path = project_root / "moon.mod.json"
     try:
-        with open(moon_mod_json_path, "r") as f:
-            moon_mod = json.load(f)
-            return moon_mod.get("version", "0.0.0")
-    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
-        print(f"Error reading version from moon.mod.json: {e}", file=sys.stderr)
+        version_pattern = re.compile(r'^\s*version\s*=\s*"([^"]+)"\s*$')
+        with open(moon_mod_path, "r") as f:
+            for line in f:
+                match = version_pattern.match(line)
+                if match:
+                    return match.group(1)
+        print(
+            "Error reading version from moon.mod: version field not found",
+            file=sys.stderr,
+        )
+        return "0.0.0"
+    except OSError as e:
+        print(f"Error reading version from moon.mod: {e}", file=sys.stderr)
         return "0.0.0"
 
 

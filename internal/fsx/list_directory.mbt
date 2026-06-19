@@ -17,14 +17,14 @@ pub enum FileKind {
 ///|
 fn FileKind::of_fs_file_kind(file_kind : @fs.FileKind) -> FileKind {
   match file_kind {
-    @fs.FileKind::Unknown => Unknown
-    @fs.FileKind::Regular => Regular
-    @fs.FileKind::Directory => Directory
-    @fs.FileKind::SymLink => SymLink
-    @fs.FileKind::Socket => Socket
-    @fs.FileKind::Pipe => Pipe
-    @fs.FileKind::BlockDevice => BlockDevice
-    @fs.FileKind::CharDevice => CharDevice
+    Unknown => Unknown
+    Regular => Regular
+    Directory => Directory
+    SymLink => SymLink
+    Socket => Socket
+    Pipe => Pipe
+    BlockDevice => BlockDevice
+    CharDevice => CharDevice
   }
 }
 

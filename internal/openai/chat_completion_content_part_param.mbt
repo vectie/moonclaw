@@ -9,11 +9,11 @@ pub fn ChatCompletionContentPartParam::new(
   text~ : String,
   cache_control? : CacheControl,
 ) -> ChatCompletionContentPartParam {
-  ChatCompletionContentPartParam::Text({ text, cache_control })
+  Text({ text, cache_control })
 }
 
 ///|
-pub impl ToJson for ChatCompletionContentPartParam with to_json(
+pub impl ToJson for ChatCompletionContentPartParam with fn to_json(
   self : ChatCompletionContentPartParam,
 ) -> Json {
   match self {
@@ -28,20 +28,20 @@ pub impl ToJson for ChatCompletionContentPartParam with to_json(
 }
 
 ///|
-impl @json.FromJson for ChatCompletionContentPartParam with from_json(
+impl @json.FromJson for ChatCompletionContentPartParam with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionContentPartParam raise {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   guard json.get("type") is Some(String(type_)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'type' field"))
+    raise JsonDecodeError((json_path, "Missing 'type' field"))
   }
   match type_ {
     "text" => {
       guard json.get("text") is Some(String(text)) else {
-        raise @json.JsonDecodeError((json_path, "Missing 'text' field"))
+        raise JsonDecodeError((json_path, "Missing 'text' field"))
       }
       let cache_control = match json.get("cache_control") {
         None | Some(Null) => None
@@ -53,14 +53,9 @@ impl @json.FromJson for ChatCompletionContentPartParam with from_json(
           Some(cache_control)
         }
       }
-      ChatCompletionContentPartParam::Text(ChatCompletionContentPartTextParam::{
-        text,
-        cache_control,
-      })
+      Text({ text, cache_control })
     }
     _ =>
-      raise @json.JsonDecodeError(
-        (json_path, "Unknown content part type: \{type_}"),
-      )
+      raise JsonDecodeError((json_path, "Unknown content part type: \{type_}"))
   }
 }

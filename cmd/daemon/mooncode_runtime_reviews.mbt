@@ -53,7 +53,7 @@ async fn mooncode_runtime_turn_review_receipts(
       "runtime": "moonclaw",
       "artifact": "moonbook",
       "review": "moonbook",
-      "extractable_component": "mooncode",
+      "standalone_component": "mooncode",
     },
   }
   mooncode_runtime_turn_write_json_manifest(book_root, relative, receipt)

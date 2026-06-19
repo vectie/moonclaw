@@ -39,7 +39,7 @@ pub fn AnalysisToolContract::new(
   web_fetch? : Bool = false,
   web_search? : Bool = false,
 ) -> AnalysisToolContract {
-  AnalysisToolContract::{
+  {
     shell,
     list_files,
     glob_files,
@@ -61,10 +61,7 @@ pub fn AnalysisToolContract::new(
 }
 
 ///|
-fn default_analysis_tool_contract(
-  enable_tools : Bool,
-  web_search : Bool,
-) -> AnalysisToolContract {
+fn default_analysis_tool_contract(enable_tools : Bool) -> AnalysisToolContract {
   if !enable_tools {
     AnalysisToolContract::new(
       shell=false,
@@ -86,12 +83,7 @@ fn default_analysis_tool_contract(
       web_search=false,
     )
   } else {
-    AnalysisToolContract::new(
-      delegate_run=true,
-      patch_edit=true,
-      web_fetch=web_search,
-      web_search~,
-    )
+    AnalysisToolContract::new(delegate_run=true, patch_edit=true)
   }
 }
 
@@ -99,10 +91,7 @@ fn default_analysis_tool_contract(
 pub fn analysis_tool_contract(
   config : AnalysisStepConfig,
 ) -> AnalysisToolContract {
-  let fallback = default_analysis_tool_contract(
-    config.enable_tools,
-    config.web_search,
-  )
+  let fallback = default_analysis_tool_contract(config.enable_tools)
   match metadata_with_step_metadata(config.metadata, "tool_contract") {
     Some(json) => @json.from_json(json) catch { _ => fallback }
     None => fallback
@@ -204,7 +193,7 @@ fn constrain_tool_contract_for_request(
     false,
   )
   if provider_execution_requested(request.execution_mode) || provider_derived {
-    AnalysisToolContract::{
+    {
       ..constrained,
       shell: false,
       list_resources: false,

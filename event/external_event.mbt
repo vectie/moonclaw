@@ -31,7 +31,7 @@ struct ExternalEventQueue {
 ///
 /// A new `ExternalEventQueue` instance ready to receive events.
 pub fn ExternalEventQueue::new() -> ExternalEventQueue raise {
-  ExternalEventQueue::{
+  {
     uuid: @uuid.generator(@rand.chacha8()),
     queue: @aqueue.Queue::new(kind=Unbounded),
   }

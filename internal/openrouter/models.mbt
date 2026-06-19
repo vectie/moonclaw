@@ -22,13 +22,13 @@ pub impl @json.FromJson for Model with fn from_json(
   path : @json.JsonPath,
 ) -> Model raise @json.JsonDecodeError {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (path, "\{PackageName}.Model::from_json: expected object"),
     )
   }
   let id : String = {
     guard json.get("id") is Some(id_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("id"),
           "\{PackageName}.Model::from_json: missing field id",
@@ -39,7 +39,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let canonical_slug : String = {
     guard json.get("canonical_slug") is Some(canonical_slug_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("canonical_slug"),
           "\{PackageName}.Model::from_json: missing field canonical_slug",
@@ -50,7 +50,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let name : String = {
     guard json.get("name") is Some(name_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("name"),
           "\{PackageName}.Model::from_json: missing field name",
@@ -61,7 +61,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let created : Int64 = {
     guard json.get("created") is Some(created_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("created"),
           "\{PackageName}.Model::from_json: missing field created",
@@ -72,7 +72,7 @@ pub impl @json.FromJson for Model with fn from_json(
       Number(_, repr=Some(created_repr)) =>
         @string.parse_int64(created_repr) catch {
           error =>
-            raise @json.JsonDecodeError(
+            raise JsonDecodeError(
               (
                 path.add_key("created"),
                 "\{PackageName}.Model::from_json: invalid number for created: \{error}",
@@ -82,7 +82,7 @@ pub impl @json.FromJson for Model with fn from_json(
       Number(created_number, repr=None) =>
         @string.parse_int64(created_number.to_string()) catch {
           error =>
-            raise @json.JsonDecodeError(
+            raise JsonDecodeError(
               (
                 path.add_key("created"),
                 "\{PackageName}.Model::from_json: invalid number for created: \{error}",
@@ -90,7 +90,7 @@ pub impl @json.FromJson for Model with fn from_json(
             )
         }
       _ =>
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (
             path.add_key("created"),
             "\{PackageName}.Model::from_json: expected number for created",
@@ -100,7 +100,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let description : String = {
     guard json.get("description") is Some(description_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("description"),
           "\{PackageName}.Model::from_json: missing field description",
@@ -111,7 +111,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let context_length : Int = {
     guard json.get("context_length") is Some(context_length_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("context_length"),
           "\{PackageName}.Model::from_json: missing field context_length",
@@ -122,7 +122,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let architecture : Architecture = {
     guard json.get("architecture") is Some(architecture_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("architecture"),
           "\{PackageName}.Model::from_json: missing field architecture",
@@ -133,7 +133,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let pricing : Pricing = {
     guard json.get("pricing") is Some(pricing_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("pricing"),
           "\{PackageName}.Model::from_json: missing field pricing",
@@ -144,7 +144,7 @@ pub impl @json.FromJson for Model with fn from_json(
   }
   let top_provider : TopProvider = {
     guard json.get("top_provider") is Some(top_provider_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("top_provider"),
           "\{PackageName}.Model::from_json: missing field top_provider",
@@ -156,7 +156,7 @@ pub impl @json.FromJson for Model with fn from_json(
   let per_request_limits : Json? = json.get("per_request_limits")
   let supported_parameters : Array[String] = {
     guard json.get("supported_parameters") is Some(supported_parameters_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("supported_parameters"),
           "\{PackageName}.Model::from_json: missing field supported_parameters",
@@ -168,7 +168,7 @@ pub impl @json.FromJson for Model with fn from_json(
       path=path.add_key("supported_parameters"),
     )
   }
-  Model::{
+  {
     id,
     canonical_slug,
     name,
@@ -197,13 +197,13 @@ pub impl @json.FromJson for Architecture with fn from_json(
   path : @json.JsonPath,
 ) -> Architecture raise @json.JsonDecodeError {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (path, "\{PackageName}.Architecture::from_json: expected object"),
     )
   }
   let input_modalities : Array[String] = {
     guard json.get("input_modalities") is Some(input_modalities_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("input_modalities"),
           "\{PackageName}.Architecture::from_json: missing field input_modalities",
@@ -217,7 +217,7 @@ pub impl @json.FromJson for Architecture with fn from_json(
   }
   let output_modalities : Array[String] = {
     guard json.get("output_modalities") is Some(output_modalities_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("output_modalities"),
           "\{PackageName}.Architecture::from_json: missing field output_modalities",
@@ -231,7 +231,7 @@ pub impl @json.FromJson for Architecture with fn from_json(
   }
   let tokenizer : String = {
     guard json.get("tokenizer") is Some(tokenizer_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("tokenizer"),
           "\{PackageName}.Architecture::from_json: missing field tokenizer",
@@ -248,12 +248,7 @@ pub impl @json.FromJson for Architecture with fn from_json(
       )
     None => None
   }
-  Architecture::{
-    input_modalities,
-    output_modalities,
-    tokenizer,
-    instruct_type,
-  }
+  { input_modalities, output_modalities, tokenizer, instruct_type }
 }
 
 ///|
@@ -274,13 +269,13 @@ pub impl @json.FromJson for Pricing with fn from_json(
   path : @json.JsonPath,
 ) -> Pricing raise @json.JsonDecodeError {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (path, "\{PackageName}.Pricing::from_json: expected object"),
     )
   }
   let prompt : String = {
     guard json.get("prompt") is Some(prompt_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("prompt"),
           "\{PackageName}.Pricing::from_json: missing field prompt",
@@ -291,7 +286,7 @@ pub impl @json.FromJson for Pricing with fn from_json(
   }
   let completion : String = {
     guard json.get("completion") is Some(completion_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("completion"),
           "\{PackageName}.Pricing::from_json: missing field completion",
@@ -351,7 +346,7 @@ pub impl @json.FromJson for Pricing with fn from_json(
       )
     None => None
   }
-  Pricing::{
+  {
     prompt,
     completion,
     request,
@@ -376,7 +371,7 @@ pub impl @json.FromJson for TopProvider with fn from_json(
   path : @json.JsonPath,
 ) -> TopProvider raise @json.JsonDecodeError {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (path, "\{PackageName}.TopProvider::from_json: expected object"),
     )
   }
@@ -404,7 +399,7 @@ pub impl @json.FromJson for TopProvider with fn from_json(
   }
   let is_moderated : Bool = {
     guard json.get("is_moderated") is Some(is_moderated_json) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("is_moderated"),
           "\{PackageName}.TopProvider::from_json: missing field is_moderated",
@@ -413,7 +408,7 @@ pub impl @json.FromJson for TopProvider with fn from_json(
     }
     @json.from_json(is_moderated_json, path=path.add_key("is_moderated"))
   }
-  TopProvider::{ context_length, max_completion_tokens, is_moderated }
+  { context_length, max_completion_tokens, is_moderated }
 }
 
 ///|

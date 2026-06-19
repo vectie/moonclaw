@@ -47,8 +47,8 @@ async fn Running::sync_status(task : Running) -> Unit {
     return
   }
   match status_str.to_lower() {
-    "idle" => task.status = @server.Idle
-    "generating" => task.status = @server.Busy
+    "idle" => task.status = Idle
+    "generating" => task.status = Busy
     _ => logger.warn("Unknown status '\{status_str}' from task \{task.id}")
   }
 }

@@ -11,7 +11,7 @@ pub fn AnalysisPolicy::new(
   max_total_tokens? : Int? = None,
   skip_if_artifact_exists? : Bool = false,
 ) -> AnalysisPolicy {
-  AnalysisPolicy::{ timeout_ms, max_total_tokens, skip_if_artifact_exists }
+  { timeout_ms, max_total_tokens, skip_if_artifact_exists }
 }
 
 ///|
@@ -35,7 +35,7 @@ pub fn AnalysisArtifactConfig::new(
   scope? : Array[String] = [],
   append_only? : Bool = true,
 ) -> AnalysisArtifactConfig {
-  AnalysisArtifactConfig::{
+  {
     report_artifact_type,
     result_artifact_type,
     logical_key,
@@ -81,7 +81,7 @@ pub fn AnalysisStepConfig::new(
   artifacts? : AnalysisArtifactConfig = AnalysisArtifactConfig::new(),
   metadata? : Json = {},
 ) -> AnalysisStepConfig {
-  AnalysisStepConfig::{
+  {
     prompt,
     model,
     cwd,
@@ -139,7 +139,7 @@ pub(all) struct AnalysisExecutor {
 pub fn AnalysisExecutor::new(
   run~ : async (AnalysisRequest) -> Result[AnalysisExecution, String],
 ) -> AnalysisExecutor {
-  AnalysisExecutor::{ run, }
+  { run, }
 }
 
 ///|
@@ -181,7 +181,7 @@ fn find_existing_analysis_artifact(
       job_id=Some(run.job_id),
       artifact_type=Some(config.artifacts.report_artifact_type),
       logical_key~,
-      status=Some(ArtifactStatus::Active),
+      status=Some(Active),
     ),
   )
   if matches.is_empty() {
@@ -265,7 +265,7 @@ async fn stamp_running_step_with_analysis_session(
           }
         None => ()
       }
-      store.save_step_run(JobStepRun::{ ..step, logs, })
+      store.save_step_run({ ..step, logs, })
     }
     None => ignore(journal_path)
   }

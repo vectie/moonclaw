@@ -43,10 +43,8 @@ test "CreateTaskResponse::to_json" {
     id: @uuid.parse("123e4567-e89b-12d3-a456-426614174000"),
     cwd: "/tmp/example",
     port: 8080,
-    status: @server.Idle,
-    queued_messages: [
-      QueuedMessage::{ id: "msg1", message: { "text": "Hello" } },
-    ],
+    status: Idle,
+    queued_messages: [{ id: "msg1", message: { "text": "Hello" } }],
     created: @clock.Timestamp::from_ms(0),
     updated: @clock.Timestamp::from_ms(0),
     web_search: true,

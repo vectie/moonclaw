@@ -7,7 +7,7 @@ pub struct SlashCommand {
 
 ///|
 pub fn SlashCommand::new(name : String, description : String) -> SlashCommand {
-  SlashCommand::{ name, description, handler: None }
+  { name, description, handler: None }
 }
 
 ///|

@@ -125,7 +125,7 @@ fn skip_redundant_slashes(view : StringView) -> StringView {
 ///|
 /// Split each path component, handle redundant slashes but doesn't resolve `.` and `..`.
 pub fn split(view : StringView) -> Iter[StringView] {
-  let mut state : SplitState = SplitState::Root
+  let mut state : SplitState = Root
   let mut last = view
   Iter::new(() => {
     for current = state {

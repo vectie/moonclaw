@@ -46,7 +46,7 @@ fn preview_patch_edit_result(
     }
   }
   let file_count = added.length() + modified.length() + deleted.length()
-  PatchEditResult::{
+  {
     mode: Preview,
     patch_valid: true,
     changed: false,
@@ -65,7 +65,7 @@ fn apply_patch_edit_result(
   let file_count = result.added.length() +
     result.modified.length() +
     result.deleted.length()
-  PatchEditResult::{
+  {
     mode: Apply,
     patch_valid: true,
     changed: file_count > 0,
@@ -115,7 +115,7 @@ pub fn new(cwd : String) -> @tool.Tool[PatchEditResult] {
       match params.mode.unwrap_or("preview").trim().to_owned() {
         "preview" => @tool.ok(preview_patch_edit_result(parsed))
         "apply" => {
-          let result = @apply_patch.apply_hunks(parsed.hunks[:], cwd) catch {
+          let result = @apply_patch.apply_hunks(parsed.hunks, cwd) catch {
             ApplyError(msg) =>
               return @tool.error("Failed to apply patch: \{msg}")
           }

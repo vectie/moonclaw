@@ -196,9 +196,7 @@ The `execution_target` is resolved through `.moonclaw/providers.json`. A task
 provider should expose:
 
 - `kind: "extension"` or `kind: "task-provider"`
-- `kind: "moonbook"` or `kind: "book-harness"`
 - capability `provider`, `extension`, `provider.task`, or `extension.task`
-- compatibility aliases `bookapi` or `moonbook.bookapi` are also accepted
 - metadata fields:
   - `command`
   - `args`

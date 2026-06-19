@@ -59,7 +59,7 @@ pub fn Loader::new(
     Some(home) => home
     None => @os.home()
   }
-  Loader::{ home, cwd, logger, skills: {} }
+  { home, cwd, logger, skills: {} }
 }
 
 ///|
@@ -91,9 +91,7 @@ async fn Loader::load_skills_from_directory(
     return
   }
   self.logger.info("Loading skills from directory '\{directory}'...")
-  let entries = @fsx.list_directory(directory).filter(e => {
-    e.kind is @fsx.FileKind::Directory
-  })
+  let entries = @fsx.list_directory(directory).filter(e => e.kind is Directory)
   for entry in entries {
     if entry.name == ".system" {
       continue
@@ -162,16 +160,16 @@ pub async fn Loader::load(self : Loader) -> Unit {
   // `@pathx.normalize` does not resolve symlinks, while `@fsx.resolve` does.
   // `@git.find_repo_root` internally calls `@fsx.resolve`, so we should resolve
   // `cwd` here as well; otherwise the walk-up loop may never reach `root_norm`.
-  let cwd_canon = @fsx.resolve(self.cwd[:]) catch { _ => self.cwd }
-  let home_canon = @fsx.resolve(self.home[:]) catch { _ => self.home }
-  let cwd_norm = @pathx.normalize(cwd_canon[:])
-  let home_norm = @pathx.normalize(home_canon[:])
-  let repo_root = @git.find_repo_root(cwd_norm[:])
+  let cwd_canon = @fsx.resolve(self.cwd) catch { _ => self.cwd }
+  let home_canon = @fsx.resolve(self.home) catch { _ => self.home }
+  let cwd_norm = @pathx.normalize(cwd_canon)
+  let home_norm = @pathx.normalize(home_canon)
+  let repo_root = @git.find_repo_root(cwd_norm)
   let dirs : Array[String] = []
   match repo_root {
     Some(root) => {
       // Walk up from cwd to git repo root (inclusive).
-      let root_norm = @pathx.normalize(root[:])
+      let root_norm = @pathx.normalize(root)
       let mut cur = cwd_norm
       while true {
         dirs.push(cur)

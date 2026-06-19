@@ -257,7 +257,6 @@ pub enum ChatCompletionMessageRole {
 } derive(@debug.Debug)
 pub impl ToJson for ChatCompletionMessageRole
 
-#alias(ChatCompletionMessageToolCallParam)
 pub struct ChatCompletionMessageToolCall {
   id : String
   function : ChatCompletionMessageToolCallFunction
@@ -287,7 +286,6 @@ pub(all) enum ChatCompletionRole {
   Tool
 } derive(ToJson)
 
-#alias(ChatCompletionChunkServiceTier)
 pub(all) enum ChatCompletionServiceTier {
   Auto
   Default

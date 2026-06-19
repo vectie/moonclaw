@@ -41,7 +41,7 @@ async fn write_bytes_with_retry(output : @stdio.Output, bytes : Bytes) -> Unit {
 ///|
 pub fn Terminal::new() -> Terminal raise {
   let size = @tty.window_size()
-  Terminal::{
+  {
     input: @stdio.stdin,
     output: @stdio.stdout,
     width: size.col,
@@ -59,7 +59,7 @@ pub fn Terminal::with_io(
   output~ : @stdio.Output,
 ) -> Terminal raise {
   let size = @tty.window_size()
-  Terminal::{
+  {
     input,
     output,
     width: size.col,

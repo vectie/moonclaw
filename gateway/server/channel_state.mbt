@@ -37,12 +37,7 @@ fn ensure_channel_state(
 ) -> PersistedChannelState {
   match store.states.get(channel_id) {
     Some(state) => state
-    None =>
-      PersistedChannelState::{
-        channel_id,
-        config: @channel.default_config(),
-        accounts: [],
-      }
+    None => { channel_id, config: @channel.default_config(), accounts: [] }
   }
 }
 
@@ -57,11 +52,7 @@ pub async fn ChannelStateStore::save_config(
   let accounts = state.accounts.filter(fn(account) {
     allowed_accounts.contains(account.account_id)
   })
-  self.states.set(channel_id, PersistedChannelState::{
-    channel_id,
-    config,
-    accounts,
-  })
+  self.states.set(channel_id, { channel_id, config, accounts })
   self.save()
 }
 
@@ -77,12 +68,8 @@ pub async fn ChannelStateStore::save_account_runtime(
   let accounts = state.accounts.filter(fn(account) {
     account.account_id != account_id
   })
-  accounts.push(PersistedChannelAccount::{ account_id, config, auto_start })
-  self.states.set(channel_id, PersistedChannelState::{
-    channel_id,
-    config: state.config,
-    accounts,
-  })
+  accounts.push({ account_id, config, auto_start })
+  self.states.set(channel_id, { channel_id, config: state.config, accounts })
   self.save()
 }
 

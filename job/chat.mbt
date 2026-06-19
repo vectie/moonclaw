@@ -7,7 +7,7 @@ pub struct ChatService {
 
 ///|
 pub fn ChatService::new(store~ : SystemStore) -> ChatService {
-  ChatService::{
+  {
     artifacts: ArtifactStore::new(store~),
     memories: MemoryService::new(store~),
     store,
@@ -51,7 +51,7 @@ fn matches_merged_query(
   let status = pick_override(
     request_query.status,
     binding_query.status,
-    Some(ArtifactStatus::Active),
+    Some(Active),
   )
   let job_id = pick_override(request_query.job_id, binding_query.job_id, None)
   let run_id = pick_override(request_query.run_id, binding_query.run_id, None)
@@ -136,9 +136,7 @@ fn score_artifact(
 pub async fn ChatService::retrieve(
   self : ChatService,
   question : String,
-  query? : ArtifactQuery = ArtifactQuery::new(
-    status=Some(ArtifactStatus::Active),
-  ),
+  query? : ArtifactQuery = ArtifactQuery::new(status=Some(Active)),
   max_hits? : Int = 5,
 ) -> Array[RetrievalHit] {
   self.retrieve_merged(question, Some(query), None, max_hits)
@@ -166,7 +164,7 @@ async fn ChatService::retrieve_merged(
     if score <= 0 {
       continue
     }
-    hits.push(RetrievalHit::{
+    hits.push({
       artifact_id: artifact.id,
       artifact_type: artifact.artifact_type,
       logical_key: artifact.logical_key,
@@ -239,10 +237,7 @@ pub async fn ChatService::ask(
   let memory_scope = binding.bind(fn(binding) { binding.scope.get(0) })
   let memory_hits = self.memories.search(
     params.question,
-    query=MemoryQuery::new(
-      scope=memory_scope,
-      status=Some(MemoryStatus::Active),
-    ),
+    query=MemoryQuery::new(scope=memory_scope, status=Some(Active)),
     max_hits=params.max_hits.unwrap_or(5),
   )
   let citations = hits.map(fn(hit) {
@@ -255,7 +250,7 @@ pub async fn ChatService::ask(
       scope: hit.scope,
     }
   })
-  Ok(ChatAnswer::{
+  Ok({
     binding_id: binding.map(fn(binding) { binding.id }),
     question: params.question,
     answer: answer_from_hits(params.question, hits, memory_hits),

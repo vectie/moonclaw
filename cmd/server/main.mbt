@@ -45,64 +45,66 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   let mut web_search = false
   let mut resume_id = None
   let mut name = None
-  for args = args {
-    match args {
-      ["--name", n, .. args] =>
+  let mut remaining = args
+  while true {
+    match remaining {
+      ["--name", n, .. rest] =>
         if n.has_prefix("-") {
-          fail("Expected name after \{args[0]}")
+          fail("Expected name after \{remaining[0]}")
         } else {
           name = Some(n)
-          continue args
+          remaining = rest
         }
-      ["-m" | "--model", m, .. args] =>
+      ["-m" | "--model", m, .. rest] =>
         if m.has_prefix("-") {
-          fail("Expected model name after \{args[0]}")
+          fail("Expected model name after \{remaining[0]}")
         } else {
           model = Some(m)
-          continue args
+          remaining = rest
         }
-      ["-p" | "--port", p, .. args] => {
+      ["-p" | "--port", p, .. rest] => {
         port = @string.parse_int(p)
-        continue args
+        remaining = rest
       }
-      ["--register-host", d, .. args] =>
+      ["--register-host", d, .. rest] =>
         if d.has_prefix("-") {
-          fail("Expected daemon host after \{args[0]}")
+          fail("Expected daemon host after \{remaining[0]}")
         } else {
           register_host = Some(d)
-          continue args
+          remaining = rest
         }
-      ["--register-port", dp, .. args] => {
+      ["--register-port", dp, .. rest] => {
         register_port = Some(@string.parse_int(dp))
-        continue args
+        remaining = rest
       }
-      ["--register-id", du, .. args] =>
+      ["--register-id", du, .. rest] =>
         if du.has_prefix("-") {
-          fail("Expected register id after \{args[0]}")
+          fail("Expected register id after \{remaining[0]}")
         } else {
           register_id = Some(du)
-          continue args
+          remaining = rest
         }
-      ["--serve", s, .. args] =>
+      ["--serve", s, .. rest] =>
         if s.has_prefix("-") {
-          fail("Expected serve path after \{args[0]}")
+          fail("Expected serve path after \{remaining[0]}")
         } else {
           serve = s
-          continue args
+          remaining = rest
         }
-      ["--web-search", .. args] => {
+      ["--web-search", .. rest] => {
         web_search = true
-        continue args
+        remaining = rest
       }
-      ["--resume", rid, .. args] => {
+      ["--resume", rid, .. rest] => {
         resume_id = Some(@uuid.parse(rid))
-        continue args
+        remaining = rest
       }
       [unknown, ..] => {
         let error : Json = {
           "error": { "code": -1, "message": "Unknown argument: \{unknown}" },
         }
         println(error.stringify())
+        break
       }
       [] => break
     }

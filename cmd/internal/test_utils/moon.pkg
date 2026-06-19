@@ -7,3 +7,5 @@ import {
   "vectie/moonclaw/clock",
   "moonbitlang/core/json",
 }
+
+supported_targets = "native"

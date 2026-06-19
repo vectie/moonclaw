@@ -1,12 +1,10 @@
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config normalizes camelCase feishu config" {
   @fsx.with_temporary_directory("gateway-bootstrap-XXXXXX", dir => {
-    let home_config_dir = @path.Path(dir)
-      .join(@path.Path(".moonclaw"))
-      .to_string()
+    let home_config_dir = @path.Path(dir).join(Path(".moonclaw")).to_string()
     @fsx.make_directory(home_config_dir, recursive=true)
     let config_path = @path.Path(home_config_dir)
-      .join(@path.Path("moonclaw.json"))
+      .join(Path("moonclaw.json"))
       .to_string()
     @fsx.write_to_file(
       config_path,
@@ -62,9 +60,7 @@ async test "bootstrap_channel_states_from_moonclaw_config normalizes camelCase f
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config reads moonclaw root home" {
   @fsx.with_temporary_directory("gateway-bootstrap-root-home-XXXXXX", dir => {
-    let config_path = @path.Path(dir)
-      .join(@path.Path("moonclaw.json"))
-      .to_string()
+    let config_path = @path.Path(dir).join(Path("moonclaw.json")).to_string()
     @fsx.write_to_file(
       config_path,
       Json::object({
@@ -102,12 +98,10 @@ async test "bootstrap_channel_states_from_moonclaw_config reads moonclaw root ho
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config merges base and account overrides" {
   @fsx.with_temporary_directory("gateway-bootstrap-accounts-XXXXXX", dir => {
-    let home_config_dir = @path.Path(dir)
-      .join(@path.Path(".moonclaw"))
-      .to_string()
+    let home_config_dir = @path.Path(dir).join(Path(".moonclaw")).to_string()
     @fsx.make_directory(home_config_dir, recursive=true)
     let config_path = @path.Path(home_config_dir)
-      .join(@path.Path("moonclaw.json"))
+      .join(Path("moonclaw.json"))
       .to_string()
     @fsx.write_to_file(
       config_path,
@@ -166,9 +160,9 @@ async test "seed_channel_state_from_moonclaw_config preserves persisted state" {
   let store = ChannelStateStore::{
     path: "/tmp/unused/channels.json",
     states: {
-      "feishu": PersistedChannelState::{
+      "feishu": {
         channel_id: "feishu",
-        config: @channel.ChannelConfig::{
+        config: {
           enabled: true,
           accounts: {
             "default": {
@@ -204,12 +198,10 @@ async test "seed_channel_state_from_moonclaw_config preserves persisted state" {
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config normalizes weixin config" {
   @fsx.with_temporary_directory("gateway-bootstrap-weixin-XXXXXX", dir => {
-    let home_config_dir = @path.Path(dir)
-      .join(@path.Path(".moonclaw"))
-      .to_string()
+    let home_config_dir = @path.Path(dir).join(Path(".moonclaw")).to_string()
     @fsx.make_directory(home_config_dir, recursive=true)
     let config_path = @path.Path(home_config_dir)
-      .join(@path.Path("moonclaw.json"))
+      .join(Path("moonclaw.json"))
       .to_string()
     @fsx.write_to_file(
       config_path,

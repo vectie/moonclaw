@@ -33,7 +33,7 @@ priv struct Running {
 ///
 /// Returns `true` if the task's status is idle, `false` otherwise.
 fn Running::is_idle(self : Running) -> Bool {
-  self.status is @server.Idle
+  self.status is Idle
 }
 
 ///|
@@ -57,20 +57,19 @@ fn Running::new(
   cwd~ : String,
   port~ : Int,
   created~ : @clock.Timestamp,
-  updated? : @clock.Timestamp = created,
   web_search~ : Bool,
   model~ : String,
   broadcast~ : @broadcast.Broadcast[@server.ServerStreamEvent],
 ) -> Running {
-  Running::{
+  {
     name,
     id,
     cwd,
     port,
-    status: @server.Idle,
+    status: Idle,
     queued_messages: [],
     created,
-    updated,
+    updated: created,
     web_search,
     model,
     broadcast,
@@ -83,7 +82,7 @@ impl @json.FromJson for Running with fn from_json(
   json_path : @json.JsonPath,
 ) -> Running {
   guard json is Object(map) else {
-    raise @json.JsonDecodeError((json_path, "Task::from_json: expected object"))
+    raise JsonDecodeError((json_path, "Task::from_json: expected object"))
   }
   let name = match map.get("name") {
     None | Some(Null) => None
@@ -93,7 +92,7 @@ impl @json.FromJson for Running with fn from_json(
     Some(String(id_str)) =>
       @uuid.parse(id_str) catch {
         error =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (
               json_path.add_key("id"),
               "Task::from_json: invalid UUID string: \{error}",
@@ -101,28 +100,28 @@ impl @json.FromJson for Running with fn from_json(
           )
       }
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("id"), "Task::from_json: expected string"),
       )
   }
   let cwd = match map.get("cwd") {
     Some(cwd) => @json.from_json(cwd, path=json_path.add_key("cwd"))
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("cwd"), "Task::from_json: expected string"),
       )
   }
   let port = match map.get("port") {
     Some(port) => @json.from_json(port, path=json_path.add_key("port"))
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("port"), "Task::from_json: expected number"),
       )
   }
   let status : @server.Status = match map.get("status") {
     Some(status) => @json.from_json(status, path=json_path.add_key("status"))
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("status"), "Task::from_json: expected string"),
       )
   }
@@ -130,21 +129,21 @@ impl @json.FromJson for Running with fn from_json(
     Some(web_search) =>
       @json.from_json(web_search, path=json_path.add_key("web_search"))
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("web_search"), "Task::from_json: expected bool"),
       )
   }
   let created = match map.get("created") {
     Some(created) => @json.from_json(created, path=json_path.add_key("created"))
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("created"), "Task::from_json: expected number"),
       )
   }
   let updated = match map.get("updated") {
     Some(updated) => @json.from_json(updated, path=json_path.add_key("updated"))
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("updated"), "Task::from_json: expected number"),
       )
   }
@@ -162,7 +161,7 @@ impl @json.FromJson for Running with fn from_json(
     }
     None => []
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           json_path.add_key("queued_messages"),
           "Task::from_json: expected array",
@@ -172,11 +171,11 @@ impl @json.FromJson for Running with fn from_json(
   let model = match map.get("model") {
     Some(model) => @json.from_json(model, path=json_path.add_key("model"))
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("model"), "Task::from_json: expected model string"),
       )
   }
-  Running::{
+  {
     name,
     id,
     cwd,

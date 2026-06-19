@@ -39,7 +39,7 @@ async fn collect_files_recursive(
   directory : String,
   file_pattern : String,
   base_dir : String,
-  want_respect_gitignore? : Bool = true,
+  want_respect_gitignore~ : Bool,
   does_respect_gitignore~ : Ref[Bool],
 ) -> Array[String] {
   let results = []
@@ -111,18 +111,15 @@ async fn search_in_file(
 ) -> Array[SearchResult] raise SearchError {
   let content = @fsx.read_file(file_path) catch {
     @encoding/utf8.Malformed(_) => return []
-    error =>
-      raise SearchError::FileReadError(
-        path=file_path,
-        error="\{to_repr(error)}",
-      )
+    error => raise FileReadError(path=file_path, error="\{to_repr(error)}")
   }
   let lines = content.split("\n").collect() // Convert to Array
   let results = []
   let relative_path = @pathx.relative(base_dir, file_path) catch {
     _ => file_path // fallback to absolute path if relative fails
   }
-  for i = 0; i < lines.length(); i = i + 1 {
+  let mut i = 0
+  while i < lines.length() {
     let line = lines[i]
     let match_result = regex.execute(line)
     if match_result.matched() { // Use execute and check matched()
@@ -130,8 +127,10 @@ async fn search_in_file(
       let context_start = Int::max(0, i - context_lines)
       let context_end = Int::min(lines.length(), i + context_lines + 1)
       let context_lines_arr = []
-      for j = context_start; j < context_end; j = j + 1 {
+      let mut j = context_start
+      while j < context_end {
         context_lines_arr.push("\{j + 1}: \{lines[j]}")
+        j += 1
       }
       let result = SearchResult::{
         context: context_lines_arr.join("\n"),
@@ -141,6 +140,7 @@ async fn search_in_file(
       }
       results.push(result)
     }
+    i += 1
   }
   results
 }
@@ -156,8 +156,7 @@ async fn goto_definition(
     ["ide", "goto-definition", query],
     cwd=working_dir,
   ) catch {
-    error =>
-      raise SearchError::MoonAnalysisError(query~, error="\{to_repr(error)}")
+    error => raise MoonAnalysisError(query~, error="\{to_repr(error)}")
   }
   if process.status != 0 {
     process.stdout
@@ -182,11 +181,10 @@ async fn find_references(
     ["ide", "find-references", query],
     cwd=working_dir,
   ) catch {
-    error =>
-      raise SearchError::MoonAnalysisError(query~, error="\{to_repr(error)}")
+    error => raise MoonAnalysisError(query~, error="\{to_repr(error)}")
   }
   if process.status != 0 {
-    raise SearchError::MoonAnalysisError(
+    raise MoonAnalysisError(
       query~,
       error="moon ide find-references failed with exit code \{process.status}",
     )
@@ -445,8 +443,10 @@ async fn search_files_impl(
           let truncated = all_results.length() > 200
           let limited_results = if truncated {
             let limited = []
-            for i = 0; i < 200; i = i + 1 {
+            let mut i = 0
+            while i < 200 {
               limited.push(all_results[i])
+              i += 1
             }
             limited
           } else {
@@ -499,7 +499,7 @@ pub fn new(cwd : String) -> @tool.Tool[SearchFilesResult] {
     description="Search for patterns in files with three distinct modes: regex-based file content search, fuzzy symbolic search for MoonBit definitions, and MoonBit references search. This tool performs searches through files in the specified directory or file, displaying matches with context lines (configurable, default 2 lines before and after each match). Use 'regex' kind for traditional pattern matching in code/text, 'moonbit_definition' kind for finding MoonBit symbol definitions with fuzzy matching (symbol names can be imprecise), or 'moonbit_references' kind for finding all references to a MoonBit symbol.",
     name="search_files",
     schema~,
-    @tool.ToolFn(async fn(args) -> @tool.ToolResult[SearchFilesResult] noraise {
+    ToolFn(async fn(args) -> @tool.ToolResult[SearchFilesResult] noraise {
       search_files_impl(args, cwd)
     }),
   )

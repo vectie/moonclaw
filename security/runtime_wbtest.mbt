@@ -27,14 +27,14 @@ async test "security runtime loads config and pairing state" {
 test "security command parsing recognizes pairing and approval commands" {
   inspect(
     match parse_security_chat_action("/pair") {
-      Some(SecurityChatAction::Pair) => "pair"
+      Some(Pair) => "pair"
       _ => ""
     },
     content="pair",
   )
   inspect(
     match parse_security_chat_action("/approve tok-1") {
-      Some(SecurityChatAction::Approve(token)) => token
+      Some(Approve(token)) => token
       _ => ""
     },
     content="tok-1",

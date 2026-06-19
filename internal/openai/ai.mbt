@@ -70,7 +70,7 @@ async fn chat_openai(
 ) -> ChatCompletion {
   let moonstat_client = @moonstat.discover_from_suite_status()
   let moonstat_chat_url = moonstat_client.map(fn(client) {
-    client.route_openclaw_chat_url()
+    client.route_moonclaw_chat_url()
   })
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
@@ -149,7 +149,7 @@ fn openai_chat_route_for_model(
 ) -> OpenAIChatRoute {
   match moonstat_chat_url {
     Some(url) =>
-      { url, headers: openclaw_moonstat_chat_headers(), via_moonstat: true }
+      { url, headers: moonclaw_moonstat_chat_headers(), via_moonstat: true }
     None =>
       {
         url: "\{model.base_url}/chat/completions",
@@ -165,16 +165,16 @@ fn openai_direct_chat_headers(api_key : String) -> Map[String, String] {
     "Authorization": "Bearer \{api_key}",
     "Content-Type": "application/json",
     "Connection": "close",
-    "User-Agent": "openclaw",
+    "User-Agent": "moonclaw",
   }
 }
 
 ///|
-fn openclaw_moonstat_chat_headers() -> Map[String, String] {
+fn moonclaw_moonstat_chat_headers() -> Map[String, String] {
   {
     "Content-Type": "application/json",
     "Connection": "close",
-    "User-Agent": "openclaw",
+    "User-Agent": "moonclaw",
   }
 }
 
@@ -542,8 +542,8 @@ fn codex_request_headers(access_token : String) -> Map[String, String] {
     "Authorization": "Bearer \{access_token}",
     "Content-Type": "application/json",
     "Accept": "text/event-stream",
-    "originator": "openclaw",
-    "User-Agent": "openclaw/0.1.0",
+    "originator": "moonclaw",
+    "User-Agent": "moonclaw/0.1.0",
   }
 }
 
@@ -581,7 +581,7 @@ fn ResponseStreamEventReader::new(
 async fn ResponseStreamEventReader::read(
   self : ResponseStreamEventReader,
 ) -> ResponseStreamEvent? {
-  for ;; {
+  while true {
     guard self.0.read_until("\n") is Some(line) else { return None }
     guard line is [.. "data: ", .. rest] else { continue }
     let data = rest.trim().to_owned()
@@ -619,6 +619,8 @@ async fn ResponseStreamEventReader::read(
     } catch {
       _ => continue
     }
+  } nobreak {
+    None
   }
 }
 
@@ -657,7 +659,7 @@ fn convert_messages_to_input(
         }
         for tc in assistant_msg.tool_calls {
           result.push(
-            @responses.ResponseInputItem::FunctionCall(
+            FunctionCall(
               call_id=tc.id,
               name=tc.function.name,
               arguments=tc.function.arguments.unwrap_or("{}"),
@@ -688,7 +690,7 @@ fn codex_stream_result_to_chat_completion(
   let tool_calls : Array[ChatCompletionMessageToolCall] = []
   for item in result.output_items {
     match item {
-      @responses.ResponseItem::Message(content=parts, ..) => {
+      Message(content=parts, ..) => {
         let texts = parts.map(fn(part) { part.text })
         let text = texts
           .iter()
@@ -701,7 +703,7 @@ fn codex_stream_result_to_chat_completion(
           })
         content = Some(text)
       }
-      @responses.ResponseItem::FunctionCall(call_id~, name~, arguments~) =>
+      FunctionCall(call_id~, name~, arguments~) =>
         tool_calls.push(tool_call(id=call_id, name~, arguments~))
     }
   }
@@ -735,7 +737,7 @@ fn ChunkReader::new(reader : &@io.Reader) -> ChunkReader {
 
 ///|
 async fn ChunkReader::read(self : ChunkReader) -> ChatCompletionChunk? {
-  for ;; {
+  while true {
     guard self.0.read_until("\n") is Some(line) else { return None }
     guard line is [.. "data: ", .. rest] else { continue }
     if rest.trim() == "[DONE]" {
@@ -744,6 +746,8 @@ async fn ChunkReader::read(self : ChunkReader) -> ChatCompletionChunk? {
     let json = @json.parse(rest)
     let chunk : ChatCompletionChunk = @json.from_json(json)
     return Some(chunk)
+  } nobreak {
+    None
   }
 }
 

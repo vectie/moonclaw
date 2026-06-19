@@ -8,7 +8,7 @@
 ///
 /// Returns a CompletionUsageParam that can be passed to chat_completion.
 pub fn usage(include_~ : Bool) -> CompletionUsageParam {
-  CompletionUsageParam::{ include_, }
+  { include_, }
 }
 
 ///|
@@ -16,7 +16,7 @@ pub fn stream_options(
   include_obfuscation? : Bool,
   include_usage? : Bool,
 ) -> ChatCompletionStreamOptionsParam {
-  ChatCompletionStreamOptionsParam::{ include_obfuscation, include_usage }
+  { include_obfuscation, include_usage }
 }
 
 ///|
@@ -52,7 +52,7 @@ pub fn chat_completion(
   stream_options? : ChatCompletionStreamOptionsParam,
   tool_choice? : ChatCompletionToolChoice,
 ) -> Request {
-  Request::{
+  {
     model,
     messages,
     tools,
@@ -83,7 +83,7 @@ pub fn text_content_part(
   text : String,
   cache_control? : CacheControl,
 ) -> ChatCompletionContentPartParam {
-  ChatCompletionContentPartParam::Text({ text, cache_control })
+  Text({ text, cache_control })
 }
 
 ///|
@@ -207,7 +207,7 @@ pub fn tool(
   parameters~ : Json,
   strict? : Bool,
 ) -> ChatCompletionToolParam {
-  Function(FunctionDefinition::{ name, description, parameters, strict })
+  Function({ name, description, parameters, strict })
 }
 
 ///|
@@ -232,11 +232,7 @@ pub fn[T : ToChatCompletionMessageParamContent] assistant_message(
     Some(content) => content.to_chat_completion_message_param_content()
     None => []
   }
-  ChatCompletionMessageParam::Assistant(ChatCompletionAssistantMessageParam::{
-    content,
-    name,
-    tool_calls,
-  })
+  Assistant({ content, name, tool_calls })
 }
 
 ///|
@@ -259,7 +255,7 @@ pub fn json_schema(
   description? : String,
   strict? : Bool,
 ) -> ResponseFormat {
-  JsonSchema(JsonSchema::{ name, description, schema, strict })
+  JsonSchema({ name, description, schema, strict })
 }
 
 ///|
@@ -268,10 +264,7 @@ pub fn tool_call(
   name~ : String,
   arguments? : String,
 ) -> ChatCompletionMessageToolCall {
-  ChatCompletionMessageToolCall::{
-    id,
-    function: ChatCompletionMessageToolCallFunction::{ name, arguments },
-  }
+  { id, function: { name, arguments } }
 }
 
 ///|
@@ -282,10 +275,10 @@ pub fn chunk(
   model~ : String,
   usage? : CompletionUsage,
   system_fingerprint? : String,
-  service_tier? : ChatCompletionChunkServiceTier,
+  service_tier? : ChatCompletionServiceTier,
   error? : OpenRouterErrorResponse,
 ) -> ChatCompletionChunk {
-  ChatCompletionChunk::{
+  {
     id,
     choices,
     created,
@@ -302,7 +295,7 @@ pub fn chunk_choice_delta_tool_call_function(
   arguments? : String,
   name? : String,
 ) -> ChatCompletionChunkChoiceDeltaToolCallFunction {
-  ChatCompletionChunkChoiceDeltaToolCallFunction::{ arguments, name }
+  { arguments, name }
 }
 
 ///|
@@ -311,7 +304,7 @@ pub fn chunk_choice_delta_tool_call(
   id? : String,
   function~ : ChatCompletionChunkChoiceDeltaToolCallFunction,
 ) -> ChatCompletionChunkChoiceDeltaToolCall {
-  ChatCompletionChunkChoiceDeltaToolCall::{ index, id, function }
+  { index, id, function }
 }
 
 ///|
@@ -321,7 +314,7 @@ pub fn chunk_choice_delta(
   role? : ChatCompletionRole,
   tool_calls? : Array[ChatCompletionChunkChoiceDeltaToolCall],
 ) -> ChatCompletionChunkChoiceDelta {
-  ChatCompletionChunkChoiceDelta::{ content, refusal, role, tool_calls }
+  { content, refusal, role, tool_calls }
 }
 
 ///|
@@ -330,5 +323,5 @@ pub fn chunk_choice(
   delta~ : ChatCompletionChunkChoiceDelta,
   finish_reason? : ChatCompletionChoiceFinishReason,
 ) -> ChatCompletionChunkChoice {
-  ChatCompletionChunkChoice::{ index, delta, finish_reason }
+  { index, delta, finish_reason }
 }

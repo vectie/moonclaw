@@ -39,3 +39,5 @@ import {
   "vectie/moonclaw/channels/feishu",
   "vectie/moonclaw/channels/weixin",
 }
+
+supported_targets = "native"

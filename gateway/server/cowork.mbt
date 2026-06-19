@@ -222,7 +222,7 @@ fn cowork_session_summary(
   session_key : String,
   entry : SessionEntry,
 ) -> CoworkSessionSummary {
-  CoworkSessionSummary::{
+  {
     session_key,
     session_id: entry.session_id,
     title: cowork_message_title(entry),
@@ -250,9 +250,9 @@ fn cowork_effective_cwd(entry : SessionEntry, fallback : String) -> String {
 ///|
 fn proposal_status_text(status : @job.JobProposalStatus) -> String {
   match status {
-    @job.JobProposalStatus::Draft => "Draft"
-    @job.JobProposalStatus::Confirmed => "Confirmed"
-    @job.JobProposalStatus::Rejected => "Rejected"
+    Draft => "Draft"
+    Confirmed => "Confirmed"
+    Rejected => "Rejected"
   }
 }
 
@@ -265,7 +265,7 @@ fn proposal_ref_from_store(
     Some(id) =>
       match store.get_job_proposal(id) {
         Some(proposal) =>
-          Some(CoworkProposalRef::{
+          Some({
             id: proposal.id,
             title: proposal.title,
             summary: proposal.summary,
@@ -283,8 +283,7 @@ fn proposal_ref_from_store(
 fn current_run_step_id(store : @job.SystemStore, run_id : String) -> String? {
   let steps = store.list_step_runs(run_id)
   for step in steps {
-    if step.status is @job.RunStatus::Running ||
-      step.status is @job.RunStatus::WaitingForInput {
+    if step.status is Running || step.status is WaitingForInput {
       return Some(step.step_id)
     }
   }
@@ -300,7 +299,7 @@ fn run_ref_from_store(
     Some(id) =>
       match store.get_run(id) {
         Some(run) =>
-          Some(CoworkRunRef::{
+          Some({
             id: run.id,
             job_id: run.job_id,
             status: run.status.to_json().stringify(),
@@ -331,7 +330,7 @@ fn Gateway::cowork_session_detail(
   entry : SessionEntry,
 ) -> CoworkSessionDetail {
   let store = self.job_runtime().store()
-  CoworkSessionDetail::{
+  {
     session: cowork_session_summary(session_key, entry),
     messages: entry.messages,
     plan_preview: cowork_plan_preview_text(entry),
@@ -354,7 +353,7 @@ fn Gateway::append_session_message(
     updated_at: current_time_ms(),
     messages: [
       ..entry.messages,
-      SessionMessage::{
+      {
         id: self.uuid.v4().to_string(),
         role,
         kind,
@@ -590,13 +589,7 @@ fn cowork_agent_error_shape(
   code : String,
   message : String,
 ) -> @protocol.ErrorShape {
-  @protocol.ErrorShape::{
-    code,
-    message,
-    details: None,
-    retryable: None,
-    retry_after_ms: None,
-  }
+  { code, message, details: None, retryable: None, retry_after_ms: None }
 }
 
 ///|
@@ -686,7 +679,7 @@ async fn Gateway::execute_cowork_agent_message(
   let conversation_id = agent.id().to_string()
   Ok(
     self.append_session_message(
-      SessionEntry::{
+      {
         ..updated_session,
         session_id: conversation_id,
         model_override: Some(model_name),
@@ -746,9 +739,9 @@ async fn Gateway::handle_cowork_send_message(
         @job.plan_preview_from_proposal(candidate),
       )
       final_session = self.append_session_message(
-        SessionEntry::{
+        {
           ..final_session,
-          plan_mode: Some(PlanModeState::{
+          plan_mode: Some({
             request_text: state.request_text,
             notes,
             latest_candidate: candidate,
@@ -851,9 +844,9 @@ async fn Gateway::handle_cowork_plan(
     @job.plan_preview_from_proposal(candidate),
   )
   session = self.append_session_message(
-    SessionEntry::{
+    {
       ..session,
-      plan_mode: Some(PlanModeState::{
+      plan_mode: Some({
         request_text,
         notes: [],
         latest_candidate: candidate,
@@ -917,7 +910,7 @@ async fn Gateway::handle_cowork_preview(
       current_time_ms(),
     )
     session = self.append_session_message(session, "user", "command", guidance)
-    PlanModeState::{
+    {
       request_text: state.request_text,
       notes,
       latest_candidate: candidate,
@@ -928,7 +921,7 @@ async fn Gateway::handle_cowork_preview(
     @job.plan_preview_from_proposal(next_state.latest_candidate),
   )
   session = self.append_session_message(
-    SessionEntry::{ ..session, plan_mode: Some(next_state) },
+    { ..session, plan_mode: Some(next_state) },
     "assistant",
     "plan_preview",
     preview_text,
@@ -984,7 +977,7 @@ async fn Gateway::handle_cowork_promote(
       current_time_ms(),
     )
     session = self.append_session_message(session, "user", "command", guidance)
-    PlanModeState::{
+    {
       request_text: state.request_text,
       notes,
       latest_candidate: candidate,
@@ -1017,7 +1010,7 @@ async fn Gateway::handle_cowork_promote(
     linked_run_id: None,
     messages: [
       ..session.messages,
-      SessionMessage::{
+      {
         id: message_id,
         role: "assistant",
         kind: "proposal",
@@ -1084,7 +1077,7 @@ async fn Gateway::handle_cowork_confirm_proposal(
     confirmed.compilation.family,
   )
   session = self.append_session_message(
-    SessionEntry::{
+    {
       ..session,
       linked_proposal_id: Some(proposal_id),
       linked_run_id: Some(confirmed.run.id),
@@ -1135,7 +1128,7 @@ async fn Gateway::handle_cowork_resume_run(
         },
       })
   }
-  guard run.status is @job.RunStatus::WaitingForInput else {
+  guard run.status is WaitingForInput else {
     raise json_error(409, "Conflict", {
       "error": {
         "code": "run_not_waiting",

@@ -1,4 +1,20 @@
 ///|
+struct TestSource {
+  state : Ref[UInt64]
+}
+
+///|
+fn TestSource::new() -> TestSource {
+  { state: { val: 0UL } }
+}
+
+///|
+impl @uuid.Source for TestSource with fn uint64(self : TestSource) -> UInt64 {
+  self.state.val = self.state.val + 0x9e37_79b9_7f4a_7c15UL
+  self.state.val
+}
+
+///|
 test "parse" {
   let hex = "72212911-64d1-c441-e87d-de89b955ea34"
   json_inspect(@uuid.parse(hex) == @uuid.parse(hex), content=true)
@@ -44,7 +60,7 @@ test "to_bytes" {
 
 ///|
 test "v4" {
-  let uuid = @uuid.generator(@rand.chacha8())
+  let uuid = @uuid.generator(TestSource::new())
   json_inspect(uuid.v4() == uuid.v4(), content=false)
   json_inspect(uuid.v4().variant(), content=["RFC9562", "V4"])
   json_inspect(uuid.v4().version(), content=["V4"])
@@ -91,7 +107,7 @@ test "max" {
 
 ///|
 test "compare" {
-  let uuid = @uuid.generator(@rand.chacha8())
+  let uuid = @uuid.generator(TestSource::new())
   json_inspect(@uuid.nil < @uuid.max, content=true)
   json_inspect(@uuid.nil < uuid.v4(), content=true)
   json_inspect(uuid.v4() < @uuid.max, content=true)
@@ -99,7 +115,7 @@ test "compare" {
 
 ///|
 test "hash" {
-  let uuid = @uuid.generator(@rand.chacha8())
+  let uuid = @uuid.generator(TestSource::new())
   let v4 = uuid.v4()
   json_inspect(v4.hash() == v4.hash(), content=true)
   json_inspect(uuid.v4().hash() != uuid.v4().hash(), content=true)

@@ -54,7 +54,7 @@ priv suberror WebFetchError {
 ///|
 fn parse_fetch_uri(url : String) -> FetchUri raise WebFetchError {
   guard url.find("://") is Some(index) else {
-    raise WebFetchError::InvalidUrl(message="URL must include a scheme")
+    raise InvalidUrl(message="URL must include a scheme")
   }
   let scheme = url[:index].to_owned()
   let remainder = url[index + 3:].to_owned()
@@ -64,10 +64,10 @@ fn parse_fetch_uri(url : String) -> FetchUri raise WebFetchError {
     None => (remainder, "/")
   }
   guard !scheme.trim().is_empty() else {
-    raise WebFetchError::InvalidUrl(message="URL scheme must not be blank")
+    raise InvalidUrl(message="URL scheme must not be blank")
   }
   guard !host.trim().is_empty() else {
-    raise WebFetchError::InvalidUrl(message="URL host must not be blank")
+    raise InvalidUrl(message="URL host must not be blank")
   }
   { scheme, host, path }
 }
@@ -159,11 +159,13 @@ fn strip_html_tags(text : String) -> String {
       }
       '&' => {
         let mut entity_end : Int? = None
-        for j = i + 1; j < chars.length(); j = j + 1 {
+        let mut j = i + 1
+        while j < chars.length() {
           if chars[j] == ';' {
             entity_end = Some(j)
             break
           }
+          j += 1
         }
         match entity_end {
           Some(end_index) => {
@@ -239,7 +241,7 @@ async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
   let content_type = normalized_content_type(response.headers)
   let (text, title) = extracted_fetch_text(body, content_type)
   let (truncated_text, truncated) = truncate_text(text, max_chars)
-  WebFetchResult::{
+  {
     url,
     final_url: url,
     domain: uri.host,
@@ -279,7 +281,7 @@ pub fn new() -> @tool.Tool[WebFetchResult] {
       },
       "required": ["url"],
     },
-    @tool.ToolFn(async fn(args) -> @tool.ToolResult[WebFetchResult] noraise {
+    ToolFn(async fn(args) -> @tool.ToolResult[WebFetchResult] noraise {
       guard args is { "url": String(url), .. } else {
         return @tool.error("Error: 'url' parameter is required")
       }

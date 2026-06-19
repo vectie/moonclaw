@@ -43,6 +43,8 @@ import {
   "vectie/moonclaw/tools/write_to_file",
 }
 
+supported_targets = "native"
+
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",

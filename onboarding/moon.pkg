@@ -11,3 +11,5 @@ import {
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
 }
+
+supported_targets = "native"

@@ -132,7 +132,7 @@ async fn load_plugins_from_config(json : Json) -> Map[String, PluginRecord] {
     let install = installs.get(id)
     let enabled = plugin_enabled(entry)
     let install_path = plugin_string(install, "installPath")
-    loaded[id] = PluginRecord::{
+    loaded[id] = {
       id,
       enabled,
       status: plugin_status(enabled, install_path),

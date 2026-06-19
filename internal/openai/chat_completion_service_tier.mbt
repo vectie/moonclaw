@@ -1,6 +1,5 @@
 ///|
 /// Service tier override for chat completion requests.
-#alias(ChatCompletionChunkServiceTier)
 pub(all) enum ChatCompletionServiceTier {
   Auto
   Default
@@ -15,16 +14,15 @@ impl @json.FromJson for ChatCompletionServiceTier with fn from_json(
   json_path : @json.JsonPath,
 ) -> ChatCompletionServiceTier {
   guard json is String(tier) else {
-    raise @json.JsonDecodeError((json_path, "Expected a string"))
+    raise JsonDecodeError((json_path, "Expected a string"))
   }
   match tier {
-    "auto" => ChatCompletionServiceTier::Auto
-    "default" => ChatCompletionServiceTier::Default
-    "flex" => ChatCompletionServiceTier::Flex
-    "scale" => ChatCompletionServiceTier::Scale
-    "priority" => ChatCompletionServiceTier::Priority
-    _ =>
-      raise @json.JsonDecodeError((json_path, "Unknown service tier: \{tier}"))
+    "auto" => Auto
+    "default" => Default
+    "flex" => Flex
+    "scale" => Scale
+    "priority" => Priority
+    _ => raise JsonDecodeError((json_path, "Unknown service tier: \{tier}"))
   }
 }
 

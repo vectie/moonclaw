@@ -12,7 +12,7 @@ pub fn as_object(
   path~ : @json.JsonPath,
 ) -> Object raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "expected object"))
+    raise JsonDecodeError((path, "expected object"))
   }
   Object(obj)
 }

@@ -4,7 +4,9 @@
 
 `MoonBit` `Agent Runtime` `Gateway` `Jobs` `ACP` `Feishu` `Weixin` `Memory` `Artifacts` `Operator UI`
 
-MoonClaw is an agent and automation system built on top of [moonbitlang/maria](https://github.com/moonbitlang/maria), inspired by [openclaw/openclaw](https://github.com/openclaw/openclaw), and shaped around a full job runtime instead of a thin chat wrapper.
+MoonClaw is an agent and automation system built on top of [moonbitlang/maria](https://github.com/moonbitlang/maria), and shaped around a full job runtime instead of a thin chat wrapper.
+
+For executable MoonBooks, MoonClaw is the runtime owner for agent, task, session, and execution concepts. See [Executable Book Runtime Boundary](docs/executable_book_runtime_boundary.md).
 
 It is designed for:
 
@@ -38,15 +40,15 @@ MoonClaw is strongest when you want one system to handle:
 ## News
 
 - `2026-06-15`: added the first native MoonCode daemon endpoint slice for
-  Moondesk: `/v1/mooncode/capabilities`,
-  `/v1/mooncode/sessions/<id>/commands`,
-  `/v1/mooncode/sessions/<id>/stream`, and
-  `/v1/mooncode/sessions/<id>/eval-report?book_root=<path>`, plus package proof ingestion at
-  `/v1/mooncode/sessions/<id>/package-result`. Commands bind a Moondesk MoonCode
+  Moondesk: `/v1/code/capabilities`,
+  `/v1/code/sessions/<id>/commands`,
+  `/v1/code/sessions/<id>/stream`, and
+  `/v1/code/sessions/<id>/eval-report?book_root=<path>`, plus package proof ingestion at
+  `/v1/code/sessions/<id>/package-result`. Commands bind a Moondesk MoonCode
   session to the MoonClaw task for the target book root and execute through the
   existing MoonClaw agent/task runtime. Native command handling now distinguishes
   `prompt`, `steer`, and `cancel`; runtime-turn now consults the same
-  OpenSeek-style serve scheduler it exposes through `serve-scheduler`, returns
+  MoonCode serve scheduler it exposes through `serve-scheduler`, returns
   the scheduler state/decision in the turn payload, emits `steer_applied` /
   `steer_deferred` / `steer_dropped` settlement events for steering commands,
   injects deferred steering into the next eligible turn, and records
@@ -58,7 +60,7 @@ MoonClaw is strongest when you want one system to handle:
   `portable/app-tool/mooncode/<session-id>/sources/<command-id>/...`, and the
   native MoonCode stream now normalizes bound MoonClaw task events into
   MoonCode transcript/tool/review/runtime lanes.
-  Eval reports now run a first native OpenSeek-style harness slice over
+  Eval reports now run a first native MoonCode eval harness slice over
   `read`, `write`, `edit`, `shell`, `moon_check`, `finish`, and file-edit diff
   evidence before returning `ok`, `required_harnesses`, and nested native
   harness results.
@@ -66,27 +68,27 @@ MoonClaw is strongest when you want one system to handle:
   at `.moonclaw/mooncode/sessions/<session-id>/`, including `session.json`,
   `commands.jsonl`, `runtime-dispatches.jsonl`, `events.jsonl`, and
   `package-results.jsonl`. The daemon can list/show those cold sidecars with
-  `GET /v1/mooncode/sessions?book_root=<path>` and
-  `GET /v1/mooncode/sessions/<id>?book_root=<path>`, and can lease the next
+  `GET /v1/code/sessions?book_root=<path>` and
+  `GET /v1/code/sessions/<id>?book_root=<path>`, and can lease the next
   unresolved durable command with
-  `GET`/`POST /v1/mooncode/sessions/<id>/runtime-claim?book_root=<path>` by
+  `GET`/`POST /v1/code/sessions/<id>/runtime-claim?book_root=<path>` by
   appending native `runtime-claimed` receipts to `runtime-dispatches.jsonl`.
-  `POST /v1/mooncode/sessions/<id>/runtime-dispatch?book_root=<path>` now
+  `POST /v1/code/sessions/<id>/runtime-dispatch?book_root=<path>` now
   claims the next durable command if needed, forwards that command into the
   MoonClaw task runtime, and appends a `runtime-delivered` or `runtime-failed`
   receipt so cold sidecar queues can advance after daemon restart. Durable
   `cancel` commands use the same cancellation path as live commands and record
   terminal `runtime-cancelled` receipts instead of being forwarded as chat.
-  `GET`/`POST /v1/mooncode/sessions/<id>/runtime-events?book_root=<path>` now
-  lets a MoonClaw-owned or standalone MoonCode runtime append normalized
+  `GET`/`POST /v1/code/sessions/<id>/runtime-events?book_root=<path>` now
+  lets a MoonClaw runtime append normalized
   transcript/tool/diff/test/artifact/review/runtime evidence directly into
   `events.jsonl`, closing the durable stream-ingress half of the native
   runtime contract. `POST
-  /v1/mooncode/sessions/<id>/tool-exec?book_root=<path>` now executes the
+  /v1/code/sessions/<id>/tool-exec?book_root=<path>` now executes the
   native MoonCode `read`, `edit`, `write`, `shell`, `moon_check`, and `finish`
   tool contract inside the selected MoonBook root and appends command-scoped
   proof events. `POST
-  /v1/mooncode/sessions/<id>/runtime-turn?book_root=<path>` now provides the
+  /v1/code/sessions/<id>/runtime-turn?book_root=<path>` now provides the
   first book-local native runtime turn: it claims the next durable command if
   needed, executes explicit `runtime_tool_calls` or deterministic built-in
   fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
@@ -97,14 +99,14 @@ MoonClaw is strongest when you want one system to handle:
   as `cancel_dropped` evidence without invoking tools, matching the scheduler
   projection instead of treating controls as ordinary prompts.
   `POST
-  /v1/mooncode/sessions/<id>/runtime-loop?book_root=<path>` now layers a
+  /v1/code/sessions/<id>/runtime-loop?book_root=<path>` now layers a
   bounded queue supervisor over that turn primitive: it repeatedly runs native
   turns until the durable command queue is idle, a turn fails, a cancel command
   lands, or `max_turns` is reached, returning per-turn evidence plus the final
   claim state.
   `/commands` now also accepts `native_dispatch_mode=queue-only`, which appends
-  the durable command without spawning or messaging the legacy MoonClaw task
-  bridge so a client can call `runtime-turn` without duplicate execution.
+  the durable command without spawning or messaging the generic MoonClaw task
+  runtime so a client can call `runtime-turn` without duplicate execution.
   Runtime-turn now also includes the first bounded prompt planner: ordinary
   `prompt` commands that ask for a tool, script, miniapp, generated site, or
   HTML app expand into native `write`, `shell`, and `finish` tool calls under
@@ -119,7 +121,7 @@ MoonClaw is strongest when you want one system to handle:
   status/add/commit/rev-parse, exclude `.moonclaw`, `.moontown`, and
   `moonclaw-jobs` runtime sidecars from staging, and emit review-lane
   `runtime.commit_created` proof with the resulting SHA only after the commit
-  succeeds. `run_eval` commands now run MoonClaw's native OpenSeek-style
+  succeeds. `run_eval` commands now run MoonClaw's native MoonCode
   tool/file-edit harnesses from runtime-turn, write
   `wiki/reviews/mooncode/<session-id>/eval-report.json`, and emit
   `eval_report.manifest` proof with `tool_harness` and `file_edit` results.
@@ -130,13 +132,13 @@ MoonClaw is strongest when you want one system to handle:
   generic tool result.
   When
   a queued command carries an explicit selected model, runtime-turn can also ask
-  that model for bounded OpenSeek-style tool-call batches over `read`, `write`,
+  that model for bounded MoonCode tool-call batches over `read`, `write`,
   `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`;
   successful tool results are fed back to the model until it calls `finish`, a
   tool fails, the command is cancelled, or `planner_max_steps` is reached. Planner
   start/selection/failure events, `planner_steps`, the step limit, native
   `reasoning_delta` progress, optional assistant deltas, and pre-execution
-  `tool_call` events are recorded so Moondesk can render a Codex/OpenSeek-style
+  `tool_call` events are recorded so Moondesk can render a Codex-style
   transcript from MoonClaw-owned evidence. Unsupported or empty model plans fall
   back to the deterministic planner.
   Native `apply_patch` and `revert_patch` execute bounded reviewed text
@@ -156,7 +158,7 @@ MoonClaw is strongest when you want one system to handle:
   `package_built` and `package_verified` proof to `package-results.jsonl`,
   promote generated source files under the package root with source hashes, and
   emit artifact-lane package events for Moondesk's package review surface. The
-  remaining MoonCode runtime gap is the full persistent OpenSeek-style agent
+  remaining MoonCode runtime gap is the full persistent MoonCode agent
   service with long-running live steering/cancel UX, diff-aware edit review, and
   broader model-backed coding eval coverage.
 - `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
@@ -164,7 +166,7 @@ MoonClaw is strongest when you want one system to handle:
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`
 - `2026-04-15`: shortened persisted per-step metadata filenames to a bounded slug-plus-hash form so long delegated requests no longer crash with `File name too long`; logical `step_id` values remain unchanged in run state and UI
 - `2026-04-13`: added external proposal packet import with `moonclaw proposal import <packet.json> [--confirm]`; imported packets are validated, converted into normal stored proposals, mapped onto configured job profiles, and optionally confirmed/executed through the standard workflow engine
-- `2026-04-13`: generalized provider-backed execution into a reusable extension-task boundary; analysis and delegate steps can now target task providers via `execution_mode: "provider"` / `"extension"` plus `execution_target`, with backward-compatible `bookapi` aliases kept only for transition
+- `2026-04-13`: generalized provider-backed execution into a reusable extension-task boundary; analysis and delegate steps can now target task providers via `execution_mode: "provider"` / `"extension"` plus `execution_target`,
 - `2026-04-05`: added a concrete wiki-maintainer extension pack, a wiki-specific test guide, and automatic workspace detection for `raw/` + `wiki/` layouts so planning/execution can see `wiki/index.md`, `wiki/log.md`, and key wiki directories as part of runtime context
 - `2026-04-04`: added the Rabbita `Cowork` surface with a conversation sidebar, transcript, composer, plan-mode actions, linked proposal/run cards, and a right-side context pane for preview, workspace, artifacts, and run state
 - `2026-04-04`: added thread-local `/plan` mode with `/preview` and `/promote`; made final run `report.md` and `result.json` appear as clickable Rabbita cards; added a full-screen canvas toggle, aggregated starter documents into one operator-facing input card, and upgraded artifact opening from a small popup into a full-screen editor surface
@@ -234,7 +236,7 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - `security`
   session scope, approval, pairing, command policy
 - `acp`
-  remote-agent control plane and Codex-oriented execution bridge
+  remote-agent control plane and external execution runtime
 - `ui/rabbita-job`
   operator UI for local + remote execution
 
@@ -477,7 +479,7 @@ Weixin is currently implemented as a webhook-driven Official Account channel:
 - plaintext text messages in the current slice
 - replies sent through the custom-service API
 
-See [openclaw_weixin_reference.md](/Users/kq/Workspace/moonclaw/docs/openclaw_weixin_reference.md).
+See [weixin_setup.md](docs/weixin_setup.md) for setup details.
 
 ## 🪽 Feishu Usage
 

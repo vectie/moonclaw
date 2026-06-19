@@ -31,24 +31,22 @@ pub impl @json.FromJson for Task with fn from_json(
   json_path : @json.JsonPath,
 ) -> Task raise @json.JsonDecodeError {
   guard json is { "status": type_, .. } else {
-    raise @json.JsonDecodeError(
-      (json_path, "Missing 'status' field in Task object"),
-    )
+    raise JsonDecodeError((json_path, "Missing 'status' field in Task object"))
   }
   match type_ {
     "generating" | "idle" => {
       let running : Running = @json.from_json(json, path=json_path)
-      Task::Running(running)
+      Running(running)
     }
     "stopped" => {
       let stopped : Stopped = @json.from_json(
         json,
         path=json_path.add_key("stopped"),
       )
-      Task::Stopped(stopped)
+      Stopped(stopped)
     }
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("status"), "Unknown Task status '\{to_repr(type_)}'"),
       )
   }

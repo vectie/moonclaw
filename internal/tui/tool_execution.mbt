@@ -18,11 +18,11 @@ pub(all) struct ToolExecution {
 
 ///|
 pub fn ToolExecution::new(tool_name : String, args : String) -> ToolExecution {
-  ToolExecution::{
+  {
     tool_name,
     args,
     result: "",
-    status: ToolStatus::Pending,
+    status: Pending,
     expanded: false,
     start_time: 0,
   }
@@ -40,7 +40,7 @@ pub fn ToolExecution::set_result(
   is_error? : Bool = false,
 ) -> Unit {
   self.result = result
-  self.status = if is_error { ToolStatus::Error } else { ToolStatus::Success }
+  self.status = if is_error { Error } else { Success }
 }
 
 ///|

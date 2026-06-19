@@ -27,17 +27,14 @@ impl @json.FromJson for ChatCompletionChoiceFinishReason with fn from_json(
   json_path : @json.JsonPath,
 ) -> ChatCompletionChoiceFinishReason {
   guard json is String(reason) else {
-    raise @json.JsonDecodeError((json_path, "Expected a string"))
+    raise JsonDecodeError((json_path, "Expected a string"))
   }
   match reason {
-    "stop" => ChatCompletionChoiceFinishReason::Stop
-    "length" => ChatCompletionChoiceFinishReason::Length
-    "tool_calls" => ChatCompletionChoiceFinishReason::ToolCalls
-    "content_filter" => ChatCompletionChoiceFinishReason::ContentFilter
-    "function_call" => ChatCompletionChoiceFinishReason::FunctionCall
-    _ =>
-      raise @json.JsonDecodeError(
-        (json_path, "Unknown finish reason: \{reason}"),
-      )
+    "stop" => Stop
+    "length" => Length
+    "tool_calls" => ToolCalls
+    "content_filter" => ContentFilter
+    "function_call" => FunctionCall
+    _ => raise JsonDecodeError((json_path, "Unknown finish reason: \{reason}"))
   }
 }

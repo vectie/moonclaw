@@ -63,7 +63,7 @@ pub fn new(cwd : String) -> @tool.Tool[String] {
           return @tool.error("Invalid hunk at line \{line_number}: \{message}")
       }
       // Apply the patch
-      let result = apply_hunks(parsed.hunks[:], cwd) catch {
+      let result = apply_hunks(parsed.hunks, cwd) catch {
         ApplyError(msg) => return @tool.error("Failed to apply patch: \{msg}")
       }
       @tool.ok(format_result(result))

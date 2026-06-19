@@ -7,3 +7,5 @@ import {
   "vectie/moonlib/fsx",
   "moonbitlang/async",
 } for "test"
+
+supported_targets = "native"

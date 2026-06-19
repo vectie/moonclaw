@@ -7,7 +7,7 @@ pub struct WeixinClient {
 
 ///|
 pub fn WeixinClient::new(config : WeixinAccountConfig) -> WeixinClient {
-  WeixinClient::{ config, test_access_token: None, test_sent_messages: [] }
+  { config, test_access_token: None, test_sent_messages: [] }
 }
 
 ///|
@@ -65,7 +65,7 @@ pub async fn WeixinClient::load_access_token(
   let (response, data) = @http.get(weixin_access_token_url(self.config)) catch {
     error =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Failed to fetch Weixin access token: \{error}",
         ),
       )
@@ -73,7 +73,7 @@ pub async fn WeixinClient::load_access_token(
   let body_text = data.text()
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::ConnectionFailed(
+      ConnectionFailed(
         message="Weixin access token API error \{response.code}: \{body_text}",
       ),
     )
@@ -81,7 +81,7 @@ pub async fn WeixinClient::load_access_token(
   let payload : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Invalid Weixin access token response: \{body_text}",
         ),
       )
@@ -90,7 +90,7 @@ pub async fn WeixinClient::load_access_token(
     { "access_token": String(token), .. } if !token.is_blank() => Ok(token)
     _ =>
       Err(
-        @channel.ChannelError::ConnectionFailed(
+        ConnectionFailed(
           message="Weixin access token lookup failed: \{parse_weixin_error_message(payload, body_text)}",
         ),
       )
@@ -111,7 +111,7 @@ pub async fn WeixinClient::send_text_message(
   match self.test_access_token {
     Some(_) => {
       self.test_sent_messages.push(payload)
-      return Ok(@channel.SendResult::{
+      return Ok({
         channel: "weixin",
         message_id: "mock:\{self.test_sent_messages.length()}",
         timestamp: 0,
@@ -131,15 +131,13 @@ pub async fn WeixinClient::send_text_message(
   ) catch {
     error =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="Failed to send Weixin message: \{error}",
-        ),
+        SendMessageFailed(message="Failed to send Weixin message: \{error}"),
       )
   }
   let body_text = data.text()
   guard response.code is (200..=299) else {
     return Err(
-      @channel.ChannelError::SendMessageFailed(
+      SendMessageFailed(
         message="Weixin send API error \{response.code}: \{body_text}",
       ),
     )
@@ -147,21 +145,19 @@ pub async fn WeixinClient::send_text_message(
   let response_json : Json = @json.parse(body_text) catch {
     _ =>
       return Err(
-        @channel.ChannelError::SendMessageFailed(
-          message="Invalid Weixin send response: \{body_text}",
-        ),
+        SendMessageFailed(message="Invalid Weixin send response: \{body_text}"),
       )
   }
   match response_json {
     { "errcode": Number(code, ..), .. } if code.to_int() == 0 =>
-      Ok(@channel.SendResult::{
+      Ok({
         channel: "weixin",
         message_id: "wx:\{to}",
         timestamp: 0,
         status: "sent",
       })
     { "errcode": String(code), .. } if code == "0" =>
-      Ok(@channel.SendResult::{
+      Ok({
         channel: "weixin",
         message_id: "wx:\{to}",
         timestamp: 0,
@@ -169,7 +165,7 @@ pub async fn WeixinClient::send_text_message(
       })
     _ =>
       Err(
-        @channel.ChannelError::SendMessageFailed(
+        SendMessageFailed(
           message="Weixin send failed: \{parse_weixin_error_message(response_json, body_text)}",
         ),
       )

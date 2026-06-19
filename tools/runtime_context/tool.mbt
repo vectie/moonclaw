@@ -27,7 +27,7 @@ pub fn RuntimeContextResult::new(
   execution_isolation? : Json? = None,
   enabled_tools? : Array[String] = [],
 ) -> RuntimeContextResult {
-  RuntimeContextResult::{
+  {
     cwd,
     home,
     run_id,
@@ -43,7 +43,7 @@ pub fn RuntimeContextResult::new(
 }
 
 ///|
-pub impl Show for RuntimeContextResult with output(
+pub impl Show for RuntimeContextResult with fn output(
   result : RuntimeContextResult,
   logger : &Logger,
 ) -> Unit {
@@ -85,7 +85,7 @@ pub fn new(context : RuntimeContextResult) -> @tool.Tool[RuntimeContextResult] {
     name="runtime_context",
     description="Return the current MoonClaw runtime context for this analysis step, including run identity, cwd, execution target, isolation, and enabled tools.",
     schema={ "type": "object", "properties": {}, "required": [] },
-    @tool.ToolFn(fn(_args) -> @tool.ToolResult[RuntimeContextResult] noraise {
+    ToolFn(fn(_args) -> @tool.ToolResult[RuntimeContextResult] noraise {
       @tool.ok(context)
     }),
   )

@@ -10,6 +10,48 @@ priv struct DiffLineNumberState {
 }
 
 ///|
+fn parse_diff_span(token : String, prefix : String) -> (Int, Int)? {
+  guard token.has_prefix(prefix) else { return None }
+  let body = token[1:].to_owned()
+  let parts : Array[StringView] = body.split(",").collect()
+  guard parts.length() == 2 else { return None }
+  let start = @string.parse_int(parts[0].to_owned()) catch { _ => return None }
+  let count = @string.parse_int(parts[1].to_owned()) catch { _ => return None }
+  Some((start, count))
+}
+
+///|
+fn parse_diff_hunk_header(line : StringView) -> DiffLineNumberState? {
+  let tokens : Array[String] = []
+  for token in line.to_owned().split(" ") {
+    let trimmed = token.trim().to_owned()
+    if !trimmed.is_blank() {
+      tokens.push(trimmed)
+    }
+  }
+  guard tokens.length() >= 4 && tokens[0] == "@@" && tokens[3] == "@@" else {
+    return None
+  }
+  guard parse_diff_span(tokens[1], "-")
+    is Some((original_start, original_count)) else {
+    return None
+  }
+  guard parse_diff_span(tokens[2], "+")
+    is Some((modified_start, modified_count)) else {
+    return None
+  }
+  Some({
+    original_start,
+    original_line: original_start,
+    original_count,
+    modified_start,
+    modified_line: modified_start,
+    modified_count,
+    marker: ' ',
+  })
+}
+
+///|
 /// Adds line numbers to unified diff output, displaying both original and
 /// modified line numbers side by side. This function should only be used for
 /// displaying diffs for human consumption. It is not sure if the output can be
@@ -25,7 +67,7 @@ priv struct DiffLineNumberState {
 ///
 /// Throws an error if the diff text contains malformed hunk headers that cannot
 /// be parsed.
-fn add_line_number_to_diff(diff_text : String) -> String raise {
+fn add_line_number_to_diff(diff_text : String) -> String {
   let lines = diff_text.split("\n")
   let mut last_state : DiffLineNumberState? = None
   let mut state : DiffLineNumberState? = None
@@ -100,35 +142,12 @@ fn add_line_number_to_diff(diff_text : String) -> String raise {
         "\{state.marker} \{original_line_number} \{modified_line_number} \\\{line}",
       )
     } else {
-      lexmatch line with longest {
-        (
-          "@@[[:space:]]+-"
-          ("[[:digit:]]+" as os)
-          ","
-          ("[[:digit:]]+" as oc)
-          "[[:space:]]+\+"
-          ("[[:digit:]]+" as ms)
-          ","
-          ("[[:digit:]]+" as mc)
-          "[[:space:]]+@@",
-          _
-        ) => {
-          let original_start = @string.parse_int(os)
-          let original_count = @string.parse_int(oc)
-          let modified_start = @string.parse_int(ms)
-          let modified_count = @string.parse_int(mc)
-          state = Some({
-            original_start,
-            original_line: original_start,
-            original_count,
-            modified_start,
-            modified_line: modified_start,
-            modified_count,
-            marker: ' ',
-          })
+      match parse_diff_hunk_header(line) {
+        Some(parsed) => {
+          state = Some(parsed)
           numbered_lines.push(line.to_owned())
         }
-        line => numbered_lines.push(line.to_owned())
+        None => numbered_lines.push(line.to_owned())
       }
     }
   }

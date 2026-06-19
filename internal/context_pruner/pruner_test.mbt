@@ -267,7 +267,7 @@ async test "calculate_pruning/with_tools_parameter" (t : @test.Test) {
 }
 
 // ============================================================================
-// Legacy tests for prune_messages (backward compatibility)
+// Existing message-pruning behavior
 // ============================================================================
 
 ///|

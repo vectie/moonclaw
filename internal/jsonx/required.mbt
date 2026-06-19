@@ -19,8 +19,6 @@ pub fn[T : @json.FromJson] Object::required(
   match object.get(key) {
     Some(value) => @json.from_json(value, path~)
     None =>
-      raise @json.JsonDecodeError(
-        (path.add_key(key), "field '\{key}' is required"),
-      )
+      raise JsonDecodeError((path.add_key(key), "field '\{key}' is required"))
   }
 }

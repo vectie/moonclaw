@@ -38,14 +38,13 @@ pub impl @json.FromJson for ContentType with fn from_json(
   path : @json.JsonPath,
 ) -> ContentType raise @json.JsonDecodeError {
   guard json is String(s) else {
-    raise @json.JsonDecodeError((path, "ContentType: expected string"))
+    raise JsonDecodeError((path, "ContentType: expected string"))
   }
   match s {
     "input_text" => InputText
     "output_text" => OutputText
     "text" => Text
-    _ =>
-      raise @json.JsonDecodeError((path, "ContentType: invalid value '\{s}'"))
+    _ => raise JsonDecodeError((path, "ContentType: invalid value '\{s}'"))
   }
 }
 
@@ -71,17 +70,17 @@ pub impl @json.FromJson for ContentPart with fn from_json(
   path : @json.JsonPath,
 ) -> ContentPart raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "ContentPart: expected object"))
+    raise JsonDecodeError((path, "ContentPart: expected object"))
   }
   let type_ : ContentType = match obj.get("type") {
     Some(v) => @json.from_json(v, path=path.add_key("type"))
-    None => raise @json.JsonDecodeError((path, "ContentPart: missing 'type'"))
+    None => raise JsonDecodeError((path, "ContentPart: missing 'type'"))
   }
   let text : String = match obj.get("text") {
     Some(String(s)) => s
     Some(_) =>
-      raise @json.JsonDecodeError((path, "ContentPart: 'text' must be string"))
-    None => raise @json.JsonDecodeError((path, "ContentPart: missing 'text'"))
+      raise JsonDecodeError((path, "ContentPart: 'text' must be string"))
+    None => raise JsonDecodeError((path, "ContentPart: missing 'text'"))
   }
   { type_, text }
 }
@@ -153,17 +152,17 @@ pub impl @json.FromJson for ResponseItem with fn from_json(
   path : @json.JsonPath,
 ) -> ResponseItem raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "ResponseItem: expected object"))
+    raise JsonDecodeError((path, "ResponseItem: expected object"))
   }
   let type_ = match obj.get("type") {
     Some(String(s)) => s
-    _ => raise @json.JsonDecodeError((path, "ResponseItem: missing 'type'"))
+    _ => raise JsonDecodeError((path, "ResponseItem: missing 'type'"))
   }
   match type_ {
     "message" => {
       let role = match obj.get("role") {
         Some(String(s)) => s
-        _ => raise @json.JsonDecodeError((path, "ResponseItem: missing 'role'"))
+        _ => raise JsonDecodeError((path, "ResponseItem: missing 'role'"))
       }
       let content : Array[ContentPart] = match obj.get("content") {
         Some(content_json) =>
@@ -175,26 +174,19 @@ pub impl @json.FromJson for ResponseItem with fn from_json(
     "function_call" => {
       let call_id = match obj.get("call_id") {
         Some(String(s)) => s
-        _ =>
-          raise @json.JsonDecodeError((path, "ResponseItem: missing 'call_id'"))
+        _ => raise JsonDecodeError((path, "ResponseItem: missing 'call_id'"))
       }
       let name = match obj.get("name") {
         Some(String(s)) => s
-        _ => raise @json.JsonDecodeError((path, "ResponseItem: missing 'name'"))
+        _ => raise JsonDecodeError((path, "ResponseItem: missing 'name'"))
       }
       let arguments = match obj.get("arguments") {
         Some(String(s)) => s
-        _ =>
-          raise @json.JsonDecodeError(
-            (path, "ResponseItem: missing 'arguments'"),
-          )
+        _ => raise JsonDecodeError((path, "ResponseItem: missing 'arguments'"))
       }
       FunctionCall(call_id~, name~, arguments~)
     }
-    _ =>
-      raise @json.JsonDecodeError(
-        (path, "ResponseItem: unknown type '\{type_}'"),
-      )
+    _ => raise JsonDecodeError((path, "ResponseItem: unknown type '\{type_}'"))
   }
 }
 

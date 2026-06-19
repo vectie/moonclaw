@@ -6,3 +6,5 @@ import {
   "vectie/moonclaw",
   "vectie/moonclaw/model",
 }
+
+supported_targets = "native"

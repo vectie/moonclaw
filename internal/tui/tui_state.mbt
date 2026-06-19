@@ -13,7 +13,7 @@ pub(all) struct TuiState {
 
 ///|
 pub fn TuiState::new() -> TuiState {
-  TuiState::{
+  {
     connection_status: "connecting",
     activity_status: "idle",
     busy: false,

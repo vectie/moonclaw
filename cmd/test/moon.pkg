@@ -8,6 +8,8 @@ import {
   "vectie/moonclaw/model",
 }
 
+supported_targets = "native"
+
 options(
   "is-main": true,
   overrides: [ "vectie/moonclaw/internal/abort" ],

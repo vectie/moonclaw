@@ -47,12 +47,12 @@ fn Uri::parse_scheme(
               )
             return rest
           }
-          [_, ..] as rest => raise ParseError::InvalidScheme(rest)
-          [] => raise ParseError::MissingColon
+          [_, ..] as rest => raise InvalidScheme(rest)
+          [] => raise MissingColon
         }
       }
-    [_, ..] as s => raise ParseError::InvalidScheme(s)
-    [] => raise ParseError::Eof
+    [_, ..] as s => raise InvalidScheme(s)
+    [] => raise Eof
   }
 }
 
@@ -102,7 +102,7 @@ fn parse_authority(
           authority.port = Some(port)
           return rest
         }
-        (_, [_, ..] as rest) => raise ParseError::InvalidPort(rest)
+        (_, [_, ..] as rest) => raise InvalidPort(rest)
       }
     }
   }
@@ -163,7 +163,7 @@ fn parse_authority(
             b = (c0.to_int() - 'A' + 10) * 16
             k
           }
-          _ => raise ParseError::InvalidPercentEncoding(k)
+          _ => raise InvalidPercentEncoding(k)
         }
         let k = match k {
           ['0'..='9' as c1, .. k] => {
@@ -174,7 +174,7 @@ fn parse_authority(
             b = b + (c1.to_int() - 'A' + 10)
             k
           }
-          _ => raise ParseError::InvalidPercentEncoding(k)
+          _ => raise InvalidPercentEncoding(k)
         }
         continue k
       }
@@ -283,19 +283,19 @@ fn parse_uri(uri : Uri, source : StringView) -> StringView raise ParseError {
               uri.scheme = source.slice_until(rest)
               return parse_hier_part(k)
             }
-            [_, ..] as rest => raise ParseError::InvalidScheme(rest)
-            [] => raise ParseError::MissingColon
+            [_, ..] as rest => raise InvalidScheme(rest)
+            [] => raise MissingColon
           }
         }
-      [_, ..] as s => raise ParseError::InvalidScheme(s)
-      [] => raise ParseError::Eof
+      [_, ..] as s => raise InvalidScheme(s)
+      [] => raise Eof
     }
   }
 
   match source {
     ['a'..='z' | 'A'..='Z', .. s] => return parse_scheme(source, s)
-    [_, ..] as s => raise ParseError::InvalidScheme(s)
-    [] => raise ParseError::MissingScheme
+    [_, ..] as s => raise InvalidScheme(s)
+    [] => raise MissingScheme
   }
 }
 

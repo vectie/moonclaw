@@ -25,7 +25,7 @@ pub fn logger(
   level? : Level = Info,
   transport : Transport,
 ) -> Logger {
-  Logger::{ properties: { "tag": tag }, level, transport }
+  { properties: { "tag": tag }, level, transport }
 }
 
 ///|

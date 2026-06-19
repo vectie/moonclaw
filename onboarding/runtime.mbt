@@ -767,7 +767,7 @@ pub async fn collect_status(home~ : String, cwd~ : String) -> OnboardingStatus {
     issues.push("Workspace files are missing")
     next_steps.push("Run `moonclaw onboard init` to bootstrap workspace files")
   }
-  OnboardingStatus::{
+  {
     home,
     cwd,
     config_path,
@@ -826,7 +826,7 @@ pub async fn bootstrap_with_options(
     None => []
   }
   let onboarding = collect_status(home~, cwd~)
-  OnboardingApplyResult::{
+  {
     status: if existing is Some(_) {
       "updated"
     } else {

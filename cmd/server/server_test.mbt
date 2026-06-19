@@ -62,13 +62,14 @@ async fn configure_server(
 
 ///|
 #skip
+#warnings("-unnecessary_annotation")
 async test "register" (t : @test.Test) {
   @mock.run(t, mock => {
     let addr = @socket.Addr::parse("0.0.0.0:0")
     let daemon = @socket.TcpServer::new(addr, dual_stack=true, reuse_addr=true)
     defer daemon.close()
     let server_task = mock.group.spawn(() => {
-      configure_server(mock, register=@server.RegisterInfo::{
+      configure_server(mock, register={
         host: "localhost",
         port: daemon.addr().port(),
         id: "test-server",

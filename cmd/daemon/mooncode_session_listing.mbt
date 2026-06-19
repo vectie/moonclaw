@@ -15,7 +15,7 @@ async fn Daemon::mooncode_list_sessions(
   w.write_header(200)
   if format == "json" {
     let rows = records.map(record => {
-      mooncode_openseek_session_listing_row(record)
+      mooncode_compact_session_listing_row(record)
     })
     rows.sort_by(mooncode_compare_session_listing_rows)
     w.write(Json::array(rows).stringify(indent=2))
@@ -67,16 +67,16 @@ fn mooncode_session_list_format_error(format : String) -> Json? {
 }
 
 ///|
-fn mooncode_openseek_session_listing_row(record : Json) -> Json {
+fn mooncode_compact_session_listing_row(record : Json) -> Json {
   {
     "id": mooncode_json_string(record, "session_id", default=""),
-    "title": mooncode_openseek_session_listing_title(record),
+    "title": mooncode_compact_session_listing_title(record),
     "updated_at_ms": mooncode_session_listing_updated_at_ms(record),
   }
 }
 
 ///|
-fn mooncode_openseek_session_listing_title(record : Json) -> String {
+fn mooncode_compact_session_listing_title(record : Json) -> String {
   let trimmed = mooncode_session_listing_first_user_prompt(record).trim()
   let out = StringBuilder()
   for ch in trimmed {
@@ -129,8 +129,8 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     "command_count": command_count,
     "event_count": event_count,
     "package_result_count": package_result_count,
-    "session_url": "/v1/mooncode/sessions/\{session_id}?book_root=<path>",
-    "stream_url": "/v1/mooncode/sessions/\{session_id}/stream?book_root=<path>&format=jsonl",
+    "session_url": "/v1/code/sessions/\{session_id}?book_root=<path>",
+    "stream_url": "/v1/code/sessions/\{session_id}/stream?book_root=<path>&format=jsonl",
     "source": if source == "" {
       "moonclaw"
     } else {
@@ -252,13 +252,13 @@ fn mooncode_session_listing_last_command_id(record : Json) -> String {
 ///|
 fn mooncode_session_listing_updated_at(record : Json) -> Json {
   match record {
-    Json::Object(object) =>
+    Object(object) =>
       match object.get("last_updated") {
         Some(value) => value
         None => {
           let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
           match snapshot {
-            Json::Object(snapshot_object) =>
+            Object(snapshot_object) =>
               snapshot_object.get("last_updated").unwrap_or(null)
             _ => null
           }
@@ -331,8 +331,8 @@ fn mooncode_file_mtime_ms(path : String) -> Int64? {
 ///|
 fn mooncode_json_int64_value(value : Json) -> Int64? {
   match value {
-    Json::Number(number, repr=None) => Some(number.to_int64())
-    Json::Number(_, repr=Some(raw)) | Json::String(raw) =>
+    Number(number, repr=None) => Some(number.to_int64())
+    Number(_, repr=Some(raw)) | String(raw) =>
       try @string.parse_int64(raw) catch {
         _ => None
       } noraise {
@@ -345,7 +345,7 @@ fn mooncode_json_int64_value(value : Json) -> Int64? {
 ///|
 fn mooncode_json_int64_field(json : Json, key : String) -> Int64? {
   match json {
-    Json::Object(object) =>
+    Object(object) =>
       match object.get(key) {
         Some(value) => mooncode_json_int64_value(value)
         None => None

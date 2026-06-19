@@ -52,8 +52,6 @@ fn adaptive_subplan_string_array_metadata(
 fn adaptive_subplan_provider_derived(request : AnalysisRequest) -> Bool {
   provider_execution_requested(request.execution_mode) ||
   metadata_with_step_metadata(request.step_metadata, "extension_task_id")
-  is Some(_) ||
-  metadata_with_step_metadata(request.step_metadata, "bookapi_task_id")
   is Some(_)
 }
 
@@ -131,7 +129,7 @@ fn adaptive_subplan_proposal(
   let mut index = 0
   for step in steps {
     let step_id = "step_\{index + 1}"
-    proposal_steps.push(JobProposalStep::{
+    proposal_steps.push({
       id: step_id,
       title: step.title.trim().to_owned(),
       prompt: step.prompt.trim().to_owned(),
@@ -153,7 +151,7 @@ fn adaptive_subplan_proposal(
     })
     index += 1
   }
-  JobProposal::{
+  {
     id: proposal_id,
     title,
     request_text,
@@ -163,7 +161,7 @@ fn adaptive_subplan_proposal(
     profile_id: None,
     profile_role: None,
     profile_metadata: policy_metadata,
-    status: JobProposalStatus::Draft,
+    status: Draft,
     steps: proposal_steps,
     tags: ["job", "adaptive-subplan"],
     channel_id: None,
@@ -236,9 +234,9 @@ async fn execute_analysis_subplan(
   let compilation = (compiler.run)(proposal, now(), cwd, home)
   runtime
   .store()
-  .save_job_proposal(JobProposal::{
+  .save_job_proposal({
     ..proposal,
-    status: JobProposalStatus::Confirmed,
+    status: Confirmed,
     job_id: Some(compilation.definition.id),
     workflow_id: Some(compilation.workflow.id),
     updated_at: now(),
@@ -252,7 +250,7 @@ async fn execute_analysis_subplan(
     runtime.trigger_definition(
       next_run_id(),
       compilation.definition.id,
-      TriggerSource::Custom("analysis-subplan"),
+      Custom("analysis-subplan"),
       now(),
       parent_run_id=Some(context.run.id),
       parent_step_id=Some(context.step.id),

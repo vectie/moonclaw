@@ -36,7 +36,7 @@ test "parse_notification_verbosity accepts expected values" {
 test "parse_job_chat_action recognizes slash and reply commands" {
   inspect(
     match @job.parse_job_chat_action("/plan review yesterday papers", false) {
-      Some(@job.JobChatAction::Plan(args)) => args
+      Some(Plan(args)) => args
       _ => ""
     },
     content="review yesterday papers",
@@ -44,21 +44,21 @@ test "parse_job_chat_action recognizes slash and reply commands" {
   inspect(
     match
       @job.parse_job_chat_action("/plan-job review yesterday papers", false) {
-      Some(@job.JobChatAction::PlanJob(args)) => args
+      Some(PlanJob(args)) => args
       _ => ""
     },
     content="review yesterday papers",
   )
   inspect(
     match @job.parse_job_chat_action("/e2e review yesterday papers", false) {
-      Some(@job.JobChatAction::E2EJob(args)) => args
+      Some(E2EJob(args)) => args
       _ => ""
     },
     content="review yesterday papers",
   )
   inspect(
     match @job.parse_job_chat_action("/preview", false) {
-      Some(@job.JobChatAction::Preview(args)) => args
+      Some(Preview(args)) => args
       _ => "missing"
     },
     content="",
@@ -66,56 +66,56 @@ test "parse_job_chat_action recognizes slash and reply commands" {
   inspect(
     match
       @job.parse_job_chat_action("/preview tighten cost assumptions", false) {
-      Some(@job.JobChatAction::Preview(args)) => args
+      Some(Preview(args)) => args
       _ => ""
     },
     content="tighten cost assumptions",
   )
   inspect(
     match @job.parse_job_chat_action("/promote keep the market comps", false) {
-      Some(@job.JobChatAction::Promote(args)) => args
+      Some(Promote(args)) => args
       _ => ""
     },
     content="keep the market comps",
   )
   inspect(
     match @job.parse_job_chat_action("confirm", true) {
-      Some(@job.JobChatAction::Confirm(args)) => args
+      Some(Confirm(args)) => args
       _ => "missing"
     },
     content="",
   )
   inspect(
     match @job.parse_job_chat_action("/job-force-stop run-1", false) {
-      Some(@job.JobChatAction::JobForceStop(args)) => args
+      Some(JobForceStop(args)) => args
       _ => ""
     },
     content="run-1",
   )
   inspect(
     match @job.parse_job_chat_action("/resume parcel docs attached", false) {
-      Some(@job.JobChatAction::Resume(args)) => args
+      Some(Resume(args)) => args
       _ => ""
     },
     content="parcel docs attached",
   )
   inspect(
     match @job.parse_job_chat_action("/remember save this note", false) {
-      Some(@job.JobChatAction::Remember(args)) => args
+      Some(Remember(args)) => args
       _ => ""
     },
     content="save this note",
   )
   inspect(
     match @job.parse_job_chat_action("/memories", false) {
-      Some(@job.JobChatAction::Memories) => "memories"
+      Some(Memories) => "memories"
       _ => ""
     },
     content="memories",
   )
   inspect(
     match @job.parse_job_chat_action("/memory-search retrieval", false) {
-      Some(@job.JobChatAction::MemorySearch(args)) => args
+      Some(MemorySearch(args)) => args
       _ => ""
     },
     content="retrieval",
@@ -138,7 +138,7 @@ test "feishu progress status helpers render expected text" {
 
 ///|
 test "message_resume_input includes content and attachments" {
-  let payload = message_resume_input(@channel.Message::{
+  let payload = message_resume_input({
     id: "msg-1",
     channel: "feishu",
     from: "user-1",
@@ -149,7 +149,7 @@ test "message_resume_input includes content and attachments" {
     thread_id: Some("thread-1"),
     reply_to: Some("reply-1"),
     attachments: [
-      @channel.Attachment::{
+      {
         id: "file-1",
         mime_type: "application/pdf",
         url: "https://example.test/file.pdf",
@@ -176,7 +176,7 @@ test "plan_job_input includes attachments and output format hint" {
   let payload = plan_job_input(
     "feishu",
     "default",
-    @channel.Message::{
+    {
       id: "msg-2",
       channel: "feishu",
       from: "user-1",
@@ -187,7 +187,7 @@ test "plan_job_input includes attachments and output format hint" {
       thread_id: Some("thread-2"),
       reply_to: None,
       attachments: [
-        @channel.Attachment::{
+        {
           id: "file-2",
           mime_type: "text/plain",
           url: "https://example.test/memo.txt",
@@ -198,7 +198,7 @@ test "plan_job_input includes attachments and output format hint" {
     },
     "Analyze the attached memo.\nOutput format: Executive summary",
     starter_attachments_from_channel([
-      @channel.Attachment::{
+      {
         id: "file-2",
         mime_type: "text/plain",
         url: "https://example.test/memo.txt",
@@ -253,7 +253,7 @@ test "merge_starter_attachments de-duplicates by attachment id" {
 ///|
 test "thread_attachment_key falls back to chat scope when thread id is missing" {
   inspect(
-    thread_attachment_key("feishu", "default", @channel.Message::{
+    thread_attachment_key("feishu", "default", {
       id: "msg-1",
       channel: "feishu",
       from: "user-1",
@@ -283,7 +283,7 @@ test "plan_job_input can use starter files gathered earlier in the thread" {
   let payload = plan_job_input(
     "feishu",
     "default",
-    @channel.Message::{
+    {
       id: "msg-3",
       channel: "feishu",
       from: "user-1",

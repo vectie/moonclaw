@@ -40,7 +40,7 @@ fn target_node(target : AcpTarget) -> AcpUiNode {
       None => target.cwd.unwrap_or(".")
     },
   )
-  AcpUiNode::{
+  {
     id: "target:\{target.id}",
     parent_id: None,
     kind: Target,
@@ -69,7 +69,7 @@ fn session_node(
       None => session.cwd.unwrap_or(".")
     },
   )
-  AcpUiNode::{
+  {
     id: "session:\{session.id}",
     parent_id: Some("target:\{session.target_id}"),
     kind: Session,
@@ -101,7 +101,7 @@ fn run_linkage_metadata(run : AcpRun) -> Json? {
 
 ///|
 fn run_node(run : AcpRun) -> AcpUiNode {
-  AcpUiNode::{
+  {
     id: "run:\{run.id}",
     parent_id: Some("session:\{run.session_id}"),
     kind: Run,
@@ -135,7 +135,7 @@ fn session_timeline_entry(
     Some(target) => target.label.unwrap_or(target.id)
     None => session.target_id
   }
-  AcpUiTimelineEntry::{
+  {
     id: "session:\{session.id}",
     event_type: "session.status",
     title: "Session \{session.status}",
@@ -157,7 +157,7 @@ fn session_timeline_entry(
 
 ///|
 fn run_timeline_entry(run : AcpRun) -> AcpUiTimelineEntry {
-  AcpUiTimelineEntry::{
+  {
     id: "run:\{run.id}",
     event_type: "run.\{run.status}",
     title: "Run \{run.status}",
@@ -204,5 +204,5 @@ pub fn build_acp_ui_snapshot(runtime : AcpRuntime) -> AcpUiSnapshot {
     timeline.push(run_timeline_entry(run))
   }
   timeline.sort_by(fn(left, right) { right.timestamp.compare(left.timestamp) })
-  AcpUiSnapshot::{ targets, sessions, runs, nodes, timeline }
+  { targets, sessions, runs, nodes, timeline }
 }

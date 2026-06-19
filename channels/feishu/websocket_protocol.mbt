@@ -204,7 +204,7 @@ fn decode_header_message(
       _ => return Err("unsupported header wire type")
     }
   }
-  Ok(FeishuWebSocketHeader::{ key, value })
+  Ok({ key, value })
 }
 
 ///|
@@ -320,7 +320,7 @@ fn decode_feishu_websocket_frame(
       _ => return Err("unsupported frame wire type")
     }
   }
-  Ok(FeishuWebSocketFrame::{
+  Ok({
     seq_id,
     log_id,
     service,

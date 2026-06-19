@@ -48,10 +48,7 @@ fn compiled_job_memory_scope(
 }
 
 ///|
-fn summarize_memory_content(
-  content : String,
-  max_chars? : Int = 4000,
-) -> String {
+fn summarize_memory_content(content : String, max_chars~ : Int) -> String {
   let trimmed = content.trim().to_owned()
   if trimmed.length() <= max_chars {
     trimmed
@@ -109,7 +106,7 @@ pub async fn capture_successful_run_memories(
           MemoryWriteRequest::new(
             kind="job.summary",
             title=Some("Job summary: \{definition.id}"),
-            content=summarize_memory_content(summary),
+            content=summarize_memory_content(summary, max_chars=4000),
             metadata={
               "job_id": definition.id,
               "run_id": run.id,
@@ -134,10 +131,7 @@ pub async fn capture_successful_run_memories(
 
   let artifacts = ArtifactStore::new(store~)
   let reports = artifacts.list(
-    query=ArtifactQuery::new(
-      run_id=Some(run.id),
-      status=Some(ArtifactStatus::Active),
-    ),
+    query=ArtifactQuery::new(run_id=Some(run.id), status=Some(Active)),
   )
   for artifact in reports {
     guard report_like_artifact(artifact) else { continue }
@@ -148,7 +142,7 @@ pub async fn capture_successful_run_memories(
             MemoryWriteRequest::new(
               kind="job.report",
               title=Some(report_memory_title(definition, artifact)),
-              content=summarize_memory_content(content),
+              content=summarize_memory_content(content, max_chars=4000),
               metadata={
                 "job_id": definition.id,
                 "run_id": run.id,

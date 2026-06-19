@@ -27,7 +27,7 @@ pub impl @json.FromJson for QueuedMessage with fn from_json(
   )
   let message = @ai.Message::from_openai(message)
   let web_search : Bool = object.optional("web_search", path~).unwrap_or(false)
-  QueuedMessage::{ id, message, web_search }
+  { id, message, web_search }
 }
 
 ///|
@@ -80,7 +80,7 @@ pub fn Agent::queue_message(
   web_search? : Bool = agent.web_search,
 ) -> @uuid.Uuid {
   let id = agent.uuid.v4()
-  agent.pending_queue.push_back(QueuedMessage::{ id, message, web_search })
+  agent.pending_queue.push_back({ id, message, web_search })
   agent.emit(MessageQueued(id~))
   id
 }
@@ -201,7 +201,7 @@ fn Agent::poll_external_events(agent : Agent) -> Bool {
 ///|
 fn Agent::cancel(agent : Agent) -> Unit {
   agent.input_queue.clear()
-  agent.emit(@event.Cancelled)
+  agent.emit(Cancelled)
 }
 
 ///|
@@ -406,7 +406,7 @@ pub async fn new(
   let event_target : @broadcast.Broadcast[@event.Event] = @broadcast.Broadcast::new()
   event_target.add_listener(event => {
     let is_delta = match event.desc {
-      @event.AssistantMessageDelta(_) => true
+      AssistantMessageDelta(_) => true
       _ => false
     }
     guard !is_delta else { return }
@@ -442,7 +442,7 @@ pub async fn new(
     model,
     tools: {},
     input_queue: [],
-    pending_queue: @deque.Deque([]),
+    pending_queue: Deque([]),
     event_target,
     token_counter: @token_counter.Counter::new(logger~),
     context_pruner: @context_pruner.Pruner::new(

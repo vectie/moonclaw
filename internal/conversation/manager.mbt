@@ -24,7 +24,7 @@ pub async fn Manager::new(
   if !@fsx.exists(conversations) {
     @fsx.make_directory(conversations, recursive=true, exists_ok=true)
   }
-  Manager::{ uuid, clock, home, cache, logger }
+  { uuid, clock, home, cache, logger }
 }
 
 ///|

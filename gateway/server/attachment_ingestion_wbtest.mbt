@@ -22,7 +22,7 @@ async test "materialize_starter_attachments_for_workspace writes manifest and ex
       dir,
       initial_input,
       fn(_attachment, _input) {
-        Ok(StarterAttachmentFetchResult::{
+        Ok({
           content: @encoding/utf8.encode("starter file body"),
           mime_type: Some("text/plain"),
           note: Some("test fetch"),
@@ -151,8 +151,7 @@ async test "persist_starter_attachment_artifacts writes extracted text and manif
       }),
     )
     let persisted_entries = match updated {
-      Some({ "starter_attachment_artifacts": Json::Array(entries), .. }) =>
-        entries
+      Some({ "starter_attachment_artifacts": Array(entries), .. }) => entries
       _ => []
     }
     inspect(persisted_entries.length().to_string(), content="3")
@@ -177,7 +176,7 @@ async test "persist_starter_attachment_artifacts writes extracted text and manif
       content="true",
     )
     let first_attachment = match persisted_entries[0] {
-      { "artifact_ids": Json::Array(ids), .. } => ids
+      { "artifact_ids": Array(ids), .. } => ids
       _ => []
     }
     inspect(first_attachment.length().to_string(), content="2")

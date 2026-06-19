@@ -44,10 +44,10 @@ pub async fn discover() -> Client {
   if !content.is_empty() {
     let parsed = @json.parse(content) catch { _ => Json::null() }
     if moonstat_base_url_from_status(parsed) is Some(base_url) {
-      return Client::{ base_url, }
+      return { base_url, }
     }
   }
-  Client::{ base_url: DEFAULT_BASE_URL }
+  { base_url: DEFAULT_BASE_URL }
 }
 
 ///|
@@ -59,9 +59,7 @@ pub async fn discover_from_suite_status() -> Client? {
     return None
   }
   let parsed = @json.parse(content) catch { _ => Json::null() }
-  moonstat_base_url_from_status(parsed).map(fn(base_url) {
-    Client::{ base_url, }
-  })
+  moonstat_base_url_from_status(parsed).map(fn(base_url) { { base_url, } })
 }
 
 ///|
@@ -70,8 +68,8 @@ pub fn Client::base_url(self : Client) -> String {
 }
 
 ///|
-pub fn Client::route_openclaw_chat_url(self : Client) -> String {
-  self.base_url + "/openclaw/v1/chat/completions"
+pub fn Client::route_moonclaw_chat_url(self : Client) -> String {
+  self.base_url + "/moonclaw/v1/chat/completions"
 }
 
 ///|
@@ -195,11 +193,11 @@ pub async fn Client::post(
 }
 
 ///|
-pub async fn Client::route_openclaw_chat(
+pub async fn Client::route_moonclaw_chat(
   self : Client,
   body : Json,
 ) -> Result[Json, String] {
-  self.post("/openclaw/v1/chat/completions", body)
+  self.post("/moonclaw/v1/chat/completions", body)
 }
 
 ///|
@@ -336,22 +334,9 @@ fn moonstat_base_url_from_status(status : Json) -> String? {
       }
       match obj.get("base_url") {
         Some(String(url)) if !url.is_empty() => Some(url)
-        _ =>
-          match obj.get("health_url") {
-            Some(String(url)) => moonstat_strip_suffix(url, "/health")
-            _ => None
-          }
+        _ => None
       }
     }
     _ => None
-  }
-}
-
-///|
-fn moonstat_strip_suffix(value : String, suffix : String) -> String? {
-  if value.has_suffix(suffix) {
-    Some(value[:value.length() - suffix.length()].to_owned())
-  } else {
-    None
   }
 }

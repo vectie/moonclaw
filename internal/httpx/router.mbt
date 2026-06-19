@@ -26,7 +26,7 @@ pub fn Router::middleware(self : Router) -> Middleware {
 
 ///|
 fn Route::new(handle : Handler) -> Route {
-  Route::{ handle, names: [] }
+  { handle, names: [] }
 }
 
 ///|
@@ -38,7 +38,7 @@ priv struct Layer {
 
 ///|
 fn Layer::new() -> Layer {
-  Layer::{ routes: MethodMap::new(), matches: {}, default: None }
+  { routes: MethodMap::new(), matches: {}, default: None }
 }
 
 ///|
@@ -82,13 +82,13 @@ fn Layer::route(
 ) -> (MethodMap[Route], Array[StringView])? {
   let mut curr : Array[(Layer, Array[StringView])] = [(self, [])]
   let mut next : Array[(Layer, Array[StringView])] = []
-  for segments = segments {
-    match segments {
+  let mut remaining = segments
+  while true {
+    match remaining {
       [] =>
-        break for r in curr {
-          break Some((r.0.routes, r.1))
-        } nobreak {
-          None
+        match curr {
+          [r, ..] => return Some((r.0.routes, r.1))
+          [] => return None
         }
       [segment, .. segments] => {
         for r in curr {
@@ -102,10 +102,12 @@ fn Layer::route(
         }
         curr = next
         next = []
-        continue segments
+        remaining = segments
+        continue
       }
     }
   }
+  None
 }
 
 ///|
@@ -173,7 +175,7 @@ pub fn Router::new() -> Router {
       }
     }
   }
-  Router::{ layer, allow, handler: middleware(not_found), middleware }
+  { layer, allow, handler: middleware(not_found), middleware }
 }
 
 ///|

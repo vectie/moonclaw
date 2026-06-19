@@ -4,3 +4,5 @@ import {
   "vectie/moonlib/pathx",
   "vectie/moonclaw/internal/pino",
 }
+
+supported_targets = "native"

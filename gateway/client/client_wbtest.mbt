@@ -1,6 +1,6 @@
 ///|
 test "decode_ok_payload parses run and channel payloads" {
-  let runs_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let runs_response : Result[@protocol.Response, String] = Ok({
     id: "req-runs",
     ok: true,
     payload: Some({
@@ -26,7 +26,7 @@ test "decode_ok_payload parses run and channel payloads" {
   })
   let channel_dock = @channel.ChannelDock::{
     id: "feishu",
-    meta: @channel.ChannelMeta::{
+    meta: {
       id: "feishu",
       label: "Feishu",
       selection_label: "Feishu/Lark",
@@ -43,13 +43,13 @@ test "decode_ok_payload parses run and channel payloads" {
     outbound: None,
     streaming: None,
   }
-  let channels_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let channels_response : Result[@protocol.Response, String] = Ok({
     id: "req-channels",
     ok: true,
     payload: Some({ "channels": [channel_dock.to_json()] }),
     error: None,
   })
-  let ask_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let ask_response : Result[@protocol.Response, String] = Ok({
     id: "req-ask",
     ok: true,
     payload: Some(
@@ -58,7 +58,7 @@ test "decode_ok_payload parses run and channel payloads" {
         question: "What changed?",
         answer: "Found 1 relevant artifact(s) for: What changed?",
         citations: [
-          @job.ChatCitation::{
+          {
             artifact_id: "artifact-1",
             artifact_type: "paper.summary",
             logical_key: Some("paper:1"),
@@ -68,7 +68,7 @@ test "decode_ok_payload parses run and channel payloads" {
           },
         ],
         hits: [
-          @job.RetrievalHit::{
+          {
             artifact_id: "artifact-1",
             artifact_type: "paper.summary",
             logical_key: Some("paper:1"),
@@ -95,7 +95,7 @@ test "decode_ok_payload parses run and channel payloads" {
     updated_at: 2,
     tags: ["research"],
   }
-  let job_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let job_response : Result[@protocol.Response, String] = Ok({
     id: "req-job",
     ok: true,
     payload: Some({ "job": job.to_json() }),
@@ -104,12 +104,12 @@ test "decode_ok_payload parses run and channel payloads" {
   let job_run = @job.JobRun::{
     id: "job-run-1",
     job_id: "job-1",
-    trigger: @job.TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: @job.RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(10),
@@ -117,13 +117,13 @@ test "decode_ok_payload parses run and channel payloads" {
     summary: None,
     error: None,
   }
-  let job_run_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let job_run_response : Result[@protocol.Response, String] = Ok({
     id: "req-job-run",
     ok: true,
     payload: Some({ "run": job_run.to_json(), "steps": [], "artifacts": [] }),
     error: None,
   })
-  let job_ui_snapshot_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let job_ui_snapshot_response : Result[@protocol.Response, String] = Ok({
     id: "req-job-ui",
     ok: true,
     payload: Some({
@@ -140,10 +140,10 @@ test "decode_ok_payload parses run and channel payloads" {
         linked_remote: [],
         handoffs: [],
         nodes: [
-          @job.JobUiNode::{
+          {
             id: "workflow:job-run-1",
             parent_id: None,
-            kind: @job.JobUiNodeKind::Workflow,
+            kind: Workflow,
             title: "analysis",
             status: "\"Running\"",
             summary: None,
@@ -163,7 +163,7 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
-  let job_ui_events_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let job_ui_events_response : Result[@protocol.Response, String] = Ok({
     id: "req-job-ui-events",
     ok: true,
     payload: Some({
@@ -198,18 +198,18 @@ test "decode_ok_payload parses run and channel payloads" {
     recipient: Some("chat-1"),
     thread_id: None,
     source_artifact_id: None,
-    status: @job.MemoryStatus::Active,
+    status: Active,
     created_at: 1,
     updated_at: 1,
     archived_at: None,
   }
-  let memory_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let memory_response : Result[@protocol.Response, String] = Ok({
     id: "req-memory",
     ok: true,
     payload: Some(memory.to_json()),
     error: None,
   })
-  let memory_search_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let memory_search_response : Result[@protocol.Response, String] = Ok({
     id: "req-memory-search",
     ok: true,
     payload: Some({
@@ -232,7 +232,7 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
-  let workspace_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let workspace_response : Result[@protocol.Response, String] = Ok({
     id: "req-workspace",
     ok: true,
     payload: Some({
@@ -245,7 +245,7 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
-  let plugins_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let plugins_response : Result[@protocol.Response, String] = Ok({
     id: "req-plugins",
     ok: true,
     payload: Some({
@@ -255,7 +255,7 @@ test "decode_ok_payload parses run and channel payloads" {
           "enabled": true,
           "status": "enabled",
           "source": "npm",
-          "spec": "@openclaw/feishu",
+          "spec": "@moonclaw/feishu",
           "version": "1.0.0",
           "install_path": "/tmp/plugin",
           "metadata": {},
@@ -301,37 +301,37 @@ test "decode_ok_payload parses run and channel payloads" {
     "result": null,
     "error": "",
   }
-  let acp_targets_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_targets_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-targets",
     ok: true,
     payload: Some({ "targets": [acp_target] }),
     error: None,
   })
-  let acp_target_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_target_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-target",
     ok: true,
     payload: Some({ "target": acp_target }),
     error: None,
   })
-  let acp_sessions_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_sessions_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-sessions",
     ok: true,
     payload: Some({ "sessions": [acp_session] }),
     error: None,
   })
-  let acp_session_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_session_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-session",
     ok: true,
     payload: Some({ "session": acp_session }),
     error: None,
   })
-  let acp_session_mutation_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_session_mutation_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-session-mutation",
     ok: true,
     payload: Some({ "status": "attached", "session": acp_session }),
     error: None,
   })
-  let acp_session_run_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_session_run_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-session-run",
     ok: true,
     payload: Some({
@@ -377,19 +377,19 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
-  let acp_runs_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_runs_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-runs",
     ok: true,
     payload: Some({ "runs": [acp_run] }),
     error: None,
   })
-  let acp_run_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_run_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-run",
     ok: true,
     payload: Some({ "run": acp_run }),
     error: None,
   })
-  let acp_ui_snapshot_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_ui_snapshot_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-ui",
     ok: true,
     payload: Some({
@@ -432,7 +432,7 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
-  let acp_ui_events_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_ui_events_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-ui-events",
     ok: true,
     payload: Some({
@@ -453,7 +453,7 @@ test "decode_ok_payload parses run and channel payloads" {
     }),
     error: None,
   })
-  let acp_run_cancel_response : Result[@protocol.Response, String] = Ok(@protocol.Response::{
+  let acp_run_cancel_response : Result[@protocol.Response, String] = Ok({
     id: "req-acp-run-cancel",
     ok: true,
     payload: Some({
@@ -679,11 +679,11 @@ test "decode_ok_payload parses run and channel payloads" {
 ///|
 test "decode_ok_payload returns protocol and parsing errors" {
   let protocol_error : Result[@protocol.HealthPayload, String] = decode_ok_payload(
-    Ok(@protocol.Response::{
+    Ok({
       id: "req-health",
       ok: false,
       payload: None,
-      error: Some(@protocol.ErrorShape::{
+      error: Some({
         code: "unauthorized",
         message: "Invalid token",
         details: None,
@@ -696,7 +696,7 @@ test "decode_ok_payload returns protocol and parsing errors" {
     "parse failed",
   )
   let parse_error : Result[@protocol.HealthPayload, String] = decode_ok_payload(
-    Ok(@protocol.Response::{
+    Ok({
       id: "req-health",
       ok: true,
       payload: Some({ "status": "ok" }),

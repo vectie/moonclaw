@@ -233,7 +233,7 @@ async fn Todo::execute_todo(
   }
   // Handle read action
   if todo_args.action is Read {
-    return @tool.ok(TodoResult::Read({ todos: self.todos() }))
+    return @tool.ok(Read({ todos: self.todos() }))
   }
   let { action, content, task_id, priority, status, notes } = todo_args
   match action {
@@ -249,7 +249,7 @@ async fn Todo::execute_todo(
             self.save()
             let todos = self.todos()
             return @tool.ok(
-              TodoResult::Write({
+              Write({
                 todos,
                 message: "Created \{todos.length()} new todo items",
                 updated_todos: todos,
@@ -270,7 +270,7 @@ async fn Todo::execute_todo(
       try {
         self.save()
         return @tool.ok(
-          TodoResult::Write({
+          Write({
             todos: self.todos().map(t => t),
             message: "Added new task: \{item.content}",
             updated_todos: [item],
@@ -294,7 +294,7 @@ async fn Todo::execute_todo(
       let action_message = match action {
         MarkProgress => {
           let updated_todo = todo.update(
-            status=InProgress,
+            status=Some(InProgress),
             updated_at=self.now(),
           )
           updated_todos.push(updated_todo)
@@ -303,7 +303,7 @@ async fn Todo::execute_todo(
         }
         MarkCompleted => {
           let updated_todo = todo.update(
-            status=Completed,
+            status=Some(Completed),
             updated_at=self.now(),
           )
           updated_todos.push(updated_todo)
@@ -313,7 +313,7 @@ async fn Todo::execute_todo(
         Update => {
           let updated_todo = todo.update(
             content?,
-            status~,
+            status=Some(status),
             priority~,
             notes~,
             updated_at=self.now(),
@@ -327,7 +327,7 @@ async fn Todo::execute_todo(
       try {
         self.save()
         @tool.ok(
-          TodoResult::Write({
+          Write({
             todos: self.todos(),
             message: action_message,
             updated_todos,

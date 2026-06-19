@@ -341,7 +341,7 @@ fn mooncode_runtime_claim_state_from_logs(
     "invalid_command_count": invalid.length(),
     "order_blocked_command_count": order_blocked.length(),
     "claim_ready": claimable.length() > 0,
-    "claim_endpoint": "/v1/mooncode/sessions/\{session_id}/runtime-claim?book_root=<path>",
+    "claim_endpoint": "/v1/code/sessions/\{session_id}/runtime-claim?book_root=<path>",
     "ordering_rule": "MoonClaw claims the next unresolved command from commands.jsonl in append order; active claims and invalid commands block later commands until a runtime-dispatch receipt resolves the blocker.",
     "claimable_commands": Json::array(claimable),
     "claimed_commands": Json::array(claimed),

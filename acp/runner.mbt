@@ -62,7 +62,7 @@ fn acp_patch_receipt_contract() -> String {
 
 ///|
 async fn acp_git_stdout(cwd : String, args : Array[String]) -> String? {
-  let process = @spawn.spawn("git", args.map(fn(arg) { arg[:] }), cwd~) catch {
+  let process = @spawn.spawn("git", args.map(fn(arg) { arg }), cwd~) catch {
     _ => return None
   }
   if process.status == 0 {
@@ -383,7 +383,7 @@ async fn acp_git_add_and_commit(
   for file in files {
     add_args.push(file)
   }
-  let add = @spawn.spawn("git", add_args.map(fn(arg) { arg[:] }), cwd~) catch {
+  let add = @spawn.spawn("git", add_args.map(fn(arg) { arg }), cwd~) catch {
     _ => return false
   }
   if add.status != 0 {
@@ -552,7 +552,7 @@ pub fn prepare_launch_command(
         "ACP launch plan is missing a command for backend \{plan.backend}",
       )
   }
-  Ok(AcpLaunchCommand::{
+  Ok({
     command,
     args: launch_arguments(plan, request),
     env: launch_env(plan, request),

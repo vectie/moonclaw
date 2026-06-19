@@ -97,11 +97,11 @@ pub fn parse_acp_chat_action(text : String) -> AcpChatAction? {
   guard trimmed.has_prefix("/") else { return None }
   let (command, args) = split_acp_chat_command(trimmed)
   match command {
-    "/acp-targets" => Some(AcpChatAction::Targets)
-    "/acp-status" => Some(AcpChatAction::Status)
-    "/acp-attach" => Some(AcpChatAction::Attach(args))
-    "/acp-detach" => Some(AcpChatAction::Detach(args))
-    "/acp-run" => Some(AcpChatAction::Run(args))
+    "/acp-targets" => Some(Targets)
+    "/acp-status" => Some(Status)
+    "/acp-attach" => Some(Attach(args))
+    "/acp-detach" => Some(Detach(args))
+    "/acp-run" => Some(Run(args))
     _ => None
   }
 }

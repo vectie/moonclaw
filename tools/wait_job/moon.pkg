@@ -7,6 +7,8 @@ import {
   "moonbitlang/core/test",
 }
 
+supported_targets = "native"
+
 import {
   "vectie/moonclaw/internal/mock",
 } for "test"

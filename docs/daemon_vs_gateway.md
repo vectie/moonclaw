@@ -106,7 +106,7 @@ Choose gateway if you need:
 - mailbox or orchestration APIs
 - Feishu or other channel runtime that should survive as a background service
 
-For an OpenClaw-style always-on Feishu backend, `gateway` is the correct service entrypoint. Keep `daemon` separate; strengthen `gateway` instead of merging the two runtimes.
+For an MoonClaw always-on Feishu backend, `gateway` is the correct service entrypoint. Keep `daemon` separate; strengthen `gateway` instead of merging the two runtimes.
 The current Feishu websocket startup path also lives in `gateway`: it can resolve the upstream Feishu websocket endpoint from `appId` / `appSecret` and keep that long-lived connection under the gateway-managed extension runtime.
 
 ## When to Choose Daemon

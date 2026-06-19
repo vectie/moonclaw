@@ -138,7 +138,7 @@ fn presentation_renderer_metadata(proposal : JobProposal) -> Json {
 
 ///|
 fn presentation_render_step(proposal : JobProposal) -> JobProposalStep {
-  JobProposalStep::{
+  {
     id: "presentation_render",
     title: "Render presentation package",
     prompt: [
@@ -164,7 +164,7 @@ fn presentation_render_step(proposal : JobProposal) -> JobProposalStep {
 
 ///|
 fn presentation_postprocess_step(proposal : JobProposal) -> JobProposalStep {
-  JobProposalStep::{
+  {
     id: "presentation_postprocess",
     title: "Generate presentation plan",
     prompt: presentation_step_prompt(proposal),
@@ -193,5 +193,5 @@ pub fn with_e2e_postprocess_steps(proposal : JobProposal) -> JobProposal {
     Some(_) => [..steps, presentation_render_step(proposal)]
     None => steps
   }
-  JobProposal::{ ..proposal, steps, }
+  { ..proposal, steps, }
 }

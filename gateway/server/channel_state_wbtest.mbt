@@ -1,7 +1,7 @@
 ///|
 async test "ChannelStateStore persists channel config and runtime intent" {
   @fsx.with_temporary_directory("gateway-channel-state-XXXXXX", dir => {
-    let path = @path.Path(dir).join(@path.Path("channels.json")).to_string()
+    let path = @path.Path(dir).join(Path("channels.json")).to_string()
     let store = ChannelStateStore::{ path, states: {} }
     let account_config : Json = {
       "app_id": "app-1",
@@ -35,11 +35,9 @@ async test "ChannelStateStore persists channel config and runtime intent" {
 ///|
 async test "ChannelManager::restore_states restores configured running accounts" {
   @fsx.with_temporary_directory("gateway-home-XXXXXX", dir => {
-    let gateway_dir = @path.Path(dir).join(@path.Path("gateway")).to_string()
+    let gateway_dir = @path.Path(dir).join(Path("gateway")).to_string()
     @fsx.make_directory(gateway_dir, recursive=true)
-    let path = @path.Path(gateway_dir)
-      .join(@path.Path("channels.json"))
-      .to_string()
+    let path = @path.Path(gateway_dir).join(Path("channels.json")).to_string()
     let store = ChannelStateStore::{ path, states: {} }
     let account_config : Json = {
       "app_id": "app-1",
@@ -86,11 +84,9 @@ async test "ChannelManager::restore_states restores configured running accounts"
 ///|
 async test "ChannelStateStore keeps stopped accounts persisted but not auto-started on restore" {
   @fsx.with_temporary_directory("gateway-home-XXXXXX", dir => {
-    let gateway_dir = @path.Path(dir).join(@path.Path("gateway")).to_string()
+    let gateway_dir = @path.Path(dir).join(Path("gateway")).to_string()
     @fsx.make_directory(gateway_dir, recursive=true)
-    let path = @path.Path(gateway_dir)
-      .join(@path.Path("channels.json"))
-      .to_string()
+    let path = @path.Path(gateway_dir).join(Path("channels.json")).to_string()
     let store = ChannelStateStore::{ path, states: {} }
     let account_config : Json = {
       "app_id": "app-1",
@@ -146,7 +142,7 @@ async test "ChannelStateStore keeps stopped accounts persisted but not auto-star
 ///|
 async test "ChannelStateStore prunes runtime state for accounts removed from config" {
   @fsx.with_temporary_directory("gateway-channel-state-XXXXXX", dir => {
-    let path = @path.Path(dir).join(@path.Path("channels.json")).to_string()
+    let path = @path.Path(dir).join(Path("channels.json")).to_string()
     let store = ChannelStateStore::{ path, states: {} }
     let default_account : Json = {
       "app_id": "app-1",
@@ -164,14 +160,14 @@ async test "ChannelStateStore prunes runtime state for accounts removed from con
       "dm_policy": "pairing",
       "enabled": true,
     }
-    store.save_config("feishu", @channel.ChannelConfig::{
+    store.save_config("feishu", {
       enabled: true,
       accounts: { "default": default_account, "backup": backup_account },
       global_settings: {},
     })
     store.save_account_runtime("feishu", "default", default_account, true)
     store.save_account_runtime("feishu", "backup", backup_account, true)
-    store.save_config("feishu", @channel.ChannelConfig::{
+    store.save_config("feishu", {
       enabled: true,
       accounts: { "default": default_account },
       global_settings: {},
@@ -192,11 +188,9 @@ async test "ChannelStateStore prunes runtime state for accounts removed from con
 ///|
 async test "ChannelManager::restore_states restores configured Weixin account" {
   @fsx.with_temporary_directory("gateway-weixin-home-XXXXXX", dir => {
-    let gateway_dir = @path.Path(dir).join(@path.Path("gateway")).to_string()
+    let gateway_dir = @path.Path(dir).join(Path("gateway")).to_string()
     @fsx.make_directory(gateway_dir, recursive=true)
-    let path = @path.Path(gateway_dir)
-      .join(@path.Path("channels.json"))
-      .to_string()
+    let path = @path.Path(gateway_dir).join(Path("channels.json")).to_string()
     let store = ChannelStateStore::{ path, states: {} }
     let account_config : Json = {
       "app_id": "wx-app",

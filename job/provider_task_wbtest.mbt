@@ -234,7 +234,7 @@ async fn write_multi_provider_task_fixture(
 
 ///|
 async test "provider task batch maps provider-backed extension tasks into a child proposal" {
-  @fsx.with_temporary_directory("job-book-harness-proposal-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-proposal-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -266,34 +266,31 @@ async test "provider task batch maps provider-backed extension tasks into a chil
       "Update the knowledge base", batch, command, config, 1000,
     )
 
-    debug_inspect(proposal.suggested_family.unwrap_or(""), content="extension")
-    debug_inspect(proposal.steps.length(), content="2")
-    debug_inspect(proposal.steps[0].kind, content="job.analysis")
-    debug_inspect(
-      proposal.steps[0].execution_mode.unwrap_or(""),
-      content="provider",
-    )
-    debug_inspect(
+    inspect(proposal.suggested_family.unwrap_or(""), content="extension")
+    inspect(proposal.steps.length(), content="2")
+    inspect(proposal.steps[0].kind, content="job.analysis")
+    inspect(proposal.steps[0].execution_mode.unwrap_or(""), content="provider")
+    inspect(
       proposal.steps[0].execution_target.unwrap_or(""),
       content="wiki-main",
     )
-    debug_inspect(
+    inspect(
       proposal.steps[0].metadata
       .stringify()
-      .contains("\"bookapi_task_id\":\"task-1\""),
+      .contains("\"extension_task_id\":\"task-1\""),
       content="true",
     )
-    debug_inspect(
+    inspect(
       proposal.steps[0].metadata.stringify().contains("\"timeout_ms\":600000"),
       content="true",
     )
-    debug_inspect(
+    inspect(
       proposal.steps[0].metadata
       .stringify()
       .contains("\"max_total_tokens\":24000"),
       content="true",
     )
-    debug_inspect(
+    inspect(
       proposal.profile_metadata.stringify().contains("\"task_count\":2"),
       content="true",
     )
@@ -307,7 +304,7 @@ test "provider task child proposal skips deferred planning task when executable 
     goal: "Bootstrap ingest",
     summary: "Mixed execution and planning batch",
     tasks: [
-      ProviderTaskSpec::{
+      {
         id: "bootstrap_gather",
         title: "Gather bootstrap materials",
         kind: "bootstrap_gather",
@@ -316,7 +313,7 @@ test "provider task child proposal skips deferred planning task when executable 
         requires_review: true,
         target_pages: ["raw/bootstrap/demo.md"],
       },
-      ProviderTaskSpec::{
+      {
         id: "source_materialize",
         title: "Materialize durable source pages",
         kind: "source_materialize",
@@ -325,7 +322,7 @@ test "provider task child proposal skips deferred planning task when executable 
         requires_review: true,
         target_pages: ["wiki/sources/demo.md"],
       },
-      ProviderTaskSpec::{
+      {
         id: "planning",
         title: "Refresh local planning surfaces",
         kind: "planning",
@@ -365,20 +362,14 @@ test "provider task child proposal skips deferred planning task when executable 
   let proposal = provider_task_child_proposal(
     "Bootstrap ingest", batch, command, config, 1000,
   )
-  debug_inspect(proposal.steps.length(), content="2")
-  debug_inspect(
-    proposal.steps[0].id.has_prefix("provider-task-"),
-    content="true",
-  )
-  debug_inspect(
-    proposal.steps[1].id.has_prefix("provider-task-"),
-    content="true",
-  )
-  debug_inspect(
+  inspect(proposal.steps.length(), content="2")
+  inspect(proposal.steps[0].id.has_prefix("provider-task-"), content="true")
+  inspect(proposal.steps[1].id.has_prefix("provider-task-"), content="true")
+  inspect(
     proposal.profile_metadata.stringify().contains("\"task_count\":2"),
     content="true",
   )
-  debug_inspect(
+  inspect(
     proposal.profile_metadata.stringify().contains("\"deferred_task_count\":1"),
     content="true",
   )
@@ -412,9 +403,9 @@ test "provider task child proposal enables web tools for web-first tasks" {
     "Use web-first research before local-only conclusions.", "goal-1", task, command,
   )
   let serialized = metadata.stringify()
-  debug_inspect(serialized.contains("\"enable_tools\":true"), content="true")
-  debug_inspect(serialized.contains("\"web_search\":true"), content="true")
-  debug_inspect(serialized.contains("\"web_fetch\":true"), content="true")
+  inspect(serialized.contains("\"enable_tools\":true"), content="true")
+  inspect(serialized.contains("\"web_search\":true"), content="true")
+  inspect(serialized.contains("\"web_fetch\":true"), content="true")
 }
 
 ///|
@@ -445,8 +436,8 @@ test "provider task child proposal enables web tools by default" {
     "Inspect source material", "goal-1", task, command,
   )
   let serialized = metadata.stringify()
-  debug_inspect(serialized.contains("\"web_search\":true"), content="true")
-  debug_inspect(serialized.contains("\"web_fetch\":true"), content="true")
+  inspect(serialized.contains("\"web_search\":true"), content="true")
+  inspect(serialized.contains("\"web_fetch\":true"), content="true")
 }
 
 ///|
@@ -456,7 +447,7 @@ test "provider task child proposal keeps bootstrap execution bounded" {
     goal: "Bootstrap ingest",
     summary: "Out-of-order execution batch",
     tasks: [
-      ProviderTaskSpec::{
+      {
         id: "review",
         title: "Review pending book updates",
         kind: "review",
@@ -465,7 +456,7 @@ test "provider task child proposal keeps bootstrap execution bounded" {
         requires_review: true,
         target_pages: ["wiki/reviews/pending.md"],
       },
-      ProviderTaskSpec::{
+      {
         id: "knowledge_revise",
         title: "Revise knowledge pages",
         kind: "knowledge_revise",
@@ -474,7 +465,7 @@ test "provider task child proposal keeps bootstrap execution bounded" {
         requires_review: true,
         target_pages: ["wiki/concepts/demo.md"],
       },
-      ProviderTaskSpec::{
+      {
         id: "bootstrap_gather",
         title: "Gather bootstrap materials",
         kind: "bootstrap_gather",
@@ -483,7 +474,7 @@ test "provider task child proposal keeps bootstrap execution bounded" {
         requires_review: true,
         target_pages: ["raw/bootstrap/demo.md"],
       },
-      ProviderTaskSpec::{
+      {
         id: "source_materialize",
         title: "Materialize durable source pages",
         kind: "source_materialize",
@@ -523,29 +514,29 @@ test "provider task child proposal keeps bootstrap execution bounded" {
   let proposal = provider_task_child_proposal(
     "Bootstrap ingest", batch, command, config, 1000,
   )
-  debug_inspect(proposal.steps.length(), content="4")
-  debug_inspect(
+  inspect(proposal.steps.length(), content="4")
+  inspect(
     proposal.steps[0].metadata
     .stringify()
-    .contains("\"bookapi_task_kind\":\"bootstrap_gather\""),
+    .contains("\"extension_task_kind\":\"bootstrap_gather\""),
     content="true",
   )
-  debug_inspect(
+  inspect(
     proposal.steps[1].metadata
     .stringify()
-    .contains("\"bookapi_task_kind\":\"source_materialize\""),
+    .contains("\"extension_task_kind\":\"source_materialize\""),
     content="true",
   )
-  debug_inspect(
+  inspect(
     proposal.steps[2].metadata
     .stringify()
-    .contains("\"bookapi_task_kind\":\"knowledge_revise\""),
+    .contains("\"extension_task_kind\":\"knowledge_revise\""),
     content="true",
   )
-  debug_inspect(
+  inspect(
     proposal.steps[3].metadata
     .stringify()
-    .contains("\"bookapi_task_kind\":\"review\""),
+    .contains("\"extension_task_kind\":\"review\""),
     content="true",
   )
 }
@@ -570,14 +561,11 @@ test "provider task normalizes provider task kind and title from step metadata" 
     },
     task,
   )
-  debug_inspect(normalized.kind, content="source_materialize")
-  debug_inspect(normalized.title, content="Materialize durable source pages")
-  debug_inspect(normalized.priority.to_string(), content="90")
-  debug_inspect(normalized.requires_review.to_string(), content="true")
-  debug_inspect(
-    normalized.target_pages.join(","),
-    content="sources/,index.md,log.md",
-  )
+  inspect(normalized.kind, content="source_materialize")
+  inspect(normalized.title, content="Materialize durable source pages")
+  inspect(normalized.priority.to_string(), content="90")
+  inspect(normalized.requires_review.to_string(), content="true")
+  inspect(normalized.target_pages.join(","), content="sources/,index.md,log.md")
 }
 
 ///|
@@ -594,12 +582,12 @@ test "provider task can pin full task spec in step metadata" {
   let decoded = provider_task_spec_from_metadata({
     "extension_task_spec": task.to_json(),
   })
-  debug_inspect(decoded is Some(_), content="true")
-  debug_inspect(
+  inspect(decoded is Some(_), content="true")
+  inspect(
     decoded.map(fn(value) { value.kind }).unwrap_or(""),
     content="source_materialize",
   )
-  debug_inspect(
+  inspect(
     decoded.map(fn(value) { value.target_pages.join(",") }).unwrap_or(""),
     content="wiki/sources/,wiki/index.md,wiki/log.md",
   )
@@ -642,10 +630,10 @@ test "provider task reads pinned spec from nested step metadata" {
   let normalized = normalize_provider_task_spec_from_metadata(
     nested_metadata, decoded,
   )
-  debug_inspect(normalized.id, content="task-materialize")
-  debug_inspect(normalized.kind, content="source_materialize")
-  debug_inspect(normalized.title, content="Materialize durable source pages")
-  debug_inspect(
+  inspect(normalized.id, content="task-materialize")
+  inspect(normalized.kind, content="source_materialize")
+  inspect(normalized.title, content="Materialize durable source pages")
+  inspect(
     normalized.target_pages.join(","),
     content="wiki/sources/,wiki/index.md,wiki/log.md",
   )
@@ -653,7 +641,7 @@ test "provider task reads pinned spec from nested step metadata" {
 
 ///|
 async test "provider task runner reuses embedded provider command when manifest is unavailable" {
-  @fsx.with_temporary_directory("job-book-harness-embedded-command-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-embedded-command-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -710,7 +698,7 @@ async test "provider task runner reuses embedded provider command when manifest 
     }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: (
             #|{
@@ -730,12 +718,12 @@ async test "provider task runner reuses embedded provider command when manifest 
       Ok(execution) => execution
       Err(error) => fail(error)
     }
-    debug_inspect(
+    inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
     )
     let persisted_path = @fsx.read_file(state_path)
-    debug_inspect(
+    inspect(
       persisted_path.contains(".moonclaw-provider-result-run-1-"),
       content="true",
     )
@@ -744,7 +732,7 @@ async test "provider task runner reuses embedded provider command when manifest 
 
 ///|
 async test "provider task analysis runner hydrates context and persists structured result" {
-  @fsx.with_temporary_directory("job-book-harness-runner-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-runner-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -802,7 +790,7 @@ async test "provider task analysis runner hydrates context and persists structur
         captured_enable_tools.val = inner_request.enable_tools
         captured_web_search.val = inner_request.web_search
         captured_todo_enabled.val = inner_request.tool_contract.todo
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: (
             #|{
@@ -835,55 +823,46 @@ async test "provider task analysis runner hydrates context and persists structur
       Err(error) => fail(error)
     }
 
-    debug_inspect(
-      captured_prompt.val.contains("Relevant Pages:"),
-      content="true",
-    )
-    debug_inspect(
-      captured_prompt.val.contains("wiki/entity.md"),
-      content="true",
-    )
-    debug_inspect(
+    inspect(captured_prompt.val.contains("Relevant Pages:"), content="true")
+    inspect(captured_prompt.val.contains("wiki/entity.md"), content="true")
+    inspect(
       captured_system_prompt.val.contains(
         "loaded `provider-task-execution` skill defines the execution method.",
       ),
       content="true",
     )
-    debug_inspect(
+    inspect(
       captured_prompt.val.contains("provider-task-execution"),
       content="true",
     )
-    debug_inspect(
+    inspect(
       captured_system_prompt.val.contains("Base system prompt."),
       content="true",
     )
-    debug_inspect(
+    inspect(
       captured_system_prompt.val.contains(
         "Read concrete candidate files directly before using broad repo-wide search tools.",
       ),
       content="true",
     )
-    debug_inspect(
-      captured_system_prompt.val.contains(".mooncakes"),
-      content="true",
-    )
-    debug_inspect(
+    inspect(captured_system_prompt.val.contains(".mooncakes"), content="true")
+    inspect(
       captured_system_prompt.val.contains("raw/bootstrap/*"),
       content="true",
     )
-    debug_inspect(captured_enable_tools.val, content="true")
-    debug_inspect(captured_web_search.val, content="true")
-    debug_inspect(captured_todo_enabled.val, content="false")
-    debug_inspect(
+    inspect(captured_enable_tools.val, content="true")
+    inspect(captured_web_search.val, content="true")
+    inspect(captured_todo_enabled.val, content="false")
+    inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
     )
-    debug_inspect(execution.content.contains("evidence-1"), content="true")
-    debug_inspect(
+    inspect(execution.content.contains("evidence-1"), content="true")
+    inspect(
       execution.metadata.stringify().contains("\"execution_mode\":\"provider\""),
       content="true",
     )
-    debug_inspect(
+    inspect(
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
@@ -891,14 +870,14 @@ async test "provider task analysis runner hydrates context and persists structur
     )
     let persisted_path = @fsx.read_file(state_path)
     let persisted_step_key = safe_step_file_segment("step-1")
-    debug_inspect(
+    inspect(
       persisted_path.contains(
         ".moonclaw-provider-result-run-1-\{persisted_step_key}.json",
       ),
       content="true",
     )
     let persisted_payload = @fsx.read_file(persisted_path.trim())
-    debug_inspect(
+    inspect(
       persisted_payload.contains("\"summary\": \"Updated the wiki"),
       content="true",
     )
@@ -907,8 +886,8 @@ async test "provider task analysis runner hydrates context and persists structur
 
 ///|
 test "provider task tool-loop policy enables bounded local execution for provider phases" {
-  debug_inspect(
-    provider_task_requires_local_tool_loop(ProviderTaskSpec::{
+  inspect(
+    provider_task_requires_local_tool_loop({
       id: "task-gather",
       title: "Gather bootstrap materials",
       kind: "bootstrap_gather",
@@ -919,8 +898,8 @@ test "provider task tool-loop policy enables bounded local execution for provide
     }),
     content="true",
   )
-  debug_inspect(
-    provider_task_requires_local_tool_loop(ProviderTaskSpec::{
+  inspect(
+    provider_task_requires_local_tool_loop({
       id: "task-review",
       title: "Review pending changes",
       kind: "review_finalize",
@@ -971,7 +950,7 @@ async test "provider task precompiles source materialize substeps from bootstrap
       output_contract: [],
     }
     let envelope = provider_task_precompiled_envelope(
-      ProviderTaskSpec::{
+      {
         id: "task-source",
         title: "Materialize source pages",
         kind: "source_materialize",
@@ -982,13 +961,13 @@ async test "provider task precompiles source materialize substeps from bootstrap
       },
       context,
     )
-    debug_inspect(envelope is Some(_), content="true")
+    inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    debug_inspect(substeps.length().to_string(), content="2")
-    debug_inspect(substeps[0].title.contains("demo-readme"), content="true")
-    debug_inspect(
+    inspect(substeps.length().to_string(), content="2")
+    inspect(substeps[0].title.contains("demo-readme"), content="true")
+    inspect(
       substeps[0].prompt.contains("raw/bootstrap/demo-bootstrap.md"),
       content="true",
     )
@@ -1032,7 +1011,7 @@ async test "provider task gates knowledge revise behind source materialization" 
       output_contract: [],
     }
     let envelope = provider_task_precompiled_envelope(
-      ProviderTaskSpec::{
+      {
         id: "task-revise",
         title: "Revise knowledge surfaces",
         kind: "knowledge_revise",
@@ -1043,13 +1022,13 @@ async test "provider task gates knowledge revise behind source materialization" 
       },
       context,
     )
-    debug_inspect(envelope is Some(_), content="true")
+    inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    debug_inspect(substeps.length().to_string(), content="1")
-    debug_inspect(substeps[0].title.contains("demo-readme"), content="true")
-    debug_inspect(
+    inspect(substeps.length().to_string(), content="1")
+    inspect(substeps[0].title.contains("demo-readme"), content="true")
+    inspect(
       substeps[0].prompt.contains(
         "Materialize or revise only this durable page",
       ),
@@ -1098,7 +1077,7 @@ async test "provider task caps materialize fanout" {
       output_contract: [],
     }
     let envelope = provider_task_precompiled_envelope(
-      ProviderTaskSpec::{
+      {
         id: "task-source",
         title: "Materialize source pages",
         kind: "source_materialize",
@@ -1112,7 +1091,7 @@ async test "provider task caps materialize fanout" {
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    debug_inspect(substeps.length().to_string(), content="2")
+    inspect(substeps.length().to_string(), content="2")
   })
 }
 
@@ -1142,7 +1121,7 @@ async test "provider task derives knowledge revision targets from source pages" 
         output_contract: [],
       }
       let envelope = provider_task_precompiled_envelope(
-        ProviderTaskSpec::{
+        {
           id: "task-revise",
           title: "Revise knowledge surfaces",
           kind: "knowledge_revise",
@@ -1153,19 +1132,19 @@ async test "provider task derives knowledge revision targets from source pages" 
         },
         context,
       )
-      debug_inspect(envelope is Some(_), content="true")
+      inspect(envelope is Some(_), content="true")
       let substeps = envelope
         .map(fn(value) { adaptive_substeps(value) })
         .unwrap_or([])
-      debug_inspect(substeps.length().to_string(), content="4")
+      inspect(substeps.length().to_string(), content="4")
       let has_alpha = substeps
         .iter()
         .any(fn(step) { step.title.contains("alpha") })
-      debug_inspect(has_alpha, content="true")
+      inspect(has_alpha, content="true")
       let has_entity = substeps
         .iter()
         .any(fn(step) { step.prompt.contains("wiki/entities/demo.md") })
-      debug_inspect(has_entity, content="true")
+      inspect(has_entity, content="true")
     },
   )
 }
@@ -1195,7 +1174,7 @@ async test "provider task precompiles review closeout when sources exist" {
       output_contract: [],
     }
     let envelope = provider_task_precompiled_envelope(
-      ProviderTaskSpec::{
+      {
         id: "task-review",
         title: "Review pending book updates",
         kind: "review",
@@ -1206,13 +1185,13 @@ async test "provider task precompiles review closeout when sources exist" {
       },
       context,
     )
-    debug_inspect(envelope is Some(_), content="true")
+    inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    debug_inspect(substeps.length().to_string(), content="1")
-    debug_inspect(substeps[0].title, content="Finalize provider review")
-    debug_inspect(
+    inspect(substeps.length().to_string(), content="1")
+    inspect(substeps[0].title, content="Finalize provider review")
+    inspect(
       substeps[0].prompt.contains("wiki/sources/alpha.md"),
       content="true",
     )
@@ -1248,23 +1227,23 @@ test "provider task can fast complete review from source inventory" {
     requires_review: true,
     target_pages: [],
   }
-  debug_inspect(
+  inspect(
     provider_task_can_complete_from_source_inventory(knowledge),
     content="false",
   )
-  debug_inspect(
+  inspect(
     provider_task_can_complete_from_source_inventory(review),
     content="true",
   )
-  debug_inspect(
+  inspect(
     provider_task_can_complete_from_source_inventory(source),
     content="false",
   )
   let result = provider_task_source_inventory_result(review, [
     "wiki/sources/alpha.md", "wiki/sources/beta.md",
   ])
-  debug_inspect(result.requires_review, content="false")
-  debug_inspect(result.artifacts.length().to_string(), content="2")
+  inspect(result.requires_review, content="false")
+  inspect(result.artifacts.length().to_string(), content="2")
 }
 
 ///|
@@ -1280,7 +1259,7 @@ test "provider task synthesized subplan result does not queue intermediate revie
   }
   let result = provider_task_synthesized_subplan_result(
     task,
-    AnalysisExecution::{
+    {
       model_name: "test",
       content: "{}",
       conversation_id: None,
@@ -1289,7 +1268,7 @@ test "provider task synthesized subplan result does not queue intermediate revie
     },
     ["raw/bootstrap/demo.md"],
   )
-  debug_inspect(result.requires_review, content="false")
+  inspect(result.requires_review, content="false")
 }
 
 ///|
@@ -1335,7 +1314,7 @@ async test "provider task uses command workspace root when provider context root
       output_contract: [],
     }
     let envelope = provider_task_precompiled_envelope(
-      ProviderTaskSpec::{
+      {
         id: "task-source",
         title: "Materialize source pages",
         kind: "source_materialize",
@@ -1346,13 +1325,13 @@ async test "provider task uses command workspace root when provider context root
       },
       context,
     )
-    debug_inspect(effective_root == workspace, content="true")
-    debug_inspect(envelope is Some(_), content="true")
+    inspect(effective_root == workspace, content="true")
+    inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    debug_inspect(substeps.length().to_string(), content="1")
-    debug_inspect(substeps[0].title.contains("demo-readme"), content="true")
+    inspect(substeps.length().to_string(), content="1")
+    inspect(substeps[0].title.contains("demo-readme"), content="true")
   })
 }
 
@@ -1445,7 +1424,7 @@ async test "provider task precompiles bootstrap gather lanes from source hints" 
       output_contract: [],
     }
     let envelope = provider_task_precompiled_envelope(
-      ProviderTaskSpec::{
+      {
         id: "task-bootstrap",
         title: "Gather bootstrap evidence",
         kind: "bootstrap_gather",
@@ -1456,18 +1435,15 @@ async test "provider task precompiles bootstrap gather lanes from source hints" 
       },
       context,
     )
-    debug_inspect(envelope is Some(_), content="true")
+    inspect(envelope is Some(_), content="true")
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    debug_inspect(substeps.length().to_string(), content="2")
-    debug_inspect(substeps[0].title, content="Gather bootstrap lane 1")
-    debug_inspect(substeps[0].prompt.contains("raw/bootstrap/"), content="true")
-    debug_inspect(
-      substeps[0].prompt.contains("mounted-sources/"),
-      content="true",
-    )
-    debug_inspect(substeps[0].prompt.contains(source_root), content="false")
+    inspect(substeps.length().to_string(), content="2")
+    inspect(substeps[0].title, content="Gather bootstrap lane 1")
+    inspect(substeps[0].prompt.contains("raw/bootstrap/"), content="true")
+    inspect(substeps[0].prompt.contains("mounted-sources/"), content="true")
+    inspect(substeps[0].prompt.contains(source_root), content="false")
   })
 }
 
@@ -1517,7 +1493,7 @@ async test "provider task precompiled substeps include loaded skill bodies" {
         ],
       }
       let envelope = provider_task_precompiled_envelope(
-        ProviderTaskSpec::{
+        {
           id: "task-bootstrap",
           title: "Gather bootstrap evidence",
           kind: "bootstrap_gather",
@@ -1531,31 +1507,31 @@ async test "provider task precompiled substeps include loaded skill bodies" {
       let substeps = envelope
         .map(fn(value) { adaptive_substeps(value) })
         .unwrap_or([])
-      debug_inspect(substeps.length().to_string(), content="3")
-      debug_inspect(substeps[0].title, content="Write research evidence packet")
-      debug_inspect(substeps[1].title, content="Write deep research report")
-      debug_inspect(substeps[2].title, content="Write marketing brief")
-      debug_inspect(
+      inspect(substeps.length().to_string(), content="3")
+      inspect(substeps[0].title, content="Write research evidence packet")
+      inspect(substeps[1].title, content="Write deep research report")
+      inspect(substeps[2].title, content="Write marketing brief")
+      inspect(
         substeps[0].prompt.contains("Loaded provider skill bodies:"),
         content="true",
       )
-      debug_inspect(
+      inspect(
         substeps[0].prompt.contains("raw/bootstrap/research-question.md"),
         content="true",
       )
-      debug_inspect(
+      inspect(
         substeps[0].prompt.contains("raw/bootstrap/evidence-matrix.md"),
         content="true",
       )
-      debug_inspect(
+      inspect(
         substeps[0].prompt.contains("raw/bootstrap/synthesis-brief.md"),
         content="true",
       )
-      debug_inspect(
+      inspect(
         substeps[1].prompt.contains("raw/bootstrap/deep-report.md"),
         content="true",
       )
-      debug_inspect(
+      inspect(
         substeps[2].prompt.contains("raw/bootstrap/marketing-brief.md"),
         content="true",
       )
@@ -1614,7 +1590,7 @@ async test "provider task research dossier stays raw envelope only" {
       ],
     }
     let artifacts = provider_task_write_research_dossier_if_needed(
-      ProviderTaskSpec::{
+      {
         id: "task-bootstrap",
         title: "Gather research envelope",
         kind: "bootstrap_gather",
@@ -1624,34 +1600,36 @@ async test "provider task research dossier stays raw envelope only" {
         target_pages: ["raw/bootstrap/"],
       },
       context,
+      web_search_enabled=false,
+      web_fetch_enabled=false,
     )
-    debug_inspect(artifacts.length().to_string(), content="6")
-    debug_inspect(
+    inspect(artifacts.length().to_string(), content="6")
+    inspect(
       @fsx.exists(@pathx.join(bootstrap_dir, "research-question.md")).to_string(),
       content="true",
     )
-    debug_inspect(
+    inspect(
       @fsx.exists(@pathx.join(workspace, "wiki")).to_string(),
       content="false",
     )
     let brief = @fsx.read_file(@pathx.join(bootstrap_dir, "synthesis-brief.md"))
-    debug_inspect(brief.contains("Provisional findings"), content="false")
-    debug_inspect(
+    inspect(brief.contains("Provisional findings"), content="false")
+    inspect(
       @fsx.exists(@pathx.join(bootstrap_dir, "deep-report.md")).to_string(),
       content="false",
     )
-    debug_inspect(
+    inspect(
       @fsx.exists(@pathx.join(bootstrap_dir, "marketing-brief.md")).to_string(),
       content="false",
     )
     let search = @fsx.read_file(@pathx.join(bootstrap_dir, "search-log.md"))
-    debug_inspect(search.contains("may enrich it later"), content="false")
+    inspect(search.contains("may enrich it later"), content="false")
   })
 }
 
 ///|
 async test "provider task result persistence falls back to provider workspace when request cwd is gone" {
-  @fsx.with_temporary_directory("job-book-harness-persist-fallback-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-persist-fallback-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -1694,7 +1672,7 @@ async test "provider task result persistence falls back to provider workspace wh
       persist_provider_task_result(
         command,
         request,
-        ProviderTaskSpec::{
+        {
           id: "task-1",
           title: "Extract durable updates",
           kind: "wiki.update",
@@ -1703,7 +1681,7 @@ async test "provider task result persistence falls back to provider workspace wh
           requires_review: true,
           target_pages: ["wiki/entity.md", "wiki/index.md"],
         },
-        ProviderTaskResult::{
+        {
           task_id: "task-1",
           summary: "Updated the wiki from durable evidence.",
           artifacts: ["wiki/entity.md"],
@@ -1716,13 +1694,13 @@ async test "provider task result persistence falls back to provider workspace wh
       Err(error) => fail(error)
     }
 
-    debug_inspect(outcome.evidence_id, content="evidence-1")
+    inspect(outcome.evidence_id, content="evidence-1")
     let persisted_path = @fsx.read_file(state_path).trim().to_owned()
-    debug_inspect(
+    inspect(
       persisted_path.contains("book-space/.moonclaw/provider-task/"),
       content="true",
     )
-    debug_inspect(
+    inspect(
       @fsx.read_file(persisted_path).contains(
         "\"summary\": \"Updated the wiki from durable evidence.\"",
       ),
@@ -1749,27 +1727,27 @@ test "parse_provider_task_result accepts fenced or prefixed JSON object output" 
     Ok(result) => result
     Err(error) => fail(error)
   }
-  debug_inspect(result.task_id, content="task-1")
-  debug_inspect(result.requires_review, content="true")
+  inspect(result.task_id, content="task-1")
+  inspect(result.requires_review, content="true")
 }
 
 ///|
 test "parse_provider_task_persist_outcome_json accepts prefixed stdout" {
   let outcome = match
     parse_provider_task_persist_outcome_json(
-      "moonbook wiki book persist completed\n{\"log_path\":\"wiki/log.md\",\"updated_pages\":[\"wiki/index.md\"],\"review_queued\":true,\"notify_town\":false,\"evidence_id\":\"evidence-1\"}",
+      "moonbook wiki extension persist completed\n{\"log_path\":\"wiki/log.md\",\"updated_pages\":[\"wiki/index.md\"],\"review_queued\":true,\"notify_town\":false,\"evidence_id\":\"evidence-1\"}",
       "persist",
     ) {
     Ok(outcome) => outcome
     Err(error) => fail(error)
   }
-  debug_inspect(outcome.log_path, content="wiki/log.md")
-  debug_inspect(outcome.review_queued, content="true")
+  inspect(outcome.log_path, content="wiki/log.md")
+  inspect(outcome.review_queued, content="true")
 }
 
 ///|
 async test "provider task analysis runner converts planner-shaped output into adaptive split" {
-  @fsx.with_temporary_directory("job-book-harness-repair-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-repair-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -1819,7 +1797,7 @@ async test "provider task analysis runner converts planner-shaped output into ad
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
         call_count.val = call_count.val + 1
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: "{\"plan\":[{\"step\":1,\"title\":\"Inspect sources\",\"prompt\":\"Inspect the relevant source materials.\"},{\"step\":2,\"title\":\"Materialize durable updates\",\"prompt\":\"Write the durable wiki pages from the inspected evidence.\"}]}",
           conversation_id: Some("conv-provider-plan"),
@@ -1831,14 +1809,14 @@ async test "provider task analysis runner converts planner-shaped output into ad
       Err(error) => fail(error)
     }
 
-    debug_inspect(call_count.val, content="1")
+    inspect(call_count.val, content="1")
     let envelope = match parse_adaptive_analysis_envelope(execution.content) {
       Some(envelope) => envelope
       None => fail("expected adaptive split envelope: \{execution.content}")
     }
-    debug_inspect(envelope.verdict, content="needs_subplan")
-    debug_inspect(adaptive_substeps(envelope).length(), content="2")
-    debug_inspect(
+    inspect(envelope.verdict, content="needs_subplan")
+    inspect(adaptive_substeps(envelope).length(), content="2")
+    inspect(
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
@@ -1849,7 +1827,7 @@ async test "provider task analysis runner converts planner-shaped output into ad
 
 ///|
 async test "provider task analysis runner rejects over-broad task without executable substeps" {
-  @fsx.with_temporary_directory("job-book-harness-guardrail-reject-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-guardrail-reject-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -1886,7 +1864,7 @@ async test "provider task analysis runner rejects over-broad task without execut
     }
     let error = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: "{\"verdict\":\"needs_subplan\",\"summary\":\"The task is too broad and should be decomposed before useful execution.\"}",
           conversation_id: Some("conv-provider-broad"),
@@ -1898,17 +1876,14 @@ async test "provider task analysis runner rejects over-broad task without execut
       Err(error) => error
     }
 
-    debug_inspect(
-      error.contains("too broad to execute directly"),
-      content="true",
-    )
-    debug_inspect(error.contains("no executable substeps"), content="true")
+    inspect(error.contains("too broad to execute directly"), content="true")
+    inspect(error.contains("no executable substeps"), content="true")
   })
 }
 
 ///|
 async test "provider task analysis runner derives deterministic followup substeps from provider task batch" {
-  @fsx.with_temporary_directory("job-book-harness-followup-substeps-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-followup-substeps-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -1944,7 +1919,7 @@ async test "provider task analysis runner derives deterministic followup substep
     }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: "{\"verdict\":\"needs_subplan\",\"summary\":\"Completed bootstrap_gather and prepared durable targets for source materialization.\"}",
           conversation_id: Some("conv-provider-bootstrap"),
@@ -1961,20 +1936,17 @@ async test "provider task analysis runner derives deterministic followup substep
       None => fail("expected adaptive split envelope: \{execution.content}")
     }
     let substeps = adaptive_substeps(envelope)
-    debug_inspect(envelope.verdict, content="needs_subplan")
-    debug_inspect(substeps.length(), content="1")
-    debug_inspect(substeps[0].title, content="Queue follow-up review")
-    debug_inspect(
-      substeps[0].prompt.contains("task_id: task-2"),
-      content="true",
-    )
-    debug_inspect(substeps[0].prompt.contains("wiki/review.md"), content="true")
+    inspect(envelope.verdict, content="needs_subplan")
+    inspect(substeps.length(), content="1")
+    inspect(substeps[0].title, content="Queue follow-up review")
+    inspect(substeps[0].prompt.contains("task_id: task-2"), content="true")
+    inspect(substeps[0].prompt.contains("wiki/review.md"), content="true")
   })
 }
 
 ///|
 async test "provider task target artifacts resolve durable pages from provider workspace root" {
-  @fsx.with_temporary_directory("job-book-harness-target-artifacts-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-target-artifacts-XXXXXX", async fn(
     dir,
   ) {
     let workspace_root = @pathx.join(dir, "book-space")
@@ -1997,7 +1969,7 @@ async test "provider task target artifacts resolve durable pages from provider w
       "# Map\n",
     )
 
-    let artifacts = provider_task_target_artifacts(workspace_root, ProviderTaskSpec::{
+    let artifacts = provider_task_target_artifacts(workspace_root, {
       id: "task-1",
       title: "Materialize durable updates",
       kind: "source_materialize",
@@ -2007,18 +1979,15 @@ async test "provider task target artifacts resolve durable pages from provider w
       target_pages: ["wiki/entities/moonclaw.md", "wiki/synthesis/map.md"],
     })
 
-    debug_inspect(artifacts.length(), content="2")
-    debug_inspect(
-      artifacts.contains("wiki/entities/moonclaw.md"),
-      content="true",
-    )
-    debug_inspect(artifacts.contains("wiki/synthesis/map.md"), content="true")
+    inspect(artifacts.length(), content="2")
+    inspect(artifacts.contains("wiki/entities/moonclaw.md"), content="true")
+    inspect(artifacts.contains("wiki/synthesis/map.md"), content="true")
   })
 }
 
 ///|
 async test "provider task subplan finalizer persists durable artifacts back through provider contract" {
-  @fsx.with_temporary_directory("job-book-harness-subplan-finalize-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-subplan-finalize-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2106,31 +2075,31 @@ async test "provider task subplan finalizer persists durable artifacts back thro
       None => fail("expected provider subplan finalizer to persist result")
     }
 
-    debug_inspect(
+    inspect(
       finalized.content.contains("# Extension Task Result"),
       content="true",
     )
-    debug_inspect(
+    inspect(
       finalized.metadata.stringify().contains("\"extension_persist_outcome\""),
       content="true",
     )
     let persisted_path = @fsx.read_file(state_path).trim().to_owned()
     let persisted_payload = @fsx.read_file(persisted_path)
-    debug_inspect(
+    inspect(
       persisted_payload.contains("\"task_id\": \"task-1\""),
       content="true",
     )
-    debug_inspect(
+    inspect(
       persisted_payload.contains(
         "\"summary\": \"Materialized durable wiki outputs after bootstrap gather.\"",
       ),
       content="true",
     )
-    debug_inspect(
+    inspect(
       persisted_payload.contains("\"wiki/sources/demo.md\""),
       content="true",
     )
-    debug_inspect(
+    inspect(
       persisted_payload.contains("\"raw/bootstrap/demo.md\""),
       content="true",
     )
@@ -2139,7 +2108,7 @@ async test "provider task subplan finalizer persists durable artifacts back thro
 
 ///|
 async test "provider task repair loads repo provider-task-repair skill" {
-  @fsx.with_temporary_directory("job-book-harness-repair-skill-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-repair-skill-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2192,7 +2161,7 @@ async test "provider task repair loads repo provider-task-repair skill" {
         run_provider_task_analysis_runner(request, fn(inner_request) {
           call_count.val = call_count.val + 1
           if call_count.val == 1 {
-            Ok(AnalysisExecution::{
+            Ok({
               model_name: inner_request.model_name,
               content: "{\"plan\":[{\"step\":1,\"title\":\"Inspect sources\"}]}",
               conversation_id: Some("conv-provider-plan"),
@@ -2201,7 +2170,7 @@ async test "provider task repair loads repo provider-task-repair skill" {
             })
           } else {
             repair_prompt.val = inner_request.prompt
-            Ok(AnalysisExecution::{
+            Ok({
               model_name: inner_request.model_name,
               content: (
                 #|{
@@ -2223,8 +2192,8 @@ async test "provider task repair loads repo provider-task-repair skill" {
         Err(error) => fail(error)
       },
     )
-    debug_inspect(call_count.val, content="1")
-    debug_inspect(
+    inspect(call_count.val, content="1")
+    inspect(
       repair_prompt.val.contains("PROVIDER_REPAIR_SKILL_MARKER"),
       content="false",
     )
@@ -2233,7 +2202,7 @@ async test "provider task repair loads repo provider-task-repair skill" {
 
 ///|
 async test "provider task analysis runner normalizes repaired json missing summary" {
-  @fsx.with_temporary_directory("job-book-harness-normalize-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-normalize-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2273,7 +2242,7 @@ async test "provider task analysis runner normalizes repaired json missing summa
       run_provider_task_analysis_runner(request, fn(inner_request) {
         call_count.val = call_count.val + 1
         if call_count.val == 1 {
-          Ok(AnalysisExecution::{
+          Ok({
             model_name: inner_request.model_name,
             content: "I will inspect the wiki first.\nPlan:\n1. Inspect sources\n2. Update pages",
             conversation_id: Some("conv-provider-plan-prose"),
@@ -2281,7 +2250,7 @@ async test "provider task analysis runner normalizes repaired json missing summa
             metadata: {},
           })
         } else {
-          Ok(AnalysisExecution::{
+          Ok({
             model_name: inner_request.model_name,
             content: "{\"artifacts\":[\"wiki/entity.md\"],\"requires_review\":false,\"notify_town\":false}",
             conversation_id: Some("conv-provider-normalize"),
@@ -2294,14 +2263,14 @@ async test "provider task analysis runner normalizes repaired json missing summa
       Err(error) => fail(error)
     }
 
-    debug_inspect(call_count.val, content="2")
-    debug_inspect(
+    inspect(call_count.val, content="2")
+    inspect(
       execution.metadata
       .stringify()
       .contains("\"extension_task_id\":\"task-1\""),
       content="true",
     )
-    debug_inspect(
+    inspect(
       execution.content.contains("# Extension Task Result"),
       content="true",
     )
@@ -2310,7 +2279,7 @@ async test "provider task analysis runner normalizes repaired json missing summa
 
 ///|
 async test "provider task analysis runner persists raw response on parse failure" {
-  @fsx.with_temporary_directory("job-book-harness-failure-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-failure-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2347,7 +2316,7 @@ async test "provider task analysis runner persists raw response on parse failure
     }
     let error = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: "not valid provider json",
           conversation_id: Some("conv-provider-failure"),
@@ -2363,13 +2332,13 @@ async test "provider task analysis runner persists raw response on parse failure
       Err(error) => error
     }
 
-    debug_inspect(
+    inspect(
       error.contains("Provider task analysis must return a JSON object"),
       content="true",
     )
     let step_key = safe_step_file_segment("step-1")
     let debug_file = ".moonclaw-provider-failure-run-1-\{step_key}.json"
-    debug_inspect(error.contains(debug_file), content="true")
+    inspect(error.contains(debug_file), content="true")
     let debug_path = match
       provider_task_failure_debug_path(
         request,
@@ -2378,9 +2347,9 @@ async test "provider task analysis runner persists raw response on parse failure
       Ok(path) => path
       Err(path_error) => fail(path_error)
     }
-    debug_inspect(@fsx.exists(debug_path), content="true")
+    inspect(@fsx.exists(debug_path), content="true")
     let debug_payload = @fsx.read_file(debug_path)
-    debug_inspect(
+    inspect(
       debug_payload.contains("\"raw_content\": \"not valid provider json\""),
       content="true",
     )
@@ -2389,7 +2358,7 @@ async test "provider task analysis runner persists raw response on parse failure
 
 ///|
 async test "provider task analysis runner converts empty generic completion into blocker" {
-  @fsx.with_temporary_directory("job-book-harness-empty-success-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-empty-success-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2426,7 +2395,7 @@ async test "provider task analysis runner converts empty generic completion into
     }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: (
             #|{
@@ -2447,36 +2416,27 @@ async test "provider task analysis runner converts empty generic completion into
       Err(error) => fail(error)
     }
 
-    debug_inspect(
-      execution.content.contains("Blocked provider task"),
-      content="true",
-    )
+    inspect(execution.content.contains("Blocked provider task"), content="true")
     let persisted_path = @fsx.read_file(state_path).trim().to_owned()
     let persisted_payload = @fsx.read_file(persisted_path)
-    debug_inspect(
+    inspect(
       persisted_payload.contains(
         "\"summary\": \"Blocked provider task Extract durable updates:",
       ),
       content="true",
     )
-    debug_inspect(
-      persisted_payload.contains("\"kind\": \"blocker\""),
-      content="true",
-    )
-    debug_inspect(
+    inspect(persisted_payload.contains("\"kind\": \"blocker\""), content="true")
+    inspect(
       persisted_payload.contains("\"kind\": \"next_step\""),
       content="true",
     )
-    debug_inspect(
-      persisted_payload.contains("\"durable\": false"),
-      content="true",
-    )
+    inspect(persisted_payload.contains("\"durable\": false"), content="true")
   })
 }
 
 ///|
 async test "provider task analysis runner aligns task id and filters junk artifacts" {
-  @fsx.with_temporary_directory("job-book-harness-artifact-align-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-artifact-align-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2534,7 +2494,7 @@ async test "provider task analysis runner aligns task id and filters junk artifa
     }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: (
             #|{
@@ -2561,39 +2521,30 @@ async test "provider task analysis runner aligns task id and filters junk artifa
       Err(error) => fail(error)
     }
 
-    debug_inspect(
-      execution.content.contains("Updated the wiki"),
-      content="true",
-    )
+    inspect(execution.content.contains("Updated the wiki"), content="true")
     let persisted_path = @fsx.read_file(state_path).trim().to_owned()
     let persisted_payload = @fsx.read_file(persisted_path)
-    debug_inspect(
+    inspect(
       persisted_payload.contains("\"task_id\": \"task-1\""),
       content="true",
     )
-    debug_inspect(
-      persisted_payload.contains("\"wiki/entity.md\""),
-      content="true",
-    )
-    debug_inspect(
+    inspect(persisted_payload.contains("\"wiki/entity.md\""), content="true")
+    inspect(
       persisted_payload.contains("\"raw/bootstrap/packet.md\""),
       content="true",
     )
-    debug_inspect(persisted_payload.contains("\"gpt-5.4\""), content="false")
-    debug_inspect(
+    inspect(persisted_payload.contains("\"gpt-5.4\""), content="false")
+    inspect(
       persisted_payload.contains("\"skills/wiki-ingest/SKILL.md\""),
       content="false",
     )
-    debug_inspect(
-      persisted_payload.contains("\"moon.mod.json\""),
-      content="false",
-    )
+    inspect(persisted_payload.contains("\"moon.mod.json\""), content="false")
   })
 }
 
 ///|
 async test "provider task batch resolves a single registered provider when target is omitted" {
-  @fsx.with_temporary_directory("job-book-harness-default-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-default-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2613,14 +2564,14 @@ async test "provider task batch resolves a single registered provider when targe
       Err(error) => fail(error)
     }
 
-    debug_inspect(command.provider.name, content="wiki-main")
-    debug_inspect(batch.tasks.length().to_string(), content="2")
+    inspect(command.provider.name, content="wiki-main")
+    inspect(batch.tasks.length().to_string(), content="2")
   })
 }
 
 ///|
 async test "provider task analysis runner resolves a single registered provider when target is omitted" {
-  @fsx.with_temporary_directory("job-book-harness-default-runner-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-default-runner-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2657,7 +2608,7 @@ async test "provider task analysis runner resolves a single registered provider 
     }
     let execution = match
       run_provider_task_analysis_runner(request, fn(inner_request) {
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: inner_request.model_name,
           content: (
             #|{
@@ -2678,7 +2629,7 @@ async test "provider task analysis runner resolves a single registered provider 
       Err(error) => fail(error)
     }
 
-    debug_inspect(
+    inspect(
       execution.metadata
       .stringify()
       .contains("\"execution_target\":\"wiki-main\""),
@@ -2689,7 +2640,7 @@ async test "provider task analysis runner resolves a single registered provider 
 
 ///|
 async test "provider task resolves workspace-affine provider when multiple targets are registered" {
-  @fsx.with_temporary_directory("job-book-harness-affinity-XXXXXX", async fn(
+  @fsx.with_temporary_directory("job-extension-api-affinity-XXXXXX", async fn(
     dir,
   ) {
     let workspace = @pathx.join(dir, "workspace")
@@ -2714,7 +2665,7 @@ async test "provider task resolves workspace-affine provider when multiple targe
       Err(error) => fail(error)
     }
 
-    debug_inspect(command.provider.name, content="coding-main")
-    debug_inspect(batch.tasks.length().to_string(), content="1")
+    inspect(command.provider.name, content="coding-main")
+    inspect(batch.tasks.length().to_string(), content="1")
   })
 }

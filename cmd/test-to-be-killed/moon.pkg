@@ -9,6 +9,8 @@ import {
   "vectie/moonclaw/internal/pino",
 }
 
+supported_targets = "native"
+
 options(
   "is-main": true,
 )

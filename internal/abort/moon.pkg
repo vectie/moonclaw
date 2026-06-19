@@ -2,6 +2,8 @@ import {
   "vectie/moonclaw/internal/backtrace",
 }
 
+supported_targets = "native"
+
 options(
   implement: "moonbitlang/core/abort",
 )

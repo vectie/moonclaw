@@ -6,7 +6,7 @@ pub struct ExitWorktreeResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for ExitWorktreeResult with output(
+pub impl Show for ExitWorktreeResult with fn output(
   result : ExitWorktreeResult,
   logger : &Logger,
 ) -> Unit {
@@ -71,11 +71,7 @@ pub fn new(cwd : String) -> @tool.Tool[ExitWorktreeResult] {
         error => return @tool.error("Error removing worktree: \{error}")
       }
       let resolved_repo_root = effective_repo_root(cwd, repo_root)
-      @tool.ok(ExitWorktreeResult::{
-        path,
-        repo_root: resolved_repo_root,
-        removed: true,
-      })
+      @tool.ok({ path, repo_root: resolved_repo_root, removed: true })
     },
   )
 }

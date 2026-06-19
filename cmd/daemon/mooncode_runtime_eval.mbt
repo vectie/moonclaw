@@ -79,9 +79,9 @@ fn mooncode_runtime_turn_eval_manifest(
       default=false,
     ),
     "native_eval_source": mooncode_json_string(report, "source", default=""),
-    "native_eval_endpoint": "/v1/mooncode/sessions/\{session_id}/eval-report?book_root=<path>",
+    "native_eval_endpoint": "/v1/code/sessions/\{session_id}/eval-report?book_root=<path>",
     "native_eval_ingest_method": "moonclaw-runtime-turn",
-    "native_eval_ingest_endpoint": "/v1/mooncode/sessions/\{session_id}/runtime-turn?book_root=<path>",
+    "native_eval_ingest_endpoint": "/v1/code/sessions/\{session_id}/runtime-turn?book_root=<path>",
     "native_eval_report": report,
     "last_command_packet": mooncode_json_object_field_or_empty(
       command, "packet",
@@ -147,6 +147,6 @@ fn mooncode_runtime_turn_eval_owner() -> Json {
     "runtime": "moonclaw",
     "artifact": "moonbook",
     "review": "moonbook",
-    "extractable_component": "mooncode",
+    "standalone_component": "mooncode",
   }
 }

@@ -26,8 +26,8 @@ struct Server {
 ///|
 fn Server::status(self : Server) -> Status {
   match self.task {
-    None => Status::Idle
-    Some(_) => Status::Busy
+    None => Idle
+    Some(_) => Busy
   }
 }
 
@@ -85,7 +85,7 @@ pub async fn Server::new(
       "pid": pid,
     })
   }
-  Server::{
+  {
     uuid,
     moonclaw,
     broadcast,
@@ -211,7 +211,7 @@ async fn Server::start_moonclaw(self : Server) -> Unit {
                 )
               } else {
                 self.broadcast.put(
-                  @event.Event::new(id=self.uuid.v4(), @event.Cancelled),
+                  @event.Event::new(id=self.uuid.v4(), Cancelled),
                 )
               }
               raise error
@@ -283,10 +283,8 @@ pub impl @httpx.FromEvent for ServerStreamEvent with fn from_event(
   let data = @json.parse(data)
   match event {
     Some("moonclaw.queued_messages.synchronized") =>
-      ServerStreamEvent::MoonclawQueuedMessagesSynchronized(
-        @json.from_json(data),
-      )
-    Some("moonclaw") => ServerStreamEvent::Moonclaw(@json.from_json(data))
+      MoonclawQueuedMessagesSynchronized(@json.from_json(data))
+    Some("moonclaw") => Moonclaw(@json.from_json(data))
     _ => fail("unrecognized event type: \{to_repr(event)}")
   }
 }
@@ -296,12 +294,12 @@ pub impl @httpx.ToEvent for ServerStreamEvent with fn to_event(
   self : ServerStreamEvent,
 ) -> @httpx.Event {
   match self {
-    ServerStreamEvent::MoonclawQueuedMessagesSynchronized(queued_messages) =>
+    MoonclawQueuedMessagesSynchronized(queued_messages) =>
       @httpx.Event::new(
         event="moonclaw.queued_messages.synchronized",
         data=queued_messages.to_json().stringify(),
       )
-    ServerStreamEvent::Moonclaw(event) =>
+    Moonclaw(event) =>
       @httpx.Event::new(event="moonclaw", data=event.to_json().stringify())
   }
 }
@@ -389,7 +387,7 @@ async fn Server::send_external_event(
   }
   let queue = self.moonclaw.agent.external_events()
   match event_type {
-    "Cancelled" => queue.send(@event.Cancelled)
+    "Cancelled" => queue.send(Cancelled)
     "UserMessage" => {
       guard json is { "message": String(message), .. } else {
         raise json_error(400, "BadRequest", {

@@ -6,7 +6,7 @@ pub struct PipelineManager {
 
 ///|
 pub fn pipeline_manager(uuid~ : @uuid.Generator) -> PipelineManager {
-  PipelineManager::{ uuid, pipelines: Map([]) }
+  { uuid, pipelines: Map([]) }
 }
 
 ///|

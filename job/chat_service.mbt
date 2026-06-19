@@ -112,10 +112,9 @@ pub fn notification_preference_id(
 }
 
 ///|
-fn json_string_like(value : Json?) -> String? {
+fn notify_string_field(value : Json?) -> String? {
   match value {
     Some(String(value)) => Some(value)
-    Some([String(value)]) => Some(value)
     _ => None
   }
 }
@@ -127,21 +126,21 @@ pub fn parse_job_notify_target(config : Json) -> JobNotifyTarget? {
     _ => None
   }
   guard notify is Some(notify) else { return None }
-  guard json_string_like(notify.get("channel")) is Some(channel_id) else {
+  guard notify_string_field(notify.get("channel")) is Some(channel_id) else {
     return None
   }
-  guard json_string_like(notify.get("account_id")) is Some(account_id) else {
+  guard notify_string_field(notify.get("account_id")) is Some(account_id) else {
     return None
   }
-  guard json_string_like(notify.get("to")) is Some(recipient) else {
+  guard notify_string_field(notify.get("to")) is Some(recipient) else {
     return None
   }
-  Some(JobNotifyTarget::{
+  Some({
     channel_id,
     account_id,
     recipient,
-    thread_id: json_string_like(notify.get("thread_id")),
-    verbosity: NotificationVerbosity::Normal,
+    thread_id: notify_string_field(notify.get("thread_id")),
+    verbosity: Normal,
     heartbeat_interval_ms: match notify.get("heartbeat_interval_ms") {
       Some(Number(ms, ..)) => ms.to_int()
       _ => 120_000
@@ -170,7 +169,7 @@ pub fn resolve_job_notify_target(
   )
   match store.get_notification_preference(preference_id) {
     Some(preference) =>
-      Some(JobNotifyTarget::{
+      Some({
         ..target,
         verbosity: preference.verbosity,
         heartbeat_interval_ms: preference.heartbeat_interval_ms.unwrap_or(
@@ -198,7 +197,7 @@ pub async fn save_job_notification_preference(
     channel_id, account_id, recipient, thread_id,
   )
   let existing = store.get_notification_preference(id)
-  store.save_notification_preference(JobNotificationPreference::{
+  store.save_notification_preference({
     id,
     channel_id,
     account_id,
@@ -218,7 +217,7 @@ pub async fn save_presented_job_proposal(
   proposal : JobProposal,
   presented_message_id : String,
 ) -> Unit {
-  store.save_job_proposal(JobProposal::{
+  store.save_job_proposal({
     ..proposal,
     presented_message_id: Some(presented_message_id),
   })
@@ -265,10 +264,10 @@ pub fn format_progress_event(event : JobRunEvent) -> String? {
 ///|
 pub fn finished_status_prefix(status : RunStatus) -> String {
   match status {
-    RunStatus::Succeeded => "Job completed"
-    RunStatus::Failed => "Job failed"
-    RunStatus::Cancelled => "Job cancelled"
-    RunStatus::WaitingForInput => "Job waiting for input"
+    Succeeded => "Job completed"
+    Failed => "Job failed"
+    Cancelled => "Job cancelled"
+    WaitingForInput => "Job waiting for input"
     _ => "Job finished"
   }
 }
@@ -287,7 +286,7 @@ pub fn initial_notification_runtime_state(
   now_ms : Int,
   last_notified_event_count? : Int = 0,
 ) -> JobNotificationRuntimeState {
-  JobNotificationRuntimeState::{
+  {
     last_sent_at: now_ms,
     last_notified_event_count,
     long_running_warned: false,
@@ -303,19 +302,19 @@ pub fn decide_active_job_notifications(
   state : JobNotificationRuntimeState,
   now_ms : Int,
 ) -> JobNotificationDecision {
-  if target.verbosity is NotificationVerbosity::Off {
-    return JobNotificationDecision::{ messages: [], next_state: state }
+  if target.verbosity is Off {
+    return { messages: [], next_state: state }
   }
   let messages : Array[String] = []
   let mut next_state = state
   if next_state.last_notified_event_count < events.length() {
     for event in events[next_state.last_notified_event_count:] {
       let should_send = match target.verbosity {
-        NotificationVerbosity::Verbose => true
-        NotificationVerbosity::Normal =>
+        Verbose => true
+        Normal =>
           event.event_type == "step.started" ||
           event.event_type == "step.failed"
-        NotificationVerbosity::Off => false
+        Off => false
       }
       if !should_send {
         continue
@@ -329,44 +328,32 @@ pub fn decide_active_job_notifications(
       }
     }
   }
-  next_state = JobNotificationRuntimeState::{
-    ..next_state,
-    last_notified_event_count: events.length(),
-  }
+  next_state = { ..next_state, last_notified_event_count: events.length() }
   let elapsed_ms = match run.started_at {
     Some(started_at) => now_ms - started_at
     None => 0
   }
   if elapsed_ms >= target.warn_after_ms && !next_state.long_running_warned {
-    next_state = JobNotificationRuntimeState::{
+    next_state = {
       ..next_state,
       long_running_warned: true,
       last_sent_at: now_ms,
     }
-    return JobNotificationDecision::{
-      messages: [..messages, "Job is still running"],
-      next_state,
-    }
+    return { messages: [..messages, "Job is still running"], next_state }
   }
   if now_ms - next_state.last_sent_at >= target.heartbeat_interval_ms {
-    next_state = JobNotificationRuntimeState::{
-      ..next_state,
-      last_sent_at: now_ms,
-    }
-    return JobNotificationDecision::{
-      messages: [..messages, "Job heartbeat"],
-      next_state,
-    }
+    next_state = { ..next_state, last_sent_at: now_ms }
+    return { messages: [..messages, "Job heartbeat"], next_state }
   }
-  JobNotificationDecision::{ messages, next_state }
+  { messages, next_state }
 }
 
 ///|
 pub fn parse_notification_verbosity(text : String) -> NotificationVerbosity? {
   match text.trim().to_lower() {
-    "off" | "mute" | "silent" => Some(NotificationVerbosity::Off)
-    "normal" | "default" => Some(NotificationVerbosity::Normal)
-    "verbose" | "full" => Some(NotificationVerbosity::Verbose)
+    "off" | "mute" | "silent" => Some(Off)
+    "normal" | "default" => Some(Normal)
+    "verbose" | "full" => Some(Verbose)
     _ => None
   }
 }
@@ -411,34 +398,33 @@ pub fn parse_job_chat_action(
   let trimmed = text.trim().to_owned()
   if in_reply_thread {
     match parse_reply_thread_job_action(trimmed) {
-      Some(("confirm", _)) => return Some(JobChatAction::Confirm(""))
-      Some(("reject", _)) => return Some(JobChatAction::Reject(""))
-      Some(("revise", guidance)) => return Some(JobChatAction::Revise(guidance))
+      Some(("confirm", _)) => return Some(Confirm(""))
+      Some(("reject", _)) => return Some(Reject(""))
+      Some(("revise", guidance)) => return Some(Revise(guidance))
       _ => ()
     }
   }
   guard trimmed.has_prefix("/") else { return None }
   let (command, args) = split_job_chat_command(trimmed)
   match command {
-    _ if is_plan_mode_command(command) => Some(JobChatAction::Plan(args))
-    "/preview" => Some(JobChatAction::Preview(args))
-    _ if is_plan_job_command(command) => Some(JobChatAction::PlanJob(args))
-    _ if is_e2e_job_command(command) => Some(JobChatAction::E2EJob(args))
-    "/promote" => Some(JobChatAction::Promote(args))
-    "/confirm" => Some(JobChatAction::Confirm(args))
-    "/reject" => Some(JobChatAction::Reject(args))
-    "/revise" => Some(JobChatAction::Revise(args))
-    "/resume" => Some(JobChatAction::Resume(args))
-    "/job-status" => Some(JobChatAction::JobStatus(args))
-    "/job-workspace" | "/job-workspace-status" =>
-      Some(JobChatAction::JobWorkspace(args))
-    "/jobs" | "/job-runs" => Some(JobChatAction::Jobs)
-    "/job-stop" => Some(JobChatAction::JobStop(args))
-    "/job-force-stop" => Some(JobChatAction::JobForceStop(args))
-    "/job-notify" => Some(JobChatAction::JobNotify(args))
-    "/remember" => Some(JobChatAction::Remember(args))
-    "/memories" => Some(JobChatAction::Memories)
-    "/memory-search" => Some(JobChatAction::MemorySearch(args))
+    _ if is_plan_mode_command(command) => Some(Plan(args))
+    "/preview" => Some(Preview(args))
+    _ if is_plan_job_command(command) => Some(PlanJob(args))
+    _ if is_e2e_job_command(command) => Some(E2EJob(args))
+    "/promote" => Some(Promote(args))
+    "/confirm" => Some(Confirm(args))
+    "/reject" => Some(Reject(args))
+    "/revise" => Some(Revise(args))
+    "/resume" => Some(Resume(args))
+    "/job-status" => Some(JobStatus(args))
+    "/job-workspace" | "/job-workspace-status" => Some(JobWorkspace(args))
+    "/jobs" | "/job-runs" => Some(Jobs)
+    "/job-stop" => Some(JobStop(args))
+    "/job-force-stop" => Some(JobForceStop(args))
+    "/job-notify" => Some(JobNotify(args))
+    "/remember" => Some(Remember(args))
+    "/memories" => Some(Memories)
+    "/memory-search" => Some(MemorySearch(args))
     _ => None
   }
 }
@@ -465,24 +451,24 @@ pub async fn[T] dispatch_job_chat_action(
   on_memory_search : async (String) -> T,
 ) -> T? {
   match action {
-    Some(JobChatAction::Plan(args)) => Some(on_plan_mode(args))
-    Some(JobChatAction::Preview(args)) => Some(on_preview(args))
-    Some(JobChatAction::PlanJob(args)) => Some(on_plan(args))
-    Some(JobChatAction::E2EJob(args)) => Some(on_e2e(args))
-    Some(JobChatAction::Promote(args)) => Some(on_promote(args))
-    Some(JobChatAction::Confirm(args)) => Some(on_confirm(args))
-    Some(JobChatAction::Reject(args)) => Some(on_reject(args))
-    Some(JobChatAction::Revise(args)) => Some(on_revise(args))
-    Some(JobChatAction::Resume(args)) => Some(on_resume(args))
-    Some(JobChatAction::JobStatus(args)) => Some(on_status(args))
-    Some(JobChatAction::JobWorkspace(args)) => Some(on_workspace(args))
-    Some(JobChatAction::Jobs) => Some(on_jobs())
-    Some(JobChatAction::JobStop(args)) => Some(on_stop(args, false))
-    Some(JobChatAction::JobForceStop(args)) => Some(on_stop(args, true))
-    Some(JobChatAction::JobNotify(args)) => Some(on_notify(args))
-    Some(JobChatAction::Remember(args)) => Some(on_remember(args))
-    Some(JobChatAction::Memories) => Some(on_memories())
-    Some(JobChatAction::MemorySearch(args)) => Some(on_memory_search(args))
+    Some(Plan(args)) => Some(on_plan_mode(args))
+    Some(Preview(args)) => Some(on_preview(args))
+    Some(PlanJob(args)) => Some(on_plan(args))
+    Some(E2EJob(args)) => Some(on_e2e(args))
+    Some(Promote(args)) => Some(on_promote(args))
+    Some(Confirm(args)) => Some(on_confirm(args))
+    Some(Reject(args)) => Some(on_reject(args))
+    Some(Revise(args)) => Some(on_revise(args))
+    Some(Resume(args)) => Some(on_resume(args))
+    Some(JobStatus(args)) => Some(on_status(args))
+    Some(JobWorkspace(args)) => Some(on_workspace(args))
+    Some(Jobs) => Some(on_jobs())
+    Some(JobStop(args)) => Some(on_stop(args, false))
+    Some(JobForceStop(args)) => Some(on_stop(args, true))
+    Some(JobNotify(args)) => Some(on_notify(args))
+    Some(Remember(args)) => Some(on_remember(args))
+    Some(Memories) => Some(on_memories())
+    Some(MemorySearch(args)) => Some(on_memory_search(args))
     None => None
   }
 }

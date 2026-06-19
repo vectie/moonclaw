@@ -12,7 +12,7 @@ fn mkdtemp_bytes(bytes : Bytes) -> Bytes raise @errno.Errno {
   let buffer = bytes.to_fixedarray()
   let errno = fs_mkdtemp(buffer)
   if errno != 0 {
-    raise @errno.Errno(errno)
+    raise Errno(errno)
   } else {
     // move the buffer ownership to Bytes
     buffer.unsafe_reinterpret_as_bytes()

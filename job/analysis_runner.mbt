@@ -16,11 +16,7 @@ fn provider_task_single_response_requested(request : AnalysisRequest) -> Bool {
   let provider_task_requested = provider_execution_requested(
       request.execution_mode,
     ) &&
-    (
-      metadata_string_value(request.step_metadata, "extension_task_id")
-      is Some(_) ||
-      metadata_string_value(request.step_metadata, "bookapi_task_id") is Some(_)
-    )
+    metadata_string_value(request.step_metadata, "extension_task_id") is Some(_)
   provider_task_requested &&
   (
     metadata_bool_with_step_metadata(
@@ -43,8 +39,8 @@ async fn run_single_response_analysis_runner(
 ) -> Result[AnalysisExecution, String] {
   let requested_model = resolved_model_name(request)
   guard @model.load(
-      home?=request.home.map(fn(home) { home[:] }),
-      cwd=request.cwd[:],
+      home?=request.home.map(fn(home) { home }),
+      cwd=request.cwd,
       name?=requested_model,
     )
     is Some(model) else {
@@ -60,8 +56,8 @@ async fn run_single_response_analysis_runner(
         @openai.user_message(content=request.prompt),
       ],
       model=model.model_name,
-      response_format=@openai.ResponseFormat::JsonObject,
-      tool_choice=@openai.ChatCompletionToolChoice::Disallow,
+      response_format=JsonObject,
+      tool_choice=Disallow,
       stream=true,
       usage=@openai.usage(include_=true),
       stream_options=@openai.stream_options(include_usage=true),
@@ -85,7 +81,7 @@ async fn run_single_response_analysis_runner(
   } else {
     final_content.trim().to_owned()
   }
-  Ok(AnalysisExecution::{
+  Ok({
     model_name: model.name,
     content: final_content,
     conversation_id: None,
@@ -103,8 +99,8 @@ async fn run_local_analysis_runner(
   }
   let requested_model = resolved_model_name(request)
   guard @model.load(
-      home?=request.home.map(fn(home) { home[:] }),
-      cwd=request.cwd[:],
+      home?=request.home.map(fn(home) { home }),
+      cwd=request.cwd,
       name?=requested_model,
     )
     is Some(model) else {
@@ -114,8 +110,8 @@ async fn run_local_analysis_runner(
   let agent = @agent.new(
     model,
     logger~,
-    home?=request.home.map(fn(home) { home[:] }),
-    cwd=request.cwd[:],
+    home?=request.home.map(fn(home) { home }),
+    cwd=request.cwd,
     system_message=request.system_prompt,
     user_message=request.prompt,
     web_search=request.web_search,
@@ -133,21 +129,21 @@ async fn run_local_analysis_runner(
   let tool_journal : Array[Json] = []
   agent.event_target.add_listener(event => {
     match event.desc {
-      @event.AssistantMessageDelta(content) =>
+      AssistantMessageDelta(content) =>
         if !content.is_blank() {
           delta_content.write_string(content)
         }
-      @event.PreToolCall(tool_call) =>
+      PreToolCall(tool_call) =>
         push_analysis_tool_journal_entry(
           tool_journal,
           analysis_tool_call_start_entry(tool_call),
         )
-      @event.PostToolCall(tool_call, result~, rendered~) =>
+      PostToolCall(tool_call, result~, rendered~) =>
         push_analysis_tool_journal_entry(
           tool_journal,
           analysis_tool_call_finish_entry(tool_call, result, rendered),
         )
-      @event.AssistantMessage(usage~, tool_calls~, content) => {
+      AssistantMessage(usage~, tool_calls~, content) => {
         if !content.is_blank() {
           final_content = content
         }
@@ -156,7 +152,7 @@ async fn run_local_analysis_runner(
         }
         ignore(tool_calls)
       }
-      @event.Failed(error) => failed = Some(error.stringify())
+      Failed(error) => failed = Some(error.stringify())
       _ => ()
     }
   })
@@ -195,7 +191,7 @@ async fn run_local_analysis_runner(
       final_content = fallback
     }
   }
-  Ok(AnalysisExecution::{
+  Ok({
     model_name: model.name,
     content: final_content,
     conversation_id: Some(agent.id().to_string()),

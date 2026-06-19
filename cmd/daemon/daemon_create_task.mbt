@@ -24,7 +24,7 @@ impl @json.FromJson for CreateTaskRequest with fn from_json(
   json_path : @json.JsonPath,
 ) -> CreateTaskRequest raise @json.JsonDecodeError {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "Expected JSON object for CreateTaskRequest"),
     )
   }
@@ -61,7 +61,7 @@ impl @json.FromJson for CreateTaskRequest with fn from_json(
       )
     None => None
   }
-  CreateTaskRequest::{ name, model, message, cwd, web_search }
+  { name, model, message, cwd, web_search }
 }
 
 ///|

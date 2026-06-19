@@ -94,7 +94,7 @@ async fn Daemon::mooncode_queue_command_response(
     kind="command.queued_for_runtime_turn",
     title="MoonCode command queued for native runtime turn",
     status="queued",
-    detail="Queued `\{action}` for MoonClaw native runtime-turn execution without spawning a legacy task.",
+    detail="Queued `\{action}` for MoonClaw native runtime-turn execution without spawning a generic task.",
     now~,
   )
   binding.events.put(event)
@@ -109,7 +109,7 @@ async fn Daemon::mooncode_queue_command_response(
     "message": "MoonClaw queued `\{action}` for native runtime-turn execution",
     "dispatch_source": dispatch_source,
     "native_dispatch_mode": "queue-only",
-    "runtime_turn_endpoint": "/v1/mooncode/sessions/\{session_id}/runtime-turn?book_root=<path>",
+    "runtime_turn_endpoint": "/v1/code/sessions/\{session_id}/runtime-turn?book_root=<path>",
     "binding": binding.to_json(),
     "events": Json::array([event]),
   }

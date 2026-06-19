@@ -16,9 +16,9 @@ pub fn agent_mailbox(
 ) -> AgentMailbox {
   let kind = match config.max_size {
     0 => @aqueue.Unbounded
-    n => @aqueue.DiscardOldest(n)
+    n => DiscardOldest(n)
   }
-  AgentMailbox::{
+  {
     agent_id,
     queue: @aqueue.Queue::new(kind~),
     config,
@@ -107,7 +107,7 @@ pub struct MailboxManager {
 pub fn mailbox_manager(
   config? : AgentMailboxConfig = agent_mailbox_config(),
 ) -> MailboxManager {
-  MailboxManager::{ mailboxes: Map([]), config }
+  { mailboxes: Map([]), config }
 }
 
 ///|

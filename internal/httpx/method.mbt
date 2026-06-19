@@ -13,51 +13,51 @@ pub(all) enum Method {
 } derive(Eq, Compare, Hash, ToJson)
 
 ///|
-pub impl Show for Method with to_string(self : Method) -> String {
+pub impl Show for Method with fn to_string(self : Method) -> String {
   match self {
-    Method::Get => "GET"
-    Method::Head => "HEAD"
-    Method::Post => "POST"
-    Method::Put => "PUT"
-    Method::Delete => "DELETE"
-    Method::Connect => "CONNECT"
-    Method::Options => "OPTIONS"
-    Method::Trace => "TRACE"
-    Method::Patch => "PATCH"
+    Get => "GET"
+    Head => "HEAD"
+    Post => "POST"
+    Put => "PUT"
+    Delete => "DELETE"
+    Connect => "CONNECT"
+    Options => "OPTIONS"
+    Trace => "TRACE"
+    Patch => "PATCH"
   }
 }
 
 ///|
-pub impl Show for Method with output(self : Method, out : &Logger) -> Unit {
+pub impl Show for Method with fn output(self : Method, out : &Logger) -> Unit {
   out.write_string(self.to_string())
 }
 
 ///|
 /// Array containing all supported HTTP methods.
 pub let methods : Array[Method] = [
-  Method::Get,
-  Method::Head,
-  Method::Post,
-  Method::Put,
-  Method::Delete,
-  Method::Connect,
-  Method::Options,
-  Method::Trace,
-  Method::Patch,
+  Get,
+  Head,
+  Post,
+  Put,
+  Delete,
+  Connect,
+  Options,
+  Trace,
+  Patch,
 ]
 
 ///|
 fn Method::from_async_http(method_ : @http.RequestMethod) -> Method {
   match method_ {
-    @http.RequestMethod::Get => Method::Get
-    @http.RequestMethod::Head => Method::Head
-    @http.RequestMethod::Post => Method::Post
-    @http.RequestMethod::Put => Method::Put
-    @http.RequestMethod::Delete => Method::Delete
-    @http.RequestMethod::Connect => Method::Connect
-    @http.RequestMethod::Options => Method::Options
-    @http.RequestMethod::Trace => Method::Trace
-    @http.RequestMethod::Patch => Method::Patch
+    Get => Get
+    Head => Head
+    Post => Post
+    Put => Put
+    Delete => Delete
+    Connect => Connect
+    Options => Options
+    Trace => Trace
+    Patch => Patch
   }
 }
 
@@ -65,14 +65,14 @@ fn Method::from_async_http(method_ : @http.RequestMethod) -> Method {
 /// Converts a `Method` into the corresponding `@http.RequestMethod` value.
 pub fn Method::to_http(self : Method) -> @http.RequestMethod {
   match self {
-    Method::Get => @http.RequestMethod::Get
-    Method::Head => @http.RequestMethod::Head
-    Method::Post => @http.RequestMethod::Post
-    Method::Put => @http.RequestMethod::Put
-    Method::Delete => @http.RequestMethod::Delete
-    Method::Connect => @http.RequestMethod::Connect
-    Method::Options => @http.RequestMethod::Options
-    Method::Trace => @http.RequestMethod::Trace
-    Method::Patch => @http.RequestMethod::Patch
+    Get => Get
+    Head => Head
+    Post => Post
+    Put => Put
+    Delete => Delete
+    Connect => Connect
+    Options => Options
+    Trace => Trace
+    Patch => Patch
   }
 }

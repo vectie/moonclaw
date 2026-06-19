@@ -1,8 +1,8 @@
-# OpenClaw Gateway Architecture Reference
+# MoonClaw Gateway Architecture Reference
 
 ## 1. Overall Architecture Overview
 
-OpenClaw is a **multi-channel messaging gateway** that enables AI agents to communicate through various platforms (WhatsApp, Telegram, Discord, iMessage, etc.). The architecture follows a **hub-and-spoke model** with a central gateway server that handles:
+MoonClaw is a **multi-channel messaging gateway** that enables AI agents to communicate through various platforms (WhatsApp, Telegram, Discord, iMessage, etc.). The architecture follows a **hub-and-spoke model** with a central gateway server that handles:
 
 - **WebSocket-based control plane** for real-time bidirectional communication
 - **HTTP endpoints** for REST-style API access (OpenAI-compatible, OpenResponses API)
@@ -158,7 +158,7 @@ export async function runEmbeddedPiAgent(params) {
 
 ### Protocol Versioning
 
-The protocol uses a version number for compatibility:
+The protocol declares a current contract version:
 ```typescript
 export const PROTOCOL_VERSION = 1;
 ```
@@ -332,7 +332,7 @@ type GatewayRequestHandler = (opts: {
 
 ### 5.4 Session Management
 
-**Session Store** (`~/.openclaw/agents/<agentId>/sessions/sessions.json`):
+**Session Store** (`~/.moonclaw/agents/<agentId>/sessions/sessions.json`):
 ```typescript
 type SessionEntry = {
   sessionId: string;
@@ -346,7 +346,7 @@ type SessionEntry = {
 };
 ```
 
-**Session Transcript** (`~/.openclaw/agents/<agentId>/sessions/<sessionId>.jsonl`):
+**Session Transcript** (`~/.moonclaw/agents/<agentId>/sessions/<sessionId>.jsonl`):
 - JSONL format with parent chain for compaction
 - Uses `SessionManager` from Pi agent for proper message linking
 

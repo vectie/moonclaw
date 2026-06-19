@@ -50,7 +50,7 @@ fn remote_handoff_timeline(
   for handoff in handoffs {
     for remote in handoff.remote {
       let timestamp = remote_link_timestamp(remote)
-      timeline.push(JobUiTimelineEntry::{
+      timeline.push({
         id: "\{run.id}:handoff:\{index}",
         run_id: run.id,
         event_type: "remote.handoff",
@@ -78,14 +78,14 @@ fn remote_handoff_timeline(
 ///|
 fn timeline_from_events(
   events : Array[JobRunEvent],
-  synthetic? : Array[JobUiTimelineEntry] = [],
+  synthetic~ : Array[JobUiTimelineEntry],
 ) -> Array[JobUiTimelineEntry] {
   let sorted = events.copy()
   sorted.sort_by(fn(left, right) { left.timestamp.compare(right.timestamp) })
   let timeline : Array[JobUiTimelineEntry] = synthetic.copy()
   for index in 0..<sorted.length() {
     let event = sorted[index]
-    timeline.push(JobUiTimelineEntry::{
+    timeline.push({
       id: timeline_entry_id(event.run_id, index),
       run_id: event.run_id,
       event_type: event.event_type,
@@ -134,17 +134,17 @@ fn merge_node_id(run_id : String) -> String {
 ///|
 fn controller_split_status(run : JobRun, child_runs : Array[JobRun]) -> String {
   if child_runs.any(fn(child) {
-      child.status is RunStatus::Running ||
-      child.status is RunStatus::Pending ||
-      child.status is RunStatus::WaitingForInput
+      child.status is Running ||
+      child.status is Pending ||
+      child.status is WaitingForInput
     }) {
-    return ui_status_text(RunStatus::Running)
+    return ui_status_text(Running)
   }
-  if child_runs.any(fn(child) { child.status is RunStatus::Failed }) {
-    return ui_status_text(RunStatus::Failed)
+  if child_runs.any(fn(child) { child.status is Failed }) {
+    return ui_status_text(Failed)
   }
   if !child_runs.is_empty() {
-    return ui_status_text(RunStatus::Succeeded)
+    return ui_status_text(Succeeded)
   }
   ui_status_text(run.status)
 }
@@ -161,16 +161,14 @@ fn controller_split_summary(
   }
   let running = child_runs
     .filter(fn(child) {
-      child.status is RunStatus::Running ||
-      child.status is RunStatus::Pending ||
-      child.status is RunStatus::WaitingForInput
+      child.status is Running ||
+      child.status is Pending ||
+      child.status is WaitingForInput
     })
     .length()
-  let failed = child_runs
-    .filter(fn(child) { child.status is RunStatus::Failed })
-    .length()
+  let failed = child_runs.filter(fn(child) { child.status is Failed }).length()
   let completed = child_runs
-    .filter(fn(child) { child.status is RunStatus::Succeeded })
+    .filter(fn(child) { child.status is Succeeded })
     .length()
   let parts : Array[String] = []
   if delegated_steps > 0 {
@@ -239,7 +237,7 @@ fn controller_split_node(
   child_runs : Array[JobRun],
   state : JobControllerState,
 ) -> JobUiNode {
-  JobUiNode::{
+  {
     id: split_node_id(run.id),
     parent_id: Some(workflow_node_id(run.id)),
     kind: Split,
@@ -272,7 +270,7 @@ fn controller_merge_node(
   artifacts : Array[ArtifactRecord],
   memories : Array[MemoryRecord],
 ) -> JobUiNode {
-  JobUiNode::{
+  {
     id: merge_node_id(run.id),
     parent_id: Some(workflow_node_id(run.id)),
     kind: Merge,
@@ -292,7 +290,7 @@ fn controller_merge_node(
     memory_id: None,
     created_at: Some(state.created_at),
     updated_at: Some(state.updated_at),
-    provisional: run.status is RunStatus::Pending,
+    provisional: run.status is Pending,
     metadata: {
       "best_iteration_id": state.best_iteration_id,
       "accepted_iteration_ids": Json::array(
@@ -311,13 +309,13 @@ fn step_node(
   run : JobRun,
   step_definition : WorkflowStepDefinition,
   step_run : JobStepRun?,
-  parent_id? : String? = Some(workflow_node_id(run.id)),
+  parent_id~ : String?,
 ) -> JobUiNode {
   let status = match step_run {
     Some(step_run) => ui_status_text(step_run.status)
     None => "\"Pending\""
   }
-  JobUiNode::{
+  {
     id: "step:\{run.id}:\{step_definition.id}",
     parent_id,
     kind: Step,
@@ -363,7 +361,7 @@ fn child_run_node(
     }
   })
   let (title, summary, detail, expansion_kind) = match run.trigger {
-    TriggerSource::Custom(kind) if kind == "analysis-subplan" =>
+    Custom(kind) if kind == "analysis-subplan" =>
       (
         "Expanded Subplan",
         Some(
@@ -376,7 +374,7 @@ fn child_run_node(
       )
     _ => (run.job_id, run.summary, run.error, None)
   }
-  JobUiNode::{
+  {
     id: "child:\{run.id}",
     parent_id,
     kind: ChildRun,
@@ -535,7 +533,7 @@ fn artifact_node_detail(artifact : ArtifactRecord) -> String? {
 
 ///|
 fn artifact_node(run : JobRun, artifact : ArtifactRecord) -> JobUiNode {
-  JobUiNode::{
+  {
     id: "artifact:\{artifact.id}",
     parent_id: Some(workflow_node_id(run.id)),
     kind: Artifact,
@@ -590,7 +588,7 @@ fn synthetic_run_output_artifact(
     "result" => ("job.run.result", Some("final_result"), "application/json")
     _ => ("job.run.output", Some(output_kind), "text/plain")
   }
-  ArtifactRecord::{
+  {
     id: "synthetic:\{run.id}:\{output_kind}",
     run_id: run.id,
     job_id: run.job_id,
@@ -688,7 +686,7 @@ fn memory_node(
   artifacts : Array[ArtifactRecord],
   memory : MemoryRecord,
 ) -> JobUiNode {
-  JobUiNode::{
+  {
     id: "memory:\{memory.id}",
     parent_id: Some(workflow_node_id(run.id)),
     kind: Memory,
@@ -724,13 +722,11 @@ pub fn current_step_id_for_ui(
   workflow : WorkflowDefinition?,
 ) -> String? {
   let steps = store.list_step_runs(run.id)
-  let running = steps.filter(fn(step) { step.status is RunStatus::Running })
+  let running = steps.filter(fn(step) { step.status is Running })
   if !running.is_empty() {
     return Some(running[0].step_id)
   }
-  let waiting = steps.filter(fn(step) {
-    step.status is RunStatus::WaitingForInput
-  })
+  let waiting = steps.filter(fn(step) { step.status is WaitingForInput })
   if !waiting.is_empty() {
     return Some(waiting[0].step_id)
   }
@@ -806,7 +802,7 @@ pub async fn build_job_ui_snapshot(
   let nodes : Array[JobUiNode] = []
   match proposal {
     Some(proposal) =>
-      nodes.push(JobUiNode::{
+      nodes.push({
         id: "proposal:\{proposal.id}",
         parent_id: None,
         kind: Proposal,
@@ -825,7 +821,7 @@ pub async fn build_job_ui_snapshot(
       })
     None => ()
   }
-  nodes.push(JobUiNode::{
+  nodes.push({
     id: workflow_node_id(run.id),
     parent_id: proposal.map(fn(p) { "proposal:\{p.id}" }),
     kind: Workflow,
@@ -899,7 +895,7 @@ pub async fn build_job_ui_snapshot(
       ),
     )
   }
-  Some(JobUiSnapshot::{
+  Some({
     run,
     definition,
     workflow,

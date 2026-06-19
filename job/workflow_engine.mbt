@@ -9,7 +9,7 @@ pub fn WorkflowExecutionControl::new(
   should_cancel? : () -> Bool = fn() { false },
   should_force_stop? : () -> Bool = fn() { false },
 ) -> WorkflowExecutionControl {
-  WorkflowExecutionControl::{ should_cancel, should_force_stop }
+  { should_cancel, should_force_stop }
 }
 
 ///|
@@ -29,7 +29,7 @@ pub fn WorkflowStepContext::new(
   outputs? : Map[String, Json] = {},
   control? : WorkflowExecutionControl = WorkflowExecutionControl::new(),
 ) -> WorkflowStepContext {
-  WorkflowStepContext::{ run, step, initial_input, outputs, control }
+  { run, step, initial_input, outputs, control }
 }
 
 ///|
@@ -55,7 +55,7 @@ pub fn WorkflowStepResult::new(
   metrics? : Json = {},
   logs? : Array[String] = [],
 ) -> WorkflowStepResult {
-  WorkflowStepResult::{ output, summary, metrics, logs }
+  { output, summary, metrics, logs }
 }
 
 ///|
@@ -69,7 +69,7 @@ pub fn WorkflowStepHandler::new(
   kind~ : String,
   run~ : async (WorkflowStepContext) -> Result[WorkflowStepResult, String],
 ) -> WorkflowStepHandler {
-  WorkflowStepHandler::{ kind, run }
+  { kind, run }
 }
 
 ///|
@@ -88,7 +88,7 @@ pub struct WorkflowEngine {
 
 ///|
 pub fn WorkflowEngine::new(runtime~ : RuntimeManager) -> WorkflowEngine {
-  WorkflowEngine::{ runtime, handlers: {} }
+  { runtime, handlers: {} }
 }
 
 ///|
@@ -107,12 +107,12 @@ async fn WorkflowEngine::log_run_event(
   now_ms : Int,
   message : String,
   step_id? : String? = None,
-  status? : RunStatus? = None,
+  status~ : RunStatus?,
   data? : Json = {},
 ) -> Unit {
   self.runtime
   .store()
-  .append_run_event(JobRunEvent::{
+  .append_run_event({
     run_id: run.id,
     job_id: run.job_id,
     event_type,
@@ -136,7 +136,7 @@ fn WorkflowEngine::handler_for_step(
 fn WorkflowEngine::step_retry_policy(
   step : WorkflowStepDefinition,
 ) -> RetryPolicy {
-  step.retry_policy.unwrap_or(RetryPolicy::{ max_attempts: 1, backoff_ms: None })
+  step.retry_policy.unwrap_or({ max_attempts: 1, backoff_ms: None })
 }
 
 ///|
@@ -153,7 +153,7 @@ fn WorkflowEngine::step_run_record(
   output? : Json? = None,
   error? : String? = None,
 ) -> JobStepRun {
-  JobStepRun::{
+  {
     id: "\{run_id}:\{step.id}",
     run_id,
     step_id: step.id,
@@ -409,7 +409,7 @@ pub async fn WorkflowEngine::execute_run(
           let cancelled_step = WorkflowEngine::step_run_record(
             run_id,
             step,
-            RunStatus::Cancelled,
+            Cancelled,
             Some(now()),
             Some(now()),
             attempt - 1,
@@ -452,7 +452,7 @@ pub async fn WorkflowEngine::execute_run(
       let running_step = WorkflowEngine::step_run_record(
         run_id,
         step,
-        RunStatus::Running,
+        Running,
         Some(start_ts),
         None,
         attempt - 1,
@@ -487,7 +487,7 @@ pub async fn WorkflowEngine::execute_run(
           let completed_step = WorkflowEngine::step_run_record(
             run_id,
             step,
-            RunStatus::Succeeded,
+            Succeeded,
             Some(start_ts),
             Some(now()),
             attempt - 1,
@@ -525,7 +525,7 @@ pub async fn WorkflowEngine::execute_run(
             store,
             started_run,
             step,
-            RunStatus::Succeeded,
+            Succeeded,
             now(),
           )
           outputs.set(step.id, result.output)
@@ -544,7 +544,7 @@ pub async fn WorkflowEngine::execute_run(
               let continued_step = WorkflowEngine::step_run_record(
                 run_id,
                 step,
-                RunStatus::Succeeded,
+                Succeeded,
                 Some(start_ts),
                 Some(now()),
                 attempt - 1,
@@ -575,7 +575,7 @@ pub async fn WorkflowEngine::execute_run(
                 store,
                 started_run,
                 step,
-                RunStatus::Succeeded,
+                Succeeded,
                 now(),
               )
               outputs.set(step.id, continued_output)
@@ -591,7 +591,7 @@ pub async fn WorkflowEngine::execute_run(
               let waiting_step = WorkflowEngine::step_run_record(
                 run_id,
                 step,
-                RunStatus::WaitingForInput,
+                WaitingForInput,
                 Some(start_ts),
                 Some(now()),
                 attempt - 1,
@@ -620,7 +620,7 @@ pub async fn WorkflowEngine::execute_run(
                 store,
                 started_run,
                 step,
-                RunStatus::WaitingForInput,
+                WaitingForInput,
                 now(),
               )
               steps.push(waiting_step)
@@ -649,15 +649,10 @@ pub async fn WorkflowEngine::execute_run(
               complete_controller_run(
                 store,
                 waiting_run,
-                RunStatus::WaitingForInput,
+                WaitingForInput,
                 now(),
               )
-              return Ok(WorkflowExecutionResult::{
-                run: waiting_run,
-                workflow,
-                outputs,
-                steps,
-              })
+              return Ok({ run: waiting_run, workflow, outputs, steps })
             }
           }
           let failed_logs = [
@@ -668,7 +663,7 @@ pub async fn WorkflowEngine::execute_run(
           let failed_step = WorkflowEngine::step_run_record(
             run_id,
             step,
-            RunStatus::Failed,
+            Failed,
             Some(start_ts),
             Some(now()),
             attempt,
@@ -700,7 +695,7 @@ pub async fn WorkflowEngine::execute_run(
               store,
               started_run,
               step,
-              RunStatus::Failed,
+              Failed,
               now(),
             )
             self.log_run_event(
@@ -719,12 +714,7 @@ pub async fn WorkflowEngine::execute_run(
                 summary=Some("Workflow step \{step.id} failed"),
               ),
             )
-            complete_controller_run(
-              store,
-              started_run,
-              RunStatus::Failed,
-              now(),
-            )
+            complete_controller_run(store, started_run, Failed, now())
             return Err(error)
           }
           let backoff_ms = retry_policy.backoff_ms.unwrap_or(0)
@@ -759,6 +749,6 @@ pub async fn WorkflowEngine::execute_run(
     status=Some(Succeeded),
     data={ "step_count": steps.length() },
   )
-  complete_controller_run(store, completed_run, RunStatus::Succeeded, now())
-  Ok(WorkflowExecutionResult::{ run: completed_run, workflow, outputs, steps })
+  complete_controller_run(store, completed_run, Succeeded, now())
+  Ok({ run: completed_run, workflow, outputs, steps })
 }

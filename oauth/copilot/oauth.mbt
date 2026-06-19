@@ -13,35 +13,29 @@ impl @json.FromJson for DeviceCodeResponse with fn from_json(
   path : @json.JsonPath,
 ) -> DeviceCodeResponse raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "DeviceCodeResponse: expected object"))
+    raise JsonDecodeError((path, "DeviceCodeResponse: expected object"))
   }
   let device_code = match obj.get("device_code") {
     Some(String(s)) => s
     _ =>
-      raise @json.JsonDecodeError(
-        (path, "DeviceCodeResponse: missing 'device_code'"),
-      )
+      raise JsonDecodeError((path, "DeviceCodeResponse: missing 'device_code'"))
   }
   let user_code = match obj.get("user_code") {
     Some(String(s)) => s
     _ =>
-      raise @json.JsonDecodeError(
-        (path, "DeviceCodeResponse: missing 'user_code'"),
-      )
+      raise JsonDecodeError((path, "DeviceCodeResponse: missing 'user_code'"))
   }
   let verification_uri = match obj.get("verification_uri") {
     Some(String(s)) => s
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (path, "DeviceCodeResponse: missing 'verification_uri'"),
       )
   }
   let expires_in = match obj.get("expires_in") {
     Some(Number(n, ..)) => n.to_int()
     _ =>
-      raise @json.JsonDecodeError(
-        (path, "DeviceCodeResponse: missing 'expires_in'"),
-      )
+      raise JsonDecodeError((path, "DeviceCodeResponse: missing 'expires_in'"))
   }
   let interval = match obj.get("interval") {
     Some(Number(n, ..)) => n.to_int()
@@ -62,7 +56,7 @@ impl @json.FromJson for AccessTokenResponse with fn from_json(
   path : @json.JsonPath,
 ) -> AccessTokenResponse raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "AccessTokenResponse: expected object"))
+    raise JsonDecodeError((path, "AccessTokenResponse: expected object"))
   }
   let access_token = match obj.get("access_token") {
     Some(String(s)) => Some(s)
@@ -87,19 +81,16 @@ impl @json.FromJson for CopilotTokenResponse with fn from_json(
   path : @json.JsonPath,
 ) -> CopilotTokenResponse raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "CopilotTokenResponse: expected object"))
+    raise JsonDecodeError((path, "CopilotTokenResponse: expected object"))
   }
   let token = match obj.get("token") {
     Some(String(s)) => s
-    _ =>
-      raise @json.JsonDecodeError(
-        (path, "CopilotTokenResponse: missing 'token'"),
-      )
+    _ => raise JsonDecodeError((path, "CopilotTokenResponse: missing 'token'"))
   }
   let expires_at = match obj.get("expires_at") {
     Some(Number(n, ..)) => n.to_int64()
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (path, "CopilotTokenResponse: missing 'expires_at'"),
       )
   }

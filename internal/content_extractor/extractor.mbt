@@ -20,7 +20,7 @@ pub fn Extractor::new(
   overlap? : Int = 20,
   logger~ : @pino.Logger,
 ) -> Extractor raise {
-  Extractor::{
+  {
     model,
     token_counter: @token_counter.Counter::new(logger~),
     safe_zone_tokens,
@@ -153,12 +153,12 @@ priv struct Range {
 ///|
 /// Decode `{ "start_line": .., "end_line": .. }` objects produced by the
 /// model, surfacing useful path info in error messages when parsing fails.
-impl @json.FromJson for Range with from_json(
+impl @json.FromJson for Range with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Range raise {
   guard json is { "start_line": start_line, "end_line": end_line, .. } else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "Expected object with start_line and end_line"),
     )
   }
@@ -170,7 +170,7 @@ impl @json.FromJson for Range with from_json(
     end_line,
     path=json_path.add_key("end_line"),
   )
-  Range::{ start_line, end_line }
+  { start_line, end_line }
 }
 
 ///|

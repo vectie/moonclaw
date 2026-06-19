@@ -17,7 +17,7 @@ pub fn new_run_request(
   idempotency_key? : String,
   metadata? : Json,
 ) -> AcpRunRequest {
-  AcpRunRequest::{ message, run_id, model, cwd, idempotency_key, metadata }
+  { message, run_id, model, cwd, idempotency_key, metadata }
 }
 
 ///|
@@ -141,7 +141,7 @@ pub fn prepare_launch_plan(
   let cwd = resolved_cwd(target, session, request)
   match target.backend {
     "codex" =>
-      Ok(AcpLaunchPlan::{
+      Ok({
         backend: "codex",
         target_id: target.id,
         session_id: session.id,

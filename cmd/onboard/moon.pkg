@@ -5,6 +5,8 @@ import {
   "vectie/moonclaw/cmd/onboard_command",
 }
 
+supported_targets = "native"
+
 options(
   "is-main": true,
 )

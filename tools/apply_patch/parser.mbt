@@ -64,7 +64,7 @@ pub fn parse_patch(patch : String) -> ParsedPatch raise ParseError {
     hunks.push(hunk)
     i += lines_consumed
   }
-  ParsedPatch::{ patch, hunks }
+  { patch, hunks }
 }
 
 ///|
@@ -218,8 +218,5 @@ fn parse_update_chunk(
     parsed_lines += 1
     i += 1
   }
-  (
-    UpdateFileChunk::{ change_context, old_lines, new_lines, is_end_of_file },
-    parsed_lines,
-  )
+  ({ change_context, old_lines, new_lines, is_end_of_file }, parsed_lines)
 }

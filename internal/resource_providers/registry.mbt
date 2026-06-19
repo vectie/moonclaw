@@ -21,7 +21,7 @@ pub fn RegisteredResourceProvider::new(
   capabilities? : Array[String] = [],
   metadata? : Json = {},
 ) -> RegisteredResourceProvider {
-  RegisteredResourceProvider::{
+  {
     name: name.trim().to_owned(),
     title: title.trim().to_owned(),
     description: description.trim().to_owned(),
@@ -83,7 +83,9 @@ fn provider_manifest_candidates(cwd : String, home : String?) -> Array[String] {
     }
     dir = parent
   }
-  for index = ancestry.length() - 1; index >= 0; index = index - 1 {
+  let mut index = ancestry.length()
+  while index > 0 {
+    index -= 1
     candidates.push(ancestry[index])
   }
   candidates

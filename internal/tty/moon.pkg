@@ -3,6 +3,8 @@ import {
   "moonbitlang/core/json",
 }
 
+supported_targets = "native"
+
 options(
   "native-stub": [ "tty.c" ],
 )

@@ -11,7 +11,7 @@ pub fn create_coordination_params(
   subtasks~ : Array[SubTaskParams],
   metadata? : Map[String, Json] = Map([]),
 ) -> CreateCoordinationParams {
-  CreateCoordinationParams::{ parent_agent, subtasks, metadata }
+  { parent_agent, subtasks, metadata }
 }
 
 ///|
@@ -29,7 +29,7 @@ pub fn sub_task_params(
   model? : String,
   cwd? : String,
 ) -> SubTaskParams {
-  SubTaskParams::{ task_id, message, model, cwd }
+  { task_id, message, model, cwd }
 }
 
 ///|
@@ -45,7 +45,7 @@ pub fn update_subtask_params(
   result? : Json,
   error? : String,
 ) -> UpdateSubTaskParams {
-  UpdateSubTaskParams::{ status, result, error }
+  { status, result, error }
 }
 
 ///|

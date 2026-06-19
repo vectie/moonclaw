@@ -37,7 +37,6 @@ pub async fn Context::add_symlink(Self, String, to~ : String) -> Unit
 pub fn Context::getenv(Self, String, allow_empty? : Bool) -> String raise
 pub fn[T : ToJson] Context::json(Self, T) -> Json
 pub fn Context::model(Self, name? : @model.CommonModels) -> @model.Model raise
-#alias(text)
 pub fn[T : Show] Context::show(Self, T) -> String
 
 type Directory

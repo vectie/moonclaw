@@ -12,23 +12,23 @@
 /// - POST /v1/task       → `create_task`
 /// - GET  /v1/task/{id}  → `get_task`
 /// - ANY  /v1/task/{id}/... → `forward_to_task`
-/// - GET  /v1/mooncode/capabilities → `mooncode_capabilities`
-/// - GET  /v1/mooncode/sessions?book_root={path} → `mooncode_list_sessions`
-/// - GET  /v1/mooncode/sessions/{id}?book_root={path} → `mooncode_get_session`
-/// - POST /v1/mooncode/sessions/{id}/commands → `mooncode_accept_command`
-/// - GET  /v1/mooncode/sessions/{id}/serve-scheduler?book_root={path} → `mooncode_serve_scheduler`
-/// - GET  /v1/mooncode/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim_state`
-/// - POST /v1/mooncode/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim`
-/// - POST /v1/mooncode/sessions/{id}/runtime-dispatch?book_root={path} → `mooncode_runtime_dispatch`
-/// - POST /v1/mooncode/sessions/{id}/runtime-turn?book_root={path} → `mooncode_runtime_turn`
-/// - POST /v1/mooncode/sessions/{id}/runtime-loop?book_root={path} → `mooncode_runtime_loop`
-/// - POST /v1/mooncode/sessions/{id}/runtime-service?book_root={path} → `mooncode_runtime_service`
-/// - GET  /v1/mooncode/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events_state`
-/// - POST /v1/mooncode/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events`
-/// - POST /v1/mooncode/sessions/{id}/tool-exec?book_root={path} → `mooncode_tool_execute`
-/// - GET  /v1/mooncode/sessions/{id}/stream → `mooncode_stream`
-/// - GET  /v1/mooncode/sessions/{id}/eval-report → `mooncode_eval_report`
-/// - POST /v1/mooncode/sessions/{id}/package-result?book_root={path} → `mooncode_package_result`
+/// - GET  /v1/code/capabilities → `mooncode_capabilities`
+/// - GET  /v1/code/sessions?book_root={path} → `mooncode_list_sessions`
+/// - GET  /v1/code/sessions/{id}?book_root={path} → `mooncode_get_session`
+/// - POST /v1/code/sessions/{id}/commands → `mooncode_accept_command`
+/// - GET  /v1/code/sessions/{id}/serve-scheduler?book_root={path} → `mooncode_serve_scheduler`
+/// - GET  /v1/code/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim_state`
+/// - POST /v1/code/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim`
+/// - POST /v1/code/sessions/{id}/runtime-dispatch?book_root={path} → `mooncode_runtime_dispatch`
+/// - POST /v1/code/sessions/{id}/runtime-turn?book_root={path} → `mooncode_runtime_turn`
+/// - POST /v1/code/sessions/{id}/runtime-loop?book_root={path} → `mooncode_runtime_loop`
+/// - POST /v1/code/sessions/{id}/runtime-service?book_root={path} → `mooncode_runtime_service`
+/// - GET  /v1/code/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events_state`
+/// - POST /v1/code/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events`
+/// - POST /v1/code/sessions/{id}/tool-exec?book_root={path} → `mooncode_tool_execute`
+/// - GET  /v1/code/sessions/{id}/stream → `mooncode_stream`
+/// - GET  /v1/code/sessions/{id}/eval-report → `mooncode_eval_report`
+/// - POST /v1/code/sessions/{id}/package-result?book_root={path} → `mooncode_package_result`
 /// - GET  /v1/auth/status → `get_auth_status`
 /// - POST /v1/auth/codex/start → `start_codex_auth` (callback on port 1455)
 /// - POST /v1/auth/codex/logout → `logout_codex`
@@ -66,60 +66,42 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
             (Get, ["", "v1", "task", id]) => self.get_task(id, w)
             (Get, ["", "v1", "task", id, "events"]) =>
               self.get_task_events(id~, w)
-            (Get, ["", "v1", "mooncode", "capabilities"]) =>
+            (Get, ["", "v1", "code", "capabilities"]) =>
               self.mooncode_capabilities(w)
-            (Get, ["", "v1", "mooncode", "sessions"]) =>
+            (Get, ["", "v1", "code", "sessions"]) =>
               self.mooncode_list_sessions(r, w)
-            (Get, ["", "v1", "mooncode", "sessions", session_id]) =>
+            (Get, ["", "v1", "code", "sessions", session_id]) =>
               self.mooncode_get_session(session_id~, r, w)
-            (Post, ["", "v1", "mooncode", "sessions", session_id, "commands"]) =>
+            (Post, ["", "v1", "code", "sessions", session_id, "commands"]) =>
               self.mooncode_accept_command(group~, session_id~, r, w)
-            (
-              Get,
-              ["", "v1", "mooncode", "sessions", session_id, "serve-scheduler"],
-            ) => self.mooncode_serve_scheduler(session_id~, r, w)
-            (
-              Get,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-claim"],
-            ) => self.mooncode_runtime_claim_state(session_id~, r, w)
+            (Get, ["", "v1", "code", "sessions", session_id, "serve-scheduler"]) =>
+              self.mooncode_serve_scheduler(session_id~, r, w)
+            (Get, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
+              self.mooncode_runtime_claim_state(session_id~, r, w)
+            (Post, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
+              self.mooncode_runtime_claim(session_id~, r, w)
             (
               Post,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-claim"],
-            ) => self.mooncode_runtime_claim(session_id~, r, w)
-            (
-              Post,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-dispatch"],
+              ["", "v1", "code", "sessions", session_id, "runtime-dispatch"],
             ) => self.mooncode_runtime_dispatch(group~, session_id~, r, w)
-            (
-              Post,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-turn"],
-            ) => self.mooncode_runtime_turn(session_id~, r, w)
-            (
-              Post,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-loop"],
-            ) => self.mooncode_runtime_loop(session_id~, r, w)
-            (
-              Post,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-service"],
+            (Post, ["", "v1", "code", "sessions", session_id, "runtime-turn"]) =>
+              self.mooncode_runtime_turn(session_id~, r, w)
+            (Post, ["", "v1", "code", "sessions", session_id, "runtime-loop"]) =>
+              self.mooncode_runtime_loop(session_id~, r, w)
+            (Post, ["", "v1", "code", "sessions", session_id, "runtime-service"]
             ) => self.mooncode_runtime_service(group~, session_id~, r, w)
-            (
-              Get,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-events"],
-            ) => self.mooncode_runtime_events_state(session_id~, r, w)
-            (
-              Post,
-              ["", "v1", "mooncode", "sessions", session_id, "runtime-events"],
-            ) => self.mooncode_runtime_events(session_id~, r, w)
-            (Post, ["", "v1", "mooncode", "sessions", session_id, "tool-exec"]) =>
+            (Get, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>
+              self.mooncode_runtime_events_state(session_id~, r, w)
+            (Post, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>
+              self.mooncode_runtime_events(session_id~, r, w)
+            (Post, ["", "v1", "code", "sessions", session_id, "tool-exec"]) =>
               self.mooncode_tool_execute(session_id~, r, w)
-            (Get, ["", "v1", "mooncode", "sessions", session_id, "stream"]) =>
+            (Get, ["", "v1", "code", "sessions", session_id, "stream"]) =>
               self.mooncode_stream(session_id~, r, w)
-            (Get, ["", "v1", "mooncode", "sessions", session_id, "eval-report"]) =>
+            (Get, ["", "v1", "code", "sessions", session_id, "eval-report"]) =>
               self.mooncode_eval_report(session_id~, r, w)
-            (
-              Post,
-              ["", "v1", "mooncode", "sessions", session_id, "package-result"],
-            ) => self.mooncode_package_result(session_id~, r, w)
+            (Post, ["", "v1", "code", "sessions", session_id, "package-result"]) =>
+              self.mooncode_package_result(session_id~, r, w)
             (method_, ["", "v1", "task", id, .. paths]) =>
               self.forward_to_task(method_~, group~, id~, paths~, r, w)
             // Auth endpoints

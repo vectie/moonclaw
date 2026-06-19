@@ -72,7 +72,7 @@ pub fn RoleRuntimeContract::new(
   output_contract? : String? = None,
   metadata? : Json = {},
 ) -> RoleRuntimeContract {
-  RoleRuntimeContract::{
+  {
     role_id,
     planning_layer,
     runtime_mode,
@@ -96,7 +96,7 @@ pub fn RoleHandoffPacket::new(
   review_required? : Bool = false,
   metadata? : Json = {},
 ) -> RoleHandoffPacket {
-  RoleHandoffPacket::{
+  {
     kind,
     objective,
     scope_summary,
@@ -299,7 +299,7 @@ pub fn resolve_role_runtime_contract(
     Some(value) => Some(value)
     None => defaults.output_contract
   }
-  RoleRuntimeContract::{
+  {
     role_id: resolved_metadata
     .bind(fn(value) { role_runtime_string(value, "role_id") })
     .unwrap_or(defaults.role_id),

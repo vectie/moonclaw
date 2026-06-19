@@ -1,6 +1,6 @@
 ///|
 pub fn ready_message(base_url : String) -> String {
-  "Moonstat available at \{base_url}; OpenClaw routing and usage/statistics bridge enabled"
+  "Moonstat available at \{base_url}; MoonClaw routing and usage/statistics bridge enabled"
 }
 
 ///|

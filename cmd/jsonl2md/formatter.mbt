@@ -21,7 +21,7 @@ fn Formatter::new(
   path : String,
   recover_diagnostics? : Bool = false,
 ) -> Formatter {
-  Formatter::{
+  {
     recover_diagnostics,
     path,
     id: None,

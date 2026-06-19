@@ -1,22 +1,18 @@
 ///|
 fn runtime_definition(
-  schedule? : SchedulePolicy? = Some(SchedulePolicy::{
+  schedule? : SchedulePolicy? = Some({
     kind: "interval",
     interval_minutes: Some(60),
     timezone: Some("Asia/Shanghai"),
   }),
-  retry_policy? : RetryPolicy? = Some(RetryPolicy::{
-    max_attempts: 2,
-    backoff_ms: Some(100),
-  }),
 ) -> JobDefinition {
-  JobDefinition::{
+  {
     id: "job-1",
     kind: "research.topic.sync",
     enabled: true,
     config: { "query": "agents" },
     schedule,
-    retry_policy,
+    retry_policy: Some({ max_attempts: 2, backoff_ms: Some(100) }),
     workflow_id: None,
     created_at: 1,
     updated_at: 1,
@@ -31,8 +27,7 @@ async test "RuntimeManager persists checkpoints and prevents duplicate active ru
     let manager = RuntimeManager::new(root~)
     manager.register_definition(runtime_definition())
 
-    let run = match
-      manager.create_run("run-1", "job-1", TriggerSource::Manual, 100) {
+    let run = match manager.create_run("run-1", "job-1", Manual, 100) {
       Ok(run) => run
       Err(error) => fail(error)
     }
@@ -41,7 +36,7 @@ async test "RuntimeManager persists checkpoints and prevents duplicate active ru
     ignore(manager.mark_run_started("run-1", 120))
     inspect(manager.is_job_active("job-1"), content="true")
     inspect(
-      manager.create_run("run-2", "job-1", TriggerSource::Manual, 130) is Err(_),
+      manager.create_run("run-2", "job-1", Manual, 130) is Err(_),
       content="true",
     )
     ignore(manager.mark_run_succeeded("run-1", 200, summary=Some("done")))
@@ -73,9 +68,9 @@ async test "RuntimeManager returns due scheduled definitions from checkpoints" {
     let root = @pathx.join(dir, "jobs")
     let manager = RuntimeManager::new(root~)
     manager.register_definition(runtime_definition())
-    manager.register_definition(JobDefinition::{
+    manager.register_definition({
       ..runtime_definition(
-        schedule=Some(SchedulePolicy::{
+        schedule=Some({
           kind: "interval",
           interval_minutes: Some(10),
           timezone: None,
@@ -88,9 +83,7 @@ async test "RuntimeManager returns due scheduled definitions from checkpoints" {
     let due_initial = manager.due_definitions(1_000)
     inspect(due_initial.length(), content="2")
 
-    ignore(
-      manager.create_run("run-1", "job-1", TriggerSource::Scheduled, 1_000),
-    )
+    ignore(manager.create_run("run-1", "job-1", Scheduled, 1_000))
     ignore(manager.mark_run_started("run-1", 1_100))
     ignore(manager.mark_run_succeeded("run-1", 1_200))
     let due_after_short_interval = manager.due_definitions(1_500)
@@ -113,7 +106,7 @@ async test "RuntimeManager triggers due runs and exposes active and recent statu
     let root = @pathx.join(dir, "jobs")
     let manager = RuntimeManager::new(root~)
     manager.register_definition(runtime_definition())
-    manager.register_definition(JobDefinition::{
+    manager.register_definition({
       ..runtime_definition(schedule=None),
       id: "job-2",
       kind: "research.paper.ask",
@@ -159,7 +152,7 @@ async test "RuntimeManager schedules retry runs with backoff and resets retry st
     let manager = RuntimeManager::new(root~)
     manager.register_definition(runtime_definition())
 
-    ignore(manager.create_run("run-1", "job-1", TriggerSource::Manual, 100))
+    ignore(manager.create_run("run-1", "job-1", Manual, 100))
     ignore(manager.mark_run_started("run-1", 110))
     ignore(manager.mark_run_failed("run-1", 200, "tool failed"))
 
@@ -204,7 +197,7 @@ async test "RuntimeManager initializes controller state for controller jobs" {
   @fsx.with_temporary_directory("job-runtime-controller-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")
     let manager = RuntimeManager::new(root~)
-    manager.register_definition(JobDefinition::{
+    manager.register_definition({
       id: "job-controller-1",
       kind: "job.controller",
       enabled: true,
@@ -224,7 +217,7 @@ async test "RuntimeManager initializes controller state for controller jobs" {
     })
     manager
     .store()
-    .save_job_proposal(JobProposal::{
+    .save_job_proposal({
       ..draft_job_proposal("proposal-controller-1", "Research VLA papers.", 1),
       suggested_family: Some("research_controller"),
       profile_id: Some("research_controller"),
@@ -232,12 +225,7 @@ async test "RuntimeManager initializes controller state for controller jobs" {
       profile_metadata: { "domain": "research" },
     })
     let run = match
-      manager.create_run(
-        "run-controller-1",
-        "job-controller-1",
-        TriggerSource::Manual,
-        100,
-      ) {
+      manager.create_run("run-controller-1", "job-controller-1", Manual, 100) {
       Ok(run) => run
       Err(error) => fail(error)
     }

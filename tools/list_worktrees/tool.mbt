@@ -6,7 +6,7 @@ pub struct ListWorktreesResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for ListWorktreesResult with output(
+pub impl Show for ListWorktreesResult with fn output(
   result : ListWorktreesResult,
   logger : &Logger,
 ) -> Unit {
@@ -43,7 +43,7 @@ pub fn new(cwd : String) -> @tool.Tool[ListWorktreesResult] {
       let result = @worktree.list_worktrees(cwd, base_dir~) catch {
         error => return @tool.error("Error listing worktrees: \{error}")
       }
-      @tool.ok(ListWorktreesResult::{
+      @tool.ok({
         repo_root: result.repo_root,
         current_cwd: cwd,
         worktrees: result.worktrees,

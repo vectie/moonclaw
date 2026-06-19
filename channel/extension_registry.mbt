@@ -9,12 +9,7 @@ pub struct ExtensionRegistry {
 
 ///|
 pub fn ExtensionRegistry::new() -> ExtensionRegistry {
-  ExtensionRegistry::{
-    extensions: {},
-    path_to_channel: {},
-    message_handler: None,
-    context: None,
-  }
+  { extensions: {}, path_to_channel: {}, message_handler: None, context: None }
 }
 
 ///|

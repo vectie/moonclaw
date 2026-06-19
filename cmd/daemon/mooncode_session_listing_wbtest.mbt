@@ -35,8 +35,8 @@ test "mooncode session list format rejects unsupported values before response" {
 }
 
 ///|
-test "mooncode openseek session listing row is minimal json contract" {
-  let listing = mooncode_openseek_session_listing_row({
+test "mooncode compact session listing row is minimal json contract" {
+  let listing = mooncode_compact_session_listing_row({
     "kind": "mooncode-session-record",
     "session_id": "session-live",
     "book_root": "/tmp/moonbook",
@@ -60,14 +60,14 @@ test "mooncode openseek session listing row is minimal json contract" {
       "session_url"? : None,
       ..
     } else {
-    fail("expected minimal OpenSeek listing row")
+    fail("expected minimal MoonCode compact listing row")
   }
   assert_eq(value.to_int64(), 77L)
 }
 
 ///|
-test "mooncode openseek session listing title has no rich fallback" {
-  let listing = mooncode_openseek_session_listing_row({
+test "mooncode compact session listing title has no rich fallback" {
+  let listing = mooncode_compact_session_listing_row({
     "kind": "mooncode-session-record",
     "session_id": "session-no-prompt",
     "last_updated": Json::number(77.0, repr="77"),
@@ -80,9 +80,9 @@ test "mooncode openseek session listing title has no rich fallback" {
 }
 
 ///|
-test "mooncode openseek session listing title is untruncated first line" {
+test "mooncode compact session listing title is untruncated first line" {
   let long_line = "x".repeat(128)
-  let listing = mooncode_openseek_session_listing_row({
+  let listing = mooncode_compact_session_listing_row({
     "kind": "mooncode-session-record",
     "session_id": "session-long-title",
     "last_updated": Json::number(77.0, repr="77"),
@@ -97,8 +97,8 @@ test "mooncode openseek session listing title is untruncated first line" {
 }
 
 ///|
-test "mooncode openseek session listing title trims the first line" {
-  let listing = mooncode_openseek_session_listing_row({
+test "mooncode compact session listing title trims the first line" {
+  let listing = mooncode_compact_session_listing_row({
     "kind": "mooncode-session-record",
     "session_id": "session-spaced-title",
     "last_updated": Json::number(77.0, repr="77"),
@@ -134,7 +134,7 @@ async test "mooncode binding remembers first prompt once for session picker titl
     "command": "prompt",
     "text": "second request should not rename session",
   })
-  let listing = mooncode_openseek_session_listing_row(
+  let listing = mooncode_compact_session_listing_row(
     mooncode_session_record_from_parts(
       "session-title",
       "/tmp/moonbook",

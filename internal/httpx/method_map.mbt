@@ -14,15 +14,15 @@ priv struct MethodMap[T] {
 ///|
 fn[T] MethodMap::get(self : MethodMap[T], method_ : Method) -> T? {
   match method_ {
-    Method::Get => self.get
-    Method::Head => self.head
-    Method::Post => self.post
-    Method::Put => self.put
-    Method::Delete => self.delete
-    Method::Connect => self.connect
-    Method::Options => self.options
-    Method::Trace => self.trace
-    Method::Patch => self.patch
+    Get => self.get
+    Head => self.head
+    Post => self.post
+    Put => self.put
+    Delete => self.delete
+    Connect => self.connect
+    Options => self.options
+    Trace => self.trace
+    Patch => self.patch
   }
 }
 
@@ -41,21 +41,21 @@ fn[T] MethodMap::op_set(
   value : T,
 ) -> Unit {
   match method_ {
-    Method::Get => self.get = Some(value)
-    Method::Head => self.head = Some(value)
-    Method::Post => self.post = Some(value)
-    Method::Put => self.put = Some(value)
-    Method::Delete => self.delete = Some(value)
-    Method::Connect => self.connect = Some(value)
-    Method::Options => self.options = Some(value)
-    Method::Trace => self.trace = Some(value)
-    Method::Patch => self.patch = Some(value)
+    Get => self.get = Some(value)
+    Head => self.head = Some(value)
+    Post => self.post = Some(value)
+    Put => self.put = Some(value)
+    Delete => self.delete = Some(value)
+    Connect => self.connect = Some(value)
+    Options => self.options = Some(value)
+    Trace => self.trace = Some(value)
+    Patch => self.patch = Some(value)
   }
 }
 
 ///|
 fn[T] MethodMap::new() -> MethodMap[T] {
-  MethodMap::{
+  {
     get: None,
     head: None,
     post: None,

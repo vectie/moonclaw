@@ -7,7 +7,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
       id: "workflow.parent",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "delegate",
           kind: "job.delegate",
           config: SubjobStepConfig::new(request_text="run child analysis").to_json(),
@@ -16,7 +16,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
       ],
       output_bindings: ["delegate"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       id: "job.parent",
       kind: "test.parent",
       enabled: true,
@@ -31,15 +31,15 @@ async test "subjob_step_handler creates a child run with lineage and executes it
     runtime.register_workflow(parent_workflow)
     runtime
     .store()
-    .save_run(JobRun::{
+    .save_run({
       id: "run-parent-1",
       job_id: "job.parent",
-      trigger: TriggerSource::Manual,
+      trigger: Manual,
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
       workspace_dir: None,
-      status: RunStatus::Pending,
+      status: Pending,
       attempt: 1,
       retry_of: None,
       started_at: None,
@@ -61,7 +61,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
         id: "workflow.child",
         kind: "test.child",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "child-step",
             kind: "test.child",
             config: {},
@@ -82,12 +82,7 @@ async test "subjob_step_handler creates a child run with lineage and executes it
         updated_at: now_ms,
         tags: ["child"],
       }
-      ProposalCompilation::{
-        family: "generic",
-        definition,
-        workflow,
-        bindings: [],
-      }
+      { family: "generic", definition, workflow, bindings: [] }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)
@@ -148,7 +143,7 @@ async test "controller delegate step records iteration state and child lineage" 
       id: "workflow.controller.parent",
       kind: "job.controller",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "delegate",
           kind: "job.delegate",
           config: SubjobStepConfig::new(request_text="run child analysis").to_json(),
@@ -157,7 +152,7 @@ async test "controller delegate step records iteration state and child lineage" 
       ],
       output_bindings: ["delegate"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       id: "job.controller.parent",
       kind: "job.controller",
       enabled: true,
@@ -174,7 +169,7 @@ async test "controller delegate step records iteration state and child lineage" 
       runtime.trigger_definition(
         "run-controller-parent-1",
         "job.controller.parent",
-        TriggerSource::Manual,
+        Manual,
         100,
       ) {
       Ok(run) => run
@@ -194,7 +189,7 @@ async test "controller delegate step records iteration state and child lineage" 
         id: "workflow.controller.child",
         kind: "test.child",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "child-step",
             kind: "test.child",
             config: {},
@@ -215,12 +210,7 @@ async test "controller delegate step records iteration state and child lineage" 
         updated_at: now_ms,
         tags: ["child"],
       }
-      ProposalCompilation::{
-        family: "generic",
-        definition,
-        workflow,
-        bindings: [],
-      }
+      { family: "generic", definition, workflow, bindings: [] }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)
@@ -324,7 +314,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
       id: "workflow.parent",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "delegate",
           kind: "job.delegate",
           config: SubjobStepConfig::new(
@@ -340,7 +330,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
       ],
       output_bindings: ["delegate"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       id: "job.parent",
       kind: "test.parent",
       enabled: true,
@@ -355,15 +345,15 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
     runtime.register_workflow(parent_workflow)
     runtime
     .store()
-    .save_run(JobRun::{
+    .save_run({
       id: "run-parent-profile-1",
       job_id: "job.parent",
-      trigger: TriggerSource::Manual,
+      trigger: Manual,
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
       workspace_dir: Some(dir),
-      status: RunStatus::Pending,
+      status: Pending,
       attempt: 1,
       retry_of: None,
       started_at: None,
@@ -404,7 +394,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
         id: "workflow.child.profile",
         kind: "test.child",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "child-step",
             kind: "test.child",
             config: {},
@@ -425,7 +415,7 @@ async test "subjob_step_handler applies explicit child profile to the planned ch
         updated_at: now_ms,
         tags: ["child"],
       }
-      ProposalCompilation::{
+      {
         family: proposal.suggested_family.unwrap_or("generic"),
         definition,
         workflow,
@@ -528,7 +518,7 @@ async test "subjob_step_handler propagates missing-input policy into child propo
       id: "workflow.parent.policy",
       kind: "test.parent",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "delegate",
           kind: "job.delegate",
           config: SubjobStepConfig::new(
@@ -542,7 +532,7 @@ async test "subjob_step_handler propagates missing-input policy into child propo
       ],
       output_bindings: ["delegate"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       id: "job.parent.policy",
       kind: "job.controller",
       enabled: true,
@@ -562,15 +552,15 @@ async test "subjob_step_handler propagates missing-input policy into child propo
     runtime.register_workflow(parent_workflow)
     runtime
     .store()
-    .save_run(JobRun::{
+    .save_run({
       id: "run-parent-policy-1",
       job_id: "job.parent.policy",
-      trigger: TriggerSource::Manual,
+      trigger: Manual,
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
       workspace_dir: Some(dir),
-      status: RunStatus::Pending,
+      status: Pending,
       attempt: 1,
       retry_of: None,
       started_at: None,
@@ -591,7 +581,7 @@ async test "subjob_step_handler propagates missing-input policy into child propo
         id: "workflow.child.policy",
         kind: "test.child",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "child-step",
             kind: "test.child",
             config: {},
@@ -612,12 +602,7 @@ async test "subjob_step_handler propagates missing-input policy into child propo
         updated_at: now_ms,
         tags: ["child"],
       }
-      ProposalCompilation::{
-        family: "wiki_gather_worker",
-        definition,
-        workflow,
-        bindings: [],
-      }
+      { family: "wiki_gather_worker", definition, workflow, bindings: [] }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)
@@ -676,7 +661,7 @@ async test "subjob_step_handler fails when child run waits for input" {
       id: "workflow.parent.waiting",
       kind: "test.parent",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "delegate",
           kind: "job.delegate",
           config: SubjobStepConfig::new(
@@ -689,7 +674,7 @@ async test "subjob_step_handler fails when child run waits for input" {
       ],
       output_bindings: ["delegate"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       id: "job.parent.waiting",
       kind: "test.parent",
       enabled: true,
@@ -704,15 +689,15 @@ async test "subjob_step_handler fails when child run waits for input" {
     runtime.register_workflow(parent_workflow)
     runtime
     .store()
-    .save_run(JobRun::{
+    .save_run({
       id: "run-parent-waiting-1",
       job_id: "job.parent.waiting",
-      trigger: TriggerSource::Manual,
+      trigger: Manual,
       parent_run_id: None,
       parent_step_id: None,
       depth: 0,
       workspace_dir: Some(dir),
-      status: RunStatus::Pending,
+      status: Pending,
       attempt: 1,
       retry_of: None,
       started_at: None,
@@ -722,11 +707,11 @@ async test "subjob_step_handler fails when child run waits for input" {
     })
 
     let planner = ProposalPlanner::new(run=fn(request_text, _cwd, _home) {
-      JobProposal::{
+      {
         ..draft_job_proposal("proposal-child-waiting-1", request_text, 100),
         suggested_family: Some("wiki_gather_worker"),
         steps: [
-          JobProposalStep::{
+          {
             id: "gather_materials",
             title: "Gather source materials",
             prompt: request_text,
@@ -751,7 +736,7 @@ async test "subjob_step_handler fails when child run waits for input" {
         id: "workflow.child.waiting",
         kind: "test.child",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "gather_materials",
             kind: "needs.input",
             config: {},
@@ -772,12 +757,7 @@ async test "subjob_step_handler fails when child run waits for input" {
         updated_at: now_ms,
         tags: ["child"],
       }
-      ProposalCompilation::{
-        family: "wiki_gather_worker",
-        definition,
-        workflow,
-        bindings: [],
-      }
+      { family: "wiki_gather_worker", definition, workflow, bindings: [] }
     })
     let child_engine_factory = fn() {
       let engine = WorkflowEngine::new(runtime~)

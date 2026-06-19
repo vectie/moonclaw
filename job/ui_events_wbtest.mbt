@@ -1,7 +1,7 @@
 ///|
 test "run_events_as_timeline sorts and maps events" {
   let timeline = run_events_as_timeline([
-    JobRunEvent::{
+    {
       run_id: "run-1",
       job_id: "job-1",
       event_type: "job.completed",
@@ -11,7 +11,7 @@ test "run_events_as_timeline sorts and maps events" {
       message: "done",
       data: {},
     },
-    JobRunEvent::{
+    {
       run_id: "run-1",
       job_id: "job-1",
       event_type: "step.started",

@@ -212,7 +212,7 @@ POST /v1/cancel           → Cancel running task
 
 ### Overview
 
-The new gateway service provides a long-running backend service that can spawn agents to handle tasks, It's inspired by the OpenClaw reference design and provides:
+The new gateway service provides a long-running backend service that can spawn agents to handle tasks, It's inspired by the older gateway reference design and provides:
 
 1. **Frame-based Protocol** - Request/Response/Event frames
 2. **Two-stage Async Responses** - Accept immediately, execute in background

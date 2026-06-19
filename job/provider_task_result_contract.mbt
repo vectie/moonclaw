@@ -184,7 +184,7 @@ fn provider_task_plan_substeps_from_json(
           Some(kind.trim().to_owned())
         _ => None
       }
-      substeps.push(AdaptiveSubstepPayload::{ title, prompt, kind })
+      substeps.push({ title, prompt, kind })
     }
     if !substeps.is_empty() {
       return substeps

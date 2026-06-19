@@ -10,7 +10,7 @@ pub struct GatewayJobState {
 
 ///|
 pub fn GatewayJobState::new(root~ : String) -> GatewayJobState {
-  GatewayJobState::{
+  {
     runtime: RuntimeManager::new(root~),
     cancel_requests: {},
     force_stop_requests: {},
@@ -72,7 +72,7 @@ pub fn GatewayJobState::notification_runtime_state(
   self : GatewayJobState,
   run_id : String,
 ) -> JobNotificationRuntimeState {
-  JobNotificationRuntimeState::{
+  {
     last_sent_at: self.status_last_sent_at.get(run_id).unwrap_or(0),
     last_notified_event_count: self.last_notified_event_count
     .get(run_id)

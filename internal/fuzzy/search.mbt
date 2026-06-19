@@ -15,12 +15,7 @@ fn try_exact_match(haystack : String, needle : String) -> MatchResult? {
       let start_line = before_match.split("\n").to_array().length() - 1
       let needle_lines = needle.split("\n").to_array().length()
       let end_line = start_line + needle_lines - 1
-      Some(MatchResult::{
-        position,
-        length: needle.length(),
-        start_line,
-        end_line,
-      })
+      Some({ position, length: needle.length(), start_line, end_line })
     }
     None => None
   }
@@ -81,12 +76,7 @@ fn try_line_by_line_match(haystack : String, needle : String) -> MatchResult? {
     }
     let start_line = start
     let end_line = end
-    MatchResult::{
-      position,
-      length: matched_content.length(),
-      start_line,
-      end_line,
-    }
+    { position, length: matched_content.length(), start_line, end_line }
   }
 
   // Compare lines ignoring whitespace and empty lines

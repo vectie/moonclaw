@@ -77,7 +77,7 @@ pub impl @json.FromJson for Timestamp with fn from_json(
   match json {
     Number(num, repr=None) => {
       guard num >= 0.0 else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "Timestamp::from_json: timestamp cannot be negative"),
         )
       }
@@ -87,7 +87,7 @@ pub impl @json.FromJson for Timestamp with fn from_json(
       Timestamp(
         @string.parse_int64(num_str) catch {
           error =>
-            raise @json.JsonDecodeError(
+            raise JsonDecodeError(
               (
                 json_path,
                 "Timestamp::from_json: invalid Int64 string: \{error}",
@@ -96,7 +96,7 @@ pub impl @json.FromJson for Timestamp with fn from_json(
         },
       )
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "Timestamp::from_json: expected number"),
       )
   }

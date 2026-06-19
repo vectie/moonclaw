@@ -2,7 +2,7 @@
 fn parse_json_body(body : Bytes) -> Result[Json, @protocol.ErrorShape] {
   let text : String = @encoding/utf8.decode(body) catch {
     _ =>
-      return Err(@protocol.ErrorShape::{
+      return Err({
         code: "invalid_utf8",
         message: "Invalid UTF-8 in request body",
         details: None,
@@ -12,7 +12,7 @@ fn parse_json_body(body : Bytes) -> Result[Json, @protocol.ErrorShape] {
   }
   let json = @json.parse(text) catch {
     e =>
-      return Err(@protocol.ErrorShape::{
+      return Err({
         code: "parse_error",
         message: "Invalid JSON: \{e}",
         details: None,
@@ -30,13 +30,13 @@ fn parse_http_channel_configure_params(
 ) -> Result[@protocol.Request, @protocol.ErrorShape] {
   match json {
     Object(obj) =>
-      Ok(@protocol.Request::{
+      Ok({
         id: "http:channels.configure:\{channel_id}",
         rpc_method: "channels.configure",
         params: Some({ "channel_id": channel_id, "config": obj }),
       })
     _ =>
-      Err(@protocol.ErrorShape::{
+      Err({
         code: "invalid_params",
         message: "Channel configure body must be a JSON object",
         details: None,
@@ -53,7 +53,7 @@ fn parse_http_channel_start_params(
 ) -> Result[@protocol.Request, @protocol.ErrorShape] {
   match json {
     Object({ "account_id": String(account_id), "config": config, .. }) =>
-      Ok(@protocol.Request::{
+      Ok({
         id: "http:channels.start:\{channel_id}:\{account_id}",
         rpc_method: "channels.start",
         params: Some({
@@ -63,7 +63,7 @@ fn parse_http_channel_start_params(
         }),
       })
     Object(_) =>
-      Err(@protocol.ErrorShape::{
+      Err({
         code: "invalid_params",
         message: "Channel start body must include account_id and config",
         details: None,
@@ -71,7 +71,7 @@ fn parse_http_channel_start_params(
         retry_after_ms: None,
       })
     _ =>
-      Err(@protocol.ErrorShape::{
+      Err({
         code: "invalid_params",
         message: "Channel start body must be a JSON object",
         details: None,
@@ -88,13 +88,13 @@ fn parse_http_channel_stop_params(
 ) -> Result[@protocol.Request, @protocol.ErrorShape] {
   match json {
     Object({ "account_id": String(account_id), .. }) =>
-      Ok(@protocol.Request::{
+      Ok({
         id: "http:channels.stop:\{channel_id}:\{account_id}",
         rpc_method: "channels.stop",
         params: Some({ "channel_id": channel_id, "account_id": account_id }),
       })
     Object(_) =>
-      Err(@protocol.ErrorShape::{
+      Err({
         code: "invalid_params",
         message: "Channel stop body must include account_id",
         details: None,
@@ -102,7 +102,7 @@ fn parse_http_channel_stop_params(
         retry_after_ms: None,
       })
     _ =>
-      Err(@protocol.ErrorShape::{
+      Err({
         code: "invalid_params",
         message: "Channel stop body must be a JSON object",
         details: None,
@@ -119,7 +119,7 @@ async fn Gateway::handle_channels_list(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let channels = self.channel_manager.list_channels()
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "channels": channels.map(fn(ch) { ch.to_json() }) }),
@@ -136,11 +136,11 @@ async fn Gateway::handle_channels_get(
   let params = match request.params {
     Some(p) => p
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing channel_id parameter",
           details: None,
@@ -151,32 +151,15 @@ async fn Gateway::handle_channels_get(
   }
 
   let channel_id : String = match params {
-    String(id) => id
-    Object(obj) =>
-      match obj.get("channel_id") {
-        Some(String(id)) => id
-        _ =>
-          return self.send_response(w, @protocol.Response::{
-            id: request.id,
-            ok: false,
-            payload: None,
-            error: Some(@protocol.ErrorShape::{
-              code: "missing_channel_id",
-              message: "Missing channel_id in params",
-              details: None,
-              retryable: None,
-              retry_after_ms: None,
-            }),
-          })
-      }
+    Object({ "channel_id": String(id), .. }) => id
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "invalid_params",
-          message: "Invalid channel lookup parameters",
+          message: "Channel lookup params must be an object with channel_id",
           details: None,
           retryable: None,
           retry_after_ms: None,
@@ -186,18 +169,18 @@ async fn Gateway::handle_channels_get(
 
   match self.channel_manager.get_channel_dock(channel_id) {
     Some(dock) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some(dock.to_json()),
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "channel_not_found",
           message: "Channel not found: \{channel_id}",
           details: None,
@@ -217,11 +200,11 @@ async fn Gateway::handle_channels_configure(
   let params : Json = match request.params {
     Some(p) => p
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing configuration parameters",
           details: None,
@@ -234,11 +217,11 @@ async fn Gateway::handle_channels_configure(
   let channel_id : String = match params {
     Object({ "channel_id": String(id), .. }) => id
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_channel_id",
           message: "Missing channel_id in params",
           details: None,
@@ -251,11 +234,11 @@ async fn Gateway::handle_channels_configure(
   let config : Json = match params {
     Object({ "config": c, .. }) => c
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_config",
           message: "Missing config in params",
           details: None,
@@ -267,11 +250,11 @@ async fn Gateway::handle_channels_configure(
 
   let channel_config : @channel.ChannelConfig = @json.from_json(config) catch {
     e =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "invalid_config",
           message: "Invalid config: \{e}",
           details: None,
@@ -284,7 +267,7 @@ async fn Gateway::handle_channels_configure(
   match self.channel_manager.configure_channel(channel_id, channel_config) {
     Ok(_) => {
       self.channel_state.save_config(channel_id, channel_config)
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "status": "configured", "channel_id": channel_id }),
@@ -292,11 +275,11 @@ async fn Gateway::handle_channels_configure(
       })
     }
     Err(e) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "configure_failed",
           message: "Failed to configure channel: \{e.to_string()}",
           details: None,
@@ -316,11 +299,11 @@ async fn Gateway::handle_channels_start(
   let params : Json = match request.params {
     Some(p) => p
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing parameters",
           details: None,
@@ -333,11 +316,11 @@ async fn Gateway::handle_channels_start(
   let channel_id : String = match params {
     Object({ "channel_id": String(id), .. }) => id
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_channel_id",
           message: "Missing channel_id in params",
           details: None,
@@ -350,11 +333,11 @@ async fn Gateway::handle_channels_start(
   let account_id : String = match params {
     Object({ "account_id": String(id), .. }) => id
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_account_id",
           message: "Missing account_id in params",
           details: None,
@@ -367,11 +350,11 @@ async fn Gateway::handle_channels_start(
   let config : Json = match params {
     Object({ "config": c, .. }) => c
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_config",
           message: "Missing config in params",
           details: None,
@@ -386,7 +369,7 @@ async fn Gateway::handle_channels_start(
       self.channel_state.save_account_runtime(
         channel_id, account_id, config, true,
       )
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({
@@ -398,11 +381,11 @@ async fn Gateway::handle_channels_start(
       })
     }
     Err(e) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "start_failed",
           message: "Failed to start channel: \{e.to_string()}",
           details: None,
@@ -422,11 +405,11 @@ async fn Gateway::handle_channels_stop(
   let params : Json = match request.params {
     Some(p) => p
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing parameters",
           details: None,
@@ -439,11 +422,11 @@ async fn Gateway::handle_channels_stop(
   let channel_id : String = match params {
     Object({ "channel_id": String(id), .. }) => id
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_channel_id",
           message: "Missing channel_id in params",
           details: None,
@@ -456,11 +439,11 @@ async fn Gateway::handle_channels_stop(
   let account_id : String = match params {
     Object({ "account_id": String(id), .. }) => id
     _ =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_account_id",
           message: "Missing account_id in params",
           details: None,
@@ -473,7 +456,7 @@ async fn Gateway::handle_channels_stop(
   match self.channel_manager.stop_channel(channel_id, account_id) {
     Ok(_) => {
       self.channel_state.save_account_runtime(channel_id, account_id, {}, false)
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({
@@ -485,15 +468,15 @@ async fn Gateway::handle_channels_stop(
       })
     }
     Err(e) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "stop_failed",
           message: "Failed to stop channel: \{e.to_string()}",
           details: None,
-          retryable: Option::None,
+          retryable: None,
           retry_after_ms: None,
         }),
       })

@@ -53,7 +53,7 @@ pub async fn extract_text_from_pdf(
   let pages = (@fsx.list_directory(ppm_dir) catch { _ => [] }).filter(fn(
     entry,
   ) {
-    entry.kind is @fsx.FileKind::Regular && entry.name.has_suffix(".png")
+    entry.kind is Regular && entry.name.has_suffix(".png")
   })
   if pages.is_empty() {
     return (

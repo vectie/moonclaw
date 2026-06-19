@@ -6,7 +6,7 @@ pub(all) struct AssistantMessage {
 
 ///|
 pub fn AssistantMessage::new(text : String) -> AssistantMessage {
-  AssistantMessage::{ text, is_streaming: false }
+  { text, is_streaming: false }
 }
 
 ///|
@@ -84,7 +84,7 @@ pub(all) struct SystemMessage {
 
 ///|
 pub fn SystemMessage::new(text : String) -> SystemMessage {
-  SystemMessage::{ text, }
+  { text, }
 }
 
 ///|

@@ -4,6 +4,8 @@ import {
   "moonbitlang/core/random",
 }
 
+supported_targets = "native"
+
 options(
   "native-stub": [ "rand.c" ],
 )

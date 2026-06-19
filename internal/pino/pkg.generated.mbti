@@ -32,7 +32,6 @@ pub async fn Logger::warn(Self, StringView, data? : Map[String, Json]) -> Unit
 
 type Transport
 pub fn Transport::callback((Json) -> Unit) -> Self
-#alias(chan, deprecated)
 pub fn Transport::channel(@aqueue.Queue[Json]) -> Self
 pub fn Transport::console() -> Self
 pub fn Transport::file(StringView) -> Self

@@ -1,8 +1,8 @@
 # Feishu Extension: Reference vs Current MoonClaw Implementation
 
-This document used to be a pure OpenClaw design survey. It now documents both:
+This document used to be a pure MoonClaw design survey. It now documents both:
 
-- the OpenClaw ideas that informed the design
+- the MoonClaw ideas that informed the design
 - the actual MoonClaw Feishu implementation that exists today
 
 ## Current MoonClaw Scope
@@ -35,7 +35,7 @@ POST /webhook/feishu
 
 ## MoonClaw Extension Contract
 
-MoonClaw does not yet expose the full OpenClaw plugin runtime. The current extension contract is smaller and centered on webhook handling.
+MoonClaw does not yet expose the full MoonClaw plugin runtime. The current extension contract is smaller and centered on webhook handling.
 
 ### `ChannelExtension`
 
@@ -174,9 +174,9 @@ The following are now true in code:
 - gateway stores channel session state for follow-up continuity
 - replies are sent to the real chat target, not the wrong source field
 
-## What Is Still Missing Compared to OpenClaw
+## What Is Still Missing Compared to MoonClaw
 
-MoonClaw does not yet implement the broader OpenClaw Feishu surface such as:
+MoonClaw does not yet implement the broader MoonClaw Feishu surface such as:
 
 - stronger webhook security verification
 - richer account configuration and status probes
@@ -196,7 +196,7 @@ webhook adapter + websocket monitor adapter + message normalization + gateway ca
 It is not yet:
 
 ```text
-full OpenClaw-style multi-adapter Feishu runtime
+full MoonClaw multi-adapter Feishu runtime
 ```
 
 Current websocket-mode contract in MoonClaw:

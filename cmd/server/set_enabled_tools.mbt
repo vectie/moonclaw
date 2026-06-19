@@ -20,7 +20,7 @@ async fn Server::set_enabled_tools(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let request : PostEnabledToolsRequest = @json.from_json(json) catch {
-    @json.JsonDecodeError(_) as error =>
+    JsonDecodeError(_) as error =>
       raise json_error(400, "BadRequest", {
         "error": {
           "code": -1,

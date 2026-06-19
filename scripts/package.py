@@ -18,7 +18,7 @@ source = [
     "LICENSE",
     "maria.mbt",
     "moon.pkg.json",
-    "moon.mod.json",
+    "moon.mod",
     "pkg.generated.mbti",
     "README.md",
 ]

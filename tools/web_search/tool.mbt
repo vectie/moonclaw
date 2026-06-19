@@ -126,7 +126,7 @@ fn add_result(
   title : String?,
   url : String?,
   snippet : String?,
-  source? : String = "duckduckgo",
+  source~ : String,
 ) -> Unit {
   let resolved_title = title.unwrap_or("").trim().to_owned()
   let resolved_url = url.unwrap_or("").trim().to_owned()
@@ -135,7 +135,7 @@ fn add_result(
   let key = resolved_url
   guard !seen.contains(key) else { return }
   seen[key] = true
-  items.push(WebSearchItem::{
+  items.push({
     title: if resolved_title.is_blank() {
       resolved_url
     } else {
@@ -167,6 +167,7 @@ fn collect_related_topic_items(
         json_string_like(map.get("Text")),
         json_string_like(map.get("FirstURL")),
         json_string_like(map.get("Text")),
+        source="duckduckgo",
       )
       match map.get("Topics") {
         Some(nested) => collect_related_topic_items(nested, items, seen)
@@ -181,7 +182,7 @@ fn collect_related_topic_items(
 fn first_present(
   first : String?,
   second : String?,
-  third? : String? = None,
+  third~ : String?,
 ) -> String? {
   if first is Some(value) && !value.is_blank() {
     return Some(value)
@@ -224,6 +225,7 @@ fn parse_duckduckgo_result(
         json_string_like(map.get("Heading")),
         json_string_like(map.get("AbstractURL")),
         json_string_like(map.get("AbstractText")),
+        source="duckduckgo",
       )
       match map.get("Results") {
         Some(Array(results)) =>
@@ -236,6 +238,7 @@ fn parse_duckduckgo_result(
                   json_string_like(result.get("Text")),
                   json_string_like(result.get("FirstURL")),
                   json_string_like(result.get("Text")),
+                  source="duckduckgo",
                 )
               _ => ()
             }
@@ -261,7 +264,7 @@ fn parse_duckduckgo_result(
     }
     limited.push(item)
   }
-  WebSearchResult::{
+  {
     query,
     search_url,
     answer,
@@ -314,7 +317,7 @@ pub fn new() -> @tool.Tool[WebSearchResult] {
       },
       "required": ["query"],
     },
-    @tool.ToolFn(async fn(args) -> @tool.ToolResult[WebSearchResult] noraise {
+    ToolFn(async fn(args) -> @tool.ToolResult[WebSearchResult] noraise {
       guard args is { "query": String(query), .. } else {
         return @tool.error("Error: 'query' parameter is required")
       }

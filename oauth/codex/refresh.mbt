@@ -11,7 +11,7 @@ impl @json.FromJson for RefreshResponse with fn from_json(
   path : @json.JsonPath,
 ) -> RefreshResponse raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "RefreshResponse: expected object"))
+    raise JsonDecodeError((path, "RefreshResponse: expected object"))
   }
   let id_token : String? = match obj.get("id_token") {
     Some(String(s)) => Some(s)

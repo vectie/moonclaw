@@ -28,7 +28,7 @@ priv struct Params {
 
 ///|
 fn params(content~ : String, path~ : String, separator? : String) -> Params {
-  Params::{ content, path, separator }
+  { content, path, separator }
 }
 
 ///|
@@ -89,7 +89,7 @@ struct Result {
 } derive(FromJson, ToJson)
 
 ///|
-pub impl Show for Result with output(self : Result, logger : &Logger) -> Unit {
+pub impl Show for Result with fn output(self : Result, logger : &Logger) -> Unit {
   logger.write_string("Content written to file at path: \{self.path}")
 }
 

@@ -7,7 +7,7 @@ pub async fn Gateway::new(
   auth? : AuthConfig,
 ) -> Gateway {
   let home = match home {
-    None => @path.Path(@os.home()).join(@path.Path(".moonclaw")).to_string()
+    None => @path.Path(@os.home()).join(Path(".moonclaw")).to_string()
     Some(home) => home.to_owned()
   }
   let cwd = match cwd {
@@ -20,23 +20,19 @@ pub async fn Gateway::new(
   }
   let httpx_server = @httpx.Server::new("[::1]", port, reuse_addr=true)
   let actual_port = httpx_server.port()
-  let gateway_dir = @path.Path(home).join(@path.Path("gateway")).to_string()
-  let session_dir = @path.Path(gateway_dir)
-    .join(@path.Path("sessions"))
-    .to_string()
+  let gateway_dir = @path.Path(home).join(Path("gateway")).to_string()
+  let session_dir = @path.Path(gateway_dir).join(Path("sessions")).to_string()
   let channel_state_file = @path.Path(gateway_dir)
-    .join(@path.Path("channels.json"))
+    .join(Path("channels.json"))
     .to_string()
-  let jobs_dir = @path.Path(home).join(@path.Path("jobs")).to_string()
+  let jobs_dir = @path.Path(home).join(Path("jobs")).to_string()
   @fsx.make_directory(session_dir, recursive=true) catch {
     _ => ()
   }
   let auth = match auth {
     Some(auth) => auth
     None => {
-      let token_file = @path.Path(gateway_dir)
-        .join(@path.Path("token"))
-        .to_string()
+      let token_file = @path.Path(gateway_dir).join(Path("token")).to_string()
       let token_result : Result[String, Error] = Ok(@fsx.read_file(token_file)) catch {
         error => Err(error)
       }
@@ -51,7 +47,7 @@ pub async fn Gateway::new(
           Some(new_token)
         }
       }
-      AuthConfig::{ token, _password: None }
+      { token, _password: None }
     }
   }
   let channel_manager = ChannelManager::new(
@@ -80,8 +76,8 @@ pub async fn Gateway::new(
     port: actual_port,
     events: @broadcast.Broadcast::new(),
     auth,
-    sessions: SessionManager::{ sessions: {}, session_dir },
-    dedupe: DedupeCache::{ entries: {}, ttl_ms: 60000 },
+    sessions: { sessions: {}, session_dir },
+    dedupe: { entries: {}, ttl_ms: 60000 },
     logger: @pino.logger("gateway", @pino.Transport::console()),
     home,
     cwd,
@@ -100,7 +96,7 @@ pub async fn Gateway::new(
     mailbox_manager: mailbox_manager(),
     coordinator: coordinator(uuid~),
     pipeline_manager: pipeline_manager(uuid~),
-    channel_state: ChannelStateStore::{ path: channel_state_file, states: {} },
+    channel_state: { path: channel_state_file, states: {} },
     job_app,
     active_job_tasks: {},
     security_runtime,
@@ -315,7 +311,7 @@ async fn Gateway::run_tick_interval(self : Gateway) -> Unit {
   let tick_interval_ms = @protocol.TICK_INTERVAL_MS
   for ;; {
     @async.sleep(tick_interval_ms)
-    self.events.put(GatewayEvent::Tick)
+    self.events.put(Tick)
     self.dedupe.clear_expired(current_time_ms())
   }
 }

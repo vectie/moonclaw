@@ -63,11 +63,12 @@ pub async fn lock_daemon_file(home~ : StringView) -> @fs.File? {
   }
   // Wait for the lock to be released
   @async.with_timeout(60_000, () => {
-    for ;; {
+    let mut locked_file : @fs.File? = None
+    while locked_file is None {
       match acquire_lock(path) {
         Ok(file) =>
           // Successfully acquired lock
-          break Some(file)
+          locked_file = Some(file)
         Err(new) =>
           if new.pid != old.pid {
             // Lock is now held by another process; exit
@@ -79,6 +80,7 @@ pub async fn lock_daemon_file(home~ : StringView) -> @fs.File? {
           }
       }
     }
+    locked_file
   }) catch {
     @async.TimeoutError => {
       logger.error("Timeout waiting for older daemon to release lock.")

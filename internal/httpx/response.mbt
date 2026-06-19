@@ -11,7 +11,7 @@ struct ResponseWriter {
 
 ///|
 fn ResponseWriter::new(conn : @http.ServerConnection) -> ResponseWriter {
-  ResponseWriter::{ sent: false, header: Header({}), conn }
+  { sent: false, header: Header({}), conn }
 }
 
 ///|
@@ -42,7 +42,7 @@ pub async fn ResponseWriter::write_header(
 }
 
 ///|
-pub impl @io.Writer for ResponseWriter with write_once(
+pub impl @io.Writer for ResponseWriter with fn write_once(
   self : ResponseWriter,
   bytes : Bytes,
   offset~ : Int,
@@ -56,7 +56,7 @@ pub impl @io.Writer for ResponseWriter with write_once(
 }
 
 ///|
-pub impl @io.Writer for ResponseWriter with write_reader(
+pub impl @io.Writer for ResponseWriter with fn write_reader(
   self : ResponseWriter,
   reader : &@io.Reader,
 ) -> Unit {

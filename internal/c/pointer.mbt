@@ -5,7 +5,6 @@
 /// point to a value (or array of values) of type `T`. All operations on
 /// pointers are inherently unsafe and should be used with care.
 #external
-#alias(Ptr)
 pub type Pointer[_]
 
 ///|
@@ -44,7 +43,10 @@ pub extern "c" fn Pointer::op_equal(
 
 ///|
 /// Implements structural equality for pointers via `op_equal`.
-pub impl[T] Eq for Pointer[T] with equal(self : Pointer[T], other : Pointer[T]) -> Bool {
+pub impl[T] Eq for Pointer[T] with fn equal(
+  self : Pointer[T],
+  other : Pointer[T],
+) -> Bool {
   self.cast().op_equal(other.cast())
 }
 
@@ -86,7 +88,7 @@ pub fn[T : Store] Pointer::store(
 /// Implementations of `Load` define how to read a value of the given type
 /// from a `Pointer[Self]` at a specific element offset.
 pub(open) trait Load {
-  load(Pointer[Self], Int) -> Self
+  fn load(Pointer[Self], Int) -> Self
 }
 
 ///|
@@ -142,47 +144,47 @@ extern "c" fn moonbit_c_load_double(
 ) -> Double = "moonbit_moonclaw_c_load_double"
 
 ///|
-pub impl Load for Byte with load(pointer : Pointer[Byte], offset : Int) -> Byte {
+pub impl Load for Byte with fn load(pointer : Pointer[Byte], offset : Int) -> Byte {
   moonbit_c_load_byte(pointer, offset)
 }
 
 ///|
-pub impl Load for Int16 with load(pointer : Pointer[Int16], offset : Int) -> Int16 {
+pub impl Load for Int16 with fn load(pointer : Pointer[Int16], offset : Int) -> Int16 {
   moonbit_c_load_int16(pointer, offset)
 }
 
 ///|
-pub impl Load for UInt16 with load(pointer : Pointer[UInt16], offset : Int) -> UInt16 {
+pub impl Load for UInt16 with fn load(pointer : Pointer[UInt16], offset : Int) -> UInt16 {
   moonbit_c_load_uint16(pointer, offset)
 }
 
 ///|
-pub impl Load for Int with load(pointer : Pointer[Int], offset : Int) -> Int {
+pub impl Load for Int with fn load(pointer : Pointer[Int], offset : Int) -> Int {
   moonbit_c_load_int(pointer, offset)
 }
 
 ///|
-pub impl Load for UInt with load(pointer : Pointer[UInt], offset : Int) -> UInt {
+pub impl Load for UInt with fn load(pointer : Pointer[UInt], offset : Int) -> UInt {
   moonbit_c_load_uint(pointer, offset)
 }
 
 ///|
-pub impl Load for Int64 with load(pointer : Pointer[Int64], offset : Int) -> Int64 {
+pub impl Load for Int64 with fn load(pointer : Pointer[Int64], offset : Int) -> Int64 {
   moonbit_c_load_int64(pointer, offset)
 }
 
 ///|
-pub impl Load for UInt64 with load(pointer : Pointer[UInt64], offset : Int) -> UInt64 {
+pub impl Load for UInt64 with fn load(pointer : Pointer[UInt64], offset : Int) -> UInt64 {
   moonbit_c_load_uint64(pointer, offset)
 }
 
 ///|
-pub impl Load for Float with load(pointer : Pointer[Float], offset : Int) -> Float {
+pub impl Load for Float with fn load(pointer : Pointer[Float], offset : Int) -> Float {
   moonbit_c_load_float(pointer, offset)
 }
 
 ///|
-pub impl Load for Double with load(pointer : Pointer[Double], offset : Int) -> Double {
+pub impl Load for Double with fn load(pointer : Pointer[Double], offset : Int) -> Double {
   moonbit_c_load_double(pointer, offset)
 }
 
@@ -256,11 +258,11 @@ extern "c" fn moonbit_c_store_double(
 /// Implementations of `Store` define how to write a value of the given type
 /// into a `Pointer[Self]` at a specific element offset.
 trait Store {
-  store(Pointer[Self], Int, Self) -> Unit
+  fn store(Pointer[Self], Int, Self) -> Unit
 }
 
 ///|
-pub impl Store for Byte with store(
+pub impl Store for Byte with fn store(
   pointer : Pointer[Byte],
   offset : Int,
   value : Byte,
@@ -269,7 +271,7 @@ pub impl Store for Byte with store(
 }
 
 ///|
-pub impl Store for Int16 with store(
+pub impl Store for Int16 with fn store(
   pointer : Pointer[Int16],
   offset : Int,
   value : Int16,
@@ -278,7 +280,7 @@ pub impl Store for Int16 with store(
 }
 
 ///|
-pub impl Store for UInt16 with store(
+pub impl Store for UInt16 with fn store(
   pointer : Pointer[UInt16],
   offset : Int,
   value : UInt16,
@@ -287,7 +289,7 @@ pub impl Store for UInt16 with store(
 }
 
 ///|
-pub impl Store for Int with store(
+pub impl Store for Int with fn store(
   pointer : Pointer[Int],
   offset : Int,
   value : Int,
@@ -296,7 +298,7 @@ pub impl Store for Int with store(
 }
 
 ///|
-pub impl Store for UInt with store(
+pub impl Store for UInt with fn store(
   pointer : Pointer[UInt],
   offset : Int,
   value : UInt,
@@ -305,7 +307,7 @@ pub impl Store for UInt with store(
 }
 
 ///|
-pub impl Store for Int64 with store(
+pub impl Store for Int64 with fn store(
   pointer : Pointer[Int64],
   offset : Int,
   value : Int64,
@@ -314,7 +316,7 @@ pub impl Store for Int64 with store(
 }
 
 ///|
-pub impl Store for UInt64 with store(
+pub impl Store for UInt64 with fn store(
   pointer : Pointer[UInt64],
   offset : Int,
   value : UInt64,
@@ -323,7 +325,7 @@ pub impl Store for UInt64 with store(
 }
 
 ///|
-pub impl Store for Float with store(
+pub impl Store for Float with fn store(
   pointer : Pointer[Float],
   offset : Int,
   value : Float,
@@ -332,7 +334,7 @@ pub impl Store for Float with store(
 }
 
 ///|
-pub impl Store for Double with store(
+pub impl Store for Double with fn store(
   pointer : Pointer[Double],
   offset : Int,
   value : Double,

@@ -36,7 +36,7 @@ pub async fn compose_job_analysis_request(
     config.preferred_skills,
   )
   let memory_prompt = analysis_memory_prompt(store, context, config)
-  AnalysisRequest::{
+  {
     job_id: context.run.job_id,
     run_id: context.run.id,
     step_id: context.step.id,

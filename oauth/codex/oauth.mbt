@@ -11,26 +11,19 @@ impl @json.FromJson for TokenResponse with fn from_json(
   path : @json.JsonPath,
 ) -> TokenResponse raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError((path, "TokenResponse: expected object"))
+    raise JsonDecodeError((path, "TokenResponse: expected object"))
   }
   let id_token : String = match obj.get("id_token") {
     Some(String(s)) => s
-    _ =>
-      raise @json.JsonDecodeError((path, "TokenResponse: missing 'id_token'"))
+    _ => raise JsonDecodeError((path, "TokenResponse: missing 'id_token'"))
   }
   let access_token : String = match obj.get("access_token") {
     Some(String(s)) => s
-    _ =>
-      raise @json.JsonDecodeError(
-        (path, "TokenResponse: missing 'access_token'"),
-      )
+    _ => raise JsonDecodeError((path, "TokenResponse: missing 'access_token'"))
   }
   let refresh_token : String = match obj.get("refresh_token") {
     Some(String(s)) => s
-    _ =>
-      raise @json.JsonDecodeError(
-        (path, "TokenResponse: missing 'refresh_token'"),
-      )
+    _ => raise JsonDecodeError((path, "TokenResponse: missing 'refresh_token'"))
   }
   { id_token, access_token, refresh_token }
 }
@@ -183,8 +176,8 @@ pub fn parse_query_string(query : StringView) -> Map[String, String] {
 pub async fn start_oauth_flow() -> Credentials raise Error {
   let pkce = generate_pkce()
   let state = generate_state()
-  let result : Ref[Credentials?] = Ref::Ref(None)
-  let error_ref : Ref[Error?] = Ref::Ref(None)
+  let result : Ref[Credentials?] = Ref(None)
+  let error_ref : Ref[Error?] = Ref(None)
   let done = Ref::Ref(false)
   let auth_url = build_authorize_url(pkce, state)
   println("\nOpen this URL in your browser to login:\n")
@@ -193,7 +186,7 @@ pub async fn start_oauth_flow() -> Credentials raise Error {
     _ => ()
   }
   let router = @httpx.Router::new()
-  router.add_handler(@httpx.Method::Get, "/auth/callback", (r, w) => {
+  router.add_handler(Get, "/auth/callback", (r, w) => {
     let path = r.path
     let parts = path.split("?").to_array()
     let query_string : StringView = if parts.length() > 1 {

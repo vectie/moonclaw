@@ -520,8 +520,7 @@ function extractMessageContent(message) {
 }
 
 function formatLogEntry(data) {
-  // Extract desc from the new event format
-  const desc = data.desc || data; // Fallback to data for backward compatibility
+  const desc = data.desc || {};
   const timestamp = data.time ? formatTimestamp(data.time) : "";
 
   // Handle different message types
@@ -722,8 +721,7 @@ function connect() {
 
   eventSource.addEventListener("maria", (event) => {
     const data = JSON.parse(event.data);
-    // Extract desc from the new event format
-    const desc = data.desc || data; // Fallback to data for backward compatibility
+    const desc = data.desc || {};
 
     console.log("Received maria event:", desc);
 

@@ -21,7 +21,7 @@ pub async fn Job::wait(self : Job) -> Int {
 }
 
 ///|
-pub impl ToJson for Job with to_json(self : Job) -> Json {
+pub impl ToJson for Job with fn to_json(self : Job) -> Json {
   let json : Map[String, Json] = {
     "id": self.id.0,
     "name": self.name,
@@ -48,17 +48,17 @@ pub struct Manager {
 pub(all) struct Id(Int) derive(Hash, Eq)
 
 ///|
-pub impl Show for Id with output(self : Id, logger : &Logger) -> Unit {
+pub impl Show for Id with fn output(self : Id, logger : &Logger) -> Unit {
   Show::output(self.0, logger)
 }
 
 ///|
-pub impl ToJson for Id with to_json(self : Id) -> Json {
+pub impl ToJson for Id with fn to_json(self : Id) -> Json {
   self.0.to_json()
 }
 
 ///|
-pub impl @json.FromJson for Id with from_json(
+pub impl @json.FromJson for Id with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Id {
@@ -68,7 +68,7 @@ pub impl @json.FromJson for Id with from_json(
 
 ///|
 pub fn Manager::new(cwd~ : String) -> Manager {
-  Manager::{ cwd, id: 0, process: @spawn.Manager::new(cwd~), jobs: {} }
+  { cwd, id: 0, process: @spawn.Manager::new(cwd~), jobs: {} }
 }
 
 ///|

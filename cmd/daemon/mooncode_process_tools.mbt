@@ -89,7 +89,7 @@ async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
   let process = @spawn.spawn(
     "moon",
-    args.map(fn(arg) { arg[:] }),
+    args.map(fn(arg) { arg }),
     timeout~,
     cwd=cwd_path,
   ) catch {
@@ -255,7 +255,7 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
   let process = @spawn.spawn(
     "moon",
-    args.map(fn(arg) { arg[:] }),
+    args.map(fn(arg) { arg }),
     timeout~,
     cwd=cwd_path,
   ) catch {
@@ -386,7 +386,7 @@ fn mooncode_json_array_string_items(json : Json, key : String) -> Array[String] 
   let values : Array[String] = []
   for item in mooncode_json_array_items(json, key) {
     match item {
-      Json::String(value) => values.push(value)
+      String(value) => values.push(value)
       _ => ()
     }
   }

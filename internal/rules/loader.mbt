@@ -7,7 +7,7 @@ struct Loader {
 
 ///|
 pub fn Loader::new(cwd : String, logger~ : @pino.Logger) -> Loader {
-  return Loader::{ cwd, logger, rules: {} }
+  return { cwd, logger, rules: {} }
 }
 
 ///|
@@ -21,7 +21,7 @@ async fn Loader::load_rules_from_directory(
     return
   }
   let dir = @fsx.list_directory(directory).filter(e => {
-    e.kind is @fsx.FileKind::Regular && e.name.has_suffix(".md")
+    e.kind is Regular && e.name.has_suffix(".md")
   })
   for rule_path in dir {
     let name = @pathx.stem(rule_path.name).to_owned()
@@ -52,10 +52,11 @@ pub fn Loader::apply(self : Loader, messages : Array[@ai.Message]) -> Unit {
     return
   }
   let usr_msg = @ai.user_message(content=self.format())
-  let ins_pos : ArrayView[@ai.Message] = for messages = messages[:] {
-    match messages {
-      [System(_), .. rest] => continue rest
-      msgs => break msgs
+  let mut ins_pos : ArrayView[@ai.Message] = messages
+  while true {
+    match ins_pos {
+      [System(_), .. rest] => ins_pos = rest
+      _ => break
     }
   }
   messages.insert(ins_pos.start_offset(), usr_msg)
@@ -80,16 +81,16 @@ pub struct Rule {
 fn Rule::parse(content : String, source~ : Source) -> Rule raise {
   let doc = @yamd.parse(content)
   let description = match doc.meta.get("description") {
-    Some(Json::String(desc)) => Some(desc)
+    Some(String(desc)) => Some(desc)
     _ => None
   }
   let globs = match doc.meta.get("globs") {
-    Some(Json::Array(arr)) =>
+    Some(Array(arr)) =>
       arr
       .iter()
       .filter_map(v => {
         match v {
-          Json::String(s) => Some(s)
+          String(s) => Some(s)
           _ => None
         }
       })
@@ -101,7 +102,7 @@ fn Rule::parse(content : String, source~ : Source) -> Rule raise {
     Some(False) => false
     _ => false
   }
-  Rule::{ description, globs, always_apply, content: doc.text, source }
+  { description, globs, always_apply, content: doc.text, source }
 }
 
 ///|

@@ -27,12 +27,12 @@ enum Schema {
 
 ///|
 pub fn integer() -> Schema {
-  Schema::Integer
+  Integer
 }
 
 ///|
 pub fn string() -> Schema {
-  Schema::String
+  String
 }
 
 ///|
@@ -41,27 +41,27 @@ pub fn object(
   additional_properties? : Bool = true,
   required? : Array[String],
 ) -> Schema {
-  Schema::Object(object, required~, additional_properties~)
+  Object(object, required~, additional_properties~)
 }
 
 ///|
 pub fn enums(values : Array[Json]) -> Schema {
-  Schema::Enum(values)
+  Enum(values)
 }
 
 ///|
 pub fn array(schema : Schema) -> Schema {
-  Schema::Array(schema)
+  Array(schema)
 }
 
 ///|
 pub fn Schema::to_json(self : Schema) -> Map[String, Json] {
   match self {
-    Schema::Integer => { "type": "integer" }
-    Schema::String => { "type": "string" }
-    Schema::Enum(values) => { "enum": Json::array(values) }
-    Schema::Array(schema) => { "type": "array", "items": schema }
-    Schema::Object(map, required~, additional_properties~) => {
+    Integer => { "type": "integer" }
+    String => { "type": "string" }
+    Enum(values) => { "enum": Json::array(values) }
+    Array(schema) => { "type": "array", "items": schema }
+    Object(map, required~, additional_properties~) => {
       let json_object = Map([])
       for key, value in map {
         json_object[key] = value.to_json()
@@ -89,13 +89,13 @@ pub impl ToJson for Schema with fn to_json(self) {
 ///|
 pub fn Schema::verify(self : Schema, json : Json) -> Bool {
   match (self, json) {
-    (Schema::Integer, Number(n, ..)) => n == n && n.to_int().to_double() == n
-    (Schema::String, String(_)) => true
-    (Schema::Enum(values), _) => values.contains(json)
-    (Schema::Array(schema), Array(values)) =>
+    (Integer, Number(n, ..)) => n == n && n.to_int().to_double() == n
+    (String, String(_)) => true
+    (Enum(values), _) => values.contains(json)
+    (Array(schema), Array(values)) =>
       values.iter().all(value => schema.verify(value))
     (
-      Schema::Object(map, required~, additional_properties=additionalProperties),
+      Object(map, required~, additional_properties=additionalProperties),
       Object(json),
     ) => {
       let required = @sorted_set.from_array(required.unwrap_or([]))

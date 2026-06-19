@@ -56,10 +56,10 @@ fn format_timestamp(timestamp : @clock.Timestamp) -> String {
 ///|
 fn get_role_title(message : @openai.ChatCompletionMessageParam) -> String {
   match message {
-    @openai.ChatCompletionMessageParam::Assistant(_) => "🤖 Assistant"
-    @openai.ChatCompletionMessageParam::System(_) => "⚙️ System"
-    @openai.ChatCompletionMessageParam::Tool(_) => "🔧 Tool"
-    @openai.ChatCompletionMessageParam::User(_) => "👤 User"
+    Assistant(_) => "🤖 Assistant"
+    System(_) => "⚙️ System"
+    Tool(_) => "🔧 Tool"
+    User(_) => "👤 User"
   }
 }
 
@@ -69,9 +69,8 @@ fn format_message_content(
   lines : Array[String],
 ) -> Unit {
   match message {
-    @openai.ChatCompletionMessageParam::User(user_msg) =>
-      format_content_parts(user_msg.content, lines)
-    @openai.ChatCompletionMessageParam::Assistant(assistant_msg) => {
+    User(user_msg) => format_content_parts(user_msg.content, lines)
+    Assistant(assistant_msg) => {
       // Add assistant content
       if !assistant_msg.content.is_empty() {
         format_content_parts(assistant_msg.content, lines)
@@ -95,10 +94,10 @@ fn format_message_content(
               error => Err(error)
             }
             match args_result {
-              Ok(Json::Object(args_map)) =>
+              Ok(Object(args_map)) =>
                 for key, value in args_map {
                   let value_str = match value {
-                    Json::String(s) => s
+                    String(s) => s
                     other => other.stringify()
                   }
                   lines.push("- **\{key}:** \{value_str}")
@@ -109,7 +108,7 @@ fn format_message_content(
         }
       }
     }
-    @openai.ChatCompletionMessageParam::Tool(tool_msg) => {
+    Tool(tool_msg) => {
       lines.push("**🔧 Tool:** \{tool_msg.tool_call_id}")
       lines.push("")
       lines.push("**Result:**")
@@ -118,8 +117,7 @@ fn format_message_content(
       format_content_parts(tool_msg.content, lines)
       lines.push("```")
     }
-    @openai.ChatCompletionMessageParam::System(system_msg) =>
-      format_content_parts(system_msg.content, lines)
+    System(system_msg) => format_content_parts(system_msg.content, lines)
   }
 }
 
@@ -134,7 +132,7 @@ fn format_content_parts(
   }
   for part in content_parts {
     match part {
-      @openai.ChatCompletionContentPartParam::Text(text_part) =>
+      Text(text_part) =>
         if !text_part.text.is_empty() {
           lines.push(text_part.text)
         }

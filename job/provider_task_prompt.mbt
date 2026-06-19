@@ -12,10 +12,7 @@ fn join_bullets(items : Array[String]) -> String {
 }
 
 ///|
-fn compact_provider_prompt_text(
-  text : String,
-  max_chars? : Int = 600,
-) -> String {
+fn compact_provider_prompt_text(text : String, max_chars~ : Int) -> String {
   let trimmed = text.trim().to_owned()
   if trimmed.is_blank() {
     return ""
@@ -70,7 +67,7 @@ fn provider_task_preferred_skills(
 fn provider_task_tool_contract(
   request : AnalysisRequest,
 ) -> AnalysisToolContract {
-  AnalysisToolContract::{ ..request.tool_contract, todo: false }
+  { ..request.tool_contract, todo: false }
 }
 
 ///|
@@ -206,9 +203,7 @@ async fn provider_task_prompt(
   context : ProviderTaskWorkerContext,
 ) -> String {
   let goal = metadata_string_value(request.step_metadata, "extension_goal").unwrap_or(
-    metadata_string_value(request.step_metadata, "bookapi_goal").unwrap_or(
-      request.source_prompt,
-    ),
+    request.source_prompt,
   )
   let sections : Array[String] = [
     "Provider Scope: \{context.book_id}",

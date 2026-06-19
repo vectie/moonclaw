@@ -5,11 +5,11 @@ struct RecordingWeixinHandler {
 
 ///|
 fn RecordingWeixinHandler::new() -> RecordingWeixinHandler {
-  RecordingWeixinHandler::{ handled_message_ids: [] }
+  { handled_message_ids: [] }
 }
 
 ///|
-impl @channel.MessageHandler for RecordingWeixinHandler with handle_message(
+impl @channel.MessageHandler for RecordingWeixinHandler with fn handle_message(
   self : RecordingWeixinHandler,
   channel_id : String,
   account_id : String,
@@ -18,7 +18,7 @@ impl @channel.MessageHandler for RecordingWeixinHandler with handle_message(
   ignore(channel_id)
   ignore(account_id)
   self.handled_message_ids.push(message.id)
-  @channel.Message::{
+  {
     id: "reply-\{message.id}",
     channel: "weixin",
     from: "bot",
@@ -33,7 +33,7 @@ impl @channel.MessageHandler for RecordingWeixinHandler with handle_message(
 }
 
 ///|
-impl @channel.MessageHandler for RecordingWeixinHandler with handle_event(
+impl @channel.MessageHandler for RecordingWeixinHandler with fn handle_event(
   _self : RecordingWeixinHandler,
   _channel_id : String,
   _account_id : String,
@@ -55,7 +55,7 @@ fn weixin_test_account_config() -> Json {
 
 ///|
 fn weixin_test_config() -> @channel.ChannelConfig {
-  @channel.ChannelConfig::{
+  {
     enabled: true,
     accounts: { "default": weixin_test_account_config() },
     global_settings: {},

@@ -4,7 +4,7 @@
 priv struct PostSystemPromptRequest(String?)
 
 ///|
-impl @json.FromJson for PostSystemPromptRequest with from_json(
+impl @json.FromJson for PostSystemPromptRequest with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> PostSystemPromptRequest raise @json.JsonDecodeError {
@@ -24,7 +24,7 @@ async fn Server::set_system_prompt(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let req : PostSystemPromptRequest = @json.from_json(json) catch {
-    @json.JsonDecodeError(_) as error =>
+    JsonDecodeError(_) as error =>
       raise json_error(400, "BadRequest", {
         "error": {
           "code": -1,

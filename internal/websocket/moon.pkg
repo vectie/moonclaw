@@ -7,8 +7,10 @@ import {
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
 }
 
+supported_targets = "native"
+
 import {
-  "moonbitlang/async/http" @http,
-  "moonbitlang/async/socket" @socket,
+  "moonbitlang/async/http",
+  "moonbitlang/async/socket",
   "moonbitlang/core/test",
 } for "test"

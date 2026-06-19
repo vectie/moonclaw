@@ -53,7 +53,7 @@ pub async fn initialize_analysis_tool_journal(
 }
 
 ///|
-fn compact_tool_journal_text(text : String, limit? : Int = 240) -> String {
+fn compact_tool_journal_text(text : String, limit~ : Int) -> String {
   let normalized = text.trim().to_owned()
   if normalized.is_blank() {
     return ""

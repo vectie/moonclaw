@@ -4,11 +4,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(42L),
-        @event.PreConversation,
+        PreConversation,
       ),
     ),
     index=0,
@@ -25,11 +25,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(43L),
-        @event.AssistantMessageDelta("working"),
+        AssistantMessageDelta("working"),
       ),
     ),
     index=1,
@@ -44,11 +44,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(43L),
-        @event.AssistantMessage(usage=None, tool_calls=[], "final answer"),
+        AssistantMessage(usage=None, tool_calls=[], "final answer"),
       ),
     ),
     index=2,
@@ -69,11 +69,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(44L),
-        @event.PreToolCall(@ai.tool_call(id="tc-1", name="read_file")),
+        PreToolCall(@ai.tool_call(id="tc-1", name="read_file")),
       ),
     ),
     index=3,
@@ -86,11 +86,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(45L),
-        @event.PostToolCall(
+        PostToolCall(
           @ai.tool_call(id="tc-1", name="read_file"),
           result=Ok({ "ok": true }),
           rendered="ok",
@@ -112,11 +112,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(46L),
-        @event.ContextPruned(origin_token_count=100, pruned_token_count=40),
+        ContextPruned(origin_token_count=100, pruned_token_count=40),
       ),
     ),
     index=5,
@@ -131,11 +131,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(47L),
-        @event.Pruned(id=@uuid.nil),
+        Pruned(id=@uuid.nil),
       ),
     ),
     index=6,
@@ -148,11 +148,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(48L),
-        @event.Cancelled,
+        Cancelled,
       ),
     ),
     index=7,
@@ -160,24 +160,24 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
   assert_eq(mooncode_json_string(cancelled, "lane", default=""), "review")
   assert_eq(
     mooncode_json_string(cancelled, "kind", default=""),
-    "agent_aborted",
+    "runtime_aborted",
   )
   assert_eq(mooncode_json_string(cancelled, "status", default=""), "cancelled")
   let failed = mooncode_event_from_task_stream(
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(49L),
-        @event.Failed({ "code": "boom" }),
+        Failed({ "code": "boom" }),
       ),
     ),
     index=8,
   )
   assert_eq(mooncode_json_string(failed, "lane", default=""), "review")
-  assert_eq(mooncode_json_string(failed, "kind", default=""), "agent_aborted")
+  assert_eq(mooncode_json_string(failed, "kind", default=""), "runtime_aborted")
   assert_eq(mooncode_json_string(failed, "status", default=""), "failed")
   assert_true(
     mooncode_json_object_field_or_empty(failed, "structured_result")
@@ -188,11 +188,11 @@ test "mooncode stream normalizes moonclaw task events into lanes" {
     session_id="session-demo",
     command_id="cmd-1",
     task_id="task-1",
-    @server.Moonclaw(
+    Moonclaw(
       @event.Event::new(
         id=@uuid.nil,
         created=@clock.Timestamp::from_ms(50L),
-        @event.PostConversation,
+        PostConversation,
       ),
     ),
     index=9,
@@ -244,13 +244,29 @@ test "mooncode durable stream records support resumable sequence replay" {
 ///|
 test "mooncode durable stream serializes jsonl and sse envelopes" {
   let event : Json = { "id": "event-1", "kind": "tool_result", "lane": "tool" }
-  let jsonl = mooncode_stream_jsonl_payload("session-stream", "/tmp/book", [
-    event,
-  ])
+  let jsonl = mooncode_stream_jsonl_payload(
+    "session-stream",
+    "/tmp/book",
+    [event],
+    since=0,
+    wait_ms=0,
+    poll_ms=100,
+    wait_elapsed_ms=0,
+    wait_attempt_count=0,
+  )
   assert_true(jsonl.contains("\"type\":\"meta\""))
   assert_true(jsonl.contains("\"type\":\"event\""))
   assert_true(jsonl.contains("\"type\":\"done\""))
-  let sse = mooncode_stream_sse_payload("session-stream", "/tmp/book", [event])
+  let sse = mooncode_stream_sse_payload(
+    "session-stream",
+    "/tmp/book",
+    [event],
+    since=0,
+    wait_ms=0,
+    poll_ms=100,
+    wait_elapsed_ms=0,
+    wait_attempt_count=0,
+  )
   assert_true(sse.contains("event: meta\n"))
   assert_true(sse.contains("event: event\n"))
   assert_true(sse.contains("data: {"))

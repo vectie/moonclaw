@@ -2,6 +2,8 @@ import {
   "moonbitlang/core/json",
 }
 
+supported_targets = "native"
+
 options(
   "native-stub": [ "c.c", "malloc.c", "memcpy.c", "strlen.c" ],
   targets: {

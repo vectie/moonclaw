@@ -9,7 +9,7 @@ pub(all) struct Loader {
 
 ///|
 pub fn Loader::new() -> Loader {
-  Loader::{
+  {
     frames: [
       "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
     ],
@@ -22,7 +22,7 @@ pub fn Loader::new() -> Loader {
 
 ///|
 pub fn Loader::with_frames(frames : Array[String]) -> Loader {
-  Loader::{
+  {
     frames,
     current: 0,
     message: "",
@@ -33,7 +33,7 @@ pub fn Loader::with_frames(frames : Array[String]) -> Loader {
 
 ///|
 pub fn Loader::with_message(message : String) -> Loader {
-  Loader::{
+  {
     frames: [
       "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏",
     ],
@@ -92,7 +92,7 @@ pub fn Loader::render(
   output.write(ClearLineRight)
   if self.running {
     let frame = self.frames[self.current]
-    output.write(colorize(frame, Color::BrightCyan))
+    output.write(colorize(frame, BrightCyan))
     output.write(" ")
     output.write(dim(self.message))
   } else {

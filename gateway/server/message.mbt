@@ -17,7 +17,7 @@ pub fn agent_message(
   payload~ : Json,
   timestamp~ : Int,
 ) -> AgentMessage {
-  AgentMessage::{
+  {
     message_id: uuid.v4().to_string(),
     from_agent,
     to_agent,
@@ -54,5 +54,5 @@ pub fn agent_mailbox_config(
   max_size? : Int = 1000,
   timeout_ms? : Int = 30000,
 ) -> AgentMailboxConfig {
-  AgentMailboxConfig::{ max_size, timeout_ms }
+  { max_size, timeout_ms }
 }

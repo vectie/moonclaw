@@ -38,7 +38,7 @@ async test "ChatService retrieves active artifacts and returns citations" {
       ),
     )
     ignore(artifacts.archive("artifact-2", 300))
-    store.save_memory(MemoryRecord::{
+    store.save_memory({
       id: "memory-1",
       kind: "note",
       title: Some("planning note"),
@@ -53,7 +53,7 @@ async test "ChatService retrieves active artifacts and returns citations" {
       recipient: None,
       thread_id: None,
       source_artifact_id: None,
-      status: MemoryStatus::Active,
+      status: Active,
       created_at: 150,
       updated_at: 150,
       archived_at: None,
@@ -61,7 +61,7 @@ async test "ChatService retrieves active artifacts and returns citations" {
 
     let chat = ChatService::new(store~)
     let result = match
-      chat.ask(JobAskParams::{
+      chat.ask({
         question: "What improves agent planning?",
         binding_id: None,
         artifact_query: None,
@@ -114,7 +114,7 @@ async test "ChatService applies persisted chat bindings to artifact scope" {
         200,
       ),
     )
-    store.save_chat_binding(ChatBinding::{
+    store.save_chat_binding({
       id: "binding-paper-2",
       title: Some("paper 2"),
       artifact_query: ArtifactQuery::new(scope=Some("paper:2")),
@@ -127,7 +127,7 @@ async test "ChatService applies persisted chat bindings to artifact scope" {
     reloaded.load()
     let chat = ChatService::new(store=reloaded)
     let result = match
-      chat.ask(JobAskParams::{
+      chat.ask({
         question: "Which paper studies retrieval agents?",
         binding_id: Some("binding-paper-2"),
         artifact_query: None,

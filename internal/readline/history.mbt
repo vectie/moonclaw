@@ -8,8 +8,8 @@ priv struct HistoryManager {
 
 ///|
 fn HistoryManager::new(size : Int) -> HistoryManager {
-  HistoryManager::{
-    history: @deque.Deque([]),
+  {
+    history: Deque([]),
     index: -1,
     size,
     events: @aqueue.Queue::new(kind=Unbounded),

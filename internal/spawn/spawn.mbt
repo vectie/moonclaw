@@ -136,7 +136,7 @@ pub async fn spawn(
     }
     let t1 = clock.now()
     let elapsed = t1.ms_since(t0).to_int()
-    CompletedProcess::{
+    {
       exec: command,
       args: arguments,
       status,
@@ -161,7 +161,7 @@ extern "c" fn process_kill(pid : Int, sig : Int) -> Int = "moonbit_moonclaw_proc
 pub fn kill(pid : Int, sig : Int) -> Unit raise @errno.Errno {
   let status = process_kill(pid, sig)
   if status != 0 {
-    raise @errno.Errno(status)
+    raise Errno(status)
   }
 }
 

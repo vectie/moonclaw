@@ -48,7 +48,7 @@ fn render_output(
 }
 
 ///|
-pub impl Show for CommandResult with output(
+pub impl Show for CommandResult with fn output(
   self : CommandResult,
   logger : &Logger,
 ) -> Unit {
@@ -88,7 +88,7 @@ pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
     description="Execute an shell command with arguments and capture its output.",
     name="execute_command",
     schema~,
-    @tool.ToolFn(async fn(args) -> @tool.ToolResult[CommandResult] noraise {
+    ToolFn(async fn(args) -> @tool.ToolResult[CommandResult] noraise {
       guard args is { "command": String(command), .. } else {
         return @tool.error("Error: 'command' parameters is required")
       }
@@ -147,13 +147,7 @@ pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
       ) catch {
         @spawn.TimedOut(timeout~, stdout~, stderr~) =>
           return @tool.ok(
-            CommandResult::TimedOut(
-              command~,
-              timeout~,
-              stdout~,
-              stderr~,
-              max_output_lines~,
-            ),
+            TimedOut(command~, timeout~, stdout~, stderr~, max_output_lines~),
           )
         error =>
           return @tool.error(
@@ -162,7 +156,7 @@ pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
           )
       }
       return @tool.ok(
-        CommandResult::Completed(
+        Completed(
           command~,
           status=process.status,
           stdout=process.stdout,

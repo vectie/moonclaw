@@ -1,16 +1,16 @@
 ///|
-pub impl @json.FromJson for Model with from_json(
+pub impl @json.FromJson for Model with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Model {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "@vectie/moonclaw/model.Model::from_json: expected object"),
     )
   }
   let name : String = {
     guard json.get("name") is Some(name) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           json_path, "@vectie/moonclaw/model.Model::from_json: missing 'name' field",
         ),
@@ -20,7 +20,7 @@ pub impl @json.FromJson for Model with from_json(
   }
   let model_name : String = {
     guard json.get("model_name") is Some(model_name) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           json_path, "@vectie/moonclaw/model.Model::from_json: missing 'model_name' field",
         ),
@@ -30,7 +30,7 @@ pub impl @json.FromJson for Model with from_json(
   }
   let model_type : Type = {
     guard json.get("model_type") is Some(model_type) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           json_path, "@vectie/moonclaw/model.Model::from_json: missing 'model_type' field",
         ),
@@ -116,7 +116,7 @@ pub impl @json.FromJson for Model with from_json(
     guard json.get("id_token") is Some(id_token) else { None }
     Some(@json.from_json(id_token, path=json_path.add_key("id_token")))
   }
-  Model::{
+  {
     name,
     description,
     model_name,
@@ -134,32 +134,32 @@ pub impl @json.FromJson for Model with from_json(
 }
 
 ///|
-pub impl @json.FromJson for Type with from_json(
+pub impl @json.FromJson for Type with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> Type {
   guard json is String(json) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "@vectie/moonclaw/model.Type::from_json: expected string"),
     )
   }
   match json {
-    "saas/openai" => Type::SaaS(Provider::OpenAI)
-    "saas/anthropic" => Type::SaaS(Provider::Anthropic)
-    "saas/codex_oauth" => Type::SaaS(Provider::CodexOAuth)
-    "saas/copilot" => Type::SaaS(Provider::Copilot)
-    "saas/qwen" => Type::SaaS(Provider::Qwen)
-    "saas/kimi" => Type::SaaS(Provider::Kimi)
-    "saas/kimi_coding" => Type::SaaS(Provider::KimiCoding)
+    "saas/openai" => SaaS(OpenAI)
+    "saas/anthropic" => SaaS(Anthropic)
+    "saas/codex_oauth" => SaaS(CodexOAuth)
+    "saas/copilot" => SaaS(Copilot)
+    "saas/qwen" => SaaS(Qwen)
+    "saas/kimi" => SaaS(Kimi)
+    "saas/kimi_coding" => SaaS(KimiCoding)
     [.. "saas/", .. provider] =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           json_path,
           "@vectie/moonclaw/model.Type::from_json: unsupported SaaS provider '\{provider}'",
         ),
       )
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           json_path,
           "@vectie/moonclaw/model.Type::from_json: unknown model type '\{json}'",
@@ -169,7 +169,7 @@ pub impl @json.FromJson for Type with from_json(
 }
 
 ///|
-pub impl ToJson for Type with to_json(self) {
+pub impl ToJson for Type with fn to_json(self) {
   match self {
     SaaS(OpenAI) => "saas/openai"
     SaaS(Anthropic) => "saas/anthropic"

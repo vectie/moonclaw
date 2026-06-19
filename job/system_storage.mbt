@@ -75,7 +75,7 @@ pub struct SystemStore {
 
 ///|
 pub fn SystemStore::new(root~ : String) -> SystemStore {
-  SystemStore::{
+  {
     root,
     definitions: {},
     workflows: {},
@@ -315,7 +315,7 @@ async fn SystemStore::runs_index_from_disk(self : SystemStore) -> RunsIndexFile 
   let steps : Array[JobStepRun] = []
   let runs_root = self.root |> @pathx.join("runs")
   if !@fsx.exists(runs_root) {
-    return RunsIndexFile::{ runs, steps }
+    return { runs, steps }
   }
   for entry in @fsx.list_directory(runs_root) {
     match entry.kind {
@@ -347,7 +347,7 @@ async fn SystemStore::runs_index_from_disk(self : SystemStore) -> RunsIndexFile 
       }
     }
   }
-  RunsIndexFile::{ runs, steps }
+  { runs, steps }
 }
 
 ///|
@@ -376,7 +376,7 @@ async fn SystemStore::load_runs_index_best_effort(
       for step in disk.steps {
         merged_steps.set("\{step.run_id}:\{step.step_id}", step)
       }
-      RunsIndexFile::{
+      {
         runs: merged_runs.values().to_array(),
         steps: merged_steps.values().to_array(),
       }
@@ -474,7 +474,7 @@ fn reconciled_delegate_step_run(
         Some(summary) => Some(summary)
         None => existing.summary
       }
-      JobStepRun::{
+      {
         ..existing,
         status: child.status,
         finished_at: Some(finished_at),
@@ -485,7 +485,7 @@ fn reconciled_delegate_step_run(
       }
     }
     None =>
-      JobStepRun::{
+      {
         id: "\{run.id}:\{step.id}",
         run_id: run.id,
         step_id: step.id,
@@ -631,14 +631,14 @@ fn reconciled_materialized_analysis_step_run(
   let status = if requires_receipt && !has_receipt {
     RunStatus::Failed
   } else {
-    RunStatus::Succeeded
+    Succeeded
   }
-  let summary = if status is RunStatus::Failed {
+  let summary = if status is Failed {
     "Recovered materialized analysis output without required patch receipt"
   } else {
     "Recovered materialized analysis output from run workspace"
   }
-  let error = if status is RunStatus::Failed {
+  let error = if status is Failed {
     Some("analysis output missing planbook.repair.patch_receipt.v1 evidence")
   } else {
     None
@@ -652,7 +652,7 @@ fn reconciled_materialized_analysis_step_run(
   )
   match existing {
     Some(existing) =>
-      JobStepRun::{
+      {
         ..existing,
         status,
         finished_at: Some(run.started_at.unwrap_or(0)),
@@ -662,7 +662,7 @@ fn reconciled_materialized_analysis_step_run(
         error,
       }
     None =>
-      JobStepRun::{
+      {
         id: "\{run.id}:\{step.id}",
         run_id: run.id,
         step_id: step.id,
@@ -753,7 +753,7 @@ async fn SystemStore::reconcile_materialized_analysis_outputs_unlocked(
             if finished_at > latest_finished_at {
               latest_finished_at = finished_at
             }
-            if step_run.status is RunStatus::Failed {
+            if step_run.status is Failed {
               saw_failed = true
             }
           } else {
@@ -763,11 +763,7 @@ async fn SystemStore::reconcile_materialized_analysis_outputs_unlocked(
       }
     }
     if saw_materialized && all_steps_terminal {
-      let status = if saw_failed {
-        RunStatus::Failed
-      } else {
-        RunStatus::Succeeded
-      }
+      let status = if saw_failed { RunStatus::Failed } else { Succeeded }
       let summary = if saw_failed {
         "Recovered workflow failure from materialized analysis outputs"
       } else {
@@ -778,7 +774,7 @@ async fn SystemStore::reconcile_materialized_analysis_outputs_unlocked(
       } else {
         None
       }
-      self.save_reconciled_run_unlocked(JobRun::{
+      self.save_reconciled_run_unlocked({
         ..run,
         status,
         finished_at: Some(latest_finished_at),
@@ -909,7 +905,7 @@ async fn SystemStore::reconcile_delegate_parent_runs_unlocked(
       Some(summary) => Some(summary)
       None => run.summary
     }
-    self.save_reconciled_run_unlocked(JobRun::{
+    self.save_reconciled_run_unlocked({
       ..run,
       status,
       finished_at: Some(finished_at),

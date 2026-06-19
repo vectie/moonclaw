@@ -30,7 +30,7 @@ test "compile_job_proposal preserves custom step kinds directly" {
   let proposal = JobProposal::{
     ..draft_job_proposal("proposal-compiler-3", "delegate this", 100),
     steps: [
-      JobProposalStep::{
+      {
         id: "delegate",
         title: "Delegate",
         prompt: "Run a child job.",
@@ -114,7 +114,7 @@ test "compile_job_proposal honors retry metadata overrides" {
       "proposal-compiler-retry-override", "Analyze once more", 100,
     ),
     steps: [
-      JobProposalStep::{
+      {
         id: "scope",
         title: "Scope",
         prompt: "Inspect the workspace.",
@@ -150,7 +150,7 @@ test "compile_job_proposal applies analysis metadata from proposal steps" {
   let proposal = JobProposal::{
     ..draft_job_proposal("proposal-compiler-4", "review and implement", 100),
     steps: [
-      JobProposalStep::{
+      {
         id: "review",
         title: "Review",
         prompt: "Review the feature request.",
@@ -203,7 +203,7 @@ test "compile_job_proposal maps timeout and token budget metadata into analysis 
   let proposal = JobProposal::{
     ..draft_job_proposal("proposal-compiler-policy-1", "bounded analysis", 100),
     steps: [
-      JobProposalStep::{
+      {
         id: "bounded",
         title: "Bounded",
         prompt: "Do bounded work.",
@@ -239,7 +239,7 @@ test "compile_job_proposal preserves analysis execution routing hints" {
   let proposal = JobProposal::{
     ..draft_job_proposal("proposal-compiler-5", "run analysis remotely", 100),
     steps: [
-      JobProposalStep::{
+      {
         id: "scope",
         title: "Scope",
         prompt: "Scope the work.",
@@ -278,7 +278,7 @@ test "compile_job_proposal reads analysis execution routing from step metadata" 
       100,
     ),
     steps: [
-      JobProposalStep::{
+      {
         id: "scope",
         title: "Scope",
         prompt: "Scope the work.",
@@ -318,7 +318,7 @@ test "compile_job_proposal augments wiki ingest controller with provider delegat
     suggested_family: Some("wiki_ingest_controller"),
     profile_role: Some("controller"),
     steps: [
-      JobProposalStep::{
+      {
         id: "inspect_source",
         title: "Inspect source",
         prompt: "Inspect the source.",
@@ -385,7 +385,7 @@ test "compile_job_proposal collapses imported wiki ingest controller to provider
       "external_packet": { "schema": "moonclaw.external_proposal_packet.v1" },
     },
     steps: [
-      JobProposalStep::{
+      {
         id: "plan_gather_fanout",
         title: "Plan gather fanout",
         prompt: "Plan the gather lanes.",
@@ -397,7 +397,7 @@ test "compile_job_proposal collapses imported wiki ingest controller to provider
         include_parent_outputs: None,
         max_depth: None,
       },
-      JobProposalStep::{
+      {
         id: "gather_docs",
         title: "Gather docs",
         prompt: "Gather the docs.",

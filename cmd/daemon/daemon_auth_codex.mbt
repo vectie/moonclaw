@@ -19,7 +19,7 @@ async fn Daemon::start_codex_auth(
   let auth_url = @codex.build_authorize_url(pkce, state)
 
   // Store pending auth state (keyed by state parameter)
-  self.pending_codex_auth[state] = PendingCodexAuth::{ pkce, }
+  self.pending_codex_auth[state] = { pkce, }
 
   // Spawn temporary callback server on port 1455 to receive OAuth callback (in background)
   group.spawn_bg(() => self.spawn_codex_callback_server(), no_wait=true)
@@ -39,7 +39,7 @@ async fn Daemon::spawn_codex_callback_server(self : Daemon) -> Unit {
   let pending_auth = self.pending_codex_auth
   let events = self.events
   let router = @httpx.Router::new()
-  router.add_handler(@httpx.Method::Get, "/auth/callback", (r, w) => {
+  router.add_handler(Get, "/auth/callback", (r, w) => {
     // Parse query parameters from the URL
     let path = r.path
     let parts = path.split("?").to_array()

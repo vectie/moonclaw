@@ -5,8 +5,8 @@ struct Tool {
 }
 
 ///|
-fn Tool::new(tool : @tool.AgentTool, enabled? : Bool = true) -> Tool {
-  Tool::{ enabled, tool }
+fn Tool::new(tool : @tool.AgentTool, enabled~ : Bool) -> Tool {
+  { enabled, tool }
 }
 
 ///|

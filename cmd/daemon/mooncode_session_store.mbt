@@ -7,7 +7,7 @@ async fn mooncode_durable_session_records(book_root : String) -> Array[Json] {
   }
   let entries = @fsx.list_directory(root) catch { _ => return records }
   for entry in entries {
-    if entry.kind is @fsx.FileKind::Directory {
+    if entry.kind is Directory {
       let snapshot = mooncode_load_session_snapshot_by_safe_id(
         book_root,
         entry.name,

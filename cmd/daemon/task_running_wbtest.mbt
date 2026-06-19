@@ -5,10 +5,8 @@ test "Running::ToJson" {
     id: @uuid.parse("123e4567-e89b-12d3-a456-426614174000"),
     cwd: "/tmp/example",
     port: 8080,
-    status: @server.Idle,
-    queued_messages: [
-      QueuedMessage::{ id: "msg1", message: { "text": "Hello" } },
-    ],
+    status: Idle,
+    queued_messages: [{ id: "msg1", message: { "text": "Hello" } }],
     created: @clock.Timestamp::from_ms(0),
     updated: @clock.Timestamp::from_ms(0),
     web_search: true,
@@ -51,7 +49,7 @@ test "Running::from_json" {
   assert_true(task.id == @uuid.parse("123e4567-e89b-12d3-a456-426614174000"))
   assert_true(task.cwd == "/tmp/example")
   assert_true(task.port == 8080)
-  assert_true(task.status is @server.Idle)
+  assert_true(task.status is Idle)
   assert_true(task.created == @clock.Timestamp::from_ms(0))
   assert_true(task.web_search == true)
   assert_true(task.model == "gpt-4")

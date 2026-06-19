@@ -9,12 +9,12 @@ pub(all) enum ChatCompletionRole {
 } derive(ToJson)
 
 ///|
-impl @json.FromJson for ChatCompletionRole with from_json(
+impl @json.FromJson for ChatCompletionRole with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionRole {
   guard json is String(role) else {
-    raise @json.JsonDecodeError((json_path, "Expected a string"))
+    raise JsonDecodeError((json_path, "Expected a string"))
   }
   match role {
     "developer" => Developer
@@ -22,6 +22,6 @@ impl @json.FromJson for ChatCompletionRole with from_json(
     "user" => User
     "assistant" => Assistant
     "tool" => Tool
-    role => raise @json.JsonDecodeError((json_path, "Unknown role: \{role}"))
+    role => raise JsonDecodeError((json_path, "Unknown role: \{role}"))
   }
 }

@@ -31,8 +31,8 @@ pub struct FeishuChannel {
 
 ///|
 pub fn FeishuChannel::new() -> FeishuChannel {
-  FeishuChannel::{
-    state: FeishuChannelState::{
+  {
+    state: {
       _config: @channel.default_config(),
       feishu_configs: {},
       clients: {},
@@ -72,7 +72,7 @@ fn get_feishu_config(config : Json) -> FeishuAccountConfig {
   }
   match config {
     { "appId": String(app_id), "appSecret": String(app_secret), .. } =>
-      FeishuAccountConfig::{
+      {
         app_id,
         app_secret,
         domain: match config {
@@ -168,7 +168,7 @@ impl @channel.Channel for FeishuChannel with fn id(_self : FeishuChannel) -> @ch
 
 ///|
 impl @channel.Channel for FeishuChannel with fn meta(_self : FeishuChannel) -> @channel.ChannelMeta {
-  @channel.ChannelMeta::{
+  {
     id: "feishu",
     label: "Feishu",
     selection_label: "Feishu/Lark (飞书)",
@@ -184,8 +184,8 @@ impl @channel.Channel for FeishuChannel with fn meta(_self : FeishuChannel) -> @
 impl @channel.Channel for FeishuChannel with fn capabilities(
   _self : FeishuChannel,
 ) -> @channel.ChannelCapabilities {
-  @channel.ChannelCapabilities::{
-    chat_types: [@channel.ChatType::Direct, @channel.ChatType::Channel],
+  {
+    chat_types: [Direct, Channel],
     polls: false,
     reactions: true,
     edit: true,
@@ -229,9 +229,7 @@ impl @channel.Channel for FeishuChannel with fn start(
 ) -> Result[Unit, @channel.ChannelError] {
   let feishu_config = get_feishu_config(config)
   if !feishu_config.enabled {
-    return Err(
-      @channel.ChannelError::NotConfigured(message="Channel is not enabled"),
-    )
+    return Err(NotConfigured(message="Channel is not enabled"))
   }
 
   let client = FeishuClient::new(feishu_config)
@@ -285,11 +283,7 @@ impl @channel.Channel for FeishuChannel with fn send(
       if running_keys.length() > 0 {
         running_keys[0]
       } else {
-        return Err(
-          @channel.ChannelError::NotConfigured(
-            message="No running account available",
-          ),
-        )
+        return Err(NotConfigured(message="No running account available"))
       }
     }
   }
@@ -324,7 +318,7 @@ impl @channel.Channel for FeishuChannel with fn send(
     }
     None =>
       Err(
-        @channel.ChannelError::NotConfigured(
+        NotConfigured(
           message="Client not initialized for account: \{actual_account_id}",
         ),
       )
@@ -433,12 +427,7 @@ async fn FeishuChannel::send_stream_progress(
     Some(message_id) => message_id
     None => message.id
   }
-  Ok(@channel.SendResult::{
-    channel: "feishu",
-    message_id,
-    timestamp: 0,
-    status: "updated",
-  })
+  Ok({ channel: "feishu", message_id, timestamp: 0, status: "updated" })
 }
 
 ///|
@@ -672,7 +661,7 @@ async fn FeishuChannel::handle_feishu_message(
           thread_id,
           force~,
         )
-        handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+        handler.handle_event("feishu", account_id, {
           channel: "feishu",
           account_id,
           event_type: if force {
@@ -691,10 +680,7 @@ async fn FeishuChannel::handle_feishu_message(
         @channel.ExtensionResponse::ok()
       } else {
         let queue_key = feishu_queue_key(account_id, chat_id, thread_id)
-        self.enqueue_message(queue_key, QueuedFeishuMessage::{
-          account_id,
-          message,
-        })
+        self.enqueue_message(queue_key, { account_id, message })
         if self.is_processing_queue(queue_key) {
           @channel.ExtensionResponse::ok()
         } else {
@@ -793,7 +779,7 @@ async fn FeishuChannel::handle_reaction_event(
           }
         _ => 0
       }
-      handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+      handler.handle_event("feishu", account_id, {
         channel: "feishu",
         account_id,
         event_type: "reaction.added",
@@ -859,7 +845,7 @@ async fn FeishuChannel::handle_bot_membership_event(
 
   match self.state.message_handler {
     Some(handler) => {
-      handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+      handler.handle_event("feishu", account_id, {
         channel: "feishu",
         account_id,
         event_type: "bot.\{action}",
@@ -913,7 +899,7 @@ async fn FeishuChannel::handle_card_action_event(
 
   match self.state.message_handler {
     Some(handler) => {
-      handler.handle_event("feishu", account_id, @channel.ChannelEvent::{
+      handler.handle_event("feishu", account_id, {
         channel: "feishu",
         account_id,
         event_type: "card.action",
@@ -1081,7 +1067,7 @@ async fn FeishuChannel::resolve_websocket_endpoint(
     Some(urls) if !urls.is_empty() => {
       let url = urls[0]
       ignore(urls.remove(0))
-      Ok(FeishuWebSocketEndpointData::{ url, client_config: None })
+      Ok({ url, client_config: None })
     }
     _ =>
       resolve_websocket_endpoint(
@@ -1241,7 +1227,7 @@ fn build_feishu_attachments(
       match json {
         { "image_key": String(image_key), .. } if !image_key.is_blank() =>
           [
-            @channel.Attachment::{
+            {
               id: image_key,
               mime_type: "image/*",
               url: "feishu://image/\{image_key}",
@@ -1255,7 +1241,7 @@ fn build_feishu_attachments(
       match json {
         { "file_key": String(file_key), "file_name": String(file_name), .. } =>
           [
-            @channel.Attachment::{
+            {
               id: file_key,
               mime_type: "application/octet-stream",
               url: "feishu://file/\{file_key}",
@@ -1265,7 +1251,7 @@ fn build_feishu_attachments(
           ]
         { "file_key": String(file_key), .. } =>
           [
-            @channel.Attachment::{
+            {
               id: file_key,
               mime_type: "application/octet-stream",
               url: "feishu://file/\{file_key}",
@@ -1279,7 +1265,7 @@ fn build_feishu_attachments(
       match json {
         { "file_key": String(file_key), .. } =>
           [
-            @channel.Attachment::{
+            {
               id: file_key,
               mime_type: "audio/*",
               url: "feishu://audio/\{file_key}",
@@ -1293,7 +1279,7 @@ fn build_feishu_attachments(
       match json {
         { "file_key": String(file_key), .. } =>
           [
-            @channel.Attachment::{
+            {
               id: file_key,
               mime_type: "video/*",
               url: "feishu://video/\{file_key}",
@@ -1925,7 +1911,7 @@ fn FeishuChannel::merge_platform_event_chunks(
   let key = platform_chunk_key(account_id, message_id)
   let chunk_state = match self.state.websocket_chunks.get(key) {
     Some(existing) => existing
-    None => FeishuWebSocketChunkState::{ chunks: {} }
+    None => { chunks: {} }
   }
   chunk_state.chunks[seq] = payload
   self.state.websocket_chunks[key] = chunk_state
@@ -1964,11 +1950,8 @@ fn ack_event_frame(
   response : @channel.ExtensionResponse,
 ) -> FeishuWebSocketFrame {
   let headers = frame.headers.map(fn(header) { header })
-  headers.push(FeishuWebSocketHeader::{
-    key: feishu_ws_header_biz_rt,
-    value: "0",
-  })
-  FeishuWebSocketFrame::{
+  headers.push({ key: feishu_ws_header_biz_rt, value: "0" })
+  {
     seq_id: frame.seq_id,
     log_id: frame.log_id,
     service: frame.service,
@@ -2014,17 +1997,12 @@ async fn FeishuChannel::handle_platform_websocket_frame(
   if frame.method_id == feishu_ws_control_frame &&
     feishu_ws_header(frame, feishu_ws_header_type) == Some(feishu_ws_type_ping) {
     conn.send(
-      encode_feishu_websocket_frame(FeishuWebSocketFrame::{
+      encode_feishu_websocket_frame({
         seq_id: frame.seq_id,
         log_id: frame.log_id,
         service: frame.service,
         method_id: feishu_ws_control_frame,
-        headers: [
-          FeishuWebSocketHeader::{
-            key: feishu_ws_header_type,
-            value: feishu_ws_type_pong,
-          },
-        ],
+        headers: [{ key: feishu_ws_header_type, value: feishu_ws_type_pong }],
         payload_encoding: frame.payload_encoding,
         payload_type: frame.payload_type,
         payload: frame.payload,
@@ -2252,7 +2230,7 @@ async fn FeishuChannel::lookup_reaction_message(
       match client.get_message(message_id) {
         Ok(Some(item)) =>
           Ok(
-            Some(ResolvedReactionTarget::{
+            Some({
               chat_id: item.chat_id,
               chat_type: item.chat_type,
               thread_id: item.thread_id,
@@ -2273,7 +2251,7 @@ async fn FeishuChannel::lookup_reaction_message(
       }
     None =>
       Err(
-        @channel.ChannelError::NotConfigured(
+        NotConfigured(
           message="Client not initialized for account: \{account_id}",
         ),
       )

@@ -39,12 +39,37 @@ priv struct AcpProcessOutcome {
 
 ///|
 fn acp_run_error_shape(code : String, message : String) -> @protocol.ErrorShape {
-  @protocol.ErrorShape::{
-    code,
-    message,
-    details: None,
-    retryable: None,
-    retry_after_ms: None,
+  { code, message, details: None, retryable: None, retry_after_ms: None }
+}
+
+///|
+fn acp_required_string_param(
+  request : @protocol.Request,
+  field : String,
+  label : String,
+) -> Result[String, @protocol.ErrorShape] {
+  match request.params {
+    None =>
+      Err(acp_run_error_shape("missing_params", "Missing \{field} parameter"))
+    Some(Object(obj)) =>
+      match obj.get(field) {
+        Some(String(value)) if !value.trim().is_empty() =>
+          Ok(value.trim().to_owned())
+        _ =>
+          Err(
+            acp_run_error_shape(
+              "missing_\{field}",
+              "Missing \{field} in params",
+            ),
+          )
+      }
+    Some(_) =>
+      Err(
+        acp_run_error_shape(
+          "invalid_params",
+          "\{label} params must be an object with \{field}",
+        ),
+      )
   }
 }
 
@@ -72,7 +97,7 @@ fn metadata_with_live_stdio(metadata : Json, stdio : Json) -> Json {
 
 ///|
 fn live_acp_run_node(node : @acp.AcpUiNode, stdio : Json) -> @acp.AcpUiNode {
-  @acp.AcpUiNode::{
+  {
     ..node,
     summary: stdio_content_preview(stdio),
     metadata: metadata_with_live_stdio(node.metadata, stdio),
@@ -85,7 +110,7 @@ fn live_acp_session_node(
   stdio : Json,
   run_id : String,
 ) -> @acp.AcpUiNode {
-  @acp.AcpUiNode::{
+  {
     ..node,
     status: "running",
     summary: stdio_content_preview(stdio),
@@ -116,7 +141,7 @@ fn live_acp_output_timeline_entry(
     { "metadata": metadata, .. } => metadata
     _ => {}
   }
-  Some(@acp.AcpUiTimelineEntry::{
+  Some({
     id: "run-output:\{run.id}:\{stdout_len}:\{stderr_len}",
     event_type: "run.output",
     title: "Run output streaming",
@@ -283,8 +308,8 @@ async fn Gateway::execute_managed_acp_process(
   let process = self.acp_process_manager.spawn(
     command.command,
     command.args,
-    stdout=@spawn.Capture(stdout),
-    stderr=@spawn.Capture(stderr),
+    stdout=Capture(stdout),
+    stderr=Capture(stderr),
     cwd=launch.cwd,
     env=command.env,
   ) catch {
@@ -323,7 +348,7 @@ async fn Gateway::execute_managed_acp_process(
       summary
     },
   }
-  Ok(AcpProcessOutcome::{
+  Ok({
     status: outcome_status,
     result,
     error: if outcome_status == "completed" {
@@ -351,7 +376,7 @@ async fn Gateway::execute_acp_agent_async(
       let now = current_time_ms()
       let output = outcome.result
       if outcome.status == "completed" {
-        self.dedupe.set(idempotency_key, DedupeEntry::{
+        self.dedupe.set(idempotency_key, {
           ts: now,
           ok: true,
           payload: Some(output),
@@ -371,7 +396,7 @@ async fn Gateway::execute_acp_agent_async(
         ("acp_backend_failed", outcome.error.unwrap_or("ACP backend failed"))
       }
       let error_shape = acp_run_error_shape(code, message)
-      self.dedupe.set(idempotency_key, DedupeEntry::{
+      self.dedupe.set(idempotency_key, {
         ts: now,
         ok: false,
         payload: Some(output),
@@ -402,7 +427,7 @@ async fn Gateway::execute_acp_agent_async(
     }
     Err(error) => {
       let error_shape = acp_run_error_shape("acp_backend_failed", error)
-      self.dedupe.set(idempotency_key, DedupeEntry::{
+      self.dedupe.set(idempotency_key, {
         ts: current_time_ms(),
         ok: false,
         payload: None,
@@ -438,7 +463,7 @@ async fn Gateway::handle_acp_runs_cancel_method(
     Some(params) =>
       @json.from_json(params) catch {
         error =>
-          return self.send_response(w, @protocol.Response::{
+          return self.send_response(w, {
             id: request.id,
             ok: false,
             payload: None,
@@ -451,7 +476,7 @@ async fn Gateway::handle_acp_runs_cancel_method(
           })
       }
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -463,7 +488,7 @@ async fn Gateway::handle_acp_runs_cancel_method(
   let run = match self.acp_runtime().get_run(params.run_id) {
     Some(run) => run
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -476,7 +501,7 @@ async fn Gateway::handle_acp_runs_cancel_method(
       })
   }
   if run.status != "running" && run.status != "cancelling" {
-    return self.send_response(w, @protocol.Response::{
+    return self.send_response(w, {
       id: request.id,
       ok: false,
       payload: None,
@@ -490,14 +515,14 @@ async fn Gateway::handle_acp_runs_cancel_method(
   }
   match self.cancel_active_acp_run(run.id) {
     Err(error) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
         error: Some(acp_run_error_shape("cancel_failed", error)),
       })
     Ok(false) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -531,7 +556,7 @@ async fn Gateway::handle_acp_runs_cancel_method(
           last_error=Some("ACP run cancellation requested."),
         ),
       )
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "status": "cancelling", "run": updated.to_json() }),
@@ -548,7 +573,7 @@ async fn Gateway::handle_acp_targets_list_method(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let targets = self.acp_runtime().list_targets()
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "targets": targets.map(fn(target) { target.to_json() }) }),
@@ -562,69 +587,31 @@ async fn Gateway::handle_acp_targets_get_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let params = match request.params {
-    Some(params) => params
-    None =>
-      return self.send_response(w, @protocol.Response::{
+  let target_id = match
+    acp_required_string_param(request, "target_id", "ACP target lookup") {
+    Ok(target_id) => target_id
+    Err(error) =>
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "missing_params",
-          message: "Missing target_id parameter",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
-      })
-  }
-  let target_id = match params {
-    String(id) => id
-    Object(obj) =>
-      match obj.get("target_id") {
-        Some(String(id)) => id
-        _ =>
-          return self.send_response(w, @protocol.Response::{
-            id: request.id,
-            ok: false,
-            payload: None,
-            error: Some(@protocol.ErrorShape::{
-              code: "missing_target_id",
-              message: "Missing target_id in params",
-              details: None,
-              retryable: None,
-              retry_after_ms: None,
-            }),
-          })
-      }
-    _ =>
-      return self.send_response(w, @protocol.Response::{
-        id: request.id,
-        ok: false,
-        payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "invalid_params",
-          message: "Invalid ACP target lookup parameters",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
+        error: Some(error),
       })
   }
   match self.acp_runtime().get_target(target_id) {
     Some(target) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "target": target.to_json() }),
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "target_not_found",
           message: "ACP target not found: \{target_id}",
           details: None,
@@ -642,7 +629,7 @@ async fn Gateway::handle_acp_sessions_list_method(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let sessions = self.acp_runtime().list_sessions()
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({
@@ -658,69 +645,31 @@ async fn Gateway::handle_acp_sessions_get_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let params = match request.params {
-    Some(params) => params
-    None =>
-      return self.send_response(w, @protocol.Response::{
+  let session_id = match
+    acp_required_string_param(request, "session_id", "ACP session lookup") {
+    Ok(session_id) => session_id
+    Err(error) =>
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "missing_params",
-          message: "Missing session_id parameter",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
-      })
-  }
-  let session_id = match params {
-    String(id) => id
-    Object(obj) =>
-      match obj.get("session_id") {
-        Some(String(id)) => id
-        _ =>
-          return self.send_response(w, @protocol.Response::{
-            id: request.id,
-            ok: false,
-            payload: None,
-            error: Some(@protocol.ErrorShape::{
-              code: "missing_session_id",
-              message: "Missing session_id in params",
-              details: None,
-              retryable: None,
-              retry_after_ms: None,
-            }),
-          })
-      }
-    _ =>
-      return self.send_response(w, @protocol.Response::{
-        id: request.id,
-        ok: false,
-        payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "invalid_params",
-          message: "Invalid ACP session lookup parameters",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
+        error: Some(error),
       })
   }
   match self.acp_runtime().get_session(session_id) {
     Some(session) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "session": session.to_json() }),
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "session_not_found",
           message: "ACP session not found: \{session_id}",
           details: None,
@@ -738,7 +687,7 @@ async fn Gateway::handle_acp_runs_list_method(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let runs = self.acp_runtime().list_runs()
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "runs": runs.map(fn(run) { run.to_json() }) }),
@@ -753,7 +702,7 @@ async fn Gateway::handle_acp_ui_get_method(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let snapshot = self.build_live_acp_ui_snapshot()
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "snapshot": snapshot.to_json() }),
@@ -768,7 +717,7 @@ async fn Gateway::handle_acp_ui_events_method(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let timeline = self.build_live_acp_ui_snapshot().timeline
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "timeline": timeline.map(fn(entry) { entry.to_json() }) }),
@@ -782,69 +731,31 @@ async fn Gateway::handle_acp_runs_get_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let params = match request.params {
-    Some(params) => params
-    None =>
-      return self.send_response(w, @protocol.Response::{
+  let run_id = match
+    acp_required_string_param(request, "run_id", "ACP run lookup") {
+    Ok(run_id) => run_id
+    Err(error) =>
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "missing_params",
-          message: "Missing run_id parameter",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
-      })
-  }
-  let run_id = match params {
-    String(id) => id
-    Object(obj) =>
-      match obj.get("run_id") {
-        Some(String(id)) => id
-        _ =>
-          return self.send_response(w, @protocol.Response::{
-            id: request.id,
-            ok: false,
-            payload: None,
-            error: Some(@protocol.ErrorShape::{
-              code: "missing_run_id",
-              message: "Missing run_id in params",
-              details: None,
-              retryable: None,
-              retry_after_ms: None,
-            }),
-          })
-      }
-    _ =>
-      return self.send_response(w, @protocol.Response::{
-        id: request.id,
-        ok: false,
-        payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "invalid_params",
-          message: "Invalid ACP run lookup parameters",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
+        error: Some(error),
       })
   }
   match self.acp_runtime().get_run(run_id) {
     Some(run) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "run": run.to_json() }),
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "run_not_found",
           message: "ACP run not found: \{run_id}",
           details: None,
@@ -865,11 +776,11 @@ async fn Gateway::handle_acp_sessions_create_method(
     Some(params) =>
       @json.from_json(params) catch {
         error =>
-          return self.send_response(w, @protocol.Response::{
+          return self.send_response(w, {
             id: request.id,
             ok: false,
             payload: None,
-            error: Some(@protocol.ErrorShape::{
+            error: Some({
               code: "invalid_params",
               message: "Invalid ACP session params: \{error}",
               details: None,
@@ -879,11 +790,11 @@ async fn Gateway::handle_acp_sessions_create_method(
           })
       }
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing ACP session params",
           details: None,
@@ -907,18 +818,18 @@ async fn Gateway::handle_acp_sessions_create_method(
       metadata=params.metadata.unwrap_or({}),
     ) {
     Ok(session) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "status": "attached", "session": session.to_json() }),
         error: None,
       })
     Err(error) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "session_create_failed",
           message: error,
           details: None,
@@ -935,63 +846,25 @@ async fn Gateway::handle_acp_sessions_reset_method(
   request : @protocol.Request,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let params = match request.params {
-    Some(params) => params
-    None =>
-      return self.send_response(w, @protocol.Response::{
+  let session_id = match
+    acp_required_string_param(request, "session_id", "ACP session reset") {
+    Ok(session_id) => session_id
+    Err(error) =>
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "missing_params",
-          message: "Missing session_id parameter",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
-      })
-  }
-  let session_id = match params {
-    String(id) => id
-    Object(obj) =>
-      match obj.get("session_id") {
-        Some(String(id)) => id
-        _ =>
-          return self.send_response(w, @protocol.Response::{
-            id: request.id,
-            ok: false,
-            payload: None,
-            error: Some(@protocol.ErrorShape::{
-              code: "missing_session_id",
-              message: "Missing session_id in params",
-              details: None,
-              retryable: None,
-              retry_after_ms: None,
-            }),
-          })
-      }
-    _ =>
-      return self.send_response(w, @protocol.Response::{
-        id: request.id,
-        ok: false,
-        payload: None,
-        error: Some(@protocol.ErrorShape::{
-          code: "invalid_params",
-          message: "Invalid ACP session reset parameters",
-          details: None,
-          retryable: None,
-          retry_after_ms: None,
-        }),
+        error: Some(error),
       })
   }
   let session = match self.acp_runtime().get_session(session_id) {
     Some(session) => session
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "session_not_found",
           message: "ACP session not found: \{session_id}",
           details: None,
@@ -1002,7 +875,7 @@ async fn Gateway::handle_acp_sessions_reset_method(
   }
   match self.request_acp_session_reset(session) {
     Ok(session) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({
@@ -1016,11 +889,11 @@ async fn Gateway::handle_acp_sessions_reset_method(
         error: None,
       })
     Err(error) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "session_reset_failed",
           message: error,
           details: None,
@@ -1041,11 +914,11 @@ async fn Gateway::handle_acp_sessions_run_method(
     Some(params) =>
       @json.from_json(params) catch {
         error =>
-          return self.send_response(w, @protocol.Response::{
+          return self.send_response(w, {
             id: request.id,
             ok: false,
             payload: None,
-            error: Some(@protocol.ErrorShape::{
+            error: Some({
               code: "invalid_params",
               message: "Invalid ACP run params: \{error}",
               details: None,
@@ -1055,11 +928,11 @@ async fn Gateway::handle_acp_sessions_run_method(
           })
       }
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing ACP run params",
           details: None,
@@ -1071,11 +944,11 @@ async fn Gateway::handle_acp_sessions_run_method(
   let session = match self.acp_runtime().get_session(params.session_id) {
     Some(session) => session
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "session_not_found",
           message: "ACP session not found: \{params.session_id}",
           details: None,
@@ -1087,11 +960,11 @@ async fn Gateway::handle_acp_sessions_run_method(
   let target = match self.acp_runtime().get_target(session.target_id) {
     Some(target) => target
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "target_not_found",
           message: "ACP target not found: \{session.target_id}",
           details: None,
@@ -1118,12 +991,7 @@ async fn Gateway::handle_acp_sessions_run_method(
           error: None,
         }
       } else {
-        @protocol.Response::{
-          id: request.id,
-          ok: false,
-          payload: None,
-          error: entry.error,
-        }
+        { id: request.id, ok: false, payload: None, error: entry.error }
       }
       return self.send_response(w, response)
     }
@@ -1145,11 +1013,11 @@ async fn Gateway::handle_acp_sessions_run_method(
     ) {
     Ok(plan) => plan
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "launch_plan_failed",
           message: error,
           details: None,
@@ -1188,7 +1056,7 @@ async fn Gateway::handle_acp_sessions_run_method(
     status: "accepted",
     accepted_at: current_time_ms(),
   }
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({
@@ -1433,7 +1301,7 @@ async fn Gateway::handle_cancel_acp_run(
       })
   }
   self.handle_acp_runs_cancel_method(
-    @protocol.Request::{
+    {
       id: self.uuid.v4().to_string(),
       rpc_method: "acp.runs.cancel",
       params: Some(AcpRunCancelParams::{ run_id, }.to_json()),
@@ -1662,7 +1530,7 @@ async fn Gateway::handle_run_acp_session(
       })
   }
   self.handle_acp_sessions_run_method(
-    @protocol.Request::{
+    {
       id: self.uuid.v4().to_string(),
       rpc_method: "acp.sessions.run",
       params: Some(AcpSessionRunParams::{ ..params, session_id, }.to_json()),

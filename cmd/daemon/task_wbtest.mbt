@@ -5,7 +5,7 @@ test "Task::to_json for Running variant" {
     id: @uuid.parse("123e4567-e89b-12d3-a456-426614174000"),
     cwd: "/tmp/running",
     port: 8080,
-    status: @server.Idle,
+    status: Idle,
     queued_messages: [],
     created: @clock.Timestamp::from_ms(1000),
     updated: @clock.Timestamp::from_ms(2000),
@@ -75,7 +75,7 @@ test "Task::from_json for Running variant with idle status" {
   assert_true(running.id == @uuid.parse("123e4567-e89b-12d3-a456-426614174000"))
   assert_true(running.cwd == "/tmp/running")
   assert_true(running.port == 8080)
-  assert_true(running.status is @server.Idle)
+  assert_true(running.status is Idle)
 }
 
 ///|
@@ -95,7 +95,7 @@ test "Task::from_json for Running variant with generating status" {
   let task : Task = @json.from_json(json)
   guard task is Running(running) else { fail("Expected Running variant") }
   assert_true(running.name == Some("generating-task"))
-  assert_true(running.status is @server.Busy)
+  assert_true(running.status is Busy)
 }
 
 ///|
@@ -124,7 +124,7 @@ test "Task roundtrip: Running -> JSON -> Task" {
     id: @uuid.parse("323e4567-e89b-12d3-a456-426614174000"),
     cwd: "/tmp/roundtrip",
     port: 7070,
-    status: @server.Idle,
+    status: Idle,
     queued_messages: [],
     created: @clock.Timestamp::from_ms(5000),
     updated: @clock.Timestamp::from_ms(6000),

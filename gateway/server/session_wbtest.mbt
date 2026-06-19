@@ -1,7 +1,7 @@
 ///|
 async test "SessionManager persists and reloads sessions" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
-    let session_dir = @path.Path(dir).join(@path.Path("sessions")).to_string()
+    let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
     let manager = SessionManager::{ sessions: {}, session_dir }
     let entry = SessionEntry::{
       session_id: "conversation-1",
@@ -34,9 +34,9 @@ async test "SessionManager persists and reloads sessions" {
 ///|
 async test "SessionManager reset_and_save removes persisted sessions" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
-    let session_dir = @path.Path(dir).join(@path.Path("sessions")).to_string()
+    let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
     let manager = SessionManager::{ sessions: {}, session_dir }
-    manager.save_entry("session-1", SessionEntry::{
+    manager.save_entry("session-1", {
       session_id: "conversation-1",
       title: None,
       updated_at: 1,
@@ -61,9 +61,9 @@ async test "SessionManager reset_and_save removes persisted sessions" {
 ///|
 async test "SessionManager preserves unrelated persisted sessions across updates and reset" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
-    let session_dir = @path.Path(dir).join(@path.Path("sessions")).to_string()
+    let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
     let manager = SessionManager::{ sessions: {}, session_dir }
-    manager.save_entry("direct:user:1", SessionEntry::{
+    manager.save_entry("direct:user:1", {
       session_id: "conversation-1",
       title: None,
       updated_at: 1,
@@ -76,7 +76,7 @@ async test "SessionManager preserves unrelated persisted sessions across updates
       linked_proposal_id: None,
       linked_run_id: None,
     })
-    manager.save_entry("channel:feishu:default:chat-1", SessionEntry::{
+    manager.save_entry("channel:feishu:default:chat-1", {
       session_id: "conversation-2",
       title: None,
       updated_at: 2,
@@ -109,9 +109,9 @@ async test "SessionManager preserves unrelated persisted sessions across updates
 ///|
 async test "SessionManager persists plan mode state" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
-    let session_dir = @path.Path(dir).join(@path.Path("sessions")).to_string()
+    let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
     let manager = SessionManager::{ sessions: {}, session_dir }
-    manager.save_entry("channel:feishu:default:chat-1:thread-1", SessionEntry::{
+    manager.save_entry("channel:feishu:default:chat-1:thread-1", {
       session_id: "conversation-2",
       title: None,
       updated_at: 2,
@@ -119,7 +119,7 @@ async test "SessionManager persists plan mode state" {
       model_override: None,
       provider_override: Some("openai"),
       cwd: Some("/repo/b"),
-      plan_mode: Some(PlanModeState::{
+      plan_mode: Some({
         request_text: "Analyze the parcel.",
         notes: ["Focus on land comps."],
         latest_candidate: @job.draft_job_proposal(
@@ -152,9 +152,9 @@ async test "SessionManager persists plan mode state" {
 ///|
 async test "SessionManager persists cowork messages and linked ids" {
   @fsx.with_temporary_directory("gateway-session-XXXXXX", dir => {
-    let session_dir = @path.Path(dir).join(@path.Path("sessions")).to_string()
+    let session_dir = @path.Path(dir).join(Path("sessions")).to_string()
     let manager = SessionManager::{ sessions: {}, session_dir }
-    manager.save_entry("cowork:session-1", SessionEntry::{
+    manager.save_entry("cowork:session-1", {
       session_id: "conversation-9",
       title: Some("Parcel Planning"),
       updated_at: 9,
@@ -164,7 +164,7 @@ async test "SessionManager persists cowork messages and linked ids" {
       cwd: Some("/repo/c"),
       plan_mode: None,
       messages: [
-        SessionMessage::{
+        {
           id: "msg-1",
           role: "user",
           kind: "user",

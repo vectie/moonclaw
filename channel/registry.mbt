@@ -12,7 +12,7 @@ pub struct ChannelRegistry {
 
 ///|
 pub fn ChannelRegistry::new() -> ChannelRegistry {
-  ChannelRegistry::{ channels: {} }
+  { channels: {} }
 }
 
 ///|
@@ -21,7 +21,7 @@ pub fn ChannelRegistry::register(
   channel : &Channel,
 ) -> Unit {
   let channel_id = channel.id()
-  self.channels[channel_id] = ChannelEntry::{
+  self.channels[channel_id] = {
     channel,
     config: default_config(),
     running_accounts: [],
@@ -59,7 +59,7 @@ pub fn ChannelRegistry::configure(
       entry.channel.configure(config)
       Ok(())
     }
-    None => Err(ChannelError::Unknown(message="Channel not found: \{id}"))
+    None => Err(Unknown(message="Channel not found: \{id}"))
   }
 }
 
@@ -81,7 +81,7 @@ pub async fn ChannelRegistry::start(
         }
         Err(e) => Err(e)
       }
-    None => Err(ChannelError::Unknown(message="Channel not found: \{id}"))
+    None => Err(Unknown(message="Channel not found: \{id}"))
   }
 }
 
@@ -102,7 +102,7 @@ pub async fn ChannelRegistry::stop(
         }
         Err(e) => Err(e)
       }
-    None => Err(ChannelError::Unknown(message="Channel not found: \{id}"))
+    None => Err(Unknown(message="Channel not found: \{id}"))
   }
 }
 
@@ -134,7 +134,7 @@ pub fn ChannelRegistry::get_dock(
 ) -> ChannelDock? {
   match self.channels.get(id) {
     Some(entry) =>
-      Some(ChannelDock::{
+      Some({
         id: entry.channel.id(),
         meta: entry.channel.meta(),
         capabilities: entry.channel.capabilities(),

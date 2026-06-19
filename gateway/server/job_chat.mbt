@@ -14,7 +14,7 @@ fn Gateway::job_reply_message(
   incoming : @channel.Message,
   content : String,
 ) -> @channel.Message {
-  @channel.Message::{
+  {
     id: self.uuid.v4().to_string(),
     channel: channel_id,
     from: account_id,
@@ -63,7 +63,7 @@ async fn Gateway::save_plan_mode_session(
   state : PlanModeState?,
   updated_at : Int,
 ) -> Unit {
-  let existing = session.unwrap_or(SessionEntry::{
+  let existing = session.unwrap_or({
     session_id: session_key,
     title: None,
     updated_at,
@@ -76,7 +76,7 @@ async fn Gateway::save_plan_mode_session(
     linked_proposal_id: None,
     linked_run_id: None,
   })
-  self.sessions.save_entry(session_key, SessionEntry::{
+  self.sessions.save_entry(session_key, {
     ..existing,
     updated_at,
     plan_mode: state,
@@ -92,7 +92,7 @@ fn Gateway::waiting_job_scoped_match_score(
   account_id : String,
   message : @channel.Message,
 ) -> Int {
-  guard run.status is @job.RunStatus::WaitingForInput else { return 0 }
+  guard run.status is WaitingForInput else { return 0 }
   let target = match self.job_notification_target(definition) {
     Some(target) => target
     None => return 0
@@ -118,7 +118,7 @@ fn Gateway::latest_waiting_job_for_message(
 ) -> (@job.JobDefinition, @job.JobRun)? {
   let matches : Array[(Int, @job.JobDefinition, @job.JobRun)] = []
   for run in self.job_runtime().store().list_runs() {
-    guard run.status is @job.RunStatus::WaitingForInput else { continue }
+    guard run.status is WaitingForInput else { continue }
     let definition = match
       self.job_runtime().store().get_definition(run.job_id) {
       Some(definition) => definition
@@ -177,8 +177,7 @@ fn Gateway::definition_initial_input(
 ) -> Json? {
   let mut latest : @job.JobProposal? = None
   for proposal in self.job_runtime().store().list_job_proposals() {
-    guard proposal.job_id == Some(definition_id) &&
-      proposal.status is @job.JobProposalStatus::Confirmed else {
+    guard proposal.job_id == Some(definition_id) && proposal.status is Confirmed else {
       continue
     }
     match latest {
@@ -359,10 +358,7 @@ async fn Gateway::handle_waiting_job_reply(
     Some(matched) => matched
     None => return None
   }
-  let resume_input = message_resume_input(@channel.Message::{
-    ..message,
-    content: resume_text,
-  })
+  let resume_input = message_resume_input({ ..message, content: resume_text })
   let merged_input = @job.merge_initial_input_for_resume(
     self.definition_initial_input(definition.id),
     resume_input,
@@ -496,7 +492,7 @@ fn channel_memory_query(
     account_id=Some(account_id),
     recipient=Some(recipient),
     thread_id~,
-    status=Some(@job.MemoryStatus::Active),
+    status=Some(Active),
   )
 }
 
@@ -684,7 +680,7 @@ async fn Gateway::maybe_notify_active_jobs(self : Gateway) -> Unit {
       Some(target) => target
       None => continue
     }
-    if target.verbosity is @job.NotificationVerbosity::Off {
+    if target.verbosity is Off {
       continue
     }
     let events = self.job_runtime().store().list_run_events(run.id)
@@ -773,7 +769,7 @@ async fn Gateway::handle_proposal_command(
     account_id,
     message.to,
     message.thread_id,
-    @job.NotificationVerbosity::Normal,
+    Normal,
   )
   let reply = self.job_reply_message(
     channel_id,
@@ -822,7 +818,7 @@ async fn Gateway::handle_plan_mode_command(
   self.save_plan_mode_session(
     session_key,
     session,
-    Some(PlanModeState::{
+    Some({
       request_text: normalized_request_text,
       notes: [],
       latest_candidate: candidate,
@@ -885,7 +881,7 @@ async fn Gateway::handle_plan_mode_followup(
   self.save_plan_mode_session(
     session_key,
     self.sessions.get(session_key),
-    Some(PlanModeState::{
+    Some({
       request_text: state.request_text,
       notes,
       latest_candidate: candidate,
@@ -959,7 +955,7 @@ async fn Gateway::handle_promote_plan_command(
       recipient=Some(message.to),
       thread_id=message.thread_id,
     )
-    PlanModeState::{
+    {
       request_text: state.request_text,
       notes,
       latest_candidate: candidate,
@@ -986,7 +982,7 @@ async fn Gateway::handle_promote_plan_command(
     account_id,
     message.to,
     message.thread_id,
-    @job.NotificationVerbosity::Normal,
+    Normal,
   )
   let reply = self.job_reply_message(
     channel_id,
@@ -1055,7 +1051,7 @@ async fn Gateway::handle_preview_plan_command(
       recipient=Some(message.to),
       thread_id=message.thread_id,
     )
-    PlanModeState::{
+    {
       request_text: state.request_text,
       notes,
       latest_candidate: candidate,
@@ -1379,7 +1375,7 @@ async fn Gateway::handle_job_chat_command(
       None => ()
     }
   }
-  if action is Some(@job.JobChatAction::Resume(_)) {
+  if action is Some(Resume(_)) {
     match self.handle_waiting_job_reply(channel_id, account_id, message) {
       Some(reply) => return Some(reply)
       None =>

@@ -16,3 +16,5 @@ import {
   "vectie/moonclaw/internal/pino",
   "moonbitlang/core/test",
 }
+
+supported_targets = "native"

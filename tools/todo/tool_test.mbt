@@ -1306,7 +1306,7 @@ async test "todo_write/update_with_notes" (t : @test.Test) {
     let result = @todo.new_tool(todo_list).call({
       "action": "update",
       "task_id": "ac8a366d",
-      "notes": "Need to consider edge cases and backward compatibility",
+      "notes": "Need to consider edge cases and migration impact",
       "status": "in_progress",
     })
     json_inspect(result, content=[
@@ -1319,7 +1319,7 @@ async test "todo_write/update_with_notes" (t : @test.Test) {
               "content": "Implement feature X",
               "created_at": "Tick:3",
               "id": "ac8a366d",
-              "notes": "Need to consider edge cases and backward compatibility",
+              "notes": "Need to consider edge cases and migration impact",
               "priority": "Medium",
               "status": "InProgress",
               "updated_at": "Tick:5",
@@ -1331,7 +1331,7 @@ async test "todo_write/update_with_notes" (t : @test.Test) {
               "content": "Implement feature X",
               "created_at": "Tick:3",
               "id": "ac8a366d",
-              "notes": "Need to consider edge cases and backward compatibility",
+              "notes": "Need to consider edge cases and migration impact",
               "priority": "Medium",
               "status": "InProgress",
               "updated_at": "Tick:5",

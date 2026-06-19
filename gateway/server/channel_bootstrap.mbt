@@ -1,15 +1,13 @@
 ///|
 async fn moonclaw_config_json(home : String, cwd : String) -> Json? {
   let project_path = @path.Path(cwd)
-    .join(@path.Path(".moonclaw"))
-    .join(@path.Path("moonclaw.json"))
+    .join(Path(".moonclaw"))
+    .join(Path("moonclaw.json"))
     .to_string()
-  let home_root_path = @path.Path(home)
-    .join(@path.Path("moonclaw.json"))
-    .to_string()
+  let home_root_path = @path.Path(home).join(Path("moonclaw.json")).to_string()
   let user_path = @path.Path(home)
-    .join(@path.Path(".moonclaw"))
-    .join(@path.Path("moonclaw.json"))
+    .join(Path(".moonclaw"))
+    .join(Path("moonclaw.json"))
     .to_string()
 
   let home_root_json = if @fsx.exists(home_root_path) {
@@ -229,7 +227,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
           Some(account) => {
             accounts["default"] = account
             if channel_enabled {
-              runtimes.push(PersistedChannelAccount::{
+              runtimes.push({
                 account_id: "default",
                 config: account,
                 auto_start: true,
@@ -247,11 +245,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
         }
         accounts[account_id] = account
         if channel_enabled {
-          runtimes.push(PersistedChannelAccount::{
-            account_id,
-            config: account,
-            auto_start: true,
-          })
+          runtimes.push({ account_id, config: account, auto_start: true })
         }
       }
     }
@@ -260,7 +254,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
         Some(account) => {
           accounts["default"] = account
           if channel_enabled {
-            runtimes.push(PersistedChannelAccount::{
+            runtimes.push({
               account_id: "default",
               config: account,
               auto_start: true,
@@ -287,11 +281,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
     accounts,
     global_settings,
   }
-  Some(PersistedChannelState::{
-    channel_id: "feishu",
-    config: channel_config,
-    accounts: runtimes,
-  })
+  Some({ channel_id: "feishu", config: channel_config, accounts: runtimes })
 }
 
 ///|
@@ -351,7 +341,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
           Some(account) => {
             accounts["default"] = account
             if channel_enabled {
-              runtimes.push(PersistedChannelAccount::{
+              runtimes.push({
                 account_id: "default",
                 config: account,
                 auto_start: true,
@@ -369,11 +359,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
         }
         accounts[account_id] = account
         if channel_enabled {
-          runtimes.push(PersistedChannelAccount::{
-            account_id,
-            config: account,
-            auto_start: true,
-          })
+          runtimes.push({ account_id, config: account, auto_start: true })
         }
       }
     }
@@ -382,7 +368,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
         Some(account) => {
           accounts["default"] = account
           if channel_enabled {
-            runtimes.push(PersistedChannelAccount::{
+            runtimes.push({
               account_id: "default",
               config: account,
               auto_start: true,
@@ -404,11 +390,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
     accounts,
     global_settings,
   }
-  Some(PersistedChannelState::{
-    channel_id: "weixin",
-    config: channel_config,
-    accounts: runtimes,
-  })
+  Some({ channel_id: "weixin", config: channel_config, accounts: runtimes })
 }
 
 ///|

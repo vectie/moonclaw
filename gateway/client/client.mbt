@@ -174,7 +174,7 @@ pub(all) struct ChannelMutationPayload {
 ///|
 pub async fn Client::new(config : ClientConfig) -> Client {
   let uuid = @uuid.generator(@rand.chacha8())
-  Client::{
+  {
     base_url: config.base_url,
     token: config.token,
     http: @http.Client::new(config.base_url),
@@ -191,15 +191,15 @@ pub async fn Client::connect(
   let connect_params = @protocol.ConnectParams::{
     min_protocol: @protocol.PROTOCOL_VERSION,
     max_protocol: @protocol.PROTOCOL_VERSION,
-    client: @protocol.ClientInfo::{
+    client: {
       id: self.uuid.v4().to_string(),
       display_name: Some("moonclaw-client"),
       version: Some(@buildinfo.version.to_string()),
       platform: None,
-      mode: @protocol.ClientMode::Cli,
+      mode: Cli,
     },
-    auth: @protocol.AuthCredentials::{ token: self.token, password: None },
-    role: @protocol.ClientRole::Operator,
+    auth: { token: self.token, password: None },
+    role: Operator,
     scopes: Some(["operator.admin"]),
   }
   let request = @protocol.Request::{
@@ -1053,7 +1053,7 @@ async fn Client::send_rpc(
       Some(e)
     }
   }
-  Ok(@protocol.Response::{ id: request.id, ok, payload, error })
+  Ok({ id: request.id, ok, payload, error })
 }
 
 ///|

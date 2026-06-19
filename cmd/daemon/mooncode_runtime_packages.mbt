@@ -189,7 +189,7 @@ async fn mooncode_runtime_turn_package_manifest(
     "detail": "MoonClaw native runtime created a packageable MoonBook artifact.",
     "command_packet": mooncode_json_object_field_or_empty(command, "packet"),
     "owner": mooncode_runtime_turn_package_owner(),
-    "next_runtime_step": "Moondesk can review this MoonClaw-built candidate through the MoonCode package panel; MoonClaw or standalone MoonCode owns follow-up rebuild and verification events.",
+    "next_runtime_step": "Moondesk can review this MoonClaw-built candidate through the MoonCode package panel; MoonClaw owns follow-up rebuild and verification events behind the MoonCode contract.",
   }
 }
 
@@ -414,7 +414,7 @@ fn mooncode_runtime_turn_package_owner() -> Json {
     "runtime": "moonclaw",
     "artifact": "moonbook",
     "package": "moonbook",
-    "extractable_component": "mooncode",
+    "standalone_component": "mooncode",
   }
 }
 

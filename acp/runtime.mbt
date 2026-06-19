@@ -59,14 +59,14 @@ pub struct AcpRuntime {
 
 ///|
 fn root_config_path(root : String) -> String {
-  @path.Path(root).join(@path.Path("moonclaw.json")).to_string()
+  @path.Path(root).join(Path("moonclaw.json")).to_string()
 }
 
 ///|
 fn nested_config_path(root : String) -> String {
   @path.Path(root)
-  .join(@path.Path(".moonclaw"))
-  .join(@path.Path("moonclaw.json"))
+  .join(Path(".moonclaw"))
+  .join(Path("moonclaw.json"))
   .to_string()
 }
 
@@ -83,15 +83,15 @@ fn config_paths(home : String, cwd : String) -> Array[String] {
 ///|
 fn acp_state_path(home : String) -> String {
   @path.Path(home)
-  .join(@path.Path(".moonclaw"))
-  .join(@path.Path("acp_sessions.json"))
+  .join(Path(".moonclaw"))
+  .join(Path("acp_sessions.json"))
   .to_string()
 }
 
 ///|
 async fn ensure_acp_state_parent(home : String) -> Unit {
   @fsx.make_directory(
-    @path.Path(home).join(@path.Path(".moonclaw")).to_string(),
+    @path.Path(home).join(Path(".moonclaw")).to_string(),
     recursive=true,
   ) catch {
     _ => ()
@@ -182,7 +182,7 @@ fn load_targets_from_config(json : Json) -> Map[String, AcpTarget] {
       Some(backend) => backend
       None => "codex"
     }
-    targets[target_id] = AcpTarget::{
+    targets[target_id] = {
       id: target_id,
       backend,
       label: target_label(target_id, Some(raw)),

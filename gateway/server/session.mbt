@@ -6,7 +6,7 @@ struct PersistedSession {
 
 ///|
 fn SessionManager::store_file(self : SessionManager) -> String {
-  @path.Path(self.session_dir).join(@path.Path("sessions.json")).to_string()
+  @path.Path(self.session_dir).join(Path("sessions.json")).to_string()
 }
 
 ///|
@@ -36,7 +36,7 @@ pub async fn SessionManager::save(self : SessionManager) -> Unit {
   }
   let sessions : Array[PersistedSession] = []
   for session_key, entry in self.sessions {
-    sessions.push(PersistedSession::{ session_key, entry })
+    sessions.push({ session_key, entry })
   }
   let content = sessions.to_json().stringify()
   @fsx.write_to_file(self.store_file(), content)

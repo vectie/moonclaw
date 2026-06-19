@@ -114,7 +114,7 @@ pub fn new() -> @tool.Tool[DelegateRunResult] {
           "Parent outputs will not be included."
         },
       ].join(" ")
-      @tool.ok(DelegateRunResult::{
+      @tool.ok({
         title,
         request_text,
         expected_output,

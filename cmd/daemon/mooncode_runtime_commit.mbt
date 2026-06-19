@@ -195,7 +195,7 @@ fn mooncode_runtime_turn_commit_result(
       "runtime": "moonclaw",
       "artifact": "moonbook",
       "review": "moonbook",
-      "extractable_component": "mooncode",
+      "standalone_component": "mooncode",
     },
   }
 }

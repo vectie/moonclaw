@@ -5,6 +5,9 @@ This document describes the current implementation, not the earlier design draft
 Expected behavior reference:
 
 - [expected_behaviors/README.md](expected_behaviors/README.md)
+- [executable_book_runtime_boundary.md](executable_book_runtime_boundary.md)
+
+The executable-book boundary is: MoonClaw owns agent, task, session, and runtime primitives; MoonBook owns durable book truth; Moondesk projects MoonWiki and MoonCode surfaces; Moontown coordinates standing goals and book-to-book work. The executable-book coding API is `/v1/code/*`; generic `/v1/task*` routes remain separate for background jobs.
 
 ## Top-Level Entry Points
 
@@ -543,7 +546,7 @@ cmd/main/main.mbt
     -> @model.load(...)
     -> Moonclaw::new(...) or Moonclaw::resume_(...)
     -> @tui.TUI::new()
-    -> wire submit / ctrl-c / ctrl-d / ctrl-o callbacks
+    -> terminal submit / ctrl-c / ctrl-d / ctrl-o callbacks
     -> attach moonclaw.agent event listener
     -> spawn TUI event loop
     -> loop moonclaw.agent.start() while running
@@ -708,7 +711,7 @@ Important current semantics:
 
 ## Feishu Extension Architecture
 
-MoonClaw does not yet implement the full OpenClaw-style plugin runtime. The current extension model is smaller:
+MoonClaw does not yet implement the full MoonClaw plugin runtime. The current extension model is smaller:
 
 ```text
 ChannelExtension trait
@@ -733,7 +736,7 @@ It does not currently provide:
 
 - WebSocket mode
 - richer security verification
-- media/thread/action parity with the OpenClaw reference
+- media/thread/action parity with the older gateway reference
 
 ## Current Reality vs Older Docs
 

@@ -35,7 +35,7 @@ impl @json.FromJson for ChatCompletionChoice with fn from_json(
   json_path : @json.JsonPath,
 ) -> ChatCompletionChoice {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   let finish_reason = match json.get("finish_reason") {
     Some(Null) => None
@@ -54,11 +54,11 @@ impl @json.FromJson for ChatCompletionChoice with fn from_json(
     _ => 0
   }
   guard json.get("message") is Some(message) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'message' field"))
+    raise JsonDecodeError((json_path, "Missing 'message' field"))
   }
   let message : ChatCompletionMessage = @json.from_json(
     message,
     path=json_path.add_key("message"),
   )
-  ChatCompletionChoice::{ finish_reason, index, message }
+  { finish_reason, index, message }
 }

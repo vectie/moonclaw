@@ -18,7 +18,7 @@ struct ListFilesResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for ListFilesResult with output(
+pub impl Show for ListFilesResult with fn output(
   result : ListFilesResult,
   logger : &Logger,
 ) -> Unit {
@@ -85,7 +85,7 @@ async fn execute_list_files(
       is_hidden,
     })
   }
-  ListFilesResult::{
+  {
     path,
     entries: file_entries,
     total_count: file_entries.length(),

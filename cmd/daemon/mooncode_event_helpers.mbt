@@ -21,8 +21,8 @@ fn mooncode_task_event_kind(msg : String) -> String {
     "PostConversation" => "conversation_finished"
     "ContextPruned" => "context_pruned"
     "Pruned" => "context_event_pruned"
-    "Cancelled" => "agent_aborted"
-    "Failed" => "agent_aborted"
+    "Cancelled" => "runtime_aborted"
+    "Failed" => "runtime_aborted"
     _ => "runtime.\{msg}"
   }
 }
@@ -81,7 +81,7 @@ fn mooncode_task_event_rendered_text(desc : Json) -> String {
 ///|
 fn mooncode_task_event_structured_result(desc : Json) -> Json {
   match desc {
-    Json::Object(object) =>
+    Object(object) =>
       match object.get("result") {
         Some(value) => value
         None =>

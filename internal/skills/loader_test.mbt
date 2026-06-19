@@ -71,7 +71,7 @@ async test "load" (t : @test.Test) {
       )
     }
     inspect(
-      mock.text(content),
+      mock.show(content),
       content=(
         #|You are an AI assistant.
         #|
@@ -167,7 +167,7 @@ async test "load/empty" (t : @test.Test) {
       )
     }
     inspect(
-      mock.text(content),
+      mock.show(content),
       content=(
         #|You are an AI assistant.
         #|
@@ -268,7 +268,7 @@ async test "load/lowercase" (t : @test.Test) {
       )
     }
     inspect(
-      mock.text(content),
+      mock.show(content),
       content=(
         #|You are an AI assistant.
         #|
@@ -371,7 +371,7 @@ async test "load/invalid-skill" (t : @test.Test) {
       )
     }
     inspect(
-      mock.text(content),
+      mock.show(content),
       content=(
         #|You are an AI assistant.
         #|

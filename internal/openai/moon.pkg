@@ -13,6 +13,8 @@ import {
   "moonbitlang/core/test",
 }
 
+supported_targets = "native"
+
 import {
   "vectie/moonlib/os",
   "vectie/moonclaw/internal/mock",

@@ -5,7 +5,7 @@ fn parse_job_id_param(
   let params = match request.params {
     Some(params) => params
     None =>
-      return Err(@protocol.ErrorShape::{
+      return Err({
         code: "missing_params",
         message: "Missing job lookup parameters",
         details: None,
@@ -14,12 +14,11 @@ fn parse_job_id_param(
       })
   }
   match params {
-    String(id) => Ok(id)
     Object(obj) =>
       match obj.get("job_id") {
         Some(String(id)) => Ok(id)
         _ =>
-          Err(@protocol.ErrorShape::{
+          Err({
             code: "missing_job_id",
             message: "Missing job_id in params",
             details: None,
@@ -28,9 +27,9 @@ fn parse_job_id_param(
           })
       }
     _ =>
-      Err(@protocol.ErrorShape::{
+      Err({
         code: "invalid_params",
-        message: "Invalid job lookup parameters",
+        message: "Job lookup params must be an object with job_id",
         details: None,
         retryable: None,
         retry_after_ms: None,
@@ -45,7 +44,7 @@ fn parse_job_run_id_param(
   let params = match request.params {
     Some(params) => params
     None =>
-      return Err(@protocol.ErrorShape::{
+      return Err({
         code: "missing_params",
         message: "Missing job run lookup parameters",
         details: None,
@@ -54,12 +53,11 @@ fn parse_job_run_id_param(
       })
   }
   match params {
-    String(id) => Ok(id)
     Object(obj) =>
       match obj.get("run_id") {
         Some(String(id)) => Ok(id)
         _ =>
-          Err(@protocol.ErrorShape::{
+          Err({
             code: "missing_run_id",
             message: "Missing run_id in params",
             details: None,
@@ -68,9 +66,9 @@ fn parse_job_run_id_param(
           })
       }
     _ =>
-      Err(@protocol.ErrorShape::{
+      Err({
         code: "invalid_params",
-        message: "Invalid job run lookup parameters",
+        message: "Job run lookup params must be an object with run_id",
         details: None,
         retryable: None,
         retry_after_ms: None,
@@ -85,7 +83,7 @@ async fn Gateway::handle_jobs_list_method(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let jobs = self.job_runtime().store().list_definitions()
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "jobs": jobs.map(job => job.to_json()) }),
@@ -102,7 +100,7 @@ async fn Gateway::handle_jobs_get_method(
   let job_id = match parse_job_id_param(request) {
     Ok(job_id) => job_id
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -111,18 +109,18 @@ async fn Gateway::handle_jobs_get_method(
   }
   match self.job_runtime().store().get_definition(job_id) {
     Some(job) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "job": job.to_json() }),
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "job_not_found",
           message: "Job not found: \{job_id}",
           details: None,
@@ -143,11 +141,11 @@ async fn Gateway::handle_jobs_create_method(
     Some(params) =>
       @json.from_json(params) catch {
         error =>
-          return self.send_response(w, @protocol.Response::{
+          return self.send_response(w, {
             id: request.id,
             ok: false,
             payload: None,
-            error: Some(@protocol.ErrorShape::{
+            error: Some({
               code: "invalid_params",
               message: "Invalid job definition: \{error}",
               details: None,
@@ -157,11 +155,11 @@ async fn Gateway::handle_jobs_create_method(
           })
       }
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing job definition payload",
           details: None,
@@ -171,7 +169,7 @@ async fn Gateway::handle_jobs_create_method(
       })
   }
   self.job_runtime().register_definition(definition)
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "status": "created", "job": definition.to_json() }),
@@ -189,11 +187,11 @@ async fn Gateway::handle_jobs_update_method(
     Some(params) =>
       @json.from_json(params) catch {
         error =>
-          return self.send_response(w, @protocol.Response::{
+          return self.send_response(w, {
             id: request.id,
             ok: false,
             payload: None,
-            error: Some(@protocol.ErrorShape::{
+            error: Some({
               code: "invalid_params",
               message: "Invalid job definition: \{error}",
               details: None,
@@ -203,11 +201,11 @@ async fn Gateway::handle_jobs_update_method(
           })
       }
     None =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "missing_params",
           message: "Missing job definition payload",
           details: None,
@@ -217,11 +215,11 @@ async fn Gateway::handle_jobs_update_method(
       })
   }
   if self.job_runtime().store().get_definition(definition.id) is None {
-    return self.send_response(w, @protocol.Response::{
+    return self.send_response(w, {
       id: request.id,
       ok: false,
       payload: None,
-      error: Some(@protocol.ErrorShape::{
+      error: Some({
         code: "job_not_found",
         message: "Job not found: \{definition.id}",
         details: None,
@@ -231,7 +229,7 @@ async fn Gateway::handle_jobs_update_method(
     })
   }
   self.job_runtime().register_definition(definition)
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "status": "updated", "job": definition.to_json() }),
@@ -248,7 +246,7 @@ async fn Gateway::handle_jobs_run_method(
   let job_id = match parse_job_id_param(request) {
     Ok(job_id) => job_id
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -257,18 +255,18 @@ async fn Gateway::handle_jobs_run_method(
   }
   match self.trigger_job_definition(job_id) {
     Ok(run) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "status": "started", "run": run.to_json() }),
         error: None,
       })
     Err(error) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "job_run_failed",
           message: error,
           details: None,
@@ -288,7 +286,7 @@ async fn Gateway::handle_jobs_cancel_method(
   let job_id = match parse_job_id_param(request) {
     Ok(job_id) => job_id
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -297,18 +295,18 @@ async fn Gateway::handle_jobs_cancel_method(
   }
   match self.cancel_job_definition_run(job_id) {
     Ok(run) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "status": "cancelling", "run": run.to_json() }),
         error: None,
       })
     Err(error) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "job_cancel_failed",
           message: error,
           details: None,
@@ -328,7 +326,7 @@ async fn Gateway::handle_jobs_force_cancel_method(
   let job_id = match parse_job_id_param(request) {
     Ok(job_id) => job_id
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -337,18 +335,18 @@ async fn Gateway::handle_jobs_force_cancel_method(
   }
   match self.cancel_job_definition_run(job_id, force=true) {
     Ok(run) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "status": "force_cancelling", "run": run.to_json() }),
         error: None,
       })
     Err(error) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "job_force_cancel_failed",
           message: error,
           details: None,
@@ -366,7 +364,7 @@ async fn Gateway::handle_job_runs_list_method(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let runs = self.job_runtime().store().list_runs()
-  self.send_response(w, @protocol.Response::{
+  self.send_response(w, {
     id: request.id,
     ok: true,
     payload: Some({ "runs": runs.map(run => run.to_json()) }),
@@ -383,7 +381,7 @@ async fn Gateway::handle_job_runs_get_method(
   let run_id = match parse_job_run_id_param(request) {
     Ok(run_id) => run_id
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -392,7 +390,7 @@ async fn Gateway::handle_job_runs_get_method(
   }
   match self.job_runtime().store().get_run(run_id) {
     Some(run) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({
@@ -413,11 +411,11 @@ async fn Gateway::handle_job_runs_get_method(
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "job_run_not_found",
           message: "Job run not found: \{run_id}",
           details: None,
@@ -437,7 +435,7 @@ async fn Gateway::handle_job_ui_get_method(
   let run_id = match parse_job_run_id_param(request) {
     Ok(run_id) => run_id
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -453,18 +451,18 @@ async fn Gateway::handle_job_ui_get_method(
       handoffs=remote.handoffs,
     ) {
     Some(snapshot) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({ "snapshot": snapshot.to_json() }),
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "job_run_not_found",
           message: "Job run not found: \{run_id}",
           details: None,
@@ -484,7 +482,7 @@ async fn Gateway::handle_job_ui_events_method(
   let run_id = match parse_job_run_id_param(request) {
     Ok(run_id) => run_id
     Err(error) =>
-      return self.send_response(w, @protocol.Response::{
+      return self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
@@ -493,7 +491,7 @@ async fn Gateway::handle_job_ui_events_method(
   }
   match self.job_runtime().store().get_run(run_id) {
     Some(_) =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: true,
         payload: Some({
@@ -507,11 +505,11 @@ async fn Gateway::handle_job_ui_events_method(
         error: None,
       })
     None =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "job_run_not_found",
           message: "Job run not found: \{run_id}",
           details: None,

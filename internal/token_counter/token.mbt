@@ -120,7 +120,7 @@ fn Counter::count_tool(
 ) -> Int {
   let mut count = 0
   count += ToolOverhead
-  guard tool is @openai.Function(function)
+  guard tool is Function(function)
   count += self._count_string(function.name)
   count += 2 * self._count_string(function.description)
   let parameters = function.parameters.to_json().stringify(indent=2)

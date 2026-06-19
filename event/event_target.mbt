@@ -54,12 +54,7 @@ pub fn EventTarget::new(
     None => @uuid.generator(@rand.chacha8())
     Some(uuid) => uuid
   }
-  EventTarget::{
-    uuid,
-    clock,
-    queue: @aqueue.Queue::new(kind=Unbounded),
-    listeners: [],
-  }
+  { uuid, clock, queue: @aqueue.Queue::new(kind=Unbounded), listeners: [] }
 }
 
 ///|

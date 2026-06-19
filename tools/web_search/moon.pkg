@@ -4,3 +4,5 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
+
+supported_targets = "native"

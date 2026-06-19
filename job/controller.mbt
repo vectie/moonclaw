@@ -282,7 +282,7 @@ pub async fn ensure_controller_iteration_for_step(
   }
   let edge_id = "\{run.id}:edge:root:\{step.id}"
   if !controller_edge_exists(store, state.controller_job_id, edge_id) {
-    store.save_controller_lineage_edge(JobControllerLineageEdge::{
+    store.save_controller_lineage_edge({
       id: edge_id,
       controller_job_id: state.controller_job_id,
       from_iteration_id: root_iteration_id,
@@ -292,7 +292,7 @@ pub async fn ensure_controller_iteration_for_step(
       created_at: now_ms,
     })
   }
-  store.save_controller_state(JobControllerState::{
+  store.save_controller_state({
     ..state,
     active_iteration_ids: append_unique(
       state.active_iteration_ids,
@@ -320,7 +320,7 @@ pub async fn record_controller_child_run(
     Some(iteration) => iteration
     None => return ()
   }
-  store.save_controller_iteration(JobControllerIteration::{
+  store.save_controller_iteration({
     ..iteration,
     child_job_ids: append_unique(iteration.child_job_ids, child_job_id),
     child_run_ids: append_unique(iteration.child_run_ids, child_run_id),
@@ -336,22 +336,22 @@ pub async fn record_controller_child_run(
 ///|
 fn completed_iteration_status(status : RunStatus) -> String {
   match status {
-    RunStatus::Succeeded => "completed"
-    RunStatus::Failed => "failed"
-    RunStatus::Cancelled => "cancelled"
-    RunStatus::WaitingForInput => "waiting_input"
-    RunStatus::Pending => "pending"
-    RunStatus::Running => "active"
+    Succeeded => "completed"
+    Failed => "failed"
+    Cancelled => "cancelled"
+    WaitingForInput => "waiting_input"
+    Pending => "pending"
+    Running => "active"
   }
 }
 
 ///|
 fn completed_iteration_decision(status : RunStatus) -> String? {
   match status {
-    RunStatus::Succeeded => Some("accepted")
-    RunStatus::Failed => Some("rejected")
-    RunStatus::Cancelled => Some("cancelled")
-    RunStatus::Pending | RunStatus::Running | RunStatus::WaitingForInput => None
+    Succeeded => Some("accepted")
+    Failed => Some("rejected")
+    Cancelled => Some("cancelled")
+    Pending | Running | WaitingForInput => None
   }
 }
 
@@ -364,7 +364,7 @@ fn controller_decision_id(run_id : String, step_id : String) -> String {
 fn controller_next_iteration_id(
   run_id : String,
   step_id : String,
-  provided? : String? = None,
+  provided~ : String?,
 ) -> String {
   match provided {
     Some(id) if !id.trim().to_owned().is_blank() => id.trim().to_owned()
@@ -518,7 +518,7 @@ pub async fn record_controller_decision_from_output(
           )
           let reason = decision_reason(decision)
           let next_action = decision_next_action(decision)
-          store.save_controller_decision(JobControllerDecision::{
+          store.save_controller_decision({
             id: controller_decision_id(run.id, step.id),
             controller_job_id: state.controller_job_id,
             controller_run_id: run.id,
@@ -578,7 +578,7 @@ pub async fn record_controller_decision_from_output(
                     _ => {}
                   }
                   if store.get_controller_iteration(next_iteration_id) is None {
-                    store.save_controller_iteration(JobControllerIteration::{
+                    store.save_controller_iteration({
                       id: next_iteration_id,
                       controller_job_id: state.controller_job_id,
                       controller_run_id: run.id,
@@ -600,7 +600,7 @@ pub async fn record_controller_decision_from_output(
                       state.controller_job_id,
                       edge_id,
                     ) {
-                    store.save_controller_lineage_edge(JobControllerLineageEdge::{
+                    store.save_controller_lineage_edge({
                       id: edge_id,
                       controller_job_id: state.controller_job_id,
                       from_iteration_id: iteration_id,
@@ -610,7 +610,7 @@ pub async fn record_controller_decision_from_output(
                       created_at: now_ms,
                     })
                   }
-                  store.save_controller_state(JobControllerState::{
+                  store.save_controller_state({
                     ..state,
                     frontier: append_unique(state.frontier, next_iteration_id),
                     updated_at: now_ms,
@@ -646,23 +646,23 @@ pub async fn complete_controller_iteration_for_step(
     Some(iteration) => iteration
     None => return ()
   }
-  store.save_controller_iteration(JobControllerIteration::{
+  store.save_controller_iteration({
     ..iteration,
     status: completed_iteration_status(status),
     decision: completed_iteration_decision(status),
     updated_at: now_ms,
   })
-  let accepted = if status is RunStatus::Succeeded {
+  let accepted = if status is Succeeded {
     append_unique(state.accepted_iteration_ids, iteration_id)
   } else {
     state.accepted_iteration_ids
   }
-  let rejected = if status is RunStatus::Failed {
+  let rejected = if status is Failed {
     append_unique(state.rejected_iteration_ids, iteration_id)
   } else {
     state.rejected_iteration_ids
   }
-  store.save_controller_state(JobControllerState::{
+  store.save_controller_state({
     ..state,
     active_iteration_ids: without_value(
       state.active_iteration_ids,
@@ -670,7 +670,7 @@ pub async fn complete_controller_iteration_for_step(
     ),
     accepted_iteration_ids: accepted,
     rejected_iteration_ids: rejected,
-    best_iteration_id: if status is RunStatus::Succeeded {
+    best_iteration_id: if status is Succeeded {
       Some(iteration_id)
     } else {
       state.best_iteration_id
@@ -696,13 +696,13 @@ pub async fn complete_controller_run(
     Some(iteration) => iteration
     None => return ()
   }
-  store.save_controller_iteration(JobControllerIteration::{
+  store.save_controller_iteration({
     ..root_iteration,
     status: completed_iteration_status(status),
     decision: completed_iteration_decision(status),
     updated_at: now_ms,
   })
-  store.save_controller_state(JobControllerState::{
+  store.save_controller_state({
     ..state,
     active_iteration_ids: without_value(
       state.active_iteration_ids,

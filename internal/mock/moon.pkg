@@ -17,3 +17,5 @@ import {
   "moonbitlang/core/random",
   "moonbitlang/core/test",
 }
+
+supported_targets = "native"

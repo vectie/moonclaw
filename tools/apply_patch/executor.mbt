@@ -49,7 +49,7 @@ async fn apply_one_hunk(
       let original = @fsx.read_file(full_path) catch {
         err => raise ApplyError("Failed to read file \{full_path}: \{err}")
       }
-      let new_content = apply_chunks(original, chunks[:], full_path)
+      let new_content = apply_chunks(original, chunks, full_path)
       let dest_path = match move_path {
         Some(mp) => resolve_path(cwd, mp)
         None => full_path
@@ -96,7 +96,7 @@ fn apply_chunks(
   let mut line_index = 0
   for chunk in chunks {
     if chunk.change_context is Some(ctx) {
-      match seek_line(lines[:], ctx, line_index) {
+      match seek_line(lines, ctx, line_index) {
         Some(idx) => line_index = idx + 1
         None => raise ApplyError("Failed to find context '\{ctx}' in \{path}")
       }
@@ -112,12 +112,7 @@ fn apply_chunks(
       continue
     }
     match
-      seek_sequence(
-        lines[:],
-        chunk.old_lines[:],
-        line_index,
-        chunk.is_end_of_file,
-      ) {
+      seek_sequence(lines, chunk.old_lines, line_index, chunk.is_end_of_file) {
       Some(start_idx) => {
         replacements.push(
           (start_idx, chunk.old_lines.length(), chunk.new_lines),
@@ -133,7 +128,9 @@ fn apply_chunks(
     }
   }
   replacements.sort_by(fn(a, b) { a.0.compare(b.0) })
-  for i = replacements.length() - 1; i >= 0; i = i - 1 {
+  let mut i = replacements.length()
+  while i > 0 {
+    i -= 1
     let (start_idx, old_len, new_segment) = replacements[i]
     for _ in 0..<old_len {
       if start_idx < lines.length() {

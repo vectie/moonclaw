@@ -2,7 +2,7 @@
 
 This document describes the first Weixin channel slice implemented in MoonClaw.
 
-It is intentionally smaller than a full OpenClaw-style production extension. The goal is:
+It is intentionally smaller than a full MoonClaw production extension. The goal is:
 
 - receive Weixin Official Account webhooks
 - verify the handshake signature

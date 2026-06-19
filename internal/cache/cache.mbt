@@ -48,48 +48,50 @@ pub fn cache_messages(
 ) -> Array[@openai.ChatCompletionMessageParam] {
   let mut last_system : @openai.ChatCompletionSystemMessageParam? = None
   let cached = []
-  let messages = for messages = messages {
+  let mut remaining = messages
+  while true {
     if last_system is Some(system) {
       cached.push(
         @openai.system_message(content=cache_content_parts(system.content)),
       )
     }
-    match messages {
+    match remaining {
       [System(system), .. messages] => {
         last_system = Some(system)
-        continue messages
+        remaining = messages
+        continue
       }
-      _ => break messages
+      _ => break
     }
   }
   // find the last two user/tool messages.
   let user_tool_indices = []
-  for i in 0..<messages.length() {
-    match messages[i] {
+  for i in 0..<remaining.length() {
+    match remaining[i] {
       User(_) | Tool(_) => user_tool_indices.push(i)
       _ => continue
     }
   }
   match user_tool_indices {
     [] =>
-      for message in messages {
+      for message in remaining {
         cached.push(message)
       }
     [last] => {
       for i in 0..<last {
-        cached.push(messages[i])
+        cached.push(remaining[i])
       }
-      cached.push(cache_message(messages[last]))
+      cached.push(cache_message(remaining[last]))
     }
     [.., second_last, last] => {
       for i in 0..<second_last {
-        cached.push(messages[i])
+        cached.push(remaining[i])
       }
-      cached.push(cache_message(messages[second_last]))
+      cached.push(cache_message(remaining[second_last]))
       for i in (second_last + 1)..<last {
-        cached.push(messages[i])
+        cached.push(remaining[i])
       }
-      cached.push(cache_message(messages[last]))
+      cached.push(cache_message(remaining[last]))
     }
   }
   cached

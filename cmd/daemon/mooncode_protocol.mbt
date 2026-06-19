@@ -16,7 +16,7 @@ fn mooncode_native_capability_required_endpoints() -> Array[String] {
 ///|
 fn mooncode_native_capability_optional_endpoints() -> Array[String] {
   [
-    "/v1/mooncode/sessions?book_root=<path>&format=listing", "/v1/mooncode/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
+    "/v1/code/sessions?book_root=<path>&format=listing", "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
   ]
 }
 

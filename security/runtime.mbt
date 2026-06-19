@@ -70,12 +70,7 @@ fn persisted_state_path(home : String) -> String {
 
 ///|
 fn default_command_policy() -> CommandPolicy {
-  CommandPolicy::{
-    native: "auto",
-    native_skills: "auto",
-    restart: true,
-    owner_display: "raw",
-  }
+  { native: "auto", native_skills: "auto", restart: true, owner_display: "raw" }
 }
 
 ///|
@@ -164,7 +159,7 @@ fn configured_command_policy(json : Json?) -> CommandPolicy {
     Some(Object(root)) =>
       match root.get("commands") {
         Some(commands) =>
-          CommandPolicy::{
+          {
             native: json_string_at(commands, "native").unwrap_or("auto"),
             native_skills: json_string_at(commands, "nativeSkills").unwrap_or(
               "auto",
@@ -450,11 +445,11 @@ pub fn parse_security_chat_action(text : String) -> SecurityChatAction? {
     ""
   }
   match command {
-    "/pair" => Some(SecurityChatAction::Pair)
-    "/pair-status" => Some(SecurityChatAction::PairStatus)
-    "/revoke-pair" => Some(SecurityChatAction::RevokePair)
-    "/approve" if !arg.is_blank() => Some(SecurityChatAction::Approve(arg))
-    "/approvals" => Some(SecurityChatAction::Approvals)
+    "/pair" => Some(Pair)
+    "/pair-status" => Some(PairStatus)
+    "/revoke-pair" => Some(RevokePair)
+    "/approve" if !arg.is_blank() => Some(Approve(arg))
+    "/approvals" => Some(Approvals)
     _ => None
   }
 }

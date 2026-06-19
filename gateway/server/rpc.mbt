@@ -14,9 +14,7 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
             _ => return Err("Missing or invalid method")
           }
           let params = obj.get("params")
-          Ok(
-            @protocol.Frame::Req(@protocol.Request::{ id, rpc_method, params }),
-          )
+          Ok(Req({ id, rpc_method, params }))
         }
         Some(String("res")) => {
           let id = match obj.get("id") {
@@ -47,9 +45,7 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
               }
             None => None
           }
-          Ok(
-            @protocol.Frame::Res(@protocol.Response::{ id, ok, payload, error }),
-          )
+          Ok(Res({ id, ok, payload, error }))
         }
         Some(String("evt")) => {
           let event = match obj.get("event") {
@@ -57,14 +53,7 @@ fn parse_frame(json : Json) -> Result[@protocol.Frame, String] {
             _ => return Err("Missing or invalid event")
           }
           let payload = obj.get("payload")
-          Ok(
-            @protocol.Frame::Event(@protocol.EventFrame::{
-              event,
-              payload,
-              seq: None,
-              state_version: None,
-            }),
-          )
+          Ok(Event({ event, payload, seq: None, state_version: None }))
         }
         _ => Err("Invalid frame type")
       }
@@ -103,15 +92,15 @@ async fn Gateway::handle_rpc(
       })
   }
   match frame {
-    @protocol.Frame::Req(request) => self.handle_request_frame(request, w)
-    @protocol.Frame::Res(_) =>
+    Req(request) => self.handle_request_frame(request, w)
+    Res(_) =>
       raise json_error(400, "BadRequest", {
         "error": {
           "code": "unexpected_frame",
           "message": "Expected request frame",
         },
       })
-    @protocol.Frame::Event(_) =>
+    Event(_) =>
       raise json_error(400, "BadRequest", {
         "error": {
           "code": "unexpected_frame",
@@ -177,11 +166,11 @@ async fn Gateway::handle_request_frame(
     "acp.ui.get" => self.handle_acp_ui_get_method(request, w)
     "acp.ui.events" => self.handle_acp_ui_events_method(request, w)
     _ =>
-      self.send_response(w, @protocol.Response::{
+      self.send_response(w, {
         id: request.id,
         ok: false,
         payload: None,
-        error: Some(@protocol.ErrorShape::{
+        error: Some({
           code: "method_not_found",
           message: "Method not found: \{request.rpc_method}",
           details: None,

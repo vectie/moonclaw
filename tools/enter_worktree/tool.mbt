@@ -6,7 +6,7 @@ pub struct EnterWorktreeResult {
 } derive(ToJson, FromJson)
 
 ///|
-pub impl Show for EnterWorktreeResult with output(
+pub impl Show for EnterWorktreeResult with fn output(
   result : EnterWorktreeResult,
   logger : &Logger,
 ) -> Unit {
@@ -103,7 +103,7 @@ pub fn new(cwd : String) -> @tool.Tool[EnterWorktreeResult] {
       } else {
         "Existing worktree reused. Use this path explicitly in follow-up tools or shell commands."
       }
-      @tool.ok(EnterWorktreeResult::{ handle, created, note })
+      @tool.ok({ handle, created, note })
     },
   )
 }

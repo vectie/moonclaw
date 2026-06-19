@@ -398,11 +398,7 @@ async fn Gateway::fetch_starter_attachment(
         Ok(result) => result
         Err(error) => return Err("\{to_repr(error)}")
       }
-      Ok(StarterAttachmentFetchResult::{
-        content,
-        mime_type: fetched_mime_type,
-        note: None,
-      })
+      Ok({ content, mime_type: fetched_mime_type, note: None })
     }
     None =>
       Err(

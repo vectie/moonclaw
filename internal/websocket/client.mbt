@@ -9,7 +9,7 @@ pub fn ClientConfig::new(
   url~ : String,
   headers? : Map[String, String] = {},
 ) -> ClientConfig {
-  ClientConfig::{ url, headers }
+  { url, headers }
 }
 
 ///|
@@ -26,7 +26,7 @@ pub struct Message {
 
 ///|
 pub fn Message::new(kind~ : MessageKind, data~ : Bytes) -> Message {
-  Message::{ kind, data }
+  { kind, data }
 }
 
 ///|
@@ -71,12 +71,12 @@ pub struct Client {
 pub async fn Client::connect(config : ClientConfig) -> Client {
   try {
     let conn = @asyncws.connect(config.url, headers=config.headers)
-    Client::{
+    {
       conn,
       outbox: @aqueue.Queue::new(kind=Unbounded),
       on_message: None,
       on_close: None,
-      closed: Ref::Ref(false),
+      closed: Ref(false),
     }
   } catch {
     error => raise ConnectFailed(error.to_string())
@@ -182,10 +182,10 @@ async fn recv_message(conn : @asyncws.Conn) -> Message {
       error => raise ReceiveFailed(error.to_string())
     }
   let kind = match message.kind {
-    @asyncws.Text => Text
-    @asyncws.Binary => Binary
+    Text => Text
+    Binary => Binary
   }
-  Message::{ kind, data }
+  { kind, data }
 }
 
 ///|

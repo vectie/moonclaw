@@ -156,7 +156,7 @@ Reduce planner drift and fallback behavior.
 - Keep `job-planning/SKILL.md` as the primary contract.
 - Make planner prompt shorter and schema-dominant.
 - Add one strict repair pass for invalid output.
-- Keep parser compatibility only as a bounded guardrail.
+- Keep parser tolerance bounded and schema-driven.
 - Stop expanding alias tolerance indefinitely.
 
 ### Files likely involved
@@ -170,7 +170,7 @@ Reduce planner drift and fallback behavior.
 
 - planner usually returns the intended schema directly
 - under-decomposed fallback becomes much rarer
-- parser compatibility remains modest and intentional
+- parser tolerance remains modest and intentional
 
 ## Milestone 5: Better Missing-Input and Guessing Behavior
 

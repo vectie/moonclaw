@@ -231,7 +231,7 @@ async fn run_acp_analysis_runner(
     }
     None => ()
   }
-  Ok(AnalysisExecution::{
+  Ok({
     model_name,
     content: acp_result_content(result),
     conversation_id: Some(acp_run_id),

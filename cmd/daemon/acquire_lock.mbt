@@ -22,9 +22,10 @@ async fn acquire_lock(path : String) -> Result[@fs.File, DaemonInfo] {
         return Ok(file)
       }
       defer file.close()
-      let json = for ;; {
+      let mut json : Json? = None
+      while json is None {
         try {
-          break file.read_all().text() |> @json.parse()
+          json = Some(file.read_all().text() |> @json.parse())
         } catch {
           error =>
             if @async.is_being_cancelled() {
@@ -34,6 +35,10 @@ async fn acquire_lock(path : String) -> Result[@fs.File, DaemonInfo] {
               continue
             }
         }
+      }
+      let json = match json {
+        Some(json) => json
+        None => fail("unreachable")
       }
       let info : DaemonInfo = @json.from_json(json)
       return Err(info)

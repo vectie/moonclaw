@@ -49,13 +49,13 @@ pub impl @json.FromJson for ChatCompletion with fn from_json(
   json_path : @json.JsonPath,
 ) -> ChatCompletion {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   guard json.get("id") is Some(String(id)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'id' field"))
+    raise JsonDecodeError((json_path, "Missing 'id' field"))
   }
   guard json.get("choices") is Some(choices) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'choices' field"))
+    raise JsonDecodeError((json_path, "Missing 'choices' field"))
   }
   let choices : Array[ChatCompletionChoice] = @json.from_json(
     choices,
@@ -67,7 +67,7 @@ pub impl @json.FromJson for ChatCompletion with fn from_json(
     _ => 0
   }
   guard json.get("model") is Some(String(model)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'model' field"))
+    raise JsonDecodeError((json_path, "Missing 'model' field"))
   }
   let usage = match json.get("usage") {
     Some(Null) => None
@@ -84,7 +84,7 @@ pub impl @json.FromJson for ChatCompletion with fn from_json(
     Some(Null) => None
     Some(String(fingerprint)) => Some(fingerprint)
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "Expected 'system_fingerprint' to be a string"),
       )
     None => None
@@ -100,13 +100,5 @@ pub impl @json.FromJson for ChatCompletion with fn from_json(
     }
     None => None
   }
-  ChatCompletion::{
-    id,
-    choices,
-    created,
-    model,
-    usage,
-    system_fingerprint,
-    service_tier,
-  }
+  { id, choices, created, model, usage, system_fingerprint, service_tier }
 }

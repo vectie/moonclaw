@@ -7,3 +7,5 @@ import {
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/buildinfo",
 }
+
+supported_targets = "native"

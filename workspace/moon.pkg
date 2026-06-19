@@ -9,3 +9,5 @@ import {
   "moonbitlang/async",
   "moonbitlang/core/test",
 } for "wbtest"
+
+supported_targets = "native"

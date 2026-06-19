@@ -123,24 +123,18 @@ test "ChatCompletionBuilder" {
       choices=[
         chunk_choice(
           index=0,
-          delta=chunk_choice_delta(
-            content="Sure, I can",
-            role=ChatCompletionRole::Assistant,
-          ),
+          delta=chunk_choice_delta(content="Sure, I can", role=Assistant),
         ),
       ],
       system_fingerprint="fingerprint_abc",
-      service_tier=ChatCompletionServiceTier::Flex,
+      service_tier=Flex,
     ),
   )
   builder.add_chunk(
     chunk(id="chatcmpl-123", created=1677652288, model="gpt-4o", choices=[
       chunk_choice(
         index=0,
-        delta=chunk_choice_delta(
-          content=" help with that.",
-          role=ChatCompletionRole::Assistant,
-        ),
+        delta=chunk_choice_delta(content=" help with that.", role=Assistant),
       ),
     ]),
   )
@@ -148,7 +142,7 @@ test "ChatCompletionBuilder" {
     chunk(id="chatcmpl-123", created=1677652288, model="gpt-4o", choices=[
       chunk_choice(
         index=0,
-        delta=chunk_choice_delta(role=ChatCompletionRole::Assistant, tool_calls=[
+        delta=chunk_choice_delta(role=Assistant, tool_calls=[
           chunk_choice_delta_tool_call(
             index=0,
             id="tool_call_1",
@@ -162,7 +156,7 @@ test "ChatCompletionBuilder" {
     chunk(id="chatcmpl-123", created=1677652288, model="gpt-4o", choices=[
       chunk_choice(
         index=0,
-        delta=chunk_choice_delta(role=ChatCompletionRole::Assistant, tool_calls=[
+        delta=chunk_choice_delta(role=Assistant, tool_calls=[
           chunk_choice_delta_tool_call(
             index=0,
             function=chunk_choice_delta_tool_call_function(
@@ -183,7 +177,7 @@ test "ChatCompletionBuilder" {
       choices=[
         chunk_choice(
           index=0,
-          delta=chunk_choice_delta(role=ChatCompletionRole::Assistant, tool_calls=[
+          delta=chunk_choice_delta(role=Assistant, tool_calls=[
             chunk_choice_delta_tool_call(
               index=0,
               function=chunk_choice_delta_tool_call_function(
@@ -193,7 +187,7 @@ test "ChatCompletionBuilder" {
               ),
             ),
           ]),
-          finish_reason=ChatCompletionChoiceFinishReason::Stop,
+          finish_reason=Stop,
         ),
       ],
       usage=CompletionUsage::new(

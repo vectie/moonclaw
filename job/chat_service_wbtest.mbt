@@ -3,12 +3,12 @@ test "decide_active_job_notifications emits verbose progress and heartbeat" {
   let run = JobRun::{
     id: "run-1",
     job_id: "job-1",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(1_000),
@@ -20,27 +20,27 @@ test "decide_active_job_notifications emits verbose progress and heartbeat" {
     "job-1",
     run,
     [
-      JobRunEvent::{
+      {
         run_id: "run-1",
         job_id: "job-1",
         event_type: "step.started",
         timestamp: 1_050,
         step_id: Some("step-a"),
-        status: Some(RunStatus::Running),
+        status: Some(Running),
         message: "Starting step A",
         data: {},
       },
     ],
-    JobNotifyTarget::{
+    {
       channel_id: "feishu",
       account_id: "default",
       recipient: "oc_chat_1",
       thread_id: None,
-      verbosity: NotificationVerbosity::Verbose,
+      verbosity: Verbose,
       heartbeat_interval_ms: 100,
       warn_after_ms: 1_000,
     },
-    JobNotificationRuntimeState::{
+    {
       last_sent_at: 1_000,
       last_notified_event_count: 0,
       long_running_warned: false,
@@ -59,12 +59,12 @@ test "decide_active_job_notifications warns once for long-running jobs" {
   let run = JobRun::{
     id: "run-2",
     job_id: "job-2",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(1_000),
@@ -76,16 +76,16 @@ test "decide_active_job_notifications warns once for long-running jobs" {
     "job-2",
     run,
     [],
-    JobNotifyTarget::{
+    {
       channel_id: "feishu",
       account_id: "default",
       recipient: "oc_chat_1",
       thread_id: None,
-      verbosity: NotificationVerbosity::Normal,
+      verbosity: Normal,
       heartbeat_interval_ms: 100,
       warn_after_ms: 200,
     },
-    JobNotificationRuntimeState::{
+    {
       last_sent_at: 1_000,
       last_notified_event_count: 0,
       long_running_warned: false,
@@ -101,12 +101,12 @@ test "decide_active_job_notifications emits step start for normal verbosity" {
   let run = JobRun::{
     id: "run-3",
     job_id: "job-3",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(1_000),
@@ -118,37 +118,37 @@ test "decide_active_job_notifications emits step start for normal verbosity" {
     "job-3",
     run,
     [
-      JobRunEvent::{
+      {
         run_id: "run-3",
         job_id: "job-3",
         event_type: "step.started",
         timestamp: 1_050,
         step_id: Some("step-a"),
-        status: Some(RunStatus::Running),
+        status: Some(Running),
         message: "Starting step A",
         data: {},
       },
-      JobRunEvent::{
+      {
         run_id: "run-3",
         job_id: "job-3",
         event_type: "step.succeeded",
         timestamp: 1_120,
         step_id: Some("step-a"),
-        status: Some(RunStatus::Succeeded),
+        status: Some(Succeeded),
         message: "Step A finished",
         data: {},
       },
     ],
-    JobNotifyTarget::{
+    {
       channel_id: "feishu",
       account_id: "default",
       recipient: "oc_chat_1",
       thread_id: None,
-      verbosity: NotificationVerbosity::Normal,
+      verbosity: Normal,
       heartbeat_interval_ms: 1_000,
       warn_after_ms: 10_000,
     },
-    JobNotificationRuntimeState::{
+    {
       last_sent_at: 1_000,
       last_notified_event_count: 0,
       long_running_warned: false,
@@ -183,13 +183,13 @@ test "resolve_job_notify_target applies persisted preference overrides" {
     updated_at: 1,
     tags: [],
   }
-  store.notification_preferences.set("feishu:default:oc_chat_1", JobNotificationPreference::{
+  store.notification_preferences.set("feishu:default:oc_chat_1", {
     id: "feishu:default:oc_chat_1",
     channel_id: "feishu",
     account_id: "default",
     recipient: "oc_chat_1",
     thread_id: None,
-    verbosity: NotificationVerbosity::Verbose,
+    verbosity: Verbose,
     heartbeat_interval_ms: Some(60_000),
     warn_after_ms: Some(180_000),
     created_at: 1,
@@ -207,7 +207,7 @@ test "resolve_job_notify_target applies persisted preference overrides" {
 }
 
 ///|
-test "parse_job_notify_target accepts legacy optional-json array encoding" {
+test "parse_job_notify_target rejects array-wrapped notify strings" {
   let target = parse_job_notify_target({
     "notify": {
       "channel": ["feishu"],
@@ -218,15 +218,7 @@ test "parse_job_notify_target accepts legacy optional-json array encoding" {
       "warn_after_ms": 2000,
     },
   })
-  guard target is Some(target) else {
-    fail("Expected legacy encoded notify target to parse")
-  }
-  inspect(target.channel_id, content="feishu")
-  inspect(target.account_id, content="default")
-  inspect(target.recipient, content="oc_chat_1")
-  inspect(target.thread_id.unwrap_or(""), content="thread_1")
-  inspect(target.heartbeat_interval_ms, content="1000")
-  inspect(target.warn_after_ms, content="2000")
+  inspect(target is None, content="true")
 }
 
 ///|
@@ -257,7 +249,7 @@ async test "save_job_notification_preference preserves created_at when updating"
       "default",
       "oc_chat_1",
       None,
-      NotificationVerbosity::Normal,
+      Normal,
       100,
     )
     save_job_notification_preference(
@@ -266,7 +258,7 @@ async test "save_job_notification_preference preserves created_at when updating"
       "default",
       "oc_chat_1",
       None,
-      NotificationVerbosity::Verbose,
+      Verbose,
       200,
       heartbeat_interval_ms=Some(30_000),
     )
@@ -361,7 +353,7 @@ test "proposal command render helpers produce expected text" {
     content="Usage: /job-workspace <job_id|run_id>",
   )
   inspect(
-    render_job_notify_updated(NotificationVerbosity::Verbose),
+    render_job_notify_updated(Verbose),
     content="Job notifications set to \"Verbose\" for this chat scope.",
   )
 }
@@ -370,7 +362,7 @@ test "proposal command render helpers produce expected text" {
 async test "dispatch_job_chat_action routes commands through callbacks" {
   inspect(
     dispatch_job_chat_action(
-      Some(JobChatAction::Jobs),
+      Some(Jobs),
       fn(_args) { "plan-mode" },
       fn(_args) { "preview" },
       fn(_args) { "plan" },
@@ -393,7 +385,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
   )
   inspect(
     dispatch_job_chat_action(
-      Some(JobChatAction::Plan("outline")),
+      Some(Plan("outline")),
       fn(args) { "plan-mode:\{args}" },
       fn(_args) { "preview" },
       fn(_args) { "plan" },
@@ -416,7 +408,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
   )
   inspect(
     dispatch_job_chat_action(
-      Some(JobChatAction::Preview("show me current state")),
+      Some(Preview("show me current state")),
       fn(_args) { "plan-mode" },
       fn(args) { "preview:\{args}" },
       fn(_args) { "plan" },
@@ -439,7 +431,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
   )
   inspect(
     dispatch_job_chat_action(
-      Some(JobChatAction::Promote("finalize")),
+      Some(Promote("finalize")),
       fn(_args) { "plan-mode" },
       fn(_args) { "preview" },
       fn(_args) { "plan" },
@@ -462,7 +454,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
   )
   inspect(
     dispatch_job_chat_action(
-      Some(JobChatAction::JobForceStop("run-1")),
+      Some(JobForceStop("run-1")),
       fn(_args) { "plan-mode" },
       fn(_args) { "preview" },
       fn(_args) { "plan" },
@@ -485,7 +477,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
   )
   inspect(
     dispatch_job_chat_action(
-      Some(JobChatAction::Remember("note")),
+      Some(Remember("note")),
       fn(_args) { "plan-mode" },
       fn(_args) { "preview" },
       fn(_args) { "plan" },
@@ -508,7 +500,7 @@ async test "dispatch_job_chat_action routes commands through callbacks" {
   )
   inspect(
     dispatch_job_chat_action(
-      Some(JobChatAction::Memories),
+      Some(Memories),
       fn(_args) { "plan-mode" },
       fn(_args) { "preview" },
       fn(_args) { "plan" },

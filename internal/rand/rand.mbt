@@ -7,7 +7,7 @@ pub fn bytes(n : Int) -> Bytes raise @errno.Errno {
   let buf = Bytes::make(n, 0)
   let errno = rand_bytes(buf)
   if errno != 0 {
-    raise @errno.Errno(errno)
+    raise Errno(errno)
   }
   buf
 }

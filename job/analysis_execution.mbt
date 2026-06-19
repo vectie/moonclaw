@@ -72,7 +72,7 @@ fn best_effort_timeout_analysis_execution(
   timeout_ms : Int,
 ) -> AnalysisExecution {
   let message = "\{timeout_error_message(step_id, timeout_ms)}; continuing because `best_effort_on_timeout` is enabled. Inspect workspace artifacts and blockers for the bounded result."
-  AnalysisExecution::{
+  {
     model_name: request.model_name,
     content: message,
     conversation_id: None,
@@ -176,7 +176,7 @@ pub async fn persist_analysis_execution(
       ],
     ),
   )
-  PersistedAnalysisExecution::{
+  {
     execution,
     result_payload,
     report_artifact_id: report_artifact.id,

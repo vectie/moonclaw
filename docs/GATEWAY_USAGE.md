@@ -307,7 +307,7 @@ At startup, the gateway also checks:
 - `{cwd}/.moonclaw/moonclaw.json`
 - then `{home}/.moonclaw/moonclaw.json`
 
-It understands the OpenClaw-style Feishu config shape under `channels.feishu`, for example:
+It understands the MoonClaw Feishu config shape under `channels.feishu`, for example:
 
 ```json
 {
@@ -680,7 +680,7 @@ POST /webhook/feishu
   -> FeishuChannel::send reply
 ```
 
-Current Feishu support is webhook-based text messaging. It is not yet a full OpenClaw-compatible channel runtime.
+Current Feishu support is webhook-based text messaging. It is not yet a full MoonClaw channel runtime.
 
 ## Known Gaps
 

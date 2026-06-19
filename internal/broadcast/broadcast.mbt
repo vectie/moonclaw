@@ -47,15 +47,13 @@ pub fn[T] Broadcast::put(self : Broadcast[T], data : T) -> Unit {
 ///
 /// Returns the value at the specified index in the broadcast history.
 pub async fn[T] Broadcast::read(self : Broadcast[T], index : Int) -> T {
-  for item = self.values.get(index) {
-    match item {
+  while true {
+    match self.values.get(index) {
       Some(value) => return value
-      None => {
-        self.read.wait()
-        continue self.values.get(index)
-      }
+      None => self.read.wait()
     }
   }
+  fail("unreachable")
 }
 
 ///|
@@ -75,7 +73,7 @@ pub fn[T] Broadcast::add_listener(
   f : async (T) -> Unit,
 ) -> Unit {
   let initial = if include_history { 0 } else { self.values.length() }
-  self.readers.push(Reader::{ index: initial, f })
+  self.readers.push({ index: initial, f })
 }
 
 ///|
@@ -176,29 +174,24 @@ pub async fn[T, G] Broadcast::spawn_in(
           group.spawn_bg(
             () => {
               start.arrive()
-              for ;; {
+              while true {
                 let index = reader.index
-                for item = self.values.get(index) {
-                  match item {
-                    Some(value) => {
-                      // It is possible that other coroutines have already processed
-                      // this value (using flush), so we need to check the index
-                      // again.
-                      if index == reader.index {
-                        (reader.f)(value)
-                        reader.index = index + 1
-                      }
-                      break
+                match self.values.get(index) {
+                  Some(value) =>
+                    // It is possible that other coroutines have already processed
+                    // this value (using flush), so we need to check the index
+                    // again.
+                    if index == reader.index {
+                      (reader.f)(value)
+                      reader.index = index + 1
                     }
-                    None => {
-                      if session.stopped {
-                        return
-                      }
-                      self.read.wait()
-                      if session.stopped {
-                        return
-                      }
-                      continue self.values.get(index)
+                  None => {
+                    if session.stopped {
+                      return
+                    }
+                    self.read.wait()
+                    if session.stopped {
+                      return
                     }
                   }
                 }
@@ -267,9 +260,10 @@ pub async fn[T] Broadcast::listen_forever(
   include_history? : Bool = true,
   f : async (T) -> Unit,
 ) -> Unit {
-  let initial = if include_history { 0 } else { self.values.length() }
-  for i = initial; ; i = i + 1 {
+  let mut i = if include_history { 0 } else { self.values.length() }
+  while true {
     let event = self.read(i)
     f(event)
+    i += 1
   }
 }

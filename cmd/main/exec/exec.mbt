@@ -39,7 +39,7 @@ fn ExecOptions::parse(args : ArrayView[String]) -> ExecOptions raise {
   guard model is Some(model) else {
     raise @argument.InvalidArgument("--model is required")
   }
-  ExecOptions::{ prompt_file, log_file, model }
+  { prompt_file, log_file, model }
 }
 
 ///|

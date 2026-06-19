@@ -5,7 +5,7 @@ pub struct ChannelManager {
 
 ///|
 pub fn ChannelManager::new(_logger : @pino.Logger) -> ChannelManager {
-  ChannelManager::{ registry: @channel.ChannelRegistry::new() }
+  { registry: @channel.ChannelRegistry::new() }
 }
 
 ///|
@@ -70,11 +70,6 @@ pub async fn ChannelManager::send_message(
 ) -> Result[@channel.SendResult, @channel.ChannelError] {
   match self.registry.get(channel_id) {
     Some(channel) => channel.send(to, message, account_id)
-    None =>
-      Err(
-        @channel.ChannelError::NotConfigured(
-          message="Channel not found: \{channel_id}",
-        ),
-      )
+    None => Err(NotConfigured(message="Channel not found: \{channel_id}"))
   }
 }

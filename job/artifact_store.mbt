@@ -21,7 +21,7 @@ struct ArtifactBytesWriteRequest {
 fn ArtifactBytesWriteRequest::from_text(
   request : ArtifactWriteRequest,
 ) -> ArtifactBytesWriteRequest {
-  ArtifactBytesWriteRequest::{
+  {
     run_id: request.run_id,
     job_id: request.job_id,
     artifact_type: request.artifact_type,
@@ -37,7 +37,7 @@ fn ArtifactBytesWriteRequest::from_text(
 
 ///|
 pub fn ArtifactStore::new(store~ : SystemStore) -> ArtifactStore {
-  ArtifactStore::{ store, }
+  { store, }
 }
 
 ///|
@@ -213,7 +213,7 @@ pub async fn ArtifactStore::write_bytes(
     artifact_type: request.artifact_type,
     logical_key: request.logical_key,
     version,
-    status: ArtifactStatus::Active,
+    status: Active,
     path,
     content_type: request.content_type,
     metadata: request.metadata,
@@ -237,7 +237,7 @@ pub async fn ArtifactStore::archive(
   }
   let updated = ArtifactRecord::{
     ..artifact,
-    status: ArtifactStatus::Archived,
+    status: Archived,
     archived_at: Some(now_ms),
   }
   self.store.save_artifact(updated)
@@ -267,12 +267,13 @@ pub async fn ArtifactStore::apply_retention(
   now_ms : Int,
 ) -> ArtifactCleanupReport {
   let candidates = self
-    .list(query=ArtifactQuery::new(status=Some(ArtifactStatus::Active)))
+    .list(query=ArtifactQuery::new(status=Some(Active)))
     .filter(fn(artifact) { ArtifactStore::retention_matches(artifact, policy) })
   let archived_ids : Array[String] = []
   let deleted_ids : Array[String] = []
   let keep_latest = policy.keep_latest.unwrap_or(0)
-  for index = 0; index < candidates.length(); index = index + 1 {
+  let mut index = 0
+  while index < candidates.length() {
     let artifact = candidates[index]
     let older_than_window = index >= keep_latest && keep_latest > 0
     let expired = match policy.max_age_ms {
@@ -280,6 +281,7 @@ pub async fn ArtifactStore::apply_retention(
       None => false
     }
     if !older_than_window && !expired {
+      index += 1
       continue
     }
     if policy.archive_before_delete {
@@ -288,6 +290,7 @@ pub async fn ArtifactStore::apply_retention(
     } else if self.store.delete_artifact(artifact.id) {
       deleted_ids.push(artifact.id)
     }
+    index += 1
   }
-  ArtifactCleanupReport::{ archived_ids, deleted_ids }
+  { archived_ids, deleted_ids }
 }

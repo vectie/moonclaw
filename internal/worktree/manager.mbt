@@ -77,7 +77,7 @@ fn parse_worktree_list_output(
   let flush = () => {
     guard current_path is Some(path) else { return }
     if path_is_inside_base_dir(path, base_dir) {
-      worktrees.push(WorktreeHandle::{
+      worktrees.push({
         repo_root,
         path,
         branch_name: current_branch_name,
@@ -124,7 +124,7 @@ pub async fn plan_worktree(
   let branch_name = branch_name.unwrap_or("moonclaw/\{slug}")
   let base_dir = base_dir.unwrap_or(default_worktree_base_dir(repo_root))
   let path = @pathx.join(base_dir, slug)
-  WorktreeHandle::{ repo_root, path, branch_name, task_key }
+  { repo_root, path, branch_name, task_key }
 }
 
 ///|
@@ -150,7 +150,7 @@ pub async fn list_worktrees(
     base_dir,
     process.stdout,
   )
-  WorktreeList::{ repo_root, base_dir, worktrees }
+  { repo_root, base_dir, worktrees }
 }
 
 ///|

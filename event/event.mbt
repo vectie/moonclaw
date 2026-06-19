@@ -50,7 +50,7 @@ pub fn Event::new(
   created? : @clock.Timestamp = @clock.epoch.now(),
   desc : EventDesc,
 ) -> Event {
-  Event::{ id, created, desc }
+  { id, created, desc }
 }
 
 ///|
@@ -224,14 +224,12 @@ pub impl @json.FromJson for EventDesc with fn from_json(
   json_path : @json.JsonPath,
 ) -> EventDesc raise @json.JsonDecodeError {
   guard json is Object({ "msg": String(msg), .. } as json_object) else {
-    raise @json.JsonDecodeError(
-      (json_path, "Missing 'msg' field in OutgoingEvent"),
-    )
+    raise JsonDecodeError((json_path, "Missing 'msg' field in OutgoingEvent"))
   }
   match msg {
     "ModelLoaded" => {
       guard json_object.get("name") is Some(name_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "ModelLoaded event missing 'name' field"),
         )
       }
@@ -243,7 +241,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "TokenCounted" => {
       guard json_object.get("token_count") is Some(token_count_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "TokenCounted event missing 'token_count' field"),
         )
       }
@@ -256,7 +254,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     "ContextPruned" => {
       guard json_object.get("origin_token_count")
         is Some(origin_token_count_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "ContextPruned event missing 'origin_token_count' field"),
         )
       }
@@ -266,7 +264,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
       )
       guard json_object.get("pruned_token_count")
         is Some(pruned_token_count_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "ContextPruned event missing 'pruned_token_count' field"),
         )
       }
@@ -278,7 +276,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "PreToolCall" => {
       guard json_object.get("tool_call") is Some(tool_call_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "PreToolCall event missing 'tool_call' field"),
         )
       }
@@ -290,7 +288,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "PostToolCall" => {
       guard json_object.get("tool_call") is Some(tool_call_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "PostToolCall event missing 'tool_call' field"),
         )
       }
@@ -303,14 +301,14 @@ pub impl @json.FromJson for EventDesc with fn from_json(
         (Some(result_json), _) => Ok(result_json)
         (None, Some(error_json)) => Err(error_json)
         (None, None) =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (
               json_path, "PostToolCall event missing both 'result' and 'error' fields",
             ),
           )
       }
       guard json_object.get("text") is Some(rendered_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "PostToolCall event missing 'text' field"),
         )
       }
@@ -341,12 +339,12 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "MessageQueued" => {
       guard json_object.get("message") is Some(message_wrapper_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "MessageQueued event missing 'message' field"),
         )
       }
       guard message_wrapper_json is Object({ "id": id_json, .. }) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "Invalid 'message' field in MessageQueued event"),
         )
       }
@@ -358,12 +356,12 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "MessageUnqueued" => {
       guard json_object.get("message") is Some(message_wrapper_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "MessageUnqueued event missing 'message' field"),
         )
       }
       guard message_wrapper_json is Object({ "id": id_json, .. }) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "Invalid 'message' field in MessageUnqueued event"),
         )
       }
@@ -375,7 +373,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "ToolAdded" => {
       guard json_object.get("tool") is Some(tool_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "ToolAdded event missing 'tool' field"),
         )
       }
@@ -388,7 +386,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
             ..
           }
         ) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "Invalid 'tool' field in ToolAdded event"),
         )
       }
@@ -406,7 +404,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     "AssistantMessageDelta" => {
       let content : String = match json_object.get("content") {
         None =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (json_path, "AssistantMessageDelta event missing 'content' field"),
           )
         Some(content_json) =>
@@ -437,7 +435,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
       }
       let content : String = match json_object.get("content") {
         None =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (json_path, "AssistantMessage event missing 'content' field"),
           )
         Some(content_json) =>
@@ -448,7 +446,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     "Cancelled" => Cancelled
     "UserMessage" => {
       guard json_object.get("content") is Some(content_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "Missing 'content' field in UserMessage event"),
         )
       }
@@ -460,7 +458,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "Failed" => {
       guard json_object.get("error") is Some(error_json) else {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (json_path, "Missing 'error' field in Failed event"),
         )
       }
@@ -468,9 +466,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
     }
     "Pruned" => {
       guard json_object.get("id") is Some(id_json) else {
-        raise @json.JsonDecodeError(
-          (json_path, "Pruned event missing 'id' field"),
-        )
+        raise JsonDecodeError((json_path, "Pruned event missing 'id' field"))
       }
       let id : @uuid.Uuid = @json.from_json(
         id_json,
@@ -479,7 +475,7 @@ pub impl @json.FromJson for EventDesc with fn from_json(
       Pruned(id~)
     }
     _ =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "Unknown 'msg' value in EventDesc: \{msg}"),
       )
   }

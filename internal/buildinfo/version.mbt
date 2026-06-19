@@ -26,44 +26,44 @@ pub struct Build {
 pub let version : Version = try! Version::parse(version_string)
 
 ///|
-pub fn Version::parse(string : String) -> Version raise {
-  lexmatch string with longest {
-    (
-      ("[[:digit:]]+" as major)
-      "\."
-      ("([[:digit:]]+)" as minor)
-      "\."
-      ("([[:digit:]]+)" as patch)
-    ) => {
-      let major = @string.parse_int(major)
-      let minor = @string.parse_int(minor)
-      let patch = @string.parse_int(patch)
-      Version::{ major, minor, patch, build: None }
-    }
-    (
-      ("[[:digit:]]+" as major)
-      "\."
-      ("([[:digit:]]+)" as minor)
-      "\."
-      ("([[:digit:]]+)" as patch)
-      "\+"
-      ("([0-9]+)" as build_number)
-      "\."
-      ("([0-9a-fA-F]+)" as commit)
-    ) => {
-      let major = @string.parse_int(major)
-      let minor = @string.parse_int(minor)
-      let patch = @string.parse_int(patch)
-      let build_number = @string.parse_int(build_number)
-      Version::{
-        major,
-        minor,
-        patch,
-        build: Some({ number: build_number, commit: commit.to_owned() }),
-      }
-    }
-    _ => fail("Invalid version string format: " + string)
+fn parse_version_core(core : String) -> (Int, Int, Int) raise {
+  let parts : Array[StringView] = core.split(".").collect()
+  guard parts.length() == 3 else {
+    fail("Invalid version string format: " + core)
   }
+  (
+    @string.parse_int(parts[0].to_owned()),
+    @string.parse_int(parts[1].to_owned()),
+    @string.parse_int(parts[2].to_owned()),
+  )
+}
+
+///|
+fn parse_version_build(build_text : String) -> Build raise {
+  let parts : Array[StringView] = build_text.split(".").collect()
+  guard parts.length() == 2 else {
+    fail("Invalid version build format: " + build_text)
+  }
+  let commit = parts[1].to_owned()
+  guard !commit.is_blank() else {
+    fail("Invalid version build commit: " + build_text)
+  }
+  { number: @string.parse_int(parts[0].to_owned()), commit }
+}
+
+///|
+pub fn Version::parse(string : String) -> Version raise {
+  let parts : Array[StringView] = string.split("+").collect()
+  guard parts.length() == 1 || parts.length() == 2 else {
+    fail("Invalid version string format: " + string)
+  }
+  let (major, minor, patch) = parse_version_core(parts[0].to_owned())
+  let build = if parts.length() == 2 {
+    Some(parse_version_build(parts[1].to_owned()))
+  } else {
+    None
+  }
+  { major, minor, patch, build }
 }
 
 ///|

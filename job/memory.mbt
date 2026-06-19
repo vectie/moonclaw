@@ -5,7 +5,7 @@ pub struct MemoryService {
 
 ///|
 pub fn MemoryService::new(store~ : SystemStore) -> MemoryService {
-  MemoryService::{ store, }
+  { store, }
 }
 
 ///|
@@ -130,7 +130,7 @@ pub async fn MemoryService::remember(
     recipient: request.recipient,
     thread_id: request.thread_id,
     source_artifact_id: request.source_artifact_id,
-    status: MemoryStatus::Active,
+    status: Active,
     created_at: now_ms,
     updated_at: now_ms,
     archived_at: None,
@@ -147,9 +147,9 @@ pub async fn MemoryService::archive(
 ) -> Bool {
   match self.store.get_memory(id) {
     Some(memory) => {
-      self.store.save_memory(MemoryRecord::{
+      self.store.save_memory({
         ..memory,
-        status: MemoryStatus::Archived,
+        status: Archived,
         updated_at: now_ms,
         archived_at: Some(now_ms),
       })
@@ -167,7 +167,7 @@ pub fn MemoryService::get(self : MemoryService, id : String) -> MemoryRecord? {
 ///|
 pub fn MemoryService::list(
   self : MemoryService,
-  query? : MemoryQuery = MemoryQuery::new(status=Some(MemoryStatus::Active)),
+  query? : MemoryQuery = MemoryQuery::new(status=Some(Active)),
 ) -> Array[MemoryRecord] {
   self.store
   .list_memories()
@@ -178,7 +178,7 @@ pub fn MemoryService::list(
 pub fn MemoryService::search(
   self : MemoryService,
   question : String,
-  query? : MemoryQuery = MemoryQuery::new(status=Some(MemoryStatus::Active)),
+  query? : MemoryQuery = MemoryQuery::new(status=Some(Active)),
   max_hits? : Int = 5,
 ) -> Array[MemorySearchHit] {
   let terms = tokenize_memory_query(question)
@@ -188,7 +188,7 @@ pub fn MemoryService::search(
     if score <= 0 {
       continue
     }
-    hits.push(MemorySearchHit::{
+    hits.push({
       memory_id: memory.id,
       kind: memory.kind,
       title: memory.title,

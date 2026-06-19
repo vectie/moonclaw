@@ -50,7 +50,7 @@ fn frame_line(text : String, width : Int) -> String {
 ///|
 fn editor_frame_line(editor : Editor, width : Int) -> (String, Int) {
   let prompt_text = editor.prompt_text()
-  let prompt = colorize(prompt_text, Color::BrightGreen)
+  let prompt = colorize(prompt_text, BrightGreen)
   let display_text = if editor.text().length() == 0 {
     dim(editor.placeholder_text())
   } else {

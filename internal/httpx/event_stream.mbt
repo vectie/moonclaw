@@ -16,7 +16,7 @@ pub fn EventStreamWriter::new(w : ResponseWriter) -> EventStreamWriter {
   w.header().set("Connection", "keep-alive")
   // Disable response buffering for nginx
   w.header().set("X-Accel-Buffering", "no")
-  EventStreamWriter::{ w, }
+  { w, }
 }
 
 ///|
@@ -98,7 +98,7 @@ struct EventStreamReader {
 ///
 /// * `r` : The underlying reader to parse SSE events from.
 pub fn EventStreamReader::new(r : &@io.Reader) -> EventStreamReader {
-  EventStreamReader::{ last_event: None, r }
+  { last_event: None, r }
 }
 
 ///|
@@ -123,7 +123,7 @@ pub struct Event {
 ///
 /// Returns a new `Event` instance with the provided event type and data.
 pub fn Event::new(event? : String, data~ : String) -> Event {
-  Event::{ event, data }
+  { event, data }
 }
 
 ///|
@@ -177,7 +177,7 @@ pub async fn EventStreamReader::read_event(self : EventStreamReader) -> Event? {
       [.. "data: ", .. data] => {
         let event = self.last_event
         self.last_event = None
-        return Some(Event::{ event, data: data.to_owned() })
+        return Some({ event, data: data.to_owned() })
       }
       _ => continue
     }

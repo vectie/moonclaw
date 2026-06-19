@@ -21,7 +21,7 @@ test "render_acp_status reports missing and attached sessions" {
     render_acp_status(
       "channel:feishu:chat-1",
       [
-        AcpSession::{
+        {
           id: "acp-session-1",
           target_id: "codex-main",
           session_key: "channel:feishu:chat-1",
@@ -35,7 +35,7 @@ test "render_acp_status reports missing and attached sessions" {
         },
       ],
       [
-        AcpRun::{
+        {
           id: "acp-run-1",
           session_id: "acp-session-1",
           session_key: "channel:feishu:chat-1",

@@ -13,11 +13,11 @@ async test "apply_patch rejects absolute path outside workspace" (
     let result = tool.call({ "patch": patch })
     guard result is Error(_) else {
       fail(
-        "Expected tool error for absolute path escape, got: \{mock.text(result)}",
+        "Expected tool error for absolute path escape, got: \{mock.show(result)}",
       )
     }
     inspect(
-      mock.text(result),
+      mock.show(result),
       content="Failed to apply patch: Patch path must stay inside the current workspace: /tmp/moonclaw-apply-patch-outside.txt",
     )
     assert_false(@fsx.exists(outside))
@@ -36,11 +36,11 @@ async test "apply_patch rejects parent path escape" (t : @test.Test) {
     let result = tool.call({ "patch": patch })
     guard result is Error(_) else {
       fail(
-        "Expected tool error for parent path escape, got: \{mock.text(result)}",
+        "Expected tool error for parent path escape, got: \{mock.show(result)}",
       )
     }
     inspect(
-      mock.text(result),
+      mock.show(result),
       content="Failed to apply patch: Patch path must not escape the current workspace: ../escape.txt",
     )
   })

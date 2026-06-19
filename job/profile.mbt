@@ -65,7 +65,7 @@ fn parse_string_array(value : Json) -> Array[String]? {
 fn parse_job_profile_match_rules(value : Json) -> JobProfileMatchRules? {
   match value {
     Object(obj) =>
-      Some(JobProfileMatchRules::{
+      Some({
         any: match obj.get("any") {
           Some(value) => parse_string_array(value)
           None => None
@@ -130,7 +130,7 @@ fn parse_job_profile_steps(value : Json) -> Array[JobProfileStep]? {
               _ => None
             }
             let metadata = obj.get("metadata")
-            steps.push(JobProfileStep::{
+            steps.push({
               id,
               title,
               kind,
@@ -214,16 +214,7 @@ fn payload_from_raw_profile(raw : Json) -> JobProfileConfigPayload? {
         Some(value) => Some(value)
         None => None
       }
-      Some(JobProfileConfigPayload::{
-        family,
-        label,
-        role,
-        priority,
-        tags,
-        match_rules,
-        steps,
-        metadata,
-      })
+      Some({ family, label, role, priority, tags, match_rules, steps, metadata })
     }
     _ => None
   }
@@ -239,7 +230,7 @@ fn configured_job_profiles(json : Json?) -> Array[JobProfile] {
           Some(payload) => payload
           None => continue
         }
-        loaded.push(JobProfile::{
+        loaded.push({
           id,
           family: payload.family.unwrap_or(id),
           label: payload.label,

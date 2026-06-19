@@ -299,7 +299,7 @@ async fn sync_manual_workspace_memory(
   let memory_id = "workspace-memory:\{run.id}"
   if manual_content.is_blank() {
     match store.get_memory(memory_id) {
-      Some(existing) if existing.status is MemoryStatus::Active =>
+      Some(existing) if existing.status is Active =>
         ignore(MemoryService::new(store~).archive(memory_id, now_ms))
       _ => ()
     }
@@ -377,10 +377,10 @@ async fn git_with_local_identity(
   args : Array[String],
 ) -> Result[@spawn.CompletedProcess, String] {
   let spawn_args : Array[StringView] = [
-    "-c"[:],
-    "user.name=MoonClaw"[:],
-    "-c"[:],
-    "user.email=moonclaw@local"[:],
+    "-c",
+    "user.name=MoonClaw",
+    "-c",
+    "user.email=moonclaw@local",
     ..args.map(fn(arg) { arg[:] }),
   ]
   let command = @spawn.spawn("git", spawn_args, cwd=workspace_dir) catch {

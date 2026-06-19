@@ -267,7 +267,7 @@ async fn execute_glob_files(
   let display_root = @pathx.relative(cwd, absolute_root) catch {
     _ => absolute_root
   }
-  GlobFilesResult::{
+  {
     root: display_root,
     pattern: input.pattern,
     matches,

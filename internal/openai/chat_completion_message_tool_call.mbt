@@ -1,6 +1,5 @@
 ///|
 /// Tool call emitted from an assistant message.
-#alias(ChatCompletionMessageToolCallParam)
 pub struct ChatCompletionMessageToolCall {
   id : String
   function : ChatCompletionMessageToolCallFunction
@@ -19,7 +18,7 @@ pub impl @json.FromJson for ChatCompletionMessageToolCall with fn from_json(
   json_path : @json.JsonPath,
 ) -> ChatCompletionMessageToolCall {
   guard json is { "id": String(id), "function": function, .. } else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (
         json_path, "Expected an object with 'id' and 'function' fields, the `id` must be a string",
       ),
@@ -29,5 +28,5 @@ pub impl @json.FromJson for ChatCompletionMessageToolCall with fn from_json(
     function,
     path=json_path.add_key("function"),
   )
-  ChatCompletionMessageToolCall::{ id, function }
+  { id, function }
 }

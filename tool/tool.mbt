@@ -22,7 +22,7 @@ pub fn tool_desc(
   name~ : String,
   schema~ : JsonSchema,
 ) -> ToolDesc {
-  ToolDesc::{ description, name, schema }
+  { description, name, schema }
 }
 
 ///|
@@ -88,7 +88,7 @@ pub fn[Output] Tool::new(
   schema~ : JsonSchema,
   f : ToolFn[Output],
 ) -> Tool[Output] {
-  Tool::{ desc: { description, name, schema }, f }
+  { desc: { description, name, schema }, f }
 }
 
 ///|
@@ -120,7 +120,7 @@ pub async fn AgentTool::call(
 ///|
 /// Convert a Tool[Output] to Tool[Json] by converting outputs to Json
 pub fn[Output : ToJson] Tool::to_agent_tool(self : Tool[Output]) -> AgentTool {
-  Tool::{
+  {
     desc: self.desc,
     f: args => {
       match self.call(args) {

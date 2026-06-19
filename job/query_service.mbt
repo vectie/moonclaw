@@ -13,13 +13,11 @@ pub fn current_step_label(
   run_id : String,
 ) -> String {
   let steps = store.list_step_runs(run_id)
-  let running = steps.filter(fn(step) { step.status is RunStatus::Running })
+  let running = steps.filter(fn(step) { step.status is Running })
   if !running.is_empty() {
     return running[0].step_id
   }
-  let waiting = steps.filter(fn(step) {
-    step.status is RunStatus::WaitingForInput
-  })
+  let waiting = steps.filter(fn(step) { step.status is WaitingForInput })
   if !waiting.is_empty() {
     return waiting[0].step_id
   }
@@ -51,7 +49,7 @@ fn definition_created_at_label(definition : JobDefinition) -> String {
 ///|
 fn child_run_status_label(store : SystemStore, run : JobRun) -> String {
   let prefix = match run.trigger {
-    TriggerSource::Custom(kind) if kind == "analysis-subplan" => "subplan"
+    Custom(kind) if kind == "analysis-subplan" => "subplan"
     _ => "child"
   }
   let title = match store.get_definition(run.job_id) {
@@ -64,7 +62,7 @@ fn child_run_status_label(store : SystemStore, run : JobRun) -> String {
 ///|
 fn run_output_lines(run : JobRun) -> Array[String] {
   match (run.status, run.workspace_dir) {
-    (RunStatus::Succeeded, Some(workspace_dir)) => {
+    (Succeeded, Some(workspace_dir)) => {
       let report_path = workspace_dir |> @pathx.join("report.md")
       let result_path = workspace_dir |> @pathx.join("result.json")
       let outputs_dir = workspace_dir |> @pathx.join("outputs")
@@ -111,9 +109,7 @@ fn output_missing_input_detail(output : Json?) -> String? {
 
 ///|
 fn waiting_input_line(steps : Array[JobStepRun]) -> String? {
-  let waiting = steps.filter(fn(step) {
-    step.status is RunStatus::WaitingForInput
-  })
+  let waiting = steps.filter(fn(step) { step.status is WaitingForInput })
   guard !waiting.is_empty() else { return None }
   let step = waiting[0]
   let detail = output_missing_input_detail(step.output).unwrap_or(
@@ -154,9 +150,7 @@ pub async fn render_status_text(
       .unwrap_or(steps.length())
     None => steps.length()
   }
-  let done_steps = steps
-    .filter(fn(step) { step.status is RunStatus::Succeeded })
-    .length()
+  let done_steps = steps.filter(fn(step) { step.status is Succeeded }).length()
   let current_step = current_step_label(store, definition, run.id)
   let elapsed_ms = run_elapsed_ms(run, now_ms)
   let lineage_line = match (run.parent_run_id, run.parent_step_id) {
@@ -189,7 +183,7 @@ pub async fn render_status_text(
     }
   })
   render_job_status(
-    JobStatusSnapshot::{
+    {
       definition_id: definition.id,
       definition_title: definition_display_title(definition),
       created_at_label: definition_created_at_label(definition),
@@ -222,7 +216,7 @@ pub fn render_active_runs(store : SystemStore, runs : Array[JobRun]) -> String {
           { "family": String(family), .. } => family
           _ => "unknown"
         }
-        summaries.push(ActiveJobSnapshot::{
+        summaries.push({
           definition_id: definition.id,
           definition_title: definition_display_title(definition),
           created_at_label: definition_created_at_label(definition),
@@ -260,9 +254,9 @@ pub fn resolve_status_target(
             .filter(fn(run) {
               run.job_id == trimmed &&
               (
-                run.status is RunStatus::Pending ||
-                run.status is RunStatus::Running ||
-                run.status is RunStatus::WaitingForInput
+                run.status is Pending ||
+                run.status is Running ||
+                run.status is WaitingForInput
               )
             })
           if candidates.is_empty() {

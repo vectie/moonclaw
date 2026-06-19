@@ -160,7 +160,7 @@ pub fn proposal_initial_input(proposal : JobProposal) -> Json? {
 
 ///|
 pub fn mark_proposal_as_e2e(proposal : JobProposal) -> JobProposal {
-  JobProposal::{
+  {
     ..proposal,
     profile_metadata: merge_intake_metadata(proposal.profile_metadata, {
       "proposal_mode": "e2e",

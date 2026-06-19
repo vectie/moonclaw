@@ -129,7 +129,7 @@ async fn start_gateway(args : Array[String]) -> Unit {
   logger.info("Starting MoonClaw Gateway on port \{port}")
   let gateway = match configured_gateway_token(config) {
     Some(token) =>
-      @server.Gateway::new(port~, cwd=cwd[:], home=home[:], auth=@server.AuthConfig::{
+      @server.Gateway::new(port~, cwd=cwd[:], home=home[:], auth={
         token: Some(token),
         _password: None,
       })
@@ -147,7 +147,7 @@ async fn connect_gateway(args : Array[String]) -> Unit {
     base_url: defaults.url,
     token: defaults.token,
     client_id: None,
-    client_mode: @protocol.ClientMode::Cli,
+    client_mode: Cli,
   }
   let client = @client.Client::new(config)
   let result = client.connect()
@@ -189,7 +189,7 @@ async fn run_agent(args : Array[String]) -> Unit {
     base_url: defaults.url,
     token: defaults.token,
     client_id: None,
-    client_mode: @protocol.ClientMode::Cli,
+    client_mode: Cli,
   }
   let client = @client.Client::new(config)
   let connect_result = client.connect()
@@ -234,7 +234,7 @@ async fn check_health(args : Array[String]) -> Unit {
     base_url: defaults.url,
     token: defaults.token,
     client_id: None,
-    client_mode: @protocol.ClientMode::Probe,
+    client_mode: Probe,
   }
   let client = @client.Client::new(config)
   let result = client.health()
@@ -252,7 +252,7 @@ async fn check_health(args : Array[String]) -> Unit {
 ///|
 async fn list_runs(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.list_runs() {
     Err(error) => logger.error("Runs list failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -262,7 +262,7 @@ async fn list_runs(args : Array[String]) -> Unit {
 ///|
 async fn list_jobs(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.list_jobs() {
     Err(error) => logger.error("Jobs list failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -279,7 +279,7 @@ async fn get_job(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.get_job(job_id~) {
     Err(error) => logger.error("Job lookup failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -302,7 +302,7 @@ async fn create_job(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.create_job(definition) {
     Err(error) => logger.error("Job create failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -325,7 +325,7 @@ async fn update_job(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.update_job(definition) {
     Err(error) => logger.error("Job update failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -342,7 +342,7 @@ async fn run_job(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.run_job(job_id~) {
     Err(error) => logger.error("Job run failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -359,7 +359,7 @@ async fn cancel_job(args : Array[String], force : Bool) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   let result = if force {
     client.force_cancel_job(job_id~)
   } else {
@@ -381,7 +381,7 @@ async fn cancel_job(args : Array[String], force : Bool) -> Unit {
 ///|
 async fn list_job_runs(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.list_job_runs() {
     Err(error) => logger.error("Job runs list failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -402,7 +402,7 @@ async fn get_job_run(args : Array[String]) -> Unit {
         }
       }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.get_job_run(run_id~) {
     Err(error) => logger.error("Job run lookup failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -419,7 +419,7 @@ async fn get_run(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.get_run(run_id~) {
     Err(error) => logger.error("Run lookup failed: \{error}")
     Ok(run) => println(run.to_json().stringify())
@@ -453,9 +453,9 @@ async fn ask_job(args : Array[String]) -> Unit {
       }
     None => None
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match
-    client.ask_job(@job.JobAskParams::{
+    client.ask_job({
       question,
       binding_id: parse_string_arg(args, "--binding"),
       artifact_query,
@@ -469,7 +469,7 @@ async fn ask_job(args : Array[String]) -> Unit {
 ///|
 async fn list_channels(args : Array[String]) -> Unit {
   let logger = @pino.logger("gateway", @pino.Transport::console())
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.list_channels() {
     Err(error) => logger.error("Channels list failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -486,7 +486,7 @@ async fn get_channel(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.get_channel(channel_id~) {
     Err(error) => logger.error("Channel lookup failed: \{error}")
     Ok(channel) => println(channel.to_json().stringify())
@@ -516,7 +516,7 @@ async fn configure_channel(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.configure_channel(channel_id~, config) {
     Err(error) => logger.error("Channel configure failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -547,7 +547,7 @@ async fn start_channel(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.start_channel(channel_id~, account_id~, config) {
     Err(error) => logger.error("Channel start failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -571,7 +571,7 @@ async fn stop_channel(args : Array[String]) -> Unit {
       return
     }
   }
-  let client = make_client(args, mode=@protocol.ClientMode::Cli)
+  let client = make_client(args, mode=Cli)
   match client.stop_channel(channel_id~, account_id~) {
     Err(error) => logger.error("Channel stop failed: \{error}")
     Ok(payload) => println(payload.to_json().stringify())
@@ -584,7 +584,7 @@ async fn make_client(
   mode~ : @protocol.ClientMode,
 ) -> @client.Client {
   let defaults = gateway_cli_defaults(args)
-  @client.Client::new(@client.ClientConfig::{
+  @client.Client::new({
     base_url: defaults.url,
     token: defaults.token,
     client_id: None,

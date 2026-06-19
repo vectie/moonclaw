@@ -1,12 +1,10 @@
 ///|
-pub impl @json.FromJson for CostConfig with from_json(
+pub impl @json.FromJson for CostConfig with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> CostConfig {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError(
-      (json_path, "CostConfig::from_json: expected object"),
-    )
+    raise JsonDecodeError((json_path, "CostConfig::from_json: expected object"))
   }
   let input : Double? = {
     guard obj.get("input") is Some(v) else { None }
@@ -28,18 +26,18 @@ pub impl @json.FromJson for CostConfig with from_json(
 }
 
 ///|
-pub impl @json.FromJson for ModelConfig with from_json(
+pub impl @json.FromJson for ModelConfig with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ModelConfig {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "ModelConfig::from_json: expected object"),
     )
   }
   let id : String = {
     guard obj.get("id") is Some(v) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "ModelConfig::from_json: missing 'id' field"),
       )
     }
@@ -73,12 +71,12 @@ pub impl @json.FromJson for ModelConfig with from_json(
 }
 
 ///|
-pub impl @json.FromJson for ProviderConfig with from_json(
+pub impl @json.FromJson for ProviderConfig with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ProviderConfig {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "ProviderConfig::from_json: expected object"),
     )
   }
@@ -92,7 +90,7 @@ pub impl @json.FromJson for ProviderConfig with from_json(
   }
   let models : Array[ModelConfig] = {
     guard obj.get("models") is Some(v) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "ProviderConfig::from_json: missing 'models' field"),
       )
     }
@@ -106,18 +104,18 @@ pub impl @json.FromJson for ProviderConfig with from_json(
 }
 
 ///|
-pub impl @json.FromJson for ProvidersFile with from_json(
+pub impl @json.FromJson for ProvidersFile with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ProvidersFile {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (json_path, "ProvidersFile::from_json: expected object"),
     )
   }
   let providers : Map[String, ProviderConfig] = {
     guard obj.get("providers") is Some(v) else {
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path, "ProvidersFile::from_json: missing 'providers' field"),
       )
     }

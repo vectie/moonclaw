@@ -15,20 +15,20 @@ impl @json.FromJson for DaemonInfo with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> DaemonInfo raise {
-  guard json is Json::Object(object) else {
-    raise @json.JsonDecodeError((json_path, "Expected object for DaemonInfo"))
+  guard json is Object(object) else {
+    raise JsonDecodeError((json_path, "Expected object for DaemonInfo"))
   }
   let version : String = match object.get("version") {
     Some(Null) | None => "0.0.0"
     Some(String(v)) => v
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (json_path.add_key("version"), "Expected string for 'version' field"),
       )
   }
   let version : @buildinfo.Version = @buildinfo.Version::parse(version) catch {
     error =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           json_path.add_key("version"),
           "Invalid version string in 'version' field: " + "\{to_repr(error)}",
@@ -38,18 +38,14 @@ impl @json.FromJson for DaemonInfo with fn from_json(
   let pid = match object.get("pid") {
     Some(v) => @json.from_json(v, path=json_path.add_key("pid"))
     None =>
-      raise @json.JsonDecodeError(
-        (json_path, "Missing field 'pid' in DaemonInfo"),
-      )
+      raise JsonDecodeError((json_path, "Missing field 'pid' in DaemonInfo"))
   }
   let port = match object.get("port") {
     Some(v) => @json.from_json(v, path=json_path.add_key("port"))
     None =>
-      raise @json.JsonDecodeError(
-        (json_path, "Missing field 'port' in DaemonInfo"),
-      )
+      raise JsonDecodeError((json_path, "Missing field 'port' in DaemonInfo"))
   }
-  DaemonInfo::{ version, pid, port }
+  { version, pid, port }
 }
 
 ///|
@@ -76,7 +72,8 @@ pub async fn detach(
   }
   let pid = @process.spawn_orphan(@os.executable(), args)
   @async.with_timeout(60_000, () => {
-    for ;; {
+    let mut resolved_pid : Int? = None
+    while resolved_pid is None {
       try {
         let info_file = @fs.open(
           home |> @pathx.join(".moonclaw") |> @pathx.join("daemon.json"),
@@ -90,14 +87,14 @@ pub async fn detach(
             if json is { "pid": info_pid, .. } {
               let info_pid : Int = @json.from_json(info_pid)
               if info_pid == pid {
-                break pid
+                resolved_pid = Some(pid)
               } else {
-                break info_pid
+                resolved_pid = Some(info_pid)
               }
             }
             // There is no pid field; wait and retry.
           } else {
-            break owner
+            resolved_pid = Some(owner)
           }
         }
         // The daemon info file is not yet locked by any process; wait and retry.
@@ -111,6 +108,10 @@ pub async fn detach(
             continue
           }
       }
+    }
+    match resolved_pid {
+      Some(pid) => pid
+      None => fail("unreachable")
     }
   }) catch {
     @async.TimeoutError as error => {
@@ -130,31 +131,32 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   let mut serve = @os.cwd()
   let mut exec_path = None
   let mut to_detach = false
-  for args = args {
-    match args {
-      ["-p" | "--port", p, .. args] => {
+  let mut remaining = args
+  while true {
+    match remaining {
+      ["-p" | "--port", p, .. rest] => {
         port = @string.parse_int(p)
-        continue args
+        remaining = rest
       }
-      ["-s" | "--serve", s, .. args] => {
+      ["-s" | "--serve", s, .. rest] => {
         serve = if @pathx.is_absolute(s) {
           s
         } else {
           @pathx.join(@os.cwd(), s)
         }
-        continue args
+        remaining = rest
       }
-      ["-d" | "--detach", .. args] => {
+      ["-d" | "--detach", .. rest] => {
         to_detach = true
-        continue args
+        remaining = rest
       }
-      [e, .. args] => {
+      [e, .. rest] => {
         exec_path = if @pathx.is_absolute(e) {
           Some(e)
         } else {
           Some(@pathx.join(@os.cwd(), e))
         }
-        continue args
+        remaining = rest
       }
       [] => break
     }

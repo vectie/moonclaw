@@ -1,348 +1,8 @@
 ///|
-/// Provider-backed extension task bridge.
+/// Provider-backed extension task runtime.
 /// It lets workspace-local providers shape domain work while MoonClaw keeps
 /// execution, artifacts, lineage, and operator visibility generic.
 ///
-
-///|
-fn provider_task_step_metadata(
-  goal : String,
-  goal_id : String,
-  task : ProviderTaskSpec,
-  command : ProviderTaskCommand,
-) -> Json {
-  let metadata : Map[String, Json] = {
-    // `bookapi_*` keys are compatibility aliases for older extension packs.
-    "bookapi_goal": goal,
-    "bookapi_goal_id": goal_id,
-    "bookapi_task_id": task.id,
-    "bookapi_task_spec": task.to_json(),
-    "bookapi_task_kind": task.kind,
-    "bookapi_priority": task.priority,
-    "bookapi_requires_review": task.requires_review,
-    "bookapi_target_pages": task.target_pages,
-    "extension_goal": goal,
-    "extension_goal_id": goal_id,
-    "extension_task_id": task.id,
-    "extension_task_spec": task.to_json(),
-    "extension_task_kind": task.kind,
-    "extension_priority": task.priority,
-    "extension_requires_review": task.requires_review,
-    "extension_target_pages": task.target_pages,
-    "provider_command": {
-      "provider_name": command.provider.name,
-      "command": command.command,
-      "args": command.args,
-      "cwd": command.cwd,
-      "workspace_root": command.workspace_root,
-    },
-    // Provider-backed extension runs need a bounded execution window so they
-    // fail cleanly instead of remaining Running indefinitely after partial tool
-    // progress.
-    "timeout_ms": 600000,
-    "max_total_tokens": 24000,
-  }
-  metadata.set("enable_tools", true.to_json())
-  metadata.set("web_search", true.to_json())
-  metadata.set(
-    "tool_contract",
-    AnalysisToolContract::new(web_fetch=true, web_search=true).to_json(),
-  )
-  Json::object(metadata)
-}
-
-///|
-fn provider_task_child_proposal(
-  request_text : String,
-  batch : ProviderTaskBatch,
-  command : ProviderTaskCommand,
-  config : SubjobStepConfig,
-  now_ms : Int,
-) -> JobProposal {
-  let execution_tasks = provider_task_execution_tasks(batch.tasks)
-  let deferred_tasks = batch.tasks.length() - execution_tasks.length()
-  let steps = execution_tasks.map(fn(task) {
-    let runtime_step_id = "provider-task-\{safe_step_file_segment(task.id)}"
-    JobProposalStep::{
-      id: runtime_step_id,
-      title: compact_title(task.title),
-      prompt: task.prompt,
-      kind: "job.analysis",
-      metadata: provider_task_step_metadata(
-        batch.goal,
-        batch.goal_id,
-        task,
-        command,
-      ),
-      child_profile: None,
-      execution_mode: config.execution_mode,
-      execution_target: config.execution_target,
-      include_parent_outputs: None,
-      max_depth: None,
-    }
-  })
-  JobProposal::{
-    id: human_readable_proposal_id(batch.goal, now_ms, now_ms.to_string()),
-    title: compact_title(batch.goal),
-    request_text,
-    summary: batch.summary,
-    revision_history: [],
-    suggested_family: Some("extension"),
-    profile_id: config.child_profile,
-    profile_role: None,
-    profile_metadata: {
-      "execution": {
-        "mode": config.execution_mode,
-        "target": config.execution_target,
-      },
-      "extension": {
-        "goal": batch.goal,
-        "goal_id": batch.goal_id,
-        "task_count": execution_tasks.length(),
-        "deferred_task_count": deferred_tasks,
-      },
-    },
-    status: Draft,
-    steps,
-    tags: ["job", "extension"],
-    channel_id: None,
-    account_id: None,
-    recipient: None,
-    thread_id: None,
-    presented_message_id: None,
-    job_id: None,
-    workflow_id: None,
-    last_run_id: None,
-    created_at: now_ms,
-    updated_at: now_ms,
-  }
-}
-
-///|
-fn provider_task_is_planning_kind(kind : String) -> Bool {
-  let normalized = kind.trim().to_owned().to_lower()
-  normalized == "planning" ||
-  normalized == "plan" ||
-  normalized.has_suffix(".planning") ||
-  normalized.has_suffix(".plan")
-}
-
-///|
-fn provider_task_execution_tasks(
-  tasks : Array[ProviderTaskSpec],
-) -> Array[ProviderTaskSpec] {
-  let executable = tasks
-    .iter()
-    .filter(fn(task) { !provider_task_is_planning_kind(task.kind) })
-    .to_array()
-  let selected = if executable.is_empty() { tasks } else { executable }
-  let bootstrap_execution = selected
-    .iter()
-    .filter(fn(task) {
-      let rank = provider_task_phase_rank(task.kind)
-      rank >= 0 && rank <= 4
-    })
-    .to_array()
-  let selected = if bootstrap_execution.is_empty() {
-    selected
-  } else {
-    bootstrap_execution
-  }
-  let indexed : Array[(Int, Int, Int, ProviderTaskSpec)] = []
-  for i = 0; i < selected.length(); i = i + 1 {
-    let task = selected[i]
-    indexed.push((provider_task_phase_rank(task.kind), -task.priority, i, task))
-  }
-  indexed.sort_by(fn(a, b) {
-    let phase_order = a.0.compare(b.0)
-    if phase_order != 0 {
-      phase_order
-    } else {
-      let priority_order = a.1.compare(b.1)
-      if priority_order != 0 {
-        priority_order
-      } else {
-        a.2.compare(b.2)
-      }
-    }
-  })
-  indexed.map(fn(item) { item.3 })
-}
-
-///|
-fn provider_task_phase_rank(kind : String) -> Int {
-  match kind.trim().to_lower() {
-    "bootstrap_gather" => 0
-    "source_materialize" => 1
-    "knowledge_revise" => 2
-    "review_finalize" => 3
-    "review" => 4
-    _ => 10
-  }
-}
-
-///|
-fn metadata_string_value(metadata : Json, key : String) -> String? {
-  match metadata_with_step_metadata(metadata, key) {
-    Some(String(value)) if !value.trim().to_owned().is_blank() =>
-      Some(value.trim().to_owned())
-    _ => None
-  }
-}
-
-///|
-fn metadata_bool_value(metadata : Json, key : String) -> Bool? {
-  match metadata_with_step_metadata(metadata, key) {
-    Some(True) => Some(true)
-    Some(False) => Some(false)
-    _ => None
-  }
-}
-
-///|
-fn metadata_int_value(metadata : Json, key : String) -> Int? {
-  match metadata_with_step_metadata(metadata, key) {
-    Some(Number(value, ..)) => Some(value.to_int())
-    _ => None
-  }
-}
-
-///|
-fn metadata_string_array_value(metadata : Json, key : String) -> Array[String] {
-  match metadata_with_step_metadata(metadata, key) {
-    Some(Array(values)) => {
-      let items : Array[String] = []
-      for value in values {
-        guard value is String(text) else { continue }
-        let trimmed = text.trim().to_owned()
-        if !trimmed.is_blank() {
-          items.push(trimmed)
-        }
-      }
-      items
-    }
-    _ => []
-  }
-}
-
-///|
-fn provider_task_canonical_title(kind : String) -> String? {
-  match kind.trim().to_lower() {
-    "bootstrap_gather" => Some("Gather bootstrap materials")
-    "source_materialize" => Some("Materialize durable source pages")
-    "knowledge_revise" => Some("Revise knowledge surfaces")
-    "review_finalize" => Some("Finalize bootstrap review")
-    "review" => Some("Review pending book updates")
-    _ => None
-  }
-}
-
-///|
-fn provider_task_result_task_id(task : ProviderTaskSpec) -> String {
-  let task_id = task.id.trim().to_owned()
-  if task_id.length() <= 80 {
-    task_id
-  } else {
-    let base = provider_task_canonical_title(task.kind).unwrap_or(task.kind)
-    let slug = safe_step_file_segment(base)
-    let suffix = task_id.hash().to_string().trim(chars="-").to_owned()
-    "provider-\{slug}-\{suffix}"
-  }
-}
-
-///|
-fn provider_task_cancelled_error() -> String {
-  "Provider task cancelled before completion"
-}
-
-///|
-fn provider_task_cancellation_requested() -> Bool {
-  @async.is_being_cancelled()
-}
-
-///|
-fn provider_task_spec_from_metadata(metadata : Json) -> ProviderTaskSpec? {
-  fn decode(value : Json) -> ProviderTaskSpec? {
-    let decoded : ProviderTaskSpec = @json.from_json(value) catch {
-      _ => return None
-    }
-    Some(decoded)
-  }
-  match metadata_with_step_metadata(metadata, "extension_task_spec") {
-    Some(spec) =>
-      match decode(spec) {
-        Some(task) => return Some(task)
-        None => ()
-      }
-    None => ()
-  }
-  metadata_with_step_metadata(metadata, "bookapi_task_spec").bind(decode)
-}
-
-///|
-fn provider_task_effective_workspace_root(
-  command_workspace_root : String,
-  context_workspace_root : String,
-  request_cwd : String,
-) -> String {
-  let normalized_command = command_workspace_root.trim().to_owned()
-  let normalized_context = context_workspace_root.trim().to_owned()
-  if !normalized_command.is_blank() {
-    normalized_command
-  } else if !normalized_context.is_blank() {
-    normalized_context
-  } else {
-    request_cwd
-  }
-}
-
-///|
-fn normalize_provider_task_spec_from_metadata(
-  metadata : Json,
-  task : ProviderTaskSpec,
-) -> ProviderTaskSpec {
-  let kind = metadata_string_value(metadata, "extension_task_kind").unwrap_or(
-    metadata_string_value(metadata, "bookapi_task_kind").unwrap_or(task.kind),
-  )
-  let title = provider_task_canonical_title(kind).unwrap_or(task.title)
-  let priority = metadata_int_value(metadata, "extension_priority").unwrap_or(
-    metadata_int_value(metadata, "bookapi_priority").unwrap_or(task.priority),
-  )
-  let requires_review = metadata_bool_value(
-    metadata, "extension_requires_review",
-  ).unwrap_or(
-    metadata_bool_value(metadata, "bookapi_requires_review").unwrap_or(
-      task.requires_review,
-    ),
-  )
-  let target_pages = {
-    let extension_targets = metadata_string_array_value(
-      metadata, "extension_target_pages",
-    )
-    if !extension_targets.is_empty() {
-      extension_targets
-    } else {
-      let bookapi_targets = metadata_string_array_value(
-        metadata, "bookapi_target_pages",
-      )
-      if !bookapi_targets.is_empty() {
-        bookapi_targets
-      } else {
-        task.target_pages
-      }
-    }
-  }
-  ProviderTaskSpec::{
-    ..task,
-    kind,
-    title,
-    priority,
-    requires_review,
-    target_pages,
-  }
-}
-
-///|
 fn provider_task_substep_prompt(task : ProviderTaskSpec) -> String {
   let target_lines = if task.target_pages.is_empty() {
     "No explicit target pages were declared."
@@ -370,11 +30,13 @@ fn provider_task_followup_execution_tasks(
 ) -> Array[ProviderTaskSpec] {
   let execution_tasks = provider_task_execution_tasks(batch.tasks)
   let mut selected_index : Int? = None
-  for index = 0; index < execution_tasks.length(); index = index + 1 {
+  let mut index = 0
+  while index < execution_tasks.length() {
     if execution_tasks[index].id == current_task.id {
       selected_index = Some(index)
       break
     }
+    index += 1
   }
   match selected_index {
     Some(index) => execution_tasks[index + 1:].iter().to_array()
@@ -388,7 +50,7 @@ fn provider_task_followup_substeps(
   current_task : ProviderTaskSpec,
 ) -> Array[AdaptiveSubstepPayload] {
   provider_task_followup_execution_tasks(batch, current_task).map(fn(task) {
-    AdaptiveSubstepPayload::{
+    {
       title: task.title,
       prompt: provider_task_substep_prompt(task),
       kind: Some("job.analysis"),
@@ -617,7 +279,7 @@ async fn provider_task_research_bootstrap_substeps(
     return []
   }
   [
-    AdaptiveSubstepPayload::{
+    {
       title: "Write research evidence packet",
       prompt: provider_task_research_protocol_prompt(
         task,
@@ -630,7 +292,7 @@ async fn provider_task_research_bootstrap_substeps(
       ),
       kind: Some("job.analysis"),
     },
-    AdaptiveSubstepPayload::{
+    {
       title: "Write deep research report",
       prompt: provider_task_research_protocol_prompt(
         task,
@@ -640,7 +302,7 @@ async fn provider_task_research_bootstrap_substeps(
       ),
       kind: Some("job.analysis"),
     },
-    AdaptiveSubstepPayload::{
+    {
       title: "Write marketing brief",
       prompt: provider_task_research_protocol_prompt(
         task,
@@ -840,12 +502,14 @@ async fn provider_task_source_materialize_substeps(
     pages
   }
   let bounded_pages : Array[String] = []
-  for i = 0; i < materialize_pages.length() && i < 2; i = i + 1 {
+  let mut i = 0
+  while i < materialize_pages.length() && i < 2 {
     bounded_pages.push(materialize_pages[i])
+    i += 1
   }
   let substeps : Array[AdaptiveSubstepPayload] = []
   for page in bounded_pages {
-    substeps.push(AdaptiveSubstepPayload::{
+    substeps.push({
       title: provider_task_materialize_substep_title(page),
       prompt: provider_task_materialize_substep_prompt(
         task, context, packets, page,
@@ -873,530 +537,6 @@ async fn provider_task_existing_source_pages(
 }
 
 ///|
-fn provider_task_required_research_artifacts() -> Array[String] {
-  [
-    "raw/bootstrap/research-question.md", "raw/bootstrap/search-log.md", "raw/bootstrap/source-screen.md",
-    "raw/bootstrap/local-sources.md", "raw/bootstrap/evidence-matrix.md", "raw/bootstrap/synthesis-brief.md",
-    "raw/bootstrap/deep-report.md", "raw/bootstrap/marketing-brief.md",
-  ]
-}
-
-///|
-async fn provider_task_existing_research_artifacts(
-  workspace_root : String,
-) -> Array[String] {
-  let present : Array[String] = []
-  for path in provider_task_required_research_artifacts() {
-    let absolute = @pathx.join(workspace_root, path)
-    if (@fsx.exists(absolute) catch { _ => false }) {
-      present.push(path)
-    }
-  }
-  present
-}
-
-///|
-fn provider_task_research_dossier_needed(task : ProviderTaskSpec) -> Bool {
-  task.kind.trim().to_lower() == "bootstrap_gather"
-}
-
-///|
-fn provider_task_markdown_list(items : Array[String]) -> String {
-  if items.is_empty() {
-    "- none"
-  } else {
-    items.map(fn(item) { "- \{item}" }).join("\n")
-  }
-}
-
-///|
-fn provider_task_research_topic(context : ProviderTaskWorkerContext) -> String {
-  let base = if context.book_id.is_blank() {
-    context.task_id
-  } else {
-    context.book_id
-  }
-  let trimmed = if base.has_prefix("research-") { base[9:] } else { base }
-  let topic = trimmed.trim().to_owned()
-  if topic.is_blank() {
-    "research topic"
-  } else {
-    topic
-  }
-}
-
-///|
-fn provider_task_research_question_summary(
-  content : String,
-  fallback : String,
-) -> String {
-  for line in content.split("\n") {
-    let trimmed = line.trim().to_owned()
-    if trimmed.contains("- Research question:") {
-      let parts = trimmed.split("- Research question:").collect()
-      if parts.length() > 1 {
-        return provider_task_trim_research_clause(parts[1].trim().to_owned())
-      }
-    }
-    if trimmed.contains("Research question:") {
-      let parts = trimmed.split("Research question:").collect()
-      if parts.length() > 1 {
-        return provider_task_trim_research_clause(parts[1].trim().to_owned())
-      }
-    }
-  }
-  if !fallback.trim().is_blank() {
-    fallback.trim().to_owned()
-  } else if !content.trim().is_blank() {
-    provider_task_first_nonblank_lines(content, 3)
-  } else {
-    "Produce source-backed research coverage with explicit evidence and known gaps."
-  }
-}
-
-///|
-fn provider_task_trim_research_clause(text : String) -> String {
-  let stop_markers = [
-    " - Quality bar:", " - Required durable outputs:", " - Required raw outputs:",
-    " - Output contract:", " - Mode:",
-  ]
-  let mut value = text.trim().to_owned()
-  for marker in stop_markers {
-    let parts = value.split(marker).collect()
-    if parts.length() > 1 {
-      value = parts[0].trim().to_owned()
-    }
-  }
-  if value.is_blank() {
-    "Produce source-backed research coverage with explicit evidence and known gaps."
-  } else {
-    value
-  }
-}
-
-///|
-fn provider_task_first_nonblank_lines(content : String, limit : Int) -> String {
-  let lines : Array[String] = []
-  for line in content.split("\n") {
-    let trimmed = line.trim()
-    if trimmed.is_blank() {
-      continue
-    }
-    lines.push(trimmed.to_owned())
-    if lines.length() >= limit {
-      break
-    }
-  }
-  if lines.is_empty() {
-    "(file had no non-blank preview lines)"
-  } else {
-    lines.join(" ")
-  }
-}
-
-///|
-async fn provider_task_local_source_notes(
-  workspace_root : String,
-  local_paths : Array[String],
-) -> Array[String] {
-  let notes : Array[String] = []
-  for i = 0; i < local_paths.length(); i = i + 1 {
-    if provider_task_cancellation_requested() {
-      notes.push(
-        "L\{i + 1}: status=cancelled reason=\{provider_task_cancelled_error()}",
-      )
-      return notes
-    }
-    let original = local_paths[i]
-    let mounted_alias = if @pathx.is_absolute(original) {
-      source_hint_mounted_relative_path(original)
-    } else {
-      original
-    }
-    let mounted_absolute = @pathx.join(workspace_root, mounted_alias)
-    let original_absolute = original
-    let mounted_exists = @fsx.exists(mounted_absolute) catch { _ => false }
-    let original_exists = @pathx.is_absolute(original_absolute) &&
-      (@fsx.exists(original_absolute) catch { _ => false })
-    let read_path = if mounted_exists {
-      mounted_absolute
-    } else {
-      original_absolute
-    }
-    let exists = mounted_exists || original_exists
-    let preview = if exists {
-      let content = @fsx.read_file(read_path) catch { _ => "(read failed)" }
-      provider_task_first_nonblank_lines(content, 3)
-    } else {
-      "(mounted alias missing or unreadable)"
-    }
-    let status = if exists { "included" } else { "blocked" }
-    notes.push(
-      "L\{i + 1}: original=`\{original}` alias=`\{mounted_alias}` status=\{status} preview=\{preview}",
-    )
-  }
-  notes
-}
-
-///|
-fn provider_task_limited_strings(
-  items : Array[String],
-  limit : Int,
-) -> Array[String] {
-  let limited : Array[String] = []
-  for i = 0; i < items.length() && i < limit; i = i + 1 {
-    limited.push(items[i])
-  }
-  limited
-}
-
-///|
-fn provider_task_add_unique(items : Array[String], item : String) -> Unit {
-  let trimmed = item.trim().to_owned()
-  if !trimmed.is_blank() && !items.contains(trimmed) {
-    items.push(trimmed)
-  }
-}
-
-///|
-fn provider_task_github_raw_readme_candidates(url : String) -> Array[String] {
-  let marker = "github.com/"
-  guard url.contains(marker) else { return [] }
-  let start = match url.find(marker) {
-    Some(index) => index + marker.length()
-    None => return []
-  }
-  let after_host = url[start:].to_owned()
-  let without_query = match after_host.find("?") {
-    Some(index) => after_host[:index].to_owned()
-    None => after_host
-  }
-  let rest = match without_query.find("#") {
-    Some(index) => without_query[:index].to_owned()
-    None => without_query
-  }
-  let parts : Array[String] = []
-  for part in rest.split("/") {
-    let value = part.trim().to_owned()
-    if !value.is_blank() {
-      parts.push(value)
-    }
-  }
-  guard parts.length() >= 2 else { return [] }
-  let owner = parts[0]
-  let repo = parts[1].replace_all(old=".git", new="")
-  [
-    "https://raw.githubusercontent.com/\{owner}/\{repo}/main/README.mbt.md",
-    "https://raw.githubusercontent.com/\{owner}/\{repo}/main/README.md",
-    "https://raw.githubusercontent.com/\{owner}/\{repo}/master/README.mbt.md",
-    "https://raw.githubusercontent.com/\{owner}/\{repo}/master/README.md",
-  ]
-}
-
-///|
-fn provider_task_fetch_url_candidates(
-  high_signal_urls : Array[String],
-  discovered_urls : Array[String],
-) -> Array[String] {
-  let urls : Array[String] = []
-  for url in high_signal_urls {
-    for candidate in provider_task_github_raw_readme_candidates(url) {
-      provider_task_add_unique(urls, candidate)
-    }
-    provider_task_add_unique(urls, url)
-  }
-  for url in discovered_urls {
-    for candidate in provider_task_github_raw_readme_candidates(url) {
-      provider_task_add_unique(urls, candidate)
-    }
-    provider_task_add_unique(urls, url)
-  }
-  urls
-}
-
-///|
-async fn provider_task_web_source_notes(
-  web_queries : Array[String],
-  high_signal_urls : Array[String],
-  web_search_enabled? : Bool = false,
-  web_fetch_enabled? : Bool = false,
-) -> Array[String] {
-  let notes : Array[String] = []
-  let discovered_urls : Array[String] = []
-  let mut next_id = 1
-  if web_search_enabled {
-    let search_tool = @web_search.new()
-    for query in provider_task_limited_strings(web_queries, 4) {
-      if provider_task_cancellation_requested() {
-        notes.push(
-          "W\{next_id}: status=cancelled tool=web_search reason=\{provider_task_cancelled_error()}",
-        )
-        return notes
-      }
-      let result = search_tool.call({ "query": query, "max_results": 5 })
-      match result {
-        Ok(output) => {
-          match output.answer {
-            Some(answer) if !answer.trim().is_blank() => {
-              notes.push(
-                "W\{next_id}: query=`\{query}` status=searched answer=\{provider_task_first_nonblank_lines(answer, 2)}",
-              )
-              next_id += 1
-            }
-            _ => ()
-          }
-          for item in output.results {
-            if !discovered_urls.contains(item.url) {
-              discovered_urls.push(item.url)
-            }
-            notes.push(
-              "W\{next_id}: query=`\{query}` status=searched title=`\{item.title}` url=`\{item.url}` snippet=\{provider_task_first_nonblank_lines(item.snippet, 2)}",
-            )
-            next_id += 1
-            if next_id > 12 {
-              break
-            }
-          }
-        }
-        Error(_, message) => {
-          notes.push(
-            "W\{next_id}: query=`\{query}` status=blocked tool=web_search reason=\{provider_task_first_nonblank_lines(message, 2)}",
-          )
-          next_id += 1
-        }
-      }
-      if next_id > 12 {
-        break
-      }
-    }
-  } else if !web_queries.is_empty() {
-    notes.push(
-      "W\{next_id}: status=blocked tool=web_search reason=web_search was not enabled by the provider runtime",
-    )
-    next_id += 1
-  }
-  let fetch_urls = provider_task_fetch_url_candidates(
-    high_signal_urls, discovered_urls,
-  )
-  if web_fetch_enabled {
-    let fetch_tool = @web_fetch.new()
-    for url in provider_task_limited_strings(fetch_urls, 6) {
-      if provider_task_cancellation_requested() {
-        notes.push(
-          "W\{next_id}: status=cancelled tool=web_fetch reason=\{provider_task_cancelled_error()}",
-        )
-        return notes
-      }
-      let result = fetch_tool.call({ "url": url, "max_chars": 1800 })
-      match result {
-        Ok(output) => {
-          let title = output.title.unwrap_or(output.final_url)
-          notes.push(
-            "W\{next_id}: url=`\{output.final_url}` status=fetched title=`\{title}` snippet=\{provider_task_first_nonblank_lines(output.text, 4)}",
-          )
-          next_id += 1
-        }
-        Error(_, message) => {
-          notes.push(
-            "W\{next_id}: url=`\{url}` status=blocked tool=web_fetch reason=\{provider_task_first_nonblank_lines(message, 2)}",
-          )
-          next_id += 1
-        }
-      }
-      if next_id > 18 {
-        break
-      }
-    }
-  } else if !fetch_urls.is_empty() {
-    notes.push(
-      "W\{next_id}: status=blocked tool=web_fetch reason=web_fetch was not enabled by the provider runtime",
-    )
-  }
-  notes
-}
-
-///|
-async fn provider_task_write_research_dossier_if_needed(
-  task : ProviderTaskSpec,
-  context : ProviderTaskWorkerContext,
-  web_search_enabled? : Bool = false,
-  web_fetch_enabled? : Bool = false,
-) -> Array[String] {
-  if !provider_task_research_dossier_needed(task) ||
-    !provider_task_research_contract_requested(task, context) {
-    return provider_task_existing_research_artifacts(context.workspace_root)
-  }
-  let existing = provider_task_existing_research_artifacts(
-    context.workspace_root,
-  )
-  if existing.length() == provider_task_required_research_artifacts().length() {
-    return existing
-  }
-  let raw_bootstrap = @pathx.join(context.workspace_root, "raw")
-    |> @pathx.join("bootstrap")
-  @fsx.make_directory(raw_bootstrap, recursive=true) catch {
-    _ => ()
-  }
-  let request_path = @pathx.join(raw_bootstrap, "RESEARCH_REQUEST.md")
-  let hints_path = @pathx.join(raw_bootstrap, "SOURCE_HINTS.md")
-  let request_content = @fsx.read_file(request_path) catch { _ => "" }
-  let hints_content = @fsx.read_file(hints_path) catch { _ => "" }
-  let web_queries = provider_task_markdown_bullet_section(
-    hints_content, "Web Search First",
-  )
-  let high_signal_urls = provider_task_markdown_bullet_section(
-    hints_content, "High-Signal URLs",
-  )
-  let local_paths = provider_task_markdown_bullet_section(
-    hints_content, "Local Repository Follow-Up",
-  )
-  let local_notes = provider_task_local_source_notes(
-    context.workspace_root,
-    local_paths,
-  )
-  let web_notes = provider_task_web_source_notes(
-    web_queries,
-    high_signal_urls,
-    web_search_enabled~,
-    web_fetch_enabled~,
-  )
-  let topic = provider_task_research_topic(context)
-  let materialization_targets = provider_task_markdown_bullet_section(
-    hints_content, "Materialization Target",
-  )
-  let write = async fn(path : String, content : String) -> Unit {
-    let absolute = @pathx.join(context.workspace_root, path)
-    if (@fsx.exists(absolute) catch { _ => false }) {
-      return
-    }
-    @fsx.write_to_file(absolute, content)
-  }
-  let included_notes : Array[String] = []
-  let blocked_notes : Array[String] = []
-  let evidence_rows : Array[String] = [
-    "| Source ID | Evidence | Confidence | Gap or contradiction |", "| --- | --- | --- | --- |",
-  ]
-  let mut has_blocked_notes = false
-  for note in local_notes {
-    if note.contains("status=included") {
-      included_notes.push(note)
-    }
-    if note.contains("status=blocked") {
-      blocked_notes.push(note)
-      has_blocked_notes = true
-    }
-    let source_parts = note.split(":").collect()
-    let source_id = source_parts[0]
-    let sanitized_note = note.replace_all(old="|", new="/")
-    evidence_rows.push(
-      "| \{source_id} | \{sanitized_note} | Medium | Needs human/model synthesis before durable ontology promotion. |",
-    )
-  }
-  for note in web_notes {
-    let source_parts = note.split(":").collect()
-    let source_id = source_parts[0]
-    let sanitized_note = note.replace_all(old="|", new="/")
-    evidence_rows.push(
-      "| \{source_id} | \{sanitized_note} | Medium | Web evidence captured by provider tool path or explicit tool blocker. |",
-    )
-  }
-  write(
-    "raw/bootstrap/research-question.md",
-    [
-      "# Research Question",
-      "",
-      "Task: \{task.title}",
-      "",
-      "Question:",
-      provider_task_research_question_summary(request_content, context.prompt),
-      "",
-      "Success criteria:",
-      provider_task_markdown_list(materialization_targets),
-    ].join("\n"),
-  )
-  write(
-    "raw/bootstrap/search-log.md",
-    [
-      "# Search Log",
-      "",
-      "Web queries requested by the provider packet:",
-      provider_task_markdown_list(web_queries),
-      "",
-      "High-signal URLs requested by the provider packet:",
-      provider_task_markdown_list(high_signal_urls),
-      "",
-      "Web evidence gathered by provider tools:",
-      provider_task_markdown_list(web_notes),
-      "",
-      "Local source aliases inspected before launching model substeps:",
-      provider_task_markdown_list(local_notes),
-      "",
-      "Note: this bootstrap file records the executable search plan, local inspection state, and any web-source limitations exposed by the provider runtime.",
-    ].join("\n"),
-  )
-  write(
-    "raw/bootstrap/source-screen.md",
-    [
-      "# Source Screen",
-      "",
-      "Included local candidates:",
-      provider_task_markdown_list(included_notes),
-      "",
-      "Blocked local candidates:",
-      provider_task_markdown_list(blocked_notes),
-      "",
-      "Fetched web evidence and explicit web blockers:",
-      provider_task_markdown_list(web_notes),
-      "",
-      "Screening rule: candidate inventories are not durable source coverage until a follow-up materialization pass digests inspected evidence with provenance.",
-    ].join("\n"),
-  )
-  write(
-    "raw/bootstrap/local-sources.md",
-    [
-      "# Local Sources",
-      "",
-      "Mounted source manifest: `mounted-sources/MANIFEST.md`",
-      "",
-      provider_task_markdown_list(local_notes),
-    ].join("\n"),
-  )
-  write(
-    "raw/bootstrap/evidence-matrix.md",
-    ["# Evidence Matrix", "", ..evidence_rows].join("\n"),
-  )
-  write(
-    "raw/bootstrap/synthesis-brief.md",
-    [
-      "# Synthesis Brief",
-      "",
-      "Topic: \{topic}",
-      "",
-      "Verified findings:",
-      "- \{topic} local source hints were mounted and inspected through workspace aliases where available.",
-      "",
-      "Web verification status:",
-      if web_notes.is_empty() {
-        "- No web queries or high-signal URLs were provided by the packet."
-      } else {
-        "- Web search/fetch results or explicit web-access blockers are recorded with W-source IDs in `search-log.md`, `source-screen.md`, and `evidence-matrix.md`."
-      },
-      "",
-      "Blockers:",
-      if has_blocked_notes {
-        "- One or more local source aliases were missing or unreadable; see `source-screen.md`."
-      } else {
-        "- none detected during local preflight."
-      },
-      "",
-      "Next materialization:",
-      provider_task_markdown_list(materialization_targets),
-    ].join("\n"),
-  )
-  provider_task_existing_research_artifacts(context.workspace_root)
-}
-
-///|
 fn provider_task_can_complete_from_research_artifacts(
   task : ProviderTaskSpec,
 ) -> Bool {
@@ -1413,7 +553,7 @@ fn provider_task_research_artifact_result(
   task : ProviderTaskSpec,
   artifacts : Array[String],
 ) -> ProviderTaskResult {
-  ProviderTaskResult::{
+  {
     task_id: provider_task_result_task_id(task),
     summary: "Completed \{task.title} from research bootstrap dossier: \{artifacts.length()} required raw artifact(s) present. MoonBook owns durable wiki materialization from this envelope.",
     artifacts,
@@ -1447,12 +587,12 @@ fn provider_task_missing_research_artifact_result(
   } else {
     missing.join(", ")
   }
-  ProviderTaskResult::{
+  {
     task_id: provider_task_result_task_id(task),
     summary: "Blocked \{task.title}: model-authored research dossier is incomplete. Missing required raw artifact(s): \{missing_text}.",
     artifacts,
     memory_candidates: [
-      ProviderTaskMemoryCandidate::{
+      {
         kind: "blocker",
         title: "Incomplete model-authored research dossier",
         detail: "The provider/model did not produce all required raw/bootstrap research artifacts. Missing: \{missing_text}. Re-run the bounded research-report skill path instead of accepting deterministic fallback content.",
@@ -1478,7 +618,7 @@ fn provider_task_source_inventory_result(
   task : ProviderTaskSpec,
   source_pages : Array[String],
 ) -> ProviderTaskResult {
-  ProviderTaskResult::{
+  {
     task_id: provider_task_result_task_id(task),
     summary: "Completed \{task.title} from durable source inventory: \{source_pages.length()} source page(s) present.",
     artifacts: source_pages,
@@ -1561,8 +701,10 @@ fn provider_task_bounded_pages(
   limit : Int,
 ) -> Array[String] {
   let bounded : Array[String] = []
-  for i = 0; i < pages.length() && i < limit; i = i + 1 {
+  let mut i = 0
+  while i < pages.length() && i < limit {
     bounded.push(pages[i])
+    i += 1
   }
   bounded
 }
@@ -1634,21 +776,26 @@ async fn provider_task_precompiled_substeps(
       context.workspace_root,
     )
     let lanes = provider_task_chunk_strings(hint_paths, 2)
-    for i = 0; i < lanes.length() && i < 2; i = i + 1 {
+    let mut i = 0
+    while i < lanes.length() && i < 2 {
       let lane_paths = lanes[i]
-      guard !lane_paths.is_empty() else { continue }
+      guard !lane_paths.is_empty() else {
+        i += 1
+        continue
+      }
       let packet_slug = provider_task_bootstrap_packet_slug(
         lane_paths[0],
         i + 1,
       )
       let packet_path = "raw/bootstrap/\{packet_slug}.md"
-      substeps.push(AdaptiveSubstepPayload::{
+      substeps.push({
         title: "Gather bootstrap lane \{i + 1}",
         prompt: provider_task_bootstrap_gather_prompt(
           task, context, lane_paths, packet_path,
         ),
         kind: Some("job.analysis"),
       })
+      i += 1
     }
     return substeps
   }
@@ -1682,7 +829,7 @@ async fn provider_task_precompiled_substeps(
     let substeps : Array[AdaptiveSubstepPayload] = []
     for page in revision_pages {
       let name = @pathx.basename(page).replace_all(old=".md", new="")
-      substeps.push(AdaptiveSubstepPayload::{
+      substeps.push({
         title: "Revise \{name}",
         prompt: provider_task_revision_substep_prompt(
           task, context, packets, page,
@@ -1691,7 +838,7 @@ async fn provider_task_precompiled_substeps(
       })
     }
     if !revision_pages.is_empty() {
-      substeps.push(AdaptiveSubstepPayload::{
+      substeps.push({
         title: "Refresh wiki catalog",
         prompt: provider_task_catalog_refresh_substep_prompt(
           task, context, existing_sources, revision_pages,
@@ -1709,7 +856,7 @@ async fn provider_task_precompiled_substeps(
       return provider_task_source_materialize_substeps(task, context)
     }
     return [
-      AdaptiveSubstepPayload::{
+      {
         title: "Finalize provider review",
         prompt: provider_task_review_substep_prompt(task, existing_sources),
         kind: Some("job.analysis"),
@@ -1728,7 +875,7 @@ async fn provider_task_precompiled_envelope(
   if substeps.is_empty() {
     None
   } else {
-    Some(AdaptiveAnalysisEnvelope::{
+    Some({
       verdict: "needs_subplan",
       summary: Some(
         "Split provider task \{task.title} into bounded workspace edits derived from gathered bootstrap material.",
@@ -1786,7 +933,7 @@ fn provider_task_breadth_envelope_from_content(
         if followup_substeps.is_empty() {
           Some(envelope)
         } else {
-          Some(AdaptiveAnalysisEnvelope::{
+          Some({
             verdict: "needs_subplan",
             summary: envelope.summary,
             missing_inputs: envelope.missing_inputs,
@@ -1819,7 +966,7 @@ fn provider_task_breadth_envelope_from_content(
           lower.contains("split") ||
           lower.contains("\"plan\"") ||
           lower.contains("\"steps\"") {
-          Some(AdaptiveAnalysisEnvelope::{
+          Some({
             verdict: "needs_subplan",
             summary: Some(summary),
             missing_inputs: None,
@@ -1830,7 +977,7 @@ fn provider_task_breadth_envelope_from_content(
           None
         }
       } else {
-        Some(AdaptiveAnalysisEnvelope::{
+        Some({
           verdict: "needs_subplan",
           summary: Some(summary),
           missing_inputs: None,
@@ -1865,7 +1012,7 @@ fn provider_task_guardrail_split_execution(
         }),
       )
   }
-  AnalysisExecution::{
+  {
     ..execution,
     content: Json::object(envelope_json).stringify(),
     metadata: {
@@ -1878,11 +1025,6 @@ fn provider_task_guardrail_split_execution(
       "extension_task_kind": task.kind,
       "extension_guardrail_verdict": "needs_subplan",
       "extension_guardrail_summary": envelope.summary.unwrap_or(
-        "Provider task requires splitting before execution.",
-      ),
-      "bookapi_task_id": task.id,
-      "bookapi_guardrail_verdict": "needs_subplan",
-      "bookapi_guardrail_summary": envelope.summary.unwrap_or(
         "Provider task requires splitting before execution.",
       ),
       "execution_isolation": execution_metadata_value(
@@ -1946,7 +1088,7 @@ fn normalize_provider_task_result(
       }
     _ => []
   }
-  Ok(ProviderTaskResult::{
+  Ok({
     task_id: provider_task_result_task_id(task),
     summary,
     artifacts,
@@ -1985,19 +1127,19 @@ fn provider_task_blocker_result(
   } else {
     context.context_pages.join(", ")
   }
-  ProviderTaskResult::{
+  {
     task_id: result.task_id,
     summary: "Blocked provider task \{task.title}: provider returned generic completion text without durable artifacts or memory candidates.",
     artifacts: [],
     memory_candidates: [
-      ProviderTaskMemoryCandidate::{
+      {
         kind: "blocker",
         title: "No durable provider outputs",
         detail: "Provider returned a generic completion for \{task.title} but produced no durable artifacts or memory candidates. Expected target pages: \{target_pages}. Context pages: \{context_pages}.",
         durable: false,
         target_page: None,
       },
-      ProviderTaskMemoryCandidate::{
+      {
         kind: "next_step",
         title: "Materialize durable outputs or return concrete blocker",
         detail: "Re-run provider execution so it creates durable source, entity, concept, query, or synthesis outputs, or return a structured blocker that names the missing source material.",
@@ -2140,7 +1282,7 @@ fn persisted_provider_task_execution(
   outcome : ProviderTaskPersistOutcome,
   target_id : String,
 ) -> AnalysisExecution {
-  AnalysisExecution::{
+  {
     ..execution,
     content: persisted_provider_task_report(task, result, outcome),
     metadata: {
@@ -2149,14 +1291,9 @@ fn persisted_provider_task_execution(
       "step_id": execution_metadata_value(execution.metadata, "step_id"),
       "execution_mode": "provider",
       "execution_target": target_id,
-      // Emit both generic and compatibility metadata so newer UIs/configs can
-      // switch immediately while older packs keep working.
       "extension_task_id": task.id,
       "extension_result": result,
       "extension_persist_outcome": outcome,
-      "bookapi_task_id": task.id,
-      "bookapi_result": result,
-      "bookapi_persist_outcome": outcome,
       "execution_isolation": execution_metadata_value(
         execution.metadata,
         "execution_isolation",
@@ -2246,7 +1383,7 @@ fn provider_task_synthesized_subplan_result(
   ).unwrap_or(
     "Adaptive subplan for \{task.title} completed and produced durable workspace outputs.",
   )
-  ProviderTaskResult::{
+  {
     task_id: provider_task_result_task_id(task),
     summary,
     artifacts,
@@ -2266,15 +1403,12 @@ async fn finalize_provider_task_subplan_execution(
     return None
   }
   let goal = metadata_string_value(request.step_metadata, "extension_goal").unwrap_or(
-    metadata_string_value(request.step_metadata, "bookapi_goal").unwrap_or(
-      request.source_prompt,
-    ),
+    request.source_prompt,
   )
-  let selected_task_id = match
-    metadata_string_value(request.step_metadata, "extension_task_id") {
-    Some(task_id) => Some(task_id)
-    None => metadata_string_value(request.step_metadata, "bookapi_task_id")
-  }
+  let selected_task_id = metadata_string_value(
+    request.step_metadata,
+    "extension_task_id",
+  )
   let (command, batch) = match
     load_provider_task_task_batch(
       request.cwd,
@@ -2362,15 +1496,12 @@ async fn run_provider_task_analysis_runner(
   inner_runner : async (AnalysisRequest) -> Result[AnalysisExecution, String],
 ) -> Result[AnalysisExecution, String] {
   let goal = metadata_string_value(request.step_metadata, "extension_goal").unwrap_or(
-    metadata_string_value(request.step_metadata, "bookapi_goal").unwrap_or(
-      request.source_prompt,
-    ),
+    request.source_prompt,
   )
-  let selected_task_id = match
-    metadata_string_value(request.step_metadata, "extension_task_id") {
-    Some(task_id) => Some(task_id)
-    None => metadata_string_value(request.step_metadata, "bookapi_task_id")
-  }
+  let selected_task_id = metadata_string_value(
+    request.step_metadata,
+    "extension_task_id",
+  )
   let (command, batch) = match
     load_provider_task_task_batch(
       request.cwd,
@@ -2430,7 +1561,7 @@ async fn run_provider_task_analysis_runner(
       }
       return Ok(
         persisted_provider_task_execution(
-          AnalysisExecution::{
+          {
             model_name: request.model_name,
             content: "{}",
             conversation_id: None,
@@ -2468,7 +1599,7 @@ async fn run_provider_task_analysis_runner(
       }
       return Ok(
         persisted_provider_task_execution(
-          AnalysisExecution::{
+          {
             model_name: request.model_name,
             content: "{}",
             conversation_id: None,
@@ -2493,7 +1624,7 @@ async fn run_provider_task_analysis_runner(
     Some(envelope) =>
       return Ok(
         provider_task_guardrail_split_execution(
-          AnalysisExecution::{
+          {
             model_name: request.model_name,
             content: "{}",
             conversation_id: None,
@@ -2575,7 +1706,7 @@ async fn run_provider_task_analysis_runner(
         }
         return Ok(
           persisted_provider_task_execution(
-            AnalysisExecution::{
+            {
               model_name: request.model_name,
               content: "{}",
               conversation_id: None,

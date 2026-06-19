@@ -2,7 +2,3 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/random",
 }
-
-import {
-  "vectie/moonlib/rand",
-} for "test"

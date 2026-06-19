@@ -35,7 +35,7 @@ pub fn Encoding::new(
     special_encoder[token] = rank
     special_decoder[rank] = @encoding/utf8.encode(token)
   }
-  Encoding::{ encoder, decoder, special_encoder, special_decoder, pattern }
+  { encoder, decoder, special_encoder, special_decoder, pattern }
 }
 
 ///|
@@ -47,11 +47,13 @@ pub fn Encoding::special_tokens(self : Encoding, piece : String) -> Int? {
 fn arg_min(vec : Array[Int]) -> Int {
   let mut value = @int.MAX_VALUE
   let mut index = -1
-  for i = 0; i < vec.length(); i = i + 1 {
+  let mut i = 0
+  while i < vec.length() {
     if vec[i] < value {
       value = vec[i]
       index = i
     }
+    i += 1
   }
   index
 }
@@ -75,12 +77,14 @@ fn Encoding::lookup(
 fn Encoding::merge(self : Encoding, tokens : Array[Int]) -> Unit {
   let pieces = tokens.map(t => self.decoder[t])
   let rank = Array::make(pieces.length() - 1, @int.MAX_VALUE)
-  for i = 0; i < pieces.length() - 1; i = i + 1 {
+  let mut i = 0
+  while i < pieces.length() - 1 {
     let l = pieces[i]
     let r = pieces[i + 1]
     if self.encoder.get(l + r) is Some(token) {
       rank[i] = token
     }
+    i += 1
   }
   let mut index = arg_min(rank)
   while index != -1 {
@@ -237,10 +241,10 @@ pub fn Encoding::decode(
       buffer.write_bytes(piece)
       continue
     }
-    raise DecodingError::InvalidToken(token)
+    raise InvalidToken(token)
   }
   let contents = buffer.contents()
   @encoding/utf8.decode(contents) catch {
-    _ => raise DecodingError::MalformedUtf8(contents)
+    _ => raise MalformedUtf8(contents)
   }
 }

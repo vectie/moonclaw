@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # MoonClaw Gateway Status Check Script
-# Similar to `openclaw status` but for MoonClaw Gateway
+# MoonClaw Gateway status helper
 
 set -e
 

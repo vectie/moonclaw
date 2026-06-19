@@ -28,7 +28,7 @@ pub fn sub_task(
   model? : String,
   cwd? : String,
 ) -> SubTask {
-  SubTask::{
+  {
     task_id,
     message,
     model,
@@ -97,7 +97,7 @@ pub fn coordination_task(
   subtasks~ : Array[SubTask],
   metadata? : Map[String, Json] = Map([]),
 ) -> CoordinationTask {
-  CoordinationTask::{
+  {
     coordination_id,
     parent_agent,
     subtasks,

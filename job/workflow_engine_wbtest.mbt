@@ -1,6 +1,6 @@
 ///|
 fn workflow_test_definition(workflow_id : String) -> JobDefinition {
-  JobDefinition::{
+  {
     id: "job.workflow",
     kind: "job.workflow",
     enabled: true,
@@ -16,15 +16,15 @@ fn workflow_test_definition(workflow_id : String) -> JobDefinition {
 
 ///|
 fn workflow_test_run() -> JobRun {
-  JobRun::{
+  {
     id: "run-workflow-1",
     job_id: "job.workflow",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Pending,
+    status: Pending,
     attempt: 1,
     retry_of: None,
     started_at: None,
@@ -67,18 +67,8 @@ async test "WorkflowEngine executes steps in order and passes outputs" {
       id: "workflow.progression",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
-          id: "fetch",
-          kind: "test.fetch",
-          config: {},
-          retry_policy: None,
-        },
-        WorkflowStepDefinition::{
-          id: "parse",
-          kind: "test.parse",
-          config: {},
-          retry_policy: None,
-        },
+        { id: "fetch", kind: "test.fetch", config: {}, retry_policy: None },
+        { id: "parse", kind: "test.parse", config: {}, retry_policy: None },
       ],
       output_bindings: ["parse"],
     }
@@ -119,18 +109,15 @@ async test "WorkflowEngine executes steps in order and passes outputs" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
-    debug_inspect(
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
       result.outputs
       .get("parse")
       .map(fn(output) { output.stringify() })
       .unwrap_or(""),
       content="{\"value\":42}",
     )
-    debug_inspect(
+    inspect(
       result.steps
       .map(fn(step) { "\{step.step_id}:\{step.status.to_json().stringify()}" })
       .join(","),
@@ -147,14 +134,11 @@ async test "WorkflowEngine retries a failing step and persists retry count" {
       id: "workflow.retry",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "unstable",
           kind: "test.unstable",
           config: {},
-          retry_policy: Some(RetryPolicy::{
-            max_attempts: 2,
-            backoff_ms: Some(0),
-          }),
+          retry_policy: Some({ max_attempts: 2, backoff_ms: Some(0) }),
         },
       ],
       output_bindings: ["unstable"],
@@ -182,13 +166,10 @@ async test "WorkflowEngine retries a failing step and persists retry count" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
-    debug_inspect(attempts.val, content="2")
-    debug_inspect(result.steps[0].retry_count, content="1")
-    debug_inspect(result.steps[0].summary.unwrap_or(""), content="recovered")
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(attempts.val, content="2")
+    inspect(result.steps[0].retry_count, content="1")
+    inspect(result.steps[0].summary.unwrap_or(""), content="recovered")
   })
 }
 
@@ -200,14 +181,11 @@ async test "WorkflowEngine fails the run when a step exhausts retries" {
       id: "workflow.fail",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "broken",
           kind: "test.broken",
           config: {},
-          retry_policy: Some(RetryPolicy::{
-            max_attempts: 2,
-            backoff_ms: Some(0),
-          }),
+          retry_policy: Some({ max_attempts: 2, backoff_ms: Some(0) }),
         },
       ],
       output_bindings: [],
@@ -220,22 +198,19 @@ async test "WorkflowEngine fails the run when a step exhausts retries" {
     )
 
     let result = engine.execute_run("run-workflow-1", fn() { 3000 })
-    debug_inspect(result is Err("still broken"), content="true")
+    inspect(result is Err("still broken"), content="true")
     let failed_run = match engine.runtime.store().get_run("run-workflow-1") {
       Some(run) => run
       None => fail("missing failed run")
     }
-    debug_inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
+    inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
     let failed_step = match
       engine.runtime.store().get_step_run("run-workflow-1", "broken") {
       Some(step) => step
       None => fail("missing failed step")
     }
-    debug_inspect(failed_step.retry_count, content="2")
-    debug_inspect(
-      failed_step.status.to_json().stringify(),
-      content="\"Failed\"",
-    )
+    inspect(failed_step.retry_count, content="2")
+    inspect(failed_step.status.to_json().stringify(), content="\"Failed\"")
   })
 }
 
@@ -247,13 +222,13 @@ async test "WorkflowEngine pauses the run when a step needs input" {
       id: "workflow.waiting-input",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "estimate",
           kind: "test.estimate",
           config: {},
           retry_policy: None,
         },
-        WorkflowStepDefinition::{
+        {
           id: "finalize",
           kind: "test.finalize",
           config: {},
@@ -278,16 +253,16 @@ async test "WorkflowEngine pauses the run when a step needs input" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
+    inspect(
       result.run.status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    debug_inspect(result.steps.length(), content="1")
-    debug_inspect(
+    inspect(result.steps.length(), content="1")
+    inspect(
       result.steps[0].status.to_json().stringify(),
       content="\"WaitingForInput\"",
     )
-    debug_inspect(
+    inspect(
       result.run.summary.unwrap_or(""),
       content="Waiting for input on step estimate: parcel location; parcel size",
     )
@@ -302,7 +277,7 @@ async test "WorkflowEngine fails instead of waiting when step metadata disables 
       id: "workflow.disable-waiting.step",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "estimate",
           kind: "test.estimate",
           config: { "step_metadata": { "disable_waiting_for_input": true } },
@@ -319,7 +294,7 @@ async test "WorkflowEngine fails instead of waiting when step metadata disables 
     )
 
     let result = engine.execute_run("run-workflow-1", fn() { 3000 })
-    debug_inspect(
+    inspect(
       result is Err("Analysis requires input: parcel location; parcel size"),
       content="true",
     )
@@ -327,16 +302,13 @@ async test "WorkflowEngine fails instead of waiting when step metadata disables 
       Some(run) => run
       None => fail("missing failed run")
     }
-    debug_inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
+    inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
     let failed_step = match
       engine.runtime.store().get_step_run("run-workflow-1", "estimate") {
       Some(step) => step
       None => fail("missing failed step")
     }
-    debug_inspect(
-      failed_step.status.to_json().stringify(),
-      content="\"Failed\"",
-    )
+    inspect(failed_step.status.to_json().stringify(), content="\"Failed\"")
   })
 }
 
@@ -348,7 +320,7 @@ async test "WorkflowEngine fails instead of waiting when profile metadata disabl
       id: "workflow.disable-waiting.profile",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "estimate",
           kind: "test.estimate",
           config: {},
@@ -357,7 +329,7 @@ async test "WorkflowEngine fails instead of waiting when profile metadata disabl
       ],
       output_bindings: [],
     }
-    let engine = workflow_test_engine_with_definition(root, workflow, JobDefinition::{
+    let engine = workflow_test_engine_with_definition(root, workflow, {
       ..workflow_test_definition(workflow.id),
       config: { "profile_metadata": { "disable_waiting_for_input": true } },
     })
@@ -368,7 +340,7 @@ async test "WorkflowEngine fails instead of waiting when profile metadata disabl
     )
 
     let result = engine.execute_run("run-workflow-1", fn() { 3000 })
-    debug_inspect(
+    inspect(
       result is Err("Analysis requires input: parcel location; parcel size"),
       content="true",
     )
@@ -376,7 +348,7 @@ async test "WorkflowEngine fails instead of waiting when profile metadata disabl
       Some(run) => run
       None => fail("missing failed run")
     }
-    debug_inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
+    inspect(failed_run.status.to_json().stringify(), content="\"Failed\"")
   })
 }
 
@@ -389,13 +361,13 @@ async test "WorkflowEngine continues best-effort for controller locate step on m
       id: "workflow.best-effort.locate",
       kind: "job.controller",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "locate_pages",
           kind: "test.locate",
           config: {},
           retry_policy: None,
         },
-        WorkflowStepDefinition::{
+        {
           id: "finalize",
           kind: "test.finalize",
           config: {},
@@ -404,7 +376,7 @@ async test "WorkflowEngine continues best-effort for controller locate step on m
       ],
       output_bindings: ["finalize"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       ..workflow_test_definition(workflow.id),
       kind: "job.controller",
     })
@@ -432,12 +404,9 @@ async test "WorkflowEngine continues best-effort for controller locate step on m
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
-    debug_inspect(result.steps.length(), content="2")
-    debug_inspect(
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(result.steps.length(), content="2")
+    inspect(
       result.outputs
       .get("locate_pages")
       .map(fn(output) {
@@ -446,7 +415,7 @@ async test "WorkflowEngine continues best-effort for controller locate step on m
       .unwrap_or(false),
       content="true",
     )
-    debug_inspect(
+    inspect(
       result.outputs
       .get("finalize")
       .map(fn(output) {
@@ -466,7 +435,7 @@ async test "WorkflowEngine continues best-effort when step metadata enables best
       id: "workflow.best-effort.step-flag",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "estimate",
           kind: "test.estimate",
           config: { "step_metadata": { "best_effort_on_missing_input": true } },
@@ -486,11 +455,8 @@ async test "WorkflowEngine continues best-effort when step metadata enables best
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
-    debug_inspect(
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
       result.outputs
       .get("estimate")
       .map(fn(output) {
@@ -512,7 +478,7 @@ async test "WorkflowEngine continues best-effort when profile metadata enables b
         id: "workflow.best-effort.profile-flag",
         kind: "test",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "estimate",
             kind: "test.estimate",
             config: {},
@@ -521,7 +487,7 @@ async test "WorkflowEngine continues best-effort when profile metadata enables b
         ],
         output_bindings: ["estimate"],
       }
-      let engine = workflow_test_engine_with_definition(root, workflow, JobDefinition::{
+      let engine = workflow_test_engine_with_definition(root, workflow, {
         ..workflow_test_definition(workflow.id),
         config: { "profile_metadata": { "best_effort_on_missing_input": true } },
       })
@@ -535,11 +501,8 @@ async test "WorkflowEngine continues best-effort when profile metadata enables b
         Ok(result) => result
         Err(error) => fail(error)
       }
-      debug_inspect(
-        result.run.status.to_json().stringify(),
-        content="\"Succeeded\"",
-      )
-      debug_inspect(
+      inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+      inspect(
         result.outputs
         .get("estimate")
         .map(fn(output) {
@@ -562,7 +525,7 @@ async test "WorkflowEngine continues best-effort when compiled analysis config n
       id: "workflow.best-effort.nested-step-metadata",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "estimate",
           kind: "test.estimate",
           config: {
@@ -586,11 +549,8 @@ async test "WorkflowEngine continues best-effort when compiled analysis config n
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
-    debug_inspect(
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
+    inspect(
       result.outputs
       .get("estimate")
       .map(fn(output) {
@@ -611,7 +571,7 @@ async test "WorkflowEngine persists controller decisions from step output when p
       id: "workflow.controller.decision",
       kind: "job.controller",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "evaluate",
           kind: "test.evaluate",
           config: { "prompt": "Evaluate the current result." },
@@ -620,7 +580,7 @@ async test "WorkflowEngine persists controller decisions from step output when p
       ],
       output_bindings: ["evaluate"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       id: "job.workflow.controller",
       kind: "job.controller",
       enabled: true,
@@ -646,7 +606,7 @@ async test "WorkflowEngine persists controller decisions from step output when p
       runtime.trigger_definition(
         "run-workflow-controller-1",
         "job.workflow.controller",
-        TriggerSource::Manual,
+        Manual,
         100,
       ) {
       Ok(run) => run
@@ -678,10 +638,7 @@ async test "WorkflowEngine persists controller decisions from step output when p
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
     let decision = match
       runtime
       .store()
@@ -689,9 +646,9 @@ async test "WorkflowEngine persists controller decisions from step output when p
       Some(decision) => decision
       None => fail("missing controller decision")
     }
-    debug_inspect(decision.verdict, content="accept")
-    debug_inspect(decision.next_action.unwrap_or(""), content="branch")
-    debug_inspect(
+    inspect(decision.verdict, content="accept")
+    inspect(decision.next_action.unwrap_or(""), content="branch")
+    inspect(
       decision.metadata.stringify().contains("generic/controller_decision.v1"),
       content="true",
     )
@@ -702,12 +659,12 @@ async test "WorkflowEngine persists controller decisions from step output when p
       Some(iteration) => iteration
       None => fail("missing next iteration")
     }
-    debug_inspect(next_iteration.status, content="pending")
-    debug_inspect(
+    inspect(next_iteration.status, content="pending")
+    inspect(
       next_iteration.parent_iteration_id.unwrap_or(""),
       content="run-workflow-controller-1:iter:evaluate",
     )
-    debug_inspect(
+    inspect(
       runtime
       .store()
       .list_controller_decisions(controller_run_id=Some(run.id))
@@ -726,19 +683,19 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
       id: "workflow.resume",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "preprocess",
           kind: "test.preprocess",
           config: {},
           retry_policy: None,
         },
-        WorkflowStepDefinition::{
+        {
           id: "estimate",
           kind: "test.estimate",
           config: {},
           retry_policy: None,
         },
-        WorkflowStepDefinition::{
+        {
           id: "finalize",
           kind: "test.finalize",
           config: {},
@@ -751,20 +708,20 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
     runtime.register_workflow(workflow)
     runtime
     .store()
-    .save_run(JobRun::{
+    .save_run({
       ..workflow_test_run(),
-      status: RunStatus::WaitingForInput,
+      status: WaitingForInput,
       started_at: Some(1000),
       finished_at: Some(2000),
       summary: Some("Waiting for input on step estimate"),
     })
     runtime
     .store()
-    .save_step_run(JobStepRun::{
+    .save_step_run({
       id: "run-workflow-1:preprocess",
       run_id: "run-workflow-1",
       step_id: "preprocess",
-      status: RunStatus::Succeeded,
+      status: Succeeded,
       started_at: Some(1100),
       finished_at: Some(1200),
       metrics: {},
@@ -776,11 +733,11 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
     })
     runtime
     .store()
-    .save_step_run(JobStepRun::{
+    .save_step_run({
       id: "run-workflow-1:estimate",
       run_id: "run-workflow-1",
       step_id: "estimate",
-      status: RunStatus::WaitingForInput,
+      status: WaitingForInput,
       started_at: Some(1300),
       finished_at: Some(1400),
       metrics: {},
@@ -837,18 +794,15 @@ async test "WorkflowEngine resumes waiting run in place from blocked step" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(preprocess_calls.val, content="0")
-    debug_inspect(result.run.id, content="run-workflow-1")
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
+    inspect(preprocess_calls.val, content="0")
+    inspect(result.run.id, content="run-workflow-1")
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
     let estimate_text = result.outputs
       .get("estimate")
       .map(fn(output) { output.stringify() })
       .unwrap_or("")
-    debug_inspect(estimate_text.contains("\"seed\":7"), content="true")
-    debug_inspect(
+    inspect(estimate_text.contains("\"seed\":7"), content="true")
+    inspect(
       estimate_text.contains("\"resume\":\"guess missing data\""),
       content="true",
     )
@@ -866,7 +820,7 @@ async test "WorkflowEngine accepts looser controller decision output shapes" {
         id: "workflow.controller.decision.loose",
         kind: "job.controller",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "evaluate",
             kind: "test.evaluate",
             config: { "prompt": "Evaluate the current result." },
@@ -875,7 +829,7 @@ async test "WorkflowEngine accepts looser controller decision output shapes" {
         ],
         output_bindings: ["evaluate"],
       }
-      runtime.register_definition(JobDefinition::{
+      runtime.register_definition({
         id: "job.workflow.controller.loose",
         kind: "job.controller",
         enabled: true,
@@ -900,7 +854,7 @@ async test "WorkflowEngine accepts looser controller decision output shapes" {
         runtime.trigger_definition(
           "run-workflow-controller-loose-1",
           "job.workflow.controller.loose",
-          TriggerSource::Manual,
+          Manual,
           100,
         ) {
         Ok(run) => run
@@ -926,10 +880,7 @@ async test "WorkflowEngine accepts looser controller decision output shapes" {
         Ok(result) => result
         Err(error) => fail(error)
       }
-      debug_inspect(
-        result.run.status.to_json().stringify(),
-        content="\"Succeeded\"",
-      )
+      inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
       let decision = match
         runtime
         .store()
@@ -939,8 +890,8 @@ async test "WorkflowEngine accepts looser controller decision output shapes" {
         Some(decision) => decision
         None => fail("missing loose controller decision")
       }
-      debug_inspect(decision.verdict, content="accept")
-      debug_inspect(
+      inspect(decision.verdict, content="accept")
+      inspect(
         decision.reason.unwrap_or(""),
         content="The result is good enough.",
       )
@@ -953,10 +904,7 @@ async test "WorkflowEngine accepts looser controller decision output shapes" {
         Some(iteration) => iteration
         None => fail("missing loose next iteration")
       }
-      debug_inspect(
-        next_iteration.hypothesis,
-        content="Try another adjacent path.",
-      )
+      inspect(next_iteration.hypothesis, content="Try another adjacent path.")
     },
   )
 }
@@ -969,18 +917,8 @@ async test "WorkflowEngine cancels before the next step when control requests st
       id: "workflow.cancel",
       kind: "test",
       steps: [
-        WorkflowStepDefinition::{
-          id: "first",
-          kind: "test.first",
-          config: {},
-          retry_policy: None,
-        },
-        WorkflowStepDefinition::{
-          id: "second",
-          kind: "test.second",
-          config: {},
-          retry_policy: None,
-        },
+        { id: "first", kind: "test.first", config: {}, retry_policy: None },
+        { id: "second", kind: "test.second", config: {}, retry_policy: None },
       ],
       output_bindings: [],
     }
@@ -1003,16 +941,13 @@ async test "WorkflowEngine cancels before the next step when control requests st
     })
 
     let result = engine.execute_run("run-workflow-1", fn() { 4000 }, control~)
-    debug_inspect(result is Err("Workflow cancelled"), content="true")
+    inspect(result is Err("Workflow cancelled"), content="true")
     let cancelled_run = match engine.runtime.store().get_run("run-workflow-1") {
       Some(run) => run
       None => fail("missing cancelled run")
     }
-    debug_inspect(
-      cancelled_run.status.to_json().stringify(),
-      content="\"Cancelled\"",
-    )
-    debug_inspect(calls.val, content="1")
+    inspect(cancelled_run.status.to_json().stringify(), content="\"Cancelled\"")
+    inspect(calls.val, content="1")
   })
 }
 
@@ -1027,7 +962,7 @@ async test "WorkflowEngine warns on unexpected verdicts but still persists them"
         id: "workflow.controller.verdict.warning",
         kind: "job.controller",
         steps: [
-          WorkflowStepDefinition::{
+          {
             id: "evaluate",
             kind: "test.evaluate",
             config: { "prompt": "Evaluate the current result." },
@@ -1036,7 +971,7 @@ async test "WorkflowEngine warns on unexpected verdicts but still persists them"
         ],
         output_bindings: ["evaluate"],
       }
-      runtime.register_definition(JobDefinition::{
+      runtime.register_definition({
         id: "job.workflow.controller.warning",
         kind: "job.controller",
         enabled: true,
@@ -1062,7 +997,7 @@ async test "WorkflowEngine warns on unexpected verdicts but still persists them"
         runtime.trigger_definition(
           "run-workflow-controller-keep-1",
           "job.workflow.controller.warning",
-          TriggerSource::Manual,
+          Manual,
           100,
         ) {
         Ok(run) => run
@@ -1072,7 +1007,7 @@ async test "WorkflowEngine warns on unexpected verdicts but still persists them"
         runtime.trigger_definition(
           "run-workflow-controller-weird-1",
           "job.workflow.controller.warning",
-          TriggerSource::Manual,
+          Manual,
           100,
         ) {
         Ok(run) => run
@@ -1118,8 +1053,8 @@ async test "WorkflowEngine warns on unexpected verdicts but still persists them"
         Some(decision) => decision
         None => fail("missing keep decision")
       }
-      debug_inspect(keep_decision.verdict, content="accept")
-      debug_inspect(
+      inspect(keep_decision.verdict, content="accept")
+      inspect(
         keep_decision.metadata.stringify().contains("\"warning\""),
         content="false",
       )
@@ -1133,8 +1068,8 @@ async test "WorkflowEngine warns on unexpected verdicts but still persists them"
         Some(decision) => decision
         None => fail("missing weird decision")
       }
-      debug_inspect(weird_decision.verdict, content="escalate")
-      debug_inspect(
+      inspect(weird_decision.verdict, content="escalate")
+      inspect(
         weird_decision.metadata.stringify().contains("allowed_verdicts"),
         content="true",
       )
@@ -1151,7 +1086,7 @@ async test "WorkflowEngine uses configured next_iteration field mappings" {
       id: "workflow.controller.next.mapping",
       kind: "job.controller",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "evaluate",
           kind: "test.evaluate",
           config: { "prompt": "Evaluate the current result." },
@@ -1160,7 +1095,7 @@ async test "WorkflowEngine uses configured next_iteration field mappings" {
       ],
       output_bindings: ["evaluate"],
     }
-    runtime.register_definition(JobDefinition::{
+    runtime.register_definition({
       id: "job.workflow.controller.next.mapping",
       kind: "job.controller",
       enabled: true,
@@ -1191,7 +1126,7 @@ async test "WorkflowEngine uses configured next_iteration field mappings" {
       runtime.trigger_definition(
         "run-workflow-controller-mapped-1",
         "job.workflow.controller.next.mapping",
-        TriggerSource::Manual,
+        Manual,
         100,
       ) {
       Ok(run) => run
@@ -1219,21 +1154,15 @@ async test "WorkflowEngine uses configured next_iteration field mappings" {
       Ok(result) => result
       Err(error) => fail(error)
     }
-    debug_inspect(
-      result.run.status.to_json().stringify(),
-      content="\"Succeeded\"",
-    )
+    inspect(result.run.status.to_json().stringify(), content="\"Succeeded\"")
     let next_iteration = match
       runtime.store().get_controller_iteration("iter-custom") {
       Some(iteration) => iteration
       None => fail("missing mapped next iteration")
     }
-    debug_inspect(next_iteration.title, content="Mapped follow-up")
-    debug_inspect(
-      next_iteration.hypothesis,
-      content="Use alternate mapped fields.",
-    )
-    debug_inspect(
+    inspect(next_iteration.title, content="Mapped follow-up")
+    inspect(next_iteration.hypothesis, content="Use alternate mapped fields.")
+    inspect(
       runtime
       .store()
       .list_controller_lineage_edges(

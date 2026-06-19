@@ -21,7 +21,7 @@ pub fn SubjobStepConfig::new(
   include_parent_outputs? : Bool = true,
   max_depth? : Int = 2,
 ) -> SubjobStepConfig {
-  SubjobStepConfig::{
+  {
     request_text,
     cwd,
     home,
@@ -77,10 +77,7 @@ fn proposal_with_execution_override(
     "execution",
     Json::object(merged_execution_metadata),
   )
-  JobProposal::{
-    ..proposal,
-    profile_metadata: Json::object(merged_profile_metadata),
-  }
+  { ..proposal, profile_metadata: Json::object(merged_profile_metadata) }
 }
 
 ///|
@@ -140,10 +137,10 @@ fn proposal_with_isolation_policy(proposal : JobProposal) -> JobProposal {
           }
         _ => ()
       }
-      JobProposalStep::{ ..step, metadata: Json::object(merged_step_metadata) }
+      { ..step, metadata: Json::object(merged_step_metadata) }
     }
   })
-  JobProposal::{ ..proposal, steps: updated_steps }
+  { ..proposal, steps: updated_steps }
 }
 
 ///|
@@ -203,7 +200,7 @@ fn proposal_with_missing_input_policy(
       metadata: merge_json_metadata(step.metadata, policy_json),
     }
   })
-  JobProposal::{
+  {
     ..proposal,
     profile_metadata: merge_json_metadata(
       proposal.profile_metadata,
@@ -290,7 +287,7 @@ pub(all) struct ProposalPlanner {
 pub fn ProposalPlanner::new(
   run~ : async (String, String, String?) -> JobProposal,
 ) -> ProposalPlanner {
-  ProposalPlanner::{ run, }
+  { run, }
 }
 
 ///|
@@ -302,7 +299,7 @@ pub(all) struct ProposalCompiler {
 pub fn ProposalCompiler::new(
   run~ : (JobProposal, Int, String, String) -> ProposalCompilation,
 ) -> ProposalCompiler {
-  ProposalCompiler::{ run, }
+  { run, }
 }
 
 ///|
@@ -334,7 +331,7 @@ pub fn ChildRunExecutor::new(
     String,
   ],
 ) -> ChildRunExecutor {
-  ChildRunExecutor::{ run, }
+  { run, }
 }
 
 ///|
@@ -355,7 +352,7 @@ async fn execute_child_run_locally(
     )
     return Err("Subjob \{child_run.id} is waiting for input: \{summary}")
   }
-  Ok(ChildRunExecutionResult::{ outputs: child_result.outputs })
+  Ok({ outputs: child_result.outputs })
 }
 
 ///|
@@ -369,7 +366,7 @@ async fn record_parent_child_run_event(
   message : String,
   now_ms : Int,
 ) -> Unit {
-  store.append_run_event(JobRunEvent::{
+  store.append_run_event({
     run_id: context.run.id,
     job_id: context.run.job_id,
     event_type,
@@ -481,9 +478,9 @@ pub fn subjob_step_handler(
       proposal, execution_mode, execution_target,
     )
     let compilation = (compiler.run)(proposal, now(), cwd, home.unwrap_or("."))
-    store.save_job_proposal(JobProposal::{
+    store.save_job_proposal({
       ..proposal,
-      status: JobProposalStatus::Confirmed,
+      status: Confirmed,
       job_id: Some(compilation.definition.id),
       workflow_id: Some(compilation.workflow.id),
       updated_at: now(),
@@ -497,7 +494,7 @@ pub fn subjob_step_handler(
       runtime.trigger_definition(
         next_run_id(),
         compilation.definition.id,
-        TriggerSource::Custom("subjob"),
+        Custom("subjob"),
         now(),
         parent_run_id=Some(context.run.id),
         parent_step_id=Some(context.step.id),
@@ -522,9 +519,9 @@ pub fn subjob_step_handler(
       child_run,
       now(),
     )
-    store.save_job_proposal(JobProposal::{
+    store.save_job_proposal({
       ..proposal,
-      status: JobProposalStatus::Confirmed,
+      status: Confirmed,
       job_id: Some(compilation.definition.id),
       workflow_id: Some(compilation.workflow.id),
       last_run_id: Some(child_run.id),

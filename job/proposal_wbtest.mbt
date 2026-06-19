@@ -66,7 +66,7 @@ test "proposal_as_workflow builds generic analysis workflow with notify config" 
 ///|
 fn fake_planner_executor(content : String) -> AnalysisExecutor {
   AnalysisExecutor::new(run=fn(_request) {
-    Ok(AnalysisExecution::{
+    Ok({
       model_name: "default",
       content,
       conversation_id: None,
@@ -140,7 +140,7 @@ async test "plan_e2e_job_proposal includes structured intake in planner prompt" 
       let has_intake = request.prompt.contains("\"starter_attachments\"") &&
         request.prompt.contains("\"requested_output_format\":\"Markdown memo\"") &&
         request.prompt.contains("stay inside the active workspace first")
-      Ok(AnalysisExecution::{
+      Ok({
         model_name: "default",
         content: if has_intake {
           "{\"title\":\"Intake-aware plan\",\"summary\":\"Planner saw the structured intake.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"review\",\"title\":\"Review starter files\",\"prompt\":\"Review the provided starter files and extract the key facts.\",\"kind\":\"job.analysis\"},{\"id\":\"memo\",\"title\":\"Produce board memo\",\"prompt\":\"Produce the requested board memo in Markdown.\",\"kind\":\"job.analysis\"}]}"
@@ -380,7 +380,7 @@ async test "plan_job_proposal includes decomposition guidance for land acquisiti
           "Use the loaded `job-planning` skill as the authoritative contract.",
         ) &&
         prompt.contains("# Job Planning")
-      Ok(AnalysisExecution::{
+      Ok({
         model_name: "default",
         content: if has_example {
           "{\"title\":\"Land acquisition calculation\",\"summary\":\"Use a decomposed analytical plan.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Information collection\",\"prompt\":\"Collect the required data.\",\"kind\":\"job.analysis\"},{\"id\":\"design\",\"title\":\"Scheme design\",\"prompt\":\"Design the calculation scheme.\",\"kind\":\"job.analysis\"},{\"id\":\"estimate\",\"title\":\"Cost estimation\",\"prompt\":\"Estimate major costs.\",\"kind\":\"job.analysis\"},{\"id\":\"price\",\"title\":\"Marketing pricing\",\"prompt\":\"Estimate commercial pricing assumptions.\",\"kind\":\"job.analysis\"},{\"id\":\"finance\",\"title\":\"Financial analysis\",\"prompt\":\"Analyze the financial outcome.\",\"kind\":\"job.analysis\"},{\"id\":\"risk\",\"title\":\"Risk assessment\",\"prompt\":\"Review the main risks.\",\"kind\":\"job.analysis\"},{\"id\":\"report\",\"title\":\"Report generation\",\"prompt\":\"Generate the final report.\",\"kind\":\"job.analysis\"}]}"
@@ -430,7 +430,7 @@ async test "plan_job_proposal loads skills/job-planning/SKILL.md when present" {
           request.system_prompt.contains(
             "The loaded `job-planning` skill defines the planning procedure and output discipline.",
           )
-        Ok(AnalysisExecution::{
+        Ok({
           model_name: "default",
           content: if has_skill_name &&
             has_skill_content &&
@@ -628,7 +628,7 @@ async test "plan_job_proposal retries under-decomposed analytical plan" {
       } else {
         "{\"title\":\"Land acquisition estimation\",\"summary\":\"Repaired draft.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Information collection\",\"prompt\":\"Collect the required inputs.\",\"kind\":\"job.analysis\"},{\"id\":\"design\",\"title\":\"Scheme design\",\"prompt\":\"Design the estimation scheme.\",\"kind\":\"job.analysis\"},{\"id\":\"estimate\",\"title\":\"Cost estimation\",\"prompt\":\"Estimate costs.\",\"kind\":\"job.analysis\"},{\"id\":\"finance\",\"title\":\"Financial analysis\",\"prompt\":\"Analyze the financial outcome.\",\"kind\":\"job.analysis\"},{\"id\":\"risk\",\"title\":\"Risk assessment\",\"prompt\":\"Assess major risks.\",\"kind\":\"job.analysis\"},{\"id\":\"report\",\"title\":\"Report generation\",\"prompt\":\"Generate the final report.\",\"kind\":\"job.analysis\"}]}"
       }
-      Ok(AnalysisExecution::{
+      Ok({
         model_name: "default",
         content,
         conversation_id: None,
@@ -652,7 +652,7 @@ async test "plan_job_proposal reports under-decomposed plan after repair" {
     100,
     executor=AnalysisExecutor::new(run=fn(_request) {
       calls.val = calls.val + 1
-      Ok(AnalysisExecution::{
+      Ok({
         model_name: "default",
         content: "{\"title\":\"Land acquisition estimation\",\"steps\":[{\"id\":\"execute\",\"title\":\"Execute requested work\",\"prompt\":\"Perform the requested job directly.\",\"kind\":\"job.analysis\"}]}",
         conversation_id: None,
@@ -717,7 +717,7 @@ async test "profile json drives controller policy through compilation into runti
       runtime.trigger_definition(
         "run-controller-runtime-1",
         compilation.definition.id,
-        TriggerSource::Manual,
+        Manual,
         200,
       ) {
       Ok(run) => run
@@ -774,7 +774,7 @@ async test "plan_job_proposal includes relevant memory context in planner prompt
       let note = request.prompt.contains(
         "Prefer VLA papers and weekday digests.",
       )
-      Ok(AnalysisExecution::{
+      Ok({
         model_name: "default",
         content: if marker && note {
           "{\"title\":\"Memory-aware plan\",\"summary\":\"Planner used memory context.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"collect\",\"title\":\"Collect\",\"prompt\":\"Collect.\",\"kind\":\"job.analysis\"}]}"
@@ -829,7 +829,7 @@ async test "revise_job_proposal includes memory context in revise prompt" {
       let note = request.prompt.contains(
         "Deployment changes need rollback notes.",
       )
-      Ok(AnalysisExecution::{
+      Ok({
         model_name: "default",
         content: if marker && note {
           "{\"title\":\"Memory-aware revise\",\"summary\":\"Revision used memory context.\",\"tags\":[\"job\"],\"steps\":[{\"id\":\"inspect\",\"title\":\"Inspect\",\"prompt\":\"Inspect.\",\"kind\":\"job.analysis\"}]}"
@@ -928,8 +928,8 @@ test "render_job_plan_preview_for_chat stays transient and points to next action
     request_text: "Analyze attached files",
     summary: "Break the work into a few investigation steps before execution.",
     steps: [
-      JobPlanPreviewStep::{ id: "step_1", title: "Inspect files" },
-      JobPlanPreviewStep::{ id: "step_2", title: "Draft approach" },
+      { id: "step_1", title: "Inspect files" },
+      { id: "step_2", title: "Draft approach" },
     ],
     requested_output_format: Some("Board memo"),
     starter_files: ["parcel-brief.pdf"],

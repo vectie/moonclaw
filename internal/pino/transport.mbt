@@ -36,22 +36,27 @@ priv suberror InvalidTransport {
 /// ```
 pub fn Transport::parse(transport : StringView) -> Transport raise {
   let schema = StringBuilder::new()
-  let path : StringView = for rest = transport {
+  let mut rest = transport
+  while true {
     match rest {
-      [] as path => break path
-      [':', .. path] => break path
-      [c, .. rest] => {
+      [] => break
+      [':', .. path] => {
+        rest = path
+        break
+      }
+      [c, .. tail] => {
         schema.write_char(c)
-        continue rest
+        rest = tail
       }
     }
   }
+  let path = rest
   match schema.to_string() {
     "console" => {
       if path != "" {
         raise InvalidTransport(transport)
       }
-      Transport::Console
+      Console
     }
     "file" => Transport::file(path)
     schema => raise InvalidTransport(schema)
@@ -61,13 +66,15 @@ pub fn Transport::parse(transport : StringView) -> Transport raise {
 ///|
 async fn mkdir(path : String) -> Unit {
   let dirs = []
-  for dir = path.view() {
+  let mut current = path.view()
+  while true {
+    let dir = current
     let dir = dir.to_owned()
     if dir == "." || dir == "" || @fs.exists(dir) {
       break
     }
     dirs.push(dir)
-    continue @pathx.dirname(dir)
+    current = @pathx.dirname(dir)
   }
   for i in 0..<dirs.length() {
     let dir = dirs[dirs.length() - 1 - i]
@@ -131,7 +138,7 @@ fn Transport::close(self : Transport) -> Unit {
 /// # Returns
 /// A Transport configured for console output
 pub fn Transport::console() -> Transport {
-  Transport::Console
+  Console
 }
 
 ///|
@@ -149,7 +156,7 @@ pub fn Transport::console() -> Transport {
 /// # Returns
 /// A Transport configured for file output
 pub fn Transport::file(path : StringView) -> Transport {
-  Transport::File(path=path.to_owned(), file=None)
+  File(path=path.to_owned(), file=None)
 }
 
 ///|
@@ -161,7 +168,7 @@ pub fn Transport::file(path : StringView) -> Transport {
 /// # Returns
 /// A Transport that silently discards all output
 pub fn Transport::sink() -> Transport {
-  Transport::Sink
+  Sink
 }
 
 ///|
@@ -173,11 +180,8 @@ pub fn Transport::sink() -> Transport {
 /// # Returns
 /// A Transport that sends logs to the specified queue
 ///
-/// # Note
-/// This method is deprecated; the alias "chan" is provided for backward compatibility
-#alias(chan, deprecated)
 pub fn Transport::channel(queue : @aqueue.Queue[Json]) -> Transport {
-  Transport::Channel(queue)
+  Channel(queue)
 }
 
 ///|
@@ -194,5 +198,5 @@ pub fn Transport::channel(queue : @aqueue.Queue[Json]) -> Transport {
 /// - Integration with external logging systems
 /// - Testing and log capture
 pub fn Transport::callback(callback : (Json) -> Unit) -> Transport {
-  Transport::Callback(callback)
+  Callback(callback)
 }

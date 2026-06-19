@@ -24,9 +24,9 @@ pub(all) struct ProviderTaskBatch {
 } derive(Debug, ToJson, FromJson)
 
 ///|
-/// Provider-owned context schema. Some field names remain wiki-shaped for
-/// compatibility with existing extensions, but MoonClaw treats this as generic
-/// extension task context.
+/// Provider-owned context schema for generic extension task execution.
+/// Field names describe durable book/runtime concerns, not MoonClaw domain
+/// semantics.
 pub(all) struct ProviderTaskWorkerContext {
   book_id : String
   workspace_root : String

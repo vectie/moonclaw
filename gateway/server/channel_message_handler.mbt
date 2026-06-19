@@ -22,7 +22,7 @@ fn Gateway::cancel_active_channel_session(
 ) -> Bool {
   match self.active_channel_sessions.get(session_key) {
     Some(queue) => {
-      queue.send(@event.Cancelled)
+      queue.send(Cancelled)
       true
     }
     None => false
@@ -96,11 +96,11 @@ async fn Gateway::configured_primary_model_for_cwd(
 ///|
 fn channel_model_provider_override(model : @model.Model) -> String? {
   match model.model_type {
-    @model.Type::SaaS(@model.Provider::CodexOAuth) => Some("codex")
-    @model.Type::SaaS(@model.Provider::Copilot) => Some("copilot")
-    @model.Type::SaaS(@model.Provider::Qwen) => Some("qwen")
-    @model.Type::SaaS(@model.Provider::Kimi) => Some("kimi")
-    @model.Type::SaaS(@model.Provider::KimiCoding) => Some("kimi-coding")
+    SaaS(CodexOAuth) => Some("codex")
+    SaaS(Copilot) => Some("copilot")
+    SaaS(Qwen) => Some("qwen")
+    SaaS(Kimi) => Some("kimi")
+    SaaS(KimiCoding) => Some("kimi-coding")
     _ => None
   }
 }
@@ -126,21 +126,11 @@ fn resolve_channel_model_override(
   provider_override : String?,
   configured_primary : String?,
 ) -> String? {
+  ignore(provider_override)
   match model_override {
     Some(model_name) if model_name.contains("/") =>
       Some(model_name.trim().to_owned())
-    Some(model_name) => {
-      let bare = model_name.trim().to_owned()
-      match provider_override {
-        Some(provider) if !provider.trim().is_empty() =>
-          Some("\{provider.trim().to_owned()}/\{bare}")
-        _ =>
-          match configured_primary {
-            Some(primary) => Some(primary)
-            None => Some(bare)
-          }
-      }
-    }
+    Some(_) => configured_primary
     None => configured_primary
   }
 }
@@ -154,7 +144,7 @@ async fn Gateway::store_channel_session(
   cwd : String,
   model : @model.Model,
 ) -> Unit {
-  self.sessions.save_entry(session_key, SessionEntry::{
+  self.sessions.save_entry(session_key, {
     session_id: conversation_id,
     title: self.sessions
     .get(session_key)
@@ -231,7 +221,7 @@ fn Gateway::channel_reply_message(
   incoming : @channel.Message,
   content : String,
 ) -> @channel.Message {
-  @channel.Message::{
+  {
     id: self.uuid.v4().to_string(),
     channel: channel_id,
     from: account_id,
@@ -461,7 +451,7 @@ async fn Gateway::handle_acp_chat_command(
     dm_scope=self.security_runtime().session_dm_scope(),
   )
   match action {
-    Some(@acp.AcpChatAction::Targets) =>
+    Some(Targets) =>
       Some(
         self.channel_reply_message(
           channel_id,
@@ -470,7 +460,7 @@ async fn Gateway::handle_acp_chat_command(
           @acp.render_acp_targets(self.acp_runtime().list_targets()),
         ),
       )
-    Some(@acp.AcpChatAction::Status) =>
+    Some(Status) =>
       Some(
         self.channel_reply_message(
           channel_id,
@@ -483,7 +473,7 @@ async fn Gateway::handle_acp_chat_command(
           ),
         ),
       )
-    Some(@acp.AcpChatAction::Attach(args)) => {
+    Some(Attach(args)) => {
       let target_id = args.trim().to_owned()
       guard !target_id.is_blank() else {
         return Some(
@@ -525,7 +515,7 @@ async fn Gateway::handle_acp_chat_command(
         ),
       )
     }
-    Some(@acp.AcpChatAction::Detach(args)) => {
+    Some(Detach(args)) => {
       let sessions = self.acp_runtime().list_sessions_for_key(session_key)
       let trimmed = args.trim().to_owned()
       let target_session = if trimmed.is_blank() {
@@ -642,7 +632,7 @@ async fn Gateway::handle_acp_chat_command(
         ),
       )
     }
-    Some(@acp.AcpChatAction::Run(args)) => {
+    Some(Run(args)) => {
       let content = args.trim().to_owned()
       guard !content.is_blank() else {
         return Some(
@@ -756,7 +746,7 @@ async fn Gateway::handle_security_chat_command(
   message : @channel.Message,
 ) -> @channel.Message? {
   match @security.parse_security_chat_action(message.content) {
-    Some(@security.SecurityChatAction::Pair) => {
+    Some(Pair) => {
       let record = self
         .security_runtime()
         .approve_pairing(channel_id, account_id, message.to, current_time_ms())
@@ -769,7 +759,7 @@ async fn Gateway::handle_security_chat_command(
         ),
       )
     }
-    Some(@security.SecurityChatAction::PairStatus) =>
+    Some(PairStatus) =>
       Some(
         self.channel_reply_message(
           channel_id,
@@ -780,7 +770,7 @@ async fn Gateway::handle_security_chat_command(
           .pairing_status_text(channel_id, account_id, message.to),
         ),
       )
-    Some(@security.SecurityChatAction::RevokePair) =>
+    Some(RevokePair) =>
       Some(
         self.channel_reply_message(
           channel_id,
@@ -795,7 +785,7 @@ async fn Gateway::handle_security_chat_command(
           },
         ),
       )
-    Some(@security.SecurityChatAction::Approve(token)) =>
+    Some(Approve(token)) =>
       Some(
         self.channel_reply_message(
           channel_id,
@@ -808,7 +798,7 @@ async fn Gateway::handle_security_chat_command(
           },
         ),
       )
-    Some(@security.SecurityChatAction::Approvals) =>
+    Some(Approvals) =>
       Some(
         self.channel_reply_message(
           channel_id,
@@ -990,7 +980,7 @@ impl @channel.MessageHandler for Gateway with fn handle_message(
     )
   }
 
-  @channel.Message::{
+  {
     id: self.uuid.v4().to_string(),
     channel: channel_id,
     from: account_id,

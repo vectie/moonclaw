@@ -7,18 +7,18 @@ pub struct ChatCompletionChunkChoice {
 } derive(ToJson)
 
 ///|
-impl @json.FromJson for ChatCompletionChunkChoice with from_json(
+impl @json.FromJson for ChatCompletionChunkChoice with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> ChatCompletionChunkChoice {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   guard json.get("index") is Some(Number(index, ..)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'index' field"))
+    raise JsonDecodeError((json_path, "Missing 'index' field"))
   }
   guard json.get("delta") is Some(delta) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'delta' field"))
+    raise JsonDecodeError((json_path, "Missing 'delta' field"))
   }
   let delta : ChatCompletionChunkChoiceDelta = @json.from_json(
     delta,
@@ -35,5 +35,5 @@ impl @json.FromJson for ChatCompletionChunkChoice with from_json(
     }
     None => None
   }
-  ChatCompletionChunkChoice::{ index: index.to_int(), delta, finish_reason }
+  { index: index.to_int(), delta, finish_reason }
 }

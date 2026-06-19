@@ -6,11 +6,11 @@ test "mooncode core protocol surface is stable" {
     "mooncode-native-capability-surface.v1",
   )
   assert_true(
-    native_capability_required_endpoints().contains("/v1/mooncode/capabilities"),
+    native_capability_required_endpoints().contains("/v1/code/capabilities"),
   )
   assert_true(
     native_capability_required_endpoints().contains(
-      "/v1/mooncode/sessions/<id>/runtime-service?book_root=<path>",
+      "/v1/code/sessions/<id>/runtime-service?book_root=<path>",
     ),
   )
   assert_true(native_capability_required_tools().contains("apply_patch"))
@@ -28,15 +28,11 @@ test "mooncode core protocol surface is stable" {
 }
 
 ///|
-test "mooncode core names extraction package boundaries" {
-  let payload = extraction_boundary_json().stringify()
-  assert_true(payload.contains("\"kind\":\"mooncode-extraction-boundary\""))
+test "mooncode core names standalone package boundaries" {
+  let payload = standalone_boundary_json().stringify()
+  assert_true(payload.contains("\"kind\":\"mooncode-standalone-boundary\""))
   assert_true(payload.contains("\"protocol\":\"mooncode.v1\""))
-  assert_true(
-    payload.contains(
-      "\"portable_core_package\":\"vectie/moondesk/mooncode/core\"",
-    ),
-  )
+  assert_true(payload.contains("\"core_package\":\"mooncode/core\""))
   assert_true(
     payload.contains(
       "\"moondesk_projection_package\":\"vectie/moondesk/internal/mooncode\"",
@@ -47,8 +43,8 @@ test "mooncode core names extraction package boundaries" {
       "\"moonwiki_host_package\":\"vectie/moondesk/internal/moonwiki\"",
     ),
   )
-  assert_true(payload.contains("\"future_standalone_package\":\"mooncode\""))
-  assert_true(payload.contains("\"id\":\"portable-core\""))
+  assert_true(payload.contains("\"runtime_package\":\"mooncode\""))
+  assert_true(payload.contains("\"id\":\"mooncode-core\""))
   assert_true(payload.contains("\"id\":\"moondesk-projection\""))
   assert_true(payload.contains("\"id\":\"moonwiki-host\""))
   assert_true(payload.contains("\"id\":\"runtime-engine\""))

@@ -103,7 +103,7 @@ async fn align_provider_task_result(
   task : ProviderTaskSpec,
   result : ProviderTaskResult,
 ) -> ProviderTaskResult {
-  ProviderTaskResult::{
+  {
     ..result,
     task_id: provider_task_result_task_id(task),
     artifacts: provider_task_existing_workspace_artifacts(

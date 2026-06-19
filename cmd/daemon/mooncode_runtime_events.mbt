@@ -246,12 +246,12 @@ fn mooncode_runtime_event_records(
 ///|
 fn mooncode_runtime_raw_events(body : Json) -> Array[Json] {
   match body {
-    Json::Object(object) =>
+    Object(object) =>
       match object.get("events") {
-        Some(Json::Array(items)) => items
+        Some(Array(items)) => items
         _ => [body]
       }
-    Json::Array(items) => items
+    Array(items) => items
     _ => []
   }
 }

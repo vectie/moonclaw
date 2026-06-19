@@ -7,19 +7,17 @@ test "moonstat client resolves manifest base url" {
 }
 
 ///|
-test "moonstat client falls back to health url" {
+test "moonstat client rejects health-url-only status" {
   let status = { "health_url": "http://127.0.0.1:18082/health" }.to_json()
-  assert_true(
-    moonstat_base_url_from_status(status) == Some("http://127.0.0.1:18082"),
-  )
+  assert_true(moonstat_base_url_from_status(status) is None)
 }
 
 ///|
-test "moonstat client builds openclaw route url" {
+test "moonstat client builds moonclaw route url" {
   let client = Client::{ base_url: "http://127.0.0.1:18081" }
   assert_true(
-    client.route_openclaw_chat_url() ==
-    "http://127.0.0.1:18081/openclaw/v1/chat/completions",
+    client.route_moonclaw_chat_url() ==
+    "http://127.0.0.1:18081/moonclaw/v1/chat/completions",
   )
 }
 

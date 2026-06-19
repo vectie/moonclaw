@@ -5,28 +5,26 @@ pub(all) enum CacheControl {
 }
 
 ///|
-pub impl ToJson for CacheControl with to_json(self : CacheControl) -> Json {
+pub impl ToJson for CacheControl with fn to_json(self : CacheControl) -> Json {
   match self {
     Ephemeral => { "type": "ephemeral" }
   }
 }
 
 ///|
-impl @json.FromJson for CacheControl with from_json(
+impl @json.FromJson for CacheControl with fn from_json(
   json : Json,
   json_path : @json.JsonPath,
 ) -> CacheControl {
   guard json is Object(json) else {
-    raise @json.JsonDecodeError((json_path, "Expected an object"))
+    raise JsonDecodeError((json_path, "Expected an object"))
   }
   guard json.get("type") is Some(String(type_)) else {
-    raise @json.JsonDecodeError((json_path, "Missing 'type' field"))
+    raise JsonDecodeError((json_path, "Missing 'type' field"))
   }
   match type_ {
-    "ephemeral" => CacheControl::Ephemeral
+    "ephemeral" => Ephemeral
     _ =>
-      raise @json.JsonDecodeError(
-        (json_path, "Unknown cache control type: \{type_}"),
-      )
+      raise JsonDecodeError((json_path, "Unknown cache control type: \{type_}"))
   }
 }

@@ -3,7 +3,7 @@ async test "ACP UI snapshot includes target session and run hierarchy" {
   let dir = "/tmp/moonclaw-acp-ui-snapshot"
   @fsx.make_directory(dir, recursive=true)
   @fsx.write_to_file(
-    @path.Path(dir).join(@path.Path("moonclaw.json")).to_string(),
+    @path.Path(dir).join(Path("moonclaw.json")).to_string(),
     (
       {
         "acp": {

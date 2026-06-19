@@ -37,7 +37,7 @@ fn detached_run_args(
   run_id : String,
   home : String,
   cwd : String,
-  initial_input_path? : String? = None,
+  initial_input_path~ : String?,
 ) -> Array[String] {
   let args = ["proposal", "run", run_id, "--home", home, "--cwd", cwd]
   match initial_input_path {
@@ -121,7 +121,7 @@ fn external_packet_required_string_list(
           String(text) => {
             let trimmed = text.trim().to_owned()
             if trimmed.is_blank() {
-              raise @json.JsonDecodeError(
+              raise JsonDecodeError(
                 (
                   path.add_key(field).add_index(index),
                   "ExternalProposalPacket: \{field} entries must be non-blank strings",
@@ -131,7 +131,7 @@ fn external_packet_required_string_list(
             values.push(trimmed)
           }
           _ =>
-            raise @json.JsonDecodeError(
+            raise JsonDecodeError(
               (
                 path.add_key(field).add_index(index),
                 "ExternalProposalPacket: \{field} must be an array of strings",
@@ -141,7 +141,7 @@ fn external_packet_required_string_list(
         index += 1
       }
       if values.is_empty() {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (
             path.add_key(field),
             "ExternalProposalPacket: \{field} must not be empty",
@@ -151,16 +151,14 @@ fn external_packet_required_string_list(
       values
     }
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key(field),
           "ExternalProposalPacket: \{field} must be an array of strings",
         ),
       )
     None =>
-      raise @json.JsonDecodeError(
-        (path, "ExternalProposalPacket: missing \{field}"),
-      )
+      raise JsonDecodeError((path, "ExternalProposalPacket: missing \{field}"))
   }
 }
 
@@ -173,7 +171,7 @@ fn external_packet_output_contract(
     Some(String(text)) => {
       let trimmed = text.trim().to_owned()
       if trimmed.is_blank() {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (
             path.add_key("output_contract"),
             "ExternalProposalPacket: output_contract must be non-blank",
@@ -184,7 +182,7 @@ fn external_packet_output_contract(
     }
     Some(Array(items)) => {
       if items.is_empty() {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (
             path.add_key("output_contract"),
             "ExternalProposalPacket: output_contract array must not be empty",
@@ -198,7 +196,7 @@ fn external_packet_output_contract(
           String(text) => {
             let trimmed = text.trim().to_owned()
             if trimmed.is_blank() {
-              raise @json.JsonDecodeError(
+              raise JsonDecodeError(
                 (
                   path.add_key("output_contract").add_index(index),
                   "ExternalProposalPacket: output_contract array entries must be non-blank strings",
@@ -208,7 +206,7 @@ fn external_packet_output_contract(
             values.push(trimmed)
           }
           _ =>
-            raise @json.JsonDecodeError(
+            raise JsonDecodeError(
               (
                 path.add_key("output_contract").add_index(index),
                 "ExternalProposalPacket: output_contract array entries must be strings",
@@ -221,7 +219,7 @@ fn external_packet_output_contract(
     }
     Some(Object(obj)) => {
       if obj.is_empty() {
-        raise @json.JsonDecodeError(
+        raise JsonDecodeError(
           (
             path.add_key("output_contract"),
             "ExternalProposalPacket: output_contract object must not be empty",
@@ -231,14 +229,14 @@ fn external_packet_output_contract(
       Json::object(obj)
     }
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("output_contract"),
           "ExternalProposalPacket: output_contract must be string, array, or object",
         ),
       )
     None =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (path, "ExternalProposalPacket: missing output_contract"),
       )
   }
@@ -270,9 +268,7 @@ pub impl @json.FromJson for ExternalProposalPacket with fn from_json(
   path : @json.JsonPath,
 ) -> ExternalProposalPacket raise @json.JsonDecodeError {
   guard json is Object(obj) else {
-    raise @json.JsonDecodeError(
-      (path, "ExternalProposalPacket: expected object"),
-    )
+    raise JsonDecodeError((path, "ExternalProposalPacket: expected object"))
   }
   let packet_id = match external_packet_string_field(obj, "packet_id") {
     Some(value) => Some(value)
@@ -290,7 +286,7 @@ pub impl @json.FromJson for ExternalProposalPacket with fn from_json(
   let request_text = match external_packet_request_text(obj, title, summary) {
     Some(value) => value
     None =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path, "ExternalProposalPacket: missing request_text/request/goal/objective/title",
         ),
@@ -299,9 +295,7 @@ pub impl @json.FromJson for ExternalProposalPacket with fn from_json(
   let profile = match external_packet_string_field(obj, "profile") {
     Some(value) => value
     None =>
-      raise @json.JsonDecodeError(
-        (path, "ExternalProposalPacket: missing profile"),
-      )
+      raise JsonDecodeError((path, "ExternalProposalPacket: missing profile"))
   }
   let output_contract = Some(
     external_packet_output_contract(obj.get("output_contract"), path),
@@ -324,7 +318,7 @@ pub impl @json.FromJson for ExternalProposalPacket with fn from_json(
   let metadata = match obj.get("metadata") {
     Some(Object(fields)) => Json::object(fields)
     Some(_) =>
-      raise @json.JsonDecodeError(
+      raise JsonDecodeError(
         (
           path.add_key("metadata"),
           "ExternalProposalPacket: metadata must be object",
@@ -401,7 +395,7 @@ fn external_packet_skill_name(path : String) -> String? {
 ///|
 fn external_packet_preferred_skills(
   packet : ExternalProposalPacket,
-  existing? : Array[String] = [],
+  existing~ : Array[String],
 ) -> Array[String] {
   let merged : Array[String] = []
   let seen : Map[String, Bool] = {}
@@ -794,7 +788,7 @@ fn proposal_with_external_packet(
   let draft = draft_job_proposal(proposal_id, packet.request_text, now_ms)
   let title = packet.title.unwrap_or(compact_title(packet.request_text))
   let tags = [..draft.tags, packet.profile, ..packet.tags]
-  JobProposal::{
+  {
     ..draft,
     title,
     summary: external_proposal_packet_summary(packet),
@@ -824,12 +818,7 @@ pub async fn GatewayJobApp::execute_definition(
   let run = match
     self
     .runtime()
-    .trigger_definition(
-      self.next_run_id(),
-      job_id,
-      TriggerSource::Manual,
-      self.now(),
-    ) {
+    .trigger_definition(self.next_run_id(), job_id, Manual, self.now()) {
     Ok(run) => run
     Err(error) => return Err(error)
   }
@@ -940,12 +929,7 @@ pub async fn GatewayJobApp::launch_definition_detached(
   let run = match
     self
     .runtime()
-    .trigger_definition(
-      self.next_run_id(),
-      job_id,
-      TriggerSource::Manual,
-      self.now(),
-    ) {
+    .trigger_definition(self.next_run_id(), job_id, Manual, self.now()) {
     Ok(run) => run
     Err(error) => return Err(error)
   }
@@ -1053,7 +1037,7 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
       _ => profiled.profile_metadata
     },
     steps: profiled.steps.map(fn(step) {
-      JobProposalStep::{
+      {
         ..step,
         metadata: external_packet_step_metadata(
           step.metadata,
@@ -1065,10 +1049,7 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
   }
   self.runtime().store().save_job_proposal(profiled)
   if !confirm {
-    return Ok(ExternalProposalImportResult::{
-      proposal: profiled,
-      confirm_result: None,
-    })
+    return Ok({ proposal: profiled, confirm_result: None })
   }
   let confirm_result = match
     self.confirm_proposal_and_execute(
@@ -1085,10 +1066,7 @@ pub async fn GatewayJobApp::import_external_proposal_packet(
     .store()
     .get_job_proposal(proposal_id)
     .unwrap_or(profiled)
-  Ok(ExternalProposalImportResult::{
-    proposal: saved,
-    confirm_result: Some(confirm_result),
-  })
+  Ok({ proposal: saved, confirm_result: Some(confirm_result) })
 }
 
 ///|

@@ -125,7 +125,7 @@ async fn acp_test_git(cwd : String, args : Array[String]) -> Unit {
 async fn acp_test_init_repo(cwd : String) -> Unit {
   acp_test_git(cwd, ["init"])
   @fsx.write_to_file(
-    @path.Path(cwd).join(@path.Path("README.md")).to_string(),
+    @path.Path(cwd).join(Path("README.md")).to_string(),
     "# Test\n",
   )
   acp_test_git(cwd, ["add", "README.md"])
@@ -217,7 +217,7 @@ async test "execute_launch_plan commits repair owned files after validation" {
   ) {
     acp_test_init_repo(dir)
     @fsx.write_to_file(
-      @path.Path(dir).join(@path.Path("generated.txt")).to_string(),
+      @path.Path(dir).join(Path("generated.txt")).to_string(),
       "generated\n",
     )
     acp_test_git(dir, ["add", "generated.txt"])
@@ -225,7 +225,7 @@ async test "execute_launch_plan commits repair owned files after validation" {
       "-c", "user.name=MoonClaw Test", "-c", "user.email=moonclaw-test@local", "commit",
       "-m", "Add generated baseline",
     ])
-    let target_path = @path.Path(dir).join(@path.Path("source.txt")).to_string()
+    let target_path = @path.Path(dir).join(Path("source.txt")).to_string()
     let plan = AcpLaunchPlan::{
       backend: "codex",
       target_id: "codex-main",
@@ -291,7 +291,7 @@ async test "execute_launch_plan keeps full changed file paths and blocks uncommi
   ) {
     acp_test_init_repo(dir)
     @fsx.make_directory(
-      @path.Path(dir).join(@path.Path("adapters")).to_string(),
+      @path.Path(dir).join(Path("adapters")).to_string(),
       recursive=true,
     )
     let plan = AcpLaunchPlan::{

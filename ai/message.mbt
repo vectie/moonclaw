@@ -8,12 +8,12 @@ pub enum Message {
 
 ///|
 pub fn user_message(content~ : String) -> Message {
-  Message::User(content)
+  User(content)
 }
 
 ///|
 pub fn system_message(content~ : String) -> Message {
-  Message::System(content)
+  System(content)
 }
 
 ///|
@@ -21,12 +21,12 @@ pub fn assistant_message(
   content~ : String,
   tool_calls? : Array[ToolCall] = [],
 ) -> Message {
-  Message::Assistant(content, tool_calls~)
+  Assistant(content, tool_calls~)
 }
 
 ///|
 pub fn tool_message(content~ : String, tool_call_id~ : String) -> Message {
-  Message::Tool(content, tool_call_id~)
+  Tool(content, tool_call_id~)
 }
 
 ///|
@@ -48,7 +48,7 @@ pub struct ToolCall {
 
 ///|
 pub fn tool_call(id~ : String, name~ : String, arguments? : String) -> ToolCall {
-  ToolCall::{ id, name, arguments }
+  { id, name, arguments }
 }
 
 ///|
@@ -66,5 +66,5 @@ pub fn usage(
   total_tokens? : Int = input_tokens + output_tokens,
   cache_read_tokens? : Int,
 ) -> Usage {
-  Usage::{ input_tokens, output_tokens, total_tokens, cache_read_tokens }
+  { input_tokens, output_tokens, total_tokens, cache_read_tokens }
 }

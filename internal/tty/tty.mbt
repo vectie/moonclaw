@@ -35,7 +35,7 @@ pub fn window_size() -> Size raise {
   if result != 0 {
     raise @errno.Errno(result)
   }
-  Size::{ row: buf[0], col: buf[1] }
+  { row: buf[0], col: buf[1] }
 }
 
 ///|

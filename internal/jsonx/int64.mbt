@@ -40,11 +40,11 @@ pub fn as_int64(
     Number(_, repr=Some(str)) =>
       @string.parse_int64(str) catch {
         error =>
-          raise @json.JsonDecodeError(
+          raise JsonDecodeError(
             (path, "Int64::as_int64: parsing failure \{error}"),
           )
       }
-    _ => raise @json.JsonDecodeError((path, "Int64::as_int64: expected number"))
+    _ => raise JsonDecodeError((path, "Int64::as_int64: expected number"))
   }
 }
 
@@ -70,9 +70,7 @@ pub fn Object::required_int64(
   match object.get(key) {
     Some(value) => as_int64(value, path=path.add_key(key))
     None =>
-      raise @json.JsonDecodeError(
-        (path.add_key(key), "field '\{key}' is required"),
-      )
+      raise JsonDecodeError((path.add_key(key), "field '\{key}' is required"))
   }
 }
 

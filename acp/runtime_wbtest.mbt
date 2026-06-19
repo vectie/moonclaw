@@ -1,9 +1,7 @@
 ///|
 async test "ACP runtime loads codex targets from config and persists sessions" {
   let dir = "/tmp/moonclaw-acp-runtime"
-  let config_path = @path.Path(dir)
-    .join(@path.Path("moonclaw.json"))
-    .to_string()
+  let config_path = @path.Path(dir).join(Path("moonclaw.json")).to_string()
   @fsx.make_directory(dir, recursive=true)
   @fsx.write_to_file(
     config_path,
@@ -61,7 +59,7 @@ async test "ACP runtime reuses existing target/session-key binding" {
   let dir = "/tmp/moonclaw-acp-runtime-reuse"
   @fsx.make_directory(dir, recursive=true)
   @fsx.write_to_file(
-    @path.Path(dir).join(@path.Path("moonclaw.json")).to_string(),
+    @path.Path(dir).join(Path("moonclaw.json")).to_string(),
     ({ "acp": { "targets": { "codex-main": { "backend": "codex" } } } } : Json).stringify(),
   )
   let runtime = AcpRuntime::new(home=dir, cwd=dir)
@@ -80,7 +78,7 @@ async test "ACP runtime lists and deletes sessions for a bound session key" {
   let dir = "/tmp/moonclaw-acp-runtime-list"
   @fsx.make_directory(dir, recursive=true)
   @fsx.write_to_file(
-    @path.Path(dir).join(@path.Path("moonclaw.json")).to_string(),
+    @path.Path(dir).join(Path("moonclaw.json")).to_string(),
     (
       {
         "acp": {
@@ -110,7 +108,7 @@ async test "ACP runtime persists run lifecycle" {
   let dir = "/tmp/moonclaw-acp-runtime-runs"
   @fsx.make_directory(dir, recursive=true)
   @fsx.write_to_file(
-    @path.Path(dir).join(@path.Path("moonclaw.json")).to_string(),
+    @path.Path(dir).join(Path("moonclaw.json")).to_string(),
     ({ "acp": { "targets": { "codex-main": { "backend": "codex" } } } } : Json).stringify(),
   )
   let runtime = AcpRuntime::new(home=dir, cwd=dir)

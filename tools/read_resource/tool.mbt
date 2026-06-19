@@ -116,7 +116,7 @@ async fn read_file_resource(
   }
   let text = @fsx.read_file(resolved_path)
   let (text, truncated) = truncate_resource_text(text, max_chars)
-  ReadResourceResult::{
+  {
     uri,
     resolved_uri: "file://\{resolved_path}",
     kind: File,
@@ -149,7 +149,7 @@ async fn read_skill_resource(
   }
   let text = @fsx.read_file(skill.location)
   let (text, truncated) = truncate_resource_text(text, max_chars)
-  ReadResourceResult::{
+  {
     uri,
     resolved_uri: "skill://\{skill.name}",
     kind: Skill,
@@ -192,7 +192,7 @@ async fn read_worktree_resource(
     "Branch: \{handle.branch_name}",
     "Repo root: \{handle.repo_root}",
   ].join("\n")
-  ReadResourceResult::{
+  {
     uri,
     resolved_uri: "worktree://\{handle.task_key}",
     kind: Worktree,
@@ -240,7 +240,7 @@ async fn read_provider_resource(
     let capabilities = provider.capabilities.join(", ")
     [..lines, "Capabilities: \{capabilities}"]
   }
-  ReadResourceResult::{
+  {
     uri,
     resolved_uri: "provider://\{provider.name}",
     kind: Provider,

@@ -25,7 +25,7 @@ pub fn ExecutionIsolationSpec::new(
   cleanup_policy? : String? = None,
   force_new_branch? : Bool = false,
 ) -> ExecutionIsolationSpec {
-  ExecutionIsolationSpec::{
+  {
     mode,
     task_key,
     base_dir,
@@ -47,7 +47,7 @@ pub fn ExecutionIsolationResolution::new(
   cwd~ : String,
   metadata? : Json? = None,
 ) -> ExecutionIsolationResolution {
-  ExecutionIsolationResolution::{ cwd, metadata }
+  { cwd, metadata }
 }
 
 ///|
@@ -156,7 +156,7 @@ pub fn analysis_execution_isolation_spec(
         Some(True) => true
         _ => false
       }
-      Some(ExecutionIsolationSpec::{
+      Some({
         mode,
         task_key,
         base_dir,

@@ -62,7 +62,7 @@ async fn configure_models(mock : @mock.Context) -> Unit {
 }
 
 ///|
-async fn configure_daemon(mock : @mock.Context) -> Daemon {
+async fn configure_daemon(mock : @mock.Context) -> @daemon.Daemon {
   let os_cwd = @os.cwd()
   configure_models(mock)
   @daemon.Daemon::new(

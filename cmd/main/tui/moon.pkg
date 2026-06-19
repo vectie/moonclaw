@@ -12,3 +12,5 @@ import {
   "vectie/moonclaw/internal/pino",
   "vectie/moonlib/uuid",
 }
+
+supported_targets = "native"

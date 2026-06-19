@@ -10,9 +10,7 @@ fn provider_execution_requested(mode : String?) -> Bool {
       normalized == "provider" ||
       normalized == "extension" ||
       normalized == "provider.task" ||
-      normalized == "extension.task" ||
-      normalized == "bookapi" ||
-      normalized == "moonbook.bookapi"
+      normalized == "extension.task"
     }
     None => false
   }
@@ -57,21 +55,15 @@ fn provider_metadata_string_array(
 }
 
 ///|
-/// Provider capability matching stays permissive during migration so existing
-/// extension implementations can move to generic names without breaking runs.
 fn provider_supports_extension_execution(
   provider : @resource_providers.RegisteredResourceProvider,
 ) -> Bool {
   provider.kind == "extension" ||
   provider.kind == "task-provider" ||
-  provider.kind == "book-harness" ||
-  provider.kind == "moonbook" ||
   provider.capabilities.contains("provider") ||
   provider.capabilities.contains("extension") ||
   provider.capabilities.contains("provider.task") ||
-  provider.capabilities.contains("extension.task") ||
-  provider.capabilities.contains("bookapi") ||
-  provider.capabilities.contains("moonbook.bookapi")
+  provider.capabilities.contains("extension.task")
 }
 
 ///|
@@ -166,13 +158,7 @@ async fn resolve_provider_task_command(
         "Extension task target \{provider.name} is missing metadata.workspace_root",
       )
   }
-  Ok(ProviderTaskCommand::{
-    provider,
-    command,
-    args,
-    cwd: command_cwd,
-    workspace_root,
-  })
+  Ok({ provider, command, args, cwd: command_cwd, workspace_root })
 }
 
 ///|
@@ -263,8 +249,8 @@ async fn run_provider_task_stdout(
   ]
   let process = @spawn.spawn(
     command.command,
-    arguments.map(fn(arg) { arg[:] }),
-    cwd?=command.cwd.map(fn(value) { value[:] }),
+    arguments.map(fn(arg) { arg }),
+    cwd?=command.cwd.map(fn(value) { value }),
   ) catch {
     error => return Err("Failed to launch provider task \{context}: \{error}")
   }
@@ -360,7 +346,7 @@ fn embedded_provider_task_command(
       value.trim().to_owned()
     _ => return None
   }
-  Some(ProviderTaskCommand::{
+  Some({
     provider: @resource_providers.RegisteredResourceProvider::new(
       name=provider_name,
       title=provider_name,

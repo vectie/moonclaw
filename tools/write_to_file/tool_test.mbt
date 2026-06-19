@@ -38,10 +38,10 @@ async test "write_to_file/no-write-permission" (t : @test.Test) {
     let result = tool.call(args)
     // Verify that an error is returned
     guard result is Error(_) else {
-      fail("Expected Err result but got: \{mock.text(result)}")
+      fail("Expected Err result but got: \{mock.show(result)}")
     }
     inspect(
-      mock.text(result),
+      mock.show(result),
       content="Permission denied: Cannot write to file (mock:cwd)/file.txt. The file does not have write permissions.",
     )
     // Restore write permission for cleanup
@@ -62,10 +62,10 @@ async test "write_to_file rejects absolute path outside workspace" (
     let tool = new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Error(_) else {
-      fail("Expected error result but got: \{mock.text(result)}")
+      fail("Expected error result but got: \{mock.show(result)}")
     }
     inspect(
-      mock.text(result),
+      mock.show(result),
       content="Path must stay inside the current workspace: /tmp/moonclaw-write-to-file-outside.txt",
     )
   })
@@ -82,10 +82,10 @@ async test "write_to_file rejects parent path escape" (t : @test.Test) {
     let tool = new(mock.cwd.path())
     let result = tool.call(args)
     guard result is Error(_) else {
-      fail("Expected error result but got: \{mock.text(result)}")
+      fail("Expected error result but got: \{mock.show(result)}")
     }
     inspect(
-      mock.text(result),
+      mock.show(result),
       content="Path must stay inside the current workspace: ../escape.txt",
     )
   })

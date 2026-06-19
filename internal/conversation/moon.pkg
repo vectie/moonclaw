@@ -3,7 +3,6 @@ import {
   "vectie/moonclaw/internal/lru",
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
-  "vectie/moonclaw/internal/jsonx",
   "moonbitlang/x/time",
   "vectie/moonclaw/clock",
   "vectie/moonclaw/ai",
@@ -11,11 +10,11 @@ import {
   "vectie/moonclaw/event",
   "vectie/moonclaw/internal/pino",
   "moonbitlang/async",
-  "vectie/moonlib/rand",
-  "moonbitlang/core/buffer",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
+
+supported_targets = "native"
 
 import {
   "vectie/moonclaw/internal/mock",

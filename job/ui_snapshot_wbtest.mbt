@@ -18,18 +18,8 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
       id: "wf-1",
       kind: "job.proposal",
       steps: [
-        WorkflowStepDefinition::{
-          id: "step-a",
-          kind: "job.analysis",
-          config: {},
-          retry_policy: None,
-        },
-        WorkflowStepDefinition::{
-          id: "step-b",
-          kind: "job.analysis",
-          config: {},
-          retry_policy: None,
-        },
+        { id: "step-a", kind: "job.analysis", config: {}, retry_policy: None },
+        { id: "step-b", kind: "job.analysis", config: {}, retry_policy: None },
       ],
       output_bindings: [],
     }
@@ -146,7 +136,7 @@ async test "build_job_ui_snapshot includes proposal workflow steps child runs an
     store.save_artifact(artifact)
     store.save_memory(memory)
     store.save_job_proposal(proposal)
-    store.append_run_event(JobRunEvent::{
+    store.append_run_event({
       run_id: "run-1",
       job_id: "job-1",
       event_type: "step.started",
@@ -189,7 +179,7 @@ async test "artifact nodes surface execution isolation cleanup policy" {
     let root = @pathx.join(dir, "jobs")
     let runtime = RuntimeManager::new(root~)
     let store = runtime.store()
-    store.save_definition(JobDefinition::{
+    store.save_definition({
       id: "job-1",
       kind: "generic.analysis",
       enabled: true,
@@ -201,13 +191,13 @@ async test "artifact nodes surface execution isolation cleanup policy" {
       updated_at: 1,
       tags: [],
     })
-    store.save_workflow(WorkflowDefinition::{
+    store.save_workflow({
       id: "wf-1",
       kind: "generic.analysis",
       steps: [],
       output_bindings: [],
     })
-    store.save_run(JobRun::{
+    store.save_run({
       id: "run-1",
       job_id: "job-1",
       trigger: Manual,
@@ -271,7 +261,7 @@ async test "artifact nodes surface execution isolation cleanup policy" {
 async test "proposal step report artifacts attach under the matching step" {
   @fsx.with_temporary_directory("job-ui-proposal-step-report-XXXXXX", dir => {
     let store = SystemStore::new(root=dir)
-    store.save_definition(JobDefinition::{
+    store.save_definition({
       id: "job-1",
       kind: "job.proposal",
       enabled: true,
@@ -283,20 +273,15 @@ async test "proposal step report artifacts attach under the matching step" {
       updated_at: 1,
       tags: [],
     })
-    store.save_workflow(WorkflowDefinition::{
+    store.save_workflow({
       id: "wf-1",
       kind: "job.proposal",
       steps: [
-        WorkflowStepDefinition::{
-          id: "estimate",
-          kind: "job.analysis",
-          config: {},
-          retry_policy: None,
-        },
+        { id: "estimate", kind: "job.analysis", config: {}, retry_policy: None },
       ],
       output_bindings: [],
     })
-    store.save_run(JobRun::{
+    store.save_run({
       id: "run-1",
       job_id: "job-1",
       trigger: Manual,
@@ -312,7 +297,7 @@ async test "proposal step report artifacts attach under the matching step" {
       summary: Some("done"),
       error: None,
     })
-    store.save_artifact(ArtifactRecord::{
+    store.save_artifact({
       id: "artifact-step-report",
       run_id: "run-1",
       job_id: "job-1",
@@ -344,7 +329,7 @@ async test "proposal step report artifacts attach under the matching step" {
 async test "job report memories attach under the matching step via source artifact" {
   @fsx.with_temporary_directory("job-ui-step-report-memory-XXXXXX", dir => {
     let store = SystemStore::new(root=dir)
-    store.save_definition(JobDefinition::{
+    store.save_definition({
       id: "job-1",
       kind: "job.proposal",
       enabled: true,
@@ -356,20 +341,15 @@ async test "job report memories attach under the matching step via source artifa
       updated_at: 1,
       tags: [],
     })
-    store.save_workflow(WorkflowDefinition::{
+    store.save_workflow({
       id: "wf-1",
       kind: "job.proposal",
       steps: [
-        WorkflowStepDefinition::{
-          id: "step_1",
-          kind: "job.analysis",
-          config: {},
-          retry_policy: None,
-        },
+        { id: "step_1", kind: "job.analysis", config: {}, retry_policy: None },
       ],
       output_bindings: [],
     })
-    store.save_run(JobRun::{
+    store.save_run({
       id: "run-1",
       job_id: "job-1",
       trigger: Manual,
@@ -385,7 +365,7 @@ async test "job report memories attach under the matching step via source artifa
       summary: Some("done"),
       error: None,
     })
-    store.save_artifact(ArtifactRecord::{
+    store.save_artifact({
       id: "artifact-step-report",
       run_id: "run-1",
       job_id: "job-1",
@@ -402,7 +382,7 @@ async test "job report memories attach under the matching step via source artifa
       archived_at: None,
       scope: [],
     })
-    store.save_memory(MemoryRecord::{
+    store.save_memory({
       id: "memory-job-report",
       kind: "job.report",
       title: Some(
@@ -451,7 +431,7 @@ async test "build_job_ui_snapshot includes synthetic final run outputs from work
       "{\"status\":\"completed\"}",
     )
     let store = SystemStore::new(root=dir |> @pathx.join("jobs"))
-    store.save_definition(JobDefinition::{
+    store.save_definition({
       id: "job-1",
       kind: "job.proposal",
       enabled: true,
@@ -463,13 +443,13 @@ async test "build_job_ui_snapshot includes synthetic final run outputs from work
       updated_at: 1,
       tags: [],
     })
-    store.save_workflow(WorkflowDefinition::{
+    store.save_workflow({
       id: "wf-1",
       kind: "job.proposal",
       steps: [],
       output_bindings: [],
     })
-    store.save_run(JobRun::{
+    store.save_run({
       id: "run-1",
       job_id: "job-1",
       trigger: Manual,
@@ -523,12 +503,7 @@ async test "build_job_ui_snapshot includes explicit handoffs when provided" {
       id: "wf-1",
       kind: "analysis",
       steps: [
-        WorkflowStepDefinition::{
-          id: "step-a",
-          kind: "job.analysis",
-          config: {},
-          retry_policy: None,
-        },
+        { id: "step-a", kind: "job.analysis", config: {}, retry_policy: None },
       ],
       output_bindings: [],
     }
@@ -555,7 +530,7 @@ async test "build_job_ui_snapshot includes explicit handoffs when provided" {
       store,
       "run-1",
       linked_remote=[
-        JobUiRemoteLink::{
+        {
           id: "acp-run:remote-1",
           kind: "acp_run",
           title: "remote-1",
@@ -566,11 +541,11 @@ async test "build_job_ui_snapshot includes explicit handoffs when provided" {
         },
       ],
       handoffs=[
-        JobUiHandoff::{
+        {
           node_id: "step:run-1:step-a",
           step_id: Some("step-a"),
           remote: [
-            JobUiRemoteLink::{
+            {
               id: "acp-run:remote-1",
               kind: "acp_run",
               title: "remote-1",
@@ -781,13 +756,13 @@ async test "build_job_ui_snapshot adds split and merge nodes for controller runs
       id: "wf-controller",
       kind: "job.controller",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "ceo_review",
           kind: "job.analysis",
           config: {},
           retry_policy: None,
         },
-        WorkflowStepDefinition::{
+        {
           id: "implement",
           kind: "job.delegate",
           config: {},
@@ -863,7 +838,7 @@ async test "build_job_ui_snapshot adds split and merge nodes for controller runs
     store.save_workflow(workflow)
     store.save_run(run)
     store.save_run(child_run)
-    store.save_controller_state(JobControllerState::{
+    store.save_controller_state({
       controller_job_id: "job-controller",
       controller_run_id: "run-controller",
       family: "opc_feature_sprint",
@@ -880,7 +855,7 @@ async test "build_job_ui_snapshot adds split and merge nodes for controller runs
       created_at: 101,
       updated_at: 170,
     })
-    store.save_controller_decision(JobControllerDecision::{
+    store.save_controller_decision({
       id: "decision-1",
       controller_job_id: "job-controller",
       controller_run_id: "run-controller",
@@ -977,24 +952,19 @@ async test "build_job_ui_snapshot labels analysis-expanded child runs as subplan
     id: "workflow-parent",
     kind: "job.proposal",
     steps: [
-      WorkflowStepDefinition::{
-        id: "analyze",
-        kind: "job.analysis",
-        config: {},
-        retry_policy: None,
-      },
+      { id: "analyze", kind: "job.analysis", config: {}, retry_policy: None },
     ],
     output_bindings: ["analyze"],
   }
   let run = JobRun::{
     id: "run-parent",
     job_id: "job-parent",
-    trigger: TriggerSource::Manual,
+    trigger: Manual,
     parent_run_id: None,
     parent_step_id: None,
     depth: 0,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(100),
@@ -1005,12 +975,12 @@ async test "build_job_ui_snapshot labels analysis-expanded child runs as subplan
   let child_run = JobRun::{
     id: "run-subplan",
     job_id: "job-subplan",
-    trigger: TriggerSource::Custom("analysis-subplan"),
+    trigger: Custom("analysis-subplan"),
     parent_run_id: Some("run-parent"),
     parent_step_id: Some("analyze"),
     depth: 1,
     workspace_dir: None,
-    status: RunStatus::Running,
+    status: Running,
     attempt: 1,
     retry_of: None,
     started_at: Some(120),
@@ -1058,12 +1028,7 @@ async test "build_job_ui_snapshot uses the proposal and workflow for the selecte
       id: "wf-old",
       kind: "job.proposal",
       steps: [
-        WorkflowStepDefinition::{
-          id: "old-step",
-          kind: "job.analysis",
-          config: {},
-          retry_policy: None,
-        },
+        { id: "old-step", kind: "job.analysis", config: {}, retry_policy: None },
       ],
       output_bindings: [],
     }
@@ -1071,7 +1036,7 @@ async test "build_job_ui_snapshot uses the proposal and workflow for the selecte
       id: "wf-latest",
       kind: "job.proposal",
       steps: [
-        WorkflowStepDefinition::{
+        {
           id: "latest-step",
           kind: "job.analysis",
           config: {},

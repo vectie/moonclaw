@@ -4,7 +4,7 @@ test "channel_model_session_name stores provider-qualified codex name" {
     access_token="access",
     account_id="account",
     refresh_token="refresh",
-    name=@model.CodexModels::Gpt5_4,
+    name=Gpt5_4,
   )
   inspect(channel_model_provider_override(model).unwrap_or(""), content="codex")
   inspect(channel_model_session_name(model), content="codex/gpt-5.4")
@@ -21,7 +21,7 @@ test "resolve_channel_model_override prefers configured primary when session is 
 }
 
 ///|
-test "resolve_channel_model_override upgrades legacy bare model name" {
+test "resolve_channel_model_override ignores bare session model name" {
   inspect(
     resolve_channel_model_override(Some("gpt-5.4"), None, Some("codex/gpt-5.4")).unwrap_or(
       "",
@@ -31,7 +31,7 @@ test "resolve_channel_model_override upgrades legacy bare model name" {
 }
 
 ///|
-test "resolve_channel_model_override prefers configured primary over stale bare session model" {
+test "resolve_channel_model_override keeps configured primary over bare session model" {
   inspect(
     resolve_channel_model_override(
       Some("qwen3.5-plus"),
@@ -45,7 +45,7 @@ test "resolve_channel_model_override prefers configured primary over stale bare 
 ///|
 test "is_non_text_attachment_message recognizes Feishu file uploads" {
   inspect(
-    is_non_text_attachment_message(@channel.Message::{
+    is_non_text_attachment_message({
       id: "msg-1",
       channel: "feishu",
       from: "user-1",
@@ -56,7 +56,7 @@ test "is_non_text_attachment_message recognizes Feishu file uploads" {
       thread_id: Some("thread-1"),
       reply_to: None,
       attachments: [
-        @channel.Attachment::{
+        {
           id: "file-1",
           mime_type: "application/pdf",
           url: "https://example.test/parcel.pdf",
@@ -72,7 +72,7 @@ test "is_non_text_attachment_message recognizes Feishu file uploads" {
 ///|
 test "is_non_text_attachment_message does not treat text with attachments as file-only upload" {
   inspect(
-    is_non_text_attachment_message(@channel.Message::{
+    is_non_text_attachment_message({
       id: "msg-2",
       channel: "feishu",
       from: "user-1",
@@ -83,7 +83,7 @@ test "is_non_text_attachment_message does not treat text with attachments as fil
       thread_id: Some("thread-1"),
       reply_to: None,
       attachments: [
-        @channel.Attachment::{
+        {
           id: "file-1",
           mime_type: "application/pdf",
           url: "https://example.test/parcel.pdf",

@@ -9,6 +9,8 @@ import {
   "vectie/moonclaw/internal/pino",
 }
 
+supported_targets = "native"
+
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",

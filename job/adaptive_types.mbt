@@ -63,7 +63,7 @@ fn parse_adaptive_substep(value : Json) -> AdaptiveSubstepPayload? {
     None => title
   }
   let kind = adaptive_json_string_field(object, "kind")
-  Some(AdaptiveSubstepPayload::{ title, prompt, kind })
+  Some({ title, prompt, kind })
 }
 
 ///|
@@ -104,7 +104,7 @@ fn parse_adaptive_analysis_envelope(
     Some(verdict) => verdict
     None => return None
   }
-  Some(AdaptiveAnalysisEnvelope::{
+  Some({
     verdict,
     summary: adaptive_json_string_field(object, "summary"),
     missing_inputs: adaptive_json_string_array_field(object, "missing_inputs"),
