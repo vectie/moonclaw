@@ -13,7 +13,7 @@ test "openai chat route uses direct endpoint without moonstat" {
 }
 
 ///|
-test "openai chat route uses moonstat moonclaw endpoint when discovered" {
+test "openai chat route uses moonstat openclaw endpoint when discovered" {
   let model = @model.new(
     api_key="sk-test",
     base_url="https://openrouter.ai/api/v1",
@@ -22,9 +22,9 @@ test "openai chat route uses moonstat moonclaw endpoint when discovered" {
   )
   let route = openai_chat_route_for_model(
     model,
-    Some("http://127.0.0.1:4199/moonclaw/v1/chat/completions"),
+    Some("http://127.0.0.1:4199/openclaw/v1/chat/completions"),
   )
-  assert_eq(route.url, "http://127.0.0.1:4199/moonclaw/v1/chat/completions")
+  assert_eq(route.url, "http://127.0.0.1:4199/openclaw/v1/chat/completions")
   assert_true(route.via_moonstat)
   assert_false(route.headers.contains("Authorization"))
   assert_eq(route.headers["User-Agent"], "moonclaw")

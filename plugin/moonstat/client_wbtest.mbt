@@ -27,11 +27,11 @@ test "moonstat client rejects legacy suite status shortcuts" {
 }
 
 ///|
-test "moonstat client builds moonclaw route url" {
+test "moonstat client builds openclaw route url" {
   let client = Client::{ base_url: "http://127.0.0.1:18081" }
   assert_true(
-    client.route_moonclaw_chat_url() ==
-    "http://127.0.0.1:18081/moonclaw/v1/chat/completions",
+    client.route_openclaw_chat_url() ==
+    "http://127.0.0.1:18081/openclaw/v1/chat/completions",
   )
 }
 

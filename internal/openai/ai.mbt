@@ -70,7 +70,7 @@ async fn chat_openai(
 ) -> ChatCompletion {
   let moonstat_client = @moonstat.discover_from_suite_status()
   let moonstat_chat_url = moonstat_client.map(fn(client) {
-    client.route_moonclaw_chat_url()
+    client.route_openclaw_chat_url()
   })
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),

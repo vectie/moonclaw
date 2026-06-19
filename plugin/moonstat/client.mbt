@@ -77,8 +77,8 @@ pub fn Client::base_url(self : Client) -> String {
 }
 
 ///|
-pub fn Client::route_moonclaw_chat_url(self : Client) -> String {
-  self.base_url + "/moonclaw/v1/chat/completions"
+pub fn Client::route_openclaw_chat_url(self : Client) -> String {
+  self.base_url + "/openclaw/v1/chat/completions"
 }
 
 ///|
@@ -202,11 +202,11 @@ pub async fn Client::post(
 }
 
 ///|
-pub async fn Client::route_moonclaw_chat(
+pub async fn Client::route_openclaw_chat(
   self : Client,
   body : Json,
 ) -> Result[Json, String] {
-  self.post("/moonclaw/v1/chat/completions", body)
+  self.post("/openclaw/v1/chat/completions", body)
 }
 
 ///|
