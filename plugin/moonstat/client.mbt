@@ -12,6 +12,15 @@ pub const DEFAULT_HOST : String = "127.0.0.1"
 const DEFAULT_BASE_URL : String = "http://127.0.0.1:15721"
 
 ///|
+const SUITE_STATUS_CONTRACT : String = "moon.suite.status.v2"
+
+///|
+const SUITE_MANIFEST_CONTRACT : String = "moon.suite.service.v1"
+
+///|
+const SUITE_SERVICE_NAME : String = "moonstat"
+
+///|
 pub struct Client {
   base_url : String
 }
@@ -323,20 +332,27 @@ fn moonstat_json_int64_field(obj : Map[String, Json], key : String) -> Int64? {
 ///|
 fn moonstat_base_url_from_status(status : Json) -> String? {
   match status {
-    Object(obj) => {
+    Object(obj) if moonstat_status_contract_valid(obj) =>
       match obj.get("manifest") {
-        Some(Object(manifest)) =>
+        Some(Object(manifest)) if moonstat_manifest_contract_valid(manifest) =>
           match manifest.get("base_url") {
-            Some(String(url)) if !url.is_empty() => return Some(url)
-            _ => ()
+            Some(String(url)) if !url.trim().is_empty() => Some(url)
+            _ => None
           }
-        _ => ()
-      }
-      match obj.get("base_url") {
-        Some(String(url)) if !url.is_empty() => Some(url)
         _ => None
       }
-    }
     _ => None
   }
+}
+
+///|
+fn moonstat_status_contract_valid(obj : Map[String, Json]) -> Bool {
+  moonstat_json_string_field(obj, "contract") == Some(SUITE_STATUS_CONTRACT) &&
+  moonstat_json_string_field(obj, "service") == Some(SUITE_SERVICE_NAME)
+}
+
+///|
+fn moonstat_manifest_contract_valid(obj : Map[String, Json]) -> Bool {
+  moonstat_json_string_field(obj, "contract") == Some(SUITE_MANIFEST_CONTRACT) &&
+  moonstat_json_string_field(obj, "service") == Some(SUITE_SERVICE_NAME)
 }

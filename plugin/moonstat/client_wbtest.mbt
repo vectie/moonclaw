@@ -1,15 +1,29 @@
 ///|
 test "moonstat client resolves manifest base url" {
-  let status = { "manifest": { "base_url": "http://127.0.0.1:18081" } }.to_json()
+  let status = {
+    "contract": Json::string("moon.suite.status.v2"),
+    "service": Json::string("moonstat"),
+    "manifest": {
+      "contract": Json::string("moon.suite.service.v1"),
+      "service": Json::string("moonstat"),
+      "base_url": Json::string("http://127.0.0.1:18081"),
+    }.to_json(),
+  }.to_json()
   assert_true(
     moonstat_base_url_from_status(status) == Some("http://127.0.0.1:18081"),
   )
 }
 
 ///|
-test "moonstat client rejects health-url-only status" {
-  let status = { "health_url": "http://127.0.0.1:18082/health" }.to_json()
-  assert_true(moonstat_base_url_from_status(status) is None)
+test "moonstat client rejects legacy suite status shortcuts" {
+  let health_only = { "health_url": "http://127.0.0.1:18082/health" }.to_json()
+  let root_base = { "base_url": "http://127.0.0.1:18082" }.to_json()
+  let manifest_only = {
+    "manifest": { "base_url": "http://127.0.0.1:18082" }.to_json(),
+  }.to_json()
+  assert_true(moonstat_base_url_from_status(health_only) is None)
+  assert_true(moonstat_base_url_from_status(root_base) is None)
+  assert_true(moonstat_base_url_from_status(manifest_only) is None)
 }
 
 ///|
