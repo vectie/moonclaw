@@ -6,7 +6,7 @@ test "moonstat client resolves manifest base url" {
     "manifest": {
       "contract": Json::string("moon.suite.service.v1"),
       "service": Json::string("moonstat"),
-      "base_url": Json::string("http://127.0.0.1:18081"),
+      "baseUrl": Json::string("http://127.0.0.1:18081"),
     }.to_json(),
   }.to_json()
   assert_true(
