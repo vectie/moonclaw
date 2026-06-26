@@ -178,13 +178,13 @@ fn registered_route_template_matches(template : String, route : String) -> Bool 
 }
 
 ///|
-fn route_registered_for_moonclaw(
+fn route_capability_execution_mode(
   context : Json,
   http_method : String,
   route : String,
-) -> Bool {
+) -> String? {
   if http_method == "" || route == "" {
-    return false
+    return None
   }
   match tool_registry(context) {
     Object(registry) =>
@@ -202,7 +202,7 @@ fn route_registered_for_moonclaw(
                       route,
                     ) &&
                     !bool_field(capability, "physical_execution_allowed") {
-                    return true
+                    return Some(string_field(capability, "execution_mode"))
                   }
                 }
               _ => ()
@@ -212,7 +212,12 @@ fn route_registered_for_moonclaw(
       }
     _ => ()
   }
-  false
+  None
+}
+
+///|
+fn operator_execution_mode(mode : String) -> Bool {
+  mode == "operator-curation" || mode == "operator-safety"
 }
 
 ///|
@@ -409,6 +414,37 @@ fn registry_blocker_decision(
 }
 
 ///|
+fn operator_tool_decision(
+  kind : String,
+  work_id : String,
+  target : String,
+  title : String,
+  reason : String,
+  mode : String,
+  now_ms : Int64,
+) -> RobotRoutineDecision {
+  {
+    decision_id: decision_id("robot-routine-operator-tool", kind, now_ms),
+    status: "needs-operator",
+    owner: "operator",
+    work_id,
+    kind,
+    http_method: "GET",
+    route: target,
+    request_body: "",
+    target_route: target,
+    title,
+    reason: if reason == "" {
+      "Registered execution mode \{mode} requires an operator-visible control."
+    } else {
+      "\{reason}; registered execution mode \{mode} requires an operator-visible control."
+    },
+    physical_execution_allowed: false,
+    message: "MoonClaw selected a registered Moonrobo route but left invocation to the operator because the capability mode is operator-owned.",
+  }
+}
+
+///|
 fn work_decision(
   item : Json,
   context : Json,
@@ -418,16 +454,30 @@ fn work_decision(
   let owner = if operator_kind(kind) { "operator" } else { "moonclaw" }
   let target = string_field(item, "target_path")
   let http_method = if owner == "operator" { "GET" } else { "POST" }
-  if owner == "moonclaw" &&
-    !route_registered_for_moonclaw(context, http_method, target) {
-    return registry_blocker_decision(
-      kind,
-      target,
-      http_method,
-      string_field(item, "title"),
-      string_field(item, "reason"),
-      now_ms,
-    )
+  if owner == "moonclaw" {
+    match route_capability_execution_mode(context, http_method, target) {
+      None =>
+        return registry_blocker_decision(
+          kind,
+          target,
+          http_method,
+          string_field(item, "title"),
+          string_field(item, "reason"),
+          now_ms,
+        )
+      Some(mode) =>
+        if operator_execution_mode(mode) {
+          return operator_tool_decision(
+            kind,
+            string_field(item, "work_id"),
+            target,
+            string_field(item, "title"),
+            string_field(item, "reason"),
+            mode,
+            now_ms,
+          )
+        }
+    }
   }
   {
     decision_id: decision_id("robot-routine-work", kind, now_ms),
@@ -473,11 +523,19 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
   } else {
     string_field(status, "status")
   }
-  if !route_registered_for_moonclaw(context, http_method, route) {
-    return registry_blocker_decision(
-      kind, route, http_method, title, "Gateway status selected the next Moonrobo route.",
-      now_ms,
-    )
+  match route_capability_execution_mode(context, http_method, route) {
+    None =>
+      return registry_blocker_decision(
+        kind, route, http_method, title, "Gateway status selected the next Moonrobo route.",
+        now_ms,
+      )
+    Some(mode) =>
+      if operator_execution_mode(mode) {
+        return operator_tool_decision(
+          kind, "", route, title, "Gateway status selected the next Moonrobo route.",
+          mode, now_ms,
+        )
+      }
   }
   let item = {
     "kind": Json::string(kind),

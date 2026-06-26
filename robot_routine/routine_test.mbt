@@ -1,15 +1,24 @@
 ///|
-fn capability(http_method : String, route : String) -> Json {
+fn capability_with_mode(
+  http_method : String,
+  route : String,
+  execution_mode : String,
+) -> Json {
   {
     "capability_id": Json::string("test-\{http_method}-\{route}"),
     "label": Json::string("Test capability"),
     "http_method": Json::string(http_method),
     "route": Json::string(route),
     "body_schema": Json::string("none"),
-    "execution_mode": Json::string("test"),
+    "execution_mode": Json::string(execution_mode),
     "physical_execution_allowed": false.to_json(),
     "safety_note": Json::string("test capability"),
   }.to_json()
+}
+
+///|
+fn capability(http_method : String, route : String) -> Json {
+  capability_with_mode(http_method, route, "test")
 }
 
 ///|
@@ -36,8 +45,12 @@ fn tool_registry() -> Json {
           capability("POST", "/api/moonrobo/executions/feedback"),
           capability("POST", "/api/moonbook/remember"),
           capability("POST", "/api/moontown/tasks/observe-run"),
-          capability("POST", "/api/replays/{session_id}/annotations"),
-          capability("POST", "/api/moonbook/task-messages/{task_id}/{gate}"),
+          capability_with_mode(
+            "POST", "/api/replays/{session_id}/annotations", "operator-curation",
+          ),
+          capability_with_mode(
+            "POST", "/api/moonbook/task-messages/{task_id}/{gate}", "operator-safety",
+          ),
         ].to_json(),
       }.to_json(),
     ].to_json(),
@@ -297,14 +310,33 @@ test "robot routine decision skips Moonrobo aggregate live exercise work" {
 }
 
 ///|
-test "robot routine decision accepts registered route templates" {
+test "robot routine decision keeps curation route templates operator-owned" {
   let decision = selected_decision(
     context_with_work("annotate-replay", "/api/replays/session-a/annotations"),
     1011L,
   )
-  assert_eq(decision.status, "route-selected")
-  assert_eq(decision.owner, "moonclaw")
+  assert_eq(decision.status, "needs-operator")
+  assert_eq(decision.owner, "operator")
+  assert_eq(decision.http_method, "GET")
   assert_eq(decision.route, "/api/replays/session-a/annotations")
+  assert_eq(decision.request_body, "")
+  assert_true(decision.reason.contains("operator-curation"))
+}
+
+///|
+test "robot routine decision keeps safety execution modes operator-owned" {
+  let decision = selected_decision(
+    context_with_work(
+      "advance-task-message", "/api/moonbook/task-messages/message-a/evaluate",
+    ),
+    1017L,
+  )
+  assert_eq(decision.status, "needs-operator")
+  assert_eq(decision.owner, "operator")
+  assert_eq(decision.http_method, "GET")
+  assert_eq(decision.route, "/api/moonbook/task-messages/message-a/evaluate")
+  assert_eq(decision.request_body, "")
+  assert_true(decision.reason.contains("operator-safety"))
 }
 
 ///|
