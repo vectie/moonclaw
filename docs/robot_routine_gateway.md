@@ -64,9 +64,9 @@ gates, persists, and projects the result.
 
 MoonClaw selects work from `context.platform_queue.items` itself. The queue is
 Moonrobo's evidence-pressure projection, not an authoritative routine decision;
-`next_item` may help UI surfaces, but MoonClaw recomputes the selected work item
-from the item list before applying route registry, operator-mode, and physical
-authority gates.
+Moonrobo does not publish a selected `next_item`. MoonClaw chooses from the item
+list before applying route registry, operator-mode, and physical authority
+gates.
 
 MoonClaw only selects Moonrobo routes that appear in
 `context.tool_registry.providers[].capabilities[]` with the same HTTP method and
