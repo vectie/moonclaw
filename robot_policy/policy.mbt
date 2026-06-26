@@ -89,7 +89,7 @@ fn context_body(payload : Json) -> Json {
 
 ///|
 fn next_work_item(context : Json) -> Json {
-  let queue = object_field(context, "work_queue")
+  let queue = object_field(context, "platform_queue")
   match object_field(queue, "next_item") {
     Object(object) as value if object.length() > 0 => value
     _ => {}

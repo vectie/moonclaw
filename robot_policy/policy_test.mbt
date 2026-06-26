@@ -16,7 +16,7 @@ fn context_with_work(kind : String, target_path : String) -> Json {
         "message_path": "/moonbook/task-messages/message-policy-test.json",
         "created_at_ms": 1000,
       },
-      "work_queue": {
+      "platform_queue": {
         "item_count": 1,
         "next_item": {
           "work_id": "work-test",
@@ -65,7 +65,7 @@ fn context_with_live_readiness(
         "message_path": "/moonbook/task-messages/message-policy-test.json",
         "created_at_ms": 1000,
       },
-      "work_queue": if work == {} {
+      "platform_queue": if work == {} {
         { "item_count": 0, "next_item": null }
       } else {
         { "item_count": 1, "next_item": work }
@@ -159,7 +159,7 @@ test "robot policy falls back to gateway route when queue is empty" {
   let decision = select_route_from_context(
     {
       "context": {
-        "work_queue": { "item_count": 0, "next_item": null },
+        "platform_queue": { "item_count": 0, "next_item": null },
         "gateway": {
           "status": "ready-for-command",
           "next_method": "POST",
@@ -195,7 +195,7 @@ test "robot policy idles without queue or ready gateway route" {
   let decision = select_route_from_context(
     {
       "context": {
-        "work_queue": { "item_count": 0, "next_item": null },
+        "platform_queue": { "item_count": 0, "next_item": null },
         "gateway": {
           "status": "mapped-needs-evidence",
           "can_submit_gateway_command": false,
