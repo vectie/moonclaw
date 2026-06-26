@@ -29,28 +29,39 @@ test "mooncode validation reports mismatched session and missing command id" {
 }
 
 ///|
+test "mooncode validation rejects unsupported command fields" {
+  let body : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-demo",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "extra_mode": "invalid",
+    "packet": { "command_id": "cmd-1" },
+  }
+  let report = mooncode_validate_command_body("session-demo", body)
+  assert_false(mooncode_json_bool(report, "ok", default=true))
+  let payload = report.stringify()
+  assert_true(payload.contains("unsupported"))
+  assert_true(payload.contains("extra_mode"))
+}
+
+///|
 test "mooncode native controls classify prompt steer and cancel" {
   assert_eq(mooncode_command_control("prompt"), "prompt")
   assert_eq(mooncode_command_control("run_tests"), "prompt")
   assert_eq(mooncode_command_control("steer"), "steer")
   assert_eq(mooncode_command_control("cancel"), "cancel")
-  assert_eq(mooncode_accept_event_kind("prompt"), "command.accepted")
-  assert_eq(mooncode_accept_event_kind("steer"), "steer.accepted")
-  assert_eq(
-    mooncode_accept_event_title("steer"),
-    "MoonClaw accepted MoonCode steering",
-  )
 }
 
 ///|
-async test "mooncode queue-only command persists durable command without task" (
+async test "mooncode command persists durable native queue entry without task" (
   t : @test.Test,
 ) {
   ignore(t)
   let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-queue-only-XXXXXX"),
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-native-queue-XXXXXX"),
   )
-  let session_id = "session-queue-only"
+  let session_id = "session-native-queue"
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -80,26 +91,17 @@ async test "mooncode queue-only command persists durable command without task" (
       "book_root": book_root,
       "command": "run_tests",
       "web_search": true,
-      "native_dispatch_mode": "queue-only",
-      "packet": { "command_id": "cmd-queue-only" },
+      "packet": { "command_id": "cmd-native-queue" },
     },
-    dispatch_source="test-queue-only",
+    queue_source="test-native-queue",
   )
   assert_true(mooncode_json_bool(response, "accepted", default=false))
-  assert_eq(
-    mooncode_json_string(response, "native_dispatch_mode", default=""),
-    "queue-only",
-  )
-  assert_true(
-    response
-    .stringify()
-    .contains("\"task_id\":\"00000000-0000-0000-0000-000000000000\""),
-  )
+  assert_true(mooncode_json_bool(response, "queued", default=false))
+  assert_false(response.stringify().contains("\"task_id\""))
   let command_log = @fsx.read_file(
     mooncode_commands_path(book_root, session_id),
   )
-  assert_true(command_log.contains("\"cmd-queue-only\""))
-  assert_true(command_log.contains("\"native_dispatch_mode\":\"queue-only\""))
+  assert_true(command_log.contains("\"cmd-native-queue\""))
   assert_true(command_log.contains("\"web_search\":true"))
   let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
   assert_true(events_log.contains("\"command.queued_for_runtime_turn\""))

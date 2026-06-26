@@ -1,15 +1,15 @@
 ///|
-test "mooncode serve scheduler starts pending prompt and queues controls" {
+test "mooncode runtime control starts pending prompt and queues controls" {
   let commands : Array[Json] = [
     {
       "kind": "mooncode-command",
       "protocol": mooncode_protocol_version(),
-      "session_id": "session-scheduler",
+      "session_id": "session-runtime-control",
       "command_id": "cmd-1",
       "created_at": "2026-06-17T00:00:00Z",
       "command": {
         "protocol": mooncode_protocol_version(),
-        "session_id": "session-scheduler",
+        "session_id": "session-runtime-control",
         "book_root": "/tmp/book",
         "command": "prompt",
         "text": "build a tool",
@@ -19,11 +19,11 @@ test "mooncode serve scheduler starts pending prompt and queues controls" {
     {
       "kind": "mooncode-command",
       "protocol": mooncode_protocol_version(),
-      "session_id": "session-scheduler",
+      "session_id": "session-runtime-control",
       "command_id": "cmd-2",
       "command": {
         "protocol": mooncode_protocol_version(),
-        "session_id": "session-scheduler",
+        "session_id": "session-runtime-control",
         "book_root": "/tmp/book",
         "command": "steer",
         "text": "also add tests",
@@ -33,28 +33,28 @@ test "mooncode serve scheduler starts pending prompt and queues controls" {
     {
       "kind": "mooncode-command",
       "protocol": mooncode_protocol_version(),
-      "session_id": "session-scheduler",
+      "session_id": "session-runtime-control",
       "command_id": "cmd-3",
       "command": {
         "protocol": mooncode_protocol_version(),
-        "session_id": "session-scheduler",
+        "session_id": "session-runtime-control",
         "book_root": "/tmp/book",
         "command": "cancel",
         "packet": { "command_id": "cmd-3" },
       },
     },
   ]
-  let state = mooncode_serve_scheduler_state_from_logs(
-    "session-scheduler",
+  let state = mooncode_runtime_control_state_from_logs(
+    "session-runtime-control",
     "/tmp/book",
     commands,
     [],
     commands_path="/tmp/book/commands.jsonl",
-    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+    receipts_path="/tmp/book/runtime-receipts.jsonl",
   )
   assert_eq(
     mooncode_json_string(state, "kind", default=""),
-    "mooncode-serve-scheduler-state",
+    "mooncode-runtime-control-state",
   )
   assert_eq(mooncode_json_string(state, "active_turn_id", default=""), "")
   assert_true(state.stringify().contains("\"pending_turn_count\":1"))
@@ -78,7 +78,7 @@ test "mooncode serve scheduler starts pending prompt and queues controls" {
 }
 
 ///|
-test "mooncode serve scheduler targets active claimed prompt" {
+test "mooncode runtime control targets active claimed prompt" {
   let commands : Array[Json] = [
     {
       "kind": "mooncode-command",
@@ -123,7 +123,7 @@ test "mooncode serve scheduler targets active claimed prompt" {
     },
   ]
   let claimed = {
-    "kind": mooncode_kind_runtime_dispatch(),
+    "kind": mooncode_kind_runtime_receipt(),
     "protocol": mooncode_protocol_version(),
     "session_id": "session-active",
     "book_root": "/tmp/book",
@@ -131,13 +131,13 @@ test "mooncode serve scheduler targets active claimed prompt" {
     "status": "runtime-claimed",
     "claim_id": "claim-1",
   }
-  let state = mooncode_serve_scheduler_state_from_logs(
+  let state = mooncode_runtime_control_state_from_logs(
     "session-active",
     "/tmp/book",
     commands,
     [claimed],
     commands_path="/tmp/book/commands.jsonl",
-    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+    receipts_path="/tmp/book/runtime-receipts.jsonl",
   )
   assert_eq(mooncode_json_string(state, "active_turn_id", default=""), "cmd-1")
   let decisions = mooncode_json_array_items(state, "decisions")
@@ -156,7 +156,7 @@ test "mooncode serve scheduler targets active claimed prompt" {
 }
 
 ///|
-test "mooncode serve scheduler treats delivered prompt as terminal and defers idle steer" {
+test "mooncode runtime control treats delivered prompt as terminal and defers idle steer" {
   let commands : Array[Json] = [
     {
       "kind": "mooncode-command",
@@ -188,20 +188,20 @@ test "mooncode serve scheduler treats delivered prompt as terminal and defers id
     },
   ]
   let delivered = {
-    "kind": mooncode_kind_runtime_dispatch(),
+    "kind": mooncode_kind_runtime_receipt(),
     "protocol": mooncode_protocol_version(),
     "session_id": "session-terminal",
     "book_root": "/tmp/book",
     "command_id": "cmd-1",
     "status": "runtime-delivered",
   }
-  let state = mooncode_serve_scheduler_state_from_logs(
+  let state = mooncode_runtime_control_state_from_logs(
     "session-terminal",
     "/tmp/book",
     commands,
     [delivered],
     commands_path="/tmp/book/commands.jsonl",
-    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+    receipts_path="/tmp/book/runtime-receipts.jsonl",
   )
   let decisions = mooncode_json_array_items(state, "decisions")
   assert_eq(

@@ -34,7 +34,7 @@ test "mooncode runtime claim state leases next durable command" {
     commands,
     [],
     commands_path="/tmp/book/commands.jsonl",
-    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+    receipts_path="/tmp/book/runtime-receipts.jsonl",
   )
   assert_eq(
     mooncode_json_string(state, "kind", default=""),
@@ -75,7 +75,7 @@ test "mooncode runtime claim state leases next durable command" {
     commands,
     receipts,
     commands_path="/tmp/book/commands.jsonl",
-    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+    receipts_path="/tmp/book/runtime-receipts.jsonl",
   )
   assert_true(claimed_state.stringify().contains("\"claimed_command_count\":1"))
   assert_true(
@@ -114,7 +114,7 @@ test "mooncode runtime delivery receipt resolves claimed command" {
     },
   ]
   let claimed = {
-    "kind": mooncode_kind_runtime_dispatch(),
+    "kind": mooncode_kind_runtime_receipt(),
     "protocol": mooncode_protocol_version(),
     "session_id": "session-deliver",
     "book_root": "/tmp/book",
@@ -129,30 +129,32 @@ test "mooncode runtime delivery receipt resolves claimed command" {
     commands,
     [claimed],
     commands_path="/tmp/book/commands.jsonl",
-    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+    receipts_path="/tmp/book/runtime-receipts.jsonl",
   )
   let claimed_items = mooncode_json_array_items(
     claimed_state, "claimed_commands",
   )
-  let delivered = mooncode_runtime_dispatch_receipt(
-    "session-deliver",
-    "/tmp/book",
-    claimed_items[0],
-    {
-      "accepted": true,
-      "command_id": "cmd-1",
-      "task_id": "task-1",
-      "message_id": "message-1",
-      "control": "prompt",
-      "message": "accepted",
-      "events": [{ "kind": "command.accepted" }],
-    },
-    consumer_id="test-consumer",
-    now=@clock.Timestamp::from_ms(120L),
-  )
+  let delivered : Json = {
+    "kind": mooncode_kind_runtime_receipt(),
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "session_id": "session-deliver",
+    "book_root": "/tmp/book",
+    "command_id": mooncode_json_string(
+      claimed_items[0],
+      "command_id",
+      default="",
+    ),
+    "status": "runtime-completed",
+    "runtime_mode": "moonclaw-native-runtime-turn",
+    "claim_id": "claim-1",
+    "consumer_id": "test-consumer",
+    "completed_at": @clock.Timestamp::from_ms(120L),
+    "command": mooncode_json_object_field_or_empty(claimed_items[0], "command"),
+  }
   assert_eq(
     mooncode_json_string(delivered, "status", default=""),
-    "runtime-delivered",
+    "runtime-completed",
   )
   assert_eq(mooncode_json_string(delivered, "claim_id", default=""), "claim-1")
   let after = mooncode_runtime_claim_state_from_logs(
@@ -161,7 +163,7 @@ test "mooncode runtime delivery receipt resolves claimed command" {
     commands,
     [claimed, delivered],
     commands_path="/tmp/book/commands.jsonl",
-    dispatches_path="/tmp/book/runtime-dispatches.jsonl",
+    receipts_path="/tmp/book/runtime-receipts.jsonl",
   )
   assert_true(after.stringify().contains("\"delivered_command_count\":1"))
   assert_true(after.stringify().contains("\"claimable_command_count\":1"))
@@ -173,39 +175,21 @@ test "mooncode runtime delivery receipt resolves claimed command" {
 }
 
 ///|
-test "mooncode runtime dispatch receipt classifies cancel as terminal" {
-  let item : Json = {
-    "kind": "mooncode-runtime-claim-item",
+test "mooncode runtime cancelled receipt is terminal" {
+  let receipt : Json = {
+    "kind": mooncode_kind_runtime_receipt(),
     "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "session_id": "session-cancel",
+    "book_root": "/tmp/book",
     "command_id": "cmd-cancel",
-    "command": {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-cancel",
-      "book_root": "/tmp/book",
-      "command": "cancel",
-      "packet": { "command_id": "cmd-cancel" },
-    },
-    "receipt": {
-      "kind": mooncode_kind_runtime_dispatch(),
-      "status": "runtime-claimed",
-      "claim_id": "claim-cancel",
-    },
+    "status": "runtime-cancelled",
+    "runtime_mode": "moonclaw-native-runtime-turn",
+    "claim_id": "claim-cancel",
+    "consumer_id": "test-consumer",
+    "completed_at": @clock.Timestamp::from_ms(160L),
+    "control": "cancel",
   }
-  let receipt = mooncode_runtime_dispatch_receipt(
-    "session-cancel",
-    "/tmp/book",
-    item,
-    {
-      "accepted": true,
-      "command_id": "cmd-cancel",
-      "task_id": "task-cancel",
-      "control": "cancel",
-      "message": "MoonClaw MoonCode runtime accepted `cancel`",
-      "events": [{ "kind": "cancel.requested" }],
-    },
-    consumer_id="test-consumer",
-    now=@clock.Timestamp::from_ms(160L),
-  )
   assert_eq(
     mooncode_json_string(receipt, "status", default=""),
     "runtime-cancelled",

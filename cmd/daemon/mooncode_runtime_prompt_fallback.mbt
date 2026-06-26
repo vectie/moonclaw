@@ -43,7 +43,7 @@ fn mooncode_runtime_turn_tool_calls(command : Json) -> Array[Json] {
         {
           "tool": "finish",
           "arguments": {
-            "answer": "Native MoonCode runtime recorded cancel with no generic task dispatch.",
+            "answer": "Native MoonCode runtime recorded cancel with no generic task execution.",
           },
         },
       ]

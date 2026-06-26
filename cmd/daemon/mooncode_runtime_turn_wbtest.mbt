@@ -64,12 +64,12 @@ async test "mooncode native runtime turn executes explicit tool calls" (
   let tool_results = mooncode_json_array_items(execution, "tool_results")
   assert_eq(tool_results.length(), 3)
   assert_true(execution.stringify().contains("turn-ok"))
-  let dispatch_log = @fsx.read_file(
-    mooncode_runtime_dispatches_path(book_root, session_id),
+  let receipt_log = @fsx.read_file(
+    mooncode_runtime_receipts_path(book_root, session_id),
   )
-  assert_true(dispatch_log.contains("\"runtime-claimed\""))
-  assert_true(dispatch_log.contains("\"runtime-completed\""))
-  assert_true(dispatch_log.contains("\"web_search\":true"))
+  assert_true(receipt_log.contains("\"runtime-claimed\""))
+  assert_true(receipt_log.contains("\"runtime-completed\""))
+  assert_true(receipt_log.contains("\"web_search\":true"))
   let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
   assert_true(events_log.contains("\"runtime.turn_started\""))
   assert_true(events_log.contains("\"tool_result\""))
@@ -138,10 +138,10 @@ async test "mooncode native runtime turn defers idle steer into next command" (
   )
   assert_eq(
     mooncode_json_string(execution, "planner_mode", default=""),
-    "serve-scheduler-control",
+    "runtime-control",
   )
   let decision = mooncode_json_object_field_or_empty(
-    result, "serve_scheduler_decision",
+    result, "runtime_control_decision",
   )
   assert_eq(mooncode_json_string(decision, "effect", default=""), "defer-steer")
   let tool_results = mooncode_json_array_items(execution, "tool_results")
@@ -251,7 +251,7 @@ async test "mooncode native runtime turn drops idle cancel commands" (
   })
   assert_true(mooncode_json_bool(result, "accepted", default=false))
   let decision = mooncode_json_object_field_or_empty(
-    result, "serve_scheduler_decision",
+    result, "runtime_control_decision",
   )
   assert_eq(mooncode_json_string(decision, "effect", default=""), "drop-cancel")
   let execution = mooncode_json_object_field_or_empty(result, "execution")
@@ -261,7 +261,7 @@ async test "mooncode native runtime turn drops idle cancel commands" (
   )
   assert_eq(
     mooncode_json_string(execution, "planner_mode", default=""),
-    "serve-scheduler-control",
+    "runtime-control",
   )
   let receipt = mooncode_json_object_field_or_empty(result, "turn_receipt")
   assert_eq(
@@ -812,6 +812,63 @@ async test "mooncode native runtime turn creates executable tool from prompt" (
   )
   assert_true(package_log.contains("\"package_built\""))
   assert_true(package_log.contains("\"package_verified\""))
+  let book_results = mooncode_json_array_items(result, "book_results")
+  assert_eq(book_results.length(), 1)
+  let book_result_record = book_results[0]
+  assert_eq(
+    mooncode_json_string(book_result_record, "protocol", default=""),
+    "moonbook.executable_event.v1",
+  )
+  assert_eq(
+    mooncode_json_string(book_result_record, "command_id", default=""),
+    command_id,
+  )
+  let result_id = mooncode_json_string(
+    book_result_record,
+    "result_id",
+    default="",
+  )
+  assert_true(result_id.contains("cmd-runtime-prompt"))
+  let book_result = mooncode_json_object_field_or_empty(
+    book_result_record, "book_result",
+  )
+  assert_eq(
+    mooncode_json_string(book_result, "result_id", default=""),
+    result_id,
+  )
+  assert_eq(mooncode_json_string(book_result, "task_id", default=""), "")
+  assert_true(mooncode_json_bool(book_result, "requires_review", default=false))
+  assert_true(mooncode_json_bool(book_result, "notify_town", default=false))
+  assert_true(
+    book_result
+    .stringify()
+    .contains("tools/mooncode-generated/cmd-runtime-prompt/run.sh"),
+  )
+  let book_event = mooncode_json_object_field_or_empty(
+    book_result_record, "executable_book_event",
+  )
+  assert_eq(
+    mooncode_json_string(book_event, "command_id", default=""),
+    command_id,
+  )
+  assert_eq(
+    mooncode_json_string(book_event, "result_id", default=""),
+    result_id,
+  )
+  assert_eq(
+    mooncode_json_string(book_event, "event_type", default=""),
+    "review_required",
+  )
+  assert_true(!mooncode_json_bool(book_event, "accepted", default=true))
+  let result_path = @pathx.join(
+    book_root, "portable/app-tool/mooncode/session-runtime-prompt/book-result-cmd-runtime-prompt.json",
+  )
+  assert_true(@fsx.exists(result_path))
+  let book_result_log = @fsx.read_file(
+    mooncode_book_results_path(book_root, session_id),
+  )
+  assert_true(book_result_log.contains("\"mooncode-book-result\""))
+  assert_true(book_result_log.contains("\"moonbook.executable_event.v1\""))
   let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
   assert_true(events_log.contains("\"runtime.turn_started\""))
   assert_true(events_log.contains("\"tool_result\""))

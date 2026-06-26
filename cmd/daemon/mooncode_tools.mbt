@@ -962,7 +962,7 @@ async fn mooncode_tool_apply_unified_patchset(
       } else {
         ""
       },
-      "hunk_dispatch_scope": if selected_hunk_index > 0 {
+      "hunk_control_scope": if selected_hunk_index > 0 {
         "selected-hunk"
       } else {
         "all-hunks"
@@ -1051,7 +1051,7 @@ async fn mooncode_tool_apply_unified_patchset(
       } else {
         ""
       },
-      "hunk_dispatch_scope": if selected_hunk_index > 0 {
+      "hunk_control_scope": if selected_hunk_index > 0 {
         "selected-hunk"
       } else {
         "all-hunks"
@@ -1156,7 +1156,7 @@ async fn mooncode_tool_apply_unified_diff(
       } else {
         ""
       },
-      "hunk_dispatch_scope": if selected_hunk_index > 0 {
+      "hunk_control_scope": if selected_hunk_index > 0 {
         "selected-hunk"
       } else {
         "all-hunks"
@@ -2007,7 +2007,7 @@ async test "mooncode native patch tools apply and revert unified diffs" (
 }
 
 ///|
-async test "mooncode native patch tools dispatch selected unified diff hunks" (
+async test "mooncode native patch tools runs selected unified diff hunks" (
   t : @test.Test,
 ) {
   ignore(t)
@@ -2057,7 +2057,7 @@ async test "mooncode native patch tools dispatch selected unified diff hunks" (
     "tools/hunks.txt",
   )
   assert_eq(
-    mooncode_json_string(apply_metadata, "hunk_dispatch_scope", default=""),
+    mooncode_json_string(apply_metadata, "hunk_control_scope", default=""),
     "selected-hunk",
   )
   assert_eq(
@@ -2190,9 +2190,7 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
 }
 
 ///|
-async test "mooncode native patchsets dispatch selected file hunks" (
-  t : @test.Test,
-) {
+async test "mooncode native patchsets runs selected file hunks" (t : @test.Test) {
   ignore(t)
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patchset-hunk-XXXXXX"),
@@ -2249,7 +2247,7 @@ async test "mooncode native patchsets dispatch selected file hunks" (
     1,
   )
   assert_eq(
-    mooncode_json_string(apply_metadata, "hunk_dispatch_scope", default=""),
+    mooncode_json_string(apply_metadata, "hunk_control_scope", default=""),
     "selected-hunk",
   )
 }

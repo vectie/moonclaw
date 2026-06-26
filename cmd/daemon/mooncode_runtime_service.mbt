@@ -1,4 +1,35 @@
 ///|
+async fn Daemon::mooncode_runtime_service_state(
+  self : Daemon,
+  session_id~ : StringView,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let session_id = session_id.to_owned()
+  let book_root = mooncode_request_book_root(r)
+  if book_root == "" {
+    raise json_error(400, "Bad Request", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode runtime service state requires book_root query",
+        "metadata": { "session_id": session_id },
+      },
+    })
+  }
+  let events = self.mooncode_runtime_service_events(session_id, book_root)
+  let service_id = mooncode_request_string(r, "service_id", default="")
+  let state = mooncode_runtime_service_state_payload(
+    session_id,
+    book_root,
+    events,
+    service_id~,
+  )
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(state.stringify(indent=2))
+}
+
+///|
 async fn Daemon::mooncode_runtime_service(
   self : Daemon,
   group~ : @async.TaskGroup[Unit],
@@ -63,6 +94,73 @@ async fn Daemon::mooncode_runtime_service(
         "loop_options": mooncode_runtime_service_loop_payload(session_id, body),
       } : Json).stringify(indent=2),
   )
+}
+
+///|
+async fn Daemon::mooncode_runtime_service_events(
+  self : Daemon,
+  session_id : String,
+  book_root : String,
+) -> Array[Json] {
+  ignore(self)
+  let events = mooncode_read_jsonl(mooncode_events_path(book_root, session_id))
+  let result : Array[Json] = []
+  for event in events {
+    let kind = mooncode_json_string(event, "kind", default="")
+    if kind == "runtime.service_started" ||
+      kind == "runtime.service_finished" ||
+      kind == "runtime.service_failed" {
+      result.push(event)
+    }
+  }
+  result
+}
+
+///|
+fn mooncode_runtime_service_state_payload(
+  session_id : String,
+  book_root : String,
+  events : Array[Json],
+  service_id~ : String,
+) -> Json {
+  let filtered : Array[Json] = []
+  for event in events {
+    if service_id == "" ||
+      mooncode_json_string(event, "service_id", default="") == service_id {
+      filtered.push(event)
+    }
+  }
+  let latest = if filtered.length() > 0 {
+    filtered[filtered.length() - 1]
+  } else {
+    Json::object({})
+  }
+  let latest_kind = mooncode_json_string(latest, "kind", default="")
+  let status = if filtered.length() == 0 {
+    "idle"
+  } else if latest_kind == "runtime.service_started" {
+    "running"
+  } else {
+    mooncode_json_string(latest, "status", default="unknown")
+  }
+  {
+    "kind": "mooncode-runtime-service-state",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "service_id": if service_id != "" {
+      service_id
+    } else {
+      mooncode_json_string(latest, "service_id", default="")
+    },
+    "status": status,
+    "running": status == "running",
+    "event_count": filtered.length(),
+    "events_jsonl": mooncode_events_path(book_root, session_id),
+    "latest_event": latest,
+    "events": Json::array(filtered),
+  }
 }
 
 ///|
@@ -374,4 +472,81 @@ async test "mooncode runtime service records lifecycle events" (t : @test.Test) 
   assert_true(events.contains("runtime.service_started"))
   assert_true(events.contains("runtime.service_finished"))
   assert_true(events.contains("svc-test"))
+}
+
+///|
+async test "mooncode runtime service state projects latest lifecycle event" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-runtime-service-state-XXXXXX"),
+  )
+  let session_id = "session-runtime-service-state"
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let idle = mooncode_runtime_service_state_payload(
+    session_id,
+    book_root,
+    [],
+    service_id="svc-state",
+  )
+  assert_eq(mooncode_json_string(idle, "status", default=""), "idle")
+  assert_false(mooncode_json_bool(idle, "running", default=true))
+  let started = daemon.mooncode_runtime_service_started_event(
+    session_id,
+    book_root,
+    { "service_id": "svc-state", "max_turns": 1, "live_wait_ms": 0 },
+  )
+  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), started)
+  let running = mooncode_runtime_service_state_payload(
+    session_id,
+    book_root,
+    daemon.mooncode_runtime_service_events(session_id, book_root),
+    service_id="svc-state",
+  )
+  assert_eq(mooncode_json_string(running, "status", default=""), "running")
+  assert_true(mooncode_json_bool(running, "running", default=false))
+  let finished = daemon.mooncode_runtime_service_finished_event(
+    session_id,
+    book_root,
+    { "service_id": "svc-state", "max_turns": 1, "live_wait_ms": 0 },
+    {
+      "kind": "mooncode-runtime-loop",
+      "accepted": true,
+      "ran_turn_count": 0,
+      "failed_turn_count": 0,
+      "stopped_by": "idle",
+      "message": "idle",
+    },
+  )
+  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), finished)
+  let done = mooncode_runtime_service_state_payload(
+    session_id,
+    book_root,
+    daemon.mooncode_runtime_service_events(session_id, book_root),
+    service_id="svc-state",
+  )
+  assert_eq(mooncode_json_string(done, "status", default=""), "done")
+  assert_false(mooncode_json_bool(done, "running", default=true))
+  assert_eq(mooncode_json_int(done, "event_count", default=0), 2)
 }

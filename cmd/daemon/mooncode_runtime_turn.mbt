@@ -67,7 +67,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
   }
   for receipt in claim_receipts {
     mooncode_append_jsonl(
-      mooncode_runtime_dispatches_path(book_root, session_id),
+      mooncode_runtime_receipts_path(book_root, session_id),
       receipt,
     )
   }
@@ -105,11 +105,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let command = mooncode_runtime_turn_command_with_deferred_steering(
     raw_command, deferred_steering,
   )
-  let scheduler_state = self.mooncode_serve_scheduler_payload(
+  let control_state = self.mooncode_runtime_control_payload(
     session_id, book_root,
   )
-  let scheduler_decision = mooncode_runtime_turn_scheduler_decision(
-    scheduler_state, command_id,
+  let control_decision = mooncode_runtime_turn_control_decision(
+    control_state, command_id,
   )
   let web_search = mooncode_command_web_search(command)
   let report = mooncode_validate_command_body(session_id, command)
@@ -127,26 +127,26 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let tool_results : Array[Json] = []
   let events : Array[Json] = [started]
   let execution : Json = if mooncode_json_bool(report, "ok", default=false) {
-    let scheduler_effect = mooncode_json_string(
-      scheduler_decision,
+    let control_effect = mooncode_json_string(
+      control_decision,
       "effect",
       default="",
     )
-    if mooncode_runtime_turn_drops_idle_control(command, scheduler_effect) {
+    if mooncode_runtime_turn_drops_idle_control(command, control_effect) {
       mooncode_runtime_turn_dropped_control_execution(
         session_id,
         command_id,
         command,
-        scheduler_decision,
+        control_decision,
         events,
         now=self.clock.now(),
       )
-    } else if mooncode_runtime_turn_defers_idle_steer(command, scheduler_effect) {
+    } else if mooncode_runtime_turn_defers_idle_steer(command, control_effect) {
       mooncode_runtime_turn_deferred_steer_execution(
         session_id,
         command_id,
         command,
-        scheduler_decision,
+        control_decision,
         events,
         now=self.clock.now(),
       )
@@ -359,7 +359,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
           } else {
             "MoonClaw native runtime turn failed during tool execution"
           },
-          "serve_scheduler_decision": scheduler_decision,
+          "runtime_control_decision": control_decision,
           "planner": plan,
           "planner_steps": Json::array(planner_steps),
           "planner_mode": mooncode_json_string(
@@ -441,6 +441,14 @@ async fn Daemon::mooncode_runtime_turn_execute(
     )
     package_events.push(package_event)
   }
+  let book_results = mooncode_runtime_turn_book_results(
+    session_id,
+    book_root,
+    command,
+    execution,
+    package_results,
+    now=self.clock.now(),
+  )
   let receipt = mooncode_runtime_turn_receipt(
     session_id,
     book_root,
@@ -450,7 +458,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
     now=self.clock.now(),
   )
   mooncode_append_jsonl(
-    mooncode_runtime_dispatches_path(book_root, session_id),
+    mooncode_runtime_receipts_path(book_root, session_id),
     receipt,
   )
   let binding = self.mooncode_binding_for_session(session_id)
@@ -470,6 +478,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
       package_events[index],
     )
   }
+  for book_result in book_results {
+    self.mooncode_persist_book_result(book_result, binding)
+  }
   self.mooncode_persist_session(binding)
   let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
   {
@@ -483,11 +494,12 @@ async fn Daemon::mooncode_runtime_turn_execute(
     "command_id": command_id,
     "claim_receipts": Json::array(claim_receipts),
     "turn_receipt": receipt,
-    "serve_scheduler_state": scheduler_state,
-    "serve_scheduler_decision": scheduler_decision,
+    "runtime_control_state": control_state,
+    "runtime_control_decision": control_decision,
     "execution": execution,
     "package_results": Json::array(package_results),
     "package_events": Json::array(package_events),
+    "book_results": Json::array(book_results),
     "claim_state": after,
     "previous_claim_state": before,
   }

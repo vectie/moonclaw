@@ -101,6 +101,9 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     "package_result_log_count",
     default=0,
   )
+  let lifecycle = mooncode_json_object_field_or_empty(
+    record, "executable_book_lifecycle",
+  )
   let status = if mooncode_json_bool(
       record,
       "live_binding_ready",
@@ -129,6 +132,23 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     "command_count": command_count,
     "event_count": event_count,
     "package_result_count": package_result_count,
+    "lifecycle_status": mooncode_json_string(lifecycle, "status", default=""),
+    "lifecycle_ready": mooncode_json_bool(lifecycle, "ready", default=false),
+    "lifecycle_completed_step_count": mooncode_json_int(
+      lifecycle,
+      "completed_step_count",
+      default=0,
+    ),
+    "lifecycle_step_count": mooncode_json_int(
+      lifecycle,
+      "step_count",
+      default=0,
+    ),
+    "lifecycle_first_blocker_id": mooncode_json_string(
+      lifecycle,
+      "first_blocker_id",
+      default="",
+    ),
     "session_url": "/v1/code/sessions/\{session_id}?book_root=<path>",
     "stream_url": "/v1/code/sessions/\{session_id}/stream?book_root=<path>&format=jsonl",
     "source": if source == "" {
@@ -300,7 +320,7 @@ fn mooncode_session_listing_latest_storage_mtime(record : Json) -> Int64? {
   let mut latest : Int64? = None
   for
     key in [
-      "events_jsonl", "commands_jsonl", "package_results_jsonl", "runtime_dispatches_jsonl",
+      "events_jsonl", "commands_jsonl", "package_results_jsonl", "runtime_receipts_jsonl",
       "session_json",
     ] {
     let mtime = mooncode_file_mtime_ms(

@@ -120,9 +120,9 @@ fn mooncode_eval_report_payload(
         "id": "tool-loop-execution",
         "status": harness_status,
         "evidence": if native_harnesses.length() > 0 {
-          "MoonClaw ran \{native_harnesses.length()} native MoonCode-style tool/file-edit harness(es); status=\{eval_status}."
+          "MoonClaw ran \{native_harnesses.length()} native MoonCode tool/file-edit harness(es); status=\{eval_status}."
         } else {
-          "MoonClaw has not published native MoonCode-style tool/file-edit harness evidence yet."
+          "MoonClaw has not published native MoonCode tool/file-edit harness evidence yet."
         },
       },
     ],

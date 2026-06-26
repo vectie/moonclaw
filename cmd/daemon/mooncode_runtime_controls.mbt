@@ -1,9 +1,9 @@
 ///|
-fn mooncode_runtime_turn_scheduler_decision(
-  scheduler_state : Json,
+fn mooncode_runtime_turn_control_decision(
+  control_state : Json,
   command_id : String,
 ) -> Json {
-  for decision in mooncode_json_array_items(scheduler_state, "decisions") {
+  for decision in mooncode_json_array_items(control_state, "decisions") {
     if mooncode_json_string(decision, "command_id", default="") == command_id {
       return decision
     }
@@ -14,19 +14,19 @@ fn mooncode_runtime_turn_scheduler_decision(
 ///|
 fn mooncode_runtime_turn_drops_idle_control(
   command : Json,
-  scheduler_effect : String,
+  control_effect : String,
 ) -> Bool {
   let action = mooncode_json_string(command, "command", default="prompt")
-  action == "cancel" && scheduler_effect == "drop-cancel"
+  action == "cancel" && control_effect == "drop-cancel"
 }
 
 ///|
 fn mooncode_runtime_turn_defers_idle_steer(
   command : Json,
-  scheduler_effect : String,
+  control_effect : String,
 ) -> Bool {
   mooncode_json_string(command, "command", default="prompt") == "steer" &&
-  scheduler_effect == "defer-steer"
+  control_effect == "defer-steer"
 }
 
 ///|
@@ -34,7 +34,7 @@ fn mooncode_runtime_turn_dropped_control_execution(
   session_id : String,
   command_id : String,
   command : Json,
-  scheduler_decision : Json,
+  control_decision : Json,
   events : Array[Json],
   now~ : @clock.Timestamp,
 ) -> Json {
@@ -85,8 +85,8 @@ fn mooncode_runtime_turn_dropped_control_execution(
     } else {
       "MoonClaw native runtime dropped idle `steer`"
     },
-    "serve_scheduler_decision": scheduler_decision,
-    "planner_mode": mooncode_planner_mode_serve_scheduler_control(),
+    "runtime_control_decision": control_decision,
+    "planner_mode": mooncode_planner_mode_runtime_control(),
     "planner_step_count": 0,
     "model_step_limit": 0,
     "tool_results": Json::array([]),
@@ -107,7 +107,7 @@ fn mooncode_runtime_turn_deferred_steer_execution(
   session_id : String,
   command_id : String,
   command : Json,
-  scheduler_decision : Json,
+  control_decision : Json,
   events : Array[Json],
   now~ : @clock.Timestamp,
 ) -> Json {
@@ -136,8 +136,8 @@ fn mooncode_runtime_turn_deferred_steer_execution(
     "web_search": mooncode_command_web_search(command),
     "control": "steer_deferred",
     "message": "MoonClaw native runtime deferred idle `steer` into the next MoonCode turn",
-    "serve_scheduler_decision": scheduler_decision,
-    "planner_mode": mooncode_planner_mode_serve_scheduler_control(),
+    "runtime_control_decision": control_decision,
+    "planner_mode": mooncode_planner_mode_runtime_control(),
     "planner_step_count": 0,
     "model_step_limit": 0,
     "tool_results": Json::array([]),

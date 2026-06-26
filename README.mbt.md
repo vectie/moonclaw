@@ -45,11 +45,12 @@ MoonClaw is strongest when you want one system to handle:
   `/v1/code/sessions/<id>/stream`, and
   `/v1/code/sessions/<id>/eval-report?book_root=<path>`, plus package proof ingestion at
   `/v1/code/sessions/<id>/package-result`. Commands bind a Moondesk MoonCode
-  session to the MoonClaw task for the target book root and execute through the
-  existing MoonClaw agent/task runtime. Native command handling now distinguishes
+  session to a durable book-local command queue by default; native
+  `runtime-turn`/`runtime-loop` execute the queued command without spawning a
+  generic task. Native command handling now distinguishes
   `prompt`, `steer`, and `cancel`; runtime-turn now consults the same
-  MoonCode serve scheduler it exposes through `serve-scheduler`, returns
-  the scheduler state/decision in the turn payload, emits `steer_applied` /
+  MoonCode runtime control it exposes through `runtime-control`, returns
+  the control state/decision in the turn payload, emits `steer_applied` /
   `steer_deferred` / `steer_dropped` settlement events for steering commands,
   injects deferred steering into the next eligible turn, and records
   `cancel_dropped` for idle cancel commands instead of running fallback tools.
@@ -58,27 +59,25 @@ MoonClaw is strongest when you want one system to handle:
   executable artifacts. Native package manifests also promote generated source
   files into
   `portable/app-tool/mooncode/<session-id>/sources/<command-id>/...`, and the
-  native MoonCode stream now normalizes bound MoonClaw task events into
-  MoonCode transcript/tool/review/runtime lanes.
+  native MoonCode stream now replays book-local MoonCode events without
+  mirroring generic task event streams.
   Eval reports now run a first native MoonCode eval harness slice over
   `read`, `write`, `edit`, `shell`, `moon_check`, `finish`, and file-edit diff
   evidence before returning `ok`, `required_harnesses`, and nested native
   harness results.
   MoonClaw also persists native MoonCode sidecars under the selected book root
   at `.moonclaw/mooncode/sessions/<session-id>/`, including `session.json`,
-  `commands.jsonl`, `runtime-dispatches.jsonl`, `events.jsonl`, and
+  `commands.jsonl`, `runtime-receipts.jsonl`, `events.jsonl`, and
   `package-results.jsonl`. The daemon can list/show those cold sidecars with
   `GET /v1/code/sessions?book_root=<path>` and
   `GET /v1/code/sessions/<id>?book_root=<path>`, and can lease the next
   unresolved durable command with
   `GET`/`POST /v1/code/sessions/<id>/runtime-claim?book_root=<path>` by
-  appending native `runtime-claimed` receipts to `runtime-dispatches.jsonl`.
-  `POST /v1/code/sessions/<id>/runtime-dispatch?book_root=<path>` now
-  claims the next durable command if needed, forwards that command into the
-  MoonClaw task runtime, and appends a `runtime-delivered` or `runtime-failed`
-  receipt so cold sidecar queues can advance after daemon restart. Durable
-  `cancel` commands use the same cancellation path as live commands and record
-  terminal `runtime-cancelled` receipts instead of being forwarded as chat.
+  appending native `runtime-claimed` receipts to `runtime-receipts.jsonl`.
+  Native MoonCode clients execute work through `runtime-turn`/`runtime-loop`;
+  no `/v1/code` endpoint forwards commands into the generic `/v1/task`
+  runtime. Durable `cancel` commands are queue controls settled by the native
+  runtime.
   `GET`/`POST /v1/code/sessions/<id>/runtime-events?book_root=<path>` now
   lets a MoonClaw runtime append normalized
   transcript/tool/diff/test/artifact/review/runtime evidence directly into
@@ -92,11 +91,11 @@ MoonClaw is strongest when you want one system to handle:
   first book-local native runtime turn: it claims the next durable command if
   needed, executes explicit `runtime_tool_calls` or deterministic built-in
   fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
-  events, returns the serve-scheduler state/decision that authorized or dropped
+  events, returns the runtime-control state/decision that authorized or dropped
   the claimed command, and closes the command with `runtime-completed` or
   `runtime-failed`. Idle `steer` controls are persisted as `steer_deferred`
   context for the next eligible turn, and idle `cancel` controls are finalized
-  as `cancel_dropped` evidence without invoking tools, matching the scheduler
+  as `cancel_dropped` evidence without invoking tools, matching runtime control
   projection instead of treating controls as ordinary prompts.
   `POST
   /v1/code/sessions/<id>/runtime-loop?book_root=<path>` now layers a
@@ -104,9 +103,9 @@ MoonClaw is strongest when you want one system to handle:
   turns until the durable command queue is idle, a turn fails, a cancel command
   lands, or `max_turns` is reached, returning per-turn evidence plus the final
   claim state.
-  `/commands` now also accepts `native_dispatch_mode=queue-only`, which appends
-  the durable command without spawning or messaging the generic MoonClaw task
-  runtime so a client can call `runtime-turn` without duplicate execution.
+  `/commands` now defaults to native queue mode, which appends the durable
+  command without spawning or messaging the generic MoonClaw task runtime so a
+  client can call `runtime-turn` without duplicate execution.
   Runtime-turn now also includes the first bounded prompt planner: ordinary
   `prompt` commands that ask for a tool, script, miniapp, generated site, or
   HTML app expand into native `write`, `shell`, and `finish` tool calls under
@@ -138,7 +137,7 @@ MoonClaw is strongest when you want one system to handle:
   tool fails, the command is cancelled, or `planner_max_steps` is reached. Planner
   start/selection/failure events, `planner_steps`, the step limit, native
   `reasoning_delta` progress, optional assistant deltas, and pre-execution
-  `tool_call` events are recorded so Moondesk can render a Codex-style
+  `tool_call` events are recorded so Moondesk can render a live coding-agent
   transcript from MoonClaw-owned evidence. Unsupported or empty model plans fall
   back to the deterministic planner.
   Native `apply_patch` and `revert_patch` execute bounded reviewed text
@@ -147,7 +146,7 @@ MoonClaw is strongest when you want one system to handle:
   and emit `runtime.patch_applied` / `runtime.patch_reverted` proof events for
   Moondesk review gates. They also accept `hunk_index`/`hunk_id` or hunk
   targets such as `tools/demo/main.mbt#hunk-2`, apply only that selected hunk,
-  and report `hunk_dispatch_scope`, `selected_hunk_index`,
+  and report `hunk_control_scope`, `selected_hunk_index`,
   `available_hunk_count`, and `file_path` metadata. Patch tool packets can
   request post-change
   verification with `verification_command`, `test_command`, `verify_after`, or

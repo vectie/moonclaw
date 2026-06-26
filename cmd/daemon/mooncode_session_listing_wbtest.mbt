@@ -117,13 +117,11 @@ test "mooncode compact session listing title trims the first line" {
 async test "mooncode binding remembers first prompt once for session picker title" {
   let binding = MoonCodeSessionBinding::{
     session_id: "session-title",
-    task_id: @uuid.nil,
     book_root: "/tmp/moonbook",
     command_count: 0,
     first_user_prompt: "",
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
-    persisted_task_event_count: 0,
     events: @broadcast.Broadcast::new(),
   }
   binding.remember_first_user_prompt({

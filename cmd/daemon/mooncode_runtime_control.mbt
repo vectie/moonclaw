@@ -1,5 +1,5 @@
 ///|
-async fn Daemon::mooncode_serve_scheduler(
+async fn Daemon::mooncode_runtime_control(
   self : Daemon,
   session_id~ : StringView,
   r : @httpx.RequestReader,
@@ -7,41 +7,41 @@ async fn Daemon::mooncode_serve_scheduler(
 ) -> Unit {
   let session_id = session_id.to_owned()
   let book_root = mooncode_request_book_root(r)
-  let state = self.mooncode_serve_scheduler_payload(session_id, book_root)
+  let state = self.mooncode_runtime_control_payload(session_id, book_root)
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(state.stringify(indent=2))
 }
 
 ///|
-async fn Daemon::mooncode_serve_scheduler_payload(
+async fn Daemon::mooncode_runtime_control_payload(
   self : Daemon,
   session_id : String,
   book_root : String,
 ) -> Json {
   ignore(self)
   let commands_path = mooncode_commands_path(book_root, session_id)
-  let dispatches_path = mooncode_runtime_dispatches_path(book_root, session_id)
+  let receipts_path = mooncode_runtime_receipts_path(book_root, session_id)
   let commands = mooncode_read_jsonl(commands_path)
-  let receipts = mooncode_read_jsonl(dispatches_path)
-  mooncode_serve_scheduler_state_from_logs(
+  let receipts = mooncode_read_jsonl(receipts_path)
+  mooncode_runtime_control_state_from_logs(
     session_id,
     book_root,
     commands,
     receipts,
     commands_path~,
-    dispatches_path~,
+    receipts_path~,
   )
 }
 
 ///|
-fn mooncode_serve_scheduler_state_from_logs(
+fn mooncode_runtime_control_state_from_logs(
   session_id : String,
   book_root : String,
   commands : Array[Json],
   receipts : Array[Json],
   commands_path~ : String,
-  dispatches_path~ : String,
+  receipts_path~ : String,
 ) -> Json {
   let latest_receipts = mooncode_latest_receipts_by_command_id(receipts)
   let lifecycle_items : Array[Json] = []
@@ -54,25 +54,25 @@ fn mooncode_serve_scheduler_state_from_logs(
       latest_receipts.get(command_id)
     }
     lifecycle_items.push(
-      mooncode_serve_scheduler_lifecycle_item(command, index, receipt),
+      mooncode_runtime_control_lifecycle_item(command, index, receipt),
     )
   }
-  let active_turn_id = mooncode_serve_scheduler_active_turn_id(lifecycle_items)
-  let pending_turn_ids = mooncode_serve_scheduler_pending_turn_ids(
+  let active_turn_id = mooncode_runtime_control_active_turn_id(lifecycle_items)
+  let pending_turn_ids = mooncode_runtime_control_pending_turn_ids(
     lifecycle_items,
   )
-  let decisions = mooncode_serve_scheduler_decisions(
+  let decisions = mooncode_runtime_control_decisions(
     commands, lifecycle_items, active_turn_id, pending_turn_ids,
   )
   {
-    "kind": "mooncode-serve-scheduler-state",
+    "kind": "mooncode-runtime-control-state",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "runtime_owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
     "runtime_command_log_path": commands_path,
-    "runtime_dispatch_log_path": dispatches_path,
+    "runtime_receipt_log_path": receipts_path,
     "command_count": commands.length(),
     "receipt_count": receipts.length(),
     "lifecycle_command_count": lifecycle_items.length(),
@@ -86,8 +86,8 @@ fn mooncode_serve_scheduler_state_from_logs(
     "decision_count": decisions.length(),
     "decisions": Json::array(decisions),
     "lifecycle_commands": Json::array(lifecycle_items),
-    "contract": mooncode_serve_scheduler_contract(),
-    "ordering_rule": "MoonClaw projects MoonCode serve-mode semantics from one append-only command queue: turn-starting commands run one at a time, steer targets the active or next pending turn, idle steer is deferred into the next turn, and cancel targets the active turn or withdraws the next pending turn.",
+    "contract": mooncode_runtime_control_contract(),
+    "ordering_rule": "MoonClaw projects MoonCode runtime-control semantics from one append-only command queue: turn-starting commands run one at a time, steer targets the active or next pending turn, idle steer is deferred into the next turn, and cancel targets the active turn or withdraws the next pending turn.",
   }
 }
 
@@ -106,7 +106,7 @@ fn mooncode_latest_receipts_by_command_id(
 }
 
 ///|
-fn mooncode_serve_scheduler_lifecycle_item(
+fn mooncode_runtime_control_lifecycle_item(
   command_entry : Json,
   index : Int,
   receipt : Json?,
@@ -117,15 +117,15 @@ fn mooncode_serve_scheduler_lifecycle_item(
     Some(value) => mooncode_json_string(value, "status", default="")
     None => ""
   }
-  let status = mooncode_serve_scheduler_lifecycle_status(
+  let status = mooncode_runtime_control_lifecycle_status(
     command_id, receipt_status,
   )
   {
-    "kind": "mooncode-serve-scheduler-lifecycle-item",
+    "kind": "mooncode-runtime-control-lifecycle-item",
     "protocol": mooncode_protocol_version(),
     "index": index,
     "command_id": command_id,
-    "action": mooncode_serve_scheduler_command_action(command_entry),
+    "action": mooncode_runtime_control_command_action(command_entry),
     "status": status,
     "receipt_status": receipt_status,
     "command": command,
@@ -138,7 +138,7 @@ fn mooncode_serve_scheduler_lifecycle_item(
 }
 
 ///|
-fn mooncode_serve_scheduler_lifecycle_status(
+fn mooncode_runtime_control_lifecycle_status(
   command_id : String,
   receipt_status : String,
 ) -> String {
@@ -158,13 +158,13 @@ fn mooncode_serve_scheduler_lifecycle_status(
 }
 
 ///|
-fn mooncode_serve_scheduler_active_turn_id(
+fn mooncode_runtime_control_active_turn_id(
   lifecycle_items : Array[Json],
 ) -> String {
   for item in lifecycle_items {
     let action = mooncode_json_string(item, "action", default="prompt")
     let status = mooncode_json_string(item, "status", default="")
-    if mooncode_serve_scheduler_turn_starting_action(action) &&
+    if mooncode_runtime_control_turn_starting_action(action) &&
       status == "running" {
       return mooncode_json_string(item, "command_id", default="")
     }
@@ -173,7 +173,7 @@ fn mooncode_serve_scheduler_active_turn_id(
 }
 
 ///|
-fn mooncode_serve_scheduler_pending_turn_ids(
+fn mooncode_runtime_control_pending_turn_ids(
   lifecycle_items : Array[Json],
 ) -> Array[String] {
   let ids : Array[String] = []
@@ -182,7 +182,7 @@ fn mooncode_serve_scheduler_pending_turn_ids(
     let status = mooncode_json_string(item, "status", default="")
     let command_id = mooncode_json_string(item, "command_id", default="")
     if command_id != "" &&
-      mooncode_serve_scheduler_turn_starting_action(action) &&
+      mooncode_runtime_control_turn_starting_action(action) &&
       status == "pending" {
       ids.push(command_id)
     }
@@ -191,7 +191,7 @@ fn mooncode_serve_scheduler_pending_turn_ids(
 }
 
 ///|
-fn mooncode_serve_scheduler_decisions(
+fn mooncode_runtime_control_decisions(
   commands : Array[Json],
   lifecycle_items : Array[Json],
   active_turn_id : String,
@@ -200,16 +200,16 @@ fn mooncode_serve_scheduler_decisions(
   let decisions : Array[Json] = []
   for index in 0..<commands.length() {
     let command = commands[index]
-    let action = mooncode_serve_scheduler_command_action(command)
+    let action = mooncode_runtime_control_command_action(command)
     let command_id = mooncode_runtime_command_entry_id(command)
-    let status = mooncode_serve_scheduler_lifecycle_status_for(
+    let status = mooncode_runtime_control_lifecycle_status_for(
       lifecycle_items,
       command_id,
       default="unknown",
     )
     let decision = match action {
       "steer" =>
-        mooncode_serve_scheduler_control_decision(
+        mooncode_runtime_control_control_decision(
           index,
           command,
           action,
@@ -221,7 +221,7 @@ fn mooncode_serve_scheduler_decisions(
           idle_effect="defer-steer",
         )
       "cancel" =>
-        mooncode_serve_scheduler_control_decision(
+        mooncode_runtime_control_control_decision(
           index,
           command,
           action,
@@ -233,7 +233,7 @@ fn mooncode_serve_scheduler_decisions(
           idle_effect="drop-cancel",
         )
       "note" =>
-        mooncode_serve_scheduler_decision(
+        mooncode_runtime_control_decision(
           index,
           command,
           status,
@@ -243,7 +243,7 @@ fn mooncode_serve_scheduler_decisions(
           detail="Note is recorded in the session and does not start an agent turn.",
         )
       _ =>
-        mooncode_serve_scheduler_turn_decision(
+        mooncode_runtime_control_turn_decision(
           index, command, status, active_turn_id, pending_turn_ids,
         )
     }
@@ -253,7 +253,7 @@ fn mooncode_serve_scheduler_decisions(
 }
 
 ///|
-fn mooncode_serve_scheduler_turn_decision(
+fn mooncode_runtime_control_turn_decision(
   index : Int,
   command : Json,
   status : String,
@@ -262,18 +262,18 @@ fn mooncode_serve_scheduler_turn_decision(
 ) -> Json {
   let command_id = mooncode_runtime_command_entry_id(command)
   if status == "completed" {
-    return mooncode_serve_scheduler_decision(
+    return mooncode_runtime_control_decision(
       index,
       command,
       status,
       effect="already-completed",
       target_command_id=command_id,
       target_state="terminal",
-      detail="Turn already completed; no scheduler action is required.",
+      detail="Turn already completed; no control action is required.",
     )
   }
   if status == "failed" {
-    return mooncode_serve_scheduler_decision(
+    return mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -284,7 +284,7 @@ fn mooncode_serve_scheduler_turn_decision(
     )
   }
   if status == "blocked-invalid" {
-    return mooncode_serve_scheduler_decision(
+    return mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -295,7 +295,7 @@ fn mooncode_serve_scheduler_turn_decision(
     )
   }
   if command_id == active_turn_id {
-    return mooncode_serve_scheduler_decision(
+    return mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -306,7 +306,7 @@ fn mooncode_serve_scheduler_turn_decision(
     )
   }
   if active_turn_id != "" {
-    return mooncode_serve_scheduler_decision(
+    return mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -317,7 +317,7 @@ fn mooncode_serve_scheduler_turn_decision(
     )
   }
   if pending_turn_ids.length() > 0 && pending_turn_ids[0] == command_id {
-    mooncode_serve_scheduler_decision(
+    mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -327,7 +327,7 @@ fn mooncode_serve_scheduler_turn_decision(
       detail="No turn is active; this is the next pending turn to start.",
     )
   } else {
-    mooncode_serve_scheduler_decision(
+    mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -344,7 +344,7 @@ fn mooncode_serve_scheduler_turn_decision(
 }
 
 ///|
-fn mooncode_serve_scheduler_control_decision(
+fn mooncode_runtime_control_control_decision(
   index : Int,
   command : Json,
   action : String,
@@ -356,7 +356,7 @@ fn mooncode_serve_scheduler_control_decision(
   idle_effect~ : String,
 ) -> Json {
   if active_turn_id != "" {
-    return mooncode_serve_scheduler_decision(
+    return mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -367,7 +367,7 @@ fn mooncode_serve_scheduler_control_decision(
     )
   }
   if pending_turn_ids.length() > 0 {
-    return mooncode_serve_scheduler_decision(
+    return mooncode_runtime_control_decision(
       index,
       command,
       status,
@@ -377,7 +377,7 @@ fn mooncode_serve_scheduler_control_decision(
       detail="\{action} targets the next pending MoonCode turn.",
     )
   }
-  mooncode_serve_scheduler_decision(
+  mooncode_runtime_control_decision(
     index,
     command,
     status,
@@ -389,7 +389,7 @@ fn mooncode_serve_scheduler_control_decision(
 }
 
 ///|
-fn mooncode_serve_scheduler_decision(
+fn mooncode_runtime_control_decision(
   index : Int,
   command_entry : Json,
   status : String,
@@ -399,28 +399,28 @@ fn mooncode_serve_scheduler_decision(
   detail~ : String,
 ) -> Json {
   let command = mooncode_json_object_field_or_empty(command_entry, "command")
-  let action = mooncode_serve_scheduler_command_action(command_entry)
+  let action = mooncode_runtime_control_command_action(command_entry)
   {
-    "kind": "mooncode-serve-scheduler-decision",
+    "kind": "mooncode-runtime-control-decision",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "index": index,
     "command_id": mooncode_runtime_command_entry_id(command_entry),
     "action": action,
-    "dispatch": mooncode_command_control(action),
+    "control": mooncode_command_control(action),
     "status": status,
     "effect": effect,
     "target_command_id": target_command_id,
     "target_state": target_state,
-    "text": mooncode_serve_scheduler_command_text(command),
+    "text": mooncode_runtime_control_command_text(command),
     "created_at": mooncode_json_string(command_entry, "created_at", default=""),
-    "command_projection": mooncode_serve_scheduler_command_projection(command),
+    "command_projection": mooncode_runtime_control_command_projection(command),
     "detail": detail,
   }
 }
 
 ///|
-fn mooncode_serve_scheduler_lifecycle_status_for(
+fn mooncode_runtime_control_lifecycle_status_for(
   lifecycle_items : Array[Json],
   command_id : String,
   default~ : String,
@@ -434,7 +434,7 @@ fn mooncode_serve_scheduler_lifecycle_status_for(
 }
 
 ///|
-fn mooncode_serve_scheduler_command_action(command_entry : Json) -> String {
+fn mooncode_runtime_control_command_action(command_entry : Json) -> String {
   let direct = mooncode_json_string(command_entry, "action", default="")
   if direct != "" {
     return direct
@@ -449,12 +449,12 @@ fn mooncode_serve_scheduler_command_action(command_entry : Json) -> String {
 }
 
 ///|
-fn mooncode_serve_scheduler_turn_starting_action(action : String) -> Bool {
+fn mooncode_runtime_control_turn_starting_action(action : String) -> Bool {
   action != "steer" && action != "cancel" && action != "note"
 }
 
 ///|
-fn mooncode_serve_scheduler_command_text(command : Json) -> String {
+fn mooncode_runtime_control_command_text(command : Json) -> String {
   let message = mooncode_json_string(command, "message", default="")
   if message != "" {
     return message
@@ -472,30 +472,30 @@ fn mooncode_serve_scheduler_command_text(command : Json) -> String {
 }
 
 ///|
-fn mooncode_serve_scheduler_command_projection(command : Json) -> Json {
+fn mooncode_runtime_control_command_projection(command : Json) -> Json {
   let action = mooncode_json_string(command, "command", default="prompt")
   match action {
     "steer" =>
       {
         "command": "steer",
-        "text": mooncode_serve_scheduler_command_text(command),
+        "text": mooncode_runtime_control_command_text(command),
       }
     "cancel" => { "command": "cancel" }
     _ =>
       {
         "command": "prompt",
-        "text": mooncode_serve_scheduler_command_text(command),
+        "text": mooncode_runtime_control_command_text(command),
       }
   }
 }
 
 ///|
-fn mooncode_serve_scheduler_contract() -> Json {
+fn mooncode_runtime_control_contract() -> Json {
   {
-    "kind": "mooncode-serve-scheduler-contract",
+    "kind": "mooncode-runtime-control-contract",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
-    "reference": "MoonCode command scheduler",
+    "reference": "MoonCode runtime control",
     "rule": "Prompt and command actions start turns, steer targets the active turn, next pending turn, or defers into the next future turn, and cancel targets the active turn or withdraws the next pending turn.",
     "command_effects": [
       "start-turn", "queue-turn", "deliver-steer", "queue-steer", "defer-steer",

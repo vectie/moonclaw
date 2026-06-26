@@ -34,7 +34,6 @@ async fn mooncode_runtime_turn_review_receipts(
       "workspace_name",
       default="",
     ),
-    "task_id": "",
     "book_root": book_root,
     "context_path": context_path,
     "command_id": command_id,

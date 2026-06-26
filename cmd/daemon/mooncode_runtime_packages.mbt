@@ -152,7 +152,6 @@ async fn mooncode_runtime_turn_package_manifest(
       "workspace_name",
       default="",
     ),
-    "task_id": "",
     "context_path": entrypoint,
     "candidate_paths": Json::array(
       mooncode_runtime_turn_string_json_array(paths),
@@ -213,7 +212,6 @@ fn mooncode_runtime_turn_package_index(
       "workspace_name",
       default="",
     ),
-    "task_id": "",
     "recorded_at": now,
     "manifest_path": manifest_path,
     "absolute_manifest_path": @pathx.join(book_root, manifest_path),

@@ -16,12 +16,12 @@
 /// - GET  /v1/code/sessions?book_root={path} → `mooncode_list_sessions`
 /// - GET  /v1/code/sessions/{id}?book_root={path} → `mooncode_get_session`
 /// - POST /v1/code/sessions/{id}/commands → `mooncode_accept_command`
-/// - GET  /v1/code/sessions/{id}/serve-scheduler?book_root={path} → `mooncode_serve_scheduler`
+/// - GET  /v1/code/sessions/{id}/runtime-control?book_root={path} → `mooncode_runtime_control`
 /// - GET  /v1/code/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim_state`
 /// - POST /v1/code/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim`
-/// - POST /v1/code/sessions/{id}/runtime-dispatch?book_root={path} → `mooncode_runtime_dispatch`
 /// - POST /v1/code/sessions/{id}/runtime-turn?book_root={path} → `mooncode_runtime_turn`
 /// - POST /v1/code/sessions/{id}/runtime-loop?book_root={path} → `mooncode_runtime_loop`
+/// - GET  /v1/code/sessions/{id}/runtime-service?book_root={path} → `mooncode_runtime_service_state`
 /// - POST /v1/code/sessions/{id}/runtime-service?book_root={path} → `mooncode_runtime_service`
 /// - GET  /v1/code/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events_state`
 /// - POST /v1/code/sessions/{id}/runtime-events?book_root={path} → `mooncode_runtime_events`
@@ -73,21 +73,19 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
             (Get, ["", "v1", "code", "sessions", session_id]) =>
               self.mooncode_get_session(session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "commands"]) =>
-              self.mooncode_accept_command(group~, session_id~, r, w)
-            (Get, ["", "v1", "code", "sessions", session_id, "serve-scheduler"]) =>
-              self.mooncode_serve_scheduler(session_id~, r, w)
+              self.mooncode_accept_command(session_id~, r, w)
+            (Get, ["", "v1", "code", "sessions", session_id, "runtime-control"]) =>
+              self.mooncode_runtime_control(session_id~, r, w)
             (Get, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
               self.mooncode_runtime_claim_state(session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>
               self.mooncode_runtime_claim(session_id~, r, w)
-            (
-              Post,
-              ["", "v1", "code", "sessions", session_id, "runtime-dispatch"],
-            ) => self.mooncode_runtime_dispatch(group~, session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "runtime-turn"]) =>
               self.mooncode_runtime_turn(session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "runtime-loop"]) =>
               self.mooncode_runtime_loop(session_id~, r, w)
+            (Get, ["", "v1", "code", "sessions", session_id, "runtime-service"]) =>
+              self.mooncode_runtime_service_state(session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "runtime-service"]
             ) => self.mooncode_runtime_service(group~, session_id~, r, w)
             (Get, ["", "v1", "code", "sessions", session_id, "runtime-events"]) =>

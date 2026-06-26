@@ -6,12 +6,11 @@ async fn Daemon::mooncode_stream(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let session_id = session_id.to_owned()
-  let binding = self.mooncode_sessions.get(session_id)
   let requested_book_root = mooncode_request_book_root(r)
   let book_root = if requested_book_root != "" {
     requested_book_root
   } else {
-    match binding {
+    match self.mooncode_sessions.get(session_id) {
       Some(binding) => binding.book_root
       None => ""
     }
@@ -20,7 +19,7 @@ async fn Daemon::mooncode_stream(
     raise json_error(400, "Bad Request", {
       "error": {
         "code": -1,
-        "message": "MoonCode stream requires book_root query or an existing live binding",
+        "message": "MoonCode stream requires book_root query or an existing MoonCode session",
         "metadata": { "session_id": session_id },
       },
     })
@@ -34,7 +33,7 @@ async fn Daemon::mooncode_stream(
     mooncode_request_int(r, "poll_ms", default=100),
   )
   let wait = self.mooncode_stream_wait_for_events(
-    binding, session_id, book_root, since, wait_ms, poll_ms,
+    session_id, book_root, since, wait_ms, poll_ms,
   )
   let events = mooncode_json_array_items(wait, "events")
   if format == "sse" {
@@ -83,7 +82,6 @@ async fn Daemon::mooncode_stream(
 ///|
 async fn Daemon::mooncode_stream_wait_for_events(
   self : Daemon,
-  binding : MoonCodeSessionBinding?,
   session_id : String,
   book_root : String,
   since : Int,
@@ -92,9 +90,7 @@ async fn Daemon::mooncode_stream_wait_for_events(
 ) -> Json {
   let mut elapsed_ms = 0
   let mut attempt_count = 0
-  let mut events = self.mooncode_stream_current_events(
-    binding, book_root, session_id,
-  )
+  let mut events = self.mooncode_stream_current_events(book_root, session_id)
   while wait_ms > 0 && events.length() <= since && elapsed_ms < wait_ms {
     if @async.is_being_cancelled() {
       break
@@ -104,7 +100,7 @@ async fn Daemon::mooncode_stream_wait_for_events(
     @async.sleep(delay)
     elapsed_ms += delay
     attempt_count += 1
-    events = self.mooncode_stream_current_events(binding, book_root, session_id)
+    events = self.mooncode_stream_current_events(book_root, session_id)
   }
   {
     "kind": "mooncode-stream-wait",
@@ -126,46 +122,11 @@ async fn Daemon::mooncode_stream_wait_for_events(
 ///|
 async fn Daemon::mooncode_stream_current_events(
   self : Daemon,
-  binding : MoonCodeSessionBinding?,
   book_root : String,
   session_id : String,
 ) -> Array[Json] {
-  match binding {
-    Some(binding) => self.mooncode_sync_live_task_events(binding)
-    None => ()
-  }
+  ignore(self)
   mooncode_read_jsonl(mooncode_events_path(book_root, session_id))
-}
-
-///|
-async fn Daemon::mooncode_sync_live_task_events(
-  self : Daemon,
-  binding : MoonCodeSessionBinding,
-) -> Unit {
-  match self.by_id.get(binding.task_id) {
-    Some(Running(task)) => {
-      let mut persisted_task_event_count = binding.persisted_task_event_count
-      for index, event in task.broadcast.values() {
-        let mooncode_event = mooncode_event_from_task_stream(
-          session_id=binding.session_id,
-          command_id=binding.last_command_id,
-          task_id=task.id.to_string(),
-          event,
-          index~,
-        )
-        if index >= binding.persisted_task_event_count {
-          self.mooncode_persist_event(binding, mooncode_event)
-          persisted_task_event_count = index + 1
-        }
-      }
-      if persisted_task_event_count != binding.persisted_task_event_count {
-        binding.persisted_task_event_count = persisted_task_event_count
-        binding.last_updated = self.clock.now()
-        self.mooncode_persist_session(binding)
-      }
-    }
-    _ => ()
-  }
 }
 
 ///|
@@ -392,55 +353,5 @@ fn mooncode_stream_poll_ms_value(requested : Int) -> Int {
     2000
   } else {
     requested
-  }
-}
-
-///|
-fn mooncode_event_from_task_stream(
-  session_id~ : String,
-  command_id~ : String,
-  task_id~ : String,
-  event : @server.ServerStreamEvent,
-  index~ : Int,
-) -> Json {
-  match event {
-    Moonclaw({ id, created, desc }) => {
-      let desc_json = desc.to_json()
-      let msg = mooncode_json_string(desc_json, "msg", default="")
-      {
-        "id": "moonclaw-\{session_id}-\{task_id}-task-event-\{index}",
-        "protocol": mooncode_protocol_version(),
-        "session_id": session_id,
-        "command_id": command_id,
-        "task_id": task_id,
-        "lane": mooncode_task_event_lane(msg),
-        "kind": mooncode_task_event_kind(msg),
-        "title": mooncode_task_event_title(msg),
-        "status": mooncode_task_event_status(msg),
-        "detail": mooncode_task_event_detail(desc_json),
-        "rendered_text": mooncode_task_event_rendered_text(desc_json),
-        "structured_result": mooncode_task_event_structured_result(desc_json),
-        "created_at": created,
-        "source": "moonclaw-task-stream",
-        "moonclaw_event_id": id,
-        "moonclaw_event": desc_json,
-      }
-    }
-    MoonclawQueuedMessagesSynchronized(messages) =>
-      {
-        "id": "moonclaw-\{session_id}-\{task_id}-queued-\{index}",
-        "protocol": mooncode_protocol_version(),
-        "session_id": session_id,
-        "command_id": command_id,
-        "task_id": task_id,
-        "lane": "runtime",
-        "kind": "runtime.queue_synchronized",
-        "title": "MoonClaw queued messages synchronized",
-        "status": "running",
-        "detail": "MoonClaw task has \{messages.length()} queued message(s)",
-        "created_at": @clock.epoch.now(),
-        "source": "moonclaw-task-stream",
-        "queued_messages": messages,
-      }
   }
 }

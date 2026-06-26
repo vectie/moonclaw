@@ -363,12 +363,12 @@ async test "mooncode native runtime loop drains queued commands" (
   assert_eq(mooncode_json_array_items(result, "turns").length(), 2)
   assert_true(@fsx.exists(@pathx.join(book_root, "tools/loop-proof/one.txt")))
   assert_true(@fsx.exists(@pathx.join(book_root, "tools/loop-proof/two.txt")))
-  let dispatch_log = @fsx.read_file(
-    mooncode_runtime_dispatches_path(book_root, session_id),
+  let receipt_log = @fsx.read_file(
+    mooncode_runtime_receipts_path(book_root, session_id),
   )
-  assert_true(dispatch_log.contains("cmd-loop-1"))
-  assert_true(dispatch_log.contains("cmd-loop-2"))
-  assert_true(dispatch_log.contains("\"runtime-completed\""))
+  assert_true(receipt_log.contains("cmd-loop-1"))
+  assert_true(receipt_log.contains("cmd-loop-2"))
+  assert_true(receipt_log.contains("\"runtime-completed\""))
   let state = mooncode_json_object_field_or_empty(result, "claim_state")
   assert_eq(mooncode_json_int(state, "delivered_command_count", default=0), 2)
 }

@@ -36,7 +36,7 @@ fn mooncode_runtime_turn_receipt(
   let receipt = mooncode_json_object_field_or_empty(claim_item, "receipt")
   let claim_id = mooncode_json_string(receipt, "claim_id", default="")
   {
-    "kind": mooncode_kind_runtime_dispatch(),
+    "kind": mooncode_kind_runtime_receipt(),
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "session_id": session_id,
@@ -50,7 +50,7 @@ fn mooncode_runtime_turn_receipt(
     } else {
       "runtime-failed"
     },
-    "dispatch_mode": "moonclaw-native-runtime-turn",
+    "runtime_mode": "moonclaw-native-runtime-turn",
     "claim_id": claim_id,
     "consumer_id": consumer_id,
     "completed_at": now,

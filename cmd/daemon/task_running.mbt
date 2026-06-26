@@ -239,21 +239,3 @@ async fn Running::create_message(
   }
   msg_ret
 }
-
-///|
-async fn Running::cancel(self : Running) -> Json {
-  let (r, b) = @httpx.post_json(
-    "http://localhost:\{self.port}/v1/cancel",
-    Json::null(),
-  )
-  guard r.code is (200..=299) else {
-    raise json_error(500, "Internal Server Error", {
-      "error": {
-        "code": r.code,
-        "message": "Failed to cancel MoonCode task: \{r.code} \{r.reason}",
-        "metadata": { "code": r.code, "reason": r.reason, "body": b.json() },
-      },
-    })
-  }
-  b.json()
-}

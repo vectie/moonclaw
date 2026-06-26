@@ -111,7 +111,7 @@ Gateway no longer constructs lifecycle hooks itself; it calls `execution_notific
 Owns chat-specific policy and rendering:
 
 - slash/reply command parsing
-- command dispatch
+- command queue
 - proposal/message correlation
 - notification preference persistence
 - progress notification decisions

@@ -85,21 +85,21 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
   `scripts/validate-core-boundaries.sh` composes that gate with targeted
   Moondesk, MoonClaw, MoonBook, and Moontown checks.
 - `mooncode_protocol.mbt` owns daemon-local MoonCode protocol constants such as
-  runtime dispatch/turn kinds, package proof events, planner modes, canonical
+  runtime receipt/turn kinds, package proof events, planner modes, canonical
   tool/test/control event names, and optional daemon endpoints. Required native
   endpoint/tool/contract values come from `mooncode/core` through local wrapper
   functions for existing daemon call sites.
 - `mooncode_capabilities.mbt` consumes that protocol-owned native capability
   surface through local wrapper helpers, so `/v1/code/capabilities`
   includes a canonical `capability_surface` object that Moondesk validates
-  before enabling native MoonCode dispatch. The surface includes a SHA-256
+  before enabling native MoonCode runtime. The surface includes a SHA-256
   `capability_surface_fingerprint` over the required protocol, contract id,
   endpoints, and tools; the top-level endpoint, tool, contract, and fingerprint
   fields remain top-level mirrors of that surface.
 - `mooncode_request_helpers.mbt` owns route/query parameter parsing.
 - `mooncode_persistence.mbt` owns command, event, and session sidecar writes.
-- `mooncode_event_helpers.mbt` owns task-event normalization into
-  `mooncode.v1` event records.
+- `mooncode_stream.mbt` owns durable MoonCode event streaming and bounded
+  long polling.
 - `mooncode_json_helpers.mbt` owns small shared JSON field readers.
 - `mooncode_tools.mbt` owns the generic native tool endpoint, shared tool
   result/event helpers, file read/write/edit tools, and patch application.
@@ -108,10 +108,10 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
 - `mooncode_runtime_turn.mbt` owns the native runtime-turn orchestration loop,
   command claiming, tool execution sequencing, package persistence handoff, and
   planner/tool/package/review/test/eval/commit boundary ordering.
-- `mooncode_runtime_controls.mbt` owns serve-scheduler control decisions for
+- `mooncode_runtime_controls.mbt` owns runtime-control decisions for
   idle `steer` / `cancel` commands and their settlement events.
 - `mooncode_runtime_turn_receipts.mbt` owns native runtime-turn completion
-  events and runtime-dispatch receipt projection.
+  events and queue settlement receipt projection.
 - `mooncode_runtime_test_results.mbt` owns command-scoped test-result event
   projection from native `moon_check` tool output.
 - `mooncode_runtime_model_planner.mbt` owns explicit/model tool-call planning,
@@ -127,8 +127,8 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
 - `mooncode_runtime_packages.mbt` owns runtime-built package manifest/index
   creation, source promotion, package proof records, and MoonBook artifact
   paths produced by runtime-turn.
-- Route-specific files such as `mooncode_serve_scheduler.mbt`,
-  `mooncode_eval_report.mbt`, `mooncode_command_dispatch.mbt`,
+- Route-specific files such as `mooncode_runtime_control.mbt`,
+  `mooncode_eval_report.mbt`, `mooncode_command_queue.mbt`,
   `mooncode_runtime_claims.mbt`, `mooncode_package_results.mbt`, and
   `mooncode_stream.mbt` own their endpoint projection and behavior.
 
@@ -360,7 +360,7 @@ prefers the first stored user prompt; older sidecars that lack that field fall
 back to the latest message, latest command id, then session id.
 `updated_at_ms` is factual: live memory rows use their `last_updated` timestamp,
 while durable sidecar rows use the newest mtime across `events.jsonl`,
-`commands.jsonl`, `package-results.jsonl`, `runtime-dispatches.jsonl`, and
+`commands.jsonl`, `package-results.jsonl`, `runtime-receipts.jsonl`, and
 `session.json`.
 Rows are sorted newest first by `updated_at_ms`; rows without a timestamp sort
 last.
@@ -371,42 +371,36 @@ Live session/task binding and cold record resolution live in
 in `mooncode_session_store.mbt`. The compact row contract is
 covered by `mooncode_session_listing_wbtest.mbt`.
 
-### `GET /v1/code/sessions/{id}/serve-scheduler`
+### `GET /v1/code/sessions/{id}/runtime-control`
 
-Returns the native MoonCode serve scheduler projection for a selected
+Returns the native MoonCode runtime control projection for a selected
 MoonBook session. Pass `book_root=<path>` to load the book-local sidecar. The
-endpoint is read-only and does not spawn, claim, or dispatch work.
+endpoint is read-only and does not spawn, claim, or execute work.
 
-The response is built from `commands.jsonl` plus `runtime-dispatches.jsonl` and
+The response is built from `commands.jsonl` plus `runtime-receipts.jsonl` and
 reports one active turn, pending turn ids, lifecycle rows, and per-command
 effects such as `start-turn`, `queue-turn`, `deliver-steer`, `queue-steer`,
 `defer-steer`, `cancel-active`, `withdraw-pending`, and `drop-cancel`. Deferred
 steering is persisted as runtime evidence and injected into the next turn. This
-mirrors Codex-style prompt/steer/cancel ordering while keeping MoonClaw responsible for the
+mirrors live coding-agent prompt/steer/cancel ordering while keeping MoonClaw responsible for the
 runtime interpretation of durable MoonCode command logs.
-The implementation lives in `mooncode_serve_scheduler.mbt`, with focused
-white-box coverage in `mooncode_serve_scheduler_wbtest.mbt`, so scheduler
+The implementation lives in `mooncode_runtime_control.mbt`, with focused
+white-box coverage in `mooncode_runtime_control_wbtest.mbt`, so runtime-control
 semantics stay separate from command ingestion and tool execution.
 
 ### `GET/POST /v1/code/sessions/{id}/runtime-claim`
 
 Projects and mutates the durable MoonCode command queue for a selected
 MoonBook session. The claim state is built from book-local `commands.jsonl`
-and `runtime-dispatches.jsonl`; it classifies commands as claimable, claimed,
+and `runtime-receipts.jsonl`; it classifies commands as claimable, claimed,
 delivered, invalid, or order-blocked. `POST` appends a
 `runtime-claimed` receipt for the next unresolved command without executing it.
 
-### `POST /v1/code/sessions/{id}/runtime-dispatch`
-
-Claims the next command when needed, forwards a claimed command through the
-MoonClaw runtime boundary, and appends a terminal runtime-dispatch receipt such
-as `runtime-delivered`, `runtime-failed`, or `runtime-cancelled`.
-
-Runtime claim-state projection, claim receipt creation, dispatch receipt
-creation, and the HTTP wrappers live in `mooncode_runtime_claims.mbt`, with
-focused coverage in `mooncode_runtime_claims_wbtest.mbt`. This keeps queue
-ownership separate from serve-scheduler projection, command ingestion, and
-native runtime-turn tool execution.
+Runtime claim-state projection, claim receipt creation, and the HTTP wrappers
+live in `mooncode_runtime_claims.mbt`, with focused coverage in
+`mooncode_runtime_claims_wbtest.mbt`. This keeps queue ownership separate from
+runtime-control projection, command ingestion, and native runtime-turn tool
+execution.
 
 ### `GET /v1/code/sessions/{id}/stream`
 
@@ -416,7 +410,7 @@ event source is book-local:
 
 Query parameters:
 
-- `book_root`: required unless the daemon has a live binding for the session.
+- `book_root`: required unless the daemon has a MoonCode session for the id.
 - `format`: `jsonl` by default, or `sse` for server-sent event envelopes.
 - `since`: last seen 1-based sequence number. The response includes events with
   a higher sequence and returns `next_since` for resumable polling.
@@ -429,8 +423,8 @@ JSONL responses contain `meta`, `event`, and `done` records. SSE responses use
 the same payloads as `event: meta`, `event: event`, and `event: done` chunks.
 The meta and done records include wait metadata so Moondesk can distinguish an
 immediate replay from a live-tail wait that timed out with no new events.
-The transport and live task-event sync live in `mooncode_stream.mbt`, with
-event projection and resumable replay coverage in `mooncode_stream_wbtest.mbt`.
+The transport lives in `mooncode_stream.mbt`, with durable event projection and
+resumable replay coverage in `mooncode_stream_wbtest.mbt`.
 
 ### `GET /v1/code/sessions/{id}/runtime-events`
 
@@ -465,24 +459,19 @@ collection stays in `mooncode_eval.mbt`.
 ### `POST /v1/code/sessions/{id}/commands`
 
 Accepts a MoonCode command from Moondesk or a standalone `mooncode` client,
-validates the shared `mooncode.v1` envelope, and turns it into one of three
-dispatch outcomes:
+validates the shared `mooncode.v1` envelope, and appends the command plus a `command.queued_for_runtime_turn` event
+to the book-local sidecar for native `runtime-turn` consumption. This endpoint
+does not spawn or message a generic task.
 
-- `native_dispatch_mode=queue-only`: append the command and a
-  `command.queued_for_runtime_turn` event to the book-local sidecar for native
-  `runtime-turn` consumption.
-- `command=cancel`: request cooperative cancellation for the bound generic task,
-  or persist `cancel.no_active_task` evidence when no task is active.
-- all other commands: forward a prompt/steer message to the bound MoonClaw task
-  while persisting the command and runtime accept event.
-
-The command boundary lives in `mooncode_command_dispatch.mbt`, with validation,
-control classification, task forwarding, cancellation, queue-only persistence,
-and command id/book-root helpers kept together. The focused behavior tests live
-in `mooncode_command_dispatch_wbtest.mbt`. Runtime-turn execution and tool
-application remain separate, so MoonClaw can support both browser-hosted
-Moondesk and a future standalone `mooncode` client over the same command
-contract.
+The command queue boundary lives in `mooncode_command_queue.mbt`, with strict
+packet validation, control classification, native queue persistence, and
+command id/book-root helpers kept together. Top-level command envelope fields
+come from `mooncode/core` so Moondesk, MoonClaw, and a standalone `mooncode`
+client validate the same contract. The focused behavior tests live in
+`mooncode_command_queue_wbtest.mbt`.
+Runtime-turn execution and tool application remain separate, so MoonClaw can
+support both browser-hosted Moondesk and a future standalone `mooncode` client
+over the same command contract.
 
 ### `POST /v1/code/sessions/{id}/runtime-turn`
 
@@ -491,14 +480,14 @@ bounded native turn. Explicit `runtime_tool_calls` are executed directly; prompt
 fallbacks can create MoonBook-owned tools or miniapps under `tools/` or `apps/`.
 Those deterministic fallbacks live in `mooncode_runtime_prompt_fallback.mbt`,
 keeping generated artifact planning separate from runtime-turn orchestration.
-The response includes `serve_scheduler_state` and `serve_scheduler_decision`,
+The response includes `runtime_control_state` and `runtime_control_decision`,
 and the runtime uses that decision before planning or executing tools.
 Steer commands now settle with `steer_applied`, `steer_deferred`, or
 `steer_dropped` runtime events. Idle steer is persisted as deferred steering
 context before planning and then injected into the next eligible MoonCode turn,
 while delivered steer can run explicit or bounded model-planned tool batches
 against the active MoonBook context.
-Idle cancel controls are closed as scheduler-owned `cancel_dropped` evidence
+Idle cancel controls are closed as runtime-control-owned `cancel_dropped` evidence
 with no tool execution, so `runtime-loop` can advance the queue without
 misclassifying stale controls as new work.
 Control decision and settlement event projection live in
@@ -528,7 +517,7 @@ capped output, and the original command packet. This gives Moondesk a durable
 test proof event without asking the desktop shell to infer test state from a
 generic tool result.
 Test-result projection lives in `mooncode_runtime_test_results.mbt`, while
-runtime-dispatch completion receipts live in `mooncode_runtime_turn_receipts.mbt`.
+runtime-receipt completion receipts live in `mooncode_runtime_turn_receipts.mbt`.
 The native `moon_ide` and `moon_cmd` tools provide MoonBit-specific execution
 paths before the generic shell fallback. `moon_ide` runs read-only semantic
 navigation actions (`doc`, `outline`, `peek_def`, `hover`, and
@@ -563,7 +552,7 @@ start/selection/failure events, `planner_steps`, `planner_step_count`, and
 `model_step_limit` are included in the runtime result. Each planner step also
 emits MoonCode `reasoning_delta` progress, optional assistant transcript deltas,
 and pre-execution `tool_call` events before the matching `tool_result`, so
-clients can render live Codex-style progress from the native event log.
+clients can render live live coding-agent progress from the native event log.
 The explicit/model planner contract lives in
 `mooncode_runtime_model_planner.mbt`; runtime-turn calls that boundary and owns
 only execution sequencing around the selected tool calls.
@@ -576,7 +565,7 @@ selected MoonBook root, infer target paths from diff headers when needed, and
 emit `runtime.patch_applied` / `runtime.patch_reverted` proof events. They
 also accept `hunk_index`/`hunk_id` or hunk targets such as
 `tools/demo/main.mbt#hunk-2`, apply only that selected hunk, and report
-`hunk_dispatch_scope`, `selected_hunk_index`, `available_hunk_count`, and
+`hunk_control_scope`, `selected_hunk_index`, `available_hunk_count`, and
 `file_path` metadata. Patch tool packets can request post-change verification
 with `verification_command`,
 `test_command`, `verify_after`, or `moon_check_target`; MoonClaw records the
