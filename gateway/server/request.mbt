@@ -145,6 +145,12 @@ pub async fn Gateway::handle_request(
       (Post, ["", "v1", "robot", "routine"]) => self.handle_robot_routine(r, w)
       (Post, ["", "v1", "robot", "routine", "invoke"]) =>
         self.handle_robot_routine_invoke(r, w)
+      (Post, ["", "v1", "robot", "routine", "run"]) =>
+        self.handle_robot_routine_run(r, w)
+      (Get, ["", "v1", "robot", "routine", "runs"]) =>
+        self.handle_list_robot_routine_runs(r, w)
+      (Get, ["", "v1", "robot", "routine", "runs", run_id]) =>
+        self.handle_get_robot_routine_run(r, w, run_id.to_owned())
       (Post, ["", "v1", "mailbox"]) => self.handle_create_mailbox(r, w)
       (Delete, ["", "v1", "mailbox", mailbox_id]) =>
         self.handle_delete_mailbox(r, w, mailbox_id)
@@ -356,6 +362,8 @@ async fn Gateway::handle_index(
       "POST /v1/agent - Submit agent task", "POST /v1/robot/policy - Select Moonrobo robot policy route",
       "POST /v1/robot/policy/invoke - Invoke selected safe Moonrobo robot policy route",
       "POST /v1/robot/routine - Plan Moonrobo robot routine route sequence", "POST /v1/robot/routine/invoke - Invoke next safe Moonrobo robot routine step",
+      "POST /v1/robot/routine/run - Invoke and persist a MoonClaw robot routine run",
+      "GET /v1/robot/routine/runs - List persisted MoonClaw robot routine runs",
       "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",
     ],
   }

@@ -411,6 +411,10 @@ type RobotPolicyHttpTextResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson
 
 type RobotRoutineGatewayResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+type RobotRoutineRunRecord derive(Eq, ToJson, @debug.Debug)
+
+type RobotRoutineRunsResponse derive(Eq, ToJson, @debug.Debug)
+
 pub struct SendMessageParams {
   from_agent : String
   to_agent : String?
