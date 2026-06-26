@@ -7,9 +7,9 @@ gateway robot-policy endpoints make that boundary available as a service.
 The same ownership is visible in MoonClaw's job/profile substrate through the
 built-in `robot_routine` profile. That profile has `role: "robot"` and a single
 `robot.routine.run` step targeting `POST /v1/robot/routine/run`, so robot work is
-the third MoonClaw lane beside coding and general task work. Codex, Rabbita, or
-an operator can initiate the lane during bring-up; the AI decision and route
-selection still happen in MoonClaw.
+the third MoonClaw lane beside coding and general task work. A temporary
+initiator, Rabbita, or an operator can initiate the lane during bring-up; the AI
+decision and route selection still happen in MoonClaw.
 
 ## Endpoints
 
