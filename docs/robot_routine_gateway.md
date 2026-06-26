@@ -1,6 +1,6 @@
 # MoonClaw Robot Routine Gateway
 
-MoonClaw owns robot routine policy. Moonrobo owns physical-world context,
+MoonClaw owns robot routine selection. Moonrobo owns physical-world context,
 gateway ingress, task evidence, and MoonBook/RoboBook memory projection. The
 gateway robot-routine endpoints make that boundary available as a service.
 
@@ -50,7 +50,7 @@ the MoonClaw side. Conflict responses from `/run` include the persisted `run`
 object beside the error.
 
 When the selected Moonrobo route requires a body, MoonClaw authors that body
-from Moonrobo context instead of asking Moonrobo to infer policy. In particular,
+from Moonrobo context instead of asking Moonrobo to infer routine decisions. In particular,
 `/api/moonrobo/gateway/command` receives a concrete MoonClaw-authored command
 body built from the latest `task_intent` goal, robot id, and timestamp.
 `/api/moonrobo/proof-session` receives a bounded proof-session request with a

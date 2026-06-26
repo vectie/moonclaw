@@ -17,7 +17,7 @@ test "robot routine joins Moonrobo base URL and route" {
 }
 
 ///|
-test "robot policy request requires Moonrobo URL" {
+test "robot routine request requires Moonrobo URL" {
   let params = robot_routine_decode_request_text(
     "{\"moonrobo_url\":\"http://127.0.0.1:5192\",\"now_ms\":42}",
   )
@@ -26,7 +26,7 @@ test "robot policy request requires Moonrobo URL" {
       assert_eq(decoded.moonrobo_url, "http://127.0.0.1:5192")
       assert_true(decoded.now_ms is Some(42L))
     }
-    Err(message) => abort("expected valid robot policy request: \{message}")
+    Err(message) => abort("expected valid robot routine request: \{message}")
   }
   let missing = robot_routine_decode_request_text(
     { "moonrobo_url": " " }.to_json().stringify(),
@@ -37,7 +37,7 @@ test "robot policy request requires Moonrobo URL" {
 ///|
 fn sample_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
   let decision : @robot_routine.RobotRoutineDecision = {
-    decision_id: "robot-policy-work-submit-gateway-command-42",
+    decision_id: "robot-routine-work-submit-gateway-command-42",
     status: "route-selected",
     owner: "moonclaw",
     work_id: "work-robo-gateway-command",
@@ -47,7 +47,7 @@ fn sample_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
     request_body: "{\"goal\":\"inspect workspace\"}",
     target_route: "/api/moonrobo/gateway/command",
     title: "Run MoonClaw gateway command",
-    reason: "MoonClaw owns the command policy.",
+    reason: "MoonClaw owns the command routine step.",
     physical_execution_allowed: false,
     message: "MoonClaw selected the next route.",
   }
@@ -78,7 +78,7 @@ fn sample_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
 ///|
 fn sample_idle_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
   let decision : @robot_routine.RobotRoutineDecision = {
-    decision_id: "robot-policy-idle-idle-43",
+    decision_id: "robot-routine-idle-idle-43",
     status: "idle",
     owner: "moontown",
     work_id: "",
@@ -90,7 +90,7 @@ fn sample_idle_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
     title: "Ask Robo",
     reason: "No queued robot work is present.",
     physical_execution_allowed: false,
-    message: "Robot policy is idle.",
+    message: "Robot routine is idle.",
   }
   {
     plan_id: "robot-routine-plan-robo-43",

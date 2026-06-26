@@ -25,7 +25,7 @@ It is the main extension boundary for packs like research, wiki maintenance,
 and OPC.
 
 MoonClaw also ships a built-in `robot_routine` profile. It is the physical-world
-lane: callers may initiate it, but MoonClaw owns the robot policy decision and
+lane: callers may initiate it, but MoonClaw owns the robot routine decision and
 targets `POST /v1/robot/routine/run`.
 
 ## Top-Level Shape

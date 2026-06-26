@@ -167,7 +167,7 @@ fn gateway_command_goal(item : Json, context : Json) -> String {
         if status != "" {
           "Continue the Moonrobo robot routine from gateway status \{status}."
         } else {
-          "Continue the Moonrobo robot routine from MoonClaw policy."
+          "Continue the Moonrobo robot routine from MoonClaw routine state."
         }
       }
     }
@@ -204,7 +204,7 @@ fn task_goal(context : Json) -> String {
   if bool_field(task, "has_task") && goal != "" {
     goal
   } else {
-    "Continue the Moonrobo robot routine from MoonClaw policy."
+    "Continue the Moonrobo robot routine from MoonClaw routine state."
   }
 }
 
@@ -270,7 +270,7 @@ fn work_decision(
   let owner = if operator_kind(kind) { "operator" } else { "moonclaw" }
   let target = string_field(item, "target_path")
   {
-    decision_id: decision_id("robot-policy-work", kind, now_ms),
+    decision_id: decision_id("robot-routine-work", kind, now_ms),
     status: if owner == "operator" {
       "needs-operator"
     } else {
@@ -323,7 +323,7 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
     "reason": Json::string("Gateway status selected the next Moonrobo route."),
   }.to_json()
   {
-    decision_id: decision_id("robot-policy-gateway", kind, now_ms),
+    decision_id: decision_id("robot-routine-gateway", kind, now_ms),
     status: "route-selected",
     owner: "moonclaw",
     work_id: "",
@@ -342,7 +342,7 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
 ///|
 fn idle_decision(now_ms : Int64) -> RobotRoutineDecision {
   {
-    decision_id: decision_id("robot-policy-idle", "idle", now_ms),
+    decision_id: decision_id("robot-routine-idle", "idle", now_ms),
     status: "idle",
     owner: "moontown",
     work_id: "",
@@ -354,7 +354,7 @@ fn idle_decision(now_ms : Int64) -> RobotRoutineDecision {
     title: "Ask Robo",
     reason: "No queued robot work is present in Moonrobo context.",
     physical_execution_allowed: false,
-    message: "Robot policy is idle; ask for another task.",
+    message: "Robot routine is idle; ask for another task.",
   }
 }
 
@@ -481,7 +481,7 @@ fn memory_step(order : Int) -> RobotRoutineStep {
 }
 
 ///|
-fn append_policy_step(
+fn append_selected_route_step(
   steps : Array[RobotRoutineStep],
   decision : RobotRoutineDecision,
 ) -> Unit {
@@ -490,7 +490,7 @@ fn append_policy_step(
     decision.route != "" {
     steps.push(
       routine_step(
-        "routine-step-selected-policy",
+        "routine-step-selected-route",
         steps.length() + 1,
         decision.kind,
         decision.owner,
@@ -580,7 +580,7 @@ pub fn plan_routine_from_context(
   let context = context_body(payload)
   let decision = select_route_from_context(payload, now_ms~)
   let steps : Array[RobotRoutineStep] = []
-  append_policy_step(steps, decision)
+  append_selected_route_step(steps, decision)
   append_remainder_steps(steps, payload, context, now_ms)
   let status = plan_status(steps)
   {
