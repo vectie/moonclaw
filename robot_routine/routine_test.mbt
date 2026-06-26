@@ -90,6 +90,18 @@ fn context_with_work(kind : String, target_path : String) -> Json {
           "target_path": target_path,
           "reason": "test reason",
         },
+        "items": [
+          {
+            "work_id": "work-test",
+            "kind": kind,
+            "priority": 100,
+            "title": "Test work",
+            "summary": "test summary",
+            "target_id": "robot-test",
+            "target_path": target_path,
+            "reason": "test reason",
+          },
+        ],
       },
       "gateway": {
         "status": "ready-for-command",
@@ -129,9 +141,9 @@ fn context_with_live_readiness(
         "created_at_ms": 1000,
       },
       "platform_queue": if work == {} {
-        { "item_count": 0, "next_item": null }
+        { "item_count": 0, "next_item": null, "items": [] }
       } else {
-        { "item_count": 1, "next_item": work }
+        { "item_count": 1, "next_item": work, "items": [work] }
       },
       "gateway": {
         "status": status,
@@ -153,10 +165,19 @@ fn context_with_live_readiness(
 
 ///|
 fn work_item(kind : String, target_path : String) -> Json {
+  work_item_with_priority(kind, target_path, 100)
+}
+
+///|
+fn work_item_with_priority(
+  kind : String,
+  target_path : String,
+  priority : Int,
+) -> Json {
   {
     "work_id": "work-test",
     "kind": kind,
-    "priority": 100,
+    "priority": priority,
     "title": "Test work",
     "summary": "test summary",
     "target_id": "robot-test",
@@ -194,6 +215,55 @@ test "robot routine decision selects explicit Moonrobo route for MoonClaw work" 
   assert_eq(decision.route, "/api/runtime/validation/session")
   assert_eq(decision.kind, "validate-runtime")
   assert_eq(decision.request_body, "{}")
+}
+
+///|
+test "robot routine decision selects queue item in MoonClaw instead of trusting next item" {
+  let stale_next = work_item_with_priority(
+    "review-evidence", "/api/reviews/review-stale", 10,
+  )
+  let selected = work_item_with_priority(
+    "validate-runtime", "/api/runtime/validation/session", 101,
+  )
+  let decision = selected_decision(
+    {
+      "context": {
+        "robot_id": "noetix-e1-lab-01",
+        "tool_registry": tool_registry(),
+        "task_intent": {
+          "has_task": true,
+          "task_id": "message-routine-test",
+          "message_id": "routine-test",
+          "goal": "inspect the tool bench",
+          "classification": "command-review",
+          "stage": "ready-to-prove",
+          "next_route": "/api/moonrobo/gateway/command",
+          "requires_review": false,
+          "physical_execution_allowed": false,
+          "message_path": "/moonbook/task-messages/message-routine-test.json",
+          "created_at_ms": 1000,
+        },
+        "platform_queue": {
+          "item_count": 2,
+          "next_item": stale_next,
+          "items": [stale_next, selected],
+        },
+        "gateway": {
+          "status": "ready-for-command",
+          "next_method": "POST",
+          "next_route": "/api/moonrobo/proof-session",
+          "next_title": "Run proof session",
+          "can_submit_gateway_command": true,
+          "physical_execution_allowed": false,
+        },
+      },
+    },
+    1002L,
+  )
+  assert_eq(decision.status, "route-selected")
+  assert_eq(decision.owner, "moonclaw")
+  assert_eq(decision.kind, "validate-runtime")
+  assert_eq(decision.route, "/api/runtime/validation/session")
 }
 
 ///|
@@ -235,7 +305,7 @@ test "robot routine decision falls back to gateway route when queue is empty" {
           "message_id": "routine-test",
           "goal": "inspect the tool bench",
         },
-        "platform_queue": { "item_count": 0, "next_item": null },
+        "platform_queue": { "item_count": 0, "next_item": null, "items": [] },
         "gateway": {
           "status": "ready-for-command",
           "next_method": "POST",
@@ -271,7 +341,7 @@ test "robot routine decision authors gateway command from gateway status" {
           "message_id": "routine-test",
           "goal": "inspect the tool bench",
         },
-        "platform_queue": { "item_count": 0, "next_item": null },
+        "platform_queue": { "item_count": 0, "next_item": null, "items": [] },
         "gateway": {
           "status": "ready-for-command",
           "next_method": "POST",
@@ -429,7 +499,7 @@ test "robot routine decision blocks unregistered gateway next route" {
       "context": {
         "robot_id": "noetix-e1-lab-01",
         "tool_registry": tool_registry(),
-        "platform_queue": { "item_count": 0, "next_item": null },
+        "platform_queue": { "item_count": 0, "next_item": null, "items": [] },
         "gateway": {
           "status": "ready-for-command",
           "next_method": "POST",
@@ -453,7 +523,7 @@ test "robot routine decision idles without queue or ready gateway route" {
   let decision = selected_decision(
     {
       "context": {
-        "platform_queue": { "item_count": 0, "next_item": null },
+        "platform_queue": { "item_count": 0, "next_item": null, "items": [] },
         "gateway": {
           "status": "mapped-needs-evidence",
           "can_submit_gateway_command": false,

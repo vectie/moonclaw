@@ -66,6 +66,18 @@ fn bool_field(json : Json, key : String) -> Bool {
 }
 
 ///|
+fn int_field(json : Json, key : String) -> Int {
+  match json {
+    Object(object) =>
+      match object.get(key) {
+        Some(Number(value, ..)) => value.to_int()
+        _ => 0
+      }
+    _ => 0
+  }
+}
+
+///|
 fn object_field(json : Json, key : String) -> Json {
   match json {
     Object(object) =>
@@ -90,8 +102,27 @@ fn context_body(payload : Json) -> Json {
 ///|
 fn next_work_item(context : Json) -> Json {
   let queue = object_field(context, "platform_queue")
-  match object_field(queue, "next_item") {
-    Object(object) as value if object.length() > 0 => value
+  match queue {
+    Object(queue_object) =>
+      match queue_object.get("items") {
+        Some(Array(items)) => {
+          let mut selected : Json = {}
+          let mut selected_priority = -2147483648
+          for item in items {
+            guard item is Object(object) else { continue }
+            if object.length() > 0 &&
+              !unsupported_aggregate_kind(string_field(item, "kind")) {
+              let priority = int_field(item, "priority")
+              if selected == {} || priority > selected_priority {
+                selected = item
+                selected_priority = priority
+              }
+            }
+          }
+          selected
+        }
+        _ => {}
+      }
     _ => {}
   }
 }
