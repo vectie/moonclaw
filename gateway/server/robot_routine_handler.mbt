@@ -26,6 +26,7 @@ struct RobotRoutineRunRecord {
   status : String
   invoked : Bool
   invocation : RobotRoutineHttpTextResponse?
+  memory_refresh : RobotRoutineHttpTextResponse?
   plan : @robot_routine.RobotRoutinePlan
   record_path : String
   message : String
@@ -121,6 +122,7 @@ fn robot_routine_optional_http_response_field(
       }
       Ok(Some(response))
     }
+    Some(Null) => Ok(None)
     Some(_) => Err("invalid invocation field \{key}")
     None => Ok(None)
   }
@@ -163,6 +165,11 @@ fn robot_routine_run_record_from_json(
     },
     invocation: match
       robot_routine_optional_http_response_field(object, "invocation") {
+      Ok(value) => value
+      Err(message) => return Err(message)
+    },
+    memory_refresh: match
+      robot_routine_optional_http_response_field(object, "memory_refresh") {
       Ok(value) => value
       Err(message) => return Err(message)
     },
@@ -221,10 +228,16 @@ fn robot_routine_record_status(
   plan : @robot_routine.RobotRoutinePlan,
   invoked : Bool,
   invocation : RobotRoutineHttpTextResponse?,
+  memory_refresh : RobotRoutineHttpTextResponse?,
 ) -> String {
   if invoked {
     match invocation {
-      Some({ status: 200..=299, .. }) => "invoked"
+      Some({ status: 200..=299, .. }) =>
+        match memory_refresh {
+          Some({ status: 200..=299, .. }) => "invoked-remembered"
+          Some(_) => "memory-refresh-non-ok"
+          None => "invoked"
+        }
       Some(_) => "invoked-non-ok"
       None => "invoke-missing"
     }
@@ -240,6 +253,7 @@ fn robot_routine_run_record(
   plan : @robot_routine.RobotRoutinePlan,
   invoked : Bool,
   invocation : RobotRoutineHttpTextResponse?,
+  memory_refresh? : RobotRoutineHttpTextResponse? = None,
   message : String,
   status? : String = "",
 ) -> RobotRoutineRunRecord {
@@ -251,10 +265,11 @@ fn robot_routine_run_record(
     status: if status != "" {
       status
     } else {
-      robot_routine_record_status(plan, invoked, invocation)
+      robot_routine_record_status(plan, invoked, invocation, memory_refresh)
     },
     invoked,
     invocation,
+    memory_refresh,
     plan,
     record_path: robot_routine_run_path(root, run_id),
     message,
@@ -460,6 +475,29 @@ async fn robot_routine_invoke_step(
 }
 
 ///|
+async fn robot_routine_refresh_memory(
+  base_url : String,
+) -> Result[RobotRoutineHttpTextResponse, String] {
+  robot_routine_post_json(
+    robot_routine_join_url(base_url, "/api/moonbook/remember"),
+    "{}",
+  )
+}
+
+///|
+async fn robot_routine_memory_refresh_after_invocation(
+  base_url : String,
+  step : @robot_routine.RobotRoutineStep,
+  invocation : RobotRoutineHttpTextResponse,
+) -> Result[RobotRoutineHttpTextResponse, String] {
+  if step.route == "/api/moonbook/remember" {
+    Ok(invocation)
+  } else {
+    robot_routine_refresh_memory(base_url)
+  }
+}
+
+///|
 async fn Gateway::select_robot_routine(
   self : Gateway,
   r : @httpx.RequestReader,
@@ -606,13 +644,37 @@ async fn Gateway::run_robot_routine(
       )
     }
   }
+  let memory_refresh = match
+    robot_routine_memory_refresh_after_invocation(base_url, step, invocation) {
+    Ok(response) => response
+    Err(message) => {
+      let record = robot_routine_run_record(
+        self.cwd,
+        params,
+        plan,
+        true,
+        Some(invocation),
+        "MoonClaw invoked the robot routine step but could not refresh MoonBook memory: \{message}",
+        status="memory-refresh-failed",
+      )
+      self.persist_robot_routine_run_or_raise(record)
+      raise json_error(
+        409,
+        "Conflict",
+        robot_routine_run_error(
+          "robot_routine_memory_refresh_failed", message, record,
+        ),
+      )
+    }
+  }
   let record = robot_routine_run_record(
     self.cwd,
     params,
     plan,
     true,
     Some(invocation),
-    "MoonClaw planned, invoked, and persisted the robot routine run.",
+    memory_refresh=Some(memory_refresh),
+    "MoonClaw planned, invoked, refreshed MoonBook memory, and persisted the robot routine run.",
   )
   self.persist_robot_routine_run_or_raise(record)
   record

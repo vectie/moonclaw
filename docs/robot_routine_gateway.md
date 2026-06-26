@@ -25,9 +25,11 @@ still require an explicit safety-gated execution path.
 `POST /v1/robot/routine/run` is the durable closed-loop entrypoint. It plans the
 routine, invokes the next safe MoonClaw-owned step when one is available, and
 writes the run record under MoonClaw's `.moonclaw/robot-routine-runs/` ledger.
-Idle plans, operator-owned blockers, and physical-execution blocks are persisted
-before the endpoint returns its non-2xx response, so failed progress still leaves
-durable evidence.
+After a successful safe invocation it also refreshes MoonBook memory through
+Moonrobo's explicit `/api/moonbook/remember` route and stores that response in
+the same run record. Idle plans, operator-owned blockers, memory-refresh
+failures, and physical-execution blocks are persisted before the endpoint
+returns its non-2xx response, so failed progress still leaves durable evidence.
 
 `GET /v1/robot/routine/runs` lists persisted robot routine runs. `GET
 /v1/robot/routine/runs/{run_id}` returns one run record.
@@ -45,9 +47,9 @@ The POST endpoints accept:
 `{moonrobo_url}/api/moonclaw/context`, passes the context to
 `vectie/moonclaw/robot_routine`, and returns a multi-step routine plan plus
 invocation status. The durable `/run` endpoint also persists the selected plan,
-invocation result when present, stopped status, Moonrobo URL, and run path on
-the MoonClaw side. Conflict responses from `/run` include the persisted `run`
-object beside the error.
+invocation result when present, memory-refresh result when present, stopped
+status, Moonrobo URL, and run path on the MoonClaw side. Conflict responses from
+`/run` include the persisted `run` object beside the error.
 
 When the selected Moonrobo route requires a body, MoonClaw authors that body
 from Moonrobo context instead of asking Moonrobo to infer routine decisions. In particular,
@@ -95,5 +97,6 @@ loop is:
    ledger, whether it invokes a non-physical step or stops at an idle/operator
    blocker.
 4. Moonrobo persists command receipts, proof sessions, feedback, and MoonBook
-   memory.
+   memory; MoonClaw's durable `/run` endpoint refreshes MoonBook memory after a
+   successful safe route invocation.
 5. MoonClaw reads the updated context and repeats.
