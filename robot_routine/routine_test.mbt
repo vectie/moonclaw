@@ -370,15 +370,16 @@ test "robot routine decision authors gateway command from gateway status" {
 }
 
 ///|
-test "robot routine decision skips Moonrobo aggregate live exercise work" {
+test "robot routine decision blocks stale aggregate live exercise work" {
   let decision = selected_decision(
     context_with_work("run-live-exercise", "/api/moonrobo/live-exercise"),
     1006L,
   )
-  assert_eq(decision.status, "route-selected")
-  assert_eq(decision.owner, "moonclaw")
-  assert_eq(decision.route, "/api/moonrobo/proof-session")
-  assert_true(decision.request_body.contains("\"session_id\""))
+  assert_eq(decision.status, "needs-operator")
+  assert_eq(decision.owner, "operator")
+  assert_eq(decision.route, "/api/tools/registry")
+  assert_eq(decision.target_route, "/api/moonrobo/live-exercise")
+  assert_true(decision.reason.contains("not registered"))
 }
 
 ///|

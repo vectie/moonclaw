@@ -110,8 +110,7 @@ fn next_work_item(context : Json) -> Json {
           let mut selected_priority = -2147483648
           for item in items {
             guard item is Object(object) else { continue }
-            if object.length() > 0 &&
-              !unsupported_aggregate_kind(string_field(item, "kind")) {
+            if object.length() > 0 {
               let priority = int_field(item, "priority")
               if selected == {} || priority > selected_priority {
                 selected = item
@@ -171,11 +170,6 @@ fn operator_kind(kind : String) -> Bool {
     | "execute-command-message" => true
     _ => false
   }
-}
-
-///|
-fn unsupported_aggregate_kind(kind : String) -> Bool {
-  kind == "run-live-exercise"
 }
 
 ///|
@@ -618,8 +612,7 @@ fn select_route_from_context(
   let context = context_body(payload)
   let item = next_work_item(context)
   match item {
-    Object(object) if object.length() > 0 &&
-      !unsupported_aggregate_kind(string_field(item, "kind")) =>
+    Object(object) if object.length() > 0 =>
       work_decision(item, context, now_ms)
     _ => {
       let status = gateway(context)

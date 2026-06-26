@@ -83,6 +83,11 @@ Registered task-message safety gates are still not autonomous routine steps:
 `evaluate-command-message`, `dry-run-command-message`,
 `approve-command-message`, and `execute-command-message` remain operator-owned
 evidence controls even when their Moonrobo routes are present in the registry.
+There is no legacy aggregate-route compatibility path in MoonClaw. If Moonrobo
+or a fixture presents removed work such as `run-live-exercise` targeting
+`/api/moonrobo/live-exercise`, MoonClaw reports the same registry/operator
+blocker as any other unregistered route instead of silently selecting a
+different routine step.
 
 Moonrobo should not host this selection logic. If Moonrobo contains code with
 agent-facing names, it should remain declarative projection code: context,
