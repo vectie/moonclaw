@@ -5,8 +5,8 @@ struct HttpTextResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-struct RobotPolicyRunOutput {
-  decision : @policy.RobotPolicyDecision
+struct RobotRoutineRunOutput {
+  plan : @policy.RobotRoutinePlan
   invoked : Bool
   invocation : HttpTextResponse?
   message : String
@@ -14,16 +14,18 @@ struct RobotPolicyRunOutput {
 
 ///|
 fn usage() -> Unit {
-  println("MoonClaw Robot Policy")
+  println("MoonClaw Robot Routine")
   println("")
   println("Usage:")
-  println("  moon run cmd/robot_policy -- <moonrobo-context.json>")
-  println("  moon run cmd/robot_policy -- --url <moonrobo-base-url> [--invoke]")
+  println("  moon run cmd/robot_routine -- <moonrobo-context.json>")
+  println(
+    "  moon run cmd/robot_routine -- --url <moonrobo-base-url> [--invoke]",
+  )
   println("")
   println("Reads Moonrobo /api/moonclaw/context and prints the MoonClaw-owned")
-  println("route invocation contract as JSON, including the request body.")
-  println("With --invoke, MoonClaw calls the selected non-physical Moonrobo")
-  println("route and prints the downstream response.")
+  println("routine plan as JSON, including MoonClaw-authored request bodies.")
+  println("With --invoke, MoonClaw calls only the next non-physical")
+  println("MoonClaw-owned routine step and prints the downstream response.")
 }
 
 ///|
@@ -81,33 +83,30 @@ async fn post_json(
 }
 
 ///|
-async fn invoke_decision(
+async fn invoke_step(
   base_url : String,
-  decision : @policy.RobotPolicyDecision,
+  step : @policy.RobotRoutineStep,
 ) -> Result[HttpTextResponse, String] {
-  if decision.owner != "moonclaw" {
-    return Err("MoonClaw cannot invoke a decision owned by \{decision.owner}")
+  if step.owner != "moonclaw" {
+    return Err("MoonClaw cannot invoke a routine step owned by \{step.owner}")
   }
-  if decision.status != "route-selected" {
-    return Err("MoonClaw cannot invoke decision status \{decision.status}")
-  }
-  if decision.physical_execution_allowed {
+  if step.physical_execution_allowed {
     return Err(
-      "selected route allows physical execution; explicit safety-gated invocation is not implemented yet",
+      "selected routine step allows physical execution; explicit safety-gated invocation is not implemented yet",
     )
   }
-  let url = join_url(base_url, decision.route)
-  match decision.http_method {
+  let url = join_url(base_url, step.route)
+  match step.http_method {
     "GET" => get_text(url)
-    "POST" => post_json(url, decision.request_body)
+    "POST" => post_json(url, step.request_body)
     route_method => Err("unsupported Moonrobo route method \{route_method}")
   }
 }
 
 ///|
-fn print_decision_from_text(text : String) -> Unit {
-  match @policy.select_route_from_context_text(text) {
-    Ok(decision) => println(decision.to_json().stringify(indent=2))
+fn print_plan_from_text(text : String) -> Unit {
+  match @policy.plan_routine_from_context_text(text) {
+    Ok(plan) => println(plan.to_json().stringify(indent=2))
     Err(message) => print_error(message)
   }
 }
@@ -121,22 +120,38 @@ async fn run_live(base_url : String, invoke : Bool) -> Unit {
       return
     }
   }
-  let decision = match @policy.select_route_from_context_text(context) {
-    Ok(decision) => decision
+  let plan = match @policy.plan_routine_from_context_text(context) {
+    Ok(plan) => plan
     Err(message) => {
       print_error(message)
       return
     }
   }
   if !invoke {
-    println(decision.to_json().stringify(indent=2))
+    println(plan.to_json().stringify(indent=2))
     return
   }
-  let invocation = match invoke_decision(base_url, decision) {
+  let step = match plan.next_step {
+    Some(step) => step
+    None => {
+      println(
+        {
+          plan,
+          invoked: false,
+          invocation: None,
+          message: "MoonClaw robot routine has no next step to invoke.",
+        }
+        .to_json()
+        .stringify(indent=2),
+      )
+      return
+    }
+  }
+  let invocation = match invoke_step(base_url, step) {
     Ok(response) => Some(response)
     Err(message) => {
       println(
-        { decision, invoked: false, invocation: None, message }
+        { plan, invoked: false, invocation: None, message }
         .to_json()
         .stringify(indent=2),
       )
@@ -145,10 +160,10 @@ async fn run_live(base_url : String, invoke : Bool) -> Unit {
   }
   println(
     {
-      decision,
+      plan,
       invoked: true,
       invocation,
-      message: "MoonClaw invoked the selected Moonrobo route.",
+      message: "MoonClaw invoked the next robot routine step.",
     }
     .to_json()
     .stringify(indent=2),
@@ -169,7 +184,7 @@ async fn main {
           return
         }
       }
-      print_decision_from_text(text)
+      print_plan_from_text(text)
     }
     _ => usage()
   }

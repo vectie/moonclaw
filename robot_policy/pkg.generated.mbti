@@ -11,10 +11,6 @@ pub fn plan_routine_from_context(Json, now_ms? : Int64) -> RobotRoutinePlan
 
 pub fn plan_routine_from_context_text(String, now_ms? : Int64) -> Result[RobotRoutinePlan, String]
 
-pub fn select_route_from_context(Json, now_ms? : Int64) -> RobotPolicyDecision
-
-pub fn select_route_from_context_text(String, now_ms? : Int64) -> Result[RobotPolicyDecision, String]
-
 // Errors
 
 // Types and methods

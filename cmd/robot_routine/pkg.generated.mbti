@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "vectie/moonclaw/cmd/robot_policy"
+package "vectie/moonclaw/cmd/robot_routine"
 
 import {
   "moonbitlang/core/debug",
@@ -13,7 +13,7 @@ import {
 // Types and methods
 type HttpTextResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
-type RobotPolicyRunOutput derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+type RobotRoutineRunOutput derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

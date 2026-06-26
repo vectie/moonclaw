@@ -103,10 +103,15 @@ fn work_item(kind : String, target_path : String) -> Json {
 }
 
 ///|
-test "robot policy routes operator-owned blockers to operator" {
-  let decision = select_route_from_context(
+fn selected_decision(payload : Json, now_ms : Int64) -> RobotPolicyDecision {
+  plan_routine_from_context(payload, now_ms~).decision
+}
+
+///|
+test "robot routine decision routes operator-owned blockers to operator" {
+  let decision = selected_decision(
     context_with_work("start-runtime", "/api/runtime/supervisor/start"),
-    now_ms=1000L,
+    1000L,
   )
   assert_eq(decision.status, "needs-operator")
   assert_eq(decision.owner, "operator")
@@ -116,10 +121,10 @@ test "robot policy routes operator-owned blockers to operator" {
 }
 
 ///|
-test "robot policy selects explicit Moonrobo route for MoonClaw work" {
-  let decision = select_route_from_context(
+test "robot routine decision selects explicit Moonrobo route for MoonClaw work" {
+  let decision = selected_decision(
     context_with_work("validate-runtime", "/api/runtime/validation/session"),
-    now_ms=1001L,
+    1001L,
   )
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
@@ -129,10 +134,10 @@ test "robot policy selects explicit Moonrobo route for MoonClaw work" {
 }
 
 ///|
-test "robot policy authors gateway command request body in MoonClaw" {
-  let decision = select_route_from_context(
+test "robot routine decision authors gateway command request body in MoonClaw" {
+  let decision = selected_decision(
     context_with_work("submit-gateway-command", "/api/moonrobo/gateway/command"),
-    now_ms=1005L,
+    1005L,
   )
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
@@ -155,8 +160,8 @@ test "robot policy authors gateway command request body in MoonClaw" {
 }
 
 ///|
-test "robot policy falls back to gateway route when queue is empty" {
-  let decision = select_route_from_context(
+test "robot routine decision falls back to gateway route when queue is empty" {
+  let decision = selected_decision(
     {
       "context": {
         "robot_id": "noetix-e1-lab-01",
@@ -177,7 +182,7 @@ test "robot policy falls back to gateway route when queue is empty" {
         },
       },
     },
-    now_ms=1002L,
+    1002L,
   )
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
@@ -190,8 +195,8 @@ test "robot policy falls back to gateway route when queue is empty" {
 }
 
 ///|
-test "robot policy authors gateway command when gateway status asks for command ingress" {
-  let decision = select_route_from_context(
+test "robot routine decision authors gateway command from gateway status" {
+  let decision = selected_decision(
     {
       "context": {
         "robot_id": "noetix-e1-lab-01",
@@ -212,7 +217,7 @@ test "robot policy authors gateway command when gateway status asks for command 
         },
       },
     },
-    now_ms=1010L,
+    1010L,
   )
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
@@ -230,10 +235,10 @@ test "robot policy authors gateway command when gateway status asks for command 
 }
 
 ///|
-test "robot policy skips Moonrobo aggregate live exercise work" {
-  let decision = select_route_from_context(
+test "robot routine decision skips Moonrobo aggregate live exercise work" {
+  let decision = selected_decision(
     context_with_work("run-live-exercise", "/api/moonrobo/live-exercise"),
-    now_ms=1006L,
+    1006L,
   )
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
@@ -242,8 +247,8 @@ test "robot policy skips Moonrobo aggregate live exercise work" {
 }
 
 ///|
-test "robot policy idles without queue or ready gateway route" {
-  let decision = select_route_from_context(
+test "robot routine decision idles without queue or ready gateway route" {
+  let decision = selected_decision(
     {
       "context": {
         "platform_queue": { "item_count": 0, "next_item": null },
@@ -253,7 +258,7 @@ test "robot policy idles without queue or ready gateway route" {
         },
       },
     },
-    now_ms=1003L,
+    1003L,
   )
   assert_eq(decision.status, "idle")
   assert_eq(decision.owner, "moontown")
@@ -261,11 +266,12 @@ test "robot policy idles without queue or ready gateway route" {
 }
 
 ///|
-test "robot policy decodes context text" {
-  let decision = select_route_from_context_text(
+test "robot routine decodes context text" {
+  let plan = plan_routine_from_context_text(
     context_with_work("run-proof-session", "/api/moonrobo/proof-session").stringify(),
     now_ms=1004L,
   ).unwrap()
+  let decision = plan.decision
   assert_eq(decision.owner, "moonclaw")
   assert_eq(decision.route, "/api/moonrobo/proof-session")
 }

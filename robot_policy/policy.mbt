@@ -359,7 +359,7 @@ fn idle_decision(now_ms : Int64) -> RobotPolicyDecision {
 }
 
 ///|
-pub fn select_route_from_context(
+fn select_route_from_context(
   payload : Json,
   now_ms? : Int64 = 0L,
 ) -> RobotPolicyDecision {
@@ -603,17 +603,6 @@ pub fn plan_routine_from_context(
     decision,
     message: plan_message(status),
   }
-}
-
-///|
-pub fn select_route_from_context_text(
-  payload : String,
-  now_ms? : Int64 = 0L,
-) -> Result[RobotPolicyDecision, String] {
-  let json = @json.parse(payload) catch {
-    error => return Err("failed to parse Moonrobo context JSON: \{error}")
-  }
-  Ok(select_route_from_context(json, now_ms~))
 }
 
 ///|
