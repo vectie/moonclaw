@@ -19,6 +19,27 @@ test "resolve_role_runtime_contract defaults controller to planner-only domain r
 }
 
 ///|
+test "resolve_role_runtime_contract defaults robot to limited routine executor" {
+  let contract = resolve_role_runtime_contract(
+    Some("robot"),
+    { "domain": "robot" },
+    {},
+  )
+  inspect(contract.role_id, content="robot")
+  inspect(contract.planning_layer.to_json().stringify(), content="\"Domain\"")
+  inspect(contract.runtime_mode.to_json().stringify(), content="\"Executor\"")
+  inspect(contract.tool_access.to_json().stringify(), content="\"Limited\"")
+  inspect(contract.memory_scope.to_json().stringify(), content="\"Domain\"")
+  inspect(contract.allow_delegate, content="false")
+  inspect(contract.allow_workspace_write, content="false")
+  inspect(contract.allow_execution_tools, content="false")
+  inspect(
+    contract.output_contract.unwrap_or(""),
+    content="robot.routine.run.v1",
+  )
+}
+
+///|
 test "resolve_role_runtime_contract applies role_runtime overrides from profile and step metadata" {
   let contract = resolve_role_runtime_contract(
     Some("lead"),

@@ -249,6 +249,98 @@ fn configured_job_profiles(json : Json?) -> Array[JobProfile] {
 }
 
 ///|
+fn builtin_robot_routine_profile() -> JobProfile {
+  {
+    id: "robot_routine",
+    family: "robot_routine",
+    label: Some("Robot Routine"),
+    role: Some("robot"),
+    priority: 120,
+    tags: ["robot", "moonrobo", "routine", "physical-world"],
+    match_rules: Some({
+      any: Some(["robot", "robo", "moonrobo", "physical"]),
+      all: None,
+    }),
+    steps: [
+      {
+        id: "run_robot_routine",
+        title: "Run MoonClaw robot routine",
+        kind: "robot.routine.run",
+        prompt_template: Some(
+          "Read Moonrobo context, select the next robot routine step, invoke only a safe non-physical Moonrobo route, and persist the MoonClaw robot routine run.",
+        ),
+        request_template: None,
+        child_profile: None,
+        execution_mode: Some("moonclaw-gateway"),
+        execution_target: Some("/v1/robot/routine/run"),
+        include_parent_outputs: None,
+        max_depth: None,
+        metadata: Some({
+          "board_lane": "Robot",
+          "moonclaw_endpoint": "/v1/robot/routine/run",
+          "moonrobo_context_route": "/api/moonclaw/context",
+          "policy_owner": "moonclaw",
+          "initiator_role": "temporary",
+          "role_runtime": {
+            "role_id": "robot",
+            "planning_layer": "domain",
+            "runtime_mode": "executor",
+            "tool_access": "limited",
+            "memory_scope": "domain",
+            "allow_delegate": false,
+            "allow_workspace_write": false,
+            "allow_execution_tools": false,
+            "output_contract": "robot.routine.run.v1",
+          },
+        }),
+      },
+    ],
+    metadata: {
+      "domain": "robot",
+      "board_lane": "Robot",
+      "policy_owner": "moonclaw",
+      "context_provider": "moonrobo",
+      "routine_endpoint": "/v1/robot/routine/run",
+      "run_ledger": ".moonclaw/robot-routine-runs",
+      "role_runtime": {
+        "role_id": "robot",
+        "planning_layer": "domain",
+        "runtime_mode": "executor",
+        "tool_access": "limited",
+        "memory_scope": "domain",
+        "allow_delegate": false,
+        "allow_workspace_write": false,
+        "allow_execution_tools": false,
+        "output_contract": "robot.routine.run.v1",
+      },
+    },
+  }
+}
+
+///|
+fn builtin_job_profiles() -> Array[JobProfile] {
+  [builtin_robot_routine_profile()]
+}
+
+///|
+fn same_job_profile_key(left : JobProfile, right : JobProfile) -> Bool {
+  left.id == right.id || left.family == right.family
+}
+
+///|
+fn append_missing_builtin_profiles(
+  configured : Array[JobProfile],
+) -> Array[JobProfile] {
+  let profiles = configured
+  for builtin in builtin_job_profiles() {
+    if !profiles.any(fn(profile) { same_job_profile_key(profile, builtin) }) {
+      profiles.push(builtin)
+    }
+  }
+  profiles
+}
+
+///|
 fn normalized_profile_term(term : String) -> String {
   term.trim().to_owned().to_lower()
 }
@@ -305,7 +397,9 @@ pub async fn list_job_profiles(
   home : String,
   cwd : String,
 ) -> Array[JobProfile] {
-  configured_job_profiles(load_job_profiles_json(home, cwd))
+  append_missing_builtin_profiles(
+    configured_job_profiles(load_job_profiles_json(home, cwd)),
+  )
 }
 
 ///|

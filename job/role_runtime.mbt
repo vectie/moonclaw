@@ -212,6 +212,19 @@ fn default_role_runtime_contract(
         allow_execution_tools=false,
         metadata=profile_metadata,
       )
+    "robot" =>
+      RoleRuntimeContract::new(
+        role_id="robot",
+        planning_layer=Domain,
+        runtime_mode=Executor,
+        tool_access=Limited,
+        memory_scope=Domain,
+        allow_delegate=false,
+        allow_workspace_write=false,
+        allow_execution_tools=false,
+        output_contract=Some("robot.routine.run.v1"),
+        metadata=profile_metadata,
+      )
     role_id =>
       RoleRuntimeContract::new(
         role_id~,
