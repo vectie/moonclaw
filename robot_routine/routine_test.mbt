@@ -308,6 +308,32 @@ test "robot routine decision accepts registered route templates" {
 }
 
 ///|
+test "robot routine decision keeps command-message gates operator-owned" {
+  let evaluate = selected_decision(
+    context_with_work(
+      "evaluate-command-message", "/api/moonbook/task-messages/message-a/evaluate",
+    ),
+    1014L,
+  )
+  assert_eq(evaluate.status, "needs-operator")
+  assert_eq(evaluate.owner, "operator")
+  assert_eq(evaluate.http_method, "GET")
+  assert_eq(evaluate.route, "/api/moonbook/task-messages/message-a/evaluate")
+  assert_eq(evaluate.request_body, "")
+  let dry_run = selected_decision(
+    context_with_work(
+      "dry-run-command-message", "/api/moonbook/task-messages/message-a/dry-run",
+    ),
+    1015L,
+  )
+  assert_eq(dry_run.status, "needs-operator")
+  assert_eq(dry_run.owner, "operator")
+  assert_eq(dry_run.http_method, "GET")
+  assert_eq(dry_run.route, "/api/moonbook/task-messages/message-a/dry-run")
+  assert_eq(dry_run.request_body, "")
+}
+
+///|
 test "robot routine decision blocks unregistered Moonrobo routes" {
   let decision = selected_decision(
     context_with_work("submit-gateway-command", "/api/moonrobo/unregistered"),

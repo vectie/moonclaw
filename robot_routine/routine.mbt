@@ -134,6 +134,8 @@ fn operator_kind(kind : String) -> Bool {
     | "review-maintenance-message"
     | "review-task-message"
     | "review-command-message"
+    | "evaluate-command-message"
+    | "dry-run-command-message"
     | "approve-command-message"
     | "execute-command-message" => true
     _ => false
