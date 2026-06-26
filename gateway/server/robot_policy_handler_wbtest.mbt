@@ -76,6 +76,35 @@ fn sample_robot_routine_plan() -> @robot_policy.RobotRoutinePlan {
 }
 
 ///|
+fn sample_idle_robot_routine_plan() -> @robot_policy.RobotRoutinePlan {
+  let decision : @robot_policy.RobotPolicyDecision = {
+    decision_id: "robot-policy-idle-idle-43",
+    status: "idle",
+    owner: "moontown",
+    work_id: "",
+    kind: "idle",
+    http_method: "POST",
+    route: "/api/moonrobo/ask",
+    request_body: "",
+    target_route: "/api/moonrobo/ask",
+    title: "Ask Robo",
+    reason: "No queued robot work is present.",
+    physical_execution_allowed: false,
+    message: "Robot policy is idle.",
+  }
+  {
+    plan_id: "robot-routine-plan-robo-43",
+    status: "idle",
+    owner: "moontown",
+    step_count: 0,
+    steps: [],
+    next_step: None,
+    decision,
+    message: "MoonClaw robot routine is idle.",
+  }
+}
+
+///|
 async test "robot routine run ledger writes reads and lists records" {
   let root = "/tmp/moonclaw-robot-routine-ledger-test"
   @fsx.make_directory(root, recursive=true, exists_ok=true) catch {
@@ -111,4 +140,44 @@ async test "robot routine run ledger writes reads and lists records" {
   }
   let runs = list_robot_routine_runs(root)
   assert_true(runs.any(run => run.run_id == record.run_id))
+}
+
+///|
+async test "robot routine run ledger records stopped attempts" {
+  let root = "/tmp/moonclaw-robot-routine-stopped-ledger-test"
+  @fsx.make_directory(root, recursive=true, exists_ok=true) catch {
+    error => abort("failed to create test root: \{error}")
+  }
+  let params : RobotPolicyGatewayRequest = {
+    moonrobo_url: "http://127.0.0.1:5192",
+    now_ms: Some(43L),
+  }
+  let idle_plan = sample_idle_robot_routine_plan()
+  let idle_record = robot_routine_run_record(
+    root,
+    params,
+    idle_plan,
+    false,
+    None,
+    "MoonClaw persisted an idle robot routine run.",
+    status="idle",
+  )
+  match write_robot_routine_run(root, idle_record) {
+    Ok(_) => ()
+    Err(message) => abort("expected idle routine run write: \{message}")
+  }
+  match read_robot_routine_run(root, idle_record.run_id) {
+    Ok(reloaded) => {
+      assert_eq(reloaded.status, "idle")
+      assert_true(!reloaded.invoked)
+      assert_true(reloaded.invocation is None)
+      assert_eq(reloaded.plan.step_count, 0)
+    }
+    Err(message) => abort("expected idle routine run read: \{message}")
+  }
+  let error_json = robot_routine_run_error(
+    "robot_routine_idle", "routine plan has no next step", idle_record,
+  )
+  assert_true(error_json.stringify().contains("\"run\""))
+  assert_true(error_json.stringify().contains(idle_record.record_path))
 }

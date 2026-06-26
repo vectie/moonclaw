@@ -51,6 +51,18 @@ fn robot_policy_error(code : String, message : String) -> Json {
 }
 
 ///|
+fn robot_routine_run_error(
+  code : String,
+  message : String,
+  record : RobotRoutineRunRecord,
+) -> Json {
+  {
+    "error": { "code": code, "message": message }.to_json(),
+    "run": record.to_json(),
+  }.to_json()
+}
+
+///|
 fn robot_routine_string_field(
   object : Map[String, Json],
   key : String,
@@ -237,13 +249,18 @@ fn robot_routine_run_record(
   invoked : Bool,
   invocation : RobotPolicyHttpTextResponse?,
   message : String,
+  status? : String = "",
 ) -> RobotRoutineRunRecord {
   let run_id = robot_routine_run_id(plan)
   {
     run_id,
     moonrobo_url: robot_policy_trim_base_url(params.moonrobo_url),
     created_at_ms: robot_policy_now_ms(params),
-    status: robot_routine_record_status(plan, invoked, invocation),
+    status: if status != "" {
+      status
+    } else {
+      robot_routine_record_status(plan, invoked, invocation)
+    },
     invoked,
     invocation,
     plan,
@@ -268,6 +285,22 @@ async fn write_robot_routine_run(
     error => return Err("failed to write robot routine run record: \{error}")
   }
   Ok(())
+}
+
+///|
+async fn Gateway::persist_robot_routine_run_or_raise(
+  self : Gateway,
+  record : RobotRoutineRunRecord,
+) -> Unit {
+  match write_robot_routine_run(self.cwd, record) {
+    Ok(_) => ()
+    Err(message) =>
+      raise json_error(
+        500,
+        "InternalServerError",
+        robot_policy_error("robot_routine_ledger_failed", message),
+      )
+  }
 }
 
 ///|
@@ -612,23 +645,54 @@ async fn Gateway::run_robot_routine(
   }
   let step = match plan.next_step {
     Some(step) => step
-    None =>
+    None => {
+      let record = robot_routine_run_record(
+        self.cwd,
+        params,
+        plan,
+        false,
+        None,
+        "MoonClaw persisted an idle robot routine run; ask Robo for another task.",
+        status="idle",
+      )
+      self.persist_robot_routine_run_or_raise(record)
       raise json_error(
         409,
         "Conflict",
-        robot_policy_error(
-          "robot_routine_idle", "routine plan has no next step",
+        robot_routine_run_error(
+          "robot_routine_idle", "routine plan has no next step", record,
         ),
       )
+    }
   }
   let invocation = match robot_routine_invoke_step(base_url, step) {
     Ok(response) => response
-    Err(message) =>
+    Err(message) => {
+      let status = if plan.status == "needs-operator" {
+        "needs-operator"
+      } else if step.physical_execution_allowed {
+        "physical-execution-blocked"
+      } else {
+        "blocked"
+      }
+      let record = robot_routine_run_record(
+        self.cwd,
+        params,
+        plan,
+        false,
+        None,
+        "MoonClaw persisted a blocked robot routine run: \{message}",
+        status~,
+      )
+      self.persist_robot_routine_run_or_raise(record)
       raise json_error(
         409,
         "Conflict",
-        robot_policy_error("robot_routine_invocation_blocked", message),
+        robot_routine_run_error(
+          "robot_routine_invocation_blocked", message, record,
+        ),
       )
+    }
   }
   let record = robot_routine_run_record(
     self.cwd,
@@ -638,15 +702,8 @@ async fn Gateway::run_robot_routine(
     Some(invocation),
     "MoonClaw planned, invoked, and persisted the robot routine run.",
   )
-  match write_robot_routine_run(self.cwd, record) {
-    Ok(_) => record
-    Err(message) =>
-      raise json_error(
-        500,
-        "InternalServerError",
-        robot_policy_error("robot_routine_ledger_failed", message),
-      )
-  }
+  self.persist_robot_routine_run_or_raise(record)
+  record
 }
 
 ///|
