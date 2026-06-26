@@ -78,9 +78,9 @@ agent-facing names, it should remain declarative projection code: context,
 readiness, tool registry, task ingress, receipts, and durable memory. Planning,
 selection, retry, and tool invocation belong in MoonClaw.
 
-Moonrobo can still expose `/api/moonclaw/context` and compatibility projections
-named for MoonClaw, but those projections are platform facts, not an agent. The
-closed loop is:
+Moonrobo can expose `/api/moonclaw/context` and other MoonClaw-facing
+projections, but those projections are platform facts, not an agent. The closed
+loop is:
 
 1. Moonrobo publishes the digital/physical state, robot capabilities, live
    readiness, RoboBook paths, and safe command/proof endpoints.
