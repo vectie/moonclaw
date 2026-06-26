@@ -1,11 +1,19 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/cmd/robot_policy"
 
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
 // Values
 
 // Errors
 
 // Types and methods
+type HttpTextResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type RobotPolicyRunOutput derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 
