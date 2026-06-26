@@ -57,6 +57,13 @@ body built from the latest `task_intent` goal, robot id, and timestamp.
 task message derived from the same durable task intent. Moonrobo only accepts,
 gates, persists, and projects the result.
 
+MoonClaw only selects Moonrobo routes that appear in
+`context.tool_registry.providers[].capabilities[]` with the same HTTP method and
+without physical execution authority. Concrete routes may match registered
+templates such as `/api/replays/{session_id}/annotations`. If Moonrobo context
+points at an unregistered route, the routine plan becomes an operator-owned
+registry blocker at `/api/tools/registry` instead of invoking it.
+
 Moonrobo should not host this selection logic. If Moonrobo contains code with
 agent-facing names, it should remain declarative projection code: context,
 readiness, tool registry, task ingress, receipts, and durable memory. Planning,

@@ -1,8 +1,55 @@
 ///|
+fn capability(http_method : String, route : String) -> Json {
+  {
+    "capability_id": Json::string("test-\{http_method}-\{route}"),
+    "label": Json::string("Test capability"),
+    "http_method": Json::string(http_method),
+    "route": Json::string(route),
+    "body_schema": Json::string("none"),
+    "execution_mode": Json::string("test"),
+    "physical_execution_allowed": false.to_json(),
+    "safety_note": Json::string("test capability"),
+  }.to_json()
+}
+
+///|
+fn tool_registry() -> Json {
+  {
+    "registry_id": Json::string("tool-registry-noetix-e1-lab-01"),
+    "robot_id": Json::string("noetix-e1-lab-01"),
+    "generated_at_ms": (1000).to_json(),
+    "provider_count": (1).to_json(),
+    "capability_count": (8).to_json(),
+    "providers": [
+      {
+        "provider_id": Json::string("moonrobo-host-api"),
+        "label": Json::string("Moonrobo Host API"),
+        "kind": Json::string("moonrobo-runtime"),
+        "robot_id": Json::string("noetix-e1-lab-01"),
+        "endpoint_base": Json::string("/api"),
+        "memory_required": true.to_json(),
+        "registered_at_ms": (1000).to_json(),
+        "capabilities": [
+          capability("POST", "/api/runtime/validation/session"),
+          capability("POST", "/api/moonrobo/gateway/command"),
+          capability("POST", "/api/moonrobo/proof-session"),
+          capability("POST", "/api/moonrobo/executions/feedback"),
+          capability("POST", "/api/moonbook/remember"),
+          capability("POST", "/api/moontown/tasks/observe-run"),
+          capability("POST", "/api/replays/{session_id}/annotations"),
+          capability("POST", "/api/moonbook/task-messages/{task_id}/{gate}"),
+        ].to_json(),
+      }.to_json(),
+    ].to_json(),
+  }.to_json()
+}
+
+///|
 fn context_with_work(kind : String, target_path : String) -> Json {
   {
     "context": {
       "robot_id": "noetix-e1-lab-01",
+      "tool_registry": tool_registry(),
       "task_intent": {
         "has_task": true,
         "task_id": "message-routine-test",
@@ -52,6 +99,7 @@ fn context_with_live_readiness(
   {
     "context": {
       "robot_id": "noetix-e1-lab-01",
+      "tool_registry": tool_registry(),
       "task_intent": {
         "has_task": true,
         "task_id": "message-routine-test",
@@ -165,6 +213,7 @@ test "robot routine decision falls back to gateway route when queue is empty" {
     {
       "context": {
         "robot_id": "noetix-e1-lab-01",
+        "tool_registry": tool_registry(),
         "task_intent": {
           "has_task": true,
           "task_id": "message-routine-test",
@@ -200,6 +249,7 @@ test "robot routine decision authors gateway command from gateway status" {
     {
       "context": {
         "robot_id": "noetix-e1-lab-01",
+        "tool_registry": tool_registry(),
         "task_intent": {
           "has_task": true,
           "task_id": "message-routine-test",
@@ -244,6 +294,56 @@ test "robot routine decision skips Moonrobo aggregate live exercise work" {
   assert_eq(decision.owner, "moonclaw")
   assert_eq(decision.route, "/api/moonrobo/proof-session")
   assert_true(decision.request_body.contains("\"session_id\""))
+}
+
+///|
+test "robot routine decision accepts registered route templates" {
+  let decision = selected_decision(
+    context_with_work("annotate-replay", "/api/replays/session-a/annotations"),
+    1011L,
+  )
+  assert_eq(decision.status, "route-selected")
+  assert_eq(decision.owner, "moonclaw")
+  assert_eq(decision.route, "/api/replays/session-a/annotations")
+}
+
+///|
+test "robot routine decision blocks unregistered Moonrobo routes" {
+  let decision = selected_decision(
+    context_with_work("submit-gateway-command", "/api/moonrobo/unregistered"),
+    1012L,
+  )
+  assert_eq(decision.status, "needs-operator")
+  assert_eq(decision.owner, "operator")
+  assert_eq(decision.route, "/api/tools/registry")
+  assert_eq(decision.target_route, "/api/moonrobo/unregistered")
+  assert_true(decision.reason.contains("not registered"))
+}
+
+///|
+test "robot routine decision blocks unregistered gateway next route" {
+  let decision = selected_decision(
+    {
+      "context": {
+        "robot_id": "noetix-e1-lab-01",
+        "tool_registry": tool_registry(),
+        "platform_queue": { "item_count": 0, "next_item": null },
+        "gateway": {
+          "status": "ready-for-command",
+          "next_method": "POST",
+          "next_route": "/api/moonrobo/unregistered",
+          "next_title": "Submit unknown route",
+          "can_submit_gateway_command": true,
+          "physical_execution_allowed": false,
+        },
+      },
+    },
+    1013L,
+  )
+  assert_eq(decision.status, "needs-operator")
+  assert_eq(decision.owner, "operator")
+  assert_eq(decision.route, "/api/tools/registry")
+  assert_eq(decision.target_route, "/api/moonrobo/unregistered")
 }
 
 ///|

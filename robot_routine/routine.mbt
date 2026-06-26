@@ -102,6 +102,11 @@ fn gateway(context : Json) -> Json {
 }
 
 ///|
+fn tool_registry(context : Json) -> Json {
+  object_field(context, "tool_registry")
+}
+
+///|
 fn task_intent(context : Json) -> Json {
   object_field(context, "task_intent")
 }
@@ -138,6 +143,74 @@ fn operator_kind(kind : String) -> Bool {
 ///|
 fn unsupported_aggregate_kind(kind : String) -> Bool {
   kind == "run-live-exercise"
+}
+
+///|
+fn route_segment_matches(template : String, route : String) -> Bool {
+  if template.has_prefix("{") && template.has_suffix("}") {
+    route != ""
+  } else {
+    template == route
+  }
+}
+
+///|
+fn registered_route_template_matches(template : String, route : String) -> Bool {
+  if template == route {
+    return true
+  }
+  let template_parts = template.split("/").to_array()
+  let route_parts = route.split("/").to_array()
+  if template_parts.length() != route_parts.length() {
+    return false
+  }
+  for i in 0..<template_parts.length() {
+    if !route_segment_matches(
+        template_parts[i].to_owned(),
+        route_parts[i].to_owned(),
+      ) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn route_registered_for_moonclaw(
+  context : Json,
+  http_method : String,
+  route : String,
+) -> Bool {
+  if http_method == "" || route == "" {
+    return false
+  }
+  match tool_registry(context) {
+    Object(registry) =>
+      match registry.get("providers") {
+        Some(Array(providers)) =>
+          for provider in providers {
+            guard provider is Object(provider_object) else { continue }
+            match provider_object.get("capabilities") {
+              Some(Array(capabilities)) =>
+                for capability in capabilities {
+                  guard capability is Object(_) else { continue }
+                  if string_field(capability, "http_method") == http_method &&
+                    registered_route_template_matches(
+                      string_field(capability, "route"),
+                      route,
+                    ) &&
+                    !bool_field(capability, "physical_execution_allowed") {
+                    return true
+                  }
+                }
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    _ => ()
+  }
+  false
 }
 
 ///|
@@ -261,6 +334,40 @@ fn route_request_body(item : Json, context : Json, now_ms : Int64) -> String {
 }
 
 ///|
+fn registry_blocker_decision(
+  kind : String,
+  target : String,
+  http_method : String,
+  title : String,
+  reason : String,
+  now_ms : Int64,
+) -> RobotRoutineDecision {
+  {
+    decision_id: decision_id("robot-routine-unregistered-route", kind, now_ms),
+    status: "needs-operator",
+    owner: "operator",
+    work_id: "",
+    kind,
+    http_method: "GET",
+    route: "/api/tools/registry",
+    request_body: "",
+    target_route: target,
+    title: if title == "" {
+      "Register Moonrobo tool route"
+    } else {
+      title
+    },
+    reason: if reason == "" {
+      "MoonClaw will not invoke unregistered Moonrobo route \{http_method} \{target}."
+    } else {
+      "\{reason}; route \{http_method} \{target} is not registered as a bounded Moonrobo tool."
+    },
+    physical_execution_allowed: false,
+    message: "MoonClaw blocked an unregistered Moonrobo routine target; update the Moonrobo tool registry or choose a registered route.",
+  }
+}
+
+///|
 fn work_decision(
   item : Json,
   context : Json,
@@ -269,6 +376,18 @@ fn work_decision(
   let kind = string_field(item, "kind")
   let owner = if operator_kind(kind) { "operator" } else { "moonclaw" }
   let target = string_field(item, "target_path")
+  let http_method = if owner == "operator" { "GET" } else { "POST" }
+  if owner == "moonclaw" &&
+    !route_registered_for_moonclaw(context, http_method, target) {
+    return registry_blocker_decision(
+      kind,
+      target,
+      http_method,
+      string_field(item, "title"),
+      string_field(item, "reason"),
+      now_ms,
+    )
+  }
   {
     decision_id: decision_id("robot-routine-work", kind, now_ms),
     status: if owner == "operator" {
@@ -279,11 +398,7 @@ fn work_decision(
     owner,
     work_id: string_field(item, "work_id"),
     kind,
-    http_method: if owner == "operator" {
-      "GET"
-    } else {
-      "POST"
-    },
+    http_method,
     route: if owner == "operator" {
       target
     } else {
@@ -311,10 +426,17 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
   let status = gateway(context)
   let route = string_field(status, "next_route")
   let title = string_field(status, "next_title")
+  let http_method = string_field(status, "next_method")
   let kind = if route == "/api/moonrobo/gateway/command" {
     "submit-gateway-command"
   } else {
     string_field(status, "status")
+  }
+  if !route_registered_for_moonclaw(context, http_method, route) {
+    return registry_blocker_decision(
+      kind, route, http_method, title, "Gateway status selected the next Moonrobo route.",
+      now_ms,
+    )
   }
   let item = {
     "kind": Json::string(kind),
@@ -328,7 +450,7 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
     owner: "moonclaw",
     work_id: "",
     kind,
-    http_method: string_field(status, "next_method"),
+    http_method,
     route,
     request_body: route_request_body(item, context, now_ms),
     target_route: route,
