@@ -65720,3 +65720,45 @@
 {"level":"Info","pid":84008,"msg":"Received event","hostname":"JIAANdeMac-mini.local","time":1772861233005,"tag":"moonclaw","event":{"id":"204c0799-a68f-4665-87e5-268d87b077b5","created":1772861233004,"desc":{"msg":"PostConversation"}}}
 {"level":"Info","pid":84008,"msg":"Received event","hostname":"JIAANdeMac-mini.local","time":1772861233056,"tag":"moonclaw","event":{"id":"dff4fd4b-5ad7-4920-8036-ca5a9be0c253","created":1772861233056,"desc":{"msg":"PreConversation"}}}
 {"level":"Info","pid":84008,"msg":"Received event","hostname":"JIAANdeMac-mini.local","time":1772861233056,"tag":"moonclaw","event":{"id":"06f86e0d-ecd3-4069-8334-0d99b6ccdc41","created":1772861233056,"desc":{"msg":"PostConversation"}}}
+{"level":"Warn","pid":98439,"msg":"Directory '/Users/kq/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449769484,"tag":"moonclaw"}
+{"level":"Warn","pid":98439,"msg":"Directory '/private/var/folders/_j/kcn3f7817s71gymnv_nnn1bm0000gn/T/moonbit-taco-4egMyNk/cmd/server/CORS/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449769974,"tag":"moonclaw"}
+{"level":"Warn","pid":98439,"msg":"Directory '/Users/kq/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449769974,"tag":"moonclaw"}
+{"level":"Warn","pid":98439,"msg":"Directory '/private/var/folders/_j/kcn3f7817s71gymnv_nnn1bm0000gn/T/moonbit-taco-oFPgpAx/cmd/server/GET%32%47script%46js/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449770495,"tag":"moonclaw"}
+{"level":"Warn","pid":98439,"msg":"Directory '/Users/kq/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449770494,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills/.system'...","hostname":"kqdeiMac.local","time":1782449770495,"tag":"moonclaw"}
+{"level":"Warn","pid":98439,"msg":"Directory '/private/var/folders/_j/kcn3f7817s71gymnv_nnn1bm0000gn/T/moonbit-taco-XoMuUVs/cmd/server/GET%32%47/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449770495,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills/.system'...","hostname":"kqdeiMac.local","time":1782449770495,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills/.system'...","hostname":"kqdeiMac.local","time":1782449770495,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'moonbit-agent-guide' from '/Users/kq/.moonclaw/skills/.system/moonbit-agent-guide'.","hostname":"kqdeiMac.local","time":1782449770496,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'moonbit-agent-guide' from '/Users/kq/.moonclaw/skills/.system/moonbit-agent-guide'.","hostname":"kqdeiMac.local","time":1782449770497,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills'...","hostname":"kqdeiMac.local","time":1782449770497,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills'...","hostname":"kqdeiMac.local","time":1782449770497,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'moonbit-agent-guide' from '/Users/kq/.moonclaw/skills/.system/moonbit-agent-guide'.","hostname":"kqdeiMac.local","time":1782449770497,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills'...","hostname":"kqdeiMac.local","time":1782449770497,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'job-planning' from '/Users/kq/.moonclaw/skills/job-planning'.","hostname":"kqdeiMac.local","time":1782449770498,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'job-planning' from '/Users/kq/.moonclaw/skills/job-planning'.","hostname":"kqdeiMac.local","time":1782449770498,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'job-planning' from '/Users/kq/.moonclaw/skills/job-planning'.","hostname":"kqdeiMac.local","time":1782449770498,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'analysis-adaptation' from '/Users/kq/.moonclaw/skills/analysis-adaptation'.","hostname":"kqdeiMac.local","time":1782449770498,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'analysis-adaptation' from '/Users/kq/.moonclaw/skills/analysis-adaptation'.","hostname":"kqdeiMac.local","time":1782449770498,"tag":"moonclaw"}
+{"level":"Info","pid":98439,"msg":"Loaded skill 'analysis-adaptation' from '/Users/kq/.moonclaw/skills/analysis-adaptation'.","hostname":"kqdeiMac.local","time":1782449770498,"tag":"moonclaw"}
+{"level":"Warn","pid":7821,"msg":"Directory '/Users/kq/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449856932,"tag":"moonclaw"}
+{"level":"Warn","pid":7821,"msg":"Directory '/private/var/folders/_j/kcn3f7817s71gymnv_nnn1bm0000gn/T/moonbit-taco-ynUTLWo/cmd/server/CORS/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449857851,"tag":"moonclaw"}
+{"level":"Warn","pid":7821,"msg":"Directory '/Users/kq/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449857393,"tag":"moonclaw"}
+{"level":"Warn","pid":7821,"msg":"Directory '/Users/kq/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449857851,"tag":"moonclaw"}
+{"level":"Warn","pid":7821,"msg":"Directory '/private/var/folders/_j/kcn3f7817s71gymnv_nnn1bm0000gn/T/moonbit-taco-QyuAamP/cmd/server/GET%32%47script%46js/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449857852,"tag":"moonclaw"}
+{"level":"Warn","pid":7821,"msg":"Directory '/private/var/folders/_j/kcn3f7817s71gymnv_nnn1bm0000gn/T/moonbit-taco-DgFs8te/cmd/server/GET%32%47/.moonclaw/rules' does not exist, skipping.","hostname":"kqdeiMac.local","time":1782449857852,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills/.system'...","hostname":"kqdeiMac.local","time":1782449857852,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills/.system'...","hostname":"kqdeiMac.local","time":1782449857852,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills/.system'...","hostname":"kqdeiMac.local","time":1782449857852,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'moonbit-agent-guide' from '/Users/kq/.moonclaw/skills/.system/moonbit-agent-guide'.","hostname":"kqdeiMac.local","time":1782449857853,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'moonbit-agent-guide' from '/Users/kq/.moonclaw/skills/.system/moonbit-agent-guide'.","hostname":"kqdeiMac.local","time":1782449857853,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills'...","hostname":"kqdeiMac.local","time":1782449857853,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills'...","hostname":"kqdeiMac.local","time":1782449857854,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'moonbit-agent-guide' from '/Users/kq/.moonclaw/skills/.system/moonbit-agent-guide'.","hostname":"kqdeiMac.local","time":1782449857854,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loading skills from directory '/Users/kq/.moonclaw/skills'...","hostname":"kqdeiMac.local","time":1782449857854,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'job-planning' from '/Users/kq/.moonclaw/skills/job-planning'.","hostname":"kqdeiMac.local","time":1782449857854,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'job-planning' from '/Users/kq/.moonclaw/skills/job-planning'.","hostname":"kqdeiMac.local","time":1782449857855,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'job-planning' from '/Users/kq/.moonclaw/skills/job-planning'.","hostname":"kqdeiMac.local","time":1782449857855,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'analysis-adaptation' from '/Users/kq/.moonclaw/skills/analysis-adaptation'.","hostname":"kqdeiMac.local","time":1782449857855,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'analysis-adaptation' from '/Users/kq/.moonclaw/skills/analysis-adaptation'.","hostname":"kqdeiMac.local","time":1782449857855,"tag":"moonclaw"}
+{"level":"Info","pid":7821,"msg":"Loaded skill 'analysis-adaptation' from '/Users/kq/.moonclaw/skills/analysis-adaptation'.","hostname":"kqdeiMac.local","time":1782449857855,"tag":"moonclaw"}
