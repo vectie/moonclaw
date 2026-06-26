@@ -63,9 +63,11 @@ without physical execution authority. Concrete routes may match registered
 templates such as `/api/replays/{session_id}/annotations`. If Moonrobo context
 points at an unregistered route, the routine plan becomes an operator-owned
 registry blocker at `/api/tools/registry` instead of invoking it.
-Registered capabilities with `execution_mode` `operator-curation` or
-`operator-safety` also become operator-owned controls rather than automatic
-MoonClaw invocations.
+Registered capabilities with an `execution_mode` beginning with `operator-`
+also become operator-owned controls rather than automatic MoonClaw invocations.
+This includes replay annotation, task-message safety gates, and feedback
+verification: MoonClaw can route them for an operator, but it must not synthesize
+approval, execution, or telemetry evidence on its own.
 Registered task-message safety gates are still not autonomous routine steps:
 `evaluate-command-message`, `dry-run-command-message`,
 `approve-command-message`, and `execute-command-message` remain operator-owned

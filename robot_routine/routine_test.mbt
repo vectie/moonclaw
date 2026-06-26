@@ -42,7 +42,9 @@ fn tool_registry() -> Json {
           capability("POST", "/api/runtime/validation/session"),
           capability("POST", "/api/moonrobo/gateway/command"),
           capability("POST", "/api/moonrobo/proof-session"),
-          capability("POST", "/api/moonrobo/executions/feedback"),
+          capability_with_mode(
+            "POST", "/api/moonrobo/executions/feedback", "operator-verification",
+          ),
           capability("POST", "/api/moonbook/remember"),
           capability("POST", "/api/moontown/tasks/observe-run"),
           capability_with_mode(
@@ -337,6 +339,22 @@ test "robot routine decision keeps safety execution modes operator-owned" {
   assert_eq(decision.route, "/api/moonbook/task-messages/message-a/evaluate")
   assert_eq(decision.request_body, "")
   assert_true(decision.reason.contains("operator-safety"))
+}
+
+///|
+test "robot routine decision keeps feedback binding operator-owned" {
+  let decision = selected_decision(
+    context_with_work(
+      "bind-execution-feedback", "/api/moonrobo/executions/feedback",
+    ),
+    1018L,
+  )
+  assert_eq(decision.status, "needs-operator")
+  assert_eq(decision.owner, "operator")
+  assert_eq(decision.http_method, "GET")
+  assert_eq(decision.route, "/api/moonrobo/executions/feedback")
+  assert_eq(decision.request_body, "")
+  assert_true(decision.reason.contains("operator-verification"))
 }
 
 ///|

@@ -217,7 +217,7 @@ fn route_capability_execution_mode(
 
 ///|
 fn operator_execution_mode(mode : String) -> Bool {
-  mode == "operator-curation" || mode == "operator-safety"
+  mode.has_prefix("operator-")
 }
 
 ///|
