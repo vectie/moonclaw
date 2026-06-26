@@ -3,6 +3,19 @@ fn context_with_work(kind : String, target_path : String) -> Json {
   {
     "context": {
       "robot_id": "noetix-e1-lab-01",
+      "task_intent": {
+        "has_task": true,
+        "task_id": "message-policy-test",
+        "message_id": "policy-test",
+        "goal": "inspect the tool bench",
+        "classification": "command-review",
+        "stage": "ready-to-prove",
+        "next_route": "/api/moonrobo/gateway/command",
+        "requires_review": false,
+        "physical_execution_allowed": false,
+        "message_path": "/moonbook/task-messages/message-policy-test.json",
+        "created_at_ms": 1000,
+      },
       "work_queue": {
         "item_count": 1,
         "next_item": {
@@ -74,7 +87,9 @@ test "robot policy authors gateway command request body in MoonClaw" {
   )
   assert_true(decision.request_body.contains("\"kind\":\"moontown\""))
   assert_true(decision.request_body.contains("\"id\":\"moonclaw\""))
-  assert_true(decision.request_body.contains("\"goal\":\"test reason\""))
+  assert_true(
+    decision.request_body.contains("\"goal\":\"inspect the tool bench\""),
+  )
   assert_true(decision.request_body.contains("\"remember\":true"))
 }
 

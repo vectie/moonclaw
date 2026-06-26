@@ -76,6 +76,11 @@ fn gateway(context : Json) -> Json {
 }
 
 ///|
+fn task_intent(context : Json) -> Json {
+  object_field(context, "task_intent")
+}
+
+///|
 fn robot_id(context : Json) -> String {
   string_field(context, "robot_id")
 }
@@ -109,19 +114,25 @@ fn decision_id(prefix : String, kind : String, now_ms : Int64) -> String {
 
 ///|
 fn gateway_command_goal(item : Json, context : Json) -> String {
-  let reason = string_field(item, "reason")
-  if reason != "" {
-    reason
+  let task = task_intent(context)
+  let goal = string_field(task, "goal")
+  if bool_field(task, "has_task") && goal != "" {
+    goal
   } else {
-    let title = string_field(item, "title")
-    if title != "" {
-      title
+    let reason = string_field(item, "reason")
+    if reason != "" {
+      reason
     } else {
-      let status = string_field(gateway(context), "status")
-      if status != "" {
-        "Continue the Moonrobo robot routine from gateway status \{status}."
+      let title = string_field(item, "title")
+      if title != "" {
+        title
       } else {
-        "Continue the Moonrobo robot routine from MoonClaw policy."
+        let status = string_field(gateway(context), "status")
+        if status != "" {
+          "Continue the Moonrobo robot routine from gateway status \{status}."
+        } else {
+          "Continue the Moonrobo robot routine from MoonClaw policy."
+        }
       }
     }
   }
