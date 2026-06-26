@@ -9,14 +9,9 @@ built-in `robot_routine` profile. That profile has `role: "robot"` and a single
 `robot.routine.run` step targeting `POST /v1/robot/routine/run`, so robot work is
 the third MoonClaw lane beside coding and general task work. A temporary
 initiator, Rabbita, or an operator can initiate the lane during bring-up; the AI
-decision and route selection still happen in MoonClaw.
+decision and route selection still happen in MoonClaw, not in the initiator.
 
 ## Endpoints
-
-`POST /v1/robot/policy` selects the next Moonrobo route without invoking it.
-
-`POST /v1/robot/policy/invoke` selects the route and invokes it only when the
-decision is MoonClaw-owned, route-selected, and not physical-execution enabled.
 
 `POST /v1/robot/routine` returns the ordered MoonClaw robot routine plan for the
 current Moonrobo context. The plan includes runtime validation, gateway command,
@@ -48,11 +43,11 @@ The POST endpoints accept:
 
 `now_ms` is optional. The gateway fetches
 `{moonrobo_url}/api/moonclaw/context`, passes the context to
-`vectie/moonclaw/robot_policy`, and returns either a single policy decision or a
-multi-step routine plan plus invocation status. The durable `/run` endpoint also
-persists the selected plan, invocation result when present, stopped status,
-Moonrobo URL, and run path on the MoonClaw side. Conflict responses from `/run`
-include the persisted `run` object beside the error.
+`vectie/moonclaw/robot_policy`, and returns a multi-step routine plan plus
+invocation status. The durable `/run` endpoint also persists the selected plan,
+invocation result when present, stopped status, Moonrobo URL, and run path on
+the MoonClaw side. Conflict responses from `/run` include the persisted `run`
+object beside the error.
 
 When the selected Moonrobo route requires a body, MoonClaw authors that body
 from Moonrobo context instead of asking Moonrobo to infer policy. In particular,

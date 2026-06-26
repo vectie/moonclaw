@@ -139,9 +139,6 @@ pub async fn Gateway::handle_request(
       (Post, ["", "v1", "agent", "message"]) => self.handle_agent_message(r, w)
       (Get, ["", "v1", "agent", agent_id, "messages"]) =>
         self.handle_get_messages(r, w, agent_id)
-      (Post, ["", "v1", "robot", "policy"]) => self.handle_robot_policy(r, w)
-      (Post, ["", "v1", "robot", "policy", "invoke"]) =>
-        self.handle_robot_policy_invoke(r, w)
       (Post, ["", "v1", "robot", "routine"]) => self.handle_robot_routine(r, w)
       (Post, ["", "v1", "robot", "routine", "invoke"]) =>
         self.handle_robot_routine_invoke(r, w)
@@ -359,9 +356,8 @@ async fn Gateway::handle_index(
       "POST /v1/jobs/ask - Ask over job artifacts", "GET /v1/channels - List channels",
       "GET /v1/channels/{id} - Get channel info", "POST /v1/channels/{id}/configure - Configure channel accounts",
       "POST /v1/channels/{id}/start - Start a channel account", "POST /v1/channels/{id}/stop - Stop a channel account",
-      "POST /v1/agent - Submit agent task", "POST /v1/robot/policy - Select Moonrobo robot policy route",
-      "POST /v1/robot/policy/invoke - Invoke selected safe Moonrobo robot policy route",
-      "POST /v1/robot/routine - Plan Moonrobo robot routine route sequence", "POST /v1/robot/routine/invoke - Invoke next safe Moonrobo robot routine step",
+      "POST /v1/agent - Submit agent task", "POST /v1/robot/routine - Plan Moonrobo robot routine route sequence",
+      "POST /v1/robot/routine/invoke - Invoke next safe Moonrobo robot routine step",
       "POST /v1/robot/routine/run - Invoke and persist a MoonClaw robot routine run",
       "GET /v1/robot/routine/runs - List persisted MoonClaw robot routine runs",
       "POST /v1/rpc - RPC endpoint", "POST /v1/shutdown - Graceful shutdown",

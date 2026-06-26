@@ -11,14 +11,6 @@ struct RobotPolicyHttpTextResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
-struct RobotPolicyGatewayResponse {
-  decision : @robot_policy.RobotPolicyDecision
-  invoked : Bool
-  invocation : RobotPolicyHttpTextResponse?
-  message : String
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
 struct RobotRoutineGatewayResponse {
   plan : @robot_policy.RobotRoutinePlan
   invoked : Bool
@@ -447,30 +439,6 @@ async fn robot_policy_fetch_context(
 }
 
 ///|
-async fn robot_policy_invoke_decision(
-  base_url : String,
-  decision : @robot_policy.RobotPolicyDecision,
-) -> Result[RobotPolicyHttpTextResponse, String] {
-  if decision.owner != "moonclaw" {
-    return Err("MoonClaw cannot invoke a decision owned by \{decision.owner}")
-  }
-  if decision.status != "route-selected" {
-    return Err("MoonClaw cannot invoke decision status \{decision.status}")
-  }
-  if decision.physical_execution_allowed {
-    return Err(
-      "selected route allows physical execution; explicit safety-gated invocation is not implemented yet",
-    )
-  }
-  let url = robot_policy_join_url(base_url, decision.route)
-  match decision.http_method {
-    "GET" => robot_policy_get_text(url)
-    "POST" => robot_policy_post_json(url, decision.request_body)
-    route_method => Err("unsupported Moonrobo route method \{route_method}")
-  }
-}
-
-///|
 async fn robot_routine_invoke_step(
   base_url : String,
   step : @robot_policy.RobotRoutineStep,
@@ -488,62 +456,6 @@ async fn robot_routine_invoke_step(
     "GET" => robot_policy_get_text(url)
     "POST" => robot_policy_post_json(url, step.request_body)
     route_method => Err("unsupported Moonrobo route method \{route_method}")
-  }
-}
-
-///|
-async fn Gateway::select_robot_policy(
-  self : Gateway,
-  r : @httpx.RequestReader,
-  invoke : Bool,
-) -> RobotPolicyGatewayResponse {
-  ignore(self)
-  let params = robot_policy_read_request(r)
-  let base_url = robot_policy_trim_base_url(params.moonrobo_url)
-  let context = match robot_policy_fetch_context(base_url) {
-    Ok(context) => context
-    Err(message) =>
-      raise json_error(
-        502,
-        "BadGateway",
-        robot_policy_error("moonrobo_context_unavailable", message),
-      )
-  }
-  let decision = match
-    @robot_policy.select_route_from_context_text(
-      context,
-      now_ms=robot_policy_now_ms(params),
-    ) {
-    Ok(decision) => decision
-    Err(message) =>
-      raise json_error(
-        422,
-        "UnprocessableEntity",
-        robot_policy_error("robot_policy_failed", message),
-      )
-  }
-  if !invoke {
-    return {
-      decision,
-      invoked: false,
-      invocation: None,
-      message: "MoonClaw selected the robot policy route from Moonrobo context.",
-    }
-  }
-  let invocation = match robot_policy_invoke_decision(base_url, decision) {
-    Ok(response) => response
-    Err(message) =>
-      raise json_error(
-        409,
-        "Conflict",
-        robot_policy_error("robot_policy_invocation_blocked", message),
-      )
-  }
-  {
-    decision,
-    invoked: true,
-    invocation: Some(invocation),
-    message: "MoonClaw invoked the selected Moonrobo route.",
   }
 }
 
@@ -707,18 +619,6 @@ async fn Gateway::run_robot_routine(
 }
 
 ///|
-async fn Gateway::handle_robot_policy(
-  self : Gateway,
-  r : @httpx.RequestReader,
-  w : @httpx.ResponseWriter,
-) -> Unit {
-  let response = self.select_robot_policy(r, false)
-  w.header().set("Content-Type", "application/json")
-  w.write_header(200)
-  w.write(response.to_json().stringify())
-}
-
-///|
 async fn Gateway::handle_robot_routine(
   self : Gateway,
   r : @httpx.RequestReader,
@@ -785,16 +685,4 @@ async fn Gateway::handle_get_robot_routine_run(
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(record.to_json().stringify())
-}
-
-///|
-async fn Gateway::handle_robot_policy_invoke(
-  self : Gateway,
-  r : @httpx.RequestReader,
-  w : @httpx.ResponseWriter,
-) -> Unit {
-  let response = self.select_robot_policy(r, true)
-  w.header().set("Content-Type", "application/json")
-  w.write_header(200)
-  w.write(response.to_json().stringify())
 }

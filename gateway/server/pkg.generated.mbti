@@ -405,8 +405,6 @@ type PlanModeState derive(ToJson, @debug.Debug, @json.FromJson)
 
 type RobotPolicyGatewayRequest derive(Eq, ToJson, @debug.Debug)
 
-type RobotPolicyGatewayResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
 type RobotPolicyHttpTextResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 type RobotRoutineGatewayResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
