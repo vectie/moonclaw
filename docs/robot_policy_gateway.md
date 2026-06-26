@@ -54,6 +54,14 @@ persists the selected plan, invocation result when present, stopped status,
 Moonrobo URL, and run path on the MoonClaw side. Conflict responses from `/run`
 include the persisted `run` object beside the error.
 
+When the selected Moonrobo route requires a body, MoonClaw authors that body
+from Moonrobo context instead of asking Moonrobo to infer policy. In particular,
+`/api/moonrobo/gateway/command` receives a concrete MoonClaw-authored command
+body built from the latest `task_intent` goal, robot id, and timestamp.
+`/api/moonrobo/proof-session` receives a bounded proof-session request with a
+task message derived from the same durable task intent. Moonrobo only accepts,
+gates, persists, and projects the result.
+
 Moonrobo should not host this selection logic. If Moonrobo contains code with
 agent-facing names, it should remain declarative projection code: context,
 readiness, tool registry, task ingress, receipts, and durable memory. Planning,

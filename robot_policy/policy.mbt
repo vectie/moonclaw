@@ -311,15 +311,26 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotPolicyDecision {
   let status = gateway(context)
   let route = string_field(status, "next_route")
   let title = string_field(status, "next_title")
+  let kind = if route == "/api/moonrobo/gateway/command" {
+    "submit-gateway-command"
+  } else {
+    string_field(status, "status")
+  }
+  let item = {
+    "kind": Json::string(kind),
+    "target_path": Json::string(route),
+    "title": Json::string(title),
+    "reason": Json::string("Gateway status selected the next Moonrobo route."),
+  }.to_json()
   {
-    decision_id: decision_id("robot-policy-gateway", route, now_ms),
+    decision_id: decision_id("robot-policy-gateway", kind, now_ms),
     status: "route-selected",
     owner: "moonclaw",
     work_id: "",
-    kind: string_field(status, "status"),
+    kind,
     http_method: string_field(status, "next_method"),
     route,
-    request_body: "{}",
+    request_body: route_request_body(item, context, now_ms),
     target_route: route,
     title,
     reason: "Gateway status selected the next Moonrobo route.",

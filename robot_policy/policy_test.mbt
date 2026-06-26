@@ -159,6 +159,13 @@ test "robot policy falls back to gateway route when queue is empty" {
   let decision = select_route_from_context(
     {
       "context": {
+        "robot_id": "noetix-e1-lab-01",
+        "task_intent": {
+          "has_task": true,
+          "task_id": "message-policy-test",
+          "message_id": "policy-test",
+          "goal": "inspect the tool bench",
+        },
         "platform_queue": { "item_count": 0, "next_item": null },
         "gateway": {
           "status": "ready-for-command",
@@ -175,7 +182,51 @@ test "robot policy falls back to gateway route when queue is empty" {
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
   assert_eq(decision.route, "/api/moonrobo/proof-session")
-  assert_eq(decision.request_body, "{}")
+  assert_true(decision.request_body.contains("\"session_id\""))
+  assert_true(decision.request_body.contains("\"task_message\""))
+  assert_true(
+    decision.request_body.contains("\"message\":\"inspect the tool bench\""),
+  )
+}
+
+///|
+test "robot policy authors gateway command when gateway status asks for command ingress" {
+  let decision = select_route_from_context(
+    {
+      "context": {
+        "robot_id": "noetix-e1-lab-01",
+        "task_intent": {
+          "has_task": true,
+          "task_id": "message-policy-test",
+          "message_id": "policy-test",
+          "goal": "inspect the tool bench",
+        },
+        "platform_queue": { "item_count": 0, "next_item": null },
+        "gateway": {
+          "status": "ready-for-command",
+          "next_method": "POST",
+          "next_route": "/api/moonrobo/gateway/command",
+          "next_title": "Submit gateway command",
+          "can_submit_gateway_command": true,
+          "physical_execution_allowed": false,
+        },
+      },
+    },
+    now_ms=1010L,
+  )
+  assert_eq(decision.status, "route-selected")
+  assert_eq(decision.owner, "moonclaw")
+  assert_eq(decision.kind, "submit-gateway-command")
+  assert_eq(decision.route, "/api/moonrobo/gateway/command")
+  assert_true(
+    decision.request_body.contains(
+      "moonclaw-gateway-command-submit-gateway-command-1010",
+    ),
+  )
+  assert_true(
+    decision.request_body.contains("\"goal\":\"inspect the tool bench\""),
+  )
+  assert_true(decision.request_body.contains("\"remember\":true"))
 }
 
 ///|
@@ -187,7 +238,7 @@ test "robot policy skips Moonrobo aggregate live exercise work" {
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
   assert_eq(decision.route, "/api/moonrobo/proof-session")
-  assert_eq(decision.request_body, "{}")
+  assert_true(decision.request_body.contains("\"session_id\""))
 }
 
 ///|
