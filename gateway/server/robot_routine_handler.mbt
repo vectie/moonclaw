@@ -27,6 +27,8 @@ struct RobotRoutineRunRecord {
   invoked : Bool
   invocation : RobotRoutineHttpTextResponse?
   memory_refresh : RobotRoutineHttpTextResponse?
+  context_before : Json
+  context_after : Json
   plan : @robot_routine.RobotRoutinePlan
   record_path : String
   message : String
@@ -129,6 +131,17 @@ fn robot_routine_optional_http_response_field(
 }
 
 ///|
+fn robot_routine_optional_json_field(
+  object : Map[String, Json],
+  key : String,
+) -> Json {
+  match object.get(key) {
+    Some(value) => value
+    None => Json::null()
+  }
+}
+
+///|
 fn robot_routine_run_record_from_json(
   json : Json,
 ) -> Result[RobotRoutineRunRecord, String] {
@@ -173,6 +186,8 @@ fn robot_routine_run_record_from_json(
       Ok(value) => value
       Err(message) => return Err(message)
     },
+    context_before: robot_routine_optional_json_field(object, "context_before"),
+    context_after: robot_routine_optional_json_field(object, "context_after"),
     plan,
     record_path: match robot_routine_string_field(object, "record_path") {
       Ok(value) => value
@@ -254,6 +269,8 @@ fn robot_routine_run_record(
   invoked : Bool,
   invocation : RobotRoutineHttpTextResponse?,
   memory_refresh? : RobotRoutineHttpTextResponse? = None,
+  context_before? : Json = Json::null(),
+  context_after? : Json = Json::null(),
   message : String,
   status? : String = "",
 ) -> RobotRoutineRunRecord {
@@ -270,6 +287,8 @@ fn robot_routine_run_record(
     invoked,
     invocation,
     memory_refresh,
+    context_before,
+    context_after,
     plan,
     record_path: robot_routine_run_path(root, run_id),
     message,
@@ -454,6 +473,13 @@ async fn robot_routine_fetch_context(
 }
 
 ///|
+fn robot_routine_context_snapshot(context : String) -> Json {
+  @json.parse(context) catch {
+    _ => { "raw_context": context }.to_json()
+  }
+}
+
+///|
 async fn robot_routine_invoke_step(
   base_url : String,
   step : @robot_routine.RobotRoutineStep,
@@ -580,6 +606,7 @@ async fn Gateway::run_robot_routine(
         robot_routine_error("moonrobo_context_unavailable", message),
       )
   }
+  let context_before = robot_routine_context_snapshot(context)
   let plan = match
     @robot_routine.plan_routine_from_context_text(
       context,
@@ -602,6 +629,7 @@ async fn Gateway::run_robot_routine(
         plan,
         false,
         None,
+        context_before~,
         "MoonClaw persisted an idle robot routine run; ask Robo for another task.",
         status="idle",
       )
@@ -631,6 +659,7 @@ async fn Gateway::run_robot_routine(
         plan,
         false,
         None,
+        context_before~,
         "MoonClaw persisted a blocked robot routine run: \{message}",
         status~,
       )
@@ -654,6 +683,7 @@ async fn Gateway::run_robot_routine(
         plan,
         true,
         Some(invocation),
+        context_before~,
         "MoonClaw invoked the robot routine step but could not refresh MoonBook memory: \{message}",
         status="memory-refresh-failed",
       )
@@ -667,6 +697,31 @@ async fn Gateway::run_robot_routine(
       )
     }
   }
+  let context_after_text = match robot_routine_fetch_context(base_url) {
+    Ok(context) => context
+    Err(message) => {
+      let record = robot_routine_run_record(
+        self.cwd,
+        params,
+        plan,
+        true,
+        Some(invocation),
+        memory_refresh=Some(memory_refresh),
+        context_before~,
+        "MoonClaw invoked the robot routine step and refreshed memory but could not read updated Moonrobo context: \{message}",
+        status="context-refresh-failed",
+      )
+      self.persist_robot_routine_run_or_raise(record)
+      raise json_error(
+        409,
+        "Conflict",
+        robot_routine_run_error(
+          "robot_routine_context_refresh_failed", message, record,
+        ),
+      )
+    }
+  }
+  let context_after = robot_routine_context_snapshot(context_after_text)
   let record = robot_routine_run_record(
     self.cwd,
     params,
@@ -674,6 +729,8 @@ async fn Gateway::run_robot_routine(
     true,
     Some(invocation),
     memory_refresh=Some(memory_refresh),
+    context_before~,
+    context_after~,
     "MoonClaw planned, invoked, refreshed MoonBook memory, and persisted the robot routine run.",
   )
   self.persist_robot_routine_run_or_raise(record)

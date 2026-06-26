@@ -136,6 +136,8 @@ async test "robot routine run ledger writes reads and lists records" {
       assert_eq(reloaded.plan.plan_id, plan.plan_id)
       assert_true(reloaded.invocation is Some({ status: 200, .. }))
       assert_true(reloaded.memory_refresh is None)
+      assert_true(reloaded.context_before is Null)
+      assert_true(reloaded.context_after is Null)
     }
     Err(message) => abort("expected routine run read: \{message}")
   }
@@ -164,6 +166,8 @@ async test "robot routine run ledger records MoonBook memory refresh" {
       status: 200,
       body: "{\"memory_path\":\"/moonbook/memory/latest.json\"}",
     }),
+    context_before={ "phase": "before", "queue_count": "1" }.to_json(),
+    context_after={ "phase": "after", "queue_count": "0" }.to_json(),
     "persisted with memory",
   )
   assert_eq(record.status, "invoked-remembered")
@@ -175,6 +179,8 @@ async test "robot routine run ledger records MoonBook memory refresh" {
     Ok(reloaded) => {
       assert_eq(reloaded.status, "invoked-remembered")
       assert_true(reloaded.memory_refresh is Some({ status: 200, .. }))
+      assert_true(reloaded.context_before.stringify().contains("before"))
+      assert_true(reloaded.context_after.stringify().contains("after"))
       assert_true(reloaded.to_json().stringify().contains("memory_path"))
     }
     Err(message) => abort("expected routine run read: \{message}")
