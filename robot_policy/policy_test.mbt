@@ -2,6 +2,7 @@
 fn context_with_work(kind : String, target_path : String) -> Json {
   {
     "context": {
+      "robot_id": "noetix-e1-lab-01",
       "work_queue": {
         "item_count": 1,
         "next_item": {
@@ -37,6 +38,7 @@ test "robot policy routes operator-owned blockers to operator" {
   assert_eq(decision.owner, "operator")
   assert_eq(decision.route, "/api/runtime/supervisor/start")
   assert_eq(decision.http_method, "GET")
+  assert_eq(decision.request_body, "")
 }
 
 ///|
@@ -49,6 +51,31 @@ test "robot policy selects explicit Moonrobo route for MoonClaw work" {
   assert_eq(decision.owner, "moonclaw")
   assert_eq(decision.route, "/api/runtime/validation/session")
   assert_eq(decision.kind, "validate-runtime")
+  assert_eq(decision.request_body, "{}")
+}
+
+///|
+test "robot policy authors gateway command request body in MoonClaw" {
+  let decision = select_route_from_context(
+    context_with_work("submit-gateway-command", "/api/moonrobo/gateway/command"),
+    now_ms=1005L,
+  )
+  assert_eq(decision.status, "route-selected")
+  assert_eq(decision.owner, "moonclaw")
+  assert_eq(decision.route, "/api/moonrobo/gateway/command")
+  assert_true(decision.request_body.contains("\"command_id\""))
+  assert_true(
+    decision.request_body.contains(
+      "moonclaw-gateway-command-submit-gateway-command-1005",
+    ),
+  )
+  assert_true(
+    decision.request_body.contains("\"robot_id\":\"noetix-e1-lab-01\""),
+  )
+  assert_true(decision.request_body.contains("\"kind\":\"moontown\""))
+  assert_true(decision.request_body.contains("\"id\":\"moonclaw\""))
+  assert_true(decision.request_body.contains("\"goal\":\"test reason\""))
+  assert_true(decision.request_body.contains("\"remember\":true"))
 }
 
 ///|
@@ -72,6 +99,7 @@ test "robot policy falls back to gateway route when queue is empty" {
   assert_eq(decision.status, "route-selected")
   assert_eq(decision.owner, "moonclaw")
   assert_eq(decision.route, "/api/moonrobo/proof-session")
+  assert_eq(decision.request_body, "{}")
 }
 
 ///|

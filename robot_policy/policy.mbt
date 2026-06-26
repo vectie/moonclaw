@@ -7,6 +7,7 @@ pub(all) struct RobotPolicyDecision {
   kind : String
   http_method : String
   route : String
+  request_body : String
   target_route : String
   title : String
   reason : String
@@ -75,6 +76,11 @@ fn gateway(context : Json) -> Json {
 }
 
 ///|
+fn robot_id(context : Json) -> String {
+  string_field(context, "robot_id")
+}
+
+///|
 fn operator_kind(kind : String) -> Bool {
   match kind {
     "start-runtime"
@@ -102,7 +108,63 @@ fn decision_id(prefix : String, kind : String, now_ms : Int64) -> String {
 }
 
 ///|
-fn work_decision(item : Json, now_ms : Int64) -> RobotPolicyDecision {
+fn gateway_command_goal(item : Json, context : Json) -> String {
+  let reason = string_field(item, "reason")
+  if reason != "" {
+    reason
+  } else {
+    let title = string_field(item, "title")
+    if title != "" {
+      title
+    } else {
+      let status = string_field(gateway(context), "status")
+      if status != "" {
+        "Continue the Moonrobo robot routine from gateway status \{status}."
+      } else {
+        "Continue the Moonrobo robot routine from MoonClaw policy."
+      }
+    }
+  }
+}
+
+///|
+fn gateway_command_body(item : Json, context : Json, now_ms : Int64) -> String {
+  {
+    "command_id": Json::string(
+      decision_id(
+        "moonclaw-gateway-command",
+        string_field(item, "kind"),
+        now_ms,
+      ),
+    ),
+    "robot_id": Json::string(robot_id(context)),
+    "requested_by": {
+      "kind": Json::string("moontown"),
+      "id": Json::string("moonclaw"),
+    },
+    "goal": Json::string(gateway_command_goal(item, context)),
+    "now_ms": now_ms.to_json(),
+    "remember": true.to_json(),
+  }
+  .to_json()
+  .stringify()
+}
+
+///|
+fn route_request_body(item : Json, context : Json, now_ms : Int64) -> String {
+  if string_field(item, "target_path") == "/api/moonrobo/gateway/command" {
+    gateway_command_body(item, context, now_ms)
+  } else {
+    "{}"
+  }
+}
+
+///|
+fn work_decision(
+  item : Json,
+  context : Json,
+  now_ms : Int64,
+) -> RobotPolicyDecision {
   let kind = string_field(item, "kind")
   let owner = if operator_kind(kind) { "operator" } else { "moonclaw" }
   let target = string_field(item, "target_path")
@@ -125,6 +187,11 @@ fn work_decision(item : Json, now_ms : Int64) -> RobotPolicyDecision {
       target
     } else {
       target
+    },
+    request_body: if owner == "operator" {
+      ""
+    } else {
+      route_request_body(item, context, now_ms)
     },
     target_route: target,
     title: string_field(item, "title"),
@@ -151,6 +218,7 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotPolicyDecision {
     kind: string_field(status, "status"),
     http_method: string_field(status, "next_method"),
     route,
+    request_body: "{}",
     target_route: route,
     title,
     reason: "Gateway status selected the next Moonrobo route.",
@@ -169,6 +237,7 @@ fn idle_decision(now_ms : Int64) -> RobotPolicyDecision {
     kind: "idle",
     http_method: "POST",
     route: "/api/moonrobo/ask",
+    request_body: "",
     target_route: "/api/moonrobo/ask",
     title: "Ask Robo",
     reason: "No queued robot work is present in Moonrobo context.",
@@ -185,7 +254,8 @@ pub fn select_route_from_context(
   let context = context_body(payload)
   let item = next_work_item(context)
   match item {
-    Object(object) if object.length() > 0 => work_decision(item, now_ms)
+    Object(object) if object.length() > 0 =>
+      work_decision(item, context, now_ms)
     _ => {
       let status = gateway(context)
       if bool_field(status, "can_submit_gateway_command") &&

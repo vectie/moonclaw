@@ -22,6 +22,7 @@ pub(all) struct RobotPolicyDecision {
   kind : String
   http_method : String
   route : String
+  request_body : String
   target_route : String
   title : String
   reason : String

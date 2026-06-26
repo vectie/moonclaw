@@ -21,8 +21,9 @@ fn usage() -> Unit {
   println("  moon run cmd/robot_policy -- --url <moonrobo-base-url> [--invoke]")
   println("")
   println("Reads Moonrobo /api/moonclaw/context and prints the MoonClaw-owned")
-  println("route decision as JSON. With --invoke, MoonClaw calls the selected")
-  println("non-physical Moonrobo route and prints the downstream response.")
+  println("route invocation contract as JSON, including the request body.")
+  println("With --invoke, MoonClaw calls the selected non-physical Moonrobo")
+  println("route and prints the downstream response.")
 }
 
 ///|
@@ -68,8 +69,11 @@ async fn get_text(url : String) -> Result[HttpTextResponse, String] {
 }
 
 ///|
-async fn post_empty_json(url : String) -> Result[HttpTextResponse, String] {
-  let (response, data) = @http.post(url, "{}") catch {
+async fn post_json(
+  url : String,
+  body : String,
+) -> Result[HttpTextResponse, String] {
+  let (response, data) = @http.post(url, body) catch {
     error => return Err("POST \{url} failed: \{error}")
   }
   let body = data.text()
@@ -95,7 +99,7 @@ async fn invoke_decision(
   let url = join_url(base_url, decision.route)
   match decision.http_method {
     "GET" => get_text(url)
-    "POST" => post_empty_json(url)
+    "POST" => post_json(url, decision.request_body)
     route_method => Err("unsupported Moonrobo route method \{route_method}")
   }
 }
