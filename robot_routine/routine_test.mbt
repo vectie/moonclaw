@@ -308,6 +308,32 @@ test "robot routine decision accepts registered route templates" {
 }
 
 ///|
+test "robot routine decision authors bounded observation run body" {
+  let decision = selected_decision(
+    context_with_work("observe", "/api/moontown/tasks/observe-run"),
+    1016L,
+  )
+  assert_eq(decision.status, "route-selected")
+  assert_eq(decision.owner, "moonclaw")
+  assert_eq(decision.route, "/api/moontown/tasks/observe-run")
+  assert_true(
+    decision.request_body.contains(
+      "\"task_id\":\"moonclaw-observe-noetix-e1-lab-01-1016\"",
+    ),
+  )
+  assert_true(
+    decision.request_body.contains("\"robot_id\":\"noetix-e1-lab-01\""),
+  )
+  assert_true(decision.request_body.contains("\"kind\":\"moontown\""))
+  assert_true(decision.request_body.contains("\"id\":\"moonclaw\""))
+  assert_true(
+    decision.request_body.contains("\"goal\":\"inspect the tool bench\""),
+  )
+  assert_true(decision.request_body.contains("\"frame_count\":3"))
+  assert_true(decision.request_body.contains("\"frame_interval_ms\":\"5\""))
+}
+
+///|
 test "robot routine decision keeps command-message gates operator-owned" {
   let evaluate = selected_decision(
     context_with_work(

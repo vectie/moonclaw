@@ -325,11 +325,50 @@ fn proof_session_body(context : Json, now_ms : Int64) -> String {
 }
 
 ///|
+fn observation_goal(item : Json, context : Json) -> String {
+  let goal = task_goal(context)
+  if goal != "" &&
+    goal != "Continue the Moonrobo robot routine from MoonClaw routine state." {
+    goal
+  } else {
+    let reason = string_field(item, "reason")
+    if reason != "" {
+      reason
+    } else {
+      "Collect bounded robot telemetry observation."
+    }
+  }
+}
+
+///|
+fn observation_run_body(item : Json, context : Json, now_ms : Int64) -> String {
+  {
+    "task_id": Json::string(
+      decision_id("moonclaw-observe", robot_id(context), now_ms),
+    ),
+    "robot_id": Json::string(robot_id(context)),
+    "requester": {
+      "kind": Json::string("moontown"),
+      "id": Json::string("moonclaw"),
+    },
+    "goal": Json::string(observation_goal(item, context)),
+    "now_ms": now_ms.to_json(),
+    "frame_count": (3).to_json(),
+    "frame_interval_ms": 5L.to_json(),
+  }
+  .to_json()
+  .stringify()
+}
+
+///|
 fn route_request_body(item : Json, context : Json, now_ms : Int64) -> String {
   if string_field(item, "target_path") == "/api/moonrobo/gateway/command" {
     gateway_command_body(item, context, now_ms)
   } else if string_field(item, "target_path") == "/api/moonrobo/proof-session" {
     proof_session_body(context, now_ms)
+  } else if string_field(item, "target_path") ==
+    "/api/moontown/tasks/observe-run" {
+    observation_run_body(item, context, now_ms)
   } else {
     "{}"
   }
