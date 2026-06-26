@@ -130,7 +130,13 @@ pub fn parse_key(bytes : BytesView) -> Key {
     }
     [c, ..] if c.to_int() >= 0x20 && c.to_int() <= 0x7e =>
       return Char(c.to_char())
-    [_, ..] => return Unknown
+    [_, ..] => {
+      let text = @encoding/utf8.decode(bytes) catch { _ => return Unknown }
+      match text.get_char(0) {
+        Some(c) => return Char(c)
+        None => return Unknown
+      }
+    }
     [] => return Unknown
   }
 }

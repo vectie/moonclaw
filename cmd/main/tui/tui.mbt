@@ -20,6 +20,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
   let mut web_search : Bool = false
   let mut log_file : String? = None
   let mut resume_id : @uuid.Uuid? = None
+  let mut agent_kind = "code"
   for args = args {
     match args {
       ["--prompt" | "-p", value, .. rest] => {
@@ -36,6 +37,17 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       }
       ["--log-file", value, .. rest] => {
         log_file = Some(value)
+        continue rest
+      }
+      ["--agent", value, .. rest] => {
+        match value {
+          "code" | "coder" => agent_kind = "code"
+          "general" | "chat" => agent_kind = "general"
+          _ =>
+            raise @argument.InvalidArgument(
+              "--agent must be either 'code' or 'general', got '\{value}'",
+            )
+        }
         continue rest
       }
       ["--resume" | "-r", value, .. rest] => {
@@ -62,12 +74,29 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
     println("No model available; please configure a model first.")
     return
   }
+  if agent_kind == "general" && resume_id is Some(_) {
+    raise @argument.InvalidArgument(
+      "--resume is currently supported only with --agent code",
+    )
+  }
 
   @async.with_task_group(group => {
-    let moonclaw = if resume_id is Some(id) {
-      @moonclaw.Moonclaw::resume_(model~, id, web_search~, logger?)
+    let agent = if agent_kind == "code" {
+      let moonclaw = if resume_id is Some(id) {
+        @moonclaw.Moonclaw::resume_(model~, id, web_search~, logger?)
+      } else {
+        @moonclaw.Moonclaw::new(model~, web_search~, logger?)
+      }
+      moonclaw.agent
     } else {
-      @moonclaw.Moonclaw::new(model~, web_search~, logger?)
+      @agent.new(
+        name="General Chat",
+        model,
+        logger?,
+        cwd=@os.cwd(),
+        system_message="You are a concise general-purpose assistant.",
+        web_search~,
+      )
     }
 
     let tui = @itui.TUI::new() catch {
@@ -82,9 +111,10 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       pending_assistant_text: None,
       stream_dirty: false,
     }
-    tui.state().set_model(moonclaw.agent.model.name)
-    tui.state().set_agent_id(moonclaw.agent.id().to_string())
-    tui.state().set_session_key(moonclaw.agent.id().to_string())
+    tui.state().set_model(agent.model.name)
+    tui.state().set_agent_kind(agent_kind)
+    tui.state().set_agent_id(agent.id().to_string())
+    tui.state().set_session_key(agent.id().to_string())
 
     tui.set_on_submit(fn(text : String) {
       let (width, height) = tui.terminal().size()
@@ -92,13 +122,13 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       tui.chat_log().add_user(text, width, chat_height)
       tui.state().set_busy(true)
       tui.state().set_activity_status("message queued")
-      moonclaw.agent.queue_message(@ai.user_message(content=text)) |> ignore()
+      agent.queue_message(@ai.user_message(content=text)) |> ignore()
       tui.request_render()
     })
 
     tui.set_on_command(fn(text : String) {
       let (cmd, args) = @itui.parse_command(text)
-      handle_command(tui, moonclaw, cmd, args, state)
+      handle_command(tui, agent, agent_kind, cmd, args, state)
       tui.request_render()
     })
 
@@ -140,7 +170,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       tui.request_render()
     })
 
-    moonclaw.agent.add_listener(event => {
+    agent.add_listener(event => {
       match event.desc {
         MessageQueued(_) => {
           tui.state().set_busy(true)
@@ -237,7 +267,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       tui.state().set_connection_status("connected")
       tui.request_render()
       while !state.should_exit {
-        moonclaw.agent.start() catch {
+        agent.start() catch {
           error => println("Error: \{error}")
         }
         @async.sleep(50)
@@ -259,7 +289,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       tui.chat_log().add_user(prompt, width, chat_height)
       tui.state().set_busy(true)
       tui.state().set_activity_status("message queued")
-      moonclaw.agent.queue_message(@ai.user_message(content=prompt)) |> ignore()
+      agent.queue_message(@ai.user_message(content=prompt)) |> ignore()
     }
 
     while tui.is_running() && !state.should_exit {
@@ -270,7 +300,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
       tui.stop()
     }
 
-    moonclaw.close()
+    agent.close()
   })
 }
 
@@ -288,7 +318,8 @@ fn flush_pending_stream(tui : @itui.TUI, state : TuiState) -> Unit {
 ///|
 fn handle_command(
   tui : @itui.TUI,
-  moonclaw : @moonclaw.Moonclaw,
+  agent : @agent.Agent,
+  agent_kind : String,
   cmd : String,
   _args : String,
   state : TuiState,
@@ -298,11 +329,11 @@ fn handle_command(
   match cmd {
     "clear" => tui.chat_log().clear_all()
     "help" => {
-      let help_text = "Available commands:\n/clear - Clear chat history\n/help - Show this help message\n/model - Show current model\n/exit - Exit the application"
+      let help_text = "Available commands:\n/clear - Clear chat history\n/help - Show this help message\n/model - Show current model and agent mode\n/exit - Exit the application\n\nStart modes: moonclaw tui --agent code | --agent general"
       tui.chat_log().add_system(help_text, width, chat_height)
     }
     "model" => {
-      let model_info = "Current model: \{moonclaw.agent.model.name}"
+      let model_info = "Current model: \{agent.model.name}\nAgent mode: \{agent_kind}"
       tui.chat_log().add_system(model_info, width, chat_height)
     }
     "exit" => {

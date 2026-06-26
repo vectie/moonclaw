@@ -4,6 +4,7 @@ pub(all) struct TuiState {
   mut activity_status : String
   mut busy : Bool
   mut model : String
+  mut agent_kind : String
   mut agent_id : String
   mut session_key : String
   mut tools_expanded : Bool
@@ -18,6 +19,7 @@ pub fn TuiState::new() -> TuiState {
     activity_status: "idle",
     busy: false,
     model: "unknown",
+    agent_kind: "general",
     agent_id: "default",
     session_key: "default",
     tools_expanded: false,
@@ -47,6 +49,11 @@ pub fn TuiState::set_busy(self : TuiState, busy : Bool) -> Unit {
 ///|
 pub fn TuiState::set_model(self : TuiState, model : String) -> Unit {
   self.model = model
+}
+
+///|
+pub fn TuiState::set_agent_kind(self : TuiState, kind : String) -> Unit {
+  self.agent_kind = kind
 }
 
 ///|
@@ -89,6 +96,11 @@ pub fn TuiState::is_busy(self : TuiState) -> Bool {
 ///|
 pub fn TuiState::model(self : TuiState) -> String {
   self.model
+}
+
+///|
+pub fn TuiState::agent_kind(self : TuiState) -> String {
+  self.agent_kind
 }
 
 ///|

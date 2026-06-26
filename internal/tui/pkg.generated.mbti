@@ -557,6 +557,7 @@ pub(all) struct TuiState {
   mut activity_status : String
   mut busy : Bool
   mut model : String
+  mut agent_kind : String
   mut agent_id : String
   mut session_key : String
   mut tools_expanded : Bool
@@ -565,6 +566,7 @@ pub(all) struct TuiState {
 }
 pub fn TuiState::activity_status(Self) -> String
 pub fn TuiState::agent_id(Self) -> String
+pub fn TuiState::agent_kind(Self) -> String
 pub fn TuiState::connection_status(Self) -> String
 pub fn TuiState::is_busy(Self) -> Bool
 pub fn TuiState::last_ctrl_c_at(Self) -> Int
@@ -573,6 +575,7 @@ pub fn TuiState::new() -> Self
 pub fn TuiState::session_key(Self) -> String
 pub fn TuiState::set_activity_status(Self, String) -> Unit
 pub fn TuiState::set_agent_id(Self, String) -> Unit
+pub fn TuiState::set_agent_kind(Self, String) -> Unit
 pub fn TuiState::set_busy(Self, Bool) -> Unit
 pub fn TuiState::set_connection_status(Self, String) -> Unit
 pub fn TuiState::set_model(Self, String) -> Unit

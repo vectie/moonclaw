@@ -221,7 +221,7 @@ pub fn TUI::terminal(self : TUI) -> Terminal {
 ///|
 pub fn TUI::update_header(self : TUI) -> Unit {
   let theme = Theme::default()
-  let text = "moonclaw tui - agent \{self.state.agent_id()} - session \{self.state.session_key()}"
+  let text = "moonclaw tui - \{self.state.agent_kind()} - agent \{self.state.agent_id()} - session \{self.state.session_key()}"
   self.header.set_text(theme.header(text))
 }
 
@@ -229,6 +229,7 @@ pub fn TUI::update_header(self : TUI) -> Unit {
 pub fn TUI::update_footer(self : TUI) -> Unit {
   let theme = Theme::default()
   let parts = [
+    self.state.agent_kind(),
     "agent \{self.state.agent_id()}",
     "session \{self.state.session_key()}",
     self.state.model(),
@@ -401,18 +402,6 @@ pub fn TUI::handle_key(self : TUI, key : Key) -> Bool {
       }
       true
     }
-    Up => {
-      self.chat_log.scroll_up(3)
-      self.render_needed = true
-      true
-    }
-    Down => {
-      let (_, height) = self.terminal.size()
-      let chat_height = height - 4
-      self.chat_log.scroll_down(3, self.terminal.width, chat_height)
-      self.render_needed = true
-      true
-    }
     PageUp => {
       let (_, height) = self.terminal.size()
       self.chat_log.scroll_up(height - 2)
@@ -455,16 +444,47 @@ pub fn TUI::submit(self : TUI, text : String) -> Unit {
 }
 
 ///|
+async fn TUI::read_key_bytes(self : TUI) -> Bytes? {
+  guard self.terminal.input.read_some(max_len=1) is Some(first) else {
+    return None
+  }
+  if first.length() == 0 {
+    return None
+  }
+  let b = first[0]
+  if b == 0x1b {
+    @async.sleep(1)
+    match self.terminal.input.read_some(max_len=16) {
+      Some(rest) => return Some(first + rest)
+      None => return Some(first)
+    }
+  }
+  let needed = if b.to_int() >= 0xf0 {
+    4
+  } else if b.to_int() >= 0xe0 {
+    3
+  } else if b.to_int() >= 0xc0 {
+    2
+  } else {
+    1
+  }
+  if needed <= 1 {
+    return Some(first)
+  }
+  Some(first + self.terminal.input.read_exactly(needed - 1))
+}
+
+///|
 pub async fn TUI::run_event_loop(self : TUI) -> Unit {
   while self.running {
     self.terminal.update_size() catch {
       _ => ()
     }
-    let result : Result[Bytes, Error] = Ok(self.terminal.input.read_exactly(1)) catch {
+    let result : Result[Bytes?, Error] = Ok(self.read_key_bytes()) catch {
       error => Err(error)
     }
     match result {
-      Ok(bytes) =>
+      Ok(Some(bytes)) =>
         if bytes.length() > 0 {
           let key = parse_key(bytes[:])
           ignore(self.handle_key(key))
@@ -475,6 +495,7 @@ pub async fn TUI::run_event_loop(self : TUI) -> Unit {
         } else if self.render_needed {
           self.render_if_due()
         }
+      Ok(None) => if self.render_needed { self.render_if_due() }
       Err(_) => {
         if self.render_needed {
           self.render_if_due()

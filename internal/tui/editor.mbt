@@ -108,6 +108,35 @@ pub fn Editor::clear(self : Editor) -> Unit {
 }
 
 ///|
+fn String::previous_char_offset(self : String, offset : Int) -> Int {
+  let mut current = 0
+  for c in self {
+    let next = current + c.to_string().length()
+    if next >= offset {
+      return current
+    }
+    current = next
+  }
+  current
+}
+
+///|
+fn String::next_char_offset(self : String, offset : Int) -> Int {
+  let mut current = 0
+  for c in self {
+    let next = current + c.to_string().length()
+    if current >= offset {
+      return next
+    }
+    if next > offset {
+      return next
+    }
+    current = next
+  }
+  self.length()
+}
+
+///|
 pub fn Editor::set_on_submit(
   self : Editor,
   callback : (String) -> Unit,
@@ -283,7 +312,7 @@ fn Editor::insert_char(self : Editor, c : Char) -> Unit {
   let before = self.text[:self.cursor]
   let after = self.text[self.cursor:]
   self.text = "\{before}\{c}\{after}"
-  self.cursor += 1
+  self.cursor += c.to_string().length()
   if self.on_change is Some(cb) {
     cb(self.text)
   }
@@ -292,10 +321,11 @@ fn Editor::insert_char(self : Editor, c : Char) -> Unit {
 ///|
 fn Editor::delete_left(self : Editor) -> Unit {
   if self.cursor > 0 {
-    let before = self.text[:self.cursor - 1]
+    let new_cursor = self.text.previous_char_offset(self.cursor)
+    let before = self.text[:new_cursor]
     let after = self.text[self.cursor:]
     self.text = "\{before}\{after}"
-    self.cursor -= 1
+    self.cursor = new_cursor
     if self.on_change is Some(cb) {
       cb(self.text)
     }
@@ -306,7 +336,8 @@ fn Editor::delete_left(self : Editor) -> Unit {
 fn Editor::delete_right(self : Editor) -> Unit {
   if self.cursor < self.text.length() {
     let before = self.text[:self.cursor]
-    let after = self.text[self.cursor + 1:]
+    let next_cursor = self.text.next_char_offset(self.cursor)
+    let after = self.text[next_cursor:]
     self.text = "\{before}\{after}"
     if self.on_change is Some(cb) {
       cb(self.text)
@@ -317,14 +348,14 @@ fn Editor::delete_right(self : Editor) -> Unit {
 ///|
 fn Editor::move_left(self : Editor) -> Unit {
   if self.cursor > 0 {
-    self.cursor -= 1
+    self.cursor = self.text.previous_char_offset(self.cursor)
   }
 }
 
 ///|
 fn Editor::move_right(self : Editor) -> Unit {
   if self.cursor < self.text.length() {
-    self.cursor += 1
+    self.cursor = self.text.next_char_offset(self.cursor)
   }
 }
 
