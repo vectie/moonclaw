@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/json",
+  "vectie/moonclaw/robot_policy" @policy,
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/os",
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+)

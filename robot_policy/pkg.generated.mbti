@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/robot_policy"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn select_route_from_context(Json, now_ms? : Int64) -> RobotPolicyDecision
+
+pub fn select_route_from_context_text(String, now_ms? : Int64) -> Result[RobotPolicyDecision, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct RobotPolicyDecision {
+  decision_id : String
+  status : String
+  owner : String
+  work_id : String
+  kind : String
+  http_method : String
+  route : String
+  target_route : String
+  title : String
+  reason : String
+  physical_execution_allowed : Bool
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
