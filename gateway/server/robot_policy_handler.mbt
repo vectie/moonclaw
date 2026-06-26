@@ -19,6 +19,14 @@ struct RobotPolicyGatewayResponse {
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
+struct RobotRoutineGatewayResponse {
+  plan : @robot_policy.RobotRoutinePlan
+  invoked : Bool
+  invocation : RobotPolicyHttpTextResponse?
+  message : String
+} derive(Debug, Eq, ToJson, FromJson)
+
+///|
 fn robot_policy_error(code : String, message : String) -> Json {
   { "error": { "code": code, "message": message } }.to_json()
 }
@@ -170,6 +178,27 @@ async fn robot_policy_invoke_decision(
 }
 
 ///|
+async fn robot_routine_invoke_step(
+  base_url : String,
+  step : @robot_policy.RobotRoutineStep,
+) -> Result[RobotPolicyHttpTextResponse, String] {
+  if step.owner != "moonclaw" {
+    return Err("MoonClaw cannot invoke a routine step owned by \{step.owner}")
+  }
+  if step.physical_execution_allowed {
+    return Err(
+      "selected routine step allows physical execution; explicit safety-gated invocation is not implemented yet",
+    )
+  }
+  let url = robot_policy_join_url(base_url, step.route)
+  match step.http_method {
+    "GET" => robot_policy_get_text(url)
+    "POST" => robot_policy_post_json(url, step.request_body)
+    route_method => Err("unsupported Moonrobo route method \{route_method}")
+  }
+}
+
+///|
 async fn Gateway::select_robot_policy(
   self : Gateway,
   r : @httpx.RequestReader,
@@ -226,12 +255,103 @@ async fn Gateway::select_robot_policy(
 }
 
 ///|
+async fn Gateway::select_robot_routine(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  invoke : Bool,
+) -> RobotRoutineGatewayResponse {
+  ignore(self)
+  let params = robot_policy_read_request(r)
+  let base_url = robot_policy_trim_base_url(params.moonrobo_url)
+  let context = match robot_policy_fetch_context(base_url) {
+    Ok(context) => context
+    Err(message) =>
+      raise json_error(
+        502,
+        "BadGateway",
+        robot_policy_error("moonrobo_context_unavailable", message),
+      )
+  }
+  let plan = match
+    @robot_policy.plan_routine_from_context_text(
+      context,
+      now_ms=robot_policy_now_ms(params),
+    ) {
+    Ok(plan) => plan
+    Err(message) =>
+      raise json_error(
+        422,
+        "UnprocessableEntity",
+        robot_policy_error("robot_routine_failed", message),
+      )
+  }
+  if !invoke {
+    return {
+      plan,
+      invoked: false,
+      invocation: None,
+      message: "MoonClaw planned the robot routine from Moonrobo context.",
+    }
+  }
+  let step = match plan.next_step {
+    Some(step) => step
+    None =>
+      raise json_error(
+        409,
+        "Conflict",
+        robot_policy_error(
+          "robot_routine_idle", "routine plan has no next step",
+        ),
+      )
+  }
+  let invocation = match robot_routine_invoke_step(base_url, step) {
+    Ok(response) => response
+    Err(message) =>
+      raise json_error(
+        409,
+        "Conflict",
+        robot_policy_error("robot_routine_invocation_blocked", message),
+      )
+  }
+  {
+    plan,
+    invoked: true,
+    invocation: Some(invocation),
+    message: "MoonClaw invoked the next robot routine step.",
+  }
+}
+
+///|
 async fn Gateway::handle_robot_policy(
   self : Gateway,
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let response = self.select_robot_policy(r, false)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(response.to_json().stringify())
+}
+
+///|
+async fn Gateway::handle_robot_routine(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let response = self.select_robot_routine(r, false)
+  w.header().set("Content-Type", "application/json")
+  w.write_header(200)
+  w.write(response.to_json().stringify())
+}
+
+///|
+async fn Gateway::handle_robot_routine_invoke(
+  self : Gateway,
+  r : @httpx.RequestReader,
+  w : @httpx.ResponseWriter,
+) -> Unit {
+  let response = self.select_robot_routine(r, true)
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
   w.write(response.to_json().stringify())

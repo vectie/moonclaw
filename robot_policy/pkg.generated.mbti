@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub fn plan_routine_from_context(Json, now_ms? : Int64) -> RobotRoutinePlan
+
+pub fn plan_routine_from_context_text(String, now_ms? : Int64) -> Result[RobotRoutinePlan, String]
+
 pub fn select_route_from_context(Json, now_ms? : Int64) -> RobotPolicyDecision
 
 pub fn select_route_from_context_text(String, now_ms? : Int64) -> Result[RobotPolicyDecision, String]
@@ -28,6 +32,30 @@ pub(all) struct RobotPolicyDecision {
   reason : String
   physical_execution_allowed : Bool
   message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotRoutinePlan {
+  plan_id : String
+  status : String
+  owner : String
+  step_count : Int
+  steps : Array[RobotRoutineStep]
+  next_step : RobotRoutineStep?
+  decision : RobotPolicyDecision
+  message : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct RobotRoutineStep {
+  step_id : String
+  order : Int
+  kind : String
+  owner : String
+  status : String
+  http_method : String
+  route : String
+  request_body : String
+  reason : String
+  physical_execution_allowed : Bool
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases

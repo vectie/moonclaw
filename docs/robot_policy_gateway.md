@@ -11,7 +11,16 @@ gateway robot-policy endpoints make that boundary available as a service.
 `POST /v1/robot/policy/invoke` selects the route and invokes it only when the
 decision is MoonClaw-owned, route-selected, and not physical-execution enabled.
 
-Both endpoints accept:
+`POST /v1/robot/routine` returns the ordered MoonClaw robot routine plan for the
+current Moonrobo context. The plan includes runtime validation, gateway command,
+proof session, physical feedback, and MoonBook memory steps as separate routine
+steps.
+
+`POST /v1/robot/routine/invoke` plans the routine and invokes only the next safe
+MoonClaw-owned step. It does not invoke physical-execution-enabled steps; those
+still require an explicit safety-gated execution path.
+
+All four endpoints accept:
 
 ```json
 {
@@ -22,10 +31,22 @@ Both endpoints accept:
 
 `now_ms` is optional. The gateway fetches
 `{moonrobo_url}/api/moonclaw/context`, passes the context to
-`vectie/moonclaw/robot_policy`, and returns the policy decision plus invocation
-status.
+`vectie/moonclaw/robot_policy`, and returns either a single policy decision or a
+multi-step routine plan plus invocation status.
 
 Moonrobo should not host this selection logic. If Moonrobo contains code with
 agent-facing names, it should remain declarative projection code: context,
 readiness, tool registry, task ingress, receipts, and durable memory. Planning,
 selection, retry, and tool invocation belong in MoonClaw.
+
+Moonrobo can still expose `/api/moonclaw/context` and compatibility projections
+named for MoonClaw, but those projections are platform facts, not an agent. The
+closed loop is:
+
+1. Moonrobo publishes the digital/physical state, robot capabilities, live
+   readiness, RoboBook paths, and safe command/proof endpoints.
+2. MoonClaw reads that context through the robot routine endpoint.
+3. MoonClaw selects and invokes the next non-physical step through Moonrobo.
+4. Moonrobo persists command receipts, proof sessions, feedback, and MoonBook
+   memory.
+5. MoonClaw reads the updated context and repeats.

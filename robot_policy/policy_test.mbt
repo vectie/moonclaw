@@ -42,6 +42,67 @@ fn context_with_work(kind : String, target_path : String) -> Json {
 }
 
 ///|
+fn context_with_live_readiness(
+  status : String,
+  can_run_proof_session : Bool,
+  can_submit_gateway_command : Bool,
+  feedback_closed : Bool,
+  work? : Json = {},
+) -> Json {
+  {
+    "context": {
+      "robot_id": "noetix-e1-lab-01",
+      "task_intent": {
+        "has_task": true,
+        "task_id": "message-policy-test",
+        "message_id": "policy-test",
+        "goal": "inspect the tool bench",
+        "classification": "command-review",
+        "stage": "ready-to-prove",
+        "next_route": "/api/moonrobo/gateway/command",
+        "requires_review": false,
+        "physical_execution_allowed": false,
+        "message_path": "/moonbook/task-messages/message-policy-test.json",
+        "created_at_ms": 1000,
+      },
+      "work_queue": if work == {} {
+        { "item_count": 0, "next_item": null }
+      } else {
+        { "item_count": 1, "next_item": work }
+      },
+      "gateway": {
+        "status": status,
+        "next_method": "POST",
+        "next_route": "/api/moonrobo/proof-session",
+        "next_title": "Run proof session",
+        "can_submit_gateway_command": can_submit_gateway_command,
+        "physical_execution_allowed": false,
+      },
+    },
+    "live_readiness": {
+      "status": status,
+      "can_run_proof_session": can_run_proof_session,
+      "can_submit_gateway_command": can_submit_gateway_command,
+      "proof_session_feedback_closed": feedback_closed,
+    },
+  }
+}
+
+///|
+fn work_item(kind : String, target_path : String) -> Json {
+  {
+    "work_id": "work-test",
+    "kind": kind,
+    "priority": 100,
+    "title": "Test work",
+    "summary": "test summary",
+    "target_id": "robot-test",
+    "target_path": target_path,
+    "reason": "test reason",
+  }
+}
+
+///|
 test "robot policy routes operator-owned blockers to operator" {
   let decision = select_route_from_context(
     context_with_work("start-runtime", "/api/runtime/supervisor/start"),
@@ -156,4 +217,59 @@ test "robot policy decodes context text" {
   ).unwrap()
   assert_eq(decision.owner, "moonclaw")
   assert_eq(decision.route, "/api/moonrobo/proof-session")
+}
+
+///|
+test "robot routine plan starts with runtime validation when live readiness is stale" {
+  let plan = plan_routine_from_context(
+    context_with_live_readiness("needs-runtime-validation", false, false, false),
+    now_ms=1007L,
+  )
+  assert_eq(plan.status, "ready")
+  assert_eq(plan.owner, "moonclaw")
+  assert_eq(plan.step_count, 1)
+  assert_true(plan.next_step is Some({ kind: "validate-runtime", .. }))
+  assert_eq(plan.steps[0].route, "/api/runtime/validation/session")
+  assert_true(plan.steps[0].request_body.contains("\"sample_count\":3"))
+}
+
+///|
+test "robot routine plan sequences gateway proof feedback and memory" {
+  let plan = plan_routine_from_context(
+    context_with_live_readiness(
+      "ready-for-proof-session",
+      true,
+      true,
+      false,
+      work=work_item("submit-gateway-command", "/api/moonrobo/gateway/command"),
+    ),
+    now_ms=1008L,
+  )
+  assert_eq(plan.status, "ready")
+  assert_eq(plan.owner, "moonclaw")
+  assert_eq(plan.step_count, 4)
+  assert_eq(plan.steps[0].kind, "submit-gateway-command")
+  assert_eq(plan.steps[0].route, "/api/moonrobo/gateway/command")
+  assert_true(
+    plan.steps[0].request_body.contains("\"goal\":\"inspect the tool bench\""),
+  )
+  assert_eq(plan.steps[1].kind, "run-proof-session")
+  assert_eq(plan.steps[1].route, "/api/moonrobo/proof-session")
+  assert_true(plan.steps[1].request_body.contains("\"session_id\""))
+  assert_true(plan.steps[1].request_body.contains("\"task_message\""))
+  assert_eq(plan.steps[2].kind, "bind-execution-feedback")
+  assert_eq(plan.steps[2].owner, "operator")
+  assert_eq(plan.steps[3].kind, "remember-robot-context")
+}
+
+///|
+test "robot routine plan routes calibration blockers to operator" {
+  let plan = plan_routine_from_context(
+    context_with_live_readiness("needs-calibration", false, false, false),
+    now_ms=1009L,
+  )
+  assert_eq(plan.status, "needs-operator")
+  assert_eq(plan.owner, "operator")
+  assert_true(plan.next_step is Some({ kind: "calibrate-runtime", .. }))
+  assert_eq(plan.steps[0].route, "/api/moonclaw/runtime-calibration/latest")
 }
