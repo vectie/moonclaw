@@ -448,8 +448,8 @@ test "Event::Roundtrip/PreToolCall" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     PreToolCall(tc) => {
-      debug_inspect(tc.id, content="tool_call_1")
-      debug_inspect(tc.name, content="example_tool")
+      inspect(tc.id, content="tool_call_1")
+      inspect(tc.name, content="example_tool")
       assert_true(
         tc.arguments == Some("{\"param1\": \"value1\", \"param2\": 123}"),
       )
@@ -474,13 +474,13 @@ test "Event::Roundtrip/PostToolCall/Ok" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     PostToolCall(tc, result~, rendered~) => {
-      debug_inspect(tc.id, content="tool_call_1")
-      debug_inspect(tc.name, content="example_tool")
+      inspect(tc.id, content="tool_call_1")
+      inspect(tc.name, content="example_tool")
       match result {
         Ok(json) => assert_true(json.stringify() == "{\"output\":\"success\"}")
         Err(_) => fail("Expected successful tool result")
       }
-      debug_inspect(rendered, content="Tool output: success")
+      inspect(rendered, content="Tool output: success")
     }
     _ => fail("Expected PostToolCall")
   }
@@ -502,7 +502,7 @@ test "Event::Roundtrip/PostToolCall/Err" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     PostToolCall(tc, result~, rendered~) => {
-      debug_inspect(tc.id, content="tool_call_2")
+      inspect(tc.id, content="tool_call_2")
       match result {
         Err(json) =>
           assert_true(
@@ -510,7 +510,7 @@ test "Event::Roundtrip/PostToolCall/Err" {
           )
         Ok(_) => fail("Expected failed tool result")
       }
-      debug_inspect(rendered, content="Error occurred")
+      inspect(rendered, content="Error occurred")
     }
     _ => fail("Expected PostToolCall")
   }
@@ -579,8 +579,8 @@ test "Event::Roundtrip/ToolAdded" {
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
     ToolAdded(desc) => {
-      debug_inspect(desc.name, content="sample_tool")
-      debug_inspect(desc.description, content="A sample tool")
+      inspect(desc.name, content="sample_tool")
+      inspect(desc.description, content="A sample tool")
       assert_true(desc.schema.to_json().stringify() == "{\"type\":\"object\"}")
     }
     _ => fail("Expected ToolAdded")
@@ -649,7 +649,7 @@ test "Event::Roundtrip/ModelLoaded" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    ModelLoaded(name~) => debug_inspect(name, content="my_model")
+    ModelLoaded(name~) => inspect(name, content="my_model")
     _ => fail("Expected ModelLoaded")
   }
 }
@@ -671,7 +671,7 @@ test "ExternalEvent::Roundtrip/UserMessage" {
   let json = event.to_json()
   let roundtripped : @event.EventDesc = @json.from_json(json)
   match roundtripped {
-    UserMessage(msg) => debug_inspect(msg, content="Stop the current task")
+    UserMessage(msg) => inspect(msg, content="Stop the current task")
     _ => fail("Expected UserMessage")
   }
 }

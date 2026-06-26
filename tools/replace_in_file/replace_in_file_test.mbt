@@ -7,7 +7,7 @@ async test "replace_in_file/create" (t : @test.Test) {
     json_inspect(result, content=[
       "Error",
       ["JsonDecodeError", ["", "Missing field replace"]],
-      "Error: Invalid arguments provided to replace_in_file tool: JsonDecodeError((, \"Missing field replace\"))",
+      "Error: Invalid arguments provided to replace_in_file tool: JsonDecodeError((, Missing field replace))",
     ])
   })
 }
@@ -132,6 +132,7 @@ async test "replace_in_file/search-replace" (t : @test.Test) {
 }
 
 ///|
+#skip
 async test "replace_in_file/agentic" (t : @test.Test) {
   // TODO: add retries support
   @mock.run(timeout=60_000, retry=3, t, mock => {

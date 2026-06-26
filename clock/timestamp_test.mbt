@@ -43,5 +43,5 @@ test "Timestamp::equal" {
 ///|
 test "Timestamp::to_string" {
   let t = @clock.Timestamp::from_ms(1625079600123)
-  debug_inspect(Show::to_string(t), content="1625079600123")
+  inspect(Show::to_string(t), content="1625079600123")
 }

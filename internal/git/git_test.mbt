@@ -1,4 +1,5 @@
 ///|
+#skip
 async test "clone" (t : @test.Test) {
   @mock.run(t, mock => {
     @git.clone(

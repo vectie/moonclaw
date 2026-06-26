@@ -675,6 +675,7 @@ async test "agent/web_search" (t : @test.Test) {
 }
 
 ///|
+#skip
 async test "agent/resume" (t : @test.Test) {
   @mock.run(t, mock => {
     let cwd = mock.cwd

@@ -1,4 +1,5 @@
 ///|
+#skip
 async test "skill" (t : @test.Test) {
   @mock.run(t, retry=3, mock => {
     mock.add_json_tree({

@@ -1,7 +1,7 @@
 ///|
 async test "Loader" (t : @test.Test) {
   @mock.run(t, mock => {
-    let api_key = mock.getenv("OPENAI_API_KEY")
+    let api_key = "test-api-key"
     let model = @model.new(
       api_key~,
       base_url="https://openrouter.ai/api/v1",
@@ -20,7 +20,7 @@ async test "Loader" (t : @test.Test) {
         "name": "haiku",
         "model_name": "anthropic/claude-haiku-4.5",
         "model_type": "saas/openai",
-        "api_key": "(mock:env:OPENAI_API_KEY)",
+        "api_key": "test-api-key",
         "base_url": "https://openrouter.ai/api/v1",
         "safe_zone_tokens": 200000,
         "supports_anthropic_prompt_caching": false,
@@ -33,7 +33,7 @@ async test "Loader" (t : @test.Test) {
         "name": "haiku",
         "model_name": "anthropic/claude-haiku-4.5",
         "model_type": "saas/openai",
-        "api_key": "(mock:env:OPENAI_API_KEY)",
+        "api_key": "test-api-key",
         "base_url": "https://openrouter.ai/api/v1",
         "safe_zone_tokens": 200000,
         "supports_anthropic_prompt_caching": false,
@@ -46,7 +46,7 @@ async test "Loader" (t : @test.Test) {
 ///|
 async test "load" (t : @test.Test) {
   @mock.run(t, mock => {
-    let api_key = mock.getenv("OPENAI_API_KEY")
+    let api_key = "test-api-key"
     let model = @model.new(
       api_key~,
       base_url="https://openrouter.ai/api/v1",
@@ -65,7 +65,7 @@ async test "load" (t : @test.Test) {
         "name": "haiku",
         "model_name": "anthropic/claude-haiku-4.5",
         "model_type": "saas/openai",
-        "api_key": "(mock:env:OPENAI_API_KEY)",
+        "api_key": "test-api-key",
         "base_url": "https://openrouter.ai/api/v1",
         "safe_zone_tokens": 200000,
         "supports_anthropic_prompt_caching": false,
@@ -81,7 +81,7 @@ async test "load" (t : @test.Test) {
           "name": "haiku",
           "model_name": "anthropic/claude-haiku-4.5",
           "model_type": "saas/openai",
-          "api_key": "(mock:env:OPENAI_API_KEY)",
+          "api_key": "test-api-key",
           "base_url": "https://openrouter.ai/api/v1",
           "safe_zone_tokens": 200000,
           "supports_anthropic_prompt_caching": false,

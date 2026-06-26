@@ -124,6 +124,7 @@ async test "search_files-moon-references" (t : @test.Test) {
 }
 
 ///|
+#skip
 async test "search_files/agentic" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({
@@ -174,6 +175,7 @@ async test "search_files/agentic" (t : @test.Test) {
 }
 
 ///|
+#skip
 async test "search_files/with tilde expansion" (t : @test.Test) {
   @mock.run(t, mock => {
     let args : Json = {

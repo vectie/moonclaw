@@ -168,7 +168,7 @@ test "add_line_number_to_diff" {
     #|\ No newline at end of file
     #|
   let numbered = add_line_number_to_diff(content)
-  debug_inspect(
+  inspect(
     numbered,
     content=(
       #|@@ -1,3 +1,4 @@
@@ -225,7 +225,7 @@ test "add_line_number_to_diff_insert" {
     #|\ No newline at end of file
     #|
   let numbered = add_line_number_to_diff(content)
-  debug_inspect(
+  inspect(
     numbered,
     content=(
       #|diff --git original modified
@@ -277,7 +277,7 @@ test "add_line_number_to_diff_no_hunks" {
     #|+++ b/file.txt
     #|
   let numbered = add_line_number_to_diff(content)
-  debug_inspect(
+  inspect(
     numbered,
     content=(
       #|diff --git a/file.txt b/file.txt
@@ -305,7 +305,7 @@ async test "add_line_number_to_diff_slash" (t : @test.Test) {
       #|line 4
       #|line 5 modified
       #|line 6 added
-    debug_inspect(
+    inspect(
       generate_git_diff(original~, modified~, line_number=false),
       content=(
         #|diff --git original modified
@@ -325,7 +325,7 @@ async test "add_line_number_to_diff_slash" (t : @test.Test) {
         #|\ No newline at end of file
       ),
     )
-    debug_inspect(
+    inspect(
       generate_git_diff(original~, modified~, line_number=true),
       content=(
         #|diff --git original modified
@@ -383,7 +383,7 @@ async test "add_line_number_to_diff_multiple_hunks" (t : @test.Test) {
       #|line 13
       #|line 14 modified
       #|line 15
-    debug_inspect(
+    inspect(
       generate_git_diff(original~, modified~, line_number=false),
       content=(
         #|diff --git original modified
@@ -407,7 +407,7 @@ async test "add_line_number_to_diff_multiple_hunks" (t : @test.Test) {
         #|\ No newline at end of file
       ),
     )
-    debug_inspect(
+    inspect(
       generate_git_diff(original~, modified~, line_number=true),
       content=(
         #|diff --git original modified

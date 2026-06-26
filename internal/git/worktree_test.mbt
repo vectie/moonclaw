@@ -40,7 +40,7 @@ async test "add_worktree/new-branch" (t : @test.Test) {
       ["branch", "--show-current"],
       cwd=mock.cwd.path() |> @pathx.join("worktree"),
     )
-    debug_inspect(
+    inspect(
       process.stdout,
       content=(
         #|new-branch

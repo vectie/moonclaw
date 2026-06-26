@@ -2261,14 +2261,14 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
       root |> @pathx.join("timeout"),
       AnalysisStepConfig::new(
         prompt="timeout",
-        policy=AnalysisPolicy::new(timeout_ms=Some(10)),
+        policy=AnalysisPolicy::new(timeout_ms=Some(1)),
       ),
     )
     timeout_engine.register_handler(
       analysis_step_handler(
         runtime=timeout_engine.runtime,
         executor=AnalysisExecutor::new(run=async fn(_request) {
-          @async.sleep(50)
+          @async.sleep(250)
           Ok({
             model_name: "default",
             content: "late",
@@ -2283,7 +2283,7 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
     inspect(
       match timeout_engine.execute_run("run-analysis-1", fn() { 300 }) {
         Err(error) =>
-          error.contains("Analysis step analyze timed out after 10ms")
+          error.contains("Analysis step analyze timed out after 1ms")
         Ok(_) => false
       },
       content="true",

@@ -13,11 +13,11 @@ test "parse_acp_chat_action recognizes control commands" {
 
 ///|
 test "render_acp_status reports missing and attached sessions" {
-  debug_inspect(
+  inspect(
     render_acp_status("channel:feishu:chat-1", [], []),
     content="No ACP session is bound to this chat.\nUse /acp-attach <target_id>.",
   )
-  debug_inspect(
+  inspect(
     render_acp_status(
       "channel:feishu:chat-1",
       [

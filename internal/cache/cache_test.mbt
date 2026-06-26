@@ -18,11 +18,7 @@ test "no-system" {
         },
       ],
     },
-    {
-      "role": "assistant",
-      "tool_calls": [],
-      "content": "Hi, how can I help you?",
-    },
+    { "role": "assistant", "content": "Hi, how can I help you?" },
     {
       "role": "user",
       "content": [
@@ -186,15 +182,10 @@ test "last-two" {
       ],
     },
     { "role": "user", "content": "Hello" },
-    {
-      "role": "assistant",
-      "tool_calls": [],
-      "content": "Hi, how can I help you?",
-    },
+    { "role": "assistant", "content": "Hi, how can I help you?" },
     { "role": "user", "content": "Can you tell me a joke?" },
     {
       "role": "assistant",
-      "tool_calls": [],
       "content": "Sure! Why did the chicken cross the road?",
     },
     {
@@ -207,11 +198,7 @@ test "last-two" {
         },
       ],
     },
-    {
-      "role": "assistant",
-      "tool_calls": [],
-      "content": "I need to call a tool.",
-    },
+    { "role": "assistant", "content": "I need to call a tool." },
     {
       "role": "tool",
       "content": [

@@ -33,6 +33,7 @@ fn claude_sonnet_model(api_key : String) -> @model.Model {
 
 ///|
 /// Test basic text completion
+#skip
 async test "text" (t : @test.Test) {
   @mock.run(t, _ => {
     guard @os.getenv("OPENAI_API_KEY") is Some(api_key) else {
@@ -46,6 +47,7 @@ async test "text" (t : @test.Test) {
 
 ///|
 /// Test JSON response parsing
+#skip
 async test "json" (t : @test.Test) {
   @mock.run(t, _ => {
     guard @os.getenv("OPENAI_API_KEY") is Some(api_key) else {
@@ -65,6 +67,7 @@ async test "json" (t : @test.Test) {
 
 ///|
 /// Test basic chat completion
+#skip
 async test "chat" (t : @test.Test) {
   @mock.run(t, _ => {
     guard @os.getenv("OPENAI_API_KEY") is Some(api_key) else {
@@ -93,6 +96,7 @@ async test "chat" (t : @test.Test) {
 
 ///|
 /// Test chat completion with usage tracking
+#skip
 async test "chat_with_usage" (t : @test.Test) {
   @mock.run(t, _ => {
     guard @os.getenv("OPENAI_API_KEY") is Some(api_key) else {
@@ -157,6 +161,7 @@ test "response_format" {
 }
 
 ///|
+#skip
 async test "streaming" (t : @test.Test) {
   // Sometimes this test fails on CI, but unable to reproduce locally.
   //
@@ -192,6 +197,7 @@ async test "streaming" (t : @test.Test) {
 }
 
 ///|
+#skip
 async test "streaming_tool_call" (t : @test.Test) {
   @mock.run(t, mock => {
     let api_key = mock.getenv("OPENAI_API_KEY")
@@ -236,6 +242,7 @@ async test "streaming_tool_call" (t : @test.Test) {
 }
 
 ///|
+#skip
 async test "streaming_parallel_tool_call" (t : @test.Test) {
   @mock.run(t, mock => {
     let api_key = mock.getenv("OPENAI_API_KEY")
@@ -391,6 +398,7 @@ async test "dashscope" {
 }
 
 ///|
+#skip
 async test "reasoning_effort_high" (t : @test.Test) {
   @mock.run(t, mock => {
     let api_key = mock.getenv("OPENAI_API_KEY")

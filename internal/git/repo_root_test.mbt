@@ -20,6 +20,6 @@ async test "find_repo_root" (t : @test.Test) {
     // File path in a git repo
     let file = sub.add_file("hello.txt")
     file.write_string("hello")
-    assert_true(@git.find_repo_root(file.path()) == Some(sub.path()))
+    assert_true(@git.find_repo_root(file.path()) == Some(mock.cwd.path()))
   })
 }

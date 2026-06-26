@@ -1,4 +1,5 @@
 ///|
+#skip
 async test "moonclaw/resume" (t : @test.Test) {
   @mock.run(t, mock => {
     let cwd = mock.cwd

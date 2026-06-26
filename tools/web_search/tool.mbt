@@ -340,7 +340,7 @@ pub fn new() -> @tool.Tool[WebSearchResult] {
 
 ///|
 test "url_encode_component encodes spaces and punctuation" {
-  debug_inspect(
+  inspect(
     url_encode_component("land acquisition? memo"),
     content="land+acquisition%3F+memo",
   )
@@ -352,11 +352,11 @@ test "parse_duckduckgo_result collects abstract and related topics" {
     "moonbit", "https://duckduckgo.com/?q=moonbit", "{\"AbstractText\":\"MoonBit is a programming language.\",\"AbstractURL\":\"https://example.test/moonbit\",\"Heading\":\"MoonBit\",\"RelatedTopics\":[{\"Text\":\"MoonBit docs\",\"FirstURL\":\"https://example.test/docs\"},{\"Name\":\"Nested\",\"Topics\":[{\"Text\":\"MoonBit repo\",\"FirstURL\":\"https://example.test/repo\"}]}]}",
     5,
   )
-  debug_inspect(
+  inspect(
     result.answer.unwrap_or(""),
     content="MoonBit is a programming language.",
   )
   debug_inspect(result.results.length(), content="3")
-  debug_inspect(result.results[0].title, content="MoonBit")
-  debug_inspect(result.results[1].url, content="https://example.test/docs")
+  inspect(result.results[0].title, content="MoonBit")
+  inspect(result.results[1].url, content="https://example.test/docs")
 }

@@ -41,7 +41,7 @@ async test "redirect-stdin" (t : @test.Test) {
   @mock.run(t, _ => {
     let process = @spawn.spawn("cat", [], stdin="Hello, World!\n")
     json_inspect(process.status, content=0)
-    debug_inspect(
+    inspect(
       process.stdout,
       content=(
         #|Hello, World!
