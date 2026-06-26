@@ -6,7 +6,7 @@ struct HttpTextResponse {
 
 ///|
 struct RobotRoutineRunOutput {
-  plan : @policy.RobotRoutinePlan
+  plan : @routine.RobotRoutinePlan
   invoked : Bool
   invocation : HttpTextResponse?
   message : String
@@ -85,7 +85,7 @@ async fn post_json(
 ///|
 async fn invoke_step(
   base_url : String,
-  step : @policy.RobotRoutineStep,
+  step : @routine.RobotRoutineStep,
 ) -> Result[HttpTextResponse, String] {
   if step.owner != "moonclaw" {
     return Err("MoonClaw cannot invoke a routine step owned by \{step.owner}")
@@ -105,7 +105,7 @@ async fn invoke_step(
 
 ///|
 fn print_plan_from_text(text : String) -> Unit {
-  match @policy.plan_routine_from_context_text(text) {
+  match @routine.plan_routine_from_context_text(text) {
     Ok(plan) => println(plan.to_json().stringify(indent=2))
     Err(message) => print_error(message)
   }
@@ -120,7 +120,7 @@ async fn run_live(base_url : String, invoke : Bool) -> Unit {
       return
     }
   }
-  let plan = match @policy.plan_routine_from_context_text(context) {
+  let plan = match @routine.plan_routine_from_context_text(context) {
     Ok(plan) => plan
     Err(message) => {
       print_error(message)

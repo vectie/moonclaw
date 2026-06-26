@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "vectie/moonclaw/robot_policy"
+package "vectie/moonclaw/robot_routine"
 
 import {
   "moonbitlang/core/debug",
@@ -14,7 +14,7 @@ pub fn plan_routine_from_context_text(String, now_ms? : Int64) -> Result[RobotRo
 // Errors
 
 // Types and methods
-pub(all) struct RobotPolicyDecision {
+pub(all) struct RobotRoutineDecision {
   decision_id : String
   status : String
   owner : String
@@ -37,7 +37,7 @@ pub(all) struct RobotRoutinePlan {
   step_count : Int
   steps : Array[RobotRoutineStep]
   next_step : RobotRoutineStep?
-  decision : RobotPolicyDecision
+  decision : RobotRoutineDecision
   message : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 

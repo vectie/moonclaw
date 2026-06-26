@@ -1,5 +1,5 @@
 ///|
-pub(all) struct RobotPolicyDecision {
+pub(all) struct RobotRoutineDecision {
   decision_id : String
   status : String
   owner : String
@@ -37,7 +37,7 @@ pub(all) struct RobotRoutinePlan {
   step_count : Int
   steps : Array[RobotRoutineStep]
   next_step : RobotRoutineStep?
-  decision : RobotPolicyDecision
+  decision : RobotRoutineDecision
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -265,7 +265,7 @@ fn work_decision(
   item : Json,
   context : Json,
   now_ms : Int64,
-) -> RobotPolicyDecision {
+) -> RobotRoutineDecision {
   let kind = string_field(item, "kind")
   let owner = if operator_kind(kind) { "operator" } else { "moonclaw" }
   let target = string_field(item, "target_path")
@@ -307,7 +307,7 @@ fn work_decision(
 }
 
 ///|
-fn ready_decision(context : Json, now_ms : Int64) -> RobotPolicyDecision {
+fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
   let status = gateway(context)
   let route = string_field(status, "next_route")
   let title = string_field(status, "next_title")
@@ -340,7 +340,7 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotPolicyDecision {
 }
 
 ///|
-fn idle_decision(now_ms : Int64) -> RobotPolicyDecision {
+fn idle_decision(now_ms : Int64) -> RobotRoutineDecision {
   {
     decision_id: decision_id("robot-policy-idle", "idle", now_ms),
     status: "idle",
@@ -362,7 +362,7 @@ fn idle_decision(now_ms : Int64) -> RobotPolicyDecision {
 fn select_route_from_context(
   payload : Json,
   now_ms? : Int64 = 0L,
-) -> RobotPolicyDecision {
+) -> RobotRoutineDecision {
   let context = context_body(payload)
   let item = next_work_item(context)
   match item {
@@ -483,7 +483,7 @@ fn memory_step(order : Int) -> RobotRoutineStep {
 ///|
 fn append_policy_step(
   steps : Array[RobotRoutineStep],
-  decision : RobotPolicyDecision,
+  decision : RobotRoutineDecision,
 ) -> Unit {
   if decision.status == "route-selected" &&
     decision.owner == "moonclaw" &&

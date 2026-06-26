@@ -43,7 +43,7 @@ The POST endpoints accept:
 
 `now_ms` is optional. The gateway fetches
 `{moonrobo_url}/api/moonclaw/context`, passes the context to
-`vectie/moonclaw/robot_policy`, and returns a multi-step routine plan plus
+`vectie/moonclaw/robot_routine`, and returns a multi-step routine plan plus
 invocation status. The durable `/run` endpoint also persists the selected plan,
 invocation result when present, stopped status, Moonrobo URL, and run path on
 the MoonClaw side. Conflict responses from `/run` include the persisted `run`

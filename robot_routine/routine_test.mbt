@@ -103,7 +103,7 @@ fn work_item(kind : String, target_path : String) -> Json {
 }
 
 ///|
-fn selected_decision(payload : Json, now_ms : Int64) -> RobotPolicyDecision {
+fn selected_decision(payload : Json, now_ms : Int64) -> RobotRoutineDecision {
   plan_routine_from_context(payload, now_ms~).decision
 }
 

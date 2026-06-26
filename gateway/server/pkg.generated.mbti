@@ -403,11 +403,11 @@ pub enum PipelineStatus {
 
 type PlanModeState derive(ToJson, @debug.Debug, @json.FromJson)
 
-type RobotPolicyGatewayRequest derive(Eq, ToJson, @debug.Debug)
-
-type RobotPolicyHttpTextResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+type RobotRoutineGatewayRequest derive(Eq, ToJson, @debug.Debug)
 
 type RobotRoutineGatewayResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type RobotRoutineHttpTextResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 type RobotRoutineRunRecord derive(Eq, ToJson, @debug.Debug)
 

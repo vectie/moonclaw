@@ -1,20 +1,20 @@
 ///|
-struct RobotPolicyGatewayRequest {
+struct RobotRoutineGatewayRequest {
   moonrobo_url : String
   now_ms : Int64?
 } derive(Debug, Eq, ToJson)
 
 ///|
-struct RobotPolicyHttpTextResponse {
+struct RobotRoutineHttpTextResponse {
   status : Int
   body : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
 struct RobotRoutineGatewayResponse {
-  plan : @robot_policy.RobotRoutinePlan
+  plan : @robot_routine.RobotRoutinePlan
   invoked : Bool
-  invocation : RobotPolicyHttpTextResponse?
+  invocation : RobotRoutineHttpTextResponse?
   message : String
 } derive(Debug, Eq, ToJson, FromJson)
 
@@ -25,8 +25,8 @@ struct RobotRoutineRunRecord {
   created_at_ms : Int64
   status : String
   invoked : Bool
-  invocation : RobotPolicyHttpTextResponse?
-  plan : @robot_policy.RobotRoutinePlan
+  invocation : RobotRoutineHttpTextResponse?
+  plan : @robot_routine.RobotRoutinePlan
   record_path : String
   message : String
 } derive(Debug, Eq, ToJson)
@@ -38,7 +38,7 @@ struct RobotRoutineRunsResponse {
 } derive(Debug, Eq, ToJson)
 
 ///|
-fn robot_policy_error(code : String, message : String) -> Json {
+fn robot_routine_error(code : String, message : String) -> Json {
   { "error": { "code": code, "message": message } }.to_json()
 }
 
@@ -113,10 +113,10 @@ fn robot_routine_object_field(
 fn robot_routine_optional_http_response_field(
   object : Map[String, Json],
   key : String,
-) -> Result[RobotPolicyHttpTextResponse?, String] {
+) -> Result[RobotRoutineHttpTextResponse?, String] {
   match object.get(key) {
     Some(Object(_) as value) => {
-      let response : RobotPolicyHttpTextResponse = @json.from_json(value) catch {
+      let response : RobotRoutineHttpTextResponse = @json.from_json(value) catch {
         error => return Err("invalid invocation field \{key}: \{error}")
       }
       Ok(Some(response))
@@ -137,7 +137,7 @@ fn robot_routine_run_record_from_json(
     Ok(value) => value
     Err(message) => return Err(message)
   }
-  let plan : @robot_policy.RobotRoutinePlan = @json.from_json(plan_json) catch {
+  let plan : @robot_routine.RobotRoutinePlan = @json.from_json(plan_json) catch {
     error => return Err("invalid plan field: \{error}")
   }
   Ok({
@@ -179,17 +179,17 @@ fn robot_routine_run_record_from_json(
 }
 
 ///|
-fn robot_policy_trim_base_url(base : String) -> String {
+fn robot_routine_trim_base_url(base : String) -> String {
   let trimmed = base.trim().to_owned()
   trimmed.trim_end(chars="/").to_owned()
 }
 
 ///|
-fn robot_policy_join_url(base : String, route : String) -> String {
+fn robot_routine_join_url(base : String, route : String) -> String {
   if route.has_prefix("http://") || route.has_prefix("https://") {
     route
   } else {
-    let clean = robot_policy_trim_base_url(base)
+    let clean = robot_routine_trim_base_url(base)
     if route.has_prefix("/") {
       "\{clean}\{route}"
     } else {
@@ -204,7 +204,7 @@ fn robot_routine_runs_dir(root : String) -> String {
 }
 
 ///|
-fn robot_routine_run_id(plan : @robot_policy.RobotRoutinePlan) -> String {
+fn robot_routine_run_id(plan : @robot_routine.RobotRoutinePlan) -> String {
   "robot-routine-run-\{plan.plan_id}"
   .replace(old="/", new="-")
   .replace(old=":", new="-")
@@ -218,9 +218,9 @@ fn robot_routine_run_path(root : String, run_id : String) -> String {
 
 ///|
 fn robot_routine_record_status(
-  plan : @robot_policy.RobotRoutinePlan,
+  plan : @robot_routine.RobotRoutinePlan,
   invoked : Bool,
-  invocation : RobotPolicyHttpTextResponse?,
+  invocation : RobotRoutineHttpTextResponse?,
 ) -> String {
   if invoked {
     match invocation {
@@ -236,18 +236,18 @@ fn robot_routine_record_status(
 ///|
 fn robot_routine_run_record(
   root : String,
-  params : RobotPolicyGatewayRequest,
-  plan : @robot_policy.RobotRoutinePlan,
+  params : RobotRoutineGatewayRequest,
+  plan : @robot_routine.RobotRoutinePlan,
   invoked : Bool,
-  invocation : RobotPolicyHttpTextResponse?,
+  invocation : RobotRoutineHttpTextResponse?,
   message : String,
   status? : String = "",
 ) -> RobotRoutineRunRecord {
   let run_id = robot_routine_run_id(plan)
   {
     run_id,
-    moonrobo_url: robot_policy_trim_base_url(params.moonrobo_url),
-    created_at_ms: robot_policy_now_ms(params),
+    moonrobo_url: robot_routine_trim_base_url(params.moonrobo_url),
+    created_at_ms: robot_routine_now_ms(params),
     status: if status != "" {
       status
     } else {
@@ -290,7 +290,7 @@ async fn Gateway::persist_robot_routine_run_or_raise(
       raise json_error(
         500,
         "InternalServerError",
-        robot_policy_error("robot_routine_ledger_failed", message),
+        robot_routine_error("robot_routine_ledger_failed", message),
       )
   }
 }
@@ -337,9 +337,9 @@ async fn list_robot_routine_runs(root : String) -> Array[RobotRoutineRunRecord] 
 }
 
 ///|
-fn robot_policy_decode_request_text(
+fn robot_routine_decode_request_text(
   text : String,
-) -> Result[RobotPolicyGatewayRequest, String] {
+) -> Result[RobotRoutineGatewayRequest, String] {
   let json = @json.parse(text) catch {
     error => return Err("invalid JSON: \{error}")
   }
@@ -368,7 +368,7 @@ fn robot_policy_decode_request_text(
 }
 
 ///|
-fn robot_policy_now_ms(params : RobotPolicyGatewayRequest) -> Int64 {
+fn robot_routine_now_ms(params : RobotRoutineGatewayRequest) -> Int64 {
   match params.now_ms {
     Some(now_ms) => now_ms
     None => current_time_ms().to_int64()
@@ -376,9 +376,9 @@ fn robot_policy_now_ms(params : RobotPolicyGatewayRequest) -> Int64 {
 }
 
 ///|
-async fn robot_policy_read_request(
+async fn robot_routine_read_request(
   r : @httpx.RequestReader,
-) -> RobotPolicyGatewayRequest {
+) -> RobotRoutineGatewayRequest {
   let body = r.body.read_all().binary()
   let text : String = @encoding/utf8.decode(body) catch {
     _ =>
@@ -389,21 +389,21 @@ async fn robot_policy_read_request(
         },
       })
   }
-  match robot_policy_decode_request_text(text) {
+  match robot_routine_decode_request_text(text) {
     Ok(params) => params
     Err(message) =>
       raise json_error(
         400,
         "BadRequest",
-        robot_policy_error("invalid_params", message),
+        robot_routine_error("invalid_params", message),
       )
   }
 }
 
 ///|
-async fn robot_policy_get_text(
+async fn robot_routine_get_text(
   url : String,
-) -> Result[RobotPolicyHttpTextResponse, String] {
+) -> Result[RobotRoutineHttpTextResponse, String] {
   let (response, data) = @http.get(url) catch {
     error => return Err("GET \{url} failed: \{error}")
   }
@@ -415,10 +415,10 @@ async fn robot_policy_get_text(
 }
 
 ///|
-async fn robot_policy_post_json(
+async fn robot_routine_post_json(
   url : String,
   body : String,
-) -> Result[RobotPolicyHttpTextResponse, String] {
+) -> Result[RobotRoutineHttpTextResponse, String] {
   let (response, data) = @http.post(url, body) catch {
     error => return Err("POST \{url} failed: \{error}")
   }
@@ -426,12 +426,12 @@ async fn robot_policy_post_json(
 }
 
 ///|
-async fn robot_policy_fetch_context(
+async fn robot_routine_fetch_context(
   base_url : String,
 ) -> Result[String, String] {
   match
-    robot_policy_get_text(
-      robot_policy_join_url(base_url, "/api/moonclaw/context"),
+    robot_routine_get_text(
+      robot_routine_join_url(base_url, "/api/moonclaw/context"),
     ) {
     Ok(response) => Ok(response.body)
     Err(message) => Err(message)
@@ -441,8 +441,8 @@ async fn robot_policy_fetch_context(
 ///|
 async fn robot_routine_invoke_step(
   base_url : String,
-  step : @robot_policy.RobotRoutineStep,
-) -> Result[RobotPolicyHttpTextResponse, String] {
+  step : @robot_routine.RobotRoutineStep,
+) -> Result[RobotRoutineHttpTextResponse, String] {
   if step.owner != "moonclaw" {
     return Err("MoonClaw cannot invoke a routine step owned by \{step.owner}")
   }
@@ -451,10 +451,10 @@ async fn robot_routine_invoke_step(
       "selected routine step allows physical execution; explicit safety-gated invocation is not implemented yet",
     )
   }
-  let url = robot_policy_join_url(base_url, step.route)
+  let url = robot_routine_join_url(base_url, step.route)
   match step.http_method {
-    "GET" => robot_policy_get_text(url)
-    "POST" => robot_policy_post_json(url, step.request_body)
+    "GET" => robot_routine_get_text(url)
+    "POST" => robot_routine_post_json(url, step.request_body)
     route_method => Err("unsupported Moonrobo route method \{route_method}")
   }
 }
@@ -466,28 +466,28 @@ async fn Gateway::select_robot_routine(
   invoke : Bool,
 ) -> RobotRoutineGatewayResponse {
   ignore(self)
-  let params = robot_policy_read_request(r)
-  let base_url = robot_policy_trim_base_url(params.moonrobo_url)
-  let context = match robot_policy_fetch_context(base_url) {
+  let params = robot_routine_read_request(r)
+  let base_url = robot_routine_trim_base_url(params.moonrobo_url)
+  let context = match robot_routine_fetch_context(base_url) {
     Ok(context) => context
     Err(message) =>
       raise json_error(
         502,
         "BadGateway",
-        robot_policy_error("moonrobo_context_unavailable", message),
+        robot_routine_error("moonrobo_context_unavailable", message),
       )
   }
   let plan = match
-    @robot_policy.plan_routine_from_context_text(
+    @robot_routine.plan_routine_from_context_text(
       context,
-      now_ms=robot_policy_now_ms(params),
+      now_ms=robot_routine_now_ms(params),
     ) {
     Ok(plan) => plan
     Err(message) =>
       raise json_error(
         422,
         "UnprocessableEntity",
-        robot_policy_error("robot_routine_failed", message),
+        robot_routine_error("robot_routine_failed", message),
       )
   }
   if !invoke {
@@ -504,7 +504,7 @@ async fn Gateway::select_robot_routine(
       raise json_error(
         409,
         "Conflict",
-        robot_policy_error(
+        robot_routine_error(
           "robot_routine_idle", "routine plan has no next step",
         ),
       )
@@ -515,7 +515,7 @@ async fn Gateway::select_robot_routine(
       raise json_error(
         409,
         "Conflict",
-        robot_policy_error("robot_routine_invocation_blocked", message),
+        robot_routine_error("robot_routine_invocation_blocked", message),
       )
   }
   {
@@ -531,28 +531,28 @@ async fn Gateway::run_robot_routine(
   self : Gateway,
   r : @httpx.RequestReader,
 ) -> RobotRoutineRunRecord {
-  let params = robot_policy_read_request(r)
-  let base_url = robot_policy_trim_base_url(params.moonrobo_url)
-  let context = match robot_policy_fetch_context(base_url) {
+  let params = robot_routine_read_request(r)
+  let base_url = robot_routine_trim_base_url(params.moonrobo_url)
+  let context = match robot_routine_fetch_context(base_url) {
     Ok(context) => context
     Err(message) =>
       raise json_error(
         502,
         "BadGateway",
-        robot_policy_error("moonrobo_context_unavailable", message),
+        robot_routine_error("moonrobo_context_unavailable", message),
       )
   }
   let plan = match
-    @robot_policy.plan_routine_from_context_text(
+    @robot_routine.plan_routine_from_context_text(
       context,
-      now_ms=robot_policy_now_ms(params),
+      now_ms=robot_routine_now_ms(params),
     ) {
     Ok(plan) => plan
     Err(message) =>
       raise json_error(
         422,
         "UnprocessableEntity",
-        robot_policy_error("robot_routine_failed", message),
+        robot_routine_error("robot_routine_failed", message),
       )
   }
   let step = match plan.next_step {
@@ -679,7 +679,7 @@ async fn Gateway::handle_get_robot_routine_run(
       raise json_error(
         404,
         "NotFound",
-        robot_policy_error("robot_routine_run_not_found", message),
+        robot_routine_error("robot_routine_run_not_found", message),
       )
   }
   w.header().set("Content-Type", "application/json")

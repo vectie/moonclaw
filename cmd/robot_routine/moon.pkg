@@ -2,7 +2,7 @@ import {
   "moonbitlang/async",
   "moonbitlang/async/http",
   "moonbitlang/core/json",
-  "vectie/moonclaw/robot_policy" @policy,
+  "vectie/moonclaw/robot_routine" @routine,
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
 }

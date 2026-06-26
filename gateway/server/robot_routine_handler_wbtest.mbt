@@ -1,15 +1,15 @@
 ///|
-test "robot policy joins Moonrobo base URL and route" {
+test "robot routine joins Moonrobo base URL and route" {
   assert_eq(
-    robot_policy_join_url(" http://127.0.0.1:5192/ ", "/api/moonclaw/context"),
+    robot_routine_join_url(" http://127.0.0.1:5192/ ", "/api/moonclaw/context"),
     "http://127.0.0.1:5192/api/moonclaw/context",
   )
   assert_eq(
-    robot_policy_join_url("http://127.0.0.1:5192", "api/moonrobo/ask"),
+    robot_routine_join_url("http://127.0.0.1:5192", "api/moonrobo/ask"),
     "http://127.0.0.1:5192/api/moonrobo/ask",
   )
   assert_eq(
-    robot_policy_join_url(
+    robot_routine_join_url(
       "http://127.0.0.1:5192", "http://127.0.0.1:5193/api/moonclaw/context",
     ),
     "http://127.0.0.1:5193/api/moonclaw/context",
@@ -18,7 +18,7 @@ test "robot policy joins Moonrobo base URL and route" {
 
 ///|
 test "robot policy request requires Moonrobo URL" {
-  let params = robot_policy_decode_request_text(
+  let params = robot_routine_decode_request_text(
     "{\"moonrobo_url\":\"http://127.0.0.1:5192\",\"now_ms\":42}",
   )
   match params {
@@ -28,15 +28,15 @@ test "robot policy request requires Moonrobo URL" {
     }
     Err(message) => abort("expected valid robot policy request: \{message}")
   }
-  let missing = robot_policy_decode_request_text(
+  let missing = robot_routine_decode_request_text(
     { "moonrobo_url": " " }.to_json().stringify(),
   )
   assert_true(missing is Err(_))
 }
 
 ///|
-fn sample_robot_routine_plan() -> @robot_policy.RobotRoutinePlan {
-  let decision : @robot_policy.RobotPolicyDecision = {
+fn sample_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
+  let decision : @robot_routine.RobotRoutineDecision = {
     decision_id: "robot-policy-work-submit-gateway-command-42",
     status: "route-selected",
     owner: "moonclaw",
@@ -51,7 +51,7 @@ fn sample_robot_routine_plan() -> @robot_policy.RobotRoutinePlan {
     physical_execution_allowed: false,
     message: "MoonClaw selected the next route.",
   }
-  let step : @robot_policy.RobotRoutineStep = {
+  let step : @robot_routine.RobotRoutineStep = {
     step_id: "routine-step-gateway-command",
     order: 1,
     kind: "submit-gateway-command",
@@ -76,8 +76,8 @@ fn sample_robot_routine_plan() -> @robot_policy.RobotRoutinePlan {
 }
 
 ///|
-fn sample_idle_robot_routine_plan() -> @robot_policy.RobotRoutinePlan {
-  let decision : @robot_policy.RobotPolicyDecision = {
+fn sample_idle_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
+  let decision : @robot_routine.RobotRoutineDecision = {
     decision_id: "robot-policy-idle-idle-43",
     status: "idle",
     owner: "moontown",
@@ -111,7 +111,7 @@ async test "robot routine run ledger writes reads and lists records" {
     error => abort("failed to create test root: \{error}")
   }
   let plan = sample_robot_routine_plan()
-  let params : RobotPolicyGatewayRequest = {
+  let params : RobotRoutineGatewayRequest = {
     moonrobo_url: " http://127.0.0.1:5192/ ",
     now_ms: Some(42L),
   }
@@ -148,7 +148,7 @@ async test "robot routine run ledger records stopped attempts" {
   @fsx.make_directory(root, recursive=true, exists_ok=true) catch {
     error => abort("failed to create test root: \{error}")
   }
-  let params : RobotPolicyGatewayRequest = {
+  let params : RobotRoutineGatewayRequest = {
     moonrobo_url: "http://127.0.0.1:5192",
     now_ms: Some(43L),
   }
