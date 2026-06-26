@@ -60,6 +60,36 @@ fn tool_registry() -> Json {
 }
 
 ///|
+fn tool_registry_without_memory() -> Json {
+  {
+    "registry_id": Json::string("tool-registry-no-memory"),
+    "robot_id": Json::string("noetix-e1-lab-01"),
+    "generated_at_ms": (1000).to_json(),
+    "provider_count": (1).to_json(),
+    "capability_count": (4).to_json(),
+    "providers": [
+      {
+        "provider_id": Json::string("moonrobo-host-api"),
+        "label": Json::string("Moonrobo Host API"),
+        "kind": Json::string("moonrobo-runtime"),
+        "robot_id": Json::string("noetix-e1-lab-01"),
+        "endpoint_base": Json::string("/api"),
+        "memory_required": true.to_json(),
+        "registered_at_ms": (1000).to_json(),
+        "capabilities": [
+          capability("POST", "/api/runtime/validation/session"),
+          capability("POST", "/api/moonrobo/gateway/command"),
+          capability("POST", "/api/moonrobo/proof-session"),
+          capability_with_mode(
+            "POST", "/api/moonrobo/executions/feedback", "operator-verification",
+          ),
+        ].to_json(),
+      }.to_json(),
+    ].to_json(),
+  }.to_json()
+}
+
+///|
 fn context_with_work(kind : String, target_path : String) -> Json {
   {
     "context": {
@@ -576,6 +606,60 @@ test "robot routine plan sequences gateway proof feedback and memory" {
   assert_eq(plan.steps[2].kind, "bind-execution-feedback")
   assert_eq(plan.steps[2].owner, "operator")
   assert_eq(plan.steps[3].kind, "remember-robot-context")
+}
+
+///|
+test "robot routine plan blocks unregistered generated remainder steps" {
+  let plan = plan_routine_from_context(
+    {
+      "context": {
+        "robot_id": "noetix-e1-lab-01",
+        "tool_registry": tool_registry_without_memory(),
+        "task_intent": {
+          "has_task": true,
+          "task_id": "message-routine-test",
+          "message_id": "routine-test",
+          "goal": "inspect the tool bench",
+          "classification": "command-review",
+          "stage": "ready-to-prove",
+          "next_route": "/api/moonrobo/gateway/command",
+          "requires_review": false,
+          "physical_execution_allowed": false,
+          "message_path": "/moonbook/task-messages/message-routine-test.json",
+          "created_at_ms": 1000,
+        },
+        "platform_queue": {
+          "item_count": 1,
+          "items": [
+            work_item("submit-gateway-command", "/api/moonrobo/gateway/command"),
+          ],
+        },
+        "gateway": {
+          "status": "ready-for-command",
+          "next_method": "POST",
+          "next_route": "/api/moonrobo/proof-session",
+          "next_title": "Run proof session",
+          "can_submit_gateway_command": true,
+          "physical_execution_allowed": false,
+        },
+      },
+      "live_readiness": {
+        "status": "ready-for-proof-session",
+        "can_run_proof_session": true,
+        "can_submit_gateway_command": true,
+        "proof_session_feedback_closed": true,
+      },
+    },
+    now_ms=1019L,
+  )
+  assert_eq(plan.status, "ready")
+  assert_eq(plan.step_count, 3)
+  assert_eq(plan.steps[0].kind, "submit-gateway-command")
+  assert_eq(plan.steps[1].kind, "run-proof-session")
+  assert_eq(plan.steps[2].owner, "operator")
+  assert_eq(plan.steps[2].kind, "register-remember-robot-context")
+  assert_eq(plan.steps[2].route, "/api/tools/registry")
+  assert_true(plan.steps[2].reason.contains("unregistered route"))
 }
 
 ///|

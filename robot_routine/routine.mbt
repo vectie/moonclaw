@@ -654,6 +654,84 @@ fn routine_step(
 }
 
 ///|
+fn registry_blocker_step(
+  order : Int,
+  kind : String,
+  http_method : String,
+  route : String,
+  reason : String,
+) -> RobotRoutineStep {
+  routine_step(
+    "routine-step-registry-blocker-\{kind}",
+    order,
+    "register-\{kind}",
+    "operator",
+    "needs-operator",
+    "GET",
+    "/api/tools/registry",
+    "",
+    "\{reason}; MoonClaw will not plan unregistered route \{http_method} \{route}.",
+  )
+}
+
+///|
+fn operator_mode_step(
+  order : Int,
+  kind : String,
+  http_method : String,
+  route : String,
+  mode : String,
+  reason : String,
+) -> RobotRoutineStep {
+  routine_step(
+    "routine-step-operator-mode-\{kind}",
+    order,
+    kind,
+    "operator",
+    "needs-operator",
+    "GET",
+    route,
+    "",
+    "\{reason}; registered execution mode \{mode} requires an operator-visible control for \{http_method} \{route}.",
+  )
+}
+
+///|
+fn append_registered_moonclaw_step(
+  steps : Array[RobotRoutineStep],
+  context : Json,
+  step : RobotRoutineStep,
+) -> Unit {
+  match route_capability_execution_mode(context, step.http_method, step.route) {
+    None =>
+      steps.push(
+        registry_blocker_step(
+          steps.length() + 1,
+          step.kind,
+          step.http_method,
+          step.route,
+          step.reason,
+        ),
+      )
+    Some(mode) =>
+      if operator_execution_mode(mode) {
+        steps.push(
+          operator_mode_step(
+            steps.length() + 1,
+            step.kind,
+            step.http_method,
+            step.route,
+            mode,
+            step.reason,
+          ),
+        )
+      } else {
+        steps.push(step)
+      }
+  }
+}
+
+///|
 fn validation_step(order : Int) -> RobotRoutineStep {
   routine_step(
     "routine-step-runtime-validation",
@@ -761,7 +839,11 @@ fn append_remainder_steps(
   let status = string_field(readiness, "status")
   if status == "needs-runtime-validation" {
     if !steps.any(step => step.route == "/api/runtime/validation/session") {
-      steps.push(validation_step(steps.length() + 1))
+      append_registered_moonclaw_step(
+        steps,
+        context,
+        validation_step(steps.length() + 1),
+      )
     }
     return
   }
@@ -783,16 +865,28 @@ fn append_remainder_steps(
   }
   if bool_field(readiness, "can_submit_gateway_command") &&
     !steps.any(step => step.route == "/api/moonrobo/gateway/command") {
-    steps.push(gateway_step(context, now_ms, steps.length() + 1))
+    append_registered_moonclaw_step(
+      steps,
+      context,
+      gateway_step(context, now_ms, steps.length() + 1),
+    )
   }
   if bool_field(readiness, "can_run_proof_session") &&
     !steps.any(step => step.route == "/api/moonrobo/proof-session") {
-    steps.push(proof_step(context, now_ms, steps.length() + 1))
+    append_registered_moonclaw_step(
+      steps,
+      context,
+      proof_step(context, now_ms, steps.length() + 1),
+    )
   }
   if !bool_field(readiness, "proof_session_feedback_closed") {
     steps.push(feedback_step(steps.length() + 1))
   }
-  steps.push(memory_step(steps.length() + 1))
+  append_registered_moonclaw_step(
+    steps,
+    context,
+    memory_step(steps.length() + 1),
+  )
 }
 
 ///|
