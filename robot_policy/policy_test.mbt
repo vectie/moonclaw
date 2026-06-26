@@ -118,6 +118,18 @@ test "robot policy falls back to gateway route when queue is empty" {
 }
 
 ///|
+test "robot policy skips Moonrobo aggregate live exercise work" {
+  let decision = select_route_from_context(
+    context_with_work("run-live-exercise", "/api/moonrobo/live-exercise"),
+    now_ms=1006L,
+  )
+  assert_eq(decision.status, "route-selected")
+  assert_eq(decision.owner, "moonclaw")
+  assert_eq(decision.route, "/api/moonrobo/proof-session")
+  assert_eq(decision.request_body, "{}")
+}
+
+///|
 test "robot policy idles without queue or ready gateway route" {
   let decision = select_route_from_context(
     {

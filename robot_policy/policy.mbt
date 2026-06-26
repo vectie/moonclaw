@@ -105,6 +105,11 @@ fn operator_kind(kind : String) -> Bool {
 }
 
 ///|
+fn unsupported_aggregate_kind(kind : String) -> Bool {
+  kind == "run-live-exercise"
+}
+
+///|
 fn decision_id(prefix : String, kind : String, now_ms : Int64) -> String {
   "\{prefix}-\{kind}-\{now_ms}"
   .replace(old="/", new="-")
@@ -265,7 +270,8 @@ pub fn select_route_from_context(
   let context = context_body(payload)
   let item = next_work_item(context)
   match item {
-    Object(object) if object.length() > 0 =>
+    Object(object) if object.length() > 0 &&
+      !unsupported_aggregate_kind(string_field(item, "kind")) =>
       work_decision(item, context, now_ms)
     _ => {
       let status = gateway(context)
