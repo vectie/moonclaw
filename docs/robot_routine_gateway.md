@@ -25,9 +25,12 @@ still require an explicit safety-gated execution path.
 `POST /v1/robot/routine/run` is the durable closed-loop entrypoint. It plans the
 routine, invokes the next safe MoonClaw-owned step when one is available, and
 writes the run record under MoonClaw's `.moonclaw/robot-routine-runs/` ledger.
-After a successful safe invocation it also refreshes MoonBook memory through
-Moonrobo's explicit `/api/moonbook/remember` route and stores that response in
-the same run record, then reads Moonrobo context again. Each durable run records
+After a successful safe invocation it refreshes MoonBook memory only when the
+planned routine contains a registered MoonClaw-owned
+`POST /api/moonbook/remember` step. That prevents memory refresh from becoming
+a hidden side-effect outside the Moonrobo tool registry. When allowed, the
+refresh response is stored in the same run record, then MoonClaw reads Moonrobo
+context again. Each durable run records
 `context_before`; successful memory-closed runs also record `context_after`.
 Idle plans, operator-owned blockers, memory-refresh failures, context-refresh
 failures, and physical-execution blocks are persisted before the endpoint
@@ -106,6 +109,7 @@ loop is:
    blocker.
 4. Moonrobo persists command receipts, proof sessions, feedback, and MoonBook
    memory; MoonClaw's durable `/run` endpoint refreshes MoonBook memory after a
-   successful safe route invocation.
+   successful safe route invocation only when that refresh was part of the
+   registered routine plan.
 5. MoonClaw stores the updated context in the run record and repeats from the
    next Moonrobo context read.

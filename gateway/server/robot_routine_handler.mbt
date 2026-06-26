@@ -511,13 +511,27 @@ async fn robot_routine_refresh_memory(
 }
 
 ///|
+fn robot_routine_plan_allows_memory_refresh(
+  plan : @robot_routine.RobotRoutinePlan,
+) -> Bool {
+  plan.steps.any(step => {
+    step.owner == "moonclaw" &&
+    step.http_method == "POST" &&
+    step.route == "/api/moonbook/remember"
+  })
+}
+
+///|
 async fn robot_routine_memory_refresh_after_invocation(
   base_url : String,
+  plan : @robot_routine.RobotRoutinePlan,
   step : @robot_routine.RobotRoutineStep,
   invocation : RobotRoutineHttpTextResponse,
 ) -> Result[RobotRoutineHttpTextResponse, String] {
   if step.route == "/api/moonbook/remember" {
     Ok(invocation)
+  } else if !robot_routine_plan_allows_memory_refresh(plan) {
+    Err("MoonBook memory refresh is not registered for this robot routine plan")
   } else {
     robot_routine_refresh_memory(base_url)
   }
@@ -674,7 +688,9 @@ async fn Gateway::run_robot_routine(
     }
   }
   let memory_refresh = match
-    robot_routine_memory_refresh_after_invocation(base_url, step, invocation) {
+    robot_routine_memory_refresh_after_invocation(
+      base_url, plan, step, invocation,
+    ) {
     Ok(response) => response
     Err(message) => {
       let record = robot_routine_run_record(

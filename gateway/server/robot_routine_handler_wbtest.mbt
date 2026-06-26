@@ -105,6 +105,36 @@ fn sample_idle_robot_routine_plan() -> @robot_routine.RobotRoutinePlan {
 }
 
 ///|
+fn sample_robot_routine_plan_with_memory() -> @robot_routine.RobotRoutinePlan {
+  let plan = sample_robot_routine_plan()
+  let memory_step : @robot_routine.RobotRoutineStep = {
+    step_id: "routine-step-remember",
+    order: 2,
+    kind: "remember-robot-context",
+    owner: "moonclaw",
+    status: "pending",
+    http_method: "POST",
+    route: "/api/moonbook/remember",
+    request_body: "{}",
+    reason: "Persist MoonBook memory after robot evidence changes.",
+    physical_execution_allowed: false,
+  }
+  { ..plan, step_count: 2, steps: [plan.steps[0], memory_step] }
+}
+
+///|
+test "robot routine runner requires registered memory refresh step" {
+  assert_true(
+    !robot_routine_plan_allows_memory_refresh(sample_robot_routine_plan()),
+  )
+  assert_true(
+    robot_routine_plan_allows_memory_refresh(
+      sample_robot_routine_plan_with_memory(),
+    ),
+  )
+}
+
+///|
 async test "robot routine run ledger writes reads and lists records" {
   let root = "/tmp/moonclaw-robot-routine-ledger-test"
   @fsx.make_directory(root, recursive=true, exists_ok=true) catch {
