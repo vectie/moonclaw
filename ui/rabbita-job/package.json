@@ -5,6 +5,6 @@
   },
   "type": "module",
   "dependencies": {
-    "@rabbita/vite": "^0.1.0"
+    "@rabbita/vite": "^0.2.0"
   }
 }

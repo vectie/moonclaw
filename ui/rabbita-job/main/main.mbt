@@ -751,7 +751,6 @@ fn render_runs_panel(dispatch : Dispatch[Msg], model : Model) -> Html {
             placeholder="Search run id, job id, or summary",
             value=model.runs_query,
             on_input=value => dispatch(SetRunsQuery(value)),
-            nothing,
           ),
         ]),
         div(class="tree-controls", [

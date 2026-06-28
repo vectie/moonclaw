@@ -10,39 +10,21 @@ import {
 // Errors
 
 // Types and methods
-type AcpUiEventsPayload
-pub impl Show for AcpUiEventsPayload
-pub impl @json.FromJson for AcpUiEventsPayload
+type AcpUiEventsPayload derive(Show, @json.FromJson)
 
-type AcpUiNode
-pub impl Show for AcpUiNode
-pub impl @json.FromJson for AcpUiNode
+type AcpUiNode derive(Show, @json.FromJson)
 
-type AcpUiNodeKind
-pub impl Compare for AcpUiNodeKind
-pub impl Eq for AcpUiNodeKind
-pub impl Show for AcpUiNodeKind
-pub impl @json.FromJson for AcpUiNodeKind
+type AcpUiNodeKind derive(Compare, Eq, Show, @json.FromJson)
 
-type AcpUiSnapshot
-pub impl Show for AcpUiSnapshot
-pub impl @json.FromJson for AcpUiSnapshot
+type AcpUiSnapshot derive(Show, @json.FromJson)
 
-type AcpUiSnapshotPayload
-pub impl Show for AcpUiSnapshotPayload
-pub impl @json.FromJson for AcpUiSnapshotPayload
+type AcpUiSnapshotPayload derive(Show, @json.FromJson)
 
-type AcpUiTimelineEntry
-pub impl Show for AcpUiTimelineEntry
-pub impl @json.FromJson for AcpUiTimelineEntry
+type AcpUiTimelineEntry derive(Show, @json.FromJson)
 
-type BrowserCopyResult
-pub impl Show for BrowserCopyResult
-pub impl @json.FromJson for BrowserCopyResult
+type BrowserCopyResult derive(Show, @json.FromJson)
 
-type BrowserLocalUploadBatch
-pub impl Show for BrowserLocalUploadBatch
-pub impl @json.FromJson for BrowserLocalUploadBatch
+type BrowserLocalUploadBatch derive(Show, @json.FromJson)
 
 type CanvasEdgeLayout
 
@@ -58,49 +40,27 @@ type CompanyLaneEntry
 
 type CompanyLaneStats
 
-type CoworkContextChip
-pub impl Show for CoworkContextChip
+type CoworkContextChip derive(Show)
 
-type CoworkLocalUpload
-pub impl Show for CoworkLocalUpload
-pub impl @json.FromJson for CoworkLocalUpload
+type CoworkLocalUpload derive(Show, @json.FromJson)
 
-type CoworkMessage
-pub impl Show for CoworkMessage
-pub impl @json.FromJson for CoworkMessage
+type CoworkMessage derive(Show, @json.FromJson)
 
-type CoworkPanel
-pub impl Compare for CoworkPanel
-pub impl Eq for CoworkPanel
-pub impl Show for CoworkPanel
+type CoworkPanel derive(Compare, Eq, Show)
 
-type CoworkProposalRef
-pub impl Show for CoworkProposalRef
-pub impl @json.FromJson for CoworkProposalRef
+type CoworkProposalRef derive(Show, @json.FromJson)
 
-type CoworkRunRef
-pub impl Show for CoworkRunRef
-pub impl @json.FromJson for CoworkRunRef
+type CoworkRunRef derive(Show, @json.FromJson)
 
-type CoworkSessionDetail
-pub impl Show for CoworkSessionDetail
-pub impl @json.FromJson for CoworkSessionDetail
+type CoworkSessionDetail derive(Show, @json.FromJson)
 
-type CoworkSessionPayload
-pub impl Show for CoworkSessionPayload
-pub impl @json.FromJson for CoworkSessionPayload
+type CoworkSessionPayload derive(Show, @json.FromJson)
 
-type CoworkSessionSummary
-pub impl Show for CoworkSessionSummary
-pub impl @json.FromJson for CoworkSessionSummary
+type CoworkSessionSummary derive(Show, @json.FromJson)
 
-type CoworkSessionsPayload
-pub impl Show for CoworkSessionsPayload
-pub impl @json.FromJson for CoworkSessionsPayload
+type CoworkSessionsPayload derive(Show, @json.FromJson)
 
-type LoadedArtifact
-pub impl Show for LoadedArtifact
-pub impl @json.FromJson for LoadedArtifact
+type LoadedArtifact derive(Show, @json.FromJson)
 
 type MixedHandoffGroup
 
@@ -110,91 +70,49 @@ type Msg
 
 type NodeEventStats
 
-type QueuedCoworkDraft
-pub impl Show for QueuedCoworkDraft
+type QueuedCoworkDraft derive(Show)
 
-type RightPanel
-pub impl Compare for RightPanel
-pub impl Eq for RightPanel
-pub impl Show for RightPanel
+type RightPanel derive(Compare, Eq, Show)
 
 type Route
 
-type RunSort
-pub impl Compare for RunSort
-pub impl Eq for RunSort
-pub impl Show for RunSort
+type RunSort derive(Compare, Eq, Show)
 
-type RunSummary
-pub impl Show for RunSummary
-pub impl @json.FromJson for RunSummary
+type RunSummary derive(Show, @json.FromJson)
 
-type RunsPayload
-pub impl Show for RunsPayload
-pub impl @json.FromJson for RunsPayload
+type RunsPayload derive(Show, @json.FromJson)
 
-type StreamDrainPayload
-pub impl Show for StreamDrainPayload
-pub impl @json.FromJson for StreamDrainPayload
+type StreamDrainPayload derive(Show, @json.FromJson)
 
-type Surface
-pub impl Compare for Surface
-pub impl Eq for Surface
-pub impl Show for Surface
+type Surface derive(Compare, Eq, Show)
 
 type TimelineGroup
 
-type UiArtifact
-pub impl Show for UiArtifact
-pub impl @json.FromJson for UiArtifact
+type UiArtifact derive(Show, @json.FromJson)
 
-type UiEventsPayload
-pub impl Show for UiEventsPayload
-pub impl @json.FromJson for UiEventsPayload
+type UiEventsPayload derive(Show, @json.FromJson)
 
-type UiHandoff
-pub impl Show for UiHandoff
-pub impl @json.FromJson for UiHandoff
+type UiHandoff derive(Show, @json.FromJson)
 
-type UiMemory
-pub impl Show for UiMemory
-pub impl @json.FromJson for UiMemory
+type UiMemory derive(Show, @json.FromJson)
 
-type UiNode
-pub impl Show for UiNode
-pub impl @json.FromJson for UiNode
+type UiNode derive(Show, @json.FromJson)
 
-type UiRemoteLink
-pub impl Show for UiRemoteLink
-pub impl @json.FromJson for UiRemoteLink
+type UiRemoteLink derive(Show, @json.FromJson)
 
-type UiRun
-pub impl Show for UiRun
-pub impl @json.FromJson for UiRun
+type UiRun derive(Show, @json.FromJson)
 
-type UiSnapshot
-pub impl Show for UiSnapshot
-pub impl @json.FromJson for UiSnapshot
+type UiSnapshot derive(Show, @json.FromJson)
 
-type UiSnapshotPayload
-pub impl Show for UiSnapshotPayload
-pub impl @json.FromJson for UiSnapshotPayload
+type UiSnapshotPayload derive(Show, @json.FromJson)
 
-type UiTimelineEntry
-pub impl Show for UiTimelineEntry
-pub impl @json.FromJson for UiTimelineEntry
+type UiTimelineEntry derive(Show, @json.FromJson)
 
-type UiWorkspaceFile
-pub impl Show for UiWorkspaceFile
-pub impl @json.FromJson for UiWorkspaceFile
+type UiWorkspaceFile derive(Show, @json.FromJson)
 
-type UiWorkspaceSnapshot
-pub impl Show for UiWorkspaceSnapshot
-pub impl @json.FromJson for UiWorkspaceSnapshot
+type UiWorkspaceSnapshot derive(Show, @json.FromJson)
 
-type UiWorkspaceSnapshotPayload
-pub impl Show for UiWorkspaceSnapshotPayload
-pub impl @json.FromJson for UiWorkspaceSnapshotPayload
+type UiWorkspaceSnapshotPayload derive(Show, @json.FromJson)
 
 // Type aliases
 

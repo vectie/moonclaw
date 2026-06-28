@@ -120,7 +120,6 @@ fn render_cowork_sidebar(dispatch : Dispatch[Msg], model : Model) -> Html {
         value=model.cowork_session_query,
         on_input=value => dispatch(SetCoworkSessionQuery(value)),
         placeholder="Search conversations",
-        nothing,
       ),
       if model.cowork_sessions_loading {
         p(class="empty", "Loading conversations...")
@@ -558,28 +557,24 @@ fn render_cowork_run_panel(
           value=model.cowork_title_override,
           on_input=value => dispatch(SetCoworkTitleOverride(value)),
           placeholder="Conversation title",
-          nothing,
         ),
         input(
           class="runs-search-input cowork-config-input",
           value=model.cowork_model_override,
           on_input=value => dispatch(SetCoworkModelOverride(value)),
           placeholder="Model override",
-          nothing,
         ),
         input(
           class="runs-search-input cowork-config-input",
           value=model.cowork_provider_override,
           on_input=value => dispatch(SetCoworkProviderOverride(value)),
           placeholder="Provider override",
-          nothing,
         ),
         input(
           class="runs-search-input cowork-config-input cowork-config-cwd",
           value=model.cowork_cwd_override,
           on_input=value => dispatch(SetCoworkCwdOverride(value)),
           placeholder="Working directory",
-          nothing,
         ),
       ]),
       div(class="cowork-action-row", [

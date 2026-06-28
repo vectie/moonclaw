@@ -928,7 +928,6 @@ fn render_acp_detail(dispatch : Dispatch[Msg], model : Model) -> Html {
                             placeholder="Message for remote ACP run",
                             value=model.acp_run_message,
                             on_input=value => dispatch(SetAcpRunMessage(value)),
-                            nothing,
                           ),
                           render_acp_action_bar(dispatch, model, node),
                         ])

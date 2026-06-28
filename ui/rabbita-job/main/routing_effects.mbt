@@ -885,11 +885,16 @@ fn parse_acp_stream_drain_payload(
 
 ///|
 fn fetch_runs(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, Array[RunSummary]] = @http.Expecting::Json(
-    fn(result) { dispatch(RunsLoaded(result)) },
-    parse_runs_payload,
-  )
-  @http.get("\{gateway_base}/v1/jobs/runs", expect~)
+  @http.get("\{gateway_base}/v1/jobs/runs").expect_json(fn(result) {
+    dispatch(
+      RunsLoaded(
+        match result {
+          Ok(json) => parse_runs_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -898,11 +903,19 @@ fn fetch_artifact(
   gateway_base : String,
   artifact_id : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, LoadedArtifact] = @http.Expecting::Json(
-    fn(result) { dispatch(ArtifactLoaded(artifact_id, result)) },
-    parse_loaded_artifact_payload,
-  )
-  @http.get("\{gateway_base}/v1/artifacts/\{artifact_id}", expect~)
+  @http.get("\{gateway_base}/v1/artifacts/\{artifact_id}").expect_json(fn(
+    result,
+  ) {
+    dispatch(
+      ArtifactLoaded(
+        artifact_id,
+        match result {
+          Ok(json) => parse_loaded_artifact_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -911,11 +924,19 @@ fn fetch_snapshot(
   gateway_base : String,
   run_id : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, UiSnapshot] = @http.Expecting::Json(
-    fn(result) { dispatch(SnapshotLoaded(run_id, result)) },
-    parse_snapshot_payload,
-  )
-  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui", expect~)
+  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui").expect_json(fn(
+    result,
+  ) {
+    dispatch(
+      SnapshotLoaded(
+        run_id,
+        match result {
+          Ok(json) => parse_snapshot_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -924,11 +945,19 @@ fn fetch_cowork_linked_snapshot(
   gateway_base : String,
   run_id : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, UiSnapshot] = @http.Expecting::Json(
-    fn(result) { dispatch(CoworkLinkedSnapshotLoaded(run_id, result)) },
-    parse_snapshot_payload,
-  )
-  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui", expect~)
+  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/ui").expect_json(fn(
+    result,
+  ) {
+    dispatch(
+      CoworkLinkedSnapshotLoaded(
+        run_id,
+        match result {
+          Ok(json) => parse_snapshot_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -937,20 +966,33 @@ fn fetch_timeline(
   gateway_base : String,
   run_id : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, Array[UiTimelineEntry]] = @http.Expecting::Json(
-    fn(result) { dispatch(EventsLoaded(run_id, result)) },
-    parse_events_payload,
-  )
-  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/events", expect~)
+  @http.get("\{gateway_base}/v1/jobs/runs/\{run_id}/events").expect_json(fn(
+    result,
+  ) {
+    dispatch(
+      EventsLoaded(
+        run_id,
+        match result {
+          Ok(json) => parse_events_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
 fn fetch_acp_snapshot(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, AcpUiSnapshot] = @http.Expecting::Json(
-    fn(result) { dispatch(AcpSnapshotLoaded(result)) },
-    parse_acp_snapshot_payload,
-  )
-  @http.get("\{gateway_base}/v1/acp/ui", expect~)
+  @http.get("\{gateway_base}/v1/acp/ui").expect_json(fn(result) {
+    dispatch(
+      AcpSnapshotLoaded(
+        match result {
+          Ok(json) => parse_acp_snapshot_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -958,11 +1000,16 @@ fn fetch_cowork_sessions(
   dispatch : Dispatch[Msg],
   gateway_base : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, Array[CoworkSessionSummary]] = @http.Expecting::Json(
-    fn(result) { dispatch(CoworkSessionsLoaded(result)) },
-    parse_cowork_sessions_payload,
-  )
-  @http.get("\{gateway_base}/v1/cowork/sessions", expect~)
+  @http.get("\{gateway_base}/v1/cowork/sessions").expect_json(fn(result) {
+    dispatch(
+      CoworkSessionsLoaded(
+        match result {
+          Ok(json) => parse_cowork_sessions_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -971,11 +1018,19 @@ fn fetch_cowork_session(
   gateway_base : String,
   session_key : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, CoworkSessionDetail] = @http.Expecting::Json(
-    fn(result) { dispatch(CoworkSessionLoaded(session_key, result)) },
-    parse_cowork_session_payload,
-  )
-  @http.get("\{gateway_base}/v1/cowork/sessions/\{session_key}", expect~)
+  @http.get("\{gateway_base}/v1/cowork/sessions/\{session_key}").expect_json(fn(
+    result,
+  ) {
+    dispatch(
+      CoworkSessionLoaded(
+        session_key,
+        match result {
+          Ok(json) => parse_cowork_session_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -983,11 +1038,16 @@ fn fetch_cowork_workspace(
   dispatch : Dispatch[Msg],
   gateway_base : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, UiWorkspaceSnapshot] = @http.Expecting::Json(
-    fn(result) { dispatch(CoworkWorkspaceLoaded(result)) },
-    parse_workspace_snapshot_payload,
-  )
-  @http.get("\{gateway_base}/v1/workspace", expect~)
+  @http.get("\{gateway_base}/v1/workspace").expect_json(fn(result) {
+    dispatch(
+      CoworkWorkspaceLoaded(
+        match result {
+          Ok(json) => parse_workspace_snapshot_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -995,15 +1055,19 @@ fn create_cowork_session(
   dispatch : Dispatch[Msg],
   gateway_base : String,
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, CoworkSessionDetail] = @http.Expecting::Json(
-    fn(result) { dispatch(CoworkSessionCreated(result)) },
-    parse_cowork_session_payload,
-  )
-  @http.post(
-    "\{gateway_base}/v1/cowork/sessions",
-    @http.Body::Json({}),
-    expect~,
-  )
+  let body : Json = {}
+  @http.post("\{gateway_base}/v1/cowork/sessions")
+  .with_json(body)
+  .expect_json(fn(result) {
+    dispatch(
+      CoworkSessionCreated(
+        match result {
+          Ok(json) => parse_cowork_session_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -1012,20 +1076,32 @@ fn post_cowork_action(
   url : String,
   body? : Json = {},
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, CoworkSessionDetail] = @http.Expecting::Json(
-    fn(result) { dispatch(CoworkActionFinished(result)) },
-    parse_cowork_session_payload,
-  )
-  @http.post(url, @http.Body::Json(body), expect~)
+  @http.post(url)
+  .with_json(body)
+  .expect_json(fn(result) {
+    dispatch(
+      CoworkActionFinished(
+        match result {
+          Ok(json) => parse_cowork_session_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
 fn fetch_acp_timeline(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
-  let expect : @http.Expecting[Cmd, Array[AcpUiTimelineEntry]] = @http.Expecting::Json(
-    fn(result) { dispatch(AcpEventsLoaded(result)) },
-    parse_acp_events_payload,
-  )
-  @http.get("\{gateway_base}/v1/acp/events", expect~)
+  @http.get("\{gateway_base}/v1/acp/events").expect_json(fn(result) {
+    dispatch(
+      AcpEventsLoaded(
+        match result {
+          Ok(json) => parse_acp_events_payload(json)
+          Err(error) => Err("\{error}")
+        },
+      ),
+    )
+  })
 }
 
 ///|
@@ -1052,17 +1128,18 @@ fn post_action(
   url : String,
   body? : Json = {},
 ) -> Cmd {
-  let expect : @http.Expecting[Cmd, String] = @http.Expecting::Text(fn(result) {
+  @http.post(url)
+  .with_json(body)
+  .expect_text(fn(result) {
     dispatch(
       AcpActionFinished(
         match result {
           Ok(text) => parse_action_status_payload(text)
-          Err(error) => Err(error)
+          Err(error) => Err("\{error}")
         },
       ),
     )
   })
-  @http.post(url, @http.Body::Json(body), expect~)
 }
 
 ///|
