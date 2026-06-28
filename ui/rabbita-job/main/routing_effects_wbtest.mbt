@@ -6,9 +6,21 @@ test "parse_acp_stream_drain_payload accepts structured error payloads" {
       Json).stringify(),
   )
   match result {
-    Err(error) => inspect(error, content="stream_error")
+    Err(error) =>
+      inspect(
+        error,
+        content="Live updates disconnected. Check that the MoonClaw gateway is running.",
+      )
     Ok(_) => fail("expected structured ACP stream error")
   }
+}
+
+///|
+test "display_error hides Rabbita request implementation detail" {
+  inspect(
+    display_error("moonbit-community/rabbita/http.RequestError.RequestError"),
+    content="Unable to reach the MoonClaw gateway. Start it at http://localhost:18123 and reload.",
+  )
 }
 
 ///|

@@ -374,6 +374,20 @@ fn sync_url_cmd(model : Model) -> Cmd {
 }
 
 ///|
+fn display_error(error : String) -> String {
+  let trimmed = error.trim().to_string()
+  if trimmed == "" {
+    "Request failed."
+  } else if trimmed == "stream_error" {
+    "Live updates disconnected. Check that the MoonClaw gateway is running."
+  } else if trimmed.contains("RequestError") {
+    "Unable to reach the MoonClaw gateway. Start it at http://localhost:18123 and reload."
+  } else {
+    trimmed
+  }
+}
+
+///|
 fn parse_runs_payload(json : Json) -> Result[Array[RunSummary], String] {
   let payload : Result[RunsPayload, Error] = try? @json.from_json(json)
   match payload {
@@ -506,7 +520,7 @@ fn parse_action_status_payload(text : String) -> Result[String, String] {
 
 ///|
 #cfg(target="js")
-extern "js" fn browser_copy_text(text : String) -> String =
+extern "js" fn browser_copy_text(text : String) -> @js.Promise =
   #| async (text) => {
   #|   try {
   #|     await navigator.clipboard.writeText(text);
@@ -553,8 +567,32 @@ fn parse_browser_copy_result(text : String) -> Result[String, String] {
 }
 
 ///|
+fn browser_value_error_json(error : String) -> String {
+  ({ "ok": false, "value": "", "error": error } : Json).stringify()
+}
+
+///|
+fn browser_files_error_json(error : String) -> String {
+  ({ "ok": false, "files": [], "error": error } : Json).stringify()
+}
+
+///|
+async fn wait_browser_value_json(promise : @js.Promise) -> String noraise {
+  promise.wait().cast() catch {
+    error => browser_value_error_json("\{error}")
+  }
+}
+
+///|
+async fn wait_browser_files_json(promise : @js.Promise) -> String noraise {
+  promise.wait().cast() catch {
+    error => browser_files_error_json("\{error}")
+  }
+}
+
+///|
 #cfg(target="js")
-extern "js" fn browser_pick_local_files() -> String =
+extern "js" fn browser_pick_local_files() -> @js.Promise =
   #| async () => {
   #|   const readFile = async (file, source) => {
   #|     const textLike =
@@ -594,7 +632,7 @@ extern "js" fn browser_pick_local_files() -> String =
 ///|
 #cfg(target="js")
 extern "js" fn browser_take_dropped_files() -> String =
-  #| async () => {
+  #| () => {
   #|   const state =
   #|     (window.__moonclawCoworkDropState ||= { installed: false, queue: [] });
   #|   const readFile = async (file, source) => {
@@ -677,21 +715,23 @@ fn parse_browser_local_upload_batch(
 ///|
 fn copy_to_clipboard(dispatch : Dispatch[Msg], text : String) -> Cmd {
   @rabbita.perform(fn(result) { dispatch(AcpCopyFinished(result)) }, fn() noraise {
-    parse_browser_copy_result(browser_copy_text(text))
+    parse_browser_copy_result(wait_browser_value_json(browser_copy_text(text)))
   })
 }
 
 ///|
 fn copy_cowork_text(dispatch : Dispatch[Msg], text : String) -> Cmd {
   @rabbita.perform(fn(result) { dispatch(CoworkCopyFinished(result)) }, fn() noraise {
-    parse_browser_copy_result(browser_copy_text(text))
+    parse_browser_copy_result(wait_browser_value_json(browser_copy_text(text)))
   })
 }
 
 ///|
 fn pick_cowork_local_files(dispatch : Dispatch[Msg]) -> Cmd {
   @rabbita.perform(fn(result) { dispatch(CoworkFilesPicked(result)) }, fn() noraise {
-    parse_browser_local_upload_batch(browser_pick_local_files())
+    parse_browser_local_upload_batch(
+      wait_browser_files_json(browser_pick_local_files()),
+    )
   })
 }
 
@@ -712,7 +752,7 @@ fn schedule_cowork_drop_poll(dispatch : Dispatch[Msg]) -> Cmd {
 extern "js" fn browser_download_text(
   filename : String,
   content : String,
-) -> String =
+) -> @js.Promise =
   #| async (filename, content) => {
   #|   try {
   #|     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -737,7 +777,9 @@ fn download_text_file(
   content : String,
 ) -> Cmd {
   @rabbita.perform(fn(result) { dispatch(AcpExportFinished(result)) }, fn() noraise {
-    parse_browser_copy_result(browser_download_text(filename, content))
+    parse_browser_copy_result(
+      wait_browser_value_json(browser_download_text(filename, content)),
+    )
   })
 }
 
@@ -748,7 +790,9 @@ fn download_mixed_text_file(
   content : String,
 ) -> Cmd {
   @rabbita.perform(fn(result) { dispatch(MixedExportFinished(result)) }, fn() noraise {
-    parse_browser_copy_result(browser_download_text(filename, content))
+    parse_browser_copy_result(
+      wait_browser_value_json(browser_download_text(filename, content)),
+    )
   })
 }
 
@@ -852,7 +896,7 @@ fn parse_stream_drain_payload(
     }
   }
   match payload.error {
-    Some(error) => Err(error)
+    Some(error) => Err(display_error(error))
     None => Ok((entries, payload.closed))
   }
 }
@@ -878,7 +922,7 @@ fn parse_acp_stream_drain_payload(
     }
   }
   match payload.error {
-    Some(error) => Err(error)
+    Some(error) => Err(display_error(error))
     None => Ok((entries, payload.closed))
   }
 }
@@ -890,7 +934,7 @@ fn fetch_runs(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
       RunsLoaded(
         match result {
           Ok(json) => parse_runs_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -911,7 +955,7 @@ fn fetch_artifact(
         artifact_id,
         match result {
           Ok(json) => parse_loaded_artifact_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -932,7 +976,7 @@ fn fetch_snapshot(
         run_id,
         match result {
           Ok(json) => parse_snapshot_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -953,7 +997,7 @@ fn fetch_cowork_linked_snapshot(
         run_id,
         match result {
           Ok(json) => parse_snapshot_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -974,7 +1018,7 @@ fn fetch_timeline(
         run_id,
         match result {
           Ok(json) => parse_events_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -988,7 +1032,7 @@ fn fetch_acp_snapshot(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
       AcpSnapshotLoaded(
         match result {
           Ok(json) => parse_acp_snapshot_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -1005,7 +1049,7 @@ fn fetch_cowork_sessions(
       CoworkSessionsLoaded(
         match result {
           Ok(json) => parse_cowork_sessions_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -1026,7 +1070,7 @@ fn fetch_cowork_session(
         session_key,
         match result {
           Ok(json) => parse_cowork_session_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -1043,7 +1087,7 @@ fn fetch_cowork_workspace(
       CoworkWorkspaceLoaded(
         match result {
           Ok(json) => parse_workspace_snapshot_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -1063,7 +1107,7 @@ fn create_cowork_session(
       CoworkSessionCreated(
         match result {
           Ok(json) => parse_cowork_session_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -1083,7 +1127,7 @@ fn post_cowork_action(
       CoworkActionFinished(
         match result {
           Ok(json) => parse_cowork_session_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -1097,7 +1141,7 @@ fn fetch_acp_timeline(dispatch : Dispatch[Msg], gateway_base : String) -> Cmd {
       AcpEventsLoaded(
         match result {
           Ok(json) => parse_acp_events_payload(json)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
@@ -1135,7 +1179,7 @@ fn post_action(
       AcpActionFinished(
         match result {
           Ok(text) => parse_action_status_payload(text)
-          Err(error) => Err("\{error}")
+          Err(error) => Err(display_error("\{error}"))
         },
       ),
     )
