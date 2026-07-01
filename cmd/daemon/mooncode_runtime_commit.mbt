@@ -145,18 +145,12 @@ async fn mooncode_runtime_turn_commit_results(
 
 ///|
 fn mooncode_runtime_turn_commit_status_args() -> Array[StringView] {
-  [
-    "status", "--porcelain", "--", ".", ":(exclude).moonsuite", ":(exclude).moonclaw",
-    ":(exclude).moontown", ":(exclude)moonclaw-jobs",
-  ]
+  ["status", "--porcelain", "--", ".", ":(exclude).moonsuite", ":(exclude).tmp"]
 }
 
 ///|
 fn mooncode_runtime_turn_commit_add_args() -> Array[StringView] {
-  [
-    "add", "-A", "--", ".", ":(exclude).moonsuite", ":(exclude).moonclaw", ":(exclude).moontown",
-    ":(exclude)moonclaw-jobs",
-  ]
+  ["add", "-A", "--", ".", ":(exclude).moonsuite", ":(exclude).tmp"]
 }
 
 ///|

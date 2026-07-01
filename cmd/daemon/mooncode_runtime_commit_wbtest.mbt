@@ -41,6 +41,42 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     ),
   )
   @fsx.write_to_file(@pathx.join(book_root, "README.md"), "hello mooncode\n")
+  @fsx.make_directory(
+    @pathx.join(book_root, ".tmp/products/moonclaw"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, ".tmp/products/moonclaw/scratch.txt"),
+    "suite temp scratch\n",
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, ".moonclaw"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, ".moonclaw/legacy-runtime.txt"),
+    "legacy moonclaw runtime marker\n",
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, ".moontown"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, ".moontown/legacy-runtime.txt"),
+    "legacy moontown runtime marker\n",
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "moonclaw-jobs"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "moonclaw-jobs/legacy-runtime.txt"),
+    "legacy jobs marker\n",
+  )
   let session_id = "session-runtime-commit"
   let command_id = "cmd-runtime-commit"
   let command : Json = {
@@ -135,9 +171,39 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
       ".moonsuite/",
     ),
   )
+  assert_true(
+    mooncode_json_string(git_status, "output", default="").contains(".tmp/"),
+  )
   assert_false(
     mooncode_json_string(git_status, "output", default="").contains("README.md"),
   )
+  assert_false(
+    mooncode_json_string(git_status, "output", default="").contains(".moonclaw"),
+  )
+  assert_false(
+    mooncode_json_string(git_status, "output", default="").contains(".moontown"),
+  )
+  assert_false(
+    mooncode_json_string(git_status, "output", default="").contains(
+      "moonclaw-jobs",
+    ),
+  )
+  let committed_files = mooncode_runtime_turn_git(
+    book_root,
+    ["ls-tree", "-r", "--name-only", "HEAD"],
+    timeout_ms=10000,
+    max_output_chars=4000,
+  )
+  let committed_output = mooncode_json_string(
+    committed_files,
+    "output",
+    default="",
+  )
+  assert_true(committed_output.contains(".moonclaw/legacy-runtime.txt"))
+  assert_true(committed_output.contains(".moontown/legacy-runtime.txt"))
+  assert_true(committed_output.contains("moonclaw-jobs/legacy-runtime.txt"))
+  assert_false(committed_output.contains(".tmp/products/moonclaw/scratch.txt"))
+  assert_false(committed_output.contains(".moonsuite/"))
   let after = mooncode_json_object_field_or_empty(result, "claim_state")
   assert_true(after.stringify().contains("\"delivered_command_count\":1"))
 }

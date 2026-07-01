@@ -39,7 +39,6 @@ async fn DaemonEvent::collect_events(s : @http.Client) -> Array[DaemonEvent] {
 ///|
 async fn configure_models(mock : @mock.Context) -> Unit {
   mock.cwd
-  .add_directory(".moonclaw")
   .add_directory("models")
   .add_file("models.json")
   .write_json([
