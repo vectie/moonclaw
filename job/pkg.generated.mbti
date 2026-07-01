@@ -131,6 +131,10 @@ pub fn merge_initial_input_for_resume(Json?, Json) -> Json
 
 pub fn merge_job_intake_metadata(Json, Json?) -> Json
 
+pub fn moonclaw_jobs_root(String) -> String
+
+pub fn moonclaw_product_home(String) -> String
+
 pub fn normalized_request_text(String) -> String
 
 pub fn notification_preference_id(String, String, String, String?) -> String

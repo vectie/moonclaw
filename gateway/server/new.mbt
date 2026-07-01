@@ -25,7 +25,7 @@ pub async fn Gateway::new(
   let channel_state_file = @path.Path(gateway_dir)
     .join(Path("channels.json"))
     .to_string()
-  let jobs_dir = @path.Path(home).join(Path("jobs")).to_string()
+  let jobs_dir = @job.moonclaw_jobs_root(home)
   @fsx.make_directory(session_dir, recursive=true) catch {
     _ => ()
   }

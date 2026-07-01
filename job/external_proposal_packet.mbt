@@ -24,7 +24,7 @@ pub struct ExternalProposalImportResult {
 
 ///|
 fn detached_run_input_dir(home : String) -> String {
-  @pathx.join(@pathx.join(home, "jobs"), "detached-inputs")
+  moonclaw_jobs_root(home) |> @pathx.join("detached-inputs")
 }
 
 ///|

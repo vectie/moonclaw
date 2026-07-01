@@ -91,7 +91,7 @@ async fn import_packet(args : Array[String], packet_path : String) -> Unit {
   let inline = args.contains("--inline")
   let workspace = @workspace.WorkspaceRuntime::new(home~, cwd~)
   let app = @job.GatewayJobApp::new(
-    root=@pathx.join(home, "jobs"),
+    root=@job.moonclaw_jobs_root(home),
     cwd~,
     home~,
     workspace~,
@@ -167,7 +167,7 @@ async fn run_packet_job(args : Array[String], run_id : String) -> Unit {
   let cwd = resolve_cwd(args)
   let workspace = @workspace.WorkspaceRuntime::new(home~, cwd~)
   let app = @job.GatewayJobApp::new(
-    root=@pathx.join(home, "jobs"),
+    root=@job.moonclaw_jobs_root(home),
     cwd~,
     home~,
     workspace~,
@@ -201,7 +201,7 @@ async fn status_packet_job(args : Array[String], run_id : String) -> Unit {
   let json_mode = args.contains("--json")
   let workspace = @workspace.WorkspaceRuntime::new(home~, cwd~)
   let app = @job.GatewayJobApp::new(
-    root=@pathx.join(home, "jobs"),
+    root=@job.moonclaw_jobs_root(home),
     cwd~,
     home~,
     workspace~,
