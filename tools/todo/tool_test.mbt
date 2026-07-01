@@ -20,6 +20,33 @@ async test "todo_read/empty" (t : @test.Test) {
 }
 
 ///|
+async test "todo state uses MoonClaw product home for suite book workspaces" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let suite_root = mock.cwd.path()
+    let book_root = suite_root |> @pathx.join("books/research")
+    let todo_list = new(uuid=mock.uuid, cwd=book_root)
+    let expected_path = suite_root
+      |> @pathx.join(".moonsuite/products/moonclaw/todos/current_session.json")
+    assert_eq(
+      @moonsuite.product_artifact_for_workspace_root(
+        book_root, "moonclaw", "todos/current_session.json",
+      ),
+      expected_path,
+    )
+    let tool = @todo.new_tool(todo_list)
+    ignore(tool.call({ "action": "create", "content": "Persist suite todo" }))
+    assert_true(@fsx.exists(expected_path))
+    assert_false(
+      @fsx.exists(
+        book_root |> @pathx.join(".moonclaw/todos/current_session.json"),
+      ),
+    )
+  })
+}
+
+///|
 async test "todo_read/single_task" (t : @test.Test) {
   @mock.run(t, mock => {
     let todo_list = new(clock=mock.clock, uuid=mock.uuid, cwd=mock.cwd.path())

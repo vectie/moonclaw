@@ -432,7 +432,8 @@ pub fn new_tool(list : Todo) -> @tool.Tool[TodoResult]
 - `notes`: Additional notes
 
 **Storage:**
-- Persisted to `.moonclaw/todos/{uuid}.json`
+- Persisted to `.moonsuite/products/moonclaw/todos/current_session.json`
+  for the owning suite or standalone workspace.
 
 ---
 

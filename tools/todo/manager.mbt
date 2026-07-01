@@ -71,10 +71,11 @@ pub fn new(
 
 ///|
 fn Config::todo_file_path(self : Config) -> String {
-  return self.cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("todos")
-    |> @pathx.join("current_session.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    self.cwd,
+    "moonclaw",
+    "todos/current_session.json",
+  )
 }
 
 ///|
