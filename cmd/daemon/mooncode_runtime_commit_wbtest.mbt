@@ -132,7 +132,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   )
   assert_true(
     mooncode_json_string(git_status, "output", default="").contains(
-      ".moonclaw/",
+      ".moonsuite/",
     ),
   )
   assert_false(

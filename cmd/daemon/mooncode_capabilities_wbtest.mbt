@@ -136,7 +136,11 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(
     payload.contains("/v1/code/sessions/<id>/tool-exec?book_root=<path>"),
   )
-  assert_true(payload.contains(".moonclaw/mooncode/sessions/<session-id>"))
+  assert_true(
+    payload.contains(
+      ".moonsuite/products/moonclaw/mooncode/sessions/<session-id>",
+    ),
+  )
   assert_true(payload.contains("runtime-receipts.jsonl"))
   assert_true(
     payload.contains(

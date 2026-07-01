@@ -44,7 +44,11 @@ async test "mooncode durable session sidecars use book local storage" (
   )
   let snapshot = @fsx.read_file(session_path)
   assert_true(snapshot.contains("\"owner\":\"moonclaw\""))
-  assert_true(snapshot.contains(".moonclaw/mooncode/sessions/session_demo_1"))
+  assert_true(
+    snapshot.contains(
+      ".moonsuite/products/moonclaw/mooncode/sessions/session_demo_1",
+    ),
+  )
   assert_true(
     @fsx.read_file(
       mooncode_commands_path(binding.book_root, binding.session_id),

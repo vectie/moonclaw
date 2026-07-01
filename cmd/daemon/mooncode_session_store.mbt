@@ -281,9 +281,16 @@ fn mooncode_session_dir(book_root : String, session_id : String) -> String {
 }
 
 ///|
-fn mooncode_sessions_root(book_root : String) -> String {
+fn mooncode_product_home(book_root : String) -> String {
   book_root
-  |> @pathx.join(".moonclaw")
+  |> @pathx.join(".moonsuite")
+  |> @pathx.join("products")
+  |> @pathx.join("moonclaw")
+}
+
+///|
+fn mooncode_sessions_root(book_root : String) -> String {
+  mooncode_product_home(book_root)
   |> @pathx.join("mooncode")
   |> @pathx.join("sessions")
 }
