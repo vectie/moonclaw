@@ -2,19 +2,25 @@
 /// System skills installer.
 ///
 /// System skills are embedded at build time and installed into
-/// `~/.moonclaw/skills/.system`. They are loaded with lower priority than
-/// user/repo skills, so local skills can override by name.
+/// `~/.moonsuite/products/moonclaw/skills/.system`. They are loaded with lower
+/// priority than user/repo skills, so local skills can override by name.
 const SYSTEM_SKILLS_DIR_NAME = ".system"
 
 ///|
 const SYSTEM_SKILLS_MARKER_FILENAME = ".moonclaw-system-skills.marker"
 
 ///|
-fn system_skills_root(home : String) -> String {
-  home
-  |> @pathx.join(".moonclaw")
+fn moonclaw_skills_root(root : String) -> String {
+  root
+  |> @pathx.join(".moonsuite")
+  |> @pathx.join("products")
+  |> @pathx.join("moonclaw")
   |> @pathx.join("skills")
-  |> @pathx.join(SYSTEM_SKILLS_DIR_NAME)
+}
+
+///|
+fn system_skills_root(home : String) -> String {
+  moonclaw_skills_root(home) |> @pathx.join(SYSTEM_SKILLS_DIR_NAME)
 }
 
 ///|

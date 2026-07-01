@@ -2,10 +2,11 @@
 /// Skill loader that manages and loads skills from both global and local
 /// directories.
 ///
-/// The loader searches for skills in `.moonclaw/skills` directories:
+/// The loader searches for skills in `.moonsuite/products/moonclaw/skills`
+/// directories:
 ///
-/// - System skills: `~/.moonclaw/skills/.system`
-/// - Global skills: `~/.moonclaw/skills`
+/// - System skills: `~/.moonsuite/products/moonclaw/skills/.system`
+/// - Global skills: `~/.moonsuite/products/moonclaw/skills`
 /// - Local skills: starting from the current working directory and walking up
 ///   through parent directories.
 ///
@@ -140,9 +141,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
   install_system_skills(self.home, self.logger)
   let system_path = system_skills_root(self.home)
   self.load_skills_from_directory(system_path)
-  let global_path = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("skills")
+  let global_path = moonclaw_skills_root(self.home)
   self.load_skills_from_directory(global_path)
 
   // Determine local skill search roots.
@@ -187,7 +186,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
     None =>
       // Not in a git repo: load from cwd and home.
       //
-      // Note: global skills (`home/.moonclaw/skills`) are already loaded above,
+      // Note: global skills are already loaded above,
       // so we only need to add `cwd` here (and only if it differs from home) to
       // avoid loading the same directory twice.
       if cwd_norm != home_norm {
@@ -195,7 +194,7 @@ pub async fn Loader::load(self : Loader) -> Unit {
       }
   }
   for dir in dirs.rev() {
-    let local_path = dir |> @pathx.join(".moonclaw") |> @pathx.join("skills")
+    let local_path = moonclaw_skills_root(dir)
     self.load_skills_from_directory(local_path)
   }
 }

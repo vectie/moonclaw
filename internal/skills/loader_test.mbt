@@ -2,35 +2,43 @@
 async test "load" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({
-      ".moonclaw": {
-        "skills": {
-          "pdf-processing": {
-            "SKILL.md": (
-              #|---
-              #|name: pdf-processing
-              #|description: A skill to process PDF documents.
-              #|version: 1.0.0
-              #|---
-              #|
-              #|Use this skill to extract text from PDF files.
-            ),
+      ".moonsuite": {
+        "products": {
+          "moonclaw": {
+            "skills": {
+              "pdf-processing": {
+                "SKILL.md": (
+                  #|---
+                  #|name: pdf-processing
+                  #|description: A skill to process PDF documents.
+                  #|version: 1.0.0
+                  #|---
+                  #|
+                  #|Use this skill to extract text from PDF files.
+                ),
+              },
+            },
           },
         },
       },
       "cwd": {
         ".git": {},
-        ".moonclaw": {
-          "skills": {
-            "text-summarization": {
-              "SKILL.md": (
-                #|---
-                #|name: text-summarization
-                #|description: A skill to summarize text documents.
-                #|version: 1.0.0
-                #|---
-                #|
-                #|Use this skill to generate summaries of text content.
-              ),
+        ".moonsuite": {
+          "products": {
+            "moonclaw": {
+              "skills": {
+                "text-summarization": {
+                  "SKILL.md": (
+                    #|---
+                    #|name: text-summarization
+                    #|description: A skill to summarize text documents.
+                    #|version: 1.0.0
+                    #|---
+                    #|
+                    #|Use this skill to generate summaries of text content.
+                  ),
+                },
+              },
             },
           },
         },
@@ -45,19 +53,19 @@ async test "load" (t : @test.Test) {
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "pdf-processing": {
         "name": "pdf-processing",
         "description": "A skill to process PDF documents.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/pdf-processing/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md",
       },
       "text-summarization": {
         "name": "text-summarization",
         "description": "A skill to summarize text documents.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/cwd/.moonclaw/skills/text-summarization/SKILL.md",
+        "location": "(mock:cwd)/cwd/.moonsuite/products/moonclaw/skills/text-summarization/SKILL.md",
       },
     })
     let messages = [
@@ -127,17 +135,17 @@ async test "load" (t : @test.Test) {
         #|  <skill>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
+        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
         #|  </skill>
         #|  <skill>
         #|    <name>pdf-processing</name>
         #|    <description>A skill to process PDF documents.</description>
-        #|    <location>(mock:cwd)/.moonclaw/skills/pdf-processing/SKILL.md</location>
+        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md</location>
         #|  </skill>
         #|  <skill>
         #|    <name>text-summarization</name>
         #|    <description>A skill to summarize text documents.</description>
-        #|    <location>(mock:cwd)/cwd/.moonclaw/skills/text-summarization/SKILL.md</location>
+        #|    <location>(mock:cwd)/cwd/.moonsuite/products/moonclaw/skills/text-summarization/SKILL.md</location>
         #|  </skill>
         #|</available_skills>
       ),
@@ -149,8 +157,11 @@ async test "load" (t : @test.Test) {
 async test "load/empty" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({
-      ".moonclaw": { "skills": {} },
-      "cwd": { ".git": {}, ".moonclaw": { "skills": {} } },
+      ".moonsuite": { "products": { "moonclaw": { "skills": {} } } },
+      "cwd": {
+        ".git": {},
+        ".moonsuite": { "products": { "moonclaw": { "skills": {} } } },
+      },
     })
     let home = mock.cwd.path()
     let cwd = @pathx.join(home, "cwd")
@@ -223,7 +234,7 @@ async test "load/empty" (t : @test.Test) {
         #|  <skill>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
+        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
         #|  </skill>
         #|</available_skills>
       ),
@@ -235,18 +246,22 @@ async test "load/empty" (t : @test.Test) {
 async test "load/lowercase" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({
-      ".moonclaw": {
-        "skills": {
-          "pdf-processing": {
-            "skill.md": (
-              #|---
-              #|name: pdf-processing
-              #|description: A skill to process PDF documents.
-              #|version: 1.0.0
-              #|---
-              #|
-              #|Use this skill to extract text from PDF files.
-            ),
+      ".moonsuite": {
+        "products": {
+          "moonclaw": {
+            "skills": {
+              "pdf-processing": {
+                "skill.md": (
+                  #|---
+                  #|name: pdf-processing
+                  #|description: A skill to process PDF documents.
+                  #|version: 1.0.0
+                  #|---
+                  #|
+                  #|Use this skill to extract text from PDF files.
+                ),
+              },
+            },
           },
         },
       },
@@ -324,12 +339,12 @@ async test "load/lowercase" (t : @test.Test) {
         #|  <skill>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
+        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
         #|  </skill>
         #|  <skill>
         #|    <name>pdf-processing</name>
         #|    <description>A skill to process PDF documents.</description>
-        #|    <location>(mock:cwd)/.moonclaw/skills/pdf-processing/skill.md</location>
+        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/skill.md</location>
         #|  </skill>
         #|</available_skills>
       ),
@@ -341,16 +356,20 @@ async test "load/lowercase" (t : @test.Test) {
 async test "load/invalid-skill" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({
-      ".moonclaw": {
-        "skills": {
-          "invalid-skill": {
-            "SKILL.md": (
-              #|---
-              #|name: invalid-skill
-              #|---
-              #|
-              #|This skill has an invalid format.
-            ),
+      ".moonsuite": {
+        "products": {
+          "moonclaw": {
+            "skills": {
+              "invalid-skill": {
+                "SKILL.md": (
+                  #|---
+                  #|name: invalid-skill
+                  #|---
+                  #|
+                  #|This skill has an invalid format.
+                ),
+              },
+            },
           },
         },
       },
@@ -427,7 +446,7 @@ async test "load/invalid-skill" (t : @test.Test) {
         #|  <skill>
         #|    <name>moonbit-agent-guide</name>
         #|    <description>Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.</description>
-        #|    <location>(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
+        #|    <location>(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md</location>
         #|  </skill>
         #|</available_skills>
       ),
@@ -438,7 +457,11 @@ async test "load/invalid-skill" (t : @test.Test) {
 ///|
 async test "reload" (t : @test.Test) {
   @mock.run(t, mock => {
-    let skills = mock.add_directory(".moonclaw").add_directory("skills")
+    let skills = mock
+      .add_directory(".moonsuite")
+      .add_directory("products")
+      .add_directory("moonclaw")
+      .add_directory("skills")
     let pdf_processing = skills.add_directory("pdf-processing")
     let pdf_processing_skill = pdf_processing.add_file("SKILL.md")
     pdf_processing_skill.write_string(
@@ -463,13 +486,13 @@ async test "reload" (t : @test.Test) {
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "pdf-processing": {
         "name": "pdf-processing",
         "description": "A skill to process PDF documents.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/pdf-processing/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md",
       },
     })
     // Update the skill
@@ -503,19 +526,19 @@ async test "reload" (t : @test.Test) {
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "pdf-processing": {
         "name": "pdf-processing",
         "description": "An updated skill to process PDF documents.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/pdf-processing/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/pdf-processing/SKILL.md",
       },
       "text-summarization": {
         "name": "text-summarization",
         "description": "A skill to summarize text documents.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/text-summarization/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/text-summarization/SKILL.md",
       },
     })
   })
@@ -526,57 +549,69 @@ async test "load/parent-directories" (t : @test.Test) {
   @mock.run(t, mock => {
     // Directory layout:
     // (home)
-    //   .moonclaw/skills/global
-    //   project/.moonclaw/skills/project
-    //   project/sub/.moonclaw/skills/sub
+    //   .moonsuite/products/moonclaw/skills/global
+    //   project/.moonsuite/products/moonclaw/skills/project
+    //   project/sub/.moonsuite/products/moonclaw/skills/sub
     //   project/sub/deep (cwd)
     // and `project` is marked as a git repo root.
     mock.add_json_tree({
-      ".moonclaw": {
-        "skills": {
-          "global-skill": {
-            "SKILL.md": (
-              #|---
-              #|name: global-skill
-              #|description: Global skill.
-              #|version: 1.0.0
-              #|---
-              #|
-              #|Global instructions.
-            ),
+      ".moonsuite": {
+        "products": {
+          "moonclaw": {
+            "skills": {
+              "global-skill": {
+                "SKILL.md": (
+                  #|---
+                  #|name: global-skill
+                  #|description: Global skill.
+                  #|version: 1.0.0
+                  #|---
+                  #|
+                  #|Global instructions.
+                ),
+              },
+            },
           },
         },
       },
       "project": {
         ".git": {},
-        ".moonclaw": {
-          "skills": {
-            "project-skill": {
-              "SKILL.md": (
-                #|---
-                #|name: project-skill
-                #|description: Project skill.
-                #|version: 1.0.0
-                #|---
-                #|
-                #|Project instructions.
-              ),
+        ".moonsuite": {
+          "products": {
+            "moonclaw": {
+              "skills": {
+                "project-skill": {
+                  "SKILL.md": (
+                    #|---
+                    #|name: project-skill
+                    #|description: Project skill.
+                    #|version: 1.0.0
+                    #|---
+                    #|
+                    #|Project instructions.
+                  ),
+                },
+              },
             },
           },
         },
         "sub": {
-          ".moonclaw": {
-            "skills": {
-              "sub-skill": {
-                "SKILL.md": (
-                  #|---
-                  #|name: sub-skill
-                  #|description: Sub skill.
-                  #|version: 1.0.0
-                  #|---
-                  #|
-                  #|Sub instructions.
-                ),
+          ".moonsuite": {
+            "products": {
+              "moonclaw": {
+                "skills": {
+                  "sub-skill": {
+                    "SKILL.md": (
+                      #|---
+                      #|name: sub-skill
+                      #|description: Sub skill.
+                      #|version: 1.0.0
+                      #|---
+                      #|
+                      #|Sub instructions.
+                    ),
+                  },
+                },
               },
             },
           },
@@ -595,25 +630,25 @@ async test "load/parent-directories" (t : @test.Test) {
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "global-skill": {
         "name": "global-skill",
         "description": "Global skill.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/global-skill/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/global-skill/SKILL.md",
       },
       "project-skill": {
         "name": "project-skill",
         "description": "Project skill.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/project/.moonclaw/skills/project-skill/SKILL.md",
+        "location": "(mock:cwd)/project/.moonsuite/products/moonclaw/skills/project-skill/SKILL.md",
       },
       "sub-skill": {
         "name": "sub-skill",
         "description": "Sub skill.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/project/sub/.moonclaw/skills/sub-skill/SKILL.md",
+        "location": "(mock:cwd)/project/sub/.moonsuite/products/moonclaw/skills/sub-skill/SKILL.md",
       },
     })
   })
@@ -624,38 +659,46 @@ async test "load/no-git-loads-cwd-and-home" (t : @test.Test) {
   @mock.run(t, mock => {
     // Directory layout:
     // (home)
-    //   .moonclaw/skills/global
-    //   cwd/.moonclaw/skills/local
+    //   .moonsuite/products/moonclaw/skills/global
+    //   cwd/.moonsuite/products/moonclaw/skills/local
     // and there is NO `.git` anywhere.
     mock.add_json_tree({
-      ".moonclaw": {
-        "skills": {
-          "global-skill": {
-            "SKILL.md": (
-              #|---
-              #|name: global-skill
-              #|description: Global skill.
-              #|version: 1.0.0
-              #|---
-              #|
-              #|Global instructions.
-            ),
+      ".moonsuite": {
+        "products": {
+          "moonclaw": {
+            "skills": {
+              "global-skill": {
+                "SKILL.md": (
+                  #|---
+                  #|name: global-skill
+                  #|description: Global skill.
+                  #|version: 1.0.0
+                  #|---
+                  #|
+                  #|Global instructions.
+                ),
+              },
+            },
           },
         },
       },
       "cwd": {
-        ".moonclaw": {
-          "skills": {
-            "local-skill": {
-              "SKILL.md": (
-                #|---
-                #|name: local-skill
-                #|description: Local skill.
-                #|version: 1.0.0
-                #|---
-                #|
-                #|Local instructions.
-              ),
+        ".moonsuite": {
+          "products": {
+            "moonclaw": {
+              "skills": {
+                "local-skill": {
+                  "SKILL.md": (
+                    #|---
+                    #|name: local-skill
+                    #|description: Local skill.
+                    #|version: 1.0.0
+                    #|---
+                    #|
+                    #|Local instructions.
+                  ),
+                },
+              },
             },
           },
         },
@@ -670,19 +713,19 @@ async test "load/no-git-loads-cwd-and-home" (t : @test.Test) {
         "name": "moonbit-agent-guide",
         "description": "Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/.system/moonbit-agent-guide/SKILL.md",
       },
       "global-skill": {
         "name": "global-skill",
         "description": "Global skill.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/.moonclaw/skills/global-skill/SKILL.md",
+        "location": "(mock:cwd)/.moonsuite/products/moonclaw/skills/global-skill/SKILL.md",
       },
       "local-skill": {
         "name": "local-skill",
         "description": "Local skill.",
         "allowed_tools": [],
-        "location": "(mock:cwd)/cwd/.moonclaw/skills/local-skill/SKILL.md",
+        "location": "(mock:cwd)/cwd/.moonsuite/products/moonclaw/skills/local-skill/SKILL.md",
       },
     })
   })

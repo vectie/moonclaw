@@ -25,17 +25,21 @@ async test "list_resources lists file URIs" (t : @test.Test) {
 async test "list_resources lists skill URIs" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({
-      ".moonclaw": {
-        "skills": {
-          "demo-skill": {
-            "SKILL.md": (
-              #|---
-              #|name: demo-skill
-              #|description: Demo skill for listing resources.
-              #|---
-              #|
-              #|Skill body.
-            ),
+      ".moonsuite": {
+        "products": {
+          "moonclaw": {
+            "skills": {
+              "demo-skill": {
+                "SKILL.md": (
+                  #|---
+                  #|name: demo-skill
+                  #|description: Demo skill for listing resources.
+                  #|---
+                  #|
+                  #|Skill body.
+                ),
+              },
+            },
           },
         },
       },

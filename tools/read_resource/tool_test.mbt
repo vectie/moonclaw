@@ -16,7 +16,9 @@ async test "read_resource reads file URIs" (t : @test.Test) {
 async test "read_resource reads skill URIs" (t : @test.Test) {
   @mock.run(t, mock => {
     let skill_dir = mock.cwd.path()
-      |> @pathx.join(".moonclaw")
+      |> @pathx.join(".moonsuite")
+      |> @pathx.join("products")
+      |> @pathx.join("moonclaw")
       |> @pathx.join("skills")
       |> @pathx.join("demo-skill")
     @fsx.make_directory(skill_dir, recursive=true)
