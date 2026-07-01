@@ -7,7 +7,7 @@
 const SYSTEM_SKILLS_DIR_NAME = ".system"
 
 ///|
-const SYSTEM_SKILLS_MARKER_FILENAME = ".moonclaw-system-skills.marker"
+const SYSTEM_SKILLS_MARKER_FILENAME = "system-skills.marker"
 
 ///|
 fn moonclaw_skills_root(root : String) -> String {
