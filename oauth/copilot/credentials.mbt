@@ -17,7 +17,7 @@ fn get_home() -> String {
 
 ///|
 fn get_credentials_path() -> String {
-  @pathx.join(get_home(), CREDENTIALS_FILE)
+  @moonsuite.product_artifact(get_home(), "moonclaw", CREDENTIALS_FILE)
 }
 
 ///|

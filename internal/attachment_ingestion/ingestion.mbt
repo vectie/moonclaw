@@ -38,9 +38,7 @@ pub fn MaterializedStarterAttachment::new(
 
 ///|
 pub fn starter_attachment_dir(workspace_dir : String) -> String {
-  workspace_dir
-  |> @pathx.join(".moonclaw")
-  |> @pathx.join("starter_attachments")
+  @moonsuite.product_artifact(workspace_dir, "moonclaw", "starter_attachments")
 }
 
 ///|

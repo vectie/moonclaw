@@ -5,7 +5,11 @@ async test "plan_worktree derives repo-root-based handle" (t : @test.Test) {
     let handle = plan_worktree(mock.cwd.path(), "Review Attachment Flow")
     inspect(handle.repo_root, content=mock.cwd.path())
     inspect(handle.branch_name, content="moonclaw/review-attachment-flow")
-    inspect(handle.path.contains(".moonclaw-worktrees"), content="true")
+    inspect(
+      handle.path.contains(".tmp/products/moonclaw/worktrees"),
+      content="true",
+    )
+    inspect(handle.path.contains(".moonclaw-worktrees"), content="false")
   })
 }
 

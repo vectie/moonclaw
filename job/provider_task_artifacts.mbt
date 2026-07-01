@@ -20,9 +20,10 @@ fn provider_task_runtime_artifact_dir(
   request : AnalysisRequest,
   workspace_root : String,
 ) -> String {
-  @pathx.join(
+  @moonsuite.product_artifact(
     provider_task_runtime_artifact_root(request, workspace_root),
-    ".moonclaw/provider-task",
+    "moonclaw",
+    "provider-task",
   )
 }
 

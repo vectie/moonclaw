@@ -2,6 +2,7 @@ import {
   "vectie/moonclaw/internal/git",
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
+  "vectie/moonlib/moonsuite",
   "vectie/moonlib/spawn",
   "moonbitlang/core/json",
   "moonbitlang/core/test",

@@ -606,6 +606,7 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       summary: None,
       error: None,
     }
+    let starter_root = "/tmp/ws-1/.moonsuite/products/moonclaw/starter_attachments"
     let starter_text = ArtifactRecord::{
       id: "artifact-starter-text",
       run_id: "run-1",
@@ -614,11 +615,11 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       logical_key: Some("starter-attachment:file-1:text"),
       version: 1,
       status: Active,
-      path: "/tmp/ws-1/.moonclaw/starter_attachments/file-1.txt.extracted.txt",
+      path: "\{starter_root}/file-1.txt.extracted.txt",
       content_type: "text/markdown",
       metadata: {
         "filename": "parcel.pdf",
-        "saved_path": "/tmp/ws-1/.moonclaw/starter_attachments/file-1.parcel.pdf",
+        "saved_path": "\{starter_root}/file-1.parcel.pdf",
       },
       created_at: 120,
       archived_at: None,
@@ -632,12 +633,9 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       logical_key: Some("starter-attachment:manifest:markdown"),
       version: 1,
       status: Active,
-      path: "/tmp/ws-1/.moonclaw/starter_attachments/manifest.md",
+      path: "\{starter_root}/manifest.md",
       content_type: "text/markdown",
-      metadata: {
-        "kind": "markdown",
-        "path": "/tmp/ws-1/.moonclaw/starter_attachments/manifest.md",
-      },
+      metadata: { "kind": "markdown", "path": "\{starter_root}/manifest.md" },
       created_at: 121,
       archived_at: None,
       scope: ["starter_attachment", "manifest"],
@@ -650,11 +648,11 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       logical_key: Some("starter-attachment:file-1:summary"),
       version: 1,
       status: Active,
-      path: "/tmp/ws-1/.moonclaw/starter_attachments/parcel.summary.md",
+      path: "\{starter_root}/parcel.summary.md",
       content_type: "text/markdown",
       metadata: {
         "filename": "parcel.pdf",
-        "saved_path": "/tmp/ws-1/.moonclaw/starter_attachments/file-1.parcel.pdf",
+        "saved_path": "\{starter_root}/file-1.parcel.pdf",
       },
       created_at: 122,
       archived_at: None,
@@ -668,12 +666,9 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
       logical_key: Some("starter-attachment:digest"),
       version: 1,
       status: Active,
-      path: "/tmp/ws-1/.moonclaw/starter_attachments/digest.md",
+      path: "\{starter_root}/digest.md",
       content_type: "text/markdown",
-      metadata: {
-        "attachment_count": 1,
-        "path": "/tmp/ws-1/.moonclaw/starter_attachments/digest.md",
-      },
+      metadata: { "attachment_count": 1, "path": "\{starter_root}/digest.md" },
       created_at: 123,
       archived_at: None,
       scope: ["starter_attachment", "digest"],
@@ -706,7 +701,7 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
     )
     json_inspect(
       text_node.summary.unwrap_or(""),
-      content="/tmp/ws-1/.moonclaw/starter_attachments/file-1.parcel.pdf",
+      content="/tmp/ws-1/.moonsuite/products/moonclaw/starter_attachments/file-1.parcel.pdf",
     )
     json_inspect(
       manifest_node.title,
@@ -731,7 +726,7 @@ async test "build_job_ui_snapshot gives starter attachment artifacts operator-fr
     )
     json_inspect(
       digest_node.summary.unwrap_or(""),
-      content="/tmp/ws-1/.moonclaw/starter_attachments/digest.md",
+      content="/tmp/ws-1/.moonsuite/products/moonclaw/starter_attachments/digest.md",
     )
   })
 }

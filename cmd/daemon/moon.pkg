@@ -3,6 +3,7 @@ import {
   "moonbitlang/async/http",
   "moonbitlang/async/io",
   "vectie/moonlib/os",
+  "vectie/moonlib/moonsuite",
   "vectie/moonlib/uuid",
   "vectie/moonclaw/internal/spawn",
   "vectie/moonlib/fsx",

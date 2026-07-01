@@ -11,7 +11,9 @@ async test "load_credentials prefers newer codex cli auth" {
     Some(home) => ignore(@os.setenv("HOME", home) catch { _ => () })
     None => ignore(@os.unsetenv("HOME") catch { _ => () })
   })
-  let moonclaw_dir = @pathx.join(temp_home, ".moonclaw")
+  let moonclaw_dir = @moonsuite.product_artifact(
+    temp_home, "moonclaw", "credentials",
+  )
   let codex_dir = @pathx.join(temp_home, ".codex")
   @fsx.make_directory(moonclaw_dir, recursive=true, exists_ok=true)
   @fsx.make_directory(codex_dir, recursive=true, exists_ok=true)
@@ -44,4 +46,5 @@ async test "load_credentials prefers newer codex cli auth" {
   assert_eq(creds.accessToken, "codex-access")
   assert_eq(creds.refreshToken, "codex-refresh")
   assert_eq(creds.accountId, "codex-account")
+  assert_eq(@fsx.exists(@pathx.join(temp_home, ".moonclaw")), false)
 }

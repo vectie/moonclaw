@@ -1697,8 +1697,14 @@ async test "provider task result persistence falls back to provider workspace wh
     inspect(outcome.evidence_id, content="evidence-1")
     let persisted_path = @fsx.read_file(state_path).trim().to_owned()
     inspect(
-      persisted_path.contains("book-space/.moonclaw/provider-task/"),
+      persisted_path.contains(
+        "book-space/.moonsuite/products/moonclaw/provider-task/",
+      ),
       content="true",
+    )
+    inspect(
+      persisted_path.contains("book-space/.moonclaw/provider-task/"),
+      content="false",
     )
     inspect(
       @fsx.read_file(persisted_path).contains(

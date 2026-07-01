@@ -15,8 +15,12 @@ async test "list_worktrees returns created MoonClaw worktrees" (t : @test.Test) 
     inspect(output.repo_root, content=repo)
     inspect(output.worktrees.length(), content="1")
     inspect(
-      output.worktrees[0].path.contains(".moonclaw-worktrees"),
+      output.worktrees[0].path.contains(".tmp/products/moonclaw/worktrees"),
       content="true",
+    )
+    inspect(
+      output.worktrees[0].path.contains(".moonclaw-worktrees"),
+      content="false",
     )
     @worktree.remove_worktree(handle)
   })

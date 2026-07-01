@@ -487,11 +487,9 @@ fn mooncode_moon_check_command(target : String) -> String {
 
 ///|
 fn mooncode_moon_check_state_path(book_root : String) -> String {
-  book_root
-  |> @pathx.join(".moonclaw")
-  |> @pathx.join("mooncode")
-  |> @pathx.join("watchers")
-  |> @pathx.join("moon-check.json")
+  @moonsuite.product_artifact(
+    book_root, "moonclaw", "mooncode/watchers/moon-check.json",
+  )
 }
 
 ///|

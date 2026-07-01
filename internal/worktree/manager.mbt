@@ -51,9 +51,12 @@ fn worktree_slug(text : String) -> String {
 
 ///|
 fn default_worktree_base_dir(repo_root : String) -> String {
-  let repo_parent = @pathx.dirname(repo_root)
+  let suite_root = @pathx.dirname(repo_root).to_owned()
   let repo_name = @pathx.basename(repo_root)
-  @pathx.join(repo_parent, ".moonclaw-worktrees/\{repo_name}")
+  @pathx.join(
+    @moonsuite.product_tmp_dir(suite_root, "moonclaw"),
+    "worktrees/\{repo_name}",
+  )
 }
 
 ///|
