@@ -4,37 +4,45 @@ async test "Loader::load" (t : @test.Test) {
     let home = mock.cwd
     @mock.with_home(home, () => {
       home.add_json_tree({
-        ".moonclaw": {
-          "rules": {
-            "a.md": (
-              #|---
-              #|description: This is rule A
-              #|globs:
-              #|alwaysApply: true
-              #|---
-              #|Content of rule A
-            ),
-            "b.md": (
-              #|---
-              #|description: This is rule B
-              #|globs: ["*.txt", "*.md"]
-              #|alwaysApply: false
-              #|---
-              #|Content of rule B
-            ),
+        ".moonsuite": {
+          "products": {
+            "moonclaw": {
+              "rules": {
+                "a.md": (
+                  #|---
+                  #|description: This is rule A
+                  #|globs:
+                  #|alwaysApply: true
+                  #|---
+                  #|Content of rule A
+                ),
+                "b.md": (
+                  #|---
+                  #|description: This is rule B
+                  #|globs: ["*.txt", "*.md"]
+                  #|alwaysApply: false
+                  #|---
+                  #|Content of rule B
+                ),
+              },
+            },
           },
         },
         "project": {
-          ".moonclaw": {
-            "rules": {
-              "c.md": (
-                #|---
-                #|description: This is rule C
-                #|globs: ["*.txt"]
-                #|alwaysApply: false
-                #|---
-                #|Content of rule C
-              ),
+          ".moonsuite": {
+            "products": {
+              "moonclaw": {
+                "rules": {
+                  "c.md": (
+                    #|---
+                    #|description: This is rule C
+                    #|globs: ["*.txt"]
+                    #|alwaysApply: false
+                    #|---
+                    #|Content of rule C
+                  ),
+                },
+              },
             },
           },
         },
@@ -47,7 +55,7 @@ async test "Loader::load" (t : @test.Test) {
         content=(
           #|# Project Rules
           #|
-          #|Loaded 3 rules from .moonclaw/rules directory:
+          #|Loaded 3 rules from .moonsuite/products/moonclaw/rules directory:
           #|
           #|## a
           #|

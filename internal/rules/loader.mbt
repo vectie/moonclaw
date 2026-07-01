@@ -11,6 +11,19 @@ pub fn Loader::new(cwd : String, logger~ : @pino.Logger) -> Loader {
 }
 
 ///|
+fn moonclaw_product_home(root : String) -> String {
+  root
+  |> @pathx.join(".moonsuite")
+  |> @pathx.join("products")
+  |> @pathx.join("moonclaw")
+}
+
+///|
+fn moonclaw_rules_dir(root : String) -> String {
+  moonclaw_product_home(root) |> @pathx.join("rules")
+}
+
+///|
 async fn Loader::load_rules_from_directory(
   self : Loader,
   directory : String,
@@ -31,11 +44,9 @@ async fn Loader::load_rules_from_directory(
 
 ///|
 pub async fn Loader::load(self : Loader) -> Unit {
-  let global_path = @os.home()
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("rules")
+  let global_path = moonclaw_rules_dir(@os.home())
   self.load_rules_from_directory(global_path, source=Global)
-  let local_path = self.cwd |> @pathx.join(".moonclaw") |> @pathx.join("rules")
+  let local_path = moonclaw_rules_dir(self.cwd)
   self.load_rules_from_directory(local_path, source=Local)
 }
 
@@ -155,7 +166,7 @@ fn Loader::format(self : Loader) -> String {
     (
       $|# Project Rules
       $|
-      $|Loaded \{self.rules.length()} rules from .moonclaw/rules directory:
+      $|Loaded \{self.rules.length()} rules from .moonsuite/products/moonclaw/rules directory:
       $|
     ),
   )
