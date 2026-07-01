@@ -18,6 +18,7 @@
       "read_file",
       "todo",
       "search_files",
+      "unlimited_ocr",
       "file_write",
       "patch_edit"
     ],
