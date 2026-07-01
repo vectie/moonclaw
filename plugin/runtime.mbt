@@ -18,30 +18,17 @@ pub struct PluginRuntime {
 }
 
 ///|
-fn root_config_path(root : String) -> String {
-  root |> @pathx.join("moonclaw.json")
-}
-
-///|
-fn nested_config_path(root : String) -> String {
-  root |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json")
-}
-
-///|
 fn preferred_config_path(home : String) -> String {
-  @moonsuite.product_artifact(home, "moonclaw", "moonclaw.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    home, "moonclaw", "moonclaw.json",
+  )
 }
 
 ///|
 fn config_paths(home : String, cwd : String) -> Array[String] {
-  let paths = [
-    root_config_path(home),
-    nested_config_path(home),
-    preferred_config_path(home),
-  ]
+  let paths = [preferred_config_path(home)]
   if cwd != home {
-    paths.push(root_config_path(cwd))
-    paths.push(nested_config_path(cwd))
+    paths.push(preferred_config_path(cwd))
   }
   paths
 }

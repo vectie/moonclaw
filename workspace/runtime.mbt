@@ -26,29 +26,19 @@ pub fn managed_workspace_file_names() -> Array[String] {
 }
 
 ///|
-fn root_config_path(root : String) -> String {
-  root |> @pathx.join("moonclaw.json")
-}
-
-///|
-fn nested_config_path(root : String) -> String {
-  root |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json")
-}
-
-///|
 fn preferred_config_path(home : String) -> String {
-  @moonsuite.product_artifact(home, "moonclaw", "moonclaw.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    home, "moonclaw", "moonclaw.json",
+  )
 }
 
 ///|
 fn config_paths(home : String, cwd : String) -> Array[String] {
-  [
-    preferred_config_path(home),
-    root_config_path(home),
-    nested_config_path(home),
-    root_config_path(cwd),
-    nested_config_path(cwd),
-  ]
+  let paths = [preferred_config_path(cwd)]
+  if cwd != home {
+    paths.push(preferred_config_path(home))
+  }
+  paths
 }
 
 ///|

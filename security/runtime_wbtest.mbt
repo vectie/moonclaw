@@ -1,8 +1,12 @@
 ///|
 async test "security runtime loads config and pairing state" {
   @fsx.with_temporary_directory("security-runtime-XXXXXX", async fn(dir) {
+    let config_path = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
     @fsx.write_to_file(
-      dir |> @pathx.join("moonclaw.json"),
+      config_path,
       (
         {
           "session": { "dmScope": "main" },
@@ -20,6 +24,8 @@ async test "security runtime loads config and pairing state" {
     inspect(runtime.allows_native_commands(true), content="false")
     ignore(runtime.approve_pairing("feishu", "default", "chat-1", 10))
     inspect(runtime.is_paired("feishu", "default", "chat-1"), content="true")
+    inspect(@fsx.exists(dir |> @pathx.join("security")), content="false")
+    inspect(@fsx.exists(persisted_state_path(dir)), content="true")
   })
 }
 

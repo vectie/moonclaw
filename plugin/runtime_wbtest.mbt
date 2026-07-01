@@ -1,8 +1,9 @@
 ///|
 async test "plugin runtime loads entries and install state from config" {
   let dir = "/tmp/moonclaw-plugin-runtime"
-  let config_path = dir |> @pathx.join("moonclaw.json")
+  let config_path = preferred_config_path(dir)
   let install_path = dir |> @pathx.join("plugins") |> @pathx.join("feishu")
+  @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
   @fsx.make_directory(install_path, recursive=true)
   @fsx.write_to_file(
     config_path,
@@ -41,7 +42,7 @@ async test "plugin runtime loads entries and install state from config" {
 ///|
 async test "plugin runtime prefers product config over legacy home config" {
   @fsx.with_temporary_directory("moonclaw-plugin-runtime-product-XXXXXX", dir => {
-    let product_config = @moonsuite.product_artifact(
+    let product_config = @moonsuite.product_artifact_for_workspace_root(
       dir, "moonclaw", "moonclaw.json",
     )
     @fsx.make_directory(@pathx.dirname(product_config), recursive=true)

@@ -1,9 +1,10 @@
 ///|
 async test "workspace runtime prefers configured workspace and bootstraps files" {
   let dir = "/tmp/moonclaw-workspace-runtime"
-  let config_path = dir |> @pathx.join("moonclaw.json")
+  let config_path = preferred_config_path(dir)
   let workspace_root = dir |> @pathx.join("workspace-home")
   @fsx.make_directory(dir, recursive=true)
+  @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
   @fsx.write_to_file(
     config_path,
     ({ "agents": { "defaults": { "workspace": workspace_root } } } : Json).stringify(),
@@ -23,8 +24,9 @@ async test "workspace runtime prefers configured workspace and bootstraps files"
 ///|
 async test "workspace runtime includes extension workspace context when detected" {
   let dir = "/tmp/moonclaw-workspace-wiki-runtime"
-  let config_path = dir |> @pathx.join("moonclaw.json")
+  let config_path = preferred_config_path(dir)
   let workspace_root = dir |> @pathx.join("wiki-home")
+  @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
   @fsx.make_directory(workspace_root |> @pathx.join("raw"), recursive=true)
   @fsx.make_directory(workspace_root |> @pathx.join("wiki"), recursive=true)
   @fsx.make_directory(

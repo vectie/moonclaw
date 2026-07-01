@@ -2,13 +2,13 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/test",
   "vectie/moonlib/fsx",
-  "vectie/moonlib/pathx",
   "vectie/moonlib/moonsuite",
 }
 
 import {
   "moonbitlang/async",
   "moonbitlang/core/test",
+  "vectie/moonlib/pathx",
 } for "wbtest"
 
 supported_targets = "native"

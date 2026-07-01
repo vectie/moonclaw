@@ -55,17 +55,28 @@ pub struct SecurityRuntime {
 
 ///|
 fn config_path_candidates(home : String, cwd : String) -> Array[String] {
-  [
-    home |> @pathx.join("moonclaw.json"),
-    home |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
-    cwd |> @pathx.join("moonclaw.json"),
-    cwd |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
+  let paths = [
+    @moonsuite.product_artifact_for_workspace_root(
+      cwd, "moonclaw", "moonclaw.json",
+    ),
   ]
+  if cwd != home {
+    paths.push(
+      @moonsuite.product_artifact_for_workspace_root(
+        home, "moonclaw", "moonclaw.json",
+      ),
+    )
+  }
+  paths
 }
 
 ///|
 fn persisted_state_path(home : String) -> String {
-  home |> @pathx.join("security") |> @pathx.join("state.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    home,
+    "moonclaw",
+    @pathx.join("security", "state.json"),
+  )
 }
 
 ///|
@@ -221,7 +232,7 @@ pub async fn SecurityRuntime::load(self : SecurityRuntime) -> Unit {
 ///|
 pub async fn SecurityRuntime::save(self : SecurityRuntime) -> Unit {
   let path = persisted_state_path(self.home)
-  let dir = self.home |> @pathx.join("security")
+  let dir = @pathx.dirname(path)
   @fsx.make_directory(dir, recursive=true) catch {
     _ => ()
   }

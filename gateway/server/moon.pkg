@@ -17,6 +17,7 @@ import {
   "vectie/moonclaw/internal/websocket" @internal/websocket,
   "vectie/moonclaw/clock",
   "vectie/moonlib/fsx",
+  "vectie/moonlib/moonsuite",
   "vectie/moonclaw/internal/attachment_ingestion",
   "vectie/moonclaw/internal/pdf_ocr",
   "vectie/moonlib/os",

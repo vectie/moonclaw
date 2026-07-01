@@ -97,29 +97,19 @@ pub fn onboarding_options(
 }
 
 ///|
-fn root_config_path(root : String) -> String {
-  root |> @pathx.join("moonclaw.json")
-}
-
-///|
-fn nested_config_path(root : String) -> String {
-  root |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json")
-}
-
-///|
 fn config_candidates(home : String, cwd : String) -> Array[String] {
-  [
-    preferred_config_path(home),
-    root_config_path(home),
-    nested_config_path(home),
-    root_config_path(cwd),
-    nested_config_path(cwd),
-  ]
+  let paths = [preferred_config_path(cwd)]
+  if cwd != home {
+    paths.push(preferred_config_path(home))
+  }
+  paths
 }
 
 ///|
 fn preferred_config_path(home : String) -> String {
-  @moonsuite.product_artifact(home, "moonclaw", "moonclaw.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    home, "moonclaw", "moonclaw.json",
+  )
 }
 
 ///|

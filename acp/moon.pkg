@@ -4,11 +4,11 @@ import {
   "vectie/moonlib/spawn",
   "vectie/moonlib/moonsuite",
   "vectie/moonclaw/oauth/codex",
-  "moonbitlang/x/path",
 }
 
 supported_targets = "native"
 
 import {
   "moonbitlang/async",
+  "moonbitlang/x/path",
 } for "wbtest"

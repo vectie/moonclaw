@@ -70,15 +70,19 @@ fn moonclaw_config_path_candidates(
   cwd : String,
   home : String,
 ) -> Array[String] {
-  [
-    "\{cwd}/moonclaw.json",
-    "\{cwd}/.moonclaw/moonclaw.json",
-    @path.Path(@job.moonclaw_product_home(home))
-    .join(Path("moonclaw.json"))
-    .to_string(),
-    "\{home}/moonclaw.json",
-    "\{home}/.moonclaw/moonclaw.json",
+  let candidates = [
+    @moonsuite.product_artifact_for_workspace_root(
+      cwd, "moonclaw", "moonclaw.json",
+    ),
   ]
+  if cwd != home {
+    candidates.push(
+      @moonsuite.product_artifact_for_workspace_root(
+        home, "moonclaw", "moonclaw.json",
+      ),
+    )
+  }
+  candidates
 }
 
 ///|

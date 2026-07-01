@@ -1,46 +1,23 @@
 ///|
 async fn moonclaw_config_json(home : String, cwd : String) -> Json? {
-  let product_path = @path.Path(@job.moonclaw_product_home(home))
-    .join(Path("moonclaw.json"))
-    .to_string()
-  let project_path = @path.Path(cwd)
-    .join(Path(".moonclaw"))
-    .join(Path("moonclaw.json"))
-    .to_string()
-  let home_root_path = @path.Path(home).join(Path("moonclaw.json")).to_string()
-  let user_path = @path.Path(home)
-    .join(Path(".moonclaw"))
-    .join(Path("moonclaw.json"))
-    .to_string()
-
-  let home_root_json = if @fsx.exists(home_root_path) {
-    let text = @fsx.read_file(home_root_path) catch { _ => return None }
-    Some(@json.parse(text) catch { _ => return None })
-  } else {
-    None
+  let candidates = [
+    @moonsuite.product_artifact_for_workspace_root(
+      cwd, "moonclaw", "moonclaw.json",
+    ),
+  ]
+  if cwd != home {
+    candidates.push(
+      @moonsuite.product_artifact_for_workspace_root(
+        home, "moonclaw", "moonclaw.json",
+      ),
+    )
   }
-  let user_json = if @fsx.exists(user_path) {
-    let text = @fsx.read_file(user_path) catch { _ => return home_root_json }
-    Some(@json.parse(text) catch { _ => return home_root_json })
-  } else {
-    home_root_json
+  for path in candidates {
+    let text = @fsx.read_file(path) catch { _ => continue }
+    let json = @json.parse(text) catch { _ => continue }
+    return Some(json)
   }
-  let product_json = if @fsx.exists(product_path) {
-    let text = @fsx.read_file(product_path) catch { _ => return user_json }
-    Some(@json.parse(text) catch { _ => return user_json })
-  } else {
-    user_json
-  }
-  let project_json = if @fsx.exists(project_path) {
-    let text = @fsx.read_file(project_path) catch { _ => return product_json }
-    Some(@json.parse(text) catch { _ => return product_json })
-  } else {
-    None
-  }
-  match project_json {
-    Some(json) => Some(json)
-    None => product_json
-  }
+  None
 }
 
 ///|

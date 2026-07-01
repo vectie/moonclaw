@@ -1,11 +1,10 @@
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config normalizes camelCase feishu config" {
   @fsx.with_temporary_directory("gateway-bootstrap-XXXXXX", dir => {
-    let home_config_dir = @path.Path(dir).join(Path(".moonclaw")).to_string()
-    @fsx.make_directory(home_config_dir, recursive=true)
-    let config_path = @path.Path(home_config_dir)
-      .join(Path("moonclaw.json"))
-      .to_string()
+    let config_path = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@job.moonclaw_product_home(dir), recursive=true)
     @fsx.write_to_file(
       config_path,
       Json::object({
@@ -58,7 +57,7 @@ async test "bootstrap_channel_states_from_moonclaw_config normalizes camelCase f
 }
 
 ///|
-async test "bootstrap_channel_states_from_moonclaw_config reads moonclaw root home" {
+async test "bootstrap_channel_states_from_moonclaw_config ignores moonclaw root home" {
   @fsx.with_temporary_directory("gateway-bootstrap-root-home-XXXXXX", dir => {
     let config_path = @path.Path(dir).join(Path("moonclaw.json")).to_string()
     @fsx.write_to_file(
@@ -79,28 +78,16 @@ async test "bootstrap_channel_states_from_moonclaw_config reads moonclaw root ho
     let states = bootstrap_channel_states_from_moonclaw_config(
       dir, "/tmp/no-project",
     )
-    inspect(states.length(), content="1")
-    inspect(
-      states[0].accounts[0].config
-      .stringify()
-      .contains("\"connection_mode\":\"websocket\""),
-      content="true",
-    )
-    inspect(
-      states[0].accounts[0].config
-      .stringify()
-      .contains("\"app_id\":\"root_app\""),
-      content="true",
-    )
+    inspect(states.length(), content="0")
   })
 }
 
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config prefers product home" {
   @fsx.with_temporary_directory("gateway-bootstrap-product-home-XXXXXX", dir => {
-    let product_config = @path.Path(@job.moonclaw_product_home(dir))
-      .join(Path("moonclaw.json"))
-      .to_string()
+    let product_config = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
     @fsx.make_directory(@job.moonclaw_product_home(dir), recursive=true)
     @fsx.write_to_file(
       @path.Path(dir).join(Path("moonclaw.json")).to_string(),
@@ -145,11 +132,10 @@ async test "bootstrap_channel_states_from_moonclaw_config prefers product home" 
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config merges base and account overrides" {
   @fsx.with_temporary_directory("gateway-bootstrap-accounts-XXXXXX", dir => {
-    let home_config_dir = @path.Path(dir).join(Path(".moonclaw")).to_string()
-    @fsx.make_directory(home_config_dir, recursive=true)
-    let config_path = @path.Path(home_config_dir)
-      .join(Path("moonclaw.json"))
-      .to_string()
+    let config_path = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@job.moonclaw_product_home(dir), recursive=true)
     @fsx.write_to_file(
       config_path,
       Json::object({
@@ -245,11 +231,10 @@ async test "seed_channel_state_from_moonclaw_config preserves persisted state" {
 ///|
 async test "bootstrap_channel_states_from_moonclaw_config normalizes weixin config" {
   @fsx.with_temporary_directory("gateway-bootstrap-weixin-XXXXXX", dir => {
-    let home_config_dir = @path.Path(dir).join(Path(".moonclaw")).to_string()
-    @fsx.make_directory(home_config_dir, recursive=true)
-    let config_path = @path.Path(home_config_dir)
-      .join(Path("moonclaw.json"))
-      .to_string()
+    let config_path = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@job.moonclaw_product_home(dir), recursive=true)
     @fsx.write_to_file(
       config_path,
       Json::object({
