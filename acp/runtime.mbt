@@ -75,12 +75,20 @@ fn config_paths(home : String, cwd : String) -> Array[String] {
 
 ///|
 fn acp_state_path(home : String) -> String {
-  @moonsuite.product_artifact(home, "moonclaw", "acp_sessions.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    home, "moonclaw", "acp_sessions.json",
+  )
 }
 
 ///|
 async fn ensure_acp_state_parent(home : String) -> Unit {
-  @fsx.make_directory(@moonsuite.product_dir(home, "moonclaw"), recursive=true) catch {
+  @fsx.make_directory(
+    @moonsuite.product_dir(
+      @moonsuite.suite_root_for_workspace_root(home),
+      "moonclaw",
+    ),
+    recursive=true,
+  ) catch {
     _ => ()
   }
 }

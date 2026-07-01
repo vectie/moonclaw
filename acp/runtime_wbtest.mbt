@@ -58,12 +58,20 @@ async test "ACP runtime loads codex targets from config and persists sessions" {
 ///|
 async test "ACP runtime prefers product config and persists state in product home" {
   @fsx.with_temporary_directory("moonclaw-acp-runtime-product-XXXXXX", dir => {
+    let home = dir + "/books/acp-book"
+    @fsx.make_directory(home, recursive=true)
     let product_config = @moonsuite.product_artifact_for_workspace_root(
-      dir, "moonclaw", "moonclaw.json",
+      home, "moonclaw", "moonclaw.json",
     )
-    @fsx.make_directory(@moonsuite.product_dir(dir, "moonclaw"), recursive=true)
+    @fsx.make_directory(
+      @moonsuite.product_dir(
+        @moonsuite.suite_root_for_workspace_root(home),
+        "moonclaw",
+      ),
+      recursive=true,
+    )
     @fsx.write_to_file(
-      @path.Path(dir).join(Path("moonclaw.json")).to_string(),
+      @path.Path(home).join(Path("moonclaw.json")).to_string(),
       (
         { "acp": { "targets": { "legacy-main": { "backend": "codex" } } } } :
         Json).stringify(),
@@ -75,7 +83,7 @@ async test "ACP runtime prefers product config and persists state in product hom
         Json).stringify(),
     )
 
-    let runtime = AcpRuntime::new(home=dir, cwd=dir)
+    let runtime = AcpRuntime::new(home~, cwd=home)
     let targets = runtime.list_targets()
     inspect(targets.length(), content="1")
     inspect(targets[0].id, content="product-main")
@@ -84,12 +92,23 @@ async test "ACP runtime prefers product config and persists state in product hom
     )
     inspect(
       @fsx.exists(
-        @moonsuite.product_artifact(dir, "moonclaw", "acp_sessions.json"),
+        @moonsuite.product_artifact_for_workspace_root(
+          home, "moonclaw", "acp_sessions.json",
+        ),
       ),
       content="true",
     )
     inspect(
-      @fsx.exists(@path.Path(dir).join(Path(".moonclaw")).to_string()),
+      @fsx.exists(
+        @path.Path(home)
+        .join(Path(".moonsuite"))
+        .join(Path("products"))
+        .to_string(),
+      ),
+      content="false",
+    )
+    inspect(
+      @fsx.exists(@path.Path(home).join(Path(".moonclaw")).to_string()),
       content="false",
     )
   })

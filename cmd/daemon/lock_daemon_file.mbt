@@ -1,6 +1,10 @@
 ///|
 fn moonclaw_daemon_info_path(home : StringView) -> String {
-  @moonsuite.product_artifact(home.to_owned(), "moonclaw", "daemon.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    home.to_owned(),
+    "moonclaw",
+    "daemon.json",
+  )
 }
 
 ///|

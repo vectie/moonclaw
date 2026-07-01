@@ -108,6 +108,7 @@ async fn resolve_provider_task_command(
   cwd : String,
   home : String?,
   target_id : String?,
+  affinity_root : String,
 ) -> Result[ProviderTaskCommand, String] {
   let provider = match target_id {
     Some(target_id) if !target_id.trim().to_owned().is_blank() =>
@@ -123,7 +124,8 @@ async fn resolve_provider_task_command(
       match providers {
         [provider] => provider
         _ =>
-          match select_provider_by_workspace_affinity(providers, cwd) {
+          match
+            select_provider_by_workspace_affinity(providers, affinity_root) {
             Some(provider) => provider
             None =>
               match providers {
@@ -277,7 +279,11 @@ async fn load_provider_task_task_batch(
   goal : String,
   metadata? : Json = {},
 ) -> Result[(ProviderTaskCommand, ProviderTaskBatch), String] {
-  let command = match resolve_provider_task_command(cwd, home, target_id) {
+  let affinity_root = metadata_string_value(metadata, "workspace_root").unwrap_or(
+    cwd,
+  )
+  let command = match
+    resolve_provider_task_command(cwd, home, target_id, affinity_root) {
     Ok(command) => command
     Err(error) =>
       match embedded_provider_task_command(metadata, target_id) {

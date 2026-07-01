@@ -1644,7 +1644,12 @@ async test "provider task result persistence falls back to provider workspace wh
     write_provider_task_fixture(workspace, script_path, state_path)
 
     let command = match
-      resolve_provider_task_command(workspace, None, Some("wiki-main")) {
+      resolve_provider_task_command(
+        workspace,
+        None,
+        Some("wiki-main"),
+        workspace,
+      ) {
       Ok(command) => command
       Err(error) => fail(error)
     }
@@ -2710,11 +2715,9 @@ async test "provider task resolves workspace-affine provider when multiple targe
     let workspace = @pathx.join(dir, "workspace")
     let script_path = @pathx.join(dir, "provider_task.sh")
     let state_path = @pathx.join(dir, "persisted-path.txt")
-    let run_cwd = workspace
-      |> @pathx.join("books")
-      |> @pathx.join("coding")
-      |> moonclaw_jobs_root
-      |> @pathx.join("run-1")
+    let coding_root = workspace |> @pathx.join("books") |> @pathx.join("coding")
+    @fsx.make_directory(coding_root, recursive=true, exists_ok=true)
+    let run_cwd = coding_root |> moonclaw_jobs_root |> @pathx.join("run-1")
     @fsx.make_directory(run_cwd, recursive=true, exists_ok=true)
     write_multi_provider_task_fixture(workspace, script_path, state_path)
 
@@ -2724,6 +2727,7 @@ async test "provider task resolves workspace-affine provider when multiple targe
         None,
         None,
         "Update the knowledge base",
+        metadata={ "workspace_root": coding_root },
       ) {
       Ok(value) => value
       Err(error) => fail(error)

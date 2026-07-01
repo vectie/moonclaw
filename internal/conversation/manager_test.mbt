@@ -82,3 +82,29 @@ async test "Manager::load" (t : @test.Test) {
     )
   })
 }
+
+///|
+async test "Manager stores conversations in suite product home for book roots" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let suite_root = @pathx.join(mock.cwd.path(), "suite")
+    let book_root = @pathx.join(suite_root, "books/research-demo")
+    @fsx.make_directory(book_root, recursive=true, exists_ok=true)
+    let manager = @conversation.Manager::new(
+      uuid=@uuid.generator(mock.rand),
+      home=book_root,
+    )
+    json_inspect(manager.list(), content=[])
+    assert_true(
+      @fsx.exists(
+        @moonsuite.product_artifact_for_workspace_root(
+          book_root, "moonclaw", "conversations",
+        ),
+      ),
+    )
+    assert_false(
+      @fsx.exists(@pathx.join(book_root, ".moonsuite/products/moonclaw")),
+    )
+  })
+}

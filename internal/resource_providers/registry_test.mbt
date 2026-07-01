@@ -124,6 +124,7 @@ async test "load_resource_providers discovers parent workspace manifests" (
 ) {
   @mock.run(t, mock => {
     let workspace_root = mock.cwd.path() |> @pathx.join("workspace")
+    @fsx.make_directory(workspace_root, recursive=true, exists_ok=true)
     let run_dir = @job.moonclaw_jobs_root(workspace_root)
       |> @pathx.join("run-1")
     @fsx.make_directory(
