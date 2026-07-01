@@ -35,7 +35,7 @@ The subcommand dispatch consumes the command correctly from `rest`; this was pre
 ```bash
 moonclaw gateway start
 moonclaw gateway start --port 19000
-moonclaw gateway start --cwd /repo --home ~/.moonclaw
+moonclaw gateway start --cwd /repo --home ~
 ```
 
 Flow:

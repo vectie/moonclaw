@@ -174,7 +174,7 @@ MoonClaw is strongest when you want one system to handle:
 - `2026-04-04`: added thread-local `/plan` mode with `/preview` and `/promote`; made final run `report.md` and `result.json` appear as clickable Rabbita cards; added a full-screen canvas toggle, aggregated starter documents into one operator-facing input card, and upgraded artifact opening from a small popup into a full-screen editor surface
 - `2026-04-01`: clarified the execution layer with uniquely named analysis helpers, `delegate_run`, `patch_edit`, and `resource_providers`; hardened the analysis backbone by separating execution and tool contracts; added a first-class `web_fetch` tool and made analysis distinguish web search from web fetch instead of relying on loose booleans
 - `2026-03-26`: split classic `/plan-job` from the E2E `/e2e` flow; added job-level preprocess and optional postprocess planning, in-place `/resume` from `WaitingForInput`, tighter planner skill enforcement, and assumption-based continuation for blocked analytical runs
-- `2026-03-25`: added adaptive step expansion with `needs_input` / `needs_subplan`, `WaitingForInput` pause-and-resume via `/resume`, run-workspace output materialization, and fixed Feishu channel chat to honor the configured primary model from `~/.moonclaw/moonclaw.json`
+- `2026-03-25`: added adaptive step expansion with `needs_input` / `needs_subplan`, `WaitingForInput` pause-and-resume via `/resume`, run-workspace output materialization, and fixed Feishu channel chat to honor the configured primary model from `~/.moonsuite/products/moonclaw/moonclaw.json`
 - `2026-03-24`: merged `opc`, `weixin`, and `canvas`; added Weixin Official Account support; upgraded the controller/company canvas; made the generic fallback a single `execute` step
 - `2026-03-23`: added generic worker routing with `child_profile`, `execution_mode`, and `execution_target`; routed analysis through ACP
 - `2026-03-20`: made job and run ids human-readable; moved run workspaces under `<workspace>/moonclaw-jobs`; fixed local time display; improved Feishu progress UX
@@ -193,7 +193,7 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - run workspaces are run-owned and no longer copy workspace markdown like `AGENTS.md`, `USER.md`, `MEMORY.md`, `IDENTITY.md`, or `ROUTINES.md`
 - job timestamps are rendered in local time with an explicit offset
 - if a run reaches `WaitingForInput`, Feishu status replies now tell you to reply in-thread with `/resume` plus the missing text, optionally with attachments
-- normal Feishu chat uses the configured primary model from `~/.moonclaw/moonclaw.json`; stale thread-local bare model ids no longer override it
+- normal Feishu chat uses the configured primary model from `~/.moonsuite/products/moonclaw/moonclaw.json`; stale thread-local bare model ids no longer override it
 - provider-backed adaptive phases are expected to close their event session after the final assistant turn so parent runs can move on to the next phase instead of remaining `Running`
 - provider-backed child runs emit parent `child_run.started`, `child_run.succeeded`, and `child_run.failed` events so operators can see which bounded child run is currently blocking or closing a provider phase
 - provider-task results use compact stable task ids for long prompt-derived provider tasks before they are persisted through extension providers; runtime step ids remain unique and hash-backed
@@ -253,32 +253,32 @@ cd ~/Workspace/moonclaw
 Run onboarding status:
 
 ```bash
-moon run cmd/main -- onboard status --home ~/.moonclaw
+moon run cmd/main -- onboard status --home ~
 ```
 
 Use Codex OAuth and switch the primary model automatically:
 
 ```bash
-moon run cmd/main -- onboard auth codex --home ~/.moonclaw
+moon run cmd/main -- onboard auth codex --home ~
 ```
 
 Provision a Codex ACP target that the gateway can launch later:
 
 ```bash
-moon run cmd/main -- acp add codex --home ~/.moonclaw
+moon run cmd/main -- acp add codex --home ~
 ```
 
 If you want multiple ACP targets, add them with explicit ids:
 
 ```bash
-moon run cmd/main -- acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
+moon run cmd/main -- acp add codex --home ~ --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
 ```
 
 Configure Feishu:
 
 ```bash
 moon run cmd/main -- onboard configure \
-  --home ~/.moonclaw \
+  --home ~ \
   --enable-feishu \
   --feishu-app-id <app_id> \
   --feishu-app-secret <app_secret>
@@ -287,30 +287,30 @@ moon run cmd/main -- onboard configure \
 Start the gateway:
 
 ```bash
-moon run cmd/main -- gateway start --home ~/.moonclaw
+moon run cmd/main -- gateway start --home ~
 ```
 
 Import an external proposal packet:
 
 ```bash
-moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw
+moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~
 ```
 
 Gateway-path alias:
 
 ```bash
-moon run cmd/main -- gateway proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw
+moon run cmd/main -- gateway proposal import keeper/jobs/ingest-001.json --home ~
 ```
 
 Import and execute immediately:
 
 ```bash
-moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw --confirm
+moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~ --confirm
 ```
 
 Important:
 
-- `--home ~/.moonclaw` stores MoonClaw runtime state such as jobs, runs, memories, and gateway data.
+- `--home ~` uses your home directory as the MoonSuite root and stores MoonClaw runtime state under `~/.moonsuite/products/moonclaw/`.
 - `gateway start` now falls back to the configured `agents.defaults.cwd` and `gateway.port` from `moonclaw.json`.
 - `acp add codex` now falls back to `agents.defaults.workspace` for the target workspace and `agents.defaults.cwd` for the target cwd.
 - `--cwd` still overrides the writable workspace explicitly when you want to point the gateway somewhere else.
@@ -320,14 +320,14 @@ Important:
 Example with an isolated workspace instead of the repo:
 
 ```bash
-mkdir -p ~/.moonclaw/workspace
-moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/workspace
+mkdir -p ~/.moonsuite/products/moonclaw/workspace
+moon run cmd/main -- gateway start --home ~ --cwd ~/.moonsuite/products/moonclaw/workspace
 ```
 
 With that setup, new run workspaces will appear under:
 
 ```text
-~/.moonclaw/workspace/moonclaw-jobs/
+~/.moonsuite/products/moonclaw/workspace/moonclaw-jobs/
 ```
 
 instead of being hidden under a nested `.moonclaw/job-workspaces/` path.
@@ -352,13 +352,13 @@ files that the bundle references.
 Useful onboarding commands:
 
 ```bash
-moon run cmd/main -- onboard status --home ~/.moonclaw
-moon run cmd/main -- onboard auth status --home ~/.moonclaw
-moon run cmd/main -- onboard auth codex --home ~/.moonclaw
-moon run cmd/main -- onboard auth copilot --home ~/.moonclaw
-moon run cmd/main -- onboard models --home ~/.moonclaw
-moon run cmd/main -- onboard switch codex --home ~/.moonclaw
-moon run cmd/main -- onboard print-config --home ~/.moonclaw
+moon run cmd/main -- onboard status --home ~
+moon run cmd/main -- onboard auth status --home ~
+moon run cmd/main -- onboard auth codex --home ~
+moon run cmd/main -- onboard auth copilot --home ~
+moon run cmd/main -- onboard models --home ~
+moon run cmd/main -- onboard switch codex --home ~
+moon run cmd/main -- onboard print-config --home ~
 ```
 
 Current behavior:
@@ -371,8 +371,8 @@ Current behavior:
 ACP target provisioning is separate from onboarding:
 
 ```bash
-moon run cmd/main -- acp add codex --home ~/.moonclaw
-moon run cmd/main -- acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch
+moon run cmd/main -- acp add codex --home ~
+moon run cmd/main -- acp add codex --home ~ --id codex-review --workspace ~/Workspace/review-scratch
 ```
 
 Current ACP behavior:
@@ -395,7 +395,7 @@ Example:
 which codex
 ```
 
-Then set the ACP target command in `~/.moonclaw/moonclaw.json` to that exact path, for example:
+Then set the ACP target command in `~/.moonsuite/products/moonclaw/moonclaw.json` to that exact path, for example:
 
 ```json
 {

@@ -99,8 +99,8 @@ Current capabilities behind the gateway:
 Configure ACP targets that the gateway can launch later.
 
 ```bash
-moonclaw acp add codex --home ~/.moonclaw
-moonclaw acp add codex --home ~/.moonclaw --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
+moonclaw acp add codex --home ~
+moonclaw acp add codex --home ~ --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
 ```
 
 Current capabilities:
@@ -118,14 +118,14 @@ Current capabilities:
 Inspect and configure a local MoonClaw setup.
 
 ```bash
-moonclaw onboard status --home ~/.moonclaw
-moonclaw onboard auth status --home ~/.moonclaw
-moonclaw onboard auth codex --home ~/.moonclaw
-moonclaw onboard models --home ~/.moonclaw
-moonclaw onboard init --home ~/.moonclaw --model bailian/qwen3.5-plus --workspace ~/.moonclaw/workspace --gateway-port 18123
-moonclaw onboard configure --home ~/.moonclaw --model bailian/qwen3.5-plus --enable-feishu --feishu-app-id <app_id> --feishu-app-secret <app_secret>
-moonclaw onboard switch codex --home ~/.moonclaw
-moonclaw onboard print-config --home ~/.moonclaw
+moonclaw onboard status --home ~
+moonclaw onboard auth status --home ~
+moonclaw onboard auth codex --home ~
+moonclaw onboard models --home ~
+moonclaw onboard init --home ~ --model bailian/qwen3.5-plus --workspace ~/.moonsuite/products/moonclaw/workspace --gateway-port 18123
+moonclaw onboard configure --home ~ --model bailian/qwen3.5-plus --enable-feishu --feishu-app-id <app_id> --feishu-app-secret <app_secret>
+moonclaw onboard switch codex --home ~
+moonclaw onboard print-config --home ~
 ```
 
 Current capabilities:
@@ -366,8 +366,8 @@ main()
 
 Commands read configuration from:
 
-1. `~/.moonclaw/models.json` - Model configurations
-2. `~/.moonclaw/config.json` - General settings
+1. `~/.moonsuite/products/moonclaw/models.json` - Model configurations
+2. `~/.moonsuite/products/moonclaw/config.json` - General settings
 3. `.trae/rules/` - Project rules
 4. `.trae/skills/` - Project skills
 5. Command-line arguments (highest priority)
