@@ -20,7 +20,7 @@ fn provider_task_runtime_artifact_dir(
   request : AnalysisRequest,
   workspace_root : String,
 ) -> String {
-  @moonsuite.product_artifact(
+  @moonsuite.product_artifact_for_workspace_root(
     provider_task_runtime_artifact_root(request, workspace_root),
     "moonclaw",
     "provider-task",
@@ -44,7 +44,7 @@ async fn provider_task_runtime_artifact_path(
   Ok(
     @pathx.join(
       artifact_dir,
-      ".moonclaw-provider-\{artifact_kind}-\{request.run_id}-\{step_key}.json",
+      "provider-\{artifact_kind}-\{request.run_id}-\{step_key}.json",
     ),
   )
 }

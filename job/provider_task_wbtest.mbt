@@ -730,10 +730,8 @@ async test "provider task runner reuses embedded provider command when manifest 
       content="true",
     )
     let persisted_path = @fsx.read_file(state_path)
-    inspect(
-      persisted_path.contains(".moonclaw-provider-result-run-1-"),
-      content="true",
-    )
+    inspect(persisted_path.contains("provider-result-run-1-"), content="true")
+    inspect(persisted_path.contains(".moonclaw-provider-"), content="false")
   })
 }
 
@@ -879,10 +877,11 @@ async test "provider task analysis runner hydrates context and persists structur
     let persisted_step_key = safe_step_file_segment("step-1")
     inspect(
       persisted_path.contains(
-        ".moonclaw-provider-result-run-1-\{persisted_step_key}.json",
+        "provider-result-run-1-\{persisted_step_key}.json",
       ),
       content="true",
     )
+    inspect(persisted_path.contains(".moonclaw-provider-"), content="false")
     let persisted_payload = @fsx.read_file(persisted_path.trim())
     inspect(
       persisted_payload.contains("\"summary\": \"Updated the wiki"),
@@ -1713,12 +1712,63 @@ async test "provider task result persistence falls back to provider workspace wh
       persisted_path.contains("book-space/.moonclaw/provider-task/"),
       content="false",
     )
+    inspect(persisted_path.contains(".moonclaw-provider-"), content="false")
     inspect(
       @fsx.read_file(persisted_path).contains(
         "\"summary\": \"Updated the wiki from durable evidence.\"",
       ),
       content="true",
     )
+  })
+}
+
+///|
+async test "provider task runtime artifacts derive suite product home for book roots" {
+  @fsx.with_temporary_directory("job-extension-provider-suite-root-XXXXXX", async fn(
+    dir,
+  ) {
+    let suite_root = @pathx.join(dir, "suite")
+    let book_root = suite_root |> @pathx.join("books/research-demo")
+    @fsx.make_directory(book_root, recursive=true, exists_ok=true)
+    let request = AnalysisRequest::{
+      prompt: "Persist provider task artifact.",
+      system_prompt: "Base system prompt.",
+      source_prompt: "Persist provider task artifact",
+      step_metadata: {},
+      cwd: book_root,
+      home: None,
+      model_name: "codex/gpt-5.4",
+      enable_tools: true,
+      web_search: false,
+      tool_contract: AnalysisToolContract::new(),
+      preferred_skills: [],
+      job_id: "job-1",
+      run_id: "run-1",
+      step_id: "step-1",
+      execution_isolation: None,
+      role_runtime_contract: None,
+      execution_mode: Some("provider"),
+      execution_target: Some("wiki-main"),
+    }
+    let path = match
+      provider_task_runtime_artifact_path(request, book_root, "result") {
+      Ok(path) => path
+      Err(error) => fail(error)
+    }
+    inspect(
+      path.contains(
+        "\{suite_root}/.moonsuite/products/moonclaw/provider-task/provider-result-run-1-",
+      ),
+      content="true",
+    )
+    inspect(path.has_suffix(".json"), content="true")
+    inspect(
+      path.contains(
+        "books/research-demo/.moonsuite/products/moonclaw/provider-task",
+      ),
+      content="false",
+    )
+    inspect(path.contains(".moonclaw-provider-"), content="false")
   })
 }
 
@@ -2350,8 +2400,9 @@ async test "provider task analysis runner persists raw response on parse failure
       content="true",
     )
     let step_key = safe_step_file_segment("step-1")
-    let debug_file = ".moonclaw-provider-failure-run-1-\{step_key}.json"
+    let debug_file = "provider-failure-run-1-\{step_key}.json"
     inspect(error.contains(debug_file), content="true")
+    inspect(error.contains(".moonclaw-provider-"), content="false")
     let debug_path = match
       provider_task_failure_debug_path(
         request,
