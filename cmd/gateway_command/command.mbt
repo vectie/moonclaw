@@ -69,7 +69,7 @@ fn print_help() -> Unit {
   println(
     "  --cwd <dir>        Working directory (default: config cwd or current)",
   )
-  println("  --home <dir>       Home directory (default: ~/.moonclaw)")
+  println("  --home <dir>       MoonSuite root (default: user home)")
   println("")
   println("Connect options:")
   println(
@@ -596,7 +596,7 @@ async fn make_client(
 fn resolve_home(args : Array[String]) -> String {
   match parse_string_arg(args, "--home") {
     Some(home) => home
-    None => @pathx.join(@os.home() catch { _ => "." }, ".moonclaw")
+    None => @os.home() catch { _ => "." }
   }
 }
 

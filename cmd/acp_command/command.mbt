@@ -21,14 +21,14 @@ fn print_help() -> Unit {
   println("  help          Show this help message")
   println("")
   println("Options for `add codex`:")
-  println("  --home <dir>       Home config directory (default: ~/.moonclaw)")
+  println("  --home <dir>       MoonSuite root (default: user home)")
   println(
     "  --cwd <dir>        Working directory for config discovery (default: current)",
   )
   println("  --id <target>      Target id (default: codex-main)")
   println("  --label <text>     Target label (default: Codex <id>)")
   println(
-    "  --workspace <dir>  ACP workspace path (default: config workspace or <home>/workspace)",
+    "  --workspace <dir>  ACP workspace path (default: config workspace or <home>/.moonsuite/products/moonclaw/workspace)",
   )
   println(
     "  --target-cwd <dir> ACP target cwd (default: config cwd or workspace)",
@@ -38,7 +38,7 @@ fn print_help() -> Unit {
   println("")
   println("Example:")
   println(
-    "  moonclaw acp add codex --home ~/.moonclaw --workspace ~/.moonclaw/workspace",
+    "  moonclaw acp add codex --home ~ --workspace ~/.moonsuite/products/moonclaw/workspace",
   )
 }
 
@@ -56,7 +56,7 @@ fn parse_string_arg(args : Array[String], flag : String) -> String? {
 fn resolve_home(args : Array[String]) -> String {
   match parse_string_arg(args, "--home") {
     Some(home) => home
-    None => @pathx.join(@os.home() catch { _ => "." }, ".moonclaw")
+    None => @os.home() catch { _ => "." }
   }
 }
 
@@ -81,6 +81,7 @@ fn nested_config_path(root : String) -> String {
 ///|
 fn config_candidates(home : String, cwd : String) -> Array[String] {
   [
+    preferred_config_path(home),
     root_config_path(home),
     nested_config_path(home),
     root_config_path(cwd),
@@ -90,7 +91,7 @@ fn config_candidates(home : String, cwd : String) -> Array[String] {
 
 ///|
 fn preferred_config_path(home : String) -> String {
-  root_config_path(home)
+  @moonsuite.product_artifact(home, "moonclaw", "moonclaw.json")
 }
 
 ///|
@@ -202,7 +203,9 @@ fn merge_missing(existing : Json, defaults : Json) -> Json {
 
 ///|
 fn default_config(home : String) -> Json {
-  let workspace_root = home |> @pathx.join("workspace")
+  let workspace_root = @moonsuite.product_artifact(
+    home, "moonclaw", "workspace",
+  )
   {
     "models": { "providers": {} },
     "agents": {
@@ -258,7 +261,7 @@ async fn add_codex_target(args : Array[String]) -> Unit {
     Some(workspace) => workspace
     None =>
       configured_workspace_root(existing).unwrap_or(
-        home |> @pathx.join("workspace"),
+        @moonsuite.product_artifact(home, "moonclaw", "workspace"),
       )
   }
   let target_cwd = match parse_string_arg(args, "--target-cwd") {

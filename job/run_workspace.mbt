@@ -9,7 +9,7 @@ fn configured_workspace_root(definition : JobDefinition) -> String? {
 
 ///|
 fn run_workspace_root_dir(root : String) -> String {
-  root |> @pathx.join("moonclaw-jobs")
+  moonclaw_jobs_root(root)
 }
 
 ///|
@@ -19,7 +19,7 @@ fn child_workspace_root_dir(parent_workspace : String) -> String {
 
 ///|
 fn run_workspace_meta_dir(workspace_dir : String) -> String {
-  workspace_dir |> @pathx.join(".moonclaw")
+  workspace_dir
 }
 
 ///|

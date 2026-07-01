@@ -13,6 +13,7 @@ import {
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
+  "vectie/moonlib/moonsuite",
   "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/resource_providers",

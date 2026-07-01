@@ -17,5 +17,11 @@ async test "Gateway uses moonsuite product home for job runtime root" {
       root.contains("/.moonsuite/products/moonclaw/jobs"),
     )
     assert_true(!(@fsx.exists(home + "/jobs") catch { _ => false }))
+    assert_true(!(@fsx.exists(home + "/gateway") catch { _ => false }))
+    assert_true(
+      @fsx.exists(home + "/.moonsuite/products/moonclaw/gateway/sessions") catch {
+        _ => false
+      },
+    )
   })
 }

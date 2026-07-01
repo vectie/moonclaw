@@ -109,6 +109,7 @@ fn nested_config_path(root : String) -> String {
 ///|
 fn config_candidates(home : String, cwd : String) -> Array[String] {
   [
+    preferred_config_path(home),
     root_config_path(home),
     nested_config_path(home),
     root_config_path(cwd),
@@ -118,7 +119,7 @@ fn config_candidates(home : String, cwd : String) -> Array[String] {
 
 ///|
 fn preferred_config_path(home : String) -> String {
-  root_config_path(home)
+  @moonsuite.product_artifact(home, "moonclaw", "moonclaw.json")
 }
 
 ///|
@@ -539,7 +540,9 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
 
 ///|
 fn default_config(home : String, cwd : String) -> Json {
-  let workspace_root = home |> @pathx.join("workspace")
+  let workspace_root = @moonsuite.product_artifact(
+    home, "moonclaw", "workspace",
+  )
   {
     "models": { "providers": {} },
     "agents": {

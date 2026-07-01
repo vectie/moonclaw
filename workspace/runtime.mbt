@@ -36,8 +36,14 @@ fn nested_config_path(root : String) -> String {
 }
 
 ///|
+fn preferred_config_path(home : String) -> String {
+  @moonsuite.product_artifact(home, "moonclaw", "moonclaw.json")
+}
+
+///|
 fn config_paths(home : String, cwd : String) -> Array[String] {
   [
+    preferred_config_path(home),
     root_config_path(home),
     nested_config_path(home),
     root_config_path(cwd),

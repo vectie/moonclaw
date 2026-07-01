@@ -1,12 +1,9 @@
 ///|
 pub fn moonclaw_product_home(home : String) -> String {
-  home
-  |> @pathx.join(".moonsuite")
-  |> @pathx.join("products")
-  |> @pathx.join("moonclaw")
+  @moonsuite.product_dir(home, "moonclaw")
 }
 
 ///|
 pub fn moonclaw_jobs_root(home : String) -> String {
-  moonclaw_product_home(home) |> @pathx.join("jobs")
+  @moonsuite.product_artifact(home, "moonclaw", "jobs")
 }

@@ -91,9 +91,8 @@ pub async fn Manager::spawn(
     None => self.cwd
   }
   let id = self.new_id()
-  let jobs_dir = self.cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("jobs")
+  let jobs_dir = moonclaw_jobs_root(self.cwd)
+    |> @pathx.join("processes")
     |> @pathx.join("\{id.0}")
   @fsx.make_directory(jobs_dir, recursive=true, exists_ok=true)
   let stdout_path = jobs_dir |> @pathx.join("stdout")

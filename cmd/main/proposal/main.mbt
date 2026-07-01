@@ -26,7 +26,7 @@ fn print_help() -> Unit {
   println("  --confirm        Confirm and execute after import")
   println("  --inline         Run confirmed import inline instead of detaching")
   println("  --json           Print JSON instead of text")
-  println("  --home <dir>     Home config directory (default: ~/.moonclaw)")
+  println("  --home <dir>     MoonSuite root (default: user home)")
   println("  --cwd <dir>      Working directory (default: current)")
 }
 
@@ -44,7 +44,7 @@ fn parse_string_arg(args : Array[String], flag : String) -> String? {
 fn resolve_home(args : Array[String]) -> String {
   match parse_string_arg(args, "--home") {
     Some(home) => home
-    None => @pathx.join(@os.home() catch { _ => "." }, ".moonclaw")
+    None => @os.home() catch { _ => "." }
   }
 }
 

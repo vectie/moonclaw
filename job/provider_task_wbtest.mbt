@@ -2649,7 +2649,7 @@ async test "provider task resolves workspace-affine provider when multiple targe
     let run_cwd = workspace
       |> @pathx.join("books")
       |> @pathx.join("coding")
-      |> @pathx.join("moonclaw-jobs")
+      |> moonclaw_jobs_root
       |> @pathx.join("run-1")
     @fsx.make_directory(run_cwd, recursive=true, exists_ok=true)
     write_multi_provider_task_fixture(workspace, script_path, state_path)

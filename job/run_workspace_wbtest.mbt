@@ -125,7 +125,14 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
 
     let prepared = prepare_run_workspace(store, definition, run)
     let workspace_dir = prepared.workspace_dir.unwrap_or("")
-    inspect(workspace_dir.has_suffix("moonclaw-jobs/run-1"), content="true")
+    inspect(
+      workspace_dir.has_suffix(".moonsuite/products/moonclaw/jobs/run-1"),
+      content="true",
+    )
+    inspect(
+      @fsx.exists(workspace_root |> @pathx.join("moonclaw-jobs")),
+      content="false",
+    )
     inspect(@fsx.exists(workspace_dir |> @pathx.join(".git")), content="true")
     inspect(
       @fsx.exists(workspace_dir |> @pathx.join("MEMORY.md")),
@@ -168,6 +175,10 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
     inspect(manifest.contains("/missing/source.md"), content="true")
     inspect(manifest.contains("missing"), content="true")
     inspect(@fsx.exists(run_workspace_meta_file(workspace_dir)), content="true")
+    inspect(
+      @fsx.exists(workspace_dir |> @pathx.join(".moonclaw")),
+      content="false",
+    )
 
     @fsx.write_to_file(
       workspace_dir |> @pathx.join("MEMORY.md"),

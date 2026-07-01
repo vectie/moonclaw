@@ -10,11 +10,15 @@ async test "Manager::spawn" (t : @test.Test) {
     json_inspect(mock.json(job.cwd), content="(mock:cwd)")
     json_inspect(
       mock.json(job.stdout),
-      content="(mock:cwd)/.moonclaw/jobs/0/stdout",
+      content="(mock:cwd)/.moonsuite/products/moonclaw/jobs/processes/0/stdout",
     )
     json_inspect(
       mock.json(job.stderr),
-      content="(mock:cwd)/.moonclaw/jobs/0/stderr",
+      content="(mock:cwd)/.moonsuite/products/moonclaw/jobs/processes/0/stderr",
+    )
+    json_inspect(
+      @fsx.exists(mock.cwd.path() |> @pathx.join(".moonclaw")),
+      content=false,
     )
   })
 }

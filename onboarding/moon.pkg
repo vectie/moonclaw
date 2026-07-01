@@ -10,6 +10,7 @@ import {
   "vectie/moonlib/rand",
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
+  "vectie/moonlib/moonsuite",
 }
 
 supported_targets = "native"

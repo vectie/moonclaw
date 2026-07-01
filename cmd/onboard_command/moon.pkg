@@ -3,7 +3,6 @@ import {
   "moonbitlang/core/string",
   "vectie/moonclaw/onboarding",
   "vectie/moonlib/os",
-  "vectie/moonlib/pathx",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/buildinfo",
 }

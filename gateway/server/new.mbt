@@ -7,7 +7,7 @@ pub async fn Gateway::new(
   auth? : AuthConfig,
 ) -> Gateway {
   let home = match home {
-    None => @path.Path(@os.home()).join(Path(".moonclaw")).to_string()
+    None => @os.home()
     Some(home) => home.to_owned()
   }
   let cwd = match cwd {
@@ -20,7 +20,9 @@ pub async fn Gateway::new(
   }
   let httpx_server = @httpx.Server::new("[::1]", port, reuse_addr=true)
   let actual_port = httpx_server.port()
-  let gateway_dir = @path.Path(home).join(Path("gateway")).to_string()
+  let gateway_dir = @path.Path(@job.moonclaw_product_home(home))
+    .join(Path("gateway"))
+    .to_string()
   let session_dir = @path.Path(gateway_dir).join(Path("sessions")).to_string()
   let channel_state_file = @path.Path(gateway_dir)
     .join(Path("channels.json"))
@@ -132,7 +134,7 @@ pub async fn Gateway::new(
   gateway.seed_channel_state_from_moonclaw_config() catch {
     error =>
       gateway.logger.warn(
-        "Failed to seed channel state from .moonclaw/moonclaw.json: \{error}",
+        "Failed to seed channel state from MoonClaw config: \{error}",
       )
   }
   let feishu_channel = @feishu.FeishuChannel::new()

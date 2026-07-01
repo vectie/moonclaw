@@ -3,6 +3,7 @@ import {
   "vectie/moonlib/os",
   "vectie/moonlib/fsx",
   "vectie/moonlib/pathx",
+  "vectie/moonlib/moonsuite",
   "vectie/moonclaw/internal/buildinfo",
   "vectie/moonclaw/oauth/codex",
 }

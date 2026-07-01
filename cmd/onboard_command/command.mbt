@@ -32,7 +32,7 @@ fn print_help() -> Unit {
   println("  version        Show version")
   println("")
   println("Options:")
-  println("  --home <dir>   Home config directory (default: ~/.moonclaw)")
+  println("  --home <dir>   MoonSuite root (default: user home)")
   println("  --cwd <dir>    Working directory (default: current)")
   println(
     "  --model <id>   Set agents.defaults.model.primary (for example: bailian/qwen3.5-plus)",
@@ -73,7 +73,7 @@ fn parse_string_arg(args : Array[String], flag : String) -> String? {
 fn resolve_home(args : Array[String]) -> String {
   match parse_string_arg(args, "--home") {
     Some(home) => home
-    None => @pathx.join(@os.home() catch { _ => "." }, ".moonclaw")
+    None => @os.home() catch { _ => "." }
   }
 }
 
