@@ -55,10 +55,16 @@ test "mooncode core defines executable book lifecycle contract" {
   assert_true(payload.contains("\"runtime_owner\":\"moonclaw\""))
   assert_true(payload.contains("\"artifact_owner\":\"moonbook\""))
   assert_true(payload.contains("\"acceptance_owner\":\"bookkeeper\""))
+  assert_true(
+    payload.contains(
+      ".moonsuite/products/moonclaw/mooncode/sessions/<id>/session.json",
+    ),
+  )
   assert_true(payload.contains("commands.jsonl"))
   assert_true(payload.contains("runtime-receipts.jsonl"))
   assert_true(payload.contains("package_verified"))
   assert_true(payload.contains("readiness projection"))
+  assert_false(payload.contains(".moonclaw/mooncode/sessions"))
   assert_false(payload.contains("vectie/moondesk"))
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
