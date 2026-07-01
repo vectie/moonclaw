@@ -2,6 +2,7 @@ import {
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
+  "vectie/moonlib/moonsuite",
   "vectie/moonclaw/oauth/codex",
   "vectie/moonclaw/oauth/copilot",
   "moonbitlang/core/json",

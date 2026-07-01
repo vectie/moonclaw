@@ -33,7 +33,11 @@ async fn configure_models(mock : @mock.Context) -> Unit {
     },
   ]
   mock.cwd.add_json_tree({
-    ".moonclaw": { "models": { "models.json": json.stringify() } },
+    ".moonsuite": {
+      "products": {
+        "moonclaw": { "models": { "models.json": json.stringify() } },
+      },
+    },
   })
 }
 

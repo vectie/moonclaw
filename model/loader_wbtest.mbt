@@ -48,7 +48,9 @@ async test "load" (t : @test.Test) {
       },
     ]
     let _ = home
-      .add_directory(".moonclaw")
+      .add_directory(".moonsuite")
+      .add_directory("products")
+      .add_directory("moonclaw")
       .add_directory("models")
       .add_file(
         "models.json",
@@ -84,7 +86,9 @@ async test "load" (t : @test.Test) {
       },
     ]
     let _ = project
-      .add_directory(".moonclaw")
+      .add_directory(".moonsuite")
+      .add_directory("products")
+      .add_directory("moonclaw")
       .add_directory("models")
       .add_file(
         "models.json",
@@ -159,7 +163,11 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
         },
       },
     }
-    let _ = home.add_file("moonclaw.json", content=config.stringify(indent=2))
+    let _ = home
+      .add_directory(".moonsuite")
+      .add_directory("products")
+      .add_directory("moonclaw")
+      .add_file("moonclaw.json", content=config.stringify(indent=2))
     let loader = Loader::new(home=home.path(), cwd=project.path())
     json_inspect(mock.json(loader.get_model(name="bailian/qwen3.5-plus")), content=[
       {
@@ -173,5 +181,40 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
         "supports_apply_patch": false,
       },
     ])
+  })
+}
+
+///|
+test "model loader paths use MoonSuite product home" {
+  assert_eq(
+    moonclaw_models_paths("/tmp/suite/books/research-book")[0],
+    "/tmp/suite/.moonsuite/products/moonclaw/models/models.json",
+  )
+  assert_eq(
+    moonclaw_config_paths("/tmp/standalone-book")[0],
+    "/tmp/standalone-book/.moonsuite/products/moonclaw/moonclaw.json",
+  )
+}
+
+///|
+async test "legacy nested moonclaw models are ignored" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let legacy_model = new(
+      api_key="legacy-key",
+      base_url="https://legacy.invalid",
+      name="legacy-model",
+      model_name="legacy/model",
+      safe_zone_tokens=1000,
+    )
+    let _ = mock.cwd
+      .add_directory(".moonclaw")
+      .add_directory("models")
+      .add_file(
+        "models.json",
+        content=[legacy_model].to_json().stringify(indent=2),
+      )
+    let loader = Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
+    assert_eq(loader.models.length(), 0)
+    assert_true(!loader.providers.contains("legacy"))
   })
 }

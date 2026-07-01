@@ -18,13 +18,8 @@ struct Loader {
 /// Returns a Loader instance with an empty model cache that can be
 /// populated by calling `load`.
 ///
-/// Populate the loader's in-memory model cache by reading project and
-/// user model configuration files.
-///
-/// The loader looks for `.moonclaw/models/models.json` inside the
-/// current working directory first, then the user's home directory. If
-/// either file exists, the models defined there are appended to the
-/// loader's cache.
+/// Populate the loader's in-memory model cache by reading project and user
+/// model configuration files from the MoonSuite MoonClaw product home.
 pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
   let home = match home {
     Some(home) => home
@@ -41,35 +36,30 @@ pub async fn Loader::new(home? : StringView, cwd? : StringView) -> Loader {
 
 ///|
 fn moonclaw_root_config_path(root : StringView) -> String {
-  root |> @pathx.join("moonclaw.json")
-}
-
-///|
-fn moonclaw_nested_config_path(root : StringView) -> String {
-  root |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    root.to_owned(),
+    "moonclaw",
+    "moonclaw.json",
+  )
 }
 
 ///|
 fn moonclaw_root_models_path(root : StringView) -> String {
-  root |> @pathx.join("models") |> @pathx.join("models.json")
-}
-
-///|
-fn moonclaw_nested_models_path(root : StringView) -> String {
-  root
-  |> @pathx.join(".moonclaw")
-  |> @pathx.join("models")
-  |> @pathx.join("models.json")
+  @moonsuite.product_artifact_for_workspace_root(
+    root.to_owned(),
+    "moonclaw",
+    @pathx.join("models", "models.json"),
+  )
 }
 
 ///|
 fn moonclaw_config_paths(root : StringView) -> Array[String] {
-  [moonclaw_root_config_path(root), moonclaw_nested_config_path(root)]
+  [moonclaw_root_config_path(root)]
 }
 
 ///|
 fn moonclaw_models_paths(root : StringView) -> Array[String] {
-  [moonclaw_root_models_path(root), moonclaw_nested_models_path(root)]
+  [moonclaw_root_models_path(root)]
 }
 
 ///|

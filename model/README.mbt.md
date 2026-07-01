@@ -185,7 +185,8 @@ pub async fn load(
 ) -> Model?
 ```
 
-Loads model configuration from `~/.moonclaw/models.json` or project-local configuration.
+Loads model configuration from the MoonSuite MoonClaw product home:
+`.moonsuite/products/moonclaw/models/models.json`.
 
 ### Loader
 
@@ -240,7 +241,7 @@ let model = @model.load(name="my-model")
 
 ## Configuration File Format
 
-Models are configured in `~/.moonclaw/models.json`:
+Models are configured in `.moonsuite/products/moonclaw/models/models.json`:
 
 ```json
 {
