@@ -221,13 +221,8 @@ fn robot_routine_join_url(base : String, route : String) -> String {
 }
 
 ///|
-fn robot_routine_moonclaw_product_home(root : String) -> String {
-  root + "/.moonsuite/products/moonclaw"
-}
-
-///|
 fn robot_routine_runs_dir(root : String) -> String {
-  robot_routine_moonclaw_product_home(root) + "/robot-routine-runs"
+  @moonsuite.product_artifact(root, "moonclaw", "robot-routine-runs")
 }
 
 ///|

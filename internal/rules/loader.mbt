@@ -11,16 +11,8 @@ pub fn Loader::new(cwd : String, logger~ : @pino.Logger) -> Loader {
 }
 
 ///|
-fn moonclaw_product_home(root : String) -> String {
-  root
-  |> @pathx.join(".moonsuite")
-  |> @pathx.join("products")
-  |> @pathx.join("moonclaw")
-}
-
-///|
 fn moonclaw_rules_dir(root : String) -> String {
-  moonclaw_product_home(root) |> @pathx.join("rules")
+  @moonsuite.product_artifact(root, "moonclaw", "rules")
 }
 
 ///|

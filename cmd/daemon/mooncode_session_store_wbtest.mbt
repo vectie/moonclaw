@@ -67,6 +67,29 @@ async test "mooncode durable session sidecars use book local storage" (
 }
 
 ///|
+test "mooncode durable sessions derive product home from workspace roots" {
+  let suite_root = @pathx.join(@os.tmpdir(), "moonclaw-mooncode-suite")
+  let book_root = suite_root |> @pathx.join("books/research")
+  let standalone_root = @pathx.join(@os.tmpdir(), "moonclaw-standalone-book")
+  assert_eq(
+    mooncode_sessions_root(standalone_root),
+    standalone_root
+    |> @pathx.join(".moonsuite/products/moonclaw/mooncode/sessions"),
+  )
+  assert_eq(
+    mooncode_sessions_root(book_root),
+    suite_root |> @pathx.join(".moonsuite/products/moonclaw/mooncode/sessions"),
+  )
+  assert_eq(
+    mooncode_session_snapshot_path(book_root, "session/demo:1"),
+    suite_root
+    |> @pathx.join(
+      ".moonsuite/products/moonclaw/mooncode/sessions/session_demo_1/session.json",
+    ),
+  )
+}
+
+///|
 async test "mooncode durable sidecars list and show without live binding" (
   t : @test.Test,
 ) {

@@ -281,18 +281,10 @@ fn mooncode_session_dir(book_root : String, session_id : String) -> String {
 }
 
 ///|
-fn mooncode_product_home(book_root : String) -> String {
-  book_root
-  |> @pathx.join(".moonsuite")
-  |> @pathx.join("products")
-  |> @pathx.join("moonclaw")
-}
-
-///|
 fn mooncode_sessions_root(book_root : String) -> String {
-  mooncode_product_home(book_root)
-  |> @pathx.join("mooncode")
-  |> @pathx.join("sessions")
+  @moonsuite.product_artifact_for_workspace_root(
+    book_root, "moonclaw", "mooncode/sessions",
+  )
 }
 
 ///|

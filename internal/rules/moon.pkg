@@ -3,6 +3,7 @@ import {
   "vectie/moonclaw/internal/pino",
   "vectie/moonlib/fsx",
   "vectie/moonlib/pathx",
+  "vectie/moonlib/moonsuite",
   "vectie/moonlib/os",
   "vectie/moonclaw/internal/yamd",
   "moonbitlang/core/json",

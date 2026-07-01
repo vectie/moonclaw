@@ -19,6 +19,10 @@ async test "system/install-writes-assets" (t : @test.Test) {
     ]
     let fingerprint = "test-fingerprint"
     let root = system_skills_root(home)
+    assert_eq(
+      root,
+      @moonsuite.product_artifact(home, "moonclaw", "skills/.system"),
+    )
     @assets.install_assets(
       root, assets, fingerprint, ".moonclaw-system-skills.marker", logger,
     )

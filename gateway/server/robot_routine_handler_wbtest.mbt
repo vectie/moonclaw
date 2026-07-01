@@ -138,7 +138,9 @@ test "robot routine runner requires registered memory refresh step" {
 async test "robot routine run ledger writes reads and lists records" {
   @fsx.with_temporary_directory("moonclaw-robot-routine-ledger-XXXXXX", root => {
     let old_ledger = root + "/.moonclaw/robot-routine-runs"
-    let new_ledger = root + "/.moonsuite/products/moonclaw/robot-routine-runs"
+    let new_ledger = @moonsuite.product_artifact(
+      root, "moonclaw", "robot-routine-runs",
+    )
     assert_eq(robot_routine_runs_dir(root), new_ledger)
     let plan = sample_robot_routine_plan()
     let params : RobotRoutineGatewayRequest = {

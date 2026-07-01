@@ -11,11 +11,7 @@ const SYSTEM_SKILLS_MARKER_FILENAME = ".moonclaw-system-skills.marker"
 
 ///|
 fn moonclaw_skills_root(root : String) -> String {
-  root
-  |> @pathx.join(".moonsuite")
-  |> @pathx.join("products")
-  |> @pathx.join("moonclaw")
-  |> @pathx.join("skills")
+  @moonsuite.product_artifact(root, "moonclaw", "skills")
 }
 
 ///|

@@ -1,14 +1,6 @@
 ///|
-fn moonclaw_product_home(home : StringView) -> String {
-  home
-  |> @pathx.join(".moonsuite")
-  |> @pathx.join("products")
-  |> @pathx.join("moonclaw")
-}
-
-///|
 fn moonclaw_daemon_info_path(home : StringView) -> String {
-  moonclaw_product_home(home) |> @pathx.join("daemon.json")
+  @moonsuite.product_artifact(home.to_owned(), "moonclaw", "daemon.json")
 }
 
 ///|

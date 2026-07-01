@@ -48,6 +48,10 @@ async test "Loader::load" (t : @test.Test) {
         },
       })
       let project_path = @pathx.join(home.path(), "project")
+      assert_eq(
+        moonclaw_rules_dir(project_path),
+        @moonsuite.product_artifact(project_path, "moonclaw", "rules"),
+      )
       let rules = Loader::new(project_path, logger=mock.logger)
       rules.load()
       inspect(
