@@ -49,9 +49,10 @@ impl @json.FromJson for DaemonInfo with fn from_json(
 }
 
 ///|
-/// Spawns (and optionally detaches) a moonclaw daemon process and waits until the
-/// child writes `~/.moonclaw/daemon.json`. Returns the PID recorded in that
-/// file, which can belong to the new child or an already running daemon.
+/// Spawns (and optionally detaches) a moonclaw daemon process and waits until
+/// the child writes `~/.moonsuite/products/moonclaw/daemon.json`. Returns the
+/// PID recorded in that file, which can belong to the new child or an already
+/// running daemon.
 pub async fn detach(
   exec_path? : String,
   port? : Int,
@@ -75,10 +76,7 @@ pub async fn detach(
     let mut resolved_pid : Int? = None
     while resolved_pid is None {
       try {
-        let info_file = @fs.open(
-          home |> @pathx.join(".moonclaw") |> @pathx.join("daemon.json"),
-          mode=ReadOnly,
-        )
+        let info_file = @fs.open(moonclaw_daemon_info_path(home), mode=ReadOnly)
         defer info_file.close()
         if @fsx.get_lock_owner(info_file) is Some(owner) {
           if owner == pid {

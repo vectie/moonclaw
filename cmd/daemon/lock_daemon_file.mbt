@@ -1,4 +1,17 @@
 ///|
+fn moonclaw_product_home(home : StringView) -> String {
+  home
+  |> @pathx.join(".moonsuite")
+  |> @pathx.join("products")
+  |> @pathx.join("moonclaw")
+}
+
+///|
+fn moonclaw_daemon_info_path(home : StringView) -> String {
+  moonclaw_product_home(home) |> @pathx.join("daemon.json")
+}
+
+///|
 /// Update procedure:
 ///
 /// 1. Get the owner of the lock file. If there is no owner, make self as the
@@ -30,7 +43,7 @@
 /// FIXME: Make this private. This function is currently marked as public
 /// because it is used by `cmd/test-to-be-killed` for testing.
 pub async fn lock_daemon_file(home~ : StringView) -> @fs.File? {
-  let path = home |> @pathx.join(".moonclaw") |> @pathx.join("daemon.json")
+  let path = moonclaw_daemon_info_path(home)
   let dir = @pathx.dirname(path)
   @fsx.make_directory(dir, recursive=true, exists_ok=true)
   let old = match acquire_lock(path) {
