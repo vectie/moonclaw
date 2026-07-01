@@ -65,11 +65,14 @@ MoonClaw is strongest when you want one system to handle:
   `read`, `write`, `edit`, `shell`, `moon_check`, `finish`, and file-edit diff
   evidence before returning `ok`, `required_harnesses`, and nested native
   harness results.
-  MoonClaw also persists native MoonCode sidecars under the selected book root
-  at `.moonclaw/mooncode/sessions/<session-id>/`, including `session.json`,
-  `commands.jsonl`, `runtime-receipts.jsonl`, `events.jsonl`, and
-  `package-results.jsonl`. The daemon can list/show those cold sidecars with
-  `GET /v1/code/sessions?book_root=<path>` and
+  MoonClaw persists native MoonCode sidecars in the MoonClaw product home
+  derived from the selected book root:
+  `.moonsuite/products/moonclaw/mooncode/sessions/<session-id>/`, including
+  `session.json`, `commands.jsonl`, `runtime-receipts.jsonl`, `events.jsonl`,
+  and `package-results.jsonl`. Suite-hosted `books/<book-id>` roots resolve to
+  the owning suite's MoonClaw product home; standalone book roots use their own
+  local `.moonsuite/products/moonclaw` product home. The daemon can list/show
+  those cold sidecars with `GET /v1/code/sessions?book_root=<path>` and
   `GET /v1/code/sessions/<id>?book_root=<path>`, and can lease the next
   unresolved durable command with
   `GET`/`POST /v1/code/sessions/<id>/runtime-claim?book_root=<path>` by
@@ -117,8 +120,8 @@ MoonClaw is strongest when you want one system to handle:
   `wiki/reviews/mooncode/<session-id>/` and emitting review-lane
   `receipt.accept` / `receipt.reject` evidence instead of asking a model to
   reinterpret the operator decision. `commit` commands now run book-local git
-  status/add/commit/rev-parse, exclude `.moonclaw`, `.moontown`, and
-  `moonclaw-jobs` runtime sidecars from staging, and emit review-lane
+  status/add/commit/rev-parse, exclude the fresh internal `.moonsuite` and
+  `.tmp` lanes from staging, and emit review-lane
   `runtime.commit_created` proof with the resulting SHA only after the commit
   succeeds. `run_eval` commands now run MoonClaw's native MoonCode
   tool/file-edit harnesses from runtime-turn, write

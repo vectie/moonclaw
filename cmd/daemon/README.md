@@ -335,9 +335,10 @@ Found:
 ### `GET /v1/code/sessions`
 
 Lists MoonCode sessions for a selected MoonBook root. Pass
-`book_root=<path>` to replay the durable book-local sidecar under
-`.moonclaw/mooncode/sessions/`. The default response returns full
-`mooncode-session-record` entries for diagnostics and recovery.
+`book_root=<path>` to replay durable sidecars from the MoonClaw product home
+derived from that book root:
+`.moonsuite/products/moonclaw/mooncode/sessions/`. The default response returns
+full `mooncode-session-record` entries for diagnostics and recovery.
 
 Query parameters:
 
@@ -374,8 +375,9 @@ covered by `mooncode_session_listing_wbtest.mbt`.
 ### `GET /v1/code/sessions/{id}/runtime-control`
 
 Returns the native MoonCode runtime control projection for a selected
-MoonBook session. Pass `book_root=<path>` to load the book-local sidecar. The
-endpoint is read-only and does not spawn, claim, or execute work.
+MoonBook session. Pass `book_root=<path>` to load the MoonClaw product-home
+sidecar for that book. The endpoint is read-only and does not spawn, claim, or
+execute work.
 
 The response is built from `commands.jsonl` plus `runtime-receipts.jsonl` and
 reports one active turn, pending turn ids, lifecycle rows, and per-command
@@ -405,8 +407,9 @@ execution.
 ### `GET /v1/code/sessions/{id}/stream`
 
 Replays the durable MoonCode event log for a selected MoonBook session. The
-event source is book-local:
-`.moonclaw/mooncode/sessions/{safe-session-id}/events.jsonl`.
+event source is in the MoonClaw product home derived from the selected book
+root:
+`.moonsuite/products/moonclaw/mooncode/sessions/{safe-session-id}/events.jsonl`.
 
 Query parameters:
 
@@ -429,24 +432,24 @@ resumable replay coverage in `mooncode_stream_wbtest.mbt`.
 ### `GET /v1/code/sessions/{id}/runtime-events`
 
 Returns the native MoonCode runtime-event state for a selected MoonBook
-session. Pass `book_root=<path>` to load the book-local sidecar after daemon
-restart. Durable runtime events still live in
-`.moonclaw/mooncode/sessions/{safe-session-id}/events.jsonl`.
+session. Pass `book_root=<path>` to load the MoonClaw product-home sidecar
+after daemon restart. Durable runtime events live in
+`.moonsuite/products/moonclaw/mooncode/sessions/{safe-session-id}/events.jsonl`.
 
 The response also projects the native `moon_check` watcher sidecar at
-`.moonclaw/mooncode/watchers/moon-check.json` into a synthetic
-`runtime_update` event when the watcher belongs to the selected book. That
-event carries `[moon_check update]` content, test-lane status, command line,
-sequence, exit status when stopped, restart metadata, and capped output. The
-`event_count` field includes projected watcher evidence, while
+`.moonsuite/products/moonclaw/mooncode/watchers/moon-check.json` into a
+synthetic `runtime_update` event when the watcher belongs to the selected book.
+That event carries `[moon_check update]` content, test-lane status, command
+line, sequence, exit status when stopped, restart metadata, and capped output.
+The `event_count` field includes projected watcher evidence, while
 `durable_event_count` reports only the persisted `events.jsonl` rows.
 
 ### `GET /v1/code/sessions/{id}/eval-report`
 
 Reports native MoonCode eval/readiness evidence for a session. Pass
-`book_root=<path>` to load evidence from the selected MoonBook's durable
-`.moonclaw/mooncode/sessions/{safe-session-id}/` sidecar after daemon restart;
-without `book_root`, the report only reflects the daemon's live binding. The
+`book_root=<path>` to load evidence from the selected MoonBook's MoonClaw
+product-home sidecar after daemon restart; without `book_root`, the report only
+reflects the daemon's live binding. The
 report also runs MoonClaw's first deterministic native eval harness over
 `read`, `write`, `edit`, `shell`, `moon_ide`, `moon_cmd`, `moon_check`,
 `finish`, and file-edit diff evidence, returning `ok`, `required_harnesses`,
@@ -502,10 +505,10 @@ Review receipt construction and event projection live in
 `mooncode_runtime_reviews.mbt`; runtime-turn only sequences that boundary after
 tool execution.
 Commit commands now settle as deterministic git proof: MoonClaw checks and
-stages only book-local content, excluding `.moonclaw`, `.moontown`, and
-`moonclaw-jobs` runtime sidecars, runs `git commit` inside the selected
-MoonBook root, verifies `HEAD`, and emits `runtime.commit_created` with the
-commit SHA only after the git operation succeeds.
+stages only book-local content, excluding the fresh internal `.moonsuite` and
+`.tmp` lanes, runs `git commit` inside the selected MoonBook root, verifies
+`HEAD`, and emits `runtime.commit_created` with the commit SHA only after the
+git operation succeeds.
 Run-eval commands now run the native MoonCode tool/file-edit harnesses
 from runtime-turn, write `wiki/reviews/mooncode/{safe-session-id}/eval-report.json`
 inside the selected MoonBook, and emit `eval_report.manifest` evidence with
@@ -534,13 +537,13 @@ coverage in `mooncode_process_tools_wbtest.mbt`, while the generic tool
 endpoint and patch/file tools stay in `mooncode_tools.mbt`.
 
 The native `moon_check` tool also records a MoonCode watcher snapshot
-under `.moonclaw/mooncode/watchers/moon-check.json`. MoonClaw keys the snapshot
-by the selected MoonBook root, returns `watcher=started|reused|replaced|restarted`,
-keeps a monotonic `seq`, exposes human watcher `status` separately from numeric
-`exit_status`, and increments `restart_count` when changed options replace the
-previous watcher record. This gives Moondesk and future standalone `mooncode`
-the same no-duplicate-watcher contract before live background `moon check
---watch` streaming is introduced.
+under `.moonsuite/products/moonclaw/mooncode/watchers/moon-check.json`.
+MoonClaw keys the snapshot by the selected MoonBook root, returns
+`watcher=started|reused|replaced|restarted`, keeps a monotonic `seq`, exposes
+human watcher `status` separately from numeric `exit_status`, and increments
+`restart_count` when changed options replace the previous watcher record. This
+gives Moondesk and future standalone `mooncode` the same no-duplicate-watcher
+contract before live background `moon check --watch` streaming is introduced.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded MoonCode tool-call batches over `read`, `write`, `edit`,
 `apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`, `moon_check`,
