@@ -212,7 +212,7 @@ struct Daemon {
 
 ### Lock File
 
-The daemon uses a lock file at `~/.moonclaw/daemon.json`:
+The daemon uses a lock file at `~/.moonsuite/products/moonclaw/daemon.json`:
 ```json
 {
   "version": "0.1.0",

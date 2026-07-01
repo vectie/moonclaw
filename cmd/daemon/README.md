@@ -9,7 +9,7 @@ moon run cmd/main -- daemon --port 8090 --serve cmd/daemon
 ```
 
 It will first test if there is a running instance of the daemon server by
-reading the `~/.moonclaw/daemon.json` file. If there is no running instance, it
+reading the `~/.moonsuite/products/moonclaw/daemon.json` file. If there is no running instance, it
 will start a new one (detach from the terminal if `--detach` flag is specified);
 if there is a running instance, it exit immediately.
 
@@ -29,7 +29,7 @@ to spawn and obtain the port of the daemon server:
    moon run cmd/main -- daemon --port 0 --serve cmd/daemon --detach
    ```
 
-2. Read the port from the `~/.moonclaw/daemon.json` file. Once the process
+2. Read the port from the `~/.moonsuite/products/moonclaw/daemon.json` file. Once the process
    exits with `0`, The file is guaranteed to exist and contains a valid JSON
    object with the `port` and `pid` fields.
 
@@ -51,7 +51,7 @@ out to the CLI. The table below summarizes each entry point:
 | Symbol | Description |
 | --- | --- |
 | `async fn start(args : ArrayView[String]) -> Unit` | Parses CLI-style flags, optionally detaches, validates model availability, and either reuses an existing daemon or creates a new `Daemon` and calls `serve`. |
-| `async fn detach(exec_path? : String, port? : Int, serve? : StringView) -> Int` | Spawns (or reuses) a detached daemon process, waits for it to write `~/.moonclaw/daemon.json`, and returns the PID recorded in that file. |
+| `async fn detach(exec_path? : String, port? : Int, serve? : StringView) -> Int` | Spawns (or reuses) a detached daemon process, waits for it to write `~/.moonsuite/products/moonclaw/daemon.json`, and returns the PID recorded in that file. |
 | `struct Daemon` | In-memory supervisor that tracks moonclaw tasks, owns the HTTP server, and bridges REST calls to per-task processes. |
 | `async fn Daemon::new(...) -> Daemon?` | Constructs a daemon with optional dependency injection, validates `exec_path`, grabs the daemon lock file, and binds the HTTP server. Returns `None` if another daemon already holds the lock. |
 | `fn Daemon::port(self) -> Int` | Reports the actual TCP port the HTTP server bound to (handy when using port `0`). |

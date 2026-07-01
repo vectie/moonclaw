@@ -10,7 +10,13 @@ type DaemonJson = {
 
 async function getDaemonJson(): Promise<ResultTuple<DaemonJson>> {
   try {
-    const daemonJsonPath = path.join(os.homedir(), ".moonclaw", "daemon.json");
+    const daemonJsonPath = path.join(
+      os.homedir(),
+      ".moonsuite",
+      "products",
+      "moonclaw",
+      "daemon.json",
+    );
     const daemonJson: DaemonJson = JSON.parse(
       await fsp.readFile(daemonJsonPath, "utf-8"),
     );
