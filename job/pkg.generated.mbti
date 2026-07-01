@@ -408,10 +408,11 @@ pub(all) struct AnalysisToolContract {
   todo : Bool
   file_write : Bool
   patch_edit : Bool
+  unlimited_ocr : Bool
   web_fetch : Bool
   web_search : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, delegate_run? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, patch_edit? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
+pub fn AnalysisToolContract::new(shell? : Bool, list_files? : Bool, glob_files? : Bool, list_resources? : Bool, read_resource? : Bool, runtime_context? : Bool, list_worktrees? : Bool, delegate_run? : Bool, enter_worktree? : Bool, exit_worktree? : Bool, read_files? : Bool, search_files? : Bool, todo? : Bool, file_write? : Bool, patch_edit? : Bool, unlimited_ocr? : Bool, web_fetch? : Bool, web_search? : Bool) -> Self
 
 type ArtifactBytesWriteRequest
 

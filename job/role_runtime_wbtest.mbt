@@ -141,6 +141,7 @@ test "constrain_tool_contract_for_role removes execution tools for planner-only 
   inspect(constrained.list_worktrees, content="false")
   inspect(constrained.file_write, content="false")
   inspect(constrained.patch_edit, content="false")
+  inspect(constrained.unlimited_ocr, content="false")
   inspect(constrained.web_fetch, content="false")
   inspect(constrained.web_search, content="false")
 }

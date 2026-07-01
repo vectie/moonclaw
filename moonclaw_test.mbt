@@ -1,4 +1,23 @@
 ///|
+async test "moonclaw registers unlimited_ocr as default MoonTool" (
+  t : @test.Test,
+) {
+  let _ = t
+  let moonclaw = @moonclaw.Moonclaw::new(
+    model=@model.Model::new(
+      api_key="",
+      base_url="https://example.invalid/v1",
+      name="test-model",
+      safe_zone_tokens=4096,
+    ),
+    home="/tmp",
+    cwd="/tmp",
+  )
+  defer moonclaw.close()
+  assert_true(moonclaw.agent.tools().contains("unlimited_ocr"))
+}
+
+///|
 #skip
 async test "moonclaw/resume" (t : @test.Test) {
   @mock.run(t, mock => {

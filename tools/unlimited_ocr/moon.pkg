@@ -1,0 +1,15 @@
+import {
+  "vectie/moonclaw/tool",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/os",
+  "vectie/moonlib/pathx",
+  "vectie/moonlib/spawn",
+  "moonbitlang/core/json",
+  "moonbitlang/core/test",
+}
+
+supported_targets = "native"
+
+import {
+  "moonbitlang/async",
+} for "test"

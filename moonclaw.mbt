@@ -17,6 +17,7 @@ fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
     @read_file.new(file_manager).to_agent_tool(),
     @todo.new_tool(todo_list).to_agent_tool(),
     @search_files.new(agent.cwd).to_agent_tool(),
+    @unlimited_ocr.new(agent.cwd).to_agent_tool(),
   ])
   // GPT 5.1+ uses apply_patch only, other models use meta_write_to_file
   if agent.model.supports_apply_patch {

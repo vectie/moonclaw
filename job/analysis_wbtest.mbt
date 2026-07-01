@@ -600,6 +600,7 @@ test "analysis_tool_contract defaults from current enable_tools gate" {
   assert_true(enabled.delegate_run)
   assert_true(enabled.read_files)
   assert_true(enabled.patch_edit)
+  assert_true(enabled.unlimited_ocr)
   assert_false(enabled.web_fetch)
   assert_false(enabled.web_search)
 
@@ -617,6 +618,7 @@ test "analysis_tool_contract defaults from current enable_tools gate" {
   assert_false(disabled.delegate_run)
   assert_false(disabled.read_files)
   assert_false(disabled.patch_edit)
+  assert_false(disabled.unlimited_ocr)
   assert_false(disabled.web_fetch)
   assert_false(disabled.web_search)
 }
@@ -641,6 +643,7 @@ test "analysis_tool_contract prefers structured metadata contract" {
         "todo": false,
         "file_write": false,
         "patch_edit": true,
+        "unlimited_ocr": true,
         "web_fetch": true,
         "web_search": true,
       },
@@ -655,6 +658,7 @@ test "analysis_tool_contract prefers structured metadata contract" {
   assert_true(contract.delegate_run)
   assert_true(contract.read_files)
   assert_true(contract.patch_edit)
+  assert_true(contract.unlimited_ocr)
   assert_true(contract.web_fetch)
   assert_true(contract.web_search)
   assert_false(contract.shell)
@@ -2396,6 +2400,7 @@ async test "configure_analysis_agent_tools registers execute_command tool" {
   inspect(agent.tools().contains("glob_files"), content="true")
   inspect(agent.tools().contains("list_resources"), content="true")
   inspect(agent.tools().contains("read_resource"), content="true")
+  inspect(agent.tools().contains("unlimited_ocr"), content="true")
 }
 
 ///|
@@ -2470,6 +2475,7 @@ async test "configure_analysis_agent_for_request registers runtime introspection
   inspect(agent.tools().contains("list_worktrees"), content="true")
   inspect(agent.tools().contains("delegate_run"), content="true")
   inspect(agent.tools().contains("patch_edit"), content="true")
+  inspect(agent.tools().contains("unlimited_ocr"), content="true")
 }
 
 ///|
@@ -2532,6 +2538,7 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
   inspect(agent.tools().contains("todo"), content="false")
   inspect(agent.tools().contains("delegate_run"), content="false")
   inspect(agent.tools().contains("patch_edit"), content="true")
+  inspect(agent.tools().contains("unlimited_ocr"), content="true")
 }
 
 ///|
@@ -2594,6 +2601,7 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
   inspect(agent.tools().contains("todo"), content="false")
   inspect(agent.tools().contains("delegate_run"), content="false")
   inspect(agent.tools().contains("patch_edit"), content="true")
+  inspect(agent.tools().contains("unlimited_ocr"), content="true")
 }
 
 ///|
@@ -2632,6 +2640,7 @@ async test "configure_analysis_agent_for_request keeps explicit web tools for pr
   configure_analysis_agent_for_request(agent, request)
   inspect(agent.tools().contains("web_search"), content="true")
   inspect(agent.tools().contains("web_fetch"), content="true")
+  inspect(agent.tools().contains("unlimited_ocr"), content="true")
   inspect(agent.tools().contains("execute_command"), content="false")
   inspect(agent.tools().contains("todo"), content="false")
 }

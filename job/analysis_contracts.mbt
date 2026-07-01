@@ -15,6 +15,7 @@ pub(all) struct AnalysisToolContract {
   todo : Bool
   file_write : Bool
   patch_edit : Bool
+  unlimited_ocr : Bool
   web_fetch : Bool
   web_search : Bool
 } derive(ToJson, FromJson, Debug)
@@ -36,6 +37,7 @@ pub fn AnalysisToolContract::new(
   todo? : Bool = true,
   file_write? : Bool = true,
   patch_edit? : Bool = true,
+  unlimited_ocr? : Bool = true,
   web_fetch? : Bool = false,
   web_search? : Bool = false,
 ) -> AnalysisToolContract {
@@ -55,6 +57,7 @@ pub fn AnalysisToolContract::new(
     todo,
     file_write,
     patch_edit,
+    unlimited_ocr,
     web_fetch,
     web_search,
   }
@@ -79,6 +82,7 @@ fn default_analysis_tool_contract(enable_tools : Bool) -> AnalysisToolContract {
       todo=false,
       file_write=false,
       patch_edit=false,
+      unlimited_ocr=false,
       web_fetch=false,
       web_search=false,
     )
@@ -131,6 +135,7 @@ pub fn constrain_tool_contract_for_role(
             todo=false,
             file_write=false,
             patch_edit=false,
+            unlimited_ocr=false,
             web_fetch=false,
             web_search=false,
           )
@@ -151,6 +156,7 @@ pub fn constrain_tool_contract_for_role(
             todo=contract.todo,
             file_write=false,
             patch_edit=false,
+            unlimited_ocr=false,
             web_fetch=false,
             web_search=false,
           )
@@ -171,6 +177,7 @@ pub fn constrain_tool_contract_for_role(
             todo=contract.todo,
             file_write=contract.file_write && writable && execution_tools,
             patch_edit=contract.patch_edit && writable && execution_tools,
+            unlimited_ocr=contract.unlimited_ocr && execution_tools,
             web_fetch=contract.web_fetch && execution_tools,
             web_search=contract.web_search && execution_tools,
           )
@@ -205,6 +212,7 @@ fn constrain_tool_contract_for_request(
       todo: false,
       web_fetch: constrained.web_fetch && request.web_search,
       web_search: constrained.web_search && request.web_search,
+      unlimited_ocr: constrained.unlimited_ocr,
     }
   } else {
     constrained
@@ -451,6 +459,9 @@ fn enabled_tool_names(contract : AnalysisToolContract) -> Array[String] {
   if contract.web_fetch {
     tools.push("web_fetch")
   }
+  if contract.unlimited_ocr {
+    tools.push("unlimited_ocr")
+  }
   if contract.file_write {
     tools.push("file_write")
   }
@@ -531,6 +542,9 @@ pub fn configure_analysis_agent_for_contract(
   }
   if contract.web_fetch {
     agent.add_tool(@web_fetch.new())
+  }
+  if contract.unlimited_ocr {
+    agent.add_tool(@unlimited_ocr.new(agent.cwd))
   }
   if contract.file_write {
     if agent.model.supports_apply_patch {

@@ -40,6 +40,7 @@ import {
   "vectie/moonclaw/tools/web_fetch",
   "vectie/moonclaw/tools/web_search",
   "vectie/moonclaw/tools/todo",
+  "vectie/moonclaw/tools/unlimited_ocr",
   "vectie/moonclaw/tools/write_to_file",
 }
 

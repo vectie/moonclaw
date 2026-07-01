@@ -14,6 +14,7 @@ import {
   "vectie/moonclaw/ai",
   "vectie/moonclaw/tools/apply_patch",
   "vectie/moonclaw/tools/write_to_file",
+  "vectie/moonclaw/tools/unlimited_ocr",
   "vectie/moonclaw/internal/conversation",
   "vectie/moonlib/uuid",
   "vectie/moonlib/rand",

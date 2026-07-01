@@ -1,0 +1,30 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/tools/unlimited_ocr"
+
+import {
+  "moonbitlang/core/json",
+  "vectie/moonclaw/tool",
+}
+
+// Values
+pub fn new(String) -> @tool.Tool[UnlimitedOcrResult]
+
+// Errors
+
+// Types and methods
+pub struct UnlimitedOcrResult {
+  ocr_engine : String
+  pdf_path : String
+  output_dir : String
+  infer_script : String
+  command : String
+  status : Int
+  stdout : String
+  stderr : String
+} derive(ToJson, @json.FromJson)
+pub impl Show for UnlimitedOcrResult
+
+// Type aliases
+
+// Traits
+
