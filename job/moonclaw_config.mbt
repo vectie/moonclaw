@@ -9,6 +9,7 @@ fn moonclaw_config_path_candidates(
   ]
   match home {
     Some(home) => {
+      paths.push(@moonsuite.product_artifact(home, "moonclaw", "moonclaw.json"))
       paths.push(home |> @pathx.join("moonclaw.json"))
       paths.push(
         home |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),

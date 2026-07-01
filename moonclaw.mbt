@@ -28,6 +28,17 @@ fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
 }
 
 ///|
+fn default_log_path() -> String {
+  @moonsuite.product_artifact(
+    @os.home() catch {
+      _ => "."
+    },
+    "moonclaw",
+    "logs/moonclaw.jsonl",
+  )
+}
+
+///|
 /// Creates a new moonclaw agent instance.
 ///
 /// Parameters:
@@ -43,7 +54,7 @@ pub async fn Moonclaw::new(
   name? : String,
   logger? : @pino.Logger = @pino.logger(
     "moonclaw",
-    try! @pino.Transport::parse("file:.moonclaw/log.jsonl"),
+    try! @pino.Transport::parse("file:\{default_log_path()}"),
   ),
   model~ : @model.Model,
   home? : String,
@@ -113,7 +124,7 @@ pub async fn Moonclaw::start(self : Moonclaw, prompt? : String) -> Unit {
 pub async fn Moonclaw::resume_(
   logger? : @pino.Logger = @pino.logger(
     "moonclaw",
-    try! @pino.Transport::parse("file:.moonclaw/log.jsonl"),
+    try! @pino.Transport::parse("file:\{default_log_path()}"),
   ),
   model~ : @model.Model,
   home? : String,

@@ -37,3 +37,28 @@ async test "plugin runtime loads entries and install state from config" {
     content="disabled",
   )
 }
+
+///|
+async test "plugin runtime prefers product config over legacy home config" {
+  @fsx.with_temporary_directory("moonclaw-plugin-runtime-product-XXXXXX", dir => {
+    let product_config = @moonsuite.product_artifact(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@pathx.dirname(product_config), recursive=true)
+    @fsx.write_to_file(
+      dir |> @pathx.join("moonclaw.json"),
+      ({ "plugins": { "entries": { "legacy": { "enabled": true } } } } : Json).stringify(),
+    )
+    @fsx.write_to_file(
+      product_config,
+      ({ "plugins": { "entries": { "product": { "enabled": true } } } } : Json).stringify(),
+    )
+
+    let runtime = PluginRuntime::new(home=dir, cwd=dir)
+    inspect(
+      runtime.get("product").map(fn(p) { p.status }).unwrap_or(""),
+      content="missing_install",
+    )
+    inspect(runtime.get("legacy") is None, content="true")
+  })
+}

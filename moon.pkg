@@ -18,6 +18,7 @@ import {
   "vectie/moonclaw/internal/conversation",
   "vectie/moonlib/uuid",
   "vectie/moonlib/rand",
+  "vectie/moonlib/moonsuite",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

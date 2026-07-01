@@ -6,16 +6,23 @@ async test "Manager" (t : @test.Test) {
       home=mock.cwd.path(),
     )
     json_inspect(manager.list(), content=[])
-    let dot_moonclaw = @pathx.join(mock.cwd.path(), ".moonclaw")
-    json_inspect(mock.json(@fsx.list_directory(dot_moonclaw)), content=[
+    let product_home = mock.cwd.path()
+      |> @pathx.join(".moonsuite")
+      |> @pathx.join("products")
+      |> @pathx.join("moonclaw")
+    json_inspect(mock.json(@fsx.list_directory(product_home)), content=[
       {
-        "path": "(mock:cwd)/.moonclaw/conversations",
+        "path": "(mock:cwd)/.moonsuite/products/moonclaw/conversations",
         "name": "conversations",
         "kind": "Directory",
       },
     ])
-    let conversations = @pathx.join(dot_moonclaw, "conversations")
+    let conversations = @pathx.join(product_home, "conversations")
     json_inspect(mock.json(@fsx.list_directory(conversations)), content=[])
+    json_inspect(
+      @fsx.exists(mock.cwd.path() |> @pathx.join(".moonclaw")),
+      content=false,
+    )
     let conversation = manager.new_conversation(
       name="Test Conversation",
       cwd=mock.cwd.path(),

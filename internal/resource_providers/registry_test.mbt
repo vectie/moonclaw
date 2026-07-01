@@ -60,6 +60,59 @@ async test "load_resource_providers prefers cwd manifest over home manifest" (
 }
 
 ///|
+async test "load_resource_providers prefers product home manifest over legacy home manifest" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let home_dir = mock.cwd.path() |> @pathx.join("home")
+    let product_manifest = @moonsuite.product_artifact(
+      home_dir, "moonclaw", "providers.json",
+    )
+    @fsx.make_directory(
+      home_dir |> @pathx.join(".moonclaw"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.make_directory(
+      @pathx.dirname(product_manifest),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(
+      home_dir |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+      (
+        #|[
+        #|  {
+        #|    "name": "slides-main",
+        #|    "title": "Legacy Home Slides",
+        #|    "kind": "renderer"
+        #|  }
+        #|]
+      ),
+    )
+    @fsx.write_to_file(
+      product_manifest,
+      (
+        #|[
+        #|  {
+        #|    "name": "slides-main",
+        #|    "title": "Product Home Slides",
+        #|    "kind": "renderer"
+        #|  }
+        #|]
+      ),
+    )
+
+    let providers = load_resource_providers(
+      mock.cwd.path(),
+      home=Some(home_dir),
+    )
+    inspect(providers.length().to_string(), content="1")
+    inspect(providers[0].title, content="Product Home Slides")
+  })
+}
+
+///|
 async test "load_resource_providers discovers parent workspace manifests" (
   t : @test.Test,
 ) {

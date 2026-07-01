@@ -55,6 +55,46 @@ async test "ACP runtime loads codex targets from config and persists sessions" {
 }
 
 ///|
+async test "ACP runtime prefers product config and persists state in product home" {
+  @fsx.with_temporary_directory("moonclaw-acp-runtime-product-XXXXXX", dir => {
+    let product_config = @moonsuite.product_artifact(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@moonsuite.product_dir(dir, "moonclaw"), recursive=true)
+    @fsx.write_to_file(
+      @path.Path(dir).join(Path("moonclaw.json")).to_string(),
+      (
+        { "acp": { "targets": { "legacy-main": { "backend": "codex" } } } } :
+        Json).stringify(),
+    )
+    @fsx.write_to_file(
+      product_config,
+      (
+        { "acp": { "targets": { "product-main": { "backend": "codex" } } } } :
+        Json).stringify(),
+    )
+
+    let runtime = AcpRuntime::new(home=dir, cwd=dir)
+    let targets = runtime.list_targets()
+    inspect(targets.length(), content="1")
+    inspect(targets[0].id, content="product-main")
+    ignore(
+      runtime.open_session("acp-session-1", "product-main", "session:1", 100),
+    )
+    inspect(
+      @fsx.exists(
+        @moonsuite.product_artifact(dir, "moonclaw", "acp_sessions.json"),
+      ),
+      content="true",
+    )
+    inspect(
+      @fsx.exists(@path.Path(dir).join(Path(".moonclaw")).to_string()),
+      content="false",
+    )
+  })
+}
+
+///|
 async test "ACP runtime reuses existing target/session-key binding" {
   let dir = "/tmp/moonclaw-acp-runtime-reuse"
   @fsx.make_directory(dir, recursive=true)

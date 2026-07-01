@@ -3,6 +3,7 @@ import {
   "moonbitlang/core/test",
   "vectie/moonlib/fsx",
   "vectie/moonlib/pathx",
+  "vectie/moonlib/moonsuite",
 }
 
 import {

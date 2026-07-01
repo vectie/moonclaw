@@ -96,6 +96,53 @@ async test "bootstrap_channel_states_from_moonclaw_config reads moonclaw root ho
 }
 
 ///|
+async test "bootstrap_channel_states_from_moonclaw_config prefers product home" {
+  @fsx.with_temporary_directory("gateway-bootstrap-product-home-XXXXXX", dir => {
+    let product_config = @path.Path(@job.moonclaw_product_home(dir))
+      .join(Path("moonclaw.json"))
+      .to_string()
+    @fsx.make_directory(@job.moonclaw_product_home(dir), recursive=true)
+    @fsx.write_to_file(
+      @path.Path(dir).join(Path("moonclaw.json")).to_string(),
+      Json::object({
+        "channels": {
+          "feishu": {
+            "enabled": true,
+            "appId": "legacy_app",
+            "appSecret": "legacy_secret",
+            "domain": "feishu",
+          },
+        },
+      }).stringify(),
+    )
+    @fsx.write_to_file(
+      product_config,
+      Json::object({
+        "channels": {
+          "feishu": {
+            "enabled": true,
+            "appId": "product_app",
+            "appSecret": "product_secret",
+            "domain": "feishu",
+          },
+        },
+      }).stringify(),
+    )
+
+    let states = bootstrap_channel_states_from_moonclaw_config(
+      dir, "/tmp/no-project",
+    )
+    inspect(states.length(), content="1")
+    inspect(
+      states[0].accounts[0].config
+      .stringify()
+      .contains("\"app_id\":\"product_app\""),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "bootstrap_channel_states_from_moonclaw_config merges base and account overrides" {
   @fsx.with_temporary_directory("gateway-bootstrap-accounts-XXXXXX", dir => {
     let home_config_dir = @path.Path(dir).join(Path(".moonclaw")).to_string()

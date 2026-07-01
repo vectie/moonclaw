@@ -28,13 +28,22 @@ fn nested_config_path(root : String) -> String {
 }
 
 ///|
+fn preferred_config_path(home : String) -> String {
+  @moonsuite.product_artifact(home, "moonclaw", "moonclaw.json")
+}
+
+///|
 fn config_paths(home : String, cwd : String) -> Array[String] {
-  [
+  let paths = [
     root_config_path(home),
     nested_config_path(home),
-    root_config_path(cwd),
-    nested_config_path(cwd),
+    preferred_config_path(home),
   ]
+  if cwd != home {
+    paths.push(root_config_path(cwd))
+    paths.push(nested_config_path(cwd))
+  }
+  paths
 }
 
 ///|

@@ -73,6 +73,9 @@ fn moonclaw_config_path_candidates(
   [
     "\{cwd}/moonclaw.json",
     "\{cwd}/.moonclaw/moonclaw.json",
+    @path.Path(@job.moonclaw_product_home(home))
+    .join(Path("moonclaw.json"))
+    .to_string(),
     "\{home}/moonclaw.json",
     "\{home}/.moonclaw/moonclaw.json",
   ]

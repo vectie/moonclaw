@@ -849,7 +849,7 @@ async test "default analysis runner launches acp target for cli execution" {
       content="false",
     )
     let state = @fsx.read_file(
-      dir |> @pathx.join(".moonclaw") |> @pathx.join("acp_sessions.json"),
+      @moonsuite.product_artifact(dir, "moonclaw", "acp_sessions.json"),
     )
     inspect(state.contains("\"status\":\"completed\""), content="true")
   })

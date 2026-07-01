@@ -15,6 +15,7 @@ import {
   "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/context_pruner",
   "vectie/moonlib/os",
+  "vectie/moonlib/moonsuite",
   "vectie/moonclaw/internal/broadcast",
   "vectie/moonclaw/internal/jsonx",
   "moonbitlang/core/deque",

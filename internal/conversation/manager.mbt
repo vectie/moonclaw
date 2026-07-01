@@ -18,9 +18,7 @@ pub async fn Manager::new(
   ),
 ) -> Manager {
   let cache = @lru.cache(max_size=100)
-  let conversations = home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("conversations")
+  let conversations = conversation_root(home)
   if !@fsx.exists(conversations) {
     @fsx.make_directory(conversations, recursive=true, exists_ok=true)
   }
@@ -28,14 +26,21 @@ pub async fn Manager::new(
 }
 
 ///|
+fn conversation_root(home : StringView) -> String {
+  @moonsuite.product_artifact(home.to_owned(), "moonclaw", "conversations")
+}
+
+///|
+fn conversation_file(home : StringView, id : @uuid.Uuid) -> String {
+  conversation_root(home) |> @pathx.join("\{id}.json")
+}
+
+///|
 pub async fn Manager::load(self : Manager, id : @uuid.Uuid) -> Conversation? {
   if self.cache.get(id) is Some(id) {
     return Some(id)
   }
-  let path = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("conversations")
-    |> @pathx.join("\{id}.json")
+  let path = conversation_file(self.home, id)
   if !@fsx.exists(path) {
     self.logger.warn(
       "Conversation with id '\{id}' does not exist at path '\{path}'",
@@ -57,10 +62,7 @@ pub async fn Manager::load(self : Manager, id : @uuid.Uuid) -> Conversation? {
 
 ///|
 pub async fn Manager::save(self : Manager, conversation : Conversation) -> Unit {
-  let path = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("conversations")
-    |> @pathx.join("\{conversation.id}.json")
+  let path = conversation_file(self.home, conversation.id)
   let dir = @pathx.dirname(path)
   @fsx.make_directory(dir, recursive=true, exists_ok=true)
   let json = conversation.to_json()
@@ -69,9 +71,7 @@ pub async fn Manager::save(self : Manager, conversation : Conversation) -> Unit 
 
 ///|
 pub async fn Manager::list(self : Manager) -> Array[@uuid.Uuid] {
-  let path = self.home
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("conversations")
+  let path = conversation_root(self.home)
   let entries = @fsx.list_directory(path)
   let ids = []
   // CR: if we are going to implement list comprehension

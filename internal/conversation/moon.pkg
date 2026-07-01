@@ -3,6 +3,7 @@ import {
   "vectie/moonclaw/internal/lru",
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
+  "vectie/moonlib/moonsuite",
   "moonbitlang/x/time",
   "vectie/moonclaw/clock",
   "vectie/moonclaw/ai",
