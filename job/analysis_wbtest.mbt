@@ -237,10 +237,13 @@ async test "analysis_step_handler projects tool journal into logs and result met
 ///|
 async test "analysis_step_handler stamps running step with session journal before executor returns" {
   @fsx.with_temporary_directory("job-analysis-session-journal-XXXXXX", dir => {
+    let suite_root = @pathx.join(dir, "suite")
+    let book_root = suite_root |> @pathx.join("books/research-demo")
+    @fsx.make_directory(book_root, recursive=true, exists_ok=true)
     let root = @pathx.join(dir, "jobs")
     let config = AnalysisStepConfig::new(
       prompt="Start session journal before the executor completes.",
-      cwd=Some(dir),
+      cwd=Some(book_root),
       policy=AnalysisPolicy::new(timeout_ms=Some(1234)),
       metadata={ "timeout_ms": 1234 },
     )
@@ -280,10 +283,24 @@ async test "analysis_step_handler stamps running step with session journal befor
     )
     inspect(observed_journal_exists.val, content="true")
     inspect(
+      observed_journal_path.val.contains(
+        "\{suite_root}/.tmp/products/moonclaw/tool-journals/tool-journal-",
+      ),
+      content="true",
+    )
+    inspect(observed_journal_path.val.has_suffix(".json"), content="true")
+    inspect(
+      observed_journal_path.val.contains(".moonclaw-tool-journal-"),
+      content="false",
+    )
+    inspect(
       observed_logs.val.contains("analysis session journal: "),
       content="true",
     )
-    inspect(observed_logs.val.contains("analysis cwd: \{dir}"), content="true")
+    inspect(
+      observed_logs.val.contains("analysis cwd: \{book_root}"),
+      content="true",
+    )
     inspect(
       observed_logs.val.contains("analysis timeout_ms: 1234"),
       content="true",
@@ -326,7 +343,12 @@ async test "analysis_step_handler timeout points to tool journal path" {
       Err(error) => error
     }
     inspect(error.contains("tool journal:"), content="true")
-    inspect(error.contains(".moonclaw-tool-journal-"), content="true")
+    inspect(
+      error.contains(".tmp/products/moonclaw/tool-journals/tool-journal-"),
+      content="true",
+    )
+    inspect(error.contains(".json"), content="true")
+    inspect(error.contains(".moonclaw-tool-journal-"), content="false")
   })
 }
 
@@ -2360,7 +2382,9 @@ async test "analysis_step_handler enforces timeout and token budget policies" {
     inspect(
       match timeout_engine.execute_run("run-analysis-1", fn() { 300 }) {
         Err(error) =>
-          error.contains("Analysis step analyze timed out after 1ms")
+          error.contains("Analysis step analyze timed out") &&
+          error.contains("tool journal:") &&
+          error.contains(".tmp/products/moonclaw/tool-journals/tool-journal-")
         Ok(_) => false
       },
       content="true",

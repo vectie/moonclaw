@@ -8,8 +8,19 @@ const ANALYSIS_TOOL_JOURNAL_LOG_LIMIT = 6
 fn analysis_tool_journal_path(request : AnalysisRequest) -> String {
   let step_key = safe_step_file_segment(request.step_id)
   @pathx.join(
-    request.cwd,
-    ".moonclaw-tool-journal-\{request.run_id}-\{step_key}.json",
+    analysis_tool_journal_dir(request),
+    "tool-journal-\{request.run_id}-\{step_key}.json",
+  )
+}
+
+///|
+fn analysis_tool_journal_dir(request : AnalysisRequest) -> String {
+  @pathx.join(
+    @moonsuite.product_tmp_dir(
+      @moonsuite.suite_root_for_workspace_root(request.cwd),
+      "moonclaw",
+    ),
+    "tool-journals",
   )
 }
 
@@ -39,6 +50,9 @@ async fn write_analysis_tool_journal(
   entries : Array[Json],
 ) -> String {
   let path = analysis_tool_journal_path(request)
+  @fsx.make_directory(analysis_tool_journal_dir(request), recursive=true) catch {
+    _ => ()
+  }
   @fsx.write_to_file(path, Json::array(entries).stringify(indent=2)) catch {
     _ => ()
   }
