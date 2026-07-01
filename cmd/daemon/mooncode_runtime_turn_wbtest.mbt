@@ -587,6 +587,30 @@ test "mooncode native runtime turn decodes model-selected tool calls" {
 }
 
 ///|
+test "mooncode native runtime turn treats assistant text as finish" {
+  let calls = mooncode_runtime_turn_tool_calls_from_model_response({
+    "choices": [
+      { "message": { "content": "Hello from model.", "tool_calls": [] } },
+    ],
+  })
+  assert_eq(calls.length(), 1)
+  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "finish")
+  assert_eq(
+    mooncode_json_string(calls[0], "tool_call_id", default=""),
+    "model-assistant-content-finish",
+  )
+  assert_eq(
+    mooncode_json_string(calls[0], "planner", default=""),
+    "model-assistant-content",
+  )
+  let arguments = mooncode_json_object_field_or_empty(calls[0], "arguments")
+  assert_eq(
+    mooncode_json_string(arguments, "answer", default=""),
+    "Hello from model.",
+  )
+}
+
+///|
 test "mooncode native runtime turn builds model follow-up transcript" {
   let response : Json = {
     "choices": [

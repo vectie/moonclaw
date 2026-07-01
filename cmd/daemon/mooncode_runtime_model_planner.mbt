@@ -377,6 +377,19 @@ fn mooncode_runtime_turn_tool_calls_from_model_response(
       })
     }
   }
+  if calls.length() == 0 {
+    let content = mooncode_json_string(message, "content", default="")
+      .trim()
+      .to_owned()
+    if content != "" {
+      calls.push({
+        "tool": "finish",
+        "arguments": { "answer": content },
+        "tool_call_id": "model-assistant-content-finish",
+        "planner": "model-assistant-content",
+      })
+    }
+  }
   calls
 }
 
