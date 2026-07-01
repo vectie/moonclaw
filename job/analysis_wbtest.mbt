@@ -767,8 +767,12 @@ async test "default analysis runner launches acp target for cli execution" {
     let run_workspace = dir |> @pathx.join("run-workspace")
     @fsx.make_directory(source_root, recursive=true)
     @fsx.make_directory(run_workspace, recursive=true)
+    let config_path = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
     @fsx.write_to_file(
-      dir |> @pathx.join("moonclaw.json"),
+      config_path,
       (
         {
           "acp": {
@@ -1695,9 +1699,12 @@ async test "analysis_step_handler repairs invalid followup judge output" {
 ///|
 async test "analysis_step_handler honors adaptive max depth from moonclaw.json" {
   @fsx.with_temporary_directory("job-analysis-adaptive-depth-XXXXXX", dir => {
+    let config_path = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
     @fsx.write_to_file(
-      dir |> @pathx.join("moonclaw.json"),
-      "{\n  \"jobs\": {\n    \"analysis\": {\n      \"adaptive\": {\n        \"max_depth\": 5\n      }\n    }\n  }\n}\n",
+      config_path, "{\n  \"jobs\": {\n    \"analysis\": {\n      \"adaptive\": {\n        \"max_depth\": 5\n      }\n    }\n  }\n}\n",
     )
     inspect(
       configured_adaptive_subplan_max_depth(dir, None).unwrap_or(0),
@@ -1983,8 +1990,12 @@ async test "analysis_step_handler loads local skill file content into prompt" {
 ///|
 async test "resolved_model_name uses configured primary model for default" {
   @fsx.with_temporary_directory("job-analysis-primary-model-XXXXXX", dir => {
+    let config_path = @moonsuite.product_artifact_for_workspace_root(
+      dir, "moonclaw", "moonclaw.json",
+    )
+    @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
     @fsx.write_to_file(
-      dir |> @pathx.join("moonclaw.json"),
+      config_path,
       { "agents": { "defaults": { "model": { "primary": "codex/gpt-5.4" } } } }
       .to_json()
       .stringify(indent=2),

@@ -4,8 +4,11 @@ async fn write_provider_task_fixture(
   script_path : String,
   state_path : String,
 ) -> Unit {
+  let manifest_path = @moonsuite.product_artifact_for_workspace_root(
+    workspace, "moonclaw", "providers.json",
+  )
   @fsx.make_directory(
-    workspace |> @pathx.join(".moonclaw"),
+    @pathx.dirname(manifest_path),
     recursive=true,
     exists_ok=true,
   )
@@ -15,7 +18,7 @@ async fn write_provider_task_fixture(
     exists_ok=true,
   )
   @fsx.write_to_file(
-    workspace |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+    manifest_path,
     (
       #|[
       #|  {
@@ -120,15 +123,18 @@ async fn write_multi_provider_task_fixture(
 ) -> Unit {
   let coding_root = workspace |> @pathx.join("books") |> @pathx.join("coding")
   let finance_root = workspace |> @pathx.join("books") |> @pathx.join("finance")
+  let manifest_path = @moonsuite.product_artifact_for_workspace_root(
+    workspace, "moonclaw", "providers.json",
+  )
   @fsx.make_directory(
-    workspace |> @pathx.join(".moonclaw"),
+    @pathx.dirname(manifest_path),
     recursive=true,
     exists_ok=true,
   )
   @fsx.make_directory(coding_root, recursive=true, exists_ok=true)
   @fsx.make_directory(finance_root, recursive=true, exists_ok=true)
   @fsx.write_to_file(
-    workspace |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+    manifest_path,
     (
       #|[
       #|  {
@@ -649,8 +655,9 @@ async test "provider task runner reuses embedded provider command when manifest 
     let state_path = @pathx.join(dir, "persisted-path.txt")
     @fsx.make_directory(workspace, recursive=true, exists_ok=true)
     write_provider_task_fixture(workspace, script_path, state_path)
-    let manifest_path = @pathx.join(workspace, ".moonclaw")
-      |> @pathx.join("providers.json")
+    let manifest_path = @moonsuite.product_artifact_for_workspace_root(
+      workspace, "moonclaw", "providers.json",
+    )
     @fsx.remove(manifest_path) catch {
       _ => ()
     }

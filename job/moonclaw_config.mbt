@@ -4,17 +4,17 @@ fn moonclaw_config_path_candidates(
   home : String?,
 ) -> Array[String] {
   let paths : Array[String] = [
-    cwd |> @pathx.join("moonclaw.json"),
-    cwd |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
+    @moonsuite.product_artifact_for_workspace_root(
+      cwd, "moonclaw", "moonclaw.json",
+    ),
   ]
   match home {
-    Some(home) => {
-      paths.push(@moonsuite.product_artifact(home, "moonclaw", "moonclaw.json"))
-      paths.push(home |> @pathx.join("moonclaw.json"))
+    Some(home) =>
       paths.push(
-        home |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json"),
+        @moonsuite.product_artifact_for_workspace_root(
+          home, "moonclaw", "moonclaw.json",
+        ),
       )
-    }
     None => ()
   }
   paths

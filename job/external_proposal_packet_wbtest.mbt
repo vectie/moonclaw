@@ -28,13 +28,16 @@ async fn write_external_packet_provider_fixture(
   workspace : String,
   script_path : String,
 ) -> Unit {
+  let manifest_path = @moonsuite.product_artifact_for_workspace_root(
+    workspace, "moonclaw", "providers.json",
+  )
   @fsx.make_directory(
-    workspace |> @pathx.join(".moonclaw"),
+    @pathx.dirname(manifest_path),
     recursive=true,
     exists_ok=true,
   )
   @fsx.write_to_file(
-    workspace |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+    manifest_path,
     (
       #|[
       #|  {

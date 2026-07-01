@@ -4,8 +4,13 @@ async test "gateway cli defaults use configured url token workspace and model" {
   let cwd = "/tmp/moonclaw-cmd-gateway-cwd"
   @fsx.make_directory(home, recursive=true)
   @fsx.make_directory(cwd, recursive=true)
+  @fsx.make_directory(
+    @pathx.dirname(workspace_config_path(home)),
+    recursive=true,
+    exists_ok=true,
+  )
   @fsx.write_to_file(
-    root_config_path(home),
+    workspace_config_path(home),
     (
       {
         "agents": {

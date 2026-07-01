@@ -65,24 +65,21 @@ pub impl @json.FromJson for RegisteredResourceProvider with fn from_json(
 fn provider_manifest_candidates(cwd : String, home : String?) -> Array[String] {
   let candidates : Array[String] = []
   match home {
-    Some(home) => {
+    Some(home) =>
       candidates.push(
-        home |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+        @moonsuite.product_artifact_for_workspace_root(
+          home, "moonclaw", "providers.json",
+        ),
       )
-      candidates.push(
-        @moonsuite.product_artifact(home, "moonclaw", "providers.json"),
-      )
-    }
     None => ()
   }
   let ancestry : Array[String] = []
   let mut dir = @pathx.normalize(cwd)
   while true {
     ancestry.push(
-      @moonsuite.product_artifact(dir, "moonclaw", "providers.json"),
-    )
-    ancestry.push(
-      dir |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+      @moonsuite.product_artifact_for_workspace_root(
+        dir, "moonclaw", "providers.json",
+      ),
     )
     let parent : String = [..@pathx.dirname(dir)]
     if parent == dir {

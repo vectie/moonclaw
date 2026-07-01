@@ -16,4 +16,5 @@ import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/git",
   "vectie/moonclaw/internal/mock",
+  "vectie/moonlib/moonsuite",
 } for "test"

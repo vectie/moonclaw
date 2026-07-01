@@ -1,21 +1,29 @@
 ///|
-async test "load_resource_providers prefers cwd manifest over home manifest" (
+async test "load_resource_providers prefers workspace product manifest over home manifest" (
   t : @test.Test,
 ) {
   @mock.run(t, mock => {
     let home_dir = mock.cwd.path() |> @pathx.join("home")
+    let home_manifest = @moonsuite.product_artifact_for_workspace_root(
+      home_dir, "moonclaw", "providers.json",
+    )
+    let workspace_manifest = @moonsuite.product_artifact_for_workspace_root(
+      mock.cwd.path(),
+      "moonclaw",
+      "providers.json",
+    )
     @fsx.make_directory(
-      mock.cwd.path() |> @pathx.join(".moonclaw"),
+      @pathx.dirname(home_manifest),
       recursive=true,
       exists_ok=true,
     )
     @fsx.make_directory(
-      home_dir |> @pathx.join(".moonclaw"),
+      @pathx.dirname(workspace_manifest),
       recursive=true,
       exists_ok=true,
     )
     @fsx.write_to_file(
-      home_dir |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+      home_manifest,
       (
         #|[
         #|  {
@@ -28,9 +36,7 @@ async test "load_resource_providers prefers cwd manifest over home manifest" (
       ),
     )
     @fsx.write_to_file(
-      mock.cwd.path()
-      |> @pathx.join(".moonclaw")
-      |> @pathx.join("providers.json"),
+      workspace_manifest,
       (
         #|[
         #|  {
@@ -60,12 +66,12 @@ async test "load_resource_providers prefers cwd manifest over home manifest" (
 }
 
 ///|
-async test "load_resource_providers prefers product home manifest over legacy home manifest" (
+async test "load_resource_providers ignores legacy home manifest" (
   t : @test.Test,
 ) {
   @mock.run(t, mock => {
     let home_dir = mock.cwd.path() |> @pathx.join("home")
-    let product_manifest = @moonsuite.product_artifact(
+    let product_manifest = @moonsuite.product_artifact_for_workspace_root(
       home_dir, "moonclaw", "providers.json",
     )
     @fsx.make_directory(
@@ -121,15 +127,19 @@ async test "load_resource_providers discovers parent workspace manifests" (
     let run_dir = @job.moonclaw_jobs_root(workspace_root)
       |> @pathx.join("run-1")
     @fsx.make_directory(
-      workspace_root |> @pathx.join(".moonclaw"),
+      @pathx.dirname(
+        @moonsuite.product_artifact_for_workspace_root(
+          workspace_root, "moonclaw", "providers.json",
+        ),
+      ),
       recursive=true,
       exists_ok=true,
     )
     @fsx.make_directory(run_dir, recursive=true, exists_ok=true)
     @fsx.write_to_file(
-      workspace_root
-      |> @pathx.join(".moonclaw")
-      |> @pathx.join("providers.json"),
+      @moonsuite.product_artifact_for_workspace_root(
+        workspace_root, "moonclaw", "providers.json",
+      ),
       (
         #|[
         #|  {
@@ -145,5 +155,61 @@ async test "load_resource_providers discovers parent workspace manifests" (
     let providers = load_resource_providers(run_dir, home=None)
     inspect(providers.length().to_string(), content="1")
     inspect(providers[0].name, content="wiki-main")
+  })
+}
+
+///|
+async test "load_resource_providers resolves suite book workspace provider home" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let suite_root = mock.cwd.path() |> @pathx.join("suite")
+    let book_root = suite_root
+      |> @pathx.join("books")
+      |> @pathx.join("research-book")
+    let code_dir = book_root |> @pathx.join("code")
+    let manifest = @moonsuite.product_artifact_for_workspace_root(
+      book_root, "moonclaw", "providers.json",
+    )
+    @fsx.make_directory(
+      @pathx.dirname(manifest),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.make_directory(code_dir, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      manifest,
+      (
+        #|[
+        #|  {
+        #|    "name": "book-provider",
+        #|    "title": "Suite Book Provider",
+        #|    "kind": "extension"
+        #|  }
+        #|]
+      ),
+    )
+    @fsx.make_directory(
+      book_root |> @pathx.join(".moonclaw"),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(
+      book_root |> @pathx.join(".moonclaw") |> @pathx.join("providers.json"),
+      (
+        #|[
+        #|  {
+        #|    "name": "legacy-provider",
+        #|    "title": "Legacy Book Provider",
+        #|    "kind": "extension"
+        #|  }
+        #|]
+      ),
+    ) catch {
+      _ => ()
+    }
+    let providers = load_resource_providers(code_dir, home=None)
+    inspect(providers.length().to_string(), content="1")
+    inspect(providers[0].name, content="book-provider")
   })
 }

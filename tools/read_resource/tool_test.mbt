@@ -84,15 +84,18 @@ async test "read_resource reads worktree URIs" (t : @test.Test) {
 ///|
 async test "read_resource reads provider URIs" (t : @test.Test) {
   @mock.run(t, mock => {
+    let manifest_path = @moonsuite.product_artifact_for_workspace_root(
+      mock.cwd.path(),
+      "moonclaw",
+      "providers.json",
+    )
     @fsx.make_directory(
-      mock.cwd.path() |> @pathx.join(".moonclaw"),
+      @pathx.dirname(manifest_path),
       recursive=true,
       exists_ok=true,
     )
     @fsx.write_to_file(
-      mock.cwd.path()
-      |> @pathx.join(".moonclaw")
-      |> @pathx.join("providers.json"),
+      manifest_path,
       (
         #|[
         #|  {

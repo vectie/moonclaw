@@ -8,8 +8,8 @@ import {
   "vectie/moonclaw/gateway/client",
   "vectie/moonclaw/gateway/protocol",
   "vectie/moonlib/fsx",
+  "vectie/moonlib/moonsuite",
   "vectie/moonlib/os",
-  "vectie/moonlib/pathx",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/buildinfo",
 }
@@ -18,4 +18,5 @@ supported_targets = "native"
 
 import {
   "moonbitlang/async",
+  "vectie/moonlib/pathx",
 } for "wbtest"

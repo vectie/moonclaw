@@ -14,6 +14,7 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "vectie/moonlib/fsx",
+  "vectie/moonlib/moonsuite",
   "vectie/moonclaw/internal/git",
   "vectie/moonclaw/internal/mock",
   "vectie/moonlib/pathx",

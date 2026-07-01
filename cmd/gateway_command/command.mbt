@@ -609,23 +609,15 @@ fn resolve_cwd(args : Array[String]) -> String {
 }
 
 ///|
-fn root_config_path(root : String) -> String {
-  root |> @pathx.join("moonclaw.json")
-}
-
-///|
-fn nested_config_path(root : String) -> String {
-  root |> @pathx.join(".moonclaw") |> @pathx.join("moonclaw.json")
+fn workspace_config_path(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root, "moonclaw", "moonclaw.json",
+  )
 }
 
 ///|
 fn config_candidates(home : String, cwd : String) -> Array[String] {
-  [
-    root_config_path(home),
-    nested_config_path(home),
-    root_config_path(cwd),
-    nested_config_path(cwd),
-  ]
+  [workspace_config_path(cwd), workspace_config_path(home)]
 }
 
 ///|

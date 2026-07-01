@@ -107,17 +107,17 @@ async test "list_resources lists provider URIs" (t : @test.Test) {
       #|    "endpoint": "https://slides.example/api"
       #|  }
       #|]
+    let manifest_path = @moonsuite.product_artifact_for_workspace_root(
+      mock.cwd.path(),
+      "moonclaw",
+      "providers.json",
+    )
     @fsx.make_directory(
-      mock.cwd.path() |> @pathx.join(".moonclaw"),
+      @pathx.dirname(manifest_path),
       recursive=true,
       exists_ok=true,
     )
-    @fsx.write_to_file(
-      mock.cwd.path()
-      |> @pathx.join(".moonclaw")
-      |> @pathx.join("providers.json"),
-      manifest,
-    )
+    @fsx.write_to_file(manifest_path, manifest)
     let tool = new(mock.cwd.path(), home=Some(mock.cwd.path()))
     let result = tool.call({ "kind": "provider" })
     guard result is Ok(output) else {
