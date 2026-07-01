@@ -197,8 +197,10 @@ Example provider-backed routing:
 }
 ```
 
-The `execution_target` is resolved through `.moonclaw/providers.json`. A task
-provider should expose:
+The `execution_target` is resolved through the MoonClaw product-home provider
+manifest at `.moonsuite/products/moonclaw/providers.json`, derived from the
+selected workspace or suite book root. Project-local product config overrides
+the home product config. A task provider should expose:
 
 - `kind: "extension"` or `kind: "task-provider"`
 - capability `provider`, `extension`, `provider.task`, or `extension.task`

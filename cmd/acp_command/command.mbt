@@ -77,7 +77,7 @@ fn workspace_config_path(root : String) -> String {
 
 ///|
 fn config_candidates(home : String, cwd : String) -> Array[String] {
-  [preferred_config_path(home), workspace_config_path(cwd)]
+  [workspace_config_path(cwd), preferred_config_path(home)]
 }
 
 ///|

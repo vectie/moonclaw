@@ -191,8 +191,9 @@ This keeps MoonClaw general:
 - no direct MoonBook imports in proposal matching
 - no domain-specific persistence branches in the workflow engine
 
-The only runtime contract is a provider entry in `.moonclaw/providers.json`
-with a stable `execution_target`.
+The only runtime contract is a provider entry in the MoonClaw product-home
+manifest at `.moonsuite/products/moonclaw/providers.json` with a stable
+`execution_target`.
 
 See also:
 

@@ -76,7 +76,9 @@ Each routed step must also provide:
 
 - `execution_target`
 
-`execution_target` is resolved from `.moonclaw/providers.json`.
+`execution_target` is resolved from the MoonClaw product-home provider manifest
+at `.moonsuite/products/moonclaw/providers.json`, derived from the selected
+workspace or suite book root.
 
 ## Provider Registry Shape
 
