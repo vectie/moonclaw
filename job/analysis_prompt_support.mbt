@@ -29,6 +29,14 @@ fn skill_file_candidates(
   home : String?,
   skill : String,
 ) -> Array[String] {
+  fn product_home_skill_candidates(root : String) -> Array[String] {
+    let skill_dir = @moonsuite.product_artifact_for_workspace_root(
+      root,
+      "moonclaw",
+      "skills/\{skill}",
+    )
+    [skill_dir |> @pathx.join("SKILL.md"), skill_dir |> @pathx.join("skill.md")]
+  }
   let candidates : Array[String] = [
     cwd
     |> @pathx.join("skills")
@@ -38,21 +46,15 @@ fn skill_file_candidates(
     |> @pathx.join("skills")
     |> @pathx.join(skill)
     |> @pathx.join("skill.md"),
-    cwd
-    |> @pathx.join(".moonclaw")
-    |> @pathx.join("skills")
-    |> @pathx.join(skill)
-    |> @pathx.join("SKILL.md"),
   ]
+  for candidate in product_home_skill_candidates(cwd) {
+    candidates.push(candidate)
+  }
   match home {
     Some(home) =>
-      candidates.push(
-        home
-        |> @pathx.join(".moonclaw")
-        |> @pathx.join("skills")
-        |> @pathx.join(skill)
-        |> @pathx.join("SKILL.md"),
-      )
+      for candidate in product_home_skill_candidates(home) {
+        candidates.push(candidate)
+      }
     None => ()
   }
   candidates

@@ -1988,6 +1988,64 @@ async test "analysis_step_handler loads local skill file content into prompt" {
 }
 
 ///|
+async test "analysis_step_handler loads MoonClaw product-home skill file" {
+  @fsx.with_temporary_directory("job-analysis-product-skill-XXXXXX", dir => {
+    let suite_root = @pathx.join(dir, "suite")
+    let book_root = suite_root |> @pathx.join("books/research-demo")
+    let root = @pathx.join(dir, "jobs")
+    let skill_dir = @moonsuite.product_artifact_for_workspace_root(
+      book_root, "moonclaw", "skills/research-paper-summary",
+    )
+    @fsx.make_directory(skill_dir, recursive=true)
+    @fsx.write_to_file(
+      skill_dir |> @pathx.join("SKILL.md"),
+      [
+        "---", "name: research-paper-summary", "description: product skill", "---",
+        "", "Include the exact phrase PRODUCT_HOME_SKILL_MARKER.",
+      ].join("\n"),
+    )
+    let legacy_skill_dir = book_root
+      |> @pathx.join(".moonclaw/skills/research-paper-summary")
+    @fsx.make_directory(legacy_skill_dir, recursive=true)
+    @fsx.write_to_file(
+      legacy_skill_dir |> @pathx.join("SKILL.md"),
+      "LEGACY_MOONCLAW_SKILL_MARKER",
+    )
+    let config = AnalysisStepConfig::new(
+      prompt="Summarize the parsed paper output.",
+      cwd=Some(book_root),
+      preferred_skills=["research-paper-summary"],
+    )
+    let engine = analysis_test_engine(root, config)
+    engine.register_handler(
+      analysis_step_handler(
+        runtime=engine.runtime,
+        executor=AnalysisExecutor::new(run=fn(request) {
+          Ok({
+            model_name: request.model_name,
+            content: request.prompt,
+            conversation_id: Some("conv-product-skill"),
+            usage: None,
+            metadata: { "captured_prompt": request.prompt },
+          })
+        }),
+        now=fn() { 1000 },
+      ),
+    )
+    let result = match engine.execute_run("run-analysis-1", fn() { 1000 }) {
+      Ok(result) => result
+      Err(error) => fail(error)
+    }
+    let output = result.outputs
+      .get("analyze")
+      .map(fn(output) { output.stringify() })
+      .unwrap_or("")
+    assert_true(output.contains("PRODUCT_HOME_SKILL_MARKER"))
+    assert_false(output.contains("LEGACY_MOONCLAW_SKILL_MARKER"))
+  })
+}
+
+///|
 async test "resolved_model_name uses configured primary model for default" {
   @fsx.with_temporary_directory("job-analysis-primary-model-XXXXXX", dir => {
     let config_path = @moonsuite.product_artifact_for_workspace_root(
