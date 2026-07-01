@@ -24,7 +24,8 @@ still require an explicit safety-gated execution path.
 
 `POST /v1/robot/routine/run` is the durable closed-loop entrypoint. It plans the
 routine, invokes the next safe MoonClaw-owned step when one is available, and
-writes the run record under MoonClaw's `.moonclaw/robot-routine-runs/` ledger.
+writes the run record under MoonClaw's
+`.moonsuite/products/moonclaw/robot-routine-runs/` ledger.
 After a successful safe invocation it refreshes MoonBook memory only when the
 planned routine contains a registered MoonClaw-owned
 `POST /api/moonbook/remember` step. That prevents memory refresh from becoming

@@ -136,43 +136,47 @@ test "robot routine runner requires registered memory refresh step" {
 
 ///|
 async test "robot routine run ledger writes reads and lists records" {
-  let root = "/tmp/moonclaw-robot-routine-ledger-test"
-  @fsx.make_directory(root, recursive=true, exists_ok=true) catch {
-    error => abort("failed to create test root: \{error}")
-  }
-  let plan = sample_robot_routine_plan()
-  let params : RobotRoutineGatewayRequest = {
-    moonrobo_url: " http://127.0.0.1:5192/ ",
-    now_ms: Some(42L),
-  }
-  let record = robot_routine_run_record(
-    root,
-    params,
-    plan,
-    true,
-    Some({ status: 200, body: "{\"ok\":true}" }),
-    "persisted",
-  )
-  assert_eq(record.run_id, "robot-routine-run-robot-routine-plan-robo-42")
-  assert_eq(record.moonrobo_url, "http://127.0.0.1:5192")
-  assert_eq(record.status, "invoked")
-  match write_robot_routine_run(root, record) {
-    Ok(_) => ()
-    Err(message) => abort("expected routine run write: \{message}")
-  }
-  match read_robot_routine_run(root, record.run_id) {
-    Ok(reloaded) => {
-      assert_eq(reloaded.run_id, record.run_id)
-      assert_eq(reloaded.plan.plan_id, plan.plan_id)
-      assert_true(reloaded.invocation is Some({ status: 200, .. }))
-      assert_true(reloaded.memory_refresh is None)
-      assert_true(reloaded.context_before is Null)
-      assert_true(reloaded.context_after is Null)
+  @fsx.with_temporary_directory("moonclaw-robot-routine-ledger-XXXXXX", root => {
+    let old_ledger = root + "/.moonclaw/robot-routine-runs"
+    let new_ledger = root + "/.moonsuite/products/moonclaw/robot-routine-runs"
+    assert_eq(robot_routine_runs_dir(root), new_ledger)
+    let plan = sample_robot_routine_plan()
+    let params : RobotRoutineGatewayRequest = {
+      moonrobo_url: " http://127.0.0.1:5192/ ",
+      now_ms: Some(42L),
     }
-    Err(message) => abort("expected routine run read: \{message}")
-  }
-  let runs = list_robot_routine_runs(root)
-  assert_true(runs.any(run => run.run_id == record.run_id))
+    let record = robot_routine_run_record(
+      root,
+      params,
+      plan,
+      true,
+      Some({ status: 200, body: "{\"ok\":true}" }),
+      "persisted",
+    )
+    assert_eq(record.run_id, "robot-routine-run-robot-routine-plan-robo-42")
+    assert_eq(record.moonrobo_url, "http://127.0.0.1:5192")
+    assert_eq(record.status, "invoked")
+    assert_true(record.record_path.has_prefix(new_ledger))
+    match write_robot_routine_run(root, record) {
+      Ok(_) => ()
+      Err(message) => abort("expected routine run write: \{message}")
+    }
+    assert_true(@fsx.exists(new_ledger) catch { _ => false })
+    assert_true(!(@fsx.exists(old_ledger) catch { _ => false }))
+    match read_robot_routine_run(root, record.run_id) {
+      Ok(reloaded) => {
+        assert_eq(reloaded.run_id, record.run_id)
+        assert_eq(reloaded.plan.plan_id, plan.plan_id)
+        assert_true(reloaded.invocation is Some({ status: 200, .. }))
+        assert_true(reloaded.memory_refresh is None)
+        assert_true(reloaded.context_before is Null)
+        assert_true(reloaded.context_after is Null)
+      }
+      Err(message) => abort("expected routine run read: \{message}")
+    }
+    let runs = list_robot_routine_runs(root)
+    assert_true(runs.any(run => run.run_id == record.run_id))
+  })
 }
 
 ///|
