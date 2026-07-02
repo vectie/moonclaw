@@ -8,18 +8,18 @@ of MoonClaw's generic runtime.
 Copy the example job profile into the workspace you want to run:
 
 ```bash
-mkdir -p ~/.moonclaw/opc-workspace/skills
-cp /Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json ~/.moonclaw/opc-workspace/moonclaw.jobs.json
-cp -R /Users/kq/Workspace/moonclaw/docs/examples/opc_skills ~/.moonclaw/opc-workspace/skills
+mkdir -p ~/.moonsuite/products/moonclaw/opc-workspace/skills
+cp /Users/kq/Workspace/moonclaw/docs/examples/opc_moonclaw.jobs.json ~/.moonsuite/products/moonclaw/opc-workspace/moonclaw.jobs.json
+cp -R /Users/kq/Workspace/moonclaw/docs/examples/opc_skills ~/.moonsuite/products/moonclaw/opc-workspace/skills
 ```
 
 This keeps OPC behavior workspace-local. It does not change global runtime
-config in `~/.moonclaw/moonclaw.json`.
+config in `~/.moonsuite/products/moonclaw/moonclaw.json`.
 
 ## 2. Start the gateway against that workspace
 
 ```bash
-moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/opc-workspace
+moon run cmd/main -- gateway start --home ~ --cwd ~/.moonsuite/products/moonclaw/opc-workspace
 ```
 
 ## 3. Trigger an OPC-style sprint
@@ -59,7 +59,7 @@ You should see:
   - `execution_target: codex-impl` / `codex-review` / `codex-qa`
 - those child worker profiles apply their own role-specific skills and prompts
 - controller state and lineage persist for the run
-- the run workspace appears under `<workspace>/moonclaw-jobs/<run-id>`
+- the run workspace appears under `.moonsuite/products/moonclaw/jobs/<run-id>`
 
 ## 5. What this proves
 

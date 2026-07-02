@@ -15,9 +15,9 @@ Expected behavior:
 Expected behavior for a top-level run:
 
 - create a dedicated run workspace under:
-  - `<workspace>/moonclaw-jobs/<run_id>`
+  - `.moonsuite/products/moonclaw/jobs/<run_id>`
 - initialize a git repository there
-- write run metadata under the run workspace's internal `.moonclaw/`
+- write run metadata directly inside the run workspace
 - keep the run workspace itself run-owned rather than copying workspace context files into it
 
 Expected behavior for a subjob:

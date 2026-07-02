@@ -8,12 +8,12 @@ persistent markdown wiki workspace.
 Copy the example job profile into the workspace you want to run:
 
 ```bash
-mkdir -p ~/.moonclaw/wiki-workspace
-cp /Users/kq/Workspace/moonclaw/docs/examples/wiki_moonclaw.jobs.json ~/.moonclaw/wiki-workspace/moonclaw.jobs.json
+mkdir -p ~/.moonsuite/products/moonclaw/wiki-workspace
+cp /Users/kq/Workspace/moonclaw/docs/examples/wiki_moonclaw.jobs.json ~/.moonsuite/products/moonclaw/wiki-workspace/moonclaw.jobs.json
 ```
 
 This keeps wiki-maintainer behavior workspace-local. It does not change global
-runtime config in `~/.moonclaw/moonclaw.json`.
+runtime config in `~/.moonsuite/products/moonclaw/moonclaw.json`.
 
 If the workspace also contains:
 
@@ -27,7 +27,7 @@ then MoonClaw can operate on it as a maintained wiki layer.
 ## 2. Start the gateway against that workspace
 
 ```bash
-moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/wiki-workspace
+moon run cmd/main -- gateway start --home ~ --cwd ~/.moonsuite/products/moonclaw/wiki-workspace
 ```
 
 ## 3. Trigger the three core wiki workflows
@@ -73,7 +73,7 @@ You should see:
 - delegated worker steps use:
   - `wiki_revision_worker`
   - `wiki_review_worker`
-- the run workspace appears under `<workspace>/moonclaw-jobs/<run-id>`
+- the run workspace appears under `.moonsuite/products/moonclaw/jobs/<run-id>`
 - the resulting reports explain:
   - which wiki pages changed
   - what claims were strengthened or challenged

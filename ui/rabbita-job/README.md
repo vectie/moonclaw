@@ -33,7 +33,7 @@ npm run build
 Then start the gateway and open:
 
 ```bash
-moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~/.moonclaw --cwd /Users/kq/Workspace/moonclaw
+moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~ --cwd /Users/kq/Workspace/moonclaw
 ```
 
 ```text
@@ -53,8 +53,8 @@ and generated files may be written into that repo. Use a separate workspace if
 you want the UI and gateway to operate without mutating the source tree:
 
 ```bash
-mkdir -p ~/.moonclaw/workspace
-moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/workspace
+mkdir -p ~/.moonsuite/products/moonclaw/workspace
+moon -C /Users/kq/Workspace/moonclaw run cmd/main -- gateway start --home ~ --cwd ~/.moonsuite/products/moonclaw/workspace
 ```
 
 Important: `ui/rabbita-job` is its own MoonBit module. If you run

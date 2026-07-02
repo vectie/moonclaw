@@ -6,14 +6,14 @@ This is a concrete way to test whether MoonClaw can handle a real research-style
 
 Copy [research_job_moonclaw.json](/Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json) into the workspace you will run the gateway against as `moonclaw.jobs.json`.
 
-This file is workspace job-behavior config. It is separate from your global runtime config at `~/.moonclaw/moonclaw.json`.
+This file is workspace job-behavior config. It is separate from your product runtime config at `~/.moonsuite/products/moonclaw/moonclaw.json`.
 
 ## 2. Start the gateway in an isolated workspace
 
 ```bash
-mkdir -p ~/.moonclaw/workspace
-cp /Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json ~/.moonclaw/workspace/moonclaw.jobs.json
-moon run cmd/main -- gateway start --home ~/.moonclaw --cwd ~/.moonclaw/workspace
+mkdir -p ~/.moonsuite/products/moonclaw/workspace
+cp /Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json ~/.moonsuite/products/moonclaw/workspace/moonclaw.jobs.json
+moon run cmd/main -- gateway start --home ~ --cwd ~/.moonsuite/products/moonclaw/workspace
 ```
 
 ## 3. Trigger a real research-style job
@@ -61,7 +61,7 @@ Use these checks:
    The final brief should be grounded, ranked, and concise rather than generic filler.
 
 6. Workspace clarity
-   The run should create a visible workspace under `<workspace>/moonclaw-jobs/<run-id>` rather than hiding it under `.moonclaw/job-workspaces/`.
+   The run should create a visible workspace under `.moonsuite/products/moonclaw/jobs/<run-id>` rather than hiding it under a legacy runtime directory.
 
 7. Flexibility
    If you revise the profile JSON, behavior should change without touching MoonBit code.

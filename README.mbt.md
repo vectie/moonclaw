@@ -163,7 +163,7 @@ MoonClaw is strongest when you want one system to handle:
   remaining MoonCode runtime gap is the full persistent MoonCode agent
   service with long-running live steering/cancel UX, diff-aware edit review, and
   broader model-backed coding eval coverage.
-- `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts such as `.moontown/`, `moonclaw-jobs/`, `raw/bootstrap/`, and `.moonclaw-tool-journal-*.json` are ignored so local test state cannot leak into commits.
+- `2026-05-22`: hardened dedicated gateway startup for Feishu websocket operation; channel auto-restore now runs as a background gateway lifecycle task instead of blocking HTTP startup, `gateway start` uses the configured gateway auth token consistently with CLI probes, RPC responses encode `null` payload/error fields correctly, and credential-bearing gateway logs are redacted. Runtime artifacts under `.moonsuite/products/...`, disposable traces under `.tmp/products/...`, and `raw/bootstrap/` are ignored so local test state cannot leak into commits.
 - `2026-04-21`: hardened provider-backed bootstrap execution for town/book integrations; provider tasks now run bounded `bootstrap_gather`, `source_materialize`, `knowledge_revise`, and `review_finalize` phases, emit parent `child_run.*` lifecycle events, compact long provider task ids before they reach journals, and refresh catalog surfaces so generated `wiki/index.md` lists durable source/entity/concept pages
 - `2026-04-18`: fixed provider-run closeout so broadcast listeners stop cleanly after `PostConversation`; provider-backed wiki ingest now advances through adaptive child phases like `bootstrap_gather` and `source_materialize` instead of leaving completed child analysis runs stuck in `Running`
 - `2026-04-15`: shortened persisted per-step metadata filenames to a bounded slug-plus-hash form so long delegated requests no longer crash with `File name too long`; logical `step_id` values remain unchanged in run state and UI
@@ -177,9 +177,9 @@ MoonClaw is strongest when you want one system to handle:
 - `2026-03-25`: added adaptive step expansion with `needs_input` / `needs_subplan`, `WaitingForInput` pause-and-resume via `/resume`, run-workspace output materialization, and fixed Feishu channel chat to honor the configured primary model from `~/.moonsuite/products/moonclaw/moonclaw.json`
 - `2026-03-24`: merged `opc`, `weixin`, and `canvas`; added Weixin Official Account support; upgraded the controller/company canvas; made the generic fallback a single `execute` step
 - `2026-03-23`: added generic worker routing with `child_profile`, `execution_mode`, and `execution_target`; routed analysis through ACP
-- `2026-03-20`: made job and run ids human-readable; moved run workspaces under `<workspace>/moonclaw-jobs`; fixed local time display; improved Feishu progress UX
+- `2026-03-20`: made job and run ids human-readable; exposed run workspaces through the workflow job store; fixed local time display; improved Feishu progress UX
 - `2026-03-19`: added the research job example and test guide; made controller policy more declarative and JSON-driven
-- `2026-03-17`: added `acp add codex`; fixed `~/.moonclaw` defaults and ACP repeated-run handling
+- `2026-03-17`: added `acp add codex`; fixed early runtime-home defaults and ACP repeated-run handling
 
 ## Operator UX
 
@@ -188,7 +188,7 @@ Current job behavior is designed to stay readable from chat and from the workspa
 - new proposal ids are human-readable and time-prefixed instead of raw UUIDs
 - new run ids use a readable `run-YYYYMMDD-HHMMSS-...` format
 - `/job-status` and `/jobs` show job title and created time alongside ids
-- top-level run workspaces are created under `<workspace>/moonclaw-jobs/<run-id>`
+- top-level run workspaces are created under the suite job store at `.moonsuite/products/moonclaw/jobs/<run-id>`
 - child runs are created under the parent run workspace at `moonclaw-subjobs/<run-id>`
 - run workspaces are run-owned and no longer copy workspace markdown like `AGENTS.md`, `USER.md`, `MEMORY.md`, `IDENTITY.md`, or `ROUTINES.md`
 - job timestamps are rendered in local time with an explicit offset
@@ -327,10 +327,10 @@ moon run cmd/main -- gateway start --home ~ --cwd ~/.moonsuite/products/moonclaw
 With that setup, new run workspaces will appear under:
 
 ```text
-~/.moonsuite/products/moonclaw/workspace/moonclaw-jobs/
+~/.moonsuite/products/moonclaw/jobs/
 ```
 
-instead of being hidden under a nested `.moonclaw/job-workspaces/` path.
+instead of being hidden under a nested legacy runtime directory.
 
 Open the operator UI:
 
@@ -419,7 +419,7 @@ This is the intended way to test research ability right now:
 - start the gateway against that workspace
 - run `/plan-job` with a real literature-review style prompt
 - confirm it and inspect `/job-status`
-- inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
+- inspect the generated run workspace under `.moonsuite/products/moonclaw/jobs/<run-id>`
 - verify that behavior changes when you edit the JSON profile, without changing MoonBit code
 
 ## Wiki Maintainer Example
@@ -432,7 +432,7 @@ This is the intended MoonClaw side of a persistent markdown-wiki workflow:
 - start the gateway against that workspace
 - run `/plan-job` for wiki ingest, wiki query, or wiki lint requests
 - confirm the draft and inspect `/job-status`
-- inspect the generated run workspace under `<workspace>/moonclaw-jobs/<run-id>`
+- inspect the generated run workspace under `.moonsuite/products/moonclaw/jobs/<run-id>`
 - verify that behavior changes when you revise the workspace-local pack instead of changing MoonBit code
 
 MoonClaw now also detects wiki-shaped workspaces automatically when they contain:

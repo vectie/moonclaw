@@ -84,9 +84,9 @@ endpoint is slow to resolve or temporarily blocked by network conditions.
 Use a dedicated port when checking a second instance:
 
 ```bash
-moon run cmd/main -- gateway start --home ~/.moonclaw --cwd /path/to/workspace --port 18124
-moon run cmd/main -- gateway health --url http://localhost:18124 --home ~/.moonclaw --cwd /path/to/workspace
-moon run cmd/main -- gateway channels --url http://localhost:18124 --home ~/.moonclaw --cwd /path/to/workspace
+moon run cmd/main -- gateway start --home ~ --cwd /path/to/workspace --port 18124
+moon run cmd/main -- gateway health --url http://localhost:18124 --home ~ --cwd /path/to/workspace
+moon run cmd/main -- gateway channels --url http://localhost:18124 --home ~ --cwd /path/to/workspace
 ```
 
 ## Basic Usage
@@ -96,7 +96,7 @@ moon run cmd/main -- gateway channels --url http://localhost:18124 --home ~/.moo
 ```bash
 moonclaw gateway start
 moonclaw gateway start --port 19000
-moonclaw gateway start --cwd /path/to/project --home ~/.moonclaw
+moonclaw gateway start --cwd /path/to/project --home ~
 ```
 
 ### Health check
@@ -228,7 +228,7 @@ Behavior:
 - after `/resume`, Feishu should move on to fresh step progress updates rather than repeating a stale `WaitingForInput` snapshot
 - normal non-reply chat still falls through to the usual MoonClaw conversation
   path
-- normal channel chat uses the configured primary model from `~/.moonclaw/moonclaw.json`; stale bare session model ids are normalized instead of overriding that config
+- normal channel chat uses the configured primary model from `~/.moonsuite/products/moonclaw/moonclaw.json`; stale bare session model ids are normalized instead of overriding that config
 
 Current message flow:
 
@@ -546,9 +546,8 @@ Operational consequence:
 The repository ignores local runtime artifacts that are useful during live tests
 but should never be committed:
 
-- `.moonclaw-tool-journal-*.json`
-- `.moontown/`
-- `moonclaw-jobs/`
+- `.moonsuite/products/...`
+- `.tmp/products/...`
 - `raw/bootstrap/`
 - `unused-waiting/`
 
