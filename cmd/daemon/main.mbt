@@ -50,9 +50,9 @@ impl @json.FromJson for DaemonInfo with fn from_json(
 
 ///|
 /// Spawns (and optionally detaches) a moonclaw daemon process and waits until
-/// the child writes `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/daemon.json`. Returns the
-/// PID recorded in that file, which can belong to the new child or an already
-/// running daemon.
+/// the child writes its MoonLib-derived MoonClaw daemon status file. Returns
+/// the PID recorded in that file, which can belong to the new child or an
+/// already running daemon.
 pub async fn detach(
   exec_path? : String,
   port? : Int,

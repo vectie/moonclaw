@@ -1,9 +1,8 @@
 ///|
 /// System skills installer.
 ///
-/// System skills are embedded at build time and installed into
-/// `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/skills/.system`.
-/// They are loaded with lower
+/// System skills are embedded at build time and installed into the
+/// MoonLib-derived MoonClaw skills system directory. They are loaded with lower
 /// priority than user/repo skills, so local skills can override by name.
 const SYSTEM_SKILLS_DIR_NAME = ".system"
 

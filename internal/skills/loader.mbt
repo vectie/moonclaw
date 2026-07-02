@@ -2,13 +2,13 @@
 /// Skill loader that manages and loads skills from both global and local
 /// directories.
 ///
-/// The loader searches for skills in `.moonsuite/products/moonclaw/skills`
+/// The loader searches for skills in the MoonLib-derived MoonClaw skills
 /// directories:
 ///
 /// - System skills:
-///   `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/skills/.system`
+///   MoonClaw skills system directory
 /// - Global skills:
-///   `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/skills`
+///   MoonClaw skills directory
 /// - Local skills: starting from the current working directory and walking up
 ///   through parent directories.
 ///

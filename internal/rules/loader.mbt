@@ -158,7 +158,7 @@ fn Loader::format(self : Loader) -> String {
     (
       $|# Project Rules
       $|
-      $|Loaded \{self.rules.length()} rules from .moonsuite/products/moonclaw/rules directory:
+      $|Loaded \{self.rules.length()} rules from \{@moonsuite.product_display_artifact("moonclaw", "rules")} directory:
       $|
     ),
   )

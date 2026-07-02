@@ -28,7 +28,7 @@ fn print_help() -> Unit {
   println("  --id <target>      Target id (default: codex-main)")
   println("  --label <text>     Target label (default: Codex <id>)")
   println(
-    "  --workspace <dir>  ACP workspace path (default: config workspace or <home>/.moonsuite/products/moonclaw/workspace)",
+    "  --workspace <dir>  ACP workspace path (default: config workspace or <home>/\{@moonsuite.product_display_artifact("moonclaw", "workspace")})",
   )
   println(
     "  --target-cwd <dir> ACP target cwd (default: config cwd or workspace)",
@@ -38,7 +38,7 @@ fn print_help() -> Unit {
   println("")
   println("Example:")
   println(
-    "  moonclaw acp add codex --home /path/to/MoonSuiteRoot --workspace /path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/workspace",
+    "  moonclaw acp add codex --home /path/to/MoonSuiteRoot --workspace /path/to/MoonSuiteRoot/\{@moonsuite.product_display_artifact("moonclaw", "workspace")}",
   )
 }
 

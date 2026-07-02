@@ -301,7 +301,9 @@ fn builtin_robot_routine_profile() -> JobProfile {
       "policy_owner": "moonclaw",
       "context_provider": "moonrobo",
       "routine_endpoint": "/v1/robot/routine/run",
-      "run_ledger": ".moonsuite/products/moonclaw/robot-routine-runs",
+      "run_ledger": @moonsuite.product_display_artifact(
+        "moonclaw", "robot-routine-runs",
+      ),
       "role_runtime": {
         "role_id": "robot",
         "planning_layer": "domain",
