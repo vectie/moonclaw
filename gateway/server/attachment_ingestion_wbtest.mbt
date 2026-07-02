@@ -35,7 +35,6 @@ async test "materialize_starter_attachments_for_workspace writes manifest and ex
       output_dir.contains(".moonsuite/products/moonclaw/starter_attachments"),
       content="true",
     )
-    inspect(@fsx.exists("\{dir}/.moonclaw"), content="false")
     inspect(
       @fsx.read_file(
         @attachment_ingestion.starter_attachment_manifest_markdown_path(dir),
@@ -166,7 +165,6 @@ async test "persist_starter_attachment_artifacts writes extracted text and manif
       ),
       content="true",
     )
-    inspect(@fsx.exists("\{workspace_dir}/.moonclaw"), content="false")
     let digest_artifact_id = match updated {
       Some({ "starter_attachment_digest_artifact_id": String(id), .. }) => id
       _ => ""

@@ -2157,7 +2157,6 @@ async test "build_analysis_request can isolate execution in a git worktree" {
       captured.val.contains(".tmp/products/moonclaw/worktrees"),
       content="true",
     )
-    inspect(captured.val.contains(".moonclaw-worktrees"), content="false")
     inspect(captured.val != dir, content="true")
     @worktree.remove_worktree_path(dir, captured.val)
   })

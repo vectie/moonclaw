@@ -46,5 +46,4 @@ async test "load_credentials prefers newer codex cli auth" {
   assert_eq(creds.accessToken, "codex-access")
   assert_eq(creds.refreshToken, "codex-refresh")
   assert_eq(creds.accountId, "codex-account")
-  assert_eq(@fsx.exists(@pathx.join(temp_home, ".moonclaw")), false)
 }

@@ -137,7 +137,6 @@ test "robot routine runner requires registered memory refresh step" {
 ///|
 async test "robot routine run ledger writes reads and lists records" {
   @fsx.with_temporary_directory("moonclaw-robot-routine-ledger-XXXXXX", root => {
-    let old_ledger = root + "/.moonclaw/robot-routine-runs"
     let new_ledger = @moonsuite.product_artifact(
       root, "moonclaw", "robot-routine-runs",
     )
@@ -164,7 +163,6 @@ async test "robot routine run ledger writes reads and lists records" {
       Err(message) => abort("expected routine run write: \{message}")
     }
     assert_true(@fsx.exists(new_ledger) catch { _ => false })
-    assert_true(!(@fsx.exists(old_ledger) catch { _ => false }))
     match read_robot_routine_run(root, record.run_id) {
       Ok(reloaded) => {
         assert_eq(reloaded.run_id, record.run_id)

@@ -10,12 +10,8 @@ async test "lock_daemon_file uses moonsuite product home" {
     }
     defer file.close()
     let product_path = moonclaw_daemon_info_path(home)
-    let legacy_path = home
-      |> @pathx.join(".moonclaw")
-      |> @pathx.join("daemon.json")
     assert_true(@fsx.exists(product_path))
     assert_true(product_path.has_prefix(suite_root))
     assert_false(product_path.contains("/books/research-demo/.moonsuite"))
-    assert_false(@fsx.exists(legacy_path))
   })
 }

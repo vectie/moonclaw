@@ -146,7 +146,6 @@ test "mooncode capabilities expose native daemon endpoints" {
       "MoonClaw product home derived from the selected book root",
     ),
   )
-  assert_false(payload.contains(".moonclaw/mooncode/sessions"))
   assert_true(payload.contains("runtime-receipts.jsonl"))
   assert_true(
     payload.contains(

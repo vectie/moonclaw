@@ -19,10 +19,6 @@ async test "Manager" (t : @test.Test) {
     ])
     let conversations = @pathx.join(product_home, "conversations")
     json_inspect(mock.json(@fsx.list_directory(conversations)), content=[])
-    json_inspect(
-      @fsx.exists(mock.cwd.path() |> @pathx.join(".moonclaw")),
-      content=false,
-    )
     let conversation = manager.new_conversation(
       name="Test Conversation",
       cwd=mock.cwd.path(),

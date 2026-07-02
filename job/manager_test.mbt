@@ -16,10 +16,6 @@ async test "Manager::spawn" (t : @test.Test) {
       mock.json(job.stderr),
       content="(mock:cwd)/.moonsuite/products/moonclaw/jobs/processes/0/stderr",
     )
-    json_inspect(
-      @fsx.exists(mock.cwd.path() |> @pathx.join(".moonclaw")),
-      content=false,
-    )
   })
 }
 

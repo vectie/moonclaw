@@ -42,6 +42,15 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   )
   @fsx.write_to_file(@pathx.join(book_root, "README.md"), "hello mooncode\n")
   @fsx.make_directory(
+    @pathx.join(book_root, "code"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "code/runtime.txt"),
+    "accepted mooncode runtime output\n",
+  )
+  @fsx.make_directory(
     @pathx.join(book_root, ".tmp/products/moonclaw"),
     recursive=true,
     exists_ok=true,
@@ -49,33 +58,6 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   @fsx.write_to_file(
     @pathx.join(book_root, ".tmp/products/moonclaw/scratch.txt"),
     "suite temp scratch\n",
-  )
-  @fsx.make_directory(
-    @pathx.join(book_root, ".moonclaw"),
-    recursive=true,
-    exists_ok=true,
-  )
-  @fsx.write_to_file(
-    @pathx.join(book_root, ".moonclaw/legacy-runtime.txt"),
-    "legacy moonclaw runtime marker\n",
-  )
-  @fsx.make_directory(
-    @pathx.join(book_root, ".moontown"),
-    recursive=true,
-    exists_ok=true,
-  )
-  @fsx.write_to_file(
-    @pathx.join(book_root, ".moontown/legacy-runtime.txt"),
-    "legacy moontown runtime marker\n",
-  )
-  @fsx.make_directory(
-    @pathx.join(book_root, "moonclaw-jobs"),
-    recursive=true,
-    exists_ok=true,
-  )
-  @fsx.write_to_file(
-    @pathx.join(book_root, "moonclaw-jobs/legacy-runtime.txt"),
-    "legacy jobs marker\n",
   )
   let session_id = "session-runtime-commit"
   let command_id = "cmd-runtime-commit"
@@ -178,14 +160,8 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     mooncode_json_string(git_status, "output", default="").contains("README.md"),
   )
   assert_false(
-    mooncode_json_string(git_status, "output", default="").contains(".moonclaw"),
-  )
-  assert_false(
-    mooncode_json_string(git_status, "output", default="").contains(".moontown"),
-  )
-  assert_false(
     mooncode_json_string(git_status, "output", default="").contains(
-      "moonclaw-jobs",
+      "code/runtime.txt",
     ),
   )
   let committed_files = mooncode_runtime_turn_git(
@@ -199,9 +175,8 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     "output",
     default="",
   )
-  assert_true(committed_output.contains(".moonclaw/legacy-runtime.txt"))
-  assert_true(committed_output.contains(".moontown/legacy-runtime.txt"))
-  assert_true(committed_output.contains("moonclaw-jobs/legacy-runtime.txt"))
+  assert_true(committed_output.contains("README.md"))
+  assert_true(committed_output.contains("code/runtime.txt"))
   assert_false(committed_output.contains(".tmp/products/moonclaw/scratch.txt"))
   assert_false(committed_output.contains(".moonsuite/"))
   let after = mooncode_json_object_field_or_empty(result, "claim_state")

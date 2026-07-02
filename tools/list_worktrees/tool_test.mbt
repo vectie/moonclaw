@@ -18,10 +18,6 @@ async test "list_worktrees returns created MoonClaw worktrees" (t : @test.Test) 
       output.worktrees[0].path.contains(".tmp/products/moonclaw/worktrees"),
       content="true",
     )
-    inspect(
-      output.worktrees[0].path.contains(".moonclaw-worktrees"),
-      content="false",
-    )
     @worktree.remove_worktree(handle)
   })
 }

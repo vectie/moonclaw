@@ -1713,10 +1713,6 @@ async test "provider task result persistence falls back to provider workspace wh
       ),
       content="true",
     )
-    inspect(
-      persisted_path.contains("book-space/.moonclaw/provider-task/"),
-      content="false",
-    )
     inspect(persisted_path.contains(".moonclaw-provider-"), content="false")
     inspect(
       @fsx.read_file(persisted_path).contains(

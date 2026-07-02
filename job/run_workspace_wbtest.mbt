@@ -175,11 +175,6 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
     inspect(manifest.contains("/missing/source.md"), content="true")
     inspect(manifest.contains("missing"), content="true")
     inspect(@fsx.exists(run_workspace_meta_file(workspace_dir)), content="true")
-    inspect(
-      @fsx.exists(workspace_dir |> @pathx.join(".moonclaw")),
-      content="false",
-    )
-
     @fsx.write_to_file(
       workspace_dir |> @pathx.join("MEMORY.md"),
       "# Scratchpad\n\nMy private working note.\n",

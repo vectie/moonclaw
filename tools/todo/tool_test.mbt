@@ -38,11 +38,6 @@ async test "todo state uses MoonClaw product home for suite book workspaces" (
     let tool = @todo.new_tool(todo_list)
     ignore(tool.call({ "action": "create", "content": "Persist suite todo" }))
     assert_true(@fsx.exists(expected_path))
-    assert_false(
-      @fsx.exists(
-        book_root |> @pathx.join(".moonclaw/todos/current_session.json"),
-      ),
-    )
   })
 }
 

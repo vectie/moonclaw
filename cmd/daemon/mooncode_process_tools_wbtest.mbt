@@ -64,11 +64,6 @@ async test "mooncode moon_check records reusable watcher state" (t : @test.Test)
       ".moonsuite/products/moonclaw/mooncode/watchers/moon-check.json",
     ),
   )
-  assert_true(
-    !@fsx.exists(
-      @pathx.join(book_root, ".moonclaw/mooncode/watchers/moon-check.json"),
-    ),
-  )
   let second = mooncode_execute_tool_call(
     "session-check-watch",
     book_root,

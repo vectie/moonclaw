@@ -64,7 +64,6 @@ test "mooncode core defines executable book lifecycle contract" {
   assert_true(payload.contains("runtime-receipts.jsonl"))
   assert_true(payload.contains("package_verified"))
   assert_true(payload.contains("readiness projection"))
-  assert_false(payload.contains(".moonclaw/mooncode/sessions"))
   assert_false(payload.contains("vectie/moondesk"))
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))

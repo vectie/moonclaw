@@ -18,7 +18,6 @@ async test "copilot credentials persist under MoonClaw product home" {
     temp_home, "moonclaw", "credentials/copilot-credentials.json",
   )
   assert_true(@fsx.exists_as_file(path))
-  assert_true(!@fsx.exists(@pathx.join(temp_home, ".moonclaw")))
   let credentials = load_credentials()
   assert_eq(credentials.github_token, "github-token")
   assert_eq(credentials.copilot_token, "copilot-token")

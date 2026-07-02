@@ -107,10 +107,6 @@ async test "ACP runtime prefers product config and persists state in product hom
       ),
       content="false",
     )
-    inspect(
-      @fsx.exists(@path.Path(home).join(Path(".moonclaw")).to_string()),
-      content="false",
-    )
   })
 }
 

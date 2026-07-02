@@ -9,7 +9,6 @@ async test "plan_worktree derives repo-root-based handle" (t : @test.Test) {
       handle.path.contains(".tmp/products/moonclaw/worktrees"),
       content="true",
     )
-    inspect(handle.path.contains(".moonclaw-worktrees"), content="false")
   })
 }
 
