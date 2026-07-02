@@ -14,19 +14,19 @@ The boundary is intentionally thin:
 Import a packet as a draft proposal:
 
 ```bash
-moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw
+moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~
 ```
 
 Gateway-path alias:
 
 ```bash
-moon run cmd/main -- gateway proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw
+moon run cmd/main -- gateway proposal import keeper/jobs/ingest-001.json --home ~
 ```
 
 Import, confirm, and execute immediately:
 
 ```bash
-moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~/.moonclaw --confirm
+moon run cmd/main -- proposal import keeper/jobs/ingest-001.json --home ~ --confirm
 ```
 
 Use `--json` when another tool needs structured output.

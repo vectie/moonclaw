@@ -34,8 +34,8 @@ struct Loader {
 │   │                    Loader::load()                                    │   │
 │   │                                                                     │   │
 │   │   1. 清空 models 缓存                                                │   │
-│   │   2. 读取 {cwd}/.moonclaw/models/models.json                        │   │
-│   │   3. 读取 {home}/.moonclaw/models/models.json                       │   │
+│   │   2. 读取 {cwd}/.moonsuite/products/moonclaw/models/models.json     │   │
+│   │   3. 读取 {home}/.moonsuite/products/moonclaw/models/models.json    │   │
 │   │   4. 将模型追加到缓存                                                │   │
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
@@ -84,9 +84,9 @@ struct Loader {
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      Qwen API Key 获取优先级                                 │
 │                                                                             │
-│   1. .moonclaw/moonclaw.json 中的配置                                       │
-│      ├── {cwd}/.moonclaw/moonclaw.json   (项目级配置)                       │
-│      └── {home}/.moonclaw/moonclaw.json  (用户级配置)                       │
+│   1. .moonsuite/products/moonclaw/moonclaw.json 中的配置                    │
+│      ├── {cwd}/.moonsuite/products/moonclaw/moonclaw.json   (项目级配置)    │
+│      └── {home}/.moonsuite/products/moonclaw/moonclaw.json  (用户级配置)    │
 │      支持的字段:                                                             │
 │      ├── qwen_api_key (直接指定)                                            │
 │      └── env.QWEN_API_KEY / env.DASHSCOPE_API_KEY (环境变量配置)            │
@@ -104,9 +104,9 @@ struct Loader {
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      Kimi API Key 获取优先级                                 │
 │                                                                             │
-│   1. .moonclaw/moonclaw.json 中的配置                                       │
-│      ├── {cwd}/.moonclaw/moonclaw.json   (项目级配置)                       │
-│      └── {home}/.moonclaw/moonclaw.json  (用户级配置)                       │
+│   1. .moonsuite/products/moonclaw/moonclaw.json 中的配置                    │
+│      ├── {cwd}/.moonsuite/products/moonclaw/moonclaw.json   (项目级配置)    │
+│      └── {home}/.moonsuite/products/moonclaw/moonclaw.json  (用户级配置)    │
 │      支持的字段:                                                             │
 │      ├── kimi_api_key (直接指定)                                            │
 │      └── env.KIMI_API_KEY / env.MOONSHOT_API_KEY (环境变量配置)             │
@@ -124,9 +124,9 @@ struct Loader {
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      KimiCoding API Key 获取优先级                           │
 │                                                                             │
-│   1. .moonclaw/moonclaw.json 中的配置                                       │
-│      ├── {cwd}/.moonclaw/moonclaw.json   (项目级配置)                       │
-│      └── {home}/.moonclaw/moonclaw.json  (用户级配置)                       │
+│   1. .moonsuite/products/moonclaw/moonclaw.json 中的配置                    │
+│      ├── {cwd}/.moonsuite/products/moonclaw/moonclaw.json   (项目级配置)    │
+│      └── {home}/.moonsuite/products/moonclaw/moonclaw.json  (用户级配置)    │
 │      支持的字段:                                                             │
 │      ├── kimi_coding_api_key (直接指定)                                     │
 │      └── env.KIMI_CODING_API_KEY (环境变量配置)                             │
@@ -142,9 +142,9 @@ struct Loader {
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      API Key 获取优先级                                      │
 │                                                                             │
-│   1. .moonclaw/moonclaw.json 中的配置                                       │
-│      ├── {cwd}/.moonclaw/moonclaw.json   (项目级配置)                       │
-│      └── {home}/.moonclaw/moonclaw.json  (用户级配置)                       │
+│   1. .moonsuite/products/moonclaw/moonclaw.json 中的配置                    │
+│      ├── {cwd}/.moonsuite/products/moonclaw/moonclaw.json   (项目级配置)    │
+│      └── {home}/.moonsuite/products/moonclaw/moonclaw.json  (用户级配置)    │
 │      支持的字段:                                                             │
 │      ├── api_key (直接指定)                                                 │
 │      └── env.OPEN_ROUTER_API_KEY / env.OPENROUTER_API_KEY (环境变量配置)    │
@@ -168,7 +168,7 @@ struct Loader {
 │          ├── allow_auto_login=true  → 启动 OAuth 登录流程                   │
 │          └── allow_auto_login=false → 返回 None                             │
 │                                                                             │
-│   凭证存储位置: ~/.moonclaw/codex-credentials.json                          │
+│   凭证存储位置: .moonsuite/products/moonclaw/credentials/codex-credentials.json │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -185,14 +185,14 @@ struct Loader {
 │          ├── allow_auto_login=true  → 启动 GitHub OAuth 登录流程            │
 │          └── allow_auto_login=false → 返回 None                             │
 │                                                                             │
-│   凭证存储位置: ~/.moonclaw/copilot-credentials.json                        │
+│   凭证存储位置: .moonsuite/products/moonclaw/credentials/copilot-credentials.json │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 配置文件格式
 
-### .moonclaw/models/models.json
+### .moonsuite/products/moonclaw/models/models.json
 
 ```json
 [
@@ -208,7 +208,7 @@ struct Loader {
 ]
 ```
 
-### .moonclaw/moonclaw.json
+### .moonsuite/products/moonclaw/moonclaw.json
 
 ```json
 {

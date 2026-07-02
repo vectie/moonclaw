@@ -232,7 +232,7 @@ pub fn new(cwd : String, home? : String?) -> @tool.Tool[ListResourcesResult]
 **Features:**
 - URI-based discovery for files, skills, worktrees, and providers
 - First-class discovery of managed git worktrees
-- Provider registry discovery via `.moonclaw/providers.json`
+- Provider registry discovery via `.moonsuite/products/moonclaw/providers.json`
 - Structured metadata for downstream `read_resource` calls
 
 ---

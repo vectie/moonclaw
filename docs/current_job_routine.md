@@ -86,7 +86,7 @@ Current behavior in
 [/Users/kq/Workspace/moonclaw/job/profile.mbt](/Users/kq/Workspace/moonclaw/job/profile.mbt):
 
 - profiles are loaded only from `moonclaw.jobs.json`
-- global `~/.moonclaw/moonclaw.json` is not used for job-profile behavior
+- product-home `.moonsuite/products/moonclaw/moonclaw.json` is not used for job-profile behavior
 - matching is keyword-based with:
   - `match.any`
   - `match.all`
@@ -157,7 +157,7 @@ Current run workspace behavior is implemented in
 
 Top-level runs:
 
-- workspace path: `<workspace>/moonclaw-jobs/<run-id>`
+- workspace path: `.moonsuite/products/moonclaw/jobs/<run-id>`
 
 Child runs:
 
@@ -166,7 +166,7 @@ Child runs:
 Inside each run workspace:
 
 - a dedicated git repository is initialized
-- run metadata is written to `.moonclaw/run.json`
+- run metadata is written to `run.json` inside the run workspace
 - run checkpoints are stored as git commits
 
 Important current rule:
@@ -306,7 +306,7 @@ Important current rule:
 - ordinary non-reply chat should still fall through to the normal conversation
   path
 - normal channel chat should resolve its model from the configured primary model
-  in `~/.moonclaw/moonclaw.json`; stale bare session model ids should not win
+  in `.moonsuite/products/moonclaw/moonclaw.json`; stale bare session model ids should not win
 
 Then the resumed run proceeds normally:
 
@@ -415,7 +415,7 @@ Current durable records include:
 
 The run workspace and the durable store are separate on purpose:
 
-- visible execution workspace under `<workspace>/moonclaw-jobs/...`
+- visible execution workspace under `.moonsuite/products/moonclaw/jobs/...`
 - durable runtime state under `~/.moonsuite/products/moonclaw/jobs/...`
 - provider-backed phases are expected to close their event session after the
   final assistant turn so the workflow engine can persist `step.succeeded`,
@@ -459,7 +459,7 @@ From the operator’s point of view, the current job routine is:
 3. Review the compact proposed steps.
 4. Confirm with `/confirm`.
 5. Watch readable job/run ids and local-time timestamps in `/job-status`.
-6. Inspect the visible run workspace under `<workspace>/moonclaw-jobs/<run-id>`.
+6. Inspect the visible run workspace under `.moonsuite/products/moonclaw/jobs/<run-id>`.
 7. Use `/jobs`, `/job-status`, `/job-stop`, or `/job-force-stop` as needed.
 8. Read final artifacts from the run workspace and the durable artifact store.
 
@@ -469,7 +469,7 @@ The current routine is no longer:
 
 - a hardcoded research workflow
 - a template-driven step-count override system
-- a hidden `.moonclaw/job-workspaces/...` layout
+- a hidden legacy runtime workspace layout
 - a run workspace that mirrors all workspace markdown
 
 The current routine is:

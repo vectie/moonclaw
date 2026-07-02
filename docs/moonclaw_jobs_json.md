@@ -9,7 +9,7 @@ MoonClaw loads job profiles only from:
 
 This file is intentionally separate from global runtime config in:
 
-- `~/.moonclaw/moonclaw.json`
+- `.moonsuite/products/moonclaw/moonclaw.json`
 
 ## Purpose
 

@@ -78,7 +78,7 @@ For operator-facing behavior and supported flows, see:
 | `coordinator` | coordination tasks and subtask state |
 | `pipeline_manager` | pipeline definitions and stage state |
 
-`gateway/server/new.mbt` creates the gateway, loads persisted state, seeds missing channel state from `.moonclaw/moonclaw.json`, auto-registers built-in channel extensions, and restores enabled channel runtime.
+`gateway/server/new.mbt` creates the gateway, loads persisted state, seeds missing channel state from `.moonsuite/products/moonclaw/moonclaw.json`, auto-registers built-in channel extensions, and restores enabled channel runtime.
 
 ## Gateway Persistent State
 
@@ -96,8 +96,8 @@ Gateway::new(...)
   -> create gateway/session directories
   -> sessions.load()
   -> channel_state.load()
-  -> seed missing channel state from `{cwd}/.moonclaw/moonclaw.json`
-  -> fallback seed from `{home}/.moonclaw/moonclaw.json`
+  -> seed missing channel state from `{cwd}/.moonsuite/products/moonclaw/moonclaw.json`
+  -> fallback seed from `{home}/.moonsuite/products/moonclaw/moonclaw.json`
   -> register Feishu extension
 Gateway::start()
   -> start HTTP/RPC/SSE surfaces
@@ -105,7 +105,7 @@ Gateway::start()
 ```
 
 That means a restart now preserves direct-run conversation continuity, channel-triggered conversation continuity, channel config, and which channel accounts should auto-start again.
-It also means a first gateway start can bootstrap built-in channels from the same `.moonclaw/moonclaw.json` file that the local CLI/model loader already uses.
+It also means a first gateway start can bootstrap built-in channels from the same `.moonsuite/products/moonclaw/moonclaw.json` file that the local CLI/model loader already uses.
 Runtime restore is intentionally started from `Gateway::start()` as a background task.
 That keeps dedicated gateway instances observable through `/health`, `/v1/channels`,
 and RPC probes even when an external channel such as Feishu is slow to restore.
@@ -245,7 +245,7 @@ Gateway::execute_agent_async
 The current job runtime is now profile-driven and workspace-local:
 
 - job profiles load from `<cwd>/moonclaw.jobs.json`
-- global runtime config stays in `~/.moonclaw/moonclaw.json`
+- product runtime config stays in `.moonsuite/products/moonclaw/moonclaw.json`
 
 Important current routing capabilities:
 

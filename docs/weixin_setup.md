@@ -21,7 +21,7 @@ Not implemented yet:
 
 Put Weixin config into:
 
-- `~/.moonclaw/moonclaw.json`
+- `~/.moonsuite/products/moonclaw/moonclaw.json`
 
 under:
 
@@ -46,7 +46,7 @@ Example:
 ## Start the Gateway
 
 ```bash
-moon run cmd/main -- gateway start --home ~/.moonclaw --cwd /your/workspace
+moon run cmd/main -- gateway start --home ~ --cwd /your/workspace
 ```
 
 The callback path is:
@@ -82,7 +82,7 @@ If the Weixin console accepts your callback URL, the handshake path is working.
 
 ## Test Flow
 
-1. Configure `channels.weixin` in `~/.moonclaw/moonclaw.json`.
+1. Configure `channels.weixin` in `~/.moonsuite/products/moonclaw/moonclaw.json`.
 2. Start the gateway.
 3. Expose the gateway publicly over HTTPS.
 4. Put the callback URL into the Weixin Official Account console.

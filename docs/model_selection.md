@@ -34,7 +34,7 @@ Any other model name will be passed through to OpenRouter with a default 128K co
 
 ### 2. Codex OAuth (ChatGPT Plus/Pro)
 
-**Authentication**: Browser-based OAuth flow (credentials stored in `~/.moonclaw/codex-credentials.json`)
+**Authentication**: Browser-based OAuth flow (credentials stored in `.moonsuite/products/moonclaw/credentials/codex-credentials.json`)
 
 **Usage**: Use the `codex/` prefix (e.g., `-m codex/gpt-5.2`)
 
@@ -48,7 +48,7 @@ When you specify a `codex/` model and no credentials are found, moonclaw will au
 
 ### 3. GitHub Copilot
 
-**Authentication**: GitHub Device Code flow (credentials stored in `~/.moonclaw/copilot-credentials.json`)
+**Authentication**: GitHub Device Code flow (credentials stored in `.moonsuite/products/moonclaw/credentials/copilot-credentials.json`)
 
 **Usage**: Use the `copilot/` prefix (e.g., `-m copilot/claude-opus-4.5`)
 
@@ -103,8 +103,8 @@ When you specify a `copilot/` model and no credentials are found, moonclaw will 
 
 You can also define custom models in a configuration file. moonclaw looks for models in:
 
-1. `<project>/.moonclaw/models/models.json` (project-specific)
-2. `~/.moonclaw/models/models.json` (user-wide)
+1. `<workspace>/.moonsuite/products/moonclaw/models/models.json` (workspace-specific)
+2. `~/.moonsuite/products/moonclaw/models/models.json` (user-wide when `--home ~`)
 
 Example configuration:
 
@@ -133,10 +133,10 @@ When no model is explicitly specified (`-m` flag omitted), moonclaw attempts to 
    └─ If OPENROUTER_API_KEY or OPENAI_API_KEY is set → use anthropic/claude-sonnet-4.5
 
 3. Check Codex OAuth credentials (without auto-login)
-   └─ If ~/.moonclaw/codex-credentials.json exists and valid → use codex/gpt-5.2
+   └─ If .moonsuite/products/moonclaw/credentials/codex-credentials.json exists and valid → use codex/gpt-5.2
 
 4. Check Copilot credentials (without auto-login)
-   └─ If ~/.moonclaw/copilot-credentials.json exists and valid → use copilot/claude-sonnet-4.5
+   └─ If .moonsuite/products/moonclaw/credentials/copilot-credentials.json exists and valid → use copilot/claude-sonnet-4.5
 
 5. No model available
    └─ Display error message and exit

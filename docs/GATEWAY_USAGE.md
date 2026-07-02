@@ -300,12 +300,12 @@ If you need to force a specific websocket endpoint during testing or proxying, a
 }
 ```
 
-### Bootstrap from `.moonclaw/moonclaw.json`
+### Bootstrap from `.moonsuite/products/moonclaw/moonclaw.json`
 
 At startup, the gateway also checks:
 
-- `{cwd}/.moonclaw/moonclaw.json`
-- then `{home}/.moonclaw/moonclaw.json`
+- `{cwd}/.moonsuite/products/moonclaw/moonclaw.json`
+- then `{home}/.moonsuite/products/moonclaw/moonclaw.json`
 
 It understands the MoonClaw Feishu config shape under `channels.feishu`, for example:
 
@@ -524,7 +524,7 @@ Restore flow:
 ```text
 Gateway::new
   -> channel_state.load()
-  -> seed missing channel state from `.moonclaw/moonclaw.json`
+  -> seed missing channel state from `.moonsuite/products/moonclaw/moonclaw.json`
   -> register extensions/channels
 Gateway::start
   -> restore_channel_runtime()

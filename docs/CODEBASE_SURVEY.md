@@ -356,8 +356,8 @@ pub async fn Client::health(self) -> Result[HealthPayload, String]
 ## Model Loading (`model/loader.mbt`)
 
 Models are loaded from configuration files:
-- `.moonclaw/models/models.json` (project-level)
-- `~/.moonclaw/models/models.json` (user-level)
+- `.moonsuite/products/moonclaw/models/models.json` (workspace-level)
+- `~/.moonsuite/products/moonclaw/models/models.json` (user-level when `--home ~`)
 
 The loader auto-detects models from environment variables:
 - `OPENROUTER_API_KEY` / `OPENAI_API_KEY`
@@ -456,12 +456,12 @@ The project provides SDKs for external integration:
    - `moonbitlang/regexp` - Regex support
    - `moonbit-community/yaml` - YAML parsing
 
-2. **Model Configuration** - `.moonclaw/models/models.json`:
+2. **Model Configuration** - `.moonsuite/products/moonclaw/models/models.json`:
    - Model definitions with API keys, base URLs, and token limits
 
-3. **OAuth Credentials** - Stored in `~/.moonclaw/`:
-   - Codex: `codex_credentials.json`
-   - Copilot: `copilot_credentials.json`
+3. **OAuth Credentials** - Stored in `.moonsuite/products/moonclaw/credentials/`:
+   - Codex: `codex-credentials.json`
+   - Copilot: `copilot-credentials.json`
 
 ## Key Internal Packages
 

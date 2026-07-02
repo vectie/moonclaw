@@ -9,7 +9,7 @@
 | **提供商** | 阿里云 DashScope | 月之暗面 Moonshot AI | 月之暗面 Moonshot AI | OpenRouter (第三方聚合) | OpenAI | GitHub |
 | **认证方式** | API Key | API Key | API Key | API Key | OAuth (OpenAI账户) | OAuth (GitHub账户) |
 | **Base URL** | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `https://api.moonshot.cn/v1` | `https://api.moonshot.cn/v1` | `https://openrouter.ai/api/v1` | `https://chatgpt.com/backend-api` | `https://api.githubcopilot.com` |
-| **凭证存储** | `~/.moonclaw/moonclaw.json` 或环境变量 | `~/.moonclaw/moonclaw.json` 或环境变量 | `~/.moonclaw/moonclaw.json` 或环境变量 | `~/.moonclaw/moonclaw.json` 或环境变量 | `~/.moonclaw/codex-credentials.json` | `~/.moonclaw/copilot-credentials.json` |
+| **凭证存储** | `.moonsuite/products/moonclaw/moonclaw.json` 或环境变量 | `.moonsuite/products/moonclaw/moonclaw.json` 或环境变量 | `.moonsuite/products/moonclaw/moonclaw.json` 或环境变量 | `.moonsuite/products/moonclaw/moonclaw.json` 或环境变量 | `.moonsuite/products/moonclaw/credentials/codex-credentials.json` | `.moonsuite/products/moonclaw/credentials/copilot-credentials.json` |
 | **国内可用** | ✅ 是 | ✅ 是 | ✅ 是 | ❌ 否 | ❌ 否 | ❌ 否 |
 
 ## 详细说明
@@ -141,11 +141,11 @@
 ```
 API Key → 直接调用
 └── 来源优先级:
-    1. {cwd}/.moonclaw/moonclaw.json 中的配置
+    1. {cwd}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
        - qwen_api_key 字段
        - env.QWEN_API_KEY
        - env.DASHSCOPE_API_KEY
-    2. {home}/.moonclaw/moonclaw.json 中的配置
+    2. {home}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
     3. 环境变量 QWEN_API_KEY
     4. 环境变量 DASHSCOPE_API_KEY
 ```
@@ -155,11 +155,11 @@ API Key → 直接调用
 ```
 API Key → 直接调用
 └── 来源优先级:
-    1. {cwd}/.moonclaw/moonclaw.json 中的配置
+    1. {cwd}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
        - kimi_api_key 字段
        - env.KIMI_API_KEY
        - env.MOONSHOT_API_KEY
-    2. {home}/.moonclaw/moonclaw.json 中的配置
+    2. {home}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
     3. 环境变量 KIMI_API_KEY
     4. 环境变量 MOONSHOT_API_KEY
 ```
@@ -169,10 +169,10 @@ API Key → 直接调用
 ```
 API Key → 直接调用
 └── 来源优先级:
-    1. {cwd}/.moonclaw/moonclaw.json 中的配置
+    1. {cwd}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
        - kimi_coding_api_key 字段
        - env.KIMI_CODING_API_KEY
-    2. {home}/.moonclaw/moonclaw.json 中的配置
+    2. {home}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
     3. 环境变量 KIMI_CODING_API_KEY
 ```
 
@@ -181,11 +181,11 @@ API Key → 直接调用
 ```
 API Key → 直接调用
 └── 来源优先级:
-    1. {cwd}/.moonclaw/moonclaw.json 中的配置
+    1. {cwd}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
        - api_key 字段
        - env.OPEN_ROUTER_API_KEY
        - env.OPENROUTER_API_KEY
-    2. {home}/.moonclaw/moonclaw.json 中的配置
+    2. {home}/.moonsuite/products/moonclaw/moonclaw.json 中的配置
     3. 环境变量 OPENROUTER_API_KEY
     4. 环境变量 OPENAI_API_KEY
 ```
@@ -199,7 +199,7 @@ OAuth 登录 → 获取 access_token → 调用 ChatGPT 后端
     2. 打开浏览器访问 OpenAI 认证页面
     3. 用户登录 OpenAI 账户
     4. 回调获取 access_token, refresh_token
-    5. 保存凭证到 ~/.moonclaw/codex-credentials.json
+    5. 保存凭证到 .moonsuite/products/moonclaw/credentials/codex-credentials.json
 ```
 
 ### Copilot
@@ -211,12 +211,12 @@ OAuth 登录 → 获取 copilot_token → 调用 Copilot API
     2. 用户在浏览器中输入设备码并授权
     3. 获取 GitHub access_token
     4. 使用 GitHub token 获取 Copilot API token
-    5. 保存凭证到 ~/.moonclaw/copilot-credentials.json
+    5. 保存凭证到 .moonsuite/products/moonclaw/credentials/copilot-credentials.json
 ```
 
 ## 配置文件格式
 
-### .moonclaw/moonclaw.json
+### .moonsuite/products/moonclaw/moonclaw.json
 
 ```json
 {
@@ -235,7 +235,7 @@ OAuth 登录 → 获取 copilot_token → 调用 Copilot API
 }
 ```
 
-### .moonclaw/models/models.json
+### .moonsuite/products/moonclaw/models/models.json
 
 ```json
 [
@@ -261,7 +261,7 @@ let model = @model.load(name="qwen/qwen3-coder-plus")
 let model = @model.load(name="qwen/qwen-max")
 
 // 或在配置文件中指定
-// ~/.moonclaw/moonclaw.json
+// .moonsuite/products/moonclaw/moonclaw.json
 {
   "qwen_api_key": "sk-xxx"
 }
@@ -275,7 +275,7 @@ let model = @model.load(name="kimi/kimi-k2.5")
 let model = @model.load(name="kimi/moonshot-v1-128k")
 
 // 或在配置文件中指定
-// ~/.moonclaw/moonclaw.json
+// .moonsuite/products/moonclaw/moonclaw.json
 {
   "kimi_api_key": "sk-xxx"
 }
@@ -289,7 +289,7 @@ let model = @model.load(name="kimi-coding/k2p5")
 let model = @model.load(name="kimi-coding/k2-0905")
 
 // 或在配置文件中指定
-// ~/.moonclaw/moonclaw.json
+// .moonsuite/products/moonclaw/moonclaw.json
 {
   "kimi_coding_api_key": "sk-xxx",
   "env": {
@@ -305,7 +305,7 @@ let model = @model.load(name="kimi-coding/k2-0905")
 let model = @model.load(name="anthropic/claude-sonnet-4.5")
 
 // 或在配置文件中指定
-// .moonclaw/models/models.json
+// .moonsuite/products/moonclaw/models/models.json
 [
   {
     "name": "my-model",
