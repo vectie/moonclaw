@@ -332,7 +332,7 @@ type GatewayRequestHandler = (opts: {
 
 ### 5.4 Session Management
 
-**Session Store** (`~/.moonclaw/agents/<agentId>/sessions/sessions.json`):
+**Session Store** (`.moonsuite/products/moonclaw/agents/<agentId>/sessions/sessions.json`):
 ```typescript
 type SessionEntry = {
   sessionId: string;
@@ -346,7 +346,7 @@ type SessionEntry = {
 };
 ```
 
-**Session Transcript** (`~/.moonclaw/agents/<agentId>/sessions/<sessionId>.jsonl`):
+**Session Transcript** (`.moonsuite/products/moonclaw/agents/<agentId>/sessions/<sessionId>.jsonl`):
 - JSONL format with parent chain for compaction
 - Uses `SessionManager` from Pi agent for proper message linking
 

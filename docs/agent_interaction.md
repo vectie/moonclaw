@@ -364,18 +364,16 @@ AssistantMessage ─────────────────────
 │                           数据持久化                                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   ~/.moonclaw/                                                              │
-│   ├── log.jsonl                    // Agent 日志                            │
+│   .moonsuite/products/moonclaw/                                             │
+│   ├── logs/log.jsonl               // Agent 日志                            │
 │   ├── moonclaw.json                // 配置文件 (API Keys 等)                │
-│   ├── codex-credentials.json       // Codex OAuth 凭证                      │
-│   ├── copilot-credentials.json     // Copilot OAuth 凭证                    │
+│   ├── credentials/codex-credentials.json    // Codex OAuth 凭证             │
+│   ├── credentials/copilot-credentials.json  // Copilot OAuth 凭证           │
 │   └── conversations/                                                       │
 │       └── {uuid}.json              // 会话历史                              │
 │                                                                             │
-│   .moonclaw/                                                                │
-│   ├── log.jsonl                    // 项目级 Agent 日志                     │
-│   └── models/                                                              │
-│       └── models.json              // 项目级模型配置                        │
+│   .moonsuite/products/moonclaw/models/                                      │
+│   └── models.json                  // 工作区模型配置                        │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```

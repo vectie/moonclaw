@@ -40,16 +40,16 @@ Mark a task complete only after implementation, validation, docs, and required t
 
 ## Disk Layout
 
-- `~/.moonclaw/jobs/definitions.json`
-- `~/.moonclaw/jobs/runs/<run_id>/meta.json`
-- `~/.moonclaw/jobs/runs/<run_id>/steps/<short-safe-step-key>.json`
-- `~/.moonclaw/jobs/runs/<run_id>/artifacts/<artifact_id>.json`
-- `~/.moonclaw/jobs/artifacts/<artifact_key>/...`
-- `~/.moonclaw/jobs/index/jobs.json`
-- `~/.moonclaw/jobs/index/runs.json`
-- `~/.moonclaw/jobs/index/artifacts.json`
-- `~/.moonclaw/jobs/checkpoints/<job_id>.json`
-- `~/.moonclaw/jobs/chat_bindings.json`
+- `.moonsuite/products/moonclaw/jobs/definitions.json`
+- `.moonsuite/products/moonclaw/jobs/runs/<run_id>/meta.json`
+- `.moonsuite/products/moonclaw/jobs/runs/<run_id>/steps/<short-safe-step-key>.json`
+- `.moonsuite/products/moonclaw/jobs/runs/<run_id>/artifacts/<artifact_id>.json`
+- `.moonsuite/products/moonclaw/jobs/artifacts/<artifact_key>/...`
+- `.moonsuite/products/moonclaw/jobs/index/jobs.json`
+- `.moonsuite/products/moonclaw/jobs/index/runs.json`
+- `.moonsuite/products/moonclaw/jobs/index/artifacts.json`
+- `.moonsuite/products/moonclaw/jobs/checkpoints/<job_id>.json`
+- `.moonsuite/products/moonclaw/jobs/chat_bindings.json`
 
 The persisted step filename is a bounded slug-plus-hash derived from the logical
 `step_id`. The full `step_id` remains the durable identity in run state, APIs,

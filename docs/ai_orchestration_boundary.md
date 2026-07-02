@@ -184,8 +184,8 @@ It should not:
 Skills should define contracts and behavior expectations for the model.
 
 Examples:
-- [~/.moonclaw/skills/job-planning/SKILL.md](/Users/kq/.moonclaw/skills/job-planning/SKILL.md)
-- [~/.moonclaw/skills/analysis-adaptation/SKILL.md](/Users/kq/.moonclaw/skills/analysis-adaptation/SKILL.md)
+- `.moonsuite/products/moonclaw/skills/job-planning/SKILL.md`
+- `.moonsuite/products/moonclaw/skills/analysis-adaptation/SKILL.md`
 
 Skills are the right place to define:
 - expected JSON schemas

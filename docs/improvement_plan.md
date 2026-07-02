@@ -164,7 +164,7 @@ Reduce planner drift and fallback behavior.
 - `/Users/kq/Workspace/moonclaw/job/proposal.mbt`
 - `/Users/kq/Workspace/moonclaw/job/e2e_planner.mbt`
 - runtime skills:
-  - `~/.moonclaw/skills/job-planning/SKILL.md`
+  - `.moonsuite/products/moonclaw/skills/job-planning/SKILL.md`
 
 ### Exit criteria
 
