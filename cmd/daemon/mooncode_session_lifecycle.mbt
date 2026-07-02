@@ -48,7 +48,7 @@ fn mooncode_executable_book_lifecycle_report(
       default="",
     ),
     "steps": Json::array(steps),
-    "rule": "MoonClaw reports executable-book lifecycle status from durable book-local sidecars only. Bookkeeper/MoonBook acceptance evidence is required for accept_result; UI state is not evidence.",
+    "rule": "MoonClaw reports executable-book lifecycle status from MoonSuite product-home session state. Bookkeeper/MoonBook acceptance evidence is required for accept_result; UI state is not evidence.",
   }
 }
 
