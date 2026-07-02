@@ -638,7 +638,7 @@ let system_assets : Array[@assets.Asset] = [
       #|$ moon ide peek-def String::rev
       #|Found 1 symbols matching 'String::rev':
       #|
-      #|`pub fn String::rev` in package moonbitlang/core/builtin at /Users/usrname/.moon/lib/core/builtin/string_methods.mbt:1039-1044
+      #|`pub fn String::rev` in package moonbitlang/core/builtin at /path/to/.moon/lib/core/builtin/string_methods.mbt:1039-1044
       #|1039 | ///|
       #|     | /// Returns a new string with the characters in reverse order. It respects
       #|     | /// Unicode characters and surrogate pairs but not grapheme clusters.
@@ -1565,7 +1565,7 @@ let system_assets : Array[@assets.Asset] = [
       #|$ moon ide peek-def String::rev
       #|Found 1 symbols matching 'String::rev':
       #|
-      #|`pub fn String::rev` in package moonbitlang/core/builtin at /Users/usrname/.moon/lib/core/builtin/string_methods.mbt:1039-1044
+      #|`pub fn String::rev` in package moonbitlang/core/builtin at /path/to/.moon/lib/core/builtin/string_methods.mbt:1039-1044
       #|1039 | ///|
       #|     | /// Returns a new string with the characters in reverse order. It respects
       #|     | /// Unicode characters and surrogate pairs but not grapheme clusters.
