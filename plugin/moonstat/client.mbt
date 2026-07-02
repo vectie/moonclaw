@@ -21,6 +21,9 @@ const SUITE_MANIFEST_CONTRACT : String = "moon.suite.service.v1"
 const SUITE_SERVICE_NAME : String = "moonstat"
 
 ///|
+const SUITE_STATUS_FILE : String = "suite-status.json"
+
+///|
 pub struct Client {
   base_url : String
 }
@@ -47,8 +50,9 @@ pub struct MoonstatUsageSummary {
 
 ///|
 pub async fn discover() -> Client {
-  let home = @os.home() catch { _ => "." }
-  let status_path = home + "/.moonsuite/suite-status.json"
+  let status_path = moonstat_suite_status_path_for_workspace_root(
+    moonstat_active_workspace_root(),
+  )
   let content = @fsx.read_file(status_path) catch { _ => "" }
   if !content.is_empty() {
     let parsed = @json.parse(content) catch { _ => Json::null() }
@@ -61,8 +65,9 @@ pub async fn discover() -> Client {
 
 ///|
 pub async fn discover_from_suite_status() -> Client? {
-  let home = @os.home() catch { _ => "." }
-  let status_path = home + "/.moonsuite/suite-status.json"
+  let status_path = moonstat_suite_status_path_for_workspace_root(
+    moonstat_active_workspace_root(),
+  )
   let content = @fsx.read_file(status_path) catch { _ => "" }
   if content.is_empty() {
     return None
@@ -74,6 +79,21 @@ pub async fn discover_from_suite_status() -> Client? {
 ///|
 pub fn Client::base_url(self : Client) -> String {
   self.base_url
+}
+
+///|
+fn moonstat_active_workspace_root() -> String {
+  @os.cwd() catch {
+    _ => "."
+  }
+}
+
+///|
+fn moonstat_suite_status_path_for_workspace_root(root : String) -> String {
+  @pathx.join(
+    @moonsuite.state_dir(@moonsuite.suite_root_for_workspace_root(root)),
+    SUITE_STATUS_FILE,
+  )
 }
 
 ///|

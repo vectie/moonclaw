@@ -27,6 +27,14 @@ test "moonstat client rejects legacy suite status shortcuts" {
 }
 
 ///|
+test "moonstat client reads suite status from workspace moonsuite state" {
+  let root = "/tmp/moonsuite/books/research-demo"
+  let path = moonstat_suite_status_path_for_workspace_root(root)
+  assert_true(path == "/tmp/moonsuite/.moonsuite/suite-status.json")
+  assert_false(path.contains("/.moonsuite/.moonsuite/suite-status.json"))
+}
+
+///|
 test "moonstat client builds openclaw route url" {
   let client = Client::{ base_url: "http://127.0.0.1:18081" }
   assert_true(
