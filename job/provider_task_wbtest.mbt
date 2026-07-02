@@ -1,4 +1,56 @@
 ///|
+test "provider task system prompt names fresh internal lanes" {
+  let request : AnalysisRequest = {
+    source_prompt: "Run provider task",
+    prompt: "Run provider task",
+    system_prompt: "",
+    step_metadata: {},
+    cwd: "/tmp/moonclaw-provider-prompt",
+    home: None,
+    model_name: "codex/gpt-5.4",
+    enable_tools: true,
+    web_search: false,
+    tool_contract: AnalysisToolContract::new(),
+    preferred_skills: [],
+    job_id: "job-1",
+    run_id: "run-1",
+    step_id: "step-1",
+    execution_isolation: None,
+    role_runtime_contract: None,
+    execution_mode: Some("provider"),
+    execution_target: Some("wiki-main"),
+  }
+  let task : ProviderTaskSpec = {
+    id: "task-1",
+    title: "Extract durable updates",
+    kind: "wiki.update",
+    prompt: "Read sources and update durable wiki state.",
+    priority: 90,
+    requires_review: true,
+    target_pages: ["wiki/entity.md"],
+  }
+  let context : ProviderTaskWorkerContext = {
+    book_id: "book-1",
+    workspace_root: "/tmp/moonclaw-provider-prompt/book",
+    task_id: "task-1",
+    prompt: "Use the source evidence carefully.",
+    policy: ["Keep raw sources immutable"],
+    routines: ["Update entity pages"],
+    skill_paths: ["skills/wiki-maintainer/SKILL.md"],
+    context_pages: ["wiki/index.md"],
+    active_memory: [],
+    user_memory: [],
+    working_memory: [],
+    memory_summary: "",
+    output_contract: ["Return strict JSON"],
+  }
+  let prompt = provider_task_system_prompt(request, task, context)
+  assert_true(prompt.contains("`.moonsuite`"))
+  assert_true(prompt.contains("`.tmp`"))
+  assert_false(prompt.contains("`.moonclaw`"))
+}
+
+///|
 async fn write_provider_task_fixture(
   workspace : String,
   script_path : String,

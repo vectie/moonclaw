@@ -184,7 +184,7 @@ fn provider_task_system_prompt(
     "- Treat `Relevant Pages` and `Available Skill Files` as the primary working set.",
     "- Read concrete candidate files directly before using broad repo-wide search tools.",
     "- Only use broad search to fill a named gap after the primary working set is exhausted.",
-    "- Ignore generated or dependency trees such as `.git`, `.moonclaw`, `.mooncakes`, `_build`, `node_modules`, `dist`, and temporary output directories unless the task explicitly requires them.",
+    "- Ignore generated or dependency trees such as `.git`, `.moonsuite`, `.tmp`, `.mooncakes`, `_build`, `node_modules`, `dist`, and temporary output directories unless the task explicitly requires them.",
     "- For bootstrap gather work, produce at least one `raw/bootstrap/*` artifact before claiming durable wiki revision success.",
     if request.system_prompt.trim().to_owned().is_blank() {
       ""
