@@ -7,6 +7,32 @@ test "starter_attachment_file_name sanitizes separators" {
 }
 
 ///|
+test "starter attachment paths infer suite product home from book root" {
+  let suite_root = "/tmp/moonclaw-starter-attachment-suite"
+  let book_root = suite_root |> @pathx.join("books/research-demo")
+  let dir = starter_attachment_dir(book_root)
+  inspect(
+    dir,
+    content=(
+      #|/tmp/moonclaw-starter-attachment-suite/.moonsuite/products/moonclaw/starter_attachments
+    ),
+  )
+  inspect(
+    starter_attachment_manifest_json_path(book_root),
+    content=(
+      #|/tmp/moonclaw-starter-attachment-suite/.moonsuite/products/moonclaw/starter_attachments/manifest.json
+    ),
+  )
+  inspect(
+    starter_attachment_saved_path(book_root, "file:1", Some("../brief.txt")),
+    content=(
+      #|/tmp/moonclaw-starter-attachment-suite/.moonsuite/products/moonclaw/starter_attachments/.._brief.txt
+    ),
+  )
+  inspect(dir.contains("/books/research-demo/.moonsuite"), content="false")
+}
+
+///|
 test "attachment_is_text_like accepts text and structured text extensions" {
   inspect(attachment_is_text_like("text/plain"), content="true")
   inspect(

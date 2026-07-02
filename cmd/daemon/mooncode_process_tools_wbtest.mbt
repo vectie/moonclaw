@@ -27,9 +27,11 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
 ///|
 async test "mooncode moon_check records reusable watcher state" (t : @test.Test) {
   ignore(t)
-  let book_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-check-watch-XXXXXX"),
+  let suite_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-check-watch-suite-XXXXXX"),
   )
+  let book_root = suite_root |> @pathx.join("books/research-demo")
+  @fsx.make_directory(book_root, recursive=true, exists_ok=true)
   mooncode_prepare_eval_fixture(book_root)
   let first = mooncode_execute_tool_call(
     "session-check-watch",
@@ -58,12 +60,16 @@ async test "mooncode moon_check records reusable watcher state" (t : @test.Test)
     "running",
   )
   assert_eq(mooncode_json_int(first_metadata, "seq", default=0), 1)
-  assert_true(@fsx.exists(mooncode_moon_check_state_path(book_root)))
-  assert_true(
-    mooncode_moon_check_state_path(book_root).contains(
+  let state_path = mooncode_moon_check_state_path(book_root)
+  assert_eq(
+    state_path,
+    suite_root
+    |> @pathx.join(
       ".moonsuite/products/moonclaw/mooncode/watchers/moon-check.json",
     ),
   )
+  assert_true(@fsx.exists(state_path))
+  assert_false(state_path.contains("/books/research-demo/.moonsuite"))
   let second = mooncode_execute_tool_call(
     "session-check-watch",
     book_root,

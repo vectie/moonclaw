@@ -17,6 +17,26 @@ async test "acp add codex writes target into home moonclaw config" {
 }
 
 ///|
+async test "acp add codex default workspace infers suite product home from book home" {
+  let suite_root = "/tmp/moonclaw-cmd-acp-default-suite"
+  let home = suite_root |> @pathx.join("books/research-demo")
+  let cwd = home |> @pathx.join("code")
+  @fsx.make_directory(cwd, recursive=true)
+  add_codex_target(["add", "codex", "--home", home, "--cwd", cwd])
+  let configured = @fsx.read_file(preferred_config_path(home))
+  let workspace = suite_root
+    |> @pathx.join(".moonsuite/products/moonclaw/workspace")
+  inspect(
+    configured.contains("\"workspace\": \"\{workspace}\""),
+    content="true",
+  )
+  inspect(
+    configured.contains("/books/research-demo/.moonsuite"),
+    content="false",
+  )
+}
+
+///|
 async test "acp add codex preserves unrelated config and updates an existing target" {
   let home = "/tmp/moonclaw-cmd-acp-home-merge"
   let cwd = "/tmp/moonclaw-cmd-acp-cwd-merge"

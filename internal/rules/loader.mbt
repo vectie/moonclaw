@@ -12,7 +12,7 @@ pub fn Loader::new(cwd : String, logger~ : @pino.Logger) -> Loader {
 
 ///|
 fn moonclaw_rules_dir(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonclaw", "rules")
+  @moonsuite.product_artifact_for_workspace_root(root, "moonclaw", "rules")
 }
 
 ///|

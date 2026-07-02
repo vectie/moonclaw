@@ -11,7 +11,7 @@ const SYSTEM_SKILLS_MARKER_FILENAME = "system-skills.marker"
 
 ///|
 fn moonclaw_skills_root(root : String) -> String {
-  @moonsuite.product_artifact(root, "moonclaw", "skills")
+  @moonsuite.product_artifact_for_workspace_root(root, "moonclaw", "skills")
 }
 
 ///|

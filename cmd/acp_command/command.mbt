@@ -196,7 +196,7 @@ fn merge_missing(existing : Json, defaults : Json) -> Json {
 
 ///|
 fn default_config(home : String) -> Json {
-  let workspace_root = @moonsuite.product_artifact(
+  let workspace_root = @moonsuite.product_artifact_for_workspace_root(
     home, "moonclaw", "workspace",
   )
   {
@@ -254,7 +254,9 @@ async fn add_codex_target(args : Array[String]) -> Unit {
     Some(workspace) => workspace
     None =>
       configured_workspace_root(existing).unwrap_or(
-        @moonsuite.product_artifact(home, "moonclaw", "workspace"),
+        @moonsuite.product_artifact_for_workspace_root(
+          home, "moonclaw", "workspace",
+        ),
       )
   }
   let target_cwd = match parse_string_arg(args, "--target-cwd") {

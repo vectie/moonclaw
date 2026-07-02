@@ -487,7 +487,7 @@ fn mooncode_moon_check_command(target : String) -> String {
 
 ///|
 fn mooncode_moon_check_state_path(book_root : String) -> String {
-  @moonsuite.product_artifact(
+  @moonsuite.product_artifact_for_workspace_root(
     book_root, "moonclaw", "mooncode/watchers/moon-check.json",
   )
 }

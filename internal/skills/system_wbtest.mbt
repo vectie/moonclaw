@@ -43,6 +43,18 @@ async test "system/install-writes-assets" (t : @test.Test) {
 }
 
 ///|
+test "system skills root infers suite product home from book root" {
+  let suite_root = "/tmp/moonclaw-system-skills-suite"
+  let book_root = suite_root |> @pathx.join("books/research-demo")
+  let root = system_skills_root(book_root)
+  assert_eq(
+    root,
+    suite_root |> @pathx.join(".moonsuite/products/moonclaw/skills/.system"),
+  )
+  assert_false(root.contains("/books/research-demo/.moonsuite"))
+}
+
+///|
 async test "system/install-marker-skips" (t : @test.Test) {
   @mock.run(t, mock => {
     let home = mock.cwd.path()

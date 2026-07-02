@@ -50,7 +50,9 @@ async test "Loader::load" (t : @test.Test) {
       let project_path = @pathx.join(home.path(), "project")
       assert_eq(
         moonclaw_rules_dir(project_path),
-        @moonsuite.product_artifact(project_path, "moonclaw", "rules"),
+        @moonsuite.product_artifact_for_workspace_root(
+          project_path, "moonclaw", "rules",
+        ),
       )
       let rules = Loader::new(project_path, logger=mock.logger)
       rules.load()
@@ -90,4 +92,16 @@ async test "Loader::load" (t : @test.Test) {
       )
     })
   })
+}
+
+///|
+test "moonclaw rules dir infers suite product home from book root" {
+  let suite_root = "/tmp/moonclaw-rules-suite"
+  let book_root = suite_root |> @pathx.join("books/research-demo")
+  let dir = moonclaw_rules_dir(book_root)
+  assert_eq(
+    dir,
+    suite_root |> @pathx.join(".moonsuite/products/moonclaw/rules"),
+  )
+  assert_false(dir.contains("/books/research-demo/.moonsuite"))
 }
