@@ -38,7 +38,7 @@ fn print_help() -> Unit {
   println("")
   println("Example:")
   println(
-    "  moonclaw acp add codex --home ~ --workspace ~/.moonsuite/products/moonclaw/workspace",
+    "  moonclaw acp add codex --home /path/to/MoonSuiteRoot --workspace /path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/workspace",
   )
 }
 

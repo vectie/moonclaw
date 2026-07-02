@@ -9,7 +9,7 @@ Expected behavior:
 - A normal Feishu message is handled as conversation input.
 - If the message is a recognized job command, it is routed into the job chat path instead.
 - If the message is a stop command for the active conversation, the conversation is cancelled cooperatively.
-- Normal channel chat should use the configured primary model from `~/.moonsuite/products/moonclaw/moonclaw.json`.
+- Normal channel chat should use the configured primary model from `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/moonclaw.json`.
 - Stale thread/session-local bare model ids like `qwen3.5-plus` should not override the configured primary model.
 
 For Feishu, the important command groups are:

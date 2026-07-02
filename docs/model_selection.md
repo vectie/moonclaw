@@ -104,7 +104,7 @@ When you specify a `copilot/` model and no credentials are found, moonclaw will 
 You can also define custom models in a configuration file. moonclaw looks for models in:
 
 1. `<workspace>/.moonsuite/products/moonclaw/models/models.json` (workspace-specific)
-2. `~/.moonsuite/products/moonclaw/models/models.json` (user-wide when `--home ~`)
+2. `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/models/models.json` (suite-root config when `--home /path/to/MoonSuiteRoot`)
 
 Example configuration:
 

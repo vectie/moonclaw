@@ -6,14 +6,14 @@ This is a concrete way to test whether MoonClaw can handle a real research-style
 
 Copy [research_job_moonclaw.json](/Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json) into the workspace you will run the gateway against as `moonclaw.jobs.json`.
 
-This file is workspace job-behavior config. It is separate from your product runtime config at `~/.moonsuite/products/moonclaw/moonclaw.json`.
+This file is workspace job-behavior config. It is separate from your product runtime config at `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/moonclaw.json`.
 
 ## 2. Start the gateway in an isolated workspace
 
 ```bash
-mkdir -p ~/.moonsuite/products/moonclaw/workspace
-cp /Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json ~/.moonsuite/products/moonclaw/workspace/moonclaw.jobs.json
-moon run cmd/main -- gateway start --home ~ --cwd ~/.moonsuite/products/moonclaw/workspace
+mkdir -p /path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/workspace
+cp /Users/kq/Workspace/moonclaw/docs/examples/research_job_moonclaw.json /path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/workspace/moonclaw.jobs.json
+moon run cmd/main -- gateway start --home /path/to/MoonSuiteRoot --cwd /path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/workspace
 ```
 
 ## 3. Trigger a real research-style job

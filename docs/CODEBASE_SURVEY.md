@@ -357,7 +357,7 @@ pub async fn Client::health(self) -> Result[HealthPayload, String]
 
 Models are loaded from configuration files:
 - `.moonsuite/products/moonclaw/models/models.json` (workspace-level)
-- `~/.moonsuite/products/moonclaw/models/models.json` (user-level when `--home ~`)
+- `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/models/models.json` (suite-root config when `--home /path/to/MoonSuiteRoot`)
 
 The loader auto-detects models from environment variables:
 - `OPENROUTER_API_KEY` / `OPENAI_API_KEY`

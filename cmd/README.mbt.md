@@ -99,8 +99,8 @@ Current capabilities behind the gateway:
 Configure ACP targets that the gateway can launch later.
 
 ```bash
-moonclaw acp add codex --home ~
-moonclaw acp add codex --home ~ --id codex-review --workspace ~/Workspace/review-scratch --model gpt-5
+moonclaw acp add codex --home /path/to/MoonSuiteRoot
+moonclaw acp add codex --home /path/to/MoonSuiteRoot --id codex-review --workspace /path/to/review-scratch --model gpt-5
 ```
 
 Current capabilities:
@@ -118,14 +118,14 @@ Current capabilities:
 Inspect and configure a local MoonClaw setup.
 
 ```bash
-moonclaw onboard status --home ~
-moonclaw onboard auth status --home ~
-moonclaw onboard auth codex --home ~
-moonclaw onboard models --home ~
-moonclaw onboard init --home ~ --model bailian/qwen3.5-plus --workspace ~/.moonsuite/products/moonclaw/workspace --gateway-port 18123
-moonclaw onboard configure --home ~ --model bailian/qwen3.5-plus --enable-feishu --feishu-app-id <app_id> --feishu-app-secret <app_secret>
-moonclaw onboard switch codex --home ~
-moonclaw onboard print-config --home ~
+moonclaw onboard status --home /path/to/MoonSuiteRoot
+moonclaw onboard auth status --home /path/to/MoonSuiteRoot
+moonclaw onboard auth codex --home /path/to/MoonSuiteRoot
+moonclaw onboard models --home /path/to/MoonSuiteRoot
+moonclaw onboard init --home /path/to/MoonSuiteRoot --model bailian/qwen3.5-plus --workspace /path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/workspace --gateway-port 18123
+moonclaw onboard configure --home /path/to/MoonSuiteRoot --model bailian/qwen3.5-plus --enable-feishu --feishu-app-id <app_id> --feishu-app-secret <app_secret>
+moonclaw onboard switch codex --home /path/to/MoonSuiteRoot
+moonclaw onboard print-config --home /path/to/MoonSuiteRoot
 ```
 
 Current capabilities:
@@ -212,7 +212,7 @@ struct Daemon {
 
 ### Lock File
 
-The daemon uses a lock file at `~/.moonsuite/products/moonclaw/daemon.json`:
+The daemon uses a lock file at `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/daemon.json`:
 ```json
 {
   "version": "0.1.0",
@@ -366,8 +366,8 @@ main()
 
 Commands read configuration from:
 
-1. `~/.moonsuite/products/moonclaw/models.json` - Model configurations
-2. `~/.moonsuite/products/moonclaw/config.json` - General settings
+1. `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/models.json` - Model configurations
+2. `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/config.json` - General settings
 3. `.trae/rules/` - Project rules
 4. `.trae/skills/` - Project skills
 5. Command-line arguments (highest priority)

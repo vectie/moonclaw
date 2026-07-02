@@ -395,7 +395,7 @@ and
 ## 11. Persistence Routine
 
 Durable state lives under the job system store in
-`~/.moonsuite/products/moonclaw/jobs/...`.
+`/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/jobs/...`.
 
 Current durable records include:
 
@@ -416,7 +416,7 @@ Current durable records include:
 The run workspace and the durable store are separate on purpose:
 
 - visible execution workspace under `.moonsuite/products/moonclaw/jobs/...`
-- durable runtime state under `~/.moonsuite/products/moonclaw/jobs/...`
+- durable runtime state under `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/jobs/...`
 - provider-backed phases are expected to close their event session after the
   final assistant turn so the workflow engine can persist `step.succeeded`,
   advance to the next phase, and eventually finish the parent run instead of
