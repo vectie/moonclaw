@@ -113,7 +113,7 @@ Manager::spawn()
     │
     ├─► Generate unique ID
     │
-    ├─► Create job directory (.moonclaw/jobs/{id}/) for stdout/stderr capture
+    ├─► Create job directory (.moonsuite/products/moonclaw/jobs/processes/{id}/) for stdout/stderr capture
     │
     ├─► Create stdout/stderr files
     │
@@ -165,13 +165,13 @@ for job in job_manager.list() {
 
 ## Job Storage
 
-Jobs store their output in `.moonclaw/jobs/{id}/`:
+Jobs store their process output in `.moonsuite/products/moonclaw/jobs/processes/{id}/`:
 - `stdout`: Standard output from the command
 - `stderr`: Standard error from the command
 
-This package-level storage is distinct from the higher-level workflow run workspace used by the newer job runtime. Operator-facing workflow runs now create visible workspaces under the configured workspace root, for example:
+This process-output storage is distinct from the higher-level workflow run workspace used by the newer job runtime. Top-level workflow runs now derive from the MoonSuite product-home job store for the configured workspace root, while child runs still nest under their parent run workspace, for example:
 
-- `<workspace>/moonclaw-jobs/<run-id>`
+- `<workspace>/.moonsuite/products/moonclaw/jobs/<run-id>`
 - `<parent_run_workspace>/moonclaw-subjobs/<run-id>`
 
 ## Dependencies
