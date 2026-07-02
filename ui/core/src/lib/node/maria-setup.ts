@@ -1,28 +1,44 @@
 import cp from "child_process";
 import type { ResultTuple } from "../types";
 
-let setupmoonclawPromise: Promise<ResultTuple<undefined>> | undefined = undefined;
+const setupmoonclawPromises = new Map<
+  string,
+  Promise<ResultTuple<undefined>>
+>();
 
 export async function setupmoonclawProcess(
   moonclawPath: string,
+  workspaceRoot: string,
   env?: NodeJS.ProcessEnv,
 ) {
-  if (setupmoonclawPromise) {
-    return await setupmoonclawPromise;
+  const setupKey = `${moonclawPath}\n${workspaceRoot}`;
+  const existing = setupmoonclawPromises.get(setupKey);
+  if (existing) {
+    return await existing;
   }
-  setupmoonclawPromise = doSetupmoonclawProcess(moonclawPath, env ?? process.env);
-  return await setupmoonclawPromise;
+  const promise = doSetupmoonclawProcess(
+    moonclawPath,
+    workspaceRoot,
+    env ?? process.env,
+  );
+  setupmoonclawPromises.set(setupKey, promise);
+  return await promise;
 }
 
 async function doSetupmoonclawProcess(
   moonclawPath: string,
+  workspaceRoot: string,
   env: NodeJS.ProcessEnv,
 ): Promise<ResultTuple<undefined>> {
   const exitCode = await new Promise<number | null>((resolve, reject) => {
-    const moonclaw = cp.spawn(moonclawPath, ["daemon", "--port", "0", "--detach"], {
-      stdio: "ignore",
-      env,
-    });
+    const moonclaw = cp.spawn(
+      moonclawPath,
+      ["daemon", "--port", "0", "--serve", workspaceRoot, "--detach"],
+      {
+        stdio: "ignore",
+        env,
+      },
+    );
 
     moonclaw.on("error", reject);
     moonclaw.on("exit", (code) => {
@@ -42,7 +58,10 @@ async function doSetupmoonclawProcess(
         ),
       ];
     }
-    return [undefined, new Error(`moonclaw daemon exited with code ${exitCode}`)];
+    return [
+      undefined,
+      new Error(`moonclaw daemon exited with code ${exitCode}`),
+    ];
   }
   return [undefined, undefined];
 }

@@ -1,5 +1,4 @@
 import fsp from "fs/promises";
-import os from "os";
 import path from "path";
 import type { ResultTuple } from "../types";
 
@@ -8,17 +7,31 @@ type DaemonJson = {
   port: number;
 };
 
-async function getDaemonJson(): Promise<ResultTuple<DaemonJson>> {
+function suiteRootForWorkspaceRoot(workspaceRoot: string): string {
+  const normalized = path.resolve(workspaceRoot);
+  const parent = path.dirname(normalized);
+  if (path.basename(parent) === "books") {
+    return path.dirname(parent);
+  }
+  return normalized;
+}
+
+function daemonJsonPath(workspaceRoot: string): string {
+  return path.join(
+    suiteRootForWorkspaceRoot(workspaceRoot),
+    ".moonsuite",
+    "products",
+    "moonclaw",
+    "daemon.json",
+  );
+}
+
+async function getDaemonJson(
+  workspaceRoot: string,
+): Promise<ResultTuple<DaemonJson>> {
   try {
-    const daemonJsonPath = path.join(
-      os.homedir(),
-      ".moonsuite",
-      "products",
-      "moonclaw",
-      "daemon.json",
-    );
     const daemonJson: DaemonJson = JSON.parse(
-      await fsp.readFile(daemonJsonPath, "utf-8"),
+      await fsp.readFile(daemonJsonPath(workspaceRoot), "utf-8"),
     );
     return [daemonJson, undefined];
   } catch (error) {
@@ -26,8 +39,10 @@ async function getDaemonJson(): Promise<ResultTuple<DaemonJson>> {
   }
 }
 
-export async function getApi(): Promise<ResultTuple<string>> {
-  const [json, error] = await getDaemonJson();
+export async function getApi(
+  workspaceRoot: string,
+): Promise<ResultTuple<string>> {
+  const [json, error] = await getDaemonJson(workspaceRoot);
   if (error) {
     return [undefined, error];
   } else {
@@ -35,9 +50,11 @@ export async function getApi(): Promise<ResultTuple<string>> {
   }
 }
 
-export async function shutdown(): Promise<ResultTuple<undefined>> {
+export async function shutdown(
+  workspaceRoot: string,
+): Promise<ResultTuple<undefined>> {
   try {
-    const [api, error] = await getApi();
+    const [api, error] = await getApi(workspaceRoot);
     if (error) {
       return [undefined, error];
     }

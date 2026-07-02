@@ -107,7 +107,7 @@ pub async fn Daemon::new(
   }
   let daemon = Daemon::{
     clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd~),
+    models: @model.Loader::new(home~, cwd~),
     uuid,
     process: @spawn.Manager::new(cwd~),
     by_cwd: {},

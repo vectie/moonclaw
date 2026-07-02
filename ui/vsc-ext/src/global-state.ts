@@ -4,6 +4,7 @@ import type * as vscode from "vscode";
 
 type GlobalState = {
   context?: vscode.ExtensionContext;
+  cwd?: string;
   webviewApi?: comlink.Remote<WebviewApi>;
 };
 

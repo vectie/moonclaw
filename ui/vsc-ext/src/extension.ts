@@ -12,6 +12,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
   }
 
+  set("cwd", cwd);
   const viewProvider = await MoonBitAgentViewProvider.instance(cwd);
 
   context.subscriptions.push(

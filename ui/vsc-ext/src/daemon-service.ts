@@ -11,13 +11,16 @@ export class DaemonService {
   static async instance() {
     if (!this._instance) {
       const context = get("context")!;
-      const moonclawPath = context.asAbsolutePath(`bin/${process.platform}/moonclaw`);
-      const [_, error] = await setupmoonclawProcess(moonclawPath);
+      const cwd = get("cwd")!;
+      const moonclawPath = context.asAbsolutePath(
+        `bin/${process.platform}/moonclaw`,
+      );
+      const [_, error] = await setupmoonclawProcess(moonclawPath, cwd);
       if (error) {
         // TODO: Handle error properly
         throw new Error("Failed to setup moonclaw process: " + error.message);
       }
-      const [api, apiError] = await getApi();
+      const [api, apiError] = await getApi(cwd);
       if (apiError) {
         // TODO: Handle error properly
         throw new Error("Failed to get moonclaw API: " + apiError.message);

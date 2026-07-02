@@ -15,3 +15,16 @@ async test "lock_daemon_file uses moonsuite product home" {
     assert_false(product_path.contains("/books/research-demo/.moonsuite"))
   })
 }
+
+///|
+test "detached daemon home follows served workspace root" {
+  let suite_root = "/tmp/moonclaw-suite"
+  let book_root = @pathx.join(suite_root, "books/research-demo")
+  assert_eq(moonclaw_daemon_home_for_serve(Some(book_root[:])), book_root)
+  assert_eq(
+    moonclaw_daemon_info_path(
+      moonclaw_daemon_home_for_serve(Some(book_root[:])),
+    ),
+    @pathx.join(suite_root, ".moonsuite/products/moonclaw/daemon.json"),
+  )
+}

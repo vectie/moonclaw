@@ -49,6 +49,14 @@ impl @json.FromJson for DaemonInfo with fn from_json(
 }
 
 ///|
+fn moonclaw_daemon_home_for_serve(serve : StringView?) -> String {
+  match serve {
+    Some(serve) => serve.to_owned()
+    None => @os.home() catch { _ => "." }
+  }
+}
+
+///|
 /// Spawns (and optionally detaches) a moonclaw daemon process and waits until
 /// the child writes its MoonLib-derived MoonClaw daemon status file. Returns
 /// the PID recorded in that file, which can belong to the new child or an
@@ -58,7 +66,7 @@ pub async fn detach(
   port? : Int,
   serve? : StringView,
 ) -> Int {
-  let home = @os.home()
+  let home = moonclaw_daemon_home_for_serve(serve)
   let args = ["daemon"]
   if port is Some(port) {
     args.push("--port")
@@ -159,14 +167,12 @@ pub async fn start(args : ArrayView[String]) -> Unit {
       [] => break
     }
   }
-  guard @model.load(home=@os.home(), cwd=@os.cwd()) is Some(_) else {
-    @os.exit(-1)
-  }
+  guard @model.load(home=serve, cwd=serve) is Some(_) else { @os.exit(-1) }
   if to_detach {
     let pid = detach(exec_path?, port~, serve~)
     logger.info("Detached moonclaw daemon with PID \{pid}.")
   } else {
-    let home = @os.home()
+    let home = serve
     let exec_path = if exec_path is Some(exec_path) {
       exec_path
     } else {

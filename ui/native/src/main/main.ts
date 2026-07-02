@@ -19,6 +19,14 @@ if (started) {
 
 let mainWindow: BrowserWindow | null;
 
+function moonclawWorkspaceRoot(): string {
+  return (
+    process.env["MOONSUITE_ROOT"] ??
+    process.env["MOONCLAW_WORKSPACE_ROOT"] ??
+    process.cwd()
+  );
+}
+
 function createWindow() {
   // Create the browser window.
   mainWindow = new BrowserWindow({
@@ -47,11 +55,15 @@ async function setupmoonclaw() {
         "../../../../target/native/release/build/cmd/main/main.exe",
       )
     : path.join(__dirname, "../bin/moonclaw");
-  return await setupmoonclawProcess(moonclawPath, shellEnv);
+  return await setupmoonclawProcess(
+    moonclawPath,
+    moonclawWorkspaceRoot(),
+    shellEnv,
+  );
 }
 
 async function shutdownmoonclawDaemon() {
-  await shutdown();
+  await shutdown(moonclawWorkspaceRoot());
 }
 
 const onReady = async () => {
@@ -97,7 +109,7 @@ ipcMain.handle("select-directory", async (): Promise<OpenDialogReturnValue> => {
 });
 
 ipcMain.handle("get-url", async () => {
-  const [url, error] = await getApi();
+  const [url, error] = await getApi(moonclawWorkspaceRoot());
   if (error) {
     dialog.showErrorBox("Error", error.message);
     app.exit(1);
