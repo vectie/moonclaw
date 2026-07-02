@@ -250,9 +250,11 @@ fn codex_claims(id_token : String) -> @codex.IdTokenClaims? {
 }
 
 ///|
-async fn codex_auth_provider_status() -> OnboardingAuthProviderStatus {
+async fn codex_auth_provider_status(
+  home : String,
+) -> OnboardingAuthProviderStatus {
   try {
-    let credentials = @codex.load_credentials()
+    let credentials = @codex.load_credentials_for_workspace_root(root=home)
     match codex_claims(credentials.idToken) {
       Some(claims) =>
         {
@@ -288,10 +290,11 @@ async fn codex_auth_provider_status() -> OnboardingAuthProviderStatus {
 
 ///|
 async fn copilot_auth_provider_status(
+  home : String,
   common_copilot_models : Array[String],
 ) -> OnboardingAuthProviderStatus {
   try {
-    let credentials = @copilot.load_credentials()
+    let credentials = @copilot.load_credentials_for_workspace_root(root=home)
     let valid = credentials.is_token_valid(@async.now())
     {
       provider: "copilot",
@@ -614,7 +617,7 @@ fn config_dir(path : String) -> String {
 }
 
 ///|
-async fn collect_auth_status() -> OnboardingAuthStatus {
+async fn collect_auth_status(home : String) -> OnboardingAuthStatus {
   let providers : Array[OnboardingAuthProviderStatus] = []
   let issues : Array[String] = []
   let next_steps : Array[String] = []
@@ -623,9 +626,13 @@ async fn collect_auth_status() -> OnboardingAuthStatus {
     "copilot/grok-code-fast-1",
   ]
 
-  let codex_authenticated = @codex.credentials_exist() catch { _ => false }
+  let codex_authenticated = @codex.credentials_exist_for_workspace_root(
+    root=home,
+  ) catch {
+    _ => false
+  }
   if codex_authenticated {
-    providers.push(codex_auth_provider_status())
+    providers.push(codex_auth_provider_status(home))
   } else {
     providers.push({
       provider: "codex",
@@ -641,9 +648,13 @@ async fn collect_auth_status() -> OnboardingAuthStatus {
     )
   }
 
-  let copilot_authenticated = @copilot.credentials_exist() catch { _ => false }
+  let copilot_authenticated = @copilot.credentials_exist_for_workspace_root(
+    root=home,
+  ) catch {
+    _ => false
+  }
   if copilot_authenticated {
-    providers.push(copilot_auth_provider_status(common_copilot_models))
+    providers.push(copilot_auth_provider_status(home, common_copilot_models))
   } else {
     providers.push({
       provider: "copilot",
@@ -659,15 +670,15 @@ async fn collect_auth_status() -> OnboardingAuthStatus {
 }
 
 ///|
-pub async fn auth_status() -> OnboardingAuthStatus {
-  collect_auth_status()
+pub async fn auth_status(home~ : String) -> OnboardingAuthStatus {
+  collect_auth_status(home)
 }
 
 ///|
-pub async fn start_auth_flow(provider : String) -> String {
+pub async fn start_auth_flow(provider : String, home~ : String) -> String {
   match provider {
     "codex" => {
-      let credentials = @codex.start_oauth_flow()
+      let credentials = @codex.start_oauth_flow_for_workspace_root(root=home)
       let claims = codex_claims(credentials.idToken)
       match claims {
         Some(claims) =>
@@ -676,7 +687,7 @@ pub async fn start_auth_flow(provider : String) -> String {
       }
     }
     "copilot" => {
-      ignore(@copilot.start_oauth_flow())
+      ignore(@copilot.start_oauth_flow_for_workspace_root(root=home))
       "Connected Copilot OAuth"
     }
     _ => "Unknown auth provider `\{provider}`"
@@ -684,14 +695,14 @@ pub async fn start_auth_flow(provider : String) -> String {
 }
 
 ///|
-pub async fn clear_auth(provider : String) -> String {
+pub async fn clear_auth(provider : String, home~ : String) -> String {
   match provider {
     "codex" => {
-      @codex.delete_credentials()
+      @codex.delete_credentials_for_workspace_root(root=home)
       "Disconnected Codex OAuth"
     }
     "copilot" => {
-      @copilot.delete_credentials()
+      @copilot.delete_credentials_for_workspace_root(root=home)
       "Disconnected Copilot OAuth"
     }
     _ => "Unknown auth provider `\{provider}`"
@@ -716,7 +727,7 @@ pub async fn collect_status(home~ : String, cwd~ : String) -> OnboardingStatus {
   let has_token = has_gateway_token(config_json)
   let feishu_on = feishu_enabled(config_json)
   let feishu_ok = feishu_ready(config_json)
-  let auth = collect_auth_status()
+  let auth = collect_auth_status(home)
   if config_json is None {
     issues.push("Missing moonclaw.json configuration")
     next_steps.push("Run `moonclaw onboard init` to create a baseline config")

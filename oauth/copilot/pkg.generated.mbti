@@ -9,13 +9,19 @@ import {
 // Values
 pub async fn credentials_exist() -> Bool
 
+pub async fn credentials_exist_for_workspace_root(root~ : String) -> Bool
+
 pub async fn delete_credentials() -> Unit
+
+pub async fn delete_credentials_for_workspace_root(root~ : String) -> Unit
 
 pub async fn get_copilot_token(String) -> CopilotTokenResponse
 
 pub async fn get_valid_credentials() -> Credentials
 
 pub async fn load_credentials() -> Credentials
+
+pub async fn load_credentials_for_workspace_root(root~ : String) -> Credentials
 
 pub async fn poll_for_access_token(String, Int, Int) -> String
 
@@ -25,7 +31,11 @@ pub async fn request_device_code() -> DeviceCodeResponse
 
 pub async fn save_credentials(Credentials) -> Unit
 
+pub async fn save_credentials_for_workspace_root(Credentials, root~ : String) -> Unit
+
 pub async fn start_oauth_flow() -> Credentials
+
+pub async fn start_oauth_flow_for_workspace_root(root~ : String) -> Credentials
 
 // Errors
 

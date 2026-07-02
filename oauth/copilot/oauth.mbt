@@ -175,6 +175,13 @@ pub async fn get_copilot_token(
 
 ///|
 pub async fn start_oauth_flow() -> Credentials raise Error {
+  start_oauth_flow_for_workspace_root(root=@os.home())
+}
+
+///|
+pub async fn start_oauth_flow_for_workspace_root(
+  root~ : String,
+) -> Credentials raise Error {
   println("\nStarting GitHub Copilot authentication...")
   let device_code_response = request_device_code()
   println("\nPlease visit: \{device_code_response.verification_uri}")
@@ -196,7 +203,7 @@ pub async fn start_oauth_flow() -> Credentials raise Error {
     copilot_token: copilot_token_response.token,
     copilot_token_expires_at: copilot_token_response.expires_at,
   }
-  save_credentials(credentials)
+  save_credentials_for_workspace_root(credentials, root~)
   println("Copilot authentication successful!")
   credentials
 }

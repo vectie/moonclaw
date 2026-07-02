@@ -7,13 +7,13 @@ import {
 }
 
 // Values
-pub async fn auth_status() -> OnboardingAuthStatus
+pub async fn auth_status(home~ : String) -> OnboardingAuthStatus
 
 pub async fn bootstrap(home~ : String, cwd~ : String) -> OnboardingApplyResult
 
 pub async fn bootstrap_with_options(home~ : String, cwd~ : String, OnboardingOptions) -> OnboardingApplyResult
 
-pub async fn clear_auth(String) -> String
+pub async fn clear_auth(String, home~ : String) -> String
 
 pub async fn collect_status(home~ : String, cwd~ : String) -> OnboardingStatus
 
@@ -33,7 +33,7 @@ pub fn render_model_list(Array[String]) -> String
 
 pub fn render_status(OnboardingStatus) -> String
 
-pub async fn start_auth_flow(String) -> String
+pub async fn start_auth_flow(String, home~ : String) -> String
 
 // Errors
 

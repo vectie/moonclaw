@@ -159,7 +159,8 @@ async fn run_auth(args : Array[String]) -> Unit {
   let json_mode = args.contains("--json")
   match rest[:] {
     [] | ["status", ..] => {
-      let status = @onboarding.auth_status()
+      let home = resolve_home(args)
+      let status = @onboarding.auth_status(home~)
       if json_mode {
         println(status.to_json().stringify(indent=2))
       } else {
@@ -169,7 +170,7 @@ async fn run_auth(args : Array[String]) -> Unit {
     ["codex", ..] => {
       let home = resolve_home(args)
       let cwd = resolve_cwd(args)
-      let auth_message = @onboarding.start_auth_flow("codex") catch {
+      let auth_message = @onboarding.start_auth_flow("codex", home~) catch {
         err => {
           println("Codex OAuth failed: \{err}")
           return
@@ -201,7 +202,7 @@ async fn run_auth(args : Array[String]) -> Unit {
     ["copilot", ..] => {
       let home = resolve_home(args)
       let cwd = resolve_cwd(args)
-      let auth_message = @onboarding.start_auth_flow("copilot") catch {
+      let auth_message = @onboarding.start_auth_flow("copilot", home~) catch {
         err => {
           println("Copilot OAuth failed: \{err}")
           return
@@ -231,7 +232,8 @@ async fn run_auth(args : Array[String]) -> Unit {
       }
     }
     ["logout", provider, ..] => {
-      let message = @onboarding.clear_auth(provider) catch {
+      let home = resolve_home(args)
+      let message = @onboarding.clear_auth(provider, home~) catch {
         err => "Failed to clear \{provider} auth: \{err}"
       }
       println(message)

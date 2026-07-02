@@ -35,7 +35,10 @@ async fn Daemon::start_copilot_auth(
           copilot_token: copilot_token_response.token,
           copilot_token_expires_at: copilot_token_response.expires_at,
         }
-        @copilot.save_credentials(credentials)
+        @copilot.save_credentials_for_workspace_root(
+          credentials,
+          root=self.home,
+        )
 
         // Broadcast success event
         events.put(AuthLoginCompleted(provider="copilot"))
@@ -68,7 +71,7 @@ async fn Daemon::logout_copilot(
   self : Daemon,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  @copilot.delete_credentials()
+  @copilot.delete_credentials_for_workspace_root(root=self.home)
   self.events.put(AuthStatusChanged(provider="copilot", authenticated=false))
   w.header().set("Content-Type", "application/json")
   w.write_header(200)

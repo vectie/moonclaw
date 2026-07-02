@@ -107,7 +107,7 @@ async fn Daemon::spawn_codex_callback_server(self : Daemon) -> Unit {
         refreshToken: tokens.refresh_token,
         accountId: claims.chatgptAccountId,
       }
-      @codex.save_credentials(credentials)
+      @codex.save_credentials_for_workspace_root(credentials, root=self.home)
 
       // Broadcast success event
       events.put(AuthLoginCompleted(provider="codex"))
@@ -149,7 +149,7 @@ async fn Daemon::spawn_codex_callback_server(self : Daemon) -> Unit {
 ///|
 /// POST /v1/auth/codex/logout - Clear Codex credentials
 async fn Daemon::logout_codex(self : Daemon, w : @httpx.ResponseWriter) -> Unit {
-  @codex.delete_credentials()
+  @codex.delete_credentials_for_workspace_root(root=self.home)
   self.events.put(AuthStatusChanged(provider="codex", authenticated=false))
   w.header().set("Content-Type", "application/json")
   w.write_header(200)

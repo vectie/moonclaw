@@ -46,12 +46,11 @@ async fn Daemon::get_auth_status(
 ///|
 /// Get Codex auth status by checking credentials and extracting user info
 async fn Daemon::get_codex_auth_status(self : Daemon) -> ProviderAuthStatus {
-  ignore(self)
-  if !@codex.credentials_exist() {
+  if !@codex.credentials_exist_for_workspace_root(root=self.home) {
     return { authenticated: false, email: None, plan: None }
   }
   try {
-    let credentials = @codex.load_credentials()
+    let credentials = @codex.load_credentials_for_workspace_root(root=self.home)
     let claims = @codex.extract_token_claims(credentials.idToken)
     {
       authenticated: true,
@@ -66,8 +65,7 @@ async fn Daemon::get_codex_auth_status(self : Daemon) -> ProviderAuthStatus {
 ///|
 /// Get Copilot auth status by checking credentials
 async fn Daemon::get_copilot_auth_status(self : Daemon) -> ProviderAuthStatus {
-  ignore(self)
-  if !@copilot.credentials_exist() {
+  if !@copilot.credentials_exist_for_workspace_root(root=self.home) {
     return { authenticated: false, email: None, plan: None }
   }
   // Copilot doesn't provide email/plan info in the token

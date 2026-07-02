@@ -96,13 +96,17 @@ fn get_home() -> String {
 }
 
 ///|
-fn get_credentials_path() -> String {
-  @moonsuite.product_artifact(get_home(), "moonclaw", CREDENTIALS_FILE)
+fn get_credentials_path_for_workspace_root(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root,
+    "moonclaw",
+    CREDENTIALS_FILE,
+  )
 }
 
 ///|
-fn get_codex_auth_path() -> String {
-  @pathx.join(get_home(), CODEX_AUTH_FILE)
+fn get_codex_auth_path_for_workspace_root(root : String) -> String {
+  @pathx.join(@moonsuite.suite_root_for_workspace_root(root), CODEX_AUTH_FILE)
 }
 
 ///|
@@ -123,23 +127,33 @@ fn codex_cli_credentials_path_is_newer(
 
 ///|
 pub async fn save_credentials(credentials : Credentials) -> Unit {
-  let path = get_credentials_path()
+  save_credentials_for_workspace_root(credentials, root=get_home())
+}
+
+///|
+pub async fn save_credentials_for_workspace_root(
+  credentials : Credentials,
+  root~ : String,
+) -> Unit {
+  let path = get_credentials_path_for_workspace_root(root)
   let dir = @pathx.dirname(path)
   @fsx.make_directory(dir, recursive=true, exists_ok=true)
   @fsx.write_to_file(path, credentials.to_json().stringify(), create=0o600)
 }
 
 ///|
-async fn try_load_from_codex() -> Credentials? {
-  let codex_path = get_codex_auth_path()
+async fn try_load_from_codex_for_workspace_root(
+  root : String,
+  codex_path~ : String,
+) -> Credentials? {
   if !@fsx.exists_as_file(codex_path) {
     return None
   }
   try {
     let content = @fsx.read_file(codex_path)
     let json = @json.parse(content)
-    guard json is Object(root) else { return None }
-    guard root.get("tokens") is Some(Object(tokens)) else { return None }
+    guard json is Object(obj) else { return None }
+    guard obj.get("tokens") is Some(Object(tokens)) else { return None }
     let id_token = match tokens.get("id_token") {
       Some(String(s)) => s
       _ => return None
@@ -163,7 +177,7 @@ async fn try_load_from_codex() -> Credentials? {
       accountId: account_id,
     }
     logger.info("Imported credentials from codex CLI")
-    save_credentials(credentials)
+    save_credentials_for_workspace_root(credentials, root~)
     Some(credentials)
   } catch {
     _ => None
@@ -172,14 +186,22 @@ async fn try_load_from_codex() -> Credentials? {
 
 ///|
 pub async fn load_credentials() -> Credentials raise Error {
-  let path = get_credentials_path()
-  let codex_path = get_codex_auth_path()
+  load_credentials_for_workspace_root(root=get_home())
+}
+
+///|
+pub async fn load_credentials_for_workspace_root(
+  root~ : String,
+) -> Credentials raise Error {
+  let path = get_credentials_path_for_workspace_root(root)
+  let codex_path = get_codex_auth_path_for_workspace_root(root)
   let has_local = @fsx.exists_as_file(path)
   let has_codex = @fsx.exists_as_file(codex_path)
   if has_local &&
     has_codex &&
     codex_cli_credentials_path_is_newer(path, codex_path) {
-    if try_load_from_codex() is Some(credentials) {
+    if try_load_from_codex_for_workspace_root(root, codex_path~)
+      is Some(credentials) {
       return credentials
     }
   }
@@ -187,7 +209,8 @@ pub async fn load_credentials() -> Credentials raise Error {
     return load_credentials_from_path(path)
   }
   if has_codex {
-    if try_load_from_codex() is Some(credentials) {
+    if try_load_from_codex_for_workspace_root(root, codex_path~)
+      is Some(credentials) {
       return credentials
     }
   }
@@ -197,18 +220,28 @@ pub async fn load_credentials() -> Credentials raise Error {
 ///|
 /// Returns true if credentials file exists (either our own or from codex CLI)
 pub async fn credentials_exist() -> Bool {
-  let path = get_credentials_path()
+  credentials_exist_for_workspace_root(root=get_home())
+}
+
+///|
+pub async fn credentials_exist_for_workspace_root(root~ : String) -> Bool {
+  let path = get_credentials_path_for_workspace_root(root)
   if @fsx.exists_as_file(path) {
     return true
   }
-  let codex_path = get_codex_auth_path()
+  let codex_path = get_codex_auth_path_for_workspace_root(root)
   @fsx.exists_as_file(codex_path)
 }
 
 ///|
 /// Deletes the credentials file if it exists
 pub async fn delete_credentials() -> Unit {
-  let path = get_credentials_path()
+  delete_credentials_for_workspace_root(root=get_home())
+}
+
+///|
+pub async fn delete_credentials_for_workspace_root(root~ : String) -> Unit {
+  let path = get_credentials_path_for_workspace_root(root)
   if @fsx.exists_as_file(path) {
     @fsx.remove(path)
   }

@@ -174,6 +174,13 @@ pub fn parse_query_string(query : StringView) -> Map[String, String] {
 
 ///|
 pub async fn start_oauth_flow() -> Credentials raise Error {
+  start_oauth_flow_for_workspace_root(root=@os.home())
+}
+
+///|
+pub async fn start_oauth_flow_for_workspace_root(
+  root~ : String,
+) -> Credentials raise Error {
   let pkce = generate_pkce()
   let state = generate_state()
   let result : Ref[Credentials?] = Ref(None)
@@ -237,7 +244,7 @@ pub async fn start_oauth_flow() -> Credentials raise Error {
         refreshToken: tokens.refresh_token,
         accountId: claims.chatgptAccountId,
       }
-      save_credentials(credentials)
+      save_credentials_for_workspace_root(credentials, root~)
       let html =
         #|<!DOCTYPE html>
         #|<html>

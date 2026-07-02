@@ -16,13 +16,25 @@ fn get_home() -> String {
 }
 
 ///|
-fn get_credentials_path() -> String {
-  @moonsuite.product_artifact(get_home(), "moonclaw", CREDENTIALS_FILE)
+fn get_credentials_path_for_workspace_root(root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root,
+    "moonclaw",
+    CREDENTIALS_FILE,
+  )
 }
 
 ///|
 pub async fn save_credentials(credentials : Credentials) -> Unit {
-  let path = get_credentials_path()
+  save_credentials_for_workspace_root(credentials, root=get_home())
+}
+
+///|
+pub async fn save_credentials_for_workspace_root(
+  credentials : Credentials,
+  root~ : String,
+) -> Unit {
+  let path = get_credentials_path_for_workspace_root(root)
   let dir = @pathx.dirname(path)
   @fsx.make_directory(dir, recursive=true, exists_ok=true)
   @fsx.write_to_file(path, credentials.to_json().stringify(), create=0o600)
@@ -30,7 +42,14 @@ pub async fn save_credentials(credentials : Credentials) -> Unit {
 
 ///|
 pub async fn load_credentials() -> Credentials raise Error {
-  let path = get_credentials_path()
+  load_credentials_for_workspace_root(root=get_home())
+}
+
+///|
+pub async fn load_credentials_for_workspace_root(
+  root~ : String,
+) -> Credentials raise Error {
+  let path = get_credentials_path_for_workspace_root(root)
   if !@fsx.exists_as_file(path) {
     raise ParseError("Copilot credentials file not found")
   }
@@ -46,14 +65,24 @@ pub fn Credentials::is_token_valid(self : Credentials, now : Int64) -> Bool {
 ///|
 /// Returns true if credentials file exists
 pub async fn credentials_exist() -> Bool {
-  let path = get_credentials_path()
+  credentials_exist_for_workspace_root(root=get_home())
+}
+
+///|
+pub async fn credentials_exist_for_workspace_root(root~ : String) -> Bool {
+  let path = get_credentials_path_for_workspace_root(root)
   @fsx.exists_as_file(path)
 }
 
 ///|
 /// Deletes the credentials file if it exists
 pub async fn delete_credentials() -> Unit {
-  let path = get_credentials_path()
+  delete_credentials_for_workspace_root(root=get_home())
+}
+
+///|
+pub async fn delete_credentials_for_workspace_root(root~ : String) -> Unit {
+  let path = get_credentials_path_for_workspace_root(root)
   if @fsx.exists_as_file(path) {
     @fsx.remove(path)
   }
