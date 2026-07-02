@@ -533,7 +533,7 @@ fn apply_options(json : Json, options : OnboardingOptions) -> Json {
 
 ///|
 fn default_config(home : String, cwd : String) -> Json {
-  let workspace_root = @moonsuite.product_artifact(
+  let workspace_root = @moonsuite.product_artifact_for_workspace_root(
     home, "moonclaw", "workspace",
   )
   {

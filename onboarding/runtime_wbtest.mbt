@@ -58,6 +58,34 @@ async test "bootstrap creates config and preserves existing settings" {
 }
 
 ///|
+async test "bootstrap default workspace infers suite product home from book home" {
+  @fsx.with_temporary_directory("moonclaw-onboarding-book-home-XXXXXX", dir => {
+    let suite_root = dir
+    let home = suite_root |> @pathx.join("books/research-demo")
+    let cwd = home |> @pathx.join("code")
+    @fsx.make_directory(cwd, recursive=true)
+    let result = bootstrap(home~, cwd~)
+    let expected_workspace = suite_root
+      |> @pathx.join(".moonsuite/products/moonclaw/workspace")
+    json_inspect(
+      result.onboarding.workspace_root,
+      content=expected_workspace.to_json(),
+    )
+    json_inspect(
+      result.onboarding.workspace_root.contains(
+        "/books/research-demo/.moonsuite",
+      ),
+      content=false,
+    )
+    let text = @fsx.read_file(preferred_config_path(home))
+    inspect(
+      text.contains("\"workspace\": \"\{expected_workspace}\""),
+      content="true",
+    )
+  })
+}
+
+///|
 async test "discover_models lists configured provider models" {
   @fsx.with_temporary_directory("moonclaw-onboarding-models-XXXXXX", dir => {
     let home = dir

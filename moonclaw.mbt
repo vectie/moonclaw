@@ -29,7 +29,7 @@ fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
 
 ///|
 fn default_log_path() -> String {
-  @moonsuite.product_artifact(
+  @moonsuite.product_artifact_for_workspace_root(
     @os.home() catch {
       _ => "."
     },
