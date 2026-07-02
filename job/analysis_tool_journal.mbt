@@ -15,13 +15,7 @@ fn analysis_tool_journal_path(request : AnalysisRequest) -> String {
 
 ///|
 fn analysis_tool_journal_dir(request : AnalysisRequest) -> String {
-  @pathx.join(
-    @moonsuite.product_tmp_dir(
-      @moonsuite.suite_root_for_workspace_root(request.cwd),
-      "moonclaw",
-    ),
-    "tool-journals",
-  )
+  @pathx.join(moonclaw_product_tmp_dir(request.cwd), "tool-journals")
 }
 
 ///|

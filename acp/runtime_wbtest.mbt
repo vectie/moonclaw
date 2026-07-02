@@ -3,7 +3,10 @@ async test "ACP runtime loads codex targets from config and persists sessions" {
   let dir = "/tmp/moonclaw-acp-runtime"
   let config_path = preferred_config_path(dir)
   @fsx.make_directory(dir, recursive=true)
-  @fsx.make_directory(@moonsuite.product_dir(dir, "moonclaw"), recursive=true)
+  @fsx.make_directory(
+    @moonsuite.product_home(dir, "moonclaw").state_path,
+    recursive=true,
+  )
   @fsx.write_to_file(
     config_path,
     (
@@ -64,10 +67,7 @@ async test "ACP runtime prefers product config and persists state in product hom
       home, "moonclaw", "moonclaw.json",
     )
     @fsx.make_directory(
-      @moonsuite.product_dir(
-        @moonsuite.suite_root_for_workspace_root(home),
-        "moonclaw",
-      ),
+      @moonsuite.product_home_for_workspace_root(home, "moonclaw").state_path,
       recursive=true,
     )
     @fsx.write_to_file(
@@ -114,7 +114,10 @@ async test "ACP runtime prefers product config and persists state in product hom
 async test "ACP runtime reuses existing target/session-key binding" {
   let dir = "/tmp/moonclaw-acp-runtime-reuse"
   @fsx.make_directory(dir, recursive=true)
-  @fsx.make_directory(@moonsuite.product_dir(dir, "moonclaw"), recursive=true)
+  @fsx.make_directory(
+    @moonsuite.product_home(dir, "moonclaw").state_path,
+    recursive=true,
+  )
   @fsx.write_to_file(
     preferred_config_path(dir),
     ({ "acp": { "targets": { "codex-main": { "backend": "codex" } } } } : Json).stringify(),
@@ -134,7 +137,10 @@ async test "ACP runtime reuses existing target/session-key binding" {
 async test "ACP runtime lists and deletes sessions for a bound session key" {
   let dir = "/tmp/moonclaw-acp-runtime-list"
   @fsx.make_directory(dir, recursive=true)
-  @fsx.make_directory(@moonsuite.product_dir(dir, "moonclaw"), recursive=true)
+  @fsx.make_directory(
+    @moonsuite.product_home(dir, "moonclaw").state_path,
+    recursive=true,
+  )
   @fsx.write_to_file(
     preferred_config_path(dir),
     (
@@ -165,7 +171,10 @@ async test "ACP runtime lists and deletes sessions for a bound session key" {
 async test "ACP runtime persists run lifecycle" {
   let dir = "/tmp/moonclaw-acp-runtime-runs"
   @fsx.make_directory(dir, recursive=true)
-  @fsx.make_directory(@moonsuite.product_dir(dir, "moonclaw"), recursive=true)
+  @fsx.make_directory(
+    @moonsuite.product_home(dir, "moonclaw").state_path,
+    recursive=true,
+  )
   @fsx.write_to_file(
     preferred_config_path(dir),
     ({ "acp": { "targets": { "codex-main": { "backend": "codex" } } } } : Json).stringify(),

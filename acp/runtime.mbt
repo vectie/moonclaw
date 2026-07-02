@@ -83,10 +83,7 @@ fn acp_state_path(home : String) -> String {
 ///|
 async fn ensure_acp_state_parent(home : String) -> Unit {
   @fsx.make_directory(
-    @moonsuite.product_dir(
-      @moonsuite.suite_root_for_workspace_root(home),
-      "moonclaw",
-    ),
+    @moonsuite.product_home_for_workspace_root(home, "moonclaw").state_path,
     recursive=true,
   ) catch {
     _ => ()

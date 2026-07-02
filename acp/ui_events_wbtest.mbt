@@ -2,7 +2,10 @@
 async test "ACP UI timeline orders newest entries first" {
   let dir = "/tmp/moonclaw-acp-ui-events"
   @fsx.make_directory(dir, recursive=true)
-  @fsx.make_directory(@moonsuite.product_dir(dir, "moonclaw"), recursive=true)
+  @fsx.make_directory(
+    @moonsuite.product_home(dir, "moonclaw").state_path,
+    recursive=true,
+  )
   @fsx.write_to_file(
     preferred_config_path(dir),
     ({ "acp": { "targets": { "codex-main": { "backend": "codex" } } } } : Json).stringify(),

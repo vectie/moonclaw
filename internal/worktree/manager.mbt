@@ -54,7 +54,7 @@ fn default_worktree_base_dir(repo_root : String) -> String {
   let suite_root = @pathx.dirname(repo_root).to_owned()
   let repo_name = @pathx.basename(repo_root)
   @pathx.join(
-    @moonsuite.product_tmp_dir(suite_root, "moonclaw"),
+    @moonsuite.product_home(suite_root, "moonclaw").tmp_path,
     "worktrees/\{repo_name}",
   )
 }
