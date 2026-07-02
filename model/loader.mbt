@@ -7,12 +7,12 @@ struct Loader {
 }
 
 ///|
-/// Create a model loader scoped to the given home directory and
+/// Create a model loader scoped to the given MoonSuite root and
 /// current working directory.
 ///
 /// Parameters:
 ///
-/// - home: Absolute path to the user's home directory.
+/// - home: Absolute path to the MoonSuite root.
 /// - cwd: Absolute path to the current project directory.
 ///
 /// Returns a Loader instance with an empty model cache that can be

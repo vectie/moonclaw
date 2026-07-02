@@ -5,8 +5,10 @@
 /// The loader searches for skills in `.moonsuite/products/moonclaw/skills`
 /// directories:
 ///
-/// - System skills: `~/.moonsuite/products/moonclaw/skills/.system`
-/// - Global skills: `~/.moonsuite/products/moonclaw/skills`
+/// - System skills:
+///   `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/skills/.system`
+/// - Global skills:
+///   `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/skills`
 /// - Local skills: starting from the current working directory and walking up
 ///   through parent directories.
 ///
@@ -15,7 +17,7 @@
 /// - The Git repo root (directory containing `.git`)
 ///
 /// When not inside a Git repo, no upward walk is performed; only the current
-/// working directory and the user's home directory are checked.
+/// working directory and the configured MoonSuite root are checked.
 ///
 /// Each skill is expected to have a `SKILL.md` or `skill.md` file containing its
 /// definition.
@@ -35,15 +37,15 @@ struct Loader {
 ///
 /// Parameters:
 ///
-/// * `home` : The home directory path for global skills. If not provided, uses
-///   the system's home directory.
+/// * `home` : The MoonSuite root path for global skills. If not provided, uses
+///   the OS home as the standalone suite root.
 /// * `cwd` : The current working directory path for local skills.
 /// * `logger` : The logger instance for logging operations. Defaults to a
 ///   console logger with the name "skills".
 ///
 /// Returns a new `Loader` instance with an empty skills map.
 ///
-/// Throws an error if the system's home directory cannot be determined when
+/// Throws an error if the fallback OS home cannot be determined when
 /// `home` is not provided.
 ///
 /// Example:

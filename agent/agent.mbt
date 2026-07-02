@@ -376,7 +376,8 @@ fn default_agent_log_path() -> String {
 /// * `cwd` : The current working directory that will be used as the base path for tool operations.
 /// * `system_message` : Optional system prompt to set at initialization.
 /// * `user_message` : Optional initial user message to send immediately after initialization.
-/// * `home` : Optional home directory path. If not provided, uses the OS home directory.
+/// * `home` : Optional MoonSuite root path. If not provided, uses the OS home
+///   as the standalone suite root.
 /// * `web_search` : Whether to enable web search functionality. Defaults to `false`.
 /// * `external_events` : Optional external event queue for receiving events from the environment.
 /// * `history` : Optional existing conversation history to load into the agent.
@@ -490,8 +491,8 @@ pub async fn new(
 ///   provided, uses ChaCha8.
 /// * `logger` : Optional logger instance for recording agent activities.
 ///   Defaults to the MoonClaw product-home log.
-/// * `home` : Optional home directory path. If not provided, uses the OS home
-///   directory.
+/// * `home` : Optional MoonSuite root path. If not provided, uses the OS home
+///   as the standalone suite root.
 /// * `user_message` : Optional initial user message to send immediately after
 ///   loading.
 /// * `web_search` : Whether to enable web search functionality. Defaults to
