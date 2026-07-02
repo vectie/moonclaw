@@ -47,7 +47,7 @@ priv struct PendingCodexAuth {
 
 ///|
 /// Constructs a daemon instance, validates the executable path, optionally
-/// acquires the `~/.moonsuite/products/moonclaw/daemon.json` lock, and binds
+/// acquires the `/path/to/MoonSuiteRoot/.moonsuite/products/moonclaw/daemon.json` lock, and binds
 /// the HTTP server.
 /// Returns `None` when another daemon already holds the lock.
 pub async fn Daemon::new(
