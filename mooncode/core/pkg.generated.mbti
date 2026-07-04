@@ -97,6 +97,12 @@ pub fn conversation_kind() -> String
 
 pub fn conversation_message_roles() -> Array[String]
 
+pub fn conversation_ownership_contract_id() -> String
+
+pub fn conversation_ownership_contract_json() -> Json
+
+pub fn conversation_ownership_contract_kind() -> String
+
 pub fn conversation_turn_kind() -> String
 
 pub fn conversation_turn_required_fields() -> Array[String]
@@ -280,6 +286,100 @@ pub fn native_tool_exec_endpoint(String, String) -> String
 pub fn protocol_version() -> String
 
 pub fn runtime_command_output_event_names() -> Array[String]
+
+pub fn runtime_control_action_starts_turn(String) -> Bool
+
+pub fn runtime_control_active_statuses() -> Array[String]
+
+pub fn runtime_control_blocked_statuses() -> Array[String]
+
+pub fn runtime_control_contract_id() -> String
+
+pub fn runtime_control_contract_json() -> Json
+
+pub fn runtime_control_contract_kind() -> String
+
+pub fn runtime_control_effect_active_turn() -> String
+
+pub fn runtime_control_effect_allows_turn(String) -> Bool
+
+pub fn runtime_control_effect_already_completed() -> String
+
+pub fn runtime_control_effect_blocked() -> String
+
+pub fn runtime_control_effect_cancel_active() -> String
+
+pub fn runtime_control_effect_defer_steer() -> String
+
+pub fn runtime_control_effect_deliver_steer() -> String
+
+pub fn runtime_control_effect_drop_cancel() -> String
+
+pub fn runtime_control_effect_failed() -> String
+
+pub fn runtime_control_effect_is_terminal(String) -> Bool
+
+pub fn runtime_control_effect_queue_steer() -> String
+
+pub fn runtime_control_effect_queue_turn() -> String
+
+pub fn runtime_control_effect_record_note() -> String
+
+pub fn runtime_control_effect_start_turn() -> String
+
+pub fn runtime_control_effect_wait_for_proof() -> String
+
+pub fn runtime_control_effect_withdraw_pending() -> String
+
+pub fn runtime_control_effects() -> Array[String]
+
+pub fn runtime_control_scheduler_boundary_unit() -> String
+
+pub fn runtime_control_settlement_events(String, String) -> Array[String]
+
+pub fn runtime_control_settlement_required(String, String) -> Bool
+
+pub fn runtime_control_state_kind() -> String
+
+pub fn runtime_control_status_blocked_invalid() -> String
+
+pub fn runtime_control_status_blocked_missing_proof() -> String
+
+pub fn runtime_control_status_blocked_tool_authorization() -> String
+
+pub fn runtime_control_status_completed() -> String
+
+pub fn runtime_control_status_failed() -> String
+
+pub fn runtime_control_status_is_active(String) -> Bool
+
+pub fn runtime_control_status_is_blocked(String) -> Bool
+
+pub fn runtime_control_status_is_pending(String) -> Bool
+
+pub fn runtime_control_status_is_terminal(String) -> Bool
+
+pub fn runtime_control_status_pending() -> String
+
+pub fn runtime_control_status_running() -> String
+
+pub fn runtime_control_status_runtime_started() -> String
+
+pub fn runtime_control_target_state_active() -> String
+
+pub fn runtime_control_target_state_blocked() -> String
+
+pub fn runtime_control_target_state_idle() -> String
+
+pub fn runtime_control_target_state_pending() -> String
+
+pub fn runtime_control_target_state_recorded() -> String
+
+pub fn runtime_control_target_state_terminal() -> String
+
+pub fn runtime_control_target_states() -> Array[String]
+
+pub fn runtime_control_terminal_statuses() -> Array[String]
 
 pub fn runtime_diagnostic_event_name_is_supported(String) -> Bool
 

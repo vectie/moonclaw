@@ -114,6 +114,25 @@ test "mooncode core protocol surface is stable" {
   assert_false(
     model_planner_event_is_planner_evidence(runtime_event_reasoning_delta(), ""),
   )
+  assert_eq(
+    conversation_ownership_contract_id(),
+    "mooncode-conversation-ownership.v1",
+  )
+  assert_eq(runtime_control_contract_id(), "mooncode-runtime-control.v1")
+  assert_true(runtime_control_action_starts_turn(command_prompt()))
+  assert_true(runtime_control_action_starts_turn(command_package()))
+  assert_false(runtime_control_action_starts_turn(command_steer()))
+  assert_true(runtime_control_status_is_active("runtime-started"))
+  assert_true(runtime_control_status_is_blocked("blocked-missing-proof"))
+  assert_true(runtime_control_effect_allows_turn("start-turn"))
+  assert_true(runtime_control_effect_allows_turn("queue-turn"))
+  assert_false(runtime_control_effect_allows_turn("drop-cancel"))
+  assert_true(
+    runtime_control_settlement_events(
+      command_cancel(),
+      runtime_control_effect_cancel_active(),
+    ).contains(runtime_event_runtime_aborted()),
+  )
   assert_eq(command_action_contract_id(), "mooncode-command-actions.v1")
   assert_eq(command_turn_actions().length(), 3)
   assert_eq(command_turn_actions()[0], "prompt")
@@ -168,6 +187,14 @@ test "mooncode core protocol surface is stable" {
   assert_true(surface.contains("\"model_planner_evidence_contract\""))
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-model-planner-evidence.v1\""),
+  )
+  assert_true(surface.contains("\"conversation_ownership_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-conversation-ownership.v1\""),
+  )
+  assert_true(surface.contains("\"runtime_control_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-runtime-control.v1\""),
   )
   assert_true(surface.contains("\"command_action_contract\""))
   assert_true(
@@ -408,6 +435,91 @@ test "mooncode core owns model planner evidence contract" {
   assert_true(payload.contains("\"command_action_contract_id\""))
   assert_true(payload.contains("\"event_name_contract_id\""))
   assert_true(payload.contains("\"runtime_tool_contract_id\""))
+}
+
+///|
+test "mooncode core owns runtime control contract" {
+  assert_eq(
+    conversation_ownership_contract_kind(),
+    "mooncode-conversation-ownership-contract",
+  )
+  let ownership = conversation_ownership_contract_json().stringify()
+  assert_true(
+    ownership.contains("\"contract_id\":\"mooncode-conversation-ownership.v1\""),
+  )
+  assert_true(ownership.contains("\"conversation_contract_id\""))
+  assert_true(
+    ownership.contains("Unscoped runtime/progress/assistant/failure events"),
+  )
+  assert_false(ownership.contains("internal/mooncode"))
+  assert_false(ownership.contains("internal/moonwiki"))
+  assert_false(ownership.contains("Rabbita"))
+  assert_eq(
+    runtime_control_contract_kind(),
+    "mooncode-runtime-control-contract",
+  )
+  assert_eq(runtime_control_state_kind(), "mooncode-runtime-control-state")
+  assert_eq(
+    runtime_control_scheduler_boundary_unit(),
+    "native-runtime-scheduler-boundary",
+  )
+  assert_true(runtime_control_active_statuses().contains("running"))
+  assert_true(runtime_control_terminal_statuses().contains("completed"))
+  assert_true(
+    runtime_control_blocked_statuses().contains("blocked-tool-authorization"),
+  )
+  assert_true(runtime_control_effects().contains("active-turn"))
+  assert_true(runtime_control_effects().contains("already-completed"))
+  assert_true(runtime_control_effects().contains("failed"))
+  assert_true(runtime_control_target_states().contains("recorded"))
+  assert_true(runtime_control_action_starts_turn("run_tests"))
+  assert_false(runtime_control_action_starts_turn("cancel"))
+  assert_true(runtime_control_status_is_pending("pending"))
+  assert_true(runtime_control_status_is_terminal("failed"))
+  assert_true(runtime_control_effect_is_terminal("already-completed"))
+  assert_true(
+    runtime_control_settlement_required(
+      command_steer(),
+      runtime_control_effect_queue_steer(),
+    ),
+  )
+  assert_false(
+    runtime_control_settlement_required(
+      command_steer(),
+      runtime_control_effect_failed(),
+    ),
+  )
+  assert_true(
+    runtime_control_settlement_events(
+      command_steer(),
+      runtime_control_effect_defer_steer(),
+    ).contains(runtime_event_steer_deferred()),
+  )
+  assert_true(
+    runtime_control_settlement_events(
+      command_cancel(),
+      runtime_control_effect_drop_cancel(),
+    ).contains(runtime_event_cancel_dropped()),
+  )
+  let payload = runtime_control_contract_json().stringify()
+  assert_true(
+    payload.contains("\"kind\":\"mooncode-runtime-control-contract\""),
+  )
+  assert_true(
+    payload.contains("\"contract_id\":\"mooncode-runtime-control.v1\""),
+  )
+  assert_true(payload.contains("\"command_action_contract_id\""))
+  assert_true(payload.contains("\"event_name_contract_id\""))
+  assert_true(payload.contains("\"conversation_ownership_contract_id\""))
+  assert_true(payload.contains("\"protocol_effects\""))
+  assert_true(payload.contains("\"active-turn\""))
+  assert_true(payload.contains("\"already-completed\""))
+  assert_true(payload.contains("\"settlement_boundary\""))
+  assert_true(payload.contains("\"runtime_aborted\""))
+  assert_true(payload.contains("\"turn_ownership\""))
+  assert_false(payload.contains("internal/mooncode"))
+  assert_false(payload.contains("internal/moonwiki"))
+  assert_false(payload.contains("Rabbita"))
 }
 
 ///|
