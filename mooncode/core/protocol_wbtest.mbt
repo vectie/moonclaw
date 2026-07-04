@@ -56,6 +56,17 @@ test "mooncode core protocol surface is stable" {
       "/v1/code/sessions/<id>/runtime-service?book_root=<path>",
     ),
   )
+  assert_eq(event_lane_contract_id(), "mooncode-event-lanes.v1")
+  assert_eq(event_lane_default(), "runtime")
+  assert_eq(event_lanes().length(), 7)
+  assert_eq(event_lanes()[0], "transcript")
+  assert_eq(event_lanes()[event_lanes().length() - 1], "review")
+  assert_true(event_lane_is_supported("artifact"))
+  assert_false(event_lane_is_supported("debug"))
+  assert_true(event_lane_is_progress("runtime"))
+  assert_false(event_lane_is_progress("transcript"))
+  assert_eq(event_lane_normalize("diff"), "diff")
+  assert_eq(event_lane_normalize("debug"), "runtime")
   assert_true(native_capability_required_tools().contains("apply_patch"))
   assert_true(native_command_body_required_fields().contains("session_id"))
   assert_true(native_command_body_supported_fields().contains("packet"))
@@ -74,6 +85,8 @@ test "mooncode core protocol surface is stable" {
   assert_true(surface.contains("\"stream_options\""))
   assert_true(surface.contains("\"wait_ms\""))
   assert_true(surface.contains("\"poll_ms\""))
+  assert_true(surface.contains("\"event_lane_contract\""))
+  assert_true(surface.contains("\"contract_id\":\"mooncode-event-lanes.v1\""))
 }
 
 ///|
@@ -92,6 +105,29 @@ test "mooncode core delegates conversation contract to moonlib" {
     payload.contains("\"turn_order\":[\"user\",\"progress\",\"assistant\"]"),
   )
   assert_true(payload.contains("\"shared_contract_owner\":\"moonlib\""))
+  assert_false(payload.contains("internal/mooncode"))
+  assert_false(payload.contains("internal/moonwiki"))
+  assert_false(payload.contains("Rabbita"))
+}
+
+///|
+test "mooncode core owns event lane contract" {
+  let payload = event_lane_contract_json().stringify()
+  assert_true(payload.contains("\"kind\":\"mooncode-event-lane-contract\""))
+  assert_true(payload.contains("\"protocol\":\"mooncode.v1\""))
+  assert_true(payload.contains("\"contract_id\":\"mooncode-event-lanes.v1\""))
+  assert_true(
+    payload.contains(
+      "\"lanes\":[\"transcript\",\"runtime\",\"tool\",\"diff\",\"test\",\"artifact\",\"review\"]",
+    ),
+  )
+  assert_true(
+    payload.contains(
+      "\"progress_lanes\":[\"runtime\",\"tool\",\"diff\",\"test\",\"artifact\",\"review\"]",
+    ),
+  )
+  assert_true(payload.contains("\"default_lane\":\"runtime\""))
+  assert_true(payload.contains("canonical conversation turns own chat"))
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
   assert_false(payload.contains("Rabbita"))

@@ -19,6 +19,36 @@ pub fn conversation_turn_kind() -> String
 
 pub fn conversation_turn_required_fields() -> Array[String]
 
+pub fn event_lane_artifact() -> String
+
+pub fn event_lane_contract_id() -> String
+
+pub fn event_lane_contract_json() -> Json
+
+pub fn event_lane_default() -> String
+
+pub fn event_lane_diff() -> String
+
+pub fn event_lane_is_progress(String) -> Bool
+
+pub fn event_lane_is_supported(String) -> Bool
+
+pub fn event_lane_normalize(String) -> String
+
+pub fn event_lane_review() -> String
+
+pub fn event_lane_runtime() -> String
+
+pub fn event_lane_test() -> String
+
+pub fn event_lane_tool() -> String
+
+pub fn event_lane_transcript() -> String
+
+pub fn event_lanes() -> Array[String]
+
+pub fn event_progress_lanes() -> Array[String]
+
 pub fn executable_book_lifecycle_contract_id() -> String
 
 pub fn executable_book_lifecycle_contract_json() -> Json

@@ -252,6 +252,7 @@ pub fn native_capability_stream_options() -> Json {
 fn native_capability_surface_fingerprint_source() -> String {
   let required_endpoints = native_capability_required_endpoints().join("\n")
   let required_tools = native_capability_required_tools().join("\n")
+  let supported_event_lanes = event_lanes().join("\n")
   let command_body_required_fields = native_command_body_required_fields().join(
     "\n",
   )
@@ -265,6 +266,8 @@ fn native_capability_surface_fingerprint_source() -> String {
     "component=mooncode",
     "protocol=\{protocol_version()}",
     "capability_contract_id=\{native_capability_contract_id()}",
+    "event_lane_contract_id=\{event_lane_contract_id()}",
+    "event_lanes=\{supported_event_lanes}",
     "required_endpoints=\{required_endpoints}",
     "required_tools=\{required_tools}",
     "command_body_required_fields=\{command_body_required_fields}",
@@ -291,6 +294,7 @@ pub fn native_capability_surface_json() -> Json {
     "protocol": protocol_version(),
     "capability_contract_id": native_capability_contract_id(),
     "capability_surface_fingerprint": native_capability_surface_fingerprint(),
+    "event_lane_contract": event_lane_contract_json(),
     "required_endpoints": native_capability_required_endpoints(),
     "required_tools": native_capability_required_tools(),
     "command_body_required_fields": native_command_body_required_fields(),
