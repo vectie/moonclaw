@@ -133,6 +133,22 @@ test "mooncode core protocol surface is stable" {
       runtime_control_effect_cancel_active(),
     ).contains(runtime_event_runtime_aborted()),
   )
+  assert_eq(runtime_consumer_contract_id(), "mooncode-runtime-consumer.v1")
+  assert_true(runtime_receipt_status_is_delivered("runtime-completed"))
+  assert_false(runtime_receipt_status_is_delivered("runtime-claimed"))
+  assert_true(runtime_receipt_status_is_claimed("runtime-claimed"))
+  assert_eq(
+    runtime_replay_ack_status("", ok=true),
+    runtime_receipt_status_acknowledged(),
+  )
+  assert_eq(
+    runtime_replay_ack_status("", ok=false),
+    runtime_receipt_status_failed(),
+  )
+  assert_true(runtime_claim_status_blocks_following("claimed"))
+  assert_false(runtime_claim_status_blocks_following("delivered"))
+  assert_true(runtime_replay_status_is_pending("failed-pending-retry"))
+  assert_false(runtime_replay_status_is_pending("delivered"))
   assert_eq(
     package_review_flow_contract_id(),
     "mooncode-package-review-model-flow.v1",
@@ -217,6 +233,10 @@ test "mooncode core protocol surface is stable" {
   assert_true(surface.contains("\"runtime_control_contract\""))
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-runtime-control.v1\""),
+  )
+  assert_true(surface.contains("\"runtime_consumer_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-runtime-consumer.v1\""),
   )
   assert_true(surface.contains("\"package_review_flow_contract\""))
   assert_true(
@@ -545,6 +565,99 @@ test "mooncode core owns runtime control contract" {
   assert_true(payload.contains("\"settlement_boundary\""))
   assert_true(payload.contains("\"runtime_aborted\""))
   assert_true(payload.contains("\"turn_ownership\""))
+  assert_false(payload.contains("internal/mooncode"))
+  assert_false(payload.contains("internal/moonwiki"))
+  assert_false(payload.contains("Rabbita"))
+}
+
+///|
+test "mooncode core owns runtime consumer contract" {
+  assert_eq(
+    runtime_consumer_contract_kind(),
+    "mooncode-runtime-consumer-contract",
+  )
+  assert_eq(runtime_claim_state_kind(), "mooncode-runtime-claim-state")
+  assert_eq(runtime_claim_response_kind(), "mooncode-runtime-claim")
+  assert_eq(runtime_replay_state_kind(), "mooncode-runtime-replay")
+  assert_eq(runtime_claim_mode(), "mooncode-runtime-claim")
+  assert_eq(runtime_replay_mode(), "mooncode-runtime-replay")
+  assert_true(
+    runtime_receipt_delivered_statuses().contains("runtime-acknowledged"),
+  )
+  assert_true(
+    runtime_replay_ack_allowed_statuses().contains("runtime-completed"),
+  )
+  assert_eq(
+    runtime_replay_ack_status("runtime-completed", ok=false),
+    "runtime-completed",
+  )
+  assert_eq(
+    runtime_replay_ack_status("unknown", ok=true),
+    "runtime-acknowledged",
+  )
+  assert_eq(runtime_replay_ack_status("unknown", ok=false), "failed")
+  assert_true(runtime_replay_ack_detail("proof-missing").contains("proof"))
+  assert_eq(
+    runtime_claim_base_status(
+      true,
+      runtime_receipt_status_missing(),
+      false,
+      false,
+    ),
+    "claimable",
+  )
+  assert_eq(
+    runtime_claim_base_status(
+      true,
+      runtime_receipt_status_claimed(),
+      false,
+      false,
+    ),
+    "claimed",
+  )
+  assert_eq(
+    runtime_claim_status_with_order_blocker("claimable", "cmd-prior"),
+    "blocked-by-prior-command",
+  )
+  assert_eq(
+    runtime_replay_base_status(
+      true,
+      runtime_receipt_status_claimed(),
+      true,
+      false,
+    ),
+    "expired-claim-pending-retry",
+  )
+  assert_eq(
+    runtime_replay_status_with_order_blocker("pending", "cmd-prior"),
+    "blocked-by-prior-command",
+  )
+  assert_true(runtime_replay_status_blocks_following("claimed"))
+  assert_false(runtime_replay_status_blocks_following("failed-pending-retry"))
+  assert_true(runtime_replay_ack_order_statuses().contains("consumer-mismatch"))
+  assert_eq(
+    runtime_claim_endpoint("session one"),
+    "/api/mooncode/sessions/session%20one/runtime-claim",
+  )
+  assert_eq(
+    runtime_replay_endpoint("session one"),
+    "/api/mooncode/sessions/session%20one/runtime-replay",
+  )
+  assert_true(runtime_claim_ordering_rule().contains("runtime-commands.jsonl"))
+  assert_true(runtime_claim_lease_policy().contains("lease_expires_at"))
+  assert_true(runtime_replay_duplicate_guard().contains("runtime-completed"))
+  let payload = runtime_consumer_contract_json("session one").stringify()
+  assert_true(
+    payload.contains("\"kind\":\"mooncode-runtime-consumer-contract\""),
+  )
+  assert_true(
+    payload.contains("\"contract_id\":\"mooncode-runtime-consumer.v1\""),
+  )
+  assert_true(payload.contains("\"runtime-claimed\""))
+  assert_true(payload.contains("\"blocked-by-prior-command\""))
+  assert_true(
+    payload.contains("\"/api/mooncode/sessions/session%20one/runtime-claim\""),
+  )
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
   assert_false(payload.contains("Rabbita"))

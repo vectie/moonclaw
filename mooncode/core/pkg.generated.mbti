@@ -383,7 +383,53 @@ pub fn package_review_flow_terminal_statuses() -> Array[String]
 
 pub fn protocol_version() -> String
 
+pub fn runtime_claim_authorization_rule() -> String
+
+pub fn runtime_claim_base_status(Bool, String, Bool, Bool) -> String
+
+pub fn runtime_claim_consumer_contract_json(String) -> Json
+
+pub fn runtime_claim_consumer_ordering_rule() -> String
+
+pub fn runtime_claim_duplicate_guard() -> String
+
+pub fn runtime_claim_endpoint(String) -> String
+
+pub fn runtime_claim_lease_policy() -> String
+
+pub fn runtime_claim_mode() -> String
+
+pub fn runtime_claim_ordering_rule() -> String
+
+pub fn runtime_claim_response_kind() -> String
+
+pub fn runtime_claim_state_kind() -> String
+
+pub fn runtime_claim_status_blocked_by_prior_command() -> String
+
+pub fn runtime_claim_status_blocked_tool_authorization() -> String
+
+pub fn runtime_claim_status_blocks_following(String) -> Bool
+
+pub fn runtime_claim_status_claimable() -> String
+
+pub fn runtime_claim_status_claimed() -> String
+
+pub fn runtime_claim_status_delivered() -> String
+
+pub fn runtime_claim_status_invalid() -> String
+
+pub fn runtime_claim_status_with_order_blocker(String, String) -> String
+
+pub fn runtime_claim_statuses() -> Array[String]
+
 pub fn runtime_command_output_event_names() -> Array[String]
+
+pub fn runtime_consumer_contract_id() -> String
+
+pub fn runtime_consumer_contract_json(String) -> Json
+
+pub fn runtime_consumer_contract_kind() -> String
 
 pub fn runtime_control_action_starts_turn(String) -> Bool
 
@@ -582,6 +628,94 @@ pub fn runtime_event_usage() -> String
 pub fn runtime_failure_event_name_is_supported(String) -> Bool
 
 pub fn runtime_failure_event_names() -> Array[String]
+
+pub fn runtime_receipt_delivered_statuses() -> Array[String]
+
+pub fn runtime_receipt_status_accepted() -> String
+
+pub fn runtime_receipt_status_acknowledged() -> String
+
+pub fn runtime_receipt_status_claimed() -> String
+
+pub fn runtime_receipt_status_completed() -> String
+
+pub fn runtime_receipt_status_failed() -> String
+
+pub fn runtime_receipt_status_is_claimed(String) -> Bool
+
+pub fn runtime_receipt_status_is_delivered(String) -> Bool
+
+pub fn runtime_receipt_status_missing() -> String
+
+pub fn runtime_receipt_status_proof_missing() -> String
+
+pub fn runtime_receipt_status_recorded() -> String
+
+pub fn runtime_receipt_status_skipped() -> String
+
+pub fn runtime_replay_ack_allowed_statuses() -> Array[String]
+
+pub fn runtime_replay_ack_detail(String) -> String
+
+pub fn runtime_replay_ack_order_status_already_delivered() -> String
+
+pub fn runtime_replay_ack_order_status_consumer_mismatch() -> String
+
+pub fn runtime_replay_ack_order_status_matching_claim() -> String
+
+pub fn runtime_replay_ack_order_status_retry_after_failed_receipt() -> String
+
+pub fn runtime_replay_ack_order_status_unclaimed_ack() -> String
+
+pub fn runtime_replay_ack_order_statuses() -> Array[String]
+
+pub fn runtime_replay_ack_status(String, ok~ : Bool) -> String
+
+pub fn runtime_replay_ack_status_is_allowed(String) -> Bool
+
+pub fn runtime_replay_authorization_rule() -> String
+
+pub fn runtime_replay_base_status(Bool, String, Bool, Bool) -> String
+
+pub fn runtime_replay_consumer_contract_json(String) -> Json
+
+pub fn runtime_replay_duplicate_guard() -> String
+
+pub fn runtime_replay_endpoint(String) -> String
+
+pub fn runtime_replay_mode() -> String
+
+pub fn runtime_replay_ordering_rule() -> String
+
+pub fn runtime_replay_policy() -> String
+
+pub fn runtime_replay_state_kind() -> String
+
+pub fn runtime_replay_status_blocked_by_prior_command() -> String
+
+pub fn runtime_replay_status_blocked_invalid() -> String
+
+pub fn runtime_replay_status_blocked_tool_authorization() -> String
+
+pub fn runtime_replay_status_blocks_following(String) -> Bool
+
+pub fn runtime_replay_status_claimed() -> String
+
+pub fn runtime_replay_status_delivered() -> String
+
+pub fn runtime_replay_status_expired_claim_pending_retry() -> String
+
+pub fn runtime_replay_status_failed_pending_retry() -> String
+
+pub fn runtime_replay_status_is_pending(String) -> Bool
+
+pub fn runtime_replay_status_missing_proof_pending_retry() -> String
+
+pub fn runtime_replay_status_pending() -> String
+
+pub fn runtime_replay_status_with_order_blocker(String, String) -> String
+
+pub fn runtime_replay_statuses() -> Array[String]
 
 pub fn runtime_tool_alias_rows() -> Array[Json]
 
