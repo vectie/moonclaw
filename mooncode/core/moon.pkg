@@ -3,5 +3,6 @@ import {
   "moonbitlang/core/json",
   "moonbitlang/core/string",
   "moonbitlang/x/crypto",
+  "vectie/moonlib/conversation",
   "vectie/moonlib/moonsuite",
 }
