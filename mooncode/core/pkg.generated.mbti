@@ -2,6 +2,18 @@
 package "vectie/moonclaw/mooncode/core"
 
 // Values
+pub fn conversation_contract_id() -> String
+
+pub fn conversation_contract_json() -> Json
+
+pub fn conversation_kind() -> String
+
+pub fn conversation_message_roles() -> Array[String]
+
+pub fn conversation_turn_kind() -> String
+
+pub fn conversation_turn_required_fields() -> Array[String]
+
 pub fn executable_book_lifecycle_contract_id() -> String
 
 pub fn executable_book_lifecycle_contract_json() -> Json

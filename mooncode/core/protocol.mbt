@@ -4,6 +4,47 @@ pub fn protocol_version() -> String {
 }
 
 ///|
+fn product_id() -> String {
+  "mooncode"
+}
+
+///|
+pub fn conversation_contract_id() -> String {
+  @conversation.contract_id()
+}
+
+///|
+pub fn conversation_kind() -> String {
+  @conversation.conversation_kind(product_id=product_id())
+}
+
+///|
+pub fn conversation_turn_kind() -> String {
+  @conversation.turn_kind(product_id=product_id())
+}
+
+///|
+pub fn conversation_message_roles() -> Array[String] {
+  @conversation.message_roles()
+}
+
+///|
+pub fn conversation_turn_required_fields() -> Array[String] {
+  @conversation.turn_required_fields()
+}
+
+///|
+pub fn conversation_contract_json() -> Json {
+  @conversation.contract_json(
+    product_id=product_id(),
+    protocol=protocol_version(),
+    durable_owner="mooncode",
+    runtime_owner="moonclaw",
+    ui_owner="moondesk",
+  )
+}
+
+///|
 pub fn native_capability_contract_id() -> String {
   "mooncode-native-capability-surface.v1"
 }
