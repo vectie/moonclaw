@@ -50,69 +50,6 @@ pub fn native_capability_contract_id() -> String {
 }
 
 ///|
-pub(all) struct NativeCapabilityEndpoints {
-  capabilities : String
-  session_list : String
-  session_listing : String
-  session_show : String
-  session_commands : String
-  runtime_control : String
-  runtime_claim : String
-  stream : String
-  runtime_turn : String
-  runtime_loop : String
-  runtime_service : String
-  runtime_events : String
-  tool_exec : String
-  eval_report : String
-  package_result : String
-} derive(Debug, Eq, ToJson, FromJson)
-
-///|
-pub fn native_capability_endpoints() -> NativeCapabilityEndpoints {
-  {
-    capabilities: "/v1/code/capabilities",
-    session_list: "/v1/code/sessions?book_root=<path>",
-    session_listing: "/v1/code/sessions?book_root=<path>&format=json",
-    session_show: "/v1/code/sessions/<id>?book_root=<path>",
-    session_commands: "/v1/code/sessions/<id>/commands",
-    runtime_control: "/v1/code/sessions/<id>/runtime-control?book_root=<path>",
-    runtime_claim: "/v1/code/sessions/<id>/runtime-claim?book_root=<path>",
-    stream: "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
-    runtime_turn: "/v1/code/sessions/<id>/runtime-turn?book_root=<path>",
-    runtime_loop: "/v1/code/sessions/<id>/runtime-loop?book_root=<path>",
-    runtime_service: "/v1/code/sessions/<id>/runtime-service?book_root=<path>",
-    runtime_events: "/v1/code/sessions/<id>/runtime-events?book_root=<path>",
-    tool_exec: "/v1/code/sessions/<id>/tool-exec?book_root=<path>",
-    eval_report: "/v1/code/sessions/<id>/eval-report?book_root=<path>",
-    package_result: "/v1/code/sessions/<id>/package-result?book_root=<path>",
-  }
-}
-
-///|
-pub fn NativeCapabilityEndpoints::required_endpoints(
-  self : NativeCapabilityEndpoints,
-) -> Array[String] {
-  [
-    self.capabilities,
-    self.session_list,
-    self.session_listing,
-    self.session_show,
-    self.session_commands,
-    self.runtime_control,
-    self.runtime_claim,
-    self.stream,
-    self.runtime_turn,
-    self.runtime_loop,
-    self.runtime_service,
-    self.runtime_events,
-    self.tool_exec,
-    self.eval_report,
-    self.package_result,
-  ]
-}
-
-///|
 pub fn executable_book_lifecycle_contract_id() -> String {
   "mooncode-executable-book-lifecycle.v1"
 }

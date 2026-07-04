@@ -24,6 +24,31 @@ test "mooncode core protocol surface is stable" {
     assert_true(native_capability_required_endpoints().contains(endpoint))
   }
   assert_true(
+    native_capability_target_description().contains(endpoints.capabilities),
+  )
+  assert_true(
+    native_capability_target_description().contains(endpoints.runtime_events),
+  )
+  assert_eq(
+    native_session_commands_endpoint("session one"),
+    "/v1/code/sessions/session%20one/commands",
+  )
+  assert_eq(
+    native_runtime_service_endpoint("session one", "/tmp/moon book"),
+    "/v1/code/sessions/session%20one/runtime-service?book_root=%2Ftmp%2Fmoon%20book",
+  )
+  assert_eq(
+    native_session_listing_endpoint("/tmp/moon book"),
+    "/v1/code/sessions?book_root=%2Ftmp%2Fmoon%20book&format=json",
+  )
+  assert_eq(
+    native_stream_endpoint("session one", "/tmp/moon book", "sse", 7),
+    "/v1/code/sessions/session%20one/stream?book_root=%2Ftmp%2Fmoon%20book&format=sse&since=7&wait_ms=0&poll_ms=100",
+  )
+  assert_eq(native_endpoint_component("safe-_.~"), "safe-_.~")
+  assert_eq(native_endpoint_component("!*'()"), "%21%2A%27%28%29")
+  assert_eq(native_endpoint_component("中文"), "%E4%B8%AD%E6%96%87")
+  assert_true(
     native_capability_required_endpoints().contains("/v1/code/capabilities"),
   )
   assert_true(

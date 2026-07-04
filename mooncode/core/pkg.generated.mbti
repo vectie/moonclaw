@@ -25,6 +25,8 @@ pub fn executable_book_lifecycle_contract_json() -> Json
 
 pub fn executable_book_lifecycle_steps() -> Array[String]
 
+pub fn native_capabilities_endpoint() -> String
+
 pub fn native_capability_contract_id() -> String
 
 pub fn native_capability_endpoints() -> NativeCapabilityEndpoints
@@ -41,11 +43,43 @@ pub fn native_capability_surface_fingerprint() -> String
 
 pub fn native_capability_surface_json() -> Json
 
+pub fn native_capability_target_description() -> String
+
 pub fn native_command_body_field_is_supported(String) -> Bool
 
 pub fn native_command_body_required_fields() -> Array[String]
 
 pub fn native_command_body_supported_fields() -> Array[String]
+
+pub fn native_endpoint_component(String) -> String
+
+pub fn native_eval_report_endpoint(String, String) -> String
+
+pub fn native_package_result_endpoint(String, String) -> String
+
+pub fn native_runtime_claim_endpoint(String, String) -> String
+
+pub fn native_runtime_control_endpoint(String, String) -> String
+
+pub fn native_runtime_events_endpoint(String, String) -> String
+
+pub fn native_runtime_loop_endpoint(String, String) -> String
+
+pub fn native_runtime_service_endpoint(String, String) -> String
+
+pub fn native_runtime_turn_endpoint(String, String) -> String
+
+pub fn native_session_commands_endpoint(String) -> String
+
+pub fn native_session_list_endpoint(String) -> String
+
+pub fn native_session_listing_endpoint(String) -> String
+
+pub fn native_session_show_endpoint(String, String) -> String
+
+pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_ms? : Int) -> String
+
+pub fn native_tool_exec_endpoint(String, String) -> String
 
 pub fn protocol_version() -> String
 
