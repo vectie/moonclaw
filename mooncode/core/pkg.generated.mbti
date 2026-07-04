@@ -283,6 +283,104 @@ pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_
 
 pub fn native_tool_exec_endpoint(String, String) -> String
 
+pub fn package_review_flow_accept_kinds() -> Array[String]
+
+pub fn package_review_flow_accepted_sequence() -> Array[String]
+
+pub fn package_review_flow_assistant_summary_kinds() -> Array[String]
+
+pub fn package_review_flow_command_kinds() -> Array[String]
+
+pub fn package_review_flow_contract_id() -> String
+
+pub fn package_review_flow_contract_json() -> Json
+
+pub fn package_review_flow_contract_kind() -> String
+
+pub fn package_review_flow_diff_review_kinds() -> Array[String]
+
+pub fn package_review_flow_event_failed(Json) -> Bool
+
+pub fn package_review_flow_event_is_accept(Json) -> Bool
+
+pub fn package_review_flow_event_is_assistant_summary(Json) -> Bool
+
+pub fn package_review_flow_event_is_diff_review(Json) -> Bool
+
+pub fn package_review_flow_event_is_evidence(Json) -> Bool
+
+pub fn package_review_flow_event_is_failure(Json) -> Bool
+
+pub fn package_review_flow_event_is_failure_eligible(Json) -> Bool
+
+pub fn package_review_flow_event_is_package_built(Json) -> Bool
+
+pub fn package_review_flow_event_is_package_command(Json) -> Bool
+
+pub fn package_review_flow_event_is_package_manifest(Json) -> Bool
+
+pub fn package_review_flow_event_is_package_readiness(Json) -> Bool
+
+pub fn package_review_flow_event_is_package_verified(Json) -> Bool
+
+pub fn package_review_flow_event_is_reject(Json) -> Bool
+
+pub fn package_review_flow_event_is_test_result(Json) -> Bool
+
+pub fn package_review_flow_failed_sequence() -> Array[String]
+
+pub fn package_review_flow_failure_kinds() -> Array[String]
+
+pub fn package_review_flow_manifest_kinds() -> Array[String]
+
+pub fn package_review_flow_missing_step_assistant_summary() -> String
+
+pub fn package_review_flow_missing_step_package_manifest() -> String
+
+pub fn package_review_flow_missing_step_package_verified() -> String
+
+pub fn package_review_flow_missing_step_review_accept_receipt() -> String
+
+pub fn package_review_flow_missing_step_test_evidence() -> String
+
+pub fn package_review_flow_readiness_kinds() -> Array[String]
+
+pub fn package_review_flow_reason_evidence_without_package_command() -> String
+
+pub fn package_review_flow_reason_missing_command_owner() -> String
+
+pub fn package_review_flow_reject_kinds() -> Array[String]
+
+pub fn package_review_flow_rejected_sequence() -> Array[String]
+
+pub fn package_review_flow_report_kind() -> String
+
+pub fn package_review_flow_status_accepted() -> String
+
+pub fn package_review_flow_status_empty() -> String
+
+pub fn package_review_flow_status_failed() -> String
+
+pub fn package_review_flow_status_is_terminal(String) -> Bool
+
+pub fn package_review_flow_status_rejected() -> String
+
+pub fn package_review_flow_status_running() -> String
+
+pub fn package_review_flow_status_stale() -> String
+
+pub fn package_review_flow_status_waiting_for_assistant() -> String
+
+pub fn package_review_flow_status_waiting_for_manifest() -> String
+
+pub fn package_review_flow_status_waiting_for_readiness() -> String
+
+pub fn package_review_flow_status_waiting_for_review() -> String
+
+pub fn package_review_flow_status_waiting_for_tests() -> String
+
+pub fn package_review_flow_terminal_statuses() -> Array[String]
+
 pub fn protocol_version() -> String
 
 pub fn runtime_command_output_event_names() -> Array[String]

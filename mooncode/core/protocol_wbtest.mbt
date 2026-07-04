@@ -133,6 +133,28 @@ test "mooncode core protocol surface is stable" {
       runtime_control_effect_cancel_active(),
     ).contains(runtime_event_runtime_aborted()),
   )
+  assert_eq(
+    package_review_flow_contract_id(),
+    "mooncode-package-review-model-flow.v1",
+  )
+  assert_true(package_review_flow_status_is_terminal("accepted"))
+  assert_true(package_review_flow_status_is_terminal("failed"))
+  assert_false(package_review_flow_status_is_terminal("waiting-for-tests"))
+  assert_true(
+    package_review_flow_event_is_package_command({
+      "kind": "command",
+      "action": "package",
+    }),
+  )
+  assert_true(
+    package_review_flow_event_is_evidence({ "kind": "package.manifest" }),
+  )
+  assert_true(
+    package_review_flow_event_is_failure({
+      "kind": "test_result",
+      "status": "failed",
+    }),
+  )
   assert_eq(command_action_contract_id(), "mooncode-command-actions.v1")
   assert_eq(command_turn_actions().length(), 3)
   assert_eq(command_turn_actions()[0], "prompt")
@@ -195,6 +217,12 @@ test "mooncode core protocol surface is stable" {
   assert_true(surface.contains("\"runtime_control_contract\""))
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-runtime-control.v1\""),
+  )
+  assert_true(surface.contains("\"package_review_flow_contract\""))
+  assert_true(
+    surface.contains(
+      "\"contract_id\":\"mooncode-package-review-model-flow.v1\"",
+    ),
   )
   assert_true(surface.contains("\"command_action_contract\""))
   assert_true(
@@ -517,6 +545,128 @@ test "mooncode core owns runtime control contract" {
   assert_true(payload.contains("\"settlement_boundary\""))
   assert_true(payload.contains("\"runtime_aborted\""))
   assert_true(payload.contains("\"turn_ownership\""))
+  assert_false(payload.contains("internal/mooncode"))
+  assert_false(payload.contains("internal/moonwiki"))
+  assert_false(payload.contains("Rabbita"))
+}
+
+///|
+test "mooncode core owns package review model flow contract" {
+  assert_eq(
+    package_review_flow_contract_kind(),
+    "mooncode-package-review-model-flow-contract",
+  )
+  assert_eq(
+    package_review_flow_report_kind(),
+    "mooncode-package-review-model-flow-report",
+  )
+  assert_true(package_review_flow_terminal_statuses().contains("accepted"))
+  assert_true(package_review_flow_terminal_statuses().contains("rejected"))
+  assert_true(package_review_flow_terminal_statuses().contains("failed"))
+  assert_true(package_review_flow_status_is_terminal("accepted"))
+  assert_false(package_review_flow_status_is_terminal("running"))
+  assert_eq(
+    package_review_flow_reason_missing_command_owner(),
+    "missing-command-owner",
+  )
+  assert_eq(
+    package_review_flow_reason_evidence_without_package_command(),
+    "evidence-without-package-command",
+  )
+  assert_true(package_review_flow_command_kinds().contains("command.package"))
+  assert_true(package_review_flow_manifest_kinds().contains("package.manifest"))
+  assert_true(
+    package_review_flow_diff_review_kinds().contains("patch_set.manifest"),
+  )
+  assert_true(
+    package_review_flow_readiness_kinds().contains("package_verified"),
+  )
+  assert_true(
+    package_review_flow_failure_kinds().contains("runtime.planner_failed"),
+  )
+  assert_true(
+    package_review_flow_event_is_package_command({ "kind": "command.package" }),
+  )
+  assert_true(
+    package_review_flow_event_is_package_command({
+      "kind": "command",
+      "action": "package",
+    }),
+  )
+  assert_true(
+    package_review_flow_event_is_package_manifest({
+      "kind": "mooncode-package-index",
+    }),
+  )
+  assert_true(
+    package_review_flow_event_is_diff_review({ "kind": "file_change" }),
+  )
+  assert_true(
+    package_review_flow_event_is_diff_review({
+      "lane": "diff",
+      "kind": "custom",
+    }),
+  )
+  assert_true(package_review_flow_event_is_accept({ "kind": "receipt.accept" }))
+  assert_true(package_review_flow_event_is_reject({ "kind": "receipt.reject" }))
+  assert_true(
+    package_review_flow_event_is_test_result({ "kind": "test_result" }),
+  )
+  assert_true(
+    package_review_flow_event_is_package_readiness({
+      "kind": "package_verified",
+    }),
+  )
+  assert_true(
+    package_review_flow_event_is_package_verified({
+      "kind": "runtime.package_verified",
+    }),
+  )
+  assert_true(
+    package_review_flow_event_is_package_built({
+      "kind": "runtime.package_built",
+    }),
+  )
+  assert_true(
+    package_review_flow_event_is_assistant_summary({ "kind": "assistant" }),
+  )
+  assert_true(
+    package_review_flow_event_is_assistant_summary({
+      "kind": "finish",
+      "lane": "review",
+    }),
+  )
+  assert_true(package_review_flow_event_is_failure({ "kind": "command_error" }))
+  assert_true(
+    package_review_flow_event_is_failure({
+      "kind": "test_result",
+      "exit_code": 1,
+    }),
+  )
+  assert_false(
+    package_review_flow_event_is_failure({
+      "kind": "test_result",
+      "exit_code": 0,
+    }),
+  )
+  assert_true(
+    package_review_flow_event_is_evidence({ "kind": "package_verified" }),
+  )
+  let payload = package_review_flow_contract_json().stringify()
+  assert_true(
+    payload.contains("\"kind\":\"mooncode-package-review-model-flow-contract\""),
+  )
+  assert_true(
+    payload.contains(
+      "\"contract_id\":\"mooncode-package-review-model-flow.v1\"",
+    ),
+  )
+  assert_true(payload.contains("\"command_action_contract_id\""))
+  assert_true(payload.contains("\"event_name_contract_id\""))
+  assert_true(payload.contains("\"accepted_sequence\""))
+  assert_true(payload.contains("\"receipt.accept\""))
+  assert_true(payload.contains("\"stale_reasons\""))
+  assert_true(payload.contains("\"missing_steps\""))
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
   assert_false(payload.contains("Rabbita"))
