@@ -1,6 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/mooncode/core"
 
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
 // Values
 pub fn conversation_contract_id() -> String
 
@@ -21,6 +26,8 @@ pub fn executable_book_lifecycle_contract_json() -> Json
 pub fn executable_book_lifecycle_steps() -> Array[String]
 
 pub fn native_capability_contract_id() -> String
+
+pub fn native_capability_endpoints() -> NativeCapabilityEndpoints
 
 pub fn native_capability_required_endpoints() -> Array[String]
 
@@ -47,6 +54,24 @@ pub fn standalone_boundary_json() -> Json
 // Errors
 
 // Types and methods
+pub(all) struct NativeCapabilityEndpoints {
+  capabilities : String
+  session_list : String
+  session_listing : String
+  session_show : String
+  session_commands : String
+  runtime_control : String
+  runtime_claim : String
+  stream : String
+  runtime_turn : String
+  runtime_loop : String
+  runtime_service : String
+  runtime_events : String
+  tool_exec : String
+  eval_report : String
+  package_result : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn NativeCapabilityEndpoints::required_endpoints(Self) -> Array[String]
 
 // Type aliases
 
