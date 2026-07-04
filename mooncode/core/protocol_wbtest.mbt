@@ -67,6 +67,20 @@ test "mooncode core protocol surface is stable" {
   assert_false(event_lane_is_progress("transcript"))
   assert_eq(event_lane_normalize("diff"), "diff")
   assert_eq(event_lane_normalize("debug"), "runtime")
+  assert_eq(runtime_event_name_contract_id(), "mooncode-runtime-event-names.v1")
+  assert_true(runtime_event_names().contains("assistant_delta"))
+  assert_true(runtime_event_names().contains("runtime_finished"))
+  assert_true(runtime_event_names().contains("package_verified"))
+  assert_true(runtime_event_name_is_supported("tool_call"))
+  assert_false(runtime_event_name_is_supported("debug_event"))
+  assert_true(runtime_command_output_event_names().contains("tool_result"))
+  assert_false(runtime_command_output_event_names().contains("usage"))
+  assert_true(runtime_failure_event_names().contains("runtime_unavailable"))
+  assert_true(runtime_failure_event_name_is_supported("command_error"))
+  assert_true(runtime_diagnostic_event_names().contains("runtime_loop"))
+  assert_true(
+    runtime_diagnostic_event_name_is_supported("runtime.service_finished"),
+  )
   assert_true(native_capability_required_tools().contains("apply_patch"))
   assert_true(native_command_body_required_fields().contains("session_id"))
   assert_true(native_command_body_supported_fields().contains("packet"))
@@ -87,6 +101,10 @@ test "mooncode core protocol surface is stable" {
   assert_true(surface.contains("\"poll_ms\""))
   assert_true(surface.contains("\"event_lane_contract\""))
   assert_true(surface.contains("\"contract_id\":\"mooncode-event-lanes.v1\""))
+  assert_true(surface.contains("\"runtime_event_name_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-runtime-event-names.v1\""),
+  )
 }
 
 ///|
@@ -128,6 +146,31 @@ test "mooncode core owns event lane contract" {
   )
   assert_true(payload.contains("\"default_lane\":\"runtime\""))
   assert_true(payload.contains("canonical conversation turns own chat"))
+  assert_false(payload.contains("internal/mooncode"))
+  assert_false(payload.contains("internal/moonwiki"))
+  assert_false(payload.contains("Rabbita"))
+}
+
+///|
+test "mooncode core owns runtime event name contract" {
+  let payload = runtime_event_name_contract_json().stringify()
+  assert_true(
+    payload.contains("\"kind\":\"mooncode-runtime-event-name-contract\""),
+  )
+  assert_true(payload.contains("\"protocol\":\"mooncode.v1\""))
+  assert_true(
+    payload.contains("\"contract_id\":\"mooncode-runtime-event-names.v1\""),
+  )
+  assert_true(payload.contains("\"event_lane_contract_id\""))
+  assert_true(payload.contains("\"accepted_events\""))
+  assert_true(payload.contains("\"assistant_delta\""))
+  assert_true(payload.contains("\"runtime_finished\""))
+  assert_true(payload.contains("\"package_verified\""))
+  assert_true(payload.contains("\"command_output_events\""))
+  assert_true(payload.contains("\"failure_events\""))
+  assert_true(payload.contains("\"runtime_unavailable\""))
+  assert_true(payload.contains("\"diagnostic_events\""))
+  assert_true(payload.contains("\"runtime.service_finished\""))
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
   assert_false(payload.contains("Rabbita"))

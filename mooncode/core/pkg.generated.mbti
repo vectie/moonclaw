@@ -113,6 +113,108 @@ pub fn native_tool_exec_endpoint(String, String) -> String
 
 pub fn protocol_version() -> String
 
+pub fn runtime_command_output_event_names() -> Array[String]
+
+pub fn runtime_diagnostic_event_name_is_supported(String) -> Bool
+
+pub fn runtime_diagnostic_event_names() -> Array[String]
+
+pub fn runtime_event_artifact() -> String
+
+pub fn runtime_event_assistant_delta() -> String
+
+pub fn runtime_event_assistant_message() -> String
+
+pub fn runtime_event_cancel_dropped() -> String
+
+pub fn runtime_event_command_error() -> String
+
+pub fn runtime_event_commit_created() -> String
+
+pub fn runtime_event_diff() -> String
+
+pub fn runtime_event_file_change() -> String
+
+pub fn runtime_event_max_steps_exhausted() -> String
+
+pub fn runtime_event_name_contract_id() -> String
+
+pub fn runtime_event_name_contract_json() -> Json
+
+pub fn runtime_event_name_is_supported(String) -> Bool
+
+pub fn runtime_event_names() -> Array[String]
+
+pub fn runtime_event_package_built() -> String
+
+pub fn runtime_event_package_index() -> String
+
+pub fn runtime_event_package_manifest() -> String
+
+pub fn runtime_event_package_verified() -> String
+
+pub fn runtime_event_patch_applied() -> String
+
+pub fn runtime_event_patch_reverted() -> String
+
+pub fn runtime_event_planner_failed() -> String
+
+pub fn runtime_event_reasoning_delta() -> String
+
+pub fn runtime_event_reasoning_message() -> String
+
+pub fn runtime_event_receipt_accept() -> String
+
+pub fn runtime_event_receipt_reject() -> String
+
+pub fn runtime_event_review_receipt() -> String
+
+pub fn runtime_event_runtime_aborted() -> String
+
+pub fn runtime_event_runtime_finished() -> String
+
+pub fn runtime_event_runtime_loop() -> String
+
+pub fn runtime_event_runtime_step() -> String
+
+pub fn runtime_event_runtime_unavailable() -> String
+
+pub fn runtime_event_runtime_update() -> String
+
+pub fn runtime_event_service_failed() -> String
+
+pub fn runtime_event_service_finished() -> String
+
+pub fn runtime_event_service_started() -> String
+
+pub fn runtime_event_steer_applied() -> String
+
+pub fn runtime_event_steer_deferred() -> String
+
+pub fn runtime_event_steer_dropped() -> String
+
+pub fn runtime_event_test_result() -> String
+
+pub fn runtime_event_tool_call() -> String
+
+pub fn runtime_event_tool_call_decode_error() -> String
+
+pub fn runtime_event_tool_result() -> String
+
+pub fn runtime_event_tool_started() -> String
+
+pub fn runtime_event_turn_failed() -> String
+
+pub fn runtime_event_turn_finished() -> String
+
+pub fn runtime_event_turn_started() -> String
+
+pub fn runtime_event_usage() -> String
+
+pub fn runtime_failure_event_name_is_supported(String) -> Bool
+
+pub fn runtime_failure_event_names() -> Array[String]
+
 pub fn standalone_boundary_json() -> Json
 
 // Errors
