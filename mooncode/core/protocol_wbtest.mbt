@@ -96,6 +96,24 @@ test "mooncode core protocol surface is stable" {
   assert_true(
     native_event_requires_command_scope({ "kind": "assistant_message" }),
   )
+  assert_eq(
+    model_planner_evidence_contract_id(),
+    "mooncode-model-planner-evidence.v1",
+  )
+  assert_true(model_planner_command_action_is_supported(command_prompt()))
+  assert_true(model_planner_command_event_kind_is_supported("command.prompt"))
+  assert_true(
+    model_planner_event_is_planner_evidence(runtime_event_planner_started(), ""),
+  )
+  assert_true(
+    model_planner_event_is_planner_evidence(
+      runtime_event_reasoning_delta(),
+      model_planner_mode_model_tool_calls(),
+    ),
+  )
+  assert_false(
+    model_planner_event_is_planner_evidence(runtime_event_reasoning_delta(), ""),
+  )
   assert_eq(command_action_contract_id(), "mooncode-command-actions.v1")
   assert_eq(command_turn_actions().length(), 3)
   assert_eq(command_turn_actions()[0], "prompt")
@@ -146,6 +164,10 @@ test "mooncode core protocol surface is stable" {
   assert_true(surface.contains("\"native_event_projection_contract\""))
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-native-event-projection.v1\""),
+  )
+  assert_true(surface.contains("\"model_planner_evidence_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-model-planner-evidence.v1\""),
   )
   assert_true(surface.contains("\"command_action_contract\""))
   assert_true(
@@ -341,6 +363,51 @@ test "mooncode core owns native event projection contract" {
   assert_false(contract.contains("internal/mooncode"))
   assert_false(contract.contains("internal/moonwiki"))
   assert_false(contract.contains("Rabbita"))
+}
+
+///|
+test "mooncode core owns model planner evidence contract" {
+  assert_eq(
+    model_planner_evidence_contract_kind(),
+    "mooncode-model-planner-evidence-contract",
+  )
+  assert_eq(
+    model_planner_evidence_report_kind(),
+    "mooncode-model-planner-evidence-report",
+  )
+  assert_eq(model_planner_command_actions().length(), 3)
+  assert_true(model_planner_command_actions().contains("prompt"))
+  assert_true(model_planner_command_actions().contains("steer"))
+  assert_true(model_planner_command_actions().contains("package"))
+  assert_false(model_planner_command_action_is_supported("run_tests"))
+  assert_true(model_planner_command_event_kinds().contains("command.package"))
+  assert_true(
+    model_planner_planner_event_kinds().contains("runtime.planner_selected"),
+  )
+  assert_true(
+    model_planner_terminal_event_kinds().contains("runtime_unavailable"),
+  )
+  assert_true(model_planner_status_is_running("service-started"))
+  assert_true(model_planner_status_is_running("running"))
+  assert_false(model_planner_status_is_running("pending"))
+  assert_true(model_planner_status_is_contract_failure("contract-failed"))
+  assert_eq(
+    model_planner_missing_evidence_reason(),
+    "missing-model-planner-evidence-after-turn-start",
+  )
+  let payload = model_planner_evidence_contract_json().stringify()
+  assert_true(
+    payload.contains("\"kind\":\"mooncode-model-planner-evidence-contract\""),
+  )
+  assert_true(
+    payload.contains("\"contract_id\":\"mooncode-model-planner-evidence.v1\""),
+  )
+  assert_true(payload.contains("\"model_planned_actions\""))
+  assert_true(payload.contains("\"runtime.planner_started\""))
+  assert_true(payload.contains("\"model-tool-calls\""))
+  assert_true(payload.contains("\"command_action_contract_id\""))
+  assert_true(payload.contains("\"event_name_contract_id\""))
+  assert_true(payload.contains("\"runtime_tool_contract_id\""))
 }
 
 ///|

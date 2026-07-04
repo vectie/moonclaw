@@ -137,6 +137,58 @@ pub fn executable_book_lifecycle_contract_json() -> Json
 
 pub fn executable_book_lifecycle_steps() -> Array[String]
 
+pub fn model_planner_command_action_is_supported(String) -> Bool
+
+pub fn model_planner_command_actions() -> Array[String]
+
+pub fn model_planner_command_event_kind_is_supported(String) -> Bool
+
+pub fn model_planner_command_event_kinds() -> Array[String]
+
+pub fn model_planner_contract_failure_rule() -> String
+
+pub fn model_planner_event_is_planner_evidence(String, String) -> Bool
+
+pub fn model_planner_evidence_contract_id() -> String
+
+pub fn model_planner_evidence_contract_json() -> Json
+
+pub fn model_planner_evidence_contract_kind() -> String
+
+pub fn model_planner_evidence_report_kind() -> String
+
+pub fn model_planner_missing_evidence_reason() -> String
+
+pub fn model_planner_mode_model_tool_calls() -> String
+
+pub fn model_planner_planner_event_kinds() -> Array[String]
+
+pub fn model_planner_queued_rule() -> String
+
+pub fn model_planner_status_contract_failed() -> String
+
+pub fn model_planner_status_is_contract_failure(String) -> Bool
+
+pub fn model_planner_status_is_running(String) -> Bool
+
+pub fn model_planner_status_no_model_planned_commands() -> String
+
+pub fn model_planner_status_pending() -> String
+
+pub fn model_planner_status_planner_failed() -> String
+
+pub fn model_planner_status_running() -> String
+
+pub fn model_planner_status_satisfied() -> String
+
+pub fn model_planner_status_service_started() -> String
+
+pub fn model_planner_stray_evidence_reason() -> String
+
+pub fn model_planner_terminal_event_kinds() -> Array[String]
+
+pub fn model_planner_working_evidence_rule() -> String
+
 pub fn moonclaw_event_mapping_json() -> Json
 
 pub fn native_capabilities_endpoint() -> String
@@ -272,6 +324,10 @@ pub fn runtime_event_patch_applied() -> String
 pub fn runtime_event_patch_reverted() -> String
 
 pub fn runtime_event_planner_failed() -> String
+
+pub fn runtime_event_planner_selected() -> String
+
+pub fn runtime_event_planner_started() -> String
 
 pub fn runtime_event_reasoning_delta() -> String
 

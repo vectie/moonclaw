@@ -199,6 +199,16 @@ pub fn runtime_event_planner_failed() -> String {
 }
 
 ///|
+pub fn runtime_event_planner_started() -> String {
+  "runtime.planner_started"
+}
+
+///|
+pub fn runtime_event_planner_selected() -> String {
+  "runtime.planner_selected"
+}
+
+///|
 pub fn runtime_event_service_started() -> String {
   "runtime.service_started"
 }
@@ -249,6 +259,11 @@ pub fn runtime_event_names() -> Array[String] {
     runtime_event_receipt_reject(),
     runtime_event_commit_created(),
     runtime_event_artifact(),
+    runtime_event_turn_started(),
+    runtime_event_turn_finished(),
+    runtime_event_planner_started(),
+    runtime_event_planner_selected(),
+    runtime_event_planner_failed(),
   ]
 }
 
@@ -261,6 +276,10 @@ pub fn runtime_command_output_event_names() -> Array[String] {
     runtime_event_tool_call(),
     runtime_event_tool_result(),
     runtime_event_runtime_update(),
+    runtime_event_turn_started(),
+    runtime_event_planner_started(),
+    runtime_event_planner_selected(),
+    runtime_event_planner_failed(),
     runtime_event_file_change(),
     runtime_event_diff(),
     runtime_event_test_result(),
