@@ -237,26 +237,75 @@ pub fn command_action_approval(action : String) -> String {
 ///|
 pub fn command_action_tool_hints(action : String) -> Array[String] {
   if command_action_is_test(action) {
-    ["moon_ide", "moon_cmd", "moon_check", "shell"]
+    [
+      runtime_tool_moon_ide(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_moon_check(),
+      runtime_tool_shell(),
+    ]
   } else if command_action_is_eval(action) {
-    ["eval_harness", "moon_ide", "moon_cmd", "shell", "moon_check"]
+    [
+      runtime_tool_eval_harness(),
+      runtime_tool_moon_ide(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_shell(),
+      runtime_tool_moon_check(),
+    ]
   } else if command_action_is_package(action) {
-    ["package_app_tool", "moon_ide", "moon_cmd", "moon_check", "shell"]
+    [
+      runtime_tool_package_app_tool(),
+      runtime_tool_moon_ide(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_moon_check(),
+      runtime_tool_shell(),
+    ]
   } else if command_action_is_commit(action) {
-    ["read", "moon_ide", "moon_cmd", "moon_check", "shell", "finish"]
+    [
+      runtime_tool_read(),
+      runtime_tool_moon_ide(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_moon_check(),
+      runtime_tool_shell(),
+      runtime_tool_finish(),
+    ]
   } else if action == command_accept() {
-    ["finish", "package_app_tool"]
+    [runtime_tool_finish(), runtime_tool_package_app_tool()]
   } else if action == command_reject() {
-    ["finish"]
+    [runtime_tool_finish()]
   } else if command_action_is_tool_approval(action) {
-    ["read", "edit", "write", "shell", "moon_ide", "moon_cmd", "moon_check"]
+    [
+      runtime_tool_read(),
+      runtime_tool_edit(),
+      runtime_tool_write(),
+      runtime_tool_shell(),
+      runtime_tool_moon_ide(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_moon_check(),
+    ]
   } else if action == command_apply_patch() {
-    ["moon_ide", "apply_patch", "moon_cmd", "moon_check"]
+    [
+      runtime_tool_moon_ide(),
+      runtime_tool_apply_patch(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_moon_check(),
+    ]
   } else if action == command_revert_patch() {
-    ["moon_ide", "revert_patch", "moon_cmd", "moon_check"]
+    [
+      runtime_tool_moon_ide(),
+      runtime_tool_revert_patch(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_moon_check(),
+    ]
   } else if command_action_is_prompt_or_steer(action) {
     [
-      "moon_ide", "read", "edit", "write", "shell", "moon_cmd", "moon_check", "finish",
+      runtime_tool_moon_ide(),
+      runtime_tool_read(),
+      runtime_tool_edit(),
+      runtime_tool_write(),
+      runtime_tool_shell(),
+      runtime_tool_moon_cmd(),
+      runtime_tool_moon_check(),
+      runtime_tool_finish(),
     ]
   } else {
     []

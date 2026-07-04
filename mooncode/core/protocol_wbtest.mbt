@@ -91,6 +91,19 @@ test "mooncode core protocol surface is stable" {
   assert_true(command_supported_actions().contains("note"))
   assert_true(command_action_is_supported("prompt"))
   assert_false(command_action_is_supported("deploy_global"))
+  assert_eq(runtime_tool_contract_id(), "mooncode-runtime-tools.v1")
+  assert_true(runtime_tool_names().contains("moon_check"))
+  assert_true(runtime_tool_names().contains("web_search"))
+  assert_true(runtime_tool_capability_names().contains("eval_harness"))
+  assert_true(runtime_tool_native_required_tools().contains("apply_patch"))
+  assert_eq(runtime_tool_canonical_name("Bash"), "shell")
+  assert_eq(runtime_tool_canonical_name("FileRead"), "read")
+  assert_eq(runtime_tool_from_moonclaw_tool("execute_command"), "shell")
+  assert_eq(runtime_tool_from_moonclaw_tool("replace_in_file"), "edit")
+  assert_true(runtime_tool_mutates_files("write"))
+  assert_false(runtime_tool_mutates_files("read"))
+  assert_true(runtime_tool_requires_review("shell"))
+  assert_false(runtime_tool_requires_review("moon_check"))
   assert_true(native_capability_required_tools().contains("apply_patch"))
   assert_true(native_command_body_required_fields().contains("session_id"))
   assert_true(native_command_body_supported_fields().contains("packet"))
@@ -119,6 +132,9 @@ test "mooncode core protocol surface is stable" {
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-command-actions.v1\""),
   )
+  assert_true(surface.contains("\"runtime_tool_contract\""))
+  assert_true(surface.contains("\"runtime_tool_call_contract\""))
+  assert_true(surface.contains("\"contract_id\":\"mooncode-runtime-tools.v1\""))
 }
 
 ///|
@@ -247,6 +263,81 @@ test "mooncode core owns command action contract" {
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
   assert_false(payload.contains("Rabbita"))
+}
+
+///|
+test "mooncode core owns runtime tool contract" {
+  assert_eq(runtime_tool_contract_kind(), "mooncode-tool-contract")
+  assert_eq(runtime_tool_call_contract_kind(), "mooncode-tool-call-contract")
+  assert_eq(runtime_tool_read(), "read")
+  assert_eq(runtime_tool_apply_patch(), "apply_patch")
+  assert_eq(runtime_tool_web_search(), "web_search")
+  assert_eq(runtime_tool_names().length(), 16)
+  assert_eq(runtime_tool_capability_names().length(), 17)
+  assert_true(runtime_tool_is_supported("moon_cmd"))
+  assert_false(runtime_tool_is_supported("delete_world"))
+  assert_true(runtime_tool_requires_authorization_snapshot("moon_check"))
+  assert_false(runtime_tool_requires_authorization_snapshot("read"))
+  let aliases = runtime_tool_alias_rows().map(row => {
+    runtime_tool_test_string(row, "alias") +
+    "->" +
+    runtime_tool_test_string(row, "canonical")
+  })
+  assert_true(aliases.contains("Bash->shell"))
+  assert_true(aliases.contains("FileRead->read"))
+  assert_true(aliases.contains("TodoWrite->todo_write"))
+  assert_true(aliases.contains("WebSearch->web_search"))
+  let mappings = runtime_tool_moonclaw_mapping_rows().map(row => {
+    runtime_tool_test_string(row, "source") +
+    "->" +
+    runtime_tool_test_string(row, "mooncode_tool")
+  })
+  assert_true(mappings.contains("execute_command->shell"))
+  assert_true(mappings.contains("replace_in_file->edit"))
+  assert_true(mappings.contains("WebSearch->web_search"))
+  let call_contract = runtime_tool_call_contract_json().stringify()
+  assert_true(
+    call_contract.contains("\"kind\":\"mooncode-tool-call-contract\""),
+  )
+  assert_true(call_contract.contains("\"supported_tools\""))
+  assert_true(call_contract.contains("\"accepted_aliases\""))
+  let tool_contract = runtime_tool_contract_json()
+  let tool_payload = tool_contract.stringify()
+  assert_true(tool_payload.contains("\"kind\":\"mooncode-tool-contract\""))
+  assert_true(
+    tool_payload.contains("\"contract_id\":\"mooncode-runtime-tools.v1\""),
+  )
+  assert_true(tool_payload.contains("\"supported_tools\""))
+  assert_true(tool_payload.contains("\"accepted_aliases\""))
+  assert_true(tool_payload.contains("\"moonclaw_tool_mappings\""))
+  assert_true(tool_payload.contains("\"package_app_tool\""))
+  assert_true(tool_payload.contains("\"path_rule\""))
+  let ids = runtime_tool_contract_tool_ids(tool_contract)
+  assert_eq(ids.length(), runtime_tool_names().length())
+  for tool in runtime_tool_names() {
+    assert_true(ids.contains(tool))
+  }
+  let specs = runtime_tool_capability_specs()
+  assert_eq(specs.length(), runtime_tool_capability_names().length())
+  let spec_ids = specs.map(spec => runtime_tool_test_string(spec, "id"))
+  for tool in runtime_tool_capability_names() {
+    assert_true(spec_ids.contains(tool))
+  }
+  assert_false(tool_payload.contains("internal/mooncode"))
+  assert_false(tool_payload.contains("internal/moonwiki"))
+  assert_false(tool_payload.contains("Rabbita"))
+}
+
+///|
+fn runtime_tool_test_string(json : Json, key : String) -> String {
+  match json {
+    Object(object) =>
+      match object.get(key) {
+        Some(String(value)) => value
+        _ => ""
+      }
+    _ => ""
+  }
 }
 
 ///|

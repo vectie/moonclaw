@@ -185,10 +185,7 @@ pub fn native_capability_required_endpoints() -> Array[String] {
 
 ///|
 pub fn native_capability_required_tools() -> Array[String] {
-  [
-    "read", "edit", "write", "apply_patch", "revert_patch", "shell", "moon_ide",
-    "moon_cmd", "moon_check", "finish",
-  ]
+  runtime_tool_native_required_tools()
 }
 
 ///|
@@ -252,6 +249,7 @@ pub fn native_capability_stream_options() -> Json {
 fn native_capability_surface_fingerprint_source() -> String {
   let required_endpoints = native_capability_required_endpoints().join("\n")
   let required_tools = native_capability_required_tools().join("\n")
+  let supported_runtime_tools = runtime_tool_names().join("\n")
   let supported_event_lanes = event_lanes().join("\n")
   let supported_runtime_events = runtime_event_names().join("\n")
   let supported_command_actions = command_supported_actions().join("\n")
@@ -268,6 +266,8 @@ fn native_capability_surface_fingerprint_source() -> String {
     "component=mooncode",
     "protocol=\{protocol_version()}",
     "capability_contract_id=\{native_capability_contract_id()}",
+    "runtime_tool_contract_id=\{runtime_tool_contract_id()}",
+    "runtime_tool_names=\{supported_runtime_tools}",
     "event_lane_contract_id=\{event_lane_contract_id()}",
     "event_lanes=\{supported_event_lanes}",
     "runtime_event_name_contract_id=\{runtime_event_name_contract_id()}",
@@ -303,6 +303,8 @@ pub fn native_capability_surface_json() -> Json {
     "event_lane_contract": event_lane_contract_json(),
     "runtime_event_name_contract": runtime_event_name_contract_json(),
     "command_action_contract": command_action_contract_json(),
+    "runtime_tool_contract": runtime_tool_contract_json(),
+    "runtime_tool_call_contract": runtime_tool_call_contract_json(),
     "required_endpoints": native_capability_required_endpoints(),
     "required_tools": native_capability_required_tools(),
     "command_body_required_fields": native_command_body_required_fields(),

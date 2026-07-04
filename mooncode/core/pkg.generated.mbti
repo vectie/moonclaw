@@ -297,6 +297,76 @@ pub fn runtime_failure_event_name_is_supported(String) -> Bool
 
 pub fn runtime_failure_event_names() -> Array[String]
 
+pub fn runtime_tool_alias_rows() -> Array[Json]
+
+pub fn runtime_tool_apply_patch() -> String
+
+pub fn runtime_tool_call_contract_json() -> Json
+
+pub fn runtime_tool_call_contract_kind() -> String
+
+pub fn runtime_tool_canonical_name(String) -> String
+
+pub fn runtime_tool_capability_names() -> Array[String]
+
+pub fn runtime_tool_capability_specs() -> Array[Json]
+
+pub fn runtime_tool_contract_id() -> String
+
+pub fn runtime_tool_contract_json() -> Json
+
+pub fn runtime_tool_contract_kind() -> String
+
+pub fn runtime_tool_contract_tool_ids(Json) -> Array[String]
+
+pub fn runtime_tool_edit() -> String
+
+pub fn runtime_tool_eval_harness() -> String
+
+pub fn runtime_tool_finish() -> String
+
+pub fn runtime_tool_from_moonclaw_tool(String) -> String
+
+pub fn runtime_tool_glob() -> String
+
+pub fn runtime_tool_grep() -> String
+
+pub fn runtime_tool_is_supported(String) -> Bool
+
+pub fn runtime_tool_moon_check() -> String
+
+pub fn runtime_tool_moon_cmd() -> String
+
+pub fn runtime_tool_moon_ide() -> String
+
+pub fn runtime_tool_moonclaw_mapping_rows() -> Array[Json]
+
+pub fn runtime_tool_mutates_files(String) -> Bool
+
+pub fn runtime_tool_names() -> Array[String]
+
+pub fn runtime_tool_native_required_tools() -> Array[String]
+
+pub fn runtime_tool_package_app_tool() -> String
+
+pub fn runtime_tool_read() -> String
+
+pub fn runtime_tool_requires_authorization_snapshot(String) -> Bool
+
+pub fn runtime_tool_requires_review(String) -> Bool
+
+pub fn runtime_tool_revert_patch() -> String
+
+pub fn runtime_tool_shell() -> String
+
+pub fn runtime_tool_todo_write() -> String
+
+pub fn runtime_tool_web_fetch() -> String
+
+pub fn runtime_tool_web_search() -> String
+
+pub fn runtime_tool_write() -> String
+
 pub fn standalone_boundary_json() -> Json
 
 // Errors
