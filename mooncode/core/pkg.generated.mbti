@@ -137,6 +137,8 @@ pub fn executable_book_lifecycle_contract_json() -> Json
 
 pub fn executable_book_lifecycle_steps() -> Array[String]
 
+pub fn moonclaw_event_mapping_json() -> Json
+
 pub fn native_capabilities_endpoint() -> String
 
 pub fn native_capability_contract_id() -> String
@@ -166,6 +168,36 @@ pub fn native_command_body_supported_fields() -> Array[String]
 pub fn native_endpoint_component(String) -> String
 
 pub fn native_eval_report_endpoint(String, String) -> String
+
+pub fn native_event_has_command_scope(Json) -> Bool
+
+pub fn native_event_is_diagnostic_only(Json) -> Bool
+
+pub fn native_event_is_progress(Json) -> Bool
+
+pub fn native_event_is_transcript(Json) -> Bool
+
+pub fn native_event_projection_command_scope_keys() -> Array[String]
+
+pub fn native_event_projection_contract_id() -> String
+
+pub fn native_event_projection_contract_json() -> Json
+
+pub fn native_event_projection_contract_kind() -> String
+
+pub fn native_event_projection_diagnostic_sources() -> Array[String]
+
+pub fn native_event_projection_diagnostic_titles() -> Array[String]
+
+pub fn native_event_projection_problem(Json, reason~ : String) -> Json
+
+pub fn native_event_projection_report(Json, session_id~ : String, observed_at~ : String) -> Json
+
+pub fn native_event_projection_report_kind() -> String
+
+pub fn native_event_requires_command_scope(Json) -> Bool
+
+pub fn native_events_for_canonical_projection(Json) -> Array[Json]
 
 pub fn native_package_result_endpoint(String, String) -> String
 
