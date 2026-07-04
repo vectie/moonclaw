@@ -254,6 +254,7 @@ fn native_capability_surface_fingerprint_source() -> String {
   let required_tools = native_capability_required_tools().join("\n")
   let supported_event_lanes = event_lanes().join("\n")
   let supported_runtime_events = runtime_event_names().join("\n")
+  let supported_command_actions = command_supported_actions().join("\n")
   let command_body_required_fields = native_command_body_required_fields().join(
     "\n",
   )
@@ -271,6 +272,8 @@ fn native_capability_surface_fingerprint_source() -> String {
     "event_lanes=\{supported_event_lanes}",
     "runtime_event_name_contract_id=\{runtime_event_name_contract_id()}",
     "runtime_event_names=\{supported_runtime_events}",
+    "command_action_contract_id=\{command_action_contract_id()}",
+    "command_actions=\{supported_command_actions}",
     "required_endpoints=\{required_endpoints}",
     "required_tools=\{required_tools}",
     "command_body_required_fields=\{command_body_required_fields}",
@@ -299,6 +302,7 @@ pub fn native_capability_surface_json() -> Json {
     "capability_surface_fingerprint": native_capability_surface_fingerprint(),
     "event_lane_contract": event_lane_contract_json(),
     "runtime_event_name_contract": runtime_event_name_contract_json(),
+    "command_action_contract": command_action_contract_json(),
     "required_endpoints": native_capability_required_endpoints(),
     "required_tools": native_capability_required_tools(),
     "command_body_required_fields": native_command_body_required_fields(),

@@ -7,6 +7,88 @@ import {
 }
 
 // Values
+pub fn command_accept() -> String
+
+pub fn command_action_approval(String) -> String
+
+pub fn command_action_contract_id() -> String
+
+pub fn command_action_contract_json() -> Json
+
+pub fn command_action_control(String) -> String
+
+pub fn command_action_expected_lanes(String) -> Array[String]
+
+pub fn command_action_is_advertised(String) -> Bool
+
+pub fn command_action_is_cancel(String) -> Bool
+
+pub fn command_action_is_commit(String) -> Bool
+
+pub fn command_action_is_eval(String) -> Bool
+
+pub fn command_action_is_package(String) -> Bool
+
+pub fn command_action_is_patch(String) -> Bool
+
+pub fn command_action_is_prompt_or_steer(String) -> Bool
+
+pub fn command_action_is_review_decision(String) -> Bool
+
+pub fn command_action_is_supported(String) -> Bool
+
+pub fn command_action_is_test(String) -> Bool
+
+pub fn command_action_is_tool_approval(String) -> Bool
+
+pub fn command_action_is_turn(String) -> Bool
+
+pub fn command_action_lane(String) -> String
+
+pub fn command_action_requires_runtime_completion_proof(String) -> Bool
+
+pub fn command_action_requires_tool_harness(String) -> Bool
+
+pub fn command_action_title(String, String) -> String
+
+pub fn command_action_tool_hints(String) -> Array[String]
+
+pub fn command_action_writes_review_receipt(String) -> Bool
+
+pub fn command_advertised_actions() -> Array[String]
+
+pub fn command_apply_patch() -> String
+
+pub fn command_approve_tool() -> String
+
+pub fn command_cancel() -> String
+
+pub fn command_commit() -> String
+
+pub fn command_note() -> String
+
+pub fn command_package() -> String
+
+pub fn command_prompt() -> String
+
+pub fn command_reject() -> String
+
+pub fn command_reject_tool() -> String
+
+pub fn command_revert_patch() -> String
+
+pub fn command_run_build() -> String
+
+pub fn command_run_eval() -> String
+
+pub fn command_run_tests() -> String
+
+pub fn command_steer() -> String
+
+pub fn command_supported_actions() -> Array[String]
+
+pub fn command_turn_actions() -> Array[String]
+
 pub fn conversation_contract_id() -> String
 
 pub fn conversation_contract_json() -> Json

@@ -81,6 +81,16 @@ test "mooncode core protocol surface is stable" {
   assert_true(
     runtime_diagnostic_event_name_is_supported("runtime.service_finished"),
   )
+  assert_eq(command_action_contract_id(), "mooncode-command-actions.v1")
+  assert_eq(command_turn_actions().length(), 3)
+  assert_eq(command_turn_actions()[0], "prompt")
+  assert_eq(command_turn_actions()[2], "cancel")
+  assert_true(command_advertised_actions().contains("run_eval"))
+  assert_true(command_advertised_actions().contains("apply_patch"))
+  assert_false(command_advertised_actions().contains("note"))
+  assert_true(command_supported_actions().contains("note"))
+  assert_true(command_action_is_supported("prompt"))
+  assert_false(command_action_is_supported("deploy_global"))
   assert_true(native_capability_required_tools().contains("apply_patch"))
   assert_true(native_command_body_required_fields().contains("session_id"))
   assert_true(native_command_body_supported_fields().contains("packet"))
@@ -104,6 +114,10 @@ test "mooncode core protocol surface is stable" {
   assert_true(surface.contains("\"runtime_event_name_contract\""))
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-runtime-event-names.v1\""),
+  )
+  assert_true(surface.contains("\"command_action_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-command-actions.v1\""),
   )
 }
 
@@ -171,6 +185,65 @@ test "mooncode core owns runtime event name contract" {
   assert_true(payload.contains("\"runtime_unavailable\""))
   assert_true(payload.contains("\"diagnostic_events\""))
   assert_true(payload.contains("\"runtime.service_finished\""))
+  assert_false(payload.contains("internal/mooncode"))
+  assert_false(payload.contains("internal/moonwiki"))
+  assert_false(payload.contains("Rabbita"))
+}
+
+///|
+test "mooncode core owns command action contract" {
+  assert_eq(command_prompt(), "prompt")
+  assert_eq(command_steer(), "steer")
+  assert_eq(command_cancel(), "cancel")
+  assert_true(command_action_is_turn("prompt"))
+  assert_false(command_action_is_turn("run_tests"))
+  assert_true(command_action_is_test("run_tests"))
+  assert_true(command_action_is_test("run_build"))
+  assert_true(command_action_is_eval("run_eval"))
+  assert_true(command_action_is_package("package"))
+  assert_true(command_action_is_commit("commit"))
+  assert_true(command_action_is_review_decision("accept"))
+  assert_true(command_action_is_review_decision("reject"))
+  assert_true(command_action_is_tool_approval("approve_tool"))
+  assert_true(command_action_is_tool_approval("reject_tool"))
+  assert_true(command_action_is_patch("apply_patch"))
+  assert_true(command_action_is_patch("revert_patch"))
+  assert_true(command_action_requires_tool_harness("prompt"))
+  assert_true(command_action_requires_tool_harness("apply_patch"))
+  assert_false(command_action_requires_tool_harness("cancel"))
+  assert_true(command_action_requires_runtime_completion_proof("commit"))
+  assert_false(command_action_requires_runtime_completion_proof("prompt"))
+  assert_true(command_action_writes_review_receipt("package"))
+  assert_false(command_action_writes_review_receipt("run_tests"))
+  assert_eq(command_action_control("prompt"), "prompt")
+  assert_eq(command_action_control("package"), "command")
+  assert_eq(command_action_approval("run_eval"), "auto")
+  assert_eq(command_action_approval("commit"), "operator")
+  assert_eq(command_action_approval("steer"), "user")
+  assert_eq(command_action_lane("run_tests"), "test")
+  assert_eq(command_action_lane("package"), "artifact")
+  assert_eq(command_action_lane("commit"), "review")
+  assert_eq(command_action_lane("prompt"), "runtime")
+  assert_true(command_action_expected_lanes("prompt").contains("transcript"))
+  assert_true(command_action_expected_lanes("apply_patch").contains("diff"))
+  assert_true(command_action_tool_hints("prompt").contains("finish"))
+  assert_true(command_action_tool_hints("package").contains("package_app_tool"))
+  assert_eq(command_action_title("run_tests", "queued"), "Run tests: queued")
+  let payload = command_action_contract_json().stringify()
+  assert_true(payload.contains("\"kind\":\"mooncode-command-action-contract\""))
+  assert_true(payload.contains("\"protocol\":\"mooncode.v1\""))
+  assert_true(
+    payload.contains("\"contract_id\":\"mooncode-command-actions.v1\""),
+  )
+  assert_true(payload.contains("\"event_lane_contract_id\""))
+  assert_true(payload.contains("\"runtime_event_name_contract_id\""))
+  assert_true(
+    payload.contains("\"turn_actions\":[\"prompt\",\"steer\",\"cancel\"]"),
+  )
+  assert_true(payload.contains("\"advertised_actions\""))
+  assert_true(payload.contains("\"supported_actions\""))
+  assert_true(payload.contains("\"apply_patch\""))
+  assert_true(payload.contains("\"requires_runtime_completion_proof\""))
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
   assert_false(payload.contains("Rabbita"))
