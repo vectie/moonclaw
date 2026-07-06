@@ -252,9 +252,111 @@ test "mooncode core protocol surface is stable" {
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-native-command-execution.v1\""),
   )
+  assert_true(surface.contains("\"runtime_evidence_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-runtime-evidence.v1\""),
+  )
   assert_true(surface.contains("\"runtime_tool_contract\""))
   assert_true(surface.contains("\"runtime_tool_call_contract\""))
   assert_true(surface.contains("\"contract_id\":\"mooncode-runtime-tools.v1\""))
+}
+
+///|
+test "mooncode core owns runtime evidence proof contract" {
+  assert_eq(runtime_evidence_contract_id(), "mooncode-runtime-evidence.v1")
+  assert_eq(
+    command_runtime_evidence_kind(),
+    "mooncode-command-runtime-evidence",
+  )
+  assert_eq(tool_harness_evidence_kind(), "mooncode-tool-harness-evidence")
+  assert_eq(
+    runtime_completion_proof_gate_kind(),
+    "mooncode-runtime-completion-proof-gate",
+  )
+  assert_eq(runtime_evidence_status_for_required_events(4, 0, 0), "proven")
+  assert_eq(
+    runtime_evidence_status_for_required_events(4, 1, 0),
+    "missing-evidence",
+  )
+  assert_eq(runtime_evidence_status_for_required_events(4, 0, 1), "failed")
+  assert_eq(
+    runtime_evidence_status_for_required_events(0, 0, 0),
+    "no-required-events",
+  )
+  assert_eq(tool_harness_status_for_counts(0, 0, 0), "no-tools")
+  assert_eq(tool_harness_status_for_counts(2, 1, 0), "failed")
+  assert_eq(tool_harness_case_status(false, true, true), "proven")
+  assert_eq(tool_harness_case_status(false, true, false), "missing")
+  assert_true(
+    runtime_evidence_required_events("run_eval", []).contains(
+      "eval_report.manifest",
+    ),
+  )
+  assert_true(
+    tool_harness_expected_tools("apply_patch", []).contains("apply_patch"),
+  )
+  let tool_call : Json = {
+    "kind": "moon_check",
+    "status": "running",
+    "tool_call_id": "call-1",
+  }
+  assert_true(runtime_evidence_event_satisfies("tool_call", tool_call))
+  let decode_error : Json = {
+    "kind": "tool_call_decode_error",
+    "status": "failed",
+    "source_event": "tool_call",
+    "tool_call_id": "call-1",
+  }
+  assert_true(runtime_evidence_event_fails_required("tool_call", decode_error))
+  assert_eq(
+    session_runtime_evidence_status_for_counts(1, 0, 0, 0, 0, 0),
+    "proven",
+  )
+  assert_eq(
+    session_runtime_evidence_status_for_counts(1, 0, 0, 1, 0, 0),
+    "missing-evidence",
+  )
+  assert_eq(
+    action_plan_status_for_counts(0, 0, 0, 0, 0, 1),
+    "waiting-for-proof",
+  )
+  assert_eq(
+    action_plan_state_with_tool_harness(
+      "run_tests", "delivered", "completed", 2, "missing-evidence",
+    ),
+    "awaiting-proof",
+  )
+  assert_eq(
+    action_plan_state_with_tool_harness(
+      "run_tests", "delivered", "completed", 2, "failed",
+    ),
+    "runtime-retry",
+  )
+  let gate = runtime_completion_proof_gate(
+    "run_tests",
+    {
+      "status": "missing-evidence",
+      "tool_harness_status": "missing-evidence",
+      "tool_harness_expected_tool_count": 2,
+      "required_event_count": 4,
+      "missing_required_event_count": 1,
+    },
+    0,
+    1,
+    ["test_result".to_json()],
+    [],
+  ).stringify()
+  assert_true(gate.contains("\"completion_blocked\":true"))
+  assert_true(gate.contains("\"status\":\"blocked\""))
+  assert_eq(
+    runtime_replay_ack_effective_status("runtime-completed", true),
+    "proof-missing",
+  )
+  let contract = runtime_evidence_contract_json().stringify()
+  assert_true(contract.contains("\"evidence_statuses\""))
+  assert_true(contract.contains("\"required_event_mappings\""))
+  assert_true(contract.contains("command-scoped runtime events"))
+  assert_false(contract.contains("internal/mooncode"))
 }
 
 ///|

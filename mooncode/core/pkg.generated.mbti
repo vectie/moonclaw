@@ -7,6 +7,52 @@ import {
 }
 
 // Values
+pub fn action_plan_next_await_commit_proof() -> String
+
+pub fn action_plan_next_await_runtime_proof() -> String
+
+pub fn action_plan_next_ready_for_book_review() -> String
+
+pub fn action_plan_next_retry_failed_runtime_receipt() -> String
+
+pub fn action_plan_next_run_or_replay_runtime_commands() -> String
+
+pub fn action_plan_next_start_or_resume_session() -> String
+
+pub fn action_plan_runtime_state_precondition_state(String) -> String
+
+pub fn action_plan_state_awaiting_proof() -> String
+
+pub fn action_plan_state_blocked() -> String
+
+pub fn action_plan_state_completed() -> String
+
+pub fn action_plan_state_queued_for_runtime() -> String
+
+pub fn action_plan_state_ready_for_review() -> String
+
+pub fn action_plan_state_running() -> String
+
+pub fn action_plan_state_runtime_retry() -> String
+
+pub fn action_plan_state_with_tool_harness(String, String, String, Int, String) -> String
+
+pub fn action_plan_status_blocked() -> String
+
+pub fn action_plan_status_complete() -> String
+
+pub fn action_plan_status_empty() -> String
+
+pub fn action_plan_status_for_counts(Int, Int, Int, Int, Int, Int) -> String
+
+pub fn action_plan_status_queued() -> String
+
+pub fn action_plan_status_review_ready() -> String
+
+pub fn action_plan_status_running() -> String
+
+pub fn action_plan_status_waiting_for_proof() -> String
+
 pub fn command_accept() -> String
 
 pub fn command_action_approval(String) -> String
@@ -82,6 +128,8 @@ pub fn command_run_build() -> String
 pub fn command_run_eval() -> String
 
 pub fn command_run_tests() -> String
+
+pub fn command_runtime_evidence_kind() -> String
 
 pub fn command_steer() -> String
 
@@ -479,6 +527,26 @@ pub fn runtime_claim_statuses() -> Array[String]
 
 pub fn runtime_command_output_event_names() -> Array[String]
 
+pub fn runtime_completion_blocked(Bool, String, Bool) -> Bool
+
+pub fn runtime_completion_gate_status_blocked() -> String
+
+pub fn runtime_completion_gate_status_not_required() -> String
+
+pub fn runtime_completion_gate_status_passed() -> String
+
+pub fn runtime_completion_proof_gate(String, Json, Int, Int, Array[Json], Array[Json]) -> Json
+
+pub fn runtime_completion_proof_gate_kind() -> String
+
+pub fn runtime_completion_proof_gate_rule() -> String
+
+pub fn runtime_completion_proof_gate_status(Bool, Bool) -> String
+
+pub fn runtime_completion_requires_proof(String) -> Bool
+
+pub fn runtime_completion_tool_harness_blocked(Bool, Int, String) -> Bool
+
 pub fn runtime_consumer_contract_id() -> String
 
 pub fn runtime_consumer_contract_json(String) -> Json
@@ -679,6 +747,38 @@ pub fn runtime_event_turn_started() -> String
 
 pub fn runtime_event_usage() -> String
 
+pub fn runtime_evidence_command_rule() -> String
+
+pub fn runtime_evidence_contract_id() -> String
+
+pub fn runtime_evidence_contract_json() -> Json
+
+pub fn runtime_evidence_event_fails_required(String, Json) -> Bool
+
+pub fn runtime_evidence_event_satisfies(String, Json) -> Bool
+
+pub fn runtime_evidence_events_with_status(Array[Json], String) -> Array[String]
+
+pub fn runtime_evidence_is_proven(Int, Int, Int) -> Bool
+
+pub fn runtime_evidence_required_event_result(String, String, Json) -> Json
+
+pub fn runtime_evidence_required_events(String, Array[String]) -> Array[String]
+
+pub fn runtime_evidence_required_outputs(String, Array[String]) -> Array[String]
+
+pub fn runtime_evidence_status_failed() -> String
+
+pub fn runtime_evidence_status_for_required_events(Int, Int, Int) -> String
+
+pub fn runtime_evidence_status_missing() -> String
+
+pub fn runtime_evidence_status_no_commands() -> String
+
+pub fn runtime_evidence_status_no_required_events() -> String
+
+pub fn runtime_evidence_status_proven() -> String
+
 pub fn runtime_failure_event_name_is_supported(String) -> Bool
 
 pub fn runtime_failure_event_names() -> Array[String]
@@ -710,6 +810,8 @@ pub fn runtime_receipt_status_skipped() -> String
 pub fn runtime_replay_ack_allowed_statuses() -> Array[String]
 
 pub fn runtime_replay_ack_detail(String) -> String
+
+pub fn runtime_replay_ack_effective_status(String, Bool) -> String
 
 pub fn runtime_replay_ack_order_status_already_delivered() -> String
 
@@ -770,6 +872,12 @@ pub fn runtime_replay_status_pending() -> String
 pub fn runtime_replay_status_with_order_blocker(String, String) -> String
 
 pub fn runtime_replay_statuses() -> Array[String]
+
+pub fn runtime_required_event_status_failed() -> String
+
+pub fn runtime_required_event_status_missing() -> String
+
+pub fn runtime_required_event_status_proven() -> String
 
 pub fn runtime_tool_alias_rows() -> Array[Json]
 
@@ -841,7 +949,27 @@ pub fn runtime_tool_web_search() -> String
 
 pub fn runtime_tool_write() -> String
 
+pub fn session_runtime_evidence_kind() -> String
+
+pub fn session_runtime_evidence_rule() -> String
+
+pub fn session_runtime_evidence_status_for_counts(Int, Int, Int, Int, Int, Int) -> String
+
 pub fn standalone_boundary_json() -> Json
+
+pub fn tool_harness_case_status(Bool, Bool, Bool) -> String
+
+pub fn tool_harness_evidence_kind() -> String
+
+pub fn tool_harness_evidence_rule() -> String
+
+pub fn tool_harness_expected_tools(String, Array[String]) -> Array[String]
+
+pub fn tool_harness_is_proven(Int, Int, Int) -> Bool
+
+pub fn tool_harness_status_for_counts(Int, Int, Int) -> String
+
+pub fn tool_harness_status_no_tools() -> String
 
 // Errors
 
