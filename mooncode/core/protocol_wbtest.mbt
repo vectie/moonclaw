@@ -248,9 +248,99 @@ test "mooncode core protocol surface is stable" {
   assert_true(
     surface.contains("\"contract_id\":\"mooncode-command-actions.v1\""),
   )
+  assert_true(surface.contains("\"native_command_execution_contract\""))
+  assert_true(
+    surface.contains("\"contract_id\":\"mooncode-native-command-execution.v1\""),
+  )
   assert_true(surface.contains("\"runtime_tool_contract\""))
   assert_true(surface.contains("\"runtime_tool_call_contract\""))
   assert_true(surface.contains("\"contract_id\":\"mooncode-runtime-tools.v1\""))
+}
+
+///|
+test "mooncode core owns native command execution contract" {
+  assert_eq(
+    native_command_contract_id(),
+    "mooncode-native-command-execution.v1",
+  )
+  assert_eq(
+    native_command_execution_plan_kind(),
+    "mooncode-native-command-execution-plan",
+  )
+  assert_eq(
+    native_command_tool_contract_kind(),
+    "mooncode-native-tool-contract",
+  )
+  assert_eq(
+    native_command_result_contract_kind(),
+    "mooncode-native-result-contract",
+  )
+  assert_true(native_command_tool_sequence("prompt").contains("edit"))
+  assert_true(
+    native_command_tool_sequence("apply_patch").contains("apply_patch"),
+  )
+  assert_true(
+    native_command_tool_sequence("revert_patch").contains("revert_patch"),
+  )
+  assert_false(
+    native_command_tool_sequence("revert_patch").contains("apply_patch"),
+  )
+  assert_true(
+    native_command_allowed_tool_sequence("prompt", true).contains("web_search"),
+  )
+  assert_true(
+    native_command_expected_events("run_eval").contains("eval_report.manifest"),
+  )
+  assert_true(
+    native_command_expected_events("package").contains("package.manifest"),
+  )
+  assert_true(
+    native_command_required_outputs("apply_patch").contains(
+      "selected-hunk proof metadata",
+    ),
+  )
+  assert_true(
+    native_command_recommended_commands("run_build", "tools/demo/main.mbt").contains(
+      "moon build",
+    ),
+  )
+  let shell_policy = native_command_tool_policy(
+    "shell", "prompt", "tools/demo/main.mbt",
+  ).stringify()
+  assert_true(shell_policy.contains("\"approval\":\"policy\""))
+  assert_true(
+    shell_policy.contains("accept argv arrays instead of raw shell strings"),
+  )
+  let package_policy = native_command_tool_policy(
+    "package_app_tool", "package", "tools/demo",
+  ).stringify()
+  assert_true(package_policy.contains("package.manifest"))
+  assert_true(
+    package_policy.contains("source paths inside the selected MoonBook"),
+  )
+  let result_contract = native_command_result_contract("run_eval").stringify()
+  assert_true(
+    result_contract.contains("\"kind\":\"mooncode-native-result-contract\""),
+  )
+  assert_true(
+    result_contract.contains("Claim the runtime command before execution"),
+  )
+  assert_true(result_contract.contains("publish-native-eval-report"))
+  assert_true(result_contract.contains("eval-report manifest"))
+  let plan = native_command_execution_plan(
+    "package", "tools/demo", "", "/tmp/book", "command", "operator", true,
+  ).stringify()
+  assert_true(plan.contains("\"review_required\":true"))
+  assert_true(plan.contains("\"package_kind\":\"app-tool\""))
+  assert_true(plan.contains("\"web_search\":true"))
+  assert_true(plan.contains("\"web_search\""))
+  assert_true(plan.contains("\"web_fetch\""))
+  let contract = native_command_execution_contract_json().stringify()
+  assert_true(contract.contains("\"tool_sequences\""))
+  assert_true(contract.contains("\"expected_event_policy\""))
+  assert_true(contract.contains("\"required_output_policy\""))
+  assert_true(contract.contains("\"moonclaw\""))
+  assert_false(contract.contains("internal/mooncode/native_command"))
 }
 
 ///|

@@ -217,11 +217,65 @@ pub fn native_capability_surface_json() -> Json
 
 pub fn native_capability_target_description() -> String
 
+pub fn native_command_allowed_tool_sequence(String, Bool) -> Array[String]
+
 pub fn native_command_body_field_is_supported(String) -> Bool
 
 pub fn native_command_body_required_fields() -> Array[String]
 
 pub fn native_command_body_supported_fields() -> Array[String]
+
+pub fn native_command_contract_id() -> String
+
+pub fn native_command_default_package_kind(String) -> String
+
+pub fn native_command_eval_report_manifest_event() -> String
+
+pub fn native_command_eval_report_sink() -> String
+
+pub fn native_command_execution_checklist(String, Array[String], Array[String], String, String, String) -> Array[Json]
+
+pub fn native_command_execution_contract_json() -> Json
+
+pub fn native_command_execution_plan(String, String, String, String, String, String, Bool) -> Json
+
+pub fn native_command_execution_plan_kind() -> String
+
+pub fn native_command_expected_events(String) -> Array[String]
+
+pub fn native_command_package_index_event() -> String
+
+pub fn native_command_package_manifest_event() -> String
+
+pub fn native_command_recommended_commands(String, String) -> Array[String]
+
+pub fn native_command_required_outputs(String) -> Array[String]
+
+pub fn native_command_result_contract(String) -> Json
+
+pub fn native_command_result_contract_kind() -> String
+
+pub fn native_command_review_receipt_event() -> String
+
+pub fn native_command_runtime_claim_sink() -> String
+
+pub fn native_command_runtime_event_sink() -> String
+
+pub fn native_command_runtime_replay_sink() -> String
+
+pub fn native_command_tool_authorization_event() -> String
+
+pub fn native_command_tool_contract(String) -> Json
+
+pub fn native_command_tool_contract_for_command(String, Bool) -> Json
+
+pub fn native_command_tool_contract_kind() -> String
+
+pub fn native_command_tool_policies(String, String) -> Array[Json]
+
+pub fn native_command_tool_policy(String, String, String) -> Json
+
+pub fn native_command_tool_sequence(String) -> Array[String]
 
 pub fn native_endpoint_component(String) -> String
 
