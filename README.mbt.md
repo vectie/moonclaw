@@ -8,6 +8,9 @@ MoonClaw is an agent and automation system built on top of [moonbitlang/maria](h
 
 For executable MoonBooks, MoonClaw is the runtime owner for agent, task, session, and execution concepts. See [Executable Book Runtime Boundary](docs/executable_book_runtime_boundary.md).
 
+Start with [docs/README.md](docs/README.md) for the product boundary,
+implementation map, testing guidance, operational notes, and future plan.
+
 It is designed for:
 
 - 💬 chat-driven planning
