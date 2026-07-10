@@ -52,8 +52,18 @@ async fn Daemon::mooncode_queue_command_response(
   let book_root = mooncode_book_root(body)
   let now = self.clock.now()
   let binding = self.mooncode_binding_for_session(session_id)
-  if binding.book_root == "" {
-    binding.book_root = book_root
+  if !binding.bind_book_root(book_root) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode session is already bound to a different MoonBook root",
+        "metadata": {
+          "session_id": session_id,
+          "bound_book_root": binding.book_root,
+          "requested_book_root": book_root,
+        },
+      },
+    })
   }
   binding.command_count += 1
   binding.remember_first_user_prompt(body)

@@ -30,6 +30,8 @@ pub fn chunk_choice_delta_tool_call_function(arguments? : String, name? : String
 
 pub async fn[T : Structural] data(model~ : @model.Model, prompt~ : String) -> T
 
+pub fn error_summary(Error) -> String
+
 pub async fn json(model~ : @model.Model, prompt~ : String) -> Json
 
 pub fn json_schema(name~ : String, schema~ : Map[String, Json], description? : String, strict? : Bool) -> ResponseFormat

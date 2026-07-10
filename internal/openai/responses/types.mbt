@@ -11,6 +11,7 @@ pub struct ResponsesRequest {
   instructions : String
   tools : Array[Json]
   tool_choice : String
+  reasoning_effort : String?
   stream : Bool?
   store : Bool?
 } derive(Debug)
@@ -92,10 +93,20 @@ pub fn ResponsesRequest::new(
   instructions~ : String,
   tools? : Array[Json] = [],
   tool_choice? : String = "auto",
+  reasoning_effort? : String,
   stream? : Bool,
   store? : Bool,
 ) -> ResponsesRequest {
-  { model, input, instructions, tools, tool_choice, stream, store }
+  {
+    model,
+    input,
+    instructions,
+    tools,
+    tool_choice,
+    reasoning_effort,
+    stream,
+    store,
+  }
 }
 
 ///|
@@ -109,6 +120,9 @@ pub impl ToJson for ResponsesRequest with fn to_json(self : ResponsesRequest) ->
   }
   if self.stream is Some(v) {
     obj["stream"] = v.to_json()
+  }
+  if self.reasoning_effort is Some(effort) {
+    obj["reasoning"] = { "effort": effort }
   }
   if self.store is Some(v) {
     obj["store"] = v.to_json()

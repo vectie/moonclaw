@@ -104,6 +104,19 @@ fn mooncode_session_listing_row(record : Json) -> Json {
   let lifecycle = mooncode_json_object_field_or_empty(
     record, "executable_book_lifecycle",
   )
+  let conversation = mooncode_json_object_field_or_empty(
+    record, "mooncode_conversation",
+  )
+  let workspace_id = mooncode_json_string(
+    conversation,
+    "workspace_id",
+    default="",
+  )
+  let workspace_name = mooncode_json_string(
+    conversation,
+    "workspace_name",
+    default="",
+  )
   let status = if mooncode_json_bool(
       record,
       "live_binding_ready",
@@ -121,8 +134,12 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     "title": mooncode_session_listing_title(record),
     "updated_at": mooncode_session_listing_updated_at(record),
     "updated_at_ms": mooncode_session_listing_updated_at_ms(record),
-    "workspace_id": session_id,
-    "workspace_name": mooncode_session_listing_workspace_name(book_root),
+    "workspace_id": workspace_id,
+    "workspace_name": if workspace_name == "" {
+      mooncode_session_listing_workspace_name(book_root)
+    } else {
+      workspace_name
+    },
     "workspace_root": book_root,
     "book_root": book_root,
     "status": status,

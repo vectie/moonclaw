@@ -45,18 +45,20 @@ fn mooncode_runtime_turn_planner_progress_events(
     )
   }
   for index in 0..<tool_calls.length() {
-    events.push(
-      mooncode_runtime_turn_tool_call_event(
-        session_id,
-        command_id,
-        tool_calls[index],
-        step~,
-        index~,
-        mode~,
-        model~,
-        now~,
-      ),
-    )
+    if mooncode_json_string(tool_calls[index], "tool", default="") != "finish" {
+      events.push(
+        mooncode_runtime_turn_tool_call_event(
+          session_id,
+          command_id,
+          tool_calls[index],
+          step~,
+          index~,
+          mode~,
+          model~,
+          now~,
+        ),
+      )
+    }
   }
   events
 }

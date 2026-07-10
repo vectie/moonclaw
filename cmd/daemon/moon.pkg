@@ -8,6 +8,7 @@ import {
   "vectie/moonclaw/internal/spawn",
   "vectie/moonlib/fsx",
   "vectie/moonlib/rand",
+  "vectie/moonclaw/internal/fsx" @moonclaw_fsx,
   "moonbitlang/async/os_error",
   "vectie/moonlib/pathx",
   "vectie/moonclaw/model",

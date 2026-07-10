@@ -55,6 +55,21 @@ async fn Daemon::mooncode_runtime_service(
       },
     })
   }
+  let binding = self.mooncode_binding_for_session(session_id)
+  if !binding.bind_book_root(book_root) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode session is bound to a different MoonBook root",
+        "metadata": {
+          "session_id": session_id,
+          "book_root": binding.book_root,
+          "requested_book_root": book_root,
+        },
+      },
+    })
+  }
+  let book_root = binding.book_root
   let started = self.mooncode_runtime_service_started_event(
     session_id, book_root, body,
   )

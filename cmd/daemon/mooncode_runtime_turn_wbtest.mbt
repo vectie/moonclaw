@@ -537,6 +537,263 @@ test "mooncode native runtime turn plans prompt tool calls" {
   assert_eq(commit_calls.length(), 1)
   assert_eq(mooncode_json_string(commit_calls[0], "tool", default=""), "finish")
   assert_false(mooncode_runtime_turn_model_planning_allowed(commit))
+
+  let read : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-planner",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "text": "Read README.md.",
+    "model": "codex/gpt-5.4",
+    "packet": { "command_id": "cmd-read" },
+  }
+  let read_calls = mooncode_runtime_turn_deterministic_preplan(read)
+  assert_eq(read_calls.length(), 2)
+  assert_eq(mooncode_json_string(read_calls[0], "tool", default=""), "read")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(read_calls[0], "arguments"),
+      "path",
+      default="",
+    ),
+    "README.md",
+  )
+  assert_false(mooncode_runtime_turn_requires_model_planning(read))
+
+  let write : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-planner",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "text": "Create tools/e2e-fixed.txt in this MoonBook with exactly ROOT_OK, then reply that it is done.",
+    "model": "codex/gpt-5.4",
+    "packet": { "command_id": "cmd-write" },
+  }
+  let write_calls = mooncode_runtime_turn_deterministic_preplan(write)
+  assert_eq(write_calls.length(), 2)
+  assert_eq(mooncode_json_string(write_calls[0], "tool", default=""), "write")
+  let write_arguments = mooncode_json_object_field_or_empty(
+    write_calls[0],
+    "arguments",
+  )
+  assert_eq(
+    mooncode_json_string(write_arguments, "path", default=""),
+    "tools/e2e-fixed.txt",
+  )
+  assert_eq(
+    mooncode_json_string(write_arguments, "content", default=""),
+    "ROOT_OK",
+  )
+  assert_false(mooncode_runtime_turn_requires_model_planning(write))
+}
+
+///|
+async test "mooncode deterministic explicit prompts execute without model delay" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-explicit-plan-XXXXXX"),
+  )
+  @fsx.write_to_file(@pathx.join(book_root, "README.md"), "fixture read")
+  let session_id = "session-explicit-plan"
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let write_id = "cmd-explicit-write"
+  let write : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "prompt",
+    "text": "Create tools/e2e-fixed.txt with exactly ROOT_OK, then reply that it is done.",
+    "model": "codex/gpt-5.4",
+    "packet": { "command_id": write_id },
+  }
+  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
+    "kind": "mooncode-command",
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "command_id": write_id,
+    "created_at": @clock.Timestamp::from_ms(1L),
+    "command": write,
+  })
+  let write_result = daemon.mooncode_runtime_turn_execute(
+    session_id,
+    book_root,
+    { "consumer_id": "test-runtime" },
+  )
+  assert_true(mooncode_json_bool(write_result, "accepted", default=false))
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "tools/e2e-fixed.txt")),
+    "ROOT_OK",
+  )
+  let read_id = "cmd-explicit-read"
+  let read : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "prompt",
+    "text": "Read README.md.",
+    "model": "codex/gpt-5.4",
+    "packet": { "command_id": read_id },
+  }
+  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
+    "kind": "mooncode-command",
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "command_id": read_id,
+    "created_at": @clock.Timestamp::from_ms(2L),
+    "command": read,
+  })
+  let read_result = daemon.mooncode_runtime_turn_execute(
+    session_id,
+    book_root,
+    { "consumer_id": "test-runtime" },
+  )
+  assert_true(mooncode_json_bool(read_result, "accepted", default=false))
+  assert_true(read_result.stringify().contains("fixture read"))
+  let event_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  assert_false(event_log.contains("runtime.planner_started"))
+  assert_false(event_log.contains("runtime.planner_failed"))
+}
+
+///|
+test "mooncode model planner sends a compact request envelope" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Reply briefly with MODEL_OK.",
+    "context_path": "README.md",
+    "web_search": false,
+    "packet": {
+      "command_id": "cmd-compact",
+      "tool_contract": { "very_large": "must not be copied" },
+      "result_contract": { "very_large": "must not be copied" },
+    },
+  }
+  let prompt = mooncode_runtime_turn_model_prompt(command)
+  assert_true(prompt.contains("Reply briefly with MODEL_OK."))
+  assert_true(prompt.contains("Selected context: `README.md`."))
+  assert_false(prompt.contains("tool_contract"))
+  assert_false(prompt.contains("result_contract"))
+  assert_true(prompt.length() < 1000)
+
+  let chat_tools = mooncode_runtime_turn_model_tools_for_command(command)
+  assert_eq(chat_tools.length(), 1)
+  assert_true(chat_tools.to_json().stringify().contains("finish"))
+  assert_false(chat_tools.to_json().stringify().contains("moon_check"))
+
+  let plan_request = mooncode_runtime_turn_model_plan_request(
+    "gpt-5.4", command,
+  ).to_json()
+  assert_eq(
+    mooncode_json_string(plan_request, "reasoning_effort", default=""),
+    "none",
+  )
+
+  let summary : Json = {
+    "command": "prompt",
+    "text": "Read README.md and summarize it.",
+  }
+  let summary_tools = mooncode_runtime_turn_model_tools_for_command(summary)
+  assert_eq(summary_tools.length(), 2)
+  let summary_json = summary_tools.to_json().stringify()
+  assert_true(summary_json.contains("read"))
+  assert_true(summary_json.contains("finish"))
+  assert_false(summary_json.contains("moon_check"))
+
+  let coding : Json = {
+    "command": "prompt",
+    "text": "Fix the parser and run tests.",
+  }
+  assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 8)
+
+  let codex = @model.codex_oauth_model(
+    access_token="test",
+    account_id="test",
+    refresh_token="test",
+  )
+  assert_true(
+    mooncode_runtime_turn_model_timeout_for_provider(codex, command) is None,
+  )
+  let direct = @model.Model::new(
+    api_key="test",
+    base_url="https://example.invalid/v1",
+    name="test-model",
+    safe_zone_tokens=1000,
+  )
+  assert_true(
+    mooncode_runtime_turn_model_timeout_for_provider(direct, command)
+    is Some(30000),
+  )
+}
+
+///|
+async test "mooncode runtime turn records progress immediately and once" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-live-progress-XXXXXX"),
+  )
+  let session_id = "session-live-progress"
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let binding = daemon.mooncode_binding_for_session(session_id)
+  assert_true(binding.bind_book_root(book_root))
+  let events : Array[Json] = []
+  let persisted : Map[String, Bool] = {}
+  let event : Json = {
+    "id": "live-progress-1",
+    "session_id": session_id,
+    "command_id": "cmd-live-progress",
+    "kind": "runtime.planner_started",
+    "status": "running",
+  }
+  daemon.mooncode_runtime_turn_record_event(binding, events, persisted, event)
+  daemon.mooncode_runtime_turn_record_event(binding, events, persisted, event)
+  assert_eq(events.length(), 1)
+  assert_eq(
+    mooncode_read_jsonl(mooncode_events_path(book_root, session_id)).length(),
+    1,
+  )
 }
 
 ///|
@@ -698,7 +955,7 @@ test "mooncode native runtime turn emits planner progress events" {
     step_index=0,
     now=@clock.Timestamp::from_ms(42L),
   )
-  assert_eq(events.length(), 4)
+  assert_eq(events.length(), 3)
   assert_eq(
     mooncode_json_string(events[0], "kind", default=""),
     "reasoning_delta",
@@ -718,15 +975,7 @@ test "mooncode native runtime turn emits planner progress events" {
     mooncode_json_string(events[2], "tool_call_id", default=""),
     "call-read",
   )
-  assert_eq(mooncode_json_string(events[3], "lane", default=""), "review")
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(events[3], "tool_call"),
-      "id",
-      default="",
-    ),
-    "call-finish",
-  )
+  assert_false(Json::array(events).stringify().contains("call-finish"))
 }
 
 ///|

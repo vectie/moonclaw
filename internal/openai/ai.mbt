@@ -4,6 +4,23 @@ priv suberror HttpError {
 } derive(Debug, ToJson)
 
 ///|
+pub fn error_summary(error : Error) -> String {
+  match error {
+    HttpError(code~, body~) => {
+      let body = body.trim().to_owned()
+      if body == "" {
+        "HTTP \{code}"
+      } else if body.length() > 500 {
+        "HTTP \{code}: \{body[:500]}..."
+      } else {
+        "HTTP \{code}: \{body}"
+      }
+    }
+    _ => error.to_string()
+  }
+}
+
+///|
 /// Execute a chat completion request with the OpenAI API.
 ///
 /// Sends a chat completion request to the model's endpoint and returns the parsed response.
@@ -77,7 +94,7 @@ async fn chat_openai(
     max_retry=5,
     fatal_error=error => {
       match error {
-        HttpError(code=403, ..) => true
+        HttpError(code~, ..) => codex_http_status_is_fatal(code)
         _ => false
       }
     },
@@ -276,7 +293,7 @@ async fn chat_codex(
     max_retry=5,
     fatal_error=error => {
       match error {
-        HttpError(code=403, ..) => true
+        HttpError(code~, ..) => codex_http_status_is_fatal(code)
         _ => false
       }
     },
@@ -286,13 +303,21 @@ async fn chat_codex(
         "request": request,
       })
       let input = convert_messages_to_input(request.messages)
-      let instructions = @codex.base_instructions
+      let requested_instructions = extract_system_instructions(request.messages)
+      let instructions = if requested_instructions == "" {
+        @codex.base_instructions
+      } else {
+        requested_instructions
+      }
       let tools = convert_tools_to_responses_api(request.tools)
       let codex_request = @responses.ResponsesRequest::new(
         model=model.model_name,
         input~,
         instructions~,
         tools~,
+        reasoning_effort?=request.reasoning_effort.map(
+          chat_completion_reasoning_effort_text,
+        ),
         stream=true,
         store=false,
       )
@@ -470,6 +495,11 @@ async fn chat_copilot(
 }
 
 ///|
+fn codex_http_status_is_fatal(code : Int) -> Bool {
+  code >= 400 && code < 500 && code != 401 && code != 408 && code != 429
+}
+
+///|
 fn convert_tools_to_responses_api(
   tools : Array[ChatCompletionToolParam],
 ) -> Array[Json] {
@@ -531,6 +561,7 @@ async fn do_codex_stream_request(
       }
       OutputItemDone(item) => output_items.push(item)
       Completed => break
+      Failed(message) => raise HttpError(code=502, body=message)
     }
   }
   { text_chunks, output_items }
@@ -565,6 +596,7 @@ priv enum ResponseStreamEvent {
   TextDelta(String)
   OutputItemDone(@responses.ResponseItem)
   Completed
+  Failed(String)
 }
 
 ///|
@@ -613,6 +645,8 @@ async fn ResponseStreamEventReader::read(
             }
           }
         "response.completed" => return Some(Completed)
+        "response.failed" | "response.incomplete" | "error" =>
+          return Some(Failed(response_stream_error_message(obj)))
         _ => continue
       }
       continue
@@ -621,6 +655,27 @@ async fn ResponseStreamEventReader::read(
     }
   } nobreak {
     None
+  }
+}
+
+///|
+fn response_stream_error_message(event : Map[String, Json]) -> String {
+  for key in ["error", "response"] {
+    if event.get(key) is Some(Object(value)) {
+      if value.get("error") is Some(Object(error)) {
+        if error.get("message") is Some(String(message)) {
+          return message
+        }
+      }
+      if value.get("message") is Some(String(message)) {
+        return message
+      }
+    }
+  }
+  if event.get("message") is Some(String(message)) {
+    message
+  } else {
+    "Codex response stream ended without a completed response"
   }
 }
 
@@ -679,6 +734,39 @@ fn convert_messages_to_input(
     }
   }
   result
+}
+
+///|
+fn extract_system_instructions(
+  messages : Array[ChatCompletionMessageParam],
+) -> String {
+  let instructions : Array[String] = []
+  for message in messages {
+    match message {
+      System(system) => {
+        let text = extract_text_content(system.content).trim().to_owned()
+        if text != "" {
+          instructions.push(text)
+        }
+      }
+      _ => ()
+    }
+  }
+  instructions.join("\n\n")
+}
+
+///|
+fn chat_completion_reasoning_effort_text(
+  effort : ChatCompletionReasoningEffort,
+) -> String {
+  match effort {
+    None_ => "none"
+    Minimal => "minimal"
+    Low => "low"
+    Medium => "medium"
+    High => "high"
+    Xhigh => "xhigh"
+  }
 }
 
 ///|

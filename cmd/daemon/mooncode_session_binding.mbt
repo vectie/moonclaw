@@ -73,6 +73,21 @@ fn Daemon::mooncode_binding_for_session(
 }
 
 ///|
+fn MoonCodeSessionBinding::bind_book_root(
+  self : MoonCodeSessionBinding,
+  requested_root : String,
+) -> Bool {
+  if requested_root == "" {
+    return false
+  }
+  if self.book_root == "" {
+    self.book_root = requested_root
+    return true
+  }
+  self.book_root == requested_root
+}
+
+///|
 async fn Daemon::mooncode_session_records(
   self : Daemon,
   book_root : String,

@@ -14,6 +14,16 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       "events": Json::array([]),
     }
   }
+  let deterministic = mooncode_runtime_turn_deterministic_preplan(command)
+  if deterministic.length() > 0 {
+    return {
+      "kind": mooncode_kind_runtime_turn_planner(),
+      "protocol": mooncode_protocol_version(),
+      "planner_mode": mooncode_planner_mode_deterministic_fallback(),
+      "tool_calls": Json::array(deterministic),
+      "events": Json::array([]),
+    }
+  }
   let model_name = mooncode_runtime_turn_requested_model(command)
   if model_name == "" || !mooncode_runtime_turn_model_planning_allowed(command) {
     return {
@@ -39,16 +49,16 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   let requested_model : String? = Some(model_name)
   match self.models.get_model(name?=requested_model) {
     Some(model) => {
-      let completion = @openai.chat(
-        model~,
-        mooncode_runtime_turn_model_plan_request(model.model_name, command),
-        timeout_ms=Some(mooncode_runtime_turn_model_timeout_ms(command)),
-      ) catch {
+      let request = mooncode_runtime_turn_model_plan_request(
+        model.model_name,
+        command,
+      )
+      let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
         error =>
           return mooncode_runtime_turn_failed_planner_result(
             command,
             model_name,
-            "model planner failed: \{error}",
+            "model planner failed: \{@openai.error_summary(error)}",
             started,
             now~,
           )
@@ -119,6 +129,14 @@ fn mooncode_runtime_turn_model_planning_allowed(command : Json) -> Bool {
 }
 
 ///|
+fn mooncode_runtime_turn_requires_model_planning(command : Json) -> Bool {
+  mooncode_runtime_turn_explicit_tool_calls(command).length() == 0 &&
+  mooncode_runtime_turn_deterministic_preplan(command).length() == 0 &&
+  mooncode_runtime_turn_requested_model(command) != "" &&
+  mooncode_runtime_turn_model_planning_allowed(command)
+}
+
+///|
 fn mooncode_runtime_turn_requested_model(command : Json) -> String {
   let model = mooncode_json_string(command, "model", default="")
   if model != "" {
@@ -152,6 +170,30 @@ fn mooncode_runtime_turn_model_timeout_ms(command : Json) -> Int {
 }
 
 ///|
+fn mooncode_runtime_turn_model_timeout_for_provider(
+  model : @model.Model,
+  command : Json,
+) -> Int? {
+  match model.model_type {
+    SaaS(CodexOAuth) => None
+    _ => Some(mooncode_runtime_turn_model_timeout_ms(command))
+  }
+}
+
+///|
+async fn mooncode_runtime_turn_model_chat(
+  model : @model.Model,
+  request : @openai.Request,
+  command : Json,
+) -> @openai.ChatCompletion {
+  match mooncode_runtime_turn_model_timeout_for_provider(model, command) {
+    Some(timeout_ms) =>
+      @openai.chat(model~, request, timeout_ms=Some(timeout_ms))
+    None => @openai.chat(model~, request)
+  }
+}
+
+///|
 fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let requested = mooncode_json_int(payload, "planner_max_steps", default=3)
@@ -172,6 +214,7 @@ fn mooncode_runtime_turn_model_plan_request(
   mooncode_runtime_turn_model_plan_request_from_messages(
     model_name,
     mooncode_runtime_turn_model_initial_messages(command),
+    tools=mooncode_runtime_turn_model_tools_for_command(command),
   )
 }
 
@@ -179,6 +222,7 @@ fn mooncode_runtime_turn_model_plan_request(
 fn mooncode_runtime_turn_model_plan_request_from_messages(
   model_name : String,
   message_jsons : Array[Json],
+  tools? : Array[@openai.ChatCompletionToolParam] = mooncode_runtime_turn_model_tools(),
 ) -> @openai.Request raise {
   let messages : Array[@openai.ChatCompletionMessageParam] = @json.from_json(
     Json::array(message_jsons),
@@ -186,9 +230,54 @@ fn mooncode_runtime_turn_model_plan_request_from_messages(
   @openai.chat_completion(
     model=model_name,
     messages~,
-    tools=mooncode_runtime_turn_model_tools(),
+    tools~,
+    max_tokens=1200,
+    reasoning_effort=None_,
     temperature=0.0,
   )
+}
+
+///|
+fn mooncode_runtime_turn_model_tools_for_command(
+  command : Json,
+) -> Array[@openai.ChatCompletionToolParam] {
+  let tools = mooncode_runtime_turn_model_tools()
+  let request = mooncode_runtime_turn_prompt_text(command)
+    .to_lower()
+    .to_string()
+  let path = mooncode_runtime_turn_prompt_path(
+    mooncode_runtime_turn_prompt_text(command),
+  )
+  if path != "" && mooncode_runtime_turn_read_needs_model(request) {
+    return [tools[0], tools[7]]
+  }
+  if mooncode_runtime_turn_model_needs_coding_tools(command, request) {
+    return tools
+  }
+  [tools[7]]
+}
+
+///|
+fn mooncode_runtime_turn_model_needs_coding_tools(
+  command : Json,
+  request : String,
+) -> Bool {
+  let action = mooncode_json_string(command, "command", default="prompt")
+  action == "package" ||
+  request.contains("implement") ||
+  request.contains("fix ") ||
+  request.contains("debug") ||
+  request.contains("refactor") ||
+  request.contains("edit ") ||
+  request.contains("write ") ||
+  request.contains("create ") ||
+  request.contains("build ") ||
+  request.contains("test ") ||
+  request.contains("code") ||
+  request.contains("script") ||
+  request.contains("tool") ||
+  request.contains("app") ||
+  request.contains("site")
 }
 
 ///|
@@ -204,9 +293,26 @@ fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
 
 ///|
 fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
-  "MoonCode command JSON:\n" +
-  command.stringify(indent=2) +
-  "\n\nReturn tool calls only when code, tests, or package work is useful. Keep generated artifacts under tools/, apps/, site/generated/, or portable/app-tool/. After tool results, continue with another small batch or call finish."
+  let action = mooncode_json_string(command, "command", default="prompt")
+  let request = mooncode_runtime_turn_prompt_text(command).trim().to_owned()
+  let context_path = mooncode_json_string(command, "context_path", default="")
+  let deferred = mooncode_json_array_items(command, "deferred_steering")
+  let context = if context_path == "" {
+    "No file is preselected."
+  } else {
+    "Selected context: `\{context_path}`."
+  }
+  let steering = if deferred.length() == 0 {
+    ""
+  } else {
+    "\nDeferred steering: " + Json::array(deferred).stringify()
+  }
+  "Action: \{action}\n" +
+  "User request: \{request}\n" +
+  context +
+  "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
+  steering +
+  "\n\nChoose the smallest useful tool batch. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
 }
 
 ///|
@@ -447,19 +553,17 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   let requested_model : String? = Some(model_name)
   match self.models.get_model(name?=requested_model) {
     Some(model) => {
-      let completion = @openai.chat(
-        model~,
-        mooncode_runtime_turn_model_plan_request_from_messages(
-          model.model_name,
-          messages,
-        ),
-        timeout_ms=Some(mooncode_runtime_turn_model_timeout_ms(command)),
-      ) catch {
+      let request = mooncode_runtime_turn_model_plan_request_from_messages(
+        model.model_name,
+        messages,
+        tools=mooncode_runtime_turn_model_tools_for_command(command),
+      )
+      let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
         error =>
           return mooncode_runtime_turn_failed_planner_result(
             command,
             model_name,
-            "model planner follow-up failed: \{error}",
+            "model planner follow-up failed: \{@openai.error_summary(error)}",
             started,
             now~,
           )

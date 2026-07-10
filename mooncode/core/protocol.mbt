@@ -10,7 +10,7 @@ fn product_id() -> String {
 
 ///|
 pub fn conversation_contract_id() -> String {
-  @conversation.contract_id()
+  "moonsuite-conversation.v2"
 }
 
 ///|
@@ -25,23 +25,44 @@ pub fn conversation_turn_kind() -> String {
 
 ///|
 pub fn conversation_message_roles() -> Array[String] {
-  @conversation.message_roles()
+  ["user", "work", "assistant"]
 }
 
 ///|
 pub fn conversation_turn_required_fields() -> Array[String] {
-  @conversation.turn_required_fields()
+  [
+    "kind", "turn_id", "client_turn_id", "command_id", "ordinal", "status", "user",
+    "work", "assistant",
+  ]
 }
 
 ///|
 pub fn conversation_contract_json() -> Json {
-  @conversation.contract_json(
-    product_id=product_id(),
-    protocol=protocol_version(),
-    durable_owner="mooncode",
-    runtime_owner="moonclaw",
-    ui_owner="moondesk",
-  )
+  {
+    "kind": "moonsuite-conversation-contract",
+    "protocol": protocol_version(),
+    "contract_id": conversation_contract_id(),
+    "product_id": product_id(),
+    "conversation_kind": conversation_kind(),
+    "turn_kind": conversation_turn_kind(),
+    "conversation_required_fields": [
+      "contract_id", "session_id", "revision", "last_sequence", "turns",
+    ],
+    "turn_required_fields": conversation_turn_required_fields(),
+    "slot_required_fields": ["item_id", "status"],
+    "work_required_fields": ["item_id", "status", "summary", "steps", "live"],
+    "work_step_kinds": [
+      "thought", "context", "tool", "edit", "test", "artifact", "status",
+    ],
+    "turn_order": conversation_message_roles(),
+    "identity_fields": ["turn_id", "client_turn_id", "command_id", "ordinal"],
+    "ownership": {
+      "durable_owner": "mooncode",
+      "projection_owner": "moonclaw",
+      "ui_owner": "moondesk",
+      "shared_contract_owner": "moonlib",
+    },
+  }
 }
 
 ///|

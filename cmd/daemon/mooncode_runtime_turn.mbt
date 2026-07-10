@@ -44,9 +44,24 @@ async fn Daemon::mooncode_runtime_turn(
 async fn Daemon::mooncode_runtime_turn_execute(
   self : Daemon,
   session_id : String,
-  book_root : String,
+  requested_book_root : String,
   payload : Json,
 ) -> Json {
+  let binding = self.mooncode_binding_for_session(session_id)
+  if !binding.bind_book_root(requested_book_root) {
+    return {
+      "kind": mooncode_kind_runtime_turn(),
+      "protocol": mooncode_protocol_version(),
+      "owner": "moonclaw",
+      "accepted": false,
+      "session_id": session_id,
+      "book_root": binding.book_root,
+      "requested_book_root": requested_book_root,
+      "ran": false,
+      "error": "MoonCode session is bound to a different MoonBook root",
+    }
+  }
+  let book_root = binding.book_root
   let consumer_id = mooncode_json_string(
     payload,
     "consumer_id",
@@ -125,7 +140,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
     now~,
   )
   let tool_results : Array[Json] = []
-  let events : Array[Json] = [started]
+  let events : Array[Json] = []
+  let persisted_event_ids : Map[String, Bool] = {}
+  self.mooncode_runtime_turn_record_event(
+    binding, events, persisted_event_ids, started,
+  )
   let execution : Json = if mooncode_json_bool(report, "ok", default=false) {
     let control_effect = mooncode_json_string(
       control_decision,
@@ -152,7 +171,10 @@ async fn Daemon::mooncode_runtime_turn_execute(
       )
     } else {
       for deferred in deferred_steering {
-        events.push(
+        self.mooncode_runtime_turn_record_event(
+          binding,
+          events,
+          persisted_event_ids,
           mooncode_runtime_turn_applied_deferred_steer_event(
             session_id,
             command_id,
@@ -161,16 +183,37 @@ async fn Daemon::mooncode_runtime_turn_execute(
           ),
         )
       }
+      let plan_now = self.clock.now()
+      if mooncode_runtime_turn_requires_model_planning(command) {
+        let model_name = mooncode_runtime_turn_requested_model(command)
+        self.mooncode_runtime_turn_record_event(
+          binding,
+          events,
+          persisted_event_ids,
+          mooncode_event(
+            session_id~,
+            command_id~,
+            lane="runtime",
+            kind="runtime.planner_started",
+            title="MoonCode model planner started",
+            status="running",
+            detail="MoonClaw is asking model `\{model_name}` to choose one bounded MoonCode tool batch.",
+            now=plan_now,
+          ),
+        )
+      }
       let mut plan = self.mooncode_runtime_turn_plan_tool_calls(
         command,
-        now=self.clock.now(),
+        now=plan_now,
       )
       let planner_steps : Array[Json] = []
       let max_model_steps = mooncode_runtime_turn_model_max_steps(command)
       for step_index in 0..<max_model_steps {
         planner_steps.push(plan)
         for event in mooncode_json_array_items(plan, "events") {
-          events.push(event)
+          self.mooncode_runtime_turn_record_event(
+            binding, events, persisted_event_ids, event,
+          )
         }
         let planned_tool_calls = mooncode_json_array_items(plan, "tool_calls")
         let tool_calls = if planned_tool_calls.length() > 0 {
@@ -187,7 +230,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
             step_index~,
             now=self.clock.now(),
           ) {
-          events.push(event)
+          self.mooncode_runtime_turn_record_event(
+            binding, events, persisted_event_ids, event,
+          )
         }
         let step_results : Array[Json] = []
         for tool_call in tool_calls {
@@ -199,7 +244,12 @@ async fn Daemon::mooncode_runtime_turn_execute(
           )
           step_results.push(execution)
           tool_results.push(execution)
-          events.push(mooncode_json_object_field_or_empty(execution, "event"))
+          self.mooncode_runtime_turn_record_event(
+            binding,
+            events,
+            persisted_event_ids,
+            mooncode_json_object_field_or_empty(execution, "event"),
+          )
           if !mooncode_json_bool(execution, "accepted", default=false) {
             break
           }
@@ -214,18 +264,37 @@ async fn Daemon::mooncode_runtime_turn_execute(
           step_index + 1 >= max_model_steps {
           break
         }
+        let followup_now = self.clock.now()
+        let followup_model = mooncode_json_string(plan, "model", default="")
+        self.mooncode_runtime_turn_record_event(
+          binding,
+          events,
+          persisted_event_ids,
+          mooncode_event(
+            session_id~,
+            command_id~,
+            lane="runtime",
+            kind="runtime.planner_started",
+            title="MoonCode model planner continued",
+            status="running",
+            detail="MoonClaw is feeding tool results back to model `\{followup_model}` for another bounded MoonCode tool batch.",
+            now=followup_now,
+          ),
+        )
         let next_plan = self.mooncode_runtime_turn_model_followup_plan(
           command,
           plan,
           tool_calls,
           step_results,
-          now=self.clock.now(),
+          now=followup_now,
         )
         let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
         if next_calls.length() == 0 {
           planner_steps.push(next_plan)
           for event in mooncode_json_array_items(next_plan, "events") {
-            events.push(event)
+            self.mooncode_runtime_turn_record_event(
+              binding, events, persisted_event_ids, event,
+            )
           }
           plan = next_plan
           break
@@ -249,7 +318,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
       let test_events : Array[Json] = []
       for test_result in test_results {
         test_events.push(test_result)
-        events.push(test_result)
+        self.mooncode_runtime_turn_record_event(
+          binding, events, persisted_event_ids, test_result,
+        )
       }
       let eval_results = if tool_accepted && action == "run_eval" {
         mooncode_runtime_turn_eval_results(
@@ -271,7 +342,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
           now=self.clock.now(),
         )
         eval_events.push(eval_event)
-        events.push(eval_event)
+        self.mooncode_runtime_turn_record_event(
+          binding, events, persisted_event_ids, eval_event,
+        )
       }
       let eval_accepted = eval_results.all(result => {
         mooncode_json_bool(result, "accepted", default=false)
@@ -296,14 +369,19 @@ async fn Daemon::mooncode_runtime_turn_execute(
           now=self.clock.now(),
         )
         commit_events.push(commit_event)
-        events.push(commit_event)
+        self.mooncode_runtime_turn_record_event(
+          binding, events, persisted_event_ids, commit_event,
+        )
       }
       let commit_accepted = commit_results.all(result => {
         mooncode_json_bool(result, "accepted", default=false)
       })
       let accepted = tool_accepted && eval_accepted && commit_accepted
       if action == "steer" {
-        events.push(
+        self.mooncode_runtime_turn_record_event(
+          binding,
+          events,
+          persisted_event_ids,
           mooncode_runtime_turn_steer_settlement_event(
             session_id,
             command_id,
@@ -336,7 +414,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
           now=self.clock.now(),
         )
         review_events.push(review_event)
-        events.push(review_event)
+        self.mooncode_runtime_turn_record_event(
+          binding, events, persisted_event_ids, review_event,
+        )
       }
       let finished = mooncode_runtime_turn_finished_event(
         session_id,
@@ -345,7 +425,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
         tool_count=tool_results.length(),
         now=self.clock.now(),
       )
-      events.push(finished)
+      self.mooncode_runtime_turn_record_event(
+        binding, events, persisted_event_ids, finished,
+      )
       (
         {
           "accepted": accepted,
@@ -397,7 +479,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
       ),
       now=self.clock.now(),
     )
-    events.push(failed)
+    self.mooncode_runtime_turn_record_event(
+      binding, events, persisted_event_ids, failed,
+    )
     (
       {
         "accepted": false,
@@ -461,14 +545,18 @@ async fn Daemon::mooncode_runtime_turn_execute(
     mooncode_runtime_receipts_path(book_root, session_id),
     receipt,
   )
-  let binding = self.mooncode_binding_for_session(session_id)
-  binding.book_root = book_root
   binding.command_count += 1
   binding.last_command_id = command_id
   binding.last_updated = self.clock.now()
   for event in events {
-    binding.events.put(event)
-    self.mooncode_persist_event(binding, event)
+    let event_id = mooncode_json_string(event, "id", default="")
+    if event_id == "" || !persisted_event_ids.contains(event_id) {
+      binding.events.put(event)
+      self.mooncode_persist_event(binding, event)
+      if event_id != "" {
+        persisted_event_ids[event_id] = true
+      }
+    }
   }
   for index, package_result in package_results {
     binding.events.put(package_events[index])
@@ -502,6 +590,26 @@ async fn Daemon::mooncode_runtime_turn_execute(
     "book_results": Json::array(book_results),
     "claim_state": after,
     "previous_claim_state": before,
+  }
+}
+
+///|
+async fn Daemon::mooncode_runtime_turn_record_event(
+  self : Daemon,
+  binding : MoonCodeSessionBinding,
+  events : Array[Json],
+  persisted_event_ids : Map[String, Bool],
+  event : Json,
+) -> Unit {
+  let event_id = mooncode_json_string(event, "id", default="")
+  if event_id != "" && persisted_event_ids.contains(event_id) {
+    return
+  }
+  events.push(event)
+  binding.events.put(event)
+  self.mooncode_persist_event(binding, event)
+  if event_id != "" {
+    persisted_event_ids[event_id] = true
   }
 }
 

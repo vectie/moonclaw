@@ -44,9 +44,29 @@ async fn Daemon::mooncode_runtime_loop(
 async fn Daemon::mooncode_runtime_loop_execute(
   self : Daemon,
   session_id : String,
-  book_root : String,
+  requested_book_root : String,
   payload : Json,
 ) -> Json {
+  let binding = self.mooncode_binding_for_session(session_id)
+  if !binding.bind_book_root(requested_book_root) {
+    return {
+      "kind": "mooncode-runtime-loop",
+      "protocol": mooncode_protocol_version(),
+      "owner": "moonclaw",
+      "accepted": false,
+      "session_id": session_id,
+      "book_root": binding.book_root,
+      "requested_book_root": requested_book_root,
+      "ran_turn_count": 0,
+      "failed_turn_count": 1,
+      "turn_count": 0,
+      "stopped_by": "root-mismatch",
+      "message": "MoonCode session is bound to a different MoonBook root",
+      "turns": Json::array([]),
+      "waits": Json::array([]),
+    }
+  }
+  let book_root = binding.book_root
   let max_turns = mooncode_runtime_loop_max_turns(payload)
   let live_wait_ms = mooncode_runtime_loop_live_wait_ms(payload)
   let poll_ms = mooncode_runtime_loop_poll_ms(payload)
@@ -424,6 +444,57 @@ async test "mooncode native runtime loop live-waits before idle" (
     "mooncode-runtime-loop-live-wait",
   )
   assert_false(mooncode_json_bool(waits[0], "ready", default=true))
+}
+
+///|
+async test "mooncode native runtime loop rejects a changed MoonBook root" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let first_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-loop-root-a-XXXXXX"),
+  )
+  let second_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-loop-root-b-XXXXXX"),
+  )
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=first_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=first_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(first_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: first_root,
+    conversations: @conversation.Manager::new(
+      home=first_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: first_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let binding = daemon.mooncode_binding_for_session("session-root-lock")
+  assert_true(binding.bind_book_root(first_root))
+  let result = daemon.mooncode_runtime_loop_execute(
+    "session-root-lock",
+    second_root,
+    { "max_turns": 1 },
+  )
+  assert_false(mooncode_json_bool(result, "accepted", default=true))
+  assert_eq(
+    mooncode_json_string(result, "stopped_by", default=""),
+    "root-mismatch",
+  )
+  assert_eq(mooncode_json_string(result, "book_root", default=""), first_root)
+  assert_eq(
+    mooncode_json_string(result, "requested_book_root", default=""),
+    second_root,
+  )
 }
 
 ///|

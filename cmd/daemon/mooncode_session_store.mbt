@@ -194,8 +194,15 @@ async fn mooncode_session_record_from_parts(
     "book_result_log_count": book_results.length(),
     "resume_state": resume_state,
   }
-  mooncode_json_object_with_field(
+  let record_with_conversation = mooncode_json_object_with_field(
     record_without_lifecycle,
+    "mooncode_conversation",
+    mooncode_session_conversation(
+      record_without_lifecycle, commands, runtime_receipts, events,
+    ),
+  )
+  mooncode_json_object_with_field(
+    record_with_conversation,
     "executable_book_lifecycle",
     mooncode_executable_book_lifecycle_report(
       record_without_lifecycle, commands, runtime_receipts, events, package_results,
@@ -223,12 +230,47 @@ async fn mooncode_read_jsonl(path : String) -> Array[Json] {
 }
 
 ///|
+async fn mooncode_repair_jsonl_tail(file : @fs.File) -> Unit {
+  let size = file.size()
+  if size == 0L {
+    return
+  }
+  if file.read_exactly_at(1, position=size - 1L) == b"\n" {
+    return
+  }
+  let mut cursor = size
+  while cursor > 0L {
+    let scan_length = if cursor > 4096L { 4096 } else { cursor.to_int() }
+    let start = cursor - scan_length.to_int64()
+    let chunk = file.read_exactly_at(scan_length, position=start)
+    let mut index = chunk.length()
+    while index > 0 {
+      index -= 1
+      if chunk[index].to_int() == 10 {
+        @moonclaw_fsx.truncate(file, start + index.to_int64() + 1L)
+        return
+      }
+    }
+    cursor = start
+  }
+  @moonclaw_fsx.truncate(file, 0L)
+}
+
+///|
 async fn mooncode_append_jsonl(path : String, entry : Json) -> Unit {
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-  let existing = if @fsx.exists(path) { @fsx.read_file(path) } else { "" }
-  let line = entry.stringify()
-  let content = if existing.is_blank() { line } else { "\{existing}\n\{line}" }
-  @fsx.write_to_file(path, content)
+  let file = @fs.open(
+    path,
+    mode=ReadWrite,
+    append=true,
+    create=0o644,
+    truncate=false,
+  )
+  defer file.close()
+  file.lock(Exclusive)
+  defer file.unlock()
+  mooncode_repair_jsonl_tail(file)
+  file.write(entry.stringify() + "\n")
 }
 
 ///|
