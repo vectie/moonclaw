@@ -101,8 +101,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
       "ran": false,
       "message": "No claimable or claimed MoonCode command is ready for a native runtime turn.",
       "claim_receipts": Json::array(claim_receipts),
-      "claim_state": claimed_state,
-      "previous_claim_state": before,
+      "claim_state": mooncode_runtime_claim_state_compact(claimed_state),
+      "previous_claim_state": mooncode_runtime_claim_state_compact(before),
     }
   }
   let item = claimed[0]
@@ -575,6 +575,20 @@ async fn Daemon::mooncode_runtime_turn_execute(
   }
   self.mooncode_persist_session(binding)
   let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
+  let compact_claim_receipts : Array[Json] = []
+  for claim_receipt in claim_receipts {
+    compact_claim_receipts.push(mooncode_runtime_receipt_compact(claim_receipt))
+  }
+  let compact_package_results : Array[Json] = []
+  for package_result in package_results {
+    compact_package_results.push(
+      mooncode_runtime_package_result_compact(package_result),
+    )
+  }
+  let compact_book_results : Array[Json] = []
+  for book_result in book_results {
+    compact_book_results.push(mooncode_runtime_book_result_compact(book_result))
+  }
   {
     "kind": mooncode_kind_runtime_turn(),
     "protocol": mooncode_protocol_version(),
@@ -584,16 +598,270 @@ async fn Daemon::mooncode_runtime_turn_execute(
     "book_root": book_root,
     "ran": true,
     "command_id": command_id,
-    "claim_receipts": Json::array(claim_receipts),
-    "turn_receipt": receipt,
-    "runtime_control_state": control_state,
-    "runtime_control_decision": control_decision,
-    "execution": execution,
-    "package_results": Json::array(package_results),
+    "claim_receipts": Json::array(compact_claim_receipts),
+    "turn_receipt": mooncode_runtime_receipt_compact(receipt),
+    "runtime_control_state": mooncode_runtime_control_state_compact(
+      control_state,
+    ),
+    "runtime_control_decision": mooncode_runtime_control_decision_compact(
+      control_decision,
+    ),
+    "execution": mooncode_runtime_turn_execution_compact(execution),
+    "package_results": Json::array(compact_package_results),
     "package_events": Json::array(package_events),
-    "book_results": Json::array(book_results),
-    "claim_state": after,
-    "previous_claim_state": before,
+    "book_results": Json::array(compact_book_results),
+    "claim_state": mooncode_runtime_claim_state_compact(after),
+    "previous_claim_state": mooncode_runtime_claim_state_compact(before),
+  }
+}
+
+///|
+fn mooncode_runtime_turn_execution_compact(execution : Json) -> Json {
+  let planner = mooncode_json_object_field_or_empty(execution, "planner")
+  {
+    "accepted": mooncode_json_bool(execution, "accepted", default=false),
+    "protocol": mooncode_json_string(execution, "protocol", default=""),
+    "session_id": mooncode_json_string(execution, "session_id", default=""),
+    "command_id": mooncode_json_string(execution, "command_id", default=""),
+    "web_search": mooncode_json_bool(execution, "web_search", default=false),
+    "control": mooncode_json_string(execution, "control", default=""),
+    "message": mooncode_json_string(execution, "message", default=""),
+    "planner_mode": mooncode_json_string(execution, "planner_mode", default=""),
+    "planner_step_count": mooncode_json_int(
+      execution,
+      "planner_step_count",
+      default=0,
+    ),
+    "model_step_limit": mooncode_json_int(
+      execution,
+      "model_step_limit",
+      default=0,
+    ),
+    "planner": {
+      "planner_mode": mooncode_json_string(planner, "planner_mode", default=""),
+      "model": mooncode_json_string(planner, "model", default=""),
+      "tool_call_count": mooncode_json_int(
+        planner,
+        "tool_call_count",
+        default=0,
+      ),
+    },
+    "tool_results": Json::array(
+      mooncode_json_array_items(execution, "tool_results"),
+    ),
+    "test_results": Json::array(
+      mooncode_json_array_items(execution, "test_results"),
+    ),
+    "eval_results": Json::array(
+      mooncode_json_array_items(execution, "eval_results"),
+    ),
+    "commit_results": Json::array(
+      mooncode_json_array_items(execution, "commit_results"),
+    ),
+    "review_receipts": Json::array(
+      mooncode_json_array_items(execution, "review_receipts"),
+    ),
+    "deferred_steering": Json::array(
+      mooncode_json_array_items(execution, "deferred_steering"),
+    ),
+  }
+}
+
+///|
+fn mooncode_runtime_claim_state_compact(state : Json) -> Json {
+  {
+    "kind": mooncode_json_string(state, "kind", default=""),
+    "protocol": mooncode_json_string(state, "protocol", default=""),
+    "owner": mooncode_json_string(state, "owner", default=""),
+    "session_id": mooncode_json_string(state, "session_id", default=""),
+    "book_root": mooncode_json_string(state, "book_root", default=""),
+    "command_count": mooncode_json_int(state, "command_count", default=0),
+    "receipt_count": mooncode_json_int(state, "receipt_count", default=0),
+    "claimable_command_count": mooncode_json_int(
+      state,
+      "claimable_command_count",
+      default=0,
+    ),
+    "claimed_command_count": mooncode_json_int(
+      state,
+      "claimed_command_count",
+      default=0,
+    ),
+    "delivered_command_count": mooncode_json_int(
+      state,
+      "delivered_command_count",
+      default=0,
+    ),
+    "invalid_command_count": mooncode_json_int(
+      state,
+      "invalid_command_count",
+      default=0,
+    ),
+    "order_blocked_command_count": mooncode_json_int(
+      state,
+      "order_blocked_command_count",
+      default=0,
+    ),
+    "claim_ready": mooncode_json_bool(state, "claim_ready", default=false),
+  }
+}
+
+///|
+fn mooncode_runtime_receipt_compact(receipt : Json) -> Json {
+  {
+    "kind": mooncode_json_string(receipt, "kind", default=""),
+    "protocol": mooncode_json_string(receipt, "protocol", default=""),
+    "owner": mooncode_json_string(receipt, "owner", default=""),
+    "session_id": mooncode_json_string(receipt, "session_id", default=""),
+    "book_root": mooncode_json_string(receipt, "book_root", default=""),
+    "command_id": mooncode_json_string(receipt, "command_id", default=""),
+    "status": mooncode_json_string(receipt, "status", default=""),
+    "runtime_mode": mooncode_json_string(receipt, "runtime_mode", default=""),
+    "claim_id": mooncode_json_string(receipt, "claim_id", default=""),
+    "consumer_id": mooncode_json_string(receipt, "consumer_id", default=""),
+    "control": mooncode_json_string(receipt, "control", default=""),
+    "message": mooncode_json_string(receipt, "message", default=""),
+  }
+}
+
+///|
+fn mooncode_runtime_control_state_compact(state : Json) -> Json {
+  {
+    "kind": mooncode_json_string(state, "kind", default=""),
+    "protocol": mooncode_json_string(state, "protocol", default=""),
+    "owner": mooncode_json_string(state, "owner", default=""),
+    "session_id": mooncode_json_string(state, "session_id", default=""),
+    "book_root": mooncode_json_string(state, "book_root", default=""),
+    "command_count": mooncode_json_int(state, "command_count", default=0),
+    "receipt_count": mooncode_json_int(state, "receipt_count", default=0),
+    "active_turn_id": mooncode_json_string(state, "active_turn_id", default=""),
+    "pending_turn_count": mooncode_json_int(
+      state,
+      "pending_turn_count",
+      default=0,
+    ),
+    "decision_count": mooncode_json_int(state, "decision_count", default=0),
+  }
+}
+
+///|
+fn mooncode_runtime_control_decision_compact(decision : Json) -> Json {
+  {
+    "kind": mooncode_json_string(decision, "kind", default=""),
+    "protocol": mooncode_json_string(decision, "protocol", default=""),
+    "command_id": mooncode_json_string(decision, "command_id", default=""),
+    "action": mooncode_json_string(decision, "action", default=""),
+    "control": mooncode_json_string(decision, "control", default=""),
+    "status": mooncode_json_string(decision, "status", default=""),
+    "effect": mooncode_json_string(decision, "effect", default=""),
+    "target_command_id": mooncode_json_string(
+      decision,
+      "target_command_id",
+      default="",
+    ),
+    "target_state": mooncode_json_string(decision, "target_state", default=""),
+    "detail": mooncode_json_string(decision, "detail", default=""),
+  }
+}
+
+///|
+fn mooncode_runtime_package_manifest_compact(manifest : Json) -> Json {
+  {
+    "kind": mooncode_json_string(manifest, "kind", default=""),
+    "protocol": mooncode_json_string(manifest, "protocol", default=""),
+    "status": mooncode_json_string(manifest, "status", default=""),
+    "package_kind": mooncode_json_string(manifest, "package_kind", default=""),
+    "context_path": mooncode_json_string(manifest, "context_path", default=""),
+    "source_inventory_count": mooncode_json_int(
+      manifest,
+      "source_inventory_count",
+      default=0,
+    ),
+    "source_present_count": mooncode_json_int(
+      manifest,
+      "source_present_count",
+      default=0,
+    ),
+    "promoted_source_count": mooncode_json_int(
+      manifest,
+      "promoted_source_count",
+      default=0,
+    ),
+    "source_promotion_status": mooncode_json_string(
+      manifest,
+      "source_promotion_status",
+      default="",
+    ),
+    "manifest_path": mooncode_json_string(manifest, "manifest_path", default=""),
+    "promoted_source_root": mooncode_json_string(
+      manifest,
+      "promoted_source_root",
+      default="",
+    ),
+  }
+}
+
+///|
+fn mooncode_runtime_package_result_compact(result : Json) -> Json {
+  {
+    "protocol": mooncode_json_string(result, "protocol", default=""),
+    "session_id": mooncode_json_string(result, "session_id", default=""),
+    "command_id": mooncode_json_string(result, "command_id", default=""),
+    "event": mooncode_json_string(result, "event", default=""),
+    "path": mooncode_json_string(result, "path", default=""),
+    "detail": mooncode_json_string(result, "detail", default=""),
+    "package_manifest": mooncode_runtime_package_manifest_compact(
+      mooncode_json_object_field_or_empty(result, "package_manifest"),
+    ),
+  }
+}
+
+///|
+fn mooncode_runtime_book_result_compact(result : Json) -> Json {
+  let book_result = mooncode_json_object_field_or_empty(result, "book_result")
+  let event = mooncode_json_object_field_or_empty(
+    result, "executable_book_event",
+  )
+  {
+    "kind": mooncode_json_string(result, "kind", default=""),
+    "protocol": mooncode_json_string(result, "protocol", default=""),
+    "owner": mooncode_json_string(result, "owner", default=""),
+    "session_id": mooncode_json_string(result, "session_id", default=""),
+    "command_id": mooncode_json_string(result, "command_id", default=""),
+    "result_id": mooncode_json_string(result, "result_id", default=""),
+    "result_path": mooncode_json_string(result, "result_path", default=""),
+    "book_result": {
+      "result_id": mooncode_json_string(book_result, "result_id", default=""),
+      "summary": mooncode_json_string(book_result, "summary", default=""),
+      "artifacts": Json::array(
+        mooncode_json_array_items(book_result, "artifacts"),
+      ),
+      "requires_review": mooncode_json_bool(
+        book_result,
+        "requires_review",
+        default=false,
+      ),
+      "notify_town": mooncode_json_bool(
+        book_result,
+        "notify_town",
+        default=false,
+      ),
+    },
+    "executable_book_event": {
+      "protocol": mooncode_json_string(event, "protocol", default=""),
+      "id": mooncode_json_string(event, "id", default=""),
+      "book_id": mooncode_json_string(event, "book_id", default=""),
+      "command_id": mooncode_json_string(event, "command_id", default=""),
+      "result_id": mooncode_json_string(event, "result_id", default=""),
+      "event_type": mooncode_json_string(event, "event_type", default=""),
+      "accepted": mooncode_json_bool(event, "accepted", default=false),
+      "requires_review": mooncode_json_bool(
+        event,
+        "requires_review",
+        default=false,
+      ),
+      "notify_town": mooncode_json_bool(event, "notify_town", default=false),
+    },
   }
 }
 

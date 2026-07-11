@@ -162,7 +162,16 @@ fn mooncode_runtime_turn_is_simple_generation_request(request : String) -> Bool 
   // requests. Detailed engineering prompts must stay on the model/tool loop;
   // matching a noun such as "tool" or "script" is not sufficient evidence
   // that a canned artifact is the requested result.
-  request.length() <= 256 && !request.contains("\n")
+  let lower = request.to_lower().to_string()
+  request.length() <= 256 &&
+  !request.contains("\n") &&
+  !lower.contains("implement") &&
+  !lower.contains("repair") &&
+  !lower.contains("fix ") &&
+  !lower.contains("existing") &&
+  !lower.contains("run test") &&
+  !lower.contains("moon check") &&
+  !lower.contains("moon test")
 }
 
 ///|
@@ -174,9 +183,9 @@ fn mooncode_runtime_turn_is_explicit_read(
   !mooncode_runtime_turn_read_needs_model(lower) &&
   (
     lower.has_prefix("read ") ||
-    lower.contains(" read ") ||
     lower.has_prefix("open ") ||
-    lower.contains(" open ")
+    lower.has_prefix("please read ") ||
+    lower.has_prefix("please open ")
   )
 }
 

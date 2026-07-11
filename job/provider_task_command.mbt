@@ -114,10 +114,19 @@ async fn resolve_provider_task_command(
     Some(target_id) if !target_id.trim().to_owned().is_blank() =>
       match @resource_providers.find_resource_provider(cwd, target_id, home~) {
         Some(provider) => provider
-        None => return Err("Unknown provider task target: \{target_id}")
+        None =>
+          match
+            @resource_providers.find_resource_provider(
+              affinity_root,
+              target_id,
+              home~,
+            ) {
+            Some(provider) => provider
+            None => return Err("Unknown provider task target: \{target_id}")
+          }
       }
     _ => {
-      let providers = @resource_providers.load_resource_providers(cwd, home~)
+      let providers = load_provider_task_providers(cwd, home, affinity_root)
         .iter()
         .filter(fn(provider) { provider_supports_extension_execution(provider) })
         .to_array()
@@ -161,6 +170,39 @@ async fn resolve_provider_task_command(
       )
   }
   Ok({ provider, command, args, cwd: command_cwd, workspace_root })
+}
+
+///|
+async fn load_provider_task_providers(
+  cwd : String,
+  home : String?,
+  affinity_root : String,
+) -> Array[@resource_providers.RegisteredResourceProvider] {
+  let providers_by_name : Map[
+    String,
+    @resource_providers.RegisteredResourceProvider,
+  ] = {}
+  let order : Array[String] = []
+  for
+    source in [
+      @resource_providers.load_resource_providers(cwd, home~),
+      @resource_providers.load_resource_providers(affinity_root, home~),
+    ] {
+    for provider in source {
+      if !providers_by_name.contains(provider.name) {
+        order.push(provider.name)
+      }
+      providers_by_name[provider.name] = provider
+    }
+  }
+  let providers : Array[@resource_providers.RegisteredResourceProvider] = []
+  for name in order {
+    match providers_by_name.get(name) {
+      Some(provider) => providers.push(provider)
+      None => ()
+    }
+  }
+  providers
 }
 
 ///|
@@ -241,10 +283,17 @@ async fn run_provider_task_stdout(
   extra_args : Array[String],
   context : String,
 ) -> Result[String, String] {
+  let protocol_args = match
+    provider_metadata_string_array(
+      command.provider.metadata,
+      "task_args_prefix",
+    ) {
+    [] => ["wiki", "book"]
+    values => values
+  }
   let arguments : Array[String] = [
     ..command.args,
-    "wiki",
-    "book",
+    ..protocol_args,
     subcommand,
     command.workspace_root,
     ..extra_args,
@@ -347,6 +396,20 @@ fn embedded_provider_task_command(
       Some(value.trim().to_owned())
     _ => None
   }
+  let task_args_prefix = match command_obj.get("task_args_prefix") {
+    Some(Array(values)) => {
+      let items : Array[String] = []
+      for value in values {
+        guard value is String(text) else { continue }
+        let trimmed = text.trim().to_owned()
+        if !trimmed.is_blank() {
+          items.push(trimmed)
+        }
+      }
+      items
+    }
+    _ => []
+  }
   let workspace_root = match command_obj.get("workspace_root") {
     Some(String(value)) if !value.trim().to_owned().is_blank() =>
       value.trim().to_owned()
@@ -362,6 +425,7 @@ fn embedded_provider_task_command(
       metadata={
         "command": command,
         "args": args,
+        "task_args_prefix": task_args_prefix,
         "cwd": cwd,
         "workspace_root": workspace_root,
       },

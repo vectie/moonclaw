@@ -159,7 +159,10 @@ fn mooncode_runtime_turn_requested_model(command : Json) -> String {
 ///|
 fn mooncode_runtime_turn_model_timeout_ms(command : Json) -> Int {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
-  let timeout = mooncode_json_int(payload, "planner_timeout_ms", default=30000)
+  // Direct reasoning models can legitimately need more than 30 seconds once a
+  // coding turn reaches edit/verification. Keep the timeout bounded, but do
+  // not turn normal reasoning latency into a false runtime failure.
+  let timeout = mooncode_json_int(payload, "planner_timeout_ms", default=60000)
   if timeout < 1000 {
     1000
   } else if timeout > 120000 {
@@ -196,7 +199,10 @@ async fn mooncode_runtime_turn_model_chat(
 ///|
 fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
-  let requested = mooncode_json_int(payload, "planner_max_steps", default=3)
+  // A real code change normally needs at least inspect, edit, verify, and
+  // finish turns. Three steps caused valid engineering prompts to exhaust the
+  // loop during workspace inspection before any diff could be produced.
+  let requested = mooncode_json_int(payload, "planner_max_steps", default=8)
   if requested < 1 {
     1
   } else if requested > 20 {
@@ -233,6 +239,7 @@ fn mooncode_runtime_turn_model_plan_request_from_messages(
     tools~,
     max_tokens=1200,
     reasoning_effort=None_,
+    stream=true,
     temperature=0.0,
   )
 }
@@ -304,8 +311,11 @@ fn mooncode_runtime_turn_model_execution_accepted(
       last_failure = index
     } else {
       let tool = mooncode_json_string(result, "tool", default="")
-      if tool == "write" || tool == "edit" || tool == "shell" ||
-        tool == "moon_cmd" || tool == "moon_check" {
+      if tool == "write" ||
+        tool == "edit" ||
+        tool == "shell" ||
+        tool == "moon_cmd" ||
+        tool == "moon_check" {
         coding_evidence = true
       }
     }
@@ -313,7 +323,8 @@ fn mooncode_runtime_turn_model_execution_accepted(
   if mooncode_runtime_turn_model_needs_coding_tools(
       command,
       mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
-    ) && !coding_evidence {
+    ) &&
+    !coding_evidence {
     return false
   }
   if last_failure >= 0 {
@@ -337,7 +348,7 @@ fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use write/edit/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use write/edit/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. For an implementation request, spend at most two tool calls inspecting before making the first write/edit; prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. Respect explicit user constraints as hard boundaries. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
   ]
@@ -364,7 +375,22 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   context +
   "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
   steering +
+  mooncode_runtime_turn_language_grounding(command) +
   "\n\nChoose the smallest useful tool batch. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
+}
+
+///|
+fn mooncode_runtime_turn_language_grounding(command : Json) -> String {
+  let request = mooncode_runtime_turn_prompt_text(command)
+    .to_lower()
+    .to_string()
+  if !request.contains("moonbit") &&
+    !request.contains("moon check") &&
+    !request.contains("moon test") &&
+    !request.contains(".mbt") {
+    return ""
+  }
+  "\nMoonBit baseline: `moon.mod` uses current assignments such as `name = \"org/module\"`; module dependencies use an exact block such as `import { \"moonbitlang/x@0.4.46\", }`. Package imports and `supported_targets = \"native\"` belong in `moon.pkg`, not `moon.mod`. `Json` is a built-in type (do not alias `@json.Json`), while parsing is `@json.parse(text)` in a raising/try context without legacy bang syntax. Current entry-point syntax is `fn main { ... }`. A simple native sync CLI can import `moonbitlang/core/env`, `moonbitlang/x/fs` as `@fsx` (for `read_file_to_string`), and `moonbitlang/x/sys` (for `exit`) in `moon.pkg`, then use `@env.args()`. Use compiler diagnostics and MoonCode's moon tools; do not inspect SDK files outside the MoonBook."
 }
 
 ///|
@@ -464,6 +490,10 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
           "path": { "type": "string" },
           "paths": { "type": "array", "items": { "type": "string" } },
           "program_args": { "type": "array", "items": { "type": "string" } },
+          "expected_exit_code": {
+            "type": "integer",
+            "description": "Expected process exit code; use 1 for intentional negative-path CLI validation.",
+          },
           "test_update_kind": { "type": "string" },
           "test_update_reason": { "type": "string" },
           "timeout_ms": { "type": "integer" },
@@ -609,6 +639,17 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       )
     }
   }
+  if mooncode_runtime_turn_model_needs_coding_tools(
+      command,
+      mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
+    ) &&
+    mooncode_runtime_turn_model_completed_steps(messages) >= 2 &&
+    !mooncode_runtime_turn_model_transcript_has_mutation(messages) {
+    messages.push({
+      "role": "user",
+      "content": "Implementation recovery boundary: the two-call inspection budget is exhausted and no mutation has been recorded. Your next tool call must be a bounded write or edit that advances the requested implementation. Use one multi-file patch when practical. Do not perform more discovery, create a generic scaffold, or initialize a nested repository. If a concrete external blocker truly prevents any edit, call finish and state that blocker precisely.",
+    })
+  }
   let requested_model : String? = Some(model_name)
   match self.models.get_model(name?=requested_model) {
     Some(model) => {
@@ -714,11 +755,43 @@ fn mooncode_runtime_turn_model_tool_result_message(
 fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   let result = mooncode_json_object_field_or_empty(execution, "result")
   let text = result.stringify(indent=2)
-  if text.length() > 12000 {
-    text[:12000].to_owned() + "\n...[truncated]"
+  if text.length() > 4000 {
+    text[:4000].to_owned() + "\n...[truncated for planner context]"
   } else {
     text
   }
+}
+
+///|
+fn mooncode_runtime_turn_model_completed_steps(messages : Array[Json]) -> Int {
+  let mut count = 0
+  for message in messages {
+    if mooncode_json_string(message, "role", default="") == "assistant" &&
+      mooncode_json_array_items(message, "tool_calls").length() > 0 {
+      count += 1
+    }
+  }
+  count
+}
+
+///|
+fn mooncode_runtime_turn_model_transcript_has_mutation(
+  messages : Array[Json],
+) -> Bool {
+  for message in messages {
+    if mooncode_json_string(message, "role", default="") == "assistant" {
+      for tool_call in mooncode_json_array_items(message, "tool_calls") {
+        let function = mooncode_json_object_field_or_empty(
+          tool_call, "function",
+        )
+        let name = mooncode_json_string(function, "name", default="")
+        if name == "write" || name == "edit" {
+          return true
+        }
+      }
+    }
+  }
+  false
 }
 
 ///|

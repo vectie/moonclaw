@@ -214,3 +214,67 @@ async test "load_resource_providers resolves suite book workspace provider home"
     inspect(providers[0].name, content="book-provider")
   })
 }
+
+///|
+async test "load_resource_providers separates book targets from model providers" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let suite_root = mock.cwd.path() |> @pathx.join("suite")
+    let book_root = suite_root
+      |> @pathx.join("books")
+      |> @pathx.join("research-book")
+    let model_manifest = @moonsuite.product_artifact_for_workspace_root(
+      suite_root, "moonclaw", "providers.json",
+    )
+    let resource_manifest = @pathx.join(book_root, ".moonsuite")
+      |> @pathx.join("resource-providers.json")
+    @fsx.make_directory(
+      @pathx.dirname(model_manifest),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.make_directory(
+      @pathx.dirname(resource_manifest),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(
+      model_manifest,
+      (
+        {
+          "providers": {
+            "moongate": {
+              "baseUrl": "http://127.0.0.1:15721/v1",
+              "models": [{ "id": "gpt-5.5" }],
+            },
+          },
+        } : Json).stringify(),
+    )
+    @fsx.write_to_file(
+      resource_manifest,
+      (
+        #|[
+        #|  {
+        #|    "name": "moonbook",
+        #|    "title": "Book-local provider",
+        #|    "kind": "task-provider",
+        #|    "capabilities": ["extension.task"],
+        #|    "metadata": {"workspace_root": "BOOK_ROOT"}
+        #|  }
+        #|]
+      )
+      .replace(old="BOOK_ROOT", new=book_root)
+      .to_string(),
+    )
+    let providers = load_resource_providers(book_root, home=Some(suite_root))
+    assert_eq(providers.length(), 1)
+    assert_eq(providers[0].name, "moonbook")
+    assert_true(
+      match providers[0].metadata {
+        { "workspace_root": String(root), .. } => root == book_root
+        _ => false
+      },
+    )
+  })
+}

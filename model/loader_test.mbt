@@ -46,6 +46,45 @@ async test "Loader" (t : @test.Test) {
 }
 
 ///|
+async test "Loader reads canonical product providers manifest" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let providers_file = mock.cwd
+      .add_directory(".moonsuite")
+      .add_directory("products")
+      .add_directory("moonclaw")
+      .add_file("providers.json")
+    providers_file.write_string(
+      (
+        {
+          "providers": {
+            "moongate": {
+              "baseUrl": "http://127.0.0.1:15721/v1",
+              "api": "openai",
+              "apiKey": "moongate-local",
+              "models": [
+                {
+                  "id": "gpt-5.5",
+                  "name": "moongate/gpt-5.5",
+                  "reasoning": true,
+                  "input": ["text", "image"],
+                },
+              ],
+            },
+          },
+        } : Json).stringify(indent=2),
+    )
+    let loader = @model.Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
+    let loaded = loader.get_model(name="moongate/gpt-5.5")
+    guard loaded is Some(model) else {
+      fail("expected canonical provider model")
+    }
+    inspect(model.name, content="moongate/gpt-5.5")
+    inspect(model.model_name, content="gpt-5.5")
+    inspect(model.base_url, content="http://127.0.0.1:15721/v1")
+  })
+}
+
+///|
 async test "load" (t : @test.Test) {
   @mock.run(t, mock => {
     let api_key = "test-api-key"

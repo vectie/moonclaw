@@ -222,12 +222,20 @@ async fn planned_subjob_proposal(
   // For provider-backed delegation, the provider owns task decomposition and
   // MoonClaw only compiles the returned task batch into child analysis steps.
   if provider_execution_requested(config.execution_mode) {
+    // `cwd` is normally the isolated run workspace. Provider discovery must
+    // instead remain affine to the domain workspace declared by the delegate;
+    // otherwise a book-local provider disappears as soon as isolation begins.
+    let provider_workspace = config.cwd
+      .map(fn(value) { value.trim().to_owned() })
+      .filter(fn(value) { !value.is_blank() })
+      .unwrap_or(cwd)
     let (command, batch) = match
       load_provider_task_task_batch(
         cwd,
         home,
         config.execution_target,
         request_text,
+        metadata={ "workspace_root": provider_workspace },
       ) {
       Ok(value) => value
       Err(error) => return Err(error)

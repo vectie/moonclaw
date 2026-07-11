@@ -170,6 +170,12 @@ fn provider_task_system_prompt(
   task : ProviderTaskSpec,
   context : ProviderTaskWorkerContext,
 ) -> String {
+  let runtime_instruction = request.system_prompt.trim().to_owned()
+  let is_generic_tool_prelude = runtime_instruction.contains(
+      "You are a highly skilled software developer",
+    ) ||
+    runtime_instruction.contains("<execute_command/>") ||
+    runtime_instruction.contains("<todo/>")
   [
     "You are executing a domain-local extension task.",
     "The loaded `provider-task-execution` skill defines the execution method.",
@@ -186,10 +192,10 @@ fn provider_task_system_prompt(
     "- Only use broad search to fill a named gap after the primary working set is exhausted.",
     "- Ignore generated or dependency trees such as `.git`, `.moonsuite`, `.tmp`, `.mooncakes`, `_build`, `node_modules`, `dist`, and temporary output directories unless the task explicitly requires them.",
     "- For bootstrap gather work, produce at least one `raw/bootstrap/*` artifact before claiming durable wiki revision success.",
-    if request.system_prompt.trim().to_owned().is_blank() {
+    if runtime_instruction.is_blank() || is_generic_tool_prelude {
       ""
     } else {
-      "Additional runtime instruction:\n\{request.system_prompt}"
+      "Additional runtime instruction:\n\{runtime_instruction}"
     },
   ]
   .filter(fn(line) { !line.trim().to_owned().is_blank() })

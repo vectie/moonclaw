@@ -14,10 +14,17 @@ fn provider_task_step_metadata(
     "extension_priority": task.priority,
     "extension_requires_review": task.requires_review,
     "extension_target_pages": task.target_pages,
+    // Keep provider discovery affine to the declared domain workspace after
+    // MoonClaw creates an isolated child run for this task.
+    "workspace_root": command.workspace_root,
     "provider_command": {
       "provider_name": command.provider.name,
       "command": command.command,
       "args": command.args,
+      "task_args_prefix": provider_metadata_string_array(
+        command.provider.metadata,
+        "task_args_prefix",
+      ),
       "cwd": command.cwd,
       "workspace_root": command.workspace_root,
     },

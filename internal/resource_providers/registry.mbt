@@ -65,22 +65,26 @@ pub impl @json.FromJson for RegisteredResourceProvider with fn from_json(
 fn provider_manifest_candidates(cwd : String, home : String?) -> Array[String] {
   let candidates : Array[String] = []
   match home {
-    Some(home) =>
-      candidates.push(
+    Some(home) => {
+      push_provider_manifest_candidate(
+        candidates,
+        @moonsuite.product_artifact_for_workspace_root(
+          home, "moonclaw", "resource-providers.json",
+        ),
+      )
+      push_provider_manifest_candidate(
+        candidates,
         @moonsuite.product_artifact_for_workspace_root(
           home, "moonclaw", "providers.json",
         ),
       )
+    }
     None => ()
   }
   let ancestry : Array[String] = []
   let mut dir = @pathx.normalize(cwd)
   while true {
-    ancestry.push(
-      @moonsuite.product_artifact_for_workspace_root(
-        dir, "moonclaw", "providers.json",
-      ),
-    )
+    ancestry.push(dir)
     let parent : String = [..@pathx.dirname(dir)]
     if parent == dir {
       break
@@ -90,9 +94,36 @@ fn provider_manifest_candidates(cwd : String, home : String?) -> Array[String] {
   let mut index = ancestry.length()
   while index > 0 {
     index -= 1
-    candidates.push(ancestry[index])
+    let root = ancestry[index]
+    push_provider_manifest_candidate(
+      candidates,
+      @pathx.join(root, ".moonsuite") |> @pathx.join("resource-providers.json"),
+    )
+    push_provider_manifest_candidate(
+      candidates,
+      @moonsuite.product_artifact_for_workspace_root(
+        root, "moonclaw", "resource-providers.json",
+      ),
+    )
+    push_provider_manifest_candidate(
+      candidates,
+      @moonsuite.product_artifact_for_workspace_root(
+        root, "moonclaw", "providers.json",
+      ),
+    )
   }
   candidates
+}
+
+///|
+fn push_provider_manifest_candidate(
+  candidates : Array[String],
+  path : String,
+) -> Unit {
+  let normalized = @pathx.normalize(path)
+  if !candidates.contains(normalized) {
+    candidates.push(normalized)
+  }
 }
 
 ///|

@@ -5,6 +5,7 @@ pub async fn start(args : ArrayView[String]) -> Unit {
     ["import", packet_path, ..] => import_packet(arr, packet_path)
     ["run", run_id, ..] => run_packet_job(arr, run_id)
     ["status", run_id, ..] => status_packet_job(arr, run_id)
+    ["cancel", run_id, ..] => cancel_packet_job(arr, run_id)
     ["help"] | ["--help"] | ["-h"] | [] => print_help()
     ["version"] | ["--version"] | ["-v"] => println(@buildinfo.version)
     _ => print_help()
@@ -20,6 +21,7 @@ fn print_help() -> Unit {
   println("Commands:")
   println("  import <packet.json>   Import an external proposal packet")
   println("  status <run_id>        Load and print a run without executing it")
+  println("  cancel <run_id>        Cancel a persisted interrupted run")
   println("  version                Show version")
   println("")
   println("Options:")
@@ -247,4 +249,55 @@ async fn status_packet_job(args : Array[String], run_id : String) -> Unit {
       }
     }
   }
+}
+
+///|
+async fn cancel_packet_job(args : Array[String], run_id : String) -> Unit {
+  let home = resolve_home(args)
+  let cwd = resolve_cwd(args)
+  let json_mode = args.contains("--json")
+  let workspace = @workspace.WorkspaceRuntime::new(home~, cwd~)
+  let app = @job.GatewayJobApp::new(
+    root=@job.moonclaw_jobs_root(home),
+    cwd~,
+    home~,
+    workspace~,
+    next_id=fn() { "\{workspace.root()}-cancel-\{run_id}" },
+    now=fn() { @clock.epoch.now().ms().to_int() },
+  )
+  app.load()
+  let store = app.runtime().store()
+  let run = match store.get_run(run_id) {
+    Some(run) => run
+    None => fail("Unknown job run: \{run_id}")
+  }
+  if !is_recoverable_run_status(run.status) {
+    fail(
+      "Job run \{run_id} is already terminal: \{run.status.to_json().stringify()}",
+    )
+  }
+  let cancelled = match
+    app
+    .runtime()
+    .cancel_run(
+      run_id,
+      @clock.epoch.now().ms().to_int(),
+      summary=Some("Cancelled by proposal recovery command"),
+    ) {
+    Some(cancelled) => cancelled
+    None => fail("Failed to cancel job run: \{run_id}")
+  }
+  if json_mode {
+    println(cancelled.to_json().stringify(indent=2))
+  } else {
+    println("Run: \{cancelled.id}")
+    println("Status: \{cancelled.status.to_json().stringify()}")
+    let summary = cancelled.summary.unwrap_or("")
+    println("Summary: \{summary}")
+  }
+}
+
+///|
+fn is_recoverable_run_status(status : @job.RunStatus) -> Bool {
+  status is (Pending | Running | WaitingForInput)
 }

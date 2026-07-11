@@ -225,22 +225,97 @@ fn extracted_fetch_text(
 }
 
 ///|
+fn content_type_is_pdf(content_type : String?) -> Bool {
+  match content_type {
+    Some(value) => value.to_lower().contains("application/pdf")
+    None => false
+  }
+}
+
+///|
+async fn extracted_pdf_text(
+  body : Bytes,
+  max_chars : Int,
+) -> (String, Bool, String) {
+  @fsx.with_temporary_directory("/tmp/moonclaw-web-fetch-pdf-XXXXXX", async fn(
+    dir,
+  ) {
+    let pdf_path = dir + "/document.pdf"
+    let text_path = dir + "/document.txt"
+    @fsx.write_bytes_to_file(pdf_path, body) catch {
+      error => fail("web_fetch could not stage PDF: \{error}")
+    }
+    let (extracted_path, note) = @pdf_ocr.extract_text_from_pdf(
+      pdf_path,
+      text_path,
+      dir,
+      async fn(command, arguments, cwd) {
+        @pdf_ocr.run_process(command, arguments, cwd~)
+      },
+    )
+    let path = match extracted_path {
+      Some(path) => path
+      None =>
+        fail(
+          "web_fetch PDF extraction failed: \{note.unwrap_or("no extractor produced text")}",
+        )
+    }
+    let text = @fsx.read_file(path) catch {
+      error => fail("web_fetch could not read extracted PDF text: \{error}")
+    }
+    let cleaned = text.trim().to_owned()
+    guard !cleaned.is_blank() else {
+      fail("web_fetch PDF extraction produced no readable text")
+    }
+    let (truncated_text, truncated) = truncate_text(cleaned, max_chars)
+    (truncated_text, truncated, note.unwrap_or("Extracted PDF text"))
+  })
+}
+
+///|
 async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
   let uri = parse_fetch_uri(url) catch { error => fail("\{to_repr(error)}") }
   let client = @http.Client::new("\{uri.scheme}://\{uri.host}", headers={
     "Accept": "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.8",
     "Connection": "close",
-    "User-Agent": "moonclaw-web-fetch/1.0",
+    // Some authoritative public sites reject bot-shaped user agents even for
+    // ordinary read-only pages. Use a browser-compatible UA while retaining a
+    // clear MoonClaw product token for observability.
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36 MoonClawWebFetch/1.0",
   })
   defer client.close()
   let response = client.get(uri.path)
-  let body = client.read_all().text()
+  let body = client.read_all().binary()
   guard response.code is (200..=299) else {
-    fail("web_fetch HTTP \{response.code}: \{body}")
+    fail(
+      "web_fetch HTTP \{response.code}: \{@encoding/utf8.decode_lossy(body)}",
+    )
   }
   let content_type = normalized_content_type(response.headers)
-  let (text, title) = extracted_fetch_text(body, content_type)
-  let (truncated_text, truncated) = truncate_text(text, max_chars)
+  let is_pdf = content_type_is_pdf(content_type)
+  let (truncated_text, truncated, title, extraction_note) = if is_pdf {
+    let (text, truncated, note) = extracted_pdf_text(body, max_chars)
+    (text, truncated, None, Some(note))
+  } else {
+    let decoded = @encoding/utf8.decode_lossy(body)
+    let (text, title) = extracted_fetch_text(decoded, content_type)
+    let (truncated_text, truncated) = truncate_text(text, max_chars)
+    (truncated_text, truncated, title, None)
+  }
+  let metadata : Map[String, Json] = {
+    "scheme": uri.scheme.to_json(),
+    "host": uri.host.to_json(),
+    "path": uri.path.to_json(),
+    "extracted_as_html": match content_type {
+      Some(content_type) => content_type.to_lower().contains("html").to_json()
+      None => false.to_json()
+    },
+    "extracted_as_pdf": is_pdf.to_json(),
+  }
+  match extraction_note {
+    Some(note) => metadata.set("extraction_note", note.to_json())
+    None => ()
+  }
   {
     url,
     final_url: url,
@@ -250,16 +325,12 @@ async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
     title,
     text: truncated_text,
     truncated,
-    source: "http-fetch",
-    metadata: {
-      "scheme": uri.scheme,
-      "host": uri.host,
-      "path": uri.path,
-      "extracted_as_html": match content_type {
-        Some(content_type) => content_type.to_lower().contains("html")
-        None => false
-      },
+    source: if is_pdf {
+      "http-fetch-pdf"
+    } else {
+      "http-fetch"
     },
+    metadata: Json::object(metadata),
   }
 }
 
@@ -294,7 +365,14 @@ pub fn new() -> @tool.Tool[WebFetchResult] {
           Int::min(20000, Int::max(200, value.to_int()))
         _ => 5000
       }
-      let result = perform_web_fetch(trimmed, max_chars) catch {
+      // Public sources occasionally accept the connection but never finish a
+      // response. Bound every fetch so one source cannot stall an analysis
+      // step until its much larger job timeout expires.
+      let result = @async.with_timeout(
+        45000,
+        async fn() { perform_web_fetch(trimmed, max_chars) },
+        error=Failure::Failure("web_fetch timed out after 45 seconds"),
+      ) catch {
         error => return @tool.error("Web fetch failed: \{error}")
       }
       @tool.ok(result)

@@ -6,7 +6,7 @@ async fn mooncode_runtime_turn_package_results(
   execution : Json,
   now~ : @clock.Timestamp,
 ) -> Array[Json] {
-  let paths = mooncode_runtime_turn_package_paths(execution)
+  let paths = mooncode_runtime_turn_package_paths(book_root, execution)
   if paths.length() == 0 {
     return []
   }
@@ -70,8 +70,11 @@ async fn mooncode_runtime_turn_package_results(
 }
 
 ///|
-fn mooncode_runtime_turn_package_paths(execution : Json) -> Array[String] {
-  let paths : Array[String] = []
+async fn mooncode_runtime_turn_package_paths(
+  book_root : String,
+  execution : Json,
+) -> Array[String] {
+  let changed_paths : Array[String] = []
   for result in mooncode_json_array_items(execution, "tool_results") {
     if !mooncode_json_bool(result, "accepted", default=false) {
       continue
@@ -84,11 +87,91 @@ fn mooncode_runtime_turn_package_paths(execution : Json) -> Array[String] {
     let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
     let path = mooncode_json_string(metadata, "path", default="")
     if mooncode_runtime_turn_is_package_path(path) &&
-      !mooncode_runtime_turn_string_array_contains(paths, path) {
+      !mooncode_runtime_turn_string_array_contains(changed_paths, path) {
+      changed_paths.push(path)
+    }
+  }
+  let paths : Array[String] = []
+  let expanded_roots : Array[String] = []
+  for path in changed_paths {
+    let module_root = mooncode_runtime_turn_package_module_root(book_root, path)
+    if module_root == "" {
       paths.push(path)
+    } else if !mooncode_runtime_turn_string_array_contains(
+        expanded_roots, module_root,
+      ) {
+      expanded_roots.push(module_root)
+      for
+        source in mooncode_runtime_turn_package_tree_paths(
+          book_root, module_root,
+        ) {
+        if !mooncode_runtime_turn_string_array_contains(paths, source) {
+          paths.push(source)
+        }
+      }
     }
   }
   paths
+}
+
+///|
+async fn mooncode_runtime_turn_package_module_root(
+  book_root : String,
+  path : String,
+) -> String {
+  let mut candidate = @pathx.dirname(path).to_owned()
+  while candidate != "." && candidate != "" {
+    let manifest = @pathx.join(@pathx.join(book_root, candidate), "moon.mod")
+    let manifest_exists = @fsx.exists(manifest) catch { _ => false }
+    if manifest_exists {
+      return candidate
+    }
+    let parent = @pathx.dirname(candidate).to_owned()
+    if parent == candidate {
+      break
+    }
+    candidate = parent
+  }
+  ""
+}
+
+///|
+async fn mooncode_runtime_turn_package_tree_paths(
+  book_root : String,
+  module_root : String,
+) -> Array[String] {
+  let files : Array[String] = []
+  let pending : Array[String] = [module_root]
+  let mut index = 0
+  while index < pending.length() {
+    let relative_dir = pending[index]
+    index += 1
+    let absolute_dir = @pathx.join(book_root, relative_dir)
+    let entries = @fsx.list_directory(absolute_dir) catch { _ => [] }
+    for entry in entries {
+      let relative = @pathx.join(relative_dir, entry.name)
+      if entry.kind is Directory {
+        if !mooncode_runtime_turn_package_ignored_directory(entry.name) {
+          pending.push(relative)
+        }
+      } else {
+        files.push(relative)
+      }
+    }
+  }
+  files
+}
+
+///|
+fn mooncode_runtime_turn_package_ignored_directory(name : String) -> Bool {
+  name == ".git" ||
+  name == ".github" ||
+  name == ".githooks" ||
+  name == ".mooncakes" ||
+  name == "_build" ||
+  name == "target" ||
+  name == "node_modules" ||
+  name == "portable"
 }
 
 ///|

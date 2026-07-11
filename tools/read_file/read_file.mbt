@@ -24,17 +24,10 @@ pub impl Show for ReadFileToolResult with fn output(
     // ReadDirectoryResult({ path, display, .. }) =>
     //   logger.write_string("Directory: \{path}\nEntries:\n\{display}")
     { path, content, start_line, end_line } => {
-      let lines = content.split("\n").to_array()
-      let expected_lines = end_line - start_line + 1
-      // When content field has been trimmed to only contain the selected range
-      // (which happens for large files with valid ranges), lines.length() will
-      // equal expected_lines, so we use the full lines array. Otherwise, we need
-      // to slice the content to extract the selected range.
-      let selected_lines = if lines.length() == expected_lines {
-        lines
-      } else {
-        lines[start_line - 1:end_line].to_owned()
-      }
+      // `content` is always the selected range. Keeping the full file in the
+      // result would also serialize it into the model-facing tool payload and
+      // defeat the range/token boundary.
+      let selected_lines = content.split("\n").to_array()
       let width = end_line.to_string().length()
       let selected_content = selected_lines
         .mapi(fn(i, line) {
@@ -169,7 +162,7 @@ async fn execute_read_file_tool(
       }
       return @tool.error(error_message)
     }
-    return @tool.ok({ path, content, start_line, end_line })
+    return @tool.ok({ path, content: selected_content, start_line, end_line })
   } catch {
     error => @tool.error("Error reading file: \{error}", error~)
   }

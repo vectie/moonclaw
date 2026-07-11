@@ -119,6 +119,79 @@ async fn provider_task_packet_candidate_pages(
 }
 
 ///|
+async fn provider_task_page_needs_revision(
+  workspace_root : String,
+  relative : String,
+) -> Bool {
+  let absolute = @pathx.join(workspace_root, relative)
+  if !(@fsx.exists(absolute) catch { _ => false }) {
+    return true
+  }
+  let content = @fsx.read_file(absolute) catch { _ => return true }
+  content.length() < 1200 || content.contains("_None yet._")
+}
+
+///|
+async fn provider_task_pages_needing_revision(
+  workspace_root : String,
+  pages : Array[String],
+) -> Array[String] {
+  let selected : Array[String] = []
+  for page in pages {
+    if provider_task_page_needs_revision(workspace_root, page) {
+      selected.push(page)
+    }
+  }
+  selected
+}
+
+///|
+async fn provider_task_synthesis_pages_needing_source_coverage(
+  workspace_root : String,
+  source_pages : Array[String],
+) -> Array[String] {
+  let selected : Array[String] = []
+  for target in ["wiki/synthesis/overview.md", "wiki/synthesis/claims.md"] {
+    let absolute = @pathx.join(workspace_root, target)
+    let content = @fsx.read_file(absolute) catch { _ => "" }
+    let mut missing = content.is_blank()
+    if !missing {
+      for source_page in source_pages {
+        let source_content = @fsx.read_file(
+          @pathx.join(workspace_root, source_page),
+        ) catch {
+          _ => continue
+        }
+        let title = provider_task_first_markdown_heading(source_content)
+        let source_link = "../sources/" +
+          @pathx.basename(source_page).to_owned()
+        if !title.is_blank() &&
+          !content.contains(title) &&
+          !content.contains(source_link) {
+          missing = true
+          break
+        }
+      }
+    }
+    if missing {
+      selected.push(target)
+    }
+  }
+  selected
+}
+
+///|
+fn provider_task_first_markdown_heading(content : String) -> String {
+  for raw in content.split("\n") {
+    let line = raw.trim().to_owned()
+    if line.has_prefix("# ") {
+      return line[2:].trim().to_owned()
+    }
+  }
+  ""
+}
+
+///|
 fn provider_task_markdown_bullet_section(
   content : String,
   heading : String,
@@ -254,6 +327,7 @@ async fn provider_task_research_protocol_prompt(
     "- mounted-sources/MANIFEST.md if present",
     provider_task_mounted_source_section(mounted_sources),
     "Use web_search before local-only conclusions when the runtime exposes it.",
+    "Derive search queries from the domain concepts and decision gaps, not from project nicknames or generic title tokens. Prefer authoritative-publisher site queries and inspect beyond the first noisy result.",
     "If web_search or web_fetch is unavailable or fails, still write the required files and record the exact limitation.",
     "Write or revise only these files for this slice:",
     requested_file_list,
@@ -263,7 +337,6 @@ async fn provider_task_research_protocol_prompt(
     "Use source IDs such as W1/W2 for web evidence, L1/L2 for local evidence, and B1/B2 for blockers.",
     "Every claim row in the evidence matrix must include source IDs, confidence, and a gap or contradiction note.",
     "The synthesis brief must separate verified findings, web verification status, contradictions, blockers, and next research.",
-    "The marketing brief must be produced by the loaded marketing skill when available; do not fill it with deterministic fallback boilerplate.",
     "Use file_write or patch_edit to create the requested files before finishing. A prose-only answer is a failure.",
     "List which durable wiki/source/entity/concept/synthesis pages should be materialized next.",
     "Do not materialize wiki/source/entity/concept pages in this slice; it prepares the handoff.",
@@ -299,16 +372,6 @@ async fn provider_task_research_bootstrap_substeps(
         context,
         "Use the research-report skill to write the reader-facing deep research article from screened evidence and mounted sources.",
         ["raw/bootstrap/deep-report.md"],
-      ),
-      kind: Some("job.analysis"),
-    },
-    {
-      title: "Write marketing brief",
-      prompt: provider_task_research_protocol_prompt(
-        task,
-        context,
-        "Use the wiki-marketing skill to write seller-facing product positioning from supported evidence, not backend status copy.",
-        ["raw/bootstrap/marketing-brief.md"],
       ),
       kind: Some("job.analysis"),
     },
@@ -430,6 +493,10 @@ async fn provider_task_revision_substep_prompt(
   } else {
     packets.map(fn(path) { "- \{path}" }).join("\n")
   }
+  let coverage_requirements = provider_task_missing_source_coverage_prompt(
+    context.workspace_root,
+    target_page,
+  )
   [
     "Apply one bounded revision slice of the provider task \{task.title}.",
     provider_task_contract_section(context),
@@ -438,9 +505,49 @@ async fn provider_task_revision_substep_prompt(
     "Revise only this durable page:",
     "- \{target_page}",
     "Cross-link to the strongest related source pages already present in the workspace.",
+    coverage_requirements,
     "Keep claims bounded to cited packet evidence and mounted workspace files.",
     "If the page lands, update `wiki/index.md` and `wiki/log.md` so entity, concept, source, and synthesis sections reflect the actual durable files.",
   ].join("\n")
+}
+
+///|
+async fn provider_task_missing_source_coverage_prompt(
+  workspace_root : String,
+  target_page : String,
+) -> String {
+  if target_page != "wiki/synthesis/overview.md" &&
+    target_page != "wiki/synthesis/claims.md" {
+    return ""
+  }
+  let target_content = @fsx.read_file(@pathx.join(workspace_root, target_page)) catch {
+    _ => ""
+  }
+  let missing : Array[String] = []
+  for source_page in provider_task_existing_source_pages(workspace_root) {
+    let source_content = @fsx.read_file(
+      @pathx.join(workspace_root, source_page),
+    ) catch {
+      _ => continue
+    }
+    let title = provider_task_first_markdown_heading(source_content)
+    let link = "../sources/" + @pathx.basename(source_page).to_owned()
+    if !title.is_blank() &&
+      !target_content.contains(title) &&
+      !target_content.contains(link) {
+      missing.push("- [\{title}](\{link})")
+    }
+  }
+  if missing.is_empty() {
+    "Source coverage repair requirements:\n- none"
+  } else {
+    [
+      "Source coverage repair requirements:",
+      "Name or link every source below in this revision so the synthesis surface has explicit traceability.",
+      "For a claims register, provenance-only inputs may go in an evidence-base or scope section; do not promote them into substantive claim support unless the evidence warrants it.",
+      missing.join("\n"),
+    ].join("\n")
+  }
 }
 
 ///|
@@ -499,11 +606,13 @@ async fn provider_task_source_materialize_substeps(
     }
     synthesized
   } else {
-    pages
+    provider_task_pages_needing_revision(context.workspace_root, pages)
   }
   let bounded_pages : Array[String] = []
   let mut i = 0
-  while i < materialize_pages.length() && i < 2 {
+  // Keep each source page bounded to its own worker, while allowing one
+  // semantic pass to use the suite's four-lane concurrency budget.
+  while i < materialize_pages.length() && i < 4 {
     bounded_pages.push(materialize_pages[i])
     i += 1
   }
@@ -541,11 +650,18 @@ fn provider_task_can_complete_from_research_artifacts(
   task : ProviderTaskSpec,
 ) -> Bool {
   let normalized_kind = task.kind.trim().to_lower()
-  normalized_kind == "bootstrap_gather" ||
-  normalized_kind == "source_materialize" ||
-  normalized_kind == "knowledge_revise" ||
-  normalized_kind == "review" ||
-  normalized_kind == "review_finalize"
+  normalized_kind == "bootstrap_gather"
+}
+
+///|
+fn provider_task_can_reuse_existing_research_artifacts(
+  task : ProviderTaskSpec,
+) -> Bool {
+  // File presence is not phase completion. Source materialization, knowledge
+  // revision, and review must execute their own bounded work; bootstrap retry
+  // must also re-evaluate quality rather than accepting stale files.
+  ignore(task)
+  false
 }
 
 ///|
@@ -609,8 +725,9 @@ fn provider_task_missing_research_artifact_result(
 fn provider_task_can_complete_from_source_inventory(
   task : ProviderTaskSpec,
 ) -> Bool {
-  let normalized_kind = task.kind.trim().to_lower()
-  normalized_kind == "review" || normalized_kind == "review_finalize"
+  // A source inventory is review input, not evidence that review occurred.
+  ignore(task)
+  false
 }
 
 ///|
@@ -818,14 +935,24 @@ async fn provider_task_precompiled_substeps(
       context.workspace_root,
       ["wiki/entities/", "wiki/concepts/", "wiki/queries/", "wiki/synthesis/"],
     )
-    let revision_pages = if pages.is_empty() {
+    let revision_candidates = if pages.is_empty() {
       provider_task_bounded_pages(
         provider_task_revision_pages_from_sources(context, existing_sources),
-        3,
+        4,
       )
     } else {
-      provider_task_bounded_pages(pages, 3)
+      provider_task_pages_needing_revision(context.workspace_root, pages)
     }
+    for
+      page in provider_task_synthesis_pages_needing_source_coverage(
+        context.workspace_root,
+        existing_sources,
+      ) {
+      if !revision_candidates.contains(page) {
+        revision_candidates.push(page)
+      }
+    }
+    let revision_pages = provider_task_bounded_pages(revision_candidates, 3)
     let substeps : Array[AdaptiveSubstepPayload] = []
     for page in revision_pages {
       let name = @pathx.basename(page).replace_all(old=".md", new="")
@@ -1451,6 +1578,12 @@ async fn finalize_provider_task_subplan_execution(
   }
   let artifacts : Array[String] = []
   provider_task_collect_artifacts_from_json(child_outputs, artifacts)
+  let memory_candidates : Array[ProviderTaskMemoryCandidate] = []
+  provider_task_collect_memory_from_json(child_outputs, memory_candidates)
+  let child_requires_review = provider_task_json_flag(
+    child_outputs, "requires_review",
+  )
+  let child_notify_town = provider_task_json_flag(child_outputs, "notify_town")
   for path in provider_task_target_artifacts(artifact_root, task) {
     if !artifacts.contains(path) {
       artifacts.push(path)
@@ -1470,6 +1603,12 @@ async fn finalize_provider_task_subplan_execution(
     }
   } else {
     provider_task_synthesized_subplan_result(task, execution, artifacts)
+  }
+  let result = {
+    ..result,
+    memory_candidates: [..result.memory_candidates, ..memory_candidates],
+    requires_review: result.requires_review || child_requires_review,
+    notify_town: result.notify_town || child_notify_town,
   }
   let result = align_provider_task_result(artifact_root, task, result)
   let result = enforce_provider_task_result_semantics(task, context, result)
@@ -1543,7 +1682,7 @@ async fn run_provider_task_analysis_runner(
     return Err(provider_task_cancelled_error())
   }
   let contract = provider_task_tool_contract(request)
-  if provider_task_can_complete_from_research_artifacts(task) {
+  if provider_task_can_reuse_existing_research_artifacts(task) {
     let research_artifacts = provider_task_existing_research_artifacts(
       artifact_root,
     )
@@ -1689,7 +1828,7 @@ async fn run_provider_task_analysis_runner(
       let research_artifacts = provider_task_existing_research_artifacts(
         artifact_root,
       )
-      if provider_task_can_complete_from_research_artifacts(task) &&
+      if provider_task_can_reuse_existing_research_artifacts(task) &&
         research_artifacts.length() ==
         provider_task_required_research_artifacts().length() {
         let result = provider_task_research_artifact_result(

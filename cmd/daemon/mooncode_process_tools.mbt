@@ -4,6 +4,10 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   if cmd == "" {
     return mooncode_tool_error_result("shell", message="cmd must be non-empty")
   }
+  match mooncode_shell_boundary_error(book_root, cmd) {
+    Some(message) => return mooncode_tool_error_result("shell", message~)
+    None => ()
+  }
   let cwd = mooncode_tool_cwd(book_root, arguments)
   if mooncode_json_bool(cwd, "ok", default=false) == false {
     return mooncode_tool_error_result(
@@ -53,6 +57,31 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
     )
   }
   result
+}
+
+///|
+fn mooncode_shell_boundary_error(book_root : String, cmd : String) -> String? {
+  // The shell inherits a cwd inside the book, but an absolute path in the
+  // command can otherwise bypass the executable-document boundary. Toolchain
+  // programs may load their own installation implicitly; the planner must not
+  // address SDK, home, temp, or parent paths directly.
+  let normalized_root = @pathx.normalize(book_root)
+  if cmd.contains("../") ||
+    cmd.contains("$HOME") ||
+    cmd.contains("${HOME}") ||
+    cmd.contains("~/") ||
+    cmd.contains("/.moon/") ||
+    cmd.contains("/etc/") ||
+    cmd.contains("/tmp/") ||
+    cmd.contains("/private/") ||
+    (cmd.contains("/Users/") && !cmd.contains(normalized_root)) ||
+    cmd.contains("/home/") {
+    Some(
+      "shell command references a path outside the selected MoonBook; use relative book paths or MoonCode's semantic MoonBit tools",
+    )
+  } else {
+    None
+  }
 }
 
 ///|
@@ -274,6 +303,17 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
       message="moon_cmd program_args are only valid for moon run",
     )
   }
+  let expected_exit_code = mooncode_json_int(
+    arguments,
+    "expected_exit_code",
+    default=0,
+  )
+  if expected_exit_code < 0 || expected_exit_code > 255 {
+    return mooncode_tool_error_result(
+      "moon_cmd",
+      message="moon_cmd expected_exit_code must be between 0 and 255",
+    )
+  }
   if mooncode_moon_cmd_is_test_update(arguments) &&
     (
       mooncode_json_string(arguments, "test_update_kind", default="") == "" ||
@@ -315,6 +355,7 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
     "moon_command": command,
     "cwd": mooncode_json_string(cwd, "relative_path", default="."),
     "status": process.status,
+    "expected_exit_code": expected_exit_code,
     "elapsed_ms": process.elapsed,
     "truncated": mooncode_json_bool(capped, "truncated", default=false),
     "test_update_kind": mooncode_json_string(
@@ -323,10 +364,10 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
       default="",
     ),
   }
-  if process.status == 0 {
+  if mooncode_moon_cmd_exit_expected(arguments, process.status) {
     mooncode_tool_ok_result(
       "moon_cmd",
-      message="moon \{command} exited 0",
+      message="moon \{command} exited expected status \{expected_exit_code}",
       output=mooncode_json_string(capped, "output", default=""),
       metadata~,
     )
@@ -338,6 +379,11 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
       metadata~,
     )
   }
+}
+
+///|
+fn mooncode_moon_cmd_exit_expected(arguments : Json, status : Int) -> Bool {
+  status == mooncode_json_int(arguments, "expected_exit_code", default=0)
 }
 
 ///|

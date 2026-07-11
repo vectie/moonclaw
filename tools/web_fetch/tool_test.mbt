@@ -52,3 +52,15 @@ async test "web_fetch tool truncates plain text response" (t : @test.Test) {
     })
   })
 }
+
+///|
+async test "web_fetch live PDF uses bounded extraction when configured" {
+  guard @os.getenv("MOONCLAW_LIVE_PDF_URL") is Some(url) else { return }
+  let result = new().call({ "url": url, "max_chars": 2000 })
+  guard result is Ok(output) else {
+    fail("Expected live PDF fetch to succeed but got: \{result}")
+  }
+  inspect(output.source, content="http-fetch-pdf")
+  assert_true(output.metadata.stringify().contains("Extracted text with pypdf"))
+  assert_true(output.text.contains("Lunar Mobility"))
+}

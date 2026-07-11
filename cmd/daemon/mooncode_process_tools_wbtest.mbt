@@ -25,6 +25,42 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
 }
 
 ///|
+async test "mooncode native shell rejects explicit paths outside book root" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-boundary-XXXXXX"),
+  )
+  for
+    cmd in [
+      "sed -n '1,20p' /Users/example/.moon/lib/core/json.mbt", "find ../outside -type f",
+      "cat $HOME/.config/example",
+    ] {
+    let execution = mooncode_execute_tool_call(
+      "session-shell-boundary",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-shell-boundary",
+        "book_root": book_root,
+        "tool": "shell",
+        "command_id": "cmd-shell-boundary",
+        "arguments": { "cmd": cmd, "timeout_ms": 5000 },
+      },
+      now=@clock.Timestamp::from_ms(45L),
+    )
+    let result = mooncode_json_object_field_or_empty(execution, "result")
+    assert_true(mooncode_json_bool(result, "is_error", default=false))
+    assert_true(
+      mooncode_json_string(result, "message", default="").contains(
+        "outside the selected MoonBook",
+      ),
+    )
+  }
+}
+
+///|
 async test "mooncode rejects legacy and JSON-shaped MoonBit manifests" (
   t : @test.Test,
 ) {
@@ -53,6 +89,10 @@ async test "mooncode rejects legacy and JSON-shaped MoonBit manifests" (
       ("tools/demo/moon.pkg.json", "{}"),
       ("tools/demo/moon.mod", "{}"),
       ("tools/demo/moon.pkg", "[]"),
+      ("tools/demo/moon.mod", "deps = { \"moonbitlang/x\": \"*\" }"),
+      ("tools/demo/moon.mod", "import = [\"moonbitlang/x\"]"),
+      ("tools/demo/moon.mod", "moonbitlang/x = \"0.4.46\""),
+      ("tools/demo/moon.mod", "supported_targets = [\"native\"]"),
     ] {
     let (path, content) = item
     let result = mooncode_json_object_field_or_empty(
@@ -253,6 +293,14 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
 }
 
 ///|
+test "mooncode moon_cmd supports explicit negative-path exit expectations" {
+  assert_true(mooncode_moon_cmd_exit_expected({}, 0))
+  assert_false(mooncode_moon_cmd_exit_expected({}, 1))
+  assert_true(mooncode_moon_cmd_exit_expected({ "expected_exit_code": 1 }, 1))
+  assert_false(mooncode_moon_cmd_exit_expected({ "expected_exit_code": 1 }, 0))
+}
+
+///|
 async test "mooncode validates moon_ide and moon_cmd arguments before process spawn" (
   t : @test.Test,
 ) {
@@ -278,10 +326,7 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
     "tools/demo",
   )
   assert_eq(mooncode_moon_check_args(""), ["check"])
-  assert_eq(
-    mooncode_moon_check_args("native"),
-    ["check", "--target", "native"],
-  )
+  assert_eq(mooncode_moon_check_args("native"), ["check", "--target", "native"])
   let missing_ide_input = mooncode_execute_tool_call(
     "session-tool-validation",
     book_root,

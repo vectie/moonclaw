@@ -274,6 +274,128 @@ fn parse_duckduckgo_result(
 }
 
 ///|
+fn decode_xml_text(text : String) -> String {
+  text
+  .replace_all(old="&amp;", new="&")
+  .replace_all(old="&lt;", new="<")
+  .replace_all(old="&gt;", new=">")
+  .replace_all(old="&quot;", new="\"")
+  .replace_all(old="&#39;", new="'")
+  .trim()
+  .to_owned()
+}
+
+///|
+fn rss_tag_value(block : String, tag : String) -> String? {
+  let open = "<\{tag}>"
+  let close = "</\{tag}>"
+  guard block.find(open) is Some(start) else { return None }
+  let content_start = start + open.length()
+  let tail = block[content_start:].to_owned()
+  guard tail.find(close) is Some(end) else { return None }
+  Some(decode_xml_text(tail[:end].to_owned()))
+}
+
+///|
+fn parse_bing_rss_result(
+  query : String,
+  search_url : String,
+  body : String,
+  max_results : Int,
+) -> WebSearchResult {
+  let items : Array[WebSearchItem] = []
+  let seen : Map[String, Bool] = {}
+  let mut remaining = body
+  while items.length() < max_results {
+    guard remaining.find("<item>") is Some(start) else { break }
+    let item_tail = remaining[start + 6:].to_owned()
+    guard item_tail.find("</item>") is Some(end) else { break }
+    let block = item_tail[:end].to_owned()
+    add_result(
+      items,
+      seen,
+      rss_tag_value(block, "title"),
+      rss_tag_value(block, "link"),
+      rss_tag_value(block, "description"),
+      source="bing-rss",
+    )
+    remaining = item_tail[end + 7:].to_owned()
+  }
+  { query, search_url, answer: None, results: items, source: "bing-rss" }
+}
+
+///|
+fn site_domain_from_query(query : String) -> String? {
+  guard query.to_lower().find("site:") is Some(start) else { return None }
+  let tail = query[start + 5:].trim_start().to_owned()
+  let domain = (match tail.find(" ") {
+      Some(end) => tail[:end].to_owned()
+      None => tail
+    })
+    .trim(chars="\"'()[]{}.,;")
+    .to_lower()
+    .to_owned()
+  if domain.is_blank() {
+    None
+  } else {
+    Some(domain)
+  }
+}
+
+///|
+fn limit_bing_results_for_query(
+  query : String,
+  result : WebSearchResult,
+  max_results : Int,
+) -> WebSearchResult {
+  let site_domain = site_domain_from_query(query)
+  let filtered = result.results.filter(fn(item) {
+    match site_domain {
+      Some(domain) =>
+        match item.domain {
+          Some(host) => host == domain || host.has_suffix(".\{domain}")
+          None => false
+        }
+      None => true
+    }
+  })
+  let limited : Array[WebSearchItem] = []
+  for item in filtered {
+    if limited.length() >= max_results {
+      break
+    }
+    limited.push({ ..item, rank: limited.length() + 1 })
+  }
+  { ..result, results: limited }
+}
+
+///|
+async fn perform_bing_rss_search(
+  query : String,
+  encoded : String,
+  max_results : Int,
+) -> WebSearchResult {
+  let path = "/search?q=\{encoded}&format=rss"
+  let search_url = "https://www.bing.com/search?q=\{encoded}"
+  let client = @http.Client::new("https://www.bing.com", headers={
+    "Accept": "application/rss+xml,application/xml,text/xml",
+    "Connection": "close",
+    "User-Agent": "moonclaw-web-search/1.0",
+  })
+  defer client.close()
+  let response = client.get(path)
+  guard response.code is (200..=299) else {
+    let error_body = client.read_all().text()
+    fail("web_search fallback HTTP \{response.code}: \{error_body}")
+  }
+  limit_bing_results_for_query(
+    query,
+    parse_bing_rss_result(query, search_url, client.read_all().text(), 50),
+    max_results,
+  )
+}
+
+///|
 async fn perform_web_search(
   query : String,
   max_results : Int,
@@ -293,7 +415,12 @@ async fn perform_web_search(
     fail("web_search HTTP \{response.code}: \{error_body}")
   }
   let body = client.read_all().text()
-  parse_duckduckgo_result(query, search_url, body, max_results)
+  let instant = parse_duckduckgo_result(query, search_url, body, max_results)
+  if instant.results.is_empty() && instant.answer.unwrap_or("").is_blank() {
+    perform_bing_rss_search(query, encoded, max_results)
+  } else {
+    instant
+  }
 }
 
 ///|

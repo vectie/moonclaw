@@ -53,13 +53,22 @@ fn moonclaw_root_models_path(root : StringView) -> String {
 }
 
 ///|
+fn moonclaw_root_providers_path(root : StringView) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    root.to_owned(),
+    "moonclaw",
+    "providers.json",
+  )
+}
+
+///|
 fn moonclaw_config_paths(root : StringView) -> Array[String] {
   [moonclaw_root_config_path(root)]
 }
 
 ///|
 fn moonclaw_models_paths(root : StringView) -> Array[String] {
-  [moonclaw_root_models_path(root)]
+  [moonclaw_root_models_path(root), moonclaw_root_providers_path(root)]
 }
 
 ///|

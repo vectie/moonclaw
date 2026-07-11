@@ -464,6 +464,10 @@ test "provider task child proposal enables web tools for web-first tasks" {
   inspect(serialized.contains("\"enable_tools\":true"), content="true")
   inspect(serialized.contains("\"web_search\":true"), content="true")
   inspect(serialized.contains("\"web_fetch\":true"), content="true")
+  inspect(
+    serialized.contains("\"workspace_root\":\"/tmp/provider-workspace\""),
+    content="true",
+  )
 }
 
 ///|
@@ -1096,7 +1100,7 @@ async test "provider task gates knowledge revise behind source materialization" 
 }
 
 ///|
-async test "provider task caps materialize fanout" {
+async test "provider task caps materialize fanout at suite lane budget" {
   @fsx.with_temporary_directory("job-provider-materialize-cap-XXXXXX", async fn(
     dir,
   ) {
@@ -1149,7 +1153,7 @@ async test "provider task caps materialize fanout" {
     let substeps = envelope
       .map(fn(value) { adaptive_substeps(value) })
       .unwrap_or([])
-    inspect(substeps.length().to_string(), content="2")
+    inspect(substeps.length().to_string(), content="4")
   })
 }
 
@@ -1257,7 +1261,7 @@ async test "provider task precompiles review closeout when sources exist" {
 }
 
 ///|
-test "provider task can fast complete review from source inventory" {
+test "provider task does not mistake source inventory for completed review" {
   let knowledge = ProviderTaskSpec::{
     id: "knowledge",
     title: "Revise knowledge surfaces",
@@ -1291,7 +1295,7 @@ test "provider task can fast complete review from source inventory" {
   )
   inspect(
     provider_task_can_complete_from_source_inventory(review),
-    content="true",
+    content="false",
   )
   inspect(
     provider_task_can_complete_from_source_inventory(source),
@@ -1565,10 +1569,9 @@ async test "provider task precompiled substeps include loaded skill bodies" {
       let substeps = envelope
         .map(fn(value) { adaptive_substeps(value) })
         .unwrap_or([])
-      inspect(substeps.length().to_string(), content="3")
+      inspect(substeps.length().to_string(), content="2")
       inspect(substeps[0].title, content="Write research evidence packet")
       inspect(substeps[1].title, content="Write deep research report")
-      inspect(substeps[2].title, content="Write marketing brief")
       inspect(
         substeps[0].prompt.contains("Loaded provider skill bodies:"),
         content="true",
@@ -1590,8 +1593,10 @@ async test "provider task precompiled substeps include loaded skill bodies" {
         content="true",
       )
       inspect(
-        substeps[2].prompt.contains("raw/bootstrap/marketing-brief.md"),
-        content="true",
+        substeps.any(fn(step) {
+          step.prompt.contains("raw/bootstrap/marketing-brief.md")
+        }),
+        content="false",
       )
     },
   )
@@ -1644,7 +1649,6 @@ async test "provider task research dossier stays raw envelope only" {
       output_contract: [
         "Required raw/bootstrap/research-question.md", "Required raw/bootstrap/evidence-matrix.md",
         "Required raw/bootstrap/synthesis-brief.md", "Required raw/bootstrap/deep-report.md",
-        "Required raw/bootstrap/marketing-brief.md",
       ],
     }
     let artifacts = provider_task_write_research_dossier_if_needed(
@@ -2176,7 +2180,7 @@ async test "provider task subplan finalizer persists durable artifacts back thro
     }
     let child_outputs = {
       "step_1": {
-        "content": "Wrote `raw/bootstrap/demo.md` and `wiki/sources/demo.md` during child materialization.",
+        "content": "{\"result_id\":\"child-1\",\"summary\":\"Wrote durable material.\",\"artifacts\":[\"raw/bootstrap/demo.md\",\"wiki/sources/demo.md\"],\"memory_candidates\":[{\"kind\":\"source_candidate\",\"title\":\"Demo source\",\"detail\":\"Preserve the inspected source.\",\"durable\":true,\"target_page\":\"wiki/sources/demo.md\"}],\"requires_review\":false,\"notify_town\":true}",
       },
     }
 
@@ -2219,6 +2223,11 @@ async test "provider task subplan finalizer persists durable artifacts back thro
       persisted_payload.contains("\"raw/bootstrap/demo.md\""),
       content="true",
     )
+    inspect(
+      persisted_payload.contains("\"title\": \"Demo source\""),
+      content="true",
+    )
+    inspect(persisted_payload.contains("\"notify_town\": true"), content="true")
   })
 }
 
@@ -2783,5 +2792,89 @@ async test "provider task resolves workspace-affine provider when multiple targe
 
     inspect(command.provider.name, content="coding-main")
     inspect(batch.tasks.length().to_string(), content="1")
+  })
+}
+
+///|
+async test "provider task discovers book-local target outside isolated run ancestry" {
+  @fsx.with_temporary_directory("job-extension-api-book-affinity-XXXXXX", async fn(
+    dir,
+  ) {
+    let suite_root = @pathx.join(dir, "suite")
+    let book_root = suite_root
+      |> @pathx.join("books")
+      |> @pathx.join("research-book")
+    let run_cwd = moonclaw_jobs_root(suite_root) |> @pathx.join("run-external")
+    let registry = @pathx.join(book_root, ".moonsuite")
+      |> @pathx.join("resource-providers.json")
+    @fsx.make_directory(
+      @pathx.dirname(registry),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.make_directory(run_cwd, recursive=true, exists_ok=true)
+    @fsx.write_to_file(
+      registry,
+      (
+        [
+          {
+            "name": "moonbook",
+            "title": "Book-local MoonBook",
+            "kind": "task-provider",
+            "capabilities": ["extension.task"],
+            "metadata": {
+              "command": "moon",
+              "args": ["run", "cmd/main", "--"],
+              "cwd": "/tmp/moonbook",
+              "workspace_root": book_root,
+            },
+          },
+        ] : Json).stringify(),
+    )
+    let command = match
+      resolve_provider_task_command(run_cwd, Some(suite_root), None, book_root) {
+      Ok(command) => command
+      Err(error) => fail(error)
+    }
+    assert_eq(command.provider.name, "moonbook")
+    assert_eq(command.workspace_root, book_root)
+  })
+}
+
+///|
+async test "provider subjob planning keeps declared book affinity outside isolated run" {
+  @fsx.with_temporary_directory("job-extension-subjob-book-affinity-XXXXXX", async fn(
+    dir,
+  ) {
+    let book_root = dir |> @pathx.join("books") |> @pathx.join("research-book")
+    let run_cwd = dir |> @pathx.join("jobs") |> @pathx.join("run-isolated")
+    let script_path = @pathx.join(dir, "provider_task.sh")
+    let state_path = @pathx.join(dir, "persisted-path.txt")
+    @fsx.make_directory(book_root, recursive=true, exists_ok=true)
+    @fsx.make_directory(run_cwd, recursive=true, exists_ok=true)
+    write_provider_task_fixture(book_root, script_path, state_path)
+    let proposal = match
+      planned_subjob_proposal(
+        "Update the research book",
+        run_cwd,
+        Some(dir),
+        SubjobStepConfig::new(
+          request_text="Update the research book",
+          cwd=Some(book_root),
+          home=Some(dir),
+          execution_mode=Some("provider"),
+        ),
+        ProposalPlanner::new(run=fn(request, _, _) {
+          draft_job_proposal("generic-planner-must-not-run", request, 0)
+        }),
+        fn() { 100 },
+      ) {
+      Ok(value) => value
+      Err(error) => fail(error)
+    }
+    inspect(
+      proposal.steps[0].execution_target.unwrap_or(""),
+      content="wiki-main",
+    )
   })
 }

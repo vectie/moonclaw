@@ -52,7 +52,12 @@ fn adaptive_subplan_string_array_metadata(
 fn adaptive_subplan_provider_derived(request : AnalysisRequest) -> Bool {
   provider_execution_requested(request.execution_mode) ||
   metadata_with_step_metadata(request.step_metadata, "extension_task_id")
-  is Some(_)
+  is Some(_) ||
+  metadata_bool_with_step_metadata(
+    request.step_metadata,
+    "provider_subplan_execution",
+    false,
+  )
 }
 
 ///|
@@ -107,6 +112,10 @@ fn adaptive_subplan_policy_metadata(
   }
   policy.set("enable_tools", config.enable_tools.to_json())
   policy.set("web_search", config.web_search.to_json())
+  // Adaptive child steps must retain the structured tool contract. A boolean
+  // web_search flag alone does not register web_search/web_fetch tools because
+  // the safe default contract deliberately leaves remote tools disabled.
+  policy.set("tool_contract", request.tool_contract.to_json())
   if adaptive_subplan_provider_derived(request) {
     policy.set("provider_subplan_execution", true.to_json())
   }
@@ -133,7 +142,12 @@ fn adaptive_subplan_proposal(
       id: step_id,
       title: step.title.trim().to_owned(),
       prompt: step.prompt.trim().to_owned(),
-      kind: step.kind.unwrap_or("job.analysis"),
+      kind: match step.kind.map(fn(value) { value.trim().to_lower() }) {
+        Some("job.delegate") | Some("delegate") => "job.delegate"
+        // Suggested kinds are often semantic labels such as `research` or
+        // `verification`. They are not executable handler identifiers.
+        _ => "job.analysis"
+      },
       metadata: merge_json_metadata(
         subtask_execution_isolation_metadata(
           step_id,

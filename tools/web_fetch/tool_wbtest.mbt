@@ -17,3 +17,11 @@ test "parse_fetch_uri extracts scheme host and default path" {
   inspect(uri.host, content="example.com")
   inspect(uri.path, content="/")
 }
+
+///|
+test "content_type_is_pdf recognizes PDF media types without misclassifying text" {
+  assert_true(content_type_is_pdf(Some("application/pdf")))
+  assert_true(content_type_is_pdf(Some("Application/PDF; charset=binary")))
+  assert_false(content_type_is_pdf(Some("text/html")))
+  assert_false(content_type_is_pdf(None))
+}

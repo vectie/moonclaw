@@ -37,6 +37,18 @@ MoonCode package turns also emit a MoonBook-shaped result sidecar using the
 executable artifacts as `review_required`; it can prove build/test/package
 facts, but it does not promote them to accepted book truth.
 
+Package verification must include the complete nearest MoonBit module, not
+only files edited in the final turn. Inventories exclude build caches,
+dependencies, generated portable output, and nested repositories. Structured
+`moon_cmd` evidence may declare `expected_exit_code`; an observed expected
+nonzero exit is accepted negative-path proof rather than a runtime failure.
+
+The model loop is bounded for implementation quality: tool results are
+compacted before they re-enter the transcript, implementation requests take
+precedence over incidental “read” wording, repeated inspection must progress
+to a mutation, and explicit paths outside the selected MoonBook are rejected.
+These are reusable runtime controls and must not embed a domain answer.
+
 ## Executable Book Call Chain
 
 ```text

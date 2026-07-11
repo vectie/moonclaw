@@ -297,6 +297,18 @@ fn mooncode_moonbit_manifest_write_error(
       )
     }
   }
+  if name == "moon.mod" &&
+    (
+      content.contains("supported_targets") ||
+      content.contains("deps =") ||
+      content.contains("import =") ||
+      content.contains("[\"moonbitlang/") ||
+      content.contains("moonbitlang/x =")
+    ) {
+    return Some(
+      "MoonBit module dependencies must use current module syntax such as `import { \"moonbitlang/x@0.4.46\", }`; keep supported_targets and package imports in moon.pkg",
+    )
+  }
   None
 }
 

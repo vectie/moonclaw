@@ -167,6 +167,86 @@ fn provider_task_collect_artifacts_from_json(
 }
 
 ///|
+fn provider_task_embedded_json(text : String) -> Json? {
+  let payload = match extract_first_json_object(text.trim().to_owned()) {
+    Some(payload) => payload
+    None => return None
+  }
+  let parsed = @json.parse(payload) catch { _ => return None }
+  Some(parsed)
+}
+
+///|
+fn provider_task_collect_memory_from_json(
+  value : Json,
+  candidates : Array[ProviderTaskMemoryCandidate],
+) -> Unit {
+  match value {
+    String(text) =>
+      match provider_task_embedded_json(text) {
+        Some(parsed) =>
+          provider_task_collect_memory_from_json(parsed, candidates)
+        None => ()
+      }
+    Array(items) =>
+      for item in items {
+        provider_task_collect_memory_from_json(item, candidates)
+      }
+    Object(obj) => {
+      match obj.get("memory_candidates") {
+        Some(Array(items)) =>
+          for item in items {
+            let candidate : ProviderTaskMemoryCandidate = @json.from_json(item) catch {
+              _ => continue
+            }
+            if !candidates.contains(candidate) {
+              candidates.push(candidate)
+            }
+          }
+        _ => ()
+      }
+      for key, item in obj {
+        if key != "memory_candidates" {
+          provider_task_collect_memory_from_json(item, candidates)
+        }
+      }
+    }
+    _ => ()
+  }
+}
+
+///|
+fn provider_task_json_flag(value : Json, key : String) -> Bool {
+  match value {
+    String(text) =>
+      match provider_task_embedded_json(text) {
+        Some(parsed) => provider_task_json_flag(parsed, key)
+        None => false
+      }
+    Array(items) => {
+      for item in items {
+        if provider_task_json_flag(item, key) {
+          return true
+        }
+      }
+      false
+    }
+    Object(obj) =>
+      if obj.get(key) is Some(True) {
+        true
+      } else {
+        for _, item in obj {
+          if provider_task_json_flag(item, key) {
+            return true
+          }
+        }
+        false
+      }
+    _ => false
+  }
+}
+
+///|
 async fn provider_task_target_artifacts(
   workspace_root : String,
   task : ProviderTaskSpec,

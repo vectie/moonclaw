@@ -514,6 +514,26 @@ test "mooncode native runtime turn plans prompt tool calls" {
     0,
   )
   assert_true(mooncode_runtime_turn_requires_model_planning(engineering_prompt))
+  let implementation_with_negative_read : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-planner",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "text": "Apply a focused repair to tools/decision-packet. Do not read fixtures from a helper; implement the CLI and run tests.",
+    "model": "test-model",
+    "packet": { "command_id": "cmd-negative-read" },
+  }
+  assert_eq(
+    mooncode_runtime_turn_deterministic_preplan(
+      implementation_with_negative_read,
+    ).length(),
+    0,
+  )
+  assert_true(
+    mooncode_runtime_turn_requires_model_planning(
+      implementation_with_negative_read,
+    ),
+  )
   let engineering_fallback = mooncode_runtime_turn_tool_calls(
     engineering_prompt,
   )
@@ -750,6 +770,12 @@ test "mooncode model planner sends a compact request envelope" {
     "text": "Fix the parser and run tests.",
   }
   assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 8)
+  assert_eq(
+    mooncode_runtime_turn_language_grounding({
+      "text": "Write a TypeScript file",
+    }),
+    "",
+  )
   let coding_with_path : Json = {
     "command": "prompt",
     "text": "Edit first. The scaffold has already been read. Overwrite tools/robot-design-validator/src/main.mbt with a substantive validator, then add tests, fixtures, and a README; run moon check and moon test before finishing. Implement the result; do not merely explain it.",
@@ -758,6 +784,9 @@ test "mooncode model planner sends a compact request envelope" {
     mooncode_runtime_turn_model_tools_for_command(coding_with_path).length(),
     8,
   )
+  let grounding = mooncode_runtime_turn_language_grounding(coding_with_path)
+  assert_true(grounding.contains("Json` is a built-in type"))
+  assert_true(grounding.contains("do not inspect SDK files"))
 
   let codex = @model.codex_oauth_model(
     access_token="test",
@@ -775,7 +804,7 @@ test "mooncode model planner sends a compact request envelope" {
   )
   assert_true(
     mooncode_runtime_turn_model_timeout_for_provider(direct, command)
-    is Some(30000),
+    is Some(60000),
   )
 }
 
@@ -914,18 +943,16 @@ test "mooncode model execution requires finish and explicit recovery" {
     mooncode_runtime_turn_model_execution_accepted(coding, [write_ok]),
   )
   assert_false(
-    mooncode_runtime_turn_model_execution_accepted(
-      coding, [write_ok, read_failed, finish],
-    ),
+    mooncode_runtime_turn_model_execution_accepted(coding, [
+      write_ok, read_failed, finish,
+    ]),
   )
   assert_true(
-    mooncode_runtime_turn_model_execution_accepted(
-      coding, [write_ok, read_failed, read_recovered, finish],
-    ),
+    mooncode_runtime_turn_model_execution_accepted(coding, [
+      write_ok, read_failed, read_recovered, finish,
+    ]),
   )
-  assert_false(
-    mooncode_runtime_turn_model_execution_accepted(coding, [finish]),
-  )
+  assert_false(mooncode_runtime_turn_model_execution_accepted(coding, [finish]))
 }
 
 ///|
@@ -967,12 +994,33 @@ test "mooncode native runtime turn builds model follow-up transcript" {
       "read README.md",
     ),
   )
+  let oversized = mooncode_runtime_turn_model_tool_result_content({
+    "result": { "output": "x".repeat(9000) },
+  })
+  assert_true(oversized.length() < 4100)
+  assert_true(oversized.contains("truncated for planner context"))
+  let transcript : Array[Json] = [
+    {
+      "role": "assistant",
+      "tool_calls": [{ "function": { "name": "read", "arguments": "{}" } }],
+    },
+    {
+      "role": "assistant",
+      "tool_calls": [{ "function": { "name": "edit", "arguments": "{}" } }],
+    },
+  ]
+  assert_eq(mooncode_runtime_turn_model_completed_steps(transcript), 2)
+  assert_true(mooncode_runtime_turn_model_transcript_has_mutation(transcript))
+  assert_false(
+    mooncode_runtime_turn_model_transcript_has_mutation([transcript[0]]),
+  )
   assert_true(!mooncode_runtime_turn_tool_calls_include_finish(calls))
   assert_true(
     mooncode_runtime_turn_tool_calls_include_finish([
       { "tool": "finish", "arguments": { "answer": "done" } },
     ]),
   )
+  assert_eq(mooncode_runtime_turn_model_max_steps({}), 8)
   assert_eq(
     mooncode_runtime_turn_model_max_steps({
       "payload": { "planner_max_steps": 0 },
@@ -1210,6 +1258,61 @@ async test "mooncode native runtime turn creates executable tool from prompt" (
   assert_true(events_log.contains("\"runtime.package_built\""))
   assert_true(events_log.contains("\"runtime.package_verified\""))
   assert_true(events_log.contains("\"runtime.turn_finished\""))
+}
+
+///|
+async test "mooncode package inventory expands a MoonBit module from one changed manifest" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-package-tree-XXXXXX"),
+  )
+  for
+    item in [
+      ("tools/validator/moon.mod", "name = \"example/validator\"\n"),
+      ("tools/validator/src/moon.pkg", "options(\"is-main\": true)\n"),
+      ("tools/validator/src/main.mbt", "fn main { println(\"ok\") }\n"),
+      ("tools/validator/fixtures/valid.json", "{}\n"),
+      ("tools/validator/_build/generated.txt", "ignore\n"),
+      ("tools/validator/.git/config", "ignore\n"),
+    ] {
+    let (path, content) = item
+    let absolute = @pathx.join(book_root, path)
+    @fsx.make_directory(
+      @pathx.dirname(absolute),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(absolute, content)
+  }
+  let paths = mooncode_runtime_turn_package_paths(book_root, {
+    "tool_results": [
+      {
+        "accepted": true,
+        "tool": "edit",
+        "result": { "metadata": { "path": "tools/validator/src/moon.pkg" } },
+      },
+    ],
+  })
+  assert_true(
+    mooncode_runtime_turn_string_array_contains(
+      paths, "tools/validator/moon.mod",
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_string_array_contains(
+      paths, "tools/validator/src/main.mbt",
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_string_array_contains(
+      paths, "tools/validator/fixtures/valid.json",
+    ),
+  )
+  assert_false(
+    paths.any(path => path.contains("/_build/") || path.contains("/.git/")),
+  )
 }
 
 ///|

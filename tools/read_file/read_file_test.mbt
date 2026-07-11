@@ -170,7 +170,7 @@ async test "line_range" (t : @test.Test) {
     }
     json_inspect(output, content={
       "path": "lines.txt",
-      "content": "line 1\nline 2\nline 3\nline 4\nline 5",
+      "content": "line 2\nline 3\nline 4",
       "start_line": 2,
       "end_line": 4,
     })
@@ -249,7 +249,7 @@ async test "invalid-range" (t : @test.Test) {
     }
     json_inspect(output, content={
       "path": "test.txt",
-      "content": "line 1\nline 2\nline 3",
+      "content": "line 2\nline 3",
       "start_line": 2,
       "end_line": 3,
     })

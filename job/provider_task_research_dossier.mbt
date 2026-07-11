@@ -3,7 +3,7 @@ fn provider_task_required_research_artifacts() -> Array[String] {
   [
     "raw/bootstrap/research-question.md", "raw/bootstrap/search-log.md", "raw/bootstrap/source-screen.md",
     "raw/bootstrap/local-sources.md", "raw/bootstrap/evidence-matrix.md", "raw/bootstrap/synthesis-brief.md",
-    "raw/bootstrap/deep-report.md", "raw/bootstrap/marketing-brief.md",
+    "raw/bootstrap/deep-report.md",
   ]
 }
 

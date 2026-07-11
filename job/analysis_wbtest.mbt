@@ -1481,12 +1481,17 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
     let config = AnalysisStepConfig::new(
       prompt="Estimate the parcel valuation.",
       cwd=Some(dir),
+      web_search=true,
       metadata={
         "step_metadata": {
           "timeout_ms": 600000,
           "max_total_tokens": 24000,
           "disable_waiting_for_input": true,
           "best_effort_on_missing_input": true,
+          "tool_contract": AnalysisToolContract::new(
+            web_search=true,
+            web_fetch=true,
+          ).to_json(),
         },
       },
     )
@@ -1596,6 +1601,16 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
       content="true",
     )
     inspect(
+      child_proposal.profile_metadata
+      .stringify()
+      .contains("\"web_search\":true"),
+      content="true",
+    )
+    inspect(
+      child_proposal.profile_metadata.stringify().contains("\"web_fetch\":true"),
+      content="true",
+    )
+    inspect(
       child_proposal.steps[0].metadata
       .stringify()
       .contains("\"timeout_ms\":600000"),
@@ -1620,6 +1635,28 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
       content="true",
     )
   })
+}
+
+///|
+test "adaptive subplan maps semantic suggested kind to analysis handler" {
+  let proposal = adaptive_subplan_proposal(
+    "proposal-1",
+    "Research evidence",
+    "Gather evidence",
+    "Split research",
+    [
+      {
+        title: "Inspect sources",
+        prompt: "Inspect authoritative sources.",
+        kind: Some("research"),
+      },
+    ],
+    {},
+    None,
+    None,
+    100,
+  )
+  inspect(proposal.steps[0].kind, content="job.analysis")
 }
 
 ///|
@@ -2688,6 +2725,7 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
     execution_isolation: Some({ "mode": "git_worktree" }),
     role_runtime_contract: None,
   }
+  assert_true(adaptive_subplan_provider_derived(request))
   configure_analysis_agent_for_request(agent, request)
   inspect(agent.tools().contains("runtime_context"), content="true")
   inspect(agent.tools().contains("execute_command"), content="false")

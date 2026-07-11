@@ -1,6 +1,10 @@
 import {
   "vectie/moonclaw/tool",
+  "vectie/moonclaw/internal/pdf_ocr",
+  "vectie/moonlib/fsx",
+  "moonbitlang/async",
   "moonbitlang/async/http",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }
@@ -8,8 +12,8 @@ import {
 supported_targets = "native"
 
 import {
-  "moonbitlang/async",
   "vectie/moonclaw/internal/httpx",
   "vectie/moonclaw/internal/httpx/status",
   "vectie/moonclaw/internal/mock",
+  "vectie/moonlib/os",
 } for "test"

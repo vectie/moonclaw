@@ -242,9 +242,6 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
   }
   @async.with_task_group(group => {
     gateway_root_groups[self.port] = group
-    self.resume_pending_job_runs() catch {
-      error => self.logger.warn("Failed to resume pending job runs: \{error}")
-    }
     group.spawn_bg(
       () => self.connect_moongate_on_startup(),
       no_wait=true,
@@ -276,6 +273,16 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
     group.spawn_bg(() => {
       self.httpx.serve(@httpx.cors((r, w) => self.handle_request(r, w)))
     })
+    group.spawn_bg(
+      () => {
+        self.resume_pending_job_runs() catch {
+          error =>
+            self.logger.warn("Failed to resume pending job runs: \{error}")
+        }
+      },
+      no_wait=true,
+      allow_failure=true,
+    )
     group.spawn_bg(() => {
       self.events.listen_forever(include_history=false, event => {
         match event {

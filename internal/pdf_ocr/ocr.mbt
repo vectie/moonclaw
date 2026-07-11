@@ -33,6 +33,26 @@ pub async fn extract_text_from_pdf(
     _ => ()
   }
 
+  // pypdf is a deterministic text-layer extractor and is commonly available
+  // in Python runtimes even when Poppler's pdftotext binary is absent. Keep
+  // this as a fixed-purpose argv invocation; no user-authored shell is run.
+  let pypdf_script = "from pypdf import PdfReader\nimport sys\nreader = PdfReader(sys.argv[1])\ntext = '\\n\\n'.join((page.extract_text() or '') for page in reader.pages)\nwith open(sys.argv[2], 'w', encoding='utf-8') as output:\n    output.write(text)\n"
+  let pypdf = run_command(
+    "python3",
+    ["-c", pypdf_script, saved_path, extracted_text_path],
+    None,
+  )
+  match pypdf {
+    Ok(process) if process.status == 0 &&
+      (@fsx.exists(extracted_text_path) catch { _ => false }) => {
+      let text = @fsx.read_file(extracted_text_path) catch { _ => "" }
+      if !text.trim().to_owned().is_blank() {
+        return (Some(extracted_text_path), Some("Extracted text with pypdf"))
+      }
+    }
+    _ => ()
+  }
+
   let ppm_dir = scratch_dir + "/ocr-pages"
   @fsx.make_directory(ppm_dir, recursive=true, exists_ok=true) catch {
     _ => ()
@@ -45,7 +65,7 @@ pub async fn extract_text_from_pdf(
       return (
         None,
         Some(
-          "PDF remained binary: install pdftotext or pdftoppm+tesseract to extract text",
+          "PDF remained binary: install pdftotext, Python+pypdf, or pdftoppm+tesseract to extract text",
         ),
       )
   }
