@@ -32,7 +32,7 @@ fn tool_registry() -> Json {
     "providers": [
       {
         "provider_id": Json::string("moonrobo-host-api"),
-        "label": Json::string("Moonrobo Host API"),
+        "label": Json::string("MoonRobo Host API"),
         "kind": Json::string("moonrobo-runtime"),
         "robot_id": Json::string("noetix-e1-lab-01"),
         "endpoint_base": Json::string("/api"),
@@ -70,7 +70,7 @@ fn tool_registry_without_memory() -> Json {
     "providers": [
       {
         "provider_id": Json::string("moonrobo-host-api"),
-        "label": Json::string("Moonrobo Host API"),
+        "label": Json::string("MoonRobo Host API"),
         "kind": Json::string("moonrobo-runtime"),
         "robot_id": Json::string("noetix-e1-lab-01"),
         "endpoint_base": Json::string("/api"),
@@ -225,7 +225,7 @@ test "robot routine decision routes operator-owned blockers to operator" {
 }
 
 ///|
-test "robot routine decision selects explicit Moonrobo route for MoonClaw work" {
+test "robot routine decision selects explicit MoonRobo route for MoonClaw work" {
   let decision = selected_decision(
     context_with_work("validate-runtime", "/api/runtime/validation/session"),
     1001L,
@@ -497,7 +497,7 @@ test "robot routine decision keeps command-message gates operator-owned" {
 }
 
 ///|
-test "robot routine decision blocks unregistered Moonrobo routes" {
+test "robot routine decision blocks unregistered MoonRobo routes" {
   let decision = selected_decision(
     context_with_work("submit-gateway-command", "/api/moonrobo/unregistered"),
     1012L,

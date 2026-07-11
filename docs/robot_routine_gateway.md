@@ -1,6 +1,6 @@
 # MoonClaw Robot Routine Gateway
 
-MoonClaw owns robot routine selection. Moonrobo owns physical-world context,
+MoonClaw owns robot routine selection. MoonRobo owns physical-world context,
 gateway ingress, task evidence, and MoonBook/RoboBook memory projection. The
 gateway robot-routine endpoints make that boundary available as a service.
 
@@ -14,7 +14,7 @@ decision and route selection still happen in MoonClaw, not in the initiator.
 ## Endpoints
 
 `POST /v1/robot/routine` returns the ordered MoonClaw robot routine plan for the
-current Moonrobo context. The plan includes runtime validation, gateway command,
+current MoonRobo context. The plan includes runtime validation, gateway command,
 proof session, physical feedback, and MoonBook memory steps as separate routine
 steps.
 
@@ -29,8 +29,8 @@ writes the run record under MoonClaw's
 After a successful safe invocation it refreshes MoonBook memory only when the
 planned routine contains a registered MoonClaw-owned
 `POST /api/moonbook/remember` step. That prevents memory refresh from becoming
-a hidden side-effect outside the Moonrobo tool registry. When allowed, the
-refresh response is stored in the same run record, then MoonClaw reads Moonrobo
+a hidden side-effect outside the MoonRobo tool registry. When allowed, the
+refresh response is stored in the same run record, then MoonClaw reads MoonRobo
 context again. Each durable run records
 `context_before`; successful memory-closed runs also record `context_after`.
 Idle plans, operator-owned blockers, memory-refresh failures, context-refresh
@@ -54,28 +54,28 @@ The POST endpoints accept:
 `vectie/moonclaw/robot_routine`, and returns a multi-step routine plan plus
 invocation status. The durable `/run` endpoint also persists the selected plan,
 invocation result when present, memory-refresh result when present, stopped
-status, Moonrobo URL, `context_before`, `context_after`, and run path on the
+status, MoonRobo URL, `context_before`, `context_after`, and run path on the
 MoonClaw side. Conflict responses from `/run` include the persisted `run` object
 beside the error.
 
-When the selected Moonrobo route requires a body, MoonClaw authors that body
-from Moonrobo context instead of asking Moonrobo to infer routine decisions. In particular,
+When the selected MoonRobo route requires a body, MoonClaw authors that body
+from MoonRobo context instead of asking MoonRobo to infer routine decisions. In particular,
 `/api/moonrobo/gateway/command` receives a concrete MoonClaw-authored command
 body built from the latest `task_intent` goal, robot id, and timestamp.
 `/api/moonrobo/proof-session` receives a bounded proof-session request with a
-task message derived from the same durable task intent. Moonrobo only accepts,
+task message derived from the same durable task intent. MoonRobo only accepts,
 gates, persists, and projects the result.
 
 MoonClaw selects work from `context.platform_queue.items` itself. The queue is
-Moonrobo's evidence-pressure projection, not an authoritative routine decision;
-Moonrobo does not publish a selected `next_item`. MoonClaw chooses from the item
+MoonRobo's evidence-pressure projection, not an authoritative routine decision;
+MoonRobo does not publish a selected `next_item`. MoonClaw chooses from the item
 list before applying route registry, operator-mode, and physical authority
 gates.
 
-MoonClaw only selects Moonrobo routes that appear in
+MoonClaw only selects MoonRobo routes that appear in
 `context.tool_registry.providers[].capabilities[]` with the same HTTP method and
 without physical execution authority. Concrete routes may match registered
-templates such as `/api/replays/{session_id}/annotations`. If Moonrobo context
+templates such as `/api/replays/{session_id}/annotations`. If MoonRobo context
 points at an unregistered route, the routine plan becomes an operator-owned
 registry blocker at `/api/tools/registry` instead of invoking it.
 Registered capabilities with an `execution_mode` beginning with `operator-`
@@ -86,31 +86,31 @@ approval, execution, or telemetry evidence on its own.
 Registered task-message safety gates are still not autonomous routine steps:
 `evaluate-command-message`, `dry-run-command-message`,
 `approve-command-message`, and `execute-command-message` remain operator-owned
-evidence controls even when their Moonrobo routes are present in the registry.
-There is no legacy aggregate-route compatibility path in MoonClaw. If Moonrobo
+evidence controls even when their MoonRobo routes are present in the registry.
+There is no legacy aggregate-route compatibility path in MoonClaw. If MoonRobo
 or a fixture presents removed work such as `run-live-exercise` targeting
 `/api/moonrobo/live-exercise`, MoonClaw reports the same registry/operator
 blocker as any other unregistered route instead of silently selecting a
 different routine step.
 
-Moonrobo should not host this selection logic. If Moonrobo contains code with
+MoonRobo should not host this selection logic. If MoonRobo contains code with
 agent-facing names, it should remain declarative projection code: context,
 readiness, tool registry, task ingress, receipts, and durable memory. Planning,
 selection, retry, and tool invocation belong in MoonClaw.
 
-Moonrobo can expose `/api/moonclaw/context` and other MoonClaw-facing
+MoonRobo can expose `/api/moonclaw/context` and other MoonClaw-facing
 projections, but those projections are platform facts, not an agent. The closed
 loop is:
 
-1. Moonrobo publishes the digital/physical state, robot capabilities, live
+1. MoonRobo publishes the digital/physical state, robot capabilities, live
    readiness, RoboBook paths, and safe command/proof endpoints.
 2. MoonClaw reads that context through the robot routine endpoint.
 3. MoonClaw selects the next step and records that turn in its robot routine run
    ledger, whether it invokes a non-physical step or stops at an idle/operator
    blocker.
-4. Moonrobo persists command receipts, proof sessions, feedback, and MoonBook
+4. MoonRobo persists command receipts, proof sessions, feedback, and MoonBook
    memory; MoonClaw's durable `/run` endpoint refreshes MoonBook memory after a
    successful safe route invocation only when that refresh was part of the
    registered routine plan.
 5. MoonClaw stores the updated context in the run record and repeats from the
-   next Moonrobo context read.
+   next MoonRobo context read.

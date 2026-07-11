@@ -6,6 +6,7 @@ import {
   "vectie/moonclaw/cmd/main/interactive",
   "vectie/moonclaw/cmd/main/exec",
   "vectie/moonclaw/cmd/main/proposal",
+  "vectie/moonclaw/cmd/main/evidence" @evidence_command,
   "vectie/moonclaw/cmd/main/tui",
   "vectie/moonclaw/cmd/acp_command",
   "vectie/moonclaw/cmd/onboard_command",

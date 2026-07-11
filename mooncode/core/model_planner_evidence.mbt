@@ -171,7 +171,7 @@ pub fn model_planner_evidence_contract_json() -> Json {
       model_planner_stray_evidence_reason(),
     ],
     "model_planned_command_rule": "A prompt, steer, or package command with a selected model and no explicit runtime_tool_calls is model-planned.",
-    "working_signal_rule": "Moondesk may show active work only after command-scoped MoonClaw evidence exists: runtime.turn_started, runtime.planner_started, planner reasoning, planner-selected tool calls, assistant output, or command-scoped failure.",
+    "working_signal_rule": "MoonDesk may show active work only after command-scoped MoonClaw evidence exists: runtime.turn_started, runtime.planner_started, planner reasoning, planner-selected tool calls, assistant output, or command-scoped failure.",
     "required_sequence": [
       "command.prompt/command.steer/command.package",
       runtime_event_service_started(),

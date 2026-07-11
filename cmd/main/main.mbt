@@ -11,6 +11,7 @@ async fn main {
     ["acp", .. rest] => @acp_command.start(rest)
     ["onboard", .. rest] => @onboard_command.start(rest)
     ["proposal", .. rest] => @proposal.start(rest)
+    ["evidence", .. rest] => @evidence_command.start(rest)
     ["exec", .. rest] => @exec.exec(rest)
     ["tui", .. rest] => @tui.tui_interactive(rest)
     ["version"] => println(@buildinfo.version)

@@ -43,11 +43,11 @@ MoonClaw is strongest when you want one system to handle:
 ## News
 
 - `2026-06-15`: added the first native MoonCode daemon endpoint slice for
-  Moondesk: `/v1/code/capabilities`,
+  MoonDesk: `/v1/code/capabilities`,
   `/v1/code/sessions/<id>/commands`,
   `/v1/code/sessions/<id>/stream`, and
   `/v1/code/sessions/<id>/eval-report?book_root=<path>`, plus package proof ingestion at
-  `/v1/code/sessions/<id>/package-result`. Commands bind a Moondesk MoonCode
+  `/v1/code/sessions/<id>/package-result`. Commands bind a MoonDesk MoonCode
   session to a durable book-local command queue by default; native
   `runtime-turn`/`runtime-loop` execute the queued command without spawning a
   generic task. Native command handling now distinguishes
@@ -132,7 +132,7 @@ MoonClaw is strongest when you want one system to handle:
   `eval_report.manifest` proof with `tool_harness` and `file_edit` results.
   `run_tests` commands now convert the native `moon_check` execution into a
   first-class command-scoped `test_result` proof event with pass/fail status,
-  exit status, capped output, and the original command packet, so Moondesk can
+  exit status, capped output, and the original command packet, so MoonDesk can
   close test gates from MoonClaw-owned evidence instead of inferring from a
   generic tool result.
   When
@@ -143,14 +143,14 @@ MoonClaw is strongest when you want one system to handle:
   tool fails, the command is cancelled, or `planner_max_steps` is reached. Planner
   start/selection/failure events, `planner_steps`, the step limit, native
   `reasoning_delta` progress, optional assistant deltas, and pre-execution
-  `tool_call` events are recorded so Moondesk can render a live coding-agent
+  `tool_call` events are recorded so MoonDesk can render a live coding-agent
   transcript from MoonClaw-owned evidence. Unsupported or empty model plans fall
   back to the deterministic planner.
   Native `apply_patch` and `revert_patch` execute bounded reviewed text
   replacements plus single-file or multi-file unified-diff patchsets inside
   the selected MoonBook root, infer target paths from diff headers when needed,
   and emit `runtime.patch_applied` / `runtime.patch_reverted` proof events for
-  Moondesk review gates. They also accept `hunk_index`/`hunk_id` or hunk
+  MoonDesk review gates. They also accept `hunk_index`/`hunk_id` or hunk
   targets such as `tools/demo/main.mbt#hunk-2`, apply only that selected hunk,
   and report `hunk_control_scope`, `selected_hunk_index`,
   `available_hunk_count`, and `file_path` metadata. Patch tool packets can
@@ -162,7 +162,7 @@ MoonClaw is strongest when you want one system to handle:
   index under `portable/app-tool/mooncode/<session-id>/`, append
   `package_built` and `package_verified` proof to `package-results.jsonl`,
   promote generated source files under the package root with source hashes, and
-  emit artifact-lane package events for Moondesk's package review surface. The
+  emit artifact-lane package events for MoonDesk's package review surface. The
   remaining MoonCode runtime gap is the full persistent MoonCode agent
   service with long-running live steering/cancel UX, diff-aware edit review, and
   broader model-backed coding eval coverage.

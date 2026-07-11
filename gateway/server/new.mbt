@@ -202,7 +202,7 @@ pub fn Gateway::unregister_extension(
 
 ///|
 fn moonstat_startup_ready_message(base_url : String) -> String {
-  "Moonstat available at \{base_url}; gateway usage/statistics bridge enabled"
+  "MoonGate available at \{base_url}; gateway usage/statistics bridge enabled"
 }
 
 ///|
@@ -210,7 +210,7 @@ fn moonstat_startup_unavailable_message(
   base_url : String,
   error : String,
 ) -> String {
-  "Moonstat unavailable at \{base_url}; continuing without usage/statistics bridge: \{error}"
+  "MoonGate unavailable at \{base_url}; continuing without usage/statistics bridge: \{error}"
 }
 
 ///|

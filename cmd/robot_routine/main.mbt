@@ -22,7 +22,7 @@ fn usage() -> Unit {
     "  moon run cmd/robot_routine -- --url <moonrobo-base-url> [--invoke]",
   )
   println("")
-  println("Reads Moonrobo /api/moonclaw/context and prints the MoonClaw-owned")
+  println("Reads MoonRobo /api/moonclaw/context and prints the MoonClaw-owned")
   println("routine plan as JSON, including MoonClaw-authored request bodies.")
   println("With --invoke, MoonClaw calls only the next non-physical")
   println("MoonClaw-owned routine step and prints the downstream response.")
@@ -99,7 +99,7 @@ async fn invoke_step(
   match step.http_method {
     "GET" => get_text(url)
     "POST" => post_json(url, step.request_body)
-    route_method => Err("unsupported Moonrobo route method \{route_method}")
+    route_method => Err("unsupported MoonRobo route method \{route_method}")
   }
 }
 
@@ -180,7 +180,7 @@ async fn main {
     [_bin, path] => {
       let text = @fsx.read_file(path) catch {
         error => {
-          print_error("failed to read Moonrobo context file: \{error}")
+          print_error("failed to read MoonRobo context file: \{error}")
           return
         }
       }

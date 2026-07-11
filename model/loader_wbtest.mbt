@@ -204,7 +204,7 @@ test "moonstat catalog models become OpenAI-compatible routed models" {
     ],
   }
   guard @moonstat.moonstat_models_from_json(catalog) is Ok(models) else {
-    fail("expected parsed Moonstat model")
+    fail("expected parsed MoonGate model")
   }
   let model = model_from_moonstat_catalog(
     "http://127.0.0.1:15721/openclaw/v1",

@@ -407,7 +407,7 @@ pub fn standalone_boundary_json() -> Json {
     "rules": [
       "mooncode/core must contain only stable protocol and capability contracts",
       "projection components may import mooncode/core but must remain UI-free", "host components may persist and route MoonCode records but must not own the coding runtime loop",
-      "MoonClaw must remain usable as a standalone agent runtime outside Moondesk",
+      "MoonClaw must remain usable as a standalone agent runtime outside MoonDesk",
       "MoonCode, MoonWiki, and generic tasks share MoonClaw runtime primitives but keep separate typed protocols",
       "runtime engines must own tool execution and runtime sessions behind the MoonCode contract",
     ],

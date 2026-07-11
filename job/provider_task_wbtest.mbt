@@ -1617,7 +1617,7 @@ async test "provider task research dossier stays raw envelope only" {
         #|
         #|## Web Search First
         #|
-        #|- MoonClaw MoonBook Moontown architecture
+        #|- MoonClaw MoonBook MoonTown architecture
         #|
         #|## High-Signal URLs
         #|

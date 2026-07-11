@@ -306,7 +306,7 @@ pub fn runtime_control_contract_json() -> Json {
     "protocol_effects": runtime_control_effects(),
     "target_states": runtime_control_target_states(),
     "boundary": {
-      "ui": "Moondesk records commands and renders decisions.",
+      "ui": "MoonDesk records commands and renders decisions.",
       "runtime": "MoonClaw enforces runtime control before executing tools.",
       "store": "commands.jsonl, runtime-commands.jsonl, runtime-receipts.jsonl, and events.jsonl remain append-only.",
     },

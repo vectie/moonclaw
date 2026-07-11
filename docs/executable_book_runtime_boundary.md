@@ -4,15 +4,15 @@ Last checked: 2026-06-19.
 
 MoonClaw is the execution engine for executable MoonBooks. It owns agent,
 task, session, and runtime concepts, but those concepts should remain platform
-concepts rather than becoming the main Moondesk product vocabulary.
+concepts rather than becoming the main MoonDesk product vocabulary.
 
 ## Standalone Project Rule
 
-MoonClaw must run as its own checkout. It may expose HTTP/CLI/file contracts that other projects call, but it must not require adjacent MoonBook, Moontown, or Moondesk source checkouts to build, test, or start. Cross-project integration should use configured paths, published packages, or runtime protocols.
+MoonClaw must run as its own checkout. It may expose HTTP/CLI/file contracts that other projects call, but it must not require adjacent MoonBook, MoonTown, or MoonDesk source checkouts to build, test, or start. Cross-project integration should use configured paths, published packages, or runtime protocols.
 
 ## MoonClaw Standalone Agent Runtime
 
-MoonClaw standalone agent runtime is the reusable execution core for this system. It owns the shared runtime substrate: sessions, event logs, tool execution, cancellation, process lifecycle, model/tool loops, and bounded task jobs. Moondesk, Moontown, MoonBook tooling, a CLI, or a future standalone `mooncode` app may call it, but none of those clients should make MoonClaw a private implementation detail.
+MoonClaw standalone agent runtime is the reusable execution core for this system. It owns the shared runtime substrate: sessions, event logs, tool execution, cancellation, process lifecycle, model/tool loops, and bounded task jobs. MoonDesk, MoonTown, MoonBook tooling, a CLI, or a future standalone `mooncode` app may call it, but none of those clients should make MoonClaw a private implementation detail.
 
 The shared runtime substrate does not mean one vague product protocol. MoonCode uses `/v1/code/*` for executable-book coding sessions. Generic automation uses `/v1/task*`. MoonWiki and book-review flows may call MoonClaw by protocol for bounded execution, but they should keep their own durable evidence and book-editing vocabulary.
 
@@ -40,12 +40,12 @@ facts, but it does not promote them to accepted book truth.
 ## Executable Book Call Chain
 
 ```text
-Moondesk
+MoonDesk
   -> MoonCode or MoonWiki surface for a selected MoonBook
   -> MoonClaw runtime API
   -> MoonBook filesystem/artifact store
   -> MoonClaw events/results
-  -> Moondesk projection
+  -> MoonDesk projection
   -> Bookkeeper/user review
 ```
 
@@ -109,5 +109,5 @@ When updating MoonClaw docs:
 - Use `MoonCode` or `live coding-agent`; avoid external protocol-copy language as product vocabulary.
 - Describe `/v1/code/*` as the target coding runtime API.
 - Keep `/v1/task*` only for generic background jobs.
-- Do not say Moondesk owns runtime, sessions, or task execution.
+- Do not say MoonDesk owns runtime, sessions, or task execution.
 - Do not say MoonClaw owns durable book truth; it owns execution and proof.

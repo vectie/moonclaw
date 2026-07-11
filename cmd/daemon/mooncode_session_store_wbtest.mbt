@@ -482,7 +482,7 @@ async test "mooncode durable lifecycle completes from book-local evidence" (
     mooncode_json_string(lifecycle, "first_blocker_id", default="x"),
     "",
   )
-  assert_false(lifecycle.stringify().contains("Moondesk"))
+  assert_false(lifecycle.stringify().contains("MoonDesk"))
   assert_false(lifecycle.stringify().contains("Rabbita"))
   let listing = mooncode_session_listing_row(record)
   assert_true(mooncode_json_bool(listing, "lifecycle_ready", default=false))

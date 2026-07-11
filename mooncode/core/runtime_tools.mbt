@@ -320,9 +320,9 @@ pub fn runtime_tool_contract_json() -> Json {
     "constraints": {
       "workspace_scope": "All paths are selected-MoonBook relative and must resolve inside the book root.",
       "path_rule": "MoonClaw validates paths before reading, writing, editing, packaging, or running tools.",
-      "diff_rule": "Every mutating tool emits durable file_change and diff events before Moondesk can render accept/reject/package controls.",
+      "diff_rule": "Every mutating tool emits durable file_change and diff events before MoonDesk can render accept/reject/package controls.",
       "test_rule": "run_tests and package actions are not complete until test_result or package artifact evidence is appended.",
-      "approval_rule": "Moondesk records operator approval intent; MoonClaw enforces policy for shell, write/edit, and package execution.",
+      "approval_rule": "MoonDesk records operator approval intent; MoonClaw enforces policy for shell, write/edit, and package execution.",
       "extraction_rule": "The schema is data-only and can move into a shared MoonCode protocol package without depending on host UI types.",
     },
   }
@@ -1007,7 +1007,7 @@ fn runtime_tool_contract_entry(
     "output_events": output_events,
     "mutates_files": mutates_files,
     "requires_review": requires_review,
-    "executable_boundary": "MoonClaw executes; Moondesk renders and records review intent; MoonBook stores accepted artifacts.",
+    "executable_boundary": "MoonClaw executes; MoonDesk renders and records review intent; MoonBook stores accepted artifacts.",
     "safety_policy": safety_policy,
   }
 }

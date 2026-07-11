@@ -95,7 +95,7 @@ async test "suggest_job_profile_family matches built-in robot lane" {
   ) {
     inspect(
       suggest_job_profile_family(
-        "Ask the robot to inspect the Moonrobo physical gateway.", dir, dir,
+        "Ask the robot to inspect the MoonRobo physical gateway.", dir, dir,
       ).unwrap_or(""),
       content="robot_routine",
     )

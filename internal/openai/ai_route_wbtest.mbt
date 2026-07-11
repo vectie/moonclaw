@@ -31,7 +31,7 @@ test "openai chat route uses moonstat openclaw endpoint when discovered" {
 }
 
 ///|
-test "openai chat route recognizes a catalog model bound directly to Moonstat" {
+test "openai chat route recognizes a catalog model bound directly to MoonGate" {
   let model = @model.new(
     api_key="",
     base_url="http://127.0.0.1:15721/openclaw/v1",

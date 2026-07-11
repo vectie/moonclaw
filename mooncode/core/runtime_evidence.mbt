@@ -1,5 +1,5 @@
 ///|
-// Runtime evidence and proof-gate vocabulary shared by Moondesk and MoonClaw.
+// Runtime evidence and proof-gate vocabulary shared by MoonDesk and MoonClaw.
 
 ///|
 pub fn runtime_evidence_contract_id() -> String {
@@ -193,7 +193,7 @@ pub fn runtime_evidence_command_rule() -> String {
 
 ///|
 pub fn tool_harness_evidence_rule() -> String {
-  "MoonClaw must run each expected tool through the typed tool boundary and emit command-scoped tool_call/tool_result proof. Moondesk records and renders the verdict; it does not execute tools."
+  "MoonClaw must run each expected tool through the typed tool boundary and emit command-scoped tool_call/tool_result proof. MoonDesk records and renders the verdict; it does not execute tools."
 }
 
 ///|
@@ -203,7 +203,7 @@ pub fn runtime_completion_proof_gate_rule() -> String {
 
 ///|
 pub fn session_runtime_evidence_rule() -> String {
-  "This projection is the session-level proof contract. Moondesk records and displays it, while MoonClaw must satisfy it with command-scoped runtime events."
+  "This projection is the session-level proof contract. MoonDesk records and displays it, while MoonClaw must satisfy it with command-scoped runtime events."
 }
 
 ///|
