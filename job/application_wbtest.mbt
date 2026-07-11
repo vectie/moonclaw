@@ -285,6 +285,22 @@ async test "GatewayJobApp::plan_mode returns a transient preview" {
         "requested_output_format": "brief markdown",
         "starter_attachments": [{ "id": "file-1", "filename": "seed.pdf" }],
       }),
+      executor=fake_planner_executor(
+        (
+          {
+            "title": "Analyze starter files",
+            "summary": "Inspect the isolated starter-file fixture.",
+            "tags": ["test"],
+            "steps": [
+              {
+                "id": "inspect",
+                "title": "Inspect fixture",
+                "prompt": "Inspect only the isolated test fixture.",
+                "kind": "job.analysis",
+              },
+            ],
+          } : Json).stringify(),
+      ),
     )
     inspect(preview.title.is_blank(), content="false")
     inspect(

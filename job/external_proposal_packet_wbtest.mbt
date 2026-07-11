@@ -488,13 +488,15 @@ async test "GatewayJobApp confirms external proposal packet with detached launch
     let captured_exec : Ref[String] = { val: "" }
     let captured_args : Ref[Array[String]] = { val: [] }
     let confirmed = match
-      app.confirm_proposal_and_launch(imported.proposal, imported.proposal.id, spawn_runner=fn(
-        exec_path,
-        args,
+      app.confirm_proposal_and_launch(
+        imported.proposal,
+        imported.proposal.id,
+        spawn_runner=fn(exec_path, args) {
+          captured_exec.val = exec_path
+          captured_args.val = args
+        },
+        detached_exec_path="/bin/true",
       ) {
-        captured_exec.val = exec_path
-        captured_args.val = args
-      }) {
       Ok(result) => result
       Err(error) => fail(error)
     }
@@ -578,12 +580,12 @@ async test "GatewayJobApp restores missing detached run definition from confirme
       Err(error) => fail(error)
     }
     let confirmed = match
-      app.confirm_proposal_and_launch(imported.proposal, imported.proposal.id, spawn_runner=fn(
-        _exec_path,
-        _args,
+      app.confirm_proposal_and_launch(
+        imported.proposal,
+        imported.proposal.id,
+        spawn_runner=fn(_exec_path, _args) { () },
+        detached_exec_path="/bin/true",
       ) {
-        ()
-      }) {
       Ok(result) => result
       Err(error) => fail(error)
     }
@@ -637,4 +639,28 @@ async test "GatewayJobApp restores missing detached run definition from confirme
       content="true",
     )
   })
+}
+
+///|
+test "detached launch rejects compiler and moon tool executables" {
+  assert_false(detached_run_executable_supported("/usr/local/bin/tcc"))
+  assert_false(detached_run_executable_supported("/opt/moon/bin/moon"))
+  assert_false(detached_run_executable_supported("C:/moon/moon.exe"))
+  assert_true(detached_run_executable_supported("/opt/moonclaw/moonclaw"))
+  assert_true(detached_run_executable_supported("/opt/moonclaw/main.exe"))
+}
+
+///|
+test "detached launch prefers configured MoonClaw executable" {
+  assert_eq(
+    detached_run_executable_candidate(
+      Some("  /opt/moonclaw/moonclaw  "),
+      "/usr/local/bin/tcc",
+    ),
+    "/opt/moonclaw/moonclaw",
+  )
+  assert_eq(
+    detached_run_executable_candidate(None, "/opt/moonclaw/main.exe"),
+    "/opt/moonclaw/main.exe",
+  )
 }

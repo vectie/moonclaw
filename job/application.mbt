@@ -222,6 +222,7 @@ pub async fn GatewayJobApp::plan_mode_in_workspace(
   recipient? : String? = None,
   thread_id? : String? = None,
   model? : String? = None,
+  executor? : AnalysisExecutor = default_analysis_executor(),
 ) -> JobPlanPreview {
   let memory_context = self.planning_memory_context(
     request_text, workspace_root, channel_id, account_id, recipient, thread_id,
@@ -229,6 +230,7 @@ pub async fn GatewayJobApp::plan_mode_in_workspace(
   plan_chat_mode(
     request_text,
     self.now(),
+    executor~,
     intake~,
     channel_id~,
     account_id~,
@@ -252,6 +254,7 @@ pub async fn GatewayJobApp::plan_mode(
   recipient? : String? = None,
   thread_id? : String? = None,
   model? : String? = None,
+  executor? : AnalysisExecutor = default_analysis_executor(),
 ) -> JobPlanPreview {
   self.plan_mode_in_workspace(
     request_text,
@@ -263,6 +266,7 @@ pub async fn GatewayJobApp::plan_mode(
     recipient~,
     thread_id~,
     model~,
+    executor~,
   )
 }
 

@@ -59,6 +59,30 @@ async fn default_detached_run_spawner(
 }
 
 ///|
+fn detached_run_executable_candidate(
+  configured : String?,
+  process_executable : String,
+) -> String {
+  match configured {
+    Some(path) if !path.trim().is_blank() => path.trim().to_owned()
+    _ => process_executable
+  }
+}
+
+///|
+fn detached_run_executable_supported(path : String) -> Bool {
+  let basename = @pathx.basename(path).to_lower()
+  basename != "tcc" && basename != "moon" && basename != "moon.exe"
+}
+
+///|
+fn configured_detached_run_executable() -> String? {
+  @os.getenv("MOONCLAW_EXECUTABLE") catch {
+    _ => None
+  }
+}
+
+///|
 fn external_packet_string_field(
   obj : Map[String, Json],
   key : String,
@@ -925,7 +949,25 @@ pub async fn GatewayJobApp::launch_definition_detached(
   job_id : String,
   initial_input? : Json? = None,
   spawn_runner? : async (String, Array[String]) -> Unit = default_detached_run_spawner,
+  detached_exec_path? : String,
 ) -> Result[JobRun, String] {
+  let process_executable = match detached_exec_path {
+    Some(path) => path
+    None =>
+      @os.executable() catch {
+        error =>
+          return Err("Failed to resolve MoonClaw executable path: \{error}")
+      }
+  }
+  let exec_path = detached_run_executable_candidate(
+    configured_detached_run_executable(),
+    process_executable,
+  )
+  if !detached_run_executable_supported(exec_path) {
+    return Err(
+      "Detached proposal launch requires a MoonClaw application executable, but the current runtime is \{exec_path}. Use --inline for source-tree execution or set MOONCLAW_EXECUTABLE to an installed MoonClaw binary.",
+    )
+  }
   let run = match
     self
     .runtime()
@@ -952,9 +994,6 @@ pub async fn GatewayJobApp::launch_definition_detached(
       Some(path)
     }
     None => None
-  }
-  let exec_path = @os.executable() catch {
-    error => return Err("Failed to resolve MoonClaw executable path: \{error}")
   }
   spawn_runner(
     exec_path,
@@ -987,9 +1026,20 @@ pub async fn GatewayJobApp::confirm_proposal_and_launch(
   proposal : JobProposal,
   proposal_id : String,
   spawn_runner? : async (String, Array[String]) -> Unit = default_detached_run_spawner,
+  detached_exec_path? : String,
 ) -> Result[ConfirmProposalResult, String] {
   self.confirm_proposal(proposal, proposal_id, async fn(job_id, initial_input) {
-    self.launch_definition_detached(job_id, initial_input~, spawn_runner~)
+    match detached_exec_path {
+      Some(path) =>
+        self.launch_definition_detached(
+          job_id,
+          initial_input~,
+          spawn_runner~,
+          detached_exec_path=path,
+        )
+      None =>
+        self.launch_definition_detached(job_id, initial_input~, spawn_runner~)
+    }
   })
 }
 
