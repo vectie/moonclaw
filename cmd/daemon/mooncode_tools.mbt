@@ -244,6 +244,10 @@ async fn mooncode_tool_write(book_root : String, arguments : Json) -> Json {
   let relative = mooncode_json_string(path, "relative_path", default="")
   let content = mooncode_json_string(arguments, "content", default="")
   let existed = @fsx.exists(absolute)
+  if mooncode_moonbit_manifest_write_error(relative, content, existed~)
+    is Some(message) {
+    return mooncode_tool_error_result("write", message~)
+  }
   let before = if existed {
     @fsx.read_file(absolute) catch {
       _ => ""
@@ -271,6 +275,29 @@ async fn mooncode_tool_write(book_root : String, arguments : Json) -> Json {
       "diff": mooncode_tool_unified_diff(relative, before, content, existed~),
     },
   )
+}
+
+///|
+fn mooncode_moonbit_manifest_write_error(
+  relative : String,
+  content : String,
+  existed~ : Bool,
+) -> String? {
+  let name = @pathx.basename(relative).to_owned()
+  if !existed && (name == "moon.mod.json" || name == "moon.pkg.json") {
+    return Some(
+      "new legacy MoonBit manifest `\{relative}` is not allowed; create current `moon.mod` or `moon.pkg` syntax instead",
+    )
+  }
+  if name == "moon.mod" || name == "moon.pkg" {
+    let trimmed = content.trim()
+    if trimmed.has_prefix("{") || trimmed.has_prefix("[") {
+      return Some(
+        "MoonBit manifest `\{relative}` must use current manifest syntax, not JSON",
+      )
+    }
+  }
+  None
 }
 
 ///|
@@ -325,6 +352,11 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   } else {
     content.replace(old=old_string, new=new_string)
   }
+  let relative = mooncode_json_string(path, "relative_path", default="")
+  if mooncode_moonbit_manifest_write_error(relative, new_content, existed=true)
+    is Some(message) {
+    return mooncode_tool_error_result("edit", message~)
+  }
   @fsx.write_to_file(absolute, new_content) catch {
     error =>
       return mooncode_tool_error_result(
@@ -334,15 +366,15 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   }
   mooncode_tool_ok_result(
     "edit",
-    message="replaced \{replacement_count} occurrence(s) in \{mooncode_json_string(path, "relative_path", default="")}",
+    message="replaced \{replacement_count} occurrence(s) in \{relative}",
     output="",
     metadata={
-      "path": mooncode_json_string(path, "relative_path", default=""),
+      "path": relative,
       "absolute_path": absolute,
       "replacement_count": replacement_count,
       "changed": content != new_content,
       "diff": mooncode_tool_unified_diff(
-        mooncode_json_string(path, "relative_path", default=""),
+        relative,
         content,
         new_content,
         existed=true,

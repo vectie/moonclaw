@@ -15,6 +15,24 @@ test "moonstat client resolves manifest base url" {
 }
 
 ///|
+test "moonstat client reads validated default model from suite status" {
+  let status = {
+    "contract": Json::string("moon.suite.status.v2"),
+    "service": Json::string("moonstat"),
+    "manifest": {
+      "contract": Json::string("moon.suite.service.v1"),
+      "service": Json::string("moonstat"),
+      "baseUrl": Json::string("http://127.0.0.1:15721"),
+      "defaultModel": Json::string("gpt-5.6-sol"),
+    }.to_json(),
+  }.to_json()
+  let models = moonstat_default_models_from_status(status)
+  assert_eq(models.length(), 1)
+  assert_eq(models[0].id(), "gpt-5.6-sol")
+  assert_true(models[0].context_window() == Some(128000))
+}
+
+///|
 test "moonstat client rejects legacy suite status shortcuts" {
   let health_only = { "health_url": "http://127.0.0.1:18082/health" }.to_json()
   let root_base = { "base_url": "http://127.0.0.1:18082" }.to_json()
@@ -44,6 +62,22 @@ test "moonstat client builds openclaw route url" {
 }
 
 ///|
+test "moonstat client separates HTTP origin and request path" {
+  assert_true(
+    moonstat_http_parts("http://127.0.0.1:15721/v1/models") ==
+    Ok(("http://127.0.0.1:15721", "/v1/models")),
+  )
+  assert_true(
+    moonstat_http_parts("https://moonstat.example") ==
+    Ok(("https://moonstat.example", "/")),
+  )
+  assert_true(
+    moonstat_http_parts("127.0.0.1:15721/v1/models") ==
+    Err("invalid URL: missing scheme"),
+  )
+}
+
+///|
 test "moonstat client parses typed models" {
   let catalog = {
     "models": [
@@ -60,8 +94,11 @@ test "moonstat client parses typed models" {
   }
   assert_true(models.length() == 2)
   assert_true(models[0].id == "gpt-5")
+  assert_true(models[0].id() == "gpt-5")
   assert_true(models[0].owner == Some("openai"))
+  assert_true(models[0].owner() == Some("openai"))
   assert_true(models[0].context_window == Some(128000))
+  assert_true(models[0].context_window() == Some(128000))
   assert_true(models[1].id == "moon/local")
 }
 

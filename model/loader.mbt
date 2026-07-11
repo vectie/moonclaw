@@ -413,6 +413,59 @@ async fn Loader::load_first_provider_model(self : Loader) -> Model? {
 }
 
 ///|
+fn model_from_moonstat_catalog(
+  base_url : String,
+  catalog_model : @moonstat.MoonstatModel,
+) -> Model {
+  let name = catalog_model.id()
+  Model::new(
+    api_key="",
+    base_url~,
+    name~,
+    model_name=name,
+    model_type=SaaS(OpenAI),
+    safe_zone_tokens=catalog_model.context_window().unwrap_or(128_000),
+    description="Routed through the active Moonstat service",
+  )
+}
+
+///|
+async fn Loader::load_moonstat_model(self : Loader, name : String) -> Model? {
+  let discovered = @moonstat.discover_from_suite_status_for_workspace_root(
+    self.cwd.to_owned(),
+  )
+  guard discovered is Some(client) else {
+    logger.warn(
+      "Moonstat suite status unavailable for model lookup from '\{self.cwd}'",
+    )
+    return None
+  }
+  let catalog = match client.model_catalog() {
+    Ok(catalog) => catalog
+    Err(error) => {
+      logger.warn(
+        "Moonstat live model catalog unavailable at '\{client.base_url()}': \{error}; using the validated suite-status default",
+      )
+      @moonstat.configured_models_from_suite_status_for_workspace_root(
+        self.cwd.to_owned(),
+      )
+    }
+  }
+  for catalog_model in catalog {
+    if catalog_model.id() == name {
+      logger.info("Loaded model '\{name}' from active Moonstat catalog")
+      return Some(
+        model_from_moonstat_catalog(
+          client.base_url() + "/openclaw/v1",
+          catalog_model,
+        ),
+      )
+    }
+  }
+  None
+}
+
+///|
 /// Retrieve a model from the loader's cache, optionally overriding
 /// selected fields.
 ///
@@ -462,6 +515,9 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
     return self.load_kimi_coding_model(model_name)
   }
   if name is Some(model_name) {
+    if self.load_moonstat_model(model_name) is Some(model) {
+      return Some(model)
+    }
     return self.load_openrouter_model(Some(model_name))
   }
   logger.info("No model specified, auto-detecting...")
@@ -751,6 +807,40 @@ async fn Loader::load_kimi_coding_model(self : Loader, name : String) -> Model? 
 /// Returns an `ArrayView[Model]` containing all cached models.
 pub async fn Loader::models(self : Loader) -> ArrayView[Model] {
   self.load()
+  let discovered = @moonstat.discover_from_suite_status_for_workspace_root(
+    self.cwd.to_owned(),
+  )
+  match discovered {
+    Some(client) => {
+      let catalog = match client.model_catalog() {
+        Ok(catalog) => catalog
+        Err(error) => {
+          logger.warn(
+            "Moonstat live model catalog unavailable at '\{client.base_url()}': \{error}; using the validated suite-status default",
+          )
+          @moonstat.configured_models_from_suite_status_for_workspace_root(
+            self.cwd.to_owned(),
+          )
+        }
+      }
+      for catalog_model in catalog {
+        let name = catalog_model.id()
+        let already_loaded = self.models.any(fn(model) { model.name == name })
+        if !already_loaded {
+          self.models.push(
+            model_from_moonstat_catalog(
+              client.base_url() + "/openclaw/v1",
+              catalog_model,
+            ),
+          )
+        }
+      }
+    }
+    None =>
+      logger.warn(
+        "Moonstat suite status unavailable for model listing from '\{self.cwd}'",
+      )
+  }
   self.models
 }
 

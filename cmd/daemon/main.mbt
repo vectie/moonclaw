@@ -178,7 +178,8 @@ pub async fn start(args : ArrayView[String]) -> Unit {
     } else {
       @os.executable()
     }
-    guard Daemon::new(exec_path~, port~, serve~, home~) is Some(daemon) else {
+    guard Daemon::new(exec_path~, port~, serve~, home~, cwd=serve)
+      is Some(daemon) else {
       return
     }
     daemon.serve()

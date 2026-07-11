@@ -254,11 +254,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
             break
           }
         }
-        let step_accepted = step_results.all(result => {
-          mooncode_json_bool(result, "accepted", default=false)
-        })
-        if !step_accepted ||
-          mooncode_json_string(plan, "planner_mode", default="") !=
+        if mooncode_json_string(plan, "planner_mode", default="") !=
           mooncode_planner_mode_model_tool_calls() ||
           mooncode_runtime_turn_tool_calls_include_finish(tool_calls) ||
           step_index + 1 >= max_model_steps {
@@ -301,9 +297,17 @@ async fn Daemon::mooncode_runtime_turn_execute(
         }
         plan = next_plan
       }
-      let tool_accepted = tool_results.all(result => {
-        mooncode_json_bool(result, "accepted", default=false)
+      let used_model_planner = planner_steps.any(step => {
+        mooncode_json_string(step, "planner_mode", default="") ==
+        mooncode_planner_mode_model_tool_calls()
       })
+      let tool_accepted = if used_model_planner {
+        mooncode_runtime_turn_model_execution_accepted(command, tool_results)
+      } else {
+        tool_results.all(result => {
+          mooncode_json_bool(result, "accepted", default=false)
+        })
+      }
       let test_results = if action == "run_tests" || action == "run_build" {
         mooncode_runtime_turn_test_results(
           session_id,

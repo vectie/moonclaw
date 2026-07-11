@@ -199,8 +199,8 @@ fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int {
   let requested = mooncode_json_int(payload, "planner_max_steps", default=3)
   if requested < 1 {
     1
-  } else if requested > 8 {
-    8
+  } else if requested > 20 {
+    20
   } else {
     requested
   }
@@ -248,11 +248,14 @@ fn mooncode_runtime_turn_model_tools_for_command(
   let path = mooncode_runtime_turn_prompt_path(
     mooncode_runtime_turn_prompt_text(command),
   )
-  if path != "" && mooncode_runtime_turn_read_needs_model(request) {
-    return [tools[0], tools[7]]
-  }
+  // Implementation intent takes precedence over incidental analysis words.
+  // Prompts such as "implement ...; do not merely explain" must retain the
+  // complete coding toolset even when they also name a source path.
   if mooncode_runtime_turn_model_needs_coding_tools(command, request) {
     return tools
+  }
+  if path != "" && mooncode_runtime_turn_read_needs_model(request) {
+    return [tools[0], tools[7]]
   }
   [tools[7]]
 }
@@ -278,6 +281,55 @@ fn mooncode_runtime_turn_model_needs_coding_tools(
   request.contains("tool") ||
   request.contains("app") ||
   request.contains("site")
+}
+
+///|
+fn mooncode_runtime_turn_model_execution_accepted(
+  command : Json,
+  results : Array[Json],
+) -> Bool {
+  if results.length() == 0 {
+    return false
+  }
+  let final_result = results[results.length() - 1]
+  if mooncode_json_string(final_result, "tool", default="") != "finish" ||
+    !mooncode_json_bool(final_result, "accepted", default=false) {
+    return false
+  }
+  let mut last_failure = -1
+  let mut coding_evidence = false
+  for index in 0..<results.length() {
+    let result = results[index]
+    if !mooncode_json_bool(result, "accepted", default=false) {
+      last_failure = index
+    } else {
+      let tool = mooncode_json_string(result, "tool", default="")
+      if tool == "write" || tool == "edit" || tool == "shell" ||
+        tool == "moon_cmd" || tool == "moon_check" {
+        coding_evidence = true
+      }
+    }
+  }
+  if mooncode_runtime_turn_model_needs_coding_tools(
+      command,
+      mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
+    ) && !coding_evidence {
+    return false
+  }
+  if last_failure >= 0 {
+    let mut recovered = false
+    for index in (last_failure + 1)..<results.length() {
+      let result = results[index]
+      if mooncode_json_bool(result, "accepted", default=false) &&
+        mooncode_json_string(result, "tool", default="") != "finish" {
+        recovered = true
+      }
+    }
+    if !recovered {
+      return false
+    }
+  }
+  true
 }
 
 ///|
@@ -427,7 +479,14 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
       {
         "type": "object",
         "properties": {
-          "target": { "type": "string" },
+          "cwd": {
+            "type": "string",
+            "description": "MoonBook-relative directory containing moon.mod; use this for nested modules.",
+          },
+          "target": {
+            "type": "string",
+            "enum": ["wasm", "wasm-gc", "js", "native", "llvm", "all"],
+          },
           "timeout_ms": { "type": "integer" },
           "max_output_chars": { "type": "integer" },
         },

@@ -90,17 +90,19 @@ fn mooncode_runtime_turn_tool_calls(command : Json) -> Array[Json] {
 fn mooncode_runtime_turn_prompt_tool_calls(command : Json) -> Array[Json] {
   let request = mooncode_runtime_turn_prompt_text(command)
   let lower = request.to_lower().to_string()
-  if mooncode_runtime_turn_mentions_miniapp(lower) {
+  if mooncode_runtime_turn_is_simple_generation_request(request) &&
+    mooncode_runtime_turn_mentions_miniapp(lower) {
     return mooncode_runtime_turn_miniapp_tool_calls(command, request)
   }
-  if mooncode_runtime_turn_mentions_tool(lower) {
+  if mooncode_runtime_turn_is_simple_generation_request(request) &&
+    mooncode_runtime_turn_mentions_tool(lower) {
     return mooncode_runtime_turn_script_tool_calls(command, request)
   }
   [
     {
       "tool": "finish",
       "arguments": {
-        "answer": "Native MoonCode runtime recorded this prompt. Ask for a tool, script, miniapp, app, or generated site to have MoonClaw create executable MoonBook code with native tools.",
+        "answer": "MoonCode produced no executable model tool plan; no files were changed. Retry after resolving model availability or provide an explicit bounded tool call.",
       },
     },
   ]
@@ -143,13 +145,24 @@ fn mooncode_runtime_turn_deterministic_preplan(command : Json) -> Array[Json] {
       },
     ]
   }
-  if mooncode_runtime_turn_mentions_miniapp(lower) {
+  if mooncode_runtime_turn_is_simple_generation_request(request) &&
+    mooncode_runtime_turn_mentions_miniapp(lower) {
     return mooncode_runtime_turn_miniapp_tool_calls(command, request)
   }
-  if mooncode_runtime_turn_mentions_tool(lower) {
+  if mooncode_runtime_turn_is_simple_generation_request(request) &&
+    mooncode_runtime_turn_mentions_tool(lower) {
     return mooncode_runtime_turn_script_tool_calls(command, request)
   }
   []
+}
+
+///|
+fn mooncode_runtime_turn_is_simple_generation_request(request : String) -> Bool {
+  // The deterministic generators intentionally satisfy small, self-contained
+  // requests. Detailed engineering prompts must stay on the model/tool loop;
+  // matching a noun such as "tool" or "script" is not sufficient evidence
+  // that a canned artifact is the requested result.
+  request.length() <= 256 && !request.contains("\n")
 }
 
 ///|

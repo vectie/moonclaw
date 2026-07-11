@@ -115,6 +115,9 @@ async fn chat_openai(
       guard body is Object(body) else {
         abort("Request body is not a JSON object")
       }
+      if route.via_moonstat {
+        body["stream"] = Json::boolean(true)
+      }
       for k, v in extra_body {
         body[k] = v
       }
@@ -122,7 +125,7 @@ async fn chat_openai(
       guard response.code is (200..=299) else {
         raise HttpError(code=response.code, body=client.read_all().text())
       }
-      if request.stream is Some(true) {
+      if route.via_moonstat || request.stream is Some(true) {
         let reader = ChunkReader::new(client)
         let builder = ChatCompletionBuilder::new()
         while reader.read() is Some(chunk) {
@@ -164,16 +167,17 @@ fn openai_chat_route_for_model(
   model : @model.Model,
   moonstat_chat_url : String?,
 ) -> OpenAIChatRoute {
-  match moonstat_chat_url {
+  let route = match moonstat_chat_url {
     Some(url) =>
       { url, headers: moonclaw_moonstat_chat_headers(), via_moonstat: true }
     None =>
       {
         url: "\{model.base_url}/chat/completions",
         headers: openai_direct_chat_headers(model.api_key),
-        via_moonstat: false,
+        via_moonstat: model.base_url.contains("/openclaw/v1"),
       }
   }
+  route
 }
 
 ///|

@@ -25,6 +25,51 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
 }
 
 ///|
+async test "mooncode rejects legacy and JSON-shaped MoonBit manifests" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-manifest-XXXXXX"),
+  )
+  async fn write(path : String, content : String) -> Json {
+    mooncode_execute_tool_call(
+      "session-manifest",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-manifest",
+        "book_root": book_root,
+        "tool": "write",
+        "command_id": "cmd-manifest",
+        "arguments": { "path": path, "content": content },
+      },
+      now=@clock.Timestamp::from_ms(46L),
+    )
+  }
+  for
+    item in [
+      ("tools/demo/moon.mod.json", "{}"),
+      ("tools/demo/moon.pkg.json", "{}"),
+      ("tools/demo/moon.mod", "{}"),
+      ("tools/demo/moon.pkg", "[]"),
+    ] {
+    let (path, content) = item
+    let result = mooncode_json_object_field_or_empty(
+      write(path, content),
+      "result",
+    )
+    assert_true(mooncode_json_bool(result, "is_error", default=false))
+    assert_false(@fsx.exists(@pathx.join(book_root, path)))
+  }
+  let accepted = mooncode_json_object_field_or_empty(
+    write("tools/demo/moon.mod", "name = \"example/demo\"\n"),
+    "result",
+  )
+  assert_true(mooncode_json_bool(accepted, "ok", default=false))
+}
+
+///|
 async test "mooncode moon_check records reusable watcher state" (t : @test.Test) {
   ignore(t)
   let suite_root = @fsx.mkdtemp(
@@ -101,7 +146,7 @@ async test "mooncode moon_check records reusable watcher state" (t : @test.Test)
       "book_root": book_root,
       "tool": "moon_check",
       "command_id": "cmd-check-replace",
-      "arguments": { "target": ".", "timeout_ms": 30000 },
+      "arguments": { "target": "native", "timeout_ms": 30000 },
     },
     now=@clock.Timestamp::from_ms(63L),
   )
@@ -138,7 +183,7 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
       "arguments": {
         "action": "outline",
         "path": ".",
-        "target": "native",
+        "target": "all",
         "timeout_ms": 30000,
       },
     },
@@ -153,7 +198,7 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
   let ide_metadata = mooncode_json_object_field_or_empty(ide_result, "metadata")
   assert_eq(
     mooncode_json_string(ide_metadata, "command", default=""),
-    "moon ide outline --target native .",
+    "moon ide outline .",
   )
   assert_eq(
     mooncode_json_string(
@@ -214,6 +259,28 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
   ignore(t)
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-mooncode-tool-validation-XXXXXX"),
+  )
+  let nested_module = @pathx.join(book_root, "tools/demo")
+  @fsx.make_directory(
+    @pathx.join(nested_module, "src"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(nested_module, "moon.mod"),
+    "name = \"example/demo\"\n",
+  )
+  let inferred = mooncode_moon_ide_cwd(book_root, {
+    "path": "tools/demo/src/main.mbt",
+  })
+  assert_eq(
+    mooncode_json_string(inferred, "relative_path", default=""),
+    "tools/demo",
+  )
+  assert_eq(mooncode_moon_check_args(""), ["check"])
+  assert_eq(
+    mooncode_moon_check_args("native"),
+    ["check", "--target", "native"],
   )
   let missing_ide_input = mooncode_execute_tool_call(
     "session-tool-validation",

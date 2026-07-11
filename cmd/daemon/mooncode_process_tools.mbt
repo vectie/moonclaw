@@ -56,6 +56,45 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
 }
 
 ///|
+async fn mooncode_moon_ide_cwd(book_root : String, arguments : Json) -> Json {
+  if mooncode_json_string(arguments, "cwd", default="") != "" {
+    return mooncode_tool_cwd(book_root, arguments)
+  }
+  let path = mooncode_json_string(arguments, "path", default="")
+  if path == "" {
+    return mooncode_tool_cwd(book_root, arguments)
+  }
+  let resolved = mooncode_resolve_book_path(book_root, path)
+  if !mooncode_json_bool(resolved, "ok", default=false) {
+    return resolved
+  }
+  let absolute = mooncode_json_string(resolved, "absolute_path", default="")
+  let name = @pathx.basename(absolute).to_owned()
+  let mut candidate = if name.contains(".") {
+    @pathx.dirname(absolute).to_owned()
+  } else {
+    absolute
+  }
+  let root = @pathx.normalize(book_root)
+  for ;; {
+    if @fsx.exists(@pathx.join(candidate, "moon.mod")) ||
+      @fsx.exists(@pathx.join(candidate, "moon.mod.json")) ||
+      @fsx.exists(@pathx.join(candidate, "moon.work")) {
+      return mooncode_resolve_book_path(book_root, candidate)
+    }
+    if candidate == root {
+      break
+    }
+    let parent = @pathx.dirname(candidate).to_owned()
+    if parent == candidate || (parent != root && !parent.has_prefix(root + "/")) {
+      break
+    }
+    candidate = parent
+  }
+  mooncode_tool_cwd(book_root, arguments)
+}
+
+///|
 async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
   let action = mooncode_json_string(arguments, "action", default="")
   if !mooncode_moon_ide_action_supported(action) {
@@ -70,14 +109,14 @@ async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
     return mooncode_tool_error_result("moon_ide", message=argument_error)
   }
   let target = mooncode_json_string(arguments, "target", default="")
-  if !mooncode_moon_target_supported(target) {
+  if target != "all" && !mooncode_moon_target_supported(target) {
     return mooncode_tool_error_result(
       "moon_ide",
       message="unsupported moon_ide target: \{target}",
       metadata={ "target": target },
     )
   }
-  let cwd = mooncode_tool_cwd(book_root, arguments)
+  let cwd = mooncode_moon_ide_cwd(book_root, arguments)
   if mooncode_json_bool(cwd, "ok", default=false) == false {
     return mooncode_tool_error_result(
       "moon_ide",
@@ -172,7 +211,9 @@ fn mooncode_moon_ide_args(arguments : Json, action : String) -> Array[String] {
     args.push("--no-check")
   }
   let target = mooncode_json_string(arguments, "target", default="")
-  if target != "" {
+  // `moon check` accepts `all`; `moon ide` requires one concrete target.
+  // Omitting `all` lets the nested module choose its preferred/default target.
+  if target != "" && target != "all" {
     args.push("--target")
     args.push(target)
   }
@@ -396,13 +437,25 @@ fn mooncode_json_array_string_items(json : Json, key : String) -> Array[String] 
 ///|
 async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json {
   let target = mooncode_json_string(arguments, "target", default="")
-  let args : Array[StringView] = if target == "" {
-    ["check"]
-  } else {
-    ["check", target]
+  if !mooncode_moon_target_supported(target) {
+    return mooncode_tool_error_result(
+      "moon_check",
+      message="unsupported moon_check target: \{target}",
+      metadata={ "target": target },
+    )
   }
-  let command = mooncode_moon_check_command(target)
-  let key = mooncode_moon_check_key(book_root)
+  let cwd = mooncode_tool_cwd(book_root, arguments)
+  if !mooncode_json_bool(cwd, "ok", default=false) {
+    return mooncode_tool_error_result(
+      "moon_check",
+      message=mooncode_json_string(cwd, "message", default="invalid cwd"),
+    )
+  }
+  let args = mooncode_moon_check_args(target)
+  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
+  let cwd_relative = mooncode_json_string(cwd, "relative_path", default=".")
+  let command = mooncode_moon_check_command(target) + " (cwd=\{cwd_relative})"
+  let key = mooncode_moon_check_key(cwd_path)
   let previous = mooncode_moon_check_read_state(book_root)
   let previous_command = mooncode_json_string(previous, "command", default="")
   let previous_status = mooncode_json_string(previous, "status", default="")
@@ -423,7 +476,12 @@ async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json 
     restart_count
   }
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=60000)
-  let process = @spawn.spawn("moon", args, timeout~, cwd=book_root) catch {
+  let process = @spawn.spawn(
+    "moon",
+    args.map(fn(arg) { arg }),
+    timeout~,
+    cwd=cwd_path,
+  ) catch {
     error =>
       return mooncode_tool_error_result(
         "moon_check",
@@ -468,6 +526,15 @@ async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json 
       output=mooncode_json_string(capped, "output", default=""),
       metadata=state,
     )
+  }
+}
+
+///|
+fn mooncode_moon_check_args(target : String) -> Array[String] {
+  if target == "" {
+    ["check"]
+  } else {
+    ["check", "--target", target]
   }
 }
 

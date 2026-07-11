@@ -197,6 +197,27 @@ test "model loader paths use MoonSuite product home" {
 }
 
 ///|
+test "moonstat catalog models become OpenAI-compatible routed models" {
+  let catalog : Json = {
+    "models": [
+      { "id": "gpt-5.6-sol", "owned_by": "openai", "context_window": 400000 },
+    ],
+  }
+  guard @moonstat.moonstat_models_from_json(catalog) is Ok(models) else {
+    fail("expected parsed Moonstat model")
+  }
+  let model = model_from_moonstat_catalog(
+    "http://127.0.0.1:15721/openclaw/v1",
+    models[0],
+  )
+  assert_eq(model.name, "gpt-5.6-sol")
+  assert_eq(model.model_name, "gpt-5.6-sol")
+  assert_eq(model.base_url, "http://127.0.0.1:15721/openclaw/v1")
+  assert_eq(model.safe_zone_tokens, 400000)
+  assert_true(model.supports_apply_patch)
+}
+
+///|
 async test "legacy nested moonclaw models are ignored" (t : @test.Test) {
   @mock.run(t, mock => {
     let legacy_model = new(

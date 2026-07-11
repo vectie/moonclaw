@@ -29,3 +29,19 @@ test "openai chat route uses moonstat openclaw endpoint when discovered" {
   assert_false(route.headers.contains("Authorization"))
   assert_eq(route.headers["User-Agent"], "moonclaw")
 }
+
+///|
+test "openai chat route recognizes a catalog model bound directly to Moonstat" {
+  let model = @model.new(
+    api_key="",
+    base_url="http://127.0.0.1:15721/openclaw/v1",
+    name="gpt-5.6-sol",
+    safe_zone_tokens=128000,
+  )
+  let route = openai_chat_route_for_model(model, None)
+  assert_eq(
+    route.url,
+    "http://127.0.0.1:15721/openclaw/v1/chat/completions",
+  )
+  assert_true(route.via_moonstat)
+}

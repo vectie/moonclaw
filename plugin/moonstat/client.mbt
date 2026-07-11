@@ -36,6 +36,21 @@ pub struct MoonstatModel {
 }
 
 ///|
+pub fn MoonstatModel::id(self : MoonstatModel) -> String {
+  self.id
+}
+
+///|
+pub fn MoonstatModel::owner(self : MoonstatModel) -> String? {
+  self.owner
+}
+
+///|
+pub fn MoonstatModel::context_window(self : MoonstatModel) -> Int? {
+  self.context_window
+}
+
+///|
 pub struct MoonstatUsageSummary {
   total_requests : Int
   total_cost : String
@@ -65,8 +80,17 @@ pub async fn discover() -> Client {
 
 ///|
 pub async fn discover_from_suite_status() -> Client? {
-  let status_path = moonstat_suite_status_path_for_workspace_root(
+  discover_from_suite_status_for_workspace_root(
     moonstat_active_workspace_root(),
+  )
+}
+
+///|
+pub async fn discover_from_suite_status_for_workspace_root(
+  workspace_root : String,
+) -> Client? {
+  let status_path = moonstat_suite_status_path_for_workspace_root(
+    workspace_root,
   )
   let content = @fsx.read_file(status_path) catch { _ => "" }
   if content.is_empty() {
@@ -74,6 +98,34 @@ pub async fn discover_from_suite_status() -> Client? {
   }
   let parsed = @json.parse(content) catch { _ => Json::null() }
   moonstat_base_url_from_status(parsed).map(fn(base_url) { { base_url, } })
+}
+
+///|
+pub async fn configured_models_from_suite_status_for_workspace_root(
+  workspace_root : String,
+) -> Array[MoonstatModel] {
+  let status_path = moonstat_suite_status_path_for_workspace_root(
+    workspace_root,
+  )
+  let content = @fsx.read_file(status_path) catch { _ => return [] }
+  let parsed = @json.parse(content) catch { _ => return [] }
+  moonstat_default_models_from_status(parsed)
+}
+
+///|
+fn moonstat_default_models_from_status(status : Json) -> Array[MoonstatModel] {
+  guard status is Object(obj) && moonstat_status_contract_valid(obj) else {
+    return []
+  }
+  guard obj.get("manifest") is Some(Object(manifest)) &&
+    moonstat_manifest_contract_valid(manifest) else {
+    return []
+  }
+  guard moonstat_json_string_field(manifest, "defaultModel") is Some(id) &&
+    id != "" else {
+    return []
+  }
+  [{ id, owner: None, context_window: Some(128_000) }]
 }
 
 ///|
@@ -177,11 +229,15 @@ pub async fn Client::get_text(
   path : String,
 ) -> Result[String, String] {
   let url = self.base_url + path
-  let client = @http.Client::new(url, headers={}) catch {
+  let (origin, request_path) = match moonstat_http_parts(url) {
+    Ok(parts) => parts
+    Err(error) => return Err(error)
+  }
+  let client = @http.Client::new(origin, headers={}) catch {
     err => return Err("client error: \{err}")
   }
   defer client.close()
-  let response = client.get("") catch {
+  let response = client.get(request_path) catch {
     err => return Err("request error: \{err}")
   }
   if response.code == 200 {
@@ -201,13 +257,17 @@ pub async fn Client::post(
   body : Json,
 ) -> Result[Json, String] {
   let url = self.base_url + path
-  let client = @http.Client::new(url, headers={
+  let (origin, request_path) = match moonstat_http_parts(url) {
+    Ok(parts) => parts
+    Err(error) => return Err(error)
+  }
+  let client = @http.Client::new(origin, headers={
     "Content-Type": "application/json",
   }) catch {
     err => return Err("client error: \{err}")
   }
   defer client.close()
-  let response = client.post("", body.stringify()) catch {
+  let response = client.post(request_path, body.stringify()) catch {
     err => return Err("request error: \{err}")
   }
   if response.code == 200 {
@@ -220,6 +280,25 @@ pub async fn Client::post(
     Err("HTTP \{response.code}")
   }
 }
+
+///|
+fn moonstat_http_parts(url : String) -> Result[(String, String), String] {
+  guard url.find("://") is Some(protocol_end) else {
+    return Err("invalid URL: missing scheme")
+  }
+  let after_scheme = protocol_end + 3
+  let rest = url[after_scheme:]
+  let (authority, path) = match rest.find("/") {
+    Some(path_start) =>
+      (rest[:path_start].to_owned(), rest[path_start:].to_owned())
+    None => (rest.to_owned(), "/")
+  }
+  if authority == "" {
+    return Err("invalid URL: missing authority")
+  }
+  Ok((url[:after_scheme].to_owned() + authority, path))
+}
+
 
 ///|
 pub async fn Client::route_openclaw_chat(

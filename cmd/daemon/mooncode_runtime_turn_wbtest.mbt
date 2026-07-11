@@ -500,6 +500,31 @@ test "mooncode native runtime turn plans prompt tool calls" {
   assert_eq(miniapp_calls.length(), 4)
   assert_true(miniapp_calls[0].stringify().contains("apps/mooncode-generated"))
   assert_eq(mooncode_json_string(miniapp_calls[2], "tool", default=""), "shell")
+  let engineering_prompt : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-planner",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "text": "Implement a substantive reusable MoonBit validator and command-line tool in the existing module. Read external criteria, validate unknown and required fields, add positive and negative fixtures, add automated tests, produce deterministic machine-readable output, run moon check and moon test, and fix every failure before finishing. Do not generate a placeholder script.",
+    "model": "test-model",
+    "packet": { "command_id": "cmd-engineering" },
+  }
+  assert_eq(
+    mooncode_runtime_turn_deterministic_preplan(engineering_prompt).length(),
+    0,
+  )
+  assert_true(mooncode_runtime_turn_requires_model_planning(engineering_prompt))
+  let engineering_fallback = mooncode_runtime_turn_tool_calls(
+    engineering_prompt,
+  )
+  assert_eq(engineering_fallback.length(), 1)
+  assert_eq(
+    mooncode_json_string(engineering_fallback[0], "tool", default=""),
+    "finish",
+  )
+  assert_false(
+    Json::array(engineering_fallback).stringify().contains("\"tool\":\"write\""),
+  )
   let steer : Json = {
     "protocol": mooncode_protocol_version(),
     "session_id": "session-planner",
@@ -725,6 +750,14 @@ test "mooncode model planner sends a compact request envelope" {
     "text": "Fix the parser and run tests.",
   }
   assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 8)
+  let coding_with_path : Json = {
+    "command": "prompt",
+    "text": "Edit first. The scaffold has already been read. Overwrite tools/robot-design-validator/src/main.mbt with a substantive validator, then add tests, fixtures, and a README; run moon check and moon test before finishing. Implement the result; do not merely explain it.",
+  }
+  assert_eq(
+    mooncode_runtime_turn_model_tools_for_command(coding_with_path).length(),
+    8,
+  )
 
   let codex = @model.codex_oauth_model(
     access_token="test",
@@ -868,6 +901,34 @@ test "mooncode native runtime turn treats assistant text as finish" {
 }
 
 ///|
+test "mooncode model execution requires finish and explicit recovery" {
+  let coding : Json = {
+    "command": "prompt",
+    "text": "Implement the validator and run tests.",
+  }
+  let write_ok : Json = { "tool": "write", "accepted": true }
+  let read_failed : Json = { "tool": "read", "accepted": false }
+  let read_recovered : Json = { "tool": "read", "accepted": true }
+  let finish : Json = { "tool": "finish", "accepted": true }
+  assert_false(
+    mooncode_runtime_turn_model_execution_accepted(coding, [write_ok]),
+  )
+  assert_false(
+    mooncode_runtime_turn_model_execution_accepted(
+      coding, [write_ok, read_failed, finish],
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_model_execution_accepted(
+      coding, [write_ok, read_failed, read_recovered, finish],
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_model_execution_accepted(coding, [finish]),
+  )
+}
+
+///|
 test "mooncode native runtime turn builds model follow-up transcript" {
   let response : Json = {
     "choices": [
@@ -922,7 +983,7 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     mooncode_runtime_turn_model_max_steps({
       "payload": { "planner_max_steps": 99 },
     }),
-    8,
+    20,
   )
 }
 
