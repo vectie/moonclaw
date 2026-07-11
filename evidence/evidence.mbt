@@ -124,3 +124,90 @@ pub fn validate_dossier(dossier : EvidenceDossier) -> EvidenceQualityReceipt {
     output_artifacts: dossier.output_artifacts,
   }
 }
+
+///|
+fn has_parent_escape(path : String) -> Bool {
+  let normalized = path.replace(old="\\", new="/")
+  normalized.split("/").any(segment => segment == "..")
+}
+
+///|
+fn receipt_with_blockers(
+  receipt : EvidenceQualityReceipt,
+  blockers : Array[String],
+) -> EvidenceQualityReceipt {
+  {
+    contract_id: receipt.contract_id,
+    task_id: receipt.task_id,
+    accepted: blockers.is_empty(),
+    source_count: receipt.source_count,
+    primary_source_count: receipt.primary_source_count,
+    claim_count: receipt.claim_count,
+    blockers,
+    output_artifacts: receipt.output_artifacts,
+  }
+}
+
+///|
+/// Validate both dossier semantics and the local evidence artifacts it cites.
+///
+/// Every `artifact_ref` must be book-relative, exist, and resolve inside the
+/// canonical book root. Remote source locators remain valid provenance, but
+/// they do not replace a locally tracked retrieval artifact.
+pub async fn validate_dossier_in_workspace(
+  dossier : EvidenceDossier,
+  book_root : String,
+) -> EvidenceQualityReceipt {
+  let receipt = validate_dossier(dossier)
+  let blockers : Array[String] = []
+  blockers.push_iter(receipt.blockers.iter())
+  let trimmed_root = book_root.trim().to_owned()
+  if trimmed_root.is_empty() || !@fsx.exists(trimmed_root) {
+    blockers.push("evidence book root does not exist")
+    return receipt_with_blockers(receipt, blockers)
+  }
+  let canonical_root = @fsx.resolve(trimmed_root) catch {
+    _ => {
+      blockers.push("evidence book root cannot be resolved")
+      return receipt_with_blockers(receipt, blockers)
+    }
+  }
+  for source in dossier.sources {
+    let artifact_ref = source.artifact_ref.trim().to_owned()
+    if artifact_ref.is_empty() {
+      continue
+    }
+    if @pathx.is_absolute(artifact_ref) || has_parent_escape(artifact_ref) {
+      blockers.push(
+        "source " +
+        source.source_id +
+        " artifact_ref must stay relative to the evidence book",
+      )
+      continue
+    }
+    let artifact_path = @pathx.join(trimmed_root, artifact_ref)
+    if !@fsx.exists(artifact_path) {
+      blockers.push(
+        "source " + source.source_id + " artifact_ref does not exist",
+      )
+      continue
+    }
+    let canonical_artifact = @fsx.resolve(artifact_path) catch {
+      _ => {
+        blockers.push(
+          "source " + source.source_id + " artifact_ref cannot be resolved",
+        )
+        continue
+      }
+    }
+    if canonical_artifact != canonical_root &&
+      !canonical_artifact.has_prefix(canonical_root + "/") {
+      blockers.push(
+        "source " +
+        source.source_id +
+        " artifact_ref resolves outside the evidence book",
+      )
+    }
+  }
+  receipt_with_blockers(receipt, blockers)
+}

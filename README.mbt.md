@@ -42,6 +42,12 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-07-11`: added workspace-aware evidence-dossier validation. `moonclaw
+  evidence validate <book-root> <dossier.json> <receipt.json>` now requires
+  every declared `artifact_ref` to exist, remain book-relative, and resolve
+  inside the canonical MoonBook root. Remote locators remain provenance, but
+  cannot substitute for a locally tracked retrieval artifact. See
+  [Evidence Quality](docs/evidence_quality.md).
 - `2026-06-15`: added the first native MoonCode daemon endpoint slice for
   MoonDesk: `/v1/code/capabilities`,
   `/v1/code/sessions/<id>/commands`,

@@ -35,6 +35,8 @@ health/usage, and MoonLib defines shared paths.
 7. [e2e_architecture.md](e2e_architecture.md): end-to-end test direction.
 8. [expected_behaviors/README.md](expected_behaviors/README.md): expected
    operator and job behavior.
+9. [evidence_quality.md](evidence_quality.md): dossier policy, local retrieval
+   artifacts, and fail-closed workspace containment.
 
 ## Implementation Guidance
 
