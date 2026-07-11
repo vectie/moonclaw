@@ -9,6 +9,9 @@ import {
 }
 
 // Values
+pub fn moonclaw_moonflow_adapter_capability_json() -> Json
+
+pub fn mooncode_moonflow_adapter_capability_json() -> Json
 
 // Errors
 

@@ -1,0 +1,10 @@
+import {
+  "vectie/moonclaw",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"
+
+options(
+  "is-main": true,
+)
