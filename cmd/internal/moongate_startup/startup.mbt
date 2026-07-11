@@ -10,7 +10,7 @@ pub fn unavailable_message(base_url : String, error : String) -> String {
 
 ///|
 pub async fn print_status() -> Unit {
-  let client = @moonstat.discover()
+  let client = @moongate.discover()
   match client.health() {
     Ok(_) => @stdio.stdout.write("\{ready_message(client.base_url())}\n")
     Err(error) =>

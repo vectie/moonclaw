@@ -201,12 +201,12 @@ pub fn Gateway::unregister_extension(
 }
 
 ///|
-fn moonstat_startup_ready_message(base_url : String) -> String {
+fn moongate_startup_ready_message(base_url : String) -> String {
   "MoonGate available at \{base_url}; gateway usage/statistics bridge enabled"
 }
 
 ///|
-fn moonstat_startup_unavailable_message(
+fn moongate_startup_unavailable_message(
   base_url : String,
   error : String,
 ) -> String {
@@ -214,13 +214,13 @@ fn moonstat_startup_unavailable_message(
 }
 
 ///|
-async fn Gateway::connect_moonstat_on_startup(self : Gateway) -> Unit {
-  let client = @moonstat.discover()
+async fn Gateway::connect_moongate_on_startup(self : Gateway) -> Unit {
+  let client = @moongate.discover()
   match client.health() {
-    Ok(_) => self.logger.info(moonstat_startup_ready_message(client.base_url()))
+    Ok(_) => self.logger.info(moongate_startup_ready_message(client.base_url()))
     Err(error) =>
       self.logger.warn(
-        moonstat_startup_unavailable_message(client.base_url(), error),
+        moongate_startup_unavailable_message(client.base_url(), error),
       )
   }
 }
@@ -246,7 +246,7 @@ pub async fn Gateway::start(self : Gateway) -> Unit {
       error => self.logger.warn("Failed to resume pending job runs: \{error}")
     }
     group.spawn_bg(
-      () => self.connect_moonstat_on_startup(),
+      () => self.connect_moongate_on_startup(),
       no_wait=true,
       allow_failure=true,
     )

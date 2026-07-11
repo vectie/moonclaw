@@ -1,6 +1,6 @@
 import {
   "moonbitlang/async/stdio",
-  "vectie/moonclaw/plugin/moonstat",
+  "vectie/moonclaw/plugin/moongate",
 }
 
 supported_targets = "native"

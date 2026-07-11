@@ -117,6 +117,6 @@ pub async fn start(args : ArrayView[String]) -> Unit {
         "--register-host, --register-port, and --register-id must be provided together",
       )
   }
-  @moonstat_startup.print_status()
+  @moongate_startup.print_status()
   Server::new(name?, model?, register?, serve~, port~, resume_id?, web_search~).start()
 }

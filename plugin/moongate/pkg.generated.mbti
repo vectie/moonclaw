@@ -1,16 +1,20 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "vectie/moonclaw/plugin/moonstat"
+package "vectie/moonclaw/plugin/moongate"
 
 // Values
 pub const DEFAULT_HOST : String = "127.0.0.1"
 
 pub const DEFAULT_PORT : Int = 15721
 
+pub async fn configured_models_from_suite_status_for_workspace_root(String) -> Array[MoonGateModel]
+
 pub async fn discover() -> Client
 
 pub async fn discover_from_suite_status() -> Client?
 
-pub fn moonstat_models_from_json(Json) -> Result[Array[MoonstatModel], String]
+pub async fn discover_from_suite_status_for_workspace_root(String) -> Client?
+
+pub fn moongate_models_from_json(Json) -> Result[Array[MoonGateModel], String]
 
 // Errors
 
@@ -23,7 +27,7 @@ pub async fn Client::get(Self, String) -> Result[Json, String]
 pub async fn Client::get_text(Self, String) -> Result[String, String]
 pub async fn Client::health(Self) -> Result[Json, String]
 pub async fn Client::metrics(Self) -> Result[String, String]
-pub async fn Client::model_catalog(Self) -> Result[Array[MoonstatModel], String]
+pub async fn Client::model_catalog(Self) -> Result[Array[MoonGateModel], String]
 pub async fn Client::models(Self) -> Result[Json, String]
 pub async fn Client::post(Self, String, Json) -> Result[Json, String]
 pub async fn Client::provider_presets(Self) -> Result[Json, String]
@@ -32,17 +36,20 @@ pub fn Client::route_openclaw_chat_url(Self) -> String
 pub async fn Client::stats(Self) -> Result[Json, String]
 pub async fn Client::status(Self) -> Result[Json, String]
 pub async fn Client::usage_summary(Self) -> Result[Json, String]
-pub async fn Client::usage_summary_typed(Self) -> Result[MoonstatUsageSummary, String]
+pub async fn Client::usage_summary_typed(Self) -> Result[MoonGateUsageSummary, String]
 pub async fn Client::usage_trends(Self) -> Result[Json, String]
 
-pub struct MoonstatModel {
+pub struct MoonGateModel {
   id : String
   owner : String?
   context_window : Int?
 }
-pub fn MoonstatModel::from_json(Json) -> Result[Self, String]
+pub fn MoonGateModel::context_window(Self) -> Int?
+pub fn MoonGateModel::from_json(Json) -> Result[Self, String]
+pub fn MoonGateModel::id(Self) -> String
+pub fn MoonGateModel::owner(Self) -> String?
 
-pub struct MoonstatUsageSummary {
+pub struct MoonGateUsageSummary {
   total_requests : Int
   total_cost : String
   total_input_tokens : Int64
@@ -53,7 +60,7 @@ pub struct MoonstatUsageSummary {
   success_rate : Double
   cache_hit_rate : Double
 }
-pub fn MoonstatUsageSummary::from_json(Json) -> Result[Self, String]
+pub fn MoonGateUsageSummary::from_json(Json) -> Result[Self, String]
 
 // Type aliases
 

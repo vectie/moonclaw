@@ -1,5 +1,5 @@
 ///|
-test "moonstat startup messages describe MoonClaw routing and standalone fallback" {
+test "moongate startup messages describe MoonClaw routing and standalone fallback" {
   assert_eq(
     ready_message("http://127.0.0.1:15721"),
     "MoonGate available at http://127.0.0.1:15721; MoonClaw routing and usage/statistics bridge enabled",

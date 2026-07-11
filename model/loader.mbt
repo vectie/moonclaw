@@ -413,9 +413,9 @@ async fn Loader::load_first_provider_model(self : Loader) -> Model? {
 }
 
 ///|
-fn model_from_moonstat_catalog(
+fn model_from_moongate_catalog(
   base_url : String,
-  catalog_model : @moonstat.MoonstatModel,
+  catalog_model : @moongate.MoonGateModel,
 ) -> Model {
   let name = catalog_model.id()
   Model::new(
@@ -430,8 +430,8 @@ fn model_from_moonstat_catalog(
 }
 
 ///|
-async fn Loader::load_moonstat_model(self : Loader, name : String) -> Model? {
-  let discovered = @moonstat.discover_from_suite_status_for_workspace_root(
+async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
+  let discovered = @moongate.discover_from_suite_status_for_workspace_root(
     self.cwd.to_owned(),
   )
   guard discovered is Some(client) else {
@@ -446,7 +446,7 @@ async fn Loader::load_moonstat_model(self : Loader, name : String) -> Model? {
       logger.warn(
         "MoonGate live model catalog unavailable at '\{client.base_url()}': \{error}; using the validated suite-status default",
       )
-      @moonstat.configured_models_from_suite_status_for_workspace_root(
+      @moongate.configured_models_from_suite_status_for_workspace_root(
         self.cwd.to_owned(),
       )
     }
@@ -455,7 +455,7 @@ async fn Loader::load_moonstat_model(self : Loader, name : String) -> Model? {
     if catalog_model.id() == name {
       logger.info("Loaded model '\{name}' from active MoonGate catalog")
       return Some(
-        model_from_moonstat_catalog(
+        model_from_moongate_catalog(
           client.base_url() + "/openclaw/v1",
           catalog_model,
         ),
@@ -515,7 +515,7 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
     return self.load_kimi_coding_model(model_name)
   }
   if name is Some(model_name) {
-    if self.load_moonstat_model(model_name) is Some(model) {
+    if self.load_moongate_model(model_name) is Some(model) {
       return Some(model)
     }
     return self.load_openrouter_model(Some(model_name))
@@ -807,7 +807,7 @@ async fn Loader::load_kimi_coding_model(self : Loader, name : String) -> Model? 
 /// Returns an `ArrayView[Model]` containing all cached models.
 pub async fn Loader::models(self : Loader) -> ArrayView[Model] {
   self.load()
-  let discovered = @moonstat.discover_from_suite_status_for_workspace_root(
+  let discovered = @moongate.discover_from_suite_status_for_workspace_root(
     self.cwd.to_owned(),
   )
   match discovered {
@@ -818,7 +818,7 @@ pub async fn Loader::models(self : Loader) -> ArrayView[Model] {
           logger.warn(
             "MoonGate live model catalog unavailable at '\{client.base_url()}': \{error}; using the validated suite-status default",
           )
-          @moonstat.configured_models_from_suite_status_for_workspace_root(
+          @moongate.configured_models_from_suite_status_for_workspace_root(
             self.cwd.to_owned(),
           )
         }
@@ -828,7 +828,7 @@ pub async fn Loader::models(self : Loader) -> ArrayView[Model] {
         let already_loaded = self.models.any(fn(model) { model.name == name })
         if !already_loaded {
           self.models.push(
-            model_from_moonstat_catalog(
+            model_from_moongate_catalog(
               client.base_url() + "/openclaw/v1",
               catalog_model,
             ),
