@@ -7,7 +7,7 @@ Expected behavior reference:
 - [expected_behaviors/README.md](expected_behaviors/README.md)
 - [executable_book_runtime_boundary.md](executable_book_runtime_boundary.md)
 
-The executable-book boundary is: MoonClaw owns agent, task, session, and runtime primitives; MoonBook owns durable book truth; Moondesk projects MoonWiki and MoonCode surfaces; Moontown coordinates standing goals and book-to-book work. The executable-book coding API is `/v1/code/*`; generic `/v1/task*` routes remain separate for background jobs.
+The executable-book boundary is: MoonClaw owns agent, task, session, and runtime primitives; MoonBook owns durable book truth; MoonDesk projects MoonWiki and MoonCode surfaces; MoonTown coordinates standing goals and book-to-book work. The executable-book coding API is `/v1/code/*`; generic `/v1/task*` routes remain separate for background jobs.
 
 ## Top-Level Entry Points
 

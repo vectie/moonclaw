@@ -85,8 +85,8 @@ async fn chat_openai(
   extra_body~ : Map[String, Json],
   on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
-  let moonstat_client = @moonstat.discover_from_suite_status()
-  let moonstat_chat_url = moonstat_client.map(fn(client) {
+  let moongate_client = @moongate.discover_from_suite_status()
+  let moongate_chat_url = moongate_client.map(fn(client) {
     client.route_openclaw_chat_url()
   })
   @async.retry(
@@ -99,10 +99,10 @@ async fn chat_openai(
       }
     },
     () => {
-      let route = openai_chat_route_for_model(model, moonstat_chat_url)
+      let route = openai_chat_route_for_model(model, moongate_chat_url)
       logger.debug("RequestSent", data={
         "model": { "name": model.model_name, "base_url": model.base_url },
-        "route": { "url": route.url, "via_moonstat": route.via_moonstat },
+        "route": { "url": route.url, "via_moongate": route.via_moongate },
         "request": request,
       })
       let uri = Uri::parse(route.url)
@@ -115,7 +115,7 @@ async fn chat_openai(
       guard body is Object(body) else {
         abort("Request body is not a JSON object")
       }
-      if route.via_moonstat {
+      if route.via_moongate {
         body["stream"] = Json::boolean(true)
       }
       for k, v in extra_body {
@@ -125,7 +125,7 @@ async fn chat_openai(
       guard response.code is (200..=299) else {
         raise HttpError(code=response.code, body=client.read_all().text())
       }
-      if route.via_moonstat || request.stream is Some(true) {
+      if route.via_moongate || request.stream is Some(true) {
         let reader = ChunkReader::new(client)
         let builder = ChatCompletionBuilder::new()
         while reader.read() is Some(chunk) {
@@ -159,22 +159,22 @@ async fn chat_openai(
 priv struct OpenAIChatRoute {
   url : String
   headers : Map[String, String]
-  via_moonstat : Bool
+  via_moongate : Bool
 }
 
 ///|
 fn openai_chat_route_for_model(
   model : @model.Model,
-  moonstat_chat_url : String?,
+  moongate_chat_url : String?,
 ) -> OpenAIChatRoute {
-  let route = match moonstat_chat_url {
+  let route = match moongate_chat_url {
     Some(url) =>
-      { url, headers: moonclaw_moonstat_chat_headers(), via_moonstat: true }
+      { url, headers: moonclaw_moongate_chat_headers(), via_moongate: true }
     None =>
       {
         url: "\{model.base_url}/chat/completions",
         headers: openai_direct_chat_headers(model.api_key),
-        via_moonstat: model.base_url.contains("/openclaw/v1"),
+        via_moongate: model.base_url.contains("/openclaw/v1"),
       }
   }
   route
@@ -191,7 +191,7 @@ fn openai_direct_chat_headers(api_key : String) -> Map[String, String] {
 }
 
 ///|
-fn moonclaw_moonstat_chat_headers() -> Map[String, String] {
+fn moonclaw_moongate_chat_headers() -> Map[String, String] {
   {
     "Content-Type": "application/json",
     "Connection": "close",

@@ -270,9 +270,9 @@ fn gateway_command_goal(item : Json, context : Json) -> String {
       } else {
         let status = string_field(gateway(context), "status")
         if status != "" {
-          "Continue the Moonrobo robot routine from gateway status \{status}."
+          "Continue the MoonRobo robot routine from gateway status \{status}."
         } else {
-          "Continue the Moonrobo robot routine from MoonClaw routine state."
+          "Continue the MoonRobo robot routine from MoonClaw routine state."
         }
       }
     }
@@ -309,7 +309,7 @@ fn task_goal(context : Json) -> String {
   if bool_field(task, "has_task") && goal != "" {
     goal
   } else {
-    "Continue the Moonrobo robot routine from MoonClaw routine state."
+    "Continue the MoonRobo robot routine from MoonClaw routine state."
   }
 }
 
@@ -358,7 +358,7 @@ fn proof_session_body(context : Json, now_ms : Int64) -> String {
 fn observation_goal(item : Json, context : Json) -> String {
   let goal = task_goal(context)
   if goal != "" &&
-    goal != "Continue the Moonrobo robot routine from MoonClaw routine state." {
+    goal != "Continue the MoonRobo robot routine from MoonClaw routine state." {
     goal
   } else {
     let reason = string_field(item, "reason")
@@ -424,17 +424,17 @@ fn registry_blocker_decision(
     request_body: "",
     target_route: target,
     title: if title == "" {
-      "Register Moonrobo tool route"
+      "Register MoonRobo tool route"
     } else {
       title
     },
     reason: if reason == "" {
-      "MoonClaw will not invoke unregistered Moonrobo route \{http_method} \{target}."
+      "MoonClaw will not invoke unregistered MoonRobo route \{http_method} \{target}."
     } else {
-      "\{reason}; route \{http_method} \{target} is not registered as a bounded Moonrobo tool."
+      "\{reason}; route \{http_method} \{target} is not registered as a bounded MoonRobo tool."
     },
     physical_execution_allowed: false,
-    message: "MoonClaw blocked an unregistered Moonrobo routine target; update the Moonrobo tool registry or choose a registered route.",
+    message: "MoonClaw blocked an unregistered MoonRobo routine target; update the MoonRobo tool registry or choose a registered route.",
   }
 }
 
@@ -465,7 +465,7 @@ fn operator_tool_decision(
       "\{reason}; registered execution mode \{mode} requires an operator-visible control."
     },
     physical_execution_allowed: false,
-    message: "MoonClaw selected a registered Moonrobo route but left invocation to the operator because the capability mode is operator-owned.",
+    message: "MoonClaw selected a registered MoonRobo route but left invocation to the operator because the capability mode is operator-owned.",
   }
 }
 
@@ -532,7 +532,7 @@ fn work_decision(
     message: if owner == "operator" {
       "Operator action is required before MoonClaw can continue."
     } else {
-      "MoonClaw selected the explicit Moonrobo route for this work item."
+      "MoonClaw selected the explicit MoonRobo route for this work item."
     },
   }
 }
@@ -551,13 +551,13 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
   match route_capability_execution_mode(context, http_method, route) {
     None =>
       return registry_blocker_decision(
-        kind, route, http_method, title, "Gateway status selected the next Moonrobo route.",
+        kind, route, http_method, title, "Gateway status selected the next MoonRobo route.",
         now_ms,
       )
     Some(mode) =>
       if operator_execution_mode(mode) {
         return operator_tool_decision(
-          kind, "", route, title, "Gateway status selected the next Moonrobo route.",
+          kind, "", route, title, "Gateway status selected the next MoonRobo route.",
           mode, now_ms,
         )
       }
@@ -566,7 +566,7 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
     "kind": Json::string(kind),
     "target_path": Json::string(route),
     "title": Json::string(title),
-    "reason": Json::string("Gateway status selected the next Moonrobo route."),
+    "reason": Json::string("Gateway status selected the next MoonRobo route."),
   }.to_json()
   {
     decision_id: decision_id("robot-routine-gateway", kind, now_ms),
@@ -579,9 +579,9 @@ fn ready_decision(context : Json, now_ms : Int64) -> RobotRoutineDecision {
     request_body: route_request_body(item, context, now_ms),
     target_route: route,
     title,
-    reason: "Gateway status selected the next Moonrobo route.",
+    reason: "Gateway status selected the next MoonRobo route.",
     physical_execution_allowed: bool_field(status, "physical_execution_allowed"),
-    message: "MoonClaw selected the gateway next route from Moonrobo context.",
+    message: "MoonClaw selected the gateway next route from MoonRobo context.",
   }
 }
 
@@ -598,7 +598,7 @@ fn idle_decision(now_ms : Int64) -> RobotRoutineDecision {
     request_body: "",
     target_route: "/api/moonrobo/ask",
     title: "Ask Robo",
-    reason: "No queued robot work is present in Moonrobo context.",
+    reason: "No queued robot work is present in MoonRobo context.",
     physical_execution_allowed: false,
     message: "Robot routine is idle; ask for another task.",
   }
@@ -768,7 +768,7 @@ fn gateway_step(
     "POST",
     "/api/moonrobo/gateway/command",
     gateway_command_body(item, context, now_ms),
-    "Submit the MoonClaw-authored robot command through Moonrobo ingress.",
+    "Submit the MoonClaw-authored robot command through MoonRobo ingress.",
   )
 }
 
@@ -907,7 +907,7 @@ fn plan_message(status : String) -> String {
     "needs-operator" =>
       "MoonClaw robot routine needs operator evidence before continuing."
     _ =>
-      "MoonClaw planned the explicit robot routine route sequence from Moonrobo context."
+      "MoonClaw planned the explicit robot routine route sequence from MoonRobo context."
   }
 }
 
@@ -950,7 +950,7 @@ pub fn plan_routine_from_context_text(
   now_ms? : Int64 = 0L,
 ) -> Result[RobotRoutinePlan, String] {
   let json = @json.parse(payload) catch {
-    error => return Err("failed to parse Moonrobo context JSON: \{error}")
+    error => return Err("failed to parse MoonRobo context JSON: \{error}")
   }
   Ok(plan_routine_from_context(json, now_ms~))
 }

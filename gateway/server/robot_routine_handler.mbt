@@ -498,7 +498,7 @@ async fn robot_routine_invoke_step(
   match step.http_method {
     "GET" => robot_routine_get_text(url)
     "POST" => robot_routine_post_json(url, step.request_body)
-    route_method => Err("unsupported Moonrobo route method \{route_method}")
+    route_method => Err("unsupported MoonRobo route method \{route_method}")
   }
 }
 
@@ -575,7 +575,7 @@ async fn Gateway::select_robot_routine(
       plan,
       invoked: false,
       invocation: None,
-      message: "MoonClaw planned the robot routine from Moonrobo context.",
+      message: "MoonClaw planned the robot routine from MoonRobo context.",
     }
   }
   let step = match plan.next_step {
@@ -726,7 +726,7 @@ async fn Gateway::run_robot_routine(
         Some(invocation),
         memory_refresh=Some(memory_refresh),
         context_before~,
-        "MoonClaw invoked the robot routine step and refreshed memory but could not read updated Moonrobo context: \{message}",
+        "MoonClaw invoked the robot routine step and refreshed memory but could not read updated MoonRobo context: \{message}",
         status="context-refresh-failed",
       )
       self.persist_robot_routine_run_or_raise(record)

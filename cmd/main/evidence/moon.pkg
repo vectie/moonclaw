@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/core/json",
+  "vectie/moonclaw/evidence" @evidence_contract,
+  "vectie/moonlib/fsx",
+}
+
+supported_targets = "native"

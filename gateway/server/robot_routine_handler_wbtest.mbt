@@ -1,5 +1,5 @@
 ///|
-test "robot routine joins Moonrobo base URL and route" {
+test "robot routine joins MoonRobo base URL and route" {
   assert_eq(
     robot_routine_join_url(" http://127.0.0.1:5192/ ", "/api/moonclaw/context"),
     "http://127.0.0.1:5192/api/moonclaw/context",
@@ -17,7 +17,7 @@ test "robot routine joins Moonrobo base URL and route" {
 }
 
 ///|
-test "robot routine request requires Moonrobo URL" {
+test "robot routine request requires MoonRobo URL" {
   let params = robot_routine_decode_request_text(
     "{\"moonrobo_url\":\"http://127.0.0.1:5192\",\"now_ms\":42}",
   )

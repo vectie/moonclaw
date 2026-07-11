@@ -358,7 +358,7 @@ Key fields:
 
 The robot role runtime is a limited domain executor: it may run the MoonClaw
 robot routine endpoint, but it does not receive raw workspace-write or native
-execution-tool authority. Moonrobo remains the context/evidence provider.
+execution-tool authority. MoonRobo remains the context/evidence provider.
 
 ## Board Metadata
 

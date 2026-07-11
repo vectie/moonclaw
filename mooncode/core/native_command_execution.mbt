@@ -1,5 +1,5 @@
 ///|
-// Native command execution, tool, and result contracts shared by Moondesk and MoonClaw.
+// Native command execution, tool, and result contracts shared by MoonDesk and MoonClaw.
 
 ///|
 pub fn native_command_contract_id() -> String {
@@ -611,7 +611,7 @@ pub fn native_command_tool_contract_for_command(
     "mutating_tools_require_review": true,
     "shell_requires_bounded_timeout": true,
     "moon_check_required_for_code_changes": true,
-    "approval_boundary": "Moondesk records approvals; MoonClaw must enforce them before read/edit/write/shell/moon_check/package tools execute.",
+    "approval_boundary": "MoonDesk records approvals; MoonClaw must enforce them before read/edit/write/shell/moon_check/package tools execute.",
   }
 }
 

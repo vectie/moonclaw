@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "vectie/moonclaw/cmd/internal/moonstat_startup"
+package "vectie/moonclaw/cmd/internal/moongate_startup"
 
 // Values
 pub async fn print_status() -> Unit

@@ -478,7 +478,7 @@ pub fn runtime_replay_consumer_contract_json(session_id : String) -> Json {
     "consumer": "moonclaw",
     "reference": "mooncode/runtime-replay",
     "stdin": "JSONL lines from pending_mooncode_jsonl or pending_commands[*].mooncode_command",
-    "stdout": "MoonCode protocol JSONL runtime events normalized by Moondesk into MoonCode lanes",
+    "stdout": "MoonCode protocol JSONL runtime events normalized by MoonDesk into MoonCode lanes",
     "claim": "POST \{runtime_claim_endpoint(session_id)} with {consumer_id,max_count,force,lease_expires_at,now} to atomically mark commands as runtime-claimed before execution",
     "ack": "POST \{runtime_replay_endpoint(session_id)} with {consumer_id,command_id,status,detail,events[]} or {receipts:[...]} to append runtime receipts and optional stream events",
     "session_id": session_id,

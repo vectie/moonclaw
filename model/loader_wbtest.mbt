@@ -197,16 +197,16 @@ test "model loader paths use MoonSuite product home" {
 }
 
 ///|
-test "moonstat catalog models become OpenAI-compatible routed models" {
+test "moongate catalog models become OpenAI-compatible routed models" {
   let catalog : Json = {
     "models": [
       { "id": "gpt-5.6-sol", "owned_by": "openai", "context_window": 400000 },
     ],
   }
-  guard @moonstat.moonstat_models_from_json(catalog) is Ok(models) else {
-    fail("expected parsed Moonstat model")
+  guard @moongate.moongate_models_from_json(catalog) is Ok(models) else {
+    fail("expected parsed MoonGate model")
   }
-  let model = model_from_moonstat_catalog(
+  let model = model_from_moongate_catalog(
     "http://127.0.0.1:15721/openclaw/v1",
     models[0],
   )

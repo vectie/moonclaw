@@ -267,7 +267,7 @@ fn builtin_robot_routine_profile() -> JobProfile {
         title: "Run MoonClaw robot routine",
         kind: "robot.routine.run",
         prompt_template: Some(
-          "Read Moonrobo context, select the next robot routine step, invoke only a safe non-physical Moonrobo route, and persist the MoonClaw robot routine run.",
+          "Read MoonRobo context, select the next robot routine step, invoke only a safe non-physical MoonRobo route, and persist the MoonClaw robot routine run.",
         ),
         request_template: None,
         child_profile: None,

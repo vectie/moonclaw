@@ -75,15 +75,15 @@ alone:
 Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task*` remains for background jobs. See [Executable Book Runtime Boundary](../../docs/executable_book_runtime_boundary.md).
 
 - `mooncode/core` owns the MoonCode contract surface shared with
-  Moondesk: the `mooncode.v1` protocol marker, native capability contract id,
+  MoonDesk: the `mooncode.v1` protocol marker, native capability contract id,
   required endpoint/tool lists, canonical required capability surface, and its
   SHA-256 surface fingerprint. It is currently mirrored per repo so both builds
   remain independent; the intended next step is replacing those mirrors with one
-  physically shared MoonCode module. While mirrored, Moondesk's
+  physically shared MoonCode module. While mirrored, MoonDesk's
   `scripts/verify-mooncode-core-sync.sh` is the sync gate for this contract and
-  compares the core source files plus normalized generated interfaces; Moondesk's
+  compares the core source files plus normalized generated interfaces; MoonDesk's
   `scripts/validate-core-boundaries.sh` composes that gate with targeted
-  Moondesk, MoonClaw, MoonBook, and Moontown checks.
+  MoonDesk, MoonClaw, MoonBook, and MoonTown checks.
 - `mooncode_protocol.mbt` owns daemon-local MoonCode protocol constants such as
   runtime receipt/turn kinds, package proof events, planner modes, canonical
   tool/test/control event names, and optional daemon endpoints. Required native
@@ -91,7 +91,7 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
   functions for existing daemon call sites.
 - `mooncode_capabilities.mbt` consumes that protocol-owned native capability
   surface through local wrapper helpers, so `/v1/code/capabilities`
-  includes a canonical `capability_surface` object that Moondesk validates
+  includes a canonical `capability_surface` object that MoonDesk validates
   before enabling native MoonCode runtime. The surface includes a SHA-256
   `capability_surface_fingerprint` over the required protocol, contract id,
   endpoints, and tools; the top-level endpoint, tool, contract, and fingerprint
@@ -346,7 +346,7 @@ Query parameters:
   daemon restart.
 - `format`: omit for full diagnostic records, use `json` for the
   minimal MoonCode session-list array, or use `listing` for the
-  richer MoonClaw diagnostic envelope suited to older Moondesk session lists.
+  richer MoonClaw diagnostic envelope suited to older MoonDesk session lists.
   Other values return `400 Bad Request` instead of silently changing response
   shape.
 
@@ -424,7 +424,7 @@ Query parameters:
 
 JSONL responses contain `meta`, `event`, and `done` records. SSE responses use
 the same payloads as `event: meta`, `event: event`, and `event: done` chunks.
-The meta and done records include wait metadata so Moondesk can distinguish an
+The meta and done records include wait metadata so MoonDesk can distinguish an
 immediate replay from a live-tail wait that timed out with no new events.
 The transport lives in `mooncode_stream.mbt`, with durable event projection and
 resumable replay coverage in `mooncode_stream_wbtest.mbt`.
@@ -454,14 +454,14 @@ report also runs MoonClaw's first deterministic native eval harness over
 `read`, `write`, `edit`, `shell`, `moon_ide`, `moon_cmd`, `moon_check`,
 `finish`, and file-edit diff evidence, returning `ok`, `required_harnesses`,
 `passed_count`, `failed_count`, and nested native harness results for
-Moondesk's Eval Report panel.
+MoonDesk's Eval Report panel.
 The endpoint and readiness projection live in `mooncode_eval_report.mbt`, with
 focused coverage in `mooncode_eval_report_wbtest.mbt`; native harness
 collection stays in `mooncode_eval.mbt`.
 
 ### `POST /v1/code/sessions/{id}/commands`
 
-Accepts a MoonCode command from Moondesk or a standalone `mooncode` client,
+Accepts a MoonCode command from MoonDesk or a standalone `mooncode` client,
 validates the shared `mooncode.v1` envelope, and appends the command plus a `command.queued_for_runtime_turn` event
 to the book-local sidecar for native `runtime-turn` consumption. This endpoint
 does not spawn or message a generic task.
@@ -469,11 +469,11 @@ does not spawn or message a generic task.
 The command queue boundary lives in `mooncode_command_queue.mbt`, with strict
 packet validation, control classification, native queue persistence, and
 command id/book-root helpers kept together. Top-level command envelope fields
-come from `mooncode/core` so Moondesk, MoonClaw, and a standalone `mooncode`
+come from `mooncode/core` so MoonDesk, MoonClaw, and a standalone `mooncode`
 client validate the same contract. The focused behavior tests live in
 `mooncode_command_queue_wbtest.mbt`.
 Runtime-turn execution and tool application remain separate, so MoonClaw can
-support both browser-hosted Moondesk and a future standalone `mooncode` client
+support both browser-hosted MoonDesk and a future standalone `mooncode` client
 over the same command contract.
 
 ### `POST /v1/code/sessions/{id}/runtime-turn`
@@ -512,11 +512,11 @@ git operation succeeds.
 Run-eval commands now run the native MoonCode tool/file-edit harnesses
 from runtime-turn, write `wiki/reviews/mooncode/{safe-session-id}/eval-report.json`
 inside the selected MoonBook, and emit `eval_report.manifest` evidence with
-`tool_harness` and `file_edit` results so Moondesk can gate review/package work
+`tool_harness` and `file_edit` results so MoonDesk can gate review/package work
 on MoonClaw-owned eval proof.
 Run-tests commands now turn native `moon_check` execution into a first-class
 command-scoped `test_result` event that carries pass/fail status, exit status,
-capped output, and the original command packet. This gives Moondesk a durable
+capped output, and the original command packet. This gives MoonDesk a durable
 test proof event without asking the desktop shell to infer test state from a
 generic tool result.
 Test-result projection lives in `mooncode_runtime_test_results.mbt`, while
@@ -542,7 +542,7 @@ MoonClaw keys the snapshot by the selected MoonBook root, returns
 `watcher=started|reused|replaced|restarted`, keeps a monotonic `seq`, exposes
 human watcher `status` separately from numeric `exit_status`, and increments
 `restart_count` when changed options replace the previous watcher record. This
-gives Moondesk and future standalone `mooncode` the same no-duplicate-watcher
+gives MoonDesk and future standalone `mooncode` the same no-duplicate-watcher
 contract before live background `moon check --watch` streaming is introduced.
 When a command carries an explicit selected model, MoonClaw can ask that model
 for bounded MoonCode tool-call batches over `read`, `write`, `edit`,
@@ -581,7 +581,7 @@ When a generated artifact verifies successfully, MoonClaw writes
 `portable/app-tool/mooncode/{safe-session-id}/package-{safe-command-id}.json`,
 refreshes `portable/app-tool/mooncode/{safe-session-id}/index.json`, appends
 `package_built` and `package_verified` records to `package-results.jsonl`, and
-adds artifact-lane events for Moondesk's package review UI. The package
+adds artifact-lane events for MoonDesk's package review UI. The package
 result sink is `POST /v1/code/sessions/{id}/package-result?book_root={path}`;
 MoonClaw uses the query `book_root`, then body `book_root`, then any live
 session binding so package proof can persist after restart. The package
@@ -609,7 +609,7 @@ MoonCode live supervisor can pass `live_wait_ms` and `poll_ms` in the
 JSON body; the loop then polls the durable `commands.jsonl` queue for newly
 appended prompt, steer, or cancel commands before returning idle. The response
 includes `live_wait_attempt_count`, `live_wait_elapsed_ms`, and per-iteration
-`waits` records so Moondesk can render whether the loop actually waited or
+`waits` records so MoonDesk can render whether the loop actually waited or
 found work immediately.
 
 ### `POST /v1/code/sessions/{id}/runtime-service`
