@@ -161,6 +161,11 @@ async fn attest(args : Array[String]) -> Unit {
     "attestation",
   )
   let attestor_id = required_option(args, "--attestor-id")
+  let draft_ref = require_ref(required_option(args, "--draft"), "draft")
+  let final_ref = require_ref(
+    required_option(args, "--final"),
+    "product-owned final artifact",
+  )
   let request = read_json(workspace + "/" + request_ref)
   let request_fields = object(request, "flow request")
   let result = read_json(workspace + "/" + result_ref)
@@ -192,6 +197,11 @@ async fn attest(args : Array[String]) -> Unit {
   if artifacts.is_empty() || output_contracts.is_empty() {
     fail("MoonClaw product attestor requires declared artifacts and contracts")
   }
+  if artifacts != [draft_ref] || draft_ref == final_ref {
+    fail(
+      "MoonClaw product attestor requires one distinct declared draft and final artifact",
+    )
+  }
   let observed_contracts : Array[String] = []
   for artifact in artifacts {
     let value = read_json(workspace + "/" + artifact)
@@ -215,6 +225,12 @@ async fn attest(args : Array[String]) -> Unit {
       )
     }
   }
+  // The contract attestor is the product boundary that materializes the final
+  // artifact. MoonFlow reconciles this path, never the agent-authored draft.
+  write_json(
+    workspace + "/" + final_ref,
+    read_json(workspace + "/" + draft_ref),
+  )
   write_json(workspace + "/" + attestation_ref, {
     "contract_id": "moonflow.product-attestation.v1",
     "attestor_id": attestor_id,
@@ -225,6 +241,7 @@ async fn attest(args : Array[String]) -> Unit {
     "accepted": true,
     "observed_contracts": observed_contracts.to_json(),
     "artifact_refs": artifacts.to_json(),
+    "final_artifact_ref": final_ref,
   })
 }
 
