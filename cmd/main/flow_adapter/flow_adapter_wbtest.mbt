@@ -68,3 +68,34 @@ test "MoonClaw software contract requires negative evidence and preserved criter
     ),
   )
 }
+
+///|
+test "public web tools are scoped to observe-only MoonWiki evidence work" {
+  let research : Json = {
+    "product_id": "moonwiki",
+    "requested_authority": "observe",
+    "output_contracts": ["moonwiki.evidence-bundle.v1"],
+  }
+  assert_true(request_allows_public_web(research))
+  guard research is Object(fields) else { fail("expected request object") }
+  fields["requested_authority"] = "workspace-mutation"
+  assert_false(request_allows_public_web(research))
+  fields["requested_authority"] = "observe"
+  fields["product_id"] = "moonrobo"
+  assert_false(request_allows_public_web(research))
+}
+
+///|
+test "MoonWiki research requires successful wrapper-owned search and fetch" {
+  let fields : Map[String, Json] = {
+    "web_provenance": [
+      { "tool": "web_search", "succeeded": true },
+      { "tool": "web_fetch", "succeeded": true },
+    ],
+  }
+  assert_true(web_provenance_issues(fields).is_empty())
+  fields["web_provenance"] = [{ "tool": "web_search", "succeeded": true }]
+  assert_true(
+    web_provenance_issues(fields).any(issue => issue.contains("web_fetch")),
+  )
+}

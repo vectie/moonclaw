@@ -18,6 +18,34 @@ async test "moonclaw registers unlimited_ocr as default MoonTool" (
 }
 
 ///|
+async test "restricted Flow capsule exposes only scoped files and optional public web" (
+  t : @test.Test,
+) {
+  let _ = t
+  let moonclaw = @moonclaw.Moonclaw::new(
+    model=@model.Model::new(
+      api_key="",
+      base_url="https://example.invalid/v1",
+      name="test-model",
+      safe_zone_tokens=4096,
+    ),
+    home="/tmp",
+    cwd="/tmp",
+    restricted_workspace=true,
+    web_search=true,
+  )
+  defer moonclaw.close()
+  let tools = moonclaw.agent.tools()
+  assert_true(tools.contains("read_file"))
+  assert_true(tools.contains("write_to_file"))
+  assert_true(tools.contains("web_search"))
+  assert_true(tools.contains("web_fetch"))
+  assert_false(tools.contains("execute_command"))
+  assert_false(tools.contains("apply_patch"))
+  assert_false(tools.contains("search_files"))
+}
+
+///|
 #skip
 async test "moonclaw/resume" (t : @test.Test) {
   @mock.run(t, mock => {

@@ -81,6 +81,32 @@ fn non_empty_field(fields : Map[String, Json], key : String) -> Bool {
 }
 
 ///|
+fn web_provenance_issues(fields : Map[String, Json]) -> Array[String] {
+  let issues : Array[String] = []
+  guard fields.get("web_provenance") is Some(Array(events)) else {
+    return ["MoonWiki evidence requires wrapper-owned web_provenance"]
+  }
+  let mut searched = false
+  let mut fetched = false
+  for event in events {
+    guard event is Object(entry) else { continue }
+    let succeeded = entry.get("succeeded") == Some(Json::boolean(true))
+    match entry.get("tool") {
+      Some(String("web_search")) if succeeded => searched = true
+      Some(String("web_fetch")) if succeeded => fetched = true
+      _ => ()
+    }
+  }
+  if !searched {
+    issues.push("MoonWiki evidence requires a successful governed web_search")
+  }
+  if !fetched {
+    issues.push("MoonWiki evidence requires a successful governed web_fetch")
+  }
+  issues
+}
+
+///|
 fn contract_guidance(request : Json) -> String {
   let fields = object(request, "flow request") catch { _ => return "" }
   let contract = match fields.get("output_contracts") {
@@ -89,7 +115,7 @@ fn contract_guidance(request : Json) -> String {
   }
   match contract {
     "moonwiki.evidence-bundle.v1" =>
-      "Required product contract: sources[] with unique source_id/title/locator/authority/accessed_at; claims[] with statement/source_refs/confidence 0..1; non-empty contradictions[], limitations[], remaining_information_gaps[], query_lineage[]; and stopping_rationale. A 'none found' contradiction must still record how it was checked."
+      "Required product contract: use the governed web_search tool to discover public source leads and web_fetch to read every source you cite. The wrapper will attach immutable tool provenance; invented or unfetched locators are rejected. Return sources[] with unique source_id/title/locator/authority/accessed_at; claims[] with statement/source_refs/confidence 0..1; non-empty contradictions[], limitations[], remaining_information_gaps[], query_lineage[]; and stopping_rationale. A 'none found' contradiction must still record how it was checked."
     "moontown.deliberation.v1" =>
       "Required product contract: civic_round using moontown.autonomous-civic-round.v1 with at least two contributions, critique, ranking, independent accepted review, and delivery/home-return receipts for every participant. Include at least one genuinely emergent uncommissioned contribution and one dissenting contribution. Each contribution needs evidence_refs, alternatives, implementation_criteria, bounded claim_ceiling, and proposal."
     "moonrobo.digital-design.v1" =>
@@ -105,6 +131,25 @@ fn contract_guidance(request : Json) -> String {
     _ =>
       "Follow the declared output contract and preserve all evidence boundaries."
   }
+}
+
+///|
+fn request_allows_public_web(request : Json) -> Bool {
+  let fields = object(request, "flow request") catch { _ => return false }
+  let product_id = match fields.get("product_id") {
+    Some(String(value)) => value
+    _ => return false
+  }
+  let authority = match fields.get("requested_authority") {
+    Some(String(value)) => value
+    _ => return false
+  }
+  let evidence_contract = match fields.get("output_contracts") {
+    Some(Array(values)) =>
+      values.contains(Json::string("moonwiki.evidence-bundle.v1"))
+    _ => false
+  }
+  product_id == "moonwiki" && authority == "observe" && evidence_contract
 }
 
 ///|
@@ -140,7 +185,7 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
     "moonwiki.evidence-bundle.v1" =>
       [
         "sources", "claims", "contradictions", "limitations", "remaining_information_gaps",
-        "query_lineage", "stopping_rationale",
+        "query_lineage", "stopping_rationale", "web_provenance",
       ]
     "moontown.deliberation.v1" => ["civic_round"]
     "moonrobo.digital-design.v1" =>
@@ -167,6 +212,11 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
   for key in required {
     if !non_empty_field(fields, key) {
       issues.push("required field is missing or empty: \{key}")
+    }
+  }
+  if contract == "moonwiki.evidence-bundle.v1" {
+    for issue in web_provenance_issues(fields) {
+      issues.push(issue)
     }
   }
   issues
@@ -236,7 +286,7 @@ async fn execute_agent(
   prompt : String,
   log_path : String,
   web_search : Bool,
-) -> Unit {
+) -> Array[Json] {
   let model = @model.load(name=model_name)
   guard model is Some(model) else {
     fail("MoonClaw flow adapter model is unavailable: \{model_name}")
@@ -255,7 +305,28 @@ async fn execute_agent(
     restricted_workspace=true,
   )
   defer worker.close()
+  let web_provenance : Array[Json] = []
+  worker.agent.add_listener(event => {
+    match event.desc {
+      PostToolCall(tool_call, result~, ..) if tool_call.name == "web_search" ||
+        tool_call.name == "web_fetch" => {
+        let arguments = match tool_call.arguments {
+          Some(value) => @json.parse(value) catch { _ => Json::string(value) }
+          None => Json::object({})
+        }
+        web_provenance.push({
+          "tool": tool_call.name,
+          "arguments": arguments,
+          "succeeded": result is Ok(_),
+          "event_digest": "sha256:" +
+          sha256_hex(@utf8.encode(event.desc.to_json().stringify())),
+        })
+      }
+      _ => ()
+    }
+  })
   worker.start()
+  web_provenance
 }
 
 ///|
@@ -458,14 +529,14 @@ async fn execute(args : Array[String]) -> Unit {
         @fsx.write_to_file(destination, @fsx.read_file(prior), create=0o644)
       }
     }
-    execute_agent(
+    let web_provenance = execute_agent(
       capsule_root,
       model_name,
       execution_prompt(request, artifacts, trials, feedback),
       run_root + "/trial-\{trials}.jsonl",
-      true,
+      request_allows_public_web(request),
     ) catch {
-      _ => ()
+      _ => []
     }
     completed = true
     for artifact in artifacts {
@@ -474,18 +545,25 @@ async fn execute(args : Array[String]) -> Unit {
         completed = false
         feedback = ["declared output artifact is missing: \{artifact}"]
       } else {
-        let issues = draft_quality_issues(
-          request,
-          read_json(capsule_output) catch {
-            _ => {
-              completed = false
-              feedback = [
-                "declared output artifact is not valid JSON: \{artifact}",
-              ]
-              Json::null()
-            }
-          },
-        )
+        let draft = read_json(capsule_output) catch {
+          _ => {
+            completed = false
+            feedback = [
+              "declared output artifact is not valid JSON: \{artifact}",
+            ]
+            Json::null()
+          }
+        }
+        if completed && request_allows_public_web(request) {
+          guard draft is Object(draft_fields) else {
+            completed = false
+            feedback = ["MoonWiki evidence draft must be an object"]
+            continue
+          }
+          draft_fields["web_provenance"] = web_provenance.to_json()
+          write_json(capsule_output, draft)
+        }
+        let issues = draft_quality_issues(request, draft)
         if !issues.is_empty() {
           completed = false
           feedback = issues
@@ -603,12 +681,14 @@ async fn review(args : Array[String]) -> Unit {
     @fsx.write_to_file(destination, @fsx.read_file(source), create=0o444)
   }
   write_json(capsule_root + "/review-packet.json", packet)
-  execute_agent(
-    capsule_root,
-    model_name,
-    review_prompt(packet),
-    log_root + "/review.jsonl",
-    false,
+  ignore(
+    execute_agent(
+      capsule_root,
+      model_name,
+      review_prompt(packet),
+      log_root + "/review.jsonl",
+      false,
+    ),
   )
   let capsule_receipt = capsule_root + "/" + receipt_ref
   if !@fsx.exists(capsule_receipt) {

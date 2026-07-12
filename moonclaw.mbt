@@ -12,6 +12,7 @@ fn setup_agent(
   agent : @agent.Agent,
   cwd~ : String,
   restricted_workspace~ : Bool,
+  web_search~ : Bool,
 ) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
@@ -24,6 +25,12 @@ fn setup_agent(
       @read_file.new(file_manager).to_agent_tool(),
       @write_to_file.new(agent.cwd).to_agent_tool(),
     ])
+    if web_search {
+      agent.add_tools([
+        @web_search.new().to_agent_tool(),
+        @web_fetch.new().to_agent_tool(),
+      ])
+    }
   } else {
     agent.add_tools([
       @execute_command.new(agent.cwd).to_agent_tool(),
@@ -95,7 +102,7 @@ pub async fn Moonclaw::new(
     user_message?,
     web_search~,
   )
-  setup_agent(agent, cwd~, restricted_workspace~)
+  setup_agent(agent, cwd~, restricted_workspace~, web_search~)
   { logger, agent }
 }
 
@@ -167,6 +174,11 @@ pub async fn Moonclaw::resume_(
     user_message?,
     web_search~,
   )
-  setup_agent(agent, cwd=conversation.cwd(), restricted_workspace=false)
+  setup_agent(
+    agent,
+    cwd=conversation.cwd(),
+    restricted_workspace=false,
+    web_search~,
+  )
   { logger, agent }
 }
