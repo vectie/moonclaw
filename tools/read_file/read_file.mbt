@@ -81,12 +81,13 @@ async fn execute_read_file_tool(
   }
   try {
     // Resolve file path
-    let resolved_path = if @pathx.is_absolute(path) {
-      path.view()
-    } else {
-      @pathx.join(manager.cwd, path)
+    let resolved_path = match manager.resolve_scoped(path) {
+      Some(value) => value
+      None =>
+        return @tool.error(
+          "Error reading file: Path must stay inside the current workspace",
+        )
     }
-    let resolved_path = @pathx.resolve(resolved_path)
 
     // Check if file exists
     if !@fsx.exists(resolved_path) {

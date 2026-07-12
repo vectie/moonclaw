@@ -8,22 +8,37 @@ pub struct Moonclaw {
 }
 
 ///|
-fn setup_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
+fn setup_agent(
+  agent : @agent.Agent,
+  cwd~ : String,
+  restricted_workspace~ : Bool,
+) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
-  agent.add_tools([
-    @execute_command.new(agent.cwd).to_agent_tool(),
-    @list_files.new(file_manager).to_agent_tool(),
-    @read_file.new(file_manager).to_agent_tool(),
-    @todo.new_tool(todo_list).to_agent_tool(),
-    @search_files.new(agent.cwd).to_agent_tool(),
-    @unlimited_ocr.new(agent.cwd).to_agent_tool(),
-  ])
-  // GPT 5.1+ uses apply_patch only, other models use meta_write_to_file
-  if agent.model.supports_apply_patch {
-    agent.add_tool(@apply_patch.new(agent.cwd))
+  if restricted_workspace {
+    // Flow capsules deliberately omit shell, search, OCR, and patch tools.
+    // Their only filesystem capabilities are scoped reads/listing and a
+    // traversal-rejecting writer rooted at the task capsule.
+    agent.add_tools([
+      @list_files.new(file_manager).to_agent_tool(),
+      @read_file.new(file_manager).to_agent_tool(),
+      @write_to_file.new(agent.cwd).to_agent_tool(),
+    ])
   } else {
-    agent.add_tool(@write_to_file.new(agent.cwd))
+    agent.add_tools([
+      @execute_command.new(agent.cwd).to_agent_tool(),
+      @list_files.new(file_manager).to_agent_tool(),
+      @read_file.new(file_manager).to_agent_tool(),
+      @todo.new_tool(todo_list).to_agent_tool(),
+      @search_files.new(agent.cwd).to_agent_tool(),
+      @unlimited_ocr.new(agent.cwd).to_agent_tool(),
+    ])
+    // GPT 5.1+ uses apply_patch only, other models use meta_write_to_file
+    if agent.model.supports_apply_patch {
+      agent.add_tool(@apply_patch.new(agent.cwd))
+    } else {
+      agent.add_tool(@write_to_file.new(agent.cwd))
+    }
   }
 }
 
@@ -61,6 +76,7 @@ pub async fn Moonclaw::new(
   cwd? : String,
   user_message? : String,
   web_search? : Bool = false,
+  restricted_workspace? : Bool = false,
 ) -> Moonclaw {
   let cwd = match cwd {
     Some(cwd) => cwd
@@ -79,7 +95,7 @@ pub async fn Moonclaw::new(
     user_message?,
     web_search~,
   )
-  setup_agent(agent, cwd~)
+  setup_agent(agent, cwd~, restricted_workspace~)
   { logger, agent }
 }
 
@@ -151,6 +167,6 @@ pub async fn Moonclaw::resume_(
     user_message?,
     web_search~,
   )
-  setup_agent(agent, cwd=conversation.cwd())
+  setup_agent(agent, cwd=conversation.cwd(), restricted_workspace=false)
   { logger, agent }
 }

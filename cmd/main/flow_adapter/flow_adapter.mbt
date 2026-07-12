@@ -108,7 +108,7 @@ async fn artifact_digest(
 
 ///|
 async fn execute_agent(
-  workspace : String,
+  task_root : String,
   model_name : String,
   prompt : String,
   log_path : String,
@@ -126,9 +126,10 @@ async fn execute_agent(
     name="moonflow-worker",
     logger~,
     model~,
-    cwd=workspace,
+    cwd=task_root,
     user_message=prompt,
     web_search~,
+    restricted_workspace=true,
   )
   defer worker.close()
   worker.start()
@@ -140,14 +141,91 @@ fn execution_prompt(
   artifacts : Array[String],
   trial : Int,
 ) -> String {
-  "You are a bounded MoonFlow product adapter executing one declared digital work item.\n" +
+  "You are a bounded MoonFlow product adapter executing one declared digital work item inside an isolated task capsule. You cannot access the parent suite workspace.\n" +
   "The immutable request follows:\n```json\n" +
   request.stringify(indent=2) +
   "\n```\n" +
   "Write exactly these declared output artifacts, relative to the workspace: " +
   artifacts.join(", ") +
-  ".\nRead every declared input artifact before acting. Preserve sources, uncertainty, contradictions, negative cases, and trial evidence appropriate to the product and operation. Do not weaken or rewrite acceptance criteria. Do not claim physical construction, deployment, or readiness. Do not write the MoonFlow result receipt; the adapter wrapper owns it. This is bounded trial " +
+  ". Each artifact must be a JSON object whose contract_id is one of the request's output_contracts and whose product_id equals the request product_id.\nRead every declared input artifact before acting. Preserve sources, uncertainty, contradictions, negative cases, and trial evidence appropriate to the product and operation. Do not weaken or rewrite acceptance criteria. Do not claim physical construction, deployment, or readiness. Do not write the MoonFlow result receipt; the adapter wrapper owns it. This is bounded trial " +
   "\{trial}. If prior partial artifacts exist, diagnose and improve them rather than hiding the failure."
+}
+
+///|
+async fn attest(args : Array[String]) -> Unit {
+  let workspace = required_option(args, "--workspace")
+  let request_ref = require_ref(required_option(args, "--request"), "request")
+  let result_ref = require_ref(required_option(args, "--result"), "result")
+  let attestation_ref = require_ref(
+    required_option(args, "--attestation"),
+    "attestation",
+  )
+  let attestor_id = required_option(args, "--attestor-id")
+  let request = read_json(workspace + "/" + request_ref)
+  let request_fields = object(request, "flow request")
+  let result = read_json(workspace + "/" + result_ref)
+  let result_fields = object(result, "flow result")
+  let product_id = string_field(request_fields, "product_id")
+  if string_field(result_fields, "product_id") != product_id {
+    fail("MoonClaw product attestor rejected a product identity mismatch")
+  }
+  let output_contracts = match request_fields.get("output_contracts") {
+    Some(Array(values)) =>
+      values.filter_map(value => {
+        match value {
+          String(contract) => Some(contract)
+          _ => None
+        }
+      })
+    _ => []
+  }
+  let artifacts = match result_fields.get("output_artifacts") {
+    Some(Array(values)) =>
+      values.map(value => {
+        match value {
+          String(reference) => require_ref(reference, "attested artifact")
+          _ => fail("MoonClaw product attestor requires string artifact refs")
+        }
+      })
+    _ => fail("MoonClaw product attestor requires output_artifacts")
+  }
+  if artifacts.is_empty() || output_contracts.is_empty() {
+    fail("MoonClaw product attestor requires declared artifacts and contracts")
+  }
+  let observed_contracts : Array[String] = []
+  for artifact in artifacts {
+    let value = read_json(workspace + "/" + artifact)
+    let fields = object(value, "attested product artifact")
+    let contract_id = string_field(fields, "contract_id")
+    if !output_contracts.contains(contract_id) {
+      fail(
+        "MoonClaw product attestor rejected undeclared contract \{contract_id}",
+      )
+    }
+    match fields.get("product_id") {
+      Some(String(actual)) if actual == product_id => ()
+      _ => fail("MoonClaw product attestor rejected artifact product identity")
+    }
+    observed_contracts.push(contract_id)
+  }
+  for contract in output_contracts {
+    if !observed_contracts.contains(contract) {
+      fail(
+        "MoonClaw product attestor did not observe required contract \{contract}",
+      )
+    }
+  }
+  write_json(workspace + "/" + attestation_ref, {
+    "contract_id": "moonflow.product-attestation.v1",
+    "attestor_id": attestor_id,
+    "product_id": product_id,
+    "request_id": string_field(request_fields, "request_id"),
+    "result_id": string_field(result_fields, "result_id"),
+    "output_digest": string_field(result_fields, "output_digest"),
+    "accepted": true,
+    "observed_contracts": observed_contracts.to_json(),
+    "artifact_refs": artifacts.to_json(),
+  })
 }
 
 ///|
@@ -172,6 +250,16 @@ async fn execute(args : Array[String]) -> Unit {
   }
   let request = read_json(workspace + "/" + request_ref)
   let fields = object(request, "flow request")
+  let input_artifacts = match fields.get("input_artifacts") {
+    Some(Array(values)) =>
+      values.map(value => {
+        match value {
+          String(reference) => require_ref(reference, "input artifact")
+          _ => fail("MoonClaw flow adapter requires string input artifact refs")
+        }
+      })
+    _ => []
+  }
   let attempt_id = string_field(fields, "attempt_id")
   let run_root = workspace + "/.moonsuite/products/moonclaw/flow/" + attempt_id
   @fsx.make_directory(run_root, recursive=true, exists_ok=true)
@@ -179,8 +267,24 @@ async fn execute(args : Array[String]) -> Unit {
   let mut trials = 0
   while trials < max_trials && !completed {
     trials += 1
+    let capsule_root = run_root + "/capsules/trial-\{trials}"
+    @fsx.make_directory(capsule_root, recursive=true, exists_ok=true)
+    write_json(capsule_root + "/request.json", request)
+    for artifact in input_artifacts {
+      let source = workspace + "/" + artifact
+      if !@fsx.exists(source) {
+        fail("MoonClaw flow adapter input artifact is missing: \{artifact}")
+      }
+      let destination = capsule_root + "/" + artifact
+      @fsx.make_directory(
+        @pathx.dirname(destination),
+        recursive=true,
+        exists_ok=true,
+      )
+      @fsx.write_to_file(destination, @fsx.read_file(source), create=0o444)
+    }
     execute_agent(
-      workspace,
+      capsule_root,
       model_name,
       execution_prompt(request, artifacts, trials),
       run_root + "/trial-\{trials}.jsonl",
@@ -190,8 +294,21 @@ async fn execute(args : Array[String]) -> Unit {
     }
     completed = true
     for artifact in artifacts {
-      if !@fsx.exists(workspace + "/" + artifact) {
+      let capsule_output = capsule_root + "/" + artifact
+      if !@fsx.exists(capsule_output) {
         completed = false
+      } else {
+        let workspace_output = workspace + "/" + artifact
+        @fsx.make_directory(
+          @pathx.dirname(workspace_output),
+          recursive=true,
+          exists_ok=true,
+        )
+        @fsx.write_to_file(
+          workspace_output,
+          @fsx.read_file(capsule_output),
+          create=0o644,
+        )
       }
     }
   }
@@ -236,7 +353,7 @@ async fn execute(args : Array[String]) -> Unit {
 
 ///|
 fn review_prompt(packet : Json) -> String {
-  "You are an independent MoonFlow acceptance reviewer. You did not execute this work.\n" +
+  "You are an independent MoonFlow acceptance reviewer in an isolated task capsule. You did not execute this work and cannot access the parent suite workspace.\n" +
   "Review the immutable request below and inspect the exact evidence files it names. Decide every criterion in the original order. A satisfied criterion requires specific evidence_refs; never accept an executor summary alone. Reject missing negative cases, digest or identity concerns, unsupported claims, and any physical-readiness overclaim. Preserve limitations and dissent. You may not grant authority or change criteria. Write exactly one moonflow.acceptance-review.v1 JSON receipt at receipt_artifact using the supplied identities, reviewer_id, review_authority_id, and recorded_at.\n```json\n" +
   packet.stringify(indent=2) +
   "\n```"
@@ -261,16 +378,61 @@ async fn review(args : Array[String]) -> Unit {
     "/.moonsuite/products/moonclaw/reviews/" +
     attempt_id
   @fsx.make_directory(log_root, recursive=true, exists_ok=true)
+  let capsule_root = log_root + "/capsule"
+  @fsx.make_directory(capsule_root, recursive=true, exists_ok=true)
+  let review_inputs : Array[String] = []
+  match fields.get("evidence_refs") {
+    Some(Array(values)) =>
+      for value in values {
+        match value {
+          String(reference) =>
+            review_inputs.push(require_ref(reference, "review evidence"))
+          _ => fail("MoonClaw reviewer requires string evidence refs")
+        }
+      }
+    _ => fail("MoonClaw reviewer requires evidence_refs")
+  }
+  match fields.get("product_attestation_ref") {
+    Some(String(reference)) =>
+      review_inputs.push(require_ref(reference, "product attestation"))
+    _ => fail("MoonClaw reviewer requires product attestation evidence")
+  }
+  for artifact in review_inputs {
+    let source = workspace + "/" + artifact
+    if !@fsx.exists(source) {
+      fail("MoonClaw reviewer evidence is missing: \{artifact}")
+    }
+    let destination = capsule_root + "/" + artifact
+    @fsx.make_directory(
+      @pathx.dirname(destination),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(destination, @fsx.read_file(source), create=0o444)
+  }
+  write_json(capsule_root + "/review-packet.json", packet)
   execute_agent(
-    workspace,
+    capsule_root,
     model_name,
     review_prompt(packet),
     log_root + "/review.jsonl",
     false,
   )
-  if !@fsx.exists(workspace + "/" + receipt_ref) {
+  let capsule_receipt = capsule_root + "/" + receipt_ref
+  if !@fsx.exists(capsule_receipt) {
     fail("MoonClaw independent reviewer omitted its declared receipt")
   }
+  let workspace_receipt = workspace + "/" + receipt_ref
+  @fsx.make_directory(
+    @pathx.dirname(workspace_receipt),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    workspace_receipt,
+    @fsx.read_file(capsule_receipt),
+    create=0o644,
+  )
 }
 
 ///|
@@ -278,10 +440,11 @@ pub async fn run(args : ArrayView[String]) -> Unit {
   let owned = args.to_owned()
   match owned {
     ["execute", .. rest] => execute(rest.to_owned())
+    ["attest", .. rest] => attest(rest.to_owned())
     ["review", .. rest] => review(rest.to_owned())
     _ =>
       println(
-        "moonclaw flow-adapter usage:\n  moonclaw flow-adapter execute --workspace <root> --request <ref> --result <ref> --model <id> --artifact <ref>... [--max-trials <n>]\n  moonclaw flow-adapter review --workspace <root> --review-packet <ref> --model <id>",
+        "moonclaw flow-adapter usage:\n  moonclaw flow-adapter execute --workspace <root> --request <ref> --result <ref> --model <id> --artifact <ref>... [--max-trials <n>]\n  moonclaw flow-adapter attest --workspace <root> --request <ref> --result <ref> --attestation <ref> --attestor-id <id>\n  moonclaw flow-adapter review --workspace <root> --review-packet <ref> --model <id>",
       )
   }
 }

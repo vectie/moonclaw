@@ -53,12 +53,10 @@ async fn execute_list_files(
   manager : @file.Manager,
   path : String,
 ) -> ListFilesResult {
-  let resolved_path = if @pathx.is_absolute(path) {
-    path.view()
-  } else {
-    @pathx.join(manager.cwd, path)
+  let resolved_path = match manager.resolve_scoped(path) {
+    Some(value) => value
+    None => fail("Path must stay inside the current workspace")
   }
-  let resolved_path = @pathx.resolve(resolved_path)
   let entries = @fsx.list_directory(resolved_path)
   let mut file_count = 0
   let mut directory_count = 0
