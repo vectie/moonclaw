@@ -149,7 +149,7 @@ fn contract_guidance(request : Json) -> String {
     "moonbook.outcome-audit.v1" =>
       "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps using information-gap/cognition-gap/execution-gap with question and resolution_criteria, residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
     "moonclaw.software-result.v1" =>
-      "Required product contract: change_summary; implementation is an object whose language field is exactly moonsuite-helper-dsl.v1 and whose functions are objects with name, operation, and exactly two string inputs. Put operation directly on each function (not inside expression); allowed values are add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or. Include non-empty test_vectors and negative_cases with case_id/function/inputs/expected; criteria_preserved true; physical_readiness false. Field names are exact: contract_id is not a substitute for implementation.language. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
+      "Required product contract: change_summary; implementation is an object whose language field is exactly moonsuite-helper-dsl.v1 and whose functions are objects with name, operation, and exactly two string inputs. Put operation directly on each function (not inside expression); allowed values are add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or. Include non-empty test_vectors and negative_cases with case_id/function/inputs/expected. Each test inputs value must be a JSON object keyed by the selected function's two input names, not a positional array. Set criteria_preserved true and physical_readiness false. Field names are exact: contract_id is not a substitute for implementation.language. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
     _ =>
       "Follow the declared output contract and preserve all evidence boundaries."
   }
@@ -506,6 +506,25 @@ fn moonclaw_software_issues(fields : Map[String, Json]) -> Array[String] {
       }
     }
     _ => issues.push("MoonClaw helper implementation must be an object")
+  }
+  for key in ["test_vectors", "negative_cases"] {
+    match fields.get(key) {
+      Some(Array(cases)) =>
+        for test_case in cases {
+          guard test_case is Object(case_fields) else {
+            issues.push("MoonClaw helper test case must be an object")
+            continue
+          }
+          match case_fields.get("inputs") {
+            Some(Object(_)) => ()
+            _ =>
+              issues.push(
+                "MoonClaw helper test inputs must be a JSON object keyed by function input names",
+              )
+          }
+        }
+      _ => ()
+    }
   }
   issues
 }

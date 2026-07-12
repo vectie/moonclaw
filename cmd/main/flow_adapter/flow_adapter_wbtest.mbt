@@ -342,6 +342,9 @@ test "draft validation reports the exact helper DSL shape before attestation" {
   let issues = draft_quality_issues(request, draft)
   assert_true(issues.any(issue => issue.contains("moonsuite-helper-dsl.v1")))
   assert_true(issues.any(issue => issue.contains("directly on the function")))
+  assert_true(
+    issues.any(issue => issue.contains("keyed by function input names")),
+  )
 }
 
 ///|
