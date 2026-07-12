@@ -20,6 +20,7 @@ custom_log_path
 node_modules
 _build
 target
+/internal/buildinfo/version_string.mbt
 .moonclaw/job-workspaces/
 .moonsuite/
 .moonclaw-tool-journal-*.json
