@@ -340,6 +340,8 @@ test "native helper DSL executes positive and negative vectors" {
   assert_true(result.contains("\"wrapper_owned\":true"))
   assert_true(result.contains("\"inputs\":{\"available\":100"))
   assert_true(result.contains("\"criterion_preservation\":"))
+  assert_true(result.contains("\"execution_transcript\":"))
+  assert_true(result.contains("\"comparison\":\"exact-json-equality\""))
   assert_true(result.contains("positive and negative vectors are executed"))
 }
 

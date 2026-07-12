@@ -754,6 +754,7 @@ fn validate_helper_software_with_criteria(
     }
   }
   let results : Array[Json] = []
+  let execution_transcript : Array[Json] = []
   for pair in [("positive", "test_vectors"), ("negative", "negative_cases")] {
     let (class, key) = pair
     guard fields.get(key) is Some(Array(cases)) && !cases.is_empty() else {
@@ -795,6 +796,19 @@ fn validate_helper_software_with_criteria(
         "passed": true,
         "execution_owner": "native MoonClaw wrapper",
       })
+      execution_transcript.push({
+        "sequence": execution_transcript.length(),
+        "case_id": string_field(test_case, "case_id"),
+        "class": class,
+        "function": function_name,
+        "operation": string_field(function, "operation"),
+        "input_bindings": Json::object(inputs),
+        "expected": expected,
+        "actual": actual,
+        "comparison": "exact-json-equality",
+        "executed_by": "native MoonClaw wrapper",
+        "status": "passed",
+      })
     }
   }
   let criterion_preservation : Array[Json] = []
@@ -830,6 +844,7 @@ fn validate_helper_software_with_criteria(
       },
     ],
     "test_results": results.to_json(),
+    "execution_transcript": execution_transcript.to_json(),
     "test_vectors": fields.get("test_vectors").unwrap_or(Json::array([])),
     "negative_cases": fields.get("negative_cases").unwrap_or(Json::array([])),
     "trial_evidence": [
@@ -1246,7 +1261,7 @@ fn review_prompt(
   feedback : Array[String],
 ) -> String {
   "You are an independent MoonFlow acceptance reviewer in an isolated task capsule. You did not execute this work and cannot access the parent suite workspace.\n" +
-  "Review the immutable request below and inspect the exact evidence files it names. Decide every criterion in the original order. A satisfied criterion requires evidence_refs copied exactly from the request's evidence_refs array; JSON pointers or undeclared paths are prohibited. Never accept an executor summary alone. Reject missing negative cases, unsupported claims, and any physical-readiness overclaim. Preserve limitations and dissent. You may not grant authority or change criteria.\n" +
+  "Review the immutable request below and inspect the exact evidence files it names. Decide every criterion in the original order. A satisfied criterion requires evidence_refs copied exactly from the request's evidence_refs array; JSON pointers or undeclared paths are prohibited. Never accept an agent or executor summary alone. A verified product attestation plus product-native per-case execution_transcript is direct product evidence, not a summary assertion. Reject missing negative cases, unsupported claims, and any physical-readiness overclaim. Preserve limitations and dissent. You may not grant authority or change criteria.\n" +
   "The product attestation has already been checked by MoonFlow against executor_output_digest. The request output_digest separately binds MoonFlow's immutable evidence snapshots. Follow digest_lineage: these stage digests are not expected to be equal because their artifact identities differ.\n" +
   "Write exactly one JSON object at receipt_artifact with only this contract shape: contract_id=moonflow.acceptance-review.v1; review_id, run_id, work_item_id, declaration_id, result_id, attempt_id, output_digest, reviewer_id, review_authority_id, receipt_artifact, and recorded_at copied exactly from the request; decision equal to accepted or rejected; criteria an array in the exact request order with objects containing criterion, satisfied, evidence_refs, and non-empty note. An accepted decision requires every criterion satisfied. A rejected decision requires at least one unsatisfied criterion. Do not use accepted, rationale, limitations, or JSON-pointer evidence fields as substitutes. This is bounded review trial " +
   "\{trial}." +
