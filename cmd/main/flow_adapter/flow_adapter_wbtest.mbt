@@ -111,6 +111,22 @@ test "flow adapter gives contract guidance and rejects incomplete drafts" {
 }
 
 ///|
+test "flow retry prompt separates rejected drafts from replacement outputs" {
+  let request : Json = {
+    "product_id": "moontown",
+    "output_contracts": ["moontown.deliberation.v1"],
+  }
+  let prompt = execution_prompt(
+    request,
+    ["books/robot/flow/drafts/concept.json"],
+    2,
+    ["MoonTown civic_round requires comparison_criteria"],
+  )
+  assert_true(prompt.contains("books/robot/flow/drafts/concept.json.prior"))
+  assert_true(prompt.contains("one complete replacement JSON object"))
+}
+
+///|
 test "flow adapter exposes MoonTown emergence boundary without seeding a solution" {
   let request : Json = {
     "product_id": "moontown",

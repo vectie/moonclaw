@@ -686,6 +686,13 @@ fn execution_prompt(
   contract_guidance(request) +
   "\nRead every declared input artifact before acting. Preserve sources, uncertainty, contradictions, negative cases, and trial evidence appropriate to the product and operation. Do not weaken or rewrite acceptance criteria. Do not claim physical construction, deployment, or readiness. Do not write the MoonFlow result receipt; the adapter wrapper owns it. This is bounded trial " +
   "\{trial}. If prior partial artifacts exist, diagnose and improve them rather than hiding the failure." +
+  (if trial > 1 {
+    " Previous rejected drafts are read-only at: " +
+    artifacts.map(artifact => artifact + ".prior").join(", ") +
+    ". Write one complete replacement JSON object at each declared output path; do not append to the .prior files."
+  } else {
+    ""
+  }) +
   (if feedback.is_empty() {
     ""
   } else {
@@ -861,13 +868,16 @@ async fn execute(args : Array[String]) -> Unit {
     for artifact in artifacts {
       let prior = workspace + "/" + artifact
       if trials > 1 && @fsx.exists(prior) {
-        let destination = capsule_root + "/" + artifact
+        // The restricted writer appends to existing files. Preserve rejected
+        // evidence at a distinct read-only path so the declared output starts
+        // absent and the corrective trial can write a complete replacement.
+        let destination = capsule_root + "/" + artifact + ".prior"
         @fsx.make_directory(
           @pathx.dirname(destination),
           recursive=true,
           exists_ok=true,
         )
-        @fsx.write_to_file(destination, @fsx.read_file(prior), create=0o644)
+        @fsx.write_to_file(destination, @fsx.read_file(prior), create=0o444)
       }
     }
     let web_provenance = execute_agent(
