@@ -13,6 +13,7 @@ async fn main {
     ["proposal", .. rest] => @proposal.start(rest)
     ["evidence", .. rest] => @evidence_command.start(rest)
     ["exec", .. rest] => @exec.exec(rest)
+    ["flow-adapter", .. rest] => @flow_adapter.run(rest)
     ["tui", .. rest] => @tui.tui_interactive(rest)
     ["version"] => println(@buildinfo.version)
     [.. rest] => @interactive.interactive(rest)
