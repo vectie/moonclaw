@@ -71,6 +71,101 @@ fn object(value : Json, label : String) -> Map[String, Json] raise {
 }
 
 ///|
+fn non_empty_field(fields : Map[String, Json], key : String) -> Bool {
+  match fields.get(key) {
+    Some(String(value)) => !value.trim().is_empty()
+    Some(Array(values)) => !values.is_empty()
+    Some(Object(values)) => !values.is_empty()
+    _ => false
+  }
+}
+
+///|
+fn contract_guidance(request : Json) -> String {
+  let fields = object(request, "flow request") catch { _ => return "" }
+  let contract = match fields.get("output_contracts") {
+    Some(Array([String(value), ..])) => value
+    _ => return ""
+  }
+  match contract {
+    "moonwiki.evidence-bundle.v1" =>
+      "Required product contract: sources[] with unique source_id/title/locator/authority/accessed_at; claims[] with statement/source_refs/confidence 0..1; non-empty contradictions[], limitations[], remaining_information_gaps[], query_lineage[]; and stopping_rationale. A 'none found' contradiction must still record how it was checked."
+    "moontown.deliberation.v1" =>
+      "Required product contract: civic_round using moontown.autonomous-civic-round.v1 with at least two contributions, critique, ranking, independent accepted review, and delivery/home-return receipts for every participant. Include at least one genuinely emergent uncommissioned contribution and one dissenting contribution. Each contribution needs evidence_refs, alternatives, implementation_criteria, bounded claim_ceiling, and proposal."
+    "moonrobo.digital-design.v1" =>
+      "Required product contract: design_id, integer revision, mission, task_loop, mechanisms, validation, and constraints. The design must be generic to the selected concept, trace requirements to components, preserve hazards/margins/unsupported assumptions, and remain digital only."
+    "moonrobo.validation-evidence.v1" =>
+      "Required product contract: non-empty constraint_results, negative_cases, and failure_traces. Validate the accepted digital-design input without hiding failed constraints in aggregate scores; preserve blockers and digital-only scope."
+    "moonmoon.scenario-evidence.v1" =>
+      "Required product contract: simulation_model with initial_energy_wh greater than reserve_energy_wh and scenarios containing both nominal and adverse kinds. Every scenario needs scenario_id, integer seed, and steps with non-negative energy_use_wh/progress_delta, hazard boolean, and recovery. Also include non-empty model_limitations and uncertainty."
+    "moonbook.outcome-audit.v1" =>
+      "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps using information-gap/cognition-gap/execution-gap with question and resolution_criteria, residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
+    _ =>
+      "Follow the declared output contract and preserve all evidence boundaries."
+  }
+}
+
+///|
+fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
+  let issues : Array[String] = []
+  let request_fields = object(request, "flow request") catch {
+    _ => {
+      issues.push("request is not an object")
+      return issues
+    }
+  }
+  let fields = object(draft, "draft") catch {
+    _ => {
+      issues.push("draft is not an object")
+      return issues
+    }
+  }
+  let product = match request_fields.get("product_id") {
+    Some(String(value)) => value
+    _ => ""
+  }
+  let contract = match request_fields.get("output_contracts") {
+    Some(Array([String(value), ..])) => value
+    _ => ""
+  }
+  if fields.get("product_id") != Some(Json::string(product)) {
+    issues.push("product_id must equal the request product_id")
+  }
+  if fields.get("contract_id") != Some(Json::string(contract)) {
+    issues.push("contract_id must equal the declared output contract")
+  }
+  let required = match contract {
+    "moonwiki.evidence-bundle.v1" =>
+      [
+        "sources", "claims", "contradictions", "limitations", "remaining_information_gaps",
+        "query_lineage", "stopping_rationale",
+      ]
+    "moontown.deliberation.v1" => ["civic_round"]
+    "moonrobo.digital-design.v1" =>
+      [
+        "design_id", "revision", "mission", "task_loop", "mechanisms", "validation",
+        "constraints",
+      ]
+    "moonrobo.validation-evidence.v1" =>
+      ["constraint_results", "negative_cases", "failure_traces"]
+    "moonmoon.scenario-evidence.v1" =>
+      ["simulation_model", "model_limitations", "uncertainty"]
+    "moonbook.outcome-audit.v1" =>
+      [
+        "criterion_decisions", "open_gaps", "residual_risks", "final_claim", "claim_ceiling",
+        "recorded_at",
+      ]
+    _ => []
+  }
+  for key in required {
+    if !non_empty_field(fields, key) {
+      issues.push("required field is missing or empty: \{key}")
+    }
+  }
+  issues
+}
+
+///|
 fn hex_digit(value : Int) -> Char {
   if value < 10 {
     ('0'.to_int() + value).unsafe_to_char()
@@ -140,6 +235,7 @@ fn execution_prompt(
   request : Json,
   artifacts : Array[String],
   trial : Int,
+  feedback : Array[String],
 ) -> String {
   "You are a bounded MoonFlow product adapter executing one declared digital work item inside an isolated task capsule. You cannot access the parent suite workspace.\n" +
   "The immutable request follows:\n```json\n" +
@@ -147,8 +243,16 @@ fn execution_prompt(
   "\n```\n" +
   "Write exactly these declared output artifacts, relative to the workspace: " +
   artifacts.join(", ") +
-  ". Each artifact must be a JSON object whose contract_id is one of the request's output_contracts and whose product_id equals the request product_id.\nRead every declared input artifact before acting. Preserve sources, uncertainty, contradictions, negative cases, and trial evidence appropriate to the product and operation. Do not weaken or rewrite acceptance criteria. Do not claim physical construction, deployment, or readiness. Do not write the MoonFlow result receipt; the adapter wrapper owns it. This is bounded trial " +
-  "\{trial}. If prior partial artifacts exist, diagnose and improve them rather than hiding the failure."
+  ". Each artifact must be a JSON object whose contract_id is one of the request's output_contracts and whose product_id equals the request product_id.\n" +
+  contract_guidance(request) +
+  "\nRead every declared input artifact before acting. Preserve sources, uncertainty, contradictions, negative cases, and trial evidence appropriate to the product and operation. Do not weaken or rewrite acceptance criteria. Do not claim physical construction, deployment, or readiness. Do not write the MoonFlow result receipt; the adapter wrapper owns it. This is bounded trial " +
+  "\{trial}. If prior partial artifacts exist, diagnose and improve them rather than hiding the failure." +
+  (if feedback.is_empty() {
+    ""
+  } else {
+    "\nThe previous draft was rejected locally for these contract issues; revise it in place:\n- " +
+    feedback.join("\n- ")
+  })
 }
 
 ///|
@@ -282,6 +386,7 @@ async fn execute(args : Array[String]) -> Unit {
   @fsx.make_directory(run_root, recursive=true, exists_ok=true)
   let mut completed = false
   let mut trials = 0
+  let mut feedback : Array[String] = []
   while trials < max_trials && !completed {
     trials += 1
     let capsule_root = run_root + "/capsules/trial-\{trials}"
@@ -300,10 +405,22 @@ async fn execute(args : Array[String]) -> Unit {
       )
       @fsx.write_to_file(destination, @fsx.read_file(source), create=0o444)
     }
+    for artifact in artifacts {
+      let prior = workspace + "/" + artifact
+      if trials > 1 && @fsx.exists(prior) {
+        let destination = capsule_root + "/" + artifact
+        @fsx.make_directory(
+          @pathx.dirname(destination),
+          recursive=true,
+          exists_ok=true,
+        )
+        @fsx.write_to_file(destination, @fsx.read_file(prior), create=0o644)
+      }
+    }
     execute_agent(
       capsule_root,
       model_name,
-      execution_prompt(request, artifacts, trials),
+      execution_prompt(request, artifacts, trials, feedback),
       run_root + "/trial-\{trials}.jsonl",
       true,
     ) catch {
@@ -314,7 +431,24 @@ async fn execute(args : Array[String]) -> Unit {
       let capsule_output = capsule_root + "/" + artifact
       if !@fsx.exists(capsule_output) {
         completed = false
+        feedback = ["declared output artifact is missing: \{artifact}"]
       } else {
+        let issues = draft_quality_issues(
+          request,
+          read_json(capsule_output) catch {
+            _ => {
+              completed = false
+              feedback = [
+                "declared output artifact is not valid JSON: \{artifact}",
+              ]
+              Json::null()
+            }
+          },
+        )
+        if !issues.is_empty() {
+          completed = false
+          feedback = issues
+        }
         let workspace_output = workspace + "/" + artifact
         @fsx.make_directory(
           @pathx.dirname(workspace_output),
