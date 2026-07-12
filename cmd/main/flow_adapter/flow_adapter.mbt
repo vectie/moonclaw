@@ -143,9 +143,9 @@ fn contract_guidance(request : Json) -> String {
     "moontown.deliberation.v1" =>
       "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. Include non-empty comparison_criteria objects with criterion_id, name, and definition so rankings remain independently interpretable. Include comparison_assessments covering every contribution_id/criterion_id pair; each assessment needs a non-empty rating, rationale, and evidence_refs. Also include non-empty unresolved_assumptions strings preserved by the recommendation. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id, decision exactly accepted or rejected, evidence_refs, and note (preserve dissent in contributions and unresolved_assumptions, not by inventing another decision value); and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; criteria, critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
     "moonrobo.digital-design.v1" =>
-      "Required product contract: design_id as a lowercase slug; revision as a non-empty string such as r1; mission object with authority exactly digital-only, non-empty robot_class, and optional name; task_loop as at least four non-empty string statements; mechanisms as at least three objects with unique lowercase-slug id and non-empty kind; constraints.commanded_speed_mps.max as a positive number; and non-empty requirement_traceability entries with requirement_id, requirement, components, and verification. validation.scenarios must contain at least three executable scenarios covering kind=nominal and kind=negative or degraded. Each requires unique id, kind, expected, non-empty initial_state object, and non-empty steps. Every step requires step_id, operation, inputs, output, and expected. Inputs are objects containing either state naming an earlier state/output or literal containing a JSON value. Operations add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or take two inputs; select takes condition/true-value/false-value. Use these steps to derive commanded motion, stop commands, and inhibition from scenario state so native MoonRobo can emit numerical and boolean state histories. Preserve hazards, margins, and unsupported_physical_assumptions in explicit additional fields, and remain digital only. Field shapes and singular requirement_traceability name are exact: task-loop objects, component_id mechanisms, requirements_trace, and requirements_traceability are not substitutes."
+      "Required product contract: design_id as a lowercase slug; revision as a non-empty string such as r1; mission object with authority exactly digital-only, non-empty robot_class, and optional name; task_loop as at least four non-empty string statements; mechanisms as at least three objects with unique lowercase-slug id and non-empty kind; constraints.commanded_speed_mps.max as a positive number; and non-empty requirement_traceability entries with requirement_id, requirement, components, and verification. Encode every boolean state required for safe motion in constraints.safety_predicates as at least two objects with unique predicate_id, state_key, boolean safe_value, and a distinct adverse_scenario_id. Do not use free-form constraints.motion_requires. Each adverse_scenario_id must name a negative or degraded executable scenario whose initial_state contains state_key set to the inverse of safe_value, so every declared safety predicate is natively exercised. validation.scenarios must contain at least three executable scenarios covering kind=nominal and kind=negative or degraded. Each requires unique id, kind, expected, non-empty initial_state object, and non-empty steps. Every step requires step_id, operation, inputs, output, and expected. Inputs are objects containing either state naming an earlier state/output or literal containing a JSON value. Operations add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or take two inputs; select takes a three-element inputs array ordered condition/true-value/false-value. Use these steps to derive commanded motion, stop commands, and inhibition from scenario state so native MoonRobo can emit numerical and boolean state histories. Preserve hazards, margins, and unsupported_physical_assumptions in explicit additional fields, and remain digital only. Field shapes and singular requirement_traceability name are exact: task-loop objects, component_id mechanisms, requirements_trace, and requirements_traceability are not substitutes."
     "moonrobo.validation-evidence.v1" =>
-      "Required product contract: non-empty constraint_results, negative_cases, and failure_traces. Validate the accepted digital-design input without hiding failed constraints in aggregate scores; preserve blockers and digital-only scope."
+      "Required product contract: non-empty constraint_results, negative_cases, and failure_traces. Validate the accepted digital-design input without hiding failed constraints in aggregate scores; preserve blockers and digital-only scope. Only claim a negative, degraded, or failure case as exercised when its id names an executable scenario in the accepted design; do not add unexecuted cases or describe logic inspection as execution."
     "moonmoon.scenario-evidence.v1" =>
       "Required product contract: simulation_model with initial_energy_wh greater than reserve_energy_wh and scenarios containing both nominal and adverse kinds. Every scenario needs scenario_id, integer seed, and steps with non-negative energy_use_wh/progress_delta, hazard boolean, and recovery. Also include non-empty model_limitations and uncertainty."
     "moonbook.outcome-audit.v1" =>
@@ -441,7 +441,7 @@ fn moonrobo_design_issues(fields : Map[String, Json]) -> Array[String] {
     )
   }
   match fields.get("constraints") {
-    Some(Object(constraints)) =>
+    Some(Object(constraints)) => {
       match constraints.get("commanded_speed_mps") {
         Some(Object(speed)) =>
           match speed.get("max") {
@@ -456,6 +456,96 @@ fn moonrobo_design_issues(fields : Map[String, Json]) -> Array[String] {
             "MoonRobo constraints.commanded_speed_mps must be an object",
           )
       }
+      if constraints.contains("motion_requires") {
+        issues.push(
+          "MoonRobo constraints must use safety_predicates instead of free-form motion_requires",
+        )
+      }
+      let predicate_ids : Array[String] = []
+      let adverse_ids : Array[String] = []
+      match constraints.get("safety_predicates") {
+        Some(Array(predicates)) if predicates.length() >= 2 =>
+          for predicate_value in predicates {
+            guard predicate_value is Object(predicate) else {
+              issues.push("MoonRobo safety predicate must be an object")
+              continue
+            }
+            let predicate_id = match predicate.get("predicate_id") {
+              Some(String(value)) => value
+              _ => ""
+            }
+            let state_key = match predicate.get("state_key") {
+              Some(String(value)) => value
+              _ => ""
+            }
+            let adverse_id = match predicate.get("adverse_scenario_id") {
+              Some(String(value)) => value
+              _ => ""
+            }
+            let safe_value = match predicate.get("safe_value") {
+              Some(True) => Some(true)
+              Some(False) => Some(false)
+              _ => None
+            }
+            if predicate_id.trim().is_empty() ||
+              state_key.trim().is_empty() ||
+              adverse_id.trim().is_empty() ||
+              safe_value is None {
+              issues.push(
+                "MoonRobo safety predicates require predicate_id, state_key, boolean safe_value, and adverse_scenario_id",
+              )
+              continue
+            }
+            if predicate_ids.contains(predicate_id) {
+              issues.push("MoonRobo safety predicate ids must be unique")
+            } else {
+              predicate_ids.push(predicate_id)
+            }
+            if adverse_ids.contains(adverse_id) {
+              issues.push(
+                "MoonRobo safety predicates require distinct adverse scenarios",
+              )
+            } else {
+              adverse_ids.push(adverse_id)
+            }
+            let mut covered = false
+            match fields.get("validation") {
+              Some(Object(validation)) =>
+                match validation.get("scenarios") {
+                  Some(Array(scenarios)) =>
+                    for scenario_value in scenarios {
+                      guard scenario_value is Object(scenario) else { continue }
+                      if scenario.get("id") == Some(Json::string(adverse_id)) {
+                        let adverse_kind = scenario.get("kind") ==
+                          Some(Json::string("negative")) ||
+                          scenario.get("kind") == Some(Json::string("degraded"))
+                        let inverted = match
+                          (scenario.get("initial_state"), safe_value) {
+                          (Some(Object(state)), Some(value)) =>
+                            state.get(state_key) == Some(Json::boolean(!value))
+                          _ => false
+                        }
+                        if adverse_kind && inverted {
+                          covered = true
+                        }
+                      }
+                    }
+                  _ => ()
+                }
+              _ => ()
+            }
+            if !covered {
+              issues.push(
+                "MoonRobo safety predicate must reference a distinct adverse scenario with inverted initial state",
+              )
+            }
+          }
+        _ =>
+          issues.push(
+            "MoonRobo constraints require at least two safety_predicates",
+          )
+      }
+    }
     _ => issues.push("MoonRobo constraints must be an object")
   }
   match fields.get("requirement_traceability") {

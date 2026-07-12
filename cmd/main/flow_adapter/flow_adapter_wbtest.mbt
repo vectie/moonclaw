@@ -314,7 +314,11 @@ test "MoonRobo native design shape passes local validation" {
           "id": "energy-loss",
           "kind": "degraded",
           "expected": "reserve preserved",
-          "initial_state": { "energy_wh": 80.0, "reserve_wh": 50.0 },
+          "initial_state": {
+            "energy_wh": 80.0,
+            "reserve_wh": 50.0,
+            "reserve_safe": false,
+          },
           "steps": [
             {
               "step_id": "check-reserve",
@@ -327,7 +331,23 @@ test "MoonRobo native design shape passes local validation" {
         },
       ],
     },
-    "constraints": { "commanded_speed_mps": { "max": 0.1 } },
+    "constraints": {
+      "commanded_speed_mps": { "max": 0.1 },
+      "safety_predicates": [
+        {
+          "predicate_id": "fresh-localization",
+          "state_key": "fresh",
+          "safe_value": true,
+          "adverse_scenario_id": "blackout",
+        },
+        {
+          "predicate_id": "reserve-safe",
+          "state_key": "reserve_safe",
+          "safe_value": true,
+          "adverse_scenario_id": "energy-loss",
+        },
+      ],
+    },
     "requirement_traceability": [
       {
         "requirement_id": "req-observe",
