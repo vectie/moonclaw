@@ -286,6 +286,14 @@ test "MoonRobo native design shape passes local validation" {
       ],
     },
     "constraints": { "commanded_speed_mps": { "max": 0.1 } },
+    "requirement_traceability": [
+      {
+        "requirement_id": "req-observe",
+        "requirement": "Observe the bounded digital site.",
+        "components": ["observer", "supervisor"],
+        "verification": ["nominal", "blackout"],
+      },
+    ],
   }
   assert_true(moonrobo_design_issues(fields).is_empty())
 }

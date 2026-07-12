@@ -143,7 +143,7 @@ fn contract_guidance(request : Json) -> String {
     "moontown.deliberation.v1" =>
       "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. Include non-empty comparison_criteria objects with criterion_id, name, and definition so rankings remain independently interpretable. Include comparison_assessments covering every contribution_id/criterion_id pair; each assessment needs a non-empty rating, rationale, and evidence_refs. Also include non-empty unresolved_assumptions strings preserved by the recommendation. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id, decision exactly accepted or rejected, evidence_refs, and note (preserve dissent in contributions and unresolved_assumptions, not by inventing another decision value); and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; criteria, critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
     "moonrobo.digital-design.v1" =>
-      "Required product contract: design_id as a lowercase slug; revision as a non-empty string such as r1; mission object with authority exactly digital-only, non-empty robot_class, and optional name; task_loop as at least four non-empty string statements; mechanisms as at least three objects with unique lowercase-slug id and non-empty kind; validation.scenarios as at least three objects with unique non-empty id and expected; and constraints.commanded_speed_mps.max as a positive number. Preserve requirement traceability plus hazards, margins, and unsupported physical assumptions in additional fields, and remain digital only. Field shapes are exact: task-loop objects and component_id/name/digital_function mechanism objects are not substitutes for the native fields."
+      "Required product contract: design_id as a lowercase slug; revision as a non-empty string such as r1; mission object with authority exactly digital-only, non-empty robot_class, and optional name; task_loop as at least four non-empty string statements; mechanisms as at least three objects with unique lowercase-slug id and non-empty kind; validation.scenarios as at least three objects with unique non-empty id and expected; constraints.commanded_speed_mps.max as a positive number; and non-empty requirement_traceability entries with requirement_id, requirement, components, and verification. Preserve hazards, margins, and unsupported_physical_assumptions in explicit additional fields, and remain digital only. Field shapes and singular requirement_traceability name are exact: task-loop objects, component_id mechanisms, requirements_trace, and requirements_traceability are not substitutes."
     "moonrobo.validation-evidence.v1" =>
       "Required product contract: non-empty constraint_results, negative_cases, and failure_traces. Validate the accepted digital-design input without hiding failed constraints in aggregate scores; preserve blockers and digital-only scope."
     "moonmoon.scenario-evidence.v1" =>
@@ -360,6 +360,24 @@ fn moonrobo_design_issues(fields : Map[String, Json]) -> Array[String] {
           )
       }
     _ => issues.push("MoonRobo constraints must be an object")
+  }
+  match fields.get("requirement_traceability") {
+    Some(Array(entries)) if !entries.is_empty() =>
+      for entry in entries {
+        guard entry is Object(entry_fields) else {
+          issues.push(
+            "MoonRobo requirement traceability entry must be an object",
+          )
+          continue
+        }
+        for
+          key in ["requirement_id", "requirement", "components", "verification"] {
+          if !non_empty_field(entry_fields, key) {
+            issues.push("MoonRobo requirement traceability requires \{key}")
+          }
+        }
+      }
+    _ => issues.push("MoonRobo requirement_traceability must be non-empty")
   }
   issues
 }
