@@ -42,6 +42,7 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-07-12`: added `mooncode.quality-trial.v1` to native `run_eval` receipts. MoonCode now diagnoses incomplete inventory, domain assumptions, native tool uncertainty, missing positive/negative cases, exit-code proof, packaging, review, and unsupported claims; it revises general inputs within a bounded budget and turns repeated identical failure into a Bookkeeper execution gap.
 - `2026-07-11`: added workspace-aware evidence-dossier validation. `moonclaw
   evidence validate <book-root> <dossier.json> <receipt.json>` now requires
   every declared `artifact_ref` to exist, remain book-relative, and resolve
@@ -136,6 +137,11 @@ MoonClaw is strongest when you want one system to handle:
   tool/file-edit harnesses from runtime-turn, write
   `wiki/reviews/mooncode/<session-id>/eval-report.json`, and emit
   `eval_report.manifest` proof with `tool_harness` and `file_edit` results.
+  Eval success is no longer accepted merely because commands exist. Qualification
+  additionally requires nearest-module inventory, reviewed assumptions, native
+  checks and tests, positive and negative cases, exact exit codes, package
+  proof, a review receipt, and claim discipline. Failed attempts remain in the
+  trial lineage, and reusable instructions never embed the scenario answer.
   `run_tests` commands now convert the native `moon_check` execution into a
   first-class command-scoped `test_result` proof event with pass/fail status,
   exit status, capped output, and the original command packet, so MoonDesk can

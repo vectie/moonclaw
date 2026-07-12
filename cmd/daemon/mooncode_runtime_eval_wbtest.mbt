@@ -13,7 +13,25 @@ async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
     "book_root": book_root,
     "command": "run_eval",
     "text": "Run native MoonCode eval proof",
-    "packet": { "command_id": command_id, "action": "run_eval" },
+    "packet": {
+      "command_id": command_id,
+      "action": "run_eval",
+      "nearest_module_inventory": [
+        "mooncode runtime eval", "native tool harness", "review manifest",
+      ],
+      "domain_assumptions_reviewed": true,
+      "native_check_passed": true,
+      "native_tests_passed": true,
+      "positive_cases": ["native command ingest", "file edit harness"],
+      "negative_cases": ["missing review remains unaccepted"],
+      "expected_exit_codes": [0, 1],
+      "package_proof_ref": "wiki/reviews/mooncode/package-proof.json",
+      "review_receipt_ref": "wiki/reviews/mooncode/review.json",
+      "unsupported_claims": [],
+      "quality_attempt": 1,
+      "input_revision": "r1",
+      "quality_output_refs": ["wiki/reviews/mooncode/eval-report.json"],
+    },
     "model": "unavailable-model",
   }
   mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
@@ -67,6 +85,8 @@ async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
   let manifest_text = @fsx.read_file(manifest_absolute)
   assert_true(manifest_text.contains("\"mooncode-eval-report\""))
   assert_true(manifest_text.contains("\"native_eval_evidence_ready\": true"))
+  assert_true(manifest_text.contains("\"quality_qualified\": true"))
+  assert_true(manifest_text.contains("\"mooncode.quality-trial.v1\""))
   assert_true(manifest_text.contains("tool_harness"))
   assert_true(manifest_text.contains("file_edit"))
   let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))

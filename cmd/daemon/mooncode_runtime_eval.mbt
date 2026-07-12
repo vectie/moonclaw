@@ -36,7 +36,8 @@ async fn mooncode_runtime_turn_eval_results(
       "kind": "mooncode-eval-result",
       "protocol": mooncode_protocol_version(),
       "event": "eval_report.manifest",
-      "accepted": mooncode_json_bool(report, "ok", default=false),
+      "accepted": mooncode_json_string(manifest, "status", default="") ==
+      "accepted",
       "session_id": session_id,
       "book_root": book_root,
       "command_id": mooncode_command_id(command),
@@ -60,10 +61,17 @@ fn mooncode_runtime_turn_eval_manifest(
   now~ : @clock.Timestamp,
 ) -> Json {
   let relative = mooncode_runtime_turn_eval_manifest_relative_path(session_id)
+  let quality_trial = mooncode_quality_trial(command, report)
+  let native_ready = mooncode_json_bool(report, "ok", default=false)
+  let quality_ready = mooncode_json_bool(
+    quality_trial,
+    "qualified",
+    default=false,
+  )
   {
     "kind": "mooncode-eval-report",
     "protocol": mooncode_protocol_version(),
-    "status": if mooncode_json_bool(report, "ok", default=false) {
+    "status": if native_ready && quality_ready {
       "accepted"
     } else {
       "failed"
@@ -73,11 +81,9 @@ fn mooncode_runtime_turn_eval_manifest(
     "command_id": mooncode_command_id(command),
     "manifest_path": relative,
     "absolute_manifest_path": @pathx.join(book_root, relative),
-    "native_eval_evidence_ready": mooncode_json_bool(
-      report,
-      "ok",
-      default=false,
-    ),
+    "native_eval_evidence_ready": native_ready,
+    "quality_qualified": quality_ready,
+    "quality_trial": quality_trial,
     "native_eval_source": mooncode_json_string(report, "source", default=""),
     "native_eval_endpoint": "/v1/code/sessions/\{session_id}/eval-report?book_root=<path>",
     "native_eval_ingest_method": "moonclaw-runtime-turn",

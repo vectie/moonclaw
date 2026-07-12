@@ -12,7 +12,7 @@ test "mooncode eval report records delegated task execution" {
 }
 
 ///|
-test "mooncode eval report accepts durable sidecar evidence" {
+test "mooncode eval report keeps durable sidecar evidence partial without harness proof" {
   let report = mooncode_eval_report_payload(
     "session-demo",
     None,
@@ -26,7 +26,8 @@ test "mooncode eval report accepts durable sidecar evidence" {
     None,
     now=@clock.Timestamp::from_ms(42L),
   )
-  assert_eq(mooncode_json_string(report, "status", default=""), "accepted")
+  assert_eq(mooncode_json_string(report, "status", default=""), "partial")
+  assert_false(mooncode_json_bool(report, "ok", default=true))
   assert_eq(
     mooncode_json_string(report, "source", default=""),
     "moonclaw-native-sidecar",

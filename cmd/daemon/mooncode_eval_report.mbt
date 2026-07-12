@@ -74,7 +74,7 @@ fn mooncode_eval_report_payload(
     "status": if eval_status == "passed" {
       "accepted"
     } else if command_count > 0 {
-      "accepted"
+      "partial"
     } else {
       "pending"
     },
