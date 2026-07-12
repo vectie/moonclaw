@@ -280,9 +280,51 @@ test "MoonRobo native design shape passes local validation" {
     ],
     "validation": {
       "scenarios": [
-        { "id": "nominal", "expected": "bounded progress" },
-        { "id": "blackout", "expected": "safe stop" },
-        { "id": "energy-loss", "expected": "reserve preserved" },
+        {
+          "id": "nominal",
+          "kind": "nominal",
+          "expected": "bounded progress",
+          "initial_state": { "fresh": true, "safe": true },
+          "steps": [
+            {
+              "step_id": "allow-motion",
+              "operation": "boolean_and",
+              "inputs": [{ "state": "fresh" }, { "state": "safe" }],
+              "output": "motion_allowed",
+              "expected": true,
+            },
+          ],
+        },
+        {
+          "id": "blackout",
+          "kind": "negative",
+          "expected": "safe stop",
+          "initial_state": { "fresh": false, "safe": true },
+          "steps": [
+            {
+              "step_id": "inhibit-motion",
+              "operation": "boolean_and",
+              "inputs": [{ "state": "fresh" }, { "state": "safe" }],
+              "output": "motion_allowed",
+              "expected": false,
+            },
+          ],
+        },
+        {
+          "id": "energy-loss",
+          "kind": "degraded",
+          "expected": "reserve preserved",
+          "initial_state": { "energy_wh": 80.0, "reserve_wh": 50.0 },
+          "steps": [
+            {
+              "step_id": "check-reserve",
+              "operation": "greater_or_equal",
+              "inputs": [{ "state": "energy_wh" }, { "state": "reserve_wh" }],
+              "output": "reserve_preserved",
+              "expected": true,
+            },
+          ],
+        },
       ],
     },
     "constraints": { "commanded_speed_mps": { "max": 0.1 } },

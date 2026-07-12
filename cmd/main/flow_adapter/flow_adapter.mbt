@@ -143,7 +143,7 @@ fn contract_guidance(request : Json) -> String {
     "moontown.deliberation.v1" =>
       "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. Include non-empty comparison_criteria objects with criterion_id, name, and definition so rankings remain independently interpretable. Include comparison_assessments covering every contribution_id/criterion_id pair; each assessment needs a non-empty rating, rationale, and evidence_refs. Also include non-empty unresolved_assumptions strings preserved by the recommendation. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id, decision exactly accepted or rejected, evidence_refs, and note (preserve dissent in contributions and unresolved_assumptions, not by inventing another decision value); and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; criteria, critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
     "moonrobo.digital-design.v1" =>
-      "Required product contract: design_id as a lowercase slug; revision as a non-empty string such as r1; mission object with authority exactly digital-only, non-empty robot_class, and optional name; task_loop as at least four non-empty string statements; mechanisms as at least three objects with unique lowercase-slug id and non-empty kind; validation.scenarios as at least three objects with unique non-empty id and expected; constraints.commanded_speed_mps.max as a positive number; and non-empty requirement_traceability entries with requirement_id, requirement, components, and verification. Preserve hazards, margins, and unsupported_physical_assumptions in explicit additional fields, and remain digital only. Field shapes and singular requirement_traceability name are exact: task-loop objects, component_id mechanisms, requirements_trace, and requirements_traceability are not substitutes."
+      "Required product contract: design_id as a lowercase slug; revision as a non-empty string such as r1; mission object with authority exactly digital-only, non-empty robot_class, and optional name; task_loop as at least four non-empty string statements; mechanisms as at least three objects with unique lowercase-slug id and non-empty kind; constraints.commanded_speed_mps.max as a positive number; and non-empty requirement_traceability entries with requirement_id, requirement, components, and verification. validation.scenarios must contain at least three executable scenarios covering kind=nominal and kind=negative or degraded. Each requires unique id, kind, expected, non-empty initial_state object, and non-empty steps. Every step requires step_id, operation, inputs, output, and expected. Inputs are objects containing either state naming an earlier state/output or literal containing a JSON value. Operations add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or take two inputs; select takes condition/true-value/false-value. Use these steps to derive commanded motion, stop commands, and inhibition from scenario state so native MoonRobo can emit numerical and boolean state histories. Preserve hazards, margins, and unsupported_physical_assumptions in explicit additional fields, and remain digital only. Field shapes and singular requirement_traceability name are exact: task-loop objects, component_id mechanisms, requirements_trace, and requirements_traceability are not substitutes."
     "moonrobo.validation-evidence.v1" =>
       "Required product contract: non-empty constraint_results, negative_cases, and failure_traces. Validate the accepted digital-design input without hiding failed constraints in aggregate scores; preserve blockers and digital-only scope."
     "moonmoon.scenario-evidence.v1" =>
@@ -320,6 +320,9 @@ fn moonrobo_design_issues(fields : Map[String, Json]) -> Array[String] {
       }
     _ => issues.push("MoonRobo mechanisms require at least three entries")
   }
+  let scenario_ids : Array[String] = []
+  let mut nominal_scenarios = 0
+  let mut adverse_scenarios = 0
   match fields.get("validation") {
     Some(Object(validation)) =>
       match validation.get("scenarios") {
@@ -335,6 +338,95 @@ fn moonrobo_design_issues(fields : Map[String, Json]) -> Array[String] {
                 "MoonRobo validation scenarios require id and expected",
               )
             }
+            let scenario_id = match scenario_fields.get("id") {
+              Some(String(value)) => value
+              _ => ""
+            }
+            if !scenario_id.is_empty() && scenario_ids.contains(scenario_id) {
+              issues.push("MoonRobo validation scenario ids must be unique")
+            } else if !scenario_id.is_empty() {
+              scenario_ids.push(scenario_id)
+            }
+            match scenario_fields.get("kind") {
+              Some(String("nominal")) => nominal_scenarios += 1
+              Some(String("negative" | "degraded")) => adverse_scenarios += 1
+              _ =>
+                issues.push(
+                  "MoonRobo validation scenario kind must be nominal, negative, or degraded",
+                )
+            }
+            match scenario_fields.get("initial_state") {
+              Some(Object(state)) if !state.is_empty() => ()
+              _ =>
+                issues.push(
+                  "MoonRobo validation scenario initial_state must be a non-empty object",
+                )
+            }
+            match scenario_fields.get("steps") {
+              Some(Array(steps)) if !steps.is_empty() =>
+                for step in steps {
+                  guard step is Object(step_fields) else {
+                    issues.push("MoonRobo scenario step must be an object")
+                    continue
+                  }
+                  for key in ["step_id", "operation", "output"] {
+                    if !non_empty_field(step_fields, key) {
+                      issues.push("MoonRobo scenario step requires \{key}")
+                    }
+                  }
+                  if !step_fields.contains("expected") {
+                    issues.push("MoonRobo scenario step requires expected")
+                  }
+                  let operation = match step_fields.get("operation") {
+                    Some(String(value)) => value
+                    _ => ""
+                  }
+                  let allowed = [
+                    "add", "subtract", "multiply", "less_or_equal", "greater_or_equal",
+                    "equal", "boolean_and", "boolean_or", "select",
+                  ]
+                  if !allowed.contains(operation) {
+                    issues.push("MoonRobo scenario operation is not allowed")
+                  }
+                  match step_fields.get("inputs") {
+                    Some(Array(inputs)) => {
+                      let expected_count = if operation == "select" {
+                        3
+                      } else {
+                        2
+                      }
+                      if inputs.length() != expected_count {
+                        issues.push(
+                          "MoonRobo scenario step has the wrong input count",
+                        )
+                      }
+                      for input in inputs {
+                        guard input is Object(input_fields) else {
+                          issues.push(
+                            "MoonRobo scenario input must be an object",
+                          )
+                          continue
+                        }
+                        let has_state = match input_fields.get("state") {
+                          Some(String(value)) => !value.trim().is_empty()
+                          _ => false
+                        }
+                        let has_literal = input_fields.contains("literal")
+                        if has_state == has_literal {
+                          issues.push(
+                            "MoonRobo scenario input requires exactly one of state or literal",
+                          )
+                        }
+                      }
+                    }
+                    _ => issues.push("MoonRobo scenario step requires inputs")
+                  }
+                }
+              _ =>
+                issues.push(
+                  "MoonRobo validation scenario steps must be non-empty",
+                )
+            }
           }
         _ =>
           issues.push(
@@ -342,6 +434,11 @@ fn moonrobo_design_issues(fields : Map[String, Json]) -> Array[String] {
           )
       }
     _ => issues.push("MoonRobo validation must be an object")
+  }
+  if nominal_scenarios == 0 || adverse_scenarios == 0 {
+    issues.push(
+      "MoonRobo validation scenarios must cover nominal and negative or degraded execution",
+    )
   }
   match fields.get("constraints") {
     Some(Object(constraints)) =>
@@ -1261,7 +1358,7 @@ fn review_prompt(
   feedback : Array[String],
 ) -> String {
   "You are an independent MoonFlow acceptance reviewer in an isolated task capsule. You did not execute this work and cannot access the parent suite workspace.\n" +
-  "Review the immutable request below and inspect the exact evidence files it names. Decide every criterion in the original order. A satisfied criterion requires evidence_refs copied exactly from the request's evidence_refs array; JSON pointers or undeclared paths are prohibited. Never accept an agent or executor summary alone. A verified product attestation plus product-native per-case execution_transcript is direct product evidence, not a summary assertion. Reject missing negative cases, unsupported claims, and any physical-readiness overclaim. Preserve limitations and dissent. You may not grant authority or change criteria.\n" +
+  "Review the immutable request below and inspect the exact evidence files it names. Decide every criterion in the original order. A satisfied criterion requires evidence_refs copied exactly from the request's evidence_refs array; JSON pointers or undeclared paths are prohibited. Never accept an agent or executor summary alone. A verified product attestation plus product-native per-case execution_transcript or scenario_execution with resolved inputs, actual outputs, and state history is direct product evidence, not a summary assertion. Reject missing negative cases, unsupported claims, and any physical-readiness overclaim. Preserve limitations and dissent. You may not grant authority or change criteria.\n" +
   "The product attestation has already been checked by MoonFlow against executor_output_digest. The request output_digest separately binds MoonFlow's immutable evidence snapshots. Follow digest_lineage: these stage digests are not expected to be equal because their artifact identities differ.\n" +
   "Write exactly one JSON object at receipt_artifact with only this contract shape: contract_id=moonflow.acceptance-review.v1; review_id, run_id, work_item_id, declaration_id, result_id, attempt_id, output_digest, reviewer_id, review_authority_id, receipt_artifact, and recorded_at copied exactly from the request; decision equal to accepted or rejected; criteria an array in the exact request order with objects containing criterion, satisfied, evidence_refs, and non-empty note. An accepted decision requires every criterion satisfied. A rejected decision requires at least one unsatisfied criterion. Do not use accepted, rationale, limitations, or JSON-pointer evidence fields as substitutes. This is bounded review trial " +
   "\{trial}." +
