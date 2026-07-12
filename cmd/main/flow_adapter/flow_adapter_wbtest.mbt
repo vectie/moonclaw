@@ -52,6 +52,8 @@ test "independent review prompt and validator preserve canonical receipt contrac
   let prompt = review_prompt(packet, 1, [])
   assert_true(prompt.contains("criteria an array in the exact request order"))
   assert_true(prompt.contains("stage digests are not expected to be equal"))
+  assert_true(prompt.contains("scenario_results with resolved inputs"))
+  assert_true(prompt.contains("hazard/recovery scripts"))
   let accepted : Json = {
     "contract_id": "moonflow.acceptance-review.v1",
     "review_id": "review-attempt-1",
