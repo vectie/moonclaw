@@ -99,3 +99,142 @@ test "MoonWiki research requires successful wrapper-owned search and fetch" {
     web_provenance_issues(fields).any(issue => issue.contains("web_fetch")),
   )
 }
+
+///|
+test "native helper DSL executes positive and negative vectors" {
+  let fields : Map[String, Json] = {
+    "change_summary": "Add a reserve margin helper.",
+    "implementation": {
+      "language": "moonsuite-helper-dsl.v1",
+      "functions": [
+        {
+          "name": "reserve_margin",
+          "operation": "subtract",
+          "inputs": ["available", "required"],
+        },
+      ],
+    },
+    "test_vectors": [
+      {
+        "case_id": "nominal",
+        "function": "reserve_margin",
+        "inputs": { "available": 100, "required": 30 },
+        "expected": 70,
+      },
+    ],
+    "negative_cases": [
+      {
+        "case_id": "deficit",
+        "function": "reserve_margin",
+        "inputs": { "available": 20, "required": 30 },
+        "expected": -10,
+      },
+    ],
+    "criteria_preserved": true,
+    "physical_readiness": false,
+  }
+  let result = validate_helper_software(fields).stringify()
+  assert_true(result.contains("moonclaw-native-attestor"))
+  assert_true(result.contains("\"case_count\":2"))
+  assert_true(result.contains("\"physical_readiness\":false"))
+}
+
+///|
+test "native helper DSL rejects an unproved operation" {
+  let fields : Map[String, Json] = {
+    "change_summary": "Attempt an unbounded helper.",
+    "implementation": {
+      "language": "moonsuite-helper-dsl.v1",
+      "functions": [
+        {
+          "name": "unsafe_helper",
+          "operation": "execute_shell",
+          "inputs": ["left", "right"],
+        },
+      ],
+    },
+    "test_vectors": [
+      {
+        "case_id": "must-refuse",
+        "function": "unsafe_helper",
+        "inputs": { "left": 1, "right": 2 },
+        "expected": 3,
+      },
+    ],
+    "negative_cases": [
+      {
+        "case_id": "still-must-refuse",
+        "function": "unsafe_helper",
+        "inputs": { "left": 0, "right": 0 },
+        "expected": 0,
+      },
+    ],
+    "criteria_preserved": true,
+    "physical_readiness": false,
+  }
+  let rejected = try {
+    ignore(validate_helper_software(fields))
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(rejected)
+}
+
+///|
+async test "MoonClaw attestor materializes wrapper-owned helper evidence" {
+  let workspace = "/tmp/moonclaw-helper-attestor-wbtest"
+  write_json(workspace + "/runtime/request.json", {
+    "request_id": "request-helper",
+    "product_id": "moonclaw",
+    "operation": "implement-helper-tools",
+    "output_contracts": ["moonclaw.software-result.v1"],
+  })
+  write_json(workspace + "/runtime/result.json", {
+    "result_id": "result-helper",
+    "product_id": "moonclaw",
+    "output_digest": "sha256:draft",
+    "output_artifacts": ["drafts/helper.json"],
+  })
+  write_json(workspace + "/drafts/helper.json", {
+    "contract_id": "moonclaw.software-result.v1",
+    "product_id": "moonclaw",
+    "change_summary": "Add a reserve margin helper.",
+    "implementation": {
+      "language": "moonsuite-helper-dsl.v1",
+      "functions": [
+        {
+          "name": "reserve_margin",
+          "operation": "subtract",
+          "inputs": ["available", "required"],
+        },
+      ],
+    },
+    "test_vectors": [
+      {
+        "case_id": "nominal",
+        "function": "reserve_margin",
+        "inputs": { "available": 100, "required": 30 },
+        "expected": 70,
+      },
+    ],
+    "negative_cases": [
+      {
+        "case_id": "deficit",
+        "function": "reserve_margin",
+        "inputs": { "available": 20, "required": 30 },
+        "expected": -10,
+      },
+    ],
+    "criteria_preserved": true,
+    "physical_readiness": false,
+  })
+  attest([
+    "--workspace", workspace, "--request", "runtime/request.json", "--result", "runtime/result.json",
+    "--attestation", "runtime/attestation.json", "--attestor-id", "moonclaw-native-helper-v1",
+    "--draft", "drafts/helper.json", "--final", "outputs/helper.json",
+  ])
+  let final_output = read_json(workspace + "/outputs/helper.json").stringify()
+  assert_true(final_output.contains("moonclaw-native-attestor"))
+  assert_true(final_output.contains("\"case_count\":2"))
+}

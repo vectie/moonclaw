@@ -127,7 +127,7 @@ fn contract_guidance(request : Json) -> String {
     "moonbook.outcome-audit.v1" =>
       "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps using information-gap/cognition-gap/execution-gap with question and resolution_criteria, residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
     "moonclaw.software-result.v1" =>
-      "Required product contract: change_summary, implementation, non-empty build_checks, test_results, negative_cases, and trial_evidence; criteria_preserved must be true and physical_readiness must be false. Test evidence must cover both positive behavior and declared failure/refusal behavior."
+      "Required product contract: change_summary; implementation using moonsuite-helper-dsl.v1 with named two-input functions and only add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or operations; non-empty test_vectors and negative_cases with case_id/function/inputs/expected; criteria_preserved true; physical_readiness false. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
     _ =>
       "Follow the declared output contract and preserve all evidence boundaries."
   }
@@ -203,10 +203,7 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
         "recorded_at",
       ]
     "moonclaw.software-result.v1" =>
-      [
-        "change_summary", "implementation", "build_checks", "test_results", "negative_cases",
-        "trial_evidence",
-      ]
+      ["change_summary", "implementation", "test_vectors", "negative_cases"]
     _ => []
   }
   for key in required {
@@ -234,13 +231,192 @@ fn moonclaw_software_issues(fields : Map[String, Json]) -> Array[String] {
     _ =>
       issues.push("MoonClaw software result must set physical_readiness false")
   }
-  for
-    key in ["build_checks", "test_results", "negative_cases", "trial_evidence"] {
+  for key in ["implementation", "test_vectors", "negative_cases"] {
     if !non_empty_field(fields, key) {
       issues.push("MoonClaw software result requires non-empty \{key}")
     }
   }
+  match fields.get("implementation") {
+    Some(Object(implementation)) => {
+      if implementation.get("language") !=
+        Some(Json::string("moonsuite-helper-dsl.v1")) {
+        issues.push(
+          "MoonClaw helper implementation requires moonsuite-helper-dsl.v1",
+        )
+      }
+      if !non_empty_field(implementation, "functions") {
+        issues.push("MoonClaw helper DSL requires functions")
+      }
+    }
+    _ => issues.push("MoonClaw helper implementation must be an object")
+  }
   issues
+}
+
+///|
+fn dsl_string_array(
+  fields : Map[String, Json],
+  key : String,
+) -> Array[String] raise {
+  match fields.get(key) {
+    Some(Array(values)) =>
+      values.map(value => {
+        match value {
+          String(text) if !text.trim().is_empty() => text
+          _ => fail("MoonClaw helper DSL requires string \{key}")
+        }
+      })
+    _ => fail("MoonClaw helper DSL requires \{key}")
+  }
+}
+
+///|
+fn dsl_value(inputs : Map[String, Json], name : String) -> Json raise {
+  inputs
+  .get(name)
+  .unwrap_or_else(() => fail("MoonClaw helper input is missing: \{name}"))
+}
+
+///|
+fn dsl_number(value : Json, label : String) -> Double raise {
+  match value {
+    Number(number, ..) => number
+    _ => fail("MoonClaw helper DSL requires numeric \{label}")
+  }
+}
+
+///|
+fn evaluate_helper_function(
+  function : Map[String, Json],
+  inputs : Map[String, Json],
+) -> Json raise {
+  let operation = string_field(function, "operation")
+  let names = dsl_string_array(function, "inputs")
+  if names.length() != 2 {
+    fail("MoonClaw helper DSL operations require exactly two inputs")
+  }
+  let left = dsl_value(inputs, names[0])
+  let right = dsl_value(inputs, names[1])
+  match operation {
+    "add" =>
+      Json::number(dsl_number(left, names[0]) + dsl_number(right, names[1]))
+    "subtract" =>
+      Json::number(dsl_number(left, names[0]) - dsl_number(right, names[1]))
+    "multiply" =>
+      Json::number(dsl_number(left, names[0]) * dsl_number(right, names[1]))
+    "less_or_equal" =>
+      Json::boolean(dsl_number(left, names[0]) <= dsl_number(right, names[1]))
+    "greater_or_equal" =>
+      Json::boolean(dsl_number(left, names[0]) >= dsl_number(right, names[1]))
+    "equal" => Json::boolean(left == right)
+    "boolean_and" =>
+      match (left, right) {
+        (True, True) => Json::boolean(true)
+        (True | False, True | False) => Json::boolean(false)
+        _ => fail("MoonClaw helper boolean_and requires booleans")
+      }
+    "boolean_or" =>
+      match (left, right) {
+        (False, False) => Json::boolean(false)
+        (True | False, True | False) => Json::boolean(true)
+        _ => fail("MoonClaw helper boolean_or requires booleans")
+      }
+    _ => fail("MoonClaw helper DSL operation is not allowed: \{operation}")
+  }
+}
+
+///|
+fn validate_helper_software(fields : Map[String, Json]) -> Json raise {
+  let implementation = object(
+    fields.get("implementation").unwrap_or(Json::null()),
+    "helper implementation",
+  )
+  if string_field(implementation, "language") != "moonsuite-helper-dsl.v1" {
+    fail("MoonClaw helper DSL language is unsupported")
+  }
+  let functions = match implementation.get("functions") {
+    Some(Array(values)) if !values.is_empty() => values
+    _ => fail("MoonClaw helper DSL requires functions")
+  }
+  let function_names : Array[String] = []
+  for value in functions {
+    let function = object(value, "helper function")
+    let name = string_field(function, "name")
+    if function_names.contains(name) {
+      fail("MoonClaw helper function names must be unique")
+    }
+    function_names.push(name)
+    ignore(string_field(function, "operation"))
+    if dsl_string_array(function, "inputs").length() != 2 {
+      fail("MoonClaw helper DSL operations require exactly two inputs")
+    }
+  }
+  let results : Array[Json] = []
+  for pair in [("positive", "test_vectors"), ("negative", "negative_cases")] {
+    let (class, key) = pair
+    guard fields.get(key) is Some(Array(cases)) && !cases.is_empty() else {
+      fail("MoonClaw helper DSL requires \{key}")
+    }
+    for value in cases {
+      let test_case = object(value, "helper test case")
+      let function_name = string_field(test_case, "function")
+      let mut selected : Map[String, Json]? = None
+      for candidate in functions {
+        let candidate_fields = object(candidate, "helper function")
+        if string_field(candidate_fields, "name") == function_name {
+          selected = Some(candidate_fields)
+        }
+      }
+      guard selected is Some(function) else {
+        fail(
+          "MoonClaw helper test references unknown function: \{function_name}",
+        )
+      }
+      let inputs = object(
+        test_case.get("inputs").unwrap_or(Json::null()),
+        "helper test inputs",
+      )
+      let expected = test_case.get("expected").unwrap_or(Json::null())
+      let actual = evaluate_helper_function(function, inputs)
+      if actual != expected {
+        fail(
+          "MoonClaw helper test failed: \{string_field(test_case, "case_id")}",
+        )
+      }
+      results.push({
+        "case_id": string_field(test_case, "case_id"),
+        "class": class,
+        "function": function_name,
+        "expected": expected,
+        "actual": actual,
+        "passed": true,
+      })
+    }
+  }
+  {
+    "contract_id": "moonclaw.software-result.v1",
+    "product_id": "moonclaw",
+    "change_summary": string_field(fields, "change_summary"),
+    "implementation": Json::object(implementation),
+    "build_checks": [
+      {
+        "check": "bounded-helper-dsl-schema-and-type-check",
+        "status": "passed",
+        "validator": "moonclaw-native-attestor",
+      },
+    ],
+    "test_results": results.to_json(),
+    "negative_cases": fields.get("negative_cases").unwrap_or(Json::array([])),
+    "trial_evidence": [
+      {
+        "trial": "native-helper-dsl-validation",
+        "result": "accepted",
+        "case_count": results.length(),
+      },
+    ],
+    "criteria_preserved": true,
+    "physical_readiness": false,
+  }
 }
 
 ///|
@@ -428,25 +604,22 @@ async fn attest(args : Array[String]) -> Unit {
       )
     }
   }
+  let draft_value = read_json(workspace + "/" + draft_ref)
+  let mut product_final = draft_value
   if product_id == "moonclaw" &&
     output_contracts.contains("moonclaw.software-result.v1") {
-    let software_fields = object(
-      read_json(workspace + "/" + draft_ref),
-      "MoonClaw software result",
-    )
+    let software_fields = object(draft_value, "MoonClaw software result")
     let software_issues = moonclaw_software_issues(software_fields)
     if !software_issues.is_empty() {
       fail(
         "MoonClaw rejected its software result: \{software_issues.join("; ")}",
       )
     }
+    product_final = validate_helper_software(software_fields)
   }
   // The contract attestor is the product boundary that materializes the final
   // artifact. MoonFlow reconciles this path, never the agent-authored draft.
-  write_json(
-    workspace + "/" + final_ref,
-    read_json(workspace + "/" + draft_ref),
-  )
+  write_json(workspace + "/" + final_ref, product_final)
   write_json(workspace + "/" + attestation_ref, {
     "contract_id": "moonflow.product-attestation.v1",
     "attestor_id": attestor_id,
