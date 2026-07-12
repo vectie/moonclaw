@@ -27,6 +27,27 @@ async test "write_to_file" (t : @test.Test) {
 }
 
 ///|
+async test "write_to_file creates nested parent directories" (t : @test.Test) {
+  @mock.run(t, mock => {
+    let relative_path = "books/robot/flow/drafts/research.json"
+    let args = json_input(
+      path=relative_path,
+      content="{\"accepted\":true}",
+      separator="\n",
+    )
+    let tool = new(mock.cwd.path())
+    let result = tool.call(args)
+    guard result is Ok(_) else {
+      fail("Expected nested write to succeed but got: \{mock.show(result)}")
+    }
+    inspect(
+      @fsx.read_file(@pathx.join(mock.cwd.path(), relative_path)),
+      content="{\"accepted\":true}",
+    )
+  })
+}
+
+///|
 async test "write_to_file/no-write-permission" (t : @test.Test) {
   @mock.run(t, mock => {
     let file_path = @pathx.join(mock.cwd.path(), "file.txt")

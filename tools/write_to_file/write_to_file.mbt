@@ -138,6 +138,13 @@ pub fn new(cwd : String) -> @tool.Tool[Result] {
       } else {
         content
       }
+      let parent = @pathx.dirname(path)
+      let _ = @fsx.make_directory(parent, recursive=true, exists_ok=true) catch {
+        error =>
+          return @tool.error(
+            "Failed to create parent directories for file: \{error}",
+          )
+      }
       let _ = @fsx.write_to_file(path, content_to_append) catch {
         @os_error.OSError(_, ..) as error if error.is_EACCES() =>
           return @tool.error(
