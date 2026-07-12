@@ -149,7 +149,7 @@ fn contract_guidance(request : Json) -> String {
     "moonmoon.scenario-evidence.v1" =>
       "Required product contract: simulation_model with initial_energy_wh greater than reserve_energy_wh and scenarios containing both nominal and adverse kinds. Every scenario needs scenario_id, integer seed, and steps with non-negative energy_use_wh/progress_delta, hazard boolean, and recovery. Also include non-empty model_limitations and uncertainty."
     "moonbook.outcome-audit.v1" =>
-      "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps using information-gap/cognition-gap/execution-gap with question and resolution_criteria, residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
+      "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps objects with the exact field kind equal to information-gap, cognition-gap, or execution-gap, plus question and resolution_criteria. The field type is not a substitute for kind. Also include residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
     "moonclaw.software-result.v1" =>
       "Required product contract: change_summary; implementation is an object whose language field is exactly moonsuite-helper-dsl.v1 and whose functions are objects with name, operation, and exactly two string inputs. Put operation directly on each function (not inside expression); allowed values are add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or. Include non-empty test_vectors and negative_cases with case_id/function/inputs/expected. Each test inputs value must be a JSON object keyed by the selected function's two input names, not a positional array. Set criteria_preserved true and physical_readiness false. Field names are exact: contract_id is not a substitute for implementation.language. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
     _ =>
@@ -250,10 +250,134 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
       issues.push(issue)
     }
   }
+  if contract == "moonbook.outcome-audit.v1" {
+    for issue in moonbook_audit_issues(request_fields, fields) {
+      issues.push(issue)
+    }
+  }
   if contract == "moonclaw.software-result.v1" {
     for issue in moonclaw_software_issues(fields) {
       issues.push(issue)
     }
+  }
+  issues
+}
+
+///|
+fn moonbook_audit_issues(
+  request_fields : Map[String, Json],
+  fields : Map[String, Json],
+) -> Array[String] {
+  let issues : Array[String] = []
+  let criteria = match request_fields.get("acceptance_criteria") {
+    Some(Array(values)) => values
+    _ => []
+  }
+  match fields.get("criterion_decisions") {
+    Some(Array(decisions)) => {
+      if decisions.length() != criteria.length() {
+        issues.push("MoonBook audit must decide every criterion exactly once")
+      }
+      for index, value in decisions {
+        guard value is Object(decision) else {
+          issues.push("MoonBook criterion decision must be an object")
+          continue
+        }
+        if index < criteria.length() &&
+          decision.get("criterion") != Some(criteria[index]) {
+          issues.push("MoonBook audit criteria must preserve immutable order")
+        }
+        match decision.get("decision") {
+          Some(String(value)) if ["accepted", "blocked", "rejected"].contains(
+              value,
+            ) => ()
+          _ =>
+            issues.push(
+              "MoonBook audit decision must be accepted, blocked, or rejected",
+            )
+        }
+        let evidence_present = match decision.get("evidence_refs") {
+          Some(Array(values)) => !values.is_empty()
+          _ => false
+        }
+        let blocker_present = match decision.get("blocker") {
+          Some(String(value)) => !value.trim().is_empty()
+          _ => false
+        }
+        if !evidence_present && !blocker_present {
+          issues.push(
+            "MoonBook audit decisions require evidence_refs or an explicit blocker",
+          )
+        }
+        match decision.get("evidence_refs") {
+          Some(Array(values)) if values.all(value => {
+              match value {
+                String(text) => !text.trim().is_empty()
+                _ => false
+              }
+            }) => ()
+          _ => issues.push("MoonBook audit evidence_refs must contain strings")
+        }
+        match decision.get("rationale") {
+          Some(String(value)) if !value.trim().is_empty() => ()
+          _ =>
+            issues.push(
+              "MoonBook audit decisions require a non-empty rationale",
+            )
+        }
+      }
+    }
+    _ => ()
+  }
+  match fields.get("open_gaps") {
+    Some(Array(gaps)) =>
+      for value in gaps {
+        guard value is Object(gap) else {
+          issues.push("MoonBook open gap must be an object")
+          continue
+        }
+        match gap.get("kind") {
+          Some(String(value)) if [
+              "information-gap", "cognition-gap", "execution-gap",
+            ].contains(value) => ()
+          _ =>
+            issues.push(
+              "MoonBook open gaps require exact kind information-gap, cognition-gap, or execution-gap",
+            )
+        }
+        let question_valid = match gap.get("question") {
+          Some(String(value)) => !value.trim().is_empty()
+          _ => false
+        }
+        let resolution_valid = match gap.get("resolution_criteria") {
+          Some(String(value)) => !value.trim().is_empty()
+          _ => false
+        }
+        if !question_valid || !resolution_valid {
+          issues.push(
+            "MoonBook open gaps require string question and resolution_criteria",
+          )
+        }
+      }
+    _ => ()
+  }
+  match fields.get("claim_ceiling") {
+    Some(String(value)) if [
+        "observation", "research-evidence", "accepted-knowledge", "digital-artifact",
+        "simulation-evidence", "scenario-qualified",
+      ].contains(value) => ()
+    _ =>
+      issues.push(
+        "MoonBook final claim ceiling is not constitutionally bounded",
+      )
+  }
+  match fields.get("final_claim") {
+    Some(String(value)) if !value.trim().is_empty() => ()
+    _ => issues.push("MoonBook final_claim must be a non-empty string")
+  }
+  match fields.get("recorded_at") {
+    Some(String(value)) if !value.trim().is_empty() => ()
+    _ => issues.push("MoonBook recorded_at must be a non-empty string")
   }
   issues
 }

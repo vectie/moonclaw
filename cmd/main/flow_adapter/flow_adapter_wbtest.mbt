@@ -129,6 +129,55 @@ test "flow retry prompt separates rejected drafts from replacement outputs" {
 }
 
 ///|
+test "MoonBook audit preflight requires exact metacognitive gap kinds" {
+  let request : Json = {
+    "product_id": "moonbook",
+    "output_contracts": ["moonbook.outcome-audit.v1"],
+    "acceptance_criteria": ["preserve the claim ceiling"],
+  }
+  let draft : Json = {
+    "contract_id": "moonbook.outcome-audit.v1",
+    "product_id": "moonbook",
+    "criterion_decisions": [
+      {
+        "criterion": "preserve the claim ceiling",
+        "decision": "accepted",
+        "evidence_refs": ["evidence/a.json"],
+        "rationale": "The evidence remains digital only.",
+      },
+    ],
+    "open_gaps": [
+      {
+        "type": "information-gap",
+        "question": "What remains unknown?",
+        "resolution_criteria": ["Collect governed evidence."],
+      },
+    ],
+    "residual_risks": ["model limitations remain"],
+    "final_claim": "bounded digital evidence",
+    "claim_ceiling": { "level": "scenario-qualified" },
+    "recorded_at": "2026-07-12T00:00:00Z",
+  }
+  let issues = draft_quality_issues(request, draft)
+  assert_true(
+    issues.contains(
+      "MoonBook open gaps require exact kind information-gap, cognition-gap, or execution-gap",
+    ),
+  )
+  assert_true(contract_guidance(request).contains("type is not a substitute"))
+  assert_true(
+    issues.contains(
+      "MoonBook open gaps require string question and resolution_criteria",
+    ),
+  )
+  assert_true(
+    issues.contains(
+      "MoonBook final claim ceiling is not constitutionally bounded",
+    ),
+  )
+}
+
+///|
 test "flow adapter exposes MoonTown emergence boundary without seeding a solution" {
   let request : Json = {
     "product_id": "moontown",
