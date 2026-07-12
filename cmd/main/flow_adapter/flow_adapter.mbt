@@ -143,7 +143,7 @@ fn contract_guidance(request : Json) -> String {
     "moontown.deliberation.v1" =>
       "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. Include non-empty comparison_criteria objects with criterion_id, name, and definition so rankings remain independently interpretable. Include comparison_assessments covering every contribution_id/criterion_id pair; each assessment needs a non-empty rating, rationale, and evidence_refs. Also include non-empty unresolved_assumptions strings preserved by the recommendation. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id, decision exactly accepted or rejected, evidence_refs, and note (preserve dissent in contributions and unresolved_assumptions, not by inventing another decision value); and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; criteria, critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
     "moonrobo.digital-design.v1" =>
-      "Required product contract: design_id, integer revision, mission, task_loop, mechanisms, validation, and constraints. The design must be generic to the selected concept, trace requirements to components, preserve hazards/margins/unsupported assumptions, and remain digital only."
+      "Required product contract: design_id; revision as a non-empty string such as r1; mission; task_loop; mechanisms; validation; and constraints. The design must be generic to the selected concept, trace requirements to components, preserve hazards/margins/unsupported assumptions, and remain digital only."
     "moonrobo.validation-evidence.v1" =>
       "Required product contract: non-empty constraint_results, negative_cases, and failure_traces. Validate the accepted digital-design input without hiding failed constraints in aggregate scores; preserve blockers and digital-only scope."
     "moonmoon.scenario-evidence.v1" =>
@@ -243,6 +243,15 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
   if contract == "moontown.deliberation.v1" {
     for issue in moontown_round_issues(fields) {
       issues.push(issue)
+    }
+  }
+  if contract == "moonrobo.digital-design.v1" {
+    match fields.get("revision") {
+      Some(String(value)) if !value.trim().is_empty() => ()
+      _ =>
+        issues.push(
+          "MoonRobo digital design revision must be a non-empty string",
+        )
     }
   }
   if contract == "moonclaw.software-result.v1" {

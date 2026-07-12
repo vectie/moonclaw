@@ -247,6 +247,27 @@ test "required scalar fields accept numbers and booleans" {
 }
 
 ///|
+test "MoonRobo design reports numeric revision before native attestation" {
+  let request : Json = {
+    "product_id": "moonrobo",
+    "output_contracts": ["moonrobo.digital-design.v1"],
+  }
+  let draft : Json = {
+    "contract_id": "moonrobo.digital-design.v1",
+    "product_id": "moonrobo",
+    "design_id": "generic-design",
+    "revision": 1,
+    "mission": { "scope": "digital" },
+    "task_loop": ["plan", "stop"],
+    "mechanisms": [{ "id": "planner" }],
+    "validation": { "status": "planned" },
+    "constraints": { "physical_readiness": false },
+  }
+  let issues = draft_quality_issues(request, draft)
+  assert_true(issues.any(issue => issue.contains("non-empty string")))
+}
+
+///|
 test "native helper DSL executes positive and negative vectors" {
   let fields : Map[String, Json] = {
     "change_summary": "Add a reserve margin helper.",
