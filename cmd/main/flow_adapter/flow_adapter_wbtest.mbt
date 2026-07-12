@@ -13,6 +13,25 @@ test "flow adapter parses repeated options and rejects path escape" {
 }
 
 ///|
+test "flow capsules are isolated by run and attempt identity" {
+  let first = flow_attempt_root(
+    "/suite", "flow-robot-r2", "attempt-work-research-1",
+  )
+  let second = flow_attempt_root(
+    "/suite", "flow-robot-r3", "attempt-work-research-1",
+  )
+  assert_true(first != second)
+  assert_true(first.contains("/flow/flow-robot-r2/attempt-work-research-1"))
+  let escaped = try {
+    ignore(flow_attempt_root("/suite", "../escape", "attempt-1"))
+    false
+  } catch {
+    _ => true
+  }
+  assert_true(escaped)
+}
+
+///|
 test "flow adapter gives contract guidance and rejects incomplete drafts" {
   let request : Json = {
     "product_id": "moonmoon",

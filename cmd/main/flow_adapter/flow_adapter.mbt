@@ -44,6 +44,28 @@ fn require_ref(reference : String, label : String) -> String raise {
 }
 
 ///|
+fn require_segment(value : String, label : String) -> String raise {
+  let segment = value.trim().to_owned()
+  if !safe_ref(segment) || segment.contains("/") || segment == "." {
+    fail("MoonClaw flow adapter " + label + " must be a safe path segment")
+  }
+  segment
+}
+
+///|
+fn flow_attempt_root(
+  workspace : String,
+  run_id : String,
+  attempt_id : String,
+) -> String raise {
+  workspace +
+  "/.moonsuite/products/moonclaw/flow/" +
+  require_segment(run_id, "run_id") +
+  "/" +
+  require_segment(attempt_id, "attempt_id")
+}
+
+///|
 async fn read_json(path : String) -> Json {
   @json.parse(@fsx.read_file(path))
 }
@@ -667,7 +689,11 @@ async fn execute(args : Array[String]) -> Unit {
     _ => []
   }
   let attempt_id = string_field(fields, "attempt_id")
-  let run_root = workspace + "/.moonsuite/products/moonclaw/flow/" + attempt_id
+  let run_root = flow_attempt_root(
+    workspace,
+    string_field(fields, "run_id"),
+    attempt_id,
+  )
   @fsx.make_directory(run_root, recursive=true, exists_ok=true)
   let mut completed = false
   let mut trials = 0
