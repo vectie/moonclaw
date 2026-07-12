@@ -139,7 +139,7 @@ fn contract_guidance(request : Json) -> String {
     "moonwiki.evidence-bundle.v1" =>
       "Required product contract: use the governed web_search tool to discover public source leads and web_fetch to read every source you cite. The wrapper will attach immutable tool provenance; invented or unfetched locators are rejected. Return sources[] with unique source_id/title/locator/authority/accessed_at; claims[] with statement/source_refs/confidence 0..1; non-empty contradictions[], limitations[], remaining_information_gaps[], query_lineage[]; and stopping_rationale. A 'none found' contradiction must still record how it was checked."
     "moontown.deliberation.v1" =>
-      "Required product contract: civic_round using moontown.autonomous-civic-round.v1 with at least two contributions, critique, ranking, independent accepted review, and delivery/home-return receipts for every participant. Include at least one genuinely emergent uncommissioned contribution and one dissenting contribution. Each contribution needs evidence_refs, alternatives, implementation_criteria, bounded claim_ceiling, and proposal."
+      "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id/decision/evidence_refs/note; and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
     "moonrobo.digital-design.v1" =>
       "Required product contract: design_id, integer revision, mission, task_loop, mechanisms, validation, and constraints. The design must be generic to the selected concept, trace requirements to components, preserve hazards/margins/unsupported assumptions, and remain digital only."
     "moonrobo.validation-evidence.v1" =>
@@ -237,6 +237,132 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
     for issue in web_provenance_issues(fields) {
       issues.push(issue)
     }
+  }
+  if contract == "moontown.deliberation.v1" {
+    for issue in moontown_round_issues(fields) {
+      issues.push(issue)
+    }
+  }
+  issues
+}
+
+///|
+fn has_fields(
+  fields : Map[String, Json],
+  names : Array[String],
+) -> Array[String] {
+  names.filter(name => !fields.contains(name))
+}
+
+///|
+fn moontown_round_issues(draft_fields : Map[String, Json]) -> Array[String] {
+  let issues : Array[String] = []
+  guard draft_fields.get("civic_round") is Some(Object(round)) else {
+    return ["MoonTown civic_round must be an object"]
+  }
+  for
+    missing in has_fields(round, [
+      "contract_id", "round_id", "commission_id", "question", "commissioned_agenda_ids",
+      "contributions", "critiques", "rankings", "review", "deliveries", "requested_authority",
+      "recorded_at",
+    ]) {
+    issues.push("MoonTown civic_round is missing field: " + missing)
+  }
+  if round.get("contract_id") !=
+    Some(Json::string("moontown.autonomous-civic-round.v1")) {
+    issues.push(
+      "MoonTown civic_round contract_id must be moontown.autonomous-civic-round.v1",
+    )
+  }
+  let mut emergent = false
+  let mut dissenting = false
+  match round.get("contributions") {
+    Some(Array(contributions)) if contributions.length() >= 2 =>
+      for contribution in contributions {
+        guard contribution is Object(fields) else {
+          issues.push("MoonTown contribution must be an object")
+          continue
+        }
+        for
+          missing in has_fields(fields, [
+            "contribution_id", "participant_id", "source_book_id", "origin", "summary",
+            "evidence_refs", "alternatives", "blockers", "implementation_criteria",
+            "claim_ceiling", "supports", "proposal",
+          ]) {
+          issues.push("MoonTown contribution is missing field: " + missing)
+        }
+        match fields.get("origin") {
+          Some(String("emergent")) => emergent = true
+          Some(String("dissenting")) => dissenting = true
+          _ => ()
+        }
+      }
+    _ => issues.push("MoonTown civic_round requires at least two contributions")
+  }
+  if !emergent {
+    issues.push("MoonTown civic_round requires an emergent contribution")
+  }
+  if !dissenting {
+    issues.push("MoonTown civic_round requires a dissenting contribution")
+  }
+  match round.get("critiques") {
+    Some(Array(critiques)) if !critiques.is_empty() =>
+      for critique in critiques {
+        guard critique is Object(fields) else {
+          issues.push("MoonTown critique must be an object")
+          continue
+        }
+        for
+          missing in has_fields(fields, [
+            "critique_id", "participant_id", "target_contribution_id", "concern",
+            "evidence_refs", "severity", "resolved",
+          ]) {
+          issues.push("MoonTown critique is missing field: " + missing)
+        }
+      }
+    _ => issues.push("MoonTown civic_round requires critiques")
+  }
+  match round.get("rankings") {
+    Some(Array(rankings)) if !rankings.is_empty() =>
+      for ranking in rankings {
+        guard ranking is Object(fields) else {
+          issues.push("MoonTown ranking must be an object")
+          continue
+        }
+        for
+          missing in has_fields(fields, [
+            "voter_id", "ordered_contribution_ids", "rationale",
+          ]) {
+          issues.push("MoonTown ranking is missing field: " + missing)
+        }
+      }
+    _ => issues.push("MoonTown civic_round requires rankings")
+  }
+  match round.get("review") {
+    Some(Object(fields)) =>
+      for
+        missing in has_fields(fields, [
+          "reviewer_id", "decision", "evidence_refs", "note",
+        ]) {
+        issues.push("MoonTown review is missing field: " + missing)
+      }
+    _ => issues.push("MoonTown civic_round requires review")
+  }
+  match round.get("deliveries") {
+    Some(Array(deliveries)) if !deliveries.is_empty() =>
+      for delivery in deliveries {
+        guard delivery is Object(fields) else {
+          issues.push("MoonTown delivery must be an object")
+          continue
+        }
+        for
+          missing in has_fields(fields, [
+            "participant_id", "received", "returned_home", "receipt_ref",
+          ]) {
+          issues.push("MoonTown delivery is missing field: " + missing)
+        }
+      }
+    _ => issues.push("MoonTown civic_round requires deliveries")
   }
   issues
 }

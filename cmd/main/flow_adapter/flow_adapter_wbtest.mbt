@@ -120,6 +120,27 @@ test "flow adapter exposes MoonTown emergence boundary without seeding a solutio
   assert_true(guidance.contains("uncommissioned contribution"))
   assert_true(guidance.contains("dissenting contribution"))
   assert_false(guidance.contains("polar-inspector"))
+  assert_true(guidance.contains("source_book_id"))
+  assert_true(guidance.contains("supports"))
+  let incomplete : Json = {
+    "contract_id": "moontown.deliberation.v1",
+    "product_id": "moontown",
+    "civic_round": {
+      "contract_id": "moontown.autonomous-civic-round.v1",
+      "contributions": [{ "origin": "emergent" }, { "origin": "dissenting" }],
+      "critiques": [{}],
+      "rankings": [{}],
+      "review": {},
+      "deliveries": [{}],
+    },
+  }
+  let issues = draft_quality_issues(request, incomplete)
+  assert_true(
+    issues.contains("MoonTown contribution is missing field: supports"),
+  )
+  assert_true(
+    issues.contains("MoonTown civic_round is missing field: question"),
+  )
 }
 
 ///|
