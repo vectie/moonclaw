@@ -102,7 +102,6 @@ pub fn browser_session_scope(
     RenderLocalArtifact,
     InspectVisiblePage,
     InteractLocalPage,
-    SaveWorkspaceEvidence,
   ],
 ) -> BrowserSessionScope {
   {

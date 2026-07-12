@@ -124,3 +124,23 @@ test "local action verbs map to portable constitutional effect classes" {
     is NavigateExternalOrigin,
   )
 }
+
+///|
+test "local preview cannot save evidence or mutate workspace by default" {
+  let worker = @browser.BrowserWorker::new(test_scope())
+  assert_true(worker.begin_agent_operation())
+  let save = @browser.browser_action(
+    action_id="action-save",
+    session_id="browser-book-r7",
+    actor=@browser.Agent,
+    operation=@browser.CaptureScreenshot,
+    target="browser://visible-frame",
+    code_revision="code-a91",
+    authority_envelope_id="authority-local-preview",
+    required_effect=@browser.SaveWorkspaceEvidence,
+  )
+  assert_true(
+    worker.execute(save, target_stable=true).outcome
+    is Blocked("effect-not-authorized"),
+  )
+}

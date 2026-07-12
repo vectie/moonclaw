@@ -7,9 +7,11 @@ import {
 }
 
 // Values
-pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : String, created_at? : String) -> BrowserAction
+pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : BrowserEffectClass, created_at? : String) -> BrowserAction
 
-pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_revision~ : String, code_revision~ : String, run_id~ : String, authority_envelope_id~ : String, allowed_origins? : Array[String], permitted_effects? : Array[String]) -> BrowserSessionScope
+pub fn browser_operation_effect_class(BrowserOperation) -> BrowserEffectClass
+
+pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_revision~ : String, code_revision~ : String, run_id~ : String, authority_envelope_id~ : String, allowed_origins? : Array[String], permitted_effects? : Array[BrowserEffectClass]) -> BrowserSessionScope
 
 // Errors
 
@@ -24,7 +26,7 @@ pub struct BrowserAction {
   expected_observation : String
   code_revision : String
   authority_envelope_id : String
-  required_effect : String
+  required_effect : BrowserEffectClass
   created_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -54,6 +56,18 @@ pub(all) enum BrowserActor {
   Replay
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) enum BrowserEffectClass {
+  RenderLocalArtifact
+  InspectVisiblePage
+  InteractLocalPage
+  SaveWorkspaceEvidence
+  NavigateExternalOrigin
+  UploadFile
+  DownloadFile
+  SubmitExternalMutation
+  RequestPhysicalEffect
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum BrowserOperation {
   Navigate
   Reload
@@ -75,7 +89,7 @@ pub struct BrowserSessionScope {
   run_id : String
   authority_envelope_id : String
   allowed_origins : Array[String]
-  permitted_effects : Array[String]
+  permitted_effects : Array[BrowserEffectClass]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum BrowserSessionStatus {
