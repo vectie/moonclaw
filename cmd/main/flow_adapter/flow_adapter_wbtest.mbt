@@ -148,7 +148,7 @@ test "flow adapter exposes MoonTown emergence boundary without seeding a solutio
       "contributions": [{ "origin": "emergent" }, { "origin": "dissenting" }],
       "critiques": [{}],
       "rankings": [{}],
-      "review": {},
+      "review": { "decision": "accepted_with_unresolved_dissent" },
       "deliveries": [{}],
     },
   }
@@ -168,6 +168,9 @@ test "flow adapter exposes MoonTown emergence boundary without seeding a solutio
     issues.contains(
       "MoonTown civic_round is missing field: unresolved_assumptions",
     ),
+  )
+  assert_true(
+    issues.contains("MoonTown review decision must be accepted or rejected"),
   )
 }
 

@@ -139,7 +139,7 @@ fn contract_guidance(request : Json) -> String {
     "moonwiki.evidence-bundle.v1" =>
       "Required product contract: use the governed web_search tool to discover public source leads and web_fetch to read every source you cite. The wrapper will attach immutable tool provenance; invented or unfetched locators are rejected. Return sources[] with unique source_id/title/locator/authority/accessed_at; claims[] with statement/source_refs/confidence 0..1; non-empty contradictions[], limitations[], remaining_information_gaps[], query_lineage[]; and stopping_rationale. A 'none found' contradiction must still record how it was checked."
     "moontown.deliberation.v1" =>
-      "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. Include non-empty comparison_criteria objects with criterion_id, name, and definition so rankings remain independently interpretable, plus non-empty unresolved_assumptions strings preserved by the recommendation. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id/decision/evidence_refs/note; and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; criteria, critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
+      "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. Include non-empty comparison_criteria objects with criterion_id, name, and definition so rankings remain independently interpretable, plus non-empty unresolved_assumptions strings preserved by the recommendation. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id, decision exactly accepted or rejected, evidence_refs, and note (preserve dissent in contributions and unresolved_assumptions, not by inventing another decision value); and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; criteria, critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
     "moonrobo.digital-design.v1" =>
       "Required product contract: design_id, integer revision, mission, task_loop, mechanisms, validation, and constraints. The design must be generic to the selected concept, trace requirements to components, preserve hazards/margins/unsupported assumptions, and remain digital only."
     "moonrobo.validation-evidence.v1" =>
@@ -362,13 +362,19 @@ fn moontown_round_issues(draft_fields : Map[String, Json]) -> Array[String] {
     _ => issues.push("MoonTown civic_round requires rankings")
   }
   match round.get("review") {
-    Some(Object(fields)) =>
+    Some(Object(fields)) => {
       for
         missing in has_fields(fields, [
           "reviewer_id", "decision", "evidence_refs", "note",
         ]) {
         issues.push("MoonTown review is missing field: " + missing)
       }
+      match fields.get("decision") {
+        Some(String("accepted" | "rejected")) => ()
+        _ =>
+          issues.push("MoonTown review decision must be accepted or rejected")
+      }
+    }
     _ => issues.push("MoonTown civic_round requires review")
   }
   match round.get("deliveries") {
