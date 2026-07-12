@@ -266,10 +266,16 @@ test "native helper DSL executes positive and negative vectors" {
     "criteria_preserved": true,
     "physical_readiness": false,
   }
-  let result = validate_helper_software(fields).stringify()
+  let result = validate_helper_software_with_criteria(fields, [
+    "positive and negative vectors are executed rather than asserted",
+  ]).stringify()
   assert_true(result.contains("moonclaw-native-attestor"))
   assert_true(result.contains("\"case_count\":2"))
   assert_true(result.contains("\"physical_readiness\":false"))
+  assert_true(result.contains("\"wrapper_owned\":true"))
+  assert_true(result.contains("\"inputs\":{\"available\":100"))
+  assert_true(result.contains("\"criterion_preservation\":"))
+  assert_true(result.contains("positive and negative vectors are executed"))
 }
 
 ///|
@@ -306,7 +312,7 @@ test "native helper DSL rejects an unproved operation" {
     "physical_readiness": false,
   }
   let rejected = try {
-    ignore(validate_helper_software(fields))
+    ignore(validate_helper_software_with_criteria(fields, []))
     false
   } catch {
     _ => true
