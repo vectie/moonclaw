@@ -32,6 +32,62 @@ test "flow capsules are isolated by run and attempt identity" {
 }
 
 ///|
+test "independent review prompt and validator preserve canonical receipt contract" {
+  let packet : Json = {
+    "review_id": "review-attempt-1",
+    "run_id": "flow-run-r1",
+    "work_item_id": "work-research",
+    "declaration_id": "research",
+    "result_id": "result-attempt-1-succeeded",
+    "attempt_id": "attempt-1",
+    "output_digest": "sha256:final-evidence",
+    "executor_output_digest": "sha256:draft",
+    "acceptance_criteria": ["evidence is traceable"],
+    "evidence_refs": ["evidence/research.artifact"],
+    "reviewer_id": "independent-reviewer",
+    "review_authority_id": "review-policy-v1",
+    "receipt_artifact": "reviews/receipt.json",
+    "recorded_at": "2026-07-12T00:00:00Z",
+  }
+  let prompt = review_prompt(packet, 1, [])
+  assert_true(prompt.contains("criteria an array in the exact request order"))
+  assert_true(prompt.contains("stage digests are not expected to be equal"))
+  let accepted : Json = {
+    "contract_id": "moonflow.acceptance-review.v1",
+    "review_id": "review-attempt-1",
+    "run_id": "flow-run-r1",
+    "work_item_id": "work-research",
+    "declaration_id": "research",
+    "result_id": "result-attempt-1-succeeded",
+    "attempt_id": "attempt-1",
+    "output_digest": "sha256:final-evidence",
+    "decision": "accepted",
+    "criteria": [
+      {
+        "criterion": "evidence is traceable",
+        "satisfied": true,
+        "evidence_refs": ["evidence/research.artifact"],
+        "note": "The immutable evidence contains traceable sources.",
+      },
+    ],
+    "reviewer_id": "independent-reviewer",
+    "review_authority_id": "review-policy-v1",
+    "receipt_artifact": "reviews/receipt.json",
+    "recorded_at": "2026-07-12T00:00:00Z",
+  }
+  assert_true(review_receipt_issues(packet, accepted).is_empty())
+  guard accepted is Object(fields) else { fail("expected receipt object") }
+  fields.remove("review_id")
+  fields["accepted"] = Json::boolean(true)
+  let issues = review_receipt_issues(packet, accepted)
+  assert_true(
+    issues.contains(
+      "receipt identity must exactly copy request field: review_id",
+    ),
+  )
+}
+
+///|
 test "flow adapter gives contract guidance and rejects incomplete drafts" {
   let request : Json = {
     "product_id": "moonmoon",

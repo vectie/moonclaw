@@ -821,11 +821,128 @@ async fn execute(args : Array[String]) -> Unit {
 }
 
 ///|
-fn review_prompt(packet : Json) -> String {
+fn review_prompt(
+  packet : Json,
+  trial : Int,
+  feedback : Array[String],
+) -> String {
   "You are an independent MoonFlow acceptance reviewer in an isolated task capsule. You did not execute this work and cannot access the parent suite workspace.\n" +
-  "Review the immutable request below and inspect the exact evidence files it names. Decide every criterion in the original order. A satisfied criterion requires specific evidence_refs; never accept an executor summary alone. Reject missing negative cases, digest or identity concerns, unsupported claims, and any physical-readiness overclaim. Preserve limitations and dissent. You may not grant authority or change criteria. Write exactly one moonflow.acceptance-review.v1 JSON receipt at receipt_artifact using the supplied identities, reviewer_id, review_authority_id, and recorded_at.\n```json\n" +
+  "Review the immutable request below and inspect the exact evidence files it names. Decide every criterion in the original order. A satisfied criterion requires evidence_refs copied exactly from the request's evidence_refs array; JSON pointers or undeclared paths are prohibited. Never accept an executor summary alone. Reject missing negative cases, unsupported claims, and any physical-readiness overclaim. Preserve limitations and dissent. You may not grant authority or change criteria.\n" +
+  "The product attestation has already been checked by MoonFlow against executor_output_digest. The request output_digest separately binds MoonFlow's immutable evidence snapshots. Follow digest_lineage: these stage digests are not expected to be equal because their artifact identities differ.\n" +
+  "Write exactly one JSON object at receipt_artifact with only this contract shape: contract_id=moonflow.acceptance-review.v1; review_id, run_id, work_item_id, declaration_id, result_id, attempt_id, output_digest, reviewer_id, review_authority_id, receipt_artifact, and recorded_at copied exactly from the request; decision equal to accepted or rejected; criteria an array in the exact request order with objects containing criterion, satisfied, evidence_refs, and non-empty note. An accepted decision requires every criterion satisfied. A rejected decision requires at least one unsatisfied criterion. Do not use accepted, rationale, limitations, or JSON-pointer evidence fields as substitutes. This is bounded review trial " +
+  "\{trial}." +
+  (if feedback.is_empty() {
+    ""
+  } else {
+    "\nThe previous receipt was rejected locally for these contract issues; correct them without weakening the criteria:\n- " +
+    feedback.join("\n- ")
+  }) +
+  "\n```json\n" +
   packet.stringify(indent=2) +
   "\n```"
+}
+
+///|
+fn review_receipt_issues(packet : Json, receipt : Json) -> Array[String] {
+  let issues : Array[String] = []
+  let packet_fields = object(packet, "review packet") catch {
+    _ => return ["review packet must be an object"]
+  }
+  let receipt_fields = object(receipt, "review receipt") catch {
+    _ => return ["review receipt must be an object"]
+  }
+  if receipt_fields.get("contract_id") !=
+    Some(Json::string("moonflow.acceptance-review.v1")) {
+    issues.push("contract_id must be moonflow.acceptance-review.v1")
+  }
+  for
+    key in [
+      "review_id", "run_id", "work_item_id", "declaration_id", "result_id", "attempt_id",
+      "output_digest", "reviewer_id", "review_authority_id", "receipt_artifact",
+      "recorded_at",
+    ] {
+    match (packet_fields.get(key), receipt_fields.get(key)) {
+      (Some(String(expected)), Some(String(actual))) if expected == actual => ()
+      _ =>
+        issues.push("receipt identity must exactly copy request field: " + key)
+    }
+  }
+  let decision = match receipt_fields.get("decision") {
+    Some(String(value)) if value == "accepted" || value == "rejected" => value
+    _ => {
+      issues.push("decision must be accepted or rejected")
+      ""
+    }
+  }
+  let allowed_evidence = match packet_fields.get("evidence_refs") {
+    Some(Array(values)) => values
+    _ => {
+      issues.push("review request evidence_refs are missing")
+      []
+    }
+  }
+  let expected_criteria = match packet_fields.get("acceptance_criteria") {
+    Some(Array(values)) => values
+    _ => {
+      issues.push("review request acceptance_criteria are missing")
+      []
+    }
+  }
+  let criteria = match receipt_fields.get("criteria") {
+    Some(Array(values)) => values
+    _ => {
+      issues.push("criteria must be an array")
+      []
+    }
+  }
+  if criteria.length() != expected_criteria.length() {
+    issues.push("criteria must match request count and order")
+  }
+  let mut all_satisfied = !criteria.is_empty()
+  for index in 0..<criteria.length().min(expected_criteria.length()) {
+    guard criteria[index] is Object(review) else {
+      issues.push("criterion review must be an object")
+      all_satisfied = false
+      continue
+    }
+    if review.get("criterion") != Some(expected_criteria[index]) {
+      issues.push("criterion text and order must exactly match the request")
+    }
+    let satisfied = review.get("satisfied") == Some(Json::boolean(true))
+    if review.get("satisfied") != Some(Json::boolean(true)) &&
+      review.get("satisfied") != Some(Json::boolean(false)) {
+      issues.push("criterion satisfied must be a boolean")
+    }
+    if !satisfied {
+      all_satisfied = false
+    }
+    match review.get("evidence_refs") {
+      Some(Array(refs)) => {
+        if satisfied && refs.is_empty() {
+          issues.push("satisfied criterion requires evidence_refs")
+        }
+        for reference in refs {
+          if !allowed_evidence.contains(reference) {
+            issues.push(
+              "criterion evidence_ref must exactly match a request evidence_ref",
+            )
+          }
+        }
+      }
+      _ => issues.push("criterion evidence_refs must be an array")
+    }
+    match review.get("note") {
+      Some(String(value)) if !value.trim().is_empty() => ()
+      _ => issues.push("criterion note is required")
+    }
+  }
+  if decision == "accepted" && !all_satisfied {
+    issues.push("accepted decision requires every criterion satisfied")
+  }
+  if decision == "rejected" && all_satisfied {
+    issues.push("rejected decision requires an unsatisfied criterion")
+  }
+  issues
 }
 
 ///|
@@ -845,10 +962,10 @@ async fn review(args : Array[String]) -> Unit {
   let attempt_id = string_field(fields, "attempt_id")
   let log_root = workspace +
     "/.moonsuite/products/moonclaw/reviews/" +
-    attempt_id
+    require_segment(string_field(fields, "run_id"), "run_id") +
+    "/" +
+    require_segment(attempt_id, "attempt_id")
   @fsx.make_directory(log_root, recursive=true, exists_ok=true)
-  let capsule_root = log_root + "/capsule"
-  @fsx.make_directory(capsule_root, recursive=true, exists_ok=true)
   let review_inputs : Array[String] = []
   match fields.get("evidence_refs") {
     Some(Array(values)) =>
@@ -866,32 +983,57 @@ async fn review(args : Array[String]) -> Unit {
       review_inputs.push(require_ref(reference, "product attestation"))
     _ => fail("MoonClaw reviewer requires product attestation evidence")
   }
-  for artifact in review_inputs {
-    let source = workspace + "/" + artifact
-    if !@fsx.exists(source) {
-      fail("MoonClaw reviewer evidence is missing: \{artifact}")
+  let mut capsule_receipt = ""
+  let mut feedback : Array[String] = []
+  for trial in 1..<=3 {
+    let capsule_root = log_root + "/capsules/trial-\{trial}"
+    @fsx.make_directory(capsule_root, recursive=true, exists_ok=true)
+    for artifact in review_inputs {
+      let source = workspace + "/" + artifact
+      if !@fsx.exists(source) {
+        fail("MoonClaw reviewer evidence is missing: \{artifact}")
+      }
+      let destination = capsule_root + "/" + artifact
+      @fsx.make_directory(
+        @pathx.dirname(destination),
+        recursive=true,
+        exists_ok=true,
+      )
+      @fsx.write_to_file(destination, @fsx.read_file(source), create=0o444)
     }
-    let destination = capsule_root + "/" + artifact
-    @fsx.make_directory(
-      @pathx.dirname(destination),
-      recursive=true,
-      exists_ok=true,
+    write_json(capsule_root + "/review-packet.json", packet)
+    ignore(
+      execute_agent(
+        capsule_root,
+        model_name,
+        review_prompt(packet, trial, feedback),
+        log_root + "/trial-\{trial}.jsonl",
+        false,
+      ),
     )
-    @fsx.write_to_file(destination, @fsx.read_file(source), create=0o444)
+    let candidate = capsule_root + "/" + receipt_ref
+    if !@fsx.exists(candidate) {
+      feedback = ["declared review receipt is missing"]
+      continue
+    }
+    let candidate_value = read_json(candidate) catch {
+      _ => {
+        feedback = ["declared review receipt is not valid JSON"]
+        continue
+      }
+    }
+    let issues = review_receipt_issues(packet, candidate_value)
+    if issues.is_empty() {
+      capsule_receipt = candidate
+      break
+    }
+    feedback = issues
   }
-  write_json(capsule_root + "/review-packet.json", packet)
-  ignore(
-    execute_agent(
-      capsule_root,
-      model_name,
-      review_prompt(packet),
-      log_root + "/review.jsonl",
-      false,
-    ),
-  )
-  let capsule_receipt = capsule_root + "/" + receipt_ref
-  if !@fsx.exists(capsule_receipt) {
-    fail("MoonClaw independent reviewer omitted its declared receipt")
+  if capsule_receipt.is_empty() {
+    fail(
+      "MoonClaw independent reviewer exhausted bounded trials: " +
+      feedback.join("; "),
+    )
   }
   let workspace_receipt = workspace + "/" + receipt_ref
   @fsx.make_directory(
