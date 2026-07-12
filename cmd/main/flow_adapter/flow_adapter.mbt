@@ -149,7 +149,7 @@ fn contract_guidance(request : Json) -> String {
     "moonmoon.scenario-evidence.v1" =>
       "Required product contract: simulation_model with initial_energy_wh greater than reserve_energy_wh and scenarios containing both nominal and adverse kinds. Every scenario needs scenario_id, integer seed, and steps with non-negative energy_use_wh/progress_delta, hazard boolean, and recovery. Also include non-empty model_limitations and uncertainty."
     "moonbook.outcome-audit.v1" =>
-      "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps objects with the exact field kind equal to information-gap, cognition-gap, or execution-gap, plus question and resolution_criteria. The field type is not a substitute for kind. Also include residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
+      "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps objects with the exact field kind equal to information-gap, cognition-gap, or execution-gap, plus string question and string resolution_criteria. The field type is not a substitute for kind. Also include residual_risks; a non-empty string final_claim; claim_ceiling as exactly one scalar string from observation, research-evidence, accepted-knowledge, digital-artifact, simulation-evidence, or scenario-qualified (never an object and never an explanatory sentence); and string recorded_at."
     "moonclaw.software-result.v1" =>
       "Required product contract: change_summary; implementation is an object whose language field is exactly moonsuite-helper-dsl.v1 and whose functions are objects with name, operation, and exactly two string inputs. Put operation directly on each function (not inside expression); allowed values are add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or. Include non-empty test_vectors and negative_cases with case_id/function/inputs/expected. Each test inputs value must be a JSON object keyed by the selected function's two input names, not a positional array. Set criteria_preserved true and physical_readiness false. Field names are exact: contract_id is not a substitute for implementation.language. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
     _ =>
@@ -368,7 +368,7 @@ fn moonbook_audit_issues(
       ].contains(value) => ()
     _ =>
       issues.push(
-        "MoonBook final claim ceiling is not constitutionally bounded",
+        "MoonBook claim_ceiling must be exactly one scalar string: observation, research-evidence, accepted-knowledge, digital-artifact, simulation-evidence, or scenario-qualified",
       )
   }
   match fields.get("final_claim") {

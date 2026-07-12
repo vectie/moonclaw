@@ -172,7 +172,7 @@ test "MoonBook audit preflight requires exact metacognitive gap kinds" {
   )
   assert_true(
     issues.contains(
-      "MoonBook final claim ceiling is not constitutionally bounded",
+      "MoonBook claim_ceiling must be exactly one scalar string: observation, research-evidence, accepted-knowledge, digital-artifact, simulation-evidence, or scenario-qualified",
     ),
   )
 }
