@@ -46,3 +46,25 @@ test "flow adapter exposes MoonTown emergence boundary without seeding a solutio
   assert_true(guidance.contains("dissenting contribution"))
   assert_false(guidance.contains("polar-inspector"))
 }
+
+///|
+test "MoonClaw software contract requires negative evidence and preserved criteria" {
+  let request : Json = {
+    "product_id": "moonclaw",
+    "output_contracts": ["moonclaw.software-result.v1"],
+  }
+  assert_true(contract_guidance(request).contains("criteria_preserved"))
+  let incomplete : Map[String, Json] = {
+    "criteria_preserved": Json::boolean(false),
+    "physical_readiness": Json::boolean(false),
+  }
+  let issues = moonclaw_software_issues(incomplete)
+  assert_true(
+    issues.contains("MoonClaw software result must preserve all criteria"),
+  )
+  assert_true(
+    issues.contains(
+      "MoonClaw software result requires non-empty negative_cases",
+    ),
+  )
+}

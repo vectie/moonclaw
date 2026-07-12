@@ -100,6 +100,8 @@ fn contract_guidance(request : Json) -> String {
       "Required product contract: simulation_model with initial_energy_wh greater than reserve_energy_wh and scenarios containing both nominal and adverse kinds. Every scenario needs scenario_id, integer seed, and steps with non-negative energy_use_wh/progress_delta, hazard boolean, and recovery. Also include non-empty model_limitations and uncertainty."
     "moonbook.outcome-audit.v1" =>
       "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps using information-gap/cognition-gap/execution-gap with question and resolution_criteria, residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
+    "moonclaw.software-result.v1" =>
+      "Required product contract: change_summary, implementation, non-empty build_checks, test_results, negative_cases, and trial_evidence; criteria_preserved must be true and physical_readiness must be false. Test evidence must cover both positive behavior and declared failure/refusal behavior."
     _ =>
       "Follow the declared output contract and preserve all evidence boundaries."
   }
@@ -155,11 +157,37 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
         "criterion_decisions", "open_gaps", "residual_risks", "final_claim", "claim_ceiling",
         "recorded_at",
       ]
+    "moonclaw.software-result.v1" =>
+      [
+        "change_summary", "implementation", "build_checks", "test_results", "negative_cases",
+        "trial_evidence",
+      ]
     _ => []
   }
   for key in required {
     if !non_empty_field(fields, key) {
       issues.push("required field is missing or empty: \{key}")
+    }
+  }
+  issues
+}
+
+///|
+fn moonclaw_software_issues(fields : Map[String, Json]) -> Array[String] {
+  let issues : Array[String] = []
+  match fields.get("criteria_preserved") {
+    Some(True) => ()
+    _ => issues.push("MoonClaw software result must preserve all criteria")
+  }
+  match fields.get("physical_readiness") {
+    Some(False) => ()
+    _ =>
+      issues.push("MoonClaw software result must set physical_readiness false")
+  }
+  for
+    key in ["build_checks", "test_results", "negative_cases", "trial_evidence"] {
+    if !non_empty_field(fields, key) {
+      issues.push("MoonClaw software result requires non-empty \{key}")
     }
   }
   issues
@@ -326,6 +354,19 @@ async fn attest(args : Array[String]) -> Unit {
     if !observed_contracts.contains(contract) {
       fail(
         "MoonClaw product attestor did not observe required contract \{contract}",
+      )
+    }
+  }
+  if product_id == "moonclaw" &&
+    output_contracts.contains("moonclaw.software-result.v1") {
+    let software_fields = object(
+      read_json(workspace + "/" + draft_ref),
+      "MoonClaw software result",
+    )
+    let software_issues = moonclaw_software_issues(software_fields)
+    if !software_issues.is_empty() {
+      fail(
+        "MoonClaw rejected its software result: \{software_issues.join("; ")}",
       )
     }
   }
