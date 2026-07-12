@@ -1,0 +1,111 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/browser"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : String, created_at? : String) -> BrowserAction
+
+pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_revision~ : String, code_revision~ : String, run_id~ : String, authority_envelope_id~ : String, allowed_origins? : Array[String], permitted_effects? : Array[String]) -> BrowserSessionScope
+
+// Errors
+
+// Types and methods
+pub struct BrowserAction {
+  action_id : String
+  session_id : String
+  actor : BrowserActor
+  operation : BrowserOperation
+  target : String
+  value_redacted : String
+  expected_observation : String
+  code_revision : String
+  authority_envelope_id : String
+  required_effect : String
+  created_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BrowserActionOutcome {
+  Accepted
+  NoOp
+  Blocked(String)
+  Diverged(String)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct BrowserActionReceipt {
+  action_id : String
+  session_id : String
+  actor : BrowserActor
+  operation : BrowserOperation
+  outcome : BrowserActionOutcome
+  observations : Array[String]
+  authority_envelope_id : String
+  code_revision : String
+  completed_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+pub fn BrowserActionReceipt::accepted(Self) -> Bool
+
+pub(all) enum BrowserActor {
+  User
+  Agent
+  Replay
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BrowserOperation {
+  Navigate
+  Reload
+  StopLoading
+  Click
+  TypeText
+  PressKey
+  SelectOption
+  SetViewport
+  CaptureScreenshot
+  CaptureDiagnostics
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct BrowserSessionScope {
+  session_id : String
+  workspace_id : String
+  book_revision : String
+  code_revision : String
+  run_id : String
+  authority_envelope_id : String
+  allowed_origins : Array[String]
+  permitted_effects : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BrowserSessionStatus {
+  Ready
+  AgentOperating
+  Paused
+  UserControl
+  Stopped
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct BrowserWorker {
+  scope : BrowserSessionScope
+  mut status : BrowserSessionStatus
+  mut remaining_actions : Int
+  receipts : Array[BrowserActionReceipt]
+}
+pub fn BrowserWorker::begin_agent_operation(Self) -> Bool
+pub fn BrowserWorker::execute(Self, BrowserAction, target_stable~ : Bool, observations? : Array[String], completed_at? : String) -> BrowserActionReceipt
+pub fn BrowserWorker::new(BrowserSessionScope, action_budget? : Int) -> Self
+pub fn BrowserWorker::pause(Self) -> Bool
+pub fn BrowserWorker::receipts(Self) -> Array[BrowserActionReceipt]
+pub fn BrowserWorker::remaining_actions(Self) -> Int
+pub fn BrowserWorker::replay(Self, BrowserActionReceipt, BrowserAction, target_stable~ : Bool, completed_at? : String) -> BrowserActionReceipt
+pub fn BrowserWorker::return_to_agent(Self) -> Bool
+pub fn BrowserWorker::scope(Self) -> BrowserSessionScope
+pub fn BrowserWorker::status(Self) -> BrowserSessionStatus
+pub fn BrowserWorker::stop(Self) -> Bool
+pub fn BrowserWorker::take_over(Self) -> Bool
+
+// Type aliases
+
+// Traits
+
