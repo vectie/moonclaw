@@ -96,6 +96,7 @@ test "flow adapter gives contract guidance and rejects incomplete drafts" {
     "output_contracts": ["moonmoon.scenario-evidence.v1"],
   }
   assert_true(contract_guidance(request).contains("nominal and adverse"))
+  assert_true(contract_guidance(request).contains("global initial_energy_wh"))
   let issues = draft_quality_issues(request, {
     "contract_id": "moonmoon.scenario-evidence.v1",
     "product_id": "moonmoon",
