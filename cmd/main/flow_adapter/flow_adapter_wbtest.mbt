@@ -315,6 +315,36 @@ test "native helper DSL rejects an unproved operation" {
 }
 
 ///|
+test "draft validation reports the exact helper DSL shape before attestation" {
+  let request : Json = {
+    "product_id": "moonclaw",
+    "output_contracts": ["moonclaw.software-result.v1"],
+  }
+  let draft : Json = {
+    "contract_id": "moonclaw.software-result.v1",
+    "product_id": "moonclaw",
+    "change_summary": "Add a bounded helper.",
+    "implementation": {
+      "contract_id": "moonsuite-helper-dsl.v1",
+      "functions": [
+        {
+          "name": "reserve_margin",
+          "inputs": ["available", "required"],
+          "expression": { "operation": "subtract" },
+        },
+      ],
+    },
+    "test_vectors": [{ "case_id": "nominal" }],
+    "negative_cases": [{ "case_id": "deficit" }],
+    "criteria_preserved": true,
+    "physical_readiness": false,
+  }
+  let issues = draft_quality_issues(request, draft)
+  assert_true(issues.any(issue => issue.contains("moonsuite-helper-dsl.v1")))
+  assert_true(issues.any(issue => issue.contains("directly on the function")))
+}
+
+///|
 async test "MoonClaw attestor materializes wrapper-owned helper evidence" {
   let workspace = "/tmp/moonclaw-helper-attestor-wbtest"
   write_json(workspace + "/runtime/request.json", {

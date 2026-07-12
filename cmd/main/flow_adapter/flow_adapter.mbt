@@ -149,7 +149,7 @@ fn contract_guidance(request : Json) -> String {
     "moonbook.outcome-audit.v1" =>
       "Required product contract: criterion_decisions exactly matching request acceptance_criteria in original order; each decision is accepted/blocked/rejected with evidence_refs or blocker and rationale. Include non-empty open_gaps using information-gap/cognition-gap/execution-gap with question and resolution_criteria, residual_risks, final_claim, bounded claim_ceiling, and recorded_at."
     "moonclaw.software-result.v1" =>
-      "Required product contract: change_summary; implementation using moonsuite-helper-dsl.v1 with named two-input functions and only add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or operations; non-empty test_vectors and negative_cases with case_id/function/inputs/expected; criteria_preserved true; physical_readiness false. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
+      "Required product contract: change_summary; implementation is an object whose language field is exactly moonsuite-helper-dsl.v1 and whose functions are objects with name, operation, and exactly two string inputs. Put operation directly on each function (not inside expression); allowed values are add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or. Include non-empty test_vectors and negative_cases with case_id/function/inputs/expected; criteria_preserved true; physical_readiness false. Field names are exact: contract_id is not a substitute for implementation.language. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
     _ =>
       "Follow the declared output contract and preserve all evidence boundaries."
   }
@@ -240,6 +240,11 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
   }
   if contract == "moontown.deliberation.v1" {
     for issue in moontown_round_issues(fields) {
+      issues.push(issue)
+    }
+  }
+  if contract == "moonclaw.software-result.v1" {
+    for issue in moonclaw_software_issues(fields) {
       issues.push(issue)
     }
   }
@@ -472,6 +477,32 @@ fn moonclaw_software_issues(fields : Map[String, Json]) -> Array[String] {
       }
       if !non_empty_field(implementation, "functions") {
         issues.push("MoonClaw helper DSL requires functions")
+      } else {
+        guard implementation.get("functions") is Some(Array(functions)) else {
+          issues.push("MoonClaw helper DSL functions must be an array")
+          return issues
+        }
+        for function in functions {
+          guard function is Object(function_fields) else {
+            issues.push("MoonClaw helper function must be an object")
+            continue
+          }
+          if !non_empty_field(function_fields, "name") {
+            issues.push("MoonClaw helper function requires name")
+          }
+          if !non_empty_field(function_fields, "operation") {
+            issues.push(
+              "MoonClaw helper function requires operation directly on the function object",
+            )
+          }
+          match function_fields.get("inputs") {
+            Some(Array([String(_), String(_)])) => ()
+            _ =>
+              issues.push(
+                "MoonClaw helper function requires exactly two string inputs",
+              )
+          }
+        }
       }
     }
     _ => issues.push("MoonClaw helper implementation must be an object")
