@@ -21,6 +21,7 @@ node_modules
 _build
 target
 .moonclaw/job-workspaces/
+.moonsuite/
 .moonclaw-tool-journal-*.json
 .moontown/
 moonclaw-jobs/
