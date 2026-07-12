@@ -122,6 +122,7 @@ test "flow adapter exposes MoonTown emergence boundary without seeding a solutio
   assert_false(guidance.contains("polar-inspector"))
   assert_true(guidance.contains("source_book_id"))
   assert_true(guidance.contains("supports"))
+  assert_true(guidance.contains("comparison_criteria"))
   let incomplete : Json = {
     "contract_id": "moontown.deliberation.v1",
     "product_id": "moontown",
@@ -140,6 +141,11 @@ test "flow adapter exposes MoonTown emergence boundary without seeding a solutio
   )
   assert_true(
     issues.contains("MoonTown civic_round is missing field: question"),
+  )
+  assert_true(
+    issues.contains(
+      "MoonTown civic_round is missing field: comparison_criteria",
+    ),
   )
 }
 
