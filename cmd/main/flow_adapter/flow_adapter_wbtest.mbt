@@ -234,6 +234,19 @@ test "MoonWiki research requires successful wrapper-owned search and fetch" {
 }
 
 ///|
+test "required scalar fields accept numbers and booleans" {
+  let fields : Map[String, Json] = {
+    "revision": 3,
+    "physical_readiness": false,
+    "empty": "",
+  }
+  assert_true(non_empty_field(fields, "revision"))
+  assert_true(non_empty_field(fields, "physical_readiness"))
+  assert_false(non_empty_field(fields, "empty"))
+  assert_false(non_empty_field(fields, "missing"))
+}
+
+///|
 test "native helper DSL executes positive and negative vectors" {
   let fields : Map[String, Json] = {
     "change_summary": "Add a reserve margin helper.",

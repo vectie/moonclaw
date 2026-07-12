@@ -98,6 +98,8 @@ fn non_empty_field(fields : Map[String, Json], key : String) -> Bool {
     Some(String(value)) => !value.trim().is_empty()
     Some(Array(values)) => !values.is_empty()
     Some(Object(values)) => !values.is_empty()
+    Some(Number(_)) => true
+    Some(True | False) => true
     _ => false
   }
 }
