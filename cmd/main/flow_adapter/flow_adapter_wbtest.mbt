@@ -268,6 +268,29 @@ test "MoonRobo design reports numeric revision before native attestation" {
 }
 
 ///|
+test "MoonRobo native design shape passes local validation" {
+  let fields : Map[String, Json] = {
+    "revision": "r1",
+    "mission": { "authority": "digital-only", "robot_class": "survey-rover" },
+    "task_loop": ["observe", "plan", "simulate", "safe-stop"],
+    "mechanisms": [
+      { "id": "mobility", "kind": "locomotion" },
+      { "id": "observer", "kind": "sensor" },
+      { "id": "supervisor", "kind": "control" },
+    ],
+    "validation": {
+      "scenarios": [
+        { "id": "nominal", "expected": "bounded progress" },
+        { "id": "blackout", "expected": "safe stop" },
+        { "id": "energy-loss", "expected": "reserve preserved" },
+      ],
+    },
+    "constraints": { "commanded_speed_mps": { "max": 0.1 } },
+  }
+  assert_true(moonrobo_design_issues(fields).is_empty())
+}
+
+///|
 test "native helper DSL executes positive and negative vectors" {
   let fields : Map[String, Json] = {
     "change_summary": "Add a reserve margin helper.",

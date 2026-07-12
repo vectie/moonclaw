@@ -143,7 +143,7 @@ fn contract_guidance(request : Json) -> String {
     "moontown.deliberation.v1" =>
       "Required product contract: civic_round is exactly a moontown.autonomous-civic-round.v1 object with round_id, commission_id, question, commissioned_agenda_ids, requested_authority, and recorded_at. Include non-empty comparison_criteria objects with criterion_id, name, and definition so rankings remain independently interpretable. Include comparison_assessments covering every contribution_id/criterion_id pair; each assessment needs a non-empty rating, rationale, and evidence_refs. Also include non-empty unresolved_assumptions strings preserved by the recommendation. It needs at least two contributions; every contribution requires contribution_id, participant_id, source_book_id, origin (commissioned/emergent/dissenting/minority/synthesized), summary, evidence_refs, alternatives, blockers, implementation_criteria, claim_ceiling (observation/research-evidence/execution-result/accepted-knowledge), supports, and proposal. Include at least one genuinely emergent uncommissioned contribution with origin=emergent and one dissenting contribution with origin=dissenting. Use non-empty critiques objects with critique_id/participant_id/target_contribution_id/concern/evidence_refs/severity/resolved; non-empty rankings with voter_id/ordered_contribution_ids/rationale; review with reviewer_id, decision exactly accepted or rejected, evidence_refs, and note (preserve dissent in contributions and unresolved_assumptions, not by inventing another decision value); and deliveries for every contribution participant with participant_id/received/returned_home/receipt_ref. Field names are exact; criteria, critique, ranking, accepted_review, delivery_receipts, and home_return_receipts are not substitutes."
     "moonrobo.digital-design.v1" =>
-      "Required product contract: design_id; revision as a non-empty string such as r1; mission; task_loop; mechanisms; validation; and constraints. The design must be generic to the selected concept, trace requirements to components, preserve hazards/margins/unsupported assumptions, and remain digital only."
+      "Required product contract: design_id as a lowercase slug; revision as a non-empty string such as r1; mission object with authority exactly digital-only, non-empty robot_class, and optional name; task_loop as at least four non-empty string statements; mechanisms as at least three objects with unique lowercase-slug id and non-empty kind; validation.scenarios as at least three objects with unique non-empty id and expected; and constraints.commanded_speed_mps.max as a positive number. Preserve requirement traceability plus hazards, margins, and unsupported physical assumptions in additional fields, and remain digital only. Field shapes are exact: task-loop objects and component_id/name/digital_function mechanism objects are not substitutes for the native fields."
     "moonrobo.validation-evidence.v1" =>
       "Required product contract: non-empty constraint_results, negative_cases, and failure_traces. Validate the accepted digital-design input without hiding failed constraints in aggregate scores; preserve blockers and digital-only scope."
     "moonmoon.scenario-evidence.v1" =>
@@ -246,12 +246,8 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
     }
   }
   if contract == "moonrobo.digital-design.v1" {
-    match fields.get("revision") {
-      Some(String(value)) if !value.trim().is_empty() => ()
-      _ =>
-        issues.push(
-          "MoonRobo digital design revision must be a non-empty string",
-        )
+    for issue in moonrobo_design_issues(fields) {
+      issues.push(issue)
     }
   }
   if contract == "moonclaw.software-result.v1" {
@@ -268,6 +264,104 @@ fn has_fields(
   names : Array[String],
 ) -> Array[String] {
   names.filter(name => !fields.contains(name))
+}
+
+///|
+fn moonrobo_design_issues(fields : Map[String, Json]) -> Array[String] {
+  let issues : Array[String] = []
+  match fields.get("revision") {
+    Some(String(value)) if !value.trim().is_empty() => ()
+    _ =>
+      issues.push("MoonRobo digital design revision must be a non-empty string")
+  }
+  match fields.get("mission") {
+    Some(Object(mission)) => {
+      if mission.get("authority") != Some(Json::string("digital-only")) {
+        issues.push("MoonRobo mission.authority must equal digital-only")
+      }
+      if !non_empty_field(mission, "robot_class") {
+        issues.push("MoonRobo mission.robot_class must be non-empty")
+      }
+    }
+    _ => issues.push("MoonRobo mission must be an object")
+  }
+  match fields.get("task_loop") {
+    Some(Array(steps)) if steps.length() >= 4 =>
+      if steps.any(step => {
+          match step {
+            String(value) => value.trim().is_empty()
+            _ => true
+          }
+        }) {
+        issues.push("MoonRobo task_loop requires non-empty string statements")
+      }
+    _ =>
+      issues.push("MoonRobo task_loop requires at least four string statements")
+  }
+  let mechanism_ids : Array[String] = []
+  match fields.get("mechanisms") {
+    Some(Array(mechanisms)) if mechanisms.length() >= 3 =>
+      for mechanism in mechanisms {
+        guard mechanism is Object(mechanism_fields) else {
+          issues.push("MoonRobo mechanism must be an object")
+          continue
+        }
+        let id = match mechanism_fields.get("id") {
+          Some(String(value)) => value
+          _ => ""
+        }
+        if id.trim().is_empty() || !non_empty_field(mechanism_fields, "kind") {
+          issues.push("MoonRobo mechanisms require non-empty id and kind")
+        } else if mechanism_ids.contains(id) {
+          issues.push("MoonRobo mechanism ids must be unique")
+        } else {
+          mechanism_ids.push(id)
+        }
+      }
+    _ => issues.push("MoonRobo mechanisms require at least three entries")
+  }
+  match fields.get("validation") {
+    Some(Object(validation)) =>
+      match validation.get("scenarios") {
+        Some(Array(scenarios)) if scenarios.length() >= 3 =>
+          for scenario in scenarios {
+            guard scenario is Object(scenario_fields) else {
+              issues.push("MoonRobo validation scenario must be an object")
+              continue
+            }
+            if !non_empty_field(scenario_fields, "id") ||
+              !non_empty_field(scenario_fields, "expected") {
+              issues.push(
+                "MoonRobo validation scenarios require id and expected",
+              )
+            }
+          }
+        _ =>
+          issues.push(
+            "MoonRobo validation.scenarios requires at least three entries",
+          )
+      }
+    _ => issues.push("MoonRobo validation must be an object")
+  }
+  match fields.get("constraints") {
+    Some(Object(constraints)) =>
+      match constraints.get("commanded_speed_mps") {
+        Some(Object(speed)) =>
+          match speed.get("max") {
+            Some(Number(value, ..)) if value > 0.0 => ()
+            _ =>
+              issues.push(
+                "MoonRobo constraints.commanded_speed_mps.max must be positive",
+              )
+          }
+        _ =>
+          issues.push(
+            "MoonRobo constraints.commanded_speed_mps must be an object",
+          )
+      }
+    _ => issues.push("MoonRobo constraints must be an object")
+  }
+  issues
 }
 
 ///|
