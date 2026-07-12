@@ -21,7 +21,7 @@ node_modules
 _build
 target
 /internal/buildinfo/version_string.mbt
-.moonclaw/job-workspaces/
+/.moonclaw/
 .moonsuite/
 .moonclaw-tool-journal-*.json
 .moontown/
