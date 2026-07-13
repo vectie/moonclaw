@@ -45,6 +45,14 @@ const receipt = {
   code_revision: command.code_revision,
   authority_envelope_id: command.authority_envelope_id,
   capability_digest: command.capability_digest,
+  page_trust: command.page_trust ?? "TrustedLocalPage",
+  destination_class: command.origin_class === "ExternalOrigin"
+    ? "PublicInternetDestination"
+    : "DestinationNotApplicable",
+  quarantine_ref: "",
+  transfer_verdict: "TransferNotScanned",
+  idempotency_key: command.idempotency_key ?? "",
+  fresh_authority_valid: false,
   status: missing ? ["RejectedByHost", "semantic-target-not-found"] : "Completed",
   before_state_digest: before,
   after_state_digest: after,

@@ -7,17 +7,25 @@ import {
 }
 
 // Values
-pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, actor_id? : String, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : BrowserEffectClass, created_at? : String) -> BrowserAction
+pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, actor_id? : String, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : BrowserEffectClass, page_trust? : BrowserPageTrust, credential_handle? : String, transfer_path? : String, idempotency_key? : String, fresh_authority_nonce? : String, created_at? : String) -> BrowserAction
 
-pub fn browser_host_result(host_receipt_id~ : String, request_id~ : String, session_id~ : String, action_id~ : String, code_revision~ : String, authority_envelope_id~ : String, capability_digest~ : String, status~ : BrowserHostStatus, before_state_digest~ : String, after_state_digest~ : String, screenshot_before_ref? : String, screenshot_after_ref? : String, observations? : Array[String], target_resolved? : Bool, completed_at? : String) -> BrowserHostResult
+pub fn browser_effect_mutates_external_state(BrowserEffectClass) -> Bool
+
+pub fn browser_external_origin_allowed(String) -> Bool
+
+pub fn browser_host_result(host_receipt_id~ : String, request_id~ : String, session_id~ : String, action_id~ : String, code_revision~ : String, authority_envelope_id~ : String, capability_digest~ : String, page_trust? : BrowserPageTrust, destination_class? : BrowserDestinationClass, quarantine_ref? : String, transfer_verdict? : BrowserTransferVerdict, idempotency_key? : String, fresh_authority_valid? : Bool, status~ : BrowserHostStatus, before_state_digest~ : String, after_state_digest~ : String, screenshot_before_ref? : String, screenshot_after_ref? : String, observations? : Array[String], target_resolved? : Bool, completed_at? : String) -> BrowserHostResult
 
 pub fn browser_loopback_origin_allowed(StringView) -> Bool
 
 pub fn browser_operation_effect_class(BrowserOperation) -> BrowserEffectClass
 
+pub fn browser_origin_from_external_url(StringView) -> String?
+
+pub fn browser_path_inside_root(StringView, StringView) -> Bool
+
 pub fn browser_scope_policy_issue(BrowserSessionScope) -> String?
 
-pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_revision~ : String, code_revision~ : String, run_id~ : String, authority_envelope_id~ : String, origin_class? : BrowserOriginClass, network_policy? : BrowserNetworkPolicy, storage_lifetime? : BrowserStorageLifetime, allowed_origins? : Array[String], permitted_effects? : Array[BrowserEffectClass], download_root? : String, upload_sources? : Array[String], capability_digest? : String, capability_expires_at? : String) -> BrowserSessionScope
+pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_revision~ : String, code_revision~ : String, run_id~ : String, authority_envelope_id~ : String, origin_class? : BrowserOriginClass, network_policy? : BrowserNetworkPolicy, storage_lifetime? : BrowserStorageLifetime, allowed_origins? : Array[String], permitted_effects? : Array[BrowserEffectClass], download_root? : String, upload_sources? : Array[String], capability_digest? : String, capability_expires_at? : String, mutation_authority_id? : String, mutation_authority_nonce? : String, mutation_authority_expires_at? : String, credential_handles? : Array[String]) -> BrowserSessionScope
 
 // Errors
 
@@ -34,6 +42,11 @@ pub struct BrowserAction {
   code_revision : String
   authority_envelope_id : String
   required_effect : BrowserEffectClass
+  page_trust : BrowserPageTrust
+  credential_handle : String
+  transfer_path : String
+  idempotency_key : String
+  fresh_authority_nonce : String
   created_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
@@ -64,6 +77,11 @@ pub struct BrowserActionReceipt {
   capability_digest : String
   capability_expires_at : String
   code_revision : String
+  page_trust : BrowserPageTrust
+  destination_class : BrowserDestinationClass
+  quarantine_ref : String
+  idempotency_key : String
+  fresh_authority_nonce : String
   completed_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn BrowserActionReceipt::accepted(Self) -> Bool
@@ -72,6 +90,14 @@ pub(all) enum BrowserActor {
   User
   Agent
   Replay
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BrowserDestinationClass {
+  DestinationNotApplicable
+  PublicInternetDestination
+  LoopbackDestination
+  PrivateNetworkDestination
+  LinkLocalDestination
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum BrowserDispatch {
@@ -111,6 +137,15 @@ pub struct BrowserHostCommand {
   authority_envelope_id : String
   capability_digest : String
   capability_expires_at : String
+  page_trust : BrowserPageTrust
+  credential_handle : String
+  transfer_path : String
+  upload_sources : Array[String]
+  download_quarantine_root : String
+  idempotency_key : String
+  mutation_authority_id : String
+  fresh_authority_nonce : String
+  mutation_authority_expires_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct BrowserHostResult {
@@ -121,6 +156,12 @@ pub struct BrowserHostResult {
   code_revision : String
   authority_envelope_id : String
   capability_digest : String
+  page_trust : BrowserPageTrust
+  destination_class : BrowserDestinationClass
+  quarantine_ref : String
+  transfer_verdict : BrowserTransferVerdict
+  idempotency_key : String
+  fresh_authority_valid : Bool
   status : BrowserHostStatus
   before_state_digest : String
   after_state_digest : String
@@ -162,6 +203,12 @@ pub(all) enum BrowserOriginClass {
   ExternalOrigin
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) enum BrowserPageTrust {
+  TrustedLocalPage
+  UntrustedExternalPage
+  PromptInjectionSuspected
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub struct BrowserSessionScope {
   session_id : String
   workspace_id : String
@@ -178,6 +225,10 @@ pub struct BrowserSessionScope {
   upload_sources : Array[String]
   capability_digest : String
   capability_expires_at : String
+  mutation_authority_id : String
+  mutation_authority_nonce : String
+  mutation_authority_expires_at : String
+  credential_handles : Array[String]
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum BrowserSessionStatus {
@@ -191,6 +242,12 @@ pub(all) enum BrowserSessionStatus {
 pub(all) enum BrowserStorageLifetime {
   Ephemeral
   RunScoped
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BrowserTransferVerdict {
+  TransferNotScanned
+  TransferClean
+  TransferRejected(String)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct BrowserWorker {

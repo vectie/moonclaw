@@ -49,6 +49,11 @@ fn completed_result(
   before? : String = "state-before",
   after? : String = "state-after",
   target_resolved? : Bool = true,
+  page_trust? : @browser.BrowserPageTrust = @browser.TrustedLocalPage,
+  destination_class? : @browser.BrowserDestinationClass = @browser.DestinationNotApplicable,
+  quarantine_ref? : String = "",
+  transfer_verdict? : @browser.BrowserTransferVerdict = @browser.TransferNotScanned,
+  fresh_authority_valid? : Bool = true,
 ) -> @browser.BrowserHostResult {
   @browser.browser_host_result(
     host_receipt_id="fixture-receipt-" + command.action_id,
@@ -58,6 +63,12 @@ fn completed_result(
     code_revision=command.code_revision,
     authority_envelope_id=command.authority_envelope_id,
     capability_digest=command.capability_digest,
+    page_trust~,
+    destination_class~,
+    quarantine_ref~,
+    transfer_verdict~,
+    idempotency_key=command.idempotency_key,
+    fresh_authority_valid~,
     status=@browser.Completed,
     before_state_digest=before,
     after_state_digest=after,
@@ -312,4 +323,285 @@ test "origin classes preserve explicit loopback and offline boundary" {
     allowed_origins=["http://*.localhost:4388"],
   )
   assert_true(@browser.browser_scope_policy_issue(wildcard) is Some(_))
+}
+
+///|
+fn external_scope() -> @browser.BrowserSessionScope {
+  @browser.browser_session_scope(
+    session_id="external-session",
+    workspace_id="book-demo",
+    book_revision="book-r7",
+    code_revision="code-ext",
+    run_id="run-ext",
+    authority_envelope_id="authority-ext",
+    origin_class=@browser.ExternalOrigin,
+    network_policy=@browser.ApprovedOriginsOnly,
+    allowed_origins=["https://robot.example"],
+    permitted_effects=[
+      @browser.InspectVisiblePage,
+      @browser.InteractLocalPage,
+      @browser.NavigateExternalOrigin,
+      @browser.UploadFile,
+      @browser.DownloadFile,
+      @browser.SubmitExternalMutation,
+    ],
+    upload_sources=["/Users/demo/moonsuite/books/robot/raw/design.glb"],
+    download_root="/Users/demo/moonsuite/quarantine/browser",
+    credential_handles=["cred://robot-example/session"],
+    mutation_authority_id="mutation-authority-2",
+    mutation_authority_nonce="fresh-nonce-2",
+    mutation_authority_expires_at="2026-07-13T12:00:00Z",
+  )
+}
+
+///|
+fn external_worker() -> @browser.BrowserWorker {
+  let worker = @browser.BrowserWorker::new(external_scope(), action_budget=8)
+  worker.begin_agent_operation() |> ignore()
+  worker
+}
+
+///|
+fn external_action(
+  id : String,
+  effect : @browser.BrowserEffectClass,
+  target? : String = "role=button[name='Continue']",
+  page_trust? : @browser.BrowserPageTrust = @browser.UntrustedExternalPage,
+  transfer_path? : String = "",
+  credential_handle? : String = "",
+  idempotency_key? : String = "",
+  nonce? : String = "",
+) -> @browser.BrowserAction {
+  @browser.browser_action(
+    action_id=id,
+    session_id="external-session",
+    actor=@browser.Agent,
+    actor_id="agent-external",
+    operation=if effect is @browser.NavigateExternalOrigin {
+      @browser.Navigate
+    } else {
+      @browser.Click
+    },
+    target~,
+    code_revision="code-ext",
+    authority_envelope_id="authority-ext",
+    required_effect=effect,
+    page_trust~,
+    transfer_path~,
+    credential_handle~,
+    idempotency_key~,
+    fresh_authority_nonce=nonce,
+  )
+}
+
+///|
+test "external navigation denies local private deceptive and unresolved destinations" {
+  assert_true(@browser.browser_external_origin_allowed("https://robot.example"))
+  assert_false(@browser.browser_external_origin_allowed("http://robot.example"))
+  assert_false(@browser.browser_external_origin_allowed("https://localhost"))
+  assert_false(@browser.browser_external_origin_allowed("https://127.0.0.1"))
+  assert_false(@browser.browser_external_origin_allowed("https://172.20.1.2"))
+  assert_false(@browser.browser_external_origin_allowed("https://robot.example:not-a-port"))
+  assert_false(@browser.browser_external_origin_allowed("https://robot.example:70000"))
+  assert_false(@browser.browser_external_origin_allowed("https://169.254.169.254"))
+  assert_false(@browser.browser_external_origin_allowed("https://robot.example@evil.test"))
+  let worker = external_worker()
+  assert_true(
+    worker.prepare(
+      external_action(
+        "navigate-unapproved",
+        @browser.NavigateExternalOrigin,
+        target="https://evil.test/review",
+      ),
+    ) is Rejected({ outcome: Blocked("external-origin-not-authorized"), .. }),
+  )
+  let action = external_action(
+    "navigate-public",
+    @browser.NavigateExternalOrigin,
+    target="https://robot.example/review",
+  )
+  let command = ready_command(worker.prepare(action))
+  assert_true(
+    worker.complete(
+      action,
+      command,
+      completed_result(
+        command,
+        page_trust=@browser.UntrustedExternalPage,
+        destination_class=@browser.PrivateNetworkDestination,
+      ),
+    ).outcome is Blocked("private-or-unresolved-network-destination"),
+  )
+}
+
+///|
+test "prompt injection and credential boundary fail closed before dispatch" {
+  let worker = external_worker()
+  assert_true(
+    worker.prepare(
+      external_action(
+        "prompt-click",
+        @browser.InteractLocalPage,
+        page_trust=@browser.PromptInjectionSuspected,
+      ),
+    ) is Rejected({ outcome: Blocked("prompt-injection-boundary-requires-user-control"), .. }),
+  )
+  assert_true(
+    worker.prepare(
+      external_action(
+        "credential-raw",
+        @browser.InteractLocalPage,
+        credential_handle="secret-password",
+      ),
+    ) is Rejected({ outcome: Blocked("credential-handle-not-authorized"), .. }),
+  )
+  assert_true(
+    worker.prepare(
+      external_action(
+        "credential-handle",
+        @browser.InteractLocalPage,
+        credential_handle="cred://robot-example/session",
+      ),
+    ) is Ready(_),
+  )
+  let detected = external_action(
+    "prompt-detected-by-host", @browser.InteractLocalPage,
+  )
+  let detected_command = ready_command(worker.prepare(detected))
+  assert_true(
+    worker.complete(
+      detected,
+      detected_command,
+      completed_result(
+        detected_command,
+        page_trust=@browser.PromptInjectionSuspected,
+        destination_class=@browser.PublicInternetDestination,
+      ),
+    ).outcome is Blocked("host-detected-prompt-injection"),
+  )
+}
+
+///|
+test "uploads and downloads require scoped transfer fresh authority and quarantine" {
+  let worker = external_worker()
+  assert_true(
+    worker.prepare(
+      external_action(
+        "upload-outside",
+        @browser.UploadFile,
+        transfer_path="/Users/demo/secret.txt",
+        idempotency_key="upload-1",
+        nonce="fresh-nonce-2",
+      ),
+    ) is Rejected({ outcome: Blocked("upload-source-not-authorized"), .. }),
+  )
+  assert_true(
+    worker.prepare(
+      external_action(
+        "download-no-authority",
+        @browser.DownloadFile,
+        idempotency_key="download-1",
+      ),
+    ) is Rejected({ outcome: Blocked("fresh-mutation-authority-required"), .. }),
+  )
+  let download = external_action(
+    "download-clean",
+    @browser.DownloadFile,
+    idempotency_key="download-2",
+    nonce="fresh-nonce-2",
+  )
+  let dirty_worker = external_worker()
+  let dirty = external_action(
+    "download-dirty",
+    @browser.DownloadFile,
+    idempotency_key="download-dirty-1",
+    nonce="fresh-nonce-2",
+  )
+  let dirty_command = ready_command(dirty_worker.prepare(dirty))
+  assert_true(
+    dirty_worker.complete(
+      dirty,
+      dirty_command,
+      completed_result(
+        dirty_command,
+        page_trust=@browser.UntrustedExternalPage,
+        destination_class=@browser.PublicInternetDestination,
+        quarantine_ref="/Users/demo/moonsuite/quarantine/browser/suspicious.glb",
+        transfer_verdict=@browser.TransferRejected("malware-signature"),
+      ),
+    ).outcome is Blocked("download-not-clean-in-quarantine"),
+  )
+  let expired_worker = external_worker()
+  let expired = external_action(
+    "submit-expired",
+    @browser.SubmitExternalMutation,
+    idempotency_key="submit-expired-1",
+    nonce="fresh-nonce-2",
+  )
+  let expired_command = ready_command(expired_worker.prepare(expired))
+  assert_true(
+    expired_worker.complete(
+      expired,
+      expired_command,
+      completed_result(
+        expired_command,
+        page_trust=@browser.UntrustedExternalPage,
+        destination_class=@browser.PublicInternetDestination,
+        fresh_authority_valid=false,
+      ),
+    ).outcome is Blocked("mutation-authority-expired-at-host"),
+  )
+  let command = ready_command(worker.prepare(download))
+  assert_true(
+    worker.complete(
+      download,
+      command,
+      completed_result(
+        command,
+        page_trust=@browser.UntrustedExternalPage,
+        destination_class=@browser.PublicInternetDestination,
+        quarantine_ref="/Users/demo/moonsuite/quarantine/browser/robot.glb",
+        transfer_verdict=@browser.TransferClean,
+      ),
+    ).accepted(),
+  )
+}
+
+///|
+test "mutating replay cannot reuse authority nonce or idempotency lineage" {
+  let worker = external_worker()
+  let source_action = external_action(
+    "submit-source",
+    @browser.SubmitExternalMutation,
+    idempotency_key="submit-1",
+    nonce="fresh-nonce-2",
+  )
+  let source_command = ready_command(worker.prepare(source_action))
+  let source = worker.complete(
+    source_action,
+    source_command,
+    completed_result(
+      source_command,
+      page_trust=@browser.UntrustedExternalPage,
+      destination_class=@browser.PublicInternetDestination,
+    ),
+  )
+  let replay = @browser.browser_action(
+    action_id="submit-replay",
+    session_id="external-session",
+    actor=@browser.Replay,
+    actor_id="agent-external",
+    operation=@browser.Click,
+    target="role=button[name='Submit']",
+    code_revision="code-ext",
+    authority_envelope_id="authority-ext",
+    required_effect=@browser.SubmitExternalMutation,
+    page_trust=@browser.UntrustedExternalPage,
+    idempotency_key="submit-2",
+    fresh_authority_nonce="fresh-nonce-2",
+  )
+  assert_true(
+    worker.prepare_replay(source, replay)
+    is Rejected({ outcome: Blocked("mutating-replay-requires-fresh-authority-and-idempotency"), .. }),
+  )
 }

@@ -150,6 +150,34 @@ fn BrowserWorker::scope_issue(
     Some(issue)
   } else if action.value_redacted != "" && action.value_redacted != "[redacted]" {
     Some("secret-value-not-redacted")
+  } else if action.credential_handle != "" &&
+    (!action.credential_handle.has_prefix("cred://") ||
+    !self.scope.credential_handles.contains(action.credential_handle)) {
+    Some("credential-handle-not-authorized")
+  } else if action.page_trust is PromptInjectionSuspected &&
+    !(action.actor is User) && !(action.required_effect is InspectVisiblePage) {
+    Some("prompt-injection-boundary-requires-user-control")
+  } else if action.required_effect is NavigateExternalOrigin &&
+    browser_origin_from_external_url(action.target) is None {
+    Some("external-navigation-target-forbidden")
+  } else if action.required_effect is NavigateExternalOrigin &&
+    browser_origin_from_external_url(action.target) is Some(origin) &&
+    !self.scope.allowed_origins.contains(origin) {
+    Some("external-origin-not-authorized")
+  } else if action.required_effect is UploadFile &&
+    !self.scope.upload_sources.contains(action.transfer_path) {
+    Some("upload-source-not-authorized")
+  } else if action.required_effect is DownloadFile && self.scope.download_root == "" {
+    Some("download-quarantine-root-missing")
+  } else if browser_effect_mutates_external_state(action.required_effect) &&
+    action.idempotency_key == "" {
+    Some("mutation-idempotency-key-missing")
+  } else if browser_effect_mutates_external_state(action.required_effect) &&
+    (self.scope.mutation_authority_id == "" ||
+    self.scope.mutation_authority_nonce == "" ||
+    self.scope.mutation_authority_expires_at == "" ||
+    action.fresh_authority_nonce != self.scope.mutation_authority_nonce) {
+    Some("fresh-mutation-authority-required")
   } else if !self.scope.permitted_effects.contains(action.required_effect) {
     Some("effect-not-authorized")
   } else {
@@ -203,6 +231,11 @@ fn BrowserWorker::record(
     capability_digest: self.scope.capability_digest,
     capability_expires_at: self.scope.capability_expires_at,
     code_revision: action.code_revision,
+    page_trust: action.page_trust,
+    destination_class: DestinationNotApplicable,
+    quarantine_ref: "",
+    idempotency_key: action.idempotency_key,
+    fresh_authority_nonce: action.fresh_authority_nonce,
     completed_at,
   }
   self.receipts.push(receipt)
@@ -252,6 +285,15 @@ pub fn BrowserWorker::prepare(
     authority_envelope_id: action.authority_envelope_id,
     capability_digest: self.scope.capability_digest,
     capability_expires_at: self.scope.capability_expires_at,
+    page_trust: action.page_trust,
+    credential_handle: action.credential_handle,
+    transfer_path: action.transfer_path,
+    upload_sources: self.scope.upload_sources.copy(),
+    download_quarantine_root: self.scope.download_root,
+    idempotency_key: action.idempotency_key,
+    mutation_authority_id: self.scope.mutation_authority_id,
+    fresh_authority_nonce: action.fresh_authority_nonce,
+    mutation_authority_expires_at: self.scope.mutation_authority_expires_at,
   })
 }
 
@@ -272,6 +314,8 @@ fn host_identity_issue(
     Some("host-authority-mismatch")
   } else if result.capability_digest != command.capability_digest {
     Some("host-capability-mismatch")
+  } else if result.idempotency_key != command.idempotency_key {
+    Some("host-idempotency-key-mismatch")
   } else if result.host_receipt_id == "" {
     Some("host-receipt-missing")
   } else {
@@ -317,6 +361,27 @@ pub fn BrowserWorker::complete(
     result.before_state_digest != command.expected_before_digest {
     return self.record(action, Diverged("before-state-digest-mismatch"))
   }
+  if command.origin_class is ExternalOrigin &&
+    !(result.destination_class is PublicInternetDestination) {
+    return self.record(action, Blocked("private-or-unresolved-network-destination"))
+  }
+  if browser_effect_mutates_external_state(action.required_effect) &&
+    !result.fresh_authority_valid {
+    return self.record(action, Blocked("mutation-authority-expired-at-host"))
+  }
+  if result.page_trust is PromptInjectionSuspected &&
+    !(action.actor is User) && !(action.required_effect is InspectVisiblePage) {
+    return self.record(action, Blocked("host-detected-prompt-injection"))
+  }
+  if action.required_effect is DownloadFile &&
+    (!(result.transfer_verdict is TransferClean) ||
+    !browser_path_inside_root(result.quarantine_ref, self.scope.download_root)) {
+    return self.record(action, Blocked("download-not-clean-in-quarantine"))
+  }
+  if action.required_effect is UploadFile &&
+    !(result.transfer_verdict is TransferClean) {
+    return self.record(action, Blocked("upload-not-approved-by-host"))
+  }
   self.remaining_actions = self.remaining_actions - 1
   let evidence_refs : Array[String] = []
   if result.screenshot_before_ref != "" {
@@ -325,7 +390,7 @@ pub fn BrowserWorker::complete(
   if result.screenshot_after_ref != "" {
     evidence_refs.push(result.screenshot_after_ref)
   }
-  self.record(
+  let receipt = self.record(
     action,
     Accepted,
     observations=result.observations,
@@ -335,6 +400,13 @@ pub fn BrowserWorker::complete(
     host_receipt_id=result.host_receipt_id,
     completed_at=result.completed_at,
   )
+  self.receipts[self.receipts.length() - 1] = {
+    ..receipt,
+    page_trust: result.page_trust,
+    destination_class: result.destination_class,
+    quarantine_ref: result.quarantine_ref,
+  }
+  self.receipts[self.receipts.length() - 1]
 }
 
 ///|
@@ -374,6 +446,14 @@ pub fn BrowserWorker::prepare_replay(
     source.code_revision != action.code_revision ||
     source.operation != action.operation {
     return Rejected(self.record(action, Diverged("replay-lineage-mismatch")))
+  }
+  if browser_effect_mutates_external_state(action.required_effect) &&
+    (action.idempotency_key == source.idempotency_key ||
+    action.fresh_authority_nonce == "" ||
+    action.fresh_authority_nonce == source.fresh_authority_nonce) {
+    return Rejected(
+      self.record(action, Blocked("mutating-replay-requires-fresh-authority-and-idempotency")),
+    )
   }
   self.prepare(action, expected_before_digest=source.before_state_digest)
 }

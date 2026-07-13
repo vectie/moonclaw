@@ -26,6 +26,15 @@ pub struct BrowserHostCommand {
   authority_envelope_id : String
   capability_digest : String
   capability_expires_at : String
+  page_trust : BrowserPageTrust
+  credential_handle : String
+  transfer_path : String
+  upload_sources : Array[String]
+  download_quarantine_root : String
+  idempotency_key : String
+  mutation_authority_id : String
+  fresh_authority_nonce : String
+  mutation_authority_expires_at : String
 } derive(Debug, Eq, ToJson, FromJson)
 
 ///|
@@ -37,6 +46,12 @@ pub struct BrowserHostResult {
   code_revision : String
   authority_envelope_id : String
   capability_digest : String
+  page_trust : BrowserPageTrust
+  destination_class : BrowserDestinationClass
+  quarantine_ref : String
+  transfer_verdict : BrowserTransferVerdict
+  idempotency_key : String
+  fresh_authority_valid : Bool
   status : BrowserHostStatus
   before_state_digest : String
   after_state_digest : String
@@ -63,6 +78,12 @@ pub fn browser_host_result(
   code_revision~ : String,
   authority_envelope_id~ : String,
   capability_digest~ : String,
+  page_trust? : BrowserPageTrust = TrustedLocalPage,
+  destination_class? : BrowserDestinationClass = DestinationNotApplicable,
+  quarantine_ref? : String = "",
+  transfer_verdict? : BrowserTransferVerdict = TransferNotScanned,
+  idempotency_key? : String = "",
+  fresh_authority_valid? : Bool = false,
   status~ : BrowserHostStatus,
   before_state_digest~ : String,
   after_state_digest~ : String,
@@ -80,6 +101,12 @@ pub fn browser_host_result(
     code_revision,
     authority_envelope_id,
     capability_digest,
+    page_trust,
+    destination_class,
+    quarantine_ref,
+    transfer_verdict,
+    idempotency_key,
+    fresh_authority_valid,
     status,
     before_state_digest,
     after_state_digest,
