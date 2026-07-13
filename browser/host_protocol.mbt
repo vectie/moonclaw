@@ -15,6 +15,9 @@ pub struct BrowserHostCommand {
   actor_id : String
   operation : BrowserOperation
   effect_class : BrowserEffectClass
+  origin_class : BrowserOriginClass
+  network_policy : BrowserNetworkPolicy
+  allowed_origins : Array[String]
   semantic_target : String
   redacted_arguments : String
   expected_observation : String

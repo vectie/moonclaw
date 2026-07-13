@@ -9,11 +9,15 @@ import {
 // Values
 pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, actor_id? : String, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : BrowserEffectClass, created_at? : String) -> BrowserAction
 
-pub fn browser_host_result(host_receipt_id~ : String, request_id~ : String, session_id~ : String, action_id~ : String, code_revision~ : String, authority_envelope_id~ : String, status~ : BrowserHostStatus, before_state_digest~ : String, after_state_digest~ : String, screenshot_before_ref? : String, screenshot_after_ref? : String, observations? : Array[String], target_resolved? : Bool, completed_at? : String) -> BrowserHostResult
+pub fn browser_host_result(host_receipt_id~ : String, request_id~ : String, session_id~ : String, action_id~ : String, code_revision~ : String, authority_envelope_id~ : String, capability_digest~ : String, status~ : BrowserHostStatus, before_state_digest~ : String, after_state_digest~ : String, screenshot_before_ref? : String, screenshot_after_ref? : String, observations? : Array[String], target_resolved? : Bool, completed_at? : String) -> BrowserHostResult
+
+pub fn browser_loopback_origin_allowed(StringView) -> Bool
 
 pub fn browser_operation_effect_class(BrowserOperation) -> BrowserEffectClass
 
-pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_revision~ : String, code_revision~ : String, run_id~ : String, authority_envelope_id~ : String, allowed_origins? : Array[String], permitted_effects? : Array[BrowserEffectClass]) -> BrowserSessionScope
+pub fn browser_scope_policy_issue(BrowserSessionScope) -> String?
+
+pub fn browser_session_scope(session_id~ : String, workspace_id~ : String, book_revision~ : String, code_revision~ : String, run_id~ : String, authority_envelope_id~ : String, origin_class? : BrowserOriginClass, network_policy? : BrowserNetworkPolicy, storage_lifetime? : BrowserStorageLifetime, allowed_origins? : Array[String], permitted_effects? : Array[BrowserEffectClass], download_root? : String, upload_sources? : Array[String], capability_digest? : String, capability_expires_at? : String) -> BrowserSessionScope
 
 // Errors
 
@@ -57,6 +61,8 @@ pub struct BrowserActionReceipt {
   evidence_refs : Array[String]
   host_receipt_id : String
   authority_envelope_id : String
+  capability_digest : String
+  capability_expires_at : String
   code_revision : String
   completed_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
@@ -94,12 +100,17 @@ pub struct BrowserHostCommand {
   actor_id : String
   operation : BrowserOperation
   effect_class : BrowserEffectClass
+  origin_class : BrowserOriginClass
+  network_policy : BrowserNetworkPolicy
+  allowed_origins : Array[String]
   semantic_target : String
   redacted_arguments : String
   expected_observation : String
   expected_before_digest : String
   code_revision : String
   authority_envelope_id : String
+  capability_digest : String
+  capability_expires_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct BrowserHostResult {
@@ -109,6 +120,7 @@ pub struct BrowserHostResult {
   action_id : String
   code_revision : String
   authority_envelope_id : String
+  capability_digest : String
   status : BrowserHostStatus
   before_state_digest : String
   after_state_digest : String
@@ -126,6 +138,11 @@ pub(all) enum BrowserHostStatus {
   Crashed(String)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) enum BrowserNetworkPolicy {
+  Offline
+  ApprovedOriginsOnly
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum BrowserOperation {
   Navigate
   Reload
@@ -139,6 +156,12 @@ pub(all) enum BrowserOperation {
   CaptureDiagnostics
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) enum BrowserOriginClass {
+  OpaqueLocalPreview
+  IsolatedLoopback
+  ExternalOrigin
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub struct BrowserSessionScope {
   session_id : String
   workspace_id : String
@@ -146,8 +169,15 @@ pub struct BrowserSessionScope {
   code_revision : String
   run_id : String
   authority_envelope_id : String
+  origin_class : BrowserOriginClass
+  network_policy : BrowserNetworkPolicy
+  storage_lifetime : BrowserStorageLifetime
   allowed_origins : Array[String]
   permitted_effects : Array[BrowserEffectClass]
+  download_root : String
+  upload_sources : Array[String]
+  capability_digest : String
+  capability_expires_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum BrowserSessionStatus {
@@ -156,6 +186,11 @@ pub(all) enum BrowserSessionStatus {
   Paused
   UserControl
   Stopped
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BrowserStorageLifetime {
+  Ephemeral
+  RunScoped
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct BrowserWorker {
@@ -173,11 +208,20 @@ pub fn BrowserWorker::prepare(Self, BrowserAction, expected_before_digest? : Str
 pub fn BrowserWorker::prepare_replay(Self, BrowserActionReceipt, BrowserAction) -> BrowserDispatch
 pub fn BrowserWorker::receipts(Self) -> Array[BrowserActionReceipt]
 pub fn BrowserWorker::remaining_actions(Self) -> Int
+pub fn BrowserWorker::restore(BrowserWorkerSnapshot) -> Self
 pub fn BrowserWorker::return_to_agent(Self) -> Bool
 pub fn BrowserWorker::scope(Self) -> BrowserSessionScope
+pub fn BrowserWorker::snapshot(Self) -> BrowserWorkerSnapshot
 pub fn BrowserWorker::status(Self) -> BrowserSessionStatus
 pub fn BrowserWorker::stop(Self) -> Bool
 pub fn BrowserWorker::take_over(Self) -> Bool
+
+pub struct BrowserWorkerSnapshot {
+  scope : BrowserSessionScope
+  status : BrowserSessionStatus
+  remaining_actions : Int
+  receipts : Array[BrowserActionReceipt]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 // Type aliases
 

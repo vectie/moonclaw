@@ -279,3 +279,37 @@ test "local verbs map to portable constitutional effect classes" {
     is NavigateExternalOrigin,
   )
 }
+
+///|
+test "origin classes preserve explicit loopback and offline boundary" {
+  let local_preview = test_scope()
+  assert_true(@browser.browser_scope_policy_issue(local_preview) is None)
+  let loopback = @browser.browser_session_scope(
+    session_id="loopback-session",
+    workspace_id="book-demo",
+    book_revision="book-r7",
+    code_revision="code-a91",
+    run_id="run-7",
+    authority_envelope_id="authority-loopback",
+    origin_class=@browser.IsolatedLoopback,
+    network_policy=@browser.Offline,
+    allowed_origins=["http://127.0.0.1:4388"],
+  )
+  assert_true(@browser.browser_scope_policy_issue(loopback) is None)
+  assert_false(@browser.browser_loopback_origin_allowed("http://127.0.0.1.evil.test"))
+  assert_false(@browser.browser_loopback_origin_allowed("http://*.localhost:4388"))
+  assert_false(@browser.browser_loopback_origin_allowed("http://localhost:4388@evil.test"))
+  assert_false(@browser.browser_loopback_origin_allowed("http://localhost:not-a-port"))
+  assert_false(@browser.browser_loopback_origin_allowed("http://localhost:4388/path"))
+  let wildcard = @browser.browser_session_scope(
+    session_id="loopback-session",
+    workspace_id="book-demo",
+    book_revision="book-r7",
+    code_revision="code-a91",
+    run_id="run-7",
+    authority_envelope_id="authority-loopback",
+    origin_class=@browser.IsolatedLoopback,
+    allowed_origins=["http://*.localhost:4388"],
+  )
+  assert_true(@browser.browser_scope_policy_issue(wildcard) is Some(_))
+}

@@ -146,6 +146,8 @@ fn BrowserWorker::scope_issue(
     Some("authority-envelope-mismatch")
   } else if self.scope.capability_digest == "" {
     Some("session-capability-missing")
+  } else if browser_scope_policy_issue(self.scope) is Some(issue) {
+    Some(issue)
   } else if action.value_redacted != "" && action.value_redacted != "[redacted]" {
     Some("secret-value-not-redacted")
   } else if !self.scope.permitted_effects.contains(action.required_effect) {
@@ -239,6 +241,9 @@ pub fn BrowserWorker::prepare(
     actor_id: action.actor_id,
     operation: action.operation,
     effect_class: action.required_effect,
+    origin_class: self.scope.origin_class,
+    network_policy: self.scope.network_policy,
+    allowed_origins: self.scope.allowed_origins.copy(),
     semantic_target: action.target,
     redacted_arguments: action.value_redacted,
     expected_observation: action.expected_observation,
