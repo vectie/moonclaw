@@ -14,9 +14,16 @@ that verb to the portable constitutional effect class consumed by MoonGate and
 MoonFlow. In particular, a navigation verb maps to external navigation and is
 not part of the default local-preview authority.
 
-The narrow browser-host adapter must execute an authorized command and return
-host observations. Page-authored diagnostics are untrusted. The current package
-does not pretend that a policy receipt is proof that a real browser action ran;
-integration must attach host-captured before/after digests and evidence before
-acceptance.
+The worker is two-phase. `prepare` validates policy and produces a typed host
+command but no receipt. Only `complete`, after checking a host receipt's exact
+session/action/revision/authority/capability identity and non-empty before/after
+state digests, can accept the action. Page-authored diagnostics are untrusted.
 
+Snapshots preserve remaining budget, control state, accepted/rejected receipts,
+and duplicate guards across restart. Deterministic replay binds the next host
+command to the accepted source receipt's before-state digest and fails on state
+or semantic-target divergence.
+
+The `process_host` package supplies the production executable boundary. Its
+deterministic fixture exercises transport and state semantics but is not a real
+browser or screenshot claim.

@@ -7,7 +7,9 @@ import {
 }
 
 // Values
-pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : BrowserEffectClass, created_at? : String) -> BrowserAction
+pub fn browser_action(action_id~ : String, session_id~ : String, actor~ : BrowserActor, actor_id? : String, operation~ : BrowserOperation, target~ : String, value_redacted? : String, expected_observation? : String, code_revision~ : String, authority_envelope_id~ : String, required_effect? : BrowserEffectClass, created_at? : String) -> BrowserAction
+
+pub fn browser_host_result(host_receipt_id~ : String, request_id~ : String, session_id~ : String, action_id~ : String, code_revision~ : String, authority_envelope_id~ : String, status~ : BrowserHostStatus, before_state_digest~ : String, after_state_digest~ : String, screenshot_before_ref? : String, screenshot_after_ref? : String, observations? : Array[String], target_resolved? : Bool, completed_at? : String) -> BrowserHostResult
 
 pub fn browser_operation_effect_class(BrowserOperation) -> BrowserEffectClass
 
@@ -20,6 +22,7 @@ pub struct BrowserAction {
   action_id : String
   session_id : String
   actor : BrowserActor
+  actor_id : String
   operation : BrowserOperation
   target : String
   value_redacted : String
@@ -35,15 +38,24 @@ pub(all) enum BrowserActionOutcome {
   NoOp
   Blocked(String)
   Diverged(String)
+  Cancelled(String)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct BrowserActionReceipt {
   action_id : String
   session_id : String
   actor : BrowserActor
+  actor_id : String
   operation : BrowserOperation
+  semantic_target : String
+  redacted_arguments : String
+  expected_observation : String
   outcome : BrowserActionOutcome
   observations : Array[String]
+  before_state_digest : String
+  after_state_digest : String
+  evidence_refs : Array[String]
+  host_receipt_id : String
   authority_envelope_id : String
   code_revision : String
   completed_at : String
@@ -56,6 +68,12 @@ pub(all) enum BrowserActor {
   Replay
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+pub(all) enum BrowserDispatch {
+  Ready(BrowserHostCommand)
+  Rejected(BrowserActionReceipt)
+  Duplicate(BrowserActionReceipt)
+} derive(Eq, ToJson, @debug.Debug)
+
 pub(all) enum BrowserEffectClass {
   RenderLocalArtifact
   InspectVisiblePage
@@ -66,6 +84,46 @@ pub(all) enum BrowserEffectClass {
   DownloadFile
   SubmitExternalMutation
   RequestPhysicalEffect
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct BrowserHostCommand {
+  request_id : String
+  session_id : String
+  action_id : String
+  actor : BrowserActor
+  actor_id : String
+  operation : BrowserOperation
+  effect_class : BrowserEffectClass
+  semantic_target : String
+  redacted_arguments : String
+  expected_observation : String
+  expected_before_digest : String
+  code_revision : String
+  authority_envelope_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct BrowserHostResult {
+  host_receipt_id : String
+  request_id : String
+  session_id : String
+  action_id : String
+  code_revision : String
+  authority_envelope_id : String
+  status : BrowserHostStatus
+  before_state_digest : String
+  after_state_digest : String
+  screenshot_before_ref : String
+  screenshot_after_ref : String
+  observations : Array[String]
+  target_resolved : Bool
+  completed_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum BrowserHostStatus {
+  Completed
+  CancelledByHost(String)
+  RejectedByHost(String)
+  Crashed(String)
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum BrowserOperation {
@@ -107,12 +165,14 @@ pub struct BrowserWorker {
   receipts : Array[BrowserActionReceipt]
 }
 pub fn BrowserWorker::begin_agent_operation(Self) -> Bool
-pub fn BrowserWorker::execute(Self, BrowserAction, target_stable~ : Bool, observations? : Array[String], completed_at? : String) -> BrowserActionReceipt
+pub fn BrowserWorker::complete(Self, BrowserAction, BrowserHostCommand, BrowserHostResult) -> BrowserActionReceipt
+pub fn BrowserWorker::complete_transport_error(Self, BrowserAction, BrowserHostCommand, String) -> BrowserActionReceipt
 pub fn BrowserWorker::new(BrowserSessionScope, action_budget? : Int) -> Self
 pub fn BrowserWorker::pause(Self) -> Bool
+pub fn BrowserWorker::prepare(Self, BrowserAction, expected_before_digest? : String) -> BrowserDispatch
+pub fn BrowserWorker::prepare_replay(Self, BrowserActionReceipt, BrowserAction) -> BrowserDispatch
 pub fn BrowserWorker::receipts(Self) -> Array[BrowserActionReceipt]
 pub fn BrowserWorker::remaining_actions(Self) -> Int
-pub fn BrowserWorker::replay(Self, BrowserActionReceipt, BrowserAction, target_stable~ : Bool, completed_at? : String) -> BrowserActionReceipt
 pub fn BrowserWorker::return_to_agent(Self) -> Bool
 pub fn BrowserWorker::scope(Self) -> BrowserSessionScope
 pub fn BrowserWorker::status(Self) -> BrowserSessionStatus
