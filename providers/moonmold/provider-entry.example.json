@@ -8,7 +8,7 @@
   ],
   "command": [
     "node",
-    "/Users/kq/moonsuite/services/moonmold/mcp-server.mjs"
+    "/Users/kq/moonsuite/development/sources/moonmold/adapter/mcp-server.mjs"
   ],
   "transport": "mcp-jsonrpc-stdio",
   "workspace_root": "/Users/kq/moonsuite",
@@ -16,4 +16,3 @@
   "arbitrary_scripts": false,
   "physical_control": false
 }
-

@@ -23,6 +23,11 @@ Unknown/open schemas, extra tools, script/eval/shell/code fields, physical
 authority, and malformed receipts fail closed. The agent never supplies Python:
 MoonMold alone selects its audited fixed bridge.
 
+The checked example registry entry points at the current workspace source under
+`/Users/kq/moonsuite/development/sources/moonmold`. A deployment may replace it
+with another trusted workspace-local argv path, but must not silently resolve a
+host-global service or shell command.
+
 ## Qualification ledger
 
 Input: configured MCP command, semantic capability request, and an explicit
@@ -34,4 +39,3 @@ containing `.blend`, GLB, STL, render, and bridge-manifest hashes.
 Quality: actual process boundary, no shell, no runtime source import, timeout,
 cooperative cancellation, script rejection, attributable receipt, and no
 physical effects.
-
