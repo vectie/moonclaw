@@ -3,10 +3,13 @@
 priv struct MoonCodeSessionBinding {
   session_id : String
   mut book_root : String
+  mut workspace_id : String
+  mut workspace_name : String
   mut command_count : Int
   mut first_user_prompt : String
   mut last_command_id : String
   mut last_updated : @clock.Timestamp
+  mut runtime_service_running : Bool
   events : @broadcast.Broadcast[Json]
 }
 
@@ -15,10 +18,13 @@ fn MoonCodeSessionBinding::to_json(self : MoonCodeSessionBinding) -> Json {
   {
     "session_id": self.session_id,
     "book_root": self.book_root,
+    "workspace_id": self.workspace_id,
+    "workspace_name": self.workspace_name,
     "command_count": self.command_count,
     "first_user_prompt": self.first_user_prompt,
     "last_command_id": self.last_command_id,
     "last_updated": self.last_updated,
+    "runtime_service_running": self.runtime_service_running,
   }
 }
 
@@ -60,10 +66,13 @@ fn Daemon::mooncode_binding_for_session(
       let binding = MoonCodeSessionBinding::{
         session_id,
         book_root: "",
+        workspace_id: "",
+        workspace_name: "",
         command_count: 0,
         first_user_prompt: "",
         last_command_id: "",
         last_updated: self.clock.now(),
+        runtime_service_running: false,
         events: @broadcast.Broadcast::new(),
       }
       self.mooncode_sessions[session_id] = binding
@@ -177,7 +186,7 @@ async fn Daemon::mooncode_session_record(
   book_root : String,
 ) -> Json? {
   match self.mooncode_sessions.get(session_id) {
-    Some(binding) if book_root == "" || binding.book_root == book_root =>
+    Some(binding) if mooncode_listing_root_matches(book_root, binding.book_root) =>
       return Some(
         mooncode_session_record_from_parts(
           session_id,
@@ -196,10 +205,15 @@ async fn Daemon::mooncode_session_record(
   if mooncode_json_string(snapshot, "load_status", default="") == "missing" {
     None
   } else {
+    let session_book_root = mooncode_json_string(
+      snapshot,
+      "book_root",
+      default=book_root,
+    )
     Some(
       mooncode_session_record_from_parts(
         session_id,
-        book_root,
+        session_book_root,
         self.mooncode_sessions.get(
           mooncode_json_string(snapshot, "session_id", default=session_id),
         ),
@@ -225,5 +239,29 @@ fn MoonCodeSessionBinding::remember_first_user_prompt(
   let text = mooncode_json_string(body, "text", default="").trim()
   if text != "" {
     self.first_user_prompt = text.to_owned()
+  }
+}
+
+///|
+fn MoonCodeSessionBinding::remember_workspace(
+  self : MoonCodeSessionBinding,
+  body : Json,
+) -> Unit {
+  let packet = mooncode_json_object_field_or_empty(body, "packet")
+  let workspace_id = mooncode_json_string(
+    packet,
+    "workspace_id",
+    default=mooncode_json_string(body, "workspace_id", default=""),
+  )
+  let workspace_name = mooncode_json_string(
+    packet,
+    "workspace_name",
+    default=mooncode_json_string(body, "workspace_name", default=""),
+  )
+  if workspace_id != "" {
+    self.workspace_id = workspace_id
+  }
+  if workspace_name != "" {
+    self.workspace_name = workspace_name
   }
 }

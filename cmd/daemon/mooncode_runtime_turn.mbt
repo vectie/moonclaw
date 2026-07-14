@@ -557,7 +557,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
     mooncode_runtime_receipts_path(book_root, session_id),
     receipt,
   )
-  binding.command_count += 1
+  binding.command_count = mooncode_jsonl_record_count(
+    mooncode_commands_path(book_root, session_id),
+  )
   binding.last_command_id = command_id
   binding.last_updated = self.clock.now()
   for event in events {

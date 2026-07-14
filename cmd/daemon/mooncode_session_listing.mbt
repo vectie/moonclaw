@@ -113,15 +113,16 @@ fn mooncode_session_listing_row(record : Json) -> Json {
   let conversation = mooncode_json_object_field_or_empty(
     record, "mooncode_conversation",
   )
+  let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
   let workspace_id = mooncode_json_string(
     conversation,
     "workspace_id",
-    default="",
+    default=mooncode_json_string(snapshot, "workspace_id", default=""),
   )
   let workspace_name = mooncode_json_string(
     conversation,
     "workspace_name",
-    default="",
+    default=mooncode_json_string(snapshot, "workspace_name", default=""),
   )
   let status = if mooncode_json_bool(
       record,

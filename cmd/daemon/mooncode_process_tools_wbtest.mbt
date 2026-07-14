@@ -325,8 +325,10 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
     mooncode_json_string(inferred, "relative_path", default=""),
     "tools/demo",
   )
-  assert_eq(mooncode_moon_check_args(""), ["check"])
-  assert_eq(mooncode_moon_check_args("native"), ["check", "--target", "native"])
+  assert_true(mooncode_moon_check_args("") == ["check"])
+  assert_true(
+    mooncode_moon_check_args("native") == ["check", "--target", "native"],
+  )
   let missing_ide_input = mooncode_execute_tool_call(
     "session-tool-validation",
     book_root,

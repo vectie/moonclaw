@@ -421,6 +421,8 @@ fn mooncode_session_snapshot(binding : MoonCodeSessionBinding) -> Json {
     "owner": "moonclaw",
     "session_id": binding.session_id,
     "book_root": binding.book_root,
+    "workspace_id": binding.workspace_id,
+    "workspace_name": binding.workspace_name,
     "command_count": binding.command_count,
     "first_user_prompt": binding.first_user_prompt,
     "last_command_id": binding.last_command_id,

@@ -381,6 +381,8 @@ pub fn native_session_listing_endpoint(String) -> String
 
 pub fn native_session_show_endpoint(String, String) -> String
 
+pub fn native_session_turns_endpoint(String) -> String
+
 pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_ms? : Int) -> String
 
 pub fn native_tool_exec_endpoint(String, String) -> String
@@ -980,6 +982,7 @@ pub(all) struct NativeCapabilityEndpoints {
   session_listing : String
   session_show : String
   session_commands : String
+  session_turns : String
   runtime_control : String
   runtime_claim : String
   stream : String

@@ -17,6 +17,7 @@
 /// - GET  /v1/code/sessions?book_root={path} → `mooncode_list_sessions`
 /// - GET  /v1/code/sessions/{id}?book_root={path} → `mooncode_get_session`
 /// - POST /v1/code/sessions/{id}/commands → `mooncode_accept_command`
+/// - POST /v1/code/sessions/{id}/turns → `mooncode_submit_turn`
 /// - GET  /v1/code/sessions/{id}/runtime-control?book_root={path} → `mooncode_runtime_control`
 /// - GET  /v1/code/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim_state`
 /// - POST /v1/code/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim`
@@ -76,6 +77,8 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.mooncode_get_session(session_id~, r, w)
             (Post, ["", "v1", "code", "sessions", session_id, "commands"]) =>
               self.mooncode_accept_command(session_id~, r, w)
+            (Post, ["", "v1", "code", "sessions", session_id, "turns"]) =>
+              self.mooncode_submit_turn(group~, session_id~, r, w)
             (Get, ["", "v1", "code", "sessions", session_id, "runtime-control"]) =>
               self.mooncode_runtime_control(session_id~, r, w)
             (Get, ["", "v1", "code", "sessions", session_id, "runtime-claim"]) =>

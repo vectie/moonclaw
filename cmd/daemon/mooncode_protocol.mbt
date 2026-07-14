@@ -30,7 +30,7 @@ fn mooncode_native_capability_required_endpoints() -> Array[String] {
 
 ///|
 fn mooncode_native_capability_optional_endpoints() -> Array[String] {
-  ["/v1/code/sessions?book_root=<path>&format=listing"]
+  []
 }
 
 ///|

@@ -140,15 +140,21 @@ async test "mooncode binding remembers first prompt once for session picker titl
   let binding = MoonCodeSessionBinding::{
     session_id: "session-title",
     book_root: "/tmp/moonbook",
+    workspace_id: "",
+    workspace_name: "",
     command_count: 0,
     first_user_prompt: "",
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
+    runtime_service_running: false,
     events: @broadcast.Broadcast::new(),
   }
   binding.remember_first_user_prompt({
     "command": "prompt",
     "text": "  first user request\nwith context",
+  })
+  binding.remember_workspace({
+    "packet": { "workspace_id": "book-code-lab", "workspace_name": "Code Lab" },
   })
   binding.remember_first_user_prompt({
     "command": "prompt",
@@ -166,6 +172,23 @@ async test "mooncode binding remembers first prompt once for session picker titl
   assert_eq(
     mooncode_json_string(listing, "title", default=""),
     "first user request",
+  )
+  let full_listing = mooncode_session_listing_row(
+    mooncode_session_listing_record_from_parts(
+      "session-title",
+      "/tmp/moonbook",
+      Some(binding),
+      mooncode_session_snapshot(binding),
+      source="memory",
+    ),
+  )
+  assert_eq(
+    mooncode_json_string(full_listing, "workspace_id", default=""),
+    "book-code-lab",
+  )
+  assert_eq(
+    mooncode_json_string(full_listing, "workspace_name", default=""),
+    "Code Lab",
   )
 }
 

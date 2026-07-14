@@ -476,6 +476,24 @@ Runtime-turn execution and tool application remain separate, so MoonClaw can
 support both browser-hosted MoonDesk and a future standalone `mooncode` client
 over the same command contract.
 
+### `POST /v1/code/sessions/{id}/turns`
+
+Atomically accepts one interactive MoonCode turn. MoonClaw validates and
+durably appends the native command, starts the session's runtime service when
+one is not already active, and returns the accepted command, runtime-service
+state, and current canonical session record in one response.
+
+This is the primary mutation endpoint for interactive clients such as
+MoonDesk. Runtime execution is single-flight per session: a later accepted turn
+reuses the active service instead of starting a competing queue consumer. The
+durable command remains authoritative if the service exits before processing
+it, so a subsequent runtime start can resume the queue without a second client
+write.
+
+Low-level clients may still use `/commands` plus the explicit runtime endpoints
+for diagnostics and controlled orchestration. Interactive clients should not
+reconstruct that transaction themselves.
+
 ### `POST /v1/code/sessions/{id}/runtime-turn`
 
 Claims the next durable MoonCode command for the selected `book_root` and runs a

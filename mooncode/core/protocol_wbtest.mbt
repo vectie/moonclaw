@@ -34,12 +34,16 @@ test "mooncode core protocol surface is stable" {
     "/v1/code/sessions/session%20one/commands",
   )
   assert_eq(
+    native_session_turns_endpoint("session one"),
+    "/v1/code/sessions/session%20one/turns",
+  )
+  assert_eq(
     native_runtime_service_endpoint("session one", "/tmp/moon book"),
     "/v1/code/sessions/session%20one/runtime-service?book_root=%2Ftmp%2Fmoon%20book",
   )
   assert_eq(
     native_session_listing_endpoint("/tmp/moon book"),
-    "/v1/code/sessions?book_root=%2Ftmp%2Fmoon%20book&format=json",
+    "/v1/code/sessions?book_root=%2Ftmp%2Fmoon%20book&format=listing",
   )
   assert_eq(
     native_stream_endpoint("session one", "/tmp/moon book", "sse", 7),

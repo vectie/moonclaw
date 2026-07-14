@@ -76,6 +76,8 @@ async test "mooncode native runtime turn executes explicit tool calls" (
   assert_true(events_log.contains("\"runtime.turn_finished\""))
   let after = mooncode_json_object_field_or_empty(result, "claim_state")
   assert_true(after.stringify().contains("\"delivered_command_count\":1"))
+  let snapshot = mooncode_load_session_snapshot(book_root, session_id)
+  assert_eq(mooncode_json_int(snapshot, "command_count", default=0), 1)
 }
 
 ///|

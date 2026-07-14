@@ -66,6 +66,7 @@ async fn Daemon::mooncode_queue_command_response(
     })
   }
   binding.command_count += 1
+  binding.remember_workspace(body)
   binding.remember_first_user_prompt(body)
   binding.last_command_id = command_id
   binding.last_updated = now

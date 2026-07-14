@@ -11,10 +11,13 @@ async test "mooncode durable session sidecars use book local storage" (
   let binding = MoonCodeSessionBinding::{
     session_id: "session/demo:1",
     book_root,
+    workspace_id: "book-code-lab",
+    workspace_name: "Code Lab",
     command_count: 2,
     first_user_prompt: "Build a durable MoonCode tool",
     last_command_id: "cmd-2",
     last_updated: @clock.Timestamp::from_ms(42L),
+    runtime_service_running: false,
     events: @broadcast.Broadcast::new(),
   }
   let session_path = mooncode_session_snapshot_path(
@@ -100,10 +103,13 @@ async test "mooncode durable sidecars list and show without live binding" (
   let binding = MoonCodeSessionBinding::{
     session_id: "session/resume:1",
     book_root,
+    workspace_id: "book-code-lab",
+    workspace_name: "Code Lab",
     command_count: 1,
     first_user_prompt: "Resume this MoonCode session",
     last_command_id: "cmd-resume",
     last_updated: @clock.Timestamp::from_ms(77L),
+    runtime_service_running: false,
     events: @broadcast.Broadcast::new(),
   }
   @fsx.make_directory(
@@ -433,10 +439,13 @@ async test "mooncode durable lifecycle completes from book-local evidence" (
   let binding = MoonCodeSessionBinding::{
     session_id: "session/lifecycle:1",
     book_root,
+    workspace_id: "book-code-lab",
+    workspace_name: "Code Lab",
     command_count: 1,
     first_user_prompt: "Create an executable tool",
     last_command_id: "cmd-life",
     last_updated: @clock.Timestamp::from_ms(88L),
+    runtime_service_running: false,
     events: @broadcast.Broadcast::new(),
   }
   @fsx.make_directory(
@@ -700,10 +709,13 @@ test "mooncode session binding keeps its first MoonBook root" {
   let binding = MoonCodeSessionBinding::{
     session_id: "session/root-lock",
     book_root: "",
+    workspace_id: "",
+    workspace_name: "",
     command_count: 0,
     first_user_prompt: "",
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
+    runtime_service_running: false,
     events: @broadcast.Broadcast::new(),
   }
   assert_true(binding.bind_book_root("/tmp/moonsuite/books/code-lab"))

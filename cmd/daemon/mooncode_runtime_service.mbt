@@ -55,8 +55,27 @@ async fn Daemon::mooncode_runtime_service(
       },
     })
   }
+  let response = self.mooncode_start_runtime_service(
+    group~,
+    session_id,
+    book_root,
+    body,
+  )
+  w.header().set("Content-Type", "application/json")
+  w.write_header(202, reason="Accepted")
+  w.write(response.stringify(indent=2))
+}
+
+///|
+async fn Daemon::mooncode_start_runtime_service(
+  self : Daemon,
+  group~ : @async.TaskGroup[Unit],
+  session_id : String,
+  requested_book_root : String,
+  payload : Json,
+) -> Json {
   let binding = self.mooncode_binding_for_session(session_id)
-  if !binding.bind_book_root(book_root) {
+  if !binding.bind_book_root(requested_book_root) {
     raise json_error(409, "Conflict", {
       "error": {
         "code": -1,
@@ -64,51 +83,76 @@ async fn Daemon::mooncode_runtime_service(
         "metadata": {
           "session_id": session_id,
           "book_root": binding.book_root,
-          "requested_book_root": book_root,
+          "requested_book_root": requested_book_root,
         },
       },
     })
   }
   let book_root = binding.book_root
+  if binding.runtime_service_running {
+    return {
+      "kind": "mooncode-runtime-service",
+      "protocol": mooncode_protocol_version(),
+      "owner": "moonclaw",
+      "accepted": true,
+      "session_id": session_id,
+      "book_root": book_root,
+      "service_id": mooncode_runtime_service_id(session_id, payload),
+      "status": "running",
+      "started": false,
+      "message": "MoonClaw native runtime service is already running for this session.",
+      "started_event": null,
+      "loop_options": mooncode_runtime_service_loop_payload(session_id, payload),
+    }
+  }
+  binding.runtime_service_running = true
   let started = self.mooncode_runtime_service_started_event(
-    session_id, book_root, body,
+    session_id, book_root, payload,
   )
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), started)
+  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), started) catch {
+    error => {
+      binding.runtime_service_running = false
+      raise error
+    }
+  }
   group.spawn_bg(
     () => {
-      let _ = self.mooncode_runtime_service_execute(session_id, book_root, body) catch {
+      defer {
+        binding.runtime_service_running = false
+      }
+      let _ = self.mooncode_runtime_service_execute(
+        session_id, book_root, payload,
+      ) catch {
         error => {
-          logger.error("MoonCode runtime service failed: \{error}")
-          self.mooncode_runtime_service_persist_failed(
-            session_id,
-            book_root,
-            body,
-            "\{error}",
-          )
+          if !@async.is_being_cancelled() {
+            logger.error("MoonCode runtime service failed: \{error}")
+            self.mooncode_runtime_service_persist_failed(
+              session_id,
+              book_root,
+              payload,
+              "\{error}",
+            )
+          }
           Json::object({})
         }
       }
     },
     no_wait=true,
   )
-  w.header().set("Content-Type", "application/json")
-  w.write_header(202, reason="Accepted")
-  w.write(
-    (
-      {
-        "kind": "mooncode-runtime-service",
-        "protocol": mooncode_protocol_version(),
-        "owner": "moonclaw",
-        "accepted": true,
-        "session_id": session_id,
-        "book_root": book_root,
-        "service_id": mooncode_runtime_service_id(session_id, body),
-        "status": "started",
-        "message": "MoonClaw native runtime service started in the daemon task group.",
-        "started_event": started,
-        "loop_options": mooncode_runtime_service_loop_payload(session_id, body),
-      } : Json).stringify(indent=2),
-  )
+  {
+    "kind": "mooncode-runtime-service",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "accepted": true,
+    "session_id": session_id,
+    "book_root": book_root,
+    "service_id": mooncode_runtime_service_id(session_id, payload),
+    "status": "started",
+    "started": true,
+    "message": "MoonClaw native runtime service started in the daemon task group.",
+    "started_event": started,
+    "loop_options": mooncode_runtime_service_loop_payload(session_id, payload),
+  }
 }
 
 ///|
@@ -565,4 +609,51 @@ async test "mooncode runtime service state projects latest lifecycle event" (
   assert_eq(mooncode_json_string(done, "status", default=""), "done")
   assert_false(mooncode_json_bool(done, "running", default=true))
   assert_eq(mooncode_json_int(done, "event_count", default=0), 2)
+}
+
+///|
+async test "mooncode runtime service is single-flight per session" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-service-single-flight-XXXXXX"),
+  )
+  let session_id = "session-service-single-flight"
+  let daemon = Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+  let binding = daemon.mooncode_binding_for_session(session_id)
+  assert_true(binding.bind_book_root(book_root))
+  binding.runtime_service_running = true
+  @async.with_task_group(group => {
+    let response = daemon.mooncode_start_runtime_service(
+      group~,
+      session_id,
+      book_root,
+      { "service_id": "service-reused" },
+    )
+    assert_eq(mooncode_json_string(response, "status", default=""), "running")
+    assert_false(mooncode_json_bool(response, "started", default=true))
+    assert_true(binding.runtime_service_running)
+  })
+  assert_false(@fsx.exists(mooncode_events_path(book_root, session_id)))
 }

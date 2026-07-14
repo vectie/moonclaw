@@ -67,6 +67,7 @@ For MoonCode, the target native API namespace is:
 /v1/code/capabilities
 /v1/code/sessions
 /v1/code/sessions/<id>/commands
+/v1/code/sessions/<id>/turns
 /v1/code/sessions/<id>/runtime-claim
 /v1/code/sessions/<id>/runtime-turn
 /v1/code/sessions/<id>/runtime-loop
@@ -99,6 +100,11 @@ MoonCode command intake uses the shared `mooncode/core` envelope contract.
 `native_command_body_supported_fields()` are the source of truth for top-level
 command fields; MoonClaw validates `/v1/code/sessions/<id>/commands` against
 that contract instead of maintaining a private route-specific allowlist.
+
+Interactive clients submit through `/v1/code/sessions/<id>/turns`, which
+combines durable command append and single-flight runtime-service start into one
+MoonClaw-owned transaction. `/commands` remains the lower-level queue boundary
+for diagnostic and explicitly orchestrated clients.
 
 ## Current Validation
 

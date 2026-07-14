@@ -16,10 +16,11 @@ test "mooncode capabilities expose native daemon endpoints" {
     ),
   )
   assert_true(
-    mooncode_native_capability_optional_endpoints().contains(
+    mooncode_native_capability_required_endpoints().contains(
       "/v1/code/sessions?book_root=<path>&format=listing",
     ),
   )
+  assert_eq(mooncode_native_capability_optional_endpoints().length(), 0)
   assert_eq(
     mooncode_capability_endpoints().length(),
     mooncode_native_capability_endpoints().length(),
