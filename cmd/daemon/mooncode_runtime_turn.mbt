@@ -185,7 +185,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
       }
       let plan_now = self.clock.now()
       if mooncode_runtime_turn_requires_model_planning(command) {
-        let model_name = mooncode_runtime_turn_requested_model(command)
+        let model_name = mooncode_runtime_turn_requested_model_label(command)
         self.mooncode_runtime_turn_record_event(
           binding,
           events,
@@ -216,8 +216,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
           )
         }
         let planned_tool_calls = mooncode_json_array_items(plan, "tool_calls")
+        let planner_failed = mooncode_json_bool(plan, "failed", default=false)
         let tool_calls = if planned_tool_calls.length() > 0 {
           planned_tool_calls
+        } else if planner_failed {
+          []
         } else {
           mooncode_runtime_turn_tool_calls(command)
         }
@@ -301,7 +304,12 @@ async fn Daemon::mooncode_runtime_turn_execute(
         mooncode_json_string(step, "planner_mode", default="") ==
         mooncode_planner_mode_model_tool_calls()
       })
-      let tool_accepted = if used_model_planner {
+      let planner_failed = planner_steps.any(step => {
+        mooncode_json_bool(step, "failed", default=false)
+      })
+      let tool_accepted = if planner_failed {
+        false
+      } else if used_model_planner {
         mooncode_runtime_turn_model_execution_accepted(command, tool_results)
       } else {
         tool_results.all(result => {

@@ -163,6 +163,12 @@ async test "mooncode native runtime turn defers idle steer into next command" (
     "command": "prompt",
     "text": "Record this MoonCode prompt.",
     "packet": { "command_id": prompt_id },
+    "runtime_tool_calls": [
+      {
+        "tool": "finish",
+        "arguments": { "answer": "Recorded the MoonCode prompt." },
+      },
+    ],
   }
   mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
     "kind": "mooncode-command",
@@ -473,7 +479,7 @@ async test "mooncode native runtime turn records review receipts" (
 }
 
 ///|
-test "mooncode native runtime turn plans prompt tool calls" {
+test "mooncode user prompts require model planning instead of canned artifacts" {
   let command : Json = {
     "protocol": mooncode_protocol_version(),
     "session_id": "session-planner",
@@ -483,11 +489,9 @@ test "mooncode native runtime turn plans prompt tool calls" {
     "packet": { "command_id": "cmd-planner" },
   }
   let calls = mooncode_runtime_turn_tool_calls(command)
-  assert_eq(calls.length(), 4)
-  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "write")
-  assert_true(calls[0].stringify().contains("tools/mooncode-generated"))
-  assert_eq(mooncode_json_string(calls[2], "tool", default=""), "shell")
-  assert_eq(mooncode_json_string(calls[3], "tool", default=""), "finish")
+  assert_eq(calls.length(), 0)
+  assert_eq(mooncode_runtime_turn_deterministic_preplan(command).length(), 0)
+  assert_true(mooncode_runtime_turn_requires_model_planning(command))
   let miniapp : Json = {
     "protocol": mooncode_protocol_version(),
     "session_id": "session-planner",
@@ -497,9 +501,9 @@ test "mooncode native runtime turn plans prompt tool calls" {
     "packet": { "command_id": "cmd-miniapp" },
   }
   let miniapp_calls = mooncode_runtime_turn_tool_calls(miniapp)
-  assert_eq(miniapp_calls.length(), 4)
-  assert_true(miniapp_calls[0].stringify().contains("apps/mooncode-generated"))
-  assert_eq(mooncode_json_string(miniapp_calls[2], "tool", default=""), "shell")
+  assert_eq(miniapp_calls.length(), 0)
+  assert_eq(mooncode_runtime_turn_deterministic_preplan(miniapp).length(), 0)
+  assert_true(mooncode_runtime_turn_requires_model_planning(miniapp))
   let engineering_prompt : Json = {
     "protocol": mooncode_protocol_version(),
     "session_id": "session-planner",
@@ -537,11 +541,7 @@ test "mooncode native runtime turn plans prompt tool calls" {
   let engineering_fallback = mooncode_runtime_turn_tool_calls(
     engineering_prompt,
   )
-  assert_eq(engineering_fallback.length(), 1)
-  assert_eq(
-    mooncode_json_string(engineering_fallback[0], "tool", default=""),
-    "finish",
-  )
+  assert_eq(engineering_fallback.length(), 0)
   assert_false(
     Json::array(engineering_fallback).stringify().contains("\"tool\":\"write\""),
   )
@@ -630,6 +630,52 @@ test "mooncode native runtime turn plans prompt tool calls" {
     "ROOT_OK",
   )
   assert_false(mooncode_runtime_turn_requires_model_planning(write))
+}
+
+///|
+test "mooncode failed planner cannot become a successful fallback" {
+  let command : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-planner-failed",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "text": "Explain this project",
+    "packet": { "command_id": "cmd-planner-failed" },
+  }
+  let started = mooncode_event(
+    session_id="session-planner-failed",
+    command_id="cmd-planner-failed",
+    lane="runtime",
+    kind="runtime.planner_started",
+    title="started",
+    status="running",
+    detail="started",
+    now=@clock.Timestamp::from_ms(1L),
+  )
+  let result = mooncode_runtime_turn_failed_planner_result(
+    command,
+    "codex/gpt-5.4",
+    "model unavailable",
+    started,
+    now=@clock.Timestamp::from_ms(2L),
+  )
+  assert_true(mooncode_json_bool(result, "failed", default=false))
+  assert_eq(mooncode_json_array_items(result, "tool_calls").length(), 0)
+  assert_true(result.stringify().contains("runtime.planner_failed"))
+}
+
+///|
+test "mooncode model planner selects runtime default when model is omitted" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Explain the current project structure",
+  }
+  assert_true(mooncode_runtime_turn_requires_model_planning(command))
+  assert_eq(mooncode_runtime_turn_requested_model(command), "")
+  assert_eq(
+    mooncode_runtime_turn_requested_model_label(command),
+    "default model",
+  )
 }
 
 ///|
@@ -1088,7 +1134,7 @@ test "mooncode native runtime turn emits planner progress events" {
 }
 
 ///|
-async test "mooncode native runtime turn creates executable tool from prompt" (
+async test "mooncode native runtime turn packages an explicit executable tool plan" (
   t : @test.Test,
 ) {
   ignore(t)
@@ -1104,6 +1150,34 @@ async test "mooncode native runtime turn creates executable tool from prompt" (
     "command": "prompt",
     "text": "Create an executable tool for this MoonBook",
     "packet": { "command_id": command_id },
+    "runtime_tool_calls": [
+      {
+        "tool": "write",
+        "arguments": {
+          "path": "tools/mooncode-generated/cmd-runtime-prompt/run.sh",
+          "content": "#!/bin/sh\nset -eu\nprintf 'MoonCode generated tool executed.\\n'\n",
+        },
+      },
+      {
+        "tool": "write",
+        "arguments": {
+          "path": "tools/mooncode-generated/cmd-runtime-prompt/README.md",
+          "content": "# Explicit MoonCode Tool\n",
+        },
+      },
+      {
+        "tool": "shell",
+        "arguments": {
+          "cmd": "sh tools/mooncode-generated/cmd-runtime-prompt/run.sh",
+          "timeout_ms": 10000,
+          "max_output_chars": 4000,
+        },
+      },
+      {
+        "tool": "finish",
+        "arguments": { "answer": "Created and verified the tool." },
+      },
+    ],
   }
   mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
     "kind": "mooncode-command",

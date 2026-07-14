@@ -220,6 +220,7 @@ fn mooncode_runtime_turn_failed_planner_result(
     "kind": mooncode_kind_runtime_turn_planner(),
     "protocol": mooncode_protocol_version(),
     "planner_mode": mooncode_planner_mode_deterministic_fallback(),
+    "failed": true,
     "model": model_name,
     "tool_calls": Json::array([]),
     "events": Json::array([started, failed]),

@@ -335,7 +335,6 @@ fn mooncode_runtime_service_finish_event(
   let base = mooncode_runtime_service_attach(event, book_root, payload)
   match base {
     Object(object) => {
-      object["runtime_loop"] = result
       object["ran_turn_count"] = mooncode_json_int(
         result,
         "ran_turn_count",
@@ -554,6 +553,8 @@ async test "mooncode runtime service state projects latest lifecycle event" (
       "message": "idle",
     },
   )
+  assert_false(finished.stringify().contains("\"runtime_loop\""))
+  assert_true(finished.stringify().length() < 2048)
   mooncode_append_jsonl(mooncode_events_path(book_root, session_id), finished)
   let done = mooncode_runtime_service_state_payload(
     session_id,

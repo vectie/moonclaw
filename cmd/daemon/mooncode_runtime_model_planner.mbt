@@ -24,8 +24,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       "events": Json::array([]),
     }
   }
-  let model_name = mooncode_runtime_turn_requested_model(command)
-  if model_name == "" || !mooncode_runtime_turn_model_planning_allowed(command) {
+  if !mooncode_runtime_turn_model_planning_allowed(command) {
     return {
       "kind": mooncode_kind_runtime_turn_planner(),
       "protocol": mooncode_protocol_version(),
@@ -33,6 +32,22 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       "tool_calls": Json::array([]),
       "events": Json::array([]),
     }
+  }
+  let requested_model_name = mooncode_runtime_turn_requested_model(command)
+  let requested_model : String? = if requested_model_name == "" {
+    None
+  } else {
+    Some(requested_model_name)
+  }
+  let selected_model = self.models.get_model(name?=requested_model)
+  let model_name = match selected_model {
+    Some(model) => model.selector()
+    None =>
+      if requested_model_name == "" {
+        "default"
+      } else {
+        requested_model_name
+      }
   }
   let session_id = mooncode_json_string(command, "session_id", default="")
   let command_id = mooncode_command_id(command)
@@ -46,8 +61,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
     detail="MoonClaw is asking model `\{model_name}` to choose one bounded MoonCode tool batch.",
     now~,
   )
-  let requested_model : String? = Some(model_name)
-  match self.models.get_model(name?=requested_model) {
+  match selected_model {
     Some(model) => {
       let request = mooncode_runtime_turn_model_plan_request(
         model.model_name,
@@ -132,8 +146,17 @@ fn mooncode_runtime_turn_model_planning_allowed(command : Json) -> Bool {
 fn mooncode_runtime_turn_requires_model_planning(command : Json) -> Bool {
   mooncode_runtime_turn_explicit_tool_calls(command).length() == 0 &&
   mooncode_runtime_turn_deterministic_preplan(command).length() == 0 &&
-  mooncode_runtime_turn_requested_model(command) != "" &&
   mooncode_runtime_turn_model_planning_allowed(command)
+}
+
+///|
+fn mooncode_runtime_turn_requested_model_label(command : Json) -> String {
+  let requested = mooncode_runtime_turn_requested_model(command)
+  if requested == "" {
+    "default model"
+  } else {
+    requested
+  }
 }
 
 ///|
