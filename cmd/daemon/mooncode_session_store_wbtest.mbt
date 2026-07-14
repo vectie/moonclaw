@@ -131,6 +131,34 @@ async test "mooncode durable sidecars list and show without live binding" (
     mooncode_runtime_receipts_path(binding.book_root, binding.session_id),
     { "kind": mooncode_kind_runtime_receipt(), "command_id": "cmd-resume" },
   )
+  let listing_records = mooncode_durable_session_listing_records(book_root)
+  assert_eq(listing_records.length(), 1)
+  let listing_record = listing_records[0]
+  assert_eq(
+    mooncode_json_string(listing_record, "kind", default=""),
+    "mooncode-session-listing-record",
+  )
+  assert_eq(
+    mooncode_json_int(listing_record, "command_log_count", default=0),
+    1,
+  )
+  assert_eq(
+    mooncode_json_int(listing_record, "runtime_receipt_log_count", default=0),
+    1,
+  )
+  assert_eq(mooncode_json_int(listing_record, "event_log_count", default=0), 1)
+  assert_eq(
+    mooncode_json_int(listing_record, "package_result_log_count", default=0),
+    1,
+  )
+  assert_false(listing_record.stringify().contains("mooncode_conversation"))
+  assert_false(listing_record.stringify().contains("executable_book_lifecycle"))
+  let lightweight_listing = mooncode_session_listing_row(listing_record)
+  assert_eq(
+    mooncode_json_string(lightweight_listing, "title", default=""),
+    "Resume this MoonCode session",
+  )
+  assert_eq(mooncode_json_int(lightweight_listing, "event_count", default=0), 1)
   let records = mooncode_durable_session_records(book_root)
   assert_eq(records.length(), 1)
   let record = records[0]

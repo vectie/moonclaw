@@ -32,6 +32,131 @@ async fn mooncode_durable_session_records(book_root : String) -> Array[Json] {
 }
 
 ///|
+async fn mooncode_durable_session_listing_records(
+  book_root : String,
+) -> Array[Json] {
+  let records = []
+  let root = mooncode_sessions_root(book_root)
+  if !(@fsx.exists(root) catch { _ => false }) {
+    return records
+  }
+  let entries = @fsx.list_directory(root) catch { _ => return records }
+  for entry in entries {
+    if entry.kind is Directory {
+      let snapshot = mooncode_load_session_snapshot_by_safe_id(
+        book_root,
+        entry.name,
+      )
+      let session_id = mooncode_json_string(
+        snapshot,
+        "session_id",
+        default=entry.name,
+      )
+      let session_book_root = mooncode_json_string(
+        snapshot,
+        "book_root",
+        default=book_root,
+      )
+      records.push(
+        mooncode_session_listing_record_from_parts(
+          session_id,
+          session_book_root,
+          None,
+          snapshot,
+          source="sidecar",
+        ),
+      )
+    }
+  }
+  records
+}
+
+///|
+async fn mooncode_session_listing_record_from_parts(
+  session_id : String,
+  book_root : String,
+  live_binding : MoonCodeSessionBinding?,
+  snapshot : Json,
+  source~ : String,
+) -> Json {
+  let safe_session_id = mooncode_safe_session_id(session_id)
+  let commands_path = mooncode_commands_path_by_safe_id(
+    book_root, safe_session_id,
+  )
+  let events_path = mooncode_events_path_by_safe_id(book_root, safe_session_id)
+  let runtime_receipts_path = mooncode_runtime_receipts_path_by_safe_id(
+    book_root, safe_session_id,
+  )
+  let package_results_path = mooncode_package_results_path_by_safe_id(
+    book_root, safe_session_id,
+  )
+  let book_results_path = mooncode_book_results_path_by_safe_id(
+    book_root, safe_session_id,
+  )
+  {
+    "kind": "mooncode-session-listing-record",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "source": source,
+    "session_id": session_id,
+    "safe_session_id": safe_session_id,
+    "book_root": book_root,
+    "live_binding_ready": live_binding is Some(_),
+    "binding": match live_binding {
+      Some(binding) => binding.to_json()
+      None => null
+    },
+    "snapshot": snapshot,
+    "storage": {
+      "session_json": mooncode_session_snapshot_path_by_safe_id(
+        book_root, safe_session_id,
+      ),
+      "commands_jsonl": commands_path,
+      "runtime_receipts_jsonl": runtime_receipts_path,
+      "events_jsonl": events_path,
+      "package_results_jsonl": package_results_path,
+      "book_results_jsonl": book_results_path,
+    },
+    "command_log_count": mooncode_json_int(
+      snapshot,
+      "command_count",
+      default=mooncode_jsonl_record_count(commands_path),
+    ),
+    "runtime_receipt_log_count": mooncode_jsonl_record_count(
+      runtime_receipts_path,
+    ),
+    "event_log_count": mooncode_jsonl_record_count(events_path),
+    "package_result_log_count": mooncode_jsonl_record_count(
+      package_results_path,
+    ),
+    "book_result_log_count": mooncode_jsonl_record_count(book_results_path),
+    "resume_state": if live_binding is Some(_) {
+      "live"
+    } else {
+      "durable"
+    },
+  }
+}
+
+///|
+async fn mooncode_jsonl_record_count(path : String) -> Int {
+  if path == "" || !(@fsx.exists(path) catch { _ => false }) {
+    return 0
+  }
+  let text = @fsx.read_file(path) catch { _ => return 0 }
+  let mut count = 0
+  for char in text {
+    if char == '\n' {
+      count += 1
+    }
+  }
+  if !text.is_empty() && !text.has_suffix("\n") {
+    count += 1
+  }
+  count
+}
+
+///|
 async fn mooncode_load_session_snapshot(
   book_root : String,
   session_id : String,

@@ -5,8 +5,12 @@ async fn Daemon::mooncode_list_sessions(
   w : @httpx.ResponseWriter,
 ) -> Unit {
   let book_root = mooncode_request_book_root(r)
-  let records = self.mooncode_session_records(book_root)
   let format = mooncode_request_string(r, "format", default="")
+  let records = if format == "json" || format == "listing" {
+    self.mooncode_session_listing_records(book_root)
+  } else {
+    self.mooncode_session_records(book_root)
+  }
   w.header().set("Content-Type", "application/json")
   match mooncode_session_list_format_error(format) {
     Some(payload) => raise json_error(400, "Bad Request", payload)

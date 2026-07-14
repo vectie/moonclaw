@@ -122,6 +122,49 @@ async fn Daemon::mooncode_session_records(
 }
 
 ///|
+async fn Daemon::mooncode_session_listing_records(
+  self : Daemon,
+  book_root : String,
+) -> Array[Json] {
+  let records = []
+  let seen : Map[String, Bool] = {}
+  if book_root != "" {
+    for record in mooncode_durable_session_listing_records(book_root) {
+      let session_id = mooncode_json_string(record, "session_id", default="")
+      if session_id != "" {
+        seen[session_id] = true
+      }
+      records.push(record)
+    }
+  }
+  for binding in self.mooncode_sessions.values() {
+    if mooncode_listing_root_matches(book_root, binding.book_root) &&
+      !seen.contains(binding.session_id) {
+      records.push(
+        mooncode_session_listing_record_from_parts(
+          binding.session_id,
+          binding.book_root,
+          Some(binding),
+          mooncode_session_snapshot(binding),
+          source="memory",
+        ),
+      )
+    }
+  }
+  records
+}
+
+///|
+fn mooncode_listing_root_matches(
+  requested_root : String,
+  book_root : String,
+) -> Bool {
+  requested_root == "" ||
+  requested_root == book_root ||
+  mooncode_sessions_root(requested_root) == mooncode_sessions_root(book_root)
+}
+
+///|
 async fn Daemon::mooncode_session_record(
   self : Daemon,
   session_id : String,
