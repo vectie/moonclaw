@@ -49,3 +49,44 @@ async test "event-stream" (t : @test.Test) {
     })
   })
 }
+
+///|
+async test "event-stream comments are protocol-valid heartbeats" (
+  t : @test.Test,
+) {
+  @mock.run(t, _ => {
+    let s = @httpx.Server::new("[::1]", 0)
+    @async.with_task_group(g => {
+      g.spawn_bg(
+        () => {
+          s.serve((_, w) => {
+            let w = @httpx.EventStreamWriter::new(w)
+            w.write_header(@status.Ok)
+            w.write_comment("keep-alive")
+            w.write_event(event="message", data=Json::object({ "ready": true }))
+          })
+        },
+        no_wait=true,
+      )
+      let c = @http.Client::new("http://localhost:\{s.port()}")
+      defer c.close()
+      c.request(Get, "/")
+      let r = c.end_request()
+      json_inspect(r.code, content=200)
+      let r = @httpx.EventStreamReader::new(c)
+      let events = []
+      while r.read_event() is Some(event) {
+        events.push(event)
+      }
+      inspect(
+        events.map(Event::to_string).join(""),
+        content=(
+          #|event: message
+          #|data: {"ready":true}
+          #|
+          #|
+        ),
+      )
+    })
+  })
+}

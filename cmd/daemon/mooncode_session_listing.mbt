@@ -6,8 +6,10 @@ async fn Daemon::mooncode_list_sessions(
 ) -> Unit {
   let book_root = mooncode_request_book_root(r)
   let format = mooncode_request_string(r, "format", default="")
-  let records = if format == "json" || format == "listing" {
-    self.mooncode_session_listing_records(book_root)
+  let records = if format == "json" {
+    self.mooncode_session_listing_records(book_root, include_log_counts=false)
+  } else if format == "listing" {
+    self.mooncode_session_listing_records(book_root, include_log_counts=true)
   } else {
     self.mooncode_session_records(book_root)
   }
@@ -252,6 +254,21 @@ fn mooncode_session_listing_first_user_prompt(record : Json) -> String {
     let value = mooncode_json_string(binding, key, default="")
     if value != "" {
       return value
+    }
+  }
+  for source in [snapshot, binding] {
+    let conversation = mooncode_json_object_field_or_empty(
+      source, "mooncode_conversation",
+    )
+    match mooncode_json_array_items(conversation, "turns").get(0) {
+      Some(turn) => {
+        let user = mooncode_json_object_field_or_empty(turn, "user")
+        let content = mooncode_json_string(user, "content", default="")
+        if content != "" {
+          return content
+        }
+      }
+      None => ()
     }
   }
   for message in mooncode_json_array_items(snapshot, "transcript") {

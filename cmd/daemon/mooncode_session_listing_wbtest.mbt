@@ -114,6 +114,28 @@ test "mooncode compact session listing title trims the first line" {
 }
 
 ///|
+test "mooncode session listing keeps the canonical first turn title" {
+  let listing = mooncode_session_listing_row({
+    "kind": "mooncode-session-record",
+    "session_id": "session-canonical-title",
+    "last_updated": Json::number(88.0, repr="88"),
+    "snapshot": {
+      "last_text": "second user request",
+      "mooncode_conversation": {
+        "turns": [
+          { "user": { "content": "  first canonical request\nmore" } },
+          { "user": { "content": "second user request" } },
+        ],
+      },
+    },
+  })
+  assert_eq(
+    mooncode_json_string(listing, "title", default=""),
+    "first canonical request",
+  )
+}
+
+///|
 async test "mooncode binding remembers first prompt once for session picker title" {
   let binding = MoonCodeSessionBinding::{
     session_id: "session-title",

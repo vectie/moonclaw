@@ -151,6 +151,27 @@ async test "mooncode durable sidecars list and show without live binding" (
     mooncode_json_int(listing_record, "package_result_log_count", default=0),
     1,
   )
+  let compact_records = mooncode_durable_session_listing_records(
+    book_root,
+    include_log_counts=false,
+  )
+  assert_eq(compact_records.length(), 1)
+  assert_eq(
+    mooncode_json_int(compact_records[0], "command_log_count", default=0),
+    1,
+  )
+  assert_eq(
+    mooncode_json_int(compact_records[0], "event_log_count", default=-1),
+    0,
+  )
+  assert_eq(
+    mooncode_json_int(
+      compact_records[0],
+      "runtime_receipt_log_count",
+      default=-1,
+    ),
+    0,
+  )
   assert_false(listing_record.stringify().contains("mooncode_conversation"))
   assert_false(listing_record.stringify().contains("executable_book_lifecycle"))
   let lightweight_listing = mooncode_session_listing_row(listing_record)

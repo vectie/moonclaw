@@ -90,7 +90,9 @@ async fn Daemon::mooncode_stream_wait_for_events(
 ) -> Json {
   let mut elapsed_ms = 0
   let mut attempt_count = 0
-  let mut events = self.mooncode_stream_current_events(book_root, session_id)
+  let snapshot = self.mooncode_stream_snapshot(book_root, session_id)
+  let mut events = snapshot.0
+  let mut event_log_size = snapshot.1
   while wait_ms > 0 && events.length() <= since && elapsed_ms < wait_ms {
     if @async.is_being_cancelled() {
       break
@@ -100,7 +102,14 @@ async fn Daemon::mooncode_stream_wait_for_events(
     @async.sleep(delay)
     elapsed_ms += delay
     attempt_count += 1
-    events = self.mooncode_stream_current_events(book_root, session_id)
+    let next_event_log_size = mooncode_stream_event_log_size(
+      book_root, session_id,
+    )
+    if next_event_log_size != event_log_size {
+      let changed = self.mooncode_stream_snapshot(book_root, session_id)
+      events = changed.0
+      event_log_size = changed.1
+    }
   }
   {
     "kind": "mooncode-stream-wait",
@@ -116,6 +125,42 @@ async fn Daemon::mooncode_stream_wait_for_events(
     "ready": events.length() > since,
     "event_count": events.length(),
     "events": Json::array(events),
+  }
+}
+
+///|
+async fn Daemon::mooncode_stream_snapshot(
+  self : Daemon,
+  book_root : String,
+  session_id : String,
+) -> (Array[Json], Int64) {
+  let mut size_before = mooncode_stream_event_log_size(book_root, session_id)
+  let mut events = self.mooncode_stream_current_events(book_root, session_id)
+  let mut size_after = mooncode_stream_event_log_size(book_root, session_id)
+  let mut retry_count = 0
+  while size_after != size_before && retry_count < 3 {
+    size_before = size_after
+    events = self.mooncode_stream_current_events(book_root, session_id)
+    size_after = mooncode_stream_event_log_size(book_root, session_id)
+    retry_count += 1
+  }
+  (events, size_after)
+}
+
+///|
+async fn mooncode_stream_event_log_size(
+  book_root : String,
+  session_id : String,
+) -> Int64 {
+  let file = @fs.open(
+    mooncode_events_path(book_root, session_id),
+    mode=ReadOnly,
+  ) catch {
+    _ => return -1L
+  }
+  defer file.close()
+  file.size() catch {
+    _ => -1L
   }
 }
 

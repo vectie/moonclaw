@@ -37,27 +37,34 @@ async fn Daemon::get_events(self : Daemon, w : @httpx.ResponseWriter) -> Unit {
     event="daemon.tasks.synchronized",
     data=Json::object({ "tasks": tasks }),
   )
-  self.events.listen_forever(e => {
-    match e {
-      StatusChange(id) => {
-        let data : Json = { "task": self.by_id[id] }
-        w.write_event(event="daemon.task.changed", data~)
-      }
-      AuthStatusChanged(provider~, authenticated~) => {
-        let data : Json = {
-          "provider": provider,
-          "authenticated": authenticated,
+  let mut i = 0
+  while true {
+    match @async.with_timeout_opt(5_000, () => self.events.read(i)) {
+      None => w.write_comment("keep-alive")
+      Some(e) => {
+        match e {
+          StatusChange(id) => {
+            let data : Json = { "task": self.by_id[id] }
+            w.write_event(event="daemon.task.changed", data~)
+          }
+          AuthStatusChanged(provider~, authenticated~) => {
+            let data : Json = {
+              "provider": provider,
+              "authenticated": authenticated,
+            }
+            w.write_event(event="auth.status.changed", data~)
+          }
+          AuthLoginCompleted(provider~) => {
+            let data : Json = { "provider": provider }
+            w.write_event(event="auth.login.completed", data~)
+          }
+          AuthLoginFailed(provider~, message~) => {
+            let data : Json = { "provider": provider, "message": message }
+            w.write_event(event="auth.login.failed", data~)
+          }
         }
-        w.write_event(event="auth.status.changed", data~)
-      }
-      AuthLoginCompleted(provider~) => {
-        let data : Json = { "provider": provider }
-        w.write_event(event="auth.login.completed", data~)
-      }
-      AuthLoginFailed(provider~, message~) => {
-        let data : Json = { "provider": provider, "message": message }
-        w.write_event(event="auth.login.failed", data~)
+        i += 1
       }
     }
-  })
+  }
 }

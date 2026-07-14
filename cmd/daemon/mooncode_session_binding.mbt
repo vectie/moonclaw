@@ -125,11 +125,16 @@ async fn Daemon::mooncode_session_records(
 async fn Daemon::mooncode_session_listing_records(
   self : Daemon,
   book_root : String,
+  include_log_counts~ : Bool,
 ) -> Array[Json] {
   let records = []
   let seen : Map[String, Bool] = {}
   if book_root != "" {
-    for record in mooncode_durable_session_listing_records(book_root) {
+    for
+      record in mooncode_durable_session_listing_records(
+        book_root,
+        include_log_counts~,
+      ) {
       let session_id = mooncode_json_string(record, "session_id", default="")
       if session_id != "" {
         seen[session_id] = true
@@ -147,6 +152,7 @@ async fn Daemon::mooncode_session_listing_records(
           Some(binding),
           mooncode_session_snapshot(binding),
           source="memory",
+          include_log_counts~,
         ),
       )
     }

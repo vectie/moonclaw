@@ -73,3 +73,21 @@ test "mooncode stream wait options clamp to bounded live tail values" {
   assert_eq(mooncode_stream_poll_ms_value(100), 100)
   assert_eq(mooncode_stream_poll_ms_value(9000), 2000)
 }
+
+///|
+async test "mooncode stream uses event log size as its append fingerprint" {
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-stream-fingerprint-XXXXXX"),
+  )
+  let session_id = "session-stream-fingerprint"
+  let path = mooncode_events_path(book_root, session_id)
+  @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
+  @fsx.write_to_file(path, "{\"id\":\"event-1\"}\n")
+  let first_size = mooncode_stream_event_log_size(book_root, session_id)
+  assert_true(first_size > 0L)
+  @fsx.write_to_file(path, "{\"id\":\"event-1\"}\n{\"id\":\"event-2\"}\n")
+  let second_size = mooncode_stream_event_log_size(book_root, session_id)
+  assert_true(second_size > first_size)
+  let events = mooncode_read_jsonl(path)
+  assert_eq(events.length(), 2)
+}

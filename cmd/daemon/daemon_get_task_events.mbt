@@ -27,8 +27,12 @@ async fn Daemon::get_task_events(
   w.write_header(200)
   let mut i = 0
   while true {
-    let event = broadcast.read(i)
-    w.write(event)
-    i += 1
+    match @async.with_timeout_opt(5_000, () => broadcast.read(i)) {
+      None => w.write_comment("keep-alive")
+      Some(event) => {
+        w.write(event)
+        i += 1
+      }
+    }
   }
 }

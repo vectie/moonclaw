@@ -62,6 +62,19 @@ pub async fn EventStreamWriter::write_event(
 }
 
 ///|
+/// Writes an SSE comment. Comments are ignored by EventSource consumers and
+/// are useful as heartbeats that surface disconnected clients to the server.
+pub async fn EventStreamWriter::write_comment(
+  self : EventStreamWriter,
+  comment : String,
+) -> Unit {
+  self.w.write(": ")
+  self.w.write(comment)
+  self.w.write("\n\n")
+  self.w.flush()
+}
+
+///|
 /// Writes an SSE event to the stream by converting the given object to an event
 /// format.
 ///

@@ -34,6 +34,7 @@ async fn mooncode_durable_session_records(book_root : String) -> Array[Json] {
 ///|
 async fn mooncode_durable_session_listing_records(
   book_root : String,
+  include_log_counts? : Bool = true,
 ) -> Array[Json] {
   let records = []
   let root = mooncode_sessions_root(book_root)
@@ -64,6 +65,7 @@ async fn mooncode_durable_session_listing_records(
           None,
           snapshot,
           source="sidecar",
+          include_log_counts~,
         ),
       )
     }
@@ -78,6 +80,7 @@ async fn mooncode_session_listing_record_from_parts(
   live_binding : MoonCodeSessionBinding?,
   snapshot : Json,
   source~ : String,
+  include_log_counts? : Bool = true,
 ) -> Json {
   let safe_session_id = mooncode_safe_session_id(session_id)
   let commands_path = mooncode_commands_path_by_safe_id(
@@ -122,14 +125,26 @@ async fn mooncode_session_listing_record_from_parts(
       "command_count",
       default=mooncode_jsonl_record_count(commands_path),
     ),
-    "runtime_receipt_log_count": mooncode_jsonl_record_count(
-      runtime_receipts_path,
-    ),
-    "event_log_count": mooncode_jsonl_record_count(events_path),
-    "package_result_log_count": mooncode_jsonl_record_count(
-      package_results_path,
-    ),
-    "book_result_log_count": mooncode_jsonl_record_count(book_results_path),
+    "runtime_receipt_log_count": if include_log_counts {
+      mooncode_jsonl_record_count(runtime_receipts_path)
+    } else {
+      0
+    },
+    "event_log_count": if include_log_counts {
+      mooncode_jsonl_record_count(events_path)
+    } else {
+      0
+    },
+    "package_result_log_count": if include_log_counts {
+      mooncode_jsonl_record_count(package_results_path)
+    } else {
+      0
+    },
+    "book_result_log_count": if include_log_counts {
+      mooncode_jsonl_record_count(book_results_path)
+    } else {
+      0
+    },
     "resume_state": if live_binding is Some(_) {
       "live"
     } else {
