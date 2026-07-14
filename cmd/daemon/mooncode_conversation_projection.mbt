@@ -113,7 +113,7 @@ fn mooncode_conversation_apply_command(
   let turn = turns[target]
   turn.user = mooncode_conversation_user_message(command_entry, command)
   turn.status = "queued"
-  turn.work_live = mooncode_conversation_queued_work_live(turn)
+  turn.work_live = Json::object({})
   turn.started_at = mooncode_conversation_first_text(
     turn.started_at,
     created_at,
@@ -721,24 +721,16 @@ fn mooncode_conversation_slot_id(command_id : String, slot : String) -> String {
 }
 
 ///|
-fn mooncode_conversation_queued_work_live(
-  turn : MoonCodeConversationTurnDraft,
-) -> Json {
-  {
-    "item_id": mooncode_conversation_slot_id(turn.command_id, "work-live"),
-    "kind": "status",
-    "title": "Request queued",
-    "summary": "Waiting for MoonClaw to start this turn.",
-    "status": "queued",
-  }
-}
-
-///|
 fn mooncode_conversation_work_json(
   turn : MoonCodeConversationTurnDraft,
   assistant : Json,
 ) -> Json {
   let status = mooncode_conversation_work_status(turn, assistant)
+  if status == "queued" &&
+    turn.work_steps.length() == 0 &&
+    turn.work_live.stringify() == "{}" {
+    return Json::object({})
+  }
   {
     "item_id": mooncode_conversation_slot_id(turn.command_id, "work"),
     "status": status,

@@ -725,6 +725,35 @@ test "canonical conversation hides control commands and explains failed work" {
 }
 
 ///|
+test "canonical queued turn does not claim that runtime work started" {
+  let prompt : Json = {
+    "command_id": "cmd-queued",
+    "created_at": "2026-07-14T00:00:00Z",
+    "command": {
+      "command": "prompt",
+      "text": "Inspect the project",
+      "packet": {
+        "command_id": "cmd-queued",
+        "client_turn_id": "client-queued",
+      },
+    },
+  }
+  let conversation = mooncode_session_conversation(
+    { "session_id": "session-queued", "book_root": "/tmp/book" },
+    [prompt],
+    [],
+    [],
+  )
+  let turns = mooncode_json_array_items(conversation, "turns")
+  assert_eq(turns.length(), 1)
+  assert_eq(mooncode_json_string(turns[0], "status", default=""), "queued")
+  assert_eq(
+    mooncode_json_object_field_or_empty(turns[0], "work").stringify(),
+    "{}",
+  )
+}
+
+///|
 test "read tools remain context steps even when runtime lane is diff" {
   let event : Json = {
     "id": "read-failed",
