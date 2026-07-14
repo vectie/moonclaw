@@ -360,9 +360,8 @@ command/event counts, `session_url`, and `stream_url`. The richer listing title
 prefers the first stored user prompt; older sidecars that lack that field fall
 back to the latest message, latest command id, then session id.
 `updated_at_ms` is factual: live memory rows use their `last_updated` timestamp,
-while durable sidecar rows use the newest mtime across `events.jsonl`,
-`commands.jsonl`, `package-results.jsonl`, `runtime-receipts.jsonl`, and
-`session.json`.
+while durable sidecar rows use the newest mtime across authoritative
+`journal.jsonl` and the replaceable `session.json` checkpoint.
 Rows are sorted newest first by `updated_at_ms`; rows without a timestamp sort
 last.
 
@@ -379,7 +378,8 @@ MoonBook session. Pass `book_root=<path>` to load the MoonClaw product-home
 sidecar for that book. The endpoint is read-only and does not spawn, claim, or
 execute work.
 
-The response is built from `commands.jsonl` plus `runtime-receipts.jsonl` and
+The response is projected from command and runtime-receipt records in the
+single session journal and
 reports one active turn, pending turn ids, lifecycle rows, and per-command
 effects such as `start-turn`, `queue-turn`, `deliver-steer`, `queue-steer`,
 `defer-steer`, `cancel-active`, `withdraw-pending`, and `drop-cancel`. Deferred
@@ -393,8 +393,8 @@ semantics stay separate from command ingestion and tool execution.
 ### `GET/POST /v1/code/sessions/{id}/runtime-claim`
 
 Projects and mutates the durable MoonCode command queue for a selected
-MoonBook session. The claim state is built from book-local `commands.jsonl`
-and `runtime-receipts.jsonl`; it classifies commands as claimable, claimed,
+MoonBook session. The claim state is projected from book-local command and
+runtime-receipt journal records; it classifies commands as claimable, claimed,
 delivered, invalid, or order-blocked. `POST` appends a
 `runtime-claimed` receipt for the next unresolved command without executing it.
 
@@ -406,10 +406,10 @@ execution.
 
 ### `GET /v1/code/sessions/{id}/stream`
 
-Replays the durable MoonCode event log for a selected MoonBook session. The
-event source is in the MoonClaw product home derived from the selected book
+Replays the durable MoonCode event projection for a selected MoonBook session.
+The source journal is in the MoonClaw product home derived from the selected book
 root:
-`.moonsuite/products/moonclaw/mooncode/sessions/{safe-session-id}/events.jsonl`.
+`.moonsuite/products/moonclaw/mooncode/sessions/{safe-session-id}/journal.jsonl`.
 
 Query parameters:
 
@@ -434,7 +434,8 @@ resumable replay coverage in `mooncode_stream_wbtest.mbt`.
 Returns the native MoonCode runtime-event state for a selected MoonBook
 session. Pass `book_root=<path>` to load the MoonClaw product-home sidecar
 after daemon restart. Durable runtime events live in
-`.moonsuite/products/moonclaw/mooncode/sessions/{safe-session-id}/events.jsonl`.
+`.moonsuite/products/moonclaw/mooncode/sessions/{safe-session-id}/journal.jsonl`
+alongside the other totally ordered session records.
 
 The response also projects the native `moon_check` watcher sidecar at
 `.moonsuite/products/moonclaw/mooncode/watchers/moon-check.json` into a
@@ -442,7 +443,7 @@ synthetic `runtime_update` event when the watcher belongs to the selected book.
 That event carries `[moon_check update]` content, test-lane status, command
 line, sequence, exit status when stopped, restart metadata, and capped output.
 The `event_count` field includes projected watcher evidence, while
-`durable_event_count` reports only the persisted `events.jsonl` rows.
+`durable_event_count` reports only persisted event-kind journal records.
 
 ### `GET /v1/code/sessions/{id}/eval-report`
 
@@ -598,7 +599,7 @@ runtime-turn uses it only to obtain bounded tool calls before execution.
 When a generated artifact verifies successfully, MoonClaw writes
 `portable/app-tool/mooncode/{safe-session-id}/package-{safe-command-id}.json`,
 refreshes `portable/app-tool/mooncode/{safe-session-id}/index.json`, appends
-`package_built` and `package_verified` records to `package-results.jsonl`, and
+`package_built` and `package_verified` records to the session journal, and
 adds artifact-lane events for MoonDesk's package review UI. The package
 result sink is `POST /v1/code/sessions/{id}/package-result?book_root={path}`;
 MoonClaw uses the query `book_root`, then body `book_root`, then any live
@@ -611,7 +612,7 @@ Runtime-built package manifest/index creation, source promotion, and package
 proof records live in `mooncode_runtime_packages.mbt`; the runtime-turn
 orchestrator calls that package boundary after tool execution.
 Package-result ingestion, validation, artifact-lane event projection, and
-`package-results.jsonl` persistence live in `mooncode_package_results.mbt`,
+journal persistence live in `mooncode_package_results.mbt`,
 with focused coverage in `mooncode_package_results_wbtest.mbt`; runtime-turn
 only calls that persistence boundary when it has produced package proof.
 
@@ -624,7 +625,7 @@ claim receipts, runtime events, tool results, package proof, and terminal
 idle, a turn fails, a cancel command is processed, or `max_turns` is reached.
 By default it preserves immediate-idle behavior. Callers that need an
 MoonCode live supervisor can pass `live_wait_ms` and `poll_ms` in the
-JSON body; the loop then polls the durable `commands.jsonl` queue for newly
+JSON body; the loop then polls the authoritative session journal for newly
 appended prompt, steer, or cancel commands before returning idle. The response
 includes `live_wait_attempt_count`, `live_wait_elapsed_ms`, and per-iteration
 `waits` records so MoonDesk can render whether the loop actually waited or
@@ -635,7 +636,7 @@ found work immediately.
 Starts the bounded runtime loop in the daemon task group instead of holding the
 HTTP request open. The endpoint writes `runtime.service_started` immediately,
 returns `202 Accepted`, then records `runtime.service_finished` or
-`runtime.service_failed` in the selected book's `events.jsonl`. It uses the
+`runtime.service_failed` in the selected book's session journal. It uses the
 same durable queue, claim receipts, turn execution, and `max_turns` /
 `live_wait_ms` / `poll_ms` limits as `runtime-loop`, with a default
 `live_wait_ms` of 5000 ms for live steering.

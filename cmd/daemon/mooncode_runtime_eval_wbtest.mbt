@@ -34,14 +34,19 @@ async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
     },
     "model": "unavailable-model",
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(6L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(6L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -89,7 +94,9 @@ async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
   assert_true(manifest_text.contains("\"mooncode.quality-trial.v1\""))
   assert_true(manifest_text.contains("tool_harness"))
   assert_true(manifest_text.contains("file_edit"))
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"eval_report.manifest\""))
   assert_true(events_log.contains("tool_harness"))
   assert_true(events_log.contains("file_edit"))

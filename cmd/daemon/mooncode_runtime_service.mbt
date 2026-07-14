@@ -109,7 +109,14 @@ async fn Daemon::mooncode_start_runtime_service(
   let started = self.mooncode_runtime_service_started_event(
     session_id, book_root, payload,
   )
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), started) catch {
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      started,
+    ),
+  ) catch {
     error => {
       binding.runtime_service_running = false
       raise error
@@ -162,7 +169,8 @@ async fn Daemon::mooncode_runtime_service_events(
   book_root : String,
 ) -> Array[Json] {
   ignore(self)
-  let events = mooncode_read_jsonl(mooncode_events_path(book_root, session_id))
+  let journal = mooncode_read_session_journal(book_root, session_id)
+  let events = mooncode_journal_entries(journal, mooncode_journal_event())
   let result : Array[Json] = []
   for event in events {
     let kind = mooncode_json_string(event, "kind", default="")
@@ -216,7 +224,7 @@ fn mooncode_runtime_service_state_payload(
     "status": status,
     "running": status == "running",
     "event_count": filtered.length(),
-    "events_jsonl": mooncode_events_path(book_root, session_id),
+    "journal_jsonl": mooncode_session_journal_path(book_root, session_id),
     "latest_event": latest,
     "events": Json::array(filtered),
   }
@@ -236,7 +244,14 @@ async fn Daemon::mooncode_runtime_service_execute(
   let finished = self.mooncode_runtime_service_finished_event(
     session_id, book_root, payload, result,
   )
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), finished)
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      finished,
+    ),
+  )
   {
     "kind": "mooncode-runtime-service-result",
     "protocol": mooncode_protocol_version(),
@@ -321,9 +336,13 @@ async fn Daemon::mooncode_runtime_service_persist_failed(
     detail=error,
     now~,
   )
-  mooncode_append_jsonl(
-    mooncode_events_path(book_root, session_id),
-    mooncode_runtime_service_attach(event, book_root, payload),
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      mooncode_runtime_service_attach(event, book_root, payload),
+    ),
   )
 }
 
@@ -465,30 +484,37 @@ async test "mooncode runtime service records lifecycle events" (t : @test.Test) 
     @pathx.join(@os.tmpdir(), "moonclaw-mooncode-runtime-service-XXXXXX"),
   )
   let session_id = "session-runtime-service"
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-service-1",
-    "created_at": @clock.Timestamp::from_ms(10L),
-    "command": {
-      "protocol": mooncode_protocol_version(),
-      "session_id": session_id,
-      "book_root": book_root,
-      "command": "prompt",
-      "packet": { "command_id": "cmd-service-1" },
-      "runtime_tool_calls": [
-        {
-          "tool": "write",
-          "arguments": {
-            "path": "tools/service-proof/one.txt",
-            "content": "service",
-          },
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": "cmd-service-1",
+        "created_at": @clock.Timestamp::from_ms(10L),
+        "command": {
+          "protocol": mooncode_protocol_version(),
+          "session_id": session_id,
+          "book_root": book_root,
+          "command": "prompt",
+          "packet": { "command_id": "cmd-service-1" },
+          "runtime_tool_calls": [
+            {
+              "tool": "write",
+              "arguments": {
+                "path": "tools/service-proof/one.txt",
+                "content": "service",
+              },
+            },
+            { "tool": "finish", "arguments": { "answer": "service done" } },
+          ],
         },
-        { "tool": "finish", "arguments": { "answer": "service done" } },
-      ],
-    },
-  })
+      },
+    ),
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -515,7 +541,14 @@ async test "mooncode runtime service records lifecycle events" (t : @test.Test) 
     book_root,
     { "service_id": "svc-test", "max_turns": 2, "live_wait_ms": 0 },
   )
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), started)
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      started,
+    ),
+  )
   let result = daemon.mooncode_runtime_service_execute(session_id, book_root, {
     "service_id": "svc-test",
     "max_turns": 2,
@@ -526,7 +559,9 @@ async test "mooncode runtime service records lifecycle events" (t : @test.Test) 
   assert_true(
     @fsx.exists(@pathx.join(book_root, "tools/service-proof/one.txt")),
   )
-  let events = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events.contains("runtime.service_started"))
   assert_true(events.contains("runtime.service_finished"))
   assert_true(events.contains("svc-test"))
@@ -575,7 +610,14 @@ async test "mooncode runtime service state projects latest lifecycle event" (
     book_root,
     { "service_id": "svc-state", "max_turns": 1, "live_wait_ms": 0 },
   )
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), started)
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      started,
+    ),
+  )
   let running = mooncode_runtime_service_state_payload(
     session_id,
     book_root,
@@ -599,7 +641,14 @@ async test "mooncode runtime service state projects latest lifecycle event" (
   )
   assert_false(finished.stringify().contains("\"runtime_loop\""))
   assert_true(finished.stringify().length() < 2048)
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), finished)
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      finished,
+    ),
+  )
   let done = mooncode_runtime_service_state_payload(
     session_id,
     book_root,
@@ -655,5 +704,7 @@ async test "mooncode runtime service is single-flight per session" (
     assert_false(mooncode_json_bool(response, "started", default=true))
     assert_true(binding.runtime_service_running)
   })
-  assert_false(@fsx.exists(mooncode_events_path(book_root, session_id)))
+  assert_false(
+    @fsx.exists(mooncode_session_journal_path(book_root, session_id)),
+  )
 }

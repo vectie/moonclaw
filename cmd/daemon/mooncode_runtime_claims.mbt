@@ -47,9 +47,13 @@ async fn Daemon::mooncode_runtime_claim(
     now=self.clock.now(),
   )
   for receipt in receipts {
-    mooncode_append_jsonl(
-      mooncode_runtime_receipts_path(book_root, session_id),
-      receipt,
+    ignore(
+      mooncode_append_session_journal(
+        book_root,
+        session_id,
+        mooncode_journal_runtime_receipt(),
+        receipt,
+      ),
     )
   }
   let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
@@ -78,17 +82,19 @@ async fn Daemon::mooncode_runtime_claim_state_payload(
   book_root : String,
 ) -> Json {
   ignore(self)
-  let commands_path = mooncode_commands_path(book_root, session_id)
-  let receipts_path = mooncode_runtime_receipts_path(book_root, session_id)
-  let commands = mooncode_read_jsonl(commands_path)
-  let receipts = mooncode_read_jsonl(receipts_path)
+  let journal_path = mooncode_session_journal_path(book_root, session_id)
+  let journal = mooncode_read_session_journal(book_root, session_id)
+  let commands = mooncode_journal_entries(journal, mooncode_journal_command())
+  let receipts = mooncode_journal_entries(
+    journal,
+    mooncode_journal_runtime_receipt(),
+  )
   mooncode_runtime_claim_state_from_logs(
     session_id,
     book_root,
     commands,
     receipts,
-    commands_path~,
-    receipts_path~,
+    journal_path~,
   )
 }
 
@@ -98,8 +104,7 @@ fn mooncode_runtime_claim_state_from_logs(
   book_root : String,
   commands : Array[Json],
   receipts : Array[Json],
-  commands_path~ : String,
-  receipts_path~ : String,
+  journal_path~ : String,
 ) -> Json {
   let latest_receipts : Map[String, Json] = {}
   for receipt in receipts {
@@ -186,8 +191,7 @@ fn mooncode_runtime_claim_state_from_logs(
     "owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
-    "runtime_command_log_path": commands_path,
-    "runtime_receipt_log_path": receipts_path,
+    "journal_path": journal_path,
     "command_count": commands.length(),
     "receipt_count": receipts.length(),
     "claimable_command_count": claimable.length(),
@@ -197,7 +201,7 @@ fn mooncode_runtime_claim_state_from_logs(
     "order_blocked_command_count": order_blocked.length(),
     "claim_ready": claimable.length() > 0,
     "claim_endpoint": "/v1/code/sessions/\{session_id}/runtime-claim?book_root=<path>",
-    "ordering_rule": "MoonClaw claims the next unresolved command from commands.jsonl in append order; active claims and invalid commands block later commands until a runtime-receipt receipt resolves the blocker.",
+    "ordering_rule": "MoonClaw claims the next unresolved command from the session journal's total order; active claims and invalid commands block later commands until a runtime-receipt record resolves the blocker.",
     "claimable_commands": Json::array(claimable),
     "claimed_commands": Json::array(claimed),
     "delivered_commands": Json::array(delivered),

@@ -1,16 +1,22 @@
 ///|
-test "mooncode durable stream records support resumable sequence replay" {
+test "mooncode durable stream records support sparse journal sequence replay" {
   let first : Json = {
     "id": "event-1",
     "kind": "assistant_delta",
     "lane": "transcript",
+    "journal_sequence": 2,
   }
-  let second : Json = { "id": "event-2", "kind": "tool_result", "lane": "tool" }
+  let second : Json = {
+    "id": "event-2",
+    "kind": "tool_result",
+    "lane": "tool",
+    "journal_sequence": 5,
+  }
   let records = mooncode_stream_records(
     "session-stream",
     "/tmp/book",
     [first, second],
-    since=1,
+    since=2,
     wait_ms=1000,
     poll_ms=100,
     wait_elapsed_ms=300,
@@ -25,10 +31,10 @@ test "mooncode durable stream records support resumable sequence replay" {
   assert_eq(mooncode_json_int(records[0], "wait_elapsed_ms", default=0), 300)
   assert_eq(mooncode_json_int(records[0], "wait_attempt_count", default=0), 3)
   assert_eq(mooncode_json_string(records[1], "type", default=""), "event")
-  assert_eq(mooncode_json_int(records[1], "sequence", default=0), 2)
+  assert_eq(mooncode_json_int(records[1], "sequence", default=0), 5)
   assert_eq(mooncode_json_string(records[1], "event_id", default=""), "event-2")
   assert_eq(mooncode_json_string(records[2], "type", default=""), "done")
-  assert_eq(mooncode_json_int(records[2], "next_since", default=0), 2)
+  assert_eq(mooncode_json_int(records[2], "next_since", default=0), 5)
   assert_eq(mooncode_json_int(records[2], "wait_elapsed_ms", default=0), 300)
 }
 
@@ -75,19 +81,40 @@ test "mooncode stream wait options clamp to bounded live tail values" {
 }
 
 ///|
-async test "mooncode stream uses event log size as its append fingerprint" {
+async test "mooncode stream uses session journal size as its append fingerprint" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "mooncode-stream-fingerprint-XXXXXX"),
   )
   let session_id = "session-stream-fingerprint"
-  let path = mooncode_events_path(book_root, session_id)
-  @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-  @fsx.write_to_file(path, "{\"id\":\"event-1\"}\n")
-  let first_size = mooncode_stream_event_log_size(book_root, session_id)
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_event(),
+    {
+      "id": "event-1",
+      "command_id": "command-stream",
+      "created_at": "2026-07-15T00:00:00Z",
+    },
+  )
+  let first_size = mooncode_stream_journal_size(book_root, session_id)
   assert_true(first_size > 0L)
-  @fsx.write_to_file(path, "{\"id\":\"event-1\"}\n{\"id\":\"event-2\"}\n")
-  let second_size = mooncode_stream_event_log_size(book_root, session_id)
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_event(),
+    {
+      "id": "event-2",
+      "command_id": "command-stream",
+      "created_at": "2026-07-15T00:00:01Z",
+    },
+  )
+  let second_size = mooncode_stream_journal_size(book_root, session_id)
   assert_true(second_size > first_size)
-  let events = mooncode_read_jsonl(path)
+  let events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
   assert_eq(events.length(), 2)
+  assert_eq(mooncode_json_int(events[0], "journal_sequence", default=0), 1)
+  assert_eq(mooncode_json_int(events[1], "journal_sequence", default=0), 2)
 }

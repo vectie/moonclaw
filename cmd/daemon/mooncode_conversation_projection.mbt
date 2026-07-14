@@ -19,6 +19,7 @@ fn mooncode_session_conversation(
   commands : Array[Json],
   runtime_receipts : Array[Json],
   events : Array[Json],
+  journal_sequence~ : Int,
 ) -> Json {
   let turns = mooncode_conversation_turns(commands, runtime_receipts, events)
   let turn_json : Array[Json] = []
@@ -27,7 +28,6 @@ fn mooncode_session_conversation(
       turn_json.push(mooncode_conversation_turn_json(turn, ordinal~))
     }
   }
-  let revision = commands.length() + runtime_receipts.length() + events.length()
   {
     "kind": @mooncode_core.conversation_kind(),
     "protocol": mooncode_protocol_version(),
@@ -44,8 +44,8 @@ fn mooncode_session_conversation(
       fallback="",
     ),
     "turn_count": turn_json.length(),
-    "revision": revision,
-    "last_sequence": revision,
+    "revision": journal_sequence,
+    "last_sequence": journal_sequence,
     "source_event_count": events.length(),
     "turns": Json::array(turn_json),
     "ownership_contract": @mooncode_core.conversation_ownership_contract_json(),

@@ -92,8 +92,10 @@ async fn Daemon::mooncode_stream_wait_for_events(
   let mut attempt_count = 0
   let snapshot = self.mooncode_stream_snapshot(book_root, session_id)
   let mut events = snapshot.0
-  let mut event_log_size = snapshot.1
-  while wait_ms > 0 && events.length() <= since && elapsed_ms < wait_ms {
+  let mut journal_size = snapshot.1
+  while wait_ms > 0 &&
+        mooncode_stream_event_count_after(events, since) == 0 &&
+        elapsed_ms < wait_ms {
     if @async.is_being_cancelled() {
       break
     }
@@ -102,13 +104,11 @@ async fn Daemon::mooncode_stream_wait_for_events(
     @async.sleep(delay)
     elapsed_ms += delay
     attempt_count += 1
-    let next_event_log_size = mooncode_stream_event_log_size(
-      book_root, session_id,
-    )
-    if next_event_log_size != event_log_size {
+    let next_journal_size = mooncode_stream_journal_size(book_root, session_id)
+    if next_journal_size != journal_size {
       let changed = self.mooncode_stream_snapshot(book_root, session_id)
       events = changed.0
-      event_log_size = changed.1
+      journal_size = changed.1
     }
   }
   {
@@ -122,7 +122,7 @@ async fn Daemon::mooncode_stream_wait_for_events(
     "poll_ms": poll_ms,
     "wait_elapsed_ms": elapsed_ms,
     "wait_attempt_count": attempt_count,
-    "ready": events.length() > since,
+    "ready": mooncode_stream_event_count_after(events, since) > 0,
     "event_count": events.length(),
     "events": Json::array(events),
   }
@@ -134,26 +134,26 @@ async fn Daemon::mooncode_stream_snapshot(
   book_root : String,
   session_id : String,
 ) -> (Array[Json], Int64) {
-  let mut size_before = mooncode_stream_event_log_size(book_root, session_id)
+  let mut size_before = mooncode_stream_journal_size(book_root, session_id)
   let mut events = self.mooncode_stream_current_events(book_root, session_id)
-  let mut size_after = mooncode_stream_event_log_size(book_root, session_id)
+  let mut size_after = mooncode_stream_journal_size(book_root, session_id)
   let mut retry_count = 0
   while size_after != size_before && retry_count < 3 {
     size_before = size_after
     events = self.mooncode_stream_current_events(book_root, session_id)
-    size_after = mooncode_stream_event_log_size(book_root, session_id)
+    size_after = mooncode_stream_journal_size(book_root, session_id)
     retry_count += 1
   }
   (events, size_after)
 }
 
 ///|
-async fn mooncode_stream_event_log_size(
+async fn mooncode_stream_journal_size(
   book_root : String,
   session_id : String,
 ) -> Int64 {
   let file = @fs.open(
-    mooncode_events_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
     mode=ReadOnly,
   ) catch {
     _ => return -1L
@@ -171,7 +171,10 @@ async fn Daemon::mooncode_stream_current_events(
   session_id : String,
 ) -> Array[Json] {
   ignore(self)
-  mooncode_read_jsonl(mooncode_events_path(book_root, session_id))
+  mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
 }
 
 ///|
@@ -240,20 +243,14 @@ fn mooncode_stream_records(
   wait_elapsed_ms~ : Int,
   wait_attempt_count~ : Int,
 ) -> Array[Json] {
-  let latest_sequence = events.length()
-  let clamped_since = if since < 0 {
-    0
-  } else if since > latest_sequence {
-    latest_sequence
-  } else {
-    since
-  }
-  let emitted_count = latest_sequence - clamped_since
+  let latest_sequence = mooncode_stream_latest_sequence(events)
+  let clamped_since = if since < 0 { 0 } else { since }
+  let emitted_count = mooncode_stream_event_count_after(events, clamped_since)
   let records : Array[Json] = [
     mooncode_stream_meta_record(
       session_id,
       book_root,
-      event_count=latest_sequence,
+      event_count=events.length(),
       since=clamped_since,
       emitted_count~,
       latest_sequence~,
@@ -263,16 +260,23 @@ fn mooncode_stream_records(
       wait_attempt_count~,
     ),
   ]
-  for index in clamped_since..<events.length() {
-    records.push(
-      mooncode_stream_event_record(
-        session_id,
-        book_root,
-        events[index],
-        sequence=index + 1,
-        since=clamped_since,
-      ),
+  for index, event in events {
+    let sequence = mooncode_json_int(
+      event,
+      "journal_sequence",
+      default=index + 1,
     )
+    if sequence > clamped_since {
+      records.push(
+        mooncode_stream_event_record(
+          session_id,
+          book_root,
+          event,
+          sequence~,
+          since=clamped_since,
+        ),
+      )
+    }
   }
   records.push(
     mooncode_stream_done_record(
@@ -288,6 +292,33 @@ fn mooncode_stream_records(
     ),
   )
   records
+}
+
+///|
+fn mooncode_stream_latest_sequence(events : Array[Json]) -> Int {
+  let mut latest = 0
+  for index, event in events {
+    let sequence = mooncode_json_int(
+      event,
+      "journal_sequence",
+      default=index + 1,
+    )
+    if sequence > latest {
+      latest = sequence
+    }
+  }
+  latest
+}
+
+///|
+fn mooncode_stream_event_count_after(events : Array[Json], since : Int) -> Int {
+  let mut count = 0
+  for index, event in events {
+    if mooncode_json_int(event, "journal_sequence", default=index + 1) > since {
+      count += 1
+    }
+  }
+  count
 }
 
 ///|

@@ -33,17 +33,35 @@ async test "mooncode durable session sidecars use book local storage" (
     session_path,
     mooncode_session_snapshot(binding).stringify(),
   )
-  mooncode_append_jsonl(
-    mooncode_commands_path(binding.book_root, binding.session_id),
-    { "kind": "mooncode-command", "command_id": "cmd-1" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "command_id": "cmd-1",
+      "created_at": "2026-07-15T00:00:00Z",
+    },
   )
-  mooncode_append_jsonl(
-    mooncode_runtime_receipts_path(binding.book_root, binding.session_id),
-    { "kind": mooncode_kind_runtime_receipt(), "command_id": "cmd-1" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_runtime_receipt(),
+    {
+      "kind": mooncode_kind_runtime_receipt(),
+      "command_id": "cmd-1",
+      "completed_at": "2026-07-15T00:00:01Z",
+    },
   )
-  mooncode_append_jsonl(
-    mooncode_events_path(binding.book_root, binding.session_id),
-    { "kind": "assistant_delta", "command_id": "cmd-1" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_event(),
+    {
+      "kind": "assistant_delta",
+      "command_id": "cmd-1",
+      "created_at": "2026-07-15T00:00:02Z",
+    },
   )
   let snapshot = @fsx.read_file(session_path)
   assert_true(snapshot.contains("\"owner\":\"moonclaw\""))
@@ -54,18 +72,18 @@ async test "mooncode durable session sidecars use book local storage" (
   )
   assert_true(
     @fsx.read_file(
-      mooncode_commands_path(binding.book_root, binding.session_id),
+      mooncode_session_journal_path(binding.book_root, binding.session_id),
     ).contains("\"mooncode-command\""),
   )
   assert_true(
     @fsx.read_file(
-      mooncode_runtime_receipts_path(binding.book_root, binding.session_id),
+      mooncode_session_journal_path(binding.book_root, binding.session_id),
     ).contains("\"mooncode.runtime-receipt\""),
   )
   assert_true(
-    @fsx.read_file(mooncode_events_path(binding.book_root, binding.session_id)).contains(
-      "\"assistant_delta\"",
-    ),
+    @fsx.read_file(
+      mooncode_session_journal_path(binding.book_root, binding.session_id),
+    ).contains("\"assistant_delta\""),
   )
 }
 
@@ -121,21 +139,45 @@ async test "mooncode durable sidecars list and show without live binding" (
     mooncode_session_snapshot_path(binding.book_root, binding.session_id),
     mooncode_session_snapshot(binding).stringify(),
   )
-  mooncode_append_jsonl(
-    mooncode_commands_path(binding.book_root, binding.session_id),
-    { "kind": "mooncode-command", "command_id": "cmd-resume" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "command_id": "cmd-resume",
+      "created_at": "2026-07-15T00:01:00Z",
+    },
   )
-  mooncode_append_jsonl(
-    mooncode_events_path(binding.book_root, binding.session_id),
-    { "kind": "assistant_delta", "command_id": "cmd-resume" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_event(),
+    {
+      "kind": "assistant_delta",
+      "command_id": "cmd-resume",
+      "created_at": "2026-07-15T00:01:01Z",
+    },
   )
-  mooncode_append_jsonl(
-    mooncode_package_results_path(binding.book_root, binding.session_id),
-    { "kind": "mooncode-package-result", "command_id": "cmd-resume" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_package_result(),
+    {
+      "kind": "mooncode-package-result",
+      "command_id": "cmd-resume",
+      "created_at": "2026-07-15T00:01:02Z",
+    },
   )
-  mooncode_append_jsonl(
-    mooncode_runtime_receipts_path(binding.book_root, binding.session_id),
-    { "kind": mooncode_kind_runtime_receipt(), "command_id": "cmd-resume" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_runtime_receipt(),
+    {
+      "kind": mooncode_kind_runtime_receipt(),
+      "command_id": "cmd-resume",
+      "completed_at": "2026-07-15T00:01:03Z",
+    },
   )
   let listing_records = mooncode_durable_session_listing_records(book_root)
   assert_eq(listing_records.length(), 1)
@@ -278,87 +320,112 @@ async test "mooncode durable session record exposes canonical conversation" (
         "book_root": book_root,
       } : Json).stringify(),
   )
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-chat-1",
-    "created_at": "2026-07-07T00:00:00Z",
-    "command": {
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": "cmd-chat-1",
+      "created_at": "2026-07-07T00:00:00Z",
+      "command": {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": book_root,
+        "command": "prompt",
+        "packet": {
+          "command_id": "cmd-chat-1",
+          "client_turn_id": "client-chat-1",
+          "message": "hey",
+        },
+      },
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_event(),
+    {
+      "id": "reasoning-1",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": "cmd-chat-1",
+      "lane": "runtime",
+      "kind": "reasoning_delta",
+      "event": "reasoning_delta",
+      "status": "running",
+      "detail": "Planner step selected a finish tool call.",
+      "created_at": "2026-07-07T00:00:01Z",
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_event(),
+    {
+      "id": "finish-call-1",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": "cmd-chat-1",
+      "lane": "review",
+      "kind": mooncode_event_tool_call(),
+      "event": mooncode_event_tool_call(),
+      "tool": "finish",
+      "status": "running",
+      "detail": "{ \"answer\": \"wrong source\" }",
+      "created_at": "2026-07-07T00:00:02Z",
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_event(),
+    {
+      "id": "finish-1",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": "cmd-chat-1",
+      "lane": "review",
+      "kind": "finish",
+      "event": "finish",
+      "tool": "finish",
+      "status": "done",
+      "detail": "finished",
+      "tool_result": {
+        "tool": "finish",
+        "ok": true,
+        "output": "hello reply",
+        "metadata": { "answer": "hello reply" },
+      },
+      "created_at": "2026-07-07T00:00:03Z",
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_runtime_receipt(),
+    {
+      "kind": mooncode_kind_runtime_receipt(),
       "protocol": mooncode_protocol_version(),
       "session_id": session_id,
       "book_root": book_root,
-      "command": "prompt",
-      "packet": {
-        "command_id": "cmd-chat-1",
-        "client_turn_id": "client-chat-1",
-        "message": "hey",
+      "command_id": "cmd-chat-1",
+      "status": "runtime-completed",
+      "completed_at": "2026-07-07T00:00:04Z",
+      "execution": {
+        "tool_results": [
+          {
+            "tool": "finish",
+            "ok": true,
+            "output": "hello reply",
+            "metadata": { "answer": "hello reply" },
+          },
+        ],
       },
     },
-  })
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), {
-    "id": "reasoning-1",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-chat-1",
-    "lane": "runtime",
-    "kind": "reasoning_delta",
-    "event": "reasoning_delta",
-    "status": "running",
-    "detail": "Planner step selected a finish tool call.",
-    "created_at": "2026-07-07T00:00:01Z",
-  })
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), {
-    "id": "finish-call-1",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-chat-1",
-    "lane": "review",
-    "kind": mooncode_event_tool_call(),
-    "event": mooncode_event_tool_call(),
-    "tool": "finish",
-    "status": "running",
-    "detail": "{ \"answer\": \"wrong source\" }",
-    "created_at": "2026-07-07T00:00:02Z",
-  })
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), {
-    "id": "finish-1",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-chat-1",
-    "lane": "review",
-    "kind": "finish",
-    "event": "finish",
-    "tool": "finish",
-    "status": "done",
-    "detail": "finished",
-    "tool_result": {
-      "tool": "finish",
-      "ok": true,
-      "output": "hello reply",
-      "metadata": { "answer": "hello reply" },
-    },
-    "created_at": "2026-07-07T00:00:03Z",
-  })
-  mooncode_append_jsonl(mooncode_runtime_receipts_path(book_root, session_id), {
-    "kind": mooncode_kind_runtime_receipt(),
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "book_root": book_root,
-    "command_id": "cmd-chat-1",
-    "status": "runtime-completed",
-    "completed_at": "2026-07-07T00:00:04Z",
-    "execution": {
-      "tool_results": [
-        {
-          "tool": "finish",
-          "ok": true,
-          "output": "hello reply",
-          "metadata": { "answer": "hello reply" },
-        },
-      ],
-    },
-  })
+  )
   let records = mooncode_durable_session_records(book_root)
   assert_eq(records.length(), 1)
   let conversation = mooncode_json_object_field_or_empty(
@@ -457,67 +524,95 @@ async test "mooncode durable lifecycle completes from book-local evidence" (
     mooncode_session_snapshot_path(binding.book_root, binding.session_id),
     mooncode_session_snapshot(binding).stringify(),
   )
-  mooncode_append_jsonl(
-    mooncode_commands_path(binding.book_root, binding.session_id),
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_command(),
     {
       "kind": "mooncode-command",
       "command": "prompt",
       "command_id": "cmd-life",
+      "created_at": "2026-07-15T00:02:00Z",
     },
   )
-  mooncode_append_jsonl(
-    mooncode_runtime_receipts_path(binding.book_root, binding.session_id),
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_runtime_receipt(),
     {
       "kind": mooncode_kind_runtime_receipt(),
       "command_id": "cmd-life",
       "status": "runtime-completed",
+      "completed_at": "2026-07-15T00:02:01Z",
     },
   )
-  mooncode_append_jsonl(
-    mooncode_events_path(binding.book_root, binding.session_id),
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_event(),
     {
       "kind": "tool.write",
       "lane": "diff",
       "command_id": "cmd-life",
       "path": "tools/demo/main.mbt",
+      "created_at": "2026-07-15T00:02:02Z",
     },
   )
-  mooncode_append_jsonl(
-    mooncode_events_path(binding.book_root, binding.session_id),
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_event(),
     {
       "event": mooncode_event_test_result(),
       "lane": "test",
       "status": "passed",
       "command_id": "cmd-life",
+      "created_at": "2026-07-15T00:02:03Z",
     },
   )
-  mooncode_append_jsonl(
-    mooncode_events_path(binding.book_root, binding.session_id),
-    { "kind": "receipt.accept", "lane": "review", "command_id": "cmd-life" },
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_event(),
+    {
+      "kind": "receipt.accept",
+      "lane": "review",
+      "command_id": "cmd-life",
+      "created_at": "2026-07-15T00:02:04Z",
+    },
   )
-  mooncode_append_jsonl(
-    mooncode_events_path(binding.book_root, binding.session_id),
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_event(),
     {
       "event": mooncode_event_package_verified(),
       "lane": "artifact",
       "command_id": "cmd-life",
+      "created_at": "2026-07-15T00:02:05Z",
     },
   )
-  mooncode_append_jsonl(
-    mooncode_package_results_path(binding.book_root, binding.session_id),
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_package_result(),
     {
       "kind": "mooncode-package-result",
       "event": mooncode_event_package_verified(),
       "command_id": "cmd-life",
+      "created_at": "2026-07-15T00:02:06Z",
     },
   )
-  mooncode_append_jsonl(
-    mooncode_book_results_path(binding.book_root, binding.session_id),
+  mooncode_append_session_journal(
+    binding.book_root,
+    binding.session_id,
+    mooncode_journal_book_result(),
     {
       "kind": "mooncode-book-result",
       "requires_review": false,
       "event_type": "knowledge_accepted",
       "command_id": "cmd-life",
+      "created_at": "2026-07-15T00:02:07Z",
     },
   )
   let record = mooncode_session_record_from_parts(
@@ -551,51 +646,85 @@ async test "mooncode durable lifecycle completes from book-local evidence" (
 }
 
 ///|
-async test "mooncode jsonl append preserves one thousand records" (
+async test "mooncode journal preserves one thousand contiguous records" (
   t : @test.Test,
 ) {
   ignore(t)
   let root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-jsonl-volume-XXXXXX"),
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-journal-volume-XXXXXX"),
   )
-  let path = @pathx.join(root, "records.jsonl")
+  let session_id = "session-volume"
   for index in 0..<1000 {
-    mooncode_append_jsonl(path, { "index": index }) catch {
+    mooncode_append_session_journal(
+      root,
+      session_id,
+      mooncode_journal_event(),
+      {
+        "id": "event-\{index}",
+        "command_id": "command-volume",
+        "created_at": "timestamp-\{index}",
+        "index": index,
+      },
+    ) catch {
       error => fail("append failed at record \{index}: \{error}")
     }
   }
-  let records = mooncode_read_jsonl(path)
+  let records = mooncode_read_session_journal(root, session_id)
   assert_eq(records.length(), 1000)
-  assert_eq(mooncode_json_int(records[0], "index", default=-1), 0)
-  assert_eq(mooncode_json_int(records[999], "index", default=-1), 999)
-  assert_true(@fsx.read_file(path).has_suffix("\n"))
+  for index, record in records {
+    assert_eq(mooncode_json_int(record, "sequence", default=0), index + 1)
+  }
+  let events = mooncode_journal_entries(records, mooncode_journal_event())
+  assert_eq(mooncode_json_int(events[0], "index", default=-1), 0)
+  assert_eq(mooncode_json_int(events[999], "index", default=-1), 999)
+  assert_true(
+    @fsx.read_file(mooncode_session_journal_path(root, session_id)).has_suffix(
+      "\n",
+    ),
+  )
 }
 
 ///|
-async test "mooncode jsonl append serializes concurrent writers" (
+async test "mooncode journal serializes concurrent cross-lane writers" (
   t : @test.Test,
 ) {
   ignore(t)
   let root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-jsonl-concurrent-XXXXXX"),
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-journal-concurrent-XXXXXX"),
   )
-  let path = @pathx.join(root, "records.jsonl")
+  let session_id = "session-concurrent"
   @async.with_task_group(group => {
     let tasks = []
     for index in 0..<64 {
+      let record_kind = if index % 3 == 0 {
+        mooncode_journal_command()
+      } else if index % 3 == 1 {
+        mooncode_journal_event()
+      } else {
+        mooncode_journal_package_result()
+      }
       tasks.push(
-        group.spawn(() => mooncode_append_jsonl(path, { "index": index })),
+        group.spawn(() => {
+          mooncode_append_session_journal(root, session_id, record_kind, {
+            "id": "record-\{index}",
+            "command_id": "command-\{index}",
+            "created_at": "timestamp-\{index}",
+            "index": index,
+          })
+        }),
       )
     }
     for task in tasks {
       task.wait()
     }
   })
-  let records = mooncode_read_jsonl(path)
+  let records = mooncode_read_session_journal(root, session_id)
   assert_eq(records.length(), 64)
   let seen = Array::make(64, false)
-  for record in records {
-    let index = mooncode_json_int(record, "index", default=-1)
+  for sequence, record in records {
+    assert_eq(mooncode_json_int(record, "sequence", default=0), sequence + 1)
+    let payload = mooncode_json_object_field_or_empty(record, "payload")
+    let index = mooncode_json_int(payload, "index", default=-1)
     assert_true(index >= 0 && index < seen.length())
     assert_false(seen[index])
     seen[index] = true
@@ -606,19 +735,225 @@ async test "mooncode jsonl append serializes concurrent writers" (
 }
 
 ///|
-async test "mooncode jsonl append repairs a torn final record" (t : @test.Test) {
+async test "mooncode journal repairs only a torn final record" (t : @test.Test) {
   ignore(t)
   let root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-jsonl-torn-XXXXXX"),
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-journal-torn-XXXXXX"),
   )
-  let path = @pathx.join(root, "records.jsonl")
-  @fsx.write_to_file(path, "{\"index\":1}\n{\"index\":")
-  mooncode_append_jsonl(path, { "index": 2 })
-  assert_eq(@fsx.read_file(path), "{\"index\":1}\n{\"index\":2}\n")
-  let records = mooncode_read_jsonl(path)
+  let session_id = "session-torn"
+  mooncode_append_session_journal(root, session_id, mooncode_journal_event(), {
+    "id": "event-1",
+    "command_id": "command-torn",
+    "created_at": "timestamp-1",
+    "index": 1,
+  })
+  let path = mooncode_session_journal_path(root, session_id)
+  let valid_prefix = @fsx.read_file(path)
+  @fsx.write_to_file(path, valid_prefix + "{\"kind\":")
+  mooncode_append_session_journal(root, session_id, mooncode_journal_event(), {
+    "id": "event-2",
+    "command_id": "command-torn",
+    "created_at": "timestamp-2",
+    "index": 2,
+  })
+  let records = mooncode_read_session_journal(root, session_id)
   assert_eq(records.length(), 2)
-  assert_eq(mooncode_json_int(records[0], "index", default=-1), 1)
-  assert_eq(mooncode_json_int(records[1], "index", default=-1), 2)
+  assert_eq(mooncode_json_int(records[0], "sequence", default=0), 1)
+  assert_eq(mooncode_json_int(records[1], "sequence", default=0), 2)
+  assert_true(@fsx.read_file(path).has_suffix("\n"))
+}
+
+///|
+async test "mooncode journal makes duplicate delivery idempotent" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-journal-dedup-XXXXXX"),
+  )
+  let session_id = "session-dedup"
+  let first : Json = {
+    "id": "event-stable",
+    "command_id": "command-dedup",
+    "created_at": "2026-07-15T00:03:00Z",
+    "detail": "one delivery",
+  }
+  mooncode_append_session_journal(
+    root,
+    session_id,
+    mooncode_journal_event(),
+    first,
+  )
+  mooncode_append_session_journal(
+    root,
+    session_id,
+    mooncode_journal_event(),
+    first,
+  )
+  mooncode_append_session_journal(root, session_id, mooncode_journal_event(), {
+    "id": "event-next",
+    "command_id": "command-dedup",
+    "created_at": "2026-07-15T00:03:01Z",
+  })
+  let records = mooncode_read_session_journal(root, session_id)
+  assert_eq(records.length(), 2)
+  assert_eq(mooncode_json_int(records[0], "sequence", default=0), 1)
+  assert_eq(mooncode_json_int(records[1], "sequence", default=0), 2)
+}
+
+///|
+async test "mooncode journal rejects complete corruption and sequence gaps" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-journal-invalid-XXXXXX"),
+  )
+  let corrupt_session = "session-corrupt-line"
+  mooncode_append_session_journal(
+    root,
+    corrupt_session,
+    mooncode_journal_event(),
+    {
+      "id": "event-valid",
+      "command_id": "command-invalid",
+      "created_at": "2026-07-15T00:04:00Z",
+    },
+  )
+  let corrupt_path = mooncode_session_journal_path(root, corrupt_session)
+  let valid_prefix = @fsx.read_file(corrupt_path)
+  @fsx.write_to_file(
+    corrupt_path,
+    valid_prefix + "{\"kind\":\"not-a-journal-record\"}\n",
+  )
+  let rejected_corruption = try {
+    ignore(mooncode_read_session_journal(root, corrupt_session))
+    false
+  } catch {
+    InvalidJournal(_) => true
+    _ => false
+  }
+  assert_true(rejected_corruption)
+  let gap_session = "session-sequence-gap"
+  mooncode_append_session_journal(root, gap_session, mooncode_journal_event(), {
+    "id": "event-before-gap",
+    "command_id": "command-gap",
+    "created_at": "2026-07-15T00:05:00Z",
+  })
+  let gap_path = mooncode_session_journal_path(root, gap_session)
+  let gap_record = @moonlib_conversation.journal_record(
+    session_id=gap_session,
+    sequence=3,
+    record_id="event:event-after-gap",
+    record_kind=mooncode_journal_event(),
+    command_id="command-gap",
+    client_turn_id="",
+    recorded_at="2026-07-15T00:05:01Z",
+    payload={
+      "id": "event-after-gap",
+      "command_id": "command-gap",
+      "created_at": "2026-07-15T00:05:01Z",
+    },
+  )
+  @fsx.write_to_file(
+    gap_path,
+    @fsx.read_file(gap_path) + gap_record.stringify() + "\n",
+  )
+  let rejected_gap = try {
+    ignore(mooncode_read_session_journal(root, gap_session))
+    false
+  } catch {
+    InvalidJournal(_) => true
+    _ => false
+  }
+  assert_true(rejected_gap)
+}
+
+///|
+async test "mooncode journal rebuilds conversation after snapshot corruption" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-journal-recovery-XXXXXX"),
+  )
+  let session_id = "session/recovery"
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "session_id": session_id,
+      "command_id": "command-recovery",
+      "created_at": "2026-07-15T00:06:00Z",
+      "command": {
+        "session_id": session_id,
+        "book_root": book_root,
+        "command": "prompt",
+        "packet": {
+          "command_id": "command-recovery",
+          "client_turn_id": "client-recovery",
+          "message": "recover this turn",
+        },
+      },
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_runtime_receipt(),
+    {
+      "kind": mooncode_kind_runtime_receipt(),
+      "session_id": session_id,
+      "command_id": "command-recovery",
+      "status": "runtime-completed",
+      "completed_at": "2026-07-15T00:06:01Z",
+      "execution": {
+        "tool_results": [
+          {
+            "tool": "finish",
+            "ok": true,
+            "output": "recovered reply",
+            "metadata": { "answer": "recovered reply" },
+          },
+        ],
+      },
+    },
+  )
+  @fsx.write_to_file(
+    mooncode_session_snapshot_path(book_root, session_id),
+    "{\"kind\":",
+  )
+  let record = mooncode_session_record_from_parts(
+    session_id,
+    book_root,
+    None,
+    Some(mooncode_load_session_snapshot(book_root, session_id)),
+    source="recovery-test",
+  )
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(record, "snapshot"),
+      "load_status",
+      default="",
+    ),
+    "invalid-json",
+  )
+  let conversation = mooncode_json_object_field_or_empty(
+    record, "mooncode_conversation",
+  )
+  assert_eq(mooncode_json_int(conversation, "revision", default=0), 2)
+  assert_eq(mooncode_json_int(conversation, "last_sequence", default=0), 2)
+  let turn = mooncode_json_array_items(conversation, "turns")[0]
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(turn, "assistant"),
+      "content",
+      default="",
+    ),
+    "recovered reply",
+  )
 }
 
 ///|
@@ -630,55 +965,70 @@ async test "mooncode canonical conversation replay is deterministic" (
     @pathx.join(@os.tmpdir(), "moonclaw-mooncode-replay-XXXXXX"),
   )
   let session_id = "session/replay:1"
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-replay-1",
-    "created_at": "2026-07-10T00:00:00Z",
-    "command": {
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": "cmd-replay-1",
+      "created_at": "2026-07-10T00:00:00Z",
+      "command": {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": book_root,
+        "command": "prompt",
+        "packet": {
+          "command_id": "cmd-replay-1",
+          "client_turn_id": "client-replay-1",
+          "message": "verify deterministic replay",
+        },
+      },
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_event(),
+    {
+      "id": "reasoning-replay-1",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": "cmd-replay-1",
+      "lane": "runtime",
+      "kind": "reasoning_delta",
+      "event": "reasoning_delta",
+      "status": "running",
+      "detail": "Inspecting the requested behavior.",
+      "created_at": "2026-07-10T00:00:01Z",
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_runtime_receipt(),
+    {
+      "kind": mooncode_kind_runtime_receipt(),
       "protocol": mooncode_protocol_version(),
       "session_id": session_id,
       "book_root": book_root,
-      "command": "prompt",
-      "packet": {
-        "command_id": "cmd-replay-1",
-        "client_turn_id": "client-replay-1",
-        "message": "verify deterministic replay",
+      "command_id": "cmd-replay-1",
+      "status": "runtime-completed",
+      "completed_at": "2026-07-10T00:00:02Z",
+      "execution": {
+        "tool_results": [
+          {
+            "tool": "finish",
+            "ok": true,
+            "output": "deterministic reply",
+            "metadata": { "answer": "deterministic reply" },
+          },
+        ],
       },
     },
-  })
-  mooncode_append_jsonl(mooncode_events_path(book_root, session_id), {
-    "id": "reasoning-replay-1",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-replay-1",
-    "lane": "runtime",
-    "kind": "reasoning_delta",
-    "event": "reasoning_delta",
-    "status": "running",
-    "detail": "Inspecting the requested behavior.",
-    "created_at": "2026-07-10T00:00:01Z",
-  })
-  mooncode_append_jsonl(mooncode_runtime_receipts_path(book_root, session_id), {
-    "kind": mooncode_kind_runtime_receipt(),
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "book_root": book_root,
-    "command_id": "cmd-replay-1",
-    "status": "runtime-completed",
-    "completed_at": "2026-07-10T00:00:02Z",
-    "execution": {
-      "tool_results": [
-        {
-          "tool": "finish",
-          "ok": true,
-          "output": "deterministic reply",
-          "metadata": { "answer": "deterministic reply" },
-        },
-      ],
-    },
-  })
+  )
   let first = mooncode_session_record_from_parts(
     session_id,
     book_root,
@@ -689,6 +1039,14 @@ async test "mooncode canonical conversation replay is deterministic" (
   let baseline = mooncode_json_object_field_or_empty(
     first, "mooncode_conversation",
   ).stringify()
+  assert_eq(
+    mooncode_json_int(
+      mooncode_json_object_field_or_empty(first, "mooncode_conversation"),
+      "revision",
+      default=0,
+    ),
+    3,
+  )
   for _ in 0..<100 {
     let replay = mooncode_session_record_from_parts(
       session_id,
@@ -761,6 +1119,7 @@ test "canonical conversation hides control commands and explains failed work" {
     [prompt, steer],
     [],
     [failed],
+    journal_sequence=3,
   )
   assert_eq(mooncode_json_int(conversation, "turn_count", default=0), 1)
   assert_eq(
@@ -803,6 +1162,7 @@ test "canonical queued turn does not claim that runtime work started" {
     { "session_id": "session-queued", "book_root": "/tmp/book" },
     [prompt],
     [],
+    journal_sequence=1,
     [],
   )
   let turns = mooncode_json_array_items(conversation, "turns")
@@ -893,6 +1253,7 @@ test "canonical work keeps review evidence on the matching file step" {
     [command],
     [],
     [write_a, write_b, result_a],
+    journal_sequence=4,
   )
   let turn = mooncode_json_array_items(conversation, "turns")[0]
   let steps = mooncode_json_array_items(
@@ -943,6 +1304,7 @@ test "planner lifecycle projects as one user-facing thought without failure" {
     [command],
     [],
     [started, fallback],
+    journal_sequence=3,
   )
   let turns = mooncode_json_array_items(conversation, "turns")
   assert_eq(turns.length(), 1)
@@ -993,6 +1355,7 @@ test "terminal events settle running work steps" {
     [command],
     [],
     [started, finished],
+    journal_sequence=3,
   )
   let turn = mooncode_json_array_items(conversation, "turns")[0]
   let steps = mooncode_json_array_items(

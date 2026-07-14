@@ -204,9 +204,13 @@ async fn Daemon::mooncode_persist_book_result(
   if binding.book_root == "" {
     return
   }
-  self.mooncode_persist_session(binding)
-  mooncode_append_jsonl(
-    mooncode_book_results_path(binding.book_root, binding.session_id),
-    result,
+  ignore(
+    mooncode_append_session_journal(
+      binding.book_root,
+      binding.session_id,
+      mooncode_journal_book_result(),
+      result,
+    ),
   )
+  self.mooncode_persist_session(binding)
 }

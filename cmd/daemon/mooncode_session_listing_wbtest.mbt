@@ -193,6 +193,49 @@ async test "mooncode binding remembers first prompt once for session picker titl
 }
 
 ///|
+async test "mooncode binding restores first prompt from journal after restart" {
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-title-restart-XXXXXX"),
+  )
+  let session_id = "session-title-restart"
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": "command-first",
+      "created_at": "2026-07-15T00:00:00Z",
+      "command": {
+        "command": "prompt",
+        "text": "First durable request",
+        "packet": { "client_turn_id": "client-first" },
+      },
+    },
+  )
+  let restarted = MoonCodeSessionBinding::{
+    session_id,
+    book_root,
+    workspace_id: "",
+    workspace_name: "",
+    command_count: 0,
+    first_user_prompt: "",
+    last_command_id: "",
+    last_updated: @clock.Timestamp::from_ms(1L),
+    runtime_service_running: false,
+    events: @broadcast.Broadcast::new(),
+  }
+  restarted.restore_first_user_prompt()
+  restarted.remember_first_user_prompt({
+    "command": "prompt",
+    "text": "Later request must not rename the session",
+  })
+  assert_eq(restarted.first_user_prompt, "First durable request")
+}
+
+///|
 test "mooncode session listing rows sort newest first with undated rows last" {
   let rows : Array[Json] = [
     {

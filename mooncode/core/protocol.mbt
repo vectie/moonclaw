@@ -93,6 +93,7 @@ pub fn executable_book_lifecycle_contract_json() -> Json {
     "runtime_owner": "moonclaw",
     "artifact_owner": "moonbook",
     "acceptance_owner": "bookkeeper",
+    "journal_contract_id": journal_contract_id(),
     "host_rule": "A desktop or CLI host may select a book and render status, but the lifecycle must run through MoonClaw runtime evidence and MoonBook-owned artifacts.",
     "steps": [
       executable_book_lifecycle_step(
@@ -109,9 +110,7 @@ pub fn executable_book_lifecycle_contract_json() -> Json {
           @moonsuite.product_display_artifact(
             "moonclaw", "mooncode/sessions/<id>/session.json",
           ),
-          "commands.jsonl",
-          "events.jsonl",
-          "runtime-receipts.jsonl",
+          "journal.jsonl",
         ],
       ),
       executable_book_lifecycle_step(
@@ -243,7 +242,7 @@ pub fn native_capability_runtime_loop_options() -> Json {
       "max": 2000,
       "purpose": "Polling interval while live_wait_ms is active.",
     },
-    "idle_semantics": "When live_wait_ms is zero, runtime-loop preserves immediate idle behavior; when positive, it polls commands.jsonl until a claimable command appears or the wait budget expires.",
+    "idle_semantics": "When live_wait_ms is zero, runtime-loop preserves immediate idle behavior; when positive, it polls the authoritative session journal until a claimable command record appears or the wait budget expires.",
   }
 }
 
@@ -262,7 +261,7 @@ pub fn native_capability_stream_options() -> Json {
       "max": 2000,
       "purpose": "Polling interval while wait_ms is active.",
     },
-    "snapshot_semantics": "When wait_ms is zero, stream preserves immediate replay behavior; when positive, it polls events.jsonl until a sequence newer than since appears or the wait budget expires.",
+    "snapshot_semantics": "When wait_ms is zero, stream preserves immediate replay behavior; when positive, it polls journal.jsonl until an event record with a sequence newer than since appears or the wait budget expires.",
   }
 }
 

@@ -99,10 +99,12 @@ async test "mooncode command persists durable native queue entry without task" (
   assert_true(mooncode_json_bool(response, "queued", default=false))
   assert_false(response.stringify().contains("\"task_id\""))
   let command_log = @fsx.read_file(
-    mooncode_commands_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(command_log.contains("\"cmd-native-queue\""))
   assert_true(command_log.contains("\"web_search\":true"))
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"command.queued_for_runtime_turn\""))
 }

@@ -298,6 +298,7 @@ pub fn runtime_control_contract_json() -> Json {
     "event_name_contract_id": runtime_event_name_contract_id(),
     "conversation_contract_id": conversation_contract_id(),
     "conversation_ownership_contract_id": conversation_ownership_contract_id(),
+    "journal_contract_id": journal_contract_id(),
     "rule": "A MoonCode runtime consumes one ordered command queue. Prompt and command actions start turns, steer targets the active turn, next pending turn, or defers into the next future turn, and cancel targets the active turn or withdraws the next pending turn.",
     "turn_starting_actions": "all supported actions except steer, cancel, and note",
     "active_statuses": runtime_control_active_statuses(),
@@ -308,7 +309,7 @@ pub fn runtime_control_contract_json() -> Json {
     "boundary": {
       "ui": "MoonDesk records commands and renders decisions.",
       "runtime": "MoonClaw enforces runtime control before executing tools.",
-      "store": "commands.jsonl, runtime-commands.jsonl, runtime-receipts.jsonl, and events.jsonl remain append-only.",
+      "store": "journal.jsonl is the sole append-only authority; commands, runtime receipts, events, and proof results share one contiguous sequence.",
     },
     "settlement_boundary": {
       "unit": runtime_control_scheduler_boundary_unit(),

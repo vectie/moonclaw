@@ -336,22 +336,36 @@ async test "mooncode native runtime loop drains queued commands" (
       { "tool": "finish", "arguments": { "answer": "second done" } },
     ],
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-loop-1",
-    "created_at": @clock.Timestamp::from_ms(10L),
-    "command": first_command,
-  })
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": "cmd-loop-2",
-    "created_at": @clock.Timestamp::from_ms(20L),
-    "command": second_command,
-  })
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": "cmd-loop-1",
+        "created_at": @clock.Timestamp::from_ms(10L),
+        "command": first_command,
+      },
+    ),
+  )
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": "cmd-loop-2",
+        "created_at": @clock.Timestamp::from_ms(20L),
+        "command": second_command,
+      },
+    ),
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -384,7 +398,7 @@ async test "mooncode native runtime loop drains queued commands" (
   assert_true(@fsx.exists(@pathx.join(book_root, "tools/loop-proof/one.txt")))
   assert_true(@fsx.exists(@pathx.join(book_root, "tools/loop-proof/two.txt")))
   let receipt_log = @fsx.read_file(
-    mooncode_runtime_receipts_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(receipt_log.contains("cmd-loop-1"))
   assert_true(receipt_log.contains("cmd-loop-2"))

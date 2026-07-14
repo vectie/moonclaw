@@ -83,19 +83,14 @@ async fn mooncode_session_listing_record_from_parts(
   include_log_counts? : Bool = true,
 ) -> Json {
   let safe_session_id = mooncode_safe_session_id(session_id)
-  let commands_path = mooncode_commands_path_by_safe_id(
+  let journal_path = mooncode_session_journal_path_by_safe_id(
     book_root, safe_session_id,
   )
-  let events_path = mooncode_events_path_by_safe_id(book_root, safe_session_id)
-  let runtime_receipts_path = mooncode_runtime_receipts_path_by_safe_id(
-    book_root, safe_session_id,
-  )
-  let package_results_path = mooncode_package_results_path_by_safe_id(
-    book_root, safe_session_id,
-  )
-  let book_results_path = mooncode_book_results_path_by_safe_id(
-    book_root, safe_session_id,
-  )
+  let journal = if include_log_counts {
+    mooncode_read_session_journal_path(journal_path)
+  } else {
+    []
+  }
   {
     "kind": "mooncode-session-listing-record",
     "protocol": mooncode_protocol_version(),
@@ -114,34 +109,36 @@ async fn mooncode_session_listing_record_from_parts(
       "session_json": mooncode_session_snapshot_path_by_safe_id(
         book_root, safe_session_id,
       ),
-      "commands_jsonl": commands_path,
-      "runtime_receipts_jsonl": runtime_receipts_path,
-      "events_jsonl": events_path,
-      "package_results_jsonl": package_results_path,
-      "book_results_jsonl": book_results_path,
+      "journal_jsonl": journal_path,
     },
-    "command_log_count": mooncode_json_int(
-      snapshot,
-      "command_count",
-      default=mooncode_jsonl_record_count(commands_path),
-    ),
+    "journal_record_count": journal.length(),
+    "journal_sequence": if include_log_counts {
+      mooncode_journal_last_sequence(journal)
+    } else {
+      mooncode_json_int(snapshot, "journal_sequence", default=0)
+    },
+    "command_log_count": if include_log_counts {
+      mooncode_journal_record_count(journal, mooncode_journal_command())
+    } else {
+      mooncode_json_int(snapshot, "command_count", default=0)
+    },
     "runtime_receipt_log_count": if include_log_counts {
-      mooncode_jsonl_record_count(runtime_receipts_path)
+      mooncode_journal_record_count(journal, mooncode_journal_runtime_receipt())
     } else {
       0
     },
     "event_log_count": if include_log_counts {
-      mooncode_jsonl_record_count(events_path)
+      mooncode_journal_record_count(journal, mooncode_journal_event())
     } else {
       0
     },
     "package_result_log_count": if include_log_counts {
-      mooncode_jsonl_record_count(package_results_path)
+      mooncode_journal_record_count(journal, mooncode_journal_package_result())
     } else {
       0
     },
     "book_result_log_count": if include_log_counts {
-      mooncode_jsonl_record_count(book_results_path)
+      mooncode_journal_record_count(journal, mooncode_journal_book_result())
     } else {
       0
     },
@@ -151,24 +148,6 @@ async fn mooncode_session_listing_record_from_parts(
       "durable"
     },
   }
-}
-
-///|
-async fn mooncode_jsonl_record_count(path : String) -> Int {
-  if path == "" || !(@fsx.exists(path) catch { _ => false }) {
-    return 0
-  }
-  let text = @fsx.read_file(path) catch { _ => return 0 }
-  let mut count = 0
-  for char in text {
-    if char == '\n' {
-      count += 1
-    }
-  }
-  if !text.is_empty() && !text.has_suffix("\n") {
-    count += 1
-  }
-  count
 }
 
 ///|
@@ -198,7 +177,7 @@ async fn mooncode_load_session_snapshot_by_safe_id(
       load_status="missing",
     )
   }
-  @json.parse(@fsx.read_file(path)) catch {
+  @json.parse(mooncode_read_locked_file(path)) catch {
     _ =>
       mooncode_missing_session_snapshot(
         book_root,
@@ -225,19 +204,7 @@ fn mooncode_missing_session_snapshot(
     "load_status": load_status,
     "storage": {
       "session_json": path,
-      "commands_jsonl": mooncode_commands_path_by_safe_id(
-        book_root, safe_session_id,
-      ),
-      "runtime_receipts_jsonl": mooncode_runtime_receipts_path_by_safe_id(
-        book_root, safe_session_id,
-      ),
-      "events_jsonl": mooncode_events_path_by_safe_id(
-        book_root, safe_session_id,
-      ),
-      "package_results_jsonl": mooncode_package_results_path_by_safe_id(
-        book_root, safe_session_id,
-      ),
-      "book_results_jsonl": mooncode_book_results_path_by_safe_id(
+      "journal_jsonl": mooncode_session_journal_path_by_safe_id(
         book_root, safe_session_id,
       ),
     },
@@ -269,24 +236,24 @@ async fn mooncode_session_record_from_parts(
           )
       }
   }
-  let commands_path = mooncode_commands_path_by_safe_id(
+  let journal_path = mooncode_session_journal_path_by_safe_id(
     book_root, safe_session_id,
   )
-  let events_path = mooncode_events_path_by_safe_id(book_root, safe_session_id)
-  let runtime_receipts_path = mooncode_runtime_receipts_path_by_safe_id(
-    book_root, safe_session_id,
+  let journal = mooncode_read_session_journal_path(journal_path)
+  let commands = mooncode_journal_entries(journal, mooncode_journal_command())
+  let runtime_receipts = mooncode_journal_entries(
+    journal,
+    mooncode_journal_runtime_receipt(),
   )
-  let package_results_path = mooncode_package_results_path_by_safe_id(
-    book_root, safe_session_id,
+  let events = mooncode_journal_entries(journal, mooncode_journal_event())
+  let package_results = mooncode_journal_entries(
+    journal,
+    mooncode_journal_package_result(),
   )
-  let book_results_path = mooncode_book_results_path_by_safe_id(
-    book_root, safe_session_id,
+  let book_results = mooncode_journal_entries(
+    journal,
+    mooncode_journal_book_result(),
   )
-  let commands = mooncode_read_jsonl(commands_path)
-  let runtime_receipts = mooncode_read_jsonl(runtime_receipts_path)
-  let events = mooncode_read_jsonl(events_path)
-  let package_results = mooncode_read_jsonl(package_results_path)
-  let book_results = mooncode_read_jsonl(book_results_path)
   let resume_state = if live_binding is Some(_) {
     "live"
   } else if mooncode_json_string(
@@ -321,12 +288,10 @@ async fn mooncode_session_record_from_parts(
       "session_json": mooncode_session_snapshot_path_by_safe_id(
         book_root, safe_session_id,
       ),
-      "commands_jsonl": commands_path,
-      "runtime_receipts_jsonl": runtime_receipts_path,
-      "events_jsonl": events_path,
-      "package_results_jsonl": package_results_path,
-      "book_results_jsonl": book_results_path,
+      "journal_jsonl": journal_path,
     },
+    "journal_record_count": journal.length(),
+    "journal_sequence": mooncode_journal_last_sequence(journal),
     "command_log_count": commands.length(),
     "runtime_receipt_log_count": runtime_receipts.length(),
     "event_log_count": events.length(),
@@ -338,7 +303,11 @@ async fn mooncode_session_record_from_parts(
     record_without_lifecycle,
     "mooncode_conversation",
     mooncode_session_conversation(
-      record_without_lifecycle, commands, runtime_receipts, events,
+      record_without_lifecycle,
+      commands,
+      runtime_receipts,
+      events,
+      journal_sequence=mooncode_journal_last_sequence(journal),
     ),
   )
   mooncode_json_object_with_field(
@@ -352,69 +321,10 @@ async fn mooncode_session_record_from_parts(
 }
 
 ///|
-async fn mooncode_read_jsonl(path : String) -> Array[Json] {
-  let records : Array[Json] = []
-  if path == "" || !(@fsx.exists(path) catch { _ => false }) {
-    return records
-  }
-  let text = @fsx.read_file(path) catch { _ => return records }
-  for line in text.split("\n") {
-    let line = line.trim()
-    if line.is_empty() {
-      continue
-    }
-    let parsed = @json.parse(line.to_owned()) catch { _ => continue }
-    records.push(parsed)
-  }
-  records
-}
-
-///|
-async fn mooncode_repair_jsonl_tail(file : @fs.File) -> Unit {
-  let size = file.size()
-  if size == 0L {
-    return
-  }
-  if file.read_exactly_at(1, position=size - 1L) == b"\n" {
-    return
-  }
-  let mut cursor = size
-  while cursor > 0L {
-    let scan_length = if cursor > 4096L { 4096 } else { cursor.to_int() }
-    let start = cursor - scan_length.to_int64()
-    let chunk = file.read_exactly_at(scan_length, position=start)
-    let mut index = chunk.length()
-    while index > 0 {
-      index -= 1
-      if chunk[index].to_int() == 10 {
-        @moonclaw_fsx.truncate(file, start + index.to_int64() + 1L)
-        return
-      }
-    }
-    cursor = start
-  }
-  @moonclaw_fsx.truncate(file, 0L)
-}
-
-///|
-async fn mooncode_append_jsonl(path : String, entry : Json) -> Unit {
-  @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-  let file = @fs.open(
-    path,
-    mode=ReadWrite,
-    append=true,
-    create=0o644,
-    truncate=false,
-  )
-  defer file.close()
-  file.lock(Exclusive)
-  defer file.unlock()
-  mooncode_repair_jsonl_tail(file)
-  file.write(entry.stringify() + "\n")
-}
-
-///|
-fn mooncode_session_snapshot(binding : MoonCodeSessionBinding) -> Json {
+fn mooncode_session_snapshot(
+  binding : MoonCodeSessionBinding,
+  journal_sequence? : Int = 0,
+) -> Json {
   {
     "kind": "mooncode-session-snapshot",
     "protocol": mooncode_protocol_version(),
@@ -427,28 +337,13 @@ fn mooncode_session_snapshot(binding : MoonCodeSessionBinding) -> Json {
     "first_user_prompt": binding.first_user_prompt,
     "last_command_id": binding.last_command_id,
     "last_updated": binding.last_updated,
+    "journal_sequence": journal_sequence,
     "storage": {
       "session_json": mooncode_session_snapshot_path(
         binding.book_root,
         binding.session_id,
       ),
-      "commands_jsonl": mooncode_commands_path(
-        binding.book_root,
-        binding.session_id,
-      ),
-      "runtime_receipts_jsonl": mooncode_runtime_receipts_path(
-        binding.book_root,
-        binding.session_id,
-      ),
-      "events_jsonl": mooncode_events_path(
-        binding.book_root,
-        binding.session_id,
-      ),
-      "package_results_jsonl": mooncode_package_results_path(
-        binding.book_root,
-        binding.session_id,
-      ),
-      "book_results_jsonl": mooncode_book_results_path(
+      "journal_jsonl": mooncode_session_journal_path(
         binding.book_root,
         binding.session_id,
       ),
@@ -494,88 +389,6 @@ fn mooncode_session_snapshot_path_by_safe_id(
 ) -> String {
   mooncode_session_dir_by_safe_id(book_root, safe_session_id)
   |> @pathx.join("session.json")
-}
-
-///|
-fn mooncode_commands_path(book_root : String, session_id : String) -> String {
-  mooncode_session_dir(book_root, session_id) |> @pathx.join("commands.jsonl")
-}
-
-///|
-fn mooncode_commands_path_by_safe_id(
-  book_root : String,
-  safe_session_id : String,
-) -> String {
-  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
-  |> @pathx.join("commands.jsonl")
-}
-
-///|
-fn mooncode_runtime_receipts_path(
-  book_root : String,
-  session_id : String,
-) -> String {
-  mooncode_session_dir(book_root, session_id)
-  |> @pathx.join("runtime-receipts.jsonl")
-}
-
-///|
-fn mooncode_runtime_receipts_path_by_safe_id(
-  book_root : String,
-  safe_session_id : String,
-) -> String {
-  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
-  |> @pathx.join("runtime-receipts.jsonl")
-}
-
-///|
-fn mooncode_events_path(book_root : String, session_id : String) -> String {
-  mooncode_session_dir(book_root, session_id) |> @pathx.join("events.jsonl")
-}
-
-///|
-fn mooncode_events_path_by_safe_id(
-  book_root : String,
-  safe_session_id : String,
-) -> String {
-  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
-  |> @pathx.join("events.jsonl")
-}
-
-///|
-fn mooncode_package_results_path(
-  book_root : String,
-  session_id : String,
-) -> String {
-  mooncode_session_dir(book_root, session_id)
-  |> @pathx.join("package-results.jsonl")
-}
-
-///|
-fn mooncode_package_results_path_by_safe_id(
-  book_root : String,
-  safe_session_id : String,
-) -> String {
-  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
-  |> @pathx.join("package-results.jsonl")
-}
-
-///|
-fn mooncode_book_results_path(
-  book_root : String,
-  session_id : String,
-) -> String {
-  mooncode_session_dir(book_root, session_id)
-  |> @pathx.join("book-results.jsonl")
-}
-
-///|
-fn mooncode_book_results_path_by_safe_id(
-  book_root : String,
-  safe_session_id : String,
-) -> String {
-  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
-  |> @pathx.join("book-results.jsonl")
 }
 
 ///|

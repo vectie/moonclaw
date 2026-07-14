@@ -65,6 +65,7 @@ async fn Daemon::mooncode_queue_command_response(
       },
     })
   }
+  binding.restore_first_user_prompt()
   binding.command_count += 1
   binding.remember_workspace(body)
   binding.remember_first_user_prompt(body)

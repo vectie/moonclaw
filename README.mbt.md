@@ -78,15 +78,18 @@ MoonClaw is strongest when you want one system to handle:
   MoonClaw persists native MoonCode sidecars in the MoonClaw product home
   derived from the selected book root:
   `.moonsuite/products/moonclaw/mooncode/sessions/<session-id>/`, including
-  `session.json`, `commands.jsonl`, `runtime-receipts.jsonl`, `events.jsonl`,
-  and `package-results.jsonl`. Suite-hosted `books/<book-id>` roots resolve to
+  the replaceable `session.json` checkpoint and authoritative `journal.jsonl`.
+  Commands, receipts, events, package results, and book results share one
+  contiguous journal sequence under the MoonLib
+  `moonsuite-conversation-journal.v1` contract. Suite-hosted
+  `books/<book-id>` roots resolve to
   the owning suite's MoonClaw product home; standalone book roots use their own
   local `.moonsuite/products/moonclaw` product home. The daemon can list/show
   those cold sidecars with `GET /v1/code/sessions?book_root=<path>` and
   `GET /v1/code/sessions/<id>?book_root=<path>`, and can lease the next
   unresolved durable command with
   `GET`/`POST /v1/code/sessions/<id>/runtime-claim?book_root=<path>` by
-  appending native `runtime-claimed` receipts to `runtime-receipts.jsonl`.
+  appending native `runtime-claimed` records to the same journal.
   Native MoonCode clients execute work through `runtime-turn`/`runtime-loop`;
   no `/v1/code` endpoint forwards commands into the generic `/v1/task`
   runtime. Durable `cancel` commands are queue controls settled by the native
@@ -94,7 +97,7 @@ MoonClaw is strongest when you want one system to handle:
   `GET`/`POST /v1/code/sessions/<id>/runtime-events?book_root=<path>` now
   lets a MoonClaw runtime append normalized
   transcript/tool/diff/test/artifact/review/runtime evidence directly into
-  `events.jsonl`, closing the durable stream-ingress half of the native
+  `journal.jsonl`, closing the durable stream-ingress half of the native
   runtime contract. `POST
   /v1/code/sessions/<id>/tool-exec?book_root=<path>` now executes the
   native MoonCode `read`, `edit`, `write`, `shell`, `moon_check`, and `finish`
@@ -172,7 +175,7 @@ MoonClaw is strongest when you want one system to handle:
   pass/fail result under the patch proof metadata.
   Successful native turns now also write MoonBook package manifests and an
   index under `portable/app-tool/mooncode/<session-id>/`, append
-  `package_built` and `package_verified` proof to `package-results.jsonl`,
+  `package_built` and `package_verified` proof to the session journal,
   promote generated source files under the package root with source hashes, and
   emit artifact-lane package events for MoonDesk's package review surface. The
   remaining MoonCode runtime gap is the full persistent MoonCode agent

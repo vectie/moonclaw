@@ -127,8 +127,9 @@ async fn Daemon::mooncode_runtime_events_state_payload(
   session_id : String,
   book_root : String,
 ) -> Json {
-  let events_path = mooncode_events_path(book_root, session_id)
-  let events = mooncode_read_jsonl(events_path)
+  let journal_path = mooncode_session_journal_path(book_root, session_id)
+  let journal = mooncode_read_session_journal(book_root, session_id)
+  let events = mooncode_journal_entries(journal, mooncode_journal_event())
   let watcher_state = mooncode_moon_check_read_state(book_root)
   let watcher_update = mooncode_moon_check_runtime_update_event(
     session_id,
@@ -146,7 +147,7 @@ async fn Daemon::mooncode_runtime_events_state_payload(
     "owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
-    "events_jsonl": events_path,
+    "journal_jsonl": journal_path,
     "event_count": projected_events.length(),
     "durable_event_count": events.length(),
     "watcher_update_ready": watcher_update is Some(_),

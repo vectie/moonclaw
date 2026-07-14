@@ -74,14 +74,19 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     },
     "model": "unavailable-model",
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(5L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(5L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -129,7 +134,9 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     mooncode_json_string(commit_results[0], "commit_message", default=""),
     "MoonCode test commit",
   )
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"runtime.commit_created\""))
   assert_true(events_log.contains(commit_sha))
   let git_head = mooncode_runtime_turn_git(

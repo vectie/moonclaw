@@ -33,8 +33,7 @@ test "mooncode runtime claim state leases next durable command" {
     "/tmp/book",
     commands,
     [],
-    commands_path="/tmp/book/commands.jsonl",
-    receipts_path="/tmp/book/runtime-receipts.jsonl",
+    journal_path="/tmp/book/journal.jsonl",
   )
   assert_eq(
     mooncode_json_string(state, "kind", default=""),
@@ -74,8 +73,7 @@ test "mooncode runtime claim state leases next durable command" {
     "/tmp/book",
     commands,
     receipts,
-    commands_path="/tmp/book/commands.jsonl",
-    receipts_path="/tmp/book/runtime-receipts.jsonl",
+    journal_path="/tmp/book/journal.jsonl",
   )
   assert_true(claimed_state.stringify().contains("\"claimed_command_count\":1"))
   assert_true(
@@ -128,8 +126,7 @@ test "mooncode runtime delivery receipt resolves claimed command" {
     "/tmp/book",
     commands,
     [claimed],
-    commands_path="/tmp/book/commands.jsonl",
-    receipts_path="/tmp/book/runtime-receipts.jsonl",
+    journal_path="/tmp/book/journal.jsonl",
   )
   let claimed_items = mooncode_json_array_items(
     claimed_state, "claimed_commands",
@@ -162,8 +159,7 @@ test "mooncode runtime delivery receipt resolves claimed command" {
     "/tmp/book",
     commands,
     [claimed, delivered],
-    commands_path="/tmp/book/commands.jsonl",
-    receipts_path="/tmp/book/runtime-receipts.jsonl",
+    journal_path="/tmp/book/journal.jsonl",
   )
   assert_true(after.stringify().contains("\"delivered_command_count\":1"))
   assert_true(after.stringify().contains("\"claimable_command_count\":1"))

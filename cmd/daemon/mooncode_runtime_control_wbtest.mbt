@@ -49,8 +49,7 @@ test "mooncode runtime control starts pending prompt and queues controls" {
     "/tmp/book",
     commands,
     [],
-    commands_path="/tmp/book/commands.jsonl",
-    receipts_path="/tmp/book/runtime-receipts.jsonl",
+    journal_path="/tmp/book/journal.jsonl",
   )
   assert_eq(
     mooncode_json_string(state, "kind", default=""),
@@ -136,8 +135,7 @@ test "mooncode runtime control targets active claimed prompt" {
     "/tmp/book",
     commands,
     [claimed],
-    commands_path="/tmp/book/commands.jsonl",
-    receipts_path="/tmp/book/runtime-receipts.jsonl",
+    journal_path="/tmp/book/journal.jsonl",
   )
   assert_eq(mooncode_json_string(state, "active_turn_id", default=""), "cmd-1")
   let decisions = mooncode_json_array_items(state, "decisions")
@@ -200,8 +198,7 @@ test "mooncode runtime control treats delivered prompt as terminal and defers id
     "/tmp/book",
     commands,
     [delivered],
-    commands_path="/tmp/book/commands.jsonl",
-    receipts_path="/tmp/book/runtime-receipts.jsonl",
+    journal_path="/tmp/book/journal.jsonl",
   )
   let decisions = mooncode_json_array_items(state, "decisions")
   assert_eq(

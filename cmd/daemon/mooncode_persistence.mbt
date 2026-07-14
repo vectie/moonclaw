@@ -8,22 +8,26 @@ async fn Daemon::mooncode_persist_command(
   if binding.book_root == "" {
     return
   }
-  self.mooncode_persist_session(binding)
-  mooncode_append_jsonl(
-    mooncode_commands_path(binding.book_root, binding.session_id),
-    {
-      "kind": "mooncode-command",
-      "protocol": mooncode_protocol_version(),
-      "session_id": binding.session_id,
-      "command_id": mooncode_command_id(body),
-      "created_at": self.clock.now(),
-      "web_search": mooncode_command_web_search(body),
-      "command": body,
-    },
+  ignore(
+    mooncode_append_session_journal(
+      binding.book_root,
+      binding.session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": binding.session_id,
+        "command_id": mooncode_command_id(body),
+        "created_at": self.clock.now(),
+        "web_search": mooncode_command_web_search(body),
+        "command": body,
+      },
+    ),
   )
   for event in events {
     self.mooncode_persist_event(binding, event)
   }
+  self.mooncode_persist_session(binding)
 }
 
 ///|
@@ -36,9 +40,13 @@ async fn Daemon::mooncode_persist_event(
   if binding.book_root == "" {
     return
   }
-  mooncode_append_jsonl(
-    mooncode_events_path(binding.book_root, binding.session_id),
-    event,
+  ignore(
+    mooncode_append_session_journal(
+      binding.book_root,
+      binding.session_id,
+      mooncode_journal_event(),
+      event,
+    ),
   )
 }
 
@@ -51,10 +59,15 @@ async fn Daemon::mooncode_persist_session(
   if binding.book_root == "" {
     return
   }
-  let dir = mooncode_session_dir(binding.book_root, binding.session_id)
-  @fsx.make_directory(dir, recursive=true, exists_ok=true)
-  @fsx.write_to_file(
+  let journal = mooncode_read_session_journal(
+    binding.book_root,
+    binding.session_id,
+  )
+  mooncode_write_locked_file(
     mooncode_session_snapshot_path(binding.book_root, binding.session_id),
-    mooncode_session_snapshot(binding).stringify(indent=2),
+    mooncode_session_snapshot(
+      binding,
+      journal_sequence=mooncode_journal_last_sequence(journal),
+    ).stringify(indent=2),
   )
 }

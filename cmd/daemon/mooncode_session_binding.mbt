@@ -243,6 +243,24 @@ fn MoonCodeSessionBinding::remember_first_user_prompt(
 }
 
 ///|
+async fn MoonCodeSessionBinding::restore_first_user_prompt(
+  self : MoonCodeSessionBinding,
+) -> Unit {
+  if self.first_user_prompt != "" || self.book_root == "" {
+    return
+  }
+  let journal = mooncode_read_session_journal(self.book_root, self.session_id)
+  for entry in mooncode_journal_entries(journal, mooncode_journal_command()) {
+    self.remember_first_user_prompt(
+      mooncode_json_object_field_or_empty(entry, "command"),
+    )
+    if self.first_user_prompt != "" {
+      return
+    }
+  }
+}
+
+///|
 fn MoonCodeSessionBinding::remember_workspace(
   self : MoonCodeSessionBinding,
   body : Json,

@@ -2,6 +2,7 @@
 test "mooncode core protocol surface is stable" {
   assert_eq(protocol_version(), "mooncode.v1")
   assert_eq(conversation_contract_id(), "moonsuite-conversation.v2")
+  assert_eq(journal_contract_id(), "moonsuite-conversation-journal.v1")
   assert_eq(conversation_kind(), "mooncode-conversation")
   assert_eq(conversation_turn_kind(), "mooncode-conversation-turn")
   assert_true(conversation_message_roles().contains("work"))
@@ -695,6 +696,10 @@ test "mooncode core owns runtime control contract" {
   assert_true(
     ownership.contains("Unscoped runtime/progress/assistant/failure events"),
   )
+  assert_true(
+    ownership.contains("MoonDesk chat renders only mooncode_conversation turns"),
+  )
+  assert_true(ownership.contains("must not rebuild visible chat rows"))
   assert_false(ownership.contains("internal/mooncode"))
   assert_false(ownership.contains("internal/moonwiki"))
   assert_false(ownership.contains("Rabbita"))
@@ -839,7 +844,9 @@ test "mooncode core owns runtime consumer contract" {
     runtime_replay_endpoint("session one"),
     "/api/mooncode/sessions/session%20one/runtime-replay",
   )
-  assert_true(runtime_claim_ordering_rule().contains("runtime-commands.jsonl"))
+  assert_true(
+    runtime_claim_ordering_rule().contains("session-journal sequence"),
+  )
   assert_true(runtime_claim_lease_policy().contains("lease_expires_at"))
   assert_true(runtime_replay_duplicate_guard().contains("runtime-completed"))
   let payload = runtime_consumer_contract_json("session one").stringify()
@@ -1154,8 +1161,9 @@ test "mooncode core defines executable book lifecycle contract" {
       ".moonsuite/products/moonclaw/mooncode/sessions/<id>/session.json",
     ),
   )
-  assert_true(payload.contains("commands.jsonl"))
-  assert_true(payload.contains("runtime-receipts.jsonl"))
+  assert_true(payload.contains("journal.jsonl"))
+  assert_true(payload.contains("moonsuite-conversation-journal.v1"))
+  assert_false(payload.contains("runtime-receipts.jsonl"))
   assert_true(payload.contains("package_verified"))
   assert_true(payload.contains("readiness projection"))
   assert_false(payload.contains("vectie/moondesk"))

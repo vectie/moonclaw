@@ -81,9 +81,13 @@ async fn Daemon::mooncode_runtime_turn_execute(
     []
   }
   for receipt in claim_receipts {
-    mooncode_append_jsonl(
-      mooncode_runtime_receipts_path(book_root, session_id),
-      receipt,
+    ignore(
+      mooncode_append_session_journal(
+        book_root,
+        session_id,
+        mooncode_journal_runtime_receipt(),
+        receipt,
+      ),
     )
   }
   let claimed_state = self.mooncode_runtime_claim_state_payload(
@@ -109,8 +113,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let raw_command = mooncode_json_object_field_or_empty(item, "command")
   let command_id = mooncode_json_string(item, "command_id", default="")
   let action = mooncode_json_string(raw_command, "command", default="prompt")
-  let existing_events = mooncode_read_jsonl(
-    mooncode_events_path(book_root, session_id),
+  let existing_events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
   )
   let deferred_steering = if action == "steer" || action == "cancel" {
     []
@@ -553,12 +558,18 @@ async fn Daemon::mooncode_runtime_turn_execute(
     consumer_id~,
     now=self.clock.now(),
   )
-  mooncode_append_jsonl(
-    mooncode_runtime_receipts_path(book_root, session_id),
-    receipt,
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_runtime_receipt(),
+      receipt,
+    ),
   )
-  binding.command_count = mooncode_jsonl_record_count(
-    mooncode_commands_path(book_root, session_id),
+  let journal = mooncode_read_session_journal(book_root, session_id)
+  binding.command_count = mooncode_journal_record_count(
+    journal,
+    mooncode_journal_command(),
   )
   binding.last_command_id = command_id
   binding.last_updated = self.clock.now()

@@ -392,7 +392,7 @@ pub fn runtime_replay_endpoint(session_id : String) -> String {
 
 ///|
 pub fn runtime_claim_ordering_rule() -> String {
-  "MoonClaw claims valid commands in runtime-commands.jsonl order before executing them; active earlier claims and invalid earlier commands block later non-delivered rows until they are acknowledged, failed, expired, forced, or repaired."
+  "MoonClaw claims valid command records in session-journal sequence order before executing them; active earlier claims and invalid earlier commands block later non-delivered rows until they are acknowledged, failed, expired, forced, or repaired."
 }
 
 ///|
@@ -407,7 +407,7 @@ pub fn runtime_claim_authorization_rule() -> String {
 
 ///|
 pub fn runtime_claim_consumer_ordering_rule() -> String {
-  "claim returns pending valid commands in runtime-commands.jsonl order; delivered receipts are skipped, but active claimed, invalid, or tool-authorization-blocked earlier commands block later non-delivered rows unless the active claim expires; force=true is only for lease recovery and does not bypass tool authorization"
+  "claim returns pending valid commands in session-journal sequence order; delivered receipts are skipped, but active claimed, invalid, or tool-authorization-blocked earlier commands block later non-delivered rows unless the active claim expires; force=true is only for lease recovery and does not bypass tool authorization"
 }
 
 ///|
@@ -417,7 +417,7 @@ pub fn runtime_claim_duplicate_guard() -> String {
 
 ///|
 pub fn runtime_replay_policy() -> String {
-  "consume pending MoonCode code commands in runtime-commands.jsonl order; skip delivered command ids and active leases; expired runtime-claimed leases are retryable pending work"
+  "consume pending MoonCode command records in session-journal sequence order; skip delivered command ids and active leases; expired runtime-claimed leases are retryable pending work"
 }
 
 ///|
@@ -441,6 +441,7 @@ pub fn runtime_claim_consumer_contract_json(session_id : String) -> Json {
     "kind": runtime_consumer_contract_kind(),
     "contract_id": runtime_consumer_contract_id(),
     "protocol": protocol_version(),
+    "journal_contract_id": journal_contract_id(),
     "consumer": "moonclaw",
     "endpoint": runtime_claim_endpoint(session_id),
     "method": "POST",
@@ -491,7 +492,7 @@ pub fn runtime_replay_consumer_contract_json(session_id : String) -> Json {
     },
     "replay_statuses": runtime_replay_statuses(),
     "ack_order_statuses": runtime_replay_ack_order_statuses(),
-    "event_sink": "\{@moonsuite.product_display_artifact("mooncode", "sessions/<session-id>/events.jsonl")} or /v1/code/sessions/<session-id>/stream",
+    "event_sink": "\{@moonsuite.product_display_artifact("moonclaw", "mooncode/sessions/<session-id>/journal.jsonl")} or /v1/code/sessions/<session-id>/stream",
     "owner": runtime_consumer_owner_json(),
   }
 }

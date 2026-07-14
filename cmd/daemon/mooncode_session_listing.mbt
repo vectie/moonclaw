@@ -357,11 +357,7 @@ fn mooncode_session_listing_updated_at_millis(record : Json) -> Int64? {
 fn mooncode_session_listing_latest_storage_mtime(record : Json) -> Int64? {
   let storage = mooncode_json_object_field_or_empty(record, "storage")
   let mut latest : Int64? = None
-  for
-    key in [
-      "events_jsonl", "commands_jsonl", "package_results_jsonl", "runtime_receipts_jsonl",
-      "session_json",
-    ] {
+  for key in ["journal_jsonl", "session_json"] {
     let mtime = mooncode_file_mtime_ms(
       mooncode_json_string(storage, key, default=""),
     )

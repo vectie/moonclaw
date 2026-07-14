@@ -233,17 +233,21 @@ async fn Daemon::mooncode_persist_package_result(
   if binding.book_root == "" {
     return
   }
-  self.mooncode_persist_session(binding)
-  mooncode_append_jsonl(
-    mooncode_package_results_path(binding.book_root, binding.session_id),
-    {
-      "kind": "mooncode-package-result",
-      "protocol": mooncode_protocol_version(),
-      "session_id": binding.session_id,
-      "command_id": mooncode_package_result_command_id(body),
-      "created_at": self.clock.now(),
-      "package_result": mooncode_package_result_payload(body),
-    },
+  ignore(
+    mooncode_append_session_journal(
+      binding.book_root,
+      binding.session_id,
+      mooncode_journal_package_result(),
+      {
+        "kind": "mooncode-package-result",
+        "protocol": mooncode_protocol_version(),
+        "session_id": binding.session_id,
+        "command_id": mooncode_package_result_command_id(body),
+        "created_at": self.clock.now(),
+        "package_result": mooncode_package_result_payload(body),
+      },
+    ),
   )
   self.mooncode_persist_event(binding, event)
+  self.mooncode_persist_session(binding)
 }

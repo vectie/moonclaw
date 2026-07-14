@@ -145,9 +145,10 @@ async test "mooncode submit turn durably queues and starts runtime" (
     )
     group.return_immediately(())
   })
-  let commands = @fsx.read_file(mooncode_commands_path(book_root, session_id))
-  let events = @fsx.read_file(mooncode_events_path(book_root, session_id))
-  assert_true(commands.contains("cmd-submit-turn"))
-  assert_true(events.contains("command.queued_for_runtime_turn"))
-  assert_true(events.contains("runtime.service_started"))
+  let journal = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
+  assert_true(journal.contains("cmd-submit-turn"))
+  assert_true(journal.contains("command.queued_for_runtime_turn"))
+  assert_true(journal.contains("runtime.service_started"))
 }

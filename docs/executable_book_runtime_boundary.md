@@ -92,8 +92,10 @@ Rule: MoonCode should not be implemented as generic task chat. It should use
 code-session/runtime contracts that can run tools, edit files, stream proof,
 package executable artifacts, and resume from durable session sidecars.
 
-`runtime-receipts.jsonl` is a book-local claim and settlement receipt log
-written by native MoonCode runtime operations, not a separate runtime API.
+`journal.jsonl` is the book-local, totally ordered session authority. Native
+MoonCode runtime operations append command, claim, settlement, event, package,
+and book-result records under `moonsuite-conversation-journal.v1`; receipts are
+a record kind, not a separate store or runtime API.
 
 MoonCode command intake uses the shared `mooncode/core` envelope contract.
 `native_command_body_required_fields()` and

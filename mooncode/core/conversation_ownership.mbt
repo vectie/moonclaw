@@ -21,6 +21,7 @@ pub fn conversation_ownership_contract_json() -> Json {
       "runtime": "moonclaw",
     },
     "visible_owner_rule": "Every visible progress, assistant, failure, abort, and recovery row must carry command_id, turn_id, client_turn_id, runtime_session_id, run_id, action, and event_id ownership fields.",
+    "chat_rendering_rule": "MoonDesk chat renders only mooncode_conversation turns plus unacknowledged local optimistic turns. It must not rebuild visible chat rows from mooncode_events, stream events, runtime-event snapshots, command logs, receipts, or merge_events output.",
     "unowned_event_rule": "Unscoped runtime/progress/assistant/failure events are durable diagnostics only and must not attach to the latest active turn.",
     "control_rule": "Steer and cancel command evidence stays in folded control lifecycle projections unless MoonClaw emits command-scoped user-visible failure or abort evidence for the affected prompt turn.",
     "abort_rule": "runtime_aborted closes a visible chat turn only when it is scoped to a non-control command; cancel-scoped runtime_aborted settles the cancel lifecycle instead.",

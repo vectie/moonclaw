@@ -155,6 +155,14 @@ pub fn conversation_turn_kind() -> String
 
 pub fn conversation_turn_required_fields() -> Array[String]
 
+pub fn conversation_watch_contract_id() -> String
+
+pub fn conversation_watch_contract_json() -> Json
+
+pub fn conversation_watch_kind() -> String
+
+pub fn conversation_watch_response(session_id~ : String, revision~ : Int, next_sequence~ : Int, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json
+
 pub fn event_lane_artifact() -> String
 
 pub fn event_lane_contract_id() -> String
@@ -190,6 +198,8 @@ pub fn executable_book_lifecycle_contract_id() -> String
 pub fn executable_book_lifecycle_contract_json() -> Json
 
 pub fn executable_book_lifecycle_steps() -> Array[String]
+
+pub fn journal_contract_id() -> String
 
 pub fn model_planner_command_action_is_supported(String) -> Bool
 

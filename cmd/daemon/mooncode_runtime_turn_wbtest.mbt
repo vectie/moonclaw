@@ -25,14 +25,19 @@ async test "mooncode native runtime turn executes explicit tool calls" (
       { "tool": "finish", "arguments": { "answer": "done" } },
     ],
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(1L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(1L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -65,12 +70,14 @@ async test "mooncode native runtime turn executes explicit tool calls" (
   assert_eq(tool_results.length(), 3)
   assert_true(execution.stringify().contains("turn-ok"))
   let receipt_log = @fsx.read_file(
-    mooncode_runtime_receipts_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(receipt_log.contains("\"runtime-claimed\""))
   assert_true(receipt_log.contains("\"runtime-completed\""))
   assert_true(receipt_log.contains("\"web_search\":true"))
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"runtime.turn_started\""))
   assert_true(events_log.contains("\"tool_result\""))
   assert_true(events_log.contains("\"runtime.turn_finished\""))
@@ -100,14 +107,19 @@ async test "mooncode native runtime turn defers idle steer into next command" (
     "packet": { "command_id": command_id },
     "model": "unavailable-model",
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(2L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(2L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -149,7 +161,7 @@ async test "mooncode native runtime turn defers idle steer into next command" (
   let tool_results = mooncode_json_array_items(execution, "tool_results")
   assert_eq(tool_results.length(), 0)
   let events_log_before = @fsx.read_file(
-    mooncode_events_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(events_log_before.contains("\"steer_deferred\""))
   assert_false(events_log_before.contains("\"steer_dropped\""))
@@ -172,14 +184,19 @@ async test "mooncode native runtime turn defers idle steer into next command" (
       },
     ],
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": prompt_id,
-    "created_at": @clock.Timestamp::from_ms(4L),
-    "command": prompt,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": prompt_id,
+      "created_at": @clock.Timestamp::from_ms(4L),
+      "command": prompt,
+    },
+  )
   let prompt_result = daemon.mooncode_runtime_turn_execute(
     session_id,
     book_root,
@@ -198,7 +215,7 @@ async test "mooncode native runtime turn defers idle steer into next command" (
     command_id,
   )
   let events_log_after = @fsx.read_file(
-    mooncode_events_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(events_log_after.contains("\"steer_deferred\""))
   assert_true(events_log_after.contains("\"steer_applied\""))
@@ -225,14 +242,19 @@ async test "mooncode native runtime turn drops idle cancel commands" (
     "command": "cancel",
     "packet": { "command_id": command_id },
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(3L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(3L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -276,7 +298,9 @@ async test "mooncode native runtime turn drops idle cancel commands" (
     mooncode_json_string(receipt, "status", default=""),
     "runtime-completed",
   )
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"cancel_dropped\""))
   assert_true(events_log.contains("\"runtime.turn_finished\""))
 }
@@ -298,14 +322,19 @@ async test "mooncode native runtime loop stops on dropped cancel commands" (
     "command": "cancel",
     "packet": { "command_id": command_id },
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(4L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(4L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -341,7 +370,9 @@ async test "mooncode native runtime loop stops on dropped cancel commands" (
     mooncode_json_string(execution, "control", default=""),
     "cancel_dropped",
   )
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"cancel_dropped\""))
 }
 
@@ -376,22 +407,32 @@ async test "mooncode native runtime turn records review receipts" (
       "context_path": "apps/demo/index.html",
     },
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": accept_id,
-    "created_at": @clock.Timestamp::from_ms(3L),
-    "command": accept_command,
-  })
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": reject_id,
-    "created_at": @clock.Timestamp::from_ms(4L),
-    "command": reject_command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": accept_id,
+      "created_at": @clock.Timestamp::from_ms(3L),
+      "command": accept_command,
+    },
+  )
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": reject_id,
+      "created_at": @clock.Timestamp::from_ms(4L),
+      "command": reject_command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -471,7 +512,9 @@ async test "mooncode native runtime turn records review receipts" (
   assert_true(@fsx.exists(reject_path))
   let reject_text = @fsx.read_file(reject_path)
   assert_true(reject_text.contains("\"decision\": \"rejected\""))
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"receipt.accept\""))
   assert_true(events_log.contains("\"receipt.reject\""))
   assert_true(events_log.contains("\"command\":\"accept\""))
@@ -721,14 +764,19 @@ async test "mooncode deterministic explicit prompts execute without model delay"
     "model": "codex/gpt-5.4",
     "packet": { "command_id": write_id },
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": write_id,
-    "created_at": @clock.Timestamp::from_ms(1L),
-    "command": write,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": write_id,
+      "created_at": @clock.Timestamp::from_ms(1L),
+      "command": write,
+    },
+  )
   let write_result = daemon.mooncode_runtime_turn_execute(
     session_id,
     book_root,
@@ -749,14 +797,19 @@ async test "mooncode deterministic explicit prompts execute without model delay"
     "model": "codex/gpt-5.4",
     "packet": { "command_id": read_id },
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": read_id,
-    "created_at": @clock.Timestamp::from_ms(2L),
-    "command": read,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": read_id,
+      "created_at": @clock.Timestamp::from_ms(2L),
+      "command": read,
+    },
+  )
   let read_result = daemon.mooncode_runtime_turn_execute(
     session_id,
     book_root,
@@ -764,7 +817,9 @@ async test "mooncode deterministic explicit prompts execute without model delay"
   )
   assert_true(mooncode_json_bool(read_result, "accepted", default=false))
   assert_true(read_result.stringify().contains("fixture read"))
-  let event_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let event_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_false(event_log.contains("runtime.planner_started"))
   assert_false(event_log.contains("runtime.planner_failed"))
 }
@@ -896,12 +951,16 @@ async test "mooncode runtime turn records progress immediately and once" (
     "command_id": "cmd-live-progress",
     "kind": "runtime.planner_started",
     "status": "running",
+    "created_at": "2026-07-15T00:07:00Z",
   }
   daemon.mooncode_runtime_turn_record_event(binding, events, persisted, event)
   daemon.mooncode_runtime_turn_record_event(binding, events, persisted, event)
   assert_eq(events.length(), 1)
   assert_eq(
-    mooncode_read_jsonl(mooncode_events_path(book_root, session_id)).length(),
+    mooncode_journal_entries(
+      mooncode_read_session_journal(book_root, session_id),
+      mooncode_journal_event(),
+    ).length(),
     1,
   )
 }
@@ -1193,14 +1252,19 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
       },
     ],
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(2L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(2L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -1278,7 +1342,7 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
   assert_true(@fsx.exists(promoted_readme_path))
   assert_eq(@fsx.read_file(promoted_script_path), @fsx.read_file(script_path))
   let package_log = @fsx.read_file(
-    mooncode_package_results_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(package_log.contains("\"package_built\""))
   assert_true(package_log.contains("\"package_verified\""))
@@ -1335,11 +1399,13 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
   )
   assert_true(@fsx.exists(result_path))
   let book_result_log = @fsx.read_file(
-    mooncode_book_results_path(book_root, session_id),
+    mooncode_session_journal_path(book_root, session_id),
   )
   assert_true(book_result_log.contains("\"mooncode-book-result\""))
   assert_true(book_result_log.contains("\"moonbook.executable_event.v1\""))
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"runtime.turn_started\""))
   assert_true(events_log.contains("\"tool_result\""))
   assert_true(events_log.contains("\"finish\""))
@@ -1427,14 +1493,19 @@ async test "mooncode native runtime turn emits run_tests proof" (t : @test.Test)
     "command": "run_tests",
     "packet": { "command_id": command_id },
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(5L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(5L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -1490,7 +1561,9 @@ async test "mooncode native runtime turn emits run_tests proof" (t : @test.Test)
     ),
     command_id,
   )
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"moon_cmd.finished\""))
   assert_true(events_log.contains("\"moon_check.finished\""))
   assert_true(events_log.contains("\"test_result\""))
@@ -1522,14 +1595,19 @@ async test "mooncode native runtime turn emits run_build proof" (t : @test.Test)
     "command": "run_build",
     "packet": { "command_id": command_id },
   }
-  mooncode_append_jsonl(mooncode_commands_path(book_root, session_id), {
-    "kind": "mooncode-command",
-    "protocol": mooncode_protocol_version(),
-    "session_id": session_id,
-    "command_id": command_id,
-    "created_at": @clock.Timestamp::from_ms(5L),
-    "command": command,
-  })
+  mooncode_append_session_journal(
+    book_root,
+    session_id,
+    mooncode_journal_command(),
+    {
+      "kind": "mooncode-command",
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "command_id": command_id,
+      "created_at": @clock.Timestamp::from_ms(5L),
+      "command": command,
+    },
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
@@ -1593,7 +1671,9 @@ async test "mooncode native runtime turn emits run_build proof" (t : @test.Test)
     ),
     command_id,
   )
-  let events_log = @fsx.read_file(mooncode_events_path(book_root, session_id))
+  let events_log = @fsx.read_file(
+    mooncode_session_journal_path(book_root, session_id),
+  )
   assert_true(events_log.contains("\"moon_cmd.finished\""))
   assert_true(events_log.contains("\"moon_command\":\"build\""))
   assert_true(events_log.contains("\"moon_check.finished\""))
