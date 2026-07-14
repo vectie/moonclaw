@@ -573,9 +573,83 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
       mooncode_json_string(event, "status", default="running")
     },
     "tool": mooncode_json_string(event, "tool", default=""),
+    "evidence": mooncode_conversation_work_evidence(event),
     "created_at": mooncode_json_string(event, "created_at", default=""),
     "turn_id": command_id,
     "command_id": command_id,
+  }
+}
+
+///|
+fn mooncode_conversation_work_evidence(event : Json) -> Json {
+  let lane = mooncode_json_string(event, "lane", default="")
+  let kind = mooncode_conversation_work_step_kind(event)
+  if kind != "edit" && kind != "test" && kind != "artifact" && kind != "tool" {
+    return Json::object({})
+  }
+  let tool_result = mooncode_json_object_field_or_empty(event, "tool_result")
+  let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
+  let path = mooncode_conversation_first_text(
+    mooncode_json_string(event, "path", default=""),
+    mooncode_json_string(metadata, "path", default=""),
+  )
+  let diff = mooncode_conversation_first_text(
+    mooncode_json_string(event, "diff", default=""),
+    mooncode_json_string(metadata, "diff", default=""),
+  )
+  let output = mooncode_conversation_first_text(
+    mooncode_json_string(tool_result, "output", default=""),
+    mooncode_json_string(event, "output", default=""),
+  )
+  let command = mooncode_conversation_first_text(
+    mooncode_json_string(metadata, "cmd", default=""),
+    mooncode_json_string(event, "command", default=""),
+  )
+  {
+    "kind": kind,
+    "state": mooncode_conversation_evidence_state(event, kind, lane),
+    "path": path,
+    "diff": diff,
+    "command": command,
+    "output": output,
+    "exit_code": mooncode_json_int(
+      metadata,
+      "status",
+      default=mooncode_json_int(event, "exit_code", default=-1),
+    ),
+    "truncated": mooncode_json_bool(
+      metadata,
+      "truncated",
+      default=mooncode_json_bool(event, "truncated", default=false),
+    ),
+  }
+}
+
+///|
+fn mooncode_conversation_evidence_state(
+  event : Json,
+  kind : String,
+  lane : String,
+) -> String {
+  let status = mooncode_json_string(event, "status", default="running")
+  let tool = mooncode_json_string(event, "tool", default="")
+  let source_kind = mooncode_json_string(event, "kind", default="")
+  if status == "failed" {
+    "failed"
+  } else if status == "cancelled" {
+    "cancelled"
+  } else if status == "running" {
+    "pending"
+  } else if kind == "edit" || lane == "diff" {
+    if source_kind == "runtime.patch_reverted" || tool == "revert_patch" {
+      "reverted"
+    } else {
+      "applied"
+    }
+  } else if kind == "test" || lane == "test" {
+    "passed"
+  } else {
+    "recorded"
   }
 }
 
@@ -660,6 +734,20 @@ fn mooncode_conversation_work_step_index(
   let event_name = mooncode_json_string(event, "event", default="")
   let tool = mooncode_json_string(event, "tool", default="")
   if event_name == "tool_result" && tool != "" {
+    let path = mooncode_json_string(event, "path", default="")
+    if path != "" {
+      let mut index = steps.length() - 1
+      while index >= 0 {
+        let existing = steps[index]
+        let evidence = mooncode_json_object_field_or_empty(existing, "evidence")
+        if mooncode_json_string(existing, "tool", default="") == tool &&
+          mooncode_json_string(evidence, "path", default="") == path &&
+          mooncode_json_string(existing, "status", default="") == "running" {
+          return index
+        }
+        index = index - 1
+      }
+    }
     let mut index = steps.length() - 1
     while index >= 0 {
       let existing = steps[index]

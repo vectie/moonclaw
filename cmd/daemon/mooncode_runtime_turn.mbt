@@ -253,7 +253,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
             persisted_event_ids,
             mooncode_json_object_field_or_empty(execution, "event"),
           )
-          if !mooncode_json_bool(execution, "accepted", default=false) {
+          if mooncode_runtime_turn_stops_tool_batch(plan, execution) {
             break
           }
         }
@@ -623,6 +623,16 @@ async fn Daemon::mooncode_runtime_turn_execute(
     "claim_state": mooncode_runtime_claim_state_compact(after),
     "previous_claim_state": mooncode_runtime_claim_state_compact(before),
   }
+}
+
+///|
+fn mooncode_runtime_turn_stops_tool_batch(
+  plan : Json,
+  execution : Json,
+) -> Bool {
+  !mooncode_json_bool(execution, "accepted", default=false) &&
+  mooncode_json_string(plan, "planner_mode", default="") !=
+  mooncode_planner_mode_model_tool_calls()
 }
 
 ///|

@@ -838,6 +838,82 @@ test "read tools remain context steps even when runtime lane is diff" {
 }
 
 ///|
+test "canonical work keeps review evidence on the matching file step" {
+  let command : Json = {
+    "command_id": "cmd-evidence",
+    "created_at": "2026-07-15T00:00:00Z",
+    "command": {
+      "command": "prompt",
+      "text": "Update two files",
+      "packet": {
+        "command_id": "cmd-evidence",
+        "client_turn_id": "client-evidence",
+      },
+    },
+  }
+  let write_a : Json = {
+    "id": "write-a-start",
+    "command_id": "cmd-evidence",
+    "kind": "tool_call",
+    "event": "tool_call",
+    "lane": "diff",
+    "tool": "write",
+    "tool_call_id": "write-a",
+    "path": "src/a.mbt",
+    "status": "running",
+  }
+  let write_b : Json = {
+    "id": "write-b-start",
+    "command_id": "cmd-evidence",
+    "kind": "tool_call",
+    "event": "tool_call",
+    "lane": "diff",
+    "tool": "write",
+    "tool_call_id": "write-b",
+    "path": "src/b.mbt",
+    "status": "running",
+  }
+  let result_a : Json = {
+    "id": "write-a-result",
+    "command_id": "cmd-evidence",
+    "kind": "tool_result",
+    "event": "tool_result",
+    "lane": "diff",
+    "tool": "write",
+    "path": "src/a.mbt",
+    "diff": "--- a/src/a.mbt\n+++ b/src/a.mbt\n-old\n+new\n",
+    "status": "done",
+    "tool_result": {
+      "output": "updated a",
+      "metadata": { "path": "src/a.mbt", "status": 0, "truncated": false },
+    },
+  }
+  let conversation = mooncode_session_conversation(
+    { "session_id": "session-evidence" },
+    [command],
+    [],
+    [write_a, write_b, result_a],
+  )
+  let turn = mooncode_json_array_items(conversation, "turns")[0]
+  let steps = mooncode_json_array_items(
+    mooncode_json_object_field_or_empty(turn, "work"),
+    "steps",
+  )
+  assert_eq(steps.length(), 2)
+  assert_eq(mooncode_json_string(steps[0], "status", default=""), "done")
+  assert_eq(mooncode_json_string(steps[1], "status", default=""), "running")
+  let evidence = mooncode_json_object_field_or_empty(steps[0], "evidence")
+  assert_eq(mooncode_json_string(evidence, "kind", default=""), "edit")
+  assert_eq(mooncode_json_string(evidence, "state", default=""), "applied")
+  assert_eq(mooncode_json_string(evidence, "path", default=""), "src/a.mbt")
+  assert_true(
+    mooncode_json_string(evidence, "diff", default="").contains("+new"),
+  )
+  assert_eq(mooncode_json_string(evidence, "output", default=""), "updated a")
+  assert_eq(mooncode_json_int(evidence, "exit_code", default=-1), 0)
+}
+
+///|
 test "planner lifecycle projects as one user-facing thought without failure" {
   let command : Json = {
     "command_id": "cmd-plan",

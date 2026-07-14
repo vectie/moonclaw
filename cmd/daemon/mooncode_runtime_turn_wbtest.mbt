@@ -1081,6 +1081,18 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     }),
     20,
   )
+  assert_false(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      { "accepted": false },
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "explicit-tool-calls" },
+      { "accepted": false },
+    ),
+  )
 }
 
 ///|
