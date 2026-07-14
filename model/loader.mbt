@@ -453,11 +453,9 @@ async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
     Ok(catalog) => catalog
     Err(error) => {
       logger.warn(
-        "MoonGate live model catalog unavailable at '\{client.base_url()}': \{error}; using the validated suite-status default",
+        "MoonGate live model catalog unavailable at '\{client.base_url()}': \{error}; refusing stale suite-status model selection",
       )
-      @moongate.configured_models_from_suite_status_for_workspace_root(
-        self.cwd.to_owned(),
-      )
+      []
     }
   }
   for catalog_model in catalog {
@@ -807,7 +805,7 @@ async fn Loader::load_kimi_coding_model(self : Loader, name : String) -> Model? 
 }
 
 ///|
-/// Returns a read-only view of all models currently cached in the loader.
+/// Returns a read-only view of locally configured and executable models.
 ///
 /// Parameters:
 ///
@@ -816,39 +814,9 @@ async fn Loader::load_kimi_coding_model(self : Loader, name : String) -> Model? 
 /// Returns an `ArrayView[Model]` containing all cached models.
 pub async fn Loader::models(self : Loader) -> ArrayView[Model] {
   self.load()
-  let discovered = @moongate.discover_from_suite_status_for_workspace_root(
-    self.cwd.to_owned(),
-  )
-  match discovered {
-    Some(client) => {
-      let catalog = match client.model_catalog() {
-        Ok(catalog) => catalog
-        Err(error) => {
-          logger.warn(
-            "MoonGate live model catalog unavailable at '\{client.base_url()}': \{error}; using the validated suite-status default",
-          )
-          @moongate.configured_models_from_suite_status_for_workspace_root(
-            self.cwd.to_owned(),
-          )
-        }
-      }
-      for catalog_model in catalog {
-        let name = catalog_model.id()
-        let already_loaded = self.models.any(fn(model) { model.name == name })
-        if !already_loaded {
-          self.models.push(
-            model_from_moongate_catalog(
-              client.base_url() + "/openclaw/v1",
-              catalog_model,
-            ),
-          )
-        }
-      }
-    }
-    None =>
-      logger.warn(
-        "MoonGate suite status unavailable for model listing from '\{self.cwd}'",
-      )
+  if self.get_model() is Some(default_model) &&
+    !self.models.any(fn(model) { model.name == default_model.name }) {
+    self.models.push(default_model)
   }
   self.models
 }

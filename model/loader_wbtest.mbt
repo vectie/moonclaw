@@ -218,6 +218,33 @@ test "moongate catalog models become OpenAI-compatible routed models" {
 }
 
 ///|
+async test "unreachable MoonGate status never becomes a selectable model" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let status : Json = {
+      "contract": "moon.suite.status.v2",
+      "service": "moongate",
+      "status": "running",
+      "ready": true,
+      "manifest": {
+        "contract": "moon.suite.service.v1",
+        "service": "moongate",
+        "baseUrl": "http://127.0.0.1:1",
+        "defaultModel": "phantom-gpt",
+      },
+    }
+    let _ = mock.cwd
+      .add_directory(".moonsuite")
+      .add_file("suite-status.json", content=status.stringify(indent=2))
+    let loader = Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
+    let models = loader.models()
+    assert_false(models.any(fn(model) { model.name == "phantom-gpt" }))
+    assert_true(loader.get_model(name="phantom-gpt") is None)
+  })
+}
+
+///|
 async test "legacy nested moonclaw models are ignored" (t : @test.Test) {
   @mock.run(t, mock => {
     let legacy_model = new(

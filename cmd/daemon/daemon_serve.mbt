@@ -5,6 +5,7 @@
 /// Routes:
 ///
 /// - GET  /              → serve UI `index.html`
+/// - GET  /v1/health     → lightweight daemon health
 /// - GET  /v1/events     → `get_events`
 /// - GET  /v1/models     → `list_models`
 /// - POST /v1/task/register → `register_task`
@@ -58,6 +59,7 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               w.write_header(200)
               w.write(index_html)
             }
+            (Get, ["", "v1", "health"]) => self.health(w)
             (Get, ["", "v1", "events"]) => self.get_events(w)
             (Get, ["", "v1", "models"]) => self.list_models(w)
             (Post, ["", "v1", "task", "register"]) => self.register_task(r, w)

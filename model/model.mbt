@@ -106,6 +106,34 @@ pub fn Model::new(
 }
 
 ///|
+/// Return the stable selector clients must use to choose this model.
+///
+/// `model_name` is the provider wire identifier. Built-in providers need a
+/// namespace so that listing a model and selecting it again are inverse
+/// operations.
+pub fn Model::selector(self : Model) -> String {
+  let prefix = match self.model_type {
+    SaaS(CodexOAuth) => Some("codex")
+    SaaS(Copilot) => Some("copilot")
+    SaaS(Qwen) => Some("qwen")
+    SaaS(Kimi) => Some("kimi")
+    SaaS(KimiCoding) => Some("kimi-coding")
+    _ => None
+  }
+  match prefix {
+    Some(prefix) => {
+      let model_name = self.model_name.trim().to_owned()
+      if model_name.has_prefix("\{prefix}/") {
+        model_name
+      } else {
+        "\{prefix}/\{model_name}"
+      }
+    }
+    None => self.name
+  }
+}
+
+///|
 // TODO(upstream): fmt allow blank line
 pub(all) enum CommonModels {
   /// https://openrouter.ai/qwen/qwen3-coder-plus

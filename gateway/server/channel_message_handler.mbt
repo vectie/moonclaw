@@ -114,17 +114,7 @@ fn channel_model_provider_override(model : @model.Model) -> String? {
 
 ///|
 fn channel_model_session_name(model : @model.Model) -> String {
-  match channel_model_provider_override(model) {
-    Some(prefix) => {
-      let model_name = model.model_name.trim().to_owned()
-      if model_name.has_prefix("\{prefix}/") {
-        model_name
-      } else {
-        "\{prefix}/\{model_name}"
-      }
-    }
-    None => model.name
-  }
+  model.selector()
 }
 
 ///|
