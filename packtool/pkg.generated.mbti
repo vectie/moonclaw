@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/packtool"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonlib/pack",
+  "vectie/moonlib/pack/host",
+}
+
+// Values
+pub fn bindings(@host.HostActivationProjection) -> Array[ToolBinding] raise
+
+pub fn resolve(Array[ToolBinding], String) -> ToolBinding?
+
+// Errors
+
+// Types and methods
+pub(all) struct ToolBinding {
+  pack_id : String
+  product_id : String
+  tool_id : String
+  input_schema_id : String
+  output_schema_id : String
+  authority : @pack.AuthorityClass
+  idempotent : Bool
+  evidence_outputs : Array[String]
+  review_required : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
