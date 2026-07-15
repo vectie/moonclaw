@@ -7,6 +7,7 @@ priv struct MoonCodeSessionBinding {
   mut workspace_name : String
   mut command_count : Int
   mut first_user_prompt : String
+  mut custom_title : String
   mut last_command_id : String
   mut last_updated : @clock.Timestamp
   mut runtime_service_running : Bool
@@ -24,6 +25,7 @@ fn MoonCodeSessionBinding::to_json(self : MoonCodeSessionBinding) -> Json {
     "workspace_name": self.workspace_name,
     "command_count": self.command_count,
     "first_user_prompt": self.first_user_prompt,
+    "custom_title": self.custom_title,
     "last_command_id": self.last_command_id,
     "last_updated": self.last_updated,
     "runtime_service_running": self.runtime_service_running,
@@ -73,6 +75,7 @@ fn Daemon::mooncode_binding_for_session(
         workspace_name: "",
         command_count: 0,
         first_user_prompt: "",
+        custom_title: "",
         last_command_id: "",
         last_updated: self.clock.now(),
         runtime_service_running: false,
@@ -175,6 +178,22 @@ async fn Daemon::mooncode_session_listing_records(
 }
 
 ///|
+async fn Daemon::mooncode_archived_session_listing_records(
+  self : Daemon,
+  book_root : String,
+  include_log_counts~ : Bool,
+) -> Array[Json] {
+  ignore(self)
+  if book_root == "" {
+    return []
+  }
+  mooncode_durable_archived_session_listing_records(
+    book_root,
+    include_log_counts~,
+  )
+}
+
+///|
 fn mooncode_listing_root_matches(
   requested_root : String,
   book_root : String,
@@ -263,6 +282,17 @@ async fn MoonCodeSessionBinding::restore_first_user_prompt(
       return
     }
   }
+}
+
+///|
+async fn MoonCodeSessionBinding::restore_session_metadata(
+  self : MoonCodeSessionBinding,
+) -> Unit {
+  if self.book_root == "" || self.custom_title != "" {
+    return
+  }
+  let snapshot = mooncode_load_session_snapshot(self.book_root, self.session_id)
+  self.custom_title = mooncode_json_string(snapshot, "custom_title", default="")
 }
 
 ///|

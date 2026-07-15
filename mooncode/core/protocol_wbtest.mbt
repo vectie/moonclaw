@@ -17,6 +17,7 @@ test "mooncode core protocol surface is stable" {
     endpoints.runtime_service,
     "/v1/code/sessions/<id>/runtime-service?book_root=<path>",
   )
+  assert_eq(endpoints.session_lifecycle, "/v1/code/sessions/<id>/lifecycle")
   assert_eq(
     endpoints.required_endpoints().length(),
     native_capability_required_endpoints().length(),
@@ -45,6 +46,14 @@ test "mooncode core protocol surface is stable" {
   assert_eq(
     native_session_listing_endpoint("/tmp/moon book"),
     "/v1/code/sessions?book_root=%2Ftmp%2Fmoon%20book&format=listing",
+  )
+  assert_eq(
+    native_archived_session_listing_endpoint("/tmp/moon book"),
+    "/v1/code/sessions?book_root=%2Ftmp%2Fmoon%20book&format=listing&scope=archived",
+  )
+  assert_eq(
+    native_session_lifecycle_endpoint("session one"),
+    "/v1/code/sessions/session%20one/lifecycle",
   )
   assert_eq(
     native_stream_endpoint("session one", "/tmp/moon book", "sse", 7),

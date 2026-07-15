@@ -20,6 +20,11 @@ test "mooncode capabilities expose native daemon endpoints" {
       "/v1/code/sessions?book_root=<path>&format=listing",
     ),
   )
+  assert_true(
+    mooncode_native_capability_required_endpoints().contains(
+      "/v1/code/sessions/<id>/lifecycle",
+    ),
+  )
   assert_eq(mooncode_native_capability_optional_endpoints().length(), 0)
   assert_eq(
     mooncode_capability_endpoints().length(),

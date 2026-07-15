@@ -6,7 +6,18 @@ async fn Daemon::mooncode_list_sessions(
 ) -> Unit {
   let book_root = mooncode_request_book_root(r)
   let format = mooncode_request_string(r, "format", default="")
-  let records = if format == "json" {
+  let scope = mooncode_request_string(r, "scope", default="active")
+  match mooncode_session_list_scope_error(scope) {
+    Some(payload) => raise json_error(400, "Bad Request", payload)
+    None => ()
+  }
+  let archived = scope == "archived"
+  let records = if archived {
+    self.mooncode_archived_session_listing_records(
+      book_root,
+      include_log_counts=format != "json",
+    )
+  } else if format == "json" {
     self.mooncode_session_listing_records(book_root, include_log_counts=false)
   } else if format == "listing" {
     self.mooncode_session_listing_records(book_root, include_log_counts=true)
@@ -36,6 +47,7 @@ async fn Daemon::mooncode_list_sessions(
           "kind": "mooncode-session-listing",
           "protocol": mooncode_protocol_version(),
           "owner": "moonclaw",
+          "scope": scope,
           "book_root": book_root,
           "durable_store": mooncode_sessions_root(book_root),
           "durable_store_loaded": book_root != "",
@@ -51,6 +63,7 @@ async fn Daemon::mooncode_list_sessions(
         "kind": "mooncode-session-list",
         "protocol": mooncode_protocol_version(),
         "owner": "moonclaw",
+        "scope": scope,
         "book_root": book_root,
         "durable_store": mooncode_sessions_root(book_root),
         "durable_store_loaded": book_root != "",
@@ -58,6 +71,18 @@ async fn Daemon::mooncode_list_sessions(
         "sessions": Json::array(records),
       } : Json).stringify(indent=2),
   )
+}
+
+///|
+fn mooncode_session_list_scope_error(scope : String) -> Json? {
+  if scope == "active" || scope == "archived" {
+    return None
+  }
+  Some({
+    "error": "unsupported MoonCode session scope",
+    "scope": scope,
+    "allowed_scopes": ["active", "archived"],
+  })
 }
 
 ///|
@@ -83,7 +108,12 @@ fn mooncode_compact_session_listing_row(record : Json) -> Json {
 
 ///|
 fn mooncode_compact_session_listing_title(record : Json) -> String {
-  let trimmed = mooncode_session_listing_first_user_prompt(record).trim()
+  let custom_title = mooncode_session_listing_custom_title(record)
+  let trimmed = if custom_title == "" {
+    mooncode_session_listing_first_user_prompt(record).trim()
+  } else {
+    custom_title.trim()
+  }
   let out = StringBuilder()
   for ch in trimmed {
     if ch is ('\n' | '\r') {
@@ -182,6 +212,7 @@ fn mooncode_session_listing_row(record : Json) -> Json {
     },
     "protocol": mooncode_protocol_version(),
     "component": "mooncode",
+    "archived": mooncode_json_bool(record, "archived", default=false),
   }
 }
 
@@ -221,6 +252,10 @@ fn mooncode_compare_session_listing_labels(left : Json, right : Json) -> Int {
 
 ///|
 fn mooncode_session_listing_title(record : Json) -> String {
+  let custom_title = mooncode_session_listing_custom_title(record)
+  if custom_title != "" {
+    return mooncode_session_listing_trim_title(custom_title)
+  }
   let first_prompt = mooncode_session_listing_first_user_prompt(record)
   if first_prompt != "" {
     return mooncode_session_listing_trim_title(first_prompt)
@@ -239,6 +274,34 @@ fn mooncode_session_listing_title(record : Json) -> String {
   } else {
     session_id
   }
+}
+
+///|
+fn mooncode_session_listing_custom_title(record : Json) -> String {
+  let record_title = mooncode_json_string(record, "custom_title", default="")
+    .trim()
+    .to_owned()
+  if record_title != "" {
+    return record_title
+  }
+  let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
+  let snapshot_title = mooncode_json_string(
+      snapshot,
+      "custom_title",
+      default="",
+    )
+    .trim()
+    .to_owned()
+  if snapshot_title != "" {
+    return snapshot_title
+  }
+  mooncode_json_string(
+    mooncode_json_object_field_or_empty(record, "binding"),
+    "custom_title",
+    default="",
+  )
+  .trim()
+  .to_owned()
 }
 
 ///|

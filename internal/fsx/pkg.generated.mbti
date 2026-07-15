@@ -29,6 +29,8 @@ pub fn readlink(String, bufsize? : UInt64) -> String raise
 
 pub async fn remove(StringView) -> Unit
 
+pub fn rename(StringView, StringView) -> Unit raise
+
 pub async fn resolve(StringView) -> String
 
 pub fn stat(StringView) -> Stat raise

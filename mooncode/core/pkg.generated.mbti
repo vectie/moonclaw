@@ -255,6 +255,8 @@ pub fn model_planner_working_evidence_rule() -> String
 
 pub fn moonclaw_event_mapping_json() -> Json
 
+pub fn native_archived_session_listing_endpoint(String) -> String
+
 pub fn native_capabilities_endpoint() -> String
 
 pub fn native_capability_contract_id() -> String
@@ -384,6 +386,8 @@ pub fn native_runtime_service_endpoint(String, String) -> String
 pub fn native_runtime_turn_endpoint(String, String) -> String
 
 pub fn native_session_commands_endpoint(String) -> String
+
+pub fn native_session_lifecycle_endpoint(String) -> String
 
 pub fn native_session_list_endpoint(String) -> String
 
@@ -993,6 +997,7 @@ pub(all) struct NativeCapabilityEndpoints {
   session_show : String
   session_commands : String
   session_turns : String
+  session_lifecycle : String
   runtime_control : String
   runtime_claim : String
   stream : String

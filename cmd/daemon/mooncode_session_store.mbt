@@ -36,17 +36,43 @@ async fn mooncode_durable_session_listing_records(
   book_root : String,
   include_log_counts? : Bool = true,
 ) -> Array[Json] {
+  mooncode_durable_session_listing_records_at(
+    book_root,
+    archived=false,
+    include_log_counts~,
+  )
+}
+
+///|
+async fn mooncode_durable_archived_session_listing_records(
+  book_root : String,
+  include_log_counts? : Bool = true,
+) -> Array[Json] {
+  mooncode_durable_session_listing_records_at(
+    book_root,
+    archived=true,
+    include_log_counts~,
+  )
+}
+
+///|
+async fn mooncode_durable_session_listing_records_at(
+  book_root : String,
+  archived~ : Bool,
+  include_log_counts~ : Bool,
+) -> Array[Json] {
   let records = []
-  let root = mooncode_sessions_root(book_root)
+  let root = mooncode_session_store_root(book_root, archived~)
   if !(@fsx.exists(root) catch { _ => false }) {
     return records
   }
   let entries = @fsx.list_directory(root) catch { _ => return records }
   for entry in entries {
     if entry.kind is Directory {
-      let snapshot = mooncode_load_session_snapshot_by_safe_id(
+      let snapshot = mooncode_load_session_snapshot_from_store(
         book_root,
         entry.name,
+        archived~,
       )
       let session_id = mooncode_json_string(
         snapshot,
@@ -66,6 +92,7 @@ async fn mooncode_durable_session_listing_records(
           snapshot,
           source="sidecar",
           include_log_counts~,
+          archived~,
         ),
       )
     }
@@ -81,21 +108,32 @@ async fn mooncode_session_listing_record_from_parts(
   snapshot : Json,
   source~ : String,
   include_log_counts? : Bool = true,
+  archived? : Bool = false,
 ) -> Json {
   let safe_session_id = mooncode_safe_session_id(session_id)
   let journal_path = mooncode_session_journal_path_by_safe_id(
-    book_root, safe_session_id,
+    book_root,
+    safe_session_id,
+    archived~,
   )
   let journal = if include_log_counts {
     mooncode_read_session_journal_path(journal_path)
   } else {
     []
   }
+  let metadata_source : Json = {
+    "snapshot": snapshot,
+    "binding": match live_binding {
+      Some(binding) => binding.to_json()
+      None => null
+    },
+  }
   {
     "kind": "mooncode-session-listing-record",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "source": source,
+    "archived": archived,
     "session_id": session_id,
     "safe_session_id": safe_session_id,
     "book_root": book_root,
@@ -105,9 +143,12 @@ async fn mooncode_session_listing_record_from_parts(
       None => null
     },
     "snapshot": snapshot,
+    "custom_title": mooncode_session_custom_title(metadata_source, journal),
     "storage": {
       "session_json": mooncode_session_snapshot_path_by_safe_id(
-        book_root, safe_session_id,
+        book_root,
+        safe_session_id,
+        archived~,
       ),
       "journal_jsonl": journal_path,
     },
@@ -166,8 +207,23 @@ async fn mooncode_load_session_snapshot_by_safe_id(
   book_root : String,
   safe_session_id : String,
 ) -> Json {
+  mooncode_load_session_snapshot_from_store(
+    book_root,
+    safe_session_id,
+    archived=false,
+  )
+}
+
+///|
+async fn mooncode_load_session_snapshot_from_store(
+  book_root : String,
+  safe_session_id : String,
+  archived~ : Bool,
+) -> Json {
   let path = mooncode_session_snapshot_path_by_safe_id(
-    book_root, safe_session_id,
+    book_root,
+    safe_session_id,
+    archived~,
   )
   if book_root == "" || !(@fsx.exists(path) catch { _ => false }) {
     return mooncode_missing_session_snapshot(
@@ -284,6 +340,16 @@ async fn mooncode_session_record_from_parts(
       None => null
     },
     "snapshot": resolved_snapshot,
+    "custom_title": mooncode_session_custom_title(
+      {
+        "snapshot": resolved_snapshot,
+        "binding": match live_binding {
+          Some(binding) => binding.to_json()
+          None => null
+        },
+      },
+      journal,
+    ),
     "storage": {
       "session_json": mooncode_session_snapshot_path_by_safe_id(
         book_root, safe_session_id,
@@ -335,6 +401,7 @@ fn mooncode_session_snapshot(
     "workspace_name": binding.workspace_name,
     "command_count": binding.command_count,
     "first_user_prompt": binding.first_user_prompt,
+    "custom_title": binding.custom_title,
     "last_command_id": binding.last_command_id,
     "last_updated": binding.last_updated,
     "journal_sequence": journal_sequence,
@@ -367,11 +434,29 @@ fn mooncode_sessions_root(book_root : String) -> String {
 }
 
 ///|
+fn mooncode_archived_sessions_root(book_root : String) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    book_root, "moonclaw", "mooncode/archived/sessions",
+  )
+}
+
+///|
+fn mooncode_session_store_root(book_root : String, archived~ : Bool) -> String {
+  if archived {
+    mooncode_archived_sessions_root(book_root)
+  } else {
+    mooncode_sessions_root(book_root)
+  }
+}
+
+///|
 fn mooncode_session_dir_by_safe_id(
   book_root : String,
   safe_session_id : String,
+  archived? : Bool = false,
 ) -> String {
-  mooncode_sessions_root(book_root) |> @pathx.join(safe_session_id)
+  mooncode_session_store_root(book_root, archived~)
+  |> @pathx.join(safe_session_id)
 }
 
 ///|
@@ -386,8 +471,9 @@ fn mooncode_session_snapshot_path(
 fn mooncode_session_snapshot_path_by_safe_id(
   book_root : String,
   safe_session_id : String,
+  archived? : Bool = false,
 ) -> String {
-  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
+  mooncode_session_dir_by_safe_id(book_root, safe_session_id, archived~)
   |> @pathx.join("session.json")
 }
 

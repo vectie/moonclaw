@@ -387,7 +387,8 @@ fn mooncode_session_journal_path(
 fn mooncode_session_journal_path_by_safe_id(
   book_root : String,
   safe_session_id : String,
+  archived? : Bool = false,
 ) -> String {
-  mooncode_session_dir_by_safe_id(book_root, safe_session_id)
+  mooncode_session_dir_by_safe_id(book_root, safe_session_id, archived~)
   |> @pathx.join("journal.jsonl")
 }

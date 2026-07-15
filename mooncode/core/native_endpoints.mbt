@@ -6,6 +6,7 @@ pub(all) struct NativeCapabilityEndpoints {
   session_show : String
   session_commands : String
   session_turns : String
+  session_lifecycle : String
   runtime_control : String
   runtime_claim : String
   stream : String
@@ -27,6 +28,7 @@ pub fn native_capability_endpoints() -> NativeCapabilityEndpoints {
     session_show: "/v1/code/sessions/<id>?book_root=<path>",
     session_commands: "/v1/code/sessions/<id>/commands",
     session_turns: "/v1/code/sessions/<id>/turns",
+    session_lifecycle: "/v1/code/sessions/<id>/lifecycle",
     runtime_control: "/v1/code/sessions/<id>/runtime-control?book_root=<path>",
     runtime_claim: "/v1/code/sessions/<id>/runtime-claim?book_root=<path>",
     stream: "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
@@ -51,6 +53,7 @@ pub fn NativeCapabilityEndpoints::required_endpoints(
     self.session_show,
     self.session_commands,
     self.session_turns,
+    self.session_lifecycle,
     self.runtime_control,
     self.runtime_claim,
     self.stream,
@@ -190,6 +193,15 @@ pub fn native_session_listing_endpoint(book_root : String) -> String {
 }
 
 ///|
+pub fn native_archived_session_listing_endpoint(book_root : String) -> String {
+  native_endpoint_url(["v1", "code", "sessions"], query=[
+    ("book_root", book_root),
+    ("format", "listing"),
+    ("scope", "archived"),
+  ])
+}
+
+///|
 pub fn native_session_show_endpoint(
   session_id : String,
   book_root : String,
@@ -207,6 +219,11 @@ pub fn native_session_commands_endpoint(session_id : String) -> String {
 ///|
 pub fn native_session_turns_endpoint(session_id : String) -> String {
   native_endpoint_url(["v1", "code", "sessions", session_id, "turns"])
+}
+
+///|
+pub fn native_session_lifecycle_endpoint(session_id : String) -> String {
+  native_endpoint_url(["v1", "code", "sessions", session_id, "lifecycle"])
 }
 
 ///|

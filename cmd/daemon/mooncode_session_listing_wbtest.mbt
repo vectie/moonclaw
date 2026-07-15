@@ -35,6 +35,19 @@ test "mooncode session list format rejects unsupported values before response" {
 }
 
 ///|
+test "mooncode session list scope accepts active and archived only" {
+  assert_true(mooncode_session_list_scope_error("active") is None)
+  assert_true(mooncode_session_list_scope_error("archived") is None)
+  guard mooncode_session_list_scope_error("all") is Some(payload) else {
+    fail("expected unsupported scope payload")
+  }
+  assert_eq(
+    mooncode_json_string(payload, "error", default=""),
+    "unsupported MoonCode session scope",
+  )
+}
+
+///|
 test "mooncode compact session listing row is minimal json contract" {
   let listing = mooncode_compact_session_listing_row({
     "kind": "mooncode-session-record",
@@ -77,6 +90,20 @@ test "mooncode compact session listing title has no rich fallback" {
     },
   })
   assert_eq(mooncode_json_string(listing, "title", default="missing"), "")
+}
+
+///|
+test "mooncode compact session listing prefers a durable custom title" {
+  let listing = mooncode_compact_session_listing_row({
+    "kind": "mooncode-session-record",
+    "session_id": "session-renamed",
+    "custom_title": "  Renamed session  ",
+    "snapshot": { "first_user_prompt": "Original title" },
+  })
+  assert_eq(
+    mooncode_json_string(listing, "title", default=""),
+    "Renamed session",
+  )
 }
 
 ///|
@@ -144,6 +171,7 @@ async test "mooncode binding remembers first prompt once for session picker titl
     workspace_name: "",
     command_count: 0,
     first_user_prompt: "",
+    custom_title: "",
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
     runtime_service_running: false,
@@ -224,6 +252,7 @@ async test "mooncode binding restores first prompt from journal after restart" {
     workspace_name: "",
     command_count: 0,
     first_user_prompt: "",
+    custom_title: "",
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
     runtime_service_running: false,
