@@ -116,8 +116,11 @@ control plane is durable runtime state, not a second transcript:
 - risky tool calls append a stable pending approval event to the owning command
 - `approve_tool` and `reject_tool` commands append a durable decision and stay
   hidden from user/assistant chat
-- the original runtime task waits for the decision and resumes with its model
-  plan and tool-call context intact
+- before waiting, MoonClaw stores the selected plan, completed tool results,
+  planner position, tool position, and approval request as a hidden
+  command-owned continuation checkpoint
+- the live task or a fresh daemon resumes that checkpoint after the durable
+  decision, without replanning or replaying pre-approval tools
 - rejection records non-execution and allows the model to explain the outcome
 - cancel names the claimed target command, rejects a stale target before
   interruption, then awaits the active task, terminates its child process, and
@@ -126,7 +129,8 @@ control plane is durable runtime state, not a second transcript:
 The canonical conversation projection reduces approval request and decision
 events into one stable `approval` work step. Consumers render that list; they
 must not merge raw events, create approval turns, or infer cancellation from a
-local timer.
+local timer. Continuation checkpoints remain runtime evidence and are never
+projected as extra conversation rows.
 
 ## Current Validation
 

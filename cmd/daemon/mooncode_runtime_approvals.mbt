@@ -137,7 +137,10 @@ fn mooncode_runtime_tool_approval_event_for_id(
 ) -> Json {
   let mut latest = Json::object({})
   for event in events {
-    if mooncode_json_string(event, "approval_id", default="") == approval_id {
+    if mooncode_json_string(event, "approval_id", default="") == approval_id &&
+      mooncode_json_string(event, "kind", default="").has_prefix(
+        "tool.approval_",
+      ) {
       latest = event
     }
   }
@@ -151,6 +154,8 @@ fn mooncode_runtime_tool_approval_request_for_id(
 ) -> Json {
   for event in events {
     if mooncode_json_string(event, "approval_id", default="") == approval_id &&
+      mooncode_json_string(event, "kind", default="") ==
+      "tool.approval_requested" &&
       mooncode_json_string(event, "state", default="") == "pending" {
       return event
     }

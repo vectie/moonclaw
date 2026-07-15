@@ -67,6 +67,11 @@ not execute the tool. A cancellation test must use a real long-running child
 process and prove that it is terminated before settlement. For gateway changes,
 include auth, redaction, startup, and failure-path tests.
 
+Approval recovery must also discard the in-memory daemon between request and
+decision. The fresh daemon must load the command-owned continuation checkpoint,
+preserve the original approval id and selected plan, avoid replaying completed
+pre-approval tools, and settle the same canonical turn.
+
 ## Worth Noticing
 
 - A UI saying "working" is not enough; progress should come from a runtime

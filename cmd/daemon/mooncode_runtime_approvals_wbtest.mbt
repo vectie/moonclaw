@@ -395,3 +395,253 @@ async test "mooncode cancel control rejects a stale turn target" (
     @fsx.exists(@pathx.join(book_root, "stale-cancel-must-not-finish.txt")),
   )
 }
+
+///|
+async test "mooncode approval resumes from durable checkpoint after daemon restart" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-approval-restart-XXXXXX"),
+  )
+  let session_id = "session-approval-restart"
+  let command : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "prompt",
+    "text": "Resume the approved write after restart",
+    "packet": { "command_id": "cmd-approval-restart" },
+    "payload": { "approval_wait_ms": 0 },
+    "runtime_tool_calls": [
+      {
+        "tool": "shell",
+        "arguments": { "cmd": "printf once >> pre-approval-count.txt" },
+      },
+      {
+        "tool": "write",
+        "requires_approval": true,
+        "arguments": {
+          "path": "approved-after-restart.txt",
+          "content": "approved",
+        },
+      },
+      {
+        "tool": "finish",
+        "arguments": { "answer": "approval restart completed" },
+      },
+    ],
+  }
+  mooncode_control_test_queue(
+    book_root,
+    session_id,
+    command,
+    now=@clock.Timestamp::from_ms(10L),
+  )
+  let first_daemon = mooncode_control_test_daemon(book_root)
+  let waiting = first_daemon.mooncode_runtime_turn_execute(
+    session_id,
+    book_root,
+    { "consumer_id": "approval-restart-before" },
+  )
+  assert_true(
+    mooncode_json_bool(
+      mooncode_json_object_field_or_empty(waiting, "execution"),
+      "waiting_approval",
+      default=false,
+    ),
+  )
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "pre-approval-count.txt")),
+    "once",
+  )
+  let before_events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
+  let request = mooncode_control_test_approval_request(before_events)
+  let approval_id = mooncode_json_string(request, "approval_id", default="")
+  assert_true(approval_id != "")
+  assert_eq(
+    before_events
+    .filter(event => {
+      mooncode_json_string(event, "kind", default="") ==
+      mooncode_runtime_continuation_kind()
+    })
+    .length(),
+    1,
+  )
+  let checkpoint = mooncode_runtime_continuation_for_command(
+    before_events, "cmd-approval-restart",
+  )
+  assert_true(mooncode_runtime_continuation_is_active(checkpoint))
+  assert_false(
+    mooncode_runtime_continuation_is_active(
+      mooncode_json_object_with_field(
+        checkpoint,
+        "tool_index",
+        Json::number(99.0),
+      ),
+    ),
+  )
+  let restarted_daemon = mooncode_control_test_daemon(book_root)
+  @async.with_task_group(group => {
+    let approved = restarted_daemon.mooncode_submit_turn_response(
+      group~,
+      session_id,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": book_root,
+        "command": "approve_tool",
+        "packet": { "command_id": "cmd-approve-after-restart" },
+        "payload": {
+          "approval_id": approval_id,
+          "target_command_id": "cmd-approval-restart",
+          "tool_call_id": mooncode_json_string(
+            request,
+            "tool_call_id",
+            default="",
+          ),
+        },
+      },
+    )
+    assert_true(mooncode_json_bool(approved, "accepted", default=false))
+    let binding = restarted_daemon.mooncode_binding_for_session(session_id)
+    let mut attempts = 0
+    while binding.runtime_service_running && attempts < 200 {
+      @async.sleep(10)
+      attempts += 1
+    }
+    assert_false(binding.runtime_service_running)
+    group.return_immediately(())
+  })
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "pre-approval-count.txt")),
+    "once",
+  )
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "approved-after-restart.txt")),
+    "approved",
+  )
+  let after_events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
+  assert_eq(
+    after_events
+    .filter(event => {
+      mooncode_json_string(event, "kind", default="") == "runtime.turn_started"
+    })
+    .length(),
+    1,
+  )
+  let record = restarted_daemon
+    .mooncode_session_record(session_id, book_root)
+    .unwrap()
+  let turns = mooncode_json_array_items(
+    mooncode_json_object_field_or_empty(record, "mooncode_conversation"),
+    "turns",
+  )
+  assert_eq(turns.length(), 1)
+  assert_eq(mooncode_json_string(turns[0], "status", default=""), "done")
+}
+
+///|
+async test "mooncode rejection resumes from durable checkpoint after daemon restart" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-reject-restart-XXXXXX"),
+  )
+  let session_id = "session-reject-restart"
+  let command : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "prompt",
+    "text": "Reject the write after restart",
+    "packet": { "command_id": "cmd-reject-restart" },
+    "payload": { "approval_wait_ms": 0 },
+    "runtime_tool_calls": [
+      {
+        "tool": "shell",
+        "arguments": { "cmd": "printf once >> pre-reject-count.txt" },
+      },
+      {
+        "tool": "write",
+        "requires_approval": true,
+        "arguments": {
+          "path": "rejected-after-restart.txt",
+          "content": "must-not-exist",
+        },
+      },
+      {
+        "tool": "finish",
+        "arguments": { "answer": "rejection restart completed" },
+      },
+    ],
+  }
+  mooncode_control_test_queue(
+    book_root,
+    session_id,
+    command,
+    now=@clock.Timestamp::from_ms(10L),
+  )
+  let first_daemon = mooncode_control_test_daemon(book_root)
+  ignore(
+    first_daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+      "consumer_id": "reject-restart-before",
+    }),
+  )
+  let events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
+  let request = mooncode_control_test_approval_request(events)
+  let approval_id = mooncode_json_string(request, "approval_id", default="")
+  let restarted_daemon = mooncode_control_test_daemon(book_root)
+  @async.with_task_group(group => {
+    let rejected = restarted_daemon.mooncode_submit_turn_response(
+      group~,
+      session_id,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": book_root,
+        "command": "reject_tool",
+        "packet": { "command_id": "cmd-reject-after-restart" },
+        "payload": {
+          "approval_id": approval_id,
+          "target_command_id": "cmd-reject-restart",
+          "tool_call_id": mooncode_json_string(
+            request,
+            "tool_call_id",
+            default="",
+          ),
+        },
+      },
+    )
+    assert_true(mooncode_json_bool(rejected, "accepted", default=false))
+    let binding = restarted_daemon.mooncode_binding_for_session(session_id)
+    let mut attempts = 0
+    while binding.runtime_service_running && attempts < 200 {
+      @async.sleep(10)
+      attempts += 1
+    }
+    assert_false(binding.runtime_service_running)
+    group.return_immediately(())
+  })
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "pre-reject-count.txt")),
+    "once",
+  )
+  assert_false(
+    @fsx.exists(@pathx.join(book_root, "rejected-after-restart.txt")),
+  )
+  let state = restarted_daemon.mooncode_runtime_claim_state_payload(
+    session_id, book_root,
+  )
+  assert_eq(mooncode_json_int(state, "delivered_command_count", default=0), 2)
+}
