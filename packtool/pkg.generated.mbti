@@ -9,6 +9,8 @@ import {
 }
 
 // Values
+pub fn authorize(ToolBinding, InvocationRequest, InvocationPolicy) -> InvocationDecision
+
 pub fn bindings(@host.HostActivationProjection) -> Array[ToolBinding] raise
 
 pub fn resolve(Array[ToolBinding], String) -> ToolBinding?
@@ -16,6 +18,28 @@ pub fn resolve(Array[ToolBinding], String) -> ToolBinding?
 // Errors
 
 // Types and methods
+pub(all) struct InvocationDecision {
+  allowed : Bool
+  issues : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct InvocationPolicy {
+  granted_authorities : Array[@pack.AuthorityClass]
+  reviewed_tool_ids : Array[String]
+  max_attempts : Int
+  timeout_ms : Int
+  remaining_budget_micros : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct InvocationRequest {
+  tool_id : String
+  input_schema_id : String
+  output_schema_id : String
+  evidence_path : String
+  attempt : Int
+  estimated_cost_micros : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct ToolBinding {
   pack_id : String
   product_id : String

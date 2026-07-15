@@ -33,3 +33,43 @@ test "projection binds tools without product-specific routing" {
   assert_eq(binding.pack_id, "fixture")
   assert_true(binding.authority == Observe)
 }
+
+///|
+test "external effects require authority review evidence and budget" {
+  let binding : ToolBinding = {
+    pack_id: "fixture",
+    product_id: "fixture",
+    tool_id: "fixture.publish",
+    input_schema_id: "request",
+    output_schema_id: "response",
+    authority: ExternalEffect,
+    idempotent: true,
+    evidence_outputs: ["records/publications"],
+    review_required: true,
+  }
+  let request : InvocationRequest = {
+    tool_id: "fixture.publish",
+    input_schema_id: "request",
+    output_schema_id: "response",
+    evidence_path: "records/publications/run-1.json",
+    attempt: 1,
+    estimated_cost_micros: 100,
+  }
+  let denied = authorize(binding, request, {
+    granted_authorities: [],
+    reviewed_tool_ids: [],
+    max_attempts: 1,
+    timeout_ms: 30000,
+    remaining_budget_micros: 50,
+  })
+  assert_false(denied.allowed)
+  assert_eq(denied.issues.length(), 3)
+  let allowed = authorize(binding, request, {
+    granted_authorities: [ExternalEffect],
+    reviewed_tool_ids: ["fixture.publish"],
+    max_attempts: 1,
+    timeout_ms: 30000,
+    remaining_budget_micros: 100,
+  })
+  assert_true(allowed.allowed)
+}
