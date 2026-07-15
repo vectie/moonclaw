@@ -112,6 +112,10 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let item = claimed[0]
   let raw_command = mooncode_json_object_field_or_empty(item, "command")
   let command_id = mooncode_json_string(item, "command_id", default="")
+  binding.active_command_id = command_id
+  defer (if binding.active_command_id == command_id {
+    binding.active_command_id = ""
+  })
   let action = mooncode_json_string(raw_command, "command", default="prompt")
   let existing_events = mooncode_journal_entries(
     mooncode_read_session_journal(book_root, session_id),
@@ -147,6 +151,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let tool_results : Array[Json] = []
   let events : Array[Json] = []
   let persisted_event_ids : Map[String, Bool] = {}
+  let mut waiting_approval = Json::object({})
   self.mooncode_runtime_turn_record_event(
     binding, events, persisted_event_ids, started,
   )
@@ -243,13 +248,85 @@ async fn Daemon::mooncode_runtime_turn_execute(
           )
         }
         let step_results : Array[Json] = []
-        for tool_call in tool_calls {
-          let execution = mooncode_execute_tool_call(
-            session_id,
-            book_root,
-            mooncode_runtime_turn_tool_body(command, tool_call),
-            now=self.clock.now(),
+        for tool_index, tool_call in tool_calls {
+          let occurrence = step_index * 1000 + tool_index
+          let approval_id = mooncode_runtime_tool_approval_id(
+            command_id,
+            tool_call,
+            occurrence~,
           )
+          let approval_events = mooncode_journal_entries(
+            mooncode_read_session_journal(book_root, session_id),
+            mooncode_journal_event(),
+          )
+          let mut approval = mooncode_runtime_tool_approval_event_for_id(
+            approval_events, approval_id,
+          )
+          if mooncode_runtime_tool_requires_approval(tool_call) &&
+            mooncode_json_string(approval, "state", default="pending") ==
+            "pending" {
+            let request = mooncode_runtime_tool_approval_event(
+              session_id,
+              command_id,
+              tool_call,
+              occurrence~,
+              state="pending",
+              tool_call_id=mooncode_runtime_turn_tool_call_id(
+                tool_call,
+                step=step_index + 1,
+                index=tool_index,
+              ),
+              now=self.clock.now(),
+            )
+            self.mooncode_runtime_turn_record_event(
+              binding, events, persisted_event_ids, request,
+            )
+            approval = mooncode_runtime_wait_for_tool_approval(
+              book_root,
+              session_id,
+              approval_id,
+              timeout_ms=mooncode_runtime_approval_wait_ms(command),
+            )
+            if mooncode_json_string(approval, "state", default="pending") ==
+              "pending" {
+              waiting_approval = request
+              break
+            }
+          }
+          let approval_state = mooncode_json_string(
+            approval,
+            "state",
+            default="",
+          )
+          if approval_state == "approved" {
+            self.mooncode_runtime_turn_record_event(
+              binding,
+              events,
+              persisted_event_ids,
+              mooncode_runtime_turn_tool_call_event(
+                session_id,
+                command_id,
+                tool_call,
+                step=step_index + 1,
+                index=tool_index,
+                mode=mooncode_json_string(plan, "planner_mode", default=""),
+                model=mooncode_json_string(plan, "model", default=""),
+                now=self.clock.now(),
+              ),
+            )
+          }
+          let execution = if approval_state == "rejected" {
+            mooncode_runtime_rejected_tool_execution(
+              session_id, book_root, command_id, tool_call, approval,
+            )
+          } else {
+            mooncode_execute_tool_call(
+              session_id,
+              book_root,
+              mooncode_runtime_turn_tool_body(command, tool_call),
+              now=self.clock.now(),
+            )
+          }
           step_results.push(execution)
           tool_results.push(execution)
           self.mooncode_runtime_turn_record_event(
@@ -261,6 +338,10 @@ async fn Daemon::mooncode_runtime_turn_execute(
           if mooncode_runtime_turn_stops_tool_batch(plan, execution) {
             break
           }
+        }
+        if mooncode_json_string(waiting_approval, "approval_id", default="") !=
+          "" {
+          break
         }
         if mooncode_json_string(plan, "planner_mode", default="") !=
           mooncode_planner_mode_model_tool_calls() ||
@@ -312,7 +393,15 @@ async fn Daemon::mooncode_runtime_turn_execute(
       let planner_failed = planner_steps.any(step => {
         mooncode_json_bool(step, "failed", default=false)
       })
-      let tool_accepted = if planner_failed {
+      let waiting = mooncode_json_string(
+          waiting_approval,
+          "approval_id",
+          default="",
+        ) !=
+        ""
+      let tool_accepted = if waiting {
+        true
+      } else if planner_failed {
         false
       } else if used_model_planner {
         mooncode_runtime_turn_model_execution_accepted(command, tool_results)
@@ -321,7 +410,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
           mooncode_json_bool(result, "accepted", default=false)
         })
       }
-      let test_results = if action == "run_tests" || action == "run_build" {
+      let test_results = if !waiting &&
+        (action == "run_tests" || action == "run_build") {
         mooncode_runtime_turn_test_results(
           session_id,
           book_root,
@@ -339,7 +429,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
           binding, events, persisted_event_ids, test_result,
         )
       }
-      let eval_results = if tool_accepted && action == "run_eval" {
+      let eval_results = if !waiting && tool_accepted && action == "run_eval" {
         mooncode_runtime_turn_eval_results(
           session_id,
           book_root,
@@ -366,7 +456,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
       let eval_accepted = eval_results.all(result => {
         mooncode_json_bool(result, "accepted", default=false)
       })
-      let commit_results = if tool_accepted && action == "commit" {
+      let commit_results = if !waiting && tool_accepted && action == "commit" {
         mooncode_runtime_turn_commit_results(
           session_id,
           book_root,
@@ -393,7 +483,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
       let commit_accepted = commit_results.all(result => {
         mooncode_json_bool(result, "accepted", default=false)
       })
-      let accepted = tool_accepted && eval_accepted && commit_accepted
+      let accepted = if waiting {
+        true
+      } else {
+        tool_accepted && eval_accepted && commit_accepted
+      }
       if action == "steer" {
         self.mooncode_runtime_turn_record_event(
           binding,
@@ -408,7 +502,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
           ),
         )
       }
-      let review_receipts = if accepted &&
+      let review_receipts = if !waiting &&
+        accepted &&
         mooncode_runtime_turn_writes_review_receipt(action) {
         mooncode_runtime_turn_review_receipts(
           session_id,
@@ -435,16 +530,18 @@ async fn Daemon::mooncode_runtime_turn_execute(
           binding, events, persisted_event_ids, review_event,
         )
       }
-      let finished = mooncode_runtime_turn_finished_event(
-        session_id,
-        command_id,
-        accepted~,
-        tool_count=tool_results.length(),
-        now=self.clock.now(),
-      )
-      self.mooncode_runtime_turn_record_event(
-        binding, events, persisted_event_ids, finished,
-      )
+      if !waiting {
+        let finished = mooncode_runtime_turn_finished_event(
+          session_id,
+          command_id,
+          accepted~,
+          tool_count=tool_results.length(),
+          now=self.clock.now(),
+        )
+        self.mooncode_runtime_turn_record_event(
+          binding, events, persisted_event_ids, finished,
+        )
+      }
       (
         {
           "accepted": accepted,
@@ -452,8 +549,14 @@ async fn Daemon::mooncode_runtime_turn_execute(
           "session_id": session_id,
           "command_id": command_id,
           "web_search": web_search,
-          "control": mooncode_json_string(command, "command", default="prompt"),
-          "message": if accepted {
+          "control": if waiting {
+            "await_approval"
+          } else {
+            mooncode_json_string(command, "command", default="prompt")
+          },
+          "message": if waiting {
+            "MoonClaw is waiting for operator approval before continuing this turn"
+          } else if accepted {
             "MoonClaw native runtime turn completed `\{mooncode_json_string(command, "command", default="prompt")}`"
           } else {
             "MoonClaw native runtime turn failed during tool execution"
@@ -478,6 +581,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
           "review_receipts": Json::array(review_receipts),
           "review_events": Json::array(review_events),
           "deferred_steering": Json::array(deferred_steering),
+          "waiting_approval": waiting,
+          "approval": waiting_approval,
           "events": Json::array(events),
         } : Json)
     }
@@ -517,11 +622,13 @@ async fn Daemon::mooncode_runtime_turn_execute(
         "events": Json::array(events),
       } : Json)
   }
-  let package_results = if mooncode_json_bool(
-      execution,
-      "accepted",
-      default=false,
-    ) {
+  let waiting_approval = mooncode_json_bool(
+    execution,
+    "waiting_approval",
+    default=false,
+  )
+  let package_results = if !waiting_approval &&
+    mooncode_json_bool(execution, "accepted", default=false) {
     mooncode_runtime_turn_package_results(
       session_id,
       book_root,
@@ -542,30 +649,40 @@ async fn Daemon::mooncode_runtime_turn_execute(
     )
     package_events.push(package_event)
   }
-  let book_results = mooncode_runtime_turn_book_results(
-    session_id,
-    book_root,
-    command,
-    execution,
-    package_results,
-    now=self.clock.now(),
-  )
-  let receipt = mooncode_runtime_turn_receipt(
-    session_id,
-    book_root,
-    item,
-    execution,
-    consumer_id~,
-    now=self.clock.now(),
-  )
-  ignore(
-    mooncode_append_session_journal(
-      book_root,
+  let book_results = if waiting_approval {
+    []
+  } else {
+    mooncode_runtime_turn_book_results(
       session_id,
-      mooncode_journal_runtime_receipt(),
-      receipt,
-    ),
-  )
+      book_root,
+      command,
+      execution,
+      package_results,
+      now=self.clock.now(),
+    )
+  }
+  let receipt = if waiting_approval {
+    Json::object({})
+  } else {
+    mooncode_runtime_turn_receipt(
+      session_id,
+      book_root,
+      item,
+      execution,
+      consumer_id~,
+      now=self.clock.now(),
+    )
+  }
+  if !waiting_approval {
+    ignore(
+      mooncode_append_session_journal(
+        book_root,
+        session_id,
+        mooncode_journal_runtime_receipt(),
+        receipt,
+      ),
+    )
+  }
   let journal = mooncode_read_session_journal(book_root, session_id)
   binding.command_count = mooncode_journal_record_count(
     journal,
@@ -620,7 +737,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
     "ran": true,
     "command_id": command_id,
     "claim_receipts": Json::array(compact_claim_receipts),
-    "turn_receipt": mooncode_runtime_receipt_compact(receipt),
+    "turn_receipt": if waiting_approval {
+      null
+    } else {
+      mooncode_runtime_receipt_compact(receipt)
+    },
     "runtime_control_state": mooncode_runtime_control_state_compact(
       control_state,
     ),
@@ -657,6 +778,12 @@ fn mooncode_runtime_turn_execution_compact(execution : Json) -> Json {
     "web_search": mooncode_json_bool(execution, "web_search", default=false),
     "control": mooncode_json_string(execution, "control", default=""),
     "message": mooncode_json_string(execution, "message", default=""),
+    "waiting_approval": mooncode_json_bool(
+      execution,
+      "waiting_approval",
+      default=false,
+    ),
+    "approval": mooncode_json_object_field_or_empty(execution, "approval"),
     "planner_mode": mooncode_json_string(execution, "planner_mode", default=""),
     "planner_step_count": mooncode_json_int(
       execution,

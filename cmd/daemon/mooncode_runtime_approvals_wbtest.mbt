@@ -1,0 +1,397 @@
+///|
+async fn mooncode_control_test_daemon(book_root : String) -> Daemon {
+  Daemon::{
+    clock: @clock.epoch,
+    models: @model.Loader::new(home=@os.home(), cwd=book_root),
+    uuid: @uuid.generator(@rand.chacha8()),
+    process: @spawn.Manager::new(cwd=book_root),
+    by_cwd: {},
+    by_id: {},
+    rqs: {},
+    exec_path: @pathx.join(book_root, "moonclaw"),
+    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+    port: 0,
+    events: @broadcast.Broadcast::new(),
+    serve: book_root,
+    conversations: @conversation.Manager::new(
+      home=book_root,
+      uuid=@uuid.generator(@rand.chacha8()),
+    ),
+    home: book_root,
+    pending_codex_auth: {},
+    mooncode_sessions: {},
+  }
+}
+
+///|
+fn mooncode_control_test_approval_request(events : Array[Json]) -> Json {
+  for event in events {
+    if mooncode_json_string(event, "kind", default="") ==
+      "tool.approval_requested" {
+      return event
+    }
+  }
+  Json::object({})
+}
+
+///|
+async fn mooncode_control_test_queue(
+  book_root : String,
+  session_id : String,
+  command : Json,
+  now~ : @clock.Timestamp,
+) -> Unit {
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": mooncode_command_id(command),
+        "created_at": now,
+        "command": command,
+      },
+    ),
+  )
+}
+
+///|
+async test "mooncode runtime keeps an approval-gated command claimed until approved" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-approval-XXXXXX"),
+  )
+  let session_id = "session-approval"
+  let command : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "prompt",
+    "text": "Create the approved file",
+    "packet": {
+      "command_id": "cmd-approval",
+      "client_turn_id": "client-approval",
+    },
+    "payload": { "approval_wait_ms": 0 },
+    "runtime_tool_calls": [
+      {
+        "tool": "write",
+        "requires_approval": true,
+        "arguments": { "path": "approved.txt", "content": "approved" },
+      },
+      { "tool": "finish", "arguments": { "answer": "created" } },
+    ],
+  }
+  mooncode_control_test_queue(
+    book_root,
+    session_id,
+    command,
+    now=@clock.Timestamp::from_ms(10L),
+  )
+  let daemon = mooncode_control_test_daemon(book_root)
+  let waiting = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+    "consumer_id": "approval-test",
+  })
+  assert_true(mooncode_json_bool(waiting, "ran", default=false))
+  let waiting_execution = mooncode_json_object_field_or_empty(
+    waiting, "execution",
+  )
+  assert_true(
+    mooncode_json_bool(waiting_execution, "waiting_approval", default=false),
+  )
+  assert_false(@fsx.exists(@pathx.join(book_root, "approved.txt")))
+  let journal = mooncode_read_session_journal(book_root, session_id)
+  let receipts = mooncode_journal_entries(
+    journal,
+    mooncode_journal_runtime_receipt(),
+  )
+  assert_eq(receipts.length(), 1)
+  assert_eq(
+    mooncode_json_string(receipts[0], "status", default=""),
+    "runtime-claimed",
+  )
+  let events = mooncode_journal_entries(journal, mooncode_journal_event())
+  let request = mooncode_control_test_approval_request(events)
+  let approval_id = mooncode_json_string(request, "approval_id", default="")
+  assert_true(approval_id.has_prefix("mooncode-approval-"))
+  @async.with_task_group(group => {
+    let approved = daemon.mooncode_submit_turn_response(group~, session_id, {
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "book_root": book_root,
+      "command": "approve_tool",
+      "text": "Approve the selected tool",
+      "payload": {
+        "approval_id": approval_id,
+        "target_command_id": "cmd-approval",
+        "tool_call_id": mooncode_json_string(
+          request,
+          "tool_call_id",
+          default="",
+        ),
+      },
+      "packet": { "command_id": "cmd-approve" },
+    })
+    assert_true(mooncode_json_bool(approved, "accepted", default=false))
+    let binding = daemon.mooncode_binding_for_session(session_id)
+    let mut attempts = 0
+    while binding.runtime_service_running && attempts < 200 {
+      @async.sleep(10)
+      attempts += 1
+    }
+    assert_false(binding.runtime_service_running)
+    group.return_immediately(())
+  })
+  assert_eq(@fsx.read_file(@pathx.join(book_root, "approved.txt")), "approved")
+  let after = daemon.mooncode_runtime_claim_state_payload(session_id, book_root)
+  assert_eq(mooncode_json_int(after, "delivered_command_count", default=0), 2)
+  let record = daemon.mooncode_session_record(session_id, book_root).unwrap()
+  let conversation = mooncode_json_object_field_or_empty(
+    record, "mooncode_conversation",
+  )
+  let turns = mooncode_json_array_items(conversation, "turns")
+  assert_eq(turns.length(), 1)
+  let work = mooncode_json_object_field_or_empty(turns[0], "work")
+  let steps = mooncode_json_array_items(work, "steps")
+  assert_true(
+    steps.any(step => {
+      mooncode_json_string(step, "kind", default="") == "approval" &&
+      mooncode_json_string(
+        mooncode_json_object_field_or_empty(step, "evidence"),
+        "state",
+        default="",
+      ) ==
+      "approved"
+    }),
+  )
+}
+
+///|
+async test "mooncode rejected approval never executes the tool" (t : @test.Test) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-rejection-XXXXXX"),
+  )
+  let session_id = "session-rejection"
+  let command : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": book_root,
+    "command": "prompt",
+    "text": "Create the rejected file",
+    "packet": { "command_id": "cmd-rejection" },
+    "payload": { "approval_wait_ms": 0 },
+    "runtime_tool_calls": [
+      {
+        "tool": "write",
+        "requires_approval": true,
+        "arguments": { "path": "rejected.txt", "content": "no" },
+      },
+      {
+        "tool": "finish",
+        "arguments": { "answer": "The operation was rejected." },
+      },
+    ],
+  }
+  mooncode_control_test_queue(
+    book_root,
+    session_id,
+    command,
+    now=@clock.Timestamp::from_ms(10L),
+  )
+  let daemon = mooncode_control_test_daemon(book_root)
+  ignore(
+    daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+      "consumer_id": "rejection-test",
+    }),
+  )
+  let events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
+  let request = mooncode_control_test_approval_request(events)
+  let decision = mooncode_runtime_tool_approval_event(
+    session_id,
+    "cmd-rejection",
+    {
+      "approval_id": mooncode_json_string(request, "approval_id", default=""),
+      "tool_call_id": mooncode_json_string(request, "tool_call_id", default=""),
+      "tool": "write",
+      "arguments": mooncode_json_object_field_or_empty(request, "arguments"),
+    },
+    occurrence=0,
+    state="rejected",
+    tool_call_id=mooncode_json_string(request, "tool_call_id", default=""),
+    control_command_id="cmd-reject",
+    now=@clock.Timestamp::from_ms(20L),
+  )
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      decision,
+    ),
+  )
+  let completed = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+    "consumer_id": "rejection-test",
+  })
+  assert_true(mooncode_json_bool(completed, "accepted", default=false))
+  assert_false(@fsx.exists(@pathx.join(book_root, "rejected.txt")))
+}
+
+///|
+async test "mooncode cancel control interrupts an active process and stays hidden" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-cancel-XXXXXX"),
+  )
+  let session_id = "session-cancel"
+  let daemon = mooncode_control_test_daemon(book_root)
+  @async.with_task_group(group => {
+    let submitted = daemon.mooncode_submit_turn_response(group~, session_id, {
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "book_root": book_root,
+      "command": "prompt",
+      "text": "Run a long task",
+      "packet": { "command_id": "cmd-long", "client_turn_id": "client-long" },
+      "runtime_tool_calls": [
+        {
+          "tool": "shell",
+          "arguments": {
+            "cmd": "sleep 20; printf done > should-not-exist.txt",
+            "timeout_ms": 30000,
+          },
+        },
+        { "tool": "finish", "arguments": { "answer": "finished" } },
+      ],
+    })
+    assert_true(mooncode_json_bool(submitted, "accepted", default=false))
+    let binding = daemon.mooncode_binding_for_session(session_id)
+    let mut attempts = 0
+    while binding.active_command_id == "" && attempts < 100 {
+      @async.sleep(10)
+      attempts += 1
+    }
+    assert_eq(binding.active_command_id, "cmd-long")
+    let cancelled = daemon.mooncode_submit_turn_response(group~, session_id, {
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "book_root": book_root,
+      "command": "cancel",
+      "text": "Cancel the current work",
+      "packet": { "command_id": "cmd-cancel" },
+      "payload": { "target_command_id": "cmd-long" },
+    })
+    let control = mooncode_json_object_field_or_empty(cancelled, "service")
+    assert_eq(
+      mooncode_json_string(control, "target_command_id", default=""),
+      "cmd-long",
+    )
+    assert_eq(mooncode_json_string(control, "status", default=""), "cancelled")
+    group.return_immediately(())
+  })
+  assert_false(@fsx.exists(@pathx.join(book_root, "should-not-exist.txt")))
+  let claim = daemon.mooncode_runtime_claim_state_payload(session_id, book_root)
+  assert_eq(mooncode_json_int(claim, "delivered_command_count", default=0), 2)
+  let record = daemon.mooncode_session_record(session_id, book_root).unwrap()
+  let turns = mooncode_json_array_items(
+    mooncode_json_object_field_or_empty(record, "mooncode_conversation"),
+    "turns",
+  )
+  assert_eq(turns.length(), 1)
+  assert_eq(mooncode_json_string(turns[0], "status", default=""), "cancelled")
+}
+
+///|
+async test "mooncode cancel control rejects a stale turn target" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-stale-cancel-XXXXXX"),
+  )
+  let daemon = mooncode_control_test_daemon(book_root)
+  @async.with_task_group(group => {
+    let submitted = daemon.mooncode_submit_turn_response(
+      group~,
+      "session-stale-cancel",
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-stale-cancel",
+        "book_root": book_root,
+        "command": "prompt",
+        "text": "Run a long task",
+        "packet": { "command_id": "cmd-active" },
+        "runtime_tool_calls": [
+          {
+            "tool": "shell",
+            "arguments": {
+              "cmd": "sleep 20; printf done > stale-cancel-must-not-finish.txt",
+              "timeout_ms": 30000,
+            },
+          },
+          { "tool": "finish", "arguments": { "answer": "finished" } },
+        ],
+      },
+    )
+    assert_true(mooncode_json_bool(submitted, "accepted", default=false))
+    let binding = daemon.mooncode_binding_for_session("session-stale-cancel")
+    let mut attempts = 0
+    while binding.active_command_id == "" && attempts < 100 {
+      @async.sleep(10)
+      attempts += 1
+    }
+    assert_eq(binding.active_command_id, "cmd-active")
+    let rejected = try {
+      ignore(
+        daemon.mooncode_submit_cancel_control(
+          "session-stale-cancel",
+          book_root,
+          {
+            "protocol": mooncode_protocol_version(),
+            "session_id": "session-stale-cancel",
+            "book_root": book_root,
+            "command": "cancel",
+            "packet": { "command_id": "cmd-stale-cancel" },
+            "payload": { "target_command_id": "command-no-longer-active" },
+          },
+        ),
+      )
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(rejected)
+    assert_true(binding.runtime_service_running)
+    assert_eq(binding.active_command_id, "cmd-active")
+    let cancelled = daemon.mooncode_submit_cancel_control(
+      "session-stale-cancel",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-stale-cancel",
+        "book_root": book_root,
+        "command": "cancel",
+        "packet": { "command_id": "cmd-correct-cancel" },
+        "payload": { "target_command_id": "cmd-active" },
+      },
+    )
+    assert_eq(
+      mooncode_json_string(cancelled, "target_command_id", default=""),
+      "cmd-active",
+    )
+    group.return_immediately(())
+  })
+  assert_false(
+    @fsx.exists(@pathx.join(book_root, "stale-cancel-must-not-finish.txt")),
+  )
+}

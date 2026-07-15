@@ -15,6 +15,7 @@ MoonClaw owns:
 - artifacts, workspaces, provider-backed tasks, and memory records
 - MoonCode command queues, stream events, package proof, eval proof, and test
   proof
+- durable MoonCode tool approvals and active task/process cancellation
 - operator surfaces for inspecting runtime activity
 
 MoonClaw does not own accepted book truth, scheduled cross-book routing, desktop
@@ -60,8 +61,11 @@ moon fmt
 
 For MoonCode changes, test first-turn and multi-turn sessions, command queue
 claiming, stream order, tool events, patch proof, test proof, package proof,
-reload/cold-session reads, steering, cancel, accept, and reject. For gateway
-changes, include auth, redaction, startup, and failure-path tests.
+reload/cold-session reads, steering, approval, rejection, and cancellation. An
+approval test must prove that approve resumes the same command and reject does
+not execute the tool. A cancellation test must use a real long-running child
+process and prove that it is terminated before settlement. For gateway changes,
+include auth, redaction, startup, and failure-path tests.
 
 ## Worth Noticing
 
@@ -70,6 +74,8 @@ changes, include auth, redaction, startup, and failure-path tests.
 - Native MoonCode sessions must not silently spawn duplicate generic tasks.
 - Event order matters because MoonDesk renders directly from the transcript
   stream.
+- Approval and cancel commands are hidden controls; only their stable canonical
+  work/cancellation projection belongs in the visible turn.
 - Provider-backed execution should preserve partial artifacts and failure
   evidence instead of dropping runs.
 

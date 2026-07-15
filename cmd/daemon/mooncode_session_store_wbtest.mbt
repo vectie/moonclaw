@@ -18,6 +18,8 @@ async test "mooncode durable session sidecars use book local storage" (
     last_command_id: "cmd-2",
     last_updated: @clock.Timestamp::from_ms(42L),
     runtime_service_running: false,
+    runtime_service_task: None,
+    active_command_id: "",
     events: @broadcast.Broadcast::new(),
   }
   let session_path = mooncode_session_snapshot_path(
@@ -128,6 +130,8 @@ async test "mooncode durable sidecars list and show without live binding" (
     last_command_id: "cmd-resume",
     last_updated: @clock.Timestamp::from_ms(77L),
     runtime_service_running: false,
+    runtime_service_task: None,
+    active_command_id: "",
     events: @broadcast.Broadcast::new(),
   }
   @fsx.make_directory(
@@ -513,6 +517,8 @@ async test "mooncode durable lifecycle completes from book-local evidence" (
     last_command_id: "cmd-life",
     last_updated: @clock.Timestamp::from_ms(88L),
     runtime_service_running: false,
+    runtime_service_task: None,
+    active_command_id: "",
     events: @broadcast.Broadcast::new(),
   }
   @fsx.make_directory(
@@ -1074,6 +1080,8 @@ test "mooncode session binding keeps its first MoonBook root" {
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
     runtime_service_running: false,
+    runtime_service_task: None,
+    active_command_id: "",
     events: @broadcast.Broadcast::new(),
   }
   assert_true(binding.bind_book_root("/tmp/moonsuite/books/code-lab"))

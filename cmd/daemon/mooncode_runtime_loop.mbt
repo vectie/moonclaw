@@ -114,12 +114,16 @@ async fn Daemon::mooncode_runtime_loop_execute(
       break
     }
     ran_turn_count += 1
+    let execution = mooncode_json_object_field_or_empty(turn, "execution")
+    if mooncode_json_bool(execution, "waiting_approval", default=false) {
+      stopped_by = "approval"
+      break
+    }
     if !mooncode_json_bool(turn, "accepted", default=false) {
       failed_turn_count += 1
       stopped_by = "failed"
       break
     }
-    let execution = mooncode_json_object_field_or_empty(turn, "execution")
     let control = mooncode_json_string(execution, "control", default="")
     if mooncode_runtime_loop_cancel_control(control) {
       stopped_by = "cancelled"
@@ -294,6 +298,8 @@ fn mooncode_runtime_loop_message(
       "MoonClaw native runtime loop stopped after \{failed_turn_count} failed turn(s)."
     "cancelled" =>
       "MoonClaw native runtime loop stopped after a cancel command."
+    "approval" =>
+      "MoonClaw native runtime loop is waiting for operator approval."
     _ =>
       "MoonClaw native runtime loop reached its max_turns limit after \{ran_turn_count} turn(s)."
   }

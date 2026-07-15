@@ -1,6 +1,6 @@
 # Executable Book Runtime Boundary
 
-Last checked: 2026-06-19.
+Last checked: 2026-07-15.
 
 MoonClaw is the execution engine for executable MoonBooks. It owns agent,
 task, session, and runtime concepts, but those concepts should remain platform
@@ -108,9 +108,29 @@ combines durable command append and single-flight runtime-service start into one
 MoonClaw-owned transaction. `/commands` remains the lower-level queue boundary
 for diagnostic and explicitly orchestrated clients.
 
+## Durable Conversation Controls
+
+MoonClaw consumes MoonLib's `moonsuite-conversation-control.v1` contract. The
+control plane is durable runtime state, not a second transcript:
+
+- risky tool calls append a stable pending approval event to the owning command
+- `approve_tool` and `reject_tool` commands append a durable decision and stay
+  hidden from user/assistant chat
+- the original runtime task waits for the decision and resumes with its model
+  plan and tool-call context intact
+- rejection records non-execution and allows the model to explain the outcome
+- cancel names the claimed target command, rejects a stale target before
+  interruption, then awaits the active task, terminates its child process, and
+  appends command-scoped cancellation event and receipt
+
+The canonical conversation projection reduces approval request and decision
+events into one stable `approval` work step. Consumers render that list; they
+must not merge raw events, create approval turns, or infer cancellation from a
+local timer.
+
 ## Current Validation
 
-Static doc/code inspection on 2026-06-19 found that MoonClaw has the right
+Static doc/code inspection on 2026-07-15 found that MoonClaw has the right
 runtime pieces: `cmd/daemon` contains MoonCode session binding, command
 persistence, runtime-turn, runtime-loop, runtime-service, stream, tool-exec,
 package-result, and eval-report slices; generic `/v1/task` routes still exist

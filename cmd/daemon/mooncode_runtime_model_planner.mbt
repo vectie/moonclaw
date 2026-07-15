@@ -328,9 +328,12 @@ fn mooncode_runtime_turn_model_execution_accepted(
   }
   let mut last_failure = -1
   let mut coding_evidence = false
+  let mut operator_rejected = false
   for index in 0..<results.length() {
     let result = results[index]
-    if !mooncode_json_bool(result, "accepted", default=false) {
+    if mooncode_json_string(result, "approval_state", default="") == "rejected" {
+      operator_rejected = true
+    } else if !mooncode_json_bool(result, "accepted", default=false) {
       last_failure = index
     } else {
       let tool = mooncode_json_string(result, "tool", default="")
@@ -347,7 +350,8 @@ fn mooncode_runtime_turn_model_execution_accepted(
       command,
       mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
     ) &&
-    !coding_evidence {
+    !coding_evidence &&
+    !operator_rejected {
     return false
   }
   if last_failure >= 0 {

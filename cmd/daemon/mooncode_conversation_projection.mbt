@@ -84,7 +84,11 @@ fn mooncode_conversation_apply_command(
   let command = mooncode_conversation_command_body(command_entry)
   let packet = mooncode_json_object_field_or_empty(command, "packet")
   let action = mooncode_conversation_command_action(command, packet)
-  if action == "steer" || action == "cancel" || action == "note" {
+  if action == "steer" ||
+    action == "cancel" ||
+    action == "note" ||
+    action == "approve_tool" ||
+    action == "reject_tool" {
     return
   }
   let command_id = mooncode_conversation_command_id(command_entry, command)
@@ -584,7 +588,11 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
 fn mooncode_conversation_work_evidence(event : Json) -> Json {
   let lane = mooncode_json_string(event, "lane", default="")
   let kind = mooncode_conversation_work_step_kind(event)
-  if kind != "edit" && kind != "test" && kind != "artifact" && kind != "tool" {
+  if kind != "edit" &&
+    kind != "test" &&
+    kind != "artifact" &&
+    kind != "tool" &&
+    kind != "approval" {
     return Json::object({})
   }
   let tool_result = mooncode_json_object_field_or_empty(event, "tool_result")
@@ -622,6 +630,16 @@ fn mooncode_conversation_work_evidence(event : Json) -> Json {
       "truncated",
       default=mooncode_json_bool(event, "truncated", default=false),
     ),
+    "approval_id": mooncode_json_string(event, "approval_id", default=""),
+    "target_command_id": mooncode_json_string(
+      event,
+      "target_command_id",
+      default="",
+    ),
+    "tool_call_id": mooncode_json_string(event, "tool_call_id", default=""),
+    "arguments": mooncode_json_object_field_or_empty(event, "arguments").stringify(
+      indent=2,
+    ),
   }
 }
 
@@ -634,7 +652,9 @@ fn mooncode_conversation_evidence_state(
   let status = mooncode_json_string(event, "status", default="running")
   let tool = mooncode_json_string(event, "tool", default="")
   let source_kind = mooncode_json_string(event, "kind", default="")
-  if status == "failed" {
+  if kind == "approval" {
+    mooncode_json_string(event, "state", default="pending")
+  } else if status == "failed" {
     "failed"
   } else if status == "cancelled" {
     "cancelled"
@@ -765,6 +785,10 @@ fn mooncode_conversation_work_step_index(
 fn mooncode_conversation_work_step_id(event : Json) -> String {
   let command_id = mooncode_json_string(event, "command_id", default="")
   let kind = mooncode_json_string(event, "kind", default="")
+  let approval_id = mooncode_json_string(event, "approval_id", default="")
+  if approval_id != "" {
+    return "turn:\{command_id}:work:approval:\{approval_id}"
+  }
   if kind == "runtime.planner_selected" || kind == "runtime.planner_failed" {
     return "turn:\{command_id}:work:planner"
   }
@@ -786,7 +810,9 @@ fn mooncode_conversation_work_step_kind(event : Json) -> String {
   let kind = mooncode_json_string(event, "kind", default="")
   let lane = mooncode_json_string(event, "lane", default="")
   let tool = mooncode_json_string(event, "tool", default="")
-  if kind == "reasoning_message" || kind.has_prefix("runtime.planner_") {
+  if kind.has_prefix("tool.approval_") {
+    "approval"
+  } else if kind == "reasoning_message" || kind.has_prefix("runtime.planner_") {
     "thought"
   } else if tool == "read" || tool == "grep" || tool == "glob" {
     "context"
@@ -908,7 +934,9 @@ fn mooncode_conversation_event_is_terminal(event : Json) -> Bool {
   let kind = mooncode_json_string(event, "kind", default="")
   kind == mooncode_event_runtime_turn_finished() ||
   kind == "runtime.turn_finished" ||
-  mooncode_json_string(event, "status", default="") == "failed"
+  kind == @moonlib_conversation.cancellation_event_kind() ||
+  mooncode_json_string(event, "status", default="") == "failed" ||
+  mooncode_json_string(event, "status", default="") == "cancelled"
 }
 
 ///|
@@ -922,6 +950,7 @@ fn mooncode_conversation_event_is_visible_progress(event : Json) -> Bool {
   kind == "runtime.planner_failed" ||
   kind == "reasoning_delta" ||
   kind == "reasoning_message" ||
+  kind.has_prefix("tool.approval_") ||
   kind == mooncode_event_tool_call() ||
   event_name == mooncode_event_tool_call() ||
   event_name == "tool_result" ||
@@ -992,6 +1021,12 @@ fn mooncode_conversation_progress_title(event : Json) -> String {
   let failed = mooncode_json_string(event, "status", default="") == "failed"
   if kind == "runtime.turn_started" {
     "Starting request"
+  } else if kind == "tool.approval_requested" {
+    "Approval needed"
+  } else if kind == "tool.approval_approved" {
+    "Tool approved"
+  } else if kind == "tool.approval_rejected" {
+    "Tool rejected"
   } else if kind == "runtime.planner_started" {
     "Planning next steps"
   } else if kind == "runtime.planner_selected" {
@@ -1026,6 +1061,13 @@ fn mooncode_conversation_progress_detail(event : Json) -> String {
   let failed = mooncode_json_string(event, "status", default="") == "failed"
   if kind == "runtime.turn_started" {
     "Started working on the request."
+  } else if kind == "tool.approval_requested" {
+    let tool = mooncode_json_string(event, "tool", default="operation")
+    "Review `\{tool}` before MoonClaw continues."
+  } else if kind == "tool.approval_approved" {
+    "Approved this operation. MoonClaw can continue."
+  } else if kind == "tool.approval_rejected" {
+    "Rejected this operation. MoonClaw will not execute it."
   } else if kind == "runtime.planner_started" {
     "Choosing the tools needed for this request."
   } else if kind == "runtime.planner_selected" {

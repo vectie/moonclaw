@@ -50,12 +50,19 @@ async fn Daemon::mooncode_submit_turn_response(
     queue_source="moonclaw-submit-turn",
   )
   let book_root = mooncode_book_root(body)
-  let service = self.mooncode_start_runtime_service(
-    group~,
-    session_id,
-    book_root,
-    body,
-  )
+  let action = mooncode_json_string(body, "command", default="prompt")
+  let service = if action == "cancel" {
+    self.mooncode_submit_cancel_control(session_id, book_root, body)
+  } else if action == "approve_tool" || action == "reject_tool" {
+    self.mooncode_submit_tool_approval_control(
+      group~,
+      session_id,
+      book_root,
+      body,
+    )
+  } else {
+    self.mooncode_start_runtime_service(group~, session_id, book_root, body)
+  }
   let session = self
     .mooncode_session_record(session_id, book_root)
     .unwrap_or(Json::object({}))

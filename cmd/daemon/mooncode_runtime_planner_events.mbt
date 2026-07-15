@@ -45,7 +45,8 @@ fn mooncode_runtime_turn_planner_progress_events(
     )
   }
   for index in 0..<tool_calls.length() {
-    if mooncode_json_string(tool_calls[index], "tool", default="") != "finish" {
+    if mooncode_json_string(tool_calls[index], "tool", default="") != "finish" &&
+      !mooncode_runtime_tool_requires_approval(tool_calls[index]) {
       events.push(
         mooncode_runtime_turn_tool_call_event(
           session_id,

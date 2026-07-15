@@ -10,6 +10,8 @@ priv struct MoonCodeSessionBinding {
   mut last_command_id : String
   mut last_updated : @clock.Timestamp
   mut runtime_service_running : Bool
+  mut runtime_service_task : @async.Task[Unit]?
+  mut active_command_id : String
   events : @broadcast.Broadcast[Json]
 }
 
@@ -25,6 +27,7 @@ fn MoonCodeSessionBinding::to_json(self : MoonCodeSessionBinding) -> Json {
     "last_command_id": self.last_command_id,
     "last_updated": self.last_updated,
     "runtime_service_running": self.runtime_service_running,
+    "active_command_id": self.active_command_id,
   }
 }
 
@@ -73,6 +76,8 @@ fn Daemon::mooncode_binding_for_session(
         last_command_id: "",
         last_updated: self.clock.now(),
         runtime_service_running: false,
+        runtime_service_task: None,
+        active_command_id: "",
         events: @broadcast.Broadcast::new(),
       }
       self.mooncode_sessions[session_id] = binding

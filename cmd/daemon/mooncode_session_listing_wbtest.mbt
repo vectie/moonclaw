@@ -147,6 +147,8 @@ async test "mooncode binding remembers first prompt once for session picker titl
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
     runtime_service_running: false,
+    runtime_service_task: None,
+    active_command_id: "",
     events: @broadcast.Broadcast::new(),
   }
   binding.remember_first_user_prompt({
@@ -225,6 +227,8 @@ async test "mooncode binding restores first prompt from journal after restart" {
     last_command_id: "",
     last_updated: @clock.Timestamp::from_ms(1L),
     runtime_service_running: false,
+    runtime_service_task: None,
+    active_command_id: "",
     events: @broadcast.Broadcast::new(),
   }
   restarted.restore_first_user_prompt()

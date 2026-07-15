@@ -122,7 +122,7 @@ async fn Daemon::mooncode_start_runtime_service(
       raise error
     }
   }
-  group.spawn_bg(
+  let task = group.spawn(
     () => {
       defer {
         binding.runtime_service_running = false
@@ -145,7 +145,9 @@ async fn Daemon::mooncode_start_runtime_service(
       }
     },
     no_wait=true,
+    allow_failure=true,
   )
+  binding.runtime_service_task = Some(task)
   {
     "kind": "mooncode-runtime-service",
     "protocol": mooncode_protocol_version(),
@@ -472,6 +474,7 @@ fn mooncode_runtime_service_status(result : Json) -> String {
   } else {
     match mooncode_json_string(result, "stopped_by", default="") {
       "cancelled" => "cancelled"
+      "approval" => "waiting"
       _ => "done"
     }
   }
