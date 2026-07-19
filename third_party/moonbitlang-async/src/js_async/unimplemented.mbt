@@ -33,7 +33,7 @@ suberror JsError {
 
 ///|
 #internal(unimplemented, "unimplemented in native backend")
-pub impl Show for JsError with output(self, _logger) {
+pub impl Show for JsError with fn output(self, _logger) {
   let JsError(x) = self
   let _ = JsError(x)
   abort("unimplemented in native backend")

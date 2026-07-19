@@ -7,7 +7,7 @@ pub(all) enum ResponseFormat {
 }
 
 ///|
-pub impl ToJson for ResponseFormat with to_json(self : ResponseFormat) -> Json {
+pub impl ToJson for ResponseFormat with fn to_json(self : ResponseFormat) -> Json {
   match self {
     Text => { "type": "text" }
     JsonSchema(json_schema) =>

@@ -214,7 +214,10 @@ pub fn browser_session_scope(
 }
 
 ///|
-fn loopback_host_with_optional_port(host : String, loopback_host : String) -> Bool {
+fn loopback_host_with_optional_port(
+  host : String,
+  loopback_host : String,
+) -> Bool {
   if host == loopback_host {
     return true
   }
@@ -327,31 +330,54 @@ pub fn browser_action(
 }
 
 ///|
-pub fn browser_effect_mutates_external_state(effect : BrowserEffectClass) -> Bool {
-  effect is UploadFile || effect is DownloadFile ||
-  effect is SubmitExternalMutation || effect is RequestPhysicalEffect
+pub fn browser_effect_mutates_external_state(
+  effect : BrowserEffectClass,
+) -> Bool {
+  effect is UploadFile ||
+  effect is DownloadFile ||
+  effect is SubmitExternalMutation ||
+  effect is RequestPhysicalEffect
 }
 
 ///|
 fn browser_external_host_forbidden(host : String) -> Bool {
-  host == "localhost" || host == "0.0.0.0" || host == "[::]" ||
-  host == "[::1]" || host.has_suffix(".localhost") ||
-  host.has_suffix(".local") || host.has_suffix(".internal") ||
-  host == "169.254.169.254" || host.has_prefix("127.") ||
-  host.has_prefix("10.") || host.has_prefix("192.168.") ||
-  host.has_prefix("172.16.") || host.has_prefix("172.17.") ||
-  host.has_prefix("172.18.") || host.has_prefix("172.19.") ||
-  host.has_prefix("172.20.") || host.has_prefix("172.21.") ||
-  host.has_prefix("172.22.") || host.has_prefix("172.23.") ||
-  host.has_prefix("172.24.") || host.has_prefix("172.25.") ||
-  host.has_prefix("172.26.") || host.has_prefix("172.27.") ||
-  host.has_prefix("172.28.") || host.has_prefix("172.29.") ||
-  host.has_prefix("172.30.") || host.has_prefix("172.31.") ||
-  host.has_prefix("100.64.") || host.has_prefix("198.18.") ||
-  host.has_prefix("198.19.") || host.has_prefix("0.") ||
-  host.has_prefix("169.254.") || host.has_prefix("[fc") ||
-  host.has_prefix("[fd") || host.has_prefix("[fe8") ||
-  host.has_prefix("[fe9") || host.has_prefix("[fea") ||
+  host == "localhost" ||
+  host == "0.0.0.0" ||
+  host == "[::]" ||
+  host == "[::1]" ||
+  host.has_suffix(".localhost") ||
+  host.has_suffix(".local") ||
+  host.has_suffix(".internal") ||
+  host == "169.254.169.254" ||
+  host.has_prefix("127.") ||
+  host.has_prefix("10.") ||
+  host.has_prefix("192.168.") ||
+  host.has_prefix("172.16.") ||
+  host.has_prefix("172.17.") ||
+  host.has_prefix("172.18.") ||
+  host.has_prefix("172.19.") ||
+  host.has_prefix("172.20.") ||
+  host.has_prefix("172.21.") ||
+  host.has_prefix("172.22.") ||
+  host.has_prefix("172.23.") ||
+  host.has_prefix("172.24.") ||
+  host.has_prefix("172.25.") ||
+  host.has_prefix("172.26.") ||
+  host.has_prefix("172.27.") ||
+  host.has_prefix("172.28.") ||
+  host.has_prefix("172.29.") ||
+  host.has_prefix("172.30.") ||
+  host.has_prefix("172.31.") ||
+  host.has_prefix("100.64.") ||
+  host.has_prefix("198.18.") ||
+  host.has_prefix("198.19.") ||
+  host.has_prefix("0.") ||
+  host.has_prefix("169.254.") ||
+  host.has_prefix("[fc") ||
+  host.has_prefix("[fd") ||
+  host.has_prefix("[fe8") ||
+  host.has_prefix("[fe9") ||
+  host.has_prefix("[fea") ||
   host.has_prefix("[feb")
 }
 
@@ -390,8 +416,10 @@ pub fn browser_origin_from_external_url(url : StringView) -> String? {
   }
   let rest = value["https://".length():].to_owned()
   let authority = rest.split("/").to_array()[0].to_owned()
-  if authority == "" || authority.contains("@") ||
-    authority.contains("?") || authority.contains("#") ||
+  if authority == "" ||
+    authority.contains("@") ||
+    authority.contains("?") ||
+    authority.contains("#") ||
     !browser_external_authority_valid(authority) {
     return None
   }
@@ -419,9 +447,16 @@ pub fn browser_external_origin_allowed(origin : String) -> Bool {
 ///|
 pub fn browser_path_inside_root(path : StringView, root : StringView) -> Bool {
   let value = path.to_owned().trim().to_owned()
-  let boundary = root.to_owned().trim().to_owned().trim_end(chars="/").to_owned()
-  boundary != "" && (value == boundary || value.has_prefix(boundary + "/")) &&
-  !value.contains("/../") && !value.has_suffix("/..")
+  let boundary = root
+    .to_owned()
+    .trim()
+    .to_owned()
+    .trim_end(chars="/")
+    .to_owned()
+  boundary != "" &&
+  (value == boundary || value.has_prefix(boundary + "/")) &&
+  !value.contains("/../") &&
+  !value.has_suffix("/..")
 }
 
 ///|
@@ -435,7 +470,12 @@ pub fn browser_operation_effect_class(
 ) -> BrowserEffectClass {
   match operation {
     Navigate => NavigateExternalOrigin
-    Reload | StopLoading | Click | TypeText | PressKey | SelectOption
+    Reload
+    | StopLoading
+    | Click
+    | TypeText
+    | PressKey
+    | SelectOption
     | SetViewport => InteractLocalPage
     CaptureScreenshot | CaptureDiagnostics => InspectVisiblePage
   }

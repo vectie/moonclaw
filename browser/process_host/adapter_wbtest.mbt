@@ -46,14 +46,18 @@ fn process_ready_command(
 async test "process host executes typed command and duplicate is deterministic" {
   let cwd = @env.current_dir().unwrap_or(".")
   let state_path = cwd + "/.tmp-browser-host-process-test.json"
-  @fs.remove(state_path) catch { _ => () }
+  @fs.remove(state_path) catch {
+    _ => ()
+  }
   let host = ProcessBrowserHost::new(
     executable="node",
     arguments=["browser/process_host/deterministic_fixture.mjs", state_path],
     cwd~,
   )
   let worker = process_test_worker()
-  let action = process_test_action("process-action-1", "role=button[name='Run']")
+  let action = process_test_action(
+    "process-action-1", "role=button[name='Run']",
+  )
   let command = process_ready_command(worker.prepare(action))
   let first = host.execute(command).unwrap()
   let duplicate = host.execute(command).unwrap()
@@ -63,14 +67,18 @@ async test "process host executes typed command and duplicate is deterministic" 
   let receipt = worker.complete(action, command, first)
   assert_true(receipt.accepted())
   assert_eq(receipt.evidence_refs.length(), 0)
-  @fs.remove(state_path) catch { _ => () }
+  @fs.remove(state_path) catch {
+    _ => ()
+  }
 }
 
 ///|
 async test "process host crash and timeout never become accepted evidence" {
   let cwd = @env.current_dir().unwrap_or(".")
   let state_path = cwd + "/.tmp-browser-host-process-failure-test.json"
-  @fs.remove(state_path) catch { _ => () }
+  @fs.remove(state_path) catch {
+    _ => ()
+  }
   let host = ProcessBrowserHost::new(
     executable="node",
     arguments=["browser/process_host/deterministic_fixture.mjs", state_path],
@@ -86,12 +94,16 @@ async test "process host crash and timeout never become accepted evidence" {
   assert_true(crash_receipt.outcome is Blocked(_))
   let timeout_worker = process_test_worker()
   let timeout_action = process_test_action("process-delay", "fixture://delay")
-  let timeout_command = process_ready_command(timeout_worker.prepare(timeout_action))
+  let timeout_command = process_ready_command(
+    timeout_worker.prepare(timeout_action),
+  )
   let timeout_error = host.execute(timeout_command, timeout_ms=50).unwrap_err()
   timeout_worker.pause() |> ignore()
   let timeout_receipt = timeout_worker.complete_transport_error(
     timeout_action, timeout_command, timeout_error,
   )
   assert_true(timeout_receipt.outcome is Cancelled(_))
-  @fs.remove(state_path) catch { _ => () }
+  @fs.remove(state_path) catch {
+    _ => ()
+  }
 }

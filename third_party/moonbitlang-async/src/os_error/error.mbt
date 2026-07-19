@@ -58,7 +58,7 @@ pub(all) suberror OSError {
 } derive(ToJson)
 
 ///|
-pub impl Show for OSError with output(self, logger) -> Unit {
+pub impl Show for OSError with fn output(self, logger) -> Unit {
   let OSError(errno, context~) = self
   logger
   ..write_string("OSError(")

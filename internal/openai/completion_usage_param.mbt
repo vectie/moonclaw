@@ -5,6 +5,8 @@ pub struct CompletionUsageParam {
 }
 
 ///|
-impl ToJson for CompletionUsageParam with to_json(self : CompletionUsageParam) -> Json {
+impl ToJson for CompletionUsageParam with fn to_json(
+  self : CompletionUsageParam,
+) -> Json {
   { "include": Json::boolean(self.include_) }
 }

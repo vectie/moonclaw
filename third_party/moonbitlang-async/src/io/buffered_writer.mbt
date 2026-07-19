@@ -55,7 +55,7 @@ pub async fn[W : Writer] BufferedWriter::flush(
 }
 
 ///|
-pub impl[W : Writer] Writer for BufferedWriter[W] with write_once(
+pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_once(
   self,
   buf,
   offset~,
@@ -71,11 +71,11 @@ pub impl[W : Writer] Writer for BufferedWriter[W] with write_once(
 }
 
 ///|
-pub impl[W : Writer] Writer for BufferedWriter[W] with write_reader(
+pub impl[W : Writer] Writer for BufferedWriter[W] with fn write_reader(
   self,
   reader,
 ) {
-  for {
+  for ;; {
     if self.len >= self.buf.length() {
       self.flush()
     }

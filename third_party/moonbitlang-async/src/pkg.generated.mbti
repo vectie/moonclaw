@@ -42,12 +42,9 @@ pub async fn[X] with_timeout_opt(Int, async () -> X) -> X?
 
 // Errors
 #deprecated
-pub suberror AlreadyTerminated
-pub impl Show for AlreadyTerminated
+pub suberror AlreadyTerminated derive(Show)
 
-pub suberror TimeoutError
-pub impl Show for TimeoutError
-pub impl ToJson for TimeoutError
+pub suberror TimeoutError derive(Show, ToJson)
 
 // Types and methods
 type Lazy[X]

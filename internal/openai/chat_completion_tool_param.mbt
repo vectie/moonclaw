@@ -5,7 +5,7 @@ pub enum ChatCompletionToolParam {
 }
 
 ///|
-pub impl ToJson for ChatCompletionToolParam with to_json(
+pub impl ToJson for ChatCompletionToolParam with fn to_json(
   self : ChatCompletionToolParam,
 ) -> Json {
   match self {

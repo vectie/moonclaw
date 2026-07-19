@@ -114,14 +114,14 @@ pub async fn[R : Reader] BufferedReader::drop(self : Self[R], n : Int) -> Unit {
 }
 
 ///|
-pub impl[R : Reader] Reader for BufferedReader[R] with _get_internal_buffer(
+pub impl[R : Reader] Reader for BufferedReader[R] with fn _get_internal_buffer(
   self,
 ) {
   self.0._get_internal_buffer()
 }
 
 ///|
-pub impl[R : Reader] Reader for BufferedReader[R] with _direct_read(
+pub impl[R : Reader] Reader for BufferedReader[R] with fn _direct_read(
   self,
   dst,
   offset~,

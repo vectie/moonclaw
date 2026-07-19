@@ -1,0 +1,64 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/evidence"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub fn validate_dossier(EvidenceDossier) -> EvidenceQualityReceipt
+
+pub async fn validate_dossier_in_workspace(EvidenceDossier, String) -> EvidenceQualityReceipt
+
+// Errors
+
+// Types and methods
+pub(all) struct EvidenceClaim {
+  claim_id : String
+  statement : String
+  source_ids : Array[String]
+  confidence : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct EvidenceDossier {
+  contract_id : String
+  task_id : String
+  question : String
+  policy : EvidencePolicy
+  sources : Array[EvidenceSource]
+  claims : Array[EvidenceClaim]
+  open_questions : Array[String]
+  output_artifacts : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct EvidencePolicy {
+  minimum_sources : Int
+  minimum_primary_sources : Int
+  minimum_evidence_per_claim : Int
+  require_open_questions : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct EvidenceQualityReceipt {
+  contract_id : String
+  task_id : String
+  accepted : Bool
+  source_count : Int
+  primary_source_count : Int
+  claim_count : Int
+  blockers : Array[String]
+  output_artifacts : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct EvidenceSource {
+  source_id : String
+  locator : String
+  authority_class : String
+  retrieved_at : String
+  artifact_ref : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
+
