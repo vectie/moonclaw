@@ -1169,6 +1169,7 @@ sendBtn.addEventListener("click", async () => {
 });
 
 messageInput.addEventListener("keypress", (e) => {
+  if (e.isComposing) return;
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     sendBtn.click();

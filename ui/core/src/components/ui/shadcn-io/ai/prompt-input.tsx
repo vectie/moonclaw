@@ -45,6 +45,9 @@ export const PromptInputTextarea = ({
   ...props
 }: PromptInputTextareaProps) => {
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
     if (e.key === "Enter") {
       if (e.shiftKey) {
         // Allow newline
