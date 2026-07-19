@@ -212,7 +212,7 @@ fn mooncode_runtime_turn_failed_planner_result(
     command_id~,
     lane="runtime",
     kind="runtime.planner_failed",
-    title="MoonCode model planner fell back",
+    title="MoonCode model planner failed closed",
     status="failed",
     detail=message,
     now~,
@@ -220,7 +220,7 @@ fn mooncode_runtime_turn_failed_planner_result(
   {
     "kind": mooncode_kind_runtime_turn_planner(),
     "protocol": mooncode_protocol_version(),
-    "planner_mode": mooncode_planner_mode_deterministic_fallback(),
+    "planner_mode": mooncode_planner_mode_model_tool_calls(),
     "failed": true,
     "model": model_name,
     "tool_calls": Json::array([]),

@@ -230,6 +230,28 @@ async fn Daemon::mooncode_runtime_turn_execute(
       } else {
         self.mooncode_runtime_turn_plan_tool_calls(command, now=plan_now)
       }
+      if mooncode_runtime_turn_model_planning_allowed(command) &&
+        mooncode_runtime_turn_uses_exact_model(command) &&
+        mooncode_runtime_turn_explicit_tool_calls(command).length() == 0 &&
+        mooncode_json_string(plan, "planner_mode", default="") !=
+        mooncode_planner_mode_model_tool_calls() {
+        plan = mooncode_runtime_turn_failed_planner_result(
+          command,
+          mooncode_runtime_turn_requested_model(command),
+          "exact-model turn rejected a non-model planner projection",
+          mooncode_event(
+            session_id~,
+            command_id~,
+            lane="runtime",
+            kind="runtime.planner_started",
+            title="MoonCode exact-model planner boundary",
+            status="running",
+            detail="MoonClaw is enforcing model-tool-calls for the exact session model.",
+            now=plan_now,
+          ),
+          now=plan_now,
+        )
+      }
       let planner_steps : Array[Json] = if resuming_continuation {
         mooncode_json_array_items(continuation, "planner_steps")
       } else {

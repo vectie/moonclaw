@@ -3,8 +3,8 @@ test "model listing puts the executable default first and removes duplicates" {
   let default_model = @model.new(
     api_key="",
     base_url="https://chatgpt.com/backend-api",
-    name="codex/gpt-5.4",
-    model_name="gpt-5.4",
+    name="codex/gpt-5.6-sol",
+    model_name="gpt-5.6-sol",
     safe_zone_tokens=400000,
   )
   let optional_model = @model.new(
@@ -19,14 +19,14 @@ test "model listing puts the executable default first and removes duplicates" {
   ])
   assert_eq(
     mooncode_json_string(listing, "default_model", default=""),
-    "codex/gpt-5.4",
+    "codex/gpt-5.6-sol",
   )
   assert_true(mooncode_json_bool(listing, "ready", default=false))
   let models = mooncode_json_array_items(listing, "models")
   assert_eq(models.length(), 2)
   assert_eq(
     mooncode_json_string(models[0], "name", default=""),
-    "codex/gpt-5.4",
+    "codex/gpt-5.6-sol",
   )
   assert_true(mooncode_json_bool(models[0], "default", default=false))
   assert_eq(mooncode_json_string(models[1], "name", default=""), "gpt-5.6-sol")
