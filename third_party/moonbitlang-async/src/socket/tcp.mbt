@@ -122,7 +122,7 @@ pub async fn TcpServer::run_forever(
     Some(n) => Some(@async.Semaphore::new(n))
   }
   @async.with_task_group(group => {
-    for {
+    for ;; {
       let (conn, addr) = self.accept()
       if conn_limit is Some(limit) {
         limit.acquire()
@@ -246,16 +246,16 @@ pub fn Tcp::addr(sock : Tcp) -> Addr {
 /// At most one task can read from a TCP socket at any time.
 /// To allow multiple reader,
 /// use a worker task for reading and use `@async.Queue` to distribute the data.
-pub impl @io.Reader for Tcp with _direct_read(self, buf, offset~, max_len~) {
+pub impl @io.Reader for Tcp with fn _direct_read(self, buf, offset~, max_len~) {
   self.io.read(buf, offset~, len=max_len, context="@socket.Tcp::read()")
 }
 
 ///|
-pub impl @io.Reader for Tcp with _get_internal_buffer(self) {
+pub impl @io.Reader for Tcp with fn _get_internal_buffer(self) {
   self.read_buf
 }
 
 ///|
-pub impl @io.Writer for Tcp with write_once(self, buf, offset~, len~) {
+pub impl @io.Writer for Tcp with fn write_once(self, buf, offset~, len~) {
   self.io.write(buf, offset~, len~, context="@socket.Tcp::write()")
 }

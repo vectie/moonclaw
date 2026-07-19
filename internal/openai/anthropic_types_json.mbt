@@ -1,5 +1,5 @@
 ///|
-pub impl ToJson for AnthropicRequest with to_json(self : AnthropicRequest) -> Json {
+pub impl ToJson for AnthropicRequest with fn to_json(self : AnthropicRequest) -> Json {
   let obj : Map[String, Json] = {
     "model": Json::string(self.model),
     "max_tokens": self.max_tokens.to_json(),
@@ -18,7 +18,7 @@ pub impl ToJson for AnthropicRequest with to_json(self : AnthropicRequest) -> Js
 }
 
 ///|
-pub impl ToJson for AnthropicMessage with to_json(self : AnthropicMessage) -> Json {
+pub impl ToJson for AnthropicMessage with fn to_json(self : AnthropicMessage) -> Json {
   let obj : Map[String, Json] = {
     "role": Json::string(self.role),
     "content": self.content.to_json(),
@@ -27,7 +27,7 @@ pub impl ToJson for AnthropicMessage with to_json(self : AnthropicMessage) -> Js
 }
 
 ///|
-pub impl ToJson for AnthropicContent with to_json(self : AnthropicContent) -> Json {
+pub impl ToJson for AnthropicContent with fn to_json(self : AnthropicContent) -> Json {
   match self {
     Text(text) => Json::string(text)
     Blocks(blocks) => blocks.to_json()
@@ -35,7 +35,7 @@ pub impl ToJson for AnthropicContent with to_json(self : AnthropicContent) -> Js
 }
 
 ///|
-pub impl ToJson for AnthropicBlock with to_json(self : AnthropicBlock) -> Json {
+pub impl ToJson for AnthropicBlock with fn to_json(self : AnthropicBlock) -> Json {
   let obj : Map[String, Json] = { "type": Json::string(self.type_) }
   if self.text is Some(text) {
     obj["text"] = Json::string(text)
@@ -44,7 +44,7 @@ pub impl ToJson for AnthropicBlock with to_json(self : AnthropicBlock) -> Json {
 }
 
 ///|
-pub impl ToJson for AnthropicTool with to_json(self : AnthropicTool) -> Json {
+pub impl ToJson for AnthropicTool with fn to_json(self : AnthropicTool) -> Json {
   let obj : Map[String, Json] = { "name": Json::string(self.name) }
   if self.description is Some(desc) {
     obj["description"] = Json::string(desc)

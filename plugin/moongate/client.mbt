@@ -299,7 +299,6 @@ fn moongate_http_parts(url : String) -> Result[(String, String), String] {
   Ok((url[:after_scheme].to_owned() + authority, path))
 }
 
-
 ///|
 pub async fn Client::route_openclaw_chat(
   self : Client,

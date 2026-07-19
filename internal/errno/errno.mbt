@@ -25,7 +25,7 @@ pub(all) suberror Errno {
 extern "c" fn errno_strerror(errnum : Int) -> @c.Pointer[Byte] = "moonbit_moonclaw_errno_strerror"
 
 ///|
-pub impl Show for Errno with output(self : Errno, logger : &Logger) -> Unit {
+pub impl Show for Errno with fn output(self : Errno, logger : &Logger) -> Unit {
   let Errno(errnum) = self
   let c_str = errno_strerror(errnum)
   if c_str.is_null() {
@@ -42,7 +42,7 @@ pub impl Show for Errno with output(self : Errno, logger : &Logger) -> Unit {
 }
 
 ///|
-pub impl ToJson for Errno with to_json(self : Errno) -> Json {
+pub impl ToJson for Errno with fn to_json(self : Errno) -> Json {
   self.to_string().to_json()
 }
 

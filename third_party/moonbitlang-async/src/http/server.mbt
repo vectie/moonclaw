@@ -60,7 +60,7 @@ pub fn ServerConnection::client_addr(self : ServerConnection) -> @socket.Addr {
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _direct_read(
+pub impl @io.Reader for ServerConnection with fn _direct_read(
   self,
   buf,
   offset~,
@@ -70,7 +70,7 @@ pub impl @io.Reader for ServerConnection with _direct_read(
 }
 
 ///|
-pub impl @io.Reader for ServerConnection with _get_internal_buffer(self) {
+pub impl @io.Reader for ServerConnection with fn _get_internal_buffer(self) {
   self.reader._get_internal_buffer()
 }
 
@@ -102,7 +102,7 @@ pub async fn ServerConnection::skip_request_body(
 ///
 /// Writing to `@http.ServerConnection` MAY be buffered,
 /// call `flush` manually to ensure data is delivered to the remote peer.
-pub impl @io.Writer for ServerConnection with write_once(
+pub impl @io.Writer for ServerConnection with fn write_once(
   self,
   buf,
   offset~,
@@ -113,7 +113,7 @@ pub impl @io.Writer for ServerConnection with write_once(
 }
 
 ///|
-pub impl @io.Writer for ServerConnection with write_reader(self, reader) {
+pub impl @io.Writer for ServerConnection with fn write_reader(self, reader) {
   guard not(self.sender.mode is SendingHeader)
   self.sender.write_reader(reader)
 }
@@ -268,7 +268,7 @@ pub async fn Server::run_forever(
   self.server.run_forever(allow_failure?, max_connections?, (conn, _) => {
     let conn = ServerConnection::new(conn, headers=self.headers)
     defer conn.close()
-    for {
+    for ;; {
       let request = conn.read_request()
       f(request, conn, conn)
       if conn.closed {
