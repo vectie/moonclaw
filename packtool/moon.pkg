@@ -1,0 +1,7 @@
+import {
+  "moonbitlang/core/json",
+  "vectie/moonlib/pack",
+  "vectie/moonlib/pack/host",
+}
+
+supported_targets = "native"
