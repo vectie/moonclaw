@@ -219,7 +219,7 @@ fn discover_models_from_json(json : Json?) -> Array[String] {
 ///|
 fn oauth_model_choices() -> Array[String] {
   [
-    "codex/gpt-5.4", "codex/gpt-5.3-codex", "copilot/gpt-5.2", "copilot/gpt-5-codex",
+    "codex/gpt-5.6-sol", "codex/gpt-5.3-codex", "copilot/gpt-5.2", "copilot/gpt-5-codex",
     "copilot/gpt-5.1-codex", "copilot/claude-sonnet-4.5", "copilot/claude-opus-4.5",
     "copilot/gemini-2.5-pro", "copilot/grok-code-fast-1",
   ]
@@ -262,8 +262,8 @@ async fn codex_auth_provider_status(
           authenticated: true,
           account_label: Some(claims.email),
           detail: Some("plan=\{claims.chatgptPlanType}"),
-          default_model: Some("codex/gpt-5.4"),
-          available_models: ["codex/gpt-5.4", "codex/gpt-5.3-codex"],
+          default_model: Some("codex/gpt-5.6-sol"),
+          available_models: ["codex/gpt-5.6-sol", "codex/gpt-5.3-codex"],
         }
       None =>
         {
@@ -271,8 +271,8 @@ async fn codex_auth_provider_status(
           authenticated: true,
           account_label: None,
           detail: Some("credentials detected"),
-          default_model: Some("codex/gpt-5.4"),
-          available_models: ["codex/gpt-5.4", "codex/gpt-5.3-codex"],
+          default_model: Some("codex/gpt-5.6-sol"),
+          available_models: ["codex/gpt-5.6-sol", "codex/gpt-5.3-codex"],
         }
     }
   } catch {
@@ -282,8 +282,8 @@ async fn codex_auth_provider_status(
         authenticated: false,
         account_label: None,
         detail: Some("credentials unreadable"),
-        default_model: Some("codex/gpt-5.4"),
-        available_models: ["codex/gpt-5.4", "codex/gpt-5.3-codex"],
+        default_model: Some("codex/gpt-5.6-sol"),
+        available_models: ["codex/gpt-5.6-sol", "codex/gpt-5.3-codex"],
       }
   }
 }
@@ -639,8 +639,8 @@ async fn collect_auth_status(home : String) -> OnboardingAuthStatus {
       authenticated: false,
       account_label: None,
       detail: Some("not logged in"),
-      default_model: Some("codex/gpt-5.4"),
-      available_models: ["codex/gpt-5.4", "codex/gpt-5.3-codex"],
+      default_model: Some("codex/gpt-5.6-sol"),
+      available_models: ["codex/gpt-5.6-sol", "codex/gpt-5.3-codex"],
     })
     issues.push("Codex OAuth is not connected")
     next_steps.push(

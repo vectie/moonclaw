@@ -32,7 +32,7 @@ async test "mooncode native runtime turn creates eval proof" (t : @test.Test) {
       "input_revision": "r1",
       "quality_output_refs": ["wiki/reviews/mooncode/eval-report.json"],
     },
-    "model": "unavailable-model",
+    "model": "codex/gpt-5.6-sol",
   }
   mooncode_append_session_journal(
     book_root,

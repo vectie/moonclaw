@@ -7,7 +7,7 @@ async test "runtime_context returns the provided context" {
       run_id=Some("run-1"),
       job_id=Some("job-1"),
       step_id=Some("step-1"),
-      model_name=Some("codex/gpt-5.4"),
+      model_name=Some("codex/gpt-5.6-sol"),
       execution_mode=Some("vendor.presentation"),
       execution_target=Some("slides-main"),
       workspace_dir=Some("/tmp/workspace"),

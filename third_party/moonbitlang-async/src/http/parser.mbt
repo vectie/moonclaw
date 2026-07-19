@@ -48,7 +48,7 @@ pub suberror HttpProtocolError {
 /// All reader related API of `HttpReader` should be called
 /// after a successful call to `read_request` or `read_response`,
 /// otherwise reading always result in EOF.
-impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
+impl @io.Reader for Reader with fn _direct_read(self, buf, offset~, max_len~) {
   match self.body {
     Empty => 0
     Fixed(remaining) => {
@@ -94,7 +94,7 @@ impl @io.Reader for Reader with _direct_read(self, buf, offset~, max_len~) {
 }
 
 ///|
-impl @io.Reader for Reader with _get_internal_buffer(self) {
+impl @io.Reader for Reader with fn _get_internal_buffer(self) {
   if self.body is PassThrough {
     self.transport._get_internal_buffer()
   } else {
@@ -105,7 +105,7 @@ impl @io.Reader for Reader with _get_internal_buffer(self) {
 ///|
 async fn Reader::read_headers(self : Reader) -> Map[String, String] {
   let headers = {}
-  for {
+  for ;; {
     guard self.transport.read_until("\r\n") is Some(header_line) else {
       raise @io.ReaderClosed
     }

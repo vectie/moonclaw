@@ -4,29 +4,31 @@ test "channel_model_session_name stores provider-qualified codex name" {
     access_token="access",
     account_id="account",
     refresh_token="refresh",
-    name=Gpt5_4,
+    name=Gpt5_6Sol,
   )
   inspect(channel_model_provider_override(model).unwrap_or(""), content="codex")
-  inspect(channel_model_session_name(model), content="codex/gpt-5.4")
+  inspect(channel_model_session_name(model), content="codex/gpt-5.6-sol")
 }
 
 ///|
 test "resolve_channel_model_override prefers configured primary when session is empty" {
   inspect(
-    resolve_channel_model_override(None, None, Some("codex/gpt-5.4")).unwrap_or(
+    resolve_channel_model_override(None, None, Some("codex/gpt-5.6-sol")).unwrap_or(
       "",
     ),
-    content="codex/gpt-5.4",
+    content="codex/gpt-5.6-sol",
   )
 }
 
 ///|
 test "resolve_channel_model_override ignores bare session model name" {
   inspect(
-    resolve_channel_model_override(Some("gpt-5.4"), None, Some("codex/gpt-5.4")).unwrap_or(
-      "",
-    ),
-    content="codex/gpt-5.4",
+    resolve_channel_model_override(
+      Some("gpt-5.6-sol"),
+      None,
+      Some("codex/gpt-5.6-sol"),
+    ).unwrap_or(""),
+    content="codex/gpt-5.6-sol",
   )
 }
 
@@ -36,9 +38,9 @@ test "resolve_channel_model_override keeps configured primary over bare session 
     resolve_channel_model_override(
       Some("qwen3.5-plus"),
       None,
-      Some("codex/gpt-5.4"),
+      Some("codex/gpt-5.6-sol"),
     ).unwrap_or(""),
-    content="codex/gpt-5.4",
+    content="codex/gpt-5.6-sol",
   )
 }
 

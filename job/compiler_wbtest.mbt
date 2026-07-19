@@ -160,7 +160,7 @@ test "compile_job_proposal applies analysis metadata from proposal steps" {
           "system_prompt": "Act like a focused executive reviewer.",
           "web_search": true,
           "enable_tools": false,
-          "model": "codex/gpt-5.4",
+          "model": "codex/gpt-5.6-sol",
         },
         child_profile: None,
         execution_mode: None,

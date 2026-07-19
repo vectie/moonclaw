@@ -9,14 +9,31 @@ async test "inspect reports missing setup in an empty home" {
     json_inspect(status.provider_count, content=0)
     json_inspect(status.has_gateway_token, content=false)
     json_inspect(
-      status.available_models.contains("codex/gpt-5.4"),
+      status.available_models.contains("codex/gpt-5.6-sol"),
       content=true,
+    )
+    let codex = status.auth.providers[0]
+    json_inspect(codex.default_model.unwrap_or(""), content="codex/gpt-5.6-sol")
+    json_inspect(
+      codex.available_models.contains("codex/gpt-5.6-sol"),
+      content=true,
+    )
+    json_inspect(
+      codex.available_models.contains("codex/gpt-5.4"),
+      content=false,
     )
     json_inspect(status.issues, content=[
       "Missing moonclaw.json configuration", "No model providers configured", "No primary model configured",
       "Gateway auth token is missing",
     ])
   })
+}
+
+///|
+test "Codex onboarding choices use exact 5.6-sol default" {
+  let choices = oauth_model_choices()
+  inspect(choices[0], content="codex/gpt-5.6-sol")
+  inspect(choices.contains("codex/gpt-5.4"), content="false")
 }
 
 ///|
@@ -110,7 +127,7 @@ async test "discover_models lists configured provider models" {
       models.contains("alt/coder") &&
       models.contains("demo/fast") &&
       models.contains("demo/smart") &&
-      models.contains("codex/gpt-5.4"),
+      models.contains("codex/gpt-5.6-sol"),
       content=true,
     )
   })
@@ -210,8 +227,8 @@ test "render_auth_status shows switch guidance" {
         authenticated: false,
         account_label: None,
         detail: Some("not logged in"),
-        default_model: Some("codex/gpt-5.4"),
-        available_models: ["codex/gpt-5.4", "codex/gpt-5.3-codex"],
+        default_model: Some("codex/gpt-5.6-sol"),
+        available_models: ["codex/gpt-5.6-sol", "codex/gpt-5.3-codex"],
       },
     ],
     issues: ["Codex OAuth is not connected"],

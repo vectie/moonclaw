@@ -4,6 +4,33 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   command : Json,
   now~ : @clock.Timestamp,
 ) -> Json {
+  // Validate the exact selector before considering explicit calls, planner
+  // policy, deterministic plans, or loader defaults.
+  let requested_model_name = mooncode_runtime_turn_requested_model(command)
+  let requested_model = match mooncode_runtime_model_selector(requested_model_name) {
+    Some(selector) => selector
+    None =>
+      return mooncode_runtime_turn_failed_planner_result(
+        command,
+        requested_model_name,
+        "MoonCode requires the exact model codex/gpt-5.6-sol",
+        mooncode_event(
+          session_id=mooncode_json_string(
+            command,
+            "session_id",
+            default="",
+          ),
+          command_id=mooncode_command_id(command),
+          lane="runtime",
+          kind="runtime.planner_started",
+          title="MoonCode model planner rejected model",
+          status="failed",
+          detail="MoonCode requires the exact model codex/gpt-5.6-sol",
+          now~,
+        ),
+        now~,
+      )
+  }
   let explicit = mooncode_runtime_turn_explicit_tool_calls(command)
   if explicit.length() > 0 {
     return {
@@ -11,16 +38,6 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       "protocol": mooncode_protocol_version(),
       "planner_mode": "explicit-tool-calls",
       "tool_calls": Json::array(explicit),
-      "events": Json::array([]),
-    }
-  }
-  let deterministic = mooncode_runtime_turn_deterministic_preplan(command)
-  if deterministic.length() > 0 {
-    return {
-      "kind": mooncode_kind_runtime_turn_planner(),
-      "protocol": mooncode_protocol_version(),
-      "planner_mode": mooncode_planner_mode_deterministic_fallback(),
-      "tool_calls": Json::array(deterministic),
       "events": Json::array([]),
     }
   }
@@ -33,22 +50,8 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       "events": Json::array([]),
     }
   }
-  let requested_model_name = mooncode_runtime_turn_requested_model(command)
-  let requested_model : String? = if requested_model_name == "" {
-    None
-  } else {
-    Some(requested_model_name)
-  }
-  let selected_model = self.models.get_model(name?=requested_model)
-  let model_name = match selected_model {
-    Some(model) => model.selector()
-    None =>
-      if requested_model_name == "" {
-        "default"
-      } else {
-        requested_model_name
-      }
-  }
+  let selected_model = self.models.get_model(name=requested_model)
+  let model_name = requested_model
   let session_id = mooncode_json_string(command, "session_id", default="")
   let command_id = mooncode_command_id(command)
   let started = mooncode_event(
@@ -145,7 +148,6 @@ fn mooncode_runtime_turn_model_planning_allowed(command : Json) -> Bool {
 ///|
 fn mooncode_runtime_turn_requires_model_planning(command : Json) -> Bool {
   mooncode_runtime_turn_explicit_tool_calls(command).length() == 0 &&
-  mooncode_runtime_turn_deterministic_preplan(command).length() == 0 &&
   mooncode_runtime_turn_model_planning_allowed(command)
 }
 

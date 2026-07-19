@@ -5,6 +5,7 @@ priv struct MoonCodeSessionBinding {
   mut book_root : String
   mut workspace_id : String
   mut workspace_name : String
+  mut model : String
   mut command_count : Int
   mut first_user_prompt : String
   mut custom_title : String
@@ -23,6 +24,7 @@ fn MoonCodeSessionBinding::to_json(self : MoonCodeSessionBinding) -> Json {
     "book_root": self.book_root,
     "workspace_id": self.workspace_id,
     "workspace_name": self.workspace_name,
+    "model": self.model,
     "command_count": self.command_count,
     "first_user_prompt": self.first_user_prompt,
     "custom_title": self.custom_title,
@@ -73,6 +75,7 @@ fn Daemon::mooncode_binding_for_session(
         book_root: "",
         workspace_id: "",
         workspace_name: "",
+        model: "",
         command_count: 0,
         first_user_prompt: "",
         custom_title: "",
@@ -288,11 +291,18 @@ async fn MoonCodeSessionBinding::restore_first_user_prompt(
 async fn MoonCodeSessionBinding::restore_session_metadata(
   self : MoonCodeSessionBinding,
 ) -> Unit {
-  if self.book_root == "" || self.custom_title != "" {
+  if self.book_root == "" {
     return
   }
   let snapshot = mooncode_load_session_snapshot(self.book_root, self.session_id)
-  self.custom_title = mooncode_json_string(snapshot, "custom_title", default="")
+  if self.custom_title == "" {
+    self.custom_title = mooncode_json_string(
+      snapshot,
+      "custom_title",
+      default="",
+    )
+  }
+  self.model = mooncode_json_string(snapshot, "model", default=self.model)
 }
 
 ///|
@@ -316,5 +326,16 @@ fn MoonCodeSessionBinding::remember_workspace(
   }
   if workspace_name != "" {
     self.workspace_name = workspace_name
+  }
+}
+
+///|
+fn MoonCodeSessionBinding::remember_model(
+  self : MoonCodeSessionBinding,
+  body : Json,
+) -> Unit {
+  let model = mooncode_runtime_turn_requested_model(body)
+  if model != "" {
+    self.model = model
   }
 }

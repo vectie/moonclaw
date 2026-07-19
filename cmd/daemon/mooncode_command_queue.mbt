@@ -47,8 +47,6 @@ async fn Daemon::mooncode_queue_command_response(
   body : Json,
   queue_source~ : String,
 ) -> Json {
-  let command_id = mooncode_command_id(body)
-  let action = mooncode_json_string(body, "command", default="prompt")
   let book_root = mooncode_book_root(body)
   let now = self.clock.now()
   let binding = self.mooncode_binding_for_session(session_id)
@@ -67,8 +65,22 @@ async fn Daemon::mooncode_queue_command_response(
   }
   binding.restore_first_user_prompt()
   binding.restore_session_metadata()
+  let body = mooncode_command_with_session_model(body, binding.model)
+  let requested_model = mooncode_runtime_turn_requested_model(body)
+  if mooncode_runtime_model_selector(requested_model) is None {
+    raise json_error(400, "Bad Request", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode requires the exact model codex/gpt-5.6-sol",
+        "metadata": { "requested_model": requested_model },
+      },
+    })
+  }
+  let command_id = mooncode_command_id(body)
+  let action = mooncode_json_string(body, "command", default="prompt")
   binding.command_count += 1
   binding.remember_workspace(body)
+  binding.remember_model(body)
   binding.remember_first_user_prompt(body)
   binding.last_command_id = command_id
   binding.last_updated = now

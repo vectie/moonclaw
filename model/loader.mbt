@@ -7,6 +7,9 @@ struct Loader {
 }
 
 ///|
+const CODEX_DEFAULT_SELECTOR = "codex/gpt-5.6-sol"
+
+///|
 /// Create a model loader scoped to the given MoonSuite root and
 /// current working directory.
 ///
@@ -487,6 +490,12 @@ async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
 pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
   self.load()
   if name is Some(model_name) {
+    let trimmed = model_name.trim()
+    if trimmed == "codex" || trimmed.has_prefix("codex/") {
+      return self.load_codex_model(model_name, allow_auto_login=true)
+    }
+  }
+  if name is Some(model_name) {
     if self.load_from_providers(model_name) is Some(model) {
       return Some(model)
     }
@@ -505,9 +514,6 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
   }
   if configured_model is Some(model) {
     return Some(model)
-  }
-  if name is Some(model_name) && model_name.has_prefix("codex/") {
-    return self.load_codex_model(model_name, allow_auto_login=true)
   }
   if name is Some(model_name) && model_name.has_prefix("copilot/") {
     return self.load_copilot_model(model_name, allow_auto_login=true)
@@ -543,7 +549,7 @@ pub async fn Loader::get_model(self : Loader, name? : String) -> Model? {
   if self.load_openrouter_model(None) is Some(model) {
     return Some(model)
   }
-  if self.load_codex_model("codex/gpt-5.4", allow_auto_login=false)
+  if self.load_codex_model(CODEX_DEFAULT_SELECTOR, allow_auto_login=false)
     is Some(model) {
     return Some(model)
   }
@@ -609,36 +615,72 @@ async fn Loader::load_openrouter_model(self : Loader, name : String?) -> Model? 
 }
 
 ///|
+fn codex_model_from_selector(name : String) -> CodexModels? {
+  match name {
+    "codex/gpt-5.6-sol" => Some(Gpt5_6Sol)
+    "codex/gpt-5.4" => Some(Gpt5_4)
+    "codex/gpt-5.3-codex" => Some(Gpt5_3Codex)
+    _ => None
+  }
+}
+
+///|
+async fn resolve_codex_credentials(
+  workspace_root : String,
+  global_root_for_test? : String,
+) -> @codex.Credentials? {
+  if @codex.credentials_exist_for_workspace_root(root=workspace_root) {
+    return Some(@codex.load_credentials_for_workspace_root(root=workspace_root))
+  }
+  let global_credentials_exist = match global_root_for_test {
+    Some(root) => @codex.credentials_exist_for_workspace_root(root~)
+    None => @codex.credentials_exist()
+  }
+  if !global_credentials_exist {
+    return None
+  }
+  Some(
+    match global_root_for_test {
+      Some(root) => @codex.load_credentials_for_workspace_root(root~)
+      None => @codex.load_credentials()
+    },
+  )
+}
+
+///|
+async fn Loader::start_codex_login(self : Loader) -> @codex.Credentials? {
+  logger.info("Codex OAuth credentials not found, starting login...")
+  Some(@codex.start_oauth_flow_for_workspace_root(root=self.home.to_owned())) catch {
+    err => {
+      logger.error("OAuth login failed: \{err}")
+      None
+    }
+  }
+}
+
+///|
 async fn Loader::load_codex_model(
-  _self : Loader,
+  self : Loader,
   name : String,
   allow_auto_login~ : Bool,
 ) -> Model? {
-  let credentials = @codex.load_credentials() catch {
-    _ => {
-      if !allow_auto_login {
-        return None
-      }
-      logger.info("Codex OAuth credentials not found, starting login...")
-      @codex.start_oauth_flow() catch {
-        err => {
-          logger.error("OAuth login failed: \{err}")
-          return None
-        }
-      }
+  guard codex_model_from_selector(name) is Some(codex_model) else {
+    logger.error("Unsupported Codex model selector '\{name}'")
+    return None
+  }
+  let credentials = resolve_codex_credentials(self.home.to_owned()) catch {
+    err => {
+      logger.error("Failed to load Codex OAuth credentials: \{err}")
+      return None
     }
   }
-  let codex_model = match name {
-    "codex/gpt-5.4" => CodexModels::Gpt5_4
-    "codex/gpt-5.3-codex" => Gpt5_3Codex
-    "codex/gpt-5.2" => {
-      logger.warn("Codex model `codex/gpt-5.2` is deprecated, using gpt-5.4")
-      Gpt5_4
+  let credentials = match credentials {
+    Some(credentials) => credentials
+    None if allow_auto_login => {
+      guard self.start_codex_login() is Some(credentials) else { return None }
+      credentials
     }
-    _ => {
-      logger.warn("Unknown Codex model '\{name}', using gpt-5.4")
-      Gpt5_4
-    }
+    None => return None
   }
   logger.info("Using Codex OAuth model '\{codex_model}'")
   let model = codex_oauth_model(

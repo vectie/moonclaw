@@ -306,25 +306,7 @@ async fn chat_codex(
         "model": { "name": model.model_name, "base_url": model.base_url },
         "request": request,
       })
-      let input = convert_messages_to_input(request.messages)
-      let requested_instructions = extract_system_instructions(request.messages)
-      let instructions = if requested_instructions == "" {
-        @codex.base_instructions
-      } else {
-        requested_instructions
-      }
-      let tools = convert_tools_to_responses_api(request.tools)
-      let codex_request = @responses.ResponsesRequest::new(
-        model=model.model_name,
-        input~,
-        instructions~,
-        tools~,
-        reasoning_effort?=request.reasoning_effort.map(
-          chat_completion_reasoning_effort_text,
-        ),
-        stream=true,
-        store=false,
-      )
+      let codex_request = codex_responses_request(model, request)
       let result = do_codex_stream_request(
         current_access_token.val,
         current_account_id.val,
@@ -378,6 +360,32 @@ async fn chat_codex(
       })
       chat_completion
     },
+  )
+}
+
+///|
+fn codex_responses_request(
+  model : @model.Model,
+  request : Request,
+) -> @responses.ResponsesRequest {
+  let input = convert_messages_to_input(request.messages)
+  let requested_instructions = extract_system_instructions(request.messages)
+  let instructions = if requested_instructions == "" {
+    @codex.base_instructions
+  } else {
+    requested_instructions
+  }
+  let tools = convert_tools_to_responses_api(request.tools)
+  @responses.ResponsesRequest::new(
+    model=model.model_name,
+    input~,
+    instructions~,
+    tools~,
+    reasoning_effort?=request.reasoning_effort.map(
+      chat_completion_reasoning_effort_text,
+    ),
+    stream=true,
+    store=false,
   )
 }
 

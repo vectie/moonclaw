@@ -14,6 +14,7 @@ async test "mooncode native runtime turn executes explicit tool calls" (
     "session_id": session_id,
     "book_root": book_root,
     "command": "prompt",
+    "model": "codex/gpt-5.6-sol",
     "web_search": true,
     "packet": { "command_id": command_id },
     "runtime_tool_calls": [
@@ -105,7 +106,7 @@ async test "mooncode native runtime turn defers idle steer into next command" (
     "command": "steer",
     "text": "Keep the next patch inside tools/ and add tests.",
     "packet": { "command_id": command_id },
-    "model": "unavailable-model",
+    "model": "codex/gpt-5.6-sol",
   }
   mooncode_append_session_journal(
     book_root,
@@ -176,6 +177,7 @@ async test "mooncode native runtime turn defers idle steer into next command" (
     "book_root": book_root,
     "command": "prompt",
     "text": "Record this MoonCode prompt.",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": prompt_id },
     "runtime_tool_calls": [
       {
@@ -394,13 +396,14 @@ async test "mooncode native runtime turn records review receipts" (
     "command": "accept",
     "context_path": "tools/demo/run.sh",
     "packet": { "command_id": accept_id, "context_path": "tools/demo/run.sh" },
-    "model": "unavailable-model",
+    "model": "codex/gpt-5.6-sol",
   }
   let reject_command : Json = {
     "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": book_root,
     "command": "reject",
+    "model": "codex/gpt-5.6-sol",
     "context_path": "apps/demo/index.html",
     "packet": {
       "command_id": reject_id,
@@ -634,7 +637,7 @@ test "mooncode user prompts require model planning instead of canned artifacts" 
     "book_root": "/tmp/book",
     "command": "prompt",
     "text": "Read README.md.",
-    "model": "codex/gpt-5.4",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": "cmd-read" },
   }
   let read_calls = mooncode_runtime_turn_deterministic_preplan(read)
@@ -648,7 +651,7 @@ test "mooncode user prompts require model planning instead of canned artifacts" 
     ),
     "README.md",
   )
-  assert_false(mooncode_runtime_turn_requires_model_planning(read))
+  assert_true(mooncode_runtime_turn_requires_model_planning(read))
 
   let write : Json = {
     "protocol": mooncode_protocol_version(),
@@ -656,7 +659,7 @@ test "mooncode user prompts require model planning instead of canned artifacts" 
     "book_root": "/tmp/book",
     "command": "prompt",
     "text": "Create tools/e2e-fixed.txt in this MoonBook with exactly ROOT_OK, then reply that it is done.",
-    "model": "codex/gpt-5.4",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": "cmd-write" },
   }
   let write_calls = mooncode_runtime_turn_deterministic_preplan(write)
@@ -674,7 +677,25 @@ test "mooncode user prompts require model planning instead of canned artifacts" 
     mooncode_json_string(write_arguments, "content", default=""),
     "ROOT_OK",
   )
-  assert_false(mooncode_runtime_turn_requires_model_planning(write))
+  assert_true(mooncode_runtime_turn_requires_model_planning(write))
+}
+
+///|
+test "mooncode exact model adversarial prompts bypass deterministic preplanning" {
+  for text in [
+    "Read README.md.",
+    "Create tools/stray.txt with exactly STRAY, then write the result.",
+  ] {
+    let command : Json = {
+      "session_id": "session-exact-boundary",
+      "book_root": "/tmp/book",
+      "command": "prompt",
+      "text": text,
+      "model": "codex/gpt-5.6-sol",
+      "packet": { "command_id": "cmd-exact-boundary" },
+    }
+    assert_true(mooncode_runtime_turn_requires_model_planning(command))
+  }
 }
 
 ///|
@@ -697,16 +718,29 @@ test "mooncode failed planner cannot become a successful fallback" {
     detail="started",
     now=@clock.Timestamp::from_ms(1L),
   )
-  let result = mooncode_runtime_turn_failed_planner_result(
-    command,
-    "codex/gpt-5.4",
+  for message in [
     "model unavailable",
-    started,
-    now=@clock.Timestamp::from_ms(2L),
-  )
-  assert_true(mooncode_json_bool(result, "failed", default=false))
-  assert_eq(mooncode_json_array_items(result, "tool_calls").length(), 0)
-  assert_true(result.stringify().contains("runtime.planner_failed"))
+    "model planner failed: ConnectionClosed",
+    "model planner returned no usable MoonCode tool calls",
+  ] {
+    let result = mooncode_runtime_turn_failed_planner_result(
+      command,
+      "codex/gpt-5.6-sol",
+      message,
+      started,
+      now=@clock.Timestamp::from_ms(2L),
+    )
+    assert_eq(
+      mooncode_json_string(result, "planner_mode", default=""),
+      "model-tool-calls",
+    )
+    assert_eq(mooncode_json_array_items(result, "tool_calls").length(), 0)
+    assert_true(mooncode_json_bool(result, "failed", default=false))
+    let serialized = result.stringify()
+    assert_true(serialized.contains("runtime.planner_failed"))
+    assert_false(serialized.contains("deterministic-fallback"))
+    assert_false(serialized.contains("fell back"))
+  }
 }
 
 ///|
@@ -724,7 +758,7 @@ test "mooncode model planner selects runtime default when model is omitted" {
 }
 
 ///|
-async test "mooncode deterministic explicit prompts execute without model delay" (
+async test "mooncode caller supplied explicit tools execute without model delay" (
   t : @test.Test,
 ) {
   ignore(t)
@@ -761,8 +795,15 @@ async test "mooncode deterministic explicit prompts execute without model delay"
     "book_root": book_root,
     "command": "prompt",
     "text": "Create tools/e2e-fixed.txt with exactly ROOT_OK, then reply that it is done.",
-    "model": "codex/gpt-5.4",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": write_id },
+    "runtime_tool_calls": [
+      {
+        "tool": "write",
+        "arguments": { "path": "tools/e2e-fixed.txt", "content": "ROOT_OK" },
+      },
+      { "tool": "finish", "arguments": { "answer": "done" } },
+    ],
   }
   mooncode_append_session_journal(
     book_root,
@@ -794,8 +835,12 @@ async test "mooncode deterministic explicit prompts execute without model delay"
     "book_root": book_root,
     "command": "prompt",
     "text": "Read README.md.",
-    "model": "codex/gpt-5.4",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": read_id },
+    "runtime_tool_calls": [
+      { "tool": "read", "arguments": { "path": "README.md" } },
+      { "tool": "finish", "arguments": { "answer": "done" } },
+    ],
   }
   mooncode_append_session_journal(
     book_root,
@@ -850,7 +895,7 @@ test "mooncode model planner sends a compact request envelope" {
   assert_false(chat_tools.to_json().stringify().contains("moon_check"))
 
   let plan_request = mooncode_runtime_turn_model_plan_request(
-    "gpt-5.4", command,
+    "gpt-5.6-sol", command,
   ).to_json()
   assert_eq(
     mooncode_json_string(plan_request, "reasoning_effort", default=""),
@@ -1222,6 +1267,7 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
     "book_root": book_root,
     "command": "prompt",
     "text": "Create an executable tool for this MoonBook",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": command_id },
     "runtime_tool_calls": [
       {
@@ -1491,6 +1537,7 @@ async test "mooncode native runtime turn emits run_tests proof" (t : @test.Test)
     "session_id": session_id,
     "book_root": book_root,
     "command": "run_tests",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": command_id },
   }
   mooncode_append_session_journal(
@@ -1593,6 +1640,7 @@ async test "mooncode native runtime turn emits run_build proof" (t : @test.Test)
     "session_id": session_id,
     "book_root": book_root,
     "command": "run_build",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": command_id },
   }
   mooncode_append_session_journal(

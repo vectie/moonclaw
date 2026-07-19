@@ -116,7 +116,7 @@ fn resolve_options(args : Array[String]) -> @onboarding.OnboardingOptions {
 ///|
 fn normalize_switch_target(target : String) -> String {
   match target.trim() {
-    "codex" => "codex/gpt-5.4"
+    "codex" => "codex/gpt-5.6-sol"
     "copilot" => "copilot/gpt-5.2"
     model if !model.is_empty() => model.to_owned()
     _ => ""

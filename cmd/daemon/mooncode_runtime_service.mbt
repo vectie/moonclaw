@@ -503,6 +503,7 @@ async test "mooncode runtime service records lifecycle events" (t : @test.Test) 
           "session_id": session_id,
           "book_root": book_root,
           "command": "prompt",
+          "model": "codex/gpt-5.6-sol",
           "packet": { "command_id": "cmd-service-1" },
           "runtime_tool_calls": [
             {

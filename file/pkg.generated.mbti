@@ -11,6 +11,7 @@ pub struct Manager {
   cwd : String
   access : Map[String, Int64]
 }
+pub fn Manager::resolve_scoped(Self, String) -> String?
 
 // Type aliases
 

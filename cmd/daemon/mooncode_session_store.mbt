@@ -137,6 +137,7 @@ async fn mooncode_session_listing_record_from_parts(
     "session_id": session_id,
     "safe_session_id": safe_session_id,
     "book_root": book_root,
+    "model": mooncode_json_string(snapshot, "model", default=""),
     "live_binding_ready": live_binding is Some(_),
     "binding": match live_binding {
       Some(binding) => binding.to_json()
@@ -334,6 +335,7 @@ async fn mooncode_session_record_from_parts(
     ),
     "safe_session_id": safe_session_id,
     "book_root": book_root,
+    "model": mooncode_json_string(resolved_snapshot, "model", default=""),
     "live_binding_ready": live_binding is Some(_),
     "binding": match live_binding {
       Some(binding) => binding.to_json()
@@ -399,6 +401,7 @@ fn mooncode_session_snapshot(
     "book_root": binding.book_root,
     "workspace_id": binding.workspace_id,
     "workspace_name": binding.workspace_name,
+    "model": binding.model,
     "command_count": binding.command_count,
     "first_user_prompt": binding.first_user_prompt,
     "custom_title": binding.custom_title,

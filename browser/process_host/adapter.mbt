@@ -43,10 +43,12 @@ pub async fn ProcessBrowserHost::execute(
     )
   }
   let json : Json = @json.parse(process.stdout.trim()) catch {
-    error => return Err("browser host returned invalid JSON: " + error.to_string())
+    error =>
+      return Err("browser host returned invalid JSON: " + error.to_string())
   }
   let result : @browser.BrowserHostResult = @json.from_json(json) catch {
-    error => return Err("browser host returned invalid result: " + error.to_string())
+    error =>
+      return Err("browser host returned invalid result: " + error.to_string())
   }
   Ok(result)
 }

@@ -135,6 +135,10 @@ export const WebPreviewUrl = ({
   const { url, setUrl } = useWebPreview();
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      onKeyDown?.(event);
+      return;
+    }
     if (event.key === "Enter") {
       const target = event.target as HTMLInputElement;
       setUrl(target.value);

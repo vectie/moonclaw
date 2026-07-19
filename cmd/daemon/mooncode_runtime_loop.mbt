@@ -319,6 +319,7 @@ async test "mooncode native runtime loop drains queued commands" (
     "session_id": session_id,
     "book_root": book_root,
     "command": "prompt",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": "cmd-loop-1" },
     "runtime_tool_calls": [
       {
@@ -333,6 +334,7 @@ async test "mooncode native runtime loop drains queued commands" (
     "session_id": session_id,
     "book_root": book_root,
     "command": "prompt",
+    "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": "cmd-loop-2" },
     "runtime_tool_calls": [
       {

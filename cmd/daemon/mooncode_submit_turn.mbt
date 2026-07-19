@@ -116,6 +116,7 @@ async test "mooncode submit turn durably queues and starts runtime" (
       "session_id": session_id,
       "book_root": book_root,
       "command": "prompt",
+      "model": "codex/gpt-5.6-sol",
       "text": "Reply once",
       "packet": { "command_id": "cmd-submit-turn" },
       "runtime_tool_calls": [

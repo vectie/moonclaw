@@ -22,13 +22,19 @@ pub fn BrowserWorker::new(
   {
     scope,
     status: Ready,
-    remaining_actions: if action_budget < 0 { 0 } else { action_budget },
+    remaining_actions: if action_budget < 0 {
+      0
+    } else {
+      action_budget
+    },
     receipts: [],
   }
 }
 
 ///|
-pub fn BrowserWorker::restore(snapshot : BrowserWorkerSnapshot) -> BrowserWorker {
+pub fn BrowserWorker::restore(
+  snapshot : BrowserWorkerSnapshot,
+) -> BrowserWorker {
   {
     scope: snapshot.scope,
     status: snapshot.status,
@@ -63,7 +69,9 @@ pub fn BrowserWorker::remaining_actions(self : BrowserWorker) -> Int {
 }
 
 ///|
-pub fn BrowserWorker::receipts(self : BrowserWorker) -> Array[BrowserActionReceipt] {
+pub fn BrowserWorker::receipts(
+  self : BrowserWorker,
+) -> Array[BrowserActionReceipt] {
   self.receipts.copy()
 }
 
@@ -151,11 +159,14 @@ fn BrowserWorker::scope_issue(
   } else if action.value_redacted != "" && action.value_redacted != "[redacted]" {
     Some("secret-value-not-redacted")
   } else if action.credential_handle != "" &&
-    (!action.credential_handle.has_prefix("cred://") ||
-    !self.scope.credential_handles.contains(action.credential_handle)) {
+    (
+      !action.credential_handle.has_prefix("cred://") ||
+      !self.scope.credential_handles.contains(action.credential_handle)
+    ) {
     Some("credential-handle-not-authorized")
   } else if action.page_trust is PromptInjectionSuspected &&
-    !(action.actor is User) && !(action.required_effect is InspectVisiblePage) {
+    !(action.actor is User) &&
+    !(action.required_effect is InspectVisiblePage) {
     Some("prompt-injection-boundary-requires-user-control")
   } else if action.required_effect is NavigateExternalOrigin &&
     browser_origin_from_external_url(action.target) is None {
@@ -167,16 +178,19 @@ fn BrowserWorker::scope_issue(
   } else if action.required_effect is UploadFile &&
     !self.scope.upload_sources.contains(action.transfer_path) {
     Some("upload-source-not-authorized")
-  } else if action.required_effect is DownloadFile && self.scope.download_root == "" {
+  } else if action.required_effect is DownloadFile &&
+    self.scope.download_root == "" {
     Some("download-quarantine-root-missing")
   } else if browser_effect_mutates_external_state(action.required_effect) &&
     action.idempotency_key == "" {
     Some("mutation-idempotency-key-missing")
   } else if browser_effect_mutates_external_state(action.required_effect) &&
-    (self.scope.mutation_authority_id == "" ||
-    self.scope.mutation_authority_nonce == "" ||
-    self.scope.mutation_authority_expires_at == "" ||
-    action.fresh_authority_nonce != self.scope.mutation_authority_nonce) {
+    (
+      self.scope.mutation_authority_id == "" ||
+      self.scope.mutation_authority_nonce == "" ||
+      self.scope.mutation_authority_expires_at == "" ||
+      action.fresh_authority_nonce != self.scope.mutation_authority_nonce
+    ) {
     Some("fresh-mutation-authority-required")
   } else if !self.scope.permitted_effects.contains(action.required_effect) {
     Some("effect-not-authorized")
@@ -348,7 +362,8 @@ pub fn BrowserWorker::complete(
   match result.status {
     CancelledByHost(reason) => return self.record(action, Cancelled(reason))
     RejectedByHost(reason) => return self.record(action, Blocked(reason))
-    Crashed(reason) => return self.record(action, Blocked("host-crashed:" + reason))
+    Crashed(reason) =>
+      return self.record(action, Blocked("host-crashed:" + reason))
     Completed => ()
   }
   if !result.target_resolved {
@@ -363,19 +378,25 @@ pub fn BrowserWorker::complete(
   }
   if command.origin_class is ExternalOrigin &&
     !(result.destination_class is PublicInternetDestination) {
-    return self.record(action, Blocked("private-or-unresolved-network-destination"))
+    return self.record(
+      action,
+      Blocked("private-or-unresolved-network-destination"),
+    )
   }
   if browser_effect_mutates_external_state(action.required_effect) &&
     !result.fresh_authority_valid {
     return self.record(action, Blocked("mutation-authority-expired-at-host"))
   }
   if result.page_trust is PromptInjectionSuspected &&
-    !(action.actor is User) && !(action.required_effect is InspectVisiblePage) {
+    !(action.actor is User) &&
+    !(action.required_effect is InspectVisiblePage) {
     return self.record(action, Blocked("host-detected-prompt-injection"))
   }
   if action.required_effect is DownloadFile &&
-    (!(result.transfer_verdict is TransferClean) ||
-    !browser_path_inside_root(result.quarantine_ref, self.scope.download_root)) {
+    (
+      !(result.transfer_verdict is TransferClean) ||
+      !browser_path_inside_root(result.quarantine_ref, self.scope.download_root)
+    ) {
     return self.record(action, Blocked("download-not-clean-in-quarantine"))
   }
   if action.required_effect is UploadFile &&
@@ -424,7 +445,8 @@ pub fn BrowserWorker::complete_transport_error(
         command.code_revision != action.code_revision ||
         command.authority_envelope_id != action.authority_envelope_id {
         self.record(action, Blocked("transport-command-mismatch"))
-      } else if self.status is Stopped || self.status is Paused ||
+      } else if self.status is Stopped ||
+        self.status is Paused ||
         self.status is UserControl {
         self.record(action, Cancelled("host-transport-cancelled:" + message))
       } else {
@@ -448,11 +470,16 @@ pub fn BrowserWorker::prepare_replay(
     return Rejected(self.record(action, Diverged("replay-lineage-mismatch")))
   }
   if browser_effect_mutates_external_state(action.required_effect) &&
-    (action.idempotency_key == source.idempotency_key ||
-    action.fresh_authority_nonce == "" ||
-    action.fresh_authority_nonce == source.fresh_authority_nonce) {
+    (
+      action.idempotency_key == source.idempotency_key ||
+      action.fresh_authority_nonce == "" ||
+      action.fresh_authority_nonce == source.fresh_authority_nonce
+    ) {
     return Rejected(
-      self.record(action, Blocked("mutating-replay-requires-fresh-authority-and-idempotency")),
+      self.record(
+        action,
+        Blocked("mutating-replay-requires-fresh-authority-and-idempotency"),
+      ),
     )
   }
   self.prepare(action, expected_before_digest=source.before_state_digest)

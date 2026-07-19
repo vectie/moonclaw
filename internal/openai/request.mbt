@@ -27,7 +27,7 @@ pub struct Request {
 }
 
 ///|
-pub impl ToJson for Request with to_json(self : Request) -> Json {
+pub impl ToJson for Request with fn to_json(self : Request) -> Json {
   let json : Map[String, Json] = {
     "model": Json::string(self.model),
     "messages": self.messages,

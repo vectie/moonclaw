@@ -72,7 +72,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
       "command_id": command_id,
       "payload": { "commit_message": "MoonCode test commit" },
     },
-    "model": "unavailable-model",
+    "model": "codex/gpt-5.6-sol",
   }
   mooncode_append_session_journal(
     book_root,

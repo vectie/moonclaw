@@ -263,6 +263,7 @@ pub fn open_router_model(
 
 ///|
 pub(all) enum CodexModels {
+  Gpt5_6Sol
   Gpt5_4
   Gpt5_3Codex
 }
@@ -273,6 +274,7 @@ pub impl Show for CodexModels with fn output(
   logger : &Logger,
 ) -> Unit {
   match self {
+    Gpt5_6Sol => logger.write_string("gpt-5.6-sol")
     Gpt5_4 => logger.write_string("gpt-5.4")
     Gpt5_3Codex => logger.write_string("gpt-5.3-codex")
   }
@@ -281,6 +283,7 @@ pub impl Show for CodexModels with fn output(
 ///|
 fn CodexModels::safe_zone_tokens(self : CodexModels) -> Int {
   match self {
+    Gpt5_6Sol => 400_000
     Gpt5_4 => 400_000
     Gpt5_3Codex => 400_000
   }
@@ -292,7 +295,7 @@ pub fn codex_oauth_model(
   account_id~ : String,
   refresh_token~ : String,
   id_token? : String,
-  name? : CodexModels = Gpt5_4,
+  name? : CodexModels = Gpt5_6Sol,
 ) -> Model {
   Model::new(
     api_key="", // Not used for CodexOAuth

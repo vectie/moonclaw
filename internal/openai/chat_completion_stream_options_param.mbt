@@ -5,7 +5,7 @@ pub struct ChatCompletionStreamOptionsParam {
 }
 
 ///|
-pub impl ToJson for ChatCompletionStreamOptionsParam with to_json(
+pub impl ToJson for ChatCompletionStreamOptionsParam with fn to_json(
   self : ChatCompletionStreamOptionsParam,
 ) -> Json {
   let json : Map[String, Json] = {}
