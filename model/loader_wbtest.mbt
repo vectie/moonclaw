@@ -218,6 +218,170 @@ test "moongate catalog models become OpenAI-compatible routed models" {
 }
 
 ///|
+async test "Codex loader resolves the exact default and fails closed" {
+  @fsx.with_temporary_directory("moonclaw-codex-loader-XXXXXX", dir => {
+    @codex.save_credentials_for_workspace_root(
+      {
+        idToken: "test-id",
+        accessToken: "test-access",
+        refreshToken: "test-refresh",
+        accountId: "test-account",
+      },
+      root=dir,
+    )
+    let loader = Loader::new(home=dir, cwd=dir)
+    assert_eq(CODEX_DEFAULT_SELECTOR, "codex/gpt-5.6-sol")
+    guard loader.get_model(name=CODEX_DEFAULT_SELECTOR) is Some(model) else {
+      fail("expected exact default Codex model")
+    }
+    assert_eq(model.selector(), "codex/gpt-5.6-sol")
+    assert_eq(model.model_name, "gpt-5.6-sol")
+    for
+      unsupported in [
+        "codex", "codex/", "codex//gpt-5.6-sol", "codex/gpt-5.2", "codex/gpt-5.6",
+        "codex/not-a-model", " codex/gpt-5.6-sol",
+      ] {
+      assert_true(loader.get_model(name=unsupported) is None)
+    }
+  })
+}
+
+///|
+async test "Codex loader retains explicit 5.4 compatibility without fallback" {
+  @fsx.with_temporary_directory("moonclaw-codex-legacy-loader-XXXXXX", dir => {
+    @codex.save_credentials_for_workspace_root(
+      {
+        idToken: "test-id",
+        accessToken: "test-access",
+        refreshToken: "test-refresh",
+        accountId: "test-account",
+      },
+      root=dir,
+    )
+    let loader = Loader::new(home=dir, cwd=dir)
+    guard loader.get_model(name="codex/gpt-5.4") is Some(model) else {
+      fail("expected explicit legacy Codex model")
+    }
+    assert_eq(model.selector(), "codex/gpt-5.4")
+    assert_eq(model.model_name, "gpt-5.4")
+  })
+}
+
+///|
+async test "Codex credentials prefer workspace-local credentials over global" {
+  @fsx.with_temporary_directory("moonclaw-codex-workspace-precedence-XXXXXX", workspace_root => {
+    @fsx.with_temporary_directory("moonclaw-codex-global-precedence-XXXXXX", global_root => {
+      @codex.save_credentials_for_workspace_root(
+        {
+          idToken: "global-id",
+          accessToken: "global-access",
+          refreshToken: "global-refresh",
+          accountId: "global-account",
+        },
+        root=global_root,
+      )
+      @codex.save_credentials_for_workspace_root(
+        {
+          idToken: "workspace-id",
+          accessToken: "workspace-access",
+          refreshToken: "workspace-refresh",
+          accountId: "workspace-account",
+        },
+        root=workspace_root,
+      )
+      guard resolve_codex_credentials(
+          workspace_root,
+          global_root_for_test=global_root,
+        )
+        is Some(credentials) else {
+        fail("expected workspace Codex credentials")
+      }
+      assert_eq(credentials.idToken, "workspace-id")
+      assert_eq(credentials.accessToken, "workspace-access")
+      assert_eq(credentials.accountId, "workspace-account")
+    })
+  })
+}
+
+///|
+async test "Codex credentials fall back to injectable global credentials" {
+  @fsx.with_temporary_directory("moonclaw-codex-workspace-fallback-XXXXXX", workspace_root => {
+    @fsx.with_temporary_directory("moonclaw-codex-global-fallback-XXXXXX", global_root => {
+      @codex.save_credentials_for_workspace_root(
+        {
+          idToken: "global-id",
+          accessToken: "global-access",
+          refreshToken: "global-refresh",
+          accountId: "global-account",
+        },
+        root=global_root,
+      )
+      guard resolve_codex_credentials(
+          workspace_root,
+          global_root_for_test=global_root,
+        )
+        is Some(credentials) else {
+        fail("expected global Codex credentials")
+      }
+      assert_eq(credentials.idToken, "global-id")
+      assert_eq(credentials.accessToken, "global-access")
+      assert_eq(credentials.accountId, "global-account")
+    })
+  })
+}
+
+///|
+async test "Codex credential resolution fails when both sources are absent" {
+  @fsx.with_temporary_directory("moonclaw-codex-workspace-absent-XXXXXX", workspace_root => {
+    @fsx.with_temporary_directory("moonclaw-codex-global-absent-XXXXXX", global_root => {
+      assert_true(
+        resolve_codex_credentials(
+          workspace_root,
+          global_root_for_test=global_root,
+        )
+        is None,
+      )
+    })
+  })
+}
+
+///|
+async test "malformed workspace Codex credentials do not fall back globally" {
+  @fsx.with_temporary_directory("moonclaw-codex-workspace-malformed-XXXXXX", workspace_root => {
+    @fsx.with_temporary_directory("moonclaw-codex-global-valid-XXXXXX", global_root => {
+      @codex.save_credentials_for_workspace_root(
+        {
+          idToken: "global-id",
+          accessToken: "global-access",
+          refreshToken: "global-refresh",
+          accountId: "global-account",
+        },
+        root=global_root,
+      )
+      let workspace_path = @moonsuite.product_artifact_for_workspace_root(
+        workspace_root, "moonclaw", "credentials/codex-credentials.json",
+      )
+      @fsx.make_directory(
+        @pathx.dirname(workspace_path),
+        recursive=true,
+        exists_ok=true,
+      )
+      @fsx.write_to_file(workspace_path, "{malformed")
+      try
+        resolve_codex_credentials(
+          workspace_root,
+          global_root_for_test=global_root,
+        )
+      catch {
+        _ => ()
+      } noraise {
+        _ => fail("expected malformed workspace credentials to fail")
+      }
+    })
+  })
+}
+
+///|
 async test "unreachable MoonGate status never becomes a selectable model" (
   t : @test.Test,
 ) {

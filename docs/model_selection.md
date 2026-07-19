@@ -36,13 +36,13 @@ Any other model name will be passed through to OpenRouter with a default 128K co
 
 **Authentication**: Browser-based OAuth flow (credentials stored in `.moonsuite/products/moonclaw/credentials/codex-credentials.json`)
 
-**Usage**: Use the `codex/` prefix (e.g., `-m codex/gpt-5.2`)
+**Usage**: Use the `codex/` prefix (e.g., `-m codex/gpt-5.6-sol`)
 
 **Available Models**:
 
 | Model Name | Context Window |
 |------------|----------------|
-| `codex/gpt-5.2` | 400K |
+| `codex/gpt-5.6-sol` | 400K |
 
 When you specify a `codex/` model and no credentials are found, moonclaw will automatically open a browser for OAuth authentication.
 
@@ -133,7 +133,7 @@ When no model is explicitly specified (`-m` flag omitted), moonclaw attempts to 
    └─ If OPENROUTER_API_KEY or OPENAI_API_KEY is set → use anthropic/claude-sonnet-4.5
 
 3. Check Codex OAuth credentials (without auto-login)
-   └─ If .moonsuite/products/moonclaw/credentials/codex-credentials.json exists and valid → use codex/gpt-5.2
+   └─ If .moonsuite/products/moonclaw/credentials/codex-credentials.json exists and valid → use codex/gpt-5.6-sol
 
 4. Check Copilot credentials (without auto-login)
    └─ If .moonsuite/products/moonclaw/credentials/copilot-credentials.json exists and valid → use copilot/claude-sonnet-4.5
@@ -151,7 +151,7 @@ When no model is explicitly specified (`-m` flag omitted), moonclaw attempts to 
 moonclaw -m anthropic/claude-opus-4.5
 
 # Use Codex OAuth (will prompt for login if needed)
-moonclaw -m codex/gpt-5.2
+moonclaw -m codex/gpt-5.6-sol
 
 # Use GitHub Copilot (will prompt for login if needed)
 moonclaw -m copilot/claude-sonnet-4.5

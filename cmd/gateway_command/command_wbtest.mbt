@@ -17,7 +17,7 @@ async test "gateway cli defaults use configured url token workspace and model" {
           "defaults": {
             "cwd": "/tmp/configured-cwd",
             "workspace": "/tmp/configured-workspace",
-            "model": { "primary": "codex/gpt-5.4" },
+            "model": { "primary": "codex/gpt-5.6-sol" },
           },
         },
         "gateway": { "port": 19090, "auth": { "token": "secret-token" } },
@@ -27,5 +27,5 @@ async test "gateway cli defaults use configured url token workspace and model" {
   inspect(defaults.url, content="http://localhost:19090")
   inspect(defaults.token.unwrap_or(""), content="secret-token")
   inspect(defaults.cwd.unwrap_or(""), content="/tmp/configured-cwd")
-  inspect(defaults.primary_model.unwrap_or(""), content="codex/gpt-5.4")
+  inspect(defaults.primary_model.unwrap_or(""), content="codex/gpt-5.6-sol")
 }

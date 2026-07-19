@@ -61,7 +61,7 @@ cd "$repo_root"
 run_moonclaw onboard init \
   --home "$suite_home" \
   --cwd "$project" \
-  --model "codex/gpt-5.4" \
+  --model "codex/gpt-5.6-sol" \
   --gateway-port 19123 \
   --gateway-token "fresh-suite-smoke-token" >/dev/null
 
@@ -72,7 +72,7 @@ run_moonclaw acp add codex \
   --label "Codex Smoke" \
   --workspace "$workspace" \
   --target-cwd "$project" \
-  --model "gpt-5.4" \
+  --model "gpt-5.6-sol" \
   --command "codex" >/dev/null
 
 assert_file "$config"
@@ -83,7 +83,7 @@ assert_file "$workspace/USER.md"
 assert_file "$workspace/ROUTINES.md"
 assert_file "$workspace/MEMORY.md"
 
-assert_contains "$config" "\"primary\": \"codex/gpt-5.4\""
+assert_contains "$config" "\"primary\": \"codex/gpt-5.6-sol\""
 assert_contains "$config" "\"port\": 19123"
 assert_contains "$config" "\"token\": \"fresh-suite-smoke-token\""
 assert_contains "$config" "\"codex-smoke\""
@@ -91,7 +91,7 @@ assert_contains "$config" "\"backend\": \"codex\""
 assert_contains "$config" "\"workspace\": \"$workspace\""
 assert_contains "$config" "\"cwd\": \"$project\""
 assert_contains "$config" "\"command\": \"codex\""
-assert_contains "$config" "\"model\": \"gpt-5.4\""
+assert_contains "$config" "\"model\": \"gpt-5.6-sol\""
 
 assert_absent "$root/.moonclaw"
 assert_absent "$root/moonclaw.json"

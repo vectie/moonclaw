@@ -91,7 +91,9 @@ pub impl @json.FromJson for Model with fn from_json(
       name_lower.contains("gpt-5.1") ||
       name_lower.contains("gpt-5.2") ||
       name_lower.contains("gpt-5.3") ||
-      name_lower.contains("gpt-5.4")
+      name_lower.contains("gpt-5.4") ||
+      name_lower.contains("gpt-5.5") ||
+      name_lower.contains("gpt-5.6")
     }
     @json.from_json(
       supports_apply_patch,

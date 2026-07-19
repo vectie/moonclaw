@@ -11,6 +11,27 @@ test "Codex transport preserves request instructions" {
 }
 
 ///|
+test "Codex OAuth request payload uses exact gpt-5.6-sol model" {
+  let model = @model.codex_oauth_model(
+    access_token="test-access",
+    account_id="test-account",
+    refresh_token="test-refresh",
+  )
+  let payload = codex_responses_request(
+    model,
+    chat_completion(model="must-not-reach-wire", messages=[
+      user_message(content="Read README.md"),
+    ]),
+  ).to_json()
+  guard payload is Object(fields) else { fail("expected Codex request object") }
+  guard fields.get("model") is Some(String(request_model)) else {
+    fail("expected Codex request model")
+  }
+  assert_eq(request_model, "gpt-5.6-sol")
+  assert_false(payload.stringify().contains("gpt-5.4"))
+}
+
+///|
 test "Codex response stream exposes terminal provider errors" {
   let event : Map[String, Json] = {
     "type": "response.failed",

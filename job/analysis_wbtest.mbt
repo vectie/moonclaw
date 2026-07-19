@@ -421,7 +421,7 @@ async test "analysis_step_handler parses structured presentation result payload 
         executor=AnalysisExecutor::new(run=fn(request) {
           ignore(request)
           Ok({
-            model_name: "codex/gpt-5.4",
+            model_name: "codex/gpt-5.6-sol",
             content: "{\"title\":\"Land acquisition deck\",\"objective\":\"Present screening estimate\",\"pages\":[{\"page_number\":1,\"page_type\":\"title\",\"headline\":\"Land acquisition estimate\",\"purpose\":\"Open the story\",\"key_message\":\"This is a screening estimate\",\"body_points\":[\"Estimate range\"],\"evidence\":[\"Internal model\"],\"visual_type\":\"title\",\"layout_instruction\":\"Large title with one KPI strip\",\"look_and_feel\":\"Board-clean executive style\"}],\"render_handoff\":{\"renderer_target\":\"slides-main\",\"theme\":\"board-clean\",\"delivery_notes\":\"Keep labels bilingual if needed\",\"asset_requests\":[\"site map\"]}}",
             conversation_id: Some("conv-presentation-1"),
             usage: None,
@@ -475,7 +475,7 @@ async test "analysis_step_handler parses structured presentation render payload 
           executor=AnalysisExecutor::new(run=fn(request) {
             ignore(request)
             Ok({
-              model_name: "codex/gpt-5.4",
+              model_name: "codex/gpt-5.6-sol",
               content: "{\"provider\":\"slides-vendor\",\"renderer_target\":\"slides-main\",\"theme\":\"board-clean\",\"source_plan_contract\":\"presentation_deck_spec.v1\",\"source_plan_artifact\":\"artifact://presentation-plan\",\"output_kind\":\"vendor_handoff\",\"produced_artifacts\":[{\"role\":\"deck_json\",\"path\":\"outputs/presentation/render.json\",\"description\":\"Renderer package\"}],\"handoff_summary\":\"Ready for vendor upload\",\"notes\":[\"Use brand template\"]}",
               conversation_id: Some("conv-presentation-render-1"),
               usage: None,
@@ -1228,7 +1228,7 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
     let config = AnalysisStepConfig::new(
       prompt="Produce a decision-ready land acquisition estimate.",
       cwd=Some(dir),
-      model=Some("gpt-5.4"),
+      model=Some("gpt-5.6-sol"),
       system_prompt=Some("Stay source-grounded."),
       preferred_skills=["research", "estimation"],
       enable_tools=true,
@@ -1350,7 +1350,7 @@ async test "analysis_step_handler asks AI to synthesize missing substeps before 
     inspect(
       child_proposal.steps[0].metadata
       .stringify()
-      .contains("\"model\":\"gpt-5.4\""),
+      .contains("\"model\":\"gpt-5.6-sol\""),
       content="true",
     )
     inspect(
@@ -1391,7 +1391,7 @@ async test "analysis_step_handler treats keeper plan packet as completed output 
           ignore(request)
           calls.val = calls.val + 1
           Ok({
-            model_name: "gpt-5.4",
+            model_name: "gpt-5.6-sol",
             content: "{\"packet_type\":\"keeper.plan.packet.v1\",\"status\":\"ok\",\"recommended_next_actions\":[\"Revise wiki/synthesis/claims.md\"]}",
             conversation_id: None,
             usage: None,
@@ -1554,7 +1554,7 @@ async test "analysis_step_handler propagates missing-input policy into adaptive 
               "The estimate is too broad and under-specified to complete directly."
           }
           Ok({
-            model_name: "gpt-5.4",
+            model_name: "gpt-5.6-sol",
             content,
             conversation_id: None,
             usage: None,
@@ -1676,7 +1676,7 @@ async test "analysis_step_handler treats keeper plan packet as completed output"
           ignore(request)
           calls.val = calls.val + 1
           Ok({
-            model_name: "gpt-5.4",
+            model_name: "gpt-5.6-sol",
             content: "{\"packet_type\":\"keeper.plan.packet.v1\",\"status\":\"ok\",\"recommended_next_actions\":[\"Revise wiki/synthesis/claims.md\"]}",
             conversation_id: None,
             usage: None,
@@ -2113,7 +2113,11 @@ async test "resolved_model_name uses configured primary model for default" {
     @fsx.make_directory(@pathx.dirname(config_path), recursive=true)
     @fsx.write_to_file(
       config_path,
-      { "agents": { "defaults": { "model": { "primary": "codex/gpt-5.4" } } } }
+      {
+        "agents": {
+          "defaults": { "model": { "primary": "codex/gpt-5.6-sol" } },
+        },
+      }
       .to_json()
       .stringify(indent=2),
     )
@@ -2145,7 +2149,10 @@ async test "resolved_model_name uses configured primary model for default" {
       execution_isolation: None,
       role_runtime_contract: None,
     }
-    inspect(resolved_model_name(request).unwrap_or(""), content="codex/gpt-5.4")
+    inspect(
+      resolved_model_name(request).unwrap_or(""),
+      content="codex/gpt-5.6-sol",
+    )
   })
 }
 
@@ -2571,7 +2578,7 @@ async test "configure_analysis_agent_for_request registers runtime introspection
     step_id: "step-1",
     source_prompt: "Inspect runtime.",
     prompt: "Inspect runtime.",
-    model_name: "codex/gpt-5.4",
+    model_name: "codex/gpt-5.6-sol",
     cwd: "/tmp",
     home: Some("/tmp/home"),
     execution_mode: Some("vendor.presentation"),
@@ -2630,7 +2637,7 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
     step_id: "step-1",
     source_prompt: "Provider task.",
     prompt: "Provider task.",
-    model_name: "codex/gpt-5.4",
+    model_name: "codex/gpt-5.6-sol",
     cwd: "/tmp",
     home: Some("/tmp/home"),
     execution_mode: Some("provider"),
@@ -2693,7 +2700,7 @@ async test "configure_analysis_agent_for_request disables todo and delegate_run 
     step_id: "step-1",
     source_prompt: "Provider-derived child step.",
     prompt: "Provider-derived child step.",
-    model_name: "codex/gpt-5.4",
+    model_name: "codex/gpt-5.6-sol",
     cwd: "/tmp",
     home: Some("/tmp/home"),
     execution_mode: None,
@@ -2757,7 +2764,7 @@ async test "configure_analysis_agent_for_request keeps explicit web tools for pr
     step_id: "step-1",
     source_prompt: "Provider-derived child step.",
     prompt: "Provider-derived child step.",
-    model_name: "codex/gpt-5.4",
+    model_name: "codex/gpt-5.6-sol",
     cwd: "/tmp",
     home: Some("/tmp/home"),
     execution_mode: None,
@@ -2787,7 +2794,7 @@ test "provider task single response routing applies to provider execution tasks"
     step_id: "step-1",
     source_prompt: "Provider task.",
     prompt: "Provider task.",
-    model_name: "codex/gpt-5.4",
+    model_name: "codex/gpt-5.6-sol",
     cwd: "/tmp",
     home: None,
     execution_mode: Some("provider"),

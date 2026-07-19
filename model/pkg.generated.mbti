@@ -25,6 +25,7 @@ pub fn qwen_model(api_key~ : String, name? : QwenModels) -> Model
 
 // Types and methods
 pub(all) enum CodexModels {
+  Gpt5_6Sol
   Gpt5_4
   Gpt5_3Codex
 }

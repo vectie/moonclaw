@@ -102,7 +102,7 @@ pub(all) enum CopilotModels {
   Gpt5_1Codex
   Gpt5_1CodexMax
   Gpt5_1CodexMini
-  Gpt5_4
+  Gpt5_2
   O3
   O3Mini
   O4Mini
@@ -114,6 +114,17 @@ pub(all) enum CopilotModels {
   Gemini2_5Pro
   GrokCodeFast1
   // ... more models
+}
+```
+
+### CodexModels
+
+```moonbit nocheck
+///|
+pub(all) enum CodexModels {
+  Gpt5_6Sol
+  Gpt5_4 // Explicit legacy compatibility only
+  Gpt5_3Codex
 }
 ```
 

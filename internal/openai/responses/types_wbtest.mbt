@@ -1,7 +1,7 @@
 ///|
 test "Responses request carries bounded reasoning options" {
   let request = ResponsesRequest::new(
-    model="gpt-5.4",
+    model="gpt-5.6-sol",
     input=[message_input(role="user", content="Read README.md")],
     instructions="Use one bounded tool batch.",
     reasoning_effort="minimal",
@@ -9,7 +9,7 @@ test "Responses request carries bounded reasoning options" {
     store=false,
   ).to_json()
   json_inspect(request, content={
-    "model": "gpt-5.4",
+    "model": "gpt-5.6-sol",
     "input": [
       {
         "type": "message",

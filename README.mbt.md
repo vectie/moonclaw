@@ -381,7 +381,7 @@ moon run cmd/main -- onboard print-config --home /path/to/MoonSuiteRoot
 
 Current behavior:
 
-- 🔐 `onboard auth codex` connects Codex OAuth and updates the primary model to `codex/gpt-5.4`
+- 🔐 `onboard auth codex` connects Codex OAuth and updates the primary model to `codex/gpt-5.6-sol`
 - 🔐 `onboard auth copilot` connects Copilot OAuth and updates the primary model to `copilot/gpt-5.2`
 - 🎯 `onboard switch <model>` changes the active primary model explicitly
 - 🪽 Feishu is built-in through `channels.feishu`, not through a plugin entry

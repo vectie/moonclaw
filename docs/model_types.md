@@ -321,7 +321,7 @@ let model = @model.load(name="anthropic/claude-sonnet-4.5")
 
 ```moonbit
 // 使用 codex/ 前缀
-let model = @model.load(name="codex/gpt-5.2")
+let model = @model.load(name="codex/gpt-5.6-sol")
 
 // 首次使用会自动启动 OAuth 登录流程
 ```
@@ -344,7 +344,7 @@ let model = @model.load(name="copilot/claude-sonnet-4.5")
 | **Kimi** | 按量付费 | API Key | Kimi/Moonshot 系列 | ✅ 是 |
 | **KimiCoding** | 按量付费 | API Key | Kimi 编码版 | ✅ 是 |
 | **OpenRouter** | 按量付费 | API Key | 最多 (15+ 模型) | ❌ 否 |
-| **Codex** | ChatGPT 订阅 | OAuth | 最少 (仅 gpt-5.2) | ❌ 否 |
+| **Codex** | ChatGPT 订阅 | OAuth | 默认 gpt-5.6-sol | ❌ 否 |
 | **Copilot** | Copilot 订阅 | OAuth | 较多 (20+ 模型) | ❌ 否 |
 
 - **Qwen**、**Kimi** 和 **KimiCoding** 是国内可用的 API 服务，适合国内用户
