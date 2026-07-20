@@ -21,12 +21,9 @@ This file is intentionally separate from global runtime config in:
 - what steps it should run
 - what skills, routing hints, and board metadata each step carries
 
-It is the main extension boundary for packs like research, wiki maintenance,
-and OPC.
-
-MoonClaw also ships a built-in `robot_routine` profile. It is the physical-world
-lane: callers may initiate it, but MoonClaw owns the robot routine decision and
-targets `POST /v1/robot/routine/run`.
+It is the main extension boundary for product packs. MoonClaw intentionally
+ships no product-specific job profile: each pack owns its matching policy,
+steps, authority request, and output contracts.
 
 ## Top-Level Shape
 
@@ -332,33 +329,6 @@ and may include:
 The runtime keeps controller behavior generic. The profile provides the policy
 shape; the runtime persists controller state, iterations, lineage, and
 decisions.
-
-## Built-In Robot Routine Profile
-
-The built-in `robot_routine` profile is available even when a workspace has no
-`moonclaw.jobs.json` file.
-
-Key fields:
-
-```json
-{
-  "family": "robot_routine",
-  "role": "robot",
-  "tags": ["robot", "moonrobo", "routine", "physical-world"],
-  "steps": [
-    {
-      "id": "run_robot_routine",
-      "kind": "robot.routine.run",
-      "execution_mode": "moonclaw-gateway",
-      "execution_target": "/v1/robot/routine/run"
-    }
-  ]
-}
-```
-
-The robot role runtime is a limited domain executor: it may run the MoonClaw
-robot routine endpoint, but it does not receive raw workspace-write or native
-execution-tool authority. MoonRobo remains the context/evidence provider.
 
 ## Board Metadata
 

@@ -403,16 +403,6 @@ pub enum PipelineStatus {
 
 type PlanModeState derive(ToJson, @debug.Debug, @json.FromJson)
 
-type RobotRoutineGatewayRequest derive(Eq, ToJson, @debug.Debug)
-
-type RobotRoutineGatewayResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-type RobotRoutineHttpTextResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
-
-type RobotRoutineRunRecord derive(Eq, ToJson, @debug.Debug)
-
-type RobotRoutineRunsResponse derive(Eq, ToJson, @debug.Debug)
-
 pub struct SendMessageParams {
   from_agent : String
   to_agent : String?

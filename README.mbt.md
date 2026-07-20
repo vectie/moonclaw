@@ -10,6 +10,8 @@ For executable MoonBooks, MoonClaw is the runtime owner for agent, task, session
 
 Start with [docs/README.md](docs/README.md) for the product boundary,
 implementation map, testing guidance, operational notes, and future plan.
+The stricter pack/runtime ownership rules are documented in
+[Responsibility and Testability](docs/RESPONSIBILITY_AND_TESTABILITY.md).
 
 It is designed for:
 

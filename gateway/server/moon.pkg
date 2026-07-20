@@ -41,7 +41,6 @@ import {
   "vectie/moonclaw/channel",
   "vectie/moonclaw/channels/feishu",
   "vectie/moonclaw/channels/weixin",
-  "vectie/moonclaw/robot_routine",
 }
 
 supported_targets = "native"

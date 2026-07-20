@@ -361,7 +361,7 @@ pub fn standalone_boundary_json() -> Json {
     "protocol": protocol_version(),
     "core_package": "mooncode/core",
     "projection_component": "mooncode.projection",
-    "host_component": "moonwiki.host",
+    "host_component": "book.host",
     "runtime_component": "moonclaw.standalone-runtime",
     "runtime_substrate": "moonclaw.shared-runtime",
     "lanes": [
@@ -371,8 +371,8 @@ pub fn standalone_boundary_json() -> Json {
         "responsibility": "Executable-book coding turns, diffs, tests, packages, and proof artifacts over the shared MoonClaw runtime substrate.",
       },
       {
-        "id": "moonwiki-book-lane",
-        "owner": "moonwiki",
+        "id": "book-workflow-lane",
+        "owner": "book-host",
         "responsibility": "Human-language book edits and review workflows that may call MoonClaw by protocol without becoming the coding lane.",
       },
       {
@@ -393,8 +393,8 @@ pub fn standalone_boundary_json() -> Json {
         "responsibility": "Book-scoped command, event, stream, review, runtime, test, package, and eval projections used by a host shell.",
       },
       {
-        "id": "moonwiki-host",
-        "owner": "moonwiki",
+        "id": "book-host",
+        "owner": "host-shell",
         "responsibility": "HTTP or local routes plus MoonBook file persistence for wiki/reviews/mooncode and durable MoonCode session sidecars.",
       },
       {
@@ -407,7 +407,7 @@ pub fn standalone_boundary_json() -> Json {
       "mooncode/core must contain only stable protocol and capability contracts",
       "projection components may import mooncode/core but must remain UI-free", "host components may persist and route MoonCode records but must not own the coding runtime loop",
       "MoonClaw must remain usable as a standalone agent runtime outside MoonDesk",
-      "MoonCode, MoonWiki, and generic tasks share MoonClaw runtime primitives but keep separate typed protocols",
+      "MoonCode, book workflows, and generic tasks share MoonClaw runtime primitives but keep separate typed protocols",
       "runtime engines must own tool execution and runtime sessions behind the MoonCode contract",
     ],
   }

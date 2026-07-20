@@ -58,7 +58,7 @@ fn mooncode_capabilities_payload() -> Json {
     "quality_trial_contract": "mooncode.quality-trial.v1",
     "quality_trial_policy": "run_eval requires nearest-module inventory, reviewed domain assumptions, native check and tests, declared positive and negative cases, exact exit codes, package proof, review receipt, and no unsupported claims. A diagnosed gap revises a general input; the third or repeated identical diagnosis opens a Bookkeeper execution gap instead of looping.",
     "eval_proof": "runtime-turn handles run_eval commands by running MoonClaw's native MoonCode tool/file-edit harnesses, writing wiki/reviews/mooncode/<session-id>/eval-report.json in the selected MoonBook, and emitting eval_report.manifest evidence with tool_harness and file_edit results.",
-    "commit_proof": "runtime-turn handles commit commands by running git inside the selected MoonBook root, excluding MoonClaw/MoonTown runtime sidecars from status and staging, and emitting runtime.commit_created with the resulting commit SHA only after git commit and rev-parse HEAD succeed.",
+    "commit_proof": "runtime-turn handles commit commands by running git inside the selected MoonBook root, excluding runtime-owned sidecars from status and staging, and emitting runtime.commit_created with the resulting commit SHA only after git commit and rev-parse HEAD succeed.",
     "ordering_rule": "Every durable session mutation receives one contiguous sequence while journal.jsonl is exclusively locked. Prompt, steer, cancel, claims, events, and proof results are replayed from that single append order; duplicate record identities are idempotent and only a torn final line may be repaired.",
   }
 }

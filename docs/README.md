@@ -38,6 +38,8 @@ health/usage, and MoonLib defines shared paths.
    operator and job behavior.
 9. [evidence_quality.md](evidence_quality.md): dossier policy, local retrieval
    artifacts, and fail-closed workspace containment.
+10. [RESPONSIBILITY_AND_TESTABILITY.md](RESPONSIBILITY_AND_TESTABILITY.md):
+    product-neutral runtime ownership, pack boundaries, and focused tests.
 
 ## Implementation Guidance
 

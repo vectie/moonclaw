@@ -105,6 +105,73 @@ fn non_empty_field(fields : Map[String, Json], key : String) -> Bool {
 }
 
 ///|
+fn request_bool_field(fields : Map[String, Json], key : String) -> Bool {
+  fields.get(key) == Some(Json::boolean(true))
+}
+
+///|
+fn request_string_array(
+  fields : Map[String, Json],
+  key : String,
+) -> Array[String] {
+  match fields.get(key) {
+    Some(Array(values)) =>
+      values.filter_map(value => {
+        match value {
+          String(text) if !text.trim().is_empty() => Some(text)
+          _ => None
+        }
+      })
+    _ => []
+  }
+}
+
+///|
+fn contract_policy(fields : Map[String, Json]) -> Map[String, Json]? {
+  match fields.get("contract_policy") {
+    Some(Object(policy)) => Some(policy)
+    _ => None
+  }
+}
+
+///|
+fn request_responsibility_issues(request : Json) -> Array[String] {
+  let fields = object(request, "flow request") catch {
+    _ => return ["flow request must be an object"]
+  }
+  let product_id = match fields.get("product_id") {
+    Some(String(value)) if !value.trim().is_empty() => value
+    _ => return ["flow request requires product_id"]
+  }
+  if product_id == "moonclaw" {
+    return []
+  }
+  match contract_policy(fields) {
+    Some(policy) =>
+      if policy.get("owner_product") == Some(Json::string(product_id)) {
+        []
+      } else {
+        ["external contract_policy.owner_product must equal product_id"]
+      }
+    None =>
+      if request_bool_field(fields, "legacy_product_contract_compatibility") &&
+        fields.get("contract_policy_owner") == Some(Json::string(product_id)) {
+        []
+      } else {
+        [
+          "external product work requires pack-owned contract_policy; legacy compatibility also requires an explicit matching contract_policy_owner",
+        ]
+      }
+  }
+}
+
+///|
+fn uses_legacy_contract_policy(fields : Map[String, Json]) -> Bool {
+  request_bool_field(fields, "legacy_product_contract_compatibility") &&
+  contract_policy(fields) is None
+}
+
+///|
 fn web_provenance_issues(fields : Map[String, Json]) -> Array[String] {
   let issues : Array[String] = []
   guard fields.get("web_provenance") is Some(Array(events)) else {
@@ -131,8 +198,51 @@ fn web_provenance_issues(fields : Map[String, Json]) -> Array[String] {
 }
 
 ///|
+fn declared_tool_provenance_issues(
+  request_fields : Map[String, Json],
+  draft_fields : Map[String, Json],
+) -> Array[String] {
+  let required = match contract_policy(request_fields) {
+    Some(policy) => request_string_array(policy, "required_tool_provenance")
+    None => []
+  }
+  if required.is_empty() {
+    return []
+  }
+  let events = match draft_fields.get("tool_provenance") {
+    Some(Array(values)) => values
+    _ => return ["pack-owned contract policy requires tool_provenance"]
+  }
+  let succeeded : Array[String] = []
+  for event in events {
+    guard event is Object(entry) else { continue }
+    if entry.get("succeeded") == Some(Json::boolean(true)) {
+      match entry.get("tool") {
+        Some(String(tool)) if !succeeded.contains(tool) => succeeded.push(tool)
+        _ => ()
+      }
+    }
+  }
+  required.filter_map(tool => {
+    if succeeded.contains(tool) {
+      None
+    } else {
+      Some("required governed tool did not succeed: {tool}")
+    }
+  })
+}
+
+///|
 fn contract_guidance(request : Json) -> String {
   let fields = object(request, "flow request") catch { _ => return "" }
+  match contract_policy(fields) {
+    Some(policy) =>
+      match policy.get("guidance") {
+        Some(String(value)) if !value.trim().is_empty() => return value
+        _ => ()
+      }
+    None => ()
+  }
   let contract = match fields.get("output_contracts") {
     Some(Array([String(value), ..])) => value
     _ => return ""
@@ -153,13 +263,17 @@ fn contract_guidance(request : Json) -> String {
     "moonclaw.software-result.v1" =>
       "Required product contract: change_summary; implementation is an object whose language field is exactly moonsuite-helper-dsl.v1 and whose functions are objects with name, operation, and exactly two string inputs. Put operation directly on each function (not inside expression); allowed values are add/subtract/multiply/less_or_equal/greater_or_equal/equal/boolean_and/boolean_or. Include non-empty test_vectors and negative_cases with case_id/function/inputs/expected. Each test inputs value must be a JSON object keyed by the selected function's two input names, not a positional array. Set criteria_preserved true and physical_readiness false. Field names are exact: contract_id is not a substitute for implementation.language. The native MoonClaw attestor executes every vector and owns build_checks, test_results, and trial_evidence."
     _ =>
-      "Follow the declared output contract and preserve all evidence boundaries."
+      "Follow the pack-owned declared output contract and preserve all evidence boundaries."
   }
 }
 
 ///|
 fn request_allows_public_web(request : Json) -> Bool {
   let fields = object(request, "flow request") catch { _ => return false }
+  let permissions = request_string_array(fields, "tool_permissions")
+  if permissions.contains("web_search") && permissions.contains("web_fetch") {
+    return fields.get("requested_authority") == Some(Json::string("observe"))
+  }
   let product_id = match fields.get("product_id") {
     Some(String(value)) => value
     _ => return false
@@ -185,6 +299,9 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
       return issues
     }
   }
+  for issue in request_responsibility_issues(request) {
+    issues.push(issue)
+  }
   let fields = object(draft, "draft") catch {
     _ => {
       issues.push("draft is not an object")
@@ -205,52 +322,60 @@ fn draft_quality_issues(request : Json, draft : Json) -> Array[String] {
   if fields.get("contract_id") != Some(Json::string(contract)) {
     issues.push("contract_id must equal the declared output contract")
   }
-  let required = match contract {
-    "moonwiki.evidence-bundle.v1" =>
-      [
-        "sources", "claims", "contradictions", "limitations", "remaining_information_gaps",
-        "query_lineage", "stopping_rationale", "web_provenance",
-      ]
-    "moontown.deliberation.v1" => ["civic_round"]
-    "moonrobo.digital-design.v1" =>
-      [
-        "design_id", "revision", "mission", "task_loop", "mechanisms", "validation",
-        "constraints",
-      ]
-    "moonrobo.validation-evidence.v1" =>
-      ["constraint_results", "negative_cases", "failure_traces"]
-    "moonmoon.scenario-evidence.v1" =>
-      ["simulation_model", "model_limitations", "uncertainty"]
-    "moonbook.outcome-audit.v1" =>
-      [
-        "criterion_decisions", "open_gaps", "residual_risks", "final_claim", "claim_ceiling",
-        "recorded_at",
-      ]
-    "moonclaw.software-result.v1" =>
-      ["change_summary", "implementation", "test_vectors", "negative_cases"]
-    _ => []
+  let required = match contract_policy(request_fields) {
+    Some(policy) => request_string_array(policy, "required_non_empty_fields")
+    None =>
+      match contract {
+        "moonwiki.evidence-bundle.v1" =>
+          [
+            "sources", "claims", "contradictions", "limitations", "remaining_information_gaps",
+            "query_lineage", "stopping_rationale", "web_provenance",
+          ]
+        "moontown.deliberation.v1" => ["civic_round"]
+        "moonrobo.digital-design.v1" =>
+          [
+            "design_id", "revision", "mission", "task_loop", "mechanisms", "validation",
+            "constraints",
+          ]
+        "moonrobo.validation-evidence.v1" =>
+          ["constraint_results", "negative_cases", "failure_traces"]
+        "moonmoon.scenario-evidence.v1" =>
+          ["simulation_model", "model_limitations", "uncertainty"]
+        "moonbook.outcome-audit.v1" =>
+          [
+            "criterion_decisions", "open_gaps", "residual_risks", "final_claim",
+            "claim_ceiling", "recorded_at",
+          ]
+        "moonclaw.software-result.v1" =>
+          ["change_summary", "implementation", "test_vectors", "negative_cases"]
+        _ => []
+      }
   }
   for key in required {
     if !non_empty_field(fields, key) {
       issues.push("required field is missing or empty: \{key}")
     }
   }
-  if contract == "moonwiki.evidence-bundle.v1" {
+  for issue in declared_tool_provenance_issues(request_fields, fields) {
+    issues.push(issue)
+  }
+  let legacy_policy = uses_legacy_contract_policy(request_fields)
+  if legacy_policy && contract == "moonwiki.evidence-bundle.v1" {
     for issue in web_provenance_issues(fields) {
       issues.push(issue)
     }
   }
-  if contract == "moontown.deliberation.v1" {
+  if legacy_policy && contract == "moontown.deliberation.v1" {
     for issue in moontown_round_issues(fields) {
       issues.push(issue)
     }
   }
-  if contract == "moonrobo.digital-design.v1" {
+  if legacy_policy && contract == "moonrobo.digital-design.v1" {
     for issue in moonrobo_design_issues(fields) {
       issues.push(issue)
     }
   }
-  if contract == "moonbook.outcome-audit.v1" {
+  if legacy_policy && contract == "moonbook.outcome-audit.v1" {
     for issue in moonbook_audit_issues(request_fields, fields) {
       issues.push(issue)
     }
@@ -1307,6 +1432,13 @@ async fn attest(args : Array[String]) -> Unit {
     "product-owned final artifact",
   )
   let request = read_json(workspace + "/" + request_ref)
+  let responsibility_issues = request_responsibility_issues(request)
+  if !responsibility_issues.is_empty() {
+    fail(
+      "MoonClaw product attestor rejected an unowned contract policy: " +
+      responsibility_issues.join("; "),
+    )
+  }
   let request_fields = object(request, "flow request")
   let result = read_json(workspace + "/" + result_ref)
   let result_fields = object(result, "flow result")
@@ -1419,6 +1551,13 @@ async fn execute(args : Array[String]) -> Unit {
     fail("MoonClaw flow adapter max trials must be between 1 and 10")
   }
   let request = read_json(workspace + "/" + request_ref)
+  let responsibility_issues = request_responsibility_issues(request)
+  if !responsibility_issues.is_empty() {
+    fail(
+      "MoonClaw flow adapter rejected an unowned contract policy before execution: " +
+      responsibility_issues.join("; "),
+    )
+  }
   let fields = object(request, "flow request")
   let input_artifacts = match fields.get("input_artifacts") {
     Some(Array(values)) =>
@@ -1501,10 +1640,13 @@ async fn execute(args : Array[String]) -> Unit {
         if completed && request_allows_public_web(request) {
           guard draft is Object(draft_fields) else {
             completed = false
-            feedback = ["MoonWiki evidence draft must be an object"]
+            feedback = ["governed web evidence draft must be an object"]
             continue
           }
-          draft_fields["web_provenance"] = web_provenance.to_json()
+          draft_fields["tool_provenance"] = web_provenance.to_json()
+          if uses_legacy_contract_policy(fields) {
+            draft_fields["web_provenance"] = web_provenance.to_json()
+          }
           write_json(capsule_output, draft)
         }
         let issues = draft_quality_issues(request, draft)

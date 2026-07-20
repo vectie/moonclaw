@@ -94,6 +94,13 @@ test "flow adapter gives contract guidance and rejects incomplete drafts" {
   let request : Json = {
     "product_id": "moonmoon",
     "output_contracts": ["moonmoon.scenario-evidence.v1"],
+    "contract_policy": {
+      "owner_product": "moonmoon",
+      "guidance": "Require nominal and adverse cases with global initial_energy_wh.",
+      "required_non_empty_fields": [
+        "simulation_model", "model_limitations", "uncertainty",
+      ],
+    },
   }
   assert_true(contract_guidance(request).contains("nominal and adverse"))
   assert_true(contract_guidance(request).contains("global initial_energy_wh"))
@@ -110,6 +117,43 @@ test "flow adapter gives contract guidance and rejects incomplete drafts" {
   )
   assert_true(
     issues.contains("required field is missing or empty: uncertainty"),
+  )
+}
+
+///|
+test "external flow work requires pack-owned policy while MoonClaw owns itself" {
+  assert_true(
+    request_responsibility_issues({
+      "product_id": "moonclaw",
+      "output_contracts": ["moonclaw.software-result.v1"],
+    }).is_empty(),
+  )
+  let unowned : Json = {
+    "product_id": "sample-pack",
+    "output_contracts": ["sample.output.v1"],
+  }
+  assert_true(
+    request_responsibility_issues(unowned).any(issue => {
+      issue.contains("pack-owned contract_policy")
+    }),
+  )
+  let owned : Json = {
+    "product_id": "sample-pack",
+    "output_contracts": ["sample.output.v1"],
+    "contract_policy": {
+      "owner_product": "sample-pack",
+      "required_non_empty_fields": ["evidence"],
+      "required_tool_provenance": ["web_fetch"],
+    },
+  }
+  assert_true(request_responsibility_issues(owned).is_empty())
+  let issues = draft_quality_issues(owned, {
+    "contract_id": "sample.output.v1",
+    "product_id": "sample-pack",
+    "evidence": ["bounded"],
+  })
+  assert_true(
+    issues.contains("pack-owned contract policy requires tool_provenance"),
   )
 }
 
@@ -134,6 +178,8 @@ test "MoonBook audit preflight requires exact metacognitive gap kinds" {
   let request : Json = {
     "product_id": "moonbook",
     "output_contracts": ["moonbook.outcome-audit.v1"],
+    "legacy_product_contract_compatibility": true,
+    "contract_policy_owner": "moonbook",
     "acceptance_criteria": ["preserve the claim ceiling"],
   }
   let draft : Json = {
@@ -183,6 +229,8 @@ test "flow adapter exposes MoonTown emergence boundary without seeding a solutio
   let request : Json = {
     "product_id": "moontown",
     "output_contracts": ["moontown.deliberation.v1"],
+    "legacy_product_contract_compatibility": true,
+    "contract_policy_owner": "moontown",
   }
   let guidance = contract_guidance(request)
   assert_true(guidance.contains("uncommissioned contribution"))
@@ -255,11 +303,12 @@ test "MoonClaw software contract requires negative evidence and preserved criter
 }
 
 ///|
-test "public web tools are scoped to observe-only MoonWiki evidence work" {
+test "public web tools require an explicit observe-only permission declaration" {
   let research : Json = {
     "product_id": "moonwiki",
     "requested_authority": "observe",
     "output_contracts": ["moonwiki.evidence-bundle.v1"],
+    "tool_permissions": ["web_search", "web_fetch"],
   }
   assert_true(request_allows_public_web(research))
   guard research is Object(fields) else { fail("expected request object") }
@@ -267,7 +316,7 @@ test "public web tools are scoped to observe-only MoonWiki evidence work" {
   assert_false(request_allows_public_web(research))
   fields["requested_authority"] = "observe"
   fields["product_id"] = "moonrobo"
-  assert_false(request_allows_public_web(research))
+  assert_true(request_allows_public_web(research))
 }
 
 ///|
@@ -303,6 +352,8 @@ test "MoonRobo design reports numeric revision before native attestation" {
   let request : Json = {
     "product_id": "moonrobo",
     "output_contracts": ["moonrobo.digital-design.v1"],
+    "legacy_product_contract_compatibility": true,
+    "contract_policy_owner": "moonrobo",
   }
   let draft : Json = {
     "contract_id": "moonrobo.digital-design.v1",

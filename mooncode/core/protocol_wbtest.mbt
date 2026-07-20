@@ -1191,7 +1191,7 @@ test "mooncode core names standalone package boundaries" {
   assert_true(
     payload.contains("\"projection_component\":\"mooncode.projection\""),
   )
-  assert_true(payload.contains("\"host_component\":\"moonwiki.host\""))
+  assert_true(payload.contains("\"host_component\":\"book.host\""))
   assert_true(
     payload.contains("\"runtime_component\":\"moonclaw.standalone-runtime\""),
   )
@@ -1199,11 +1199,11 @@ test "mooncode core names standalone package boundaries" {
     payload.contains("\"runtime_substrate\":\"moonclaw.shared-runtime\""),
   )
   assert_true(payload.contains("\"id\":\"mooncode-coding-lane\""))
-  assert_true(payload.contains("\"id\":\"moonwiki-book-lane\""))
+  assert_true(payload.contains("\"id\":\"book-workflow-lane\""))
   assert_true(payload.contains("\"id\":\"moonclaw-task-lane\""))
   assert_true(payload.contains("\"id\":\"mooncode-core\""))
   assert_true(payload.contains("\"id\":\"mooncode-projection\""))
-  assert_true(payload.contains("\"id\":\"moonwiki-host\""))
+  assert_true(payload.contains("\"id\":\"book-host\""))
   assert_true(payload.contains("\"id\":\"moonclaw-standalone-runtime\""))
   assert_true(payload.contains("shared runtime substrate"))
   assert_true(
@@ -1212,7 +1212,7 @@ test "mooncode core names standalone package boundaries" {
     ),
   )
   assert_true(
-    payload.contains("MoonCode, MoonWiki, and generic tasks share MoonClaw"),
+    payload.contains("MoonCode, book workflows, and generic tasks share MoonClaw"),
   )
   assert_true(
     payload.contains("mooncode/core must contain only stable protocol"),
