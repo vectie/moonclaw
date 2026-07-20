@@ -132,8 +132,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
   } else {
     mooncode_runtime_turn_pending_deferred_steering(existing_events)
   }
-  let command = mooncode_runtime_turn_command_with_deferred_steering(
+  let steered_command = mooncode_runtime_turn_command_with_deferred_steering(
     raw_command, deferred_steering,
+  )
+  let command = mooncode_runtime_turn_attach_active_capability(
+    book_root, session_id, steered_command,
   )
   let control_state = self.mooncode_runtime_control_payload(
     session_id, book_root,
@@ -831,6 +834,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
     "book_root": book_root,
     "ran": true,
     "command_id": command_id,
+    "capability_resolution": mooncode_json_object_field_or_empty(
+      command, "active_capability",
+    ),
     "claim_receipts": Json::array(compact_claim_receipts),
     "turn_receipt": if waiting_approval {
       null

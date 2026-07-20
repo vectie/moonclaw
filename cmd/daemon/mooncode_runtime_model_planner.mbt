@@ -7,7 +7,8 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   // Validate the exact selector before considering explicit calls, planner
   // policy, deterministic plans, or loader defaults.
   let requested_model_name = mooncode_runtime_turn_requested_model(command)
-  let requested_model = match mooncode_runtime_model_selector(requested_model_name) {
+  let requested_model = match
+    mooncode_runtime_model_selector(requested_model_name) {
     Some(selector) => selector
     None =>
       return mooncode_runtime_turn_failed_planner_result(
@@ -15,11 +16,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         requested_model_name,
         "MoonCode requires the exact model codex/gpt-5.6-sol",
         mooncode_event(
-          session_id=mooncode_json_string(
-            command,
-            "session_id",
-            default="",
-          ),
+          session_id=mooncode_json_string(command, "session_id", default=""),
           command_id=mooncode_command_id(command),
           lane="runtime",
           kind="runtime.planner_started",
@@ -377,7 +374,7 @@ fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use write/edit/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. For an implementation request, spend at most two tool calls inspecting before making the first write/edit; prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. Respect explicit user constraints as hard boundaries. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use write/edit/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. For an implementation request, spend at most two tool calls inspecting before making the first write/edit; prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
   ]
@@ -399,11 +396,25 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   } else {
     "\nDeferred steering: " + Json::array(deferred).stringify()
   }
+  let active_capability = mooncode_json_object_field_or_empty(
+    command, "active_capability",
+  )
+  let capability_context = if mooncode_json_string(
+      active_capability,
+      "scope_id",
+      default="",
+    ) ==
+    "" {
+    ""
+  } else {
+    "\nGoverned active capability resolution: " + active_capability.stringify()
+  }
   "Action: \{action}\n" +
   "User request: \{request}\n" +
   context +
   "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
   steering +
+  capability_context +
   mooncode_runtime_turn_language_grounding(command) +
   "\n\nChoose the smallest useful tool batch. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
 }
