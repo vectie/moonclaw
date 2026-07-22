@@ -103,8 +103,8 @@ async test "MoonCode rejects missing and stale models before explicit tools can 
       "session_id": session_id,
       "book_root": book_root,
       "command": "prompt",
-      "model": "codex/gpt-5.4",
-      "text": "Stale model must not run explicit tools",
+      "model": "moongate/not-configured",
+      "text": "Unavailable provider model must not run explicit tools",
       "packet": { "command_id": "cmd-model-stale" },
       "runtime_tool_calls": [
         {
@@ -132,7 +132,9 @@ async test "MoonCode rejects missing and stale models before explicit tools can 
   let binding = daemon.mooncode_binding_for_session(session_id)
   assert_eq(binding.command_count, 0)
   assert_eq(binding.model, "")
-  assert_false(@fsx.exists(mooncode_session_journal_path(book_root, session_id)))
+  assert_false(
+    @fsx.exists(mooncode_session_journal_path(book_root, session_id)),
+  )
   assert_false(@fsx.exists(@pathx.join(book_root, "missing-model.txt")))
   assert_false(@fsx.exists(@pathx.join(book_root, "stale-model.txt")))
 }
@@ -195,7 +197,7 @@ async test "mooncode command persists durable native queue entry without task" (
 }
 
 ///|
-async test "MoonCode persists and reloads the canonical exact model selector" (
+async test "MoonCode persists and reloads the provider model selector" (
   t : @test.Test,
 ) {
   ignore(t)
@@ -233,8 +235,11 @@ async test "MoonCode persists and reloads the canonical exact model selector" (
         "book_root": book_root,
         "command": "prompt",
         "text": "Inspect the project structure",
-        "model": "gpt-5.6-sol",
-        "payload": { "model": "gpt-5.6-sol", "planner_model": "gpt-5.6-sol" },
+        "model": "codex/gpt-5.6-sol",
+        "payload": {
+          "model": "codex/gpt-5.6-sol",
+          "planner_model": "codex/gpt-5.6-sol",
+        },
         "packet": { "command_id": "cmd-model-persist" },
       },
       queue_source="test-model-persist",
@@ -274,11 +279,7 @@ async test "MoonCode persists and reloads the canonical exact model selector" (
   ]
   for follow_up in follow_ups {
     let action = mooncode_json_string(follow_up, "action", default="")
-    let command_id = mooncode_json_string(
-      follow_up,
-      "command_id",
-      default="",
-    )
+    let command_id = mooncode_json_string(follow_up, "command_id", default="")
     ignore(
       daemon.mooncode_queue_command_response(
         session_id~,
@@ -348,10 +349,7 @@ async test "MoonCode persists and reloads the canonical exact model selector" (
   assert_eq(restarted_commands.length(), 5)
   assert_eq(
     mooncode_runtime_turn_requested_model(
-      mooncode_json_object_field_or_empty(
-        restarted_commands[4],
-        "command",
-      ),
+      mooncode_json_object_field_or_empty(restarted_commands[4], "command"),
     ),
     "codex/gpt-5.6-sol",
   )

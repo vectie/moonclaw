@@ -682,10 +682,10 @@ test "mooncode user prompts require model planning instead of canned artifacts" 
 
 ///|
 test "mooncode exact model adversarial prompts bypass deterministic preplanning" {
-  for text in [
-    "Read README.md.",
-    "Create tools/stray.txt with exactly STRAY, then write the result.",
-  ] {
+  for
+    text in [
+      "Read README.md.", "Create tools/stray.txt with exactly STRAY, then write the result.",
+    ] {
     let command : Json = {
       "session_id": "session-exact-boundary",
       "book_root": "/tmp/book",
@@ -718,11 +718,10 @@ test "mooncode failed planner cannot become a successful fallback" {
     detail="started",
     now=@clock.Timestamp::from_ms(1L),
   )
-  for message in [
-    "model unavailable",
-    "model planner failed: ConnectionClosed",
-    "model planner returned no usable MoonCode tool calls",
-  ] {
+  for
+    message in [
+      "model unavailable", "model planner failed: ConnectionClosed", "model planner returned no usable MoonCode tool calls",
+    ] {
     let result = mooncode_runtime_turn_failed_planner_result(
       command,
       "codex/gpt-5.6-sol",
@@ -1105,6 +1104,42 @@ test "mooncode model execution requires finish and explicit recovery" {
     ]),
   )
   assert_false(mooncode_runtime_turn_model_execution_accepted(coding, [finish]))
+}
+
+///|
+test "mooncode model execution does not mistake Codex for code intent" {
+  let reply_only : Json = {
+    "command": "prompt",
+    "text": "Reply exactly MOONDESK_CODEX_OK. Do not change any files.",
+  }
+  let finish : Json = { "tool": "finish", "accepted": true }
+  assert_false(
+    mooncode_runtime_turn_model_needs_coding_tools(
+      reply_only,
+      mooncode_runtime_turn_prompt_text(reply_only).to_lower().to_string(),
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_model_execution_accepted(reply_only, [finish]),
+  )
+}
+
+///|
+test "mooncode model execution does not mistake reply text for test intent" {
+  let reply_only : Json = {
+    "command": "prompt",
+    "text": "Reply with exactly: MoonDesk UI test passed.",
+  }
+  let finish : Json = { "tool": "finish", "accepted": true }
+  assert_false(
+    mooncode_runtime_turn_model_needs_coding_tools(
+      reply_only,
+      mooncode_runtime_turn_prompt_text(reply_only).to_lower().to_string(),
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_model_execution_accepted(reply_only, [finish]),
+  )
 }
 
 ///|

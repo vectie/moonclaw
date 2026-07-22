@@ -4,8 +4,8 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   command : Json,
   now~ : @clock.Timestamp,
 ) -> Json {
-  // Validate the exact selector before considering explicit calls, planner
-  // policy, deterministic plans, or loader defaults.
+  // Treat the provider catalog selector as opaque. Availability is checked
+  // against the loader after explicit calls and planner policy are considered.
   let requested_model_name = mooncode_runtime_turn_requested_model(command)
   let requested_model = match
     mooncode_runtime_model_selector(requested_model_name) {
@@ -14,7 +14,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       return mooncode_runtime_turn_failed_planner_result(
         command,
         requested_model_name,
-        "MoonCode requires the exact model codex/gpt-5.6-sol",
+        "MoonCode requires a model selected from the provider catalog",
         mooncode_event(
           session_id=mooncode_json_string(command, "session_id", default=""),
           command_id=mooncode_command_id(command),
@@ -22,7 +22,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
           kind="runtime.planner_started",
           title="MoonCode model planner rejected model",
           status="failed",
-          detail="MoonCode requires the exact model codex/gpt-5.6-sol",
+          detail="MoonCode requires a model selected from the provider catalog",
           now~,
         ),
         now~,
@@ -304,12 +304,40 @@ fn mooncode_runtime_turn_model_needs_coding_tools(
   request.contains("write ") ||
   request.contains("create ") ||
   request.contains("build ") ||
-  request.contains("test ") ||
-  request.contains("code") ||
+  mooncode_runtime_turn_requests_tests(request) ||
+  mooncode_runtime_turn_request_has_word(request, "code") ||
   request.contains("script") ||
   request.contains("tool") ||
   request.contains("app") ||
   request.contains("site")
+}
+
+///|
+fn mooncode_runtime_turn_requests_tests(request : String) -> Bool {
+  request.has_prefix("test ") ||
+  request.has_prefix("please test ") ||
+  request.contains(" run test") ||
+  request.contains(" run the test") ||
+  request.contains(" write test") ||
+  request.contains(" add test") ||
+  request.contains(" update test") ||
+  request.contains(" fix test") ||
+  request.contains(" test the ") ||
+  request.contains(" test this ")
+}
+
+///|
+fn mooncode_runtime_turn_request_has_word(
+  request : String,
+  word : String,
+) -> Bool {
+  for raw in request.split(" ") {
+    let token = raw.trim(chars="`'\".,:;!?()[]{}<>").to_owned()
+    if token == word {
+      return true
+    }
+  }
+  false
 }
 
 ///|

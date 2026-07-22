@@ -410,10 +410,11 @@ async fn Loader::load_first_provider_model(self : Loader) -> Model? {
       logger.info(
         "Auto-detected model '\{model_config.id}' from provider '\{provider_name}'",
       )
+      let qualified_name = "\{provider_name}/\{model_config.id}"
       let model = Model::new(
         api_key~,
         base_url~,
-        name=model_config.id,
+        name=qualified_name,
         model_name=model_config.id,
         model_type~,
         safe_zone_tokens~,

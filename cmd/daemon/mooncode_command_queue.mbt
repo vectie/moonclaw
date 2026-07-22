@@ -67,11 +67,22 @@ async fn Daemon::mooncode_queue_command_response(
   binding.restore_session_metadata()
   let body = mooncode_command_with_session_model(body, binding.model)
   let requested_model = mooncode_runtime_turn_requested_model(body)
-  if mooncode_runtime_model_selector(requested_model) is None {
+  let selector = match mooncode_runtime_model_selector(requested_model) {
+    Some(selector) => selector
+    None =>
+      raise json_error(400, "Bad Request", {
+        "error": {
+          "code": -1,
+          "message": "MoonCode requires a model selected from the provider catalog",
+          "metadata": { "requested_model": requested_model },
+        },
+      })
+  }
+  if self.models.get_model(name=selector) is None {
     raise json_error(400, "Bad Request", {
       "error": {
         "code": -1,
-        "message": "MoonCode requires the exact model codex/gpt-5.6-sol",
+        "message": "MoonCode model is not available",
         "metadata": { "requested_model": requested_model },
       },
     })

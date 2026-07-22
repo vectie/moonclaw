@@ -169,6 +169,8 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
       .add_directory("moonclaw")
       .add_file("moonclaw.json", content=config.stringify(indent=2))
     let loader = Loader::new(home=home.path(), cwd=project.path())
+    let default_model = loader.get_model().unwrap()
+    assert_eq(default_model.selector(), "bailian/qwen3.5-plus")
     json_inspect(mock.json(loader.get_model(name="bailian/qwen3.5-plus")), content=[
       {
         "name": "bailian/qwen3.5-plus",
