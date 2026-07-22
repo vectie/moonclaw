@@ -367,6 +367,21 @@ If `/ui` says the Rabbita bundle is missing, build it from the repo:
 The gateway serves the bundle at `/ui` and also serves the built `/assets/...`
 files that the bundle references.
 
+### Desktop release assets
+
+MoonDesk installs MoonClaw from the canonical GitHub Release manifest. Build
+the native asset, SHA-256 checksum, and manifest for the current platform with:
+
+```bash
+./scripts/package-release.sh dist
+```
+
+For a tagged release such as `v0.1.2`, upload the generated versioned archive,
+`checksums.txt`, and `release-manifest.json` to the matching GitHub Release.
+The manifest asset URL defaults to
+`https://github.com/vectie/moonclaw/releases/download/v<version>` and can be
+overridden with `MOONCLAW_RELEASE_BASE_URL` for local installer testing.
+
 ## 🧭 Onboarding Flow
 
 Useful onboarding commands:
