@@ -6,6 +6,8 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 out_dir=${1:-"$repo_root/dist"}
 version=${MOONCLAW_RELEASE_VERSION:-$(sed -n 's/^version = "\([^"]*\)"/\1/p' "$repo_root/moon.mod" | head -n 1)}
 release_base_url=${MOONCLAW_RELEASE_BASE_URL:-"https://github.com/vectie/moonclaw/releases/download/v$version"}
+MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-11.0}
+export MACOSX_DEPLOYMENT_TARGET
 system_name=$(uname -s)
 machine_name=$(uname -m)
 
