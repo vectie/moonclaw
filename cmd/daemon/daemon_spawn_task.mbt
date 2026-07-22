@@ -48,7 +48,7 @@ async fn Daemon::spawn_task(
     "--register-id",
     id.to_string(),
     "--register-host",
-    "localhost",
+    "127.0.0.1",
     "--register-port",
     self.port.to_string(),
   ])

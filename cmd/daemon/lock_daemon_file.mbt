@@ -108,7 +108,7 @@ pub async fn lock_daemon_file(home~ : StringView) -> @fs.File? {
 async fn request_shutdown(pid : Int, port : Int) -> Bool {
   try {
     let (r, _) = @async.with_timeout(10_000, () => {
-      @httpx.post_json("http://localhost:\{port}/v1/shutdown", Json::object({}))
+      @httpx.post_json("http://127.0.0.1:\{port}/v1/shutdown", Json::object({}))
     })
     return r.code is (200..=299)
   } catch {

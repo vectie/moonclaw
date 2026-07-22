@@ -93,7 +93,7 @@ async fn Daemon::forward_to_task(
     }
   }
   let path = paths.join("/")
-  let c = @http.Client::new("http://localhost:\{task.port}")
+  let c = @http.Client::new("http://127.0.0.1:\{task.port}")
   c.request(method_.to_http(), "/v1/\{path}")
   c.write_reader(r.body)
   let r = c.end_request()

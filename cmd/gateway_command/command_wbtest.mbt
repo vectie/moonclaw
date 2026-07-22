@@ -24,7 +24,7 @@ async test "gateway cli defaults use configured url token workspace and model" {
       } : Json).stringify(),
   )
   let defaults = gateway_cli_defaults(["health", "--home", home, "--cwd", cwd])
-  inspect(defaults.url, content="http://localhost:19090")
+  inspect(defaults.url, content="http://127.0.0.1:19090")
   inspect(defaults.token.unwrap_or(""), content="secret-token")
   inspect(defaults.cwd.unwrap_or(""), content="/tmp/configured-cwd")
   inspect(defaults.primary_model.unwrap_or(""), content="codex/gpt-5.6-sol")

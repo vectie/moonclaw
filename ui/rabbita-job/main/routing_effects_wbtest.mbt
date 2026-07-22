@@ -19,7 +19,7 @@ test "parse_acp_stream_drain_payload accepts structured error payloads" {
 test "display_error hides Rabbita request implementation detail" {
   inspect(
     display_error("moonbit-community/rabbita/http.RequestError.RequestError"),
-    content="Unable to reach the MoonClaw gateway. Start it at http://localhost:18123 and reload.",
+    content="Unable to reach the MoonClaw gateway. Start it at http://127.0.0.1:18123 and reload.",
   )
 }
 
@@ -43,7 +43,7 @@ test "parse_acp_stream_drain_payload still parses normal entries" {
 ///|
 test "route_from_url parses cowork route and panel query" {
   let url = @url.parse(
-    "http://localhost:18123/ui#/cowork?session=session-1&panel=run",
+    "http://127.0.0.1:18123/ui#/cowork?session=session-1&panel=run",
   )
   inspect(route_from_url(url) is Cowork, content="true")
 }

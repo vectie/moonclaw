@@ -18,7 +18,7 @@ pub async fn Gateway::new(
     Some(uuid) => uuid
     None => @uuid.generator(@rand.chacha8())
   }
-  let httpx_server = @httpx.Server::new("[::1]", port, reuse_addr=true)
+  let httpx_server = @httpx.Server::new("127.0.0.1", port, reuse_addr=true)
   let actual_port = httpx_server.port()
   let gateway_dir = @path.Path(@job.moonclaw_product_home(home))
     .join(Path("gateway"))
@@ -173,7 +173,7 @@ pub fn Gateway::register_extension(
   extension : &@channel.ChannelExtension,
 ) -> Unit raise {
   let context = @channel.ExtensionContext::new(
-    gateway_url="http://localhost:\{self.port}",
+    gateway_url="http://127.0.0.1:\{self.port}",
     gateway_token=self.auth.token,
     home_dir=self.home,
     cwd=self.cwd,
@@ -236,7 +236,7 @@ fn generate_token(uuid~ : @uuid.Generator) -> String raise {
 pub async fn Gateway::start(self : Gateway) -> Unit {
   self.started_at = current_time_ms()
   self.logger.info("Gateway server starting on port \{self.port}")
-  self.logger.info("Visit http://localhost:\{self.port}/")
+  self.logger.info("Visit http://127.0.0.1:\{self.port}/")
   if self.auth.token is Some(_) {
     self.logger.info("Auth token configured")
   }

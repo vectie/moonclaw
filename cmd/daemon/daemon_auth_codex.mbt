@@ -126,7 +126,11 @@ async fn Daemon::spawn_codex_callback_server(self : Daemon) -> Unit {
   })
 
   // Start temporary server on the registered callback port
-  let server = @httpx.Server::new("[::1]", CODEX_CALLBACK_PORT, reuse_addr=true)
+  let server = @httpx.Server::new(
+    "127.0.0.1",
+    CODEX_CALLBACK_PORT,
+    reuse_addr=true,
+  )
   println(
     "[DEBUG] Started OAuth callback server on port \{CODEX_CALLBACK_PORT}",
   )

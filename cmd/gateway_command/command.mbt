@@ -73,7 +73,7 @@ fn print_help() -> Unit {
   println("")
   println("Connect options:")
   println(
-    "  --url <url>        Gateway URL (default: config port or http://localhost:18123)",
+    "  --url <url>        Gateway URL (default: config port or http://127.0.0.1:18123)",
   )
   println("  --token <token>    Auth token (default: config token)")
   println("  --home <dir>       Home directory for config discovery")
@@ -81,7 +81,7 @@ fn print_help() -> Unit {
   println("")
   println("Agent options:")
   println(
-    "  --url <url>        Gateway URL (default: config port or http://localhost:18123)",
+    "  --url <url>        Gateway URL (default: config port or http://127.0.0.1:18123)",
   )
   println("  --token <token>    Auth token (default: config token)")
   println("  --message <msg>    Message to send (required)")
@@ -736,7 +736,7 @@ async fn gateway_cli_defaults(args : Array[String]) -> GatewayCliDefaults {
   let url = match parse_string_arg(args, "--url") {
     Some(url) => url
     None =>
-      "http://localhost:\{configured_gateway_port(config).unwrap_or(@protocol.DEFAULT_PORT)}"
+      "http://127.0.0.1:\{configured_gateway_port(config).unwrap_or(@protocol.DEFAULT_PORT)}"
   }
   let token = match parse_string_arg(args, "--token") {
     Some(token) => Some(token)

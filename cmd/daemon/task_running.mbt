@@ -215,7 +215,7 @@ async fn Running::create_message(
   request : @server.CreateMessageRequest,
 ) -> @server.CreateMessageResponse {
   let (r, b) = @httpx.post_json(
-    "http://localhost:\{self.port}/v1/message",
+    "http://127.0.0.1:\{self.port}/v1/message",
     request.to_json(),
   )
   guard r.code is (200..=299) else {

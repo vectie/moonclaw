@@ -83,7 +83,7 @@ pub async fn Daemon::new(
     None
   }
   // Listen on port
-  let httpx_server = @httpx.Server::new("[::1]", port, reuse_addr=true)
+  let httpx_server = @httpx.Server::new("127.0.0.1", port, reuse_addr=true)
   let port = httpx_server.port()
   if info_file is Some(info_file) {
     @fsx.truncate(info_file, 0)
@@ -96,7 +96,7 @@ pub async fn Daemon::new(
   logger.info(
     "Starting HTTP server on port \{port} (version \{@buildinfo.version})...",
   )
-  logger.info("Visit http://localhost:\{port}/")
+  logger.info("Visit http://127.0.0.1:\{port}/")
   let uuid = match uuid {
     Some(uuid) => uuid
     None => @uuid.generator(@rand.chacha8())

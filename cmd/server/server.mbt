@@ -66,7 +66,7 @@ pub async fn Server::new(
     @moonclaw.Moonclaw::new(name?, model~, cwd?, web_search~)
   }
   moonclaw.agent.add_listener((event : @event.Event) => broadcast.put(event))
-  let http_server = @httpx.Server::new("[::]", port, reuse_addr=true)
+  let http_server = @httpx.Server::new("127.0.0.1", port, reuse_addr=true)
   let port = http_server.port()
   if register is Some(register) {
     register.register(
@@ -81,7 +81,7 @@ pub async fn Server::new(
     logger.warn("No register information provided; skipping registration.")
     let pid = @spawn.getpid()
     logger.info("Listening on port \{port}", data={ "pid": pid })
-    logger.info("Visit http://localhost:\{port}/ to access the server.", data={
+    logger.info("Visit http://127.0.0.1:\{port}/ to access the server.", data={
       "pid": pid,
     })
   }

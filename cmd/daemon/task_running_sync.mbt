@@ -24,7 +24,7 @@ async fn Running::sync(task : Running) -> Unit {
 /// Throws an error if the HTTP request fails or if the response body cannot be
 /// parsed as JSON.
 async fn Running::sync_status(task : Running) -> Unit {
-  let (r, b) = @http.get("http://localhost:\{task.port}/v1/status") catch {
+  let (r, b) = @http.get("http://127.0.0.1:\{task.port}/v1/status") catch {
     error => {
       logger.warn("Failed to sync status from task \{task.id}: \{error}")
       raise error
@@ -67,7 +67,7 @@ async fn Running::sync_status(task : Running) -> Unit {
 /// response format is invalid.
 async fn Running::sync_queued_messages(task : Running) -> Unit {
   task.queued_messages.clear()
-  let (r, b) = @http.get("http://localhost:\{task.port}/v1/queued-messages") catch {
+  let (r, b) = @http.get("http://127.0.0.1:\{task.port}/v1/queued-messages") catch {
     error =>
       raise json_error(500, "Internal Server Error", {
         "error": {

@@ -271,7 +271,7 @@ pub async fn start_oauth_flow_for_workspace_root(
       }
     }
   })
-  let server = @httpx.Server::new("[::1]", CALLBACK_PORT, reuse_addr=true)
+  let server = @httpx.Server::new("127.0.0.1", CALLBACK_PORT, reuse_addr=true)
   @async.with_task_group(group => {
     group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
     @async.with_timeout(300_000, error=OAuthError("Login timeout"), () => {

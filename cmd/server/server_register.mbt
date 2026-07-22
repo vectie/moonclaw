@@ -23,7 +23,7 @@ async fn RegisterInfo::register(
   model~ : String,
 ) -> RegisterResponse {
   logger.info("Listening on port \{port}", data={ "server": register.id })
-  logger.info("Visit http://localhost:\{port}/ to access the server.", data={
+  logger.info("Visit http://127.0.0.1:\{port}/ to access the server.", data={
     "server": register.id,
   })
   let req : RegisterRequest = {

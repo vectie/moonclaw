@@ -381,7 +381,7 @@ fn display_error(error : String) -> String {
   } else if trimmed == "stream_error" {
     "Live updates disconnected. Check that the MoonClaw gateway is running."
   } else if trimmed.contains("RequestError") {
-    "Unable to reach the MoonClaw gateway. Start it at http://localhost:18123 and reload."
+    "Unable to reach the MoonClaw gateway. Start it at http://127.0.0.1:18123 and reload."
   } else {
     trimmed
   }

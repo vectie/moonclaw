@@ -14,7 +14,7 @@ async fn Daemon::listen_for_status_change(
   task : Running,
 ) -> Unit {
   logger.info("Listening for status changes from task \{task.id}...")
-  let (er, eb) = @http.get_stream("http://localhost:\{task.port}/v1/events")
+  let (er, eb) = @http.get_stream("http://127.0.0.1:\{task.port}/v1/events")
   defer eb.close()
   guard er.code is (200..=299) else {
     raise json_error(500, "Internal Server Error", {
