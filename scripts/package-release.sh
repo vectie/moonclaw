@@ -37,6 +37,7 @@ mkdir -p "$out_dir"
 rm -rf "$stage_dir"
 mkdir -p "$stage_dir"
 
+python3 "$repo_root/scripts/buildinfo.py"
 moon -C "$repo_root" build cmd/main --target native --release
 binary_path="$repo_root/_build/native/release/build/vectie/moonclaw/cmd/main/main.exe"
 if [ ! -x "$binary_path" ]; then
