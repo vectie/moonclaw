@@ -152,6 +152,23 @@ async fn mooncode_parse_journal_file(
 }
 
 ///|
+fn mooncode_journal_sequence(record : Json) -> Int raise MoonCodeJournalError {
+  match mooncode_journal_json_field(record, "sequence") {
+    Some(Number(value, ..)) => {
+      if value != value || value < 1.0 || value > 2147483647.0 {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      let sequence = value.to_int()
+      if sequence.to_double() != value {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      sequence
+    }
+    _ => raise InvalidJournal("MoonCode journal record has invalid sequence")
+  }
+}
+
+///|
 fn mooncode_parse_journal_text(
   text : String,
   path : String,
@@ -175,7 +192,7 @@ fn mooncode_parse_journal_text(
         "MoonCode journal record at line \{index + 1} is invalid: \{issues.join("; ")}",
       )
     }
-    let sequence = mooncode_json_int(record, "sequence", default=0)
+    let sequence = mooncode_journal_sequence(record)
     if sequence != expected_sequence {
       raise InvalidJournal(
         "MoonCode journal sequence gap at line \{index + 1}: expected \{expected_sequence}, found \{sequence}",
@@ -223,9 +240,11 @@ fn mooncode_journal_record_count(
 }
 
 ///|
-fn mooncode_journal_last_sequence(records : Array[Json]) -> Int {
+fn mooncode_journal_last_sequence(
+  records : Array[Json],
+) -> Int raise MoonCodeJournalError {
   match records.last() {
-    Some(record) => mooncode_json_int(record, "sequence", default=0)
+    Some(record) => mooncode_journal_sequence(record)
     None => 0
   }
 }

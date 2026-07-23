@@ -33,13 +33,14 @@ fn goal_store_test_requirements() -> Array[@mooncode_core.GoalRequirement] {
 }
 
 ///|
-fn goal_store_test_record(payload : Json) -> Json {
+fn goal_store_test_record(payload : Json) -> Json raise {
   {
     "record_kind": mooncode_journal_goal_event(),
     "record_id": mooncode_journal_goal_event() +
     ":" +
     mooncode_goal_genesis_id(),
     "session_id": "session",
+    "recorded_at": goal_json_int(payload, "recorded_at"),
     "payload": payload,
   }
 }

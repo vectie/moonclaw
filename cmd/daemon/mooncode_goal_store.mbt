@@ -46,8 +46,14 @@ fn mooncode_goal_genesis(
   guard protocol == mooncode_protocol_version() else {
     raise InvalidGoalGenesis("unsupported protocol")
   }
+  mooncode_goal_require_canonical_identity("objective", objective)
+  if created_at < 0 {
+    raise InvalidGoalGenesis("invalid timestamp: must be nonnegative")
+  }
   let budget = { ..budget, tokens_used: 0, turns_used: 0, wall_time_used: 0 }
-  let requirements = requirements.map(fn(r) {
+  let requirements = requirements.map(fn(r) raise {
+    mooncode_goal_require_canonical_identity("requirement id", r.id)
+    mooncode_goal_require_canonical_identity("criterion", r.criterion)
     { ..r, state: @mooncode_core.Unproven, evidence_refs: [] }
   })
   let goal = @mooncode_core.new_goal(
@@ -130,6 +136,27 @@ fn goal_json_object(json : Json, key : String) -> Json raise {
 }
 
 ///|
+fn goal_json_require_exact_keys(
+  json : Json,
+  expected : Array[String],
+  label : String,
+) -> Unit raise {
+  match json {
+    Object(entries) => {
+      guard entries.length() == expected.length() else {
+        raise InvalidGoalGenesis("invalid " + label + " object membership")
+      }
+      for key in expected {
+        guard entries.get(key) is Some(_) else {
+          raise InvalidGoalGenesis("invalid " + label + " object membership")
+        }
+      }
+    }
+    _ => raise InvalidGoalGenesis("invalid " + label + " object")
+  }
+}
+
+///|
 priv struct MoonCodeGoalReplayState {
   genesis : @mooncode_core.Goal
   current : @mooncode_core.Goal
@@ -191,6 +218,10 @@ fn mooncode_replay_goal_records_detailed(
         Ok(event) => event
         Err(_) => raise InvalidGoalGenesis("invalid goal event")
       }
+      if goal_json_int(envelope, "recorded_at") !=
+        @mooncode_core.goal_event_recorded_at(event) {
+        raise InvalidGoalGenesis("goal event recorded_at mismatch")
+      }
       let event_id = @mooncode_core.goal_event_id(event)
       if envelope_record_id != mooncode_journal_goal_event() + ":" + event_id {
         raise InvalidGoalGenesis("invalid goal event identity")
@@ -216,6 +247,14 @@ fn mooncode_replay_goal_records_detailed(
       "envelope_session", envelope_session,
     )
     mooncode_goal_require_canonical_identity("payload_session", payload_session)
+    goal_json_require_exact_keys(
+      payload,
+      [
+        "id", "kind", "protocol", "session_id", "goal_id", "objective", "recorded_at",
+        "timestamp", "budget", "requirements",
+      ],
+      "goal genesis payload",
+    )
     if kind != mooncode_goal_genesis_kind() {
       raise InvalidGoalGenesis("unsupported goal event")
     }
@@ -245,10 +284,24 @@ fn mooncode_replay_goal_records_detailed(
       raise InvalidGoalGenesis("protocol mismatch")
     }
     let timestamp = goal_json_int(payload, "timestamp")
-    if goal_json_int(payload, "recorded_at") != timestamp {
+    if timestamp < 0 {
+      raise InvalidGoalGenesis("timestamp must be nonnegative")
+    }
+    if goal_json_int(payload, "recorded_at") != timestamp ||
+      goal_json_int(envelope, "recorded_at") != timestamp {
       raise InvalidGoalGenesis("recorded_at/timestamp mismatch")
     }
+    let objective = mooncode_json_string(payload, "objective", default="")
+    mooncode_goal_require_canonical_identity("objective", objective)
     let budget_json = goal_json_object(payload, "budget")
+    goal_json_require_exact_keys(
+      budget_json,
+      [
+        "token_limit", "turn_limit", "wall_time_limit", "tokens_used", "turns_used",
+        "wall_time_used",
+      ],
+      "goal genesis budget",
+    )
     let budget : @mooncode_core.GoalBudget = {
       token_limit: goal_json_optional_int(budget_json, "token_limit"),
       turn_limit: goal_json_optional_int(budget_json, "turn_limit"),
@@ -266,6 +319,17 @@ fn mooncode_replay_goal_records_detailed(
     match goal_json_object(payload, "requirements") {
       Array(items) =>
         for item in items {
+          goal_json_require_exact_keys(
+            item,
+            ["id", "criterion", "state", "evidence"],
+            "goal requirement",
+          )
+          let requirement_id = mooncode_json_string(item, "id", default="")
+          let criterion = mooncode_json_string(item, "criterion", default="")
+          mooncode_goal_require_canonical_identity(
+            "requirement id", requirement_id,
+          )
+          mooncode_goal_require_canonical_identity("criterion", criterion)
           if mooncode_json_string(item, "state", default="") != "unproven" {
             raise InvalidGoalGenesis("requirement state")
           }
@@ -274,8 +338,8 @@ fn mooncode_replay_goal_records_detailed(
             _ => raise InvalidGoalGenesis("requirement evidence")
           }
           requirements.push({
-            id: mooncode_json_string(item, "id", default=""),
-            criterion: mooncode_json_string(item, "criterion", default=""),
+            id: requirement_id,
+            criterion,
             state: @mooncode_core.Unproven,
             evidence_refs: [],
           })
@@ -283,12 +347,7 @@ fn mooncode_replay_goal_records_detailed(
       _ => raise InvalidGoalGenesis("requirements must be array")
     }
     let goal = @mooncode_core.new_goal(
-      gid,
-      payload_session,
-      mooncode_json_string(payload, "objective", default=""),
-      timestamp,
-      budget,
-      requirements,
+      gid, payload_session, objective, timestamp, budget, requirements,
     ) catch {
       _ => raise InvalidGoalGenesis("invalid durable goal genesis")
     }
@@ -367,6 +426,7 @@ async fn mooncode_create_goal(
     ":" +
     mooncode_goal_genesis_id(),
     "session_id": session_id,
+    "recorded_at": created_at,
     "payload": genesis,
   }
   guard mooncode_replay_goal_records(

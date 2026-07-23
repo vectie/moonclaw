@@ -6,6 +6,14 @@
 
 Creation is `Active`, and is `Runnable` only when the initial budget is not exactly exhausted; exact exhaustion produces `AwaitingBudget`. Completion requires a nonempty set of requirements, every requirement `Proven`, and nonempty evidence references on every proof. Evaluation stores its completed report and returns an active goal to runnable. Blocker observations use structured `BlockerIdentity` values, not fingerprints. Blocker correlation is scoped by `run_id` plus per-run ordinal: only the expected next ordinal in the current run advances the consecutive count, while stale run IDs or stale/wrong ordinals are exact no-ops. Matching observations block at the configured threshold; progress or `None` resets blocker accumulation. `Resume` starts a fresh run with a new `run_id`, clears the prior blocker, and isolates new observations from the resumed run's predecessor. Budget exhaustion remains active/awaiting-budget. `ContinuationAccepted` increments only continuation count; `TurnFinished` increments only the goal turn and applies blocker state. Duplicate event IDs are exact no-ops, including revision and time. Unknown requirement IDs and blocked/complete absorption are reducer invariants, but this ledger does not claim dedicated tests unless present in the suite.
 
+## 2026-07-24 — P1 replay-hardening checkpoint
+
+This P1 slice hardens replay around strict positive integral journal sequences; exact genesis, budget, and requirement membership; canonical objective and requirement strings; and nonnegative genesis timestamps. Genesis and mutation replay now bind payload timestamps to the physical envelope `recorded_at`. The controller-owned independent native daemon check and test gates pass **210/210 tests (210 passed, 0 failed)**.
+
+Incidents encountered during the slice included an invalid `Map.insert` test helper, missing `raise` signatures, repeated unchanged failing checks until the planner cap, a prohibited `/tmp` shell attempt, false completion at 199/206 with seven failures, inability to create a new file through the edit tool, repeated invalid `moon fmt` targets, and bounded-turn continuations. The fixes were exact continuation anchors, adding `created_at` to the self-validation envelope, appending tests to an existing whitebox file, and controller-owned independent check/test gates.
+
+Atomic compare-and-append remains the next P1 item, followed by the supervisor lease/fence/checkpoint loop.
+
 ## Problem/fix ledger
 
 - **Problem/Fix — MoonBit symlink signature:** A repair wrongly assumed the positional symlink link path was labeled `link_path`; native compiler errors 4085/4080 exposed the actual `target~`-plus-positional signature, and all three calls were restored.
