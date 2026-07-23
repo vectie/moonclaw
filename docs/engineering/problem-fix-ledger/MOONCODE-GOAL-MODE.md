@@ -1,6 +1,6 @@
 # MoonCode goal mode: durable core reducer
 
-**Original pure-core checkpoint:** Pure `mooncode/core` contracts and reducer only; daemon persistence/replay and API integration were intentionally deferred at that checkpoint. Durable daemon genesis/replay is now implemented; HTTP/controller integration remains deferred. Caller-supplied integer timestamps make pure reducer replay deterministic. Event IDs provide idempotency. Requirements carry stable IDs, proof state, and evidence references; approvals remain caller-supplied references only. Public JSON projections are versioned and deliberately exclude approval/evidence details, internal reasoning, and secrets; this slice does not claim integration-level redaction coverage.
+**Original pure-core checkpoint:** Pure `mooncode/core` contracts and reducer only; daemon persistence/replay and API integration were intentionally deferred at that checkpoint. Durable genesis replay and the GET/PUT genesis endpoint are now wired; automatic controller/event replay remain deferred. Caller-supplied integer timestamps make pure reducer replay deterministic. Event IDs provide idempotency. Requirements carry stable IDs, proof state, and evidence references; approvals remain caller-supplied references only. Public JSON projections are versioned and deliberately exclude approval/evidence details, internal reasoning, and secrets; this slice does not claim integration-level redaction coverage.
 
 ## Invariants
 
@@ -14,6 +14,8 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 - **Problem/Fix — double-wrapped sessions root caused false absence:** The `goal_gate_dir` test helper passed `mooncode_sessions_root(root)` into `mooncode_session_dir_by_safe_id`, which applies the sessions-root transformation itself, so fixtures landed in a double-nested store and production falsely returned `GoalSessionAbsentOrMismatch`. Pass book `root` directly while retaining the safe session ID and `archived` label; the invalid-JSON fixture still proves the generic `GoalSessionCorrupt` path.
 
 - **Problem/Fix — independent security/evidence audit:** Dot aliases and snapshot or active-directory symlinks could evade ordinary identity fixtures, while rejection tests did not independently prove filesystem non-mutation. In particular, the sanitizer derives `mooncode_safe_session_id("..") == "_"`, so derived-name checks cannot identify the raw parent-directory token; the production gate now rejects raw `session_id == "." || session_id == ".."` before/alongside its derived safe-component checks. The session gate and its tests are async; rejection coverage captures exact immediate directory entry counts and snapshot bytes, verifies journals remain absent using the production session-root and journal-path helpers, and includes absent-root dot aliases and symlink fixtures.
+
+- **HTTP recovery verification and remaining boundary:** Controller verification passed 192/192 daemon native tests and 3/3 focused HTTP seam tests, with `moon check` reporting 0 errors and formatting/diff checks clean. The route/body seam helpers are not the actual `Daemon::serve`/socket path; real socket and restart end-to-end coverage remains required.
 
 ## Chronological internal-API ledger (`goal-api-ledger-doc-2635`)
 
@@ -125,3 +127,8 @@ The original slice changed and validated only the pure core and its documentatio
 ### Gate audit recovery: direct symlink APIs
 
 A bounded follow-up turn was exhausted searching for `read_link`, which was unnecessary. The recovery uses direct `symlink`, non-following `kind`, `exists`, and immediate directory-entry counts. Combined dangling active-directory and dangling `session.json` evidence now verifies exact `GoalSessionCorrupt`, no journal, absent targets, retained symlink kinds, and no containing-directory mutation.
+
+## HTTP/controller recovery checkpoint
+
+- **Problem/Fix — malformed-JSON assertion:** The focused HTTP test used a brittle Debug/Show snapshot (`Err("invalid_json")`) that rendered as `Err(invalid_json)`. Replace the snapshot with direct equality so the test proves the exact `Err("invalid_json")` contract without depending on display formatting.
+- **Problem/Fix — ledger overwrite and recovery:** A prior ledger write replaced this committed 127-line history with a 19-line file (10 additions and 118 deletions). Restore the complete committed ledger from `HEAD`, then append this recovery checkpoint so all prior engineering history remains intact.

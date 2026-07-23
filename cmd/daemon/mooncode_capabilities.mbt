@@ -32,6 +32,7 @@ fn mooncode_capabilities_payload() -> Json {
     "first_class_events": ["Cancelled", "Failed", "ContextPruned", "Pruned"],
     "command_scoped_web_search": "MoonCode command records persist web_search intent in the session journal so research work does not depend on global defaults.",
     "execution_boundary": "MoonClaw accepts MoonCode command packets into a durable book-local command queue by default; native runtime-turn/runtime-loop execute MoonCode tools and package results without spawning generic tasks.",
+    "goal_endpoint": "Optional GET/PUT /v1/code/sessions/<id>/goal?book_root=<path> creates or reads immutable goal genesis (PUT is idempotent); unsupported methods return 405 with Allow: GET, PUT.",
     "package_result_endpoint": "POST /v1/code/sessions/<id>/package-result?book_root=<path> accepts package_built/package_verified proof packets for MoonBook-owned executable artifacts; native package manifests also promote generated source files under portable/app-tool/mooncode/<session>/sources/<command>/ with hash metadata.",
     "durable_session_store": "\{@moonsuite.product_display_artifact("moonclaw", "mooncode/sessions/<session-id>/session.json")} plus journal.jsonl in the MoonClaw product home derived from the selected book root. The journal is the sole ordered authority for commands, runtime receipts, events, package results, and book results.",
     "executable_book_lifecycle_report": "Session records include executable_book_lifecycle, a MoonClaw-native report over durable sidecars for mooncode-executable-book-lifecycle.v1.",
