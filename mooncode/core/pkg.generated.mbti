@@ -137,6 +137,10 @@ pub fn command_supported_actions() -> Array[String]
 
 pub fn command_turn_actions() -> Array[String]
 
+pub fn compare_goal_checkpoint_sequences(Array[GoalCheckpointSnapshot], Array[GoalCheckpointSnapshot]) -> Array[CheckpointComparisonReport]
+
+pub fn compare_goal_checkpoints(GoalCheckpointSnapshot, GoalCheckpointSnapshot) -> CheckpointComparisonReport
+
 pub fn conversation_contract_id() -> String
 
 pub fn conversation_contract_json() -> Json
@@ -200,6 +204,8 @@ pub fn executable_book_lifecycle_contract_json() -> Json
 pub fn executable_book_lifecycle_steps() -> Array[String]
 
 pub fn goal_budget_exhausted(GoalBudget) -> Bool
+
+pub let goal_checkpoint_contract_version : Int
 
 pub fn goal_evaluation_bundle_json(Goal) -> Json
 
@@ -1012,6 +1018,159 @@ pub(all) struct BlockerIdentity {
   required_change : String
 } derive(Eq, @debug.Debug)
 
+pub(all) enum CheckpointAcceptanceOutcome {
+  Accepted
+  Rejected
+  InsufficientEvidence
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointBlocker {
+  blocker_id : String
+  kind : String
+  evidence_ref : String
+  digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointBudget {
+  token_limit : Int?
+  turn_limit : Int?
+  wall_time_limit : Int?
+  tokens_used : Int
+  turns_used : Int
+  wall_time_used : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CheckpointComparisonOutcome {
+  Exact
+  FunctionallyEquivalent
+  Disagreed
+  InsufficientEvidence
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointComparisonReport {
+  contract_version : Int
+  left_checkpoint_id : String
+  right_checkpoint_id : String
+  agreement_outcome : CheckpointComparisonOutcome
+  outcome : CheckpointComparisonOutcome
+  left_acceptance : CheckpointAcceptanceOutcome
+  right_acceptance : CheckpointAcceptanceOutcome
+  same_basis : Bool
+  deltas : Array[CheckpointDelta]
+  regression : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointDelta {
+  kind : CheckpointDeltaKind
+  subject_id : String
+  left_digest : String
+  right_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CheckpointDeltaKind {
+  StaleBasis
+  MissingRequirement
+  RequirementStateMismatch
+  RequirementEvidenceMissing
+  MissingOutput
+  OutputEvidenceMissing
+  OutputContentMismatch
+  OutputApiMismatch
+  OutputArtifactMismatch
+  MissingVerificationCheck
+  VerificationResultMismatch
+  MissingEvidenceRecord
+  EvidenceSemanticMismatch
+  InvalidIdentifier
+  DuplicateIdentifier
+  InvalidDigest
+  RemainingWorkMismatch
+  BlockerMismatch
+  MissingSequenceSide
+  Regression
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointEvidenceRecord {
+  evidence_id : String
+  role : String
+  spec_digest : String
+  content_digest : String
+  evidence_ref : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointIdentity {
+  checkpoint_id : String
+  comparison_epoch : Int
+  checkpoint_key : String
+  parent_checkpoint_id : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointOutputManifest {
+  output_id : String
+  spec_digest : String
+  content_digest : String
+  api_digest : String
+  artifact_digest : String
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointProducerIdentity {
+  producer_id : String
+  producer_version : String
+  contract_version : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointRemainingWork {
+  work_id : String
+  requirement_id : String
+  description_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointRequirementEvidence {
+  requirement_id : String
+  spec_digest : String
+  state : RequirementState
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointVerificationCheck {
+  check_id : String
+  spec_digest : String
+  passed : Bool
+  result_digest : String
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointVerificationManifest {
+  checks : Array[CheckpointVerificationCheck]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonBasis {
+  version : Int
+  basis_digest : String
+  policy_digest : String
+  comparison_epoch : Int
+  checkpoint_key : String
+  required_requirements : Array[ComparisonRequirementDefinition]
+  required_outputs : Array[ComparisonOutputDefinition]
+  required_checks : Array[ComparisonCheckDefinition]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonCheckDefinition {
+  check_id : String
+  spec_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonOutputDefinition {
+  output_id : String
+  spec_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonRequirementDefinition {
+  requirement_id : String
+  spec_digest : String
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CompletionProof {
   projection : ValidatedProjection
 } derive(Eq, @debug.Debug)
@@ -1084,6 +1243,23 @@ pub(all) struct GoalBudget {
   tokens_used : Int
   turns_used : Int
   wall_time_used : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalCheckpointSnapshot {
+  contract_version : Int
+  producer : CheckpointProducerIdentity
+  identity : CheckpointIdentity
+  basis : ComparisonBasis
+  goal_id : String
+  objective_digest : String
+  base_workspace_digest : String
+  requirements : Array[CheckpointRequirementEvidence]
+  evidence : Array[CheckpointEvidenceRecord]
+  outputs : Array[CheckpointOutputManifest]
+  remaining_work : Array[CheckpointRemainingWork]
+  blockers : Array[CheckpointBlocker]
+  verification : CheckpointVerificationManifest
+  budget : CheckpointBudget
 } derive(Eq, @debug.Debug)
 
 pub(all) struct GoalConvergence {
