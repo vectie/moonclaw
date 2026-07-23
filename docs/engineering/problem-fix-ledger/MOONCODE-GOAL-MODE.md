@@ -1,6 +1,6 @@
 # MoonCode goal mode: durable core reducer
 
-Pure `mooncode/core` contracts and reducer only; daemon persistence/replay and API integration remain intentionally deferred. Caller-supplied integer timestamps make pure reducer replay deterministic. Event IDs provide idempotency. Requirements carry stable IDs, proof state, and evidence references; approvals remain caller-supplied references only. Public JSON projections are versioned and deliberately exclude approval/evidence details, internal reasoning, and secrets; this slice does not claim integration-level redaction coverage.
+**Original pure-core checkpoint:** Pure `mooncode/core` contracts and reducer only; daemon persistence/replay and API integration were intentionally deferred at that checkpoint. Durable daemon genesis/replay is now implemented; HTTP/controller integration remains deferred. Caller-supplied integer timestamps make pure reducer replay deterministic. Event IDs provide idempotency. Requirements carry stable IDs, proof state, and evidence references; approvals remain caller-supplied references only. Public JSON projections are versioned and deliberately exclude approval/evidence details, internal reasoning, and secrets; this slice does not claim integration-level redaction coverage.
 
 ## Invariants
 
@@ -8,11 +8,41 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 
 ## Problem/fix ledger
 
+- **Problem/Fix — four new-test compile errors:** The JSON fixture helper used a raising object guard, assigned a `String` where `Json` was required, constructed the read-only `Object` form, and the padded disk replay test passed an obsolete third argument. Match `Object(fields)`, copy it, assign `replacement.to_json()`, return `Json::object(copied)`, and call `mooncode_replay_goal(root, " session ")` with two arguments.
+
+- **Coverage — fourth-audit goal-store boundaries:** Focused tests prove create-side core genesis failures (blank objective, negative limit, and empty requirements) normalize to exactly `InvalidGoalGenesis` before append; canonical requested/envelope/payload session and goal identities reject padding while retaining the canonical `record_id`; and padded durable replay rejects before path access, leaving the seeded torn canonical-journal sentinel bytes unchanged.
+
+- **Problem/Fix — fourth-audit duplicate key and masked session fixture:** Create preflight emitted a duplicate JSON `record_id`, while the session-mismatch fixture omitted the canonical ID and failed before its intended guard. Retain only the derived canonical key and include it in the fixture.
+
+- **Problem/Fix — durable create gate and cancelled repair turn:** The new `record_id` invariant exposed a preflight omission, leaving the focused gate at 12/13; adding the canonical preflight ID fixes it. A stalled repair turn was cancelled before this focused repair was completed.
+
+- **Problem/Fix — noncanonical identity append-after-failure:** A failed validation path could still append an event carrying a noncanonical identity. Canonicalize and validate identity before any durable append, so rejection cannot mutate the journal.
+- **Problem/Fix — reserved-ID replay-ordering hole:** The hole was in replay ordering: any event payload carrying `goal-genesis-v1` is now validated as genesis or rejected; append simply preserves the occupied stable ID.
+- **Problem/Fix — genesis envelope/payload identity mismatch:** Replay previously ignored the journal envelope `record_id`, so a reserved `event:goal-genesis-v1` envelope with an ordinary or mutated payload could be skipped, while a valid genesis payload under `event:other` could be accepted. Replay now reads `record_id`, includes the reserved canonical envelope identity in candidate detection, and requires every recognized goal-genesis payload to use exactly the derived `event:goal-genesis-v1` identity. The exact replay-required subset therefore includes `record_kind`, `record_id`, `session_id`, and `payload`.
+- **Problem/Fix — discarded envelope session:** Decoding accepted an envelope while dropping its session field. Preserve and validate the session so replay remains bound to the original envelope context.
+- **Problem/Fix — fractional/saturating `Number.to_int`:** Direct numeric conversion could accept fractions or silently saturate out-of-range values. Validate NaN, integer range, and truncation equality before converting.
+- **Problem/Fix — duplicate-first generic retry preservation:** Timestamp validation had been moved before duplicate lookup, changing generic retry behavior. It is now restored after duplicate lookup; this was not an overwrite issue.
+- **Problem/Fix — later-timestamp idempotency:** Compare only canonical caller-controlled immutable intent (`id`, `session`, trimmed `objective`, `budget`, and normalized `requirements`), explicitly ignoring server timestamps and derived `Goal` state; never compare the full `Goal`.
+- **Problem/Fix — unsupported `Double.is_infinite`:** The target lacked `Double.is_infinite`. Replace it with portable NaN, bounds, and truncation checks.
+- **Problem/Fix — bulk replay replacement deleted disk wrapper:** A broad replay edit accidentally removed the disk-backed wrapper. Restore the wrapper and keep the replay repair scoped to its intended implementation.
+- **Problem/Fix — false-positive test caught its own failure:** A negative test's catch block also caught the test's deliberate failure. Record a post-catch boolean and assert afterward.
+- **Problem/Fix — transient no-tool turn:** One recovery turn had no usable tool invocation. Retry in the next capable turn and keep this process incident in the ledger rather than a test-file header.
+- **Problem/Fix — wrong MoonCode fmt/test targets:** Initial formatting and test commands used incorrect targets. Re-run with the repository's valid MoonCode targets.
+- **Problem/Fix — strict replay fixtures:** Fixtures now include the exact replay-required subset: record_kind, record_id, envelope session_id, and payload; pure replay intentionally does not claim a complete MoonLib envelope.
+- Replay rejects noncanonical requested/envelope/payload session and goal_id before trimming/path access.
+- Create-side new_goal failures normalize to InvalidGoalGenesis.
+- The guard-placement regression rejected ordinary events and was fixed by applying envelope/payload guards only after goal-candidate detection.
+
+- **Problem/Fix — wrong-file insertion and cleanup:** API-audit comments were accidentally inserted into `gateway/client/client_wbtest.mbt`, outside the goal-store scope. Restored that file exactly to `HEAD`; the production integrity work remains confined to the daemon goal store, journal, and this ledger.
+
+- **Problem/Fix — genesis evidence JSON context:** Casting only `evidence` as `Json` left the surrounding nested requirements object inferred as String-valued, causing compilation to fail. Give the whole nested requirement object explicit `Json` context while keeping `evidence` as `Json::array([])`, a real empty JSON array, without weakening replay validation.
+
+- **Problem/Fix:** A new physical `goal-event` record kind conflicted with the MoonLib v1 journal allowlist. Goal records now use the shared physical `event` lane, with logical `mooncode.goal.*` subtypes; replay ignores unrelated events and fails closed on unsupported goal subtypes.
+
 - **Problem/Fix:** The newly added restored-state regression initially failed because `EvaluationFailed` matched `request.run_id` to `expected_run_id` but not to the current `goal.run_id`; require `request.run_id == goal.run_id`, making stale restored requests exact no-ops.
 
 - An interrupted migration left a mixture of old four-arity and new six-arity blocker/event calls, producing broad compiler fallout. Completed the migration consistently across contracts, reducer call sites, and tests before addressing behavioral failures.
 - Progress and `None` blocker observations failed to reset accumulated blocker state. Corrected reset handling and added focused regression coverage.
-- Several MoonCode follow-up sessions failed or lost required tool capabilities. Recovery was bounded to the available MoonBook tools, with changes and validation resumed in a capable session.
 - Initial correlation tests supplied incorrect per-run ordinals. Corrected them to use the expected ordinal sequence for each `run_id`.
 - `assert_eq` requires `Show`, while several structured core values provide equality without a suitable `Show` implementation. Used boolean equality assertions for those values and retained `assert_eq` for showable scalar fields.
 - Early duplicate-ID tests were vacuous because their events would have been no-ops even with distinct IDs. Reworked them so a distinct event would mutate state, making the duplicate-ID assertion meaningful.
@@ -25,7 +55,7 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 - Evaluation incorrectly left the goal in `Evaluating`. `Evaluated` now records the completed report and returns runnable.
 - Added caller-data-only approval waiting/settlement transitions; no approval reference is synthesized.
 
-This slice changes and validates only the pure core and its documentation/tests. Daemon persistence, daemon replay, and API integration remain deferred and are not claimed here.
+The original slice changed and validated only the pure core and its documentation/tests. The later durable genesis/replay slice is now implemented and claimed below; HTTP/controller integration remains deferred.
 
 ## Durable evaluation failure/backoff v1
 
@@ -33,3 +63,21 @@ This slice changes and validates only the pure core and its documentation/tests.
 - **Initial false-completion incident:** This slice was initially reported complete while `evaluation_backoff_wbtest.mbt` still required formatting and the generated core interface had not yet been reviewed. Completion now requires formatting and interface verification in addition to passing behavior tests.
 - **Fix:** Core goal state records evaluation id, run id, basis revision, evidence digest, attempt, category, and next retry timestamp. Failure and retry events are exact-match/idempotent transitions, while the active/non-blocked Resume path remains limited to AwaitingInput recovery; Blocked Resume remains supported, and EvaluationBackoff Resume is excluded.
 - **Deferred:** Daemon persistence, daemon integration, and endpoints remain explicitly out of scope for this pure-core slice.
+
+## Durable goal genesis/replay
+
+- **Problem/Fix — explicit null optional limits:** Absent optional limits are intentionally emitted as explicit JSON `null`, and replay requires those keys; they are not omitted.
+- **Problem/Fix — optional arg misuse:** Replay passed the expected goal id as an invented positional store argument; remove the unused store parameter and retain `expected_goal_id` only on pure replay winner validation.
+- **Problem/Fix — invented test helper/Show assertion:** Early tests depended on a nonexistent helper and Show-based structured assertions; exercise the real create/journal APIs and use `assert_true` for Goal equality.
+- **Problem/Fix — partial catches:** Goal-genesis rejection tests matched only `InvalidGoalGenesis`; add exhaustive fallback branches that fail on every unexpected error.
+- **Deferred:** concurrency stress, HTTP/routes, event mutation, and controller integration remain explicitly outside this checkpoint.
+- **Problem/Fix:** MoonBit rejects tuple destructuring in a `for` binding; iterate over `case` and destructure it with `let (payload, session) = case` inside the block.
+
+- Cancellation recovery: narrowed reserved/create catches to `InvalidGoalGenesis`, retained the empty-journal invariant for noncanonical identities, and removed the redundant disk replay assertion. Added stable-ID retry coverage proving an omitted timestamp is a no-error duplicate and leaves one journal record.
+- Verified checkpoint gate: 17/17 focused native tests pass; daemon suite 161/161 native tests pass, including the corrupt-existing-journal integration test.
+
+- **Problem/Fix — padded replay sentinel alias:** The first sentinel fixture used the wrong package alias; `@pathx` fixes it, and unchanged torn bytes prove the padded replay was rejected before opening/repairing the journal. The first directory creation omitted recursive parent creation and caused 15/16; `recursive=true` fixed it.
+
+- **Problem/Fix — concrete integration fixture compile errors:** The corrupt-existing-journal test used obsolete `@fsx.mkdir` and positional/converted `journal_record` arguments, causing misleading `with_temporary_directory` arity and unbound-variable cascades; replace it with `@fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)`, contextual `recorded_at=123`, and explicit `payload=payload`.
+
+- Problem/Fix — existing-journal fail-closed preflight: create previously appended before replaying an existing corrupt journal; it now replays existing durable state before mutation and returns idempotent/conflict without append when a winner exists. Canonical concurrent creates remain reconciled by append_once/post-replay. Explicit limitation: preflight read and append are not one atomic lock transaction, so a concurrent corrupt writer between them is deferred. The new integration test proves exact bytes and one-record count unchanged on rejection.
