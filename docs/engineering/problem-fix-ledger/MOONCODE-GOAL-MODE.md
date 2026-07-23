@@ -8,6 +8,8 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 
 ## Problem/fix ledger
 
+- **Problem/Fix — goal API parser audit test compile failures:** The rejection helper attempted to rethrow without a declared error type, loop integers were passed where `Json` was required, and fixture destructuring used unsupported refutable `let ... else` forms. Unexpected parser errors now abort loudly, integer fixtures convert explicitly with `to_json()`, and object/array fixtures use exhaustive `match` expressions while preserving the isolated parser audit coverage.
+
 - **Problem/Fix — four new-test compile errors:** The JSON fixture helper used a raising object guard, assigned a `String` where `Json` was required, constructed the read-only `Object` form, and the padded disk replay test passed an obsolete third argument. Match `Object(fields)`, copy it, assign `replacement.to_json()`, return `Json::object(copied)`, and call `mooncode_replay_goal(root, " session ")` with two arguments.
 
 - **Coverage — fourth-audit goal-store boundaries:** Focused tests prove create-side core genesis failures (blank objective, negative limit, and empty requirements) normalize to exactly `InvalidGoalGenesis` before append; canonical requested/envelope/payload session and goal identities reject padding while retaining the canonical `record_id`; and padded durable replay rejects before path access, leaving the seeded torn canonical-journal sentinel bytes unchanged.
@@ -81,3 +83,12 @@ The original slice changed and validated only the pure core and its documentatio
 - **Problem/Fix — concrete integration fixture compile errors:** The corrupt-existing-journal test used obsolete `@fsx.mkdir` and positional/converted `journal_record` arguments, causing misleading `with_temporary_directory` arity and unbound-variable cascades; replace it with `@fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)`, contextual `recorded_at=123`, and explicit `payload=payload`.
 
 - Problem/Fix — existing-journal fail-closed preflight: create previously appended before replaying an existing corrupt journal; it now replays existing durable state before mutation and returns idempotent/conflict without append when a winner exists. Canonical concurrent creates remain reconciled by append_once/post-replay. Explicit limitation: preflight read and append are not one atomic lock transaction, so a concurrent corrupt writer between them is deferred. The new integration test proves exact bytes and one-record count unchanged on rejection.
+
+- **Problem/Fix — goal-api-two-json-fixes validation bookkeeping:** The repair produced compiling code, and the canonical focused command `moon test cmd/daemon/mooncode_goal_api_wbtest.mbt --target native` passed 6/6; the bounded MoonCode turn was nevertheless marked failed because its final redundant command combined incompatible `-p`/path/filter selectors and exited 2. Disregard that invalid redundant invocation and rerun the canonical exact-file test plus the native check/full daemon suite externally; results were 6/6 and 167/167.
+
+- Strict goal API parser: exact nested schemas now reject unknown/missing fields; normalized construction prevents client-supplied usage, proof state, or evidence.
+
+## Unterminated escaped-string goal API fixture
+
+- **Problem:** The invalid-protocol daemon test used a malformed, unterminated escaped JSON string, preventing the focused test file from parsing.
+- **Fix:** Replaced the string parsing loop with a contextual multiline `Json` object literal using protocol `other`, canonical fields, explicit null budget limits, and one valid requirement.
