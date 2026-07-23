@@ -132,3 +132,18 @@ A bounded follow-up turn was exhausted searching for `read_link`, which was unne
 
 - **Problem/Fix — malformed-JSON assertion:** The focused HTTP test used a brittle Debug/Show snapshot (`Err("invalid_json")`) that rendered as `Err(invalid_json)`. Replace the snapshot with direct equality so the test proves the exact `Err("invalid_json")` contract without depending on display formatting.
 - **Problem/Fix — ledger overwrite and recovery:** A prior ledger write replaced this committed 127-line history with a 19-line file (10 additions and 118 deletions). Restore the complete committed ledger from `HEAD`, then append this recovery checkpoint so all prior engineering history remains intact.
+
+## Producer-neutral comparator checkpoint
+
+Agreement and independent acceptance are separate outcomes: matching producer reports do not by themselves establish acceptance. Semantic evidence comparison ignores producer-local evidence IDs and compares meaningful evidence content instead. Controller basis validation rejects blank and empty bases. Checkpoint comparison traverses the sorted union of epoch/key pairs, preserving right-only checkpoints and detecting regressions that a left-only cadence would miss.
+
+Problems met and fixes:
+
+- The tool-call cap left compile/test work incomplete; validation was resumed incrementally.
+- A stale session invented an obsolete `GoalCheckpoint` API; work was corrected against the current contracts.
+- Invalid tuple-loop syntax was caught by the compiler and repaired.
+- An old left-only cadence test failed after correct union semantics were introduced; it was updated for right-only checkpoint preservation and regression detection.
+- Capability-unavailable turns made no edits.
+- A failed broad-validation experiment was rolled back and replaced with incremental minimal validation.
+
+Proof at this checkpoint: independent all-target core checks pass, and 54/54 tests pass on native, JavaScript, Wasm, and Wasm-GC. A warn-list `+73` run currently reports unnecessary-annotation warnings but zero errors.
