@@ -596,6 +596,8 @@ async test "mooncode_goal_store: append_once stable retry ignores omitted timest
         first,
       ),
     )
+    let path = mooncode_session_journal_path(root, "session")
+    let before_retry = @fsx.read_file(path)
     let retry : Json = { "id": "stable-retry", "kind": "runtime.test.v1" }
     assert_true(
       !mooncode_append_session_journal_once(
@@ -605,6 +607,7 @@ async test "mooncode_goal_store: append_once stable retry ignores omitted timest
         retry,
       ),
     )
+    assert_eq(@fsx.read_file(path), before_retry)
     assert_eq(mooncode_read_session_journal(root, "session").length(), 1)
   })
 }

@@ -48,17 +48,27 @@ async fn mooncode_append_session_journal(
 }
 
 ///|
-/// Append a validated journal record unless its stable identity already exists.
-/// Returns true only when this call durably appended the record.
-async fn mooncode_append_session_journal_once(
+priv enum MoonCodeJournalTransactionDecision[T] {
+  NoAppend(T)
+  Append(String, Json, T)
+}
+
+///|
+fn mooncode_journal_checked_next_sequence(
+  last_sequence : Int,
+) -> Int raise MoonCodeJournalError {
+  if last_sequence == 2147483647 {
+    raise InvalidJournal("MoonCode journal sequence is exhausted")
+  }
+  last_sequence + 1
+}
+
+///|
+async fn[T] mooncode_session_journal_transaction(
   book_root : String,
   session_id : String,
-  record_kind : String,
-  payload : Json,
-) -> Bool {
-  // Stable identity is the only payload validation required before duplicate lookup.
-  // Existing records must remain retryable even when later validation rules tighten.
-  let record_id = mooncode_journal_record_id(record_kind, payload)
+  decide : (Array[Json]) -> MoonCodeJournalTransactionDecision[T] raise,
+) -> T {
   let path = mooncode_session_journal_path(book_root, session_id)
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
   let file = @fs.open(
@@ -73,42 +83,106 @@ async fn mooncode_append_session_journal_once(
   defer file.unlock()
   mooncode_repair_journal_tail(file)
   let records = mooncode_parse_journal_file(file, path)
-  for record in records {
-    if mooncode_json_string(record, "record_kind", default="") == record_kind &&
-      mooncode_json_string(record, "record_id", default="") == record_id {
-      return false
+  // Snapshot this before the callback: Json arrays are mutable, and durability must
+  // reflect whether the committed journal had any records when the lock was acquired.
+  let was_empty = records.is_empty()
+  let last_sequence = mooncode_journal_last_sequence(records)
+  let identities : Array[(String, String)] = records.map(fn(record) {
+    (
+      mooncode_json_string(record, "record_kind", default=""),
+      mooncode_json_string(record, "record_id", default=""),
+    )
+  })
+  let client_turn_inheritance : Array[(String, String)] = records.filter_map(fn(
+    record,
+  ) {
+    let command_id = mooncode_json_string(record, "command_id", default="")
+    let client_turn_id = mooncode_json_string(
+      record,
+      "client_turn_id",
+      default="",
+    )
+    if command_id != "" && client_turn_id != "" {
+      Some((command_id, client_turn_id))
+    } else {
+      None
+    }
+  })
+  match decide(records) {
+    NoAppend(result) => result
+    Append(record_kind, payload, result) => {
+      let record_id = mooncode_journal_record_id(record_kind, payload)
+      for identity in identities {
+        let (existing_kind, existing_id) = identity
+        if existing_kind == record_kind && existing_id == record_id {
+          raise InvalidJournal(
+            "MoonCode journal record identity already exists: `\{record_kind}`/`\{record_id}`",
+          )
+        }
+      }
+      let sequence = mooncode_journal_checked_next_sequence(last_sequence)
+      let command_id = mooncode_journal_command_id(payload)
+      let client_turn_id = mooncode_journal_client_turn_id_from_snapshot(
+        payload, client_turn_inheritance, command_id,
+      )
+      let recorded_at = mooncode_journal_recorded_at(payload)
+      if recorded_at is Null {
+        raise InvalidJournal(
+          "MoonCode journal record `\{record_id}` has no durable timestamp",
+        )
+      }
+      let record = @moonlib_conversation.journal_record(
+        session_id~,
+        sequence~,
+        record_id~,
+        record_kind~,
+        command_id~,
+        client_turn_id~,
+        recorded_at~,
+        payload~,
+      )
+      let issues = @moonlib_conversation.journal_record_issues(record)
+      if !issues.is_empty() {
+        raise InvalidJournal(
+          "MoonCode journal rejected `\{record_id}`: \{issues.join("; ")}",
+        )
+      }
+      file.write(record.stringify() + "\n")
+      // Full sync is the strongest portable file guarantee for the first record;
+      // existing-file appends need only synchronize data. No public portable API
+      // is available here to fsync the parent directory namespace entry.
+      file.sync(only_data=!was_empty)
+      result
     }
   }
-  let sequence = mooncode_journal_last_sequence(records) + 1
-  let command_id = mooncode_journal_command_id(payload)
-  let client_turn_id = mooncode_journal_client_turn_id(
-    payload, records, command_id,
-  )
-  let recorded_at = mooncode_journal_recorded_at(payload)
-  if recorded_at is Null {
-    raise InvalidJournal(
-      "MoonCode journal record `\{record_id}` has no durable timestamp",
-    )
-  }
-  let record = @moonlib_conversation.journal_record(
-    session_id~,
-    sequence~,
-    record_id~,
-    record_kind~,
-    command_id~,
-    client_turn_id~,
-    recorded_at~,
-    payload~,
-  )
-  let issues = @moonlib_conversation.journal_record_issues(record)
-  if !issues.is_empty() {
-    raise InvalidJournal(
-      "MoonCode journal rejected `\{record_id}`: \{issues.join("; ")}",
-    )
-  }
-  file.write(record.stringify() + "\n")
-  file.sync(only_data=true)
-  true
+}
+
+///|
+/// Append a validated journal record unless its stable identity already exists.
+/// Returns true only when this call has appended and synchronized the record: a full
+/// file sync for its first record, and a data-only sync for an existing journal.
+/// Parent-directory namespace durability is not promised because no public portable
+/// directory-fsync API is available.
+async fn mooncode_append_session_journal_once(
+  book_root : String,
+  session_id : String,
+  record_kind : String,
+  payload : Json,
+) -> Bool {
+  mooncode_session_journal_transaction(book_root, session_id, fn(
+    records,
+  ) raise {
+    // Json objects are mutable. Derive identity only after the transaction lock is held,
+    // so duplicate lookup and the eventual record construction observe one no-yield state.
+    let record_id = mooncode_journal_record_id(record_kind, payload)
+    for record in records {
+      if mooncode_json_string(record, "record_kind", default="") == record_kind &&
+        mooncode_json_string(record, "record_id", default="") == record_id {
+        return NoAppend(false)
+      }
+    }
+    Append(record_kind, payload, true)
+  })
 }
 
 ///|
@@ -329,9 +403,9 @@ fn mooncode_journal_command_id(payload : Json) -> String {
 }
 
 ///|
-fn mooncode_journal_client_turn_id(
+fn mooncode_journal_client_turn_id_from_snapshot(
   payload : Json,
-  records : Array[Json],
+  inheritance : Array[(String, String)],
   command_id : String,
 ) -> String {
   let direct = mooncode_journal_payload_client_turn_id(payload)
@@ -341,12 +415,10 @@ fn mooncode_journal_client_turn_id(
   if command_id == "" {
     return ""
   }
-  for record in records {
-    if mooncode_json_string(record, "command_id", default="") == command_id {
-      let existing = mooncode_json_string(record, "client_turn_id", default="")
-      if existing != "" {
-        return existing
-      }
+  for entry in inheritance {
+    let (existing_command_id, client_turn_id) = entry
+    if existing_command_id == command_id {
+      return client_turn_id
     }
   }
   ""

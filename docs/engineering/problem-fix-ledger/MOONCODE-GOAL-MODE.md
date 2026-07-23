@@ -16,6 +16,16 @@ Atomic compare-and-append remains the next P1 item, followed by the supervisor l
 
 ## Problem/fix ledger
 
+- **Final independently re-audited atomic-journal checkpoint:** The checkpoint passed **220/220**; the paused approval turn was cancelled rather than approved, then recovered through an exact compiler-guided continuation.
+- **Problem/Fix — mutable journal payload identity:** Computing identity in the locked callback fixes mutable `Json` aliasing when a caller changes a shared payload while waiting for the journal lock.
+- **Durability boundary — journal namespace:** No portable public directory-fsync API exists, so the first record receives a full file sync while namespace crash durability remains explicitly unpromised.
+
+- **Problem/Fix — prohibited Python source rewrite attempt:** A Python-based source rewrite was attempted despite the structured-edit-only boundary. Recovery used bounded structured edits only.
+- **Problem/Fix — invalid `moon fmt` targeting and repeated compile recovery:** Invalid file targeting and repeated compile-recovery attempts obscured progress. Use valid repository formatting targets and preserve the exact compiler diagnostics for each recovery.
+- **Problem/Fix — `expected_exit_code = 255` masked a compiler failure:** Treating exit 255 as expected allowed a failed compiler invocation to appear successful. Normal validation expects exit 0, and the controller-owned check/test gate runs independently.
+- **Problem/Fix — bounded continuations a through h:** Continuations a through h recovered the slice to **217/217 tests passed** under the independent controller gate.
+- **Problem/Fix — runtime receipt false-negative after passing tests:** The h turn/service ended in a failed runtime state even though its final `moon test` passed **217/217**. Keep test evidence separate from turn/service runtime receipt state so neither is inferred from the other.
+
 - **Problem/Fix — MoonBit symlink signature:** A repair wrongly assumed the positional symlink link path was labeled `link_path`; native compiler errors 4085/4080 exposed the actual `target~`-plus-positional signature, and all three calls were restored.
 - **Problem/Fix — zsh verification variable:** The first full-suite wrapper assigned zsh read-only parameter status and stopped after the tests; rerun with task_status, confirming the full daemon suite passed 176/176.
 
