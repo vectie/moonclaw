@@ -163,6 +163,8 @@ pub fn conversation_watch_kind() -> String
 
 pub fn conversation_watch_response(session_id~ : String, revision~ : Int, next_sequence~ : Int, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json
 
+pub fn decode_goal_event_v1(Json) -> Result[GoalEvent, String]
+
 pub fn event_lane_artifact() -> String
 
 pub fn event_lane_contract_id() -> String
@@ -202,6 +204,18 @@ pub fn executable_book_lifecycle_steps() -> Array[String]
 pub fn goal_budget_exhausted(GoalBudget) -> Bool
 
 pub fn goal_evaluation_bundle_json(Goal) -> Json
+
+pub fn goal_event_created_kind() -> String
+
+pub fn goal_event_from_json(Json) -> GoalEvent raise
+
+pub fn goal_event_id(GoalEvent) -> String
+
+pub fn goal_event_kind(GoalEvent) -> String
+
+pub fn goal_event_recorded_at(GoalEvent) -> Int
+
+pub fn goal_event_to_json(GoalEvent) -> Json
 
 pub fn goal_status_json(Goal) -> Json
 

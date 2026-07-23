@@ -15,6 +15,19 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 
 - **Problem/Fix — independent security/evidence audit:** Dot aliases and snapshot or active-directory symlinks could evade ordinary identity fixtures, while rejection tests did not independently prove filesystem non-mutation. In particular, the sanitizer derives `mooncode_safe_session_id("..") == "_"`, so derived-name checks cannot identify the raw parent-directory token; the production gate now rejects raw `session_id == "." || session_id == ".."` before/alongside its derived safe-component checks. The session gate and its tests are async; rejection coverage captures exact immediate directory entry counts and snapshot bytes, verifies journals remain absent using the production session-root and journal-path helpers, and includes absent-root dot aliases and symlink fixtures.
 
+## 2026-07-24 — Strict goal-event codec and long-task runtime recovery
+
+- **Problem/Fix — cap exhaustion after verified work:** A tool/planner cap could turn a run into `runtime-failed` even after the final check and test succeeded. Completion now inspects accumulated proof and classifies cap exhaustion separately from failed verification.
+- **Problem/Fix — capability-unavailable completion:** Finish-only capability-unavailable turns became `runtime-completed` despite making no edits. Typed capability-unavailable outcomes remain retryable, and `finish` alone is not proof of completion.
+- **Problem/Fix — stale MoonBit APIs:** Work used `TurnFinished.run_id` as a string, `GoalBlocker`, a five-argument `Evaluated`, `Json::Bool`, and incorrect `ValidatedProjection` count types. Current source and generated `.mbti` contracts, followed by compiler-guided recovery, corrected those assumptions.
+- **Problem/Fix — path containment and cleanup:** A daemon API comment was changed on the wrong path and root artifacts were created. Exact cleanup removed only those changes; controller work now requires a path allowlist and diff review.
+- **Problem/Fix — prohibited write provenance:** Perl, `printf`, Python, and `cat` shell writes occurred despite explicit prompts. Structured edit provenance must be enforced rather than inferred from instructions.
+- **Problem/Fix — independent controller gate:** Worker `finish` was incorrectly treated as proof. The controller independently runs `moon info && moon fmt`, checks the diff, reviews generated `.mbti`, executes all-target checks and tests, and verifies artifact status.
+- **Problem/Fix — concurrent verifier deadlock:** Orphaned concurrent `moon` verifiers held the build lock. The exact stale PIDs were terminated, then all gates were rerun serially.
+- **Problem/Fix — journal mutation identity:** Mutation identity collisions were removed by canonicalizing identity as `event:<event_id>` and rejecting blank or padded IDs; focused journal tests pass 5/5 on native.
+- **Problem/Fix — strict 14-variant codec:** The codec now strictly decodes and encodes all 14 variants. The focused codec file passes 42/42 on native, and the full core passes 89/89 on native, JavaScript, WebAssembly, and WebAssembly-GC after envelope and membership hardening. Total encoder round-trip is guaranteed only for decoder-valid events; the earlier 40-test result was a focused checkpoint, not the current full-core count.
+- **P1 follow-up — golden encoder fixtures:** Golden encoder fixtures remain required compatibility locks and are not yet complete; no completion claim is made for them.
+
 ## Chronological internal-API ledger (`goal-api-ledger-doc-2635`)
 
 [Detailed internal-API ledger](MOONCODE-GOAL-MODE-INTERNAL-API.md)
@@ -125,3 +138,17 @@ The original slice changed and validated only the pure core and its documentatio
 ### Gate audit recovery: direct symlink APIs
 
 A bounded follow-up turn was exhausted searching for `read_link`, which was unnecessary. The recovery uses direct `symlink`, non-following `kind`, `exists`, and immediate directory-entry counts. Combined dangling active-directory and dangling `session.json` evidence now verifies exact `GoalSessionCorrupt`, no journal, absent targets, retained symlink kinds, and no containing-directory mutation.
+
+## Recovery note: false codec completion
+
+A prior recovery incorrectly marked the goal-event codec checkpoint complete after
+adding only commentary. No JSON encoder/decoder or codec tests existed. The
+checkpoint remains open until the strict supported-variant codec, reducer
+evidence canonicalization, tests, formatting, native check, and focused native
+tests all pass.
+
+## False completion: `Json::null` constructor mismatch
+
+A previous turn reported completion without editing the source, while an independent check still found the line 98 type mismatch at `None => Json::null`. The proof-gated fix changed the affected option-to-JSON branches in `mooncode/core/goal_event_codec.mbt` to invoke the constructor as `None => Json::null()` and withheld completion until validation succeeded.
+
+Proof: `moon fmt mooncode/core/goal_event_codec.mbt && moon check mooncode/core --target native --warn-list +73 && moon test mooncode/core --target native` exited successfully, with all 40 tests passing.
