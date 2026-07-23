@@ -14,6 +14,54 @@ priv suberror InvalidGoalRequest {
 }
 
 ///|
+/// Internal transport-neutral result used by the strict durable goal API.
+/// Keeping this type private prevents this slice from declaring HTTP routes or endpoints.
+priv struct MoonCodeGoalApiResponse {
+  status_code : Int
+  body : Json
+}
+
+///|
+fn goal_api_response(status_code : Int, body : Json) -> MoonCodeGoalApiResponse {
+  { status_code, body }
+}
+
+///|
+fn goal_api_error(status_code : Int, code : String) -> MoonCodeGoalApiResponse {
+  goal_api_response(status_code, {
+    "kind": "mooncode-goal-error",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "error": code,
+  })
+}
+
+///|
+fn goal_api_status(goal : @mooncode_core.Goal) -> MoonCodeGoalApiResponse {
+  goal_api_response(200, {
+    "kind": "mooncode-goal-status",
+    "protocol": "mooncode.v1",
+    "owner": "moonclaw",
+    "goal": @mooncode_core.goal_status_json(goal),
+  })
+}
+
+///|
+fn goal_api_created(goal : @mooncode_core.Goal) -> MoonCodeGoalApiResponse {
+  let response = goal_api_status(goal)
+  { status_code: 201, body: response.body }
+}
+
+///|
+fn goal_api_checked_epoch_seconds(value : Int64) -> Int? {
+  if value < 0L || value > 2147483647L {
+    None
+  } else {
+    Some(value.to_int())
+  }
+}
+
+///|
 fn goal_api_fail(message : String) -> Unit raise InvalidGoalRequest {
   raise InvalidGoalRequest(message)
 }
