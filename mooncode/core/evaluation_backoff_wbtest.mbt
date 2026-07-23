@@ -1,6 +1,10 @@
 ///|
 fn started_evaluation_for_backoff_test() -> Goal raise {
-  reduce_goal(test_goal(), EvaluationStarted("start-eval", 0, "eval", "d"))
+  let goal = test_goal()
+  reduce_goal(
+    goal,
+    EvaluationStarted("start-eval", goal.updated_at, "eval", "d"),
+  )
 }
 
 ///|

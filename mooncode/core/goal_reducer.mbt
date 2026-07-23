@@ -77,7 +77,9 @@ pub fn new_goal(
     let criterion = requirement.criterion.trim().to_owned()
     if requirement_id.is_empty() ||
       criterion.is_empty() ||
-      ids.contains(requirement_id) {
+      ids.contains(requirement_id) ||
+      requirement.state != Unproven ||
+      !requirement.evidence_refs.is_empty() {
       raise Failure::Failure("invalid requirement")
     }
     ids.push(requirement_id)
@@ -278,7 +280,11 @@ fn projection_ready(goal : Goal, proof : CompletionProof) -> Bool {
     None => false
   }) &&
   goal.requirements.all(fn(requirement) {
-    requirement.state == Proven && !requirement.evidence_refs.is_empty()
+    requirement.state == Proven &&
+    (match canonical_refs(requirement.evidence_refs) {
+      Some(refs) => !refs.is_empty()
+      None => false
+    })
   })
 }
 
@@ -286,7 +292,11 @@ fn projection_ready(goal : Goal, proof : CompletionProof) -> Bool {
 pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
   let (raw_id, now) = event_identity(event)
   let id = raw_id.trim().to_owned()
-  if id.is_empty() || goal.seen_ids.contains(id) || goal.status == Complete {
+  if raw_id != id ||
+    now < goal.updated_at ||
+    id.is_empty() ||
+    goal.seen_ids.contains(id) ||
+    goal.status == Complete {
     goal
   } else if goal.status == Blocked {
     match event {
@@ -368,15 +378,24 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
             !goal.requirements.any(fn(item) { item.id == clean_id }) {
             goal
           } else {
-            let requirements = goal.requirements.map(fn(item) {
-              if item.id == clean_id {
-                { ..item, state, evidence_refs: evidence_refs.copy() }
-              } else {
-                item
+            let clean_refs : Array[String]? = match state {
+              Unproven => if evidence_refs.is_empty() { Some([]) } else { None }
+              Proven | Contradicted => canonical_refs(evidence_refs)
+            }
+            match clean_refs {
+              None => goal
+              Some(clean) => {
+                let requirements = goal.requirements.map(fn(item) {
+                  if item.id == clean_id {
+                    { ..item, state, evidence_refs: clean }
+                  } else {
+                    item
+                  }
+                })
+                let next = accepted(goal, id, now)
+                { ..next, requirements, }
               }
-            })
-            let next = accepted(goal, id, now)
-            { ..next, requirements, }
+            }
           }
         } else {
           goal
@@ -437,7 +456,8 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
           goal
         }
       BudgetExhausted(_, _) =>
-        if runnable(goal) && goal_budget_exhausted(goal.budget) {
+        if goal.run_state == AwaitingBudget &&
+          goal_budget_exhausted(goal.budget) {
           let next = accepted(goal, id, now)
           { ..next, run_state: AwaitingBudget }
         } else {
