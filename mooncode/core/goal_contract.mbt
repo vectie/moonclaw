@@ -89,8 +89,20 @@ pub(all) struct ConvergenceReport {
 ///|
 pub(all) struct EvaluationRequest {
   id : String
+  run_id : Int
   revision : Int
   evidence_digest : String
+} derive(Eq, Debug)
+
+///|
+pub(all) struct EvaluationBackoffRecord {
+  evaluation_id : String
+  run_id : Int
+  basis_revision : Int
+  evidence_digest : String
+  attempt : Int
+  category : String
+  next_retry_at : Int
 } derive(Eq, Debug)
 
 ///|
@@ -131,6 +143,7 @@ pub(all) struct Goal {
   blocker : GoalBlocker?
   convergence : GoalConvergence?
   active_evaluation : EvaluationRequest?
+  evaluation_backoff : EvaluationBackoffRecord?
   approval_refs : Array[String]
   seen_ids : Array[String]
 } derive(Eq, Debug)
@@ -263,8 +276,22 @@ pub fn goal_evaluation_bundle_json(goal : Goal) -> Json {
     Some(value) =>
       {
         "id": value.id,
+        "run_id": value.run_id,
         "revision": value.revision,
         "evidence_digest": value.evidence_digest,
+      }
+    None => Json::null()
+  }
+  let evaluation_backoff : Json = match goal.evaluation_backoff {
+    Some(value) =>
+      {
+        "evaluation_id": value.evaluation_id,
+        "run_id": value.run_id,
+        "basis_revision": value.basis_revision,
+        "evidence_digest": value.evidence_digest,
+        "attempt": value.attempt,
+        "category": value.category,
+        "next_retry_at": value.next_retry_at,
       }
     None => Json::null()
   }
@@ -294,6 +321,7 @@ pub fn goal_evaluation_bundle_json(goal : Goal) -> Json {
     "blocker": blocker,
     "requirements": requirements,
     "active_evaluation": active_evaluation,
+    "evaluation_backoff": evaluation_backoff,
     "convergence": convergence,
   }
 }

@@ -1031,8 +1031,19 @@ pub(all) struct ConvergenceReport {
   residual_risks : Array[String]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct EvaluationBackoffRecord {
+  evaluation_id : String
+  run_id : Int
+  basis_revision : Int
+  evidence_digest : String
+  attempt : Int
+  category : String
+  next_retry_at : Int
+} derive(Eq, @debug.Debug)
+
 pub(all) struct EvaluationRequest {
   id : String
+  run_id : Int
   revision : Int
   evidence_digest : String
 } derive(Eq, @debug.Debug)
@@ -1054,6 +1065,7 @@ pub(all) struct Goal {
   blocker : GoalBlocker?
   convergence : GoalConvergence?
   active_evaluation : EvaluationRequest?
+  evaluation_backoff : EvaluationBackoffRecord?
   approval_refs : Array[String]
   seen_ids : Array[String]
 } derive(Eq, @debug.Debug)
@@ -1090,7 +1102,8 @@ pub(all) enum GoalEvent {
   BudgetExtended(String, Int, Int?, Int?, Int?)
   EvaluationStarted(String, Int, String, String)
   Evaluated(String, Int, String, Int, String, ConvergenceReport)
-  EvaluationFailed(String, Int, Int, String, Int)
+  EvaluationFailed(String, Int, String, Int, Int, String, Int, String, Int)
+  EvaluationRetryDue(String, Int, String, Int, Int)
   CompleteRequested(String, Int, CompletionProof)
   Resume(String, Int)
 } derive(Eq, @debug.Debug)

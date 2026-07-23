@@ -8,6 +8,8 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 
 ## Problem/fix ledger
 
+- **Problem/Fix:** The newly added restored-state regression initially failed because `EvaluationFailed` matched `request.run_id` to `expected_run_id` but not to the current `goal.run_id`; require `request.run_id == goal.run_id`, making stale restored requests exact no-ops.
+
 - An interrupted migration left a mixture of old four-arity and new six-arity blocker/event calls, producing broad compiler fallout. Completed the migration consistently across contracts, reducer call sites, and tests before addressing behavioral failures.
 - Progress and `None` blocker observations failed to reset accumulated blocker state. Corrected reset handling and added focused regression coverage.
 - Several MoonCode follow-up sessions failed or lost required tool capabilities. Recovery was bounded to the available MoonBook tools, with changes and validation resumed in a capable session.
@@ -24,3 +26,10 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 - Added caller-data-only approval waiting/settlement transitions; no approval reference is synthesized.
 
 This slice changes and validates only the pure core and its documentation/tests. Daemon persistence, daemon replay, and API integration remain deferred and are not claimed here.
+
+## Durable evaluation failure/backoff v1
+
+- **Problem:** Evaluation failure retries need durable, replay-safe identity binding; generic resume must not bypass retry deadlines.
+- **Initial false-completion incident:** This slice was initially reported complete while `evaluation_backoff_wbtest.mbt` still required formatting and the generated core interface had not yet been reviewed. Completion now requires formatting and interface verification in addition to passing behavior tests.
+- **Fix:** Core goal state records evaluation id, run id, basis revision, evidence digest, attempt, category, and next retry timestamp. Failure and retry events are exact-match/idempotent transitions, while the active/non-blocked Resume path remains limited to AwaitingInput recovery; Blocked Resume remains supported, and EvaluationBackoff Resume is excluded.
+- **Deferred:** Daemon persistence, daemon integration, and endpoints remain explicitly out of scope for this pure-core slice.

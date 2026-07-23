@@ -10,7 +10,8 @@ pub(all) enum GoalEvent {
   BudgetExtended(String, Int, Int?, Int?, Int?)
   EvaluationStarted(String, Int, String, String)
   Evaluated(String, Int, String, Int, String, ConvergenceReport)
-  EvaluationFailed(String, Int, Int, String, Int)
+  EvaluationFailed(String, Int, String, Int, Int, String, Int, String, Int)
+  EvaluationRetryDue(String, Int, String, Int, Int)
   CompleteRequested(String, Int, CompletionProof)
   Resume(String, Int)
 } derive(Eq, Debug)
@@ -108,6 +109,7 @@ pub fn new_goal(
     blocker: None,
     convergence: None,
     active_evaluation: None,
+    evaluation_backoff: None,
     approval_refs: [],
     seen_ids: [],
   }
@@ -142,7 +144,8 @@ fn event_identity(event : GoalEvent) -> (String, Int) {
     BudgetExtended(id, now, _, _, _) => (id, now)
     EvaluationStarted(id, now, _, _) => (id, now)
     Evaluated(id, now, _, _, _, _) => (id, now)
-    EvaluationFailed(id, now, _, _, _) => (id, now)
+    EvaluationFailed(id, now, _, _, _, _, _, _, _) => (id, now)
+    EvaluationRetryDue(id, now, _, _, _) => (id, now)
     CompleteRequested(id, now, _) => (id, now)
     Resume(id, now) => (id, now)
   }
@@ -298,7 +301,8 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
       | BudgetExtended(_, _, _, _, _)
       | EvaluationStarted(_, _, _, _)
       | Evaluated(_, _, _, _, _, _)
-      | EvaluationFailed(_, _, _, _, _) => goal
+      | EvaluationFailed(_, _, _, _, _, _, _, _, _)
+      | EvaluationRetryDue(_, _, _, _, _) => goal
       Resume(_, _) => {
         let next = accepted(goal, id, now)
         {
@@ -468,11 +472,14 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
           {
             ..next,
             run_state: Evaluating,
+            convergence: None,
             active_evaluation: Some({
               id: evaluation_id.trim().to_owned(),
+              run_id: goal.run_id,
               revision: goal.revision,
               evidence_digest: digest.trim().to_owned(),
             }),
+            evaluation_backoff: None,
           }
         } else {
           goal
@@ -481,7 +488,8 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
         if goal.run_state == Evaluating {
           match goal.active_evaluation {
             Some(request) =>
-              if request.id == evaluation_id.trim().to_owned() &&
+              if request.run_id == goal.run_id &&
+                request.id == evaluation_id.trim().to_owned() &&
                 request.revision == revision &&
                 request.evidence_digest == digest.trim().to_owned() &&
                 report.evaluation_id == request.id &&
@@ -492,6 +500,7 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
                   ..next,
                   run_state: Runnable,
                   active_evaluation: None,
+                  evaluation_backoff: None,
                   convergence: Some({ report, accepted_revision: next.revision }),
                 }
               } else {
@@ -502,15 +511,63 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
         } else {
           goal
         }
-      EvaluationFailed(_, _, attempt, category, next_retry_at) =>
-        if goal.run_state == Evaluating &&
-          attempt >= 0 &&
-          nonempty(category) &&
-          next_retry_at >= now {
-          let next = accepted(goal, id, now)
-          { ..next, run_state: EvaluationBackoff, active_evaluation: None }
-        } else {
-          goal
+      EvaluationFailed(
+        _,
+        _,
+        evaluation_id,
+        expected_run_id,
+        basis_revision,
+        digest,
+        attempt,
+        category,
+        next_retry_at
+      ) =>
+        match goal.active_evaluation {
+          Some(request) if goal.run_state == Evaluating &&
+            request.id == evaluation_id &&
+            request.run_id == expected_run_id &&
+            request.run_id == goal.run_id &&
+            request.revision == basis_revision &&
+            request.evidence_digest == digest &&
+            attempt > 0 &&
+            nonempty(category) &&
+            next_retry_at >= now =>
+            {
+              ..accepted(goal, id, now),
+              run_state: EvaluationBackoff,
+              active_evaluation: None,
+              evaluation_backoff: Some({
+                evaluation_id,
+                run_id: expected_run_id,
+                basis_revision,
+                evidence_digest: digest,
+                attempt,
+                category: category.trim().to_owned(),
+                next_retry_at,
+              }),
+            }
+          _ => goal
+        }
+      EvaluationRetryDue(_, _, evaluation_id, expected_run_id, expected_attempt) =>
+        match goal.evaluation_backoff {
+          Some(backoff) if goal.run_state == EvaluationBackoff &&
+            now >= backoff.next_retry_at &&
+            backoff.evaluation_id == evaluation_id &&
+            backoff.run_id == goal.run_id &&
+            backoff.run_id == expected_run_id &&
+            backoff.attempt == expected_attempt =>
+            {
+              ..accepted(goal, id, now),
+              run_state: Evaluating,
+              active_evaluation: Some({
+                id: backoff.evaluation_id,
+                run_id: backoff.run_id,
+                revision: backoff.basis_revision,
+                evidence_digest: backoff.evidence_digest,
+              }),
+              evaluation_backoff: None,
+            }
+          _ => goal
         }
       CompleteRequested(_, _, proof) =>
         if runnable(goal) && projection_ready(goal, proof) {
@@ -519,9 +576,9 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
         } else {
           goal
         }
+      Resume(_, _) if goal.run_state == EvaluationBackoff => goal
       Resume(_, _) =>
-        if goal.run_state == AwaitingInput ||
-          goal.run_state == EvaluationBackoff {
+        if goal.run_state == AwaitingInput {
           let next = accepted(goal, id, now)
           { ..next, run_state: Runnable }
         } else {
