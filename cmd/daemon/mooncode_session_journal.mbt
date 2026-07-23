@@ -34,6 +34,22 @@ fn mooncode_journal_goal_event() -> String {
 }
 
 ///|
+fn mooncode_validate_generic_journal_append(
+  record_kind : String,
+  payload : Json,
+) -> Unit raise MoonCodeJournalError {
+  if record_kind == mooncode_journal_event() {
+    let kind = mooncode_json_string(payload, "kind", default="")
+    let id = mooncode_json_string(payload, "id", default="")
+    if kind.has_prefix("mooncode.goal.") || id == "goal-genesis-v1" {
+      raise InvalidJournal(
+        "Goal journal events must use the goal-specific atomic API",
+      )
+    }
+  }
+}
+
+///|
 async fn mooncode_append_session_journal(
   book_root : String,
   session_id : String,
@@ -169,9 +185,11 @@ async fn mooncode_append_session_journal_once(
   record_kind : String,
   payload : Json,
 ) -> Bool {
+  mooncode_validate_generic_journal_append(record_kind, payload)
   mooncode_session_journal_transaction(book_root, session_id, fn(
     records,
   ) raise {
+    mooncode_validate_generic_journal_append(record_kind, payload)
     // Json objects are mutable. Derive identity only after the transaction lock is held,
     // so duplicate lookup and the eventual record construction observe one no-yield state.
     let record_id = mooncode_journal_record_id(record_kind, payload)

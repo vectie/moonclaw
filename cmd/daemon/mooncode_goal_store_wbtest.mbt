@@ -544,6 +544,8 @@ async test "mooncode_goal_store: durable create is created idempotent then confl
       Conflict(_) => abort("first create conflicted")
     }
     assert_true(mooncode_replay_goal(root, "session") == Some(goal))
+    let path = mooncode_session_journal_path(root, "session")
+    let after_created = @fsx.read_file(path)
     let retry = mooncode_create_goal(
       root, protocol, "session", "goal", "objective", 124, budget, requirements,
     )
@@ -556,6 +558,7 @@ async test "mooncode_goal_store: durable create is created idempotent then confl
       Created(_) => abort("retry created another goal")
       Conflict(_) => abort("identical retry conflicted")
     }
+    assert_eq(@fsx.read_file(path), after_created)
     let records = mooncode_read_session_journal(root, "session")
     assert_eq(
       mooncode_journal_entries(records, mooncode_journal_goal_event()).length(),
@@ -569,12 +572,116 @@ async test "mooncode_goal_store: durable create is created idempotent then confl
       Created(_) => abort("conflict created another goal")
       Idempotent(_) => abort("different goal was idempotent")
     }
+    assert_eq(@fsx.read_file(path), after_created)
     let records = mooncode_read_session_journal(root, "session")
     assert_eq(
       mooncode_journal_entries(records, mooncode_journal_goal_event()).length(),
       1,
     )
     assert_true(mooncode_replay_goal(root, "session") == Some(goal))
+  })
+}
+
+///|
+async test "mooncode_goal_store: focused atomic mutation succeeds" {
+  @fsx.with_temporary_directory("moonclaw-goal-atomic-applied-XXXXXX", async fn(
+    root,
+  ) {
+    let created = mooncode_create_goal(
+      root,
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      "objective",
+      123,
+      goal_store_test_budget(),
+      goal_store_test_requirements(),
+    )
+    match created {
+      Created(_) => ()
+      Idempotent(_) => fail("expected created")
+      Conflict(_) => fail("expected created")
+    }
+    let event : @mooncode_core.GoalEvent = @mooncode_core.RequirementUpdated(
+      "atomic-applied",
+      124,
+      "r1",
+      @mooncode_core.Proven,
+      ["evidence"],
+    )
+    let next = match
+      mooncode_apply_goal_event(
+        root,
+        "session",
+        "goal",
+        @mooncode_core.goal_event_to_json(event),
+      ) {
+      GoalMutationApplied(next) => next
+      GoalMutationIdempotent(_) => fail("expected applied")
+      GoalMutationConflict(_) => fail("expected applied")
+      GoalMutationRejected(_) => fail("expected applied")
+    }
+    assert_eq(next.revision, 1)
+    assert_true(mooncode_replay_goal(root, "session") == Some(next))
+    let records = mooncode_read_session_journal(root, "session")
+    assert_eq(records.length(), 2)
+    assert_eq(goal_json_int(records[1], "recorded_at"), 124)
+    assert_eq(
+      goal_json_int(goal_json_object(records[1], "payload"), "recorded_at"),
+      124,
+    )
+  })
+}
+
+///|
+
+///|
+async test "mooncode_goal_store: focused atomic mutation duplicate is idempotent" {
+  @fsx.with_temporary_directory("moonclaw-goal-atomic-idempotent-XXXXXX", async fn(
+    root,
+  ) {
+    let created = mooncode_create_goal(
+      root,
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      "objective",
+      123,
+      goal_store_test_budget(),
+      goal_store_test_requirements(),
+    )
+    match created {
+      Created(_) => ()
+      Idempotent(_) => fail("expected created")
+      Conflict(_) => fail("expected created")
+    }
+    let event : @mooncode_core.GoalEvent = @mooncode_core.RequirementUpdated(
+      "atomic-idempotent",
+      124,
+      "r1",
+      @mooncode_core.Proven,
+      ["evidence"],
+    )
+    let canonical_event = @mooncode_core.goal_event_to_json(event)
+    let next = match
+      mooncode_apply_goal_event(root, "session", "goal", canonical_event) {
+      GoalMutationApplied(next) => next
+      GoalMutationIdempotent(_) => fail("expected applied")
+      GoalMutationConflict(_) => fail("expected applied")
+      GoalMutationRejected(_) => fail("expected applied")
+    }
+    let path = mooncode_session_journal_path(root, "session")
+    let before_retry = @fsx.read_file(path)
+    let current = match
+      mooncode_apply_goal_event(root, "session", "goal", canonical_event) {
+      GoalMutationApplied(_) => fail("expected idempotent")
+      GoalMutationIdempotent(current) => current
+      GoalMutationConflict(_) => fail("expected idempotent")
+      GoalMutationRejected(_) => fail("expected idempotent")
+    }
+    assert_true(current == next)
+    assert_eq(@fsx.read_file(path), before_retry)
+    assert_true(mooncode_replay_goal(root, "session") == Some(next))
   })
 }
 

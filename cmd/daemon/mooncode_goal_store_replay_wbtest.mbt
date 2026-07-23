@@ -210,14 +210,21 @@ async test "mooncode_goal_store disk restart: create replay and idempotency" {
       @mooncode_core.Proven,
       ["evidence:r1"],
     )
-    let appended = mooncode_append_session_journal_once(
+    let mutation = mooncode_apply_goal_event(
       directory,
       "session",
-      mooncode_journal_event(),
+      "goal",
       @mooncode_core.goal_event_to_json(event),
     )
-    assert_true(appended)
+    let next = match mutation {
+      GoalMutationApplied(next) => next
+      GoalMutationIdempotent(_) => fail("goal mutation was idempotent")
+      GoalMutationConflict(_) => fail("goal mutation conflicted")
+      GoalMutationRejected(_) => fail("goal mutation was rejected")
+    }
+    assert_eq(next.revision, 1)
     let detailed = mooncode_replay_goal_detailed(directory, "session").unwrap()
+    assert_true(detailed.current == next)
     assert_eq(detailed.genesis.revision, 0)
     assert_eq(detailed.genesis.created_at, 123)
     assert_eq(detailed.current.revision, 1)
