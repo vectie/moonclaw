@@ -4,20 +4,62 @@ package "vectie/moonclaw/packtool"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonclaw/job",
   "vectie/moonlib/pack",
   "vectie/moonlib/pack/host",
+  "vectie/moonlib/pack/installer",
 }
 
 // Values
+pub async fn advance_pack_workflow_run(@job.RuntimeManager, run_id~ : String, executor~ : PackToolExecutor, policy~ : InvocationPolicy, now~ : () -> Int, initial_input? : Json) -> @job.WorkflowExecutionResult
+
 pub fn authorize(ToolBinding, InvocationRequest, InvocationPolicy) -> InvocationDecision
 
 pub fn bindings(@host.HostActivationProjection) -> Array[ToolBinding] raise
 
+pub fn compile_workflow_job(@host.HostActivationProjection, PackWorkflowDeclaration, Int, schedule_id? : String) -> PackJobCompilation raise
+
+pub fn decode_workflow_declaration(String) -> PackWorkflowDeclaration raise
+
+pub fn installed_pack_command_executor(InstalledPackWorkflow, max_timeout_ms~ : Int) -> PackToolExecutor
+
+pub async fn intake_installed_workflow(workspace~ : String, pack_id~ : String, workflow_id~ : String, run_id~ : String, now_ms~ : Int, trigger? : @job.TriggerSource, schedule_id? : String) -> InstalledPackWorkflowIntake
+
+pub async fn intake_workflow_run(@job.RuntimeManager, @host.HostActivationProjection, PackWorkflowDeclaration, String, Int, trigger? : @job.TriggerSource, schedule_id? : String) -> Result[PackJobIntake, String]
+
+pub async fn load_installed_workflow(workspace~ : String, pack_id~ : String, workflow_id~ : String) -> InstalledPackWorkflow
+
+pub fn pack_tool_step_handler(PackToolExecutor, InvocationPolicy) -> @job.WorkflowStepHandler
+
 pub fn resolve(Array[ToolBinding], String) -> ToolBinding?
+
+pub async fn run_installed_command_workflow(workspace~ : String, pack_id~ : String, workflow_id~ : String, run_id~ : String, policy~ : InvocationPolicy, now~ : () -> Int, initial_input? : Json, schedule_id? : String) -> InstalledPackWorkflowRun
+
+pub async fn run_installed_workflow(workspace~ : String, pack_id~ : String, workflow_id~ : String, run_id~ : String, executor~ : PackToolExecutor, policy~ : InvocationPolicy, now~ : () -> Int, initial_input? : Json, schedule_id? : String) -> InstalledPackWorkflowRun
 
 // Errors
 
 // Types and methods
+pub(all) struct InstalledPackWorkflow {
+  pointer : @installer.ActivePackPointer
+  receipt : @installer.InstallationReceipt
+  manifest : @pack.MoonPackManifest
+  workflow_contract : @pack.ContractRef
+  projection : @host.HostActivationProjection
+  declaration : PackWorkflowDeclaration
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct InstalledPackWorkflowIntake {
+  installed : InstalledPackWorkflow
+  intake : PackJobIntake
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct InstalledPackWorkflowRun {
+  installed : InstalledPackWorkflow
+  intake : PackJobIntake
+  execution : @job.WorkflowExecutionResult
+}
+
 pub(all) struct InvocationDecision {
   allowed : Bool
   issues : Array[String]
@@ -39,6 +81,89 @@ pub(all) struct InvocationRequest {
   attempt : Int
   estimated_cost_micros : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackJobCompilation {
+  definition : @job.JobDefinition
+  workflow : @job.WorkflowDefinition
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackJobIntake {
+  definition : @job.JobDefinition
+  workflow : @job.WorkflowDefinition
+  run : @job.JobRun
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackToolCommandConfig {
+  contract : String
+  executable : String
+  input : String
+  arguments : Array[String]
+  timeout_ms : Int?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackToolCommandInvocation {
+  contract : String
+  pack_id : String
+  run_id : String
+  tool_id : String
+  input : Json
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackToolCommandResult {
+  contract : String
+  pack_id : String?
+  run_id : String?
+  tool_id : String?
+  ok : Bool?
+  output : Json?
+  error : String?
+  summary : String?
+  metrics : Json?
+  logs : Array[String]?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackToolExecutionRequest {
+  binding : ToolBinding
+  config : Json
+  initial_input : Json?
+  outputs : Map[String, Json]
+  run_id : String
+  step_id : String
+  evidence_path : String
+  attempt : Int
+  estimated_cost_micros : Int
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackToolExecutionResult {
+  output : Json
+  summary : String?
+  metrics : Json
+  logs : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+pub fn PackToolExecutionResult::new(output~ : Json, summary? : String?, metrics? : Json, logs? : Array[String]) -> Self
+
+pub struct PackToolExecutor {
+  estimate_cost_micros : (ToolBinding, Json) -> Int
+  run : async (PackToolExecutionRequest) -> Result[PackToolExecutionResult, String]
+}
+pub fn PackToolExecutor::new(run~ : async (PackToolExecutionRequest) -> Result[PackToolExecutionResult, String], estimate_cost_micros? : (ToolBinding, Json) -> Int) -> Self
+
+pub(all) struct PackWorkflowDeclaration {
+  contract : String
+  pack_id : String
+  product_id : String
+  id : String
+  version : String
+  steps : Array[PackWorkflowToolStep]
+  output_bindings : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct PackWorkflowToolStep {
+  id : String
+  tool_id : String
+  config : Json
+  retry_policy : @job.RetryPolicy?
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct ToolBinding {
   pack_id : String

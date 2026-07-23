@@ -111,10 +111,16 @@ pub fn authorize(
     request.estimated_cost_micros > policy.remaining_budget_micros {
     issues.push("invocation exceeds the remaining cost budget")
   }
-  if !binding.evidence_outputs.any(prefix =>
-    request.evidence_path == prefix ||
-    request.evidence_path.has_prefix(prefix + "/")
-  ) {
+  if binding.evidence_outputs.is_empty() {
+    if !request.evidence_path.is_blank() {
+      issues.push(
+        "tool without evidence outputs cannot declare an evidence path",
+      )
+    }
+  } else if !binding.evidence_outputs.any(prefix => {
+      request.evidence_path == prefix ||
+      request.evidence_path.has_prefix(prefix + "/")
+    }) {
     issues.push("evidence path is outside the declared outputs")
   }
   { allowed: issues.is_empty(), issues }

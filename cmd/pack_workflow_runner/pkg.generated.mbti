@@ -1,0 +1,53 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/cmd/pack_workflow_runner"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonclaw/job",
+}
+
+// Values
+pub async fn execute_pack_workflow_runner(PackWorkflowRunnerOptions, stdin_text~ : String) -> PackWorkflowRunnerResult
+
+pub fn pack_workflow_runner_argument_error(String) -> PackWorkflowRunnerResult
+
+pub fn pack_workflow_runner_usage() -> String
+
+pub fn parse_pack_workflow_runner_args(ArrayView[String]) -> Result[PackWorkflowRunnerOptions, String]
+
+// Errors
+
+// Types and methods
+pub(all) struct PackWorkflowRunnerOptions {
+  workspace : String
+  pack_id : String
+  workflow_id : String
+  run_id : String
+  policy : RunnerJsonSource
+  input : RunnerJsonSource?
+} derive(Eq, @debug.Debug)
+pub fn PackWorkflowRunnerOptions::uses_stdin(Self) -> Bool
+
+pub(all) struct PackWorkflowRunnerResult {
+  contract : String
+  ok : Bool
+  pack_id : String?
+  workflow_id : String?
+  run_id : String?
+  job_id : String?
+  durable_workflow_id : String?
+  status : @job.RunStatus?
+  outputs : Map[String, Json]
+  error : String?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum RunnerJsonSource {
+  JsonFile(String)
+  JsonStdin
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

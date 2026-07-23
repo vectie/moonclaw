@@ -1,7 +1,17 @@
 import {
+  "moonbitlang/async/fs",
   "moonbitlang/core/json",
+  "vectie/moonclaw/internal/spawn",
+  "vectie/moonclaw/job",
+  "vectie/moonlib/fsx",
   "vectie/moonlib/pack",
   "vectie/moonlib/pack/host",
+  "vectie/moonlib/pack/installer",
+  "vectie/moonlib/pathx",
 }
+
+import {
+  "moonbitlang/async",
+} for "test"
 
 supported_targets = "native"
