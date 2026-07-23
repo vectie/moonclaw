@@ -206,3 +206,83 @@ fn mooncode_parse_goal_put_request(
     _ => raise InvalidGoalRequest("invalid goal request")
   }
 }
+
+///|
+/// Value-free failures from the read-only durable-session gate.
+priv suberror MoonCodeGoalSessionGateError {
+  InvalidGoalSessionQuery
+  GoalSessionAbsentOrMismatch
+  GoalSessionCorrupt
+}
+
+///|
+/// Validate an active durable session without invoking the binding or general
+/// snapshot loaders. The returned root is the exact, canonical query root.
+async fn mooncode_goal_require_active_session(
+  session_id : String,
+  book_root : String,
+) -> String raise MoonCodeGoalSessionGateError {
+  if session_id.is_empty() ||
+    session_id.trim() != session_id ||
+    book_root.is_empty() ||
+    book_root.trim() != book_root {
+    raise InvalidGoalSessionQuery
+  }
+  let safe_id = mooncode_safe_session_id(session_id)
+  // Security boundary: reject dot aliases and any derived name that is not one
+  // canonical path component before deriving a durable-session path.
+  if session_id == "." ||
+    session_id == ".." ||
+    safe_id == "." ||
+    safe_id == ".." ||
+    @pathx.basename(safe_id) != safe_id {
+    raise InvalidGoalSessionQuery
+  }
+  let session_dir = mooncode_session_dir_by_safe_id(
+    book_root,
+    safe_id,
+    archived=false,
+  )
+  let snapshot_path = session_dir + "/session.json"
+  // Non-following async kind probes map only genuine ENOENT to absence; every
+  // present wrong kind and other stat failure is corrupt, including directory and
+  // session.json symlinks.
+  let dir_kind = @fs.kind(session_dir, follow_symlink=false) catch {
+    @os_error.OSError(_) as error if error.is_ENOENT() =>
+      raise GoalSessionAbsentOrMismatch
+    _ => raise GoalSessionCorrupt
+  }
+  if dir_kind != @fs.Directory {
+    raise GoalSessionCorrupt
+  }
+  let snapshot_kind = @fs.kind(snapshot_path, follow_symlink=false) catch {
+    @os_error.OSError(_) as error if error.is_ENOENT() =>
+      raise GoalSessionAbsentOrMismatch
+    _ => raise GoalSessionCorrupt
+  }
+  if snapshot_kind != @fs.Regular {
+    raise GoalSessionCorrupt
+  }
+  let text = @fsx.read_file(snapshot_path) catch {
+    _ => raise GoalSessionCorrupt
+  }
+  let json = @json.parse(text) catch { _ => raise GoalSessionCorrupt }
+  let object = match json {
+    Object(object) => object
+    _ => raise GoalSessionCorrupt
+  }
+  let exact = fn(field, expected) {
+    match object.get(field) {
+      Some(String(value)) => value == expected
+      _ => false
+    }
+  }
+  if !exact("kind", "mooncode-session-snapshot") ||
+    !exact("protocol", "mooncode.v1") ||
+    !exact("owner", "moonclaw") ||
+    !exact("session_id", session_id) ||
+    !exact("book_root", book_root) {
+    raise GoalSessionAbsentOrMismatch
+  }
+  book_root
+}

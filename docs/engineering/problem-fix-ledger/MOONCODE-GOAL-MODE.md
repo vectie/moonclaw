@@ -8,6 +8,19 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 
 ## Problem/fix ledger
 
+- **Problem/Fix — MoonBit symlink signature:** A repair wrongly assumed the positional symlink link path was labeled `link_path`; native compiler errors 4085/4080 exposed the actual `target~`-plus-positional signature, and all three calls were restored.
+- **Problem/Fix — zsh verification variable:** The first full-suite wrapper assigned zsh read-only parameter status and stopped after the tests; rerun with task_status, confirming the full daemon suite passed 176/176.
+
+- **Problem/Fix — double-wrapped sessions root caused false absence:** The `goal_gate_dir` test helper passed `mooncode_sessions_root(root)` into `mooncode_session_dir_by_safe_id`, which applies the sessions-root transformation itself, so fixtures landed in a double-nested store and production falsely returned `GoalSessionAbsentOrMismatch`. Pass book `root` directly while retaining the safe session ID and `archived` label; the invalid-JSON fixture still proves the generic `GoalSessionCorrupt` path.
+
+- **Problem/Fix — independent security/evidence audit:** Dot aliases and snapshot or active-directory symlinks could evade ordinary identity fixtures, while rejection tests did not independently prove filesystem non-mutation. In particular, the sanitizer derives `mooncode_safe_session_id("..") == "_"`, so derived-name checks cannot identify the raw parent-directory token; the production gate now rejects raw `session_id == "." || session_id == ".."` before/alongside its derived safe-component checks. The session gate and its tests are async; rejection coverage captures exact immediate directory entry counts and snapshot bytes, verifies journals remain absent using the production session-root and journal-path helpers, and includes absent-root dot aliases and symlink fixtures.
+
+- **Problem/Fix — transient no-tools recovery:** A transient no-tools turn could only report the audit rather than apply it. The recovery performs the bounded fixture rewrite and records the security and evidence proof in executable async tests.
+
+- **Problem/Fix — strict session gate recovery:** The first slice invented an async `@fs` API (`mkdtemp`, directory/file predicates, and manual cleanup), omitted the required `archived` label on session-store lookup, and attempted an invalid file-path formatting target. The current async gate resolves active and archived fixtures through `mooncode_session_dir_by_safe_id(..., archived=...)`, uses non-following `@fs.kind` checks to require an active `Directory` and a regular `session.json`, then reads it with `@fsx.read_file`, classifying present/read/stat failures as corrupt; the obsolete following exists probe was removed. Async tests use `@fsx.with_temporary_directory`, and formatting uses the repository-level `moon fmt` command without an invalid target argument.
+
+- **Problem/Fix — scoped edits and lexical test assertions:** A broad mechanical replacement escaped the intended goal-API scope into `packtool/command_executor.mbt`, changing `@fs.chmod` to `@fsx.chmod`; diff review caught the spillover and restored the original token. Separately, a collision-test no-mutation assertion was inserted outside its lexical temporary-directory closure; native compilation caught the unbound variables, and the assertion was moved inside the closure.
+
 - **Problem/Fix — goal API parser audit test compile failures:** The rejection helper attempted to rethrow without a declared error type, loop integers were passed where `Json` was required, and fixture destructuring used unsupported refutable `let ... else` forms. Unexpected parser errors now abort loudly, integer fixtures convert explicitly with `to_json()`, and object/array fixtures use exhaustive `match` expressions while preserving the isolated parser audit coverage.
 
 - **Problem/Fix — four new-test compile errors:** The JSON fixture helper used a raising object guard, assigned a `String` where `Json` was required, constructed the read-only `Object` form, and the padded disk replay test passed an obsolete third argument. Match `Object(fields)`, copy it, assign `replacement.to_json()`, return `Json::object(copied)`, and call `mooncode_replay_goal(root, " session ")` with two arguments.
@@ -92,3 +105,11 @@ The original slice changed and validated only the pure core and its documentatio
 
 - **Problem:** The invalid-protocol daemon test used a malformed, unterminated escaped JSON string, preventing the focused test file from parsing.
 - **Fix:** Replaced the string parsing loop with a contextual multiline `Json` object literal using protocol `other`, canonical fields, explicit null budget limits, and one valid requirement.
+
+- **Problem/Fix — goal API durable-session authorization could falsely accept synthesized snapshots (read-only gate slice):** General binding/session loaders may create state or synthesize snapshots for missing or invalid files, and safe filesystem IDs may collide. Added a private, read-only gate that validates canonical nonblank query values, checks an active directory and real regular `session.json`, parses that file directly, and requires exact kind/protocol/owner/session/root identity. It returns only the canonical root and value-free typed invalid-query, absent-or-mismatch, or corrupt errors. Focused temporary-filesystem whitebox tests cover exact success, malformed queries, archived-only and missing files, corrupt JSON, every identity mismatch, collision resistance, and rejection non-creation. No route, handler, capability, binding, or general loader was changed.
+- **Recovery — API gate filesystem coverage:** Added dot-path, symlink, and exact no-mutation snapshot coverage while preserving the six strict parser tests.
+
+
+### Gate audit recovery: direct symlink APIs
+
+A bounded follow-up turn was exhausted searching for `read_link`, which was unnecessary. The recovery uses direct `symlink`, non-following `kind`, `exists`, and immediate directory-entry counts. Combined dangling active-directory and dangling `session.json` evidence now verifies exact `GoalSessionCorrupt`, no journal, absent targets, retained symlink kinds, and no containing-directory mutation.
