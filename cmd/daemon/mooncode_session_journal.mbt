@@ -260,10 +260,22 @@ async fn mooncode_repair_journal_tail(file : @fs.File) -> Unit {
 }
 
 ///|
-fn mooncode_journal_record_id(record_kind : String, payload : Json) -> String {
+fn mooncode_journal_record_id(
+  record_kind : String,
+  payload : Json,
+) -> String raise MoonCodeJournalError {
   let direct_id = mooncode_json_string(payload, "id", default="")
   if direct_id != "" {
     return "\{record_kind}:\{direct_id}"
+  }
+  let payload_kind = mooncode_json_string(payload, "kind", default="")
+  if record_kind == mooncode_journal_goal_event() &&
+    payload_kind.has_prefix("mooncode.goal.") {
+    let event_id = mooncode_json_string(payload, "event_id", default="")
+    if event_id == "" || event_id.trim() != event_id {
+      raise InvalidJournal("MoonCode logical goal event has invalid `event_id`")
+    }
+    return "event:\{event_id}"
   }
   let command_id = mooncode_journal_command_id(payload)
   if record_kind == mooncode_journal_command() {
