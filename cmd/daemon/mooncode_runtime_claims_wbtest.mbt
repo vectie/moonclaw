@@ -197,3 +197,61 @@ test "mooncode runtime cancelled receipt is terminal" {
   )
   assert_eq(mooncode_json_string(receipt, "control", default=""), "cancel")
 }
+
+///|
+async test "16 concurrent legacy runtime claimers append one parseable receipt" {
+  @fsx.with_temporary_directory("runtime-claim-atomic-XXXXXX", async fn(root) {
+    let session_id = "session-atomic-claim"
+    ignore(
+      mooncode_append_session_journal(
+        root,
+        session_id,
+        mooncode_journal_command(),
+        {
+          "kind": "mooncode-command",
+          "protocol": mooncode_protocol_version(),
+          "session_id": session_id,
+          "command_id": "cmd-atomic",
+          "created_at": 100,
+          "command": {
+            "protocol": mooncode_protocol_version(),
+            "session_id": session_id,
+            "book_root": root,
+            "command": "prompt",
+            "packet": { "command_id": "cmd-atomic" },
+          },
+        },
+      ),
+    )
+    let tasks = Array::makei(16, fn(i) {
+      async fn() {
+        mooncode_runtime_claim_atomic(
+          root,
+          session_id,
+          { "consumer_id": "consumer-\{i}" },
+          @clock.Timestamp::from_ms(100L),
+        )
+      }
+    })
+    let results = @async.all(tasks)
+    let mut claimed = 0
+    for result in results {
+      if result.receipts.length() == 1 {
+        claimed += 1
+      }
+    }
+    assert_eq(claimed, 1)
+    let journal = mooncode_read_session_journal(root, session_id)
+    let commands = mooncode_journal_entries(journal, mooncode_journal_command())
+    let receipts = mooncode_journal_entries(
+      journal,
+      mooncode_journal_runtime_receipt(),
+    )
+    assert_eq(commands.length(), 1)
+    assert_eq(receipts.length(), 1)
+    assert_eq(
+      mooncode_json_string(receipts[0], "status", default=""),
+      "runtime-claimed",
+    )
+  })
+}

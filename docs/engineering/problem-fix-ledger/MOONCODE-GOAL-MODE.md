@@ -251,3 +251,12 @@ This slice adds pure MoonBit typed observations and four verdicts. **Equivalent*
 The first broad implementation service ran for more than three minutes without producing a file, so the daemon was stopped and the work was split into types, helpers, public API, and tests. The first test draft used implementation-inconsistent underscore codes and omitted `summary.mismatch`; it was corrected to use dotted stable codes and include that mismatch.
 
 This slice compares supplied observations only. Durable sample ingestion, route/UI integration, and automatic Codex-vs-MoonCode shadow runs remain next. Product and test code were authored through MoonCode and independently gated.
+
+
+## Atomic legacy runtime claim
+
+Legacy runtime claim selection and receipt append are transaction-linearized in one journal transaction. The concurrency regression covers 16 simultaneous writers and verifies that exactly one parseable claim receipt is appended.
+
+This does **not** establish a fenced runtime-claim protocol. Supervisor owner, fence, and checkpoint validation remain pending, as do tool and terminal fencing.
+
+Implementation recovery notes: the bounded turn was exhausted before a mutation; an invented helper was proposed; a wrong test selector ran 0 tests; and the new concurrency fixture omitted the durable command timestamp, causing `MoonCodeJournalError.InvalidJournal`. The fixture now includes the required `created_at` timestamp.
