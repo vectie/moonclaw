@@ -139,16 +139,19 @@ async fn mooncode_parse_journal_file(
   file : @fs.File,
   path : String,
 ) -> Array[Json] {
-  let size = file.size()
-  if size == 0L {
-    return []
+  let records : Array[Json] = []
+  let mut cursor = MoonCodeJournalSequence::zero()
+  while true {
+    match file.read_until("\n") {
+      Some(line) => {
+        let (record, next) = mooncode_journal_stream_record(line, cursor)
+        records.push(record)
+        cursor = next
+      }
+      None => break
+    }
   }
-  if size > 0x7fffffffL {
-    raise InvalidJournal("MoonCode journal is too large to replay: \{path}")
-  }
-  let bytes = file.read_exactly_at(size.to_int(), position=0L)
-  let text = @encoding/utf8.decode(bytes)
-  mooncode_parse_journal_text(text, path)
+  records
 }
 
 ///|
