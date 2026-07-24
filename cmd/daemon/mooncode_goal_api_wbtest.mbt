@@ -4,7 +4,7 @@
 /// These regressions must compare the complete production snapshot before and after every rejected request.
 /// - Calls into the persistent session gate are async.
 /// - Exact object schemas reject omitted, extension, usage, and client-owned state fields.
-/// - Policy: turn_limit is required, non-null, exact nonnegative Int32; parsed values are preserved in Some.
+/// - Policy: turn_limit is required; null is unbounded None, while exact nonnegative Int32 values are preserved in Some.
 /// - Budget and requirements shape failures are tested independently from protocol validity.
 /// - Security audit defects: dot aliases and following snapshot/directory symlinks could bypass identity/kind checks.
 /// - Evidence audit defect: rejection tests did not prove the active store, fixture bytes/entries, and journal were unchanged.
@@ -37,6 +37,12 @@ fn goal_api_rejected(body : Json, path? : String = "session") -> Bool {
 
 ///|
 test "mooncode_goal_api: valid limits preserve exact values" {
+  let unbounded = mooncode_parse_goal_put_request(
+    goal_api_body(Json::null()),
+    "session",
+  )
+  assert_eq(unbounded.budget.turn_limit, None)
+
   for limit in [0, 7, 2147483647] {
     let request = mooncode_parse_goal_put_request(
       goal_api_body(limit.to_json()),
@@ -57,7 +63,6 @@ test "mooncode_goal_api: valid limits preserve exact values" {
 test "mooncode_goal_api: turn_limit policy rejects invalid values" {
   for
     value in [
-      Json::null(),
       (-1 : Json),
       (1.5 : Json),
       (2147483648 : Json),

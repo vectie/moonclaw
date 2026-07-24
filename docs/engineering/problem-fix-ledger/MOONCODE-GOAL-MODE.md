@@ -291,4 +291,6 @@ New claim-store incidents and fixes:
 
 ### Unbounded Goal execution
 
+Strict Goal PUT now accepts required `turn_limit: null` as durable `None`/unbounded while preserving numeric `Some` and rejecting invalid scalars; focused parser tests pass **15/15** and the full daemon passes **272/272** with no interface drift. The first MoonCode turn reported runtime failure after making the correct two-file change, so independent gates—not the receipt—established acceptance. Pending items remain: Int64 epoch-ms migration, release, rolling service, planner ceiling removal, and finite provider/effect timeouts.
+
 Goal Mode must have no `max_turns` or tool-call ceiling. A rolling supervisor renews leases and checkpoints until verified completion, an explicit user stop, explicit budget exhaustion, or unresolved ambiguity. Individual effects remain timeout- and fence-bounded. Removing `max_turns` from the service loop is still pending.
