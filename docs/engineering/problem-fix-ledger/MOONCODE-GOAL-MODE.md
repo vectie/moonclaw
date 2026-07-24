@@ -256,3 +256,11 @@ A hallucinated whole-test-file overwrite replaced validated codec coverage. The 
 - **Problem:** An append-only ledger turn used a whole-file write and deleted 175 historical lines. **Fix:** Recover the exact pre-turn bytes from the durable read record with byte/newline checks, then use this exact-tail edit; accept only an additions-only diff.
 - **Evidence:** Focused native codec tests are 31/31; daemon native check reports 0 errors; `moon info` and formatting are clean; there is no `.mbti` interface diff; and an independent read-only audit found no P0/P1 blocker.
 - **Invariant:** There is no aggregate goal bound: no token, turn, step, iteration, operation-count, LOC, deadline, or wall-time cap. `max_output_bytes` and `timeout_milliseconds` are operation-local containment only and cannot settle a goal.
+
+## Canonical carrier boundary recovery
+
+- **Problem:** The first carrier test draft regressed to obsolete tuple criteria, a five-argument stored-event constructor, nonexistent phases/events, unlabeled `String.replace`, and helpers without required error effects. **Fix:** Keep the structurally valid carrier source, replace the unvalidated test draft with the real typed positional codec patterns, and feed the exact compiler diagnostics into small continuation turns.
+- **Problem:** The carrier encoder built guaranteed-valid JSON through `@json.parse`, leaking `Json::ParseError` outside its declared codec error effect. **Fix:** Construct the six-key contextual `Json` object directly after reconstructing and validating the embedded logical record.
+- **Problem:** Two legacy commands again reached planner step 8 before validation completed. **Fix:** Preserve their edits and diagnostics as nonterminal continuation state; controller validation and a fresh MoonCode repair completed the slice.
+- **Evidence:** The carrier suite passes 7/7, daemon native check reports 0 errors, and an independent read-only audit found no P0/P1 blocker. Exact canonical record bytes, every event/decision/phase, `Int64::MAX`, exact schemas, redundant-field checks, aggregate-alias rejection, and opaque operation input are covered.
+- **Boundary:** This checkpoint is pure carrier encode/decode only. Physical journal append, locks, global cursor replay, stable-ID indexing, conflict detection, HTTP, and supervisor remain the next slices.
