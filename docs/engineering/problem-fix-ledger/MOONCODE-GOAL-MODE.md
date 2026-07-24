@@ -260,3 +260,35 @@ Legacy runtime claim selection and receipt append are transaction-linearized in 
 This does **not** establish a fenced runtime-claim protocol. Supervisor owner, fence, and checkpoint validation remain pending, as do tool and terminal fencing.
 
 Implementation recovery notes: the bounded turn was exhausted before a mutation; an invented helper was proposed; a wrong test selector ran 0 tests; and the new concurrency fixture omitted the durable command timestamp, causing `MoonCodeJournalError.InvalidJournal`. The fixture now includes the required `created_at` timestamp.
+
+## Strict supervised runtime claim store
+
+Independent final gates pass **4/4 focused tests** and **272/272 full daemon tests**, with no `.mbti` drift. Exact retry revalidates the current lease and checkpoint against the pre-claim journal basis prefix and rejects an already-terminal claim. The store proves exact real command lineage and rejects nested command-ID mismatch. Under 16 concurrent claimers, exactly one returns `Recorded` and fifteen return `BlockedAmbiguous`, with exactly one receipt.
+
+The claim store is not yet wired to routes or the runtime turn. Pre-effect and terminal fencing also remain to be implemented.
+
+Prior incidents and fixes:
+
+- Repeated eight-step planner-cap partial failures required bounded continuation and independent gating.
+- The planner invented `@journal.Event`/`MoonCodeJournalEvent` and an illegal guard; these were replaced with the actual journal types and valid control flow.
+- Stale or nonexistent test APIs were corrected to the repository's current interfaces.
+- The first integrated run passed 222/224 tests because Goal replay misclassified the supervisor record; replay was fixed to validate and skip the orchestration subtype.
+- Multiple invalid `moon fmt`, `moon_cmd`, and IDE calls were corrected or abandoned when inapplicable.
+- Four `ConnectionClosed` planner failures required a daemon restart before recovery.
+- A broad shell heredoc/`sed` approval was rejected, after which work resumed through structured edits; a later turn nevertheless used shell to rewrite the replay block despite the structured-only instruction.
+- Some receipts reported runtime failure despite passing checks, so completion was based on an independent final gate.
+- The final independent suite passed **233/233 tests**.
+
+New claim-store incidents and fixes:
+
+- Red-team review found stale/terminal idempotent replay; retry validation now checks the current lease/checkpoint and rejects terminal claims.
+- Full-journal checkpoint validation broke valid retry; validation was narrowed to the pre-claim basis prefix.
+- Bounded MoonCode turns produced partial, comment-only, and no-op edits; recovery required concrete native edits and verification rather than accepting narration as progress.
+- One missing brace and invented helper names were corrected after validation failures.
+- A forged-test shell-append approval was rejected; the change was made with the native edit path.
+- Invented `await` syntax and an accidental global double-pattern replacement were caught by the compiler and repaired.
+- An optional delivered-status hardening turn stalled in its provider call and then failed without mutation, confirming that an unbounded Goal still needs bounded provider/effect timeouts.
+
+### Unbounded Goal execution
+
+Goal Mode must have no `max_turns` or tool-call ceiling. A rolling supervisor renews leases and checkpoints until verified completion, an explicit user stop, explicit budget exhaustion, or unresolved ambiguity. Individual effects remain timeout- and fence-bounded. Removing `max_turns` from the service loop is still pending.
