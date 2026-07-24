@@ -80,7 +80,8 @@ async fn mooncode_goal_supervisor_lease_renew(
         } else {
           return NoAppend(RenewalConflict(current))
         }
-      Some(ReplayAcquisition(_)) => return NoAppend(RenewalConflict(current))
+      Some(ReplayAcquisition(_)) | Some(ReplayCheckpoint(_)) =>
+        return NoAppend(RenewalConflict(current))
       None => ()
     }
     if mooncode_goal_supervisor_event_record_exists(records, event_id) {

@@ -69,6 +69,7 @@ priv struct MoonCodeGoalSupervisorLeaseRenewal {
 priv enum MoonCodeGoalSupervisorLeaseReplayEvent {
   ReplayAcquisition(MoonCodeGoalSupervisorLease)
   ReplayRenewal(MoonCodeGoalSupervisorLeaseRenewal)
+  ReplayCheckpoint(MoonCodeGoalSupervisorCheckpointPayload)
 } derive(Eq, Debug)
 
 ///|
@@ -450,6 +451,63 @@ fn mooncode_goal_supervisor_lease_replay(
         lease_expires_at: renewal.lease_expires_at,
         event_id: current.event_id,
       })
+    } else if kind == mooncode_goal_supervisor_checkpoint_v1_kind() {
+      guard genesis_seen else {
+        raise InvalidGoalGenesis("supervisor event before goal genesis")
+      }
+      let checkpoint = mooncode_goal_supervisor_checkpoint_decode(envelope)
+      let event = MoonCodeGoalSupervisorLeaseReplayEvent::ReplayCheckpoint(
+        checkpoint,
+      )
+      guard checkpoint.session_id == goal.session_id else {
+        raise InvalidGoalGenesis("supervisor checkpoint session mismatch")
+      }
+      guard checkpoint.goal_id == goal.id else {
+        raise InvalidGoalGenesis("supervisor checkpoint goal mismatch")
+      }
+      if checkpoint.goal_run_id > goal.run_id {
+        raise InvalidGoalGenesis("supervisor checkpoint goal run mismatch")
+      }
+      match seen.get(checkpoint.id) {
+        Some(previous) =>
+          if previous == event {
+            continue
+          } else {
+            raise InvalidGoalGenesis(
+              "conflicting duplicate supervisor checkpoint event",
+            )
+          }
+        None => ()
+      }
+      let current = match active {
+        Some(current) => current
+        None =>
+          raise InvalidGoalGenesis("supervisor checkpoint without active lease")
+      }
+      guard checkpoint.goal_run_id == current.goal_run_id else {
+        raise InvalidGoalGenesis("supervisor checkpoint goal run mismatch")
+      }
+      guard checkpoint.owner_id == current.owner_id else {
+        raise InvalidGoalGenesis("supervisor checkpoint owner mismatch")
+      }
+      guard checkpoint.fence_token == current.fence_token else {
+        raise InvalidGoalGenesis("supervisor checkpoint fence token mismatch")
+      }
+      guard checkpoint.acquisition_event_id == current.event_id else {
+        raise InvalidGoalGenesis(
+          "supervisor checkpoint acquisition event mismatch",
+        )
+      }
+      guard checkpoint.expected_lease_expires_at == current.lease_expires_at else {
+        raise InvalidGoalGenesis("supervisor checkpoint lease expiry mismatch")
+      }
+      guard checkpoint.recorded_at >= current.recorded_at else {
+        raise InvalidGoalGenesis("supervisor checkpoint predates active lease")
+      }
+      guard checkpoint.recorded_at < current.lease_expires_at else {
+        raise InvalidGoalGenesis("supervisor checkpoint outside active lease")
+      }
+      seen[checkpoint.id] = event
     }
   }
   (active, maximum_fence)
@@ -490,6 +548,12 @@ fn mooncode_goal_supervisor_event_find(
           return Some(
             ReplayRenewal(
               mooncode_goal_supervisor_lease_renewal_decode(envelope),
+            ),
+          )
+        } else if kind == mooncode_goal_supervisor_checkpoint_v1_kind() {
+          return Some(
+            ReplayCheckpoint(
+              mooncode_goal_supervisor_checkpoint_decode(envelope),
             ),
           )
         } else if kind.has_prefix("mooncode.goal.supervisor.") {
@@ -582,7 +646,7 @@ async fn mooncode_goal_supervisor_lease_acquire(
         } else {
           return NoAppend(SupervisorLeaseConflict(Some(existing)))
         }
-      Some(ReplayRenewal(_)) =>
+      Some(ReplayRenewal(_)) | Some(ReplayCheckpoint(_)) =>
         match current {
           Some(active) => return NoAppend(SupervisorLeaseConflict(Some(active)))
           None => raise InvalidGoalGenesis("renewal without active acquisition")

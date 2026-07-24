@@ -237,6 +237,19 @@ fn mooncode_replay_goal_records_detailed(
         }
         continue
       }
+      if kind == mooncode_goal_supervisor_checkpoint_v1_kind() {
+        let checkpoint = mooncode_goal_supervisor_checkpoint_decode(envelope)
+        if checkpoint.session_id != state.current.session_id ||
+          checkpoint.goal_id != state.current.id ||
+          checkpoint.goal_run_id != state.current.run_id ||
+          checkpoint.goal_revision != state.current.revision ||
+          checkpoint.current_goal_turn != state.current.current_goal_turn {
+          raise InvalidGoalGenesis(
+            "supervisor checkpoint goal snapshot mismatch",
+          )
+        }
+        continue
+      }
       raise InvalidGoalGenesis("unknown supervisor event kind")
     }
     if goal_kind && kind != mooncode_goal_genesis_kind() {

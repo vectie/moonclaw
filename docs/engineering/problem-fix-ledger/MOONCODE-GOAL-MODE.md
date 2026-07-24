@@ -168,6 +168,10 @@ Product code for this checkpoint was generated through MoonCode; the controller 
 
 The original slice changed and validated only the pure core and its documentation/tests. The later durable genesis/replay slice is now implemented and claimed below; HTTP/controller integration remains deferred.
 
+## Supervisor checkpoint replay recovery
+
+Replay validates the point-in-time Goal `run_id`, `revision`, and `current_goal_turn` and the exact lease owner, fence, acquisition time, and expiry; recovery addressed `current_turn` and invented-API, partial-turn, and `goal_run_id` failures through atomic edits and passed the **248/248 gate**. One delayed cleanup incident removed the accepted test, prompting a queue halt and recovery from the last verified diff; checkpoint storage and the terminal command-claim-receipt chain remain deferred.
+
 ## Durable evaluation failure/backoff v1
 
 - **Problem:** Evaluation failure retries need durable, replay-safe identity binding; generic resume must not bypass retry deadlines.
