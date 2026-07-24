@@ -41,7 +41,10 @@ fn mooncode_validate_generic_journal_append(
   if record_kind == mooncode_journal_event() {
     let kind = mooncode_json_string(payload, "kind", default="")
     let id = mooncode_json_string(payload, "id", default="")
-    if kind.has_prefix("mooncode.goal.") || id == "goal-genesis-v1" {
+    if kind.has_prefix("mooncode.goal.") ||
+      kind.has_prefix("mooncode.goal.supervisor.") ||
+      id.has_prefix("mooncode.goal.supervisor.") ||
+      id == "goal-genesis-v1" {
       raise InvalidJournal(
         "Goal journal events must use the goal-specific atomic API",
       )

@@ -212,6 +212,19 @@ fn mooncode_replay_goal_records_detailed(
     if !reserved_envelope_id && !reserved_id && !goal_kind {
       continue
     }
+    if kind == mooncode_goal_supervisor_lease_v1_kind() {
+      let state = match replay {
+        Some(state) => state
+        None => raise InvalidGoalGenesis("supervisor lease before genesis")
+      }
+      let lease = mooncode_goal_supervisor_lease_decode(envelope)
+      if lease.session_id != state.current.session_id ||
+        lease.goal_id != state.current.id ||
+        lease.goal_run_id != state.current.run_id {
+        raise InvalidGoalGenesis("supervisor lease goal mismatch")
+      }
+      continue
+    }
     if goal_kind && kind != mooncode_goal_genesis_kind() {
       mooncode_goal_require_canonical_identity(
         "envelope_session", envelope_session,

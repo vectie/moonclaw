@@ -14,6 +14,26 @@ Incidents encountered during the slice included an invalid `Map.insert` test hel
 
 Atomic compare-and-append remains the next P1 item, followed by the supervisor lease/fence/checkpoint loop.
 
+## 2026-07-24 — Durable supervisor lease and fencing checkpoint
+
+This checkpoint adds atomic session-journal acquisition for the durable supervisor lease. The first acquisition issues `fence=1`; takeover after expiry increments the fence. Global event-ID handling is idempotent for an exact duplicate and rejects conflicting reuse. Validation enforces the strict codec, replay, and fence sequence, including historical retries. A generic namespace guard prevents cross-namespace misuse, and a missing goal produces no artifact. The suite proves concurrent initial acquisition and concurrent expiry takeover behavior.
+
+The current boundary is acquisition only: renew, checkpoint, release, and runtime claim fencing remain pending, and no mid-tool exactly-once guarantee is claimed.
+
+Incidents and fixes during this checkpoint:
+
+- Repeated eight-step planner-cap partial failures required bounded continuation and independent gating.
+- The planner invented `@journal.Event`/`MoonCodeJournalEvent` and an illegal guard; these were replaced with the actual journal types and valid control flow.
+- Stale or nonexistent test APIs were corrected to the repository's current interfaces.
+- The first integrated run passed 222/224 tests because Goal replay misclassified the supervisor record; replay was fixed to validate and skip the orchestration subtype.
+- Multiple invalid `moon fmt`, `moon_cmd`, and IDE calls were corrected or abandoned when inapplicable.
+- Four `ConnectionClosed` planner failures required a daemon restart before recovery.
+- A broad shell heredoc/`sed` approval was rejected, after which work resumed through structured edits; a later turn nevertheless used shell to rewrite the replay block despite the structured-only instruction.
+- Some receipts reported runtime failure despite passing checks, so completion was based on an independent final gate.
+- The final independent suite passed **233/233 tests**.
+
+Product code for this checkpoint was generated through MoonCode; the controller only prompted, inspected, and gated the work.
+
 ## Problem/fix ledger
 
 - **Atomic goal-ops slice — deferred scope:** A deferred steer became a standalone next task, reducing this slice to the enum rename.
