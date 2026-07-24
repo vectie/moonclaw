@@ -1,5 +1,11 @@
 # MoonCode goal mode: durable core reducer
 
+## Validation trial problem: orphaned Moon lock
+
+A focused decoder-test receipt falsely reported expected status 0 after its `moon` process was killed while blocked on an orphaned `_build/.moon-lock`. The controller isolated the generated orphan lock inode and reran the exact focused validation using a fresh generated lock path. The fix is to treat killed or lock-blocked commands as failed/inconclusive rather than successful, record the actual process outcome, and rerun the exact command after lock isolation.
+
+> Command 005 recovery is in progress: controller/parallel audit identified that stored-event encoding must carry the exact `mooncode.goal.runtime.event.v1` kind and that constructor validation must cover every event variant. The decoder boundary is strict genesis-only JSON (exact keys/types/constants, canonical identities/text, checked nonnegative Int64 time, lowercase SHA-256, reconstruction and digest verification); store, HTTP, supervisor, legacy goal behavior, and aggregate caps remain out of scope.
+
 **Original pure-core checkpoint:** Pure `mooncode/core` contracts and reducer only; daemon persistence/replay and API integration were intentionally deferred at that checkpoint. Durable genesis replay and the GET/PUT genesis endpoint are now wired; automatic controller/event replay remain deferred. Caller-supplied integer timestamps make pure reducer replay deterministic. Event IDs provide idempotency. Requirements carry stable IDs, proof state, and evidence references; approvals remain caller-supplied references only. Public JSON projections are versioned and deliberately exclude approval/evidence details, internal reasoning, and secrets; this slice does not claim integration-level redaction coverage.
 
 ## Invariants
@@ -13,6 +19,14 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 The two observed **hard-eight failures** were (1) an eight-turn/continuation ceiling settling work that still had a valid next action, and (2) an eight-unit execution/time quantum being promoted from an individual operation guard into an aggregate goal-completion deadline. Both failures confused bounded execution quanta with bounded goal solvability. The fix retains per-operation timeout/output resource policy so one tool invocation cannot run forever or emit unbounded data, while omitting—and rejecting—aggregate token, turn, wall-time, LOC, and deadline fields. Goal completion therefore has no arbitrary aggregate bound; safety remains local to each operation.
 
 This slice intentionally does not add daemon scheduling or HTTP behavior.
+
+## First persistence slice: strict daemon-private codec
+
+**Exact boundary:** this slice adds only the daemon-private typed codec and whitebox tests for `mooncode-goal-runtime.v1`. It does not add a disk store, HTTP routes, supervisor/controller behavior, legacy Goal/GoalBudget changes, or core changes. Genesis semantics are independent of the legacy aggregate contract and contain only protocol, contract, session/goal identity, objective, and ordered criteria. Runtime journal integration must later retain MoonLib's supported physical `event` record kind and distinguish these records by their logical `mooncode.goal.runtime.*.v1` kind; `goal-runtime` is not a physical record kind.
+
+- **Problem — retry identity was vulnerable to recording time:** Including `recorded_at` or a stable record ID in semantic hashing makes a response-lost retry at a later time appear to be different work. **Fix:** hash fixed-order semantic JSON only; exclude timestamp, digest, and stable ID, and verify the full lowercase SHA-256 digest on decode.
+- **Problem — permissive persistence decoding hides schema drift:** defaulting readers and partial object matching silently accept misspellings, aggregate aliases, and future fields. **Fix:** the codec boundary uses exact recursive allowlists, checked integers, canonical unpadded identities, and core-equivalent decision validation before reconstructing reducer events.
+- **Problem — legacy aggregate limits can leak into unbounded runtime genesis:** budget, turn/token/time/step/iteration/operation/LOC/deadline fields would reintroduce false terminal behavior. **Fix:** genesis uses only the exact v1 semantic fields and rejects aggregate completion fields at every relevant nesting level; operation policy remains positive without arbitrary maxima.
 
 ## Problem/fix ledger
 
@@ -187,3 +201,58 @@ The legacy eight-step planner exhausted before validation. Final audit fixes enf
 - Problem/fix: The checkpoint idempotency test initially conflated event idempotency with checkpoint deduplication; it now checks exact-event replay as a no-op and distinct-event checkpoint deduplication separately.
 
 - **Problem/Fix — Legacy async timeout flake after hardening:** After the post-hardening full native suite, the unrelated legacy async test `analysis_step_handler enforces timeout and token budget policies` failed once (1250/1251) at its 1ms timeout expectation. An immediate isolated rerun passed 1/1, identifying timing flakiness rather than a goal-runtime regression; no source or test edit was made.
+
+- Problem/Fix (command-001): Invalid `priv fn`, deprecated suberror syntax, manual UInt16 hex indexing, and exhausting step 8 before compiler repair were replaced by modern MoonBit declarations, modern `priv suberror ... { ... }`, crypto hex helpers, and fail-fast compiler validation. Decode strictness and missing/extra-field rejection remain intentionally deferred to the decoder continuation.
+
+
+# Command 006–009 problem/fix ledger
+
+## Commands 006–009 (completed by command 009)
+
+- **Problem:** Runtime codec constructors validated normalized copies but genesis hashing/storage still referenced caller-owned criteria, while stored events validated/serialized/stored the original mutable event and incompletely validated event-specific fields.
+- **Fix:** Genesis now hashes and stores normalized criteria. Stored-event construction now copies first, derives identity from the copy, validates canonical identities and exhaustive variants, hashes the normalized event, and stores that copy. Focused tests cover equal session/goal IDs, invalid operation/checkpoint/cancel details, and mutation isolation for criteria, operations, evidence references, and alternatives.
+
+- **Problem:** Provider stalls and local cancellation could be mistaken for aggregate goal exhaustion. **Fix:** Provider-stall remains a nonterminal external pause/observation, while local-cancel is terminal only when an explicit operator cancellation event is recorded; neither creates an implicit overall goal bound.
+- **Problem:** Repeated legacy command runs exhausted at step 8 even while valid implementation work remained (including commands 001, 002, and 003), conflating controller-command allowance with goal completion. **Fix:** Command exhaustion is recorded as nonterminal continuation state. Work resumes in the next command, and the unbounded goal is settled only by explicit `Achieved`, `Blocked`, or `Cancelled` outcomes.
+
+## Command 011 — semantic runtime digest regression
+
+- Runtime-event semantic digests had incorrectly included the stable event ID and omitted protocol discriminator fields.
+- The fixed-order semantic basis is now `{kind, protocol, contract, session_id, goal_id, payload}`; timestamp and stable ID are excluded.
+- Constructors reject negative recording timestamps as timestamp-integrity violations. This is not a goal deadline or aggregate bound.
+- Encoders are required to reconstruct values and enforce fixed/embedded IDs plus lowercase 64-hex digest integrity before normalized serialization.
+- Operation timeout and output limits remain operation-local safeguards.
+
+- **Problem/Fix — command 011 digest repair:** The first attempt only added `mooncode_goal_runtime_event_semantic_basis` and missed the constructor anchors, so it did not change stored-event digest behavior. This continuation preserves that history and actually wires the normalized event semantic basis into `new_mooncode_goal_runtime_stored_event`, excluding stable event IDs and `recorded_at` while retaining session, goal, and payload semantics; it also rejects negative event timestamps.
+
+## Digest encoder repair (command 003 correction)
+
+- **Problem:** Encoders trusted daemon-private envelope identity and `semantic_digest` fields, allowing forged records and post-construction nested mutation to serialize. The first focused tests also used `fail`/`noraise` inside effectful codec `try` blocks, producing a compile-time effect error, and incorrectly expected mutation of the caller-owned operations array after construction to invalidate the stored event even though the constructor correctly copies that array.
+- **Fix:** Extracted raw `genesis_envelope_json` and `event_envelope_json` helpers. Encoders reconstruct through current constructors, require fixed/embedded IDs, validate lowercase 64-hex digests, compare recomputed digests, and serialize normalized values. Rejection tests now capture `Invalid` as a boolean and assert it, avoiding the compile effect error. The mutation test first proves caller mutation leaves nested encoding valid and byte-unchanged, then mutates the constructor-owned nested operations and verifies encoding rejects the resulting digest mismatch. Focused coverage retains forged IDs/digests and valid-byte stability.
+
+## Formatter-snapshot recovery
+
+A stale/deferred steer became a standalone turn, a regex repair corrupted 63 unrelated occurrences, and the command finished without validation. Recovery restored the last formatter snapshot and reapplied five AST-local edits with exact focused tests.
+
+## Genesis `recorded_at` JSON-number decoding
+
+MoonBit core's `FromJson` implementation for `Int64` accepts a JSON `String`, not `Json::Number`; using it on the valid numeric genesis timestamp `4294967296` therefore caused the two valid-decode failures. The codec now handles `Json::Number` directly: when the parser preserved an exact representation it passes that representation straight to `@string.parse_int64` (including syntax and overflow decisions), while representation-less doubles must be finite, integral, nonnegative, and at most `2^53 - 1` before exact conversion. The common result is then checked as nonnegative, with no aggregate goal bound or arbitrary maximum on exact represented integers.
+
+
+## Codec test-file overwrite recovery
+
+A hallucinated whole-test-file overwrite replaced validated codec coverage. The file was recovered from the formatter snapshot, then checked against the controller's expected suite. Prevention is to use small fresh sessions, apply narrow surgical patches rather than whole-file rewrites, and require controller verification of the resulting diff and focused validation receipts.
+
+## Strict v1 codec decoder and event-matrix recovery
+
+- **Problem:** A shell command ran `moon test ... 2>&1 | tail -80` without `pipefail`; `tail` exited 0 and masked the failed test. **Fix:** Run MoonCode test tools directly, or use shell pipelines with strict `pipefail`, and require controller verification of the canonical command.
+- **Problem:** MoonCode repeatedly sent a native target to `moon fmt`, which does not accept a target. **Fix:** Run `moon fmt` without a target; use targets only for check and test.
+- **Problem:** A broad short numeric-pattern edit touched the protected Int64 exact-representation branch and broke Int64-max decoding and syntax. **Fix:** The controller cancelled the turn, a fresh narrow session restored the exact `parse_int64(raw)` branch, and later prompts avoided broad numeric rewrites.
+- **Problem:** A test-generation turn hallucinated nonexistent event APIs and overwrote a validated test region. **Fix:** Cancel before further formatting, restore the exact formatter snapshot through MoonCode, then re-add coverage in small typed slices using real `GoalRuntimeEvent` constructors.
+- **Problem:** Event round-trip and schema-matrix attempts hallucinated wrong type names and constructors (`GoalRuntimeEvidence`, `GoalRuntimeBlockReason`, `PlannerDecisionMade`, and named enum arguments). **Fix:** Feed exact compiler diagnostics into fresh narrow MoonCode continuations and use the existing typed positional constructor patterns.
+- **Problem:** The legacy runtime repeatedly exhausted at planner step 8 despite valid edits or even a final green tool result. **Fix:** Record the receipt as a nonterminal runtime defect and continue in a new command; it never means the goal is `Blocked`, `Achieved`, or `Cancelled`.
+- **Problem:** A schema mutation assumed the canonical envelope began with `kind`, making replacements vacuous. **Fix:** Every mutation asserts `mutated != base`, which caught the bad needle; use the actual id-first encoder order.
+- **Problem:** Store design exposed ambiguous achievement evidence because genesis allowed duplicate criterion text under different IDs. **Fix:** Require both criterion IDs and criterion texts to be canonical and unique before hashing or storing genesis.
+- **Problem:** An append-only ledger turn used a whole-file write and deleted 175 historical lines. **Fix:** Recover the exact pre-turn bytes from the durable read record with byte/newline checks, then use this exact-tail edit; accept only an additions-only diff.
+- **Evidence:** Focused native codec tests are 31/31; daemon native check reports 0 errors; `moon info` and formatting are clean; there is no `.mbti` interface diff; and an independent read-only audit found no P0/P1 blocker.
+- **Invariant:** There is no aggregate goal bound: no token, turn, step, iteration, operation-count, LOC, deadline, or wall-time cap. `max_output_bytes` and `timeout_milliseconds` are operation-local containment only and cannot settle a goal.
