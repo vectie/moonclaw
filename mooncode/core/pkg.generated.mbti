@@ -203,6 +203,10 @@ pub fn executable_book_lifecycle_steps() -> Array[String]
 
 pub fn goal_budget_exhausted(GoalBudget) -> Bool
 
+pub fn goal_comparison_compare(GoalRunResult, GoalRunResult, Int) -> GoalComparison
+
+pub fn goal_comparison_trend(Array[GoalComparison]) -> GoalComparisonTrend
+
 pub fn goal_evaluation_bundle_json(Goal) -> Json
 
 pub fn goal_event_created_kind() -> String
@@ -1100,6 +1104,31 @@ pub(all) struct GoalBudget {
   wall_time_used : Int
 } derive(Eq, @debug.Debug)
 
+pub(all) struct GoalComparison {
+  checkpoint : Int
+  verdict : GoalComparisonVerdict
+  exact_invariants_match : Bool
+  lexical_similarity_bps : Int
+  mismatches : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalComparisonTrend {
+  sample_count : Int
+  equivalent_count : Int
+  similar_count : Int
+  diverged_count : Int
+  insufficient_count : Int
+  average_similarity_bps : Int
+  stable : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalComparisonVerdict {
+  Equivalent
+  Similar
+  Diverged
+  Insufficient
+} derive(Eq, @debug.Debug)
+
 pub(all) struct GoalConvergence {
   report : ConvergenceReport
   accepted_revision : Int
@@ -1127,6 +1156,21 @@ pub(all) struct GoalRequirement {
   criterion : String
   state : RequirementState
   evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalRunRequirementResult {
+  id : String
+  passed : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalRunResult {
+  runner : String
+  checkpoint : Int
+  completed : Bool
+  verification_passed : Bool
+  requirements : Array[GoalRunRequirementResult]
+  artifact_digest : String
+  summary : String
 } derive(Eq, @debug.Debug)
 
 pub(all) enum GoalRunState {

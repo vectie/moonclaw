@@ -243,3 +243,11 @@ The locked raw journal prefix validates the exact command→native claim→nativ
 Incidents included an initial helper using `record["payload"]` and undeclared struct fields; the compiler-guided repair used the actual JSON accessor and map-key identity. The forged-kind test initially used invalid object spread and an invalid `Option` pattern, then was repaired with a copy-on-write `Map`. Initial store fixtures drifted on `session_id`, `owner`, and `runtime_mode`; a recovery also changed a null triple into an invalid partial tuple, which a focused test caught and restored.
 
 The remaining limitation is command-boundary durability only: an external side effect may have occurred before a terminal receipt, so unresolved in-flight claims are not auto-retried.
+
+## 2026-07-24 — Cross-platform Goal result comparator
+
+This slice adds pure MoonBit typed observations and four verdicts. **Equivalent** requires exact functional invariants plus normalized summary equality. **Similar** requires exact completion, verification, order-insensitive requirement results, and artifact digest, plus thresholded deterministic unique-token Dice similarity. **Diverged** means functional divergence or failure to meet the similarity threshold. **Insufficient** means observations are invalid or incomparable. Trend aggregates checkpoint samples; **stable** means the sample set is nonempty and contains no Diverged or Insufficient verdicts. The core suite passes **96/96 tests** on native, JS, wasm, and wasm-gc.
+
+The first broad implementation service ran for more than three minutes without producing a file, so the daemon was stopped and the work was split into types, helpers, public API, and tests. The first test draft used implementation-inconsistent underscore codes and omitted `summary.mismatch`; it was corrected to use dotted stable codes and include that mismatch.
+
+This slice compares supplied observations only. Durable sample ingestion, route/UI integration, and automatic Codex-vs-MoonCode shadow runs remain next. Product and test code were authored through MoonCode and independently gated.
