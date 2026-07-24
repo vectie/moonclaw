@@ -209,6 +209,24 @@ pub let goal_checkpoint_contract_version : Int
 
 pub fn goal_evaluation_bundle_json(Goal) -> Json
 
+pub fn goal_runtime_checkpoint_count(GoalRuntimeState) -> Int
+
+pub fn goal_runtime_contract(GoalRuntimeState) -> String
+
+pub fn goal_runtime_handled_count(GoalRuntimeState) -> Int
+
+pub fn goal_runtime_is_terminal(GoalRuntimeState) -> Bool
+
+pub fn goal_runtime_operation_count(GoalRuntimeState) -> Int
+
+pub fn goal_runtime_outcome(GoalRuntimeState) -> GoalRuntimeOutcome?
+
+pub fn goal_runtime_phase(GoalRuntimeState) -> GoalRuntimePhase
+
+pub fn goal_runtime_rejects_aggregate_field(String) -> Bool
+
+pub fn goal_runtime_status_json(GoalRuntimeState) -> Json
+
 pub fn goal_status_json(Goal) -> Json
 
 pub fn journal_contract_id() -> String
@@ -266,6 +284,8 @@ pub fn model_planner_terminal_event_kinds() -> Array[String]
 pub fn model_planner_working_evidence_rule() -> String
 
 pub fn moonclaw_event_mapping_json() -> Json
+
+pub let mooncode_goal_runtime_contract : String
 
 pub fn native_archived_session_listing_endpoint(String) -> String
 
@@ -415,6 +435,8 @@ pub fn native_tool_exec_endpoint(String, String) -> String
 
 pub fn new_goal(String, String, String, Int, GoalBudget, Array[GoalRequirement]) -> Goal raise
 
+pub fn new_goal_runtime_state() -> GoalRuntimeState
+
 pub fn package_review_flow_accept_kinds() -> Array[String]
 
 pub fn package_review_flow_accepted_sequence() -> Array[String]
@@ -516,6 +538,8 @@ pub fn package_review_flow_terminal_statuses() -> Array[String]
 pub fn protocol_version() -> String
 
 pub fn reduce_goal(Goal, GoalEvent) -> Goal
+
+pub fn reduce_goal_runtime(GoalRuntimeState, GoalRuntimeEvent) -> GoalRuntimeState
 
 pub fn runtime_claim_authorization_rule() -> String
 
@@ -1003,6 +1027,8 @@ pub fn tool_harness_status_for_counts(Int, Int, Int) -> String
 
 pub fn tool_harness_status_no_tools() -> String
 
+pub fn validate_goal_planner_decision(GoalPlannerDecision) -> Bool
+
 // Errors
 
 // Types and methods
@@ -1229,6 +1255,11 @@ pub(all) struct Goal {
   seen_ids : Array[String]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct GoalBlockedReason {
+  code : String
+  detail : String
+} derive(Eq, @debug.Debug)
+
 pub(all) struct GoalBlocker {
   identity : BlockerIdentity
   count : Int
@@ -1267,6 +1298,11 @@ pub(all) struct GoalConvergence {
   accepted_revision : Int
 } derive(Eq, @debug.Debug)
 
+pub(all) struct GoalCriterionEvidence {
+  criterion : String
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
 pub(all) enum GoalEvent {
   ContinuationAccepted(String, Int, Int, Int)
   TurnFinished(String, Int, Int, Int, BlockerIdentity?, Bool)
@@ -1284,6 +1320,17 @@ pub(all) enum GoalEvent {
   Resume(String, Int)
 } derive(Eq, @debug.Debug)
 
+pub(all) struct GoalOperationPolicy {
+  max_output_bytes : Int
+  timeout_milliseconds : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalPlannerDecision {
+  Continue(Array[GoalRuntimeOperation], String, String)
+  Achieved(String, Array[GoalCriterionEvidence])
+  Blocked(GoalBlockedReason, Array[String], String?)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct GoalRequirement {
   id : String
   criterion : String
@@ -1298,6 +1345,42 @@ pub(all) enum GoalRunState {
   AwaitingBudget
   Evaluating
   EvaluationBackoff
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalRuntimeEvent {
+  PlannerDecision(String, GoalPlannerDecision)
+  OperationAccepted(String, String)
+  CheckpointAccepted(String, String)
+  PhaseChanged(String, GoalRuntimePhase)
+  Cancelled(String, String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalRuntimeOperation {
+  operation_id : String
+  kind : String
+  input : String
+  policy : GoalOperationPolicy
+} derive(Eq, @debug.Debug)
+
+pub enum GoalRuntimeOutcome {
+  AchievedOutcome(String, Array[GoalCriterionEvidence])
+  BlockedOutcome(GoalBlockedReason, Array[String], String?)
+  CancelledOutcome(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalRuntimePhase {
+  Queued
+  Running
+  WaitingApproval
+  RetryBackoff
+  PausedNoProgress
+  PausedExternal
+} derive(Eq, @debug.Debug)
+
+pub struct GoalRuntimeState {
+  contract : String
+  phase : GoalRuntimePhase
+  // private fields
 } derive(Eq, @debug.Debug)
 
 pub(all) enum GoalStatus {

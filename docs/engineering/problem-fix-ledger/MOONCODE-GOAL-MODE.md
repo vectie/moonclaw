@@ -6,7 +6,17 @@
 
 Creation is `Active`, and is `Runnable` only when the initial budget is not exactly exhausted; exact exhaustion produces `AwaitingBudget`. Completion requires a nonempty set of requirements, every requirement `Proven`, and nonempty evidence references on every proof. Evaluation stores its completed report and returns an active goal to runnable. Blocker observations use structured `BlockerIdentity` values, not fingerprints. Blocker correlation is scoped by `run_id` plus per-run ordinal: only the expected next ordinal in the current run advances the consecutive count, while stale run IDs or stale/wrong ordinals are exact no-ops. Matching observations block at the configured threshold; progress or `None` resets blocker accumulation. `Resume` starts a fresh run with a new `run_id`, clears the prior blocker, and isolates new observations from the resumed run's predecessor. Budget exhaustion remains active/awaiting-budget. `ContinuationAccepted` increments only continuation count; `TurnFinished` increments only the goal turn and applies blocker state. Duplicate event IDs are exact no-ops, including revision and time. Unknown requirement IDs and blocked/complete absorption are reducer invariants, but this ledger does not claim dedicated tests unless present in the suite.
 
+## Unbounded runtime-contract slice
+
+`mooncode-goal-runtime.v1` is an additive pure-core state machine alongside the existing genesis/checkpoint contracts and bounded `mooncode.v1` runtime. It permits any number of explicit continuation and checkpoint events until the planner explicitly reports `Achieved` or `Blocked`, or an operator explicitly reports `Cancelled`. Provider timeout, empty output, no-progress pauses, and counters remain nonterminal observations. Stable event and operation IDs make replay idempotent, and terminal settlement is absorbing.
+
+The two observed **hard-eight failures** were (1) an eight-turn/continuation ceiling settling work that still had a valid next action, and (2) an eight-unit execution/time quantum being promoted from an individual operation guard into an aggregate goal-completion deadline. Both failures confused bounded execution quanta with bounded goal solvability. The fix retains per-operation timeout/output resource policy so one tool invocation cannot run forever or emit unbounded data, while omitting—and rejecting—aggregate token, turn, wall-time, LOC, and deadline fields. Goal completion therefore has no arbitrary aggregate bound; safety remains local to each operation.
+
+This slice intentionally does not add daemon scheduling or HTTP behavior.
+
 ## Problem/fix ledger
+
+- **Planner exhaustion falsely appeared terminal:** This clean recovery turn exhausted the legacy eight planner steps with one remaining test failure, proving the aggregate step bound can falsely terminate repairable work. Continuation resumed in a fresh command; the goal contract must never treat command/step exhaustion as terminal.
 
 - **Problem/Fix — MoonBit symlink signature:** A repair wrongly assumed the positional symlink link path was labeled `link_path`; native compiler errors 4085/4080 exposed the actual `target~`-plus-positional signature, and all three calls were restored.
 - **Problem/Fix — zsh verification variable:** The first full-suite wrapper assigned zsh read-only parameter status and stopped after the tests; rerun with task_status, confirming the full daemon suite passed 176/176.
@@ -147,3 +157,33 @@ Problems met and fixes:
 - A failed broad-validation experiment was rolled back and replaced with incremental minimal validation.
 
 Proof at this checkpoint: independent all-target core checks pass, and 54/54 tests pass on native, JavaScript, Wasm, and Wasm-GC. A warn-list `+73` run currently reports unnecessary-annotation warnings but zero errors.
+
+- **Command 001 recovery — Array API:** The initial runtime slice used nonexistent `Array.concat`; repaired with `copy()` plus `push()`, matching `goal_reducer.mbt`.
+- **Command 001 recovery — deprecated derive:** `Show` derives emitted deprecation diagnostics; replaced with `Debug`, while status-shape tests now inspect canonical JSON object keys rather than debug text.
+- **Command 001 recovery — failed tests:** Two tests failed during the bounded attempt; contract validation and canonical status serialization were strengthened before rerunning native verification.
+- **Command 001 recovery — forbidden redirect:** An attempted `/tmp` redirect violated the MoonBook boundary; subsequent commands keep all paths and output inside the MoonBook/tool capture.
+- **Command 001 recovery — planner exhaustion:** The bounded planner exhausted before compiler repairs were applied; recovery made the requested implementation mutation first and retained the pure-core/no-daemon boundary.
+
+
+### Command 002 recovery note
+
+Command 002 reached step 8 and exhausted its execution allowance before formatting. Its recorded pre-recovery result was 60/60 core tests passing with check/info passing; formatting and the remaining runtime-contract hardening cases were deferred to this recovery pass.
+
+- **Problem/Fix — blank runtime-event payloads (64/64 native core tests):** `OperationAccepted`, `CheckpointAccepted`, and `Cancelled` previously recorded a nonblank event ID before accepting a whitespace-only operation ID, checkpoint ID, or cancellation reason. The reducer now returns the original state before recording the event, making blank identifiers and payloads exact no-ops while preserving unbounded aggregate progress and per-operation resource guards.
+- **Problem/Fix — command 003 false green:** Command 003 used a shell pipeline without fail-fast behavior; later successful cleanup masked the earlier 63/64 core-test failure. Validation now uses fail-fast sequencing so any failed stage remains visible and stops the command.
+
+## command-005 — goal runtime v1 completion
+The legacy eight-step planner exhausted before validation. Final audit fixes enforce canonical identities and detached terminal payloads while retaining externally nonconstructible state with safe accessors. The aggregate-name helper is only a diagnostic denylist; strict exact-allowlist decoder enforcement belongs to the next persistence adapter. Persistence, HTTP, and supervisor remain deferred.
+
+- **Problem/Fix — command 007 masked compile failure:** The shell lacked `set -e`, so a successful trailing command masked the compile failure; verification now starts with strict failure propagation.
+- **Problem/Fix — command 008 unsafe broad patch:** The broad patch was rejected, and `replace_all` corrupted a scoped identifier; the repair uses a cohesive, scoped edit.
+- **Problem/Fix — command 009 labels treated as paths:** Command labels were incorrectly treated as filesystem paths; subsequent commands use actual MoonBook-relative paths only.
+- **Problem/Fix — command 010 stale anchors:** Stale patch anchors caused the command to stop; the repair was rebased on current file contents.
+
+- command-003 exhausted step 8 after valid source edits without validation; this continuation completes that validation.
+- The pure slice still does not claim end-to-end unbounded daemon behavior; strict codec/store/supervisor comes next.
+
+
+- Problem/fix: The checkpoint idempotency test initially conflated event idempotency with checkpoint deduplication; it now checks exact-event replay as a no-op and distinct-event checkpoint deduplication separately.
+
+- **Problem/Fix — Legacy async timeout flake after hardening:** After the post-hardening full native suite, the unrelated legacy async test `analysis_step_handler enforces timeout and token budget policies` failed once (1250/1251) at its 1ms timeout expectation. An immediate isolated rerun passed 1/1, identifying timing flakiness rather than a goal-runtime regression; no source or test edit was made.
