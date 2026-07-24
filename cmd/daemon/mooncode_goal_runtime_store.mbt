@@ -8,7 +8,7 @@ priv suberror MoonCodeGoalRuntimeStoreError {
 
 ///|
 priv struct MoonCodeGoalRuntimeIndexedEntry {
-  sequence : Int
+  sequence : MoonCodeJournalSequence
   semantic_digest : String
   carrier : MoonCodeGoalRuntimeCarrier
 }
@@ -16,12 +16,12 @@ priv struct MoonCodeGoalRuntimeIndexedEntry {
 ///|
 priv struct MoonCodeGoalRuntimeIdIndexEntry {
   semantic_digest : String
-  sequence : Int
+  sequence : MoonCodeJournalSequence
 }
 
 ///|
 priv struct MoonCodeGoalRuntimeScan {
-  cursor : Int
+  cursor : MoonCodeJournalSequence
   genesis : MoonCodeGoalRuntimeIndexedEntry?
   events : Array[MoonCodeGoalRuntimeIndexedEntry]
   id_index : Map[String, MoonCodeGoalRuntimeIdIndexEntry]
@@ -32,38 +32,6 @@ fn[T] mooncode_goal_runtime_store_corrupt(
   message : String,
 ) -> T raise MoonCodeGoalRuntimeStoreError {
   raise MoonCodeGoalRuntimeStoreError::CorruptStore(message)
-}
-
-///|
-fn mooncode_goal_runtime_scan_exact_int(
-  value : Json,
-  field : String,
-) -> Int raise MoonCodeGoalRuntimeStoreError {
-  match value {
-    Number(_, repr=Some(raw)) => {
-      let parsed = @string.parse_int(raw) catch {
-        _ => mooncode_goal_runtime_store_corrupt(field + " is not an exact Int")
-      }
-      if parsed <= 0 || parsed.to_string() != raw {
-        mooncode_goal_runtime_store_corrupt(field + " is not an exact Int")
-      }
-      parsed
-    }
-    Number(number, repr=None) => {
-      if number.is_nan() ||
-        number < 1.0 ||
-        number > 2147483647.0 ||
-        number.floor() != number {
-        mooncode_goal_runtime_store_corrupt(field + " is not an exact Int")
-      }
-      let parsed = number.to_int()
-      if parsed <= 0 {
-        mooncode_goal_runtime_store_corrupt(field + " is not an exact Int")
-      }
-      parsed
-    }
-    _ => mooncode_goal_runtime_store_corrupt(field + " is not a number")
-  }
 }
 
 ///|
@@ -96,27 +64,28 @@ fn mooncode_goal_runtime_scan_records(
   if !mooncode_goal_runtime_canonical(expected_session_id) {
     mooncode_goal_runtime_store_corrupt("expected session_id is not canonical")
   }
-  let mut cursor = 0
+  let mut cursor = MoonCodeJournalSequence::zero()
   let mut genesis : MoonCodeGoalRuntimeIndexedEntry? = None
   let events : Array[MoonCodeGoalRuntimeIndexedEntry] = []
   let id_index : Map[String, MoonCodeGoalRuntimeIdIndexEntry] = {}
   for record_json in records {
-    let record = match record_json {
-      Object(fields) => fields
-      _ =>
-        mooncode_goal_runtime_store_corrupt("journal record is not an object")
+    let envelope = mooncode_journal_validate_envelope(record_json)
+    let record = envelope.fields
+    let outer_session = match record["session_id"] {
+      String(value) => value
+      _ => abort("validated journal session_id is not a string")
     }
-    let sequence = match record.get("sequence") {
-      Some(value) => mooncode_goal_runtime_scan_exact_int(value, "sequence")
-      None => mooncode_goal_runtime_store_corrupt("journal sequence is missing")
+    if outer_session != expected_session_id {
+      mooncode_goal_runtime_store_corrupt("journal session_id mismatch")
     }
-    if sequence <= 0 || sequence != cursor + 1 {
+    let sequence = envelope.sequence
+    if sequence.compare(cursor.next()) != 0 {
       mooncode_goal_runtime_store_corrupt("journal sequence is not contiguous")
     }
     cursor = sequence
-    let payload = match record.get("payload") {
-      Some(Object(value)) => value
-      _ => continue
+    let payload = match record["payload"] {
+      Object(value) => value
+      _ => abort("validated journal payload is not an object")
     }
     let kind_is_reserved = match payload.get("kind") {
       Some(String(value)) => value.has_prefix("mooncode-goal-runtime-carrier.")
@@ -160,13 +129,11 @@ fn mooncode_goal_runtime_scan_records(
       _ =>
         mooncode_goal_runtime_store_corrupt("reserved journal kind is invalid")
     }
-    match record.get("contract_id") {
-      Some(String(value)) if value ==
-        @moonlib_conversation.journal_contract_id() => ()
-      _ =>
-        mooncode_goal_runtime_store_corrupt(
-          "reserved journal contract_id is invalid",
-        )
+    if envelope.contract_id != @moonlib_conversation.journal_contract_id() &&
+      envelope.contract_id != mooncode_journal_contract_id_v2() {
+      mooncode_goal_runtime_store_corrupt(
+        "reserved journal contract_id is invalid",
+      )
     }
     match record.get("record_kind") {
       Some(String("event")) => ()
@@ -198,13 +165,6 @@ fn mooncode_goal_runtime_scan_records(
         mooncode_goal_runtime_store_corrupt(
           "invalid runtime carrier: " + message,
         )
-    }
-    let outer_session = match record.get("session_id") {
-      Some(String(value)) => value
-      _ => mooncode_goal_runtime_store_corrupt("journal session_id is invalid")
-    }
-    if outer_session != expected_session_id {
-      mooncode_goal_runtime_store_corrupt("journal session_id mismatch")
     }
     let outer_id = match record.get("record_id") {
       Some(String(value)) => value
