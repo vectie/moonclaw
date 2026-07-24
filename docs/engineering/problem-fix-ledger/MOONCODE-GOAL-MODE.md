@@ -74,6 +74,12 @@ This checkpoint implements strict durable supervisor-lease renewal while preserv
 - Regression coverage includes cross-kind and ordinary-Goal ID collisions, historical retry behavior, backdated renewal write/replay agreement, fail-closed lifecycle preflight, and single-active lineage replay.
 - **Deferred P0:** Fencing Goal/runtime mutations remains a P0 and is explicitly deferred to the next slice.
 
+### Checkpoint codec continuation
+
+The checkpoint codec now enforces a strict schema, exact `basis_sequence + 1` envelope binding, `current_goal_turn <= goal_revision`, an explicit-null optional triple, and **247/247 daemon tests**. A broad first turn created duplicate and invented APIs; bounded resumed turns recovered the implementation. Truncated full-file reads were replaced with ranged reads. JavaScript-style mutable `Json` test code was corrected to use copy-on-write `Object` maps. A physical `event:<id>` was incorrectly validated as a payload identity and was fixed with exact envelope comparison. Derived `ToJson` omitted `None` keys and was replaced by explicit 17-key JSON.
+
+Goal/lease point-in-time projection checks, command-claim-receipt chain validation, checkpoint atomic store integration, and runtime fencing remain deferred; no long-run completion claim is made.
+
 Product code for this checkpoint was generated through MoonCode; the controller only prompted, inspected, and gated the work.
 
 - **Problem/Fix — double-wrapped sessions root caused false absence:** The `goal_gate_dir` test helper passed `mooncode_sessions_root(root)` into `mooncode_session_dir_by_safe_id`, which applies the sessions-root transformation itself, so fixtures landed in a double-nested store and production falsely returned `GoalSessionAbsentOrMismatch`. Pass book `root` directly while retaining the safe session ID and `archived` label; the invalid-JSON fixture still proves the generic `GoalSessionCorrupt` path.
