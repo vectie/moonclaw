@@ -406,3 +406,186 @@ async test "checkpoint store concurrent unique checkpoint IDs at same basis line
     },
   )
 }
+
+///|
+async test "checkpoint store accepts exact native terminal receipt boundary" {
+  @fsx.with_temporary_directory(
+    "moonclaw-goal-supervisor-checkpoint-terminal-XXXXXX",
+    async fn(root) {
+      let session = "session"
+      ignore(
+        mooncode_create_goal(
+          root,
+          mooncode_protocol_version(),
+          session,
+          "goal",
+          "objective",
+          10,
+          goal_store_test_budget(),
+          goal_store_test_requirements(),
+        ),
+      )
+      let fence_token = match
+        mooncode_goal_supervisor_lease_acquire(
+          root, session, "goal", "owner", "lease-1", 11, 21,
+        ) {
+        SupervisorLeaseAcquired(lease) => lease.fence_token
+        _ => abort("expected supervisor lease acquisition")
+      }
+      mooncode_append_session_journal(
+        root,
+        session,
+        mooncode_journal_command(),
+        {
+          "kind": "mooncode-command",
+          "protocol": mooncode_protocol_version(),
+          "session_id": session,
+          "command_id": "command-1",
+          "created_at": 12,
+        },
+      )
+      mooncode_append_session_journal(
+        root,
+        session,
+        mooncode_journal_runtime_receipt(),
+        {
+          "kind": mooncode_kind_runtime_receipt(),
+          "protocol": mooncode_protocol_version(),
+          "owner": "moonclaw",
+          "session_id": session,
+          "command_id": "command-1",
+          "status": "runtime-claimed",
+          "runtime_mode": "moonclaw-native-runtime-claim",
+          "claim_id": "claim-1",
+          "consumer_id": "consumer-1",
+          "claimed_at": 13,
+        },
+      )
+      mooncode_append_session_journal(
+        root,
+        session,
+        mooncode_journal_runtime_receipt(),
+        {
+          "kind": mooncode_kind_runtime_receipt(),
+          "protocol": mooncode_protocol_version(),
+          "owner": "moonclaw",
+          "session_id": session,
+          "command_id": "command-1",
+          "status": "runtime-completed",
+          "runtime_mode": "moonclaw-native-runtime-turn",
+          "claim_id": "claim-1",
+          "consumer_id": "consumer-1",
+          "completed_at": 14,
+        },
+      )
+      let result = mooncode_goal_supervisor_checkpoint_record(
+        root,
+        session,
+        "goal",
+        0,
+        0,
+        0,
+        "owner",
+        "lease-1",
+        "checkpoint-terminal",
+        fence_token,
+        21,
+        5,
+        Some("command-1"),
+        Some("claim-1"),
+        Some("runtime-receipt:command-1:runtime-completed:claim-1"),
+        15,
+      )
+      guard result is CheckpointRecorded(_) else {
+        abort("expected checkpoint recording")
+      }
+      inspect(
+        mooncode_read_session_journal(root, session).length(),
+        content="6",
+      )
+    },
+  )
+}
+
+///|
+async test "checkpoint store blocks null terminal while native claim is unresolved" {
+  @fsx.with_temporary_directory(
+    "moonclaw-goal-supervisor-checkpoint-ambiguous-XXXXXX",
+    async fn(root) {
+      let session = "session"
+      ignore(
+        mooncode_create_goal(
+          root,
+          mooncode_protocol_version(),
+          session,
+          "goal",
+          "objective",
+          10,
+          goal_store_test_budget(),
+          goal_store_test_requirements(),
+        ),
+      )
+      let fence_token = match
+        mooncode_goal_supervisor_lease_acquire(
+          root, session, "goal", "owner", "lease-1", 11, 21,
+        ) {
+        SupervisorLeaseAcquired(lease) => lease.fence_token
+        _ => abort("expected supervisor lease acquisition")
+      }
+      mooncode_append_session_journal(
+        root,
+        session,
+        mooncode_journal_command(),
+        {
+          "kind": "mooncode-command",
+          "protocol": mooncode_protocol_version(),
+          "session_id": session,
+          "command_id": "command-1",
+          "created_at": 12,
+        },
+      )
+      mooncode_append_session_journal(
+        root,
+        session,
+        mooncode_journal_runtime_receipt(),
+        {
+          "kind": mooncode_kind_runtime_receipt(),
+          "protocol": mooncode_protocol_version(),
+          "owner": "moonclaw",
+          "session_id": session,
+          "command_id": "command-1",
+          "status": "runtime-claimed",
+          "runtime_mode": "moonclaw-native-runtime-claim",
+          "claim_id": "claim-1",
+          "consumer_id": "consumer-1",
+          "claimed_at": 13,
+        },
+      )
+      let journal_path = mooncode_session_journal_path(root, session)
+      let before = @fsx.read_file(journal_path)
+      let result = mooncode_goal_supervisor_checkpoint_record(
+        root,
+        session,
+        "goal",
+        0,
+        0,
+        0,
+        "owner",
+        "lease-1",
+        "checkpoint-ambiguous",
+        fence_token,
+        21,
+        4,
+        None,
+        None,
+        None,
+        14,
+      )
+      guard result is CheckpointBlockedAmbiguous else {
+        abort("expected unresolved native claim ambiguity")
+      }
+      let after = @fsx.read_file(journal_path)
+      inspect(after == before, content="true")
+    },
+  )
+}

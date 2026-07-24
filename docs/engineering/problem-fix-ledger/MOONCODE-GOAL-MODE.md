@@ -234,4 +234,12 @@ Atomic locked checkpoint append validates the live lease owner, fence, and expir
 
 Two initial drafts invented APIs and were discarded. MoonBit inspect content had to be a string and required a JSON accessor. One recovery reported completion while the runtime service remained active and approval was pending, so the controller waited for the service to become terminal and stopped the daemon before running gates. The ordinary-event test omitted `goal_event_to_json`; compiler diagnostics guided the one-span repair.
 
-All-present terminal tuples currently fail closed as `CheckpointBlockedAmbiguous`. Exact command→claim→terminal validation and acceptance of terminal checkpoints are next; this checkpoint does not claim full long-task recovery. Product and test code were authored through MoonCode and independently gated.
+Terminal checkpoint acceptance is now implemented at the command boundary; this checkpoint does not claim full long-task recovery. Product and test code were authored through MoonCode and independently gated.
+
+### Terminal boundary continuation
+
+The locked raw journal prefix validates the exact command→native claim→native completed/failed or cancellation chain. It accepts the exact latest tuple and separates direct control receipts; duplicate, unresolved, out-of-order, forged, or wrapper-mismatched history fails closed without append. Integration proves acceptance of a terminal checkpoint and byte stability for an unresolved claim. Focused gates pass **8/8 checkpoint-store tests** and **11/11 boundary tests**; the full daemon gate passes **267/267**.
+
+Incidents included an initial helper using `record["payload"]` and undeclared struct fields; the compiler-guided repair used the actual JSON accessor and map-key identity. The forged-kind test initially used invalid object spread and an invalid `Option` pattern, then was repaired with a copy-on-write `Map`. Initial store fixtures drifted on `session_id`, `owner`, and `runtime_mode`; a recovery also changed a null triple into an invalid partial tuple, which a focused test caught and restored.
+
+The remaining limitation is command-boundary durability only: an external side effect may have occurred before a terminal receipt, so unresolved in-flight claims are not auto-retried.

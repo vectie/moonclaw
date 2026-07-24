@@ -100,7 +100,10 @@ async fn mooncode_goal_supervisor_checkpoint_record(
       None =>
         if mooncode_goal_supervisor_event_record_exists(records, event_id) {
           NoAppend(CheckpointConflict(current))
-        } else if last_terminal_command_id is Some(_) {
+        } else if !mooncode_goal_supervisor_terminal_boundary_matches(
+            records, session_id, last_terminal_command_id, last_terminal_claim_id,
+            last_terminal_receipt_record_id,
+          ) {
           NoAppend(CheckpointBlockedAmbiguous(current))
         } else {
           match
