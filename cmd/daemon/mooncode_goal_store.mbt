@@ -48,7 +48,7 @@ fn mooncode_goal_genesis(
   session_id : String,
   goal_id : String,
   objective : String,
-  created_at : Int,
+  created_at : Int64,
   budget : @mooncode_core.GoalBudget,
   requirements : Array[@mooncode_core.GoalRequirement],
 ) -> Json raise {
@@ -56,7 +56,7 @@ fn mooncode_goal_genesis(
     raise InvalidGoalGenesis("unsupported protocol")
   }
   mooncode_goal_require_canonical_identity("objective", objective)
-  if created_at < 0 {
+  if created_at < 0L {
     raise InvalidGoalGenesis("invalid timestamp: must be nonnegative")
   }
   let budget = { ..budget, tokens_used: 0, turns_used: 0, wall_time_used: 0 }
@@ -77,8 +77,8 @@ fn mooncode_goal_genesis(
     "session_id": goal.session_id,
     "goal_id": goal.id,
     "objective": goal.objective,
-    "recorded_at": created_at,
-    "timestamp": created_at,
+    "recorded_at": goal_json_int64_value(created_at),
+    "timestamp": goal_json_int64_value(created_at),
     "budget": {
       "token_limit": match goal.budget.token_limit {
         Some(v) => v.to_json()
@@ -117,6 +117,40 @@ fn goal_checked_int(n : Double, key : String) -> Int raise {
     raise InvalidGoalGenesis("invalid integer `\{key}`")
   }
   n.to_int()
+}
+
+///|
+fn goal_checked_int64(n : Double, repr : String?, key : String) -> Int64 raise {
+  match repr {
+    Some(raw) =>
+      @string.parse_int64(raw) catch {
+        _ => raise InvalidGoalGenesis("invalid integer `\{key}`")
+      }
+    None => {
+      if n != n ||
+        n == 1.0 / 0.0 ||
+        n == -1.0 / 0.0 ||
+        n.trunc() != n ||
+        n < -9223372036854775808.0 ||
+        n >= 9223372036854775808.0 {
+        raise InvalidGoalGenesis("invalid integer `\{key}`")
+      }
+      n.to_int64()
+    }
+  }
+}
+
+///|
+fn goal_json_int64_value(value : Int64) -> Json {
+  Json::number(value.to_double(), repr=value.to_string())
+}
+
+///|
+fn goal_json_int64(json : Json, key : String) -> Int64 raise {
+  match mooncode_journal_json_field(json, key) {
+    Some(Number(n, repr~)) => goal_checked_int64(n, repr, key)
+    _ => raise InvalidGoalGenesis("missing integer `\{key}`")
+  }
 }
 
 ///|
@@ -267,7 +301,7 @@ fn mooncode_replay_goal_records_detailed(
         Ok(event) => event
         Err(_) => raise InvalidGoalGenesis("invalid goal event")
       }
-      if goal_json_int(envelope, "recorded_at") !=
+      if goal_json_int64(envelope, "recorded_at") !=
         @mooncode_core.goal_event_recorded_at(event) {
         raise InvalidGoalGenesis("goal event recorded_at mismatch")
       }
@@ -332,12 +366,12 @@ fn mooncode_replay_goal_records_detailed(
       mooncode_protocol_version() {
       raise InvalidGoalGenesis("protocol mismatch")
     }
-    let timestamp = goal_json_int(payload, "timestamp")
-    if timestamp < 0 {
+    let timestamp = goal_json_int64(payload, "timestamp")
+    if timestamp < 0L {
       raise InvalidGoalGenesis("timestamp must be nonnegative")
     }
-    if goal_json_int(payload, "recorded_at") != timestamp ||
-      goal_json_int(envelope, "recorded_at") != timestamp {
+    if goal_json_int64(payload, "recorded_at") != timestamp ||
+      goal_json_int64(envelope, "recorded_at") != timestamp {
       raise InvalidGoalGenesis("recorded_at/timestamp mismatch")
     }
     let objective = mooncode_json_string(payload, "objective", default="")
@@ -526,7 +560,7 @@ async fn mooncode_create_goal(
   session_id : String,
   goal_id : String,
   objective : String,
-  created_at : Int,
+  created_at : Int64,
   budget : @mooncode_core.GoalBudget,
   requirements : Array[@mooncode_core.GoalRequirement],
 ) -> MoonCodeGoalCreateResult {
@@ -541,7 +575,7 @@ async fn mooncode_create_goal(
     ":" +
     mooncode_goal_genesis_id(),
     "session_id": session_id,
-    "recorded_at": created_at,
+    "recorded_at": goal_json_int64_value(created_at),
     "payload": genesis,
   }
   guard mooncode_replay_goal_records(

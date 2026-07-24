@@ -22,12 +22,12 @@ fn mooncode_goal_supervisor_checkpoint_matches_request(
   owner_id : String,
   fence_token : Int,
   acquisition_event_id : String,
-  expected_lease_expires_at : Int,
+  expected_lease_expires_at : Int64,
   basis_sequence : Int,
   last_terminal_command_id : String?,
   last_terminal_claim_id : String?,
   last_terminal_receipt_record_id : String?,
-  recorded_at : Int,
+  recorded_at : Int64,
 ) -> Bool {
   existing.id == id &&
   existing.protocol == protocol &&
@@ -60,12 +60,12 @@ async fn mooncode_goal_supervisor_checkpoint_record(
   acquisition_event_id : String,
   event_id : String,
   fence_token : Int,
-  expected_lease_expires_at : Int,
+  expected_lease_expires_at : Int64,
   basis_sequence : Int,
   last_terminal_command_id : String?,
   last_terminal_claim_id : String?,
   last_terminal_receipt_record_id : String?,
-  now : Int,
+  now : Int64,
 ) -> MoonCodeGoalSupervisorCheckpointResult {
   let protocol = mooncode_protocol_version()
   let payload = mooncode_goal_supervisor_checkpoint_v1(

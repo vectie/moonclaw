@@ -1,4 +1,65 @@
 ///|
+test "supervisor renewal timestamps round-trip exactly above 2^53" {
+  let recorded_at : Int64 = 9007199254740993
+  let expected_lease_expires_at : Int64 = 9007199254741993
+  let lease_expires_at : Int64 = 9007199254742993
+  let payload = mooncode_goal_supervisor_lease_renewed_v1(
+    "renew-int64",
+    mooncode_protocol_version(),
+    "session",
+    "goal",
+    0,
+    "owner",
+    recorded_at,
+    expected_lease_expires_at,
+    lease_expires_at,
+    1,
+    "lease-1",
+  )
+  let encoded = payload.stringify()
+  assert_true(encoded.contains("\"recorded_at\":9007199254740993"))
+  assert_true(
+    encoded.contains("\"expected_lease_expires_at\":9007199254741993"),
+  )
+  assert_true(encoded.contains("\"lease_expires_at\":9007199254742993"))
+  let decoded = mooncode_goal_supervisor_lease_renewal_decode(
+    supervisor_lease_test_envelope("renew-int64", payload),
+  )
+  assert_eq(decoded.recorded_at, recorded_at)
+  assert_eq(decoded.expected_lease_expires_at, expected_lease_expires_at)
+  assert_eq(decoded.lease_expires_at, lease_expires_at)
+}
+
+///|
+test "supervisor renewal decoder accepts legacy repr-less small timestamps" {
+  let payload : Json = {
+    "id": "renew-legacy",
+    "kind": mooncode_goal_supervisor_lease_renewed_v1_kind(),
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session",
+    "goal_id": "goal",
+    "goal_run_id": 0,
+    "owner_id": "owner",
+    "recorded_at": Json::number(125.0),
+    "expected_lease_expires_at": Json::number(134.0),
+    "lease_expires_at": Json::number(144.0),
+    "fence_token": 1,
+    "acquisition_event_id": "lease-1",
+  }
+  let envelope : Json = {
+    "record_kind": mooncode_journal_event(),
+    "record_id": "event:renew-legacy",
+    "session_id": "session",
+    "recorded_at": Json::number(125.0),
+    "payload": payload,
+  }
+  let decoded = mooncode_goal_supervisor_lease_renewal_decode(envelope)
+  assert_eq(decoded.recorded_at, 125)
+  assert_eq(decoded.expected_lease_expires_at, 134)
+  assert_eq(decoded.lease_expires_at, 144)
+}
+
+///|
 async test "mooncode_goal_supervisor_renew: renewal id conflicts with acquisition at expiry" {
   @fsx.with_temporary_directory(
     "moonclaw-goal-supervisor-renew-acquire-id-XXXXXX",

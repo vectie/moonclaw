@@ -122,6 +122,56 @@ fn goal_event_codec_checked_int(
 }
 
 ///|
+fn goal_event_codec_checked_int64(
+  object : Map[String, Json],
+  field : String,
+) -> Int64 raise GoalEventCodecError {
+  match object.get(field) {
+    Some(Number(_, repr=Some(repr))) =>
+      @string.parse_int64(repr) catch {
+        _ => {
+          goal_event_codec_fail("invalid " + field)
+          0L
+        }
+      }
+    Some(Number(value, repr=None)) => {
+      if value != value ||
+        value == 1.0 / 0.0 ||
+        value == -1.0 / 0.0 ||
+        value.trunc() != value ||
+        value < -9223372036854775808.0 ||
+        value >= 9223372036854775808.0 {
+        goal_event_codec_fail("invalid " + field)
+      }
+      value.to_int64()
+    }
+    _ => {
+      goal_event_codec_fail("invalid " + field)
+      0L
+    }
+  }
+}
+
+///|
+
+///|
+fn goal_event_codec_int64_number(value : Int64) -> Json {
+  Json::number(value.to_double(), repr=value.to_string())
+}
+
+///|
+fn goal_event_codec_nonnegative_int64(
+  object : Map[String, Json],
+  field : String,
+) -> Int64 raise GoalEventCodecError {
+  let value = goal_event_codec_checked_int64(object, field)
+  if value < 0L {
+    goal_event_codec_fail("invalid " + field)
+  }
+  value
+}
+
+///|
 fn goal_event_codec_nonnegative_int(
   object : Map[String, Json],
   field : String,
@@ -180,10 +230,7 @@ pub fn goal_event_from_json(json : Json) -> GoalEvent raise {
     goal_event_codec_string(envelope, "event_id"),
     "event_id",
   )
-  let recorded_at = goal_event_codec_checked_int(envelope, "recorded_at")
-  if recorded_at < 0 {
-    goal_event_codec_fail("invalid recorded_at")
-  }
+  let recorded_at = goal_event_codec_nonnegative_int64(envelope, "recorded_at")
   let payload_json = match envelope.get("payload") {
     Some(value) => value
     None => {
@@ -476,7 +523,7 @@ pub fn goal_event_from_json(json : Json) -> GoalEvent raise {
         goal_event_codec_string(payload, "category"),
         "category",
       ),
-      goal_event_codec_nonnegative_int(payload, "next_retry_at"),
+      goal_event_codec_nonnegative_int64(payload, "next_retry_at"),
     )
   }
   if kind == "mooncode.goal.evaluation-retry-due.v1" {
@@ -618,7 +665,7 @@ pub fn goal_event_id(event : GoalEvent) -> String {
 }
 
 ///|
-pub fn goal_event_recorded_at(event : GoalEvent) -> Int {
+pub fn goal_event_recorded_at(event : GoalEvent) -> Int64 {
   match event {
     ContinuationAccepted(_, now, _, _) => now
     TurnFinished(_, now, _, _, _, _) => now
@@ -799,7 +846,7 @@ pub fn goal_event_to_json(event : GoalEvent) -> Json {
         "evidence_digest": evidence_digest,
         "attempt": attempt,
         "category": category,
-        "next_retry_at": next_retry_at,
+        "next_retry_at": goal_event_codec_int64_number(next_retry_at),
       }
     EvaluationRetryDue(_, _, evaluation_id, run_id, attempt) =>
       { "evaluation_id": evaluation_id, "run_id": run_id, "attempt": attempt }
@@ -810,7 +857,7 @@ pub fn goal_event_to_json(event : GoalEvent) -> Json {
     "schema_version": goal_event_codec_schema_version,
     "kind": goal_event_kind(event),
     "event_id": goal_event_id(event),
-    "recorded_at": goal_event_recorded_at(event),
+    "recorded_at": goal_event_codec_int64_number(goal_event_recorded_at(event)),
     "payload": payload,
   }
 }

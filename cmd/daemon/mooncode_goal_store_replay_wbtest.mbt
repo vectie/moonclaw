@@ -7,7 +7,9 @@ fn goal_store_replay_event_record(event : @mooncode_core.GoalEvent) -> Json {
     ":" +
     @mooncode_core.goal_event_id(event),
     "session_id": "session",
-    "recorded_at": @mooncode_core.goal_event_recorded_at(event),
+    "recorded_at": goal_json_int64_value(
+      @mooncode_core.goal_event_recorded_at(event),
+    ),
     "payload": @mooncode_core.goal_event_to_json(event),
   }
 }
@@ -42,7 +44,7 @@ fn goal_strict_first(array : Json) -> Json {
 
 ///|
 fn goal_store_replay_requirement_event(
-  timestamp : Int,
+  timestamp : Int64,
   requirement_id : String,
   state : @mooncode_core.RequirementState,
   evidence_refs : Array[String],

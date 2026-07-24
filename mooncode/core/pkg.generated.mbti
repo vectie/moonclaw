@@ -217,7 +217,7 @@ pub fn goal_event_id(GoalEvent) -> String
 
 pub fn goal_event_kind(GoalEvent) -> String
 
-pub fn goal_event_recorded_at(GoalEvent) -> Int
+pub fn goal_event_recorded_at(GoalEvent) -> Int64
 
 pub fn goal_event_to_json(GoalEvent) -> Json
 
@@ -425,7 +425,7 @@ pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_
 
 pub fn native_tool_exec_endpoint(String, String) -> String
 
-pub fn new_goal(String, String, String, Int, GoalBudget, Array[GoalRequirement]) -> Goal raise
+pub fn new_goal(String, String, String, Int64, GoalBudget, Array[GoalRequirement]) -> Goal raise
 
 pub fn package_review_flow_accept_kinds() -> Array[String]
 
@@ -1056,7 +1056,7 @@ pub(all) struct EvaluationBackoffRecord {
   evidence_digest : String
   attempt : Int
   category : String
-  next_retry_at : Int
+  next_retry_at : Int64
 } derive(Eq, @debug.Debug)
 
 pub(all) struct EvaluationRequest {
@@ -1073,8 +1073,8 @@ pub(all) struct Goal {
   status : GoalStatus
   run_state : GoalRunState
   run_id : Int
-  created_at : Int
-  updated_at : Int
+  created_at : Int64
+  updated_at : Int64
   revision : Int
   current_goal_turn : Int
   continuation_count : Int
@@ -1135,20 +1135,20 @@ pub(all) struct GoalConvergence {
 } derive(Eq, @debug.Debug)
 
 pub(all) enum GoalEvent {
-  ContinuationAccepted(String, Int, Int, Int)
-  TurnFinished(String, Int, Int, Int, BlockerIdentity?, Bool)
-  RequirementUpdated(String, Int, String, RequirementState, Array[String])
-  AwaitingApproval(String, Int, Array[String])
-  ApprovalSettled(String, Int, Array[String], ApprovalOutcome)
-  BudgetUsageRecorded(String, Int, Int, Int, Int)
-  BudgetExhausted(String, Int)
-  BudgetExtended(String, Int, Int?, Int?, Int?)
-  EvaluationStarted(String, Int, String, String)
-  Evaluated(String, Int, String, Int, String, ConvergenceReport)
-  EvaluationFailed(String, Int, String, Int, Int, String, Int, String, Int)
-  EvaluationRetryDue(String, Int, String, Int, Int)
-  CompleteRequested(String, Int, CompletionProof)
-  Resume(String, Int)
+  ContinuationAccepted(String, Int64, Int, Int)
+  TurnFinished(String, Int64, Int, Int, BlockerIdentity?, Bool)
+  RequirementUpdated(String, Int64, String, RequirementState, Array[String])
+  AwaitingApproval(String, Int64, Array[String])
+  ApprovalSettled(String, Int64, Array[String], ApprovalOutcome)
+  BudgetUsageRecorded(String, Int64, Int, Int, Int)
+  BudgetExhausted(String, Int64)
+  BudgetExtended(String, Int64, Int?, Int?, Int?)
+  EvaluationStarted(String, Int64, String, String)
+  Evaluated(String, Int64, String, Int, String, ConvergenceReport)
+  EvaluationFailed(String, Int64, String, Int, Int, String, Int, String, Int64)
+  EvaluationRetryDue(String, Int64, String, Int, Int)
+  CompleteRequested(String, Int64, CompletionProof)
+  Resume(String, Int64)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct GoalRequirement {

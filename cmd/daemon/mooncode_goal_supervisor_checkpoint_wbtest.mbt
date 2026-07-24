@@ -7,8 +7,8 @@ fn checkpoint_replay_envelope(
   owner_id : String,
   fence_token : Int,
   acquisition_event_id : String,
-  expected_lease_expires_at : Int,
-  recorded_at : Int,
+  expected_lease_expires_at : Int64,
+  recorded_at : Int64,
 ) -> Json raise {
   checkpoint_replay_envelope_with_terminal(
     id,
@@ -35,8 +35,8 @@ fn checkpoint_replay_envelope_with_terminal(
   owner_id : String,
   fence_token : Int,
   acquisition_event_id : String,
-  expected_lease_expires_at : Int,
-  recorded_at : Int,
+  expected_lease_expires_at : Int64,
+  recorded_at : Int64,
   last_command : String?,
   last_claim : String?,
   last_receipt : String?,
@@ -63,7 +63,7 @@ fn checkpoint_replay_envelope_with_terminal(
     "record_kind": mooncode_journal_event(),
     "record_id": "event:" + id,
     "session_id": "session",
-    "recorded_at": recorded_at,
+    "recorded_at": goal_json_int64_value(recorded_at),
     "sequence": basis_sequence + 1,
     "payload": payload,
   }
@@ -98,7 +98,7 @@ fn checkpoint_test_envelope(
     "record_kind": mooncode_journal_event(),
     "record_id": "event:" + id,
     "session_id": "session",
-    "recorded_at": 100,
+    "recorded_at": goal_json_int64_value(100),
     "sequence": 8,
     "payload": payload,
   }
@@ -139,6 +139,42 @@ test "checkpoint codec decodes an all-present terminal triple" {
   assert_eq(decoded.last_terminal_command_id, Some("command-1"))
   assert_eq(decoded.last_terminal_claim_id, Some("claim-1"))
   assert_eq(decoded.last_terminal_receipt_record_id, Some("receipt-1"))
+}
+
+///|
+test "checkpoint timestamps round-trip exactly above 2^53" {
+  let recorded_at : Int64 = 9007199254740993
+  let expected_lease_expires_at : Int64 = 9007199254741993
+  let envelope = checkpoint_replay_envelope(
+    "checkpoint-int64", 7, 3, 2, "owner", 1, "lease-1", expected_lease_expires_at,
+    recorded_at,
+  )
+  let encoded = envelope.stringify()
+  assert_true(encoded.contains("\"recorded_at\":9007199254740993"))
+  assert_true(
+    encoded.contains("\"expected_lease_expires_at\":9007199254741993"),
+  )
+  let decoded = mooncode_goal_supervisor_checkpoint_decode(envelope)
+  assert_eq(decoded.recorded_at, recorded_at)
+  assert_eq(decoded.expected_lease_expires_at, expected_lease_expires_at)
+}
+
+///|
+test "checkpoint decoder accepts legacy repr-less small timestamps" {
+  let envelope = checkpoint_test_envelope("checkpoint-legacy", None, None, None)
+  let legacy_payload = checkpoint_json_payload_put(
+    checkpoint_json_payload_put(envelope, "recorded_at", Json::number(100.0)),
+    "expected_lease_expires_at",
+    Json::number(120.0),
+  )
+  let legacy = checkpoint_json_object_put(
+    legacy_payload,
+    "recorded_at",
+    Json::number(100.0),
+  )
+  let decoded = mooncode_goal_supervisor_checkpoint_decode(legacy)
+  assert_eq(decoded.recorded_at, 100)
+  assert_eq(decoded.expected_lease_expires_at, 120)
 }
 
 ///|

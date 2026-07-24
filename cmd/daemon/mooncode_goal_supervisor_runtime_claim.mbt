@@ -42,6 +42,20 @@ fn mooncode_goal_supervisor_runtime_claim_command_matches(
 }
 
 ///|
+/// Existing claim receipts are untrusted journal input. A malformed timestamp
+/// is an immutable-request mismatch, not a reason to abort the transaction.
+fn mooncode_goal_supervisor_runtime_claim_optional_int64(
+  json : Json,
+  key : String,
+) -> Int64? {
+  try goal_json_int64(json, key) catch {
+    _ => None
+  } noraise {
+    value => Some(value)
+  }
+}
+
+///|
 // Exact retries are accepted only after the transaction validates the current
 // goal, active lease, checkpoint, command lineage, wrapper sequence, and the
 // absence of a later terminal receipt for the same command/claim.
@@ -57,8 +71,8 @@ fn mooncode_goal_supervisor_runtime_claim_request_matches(
   claim_id : String,
   consumer_id : String,
   fence_token : Int,
-  expected_lease_expires_at : Int,
-  now : Int,
+  expected_lease_expires_at : Int64,
+  now : Int64,
 ) -> Bool {
   let payload = mooncode_json_object_field_or_empty(receipt, "payload")
   mooncode_json_string(receipt, "session_id", default="") == session_id &&
@@ -88,9 +102,12 @@ fn mooncode_goal_supervisor_runtime_claim_request_matches(
   mooncode_json_string(payload, "claim_id", default="") == claim_id &&
   mooncode_json_string(payload, "consumer_id", default="") == consumer_id &&
   mooncode_json_int(payload, "fence_token", default=-1) == fence_token &&
-  mooncode_json_int(payload, "expected_lease_expires_at", default=-1) ==
-  expected_lease_expires_at &&
-  mooncode_json_int(payload, "claimed_at", default=-1) == now
+  mooncode_goal_supervisor_runtime_claim_optional_int64(
+    payload, "expected_lease_expires_at",
+  ) ==
+  Some(expected_lease_expires_at) &&
+  mooncode_goal_supervisor_runtime_claim_optional_int64(payload, "claimed_at") ==
+  Some(now)
 }
 
 ///|
@@ -105,8 +122,8 @@ async fn mooncode_goal_supervisor_runtime_claim_record(
   claim_id : String,
   consumer_id : String,
   fence_token : Int,
-  expected_lease_expires_at : Int,
-  now : Int,
+  expected_lease_expires_at : Int64,
+  now : Int64,
 ) -> MoonCodeGoalSupervisorRuntimeClaimOutcome {
   mooncode_goal_require_canonical_identity("session id", session_id)
   mooncode_goal_require_canonical_identity("goal id", goal_id)
@@ -371,8 +388,10 @@ async fn mooncode_goal_supervisor_runtime_claim_record(
                       "claim_id": claim_id,
                       "consumer_id": consumer_id,
                       "fence_token": fence_token,
-                      "expected_lease_expires_at": expected_lease_expires_at,
-                      "claimed_at": now,
+                      "expected_lease_expires_at": goal_json_int64_value(
+                        expected_lease_expires_at,
+                      ),
+                      "claimed_at": goal_json_int64_value(now),
                       "basis_sequence": mooncode_journal_last_sequence(records),
                       "command_id": command_id,
                       "command": command,

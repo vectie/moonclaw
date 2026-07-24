@@ -53,11 +53,11 @@ fn goal_api_created(goal : @mooncode_core.Goal) -> MoonCodeGoalApiResponse {
 }
 
 ///|
-fn goal_api_checked_epoch_seconds(value : Int64) -> Int? {
-  if value < 0L || value > 2147483647L {
+fn goal_api_checked_epoch_seconds(value : Int64) -> Int64? {
+  if value < 0L {
     None
   } else {
-    Some(value.to_int())
+    Some(value)
   }
 }
 

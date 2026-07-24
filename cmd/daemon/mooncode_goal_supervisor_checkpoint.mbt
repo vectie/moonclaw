@@ -21,13 +21,13 @@ priv struct MoonCodeGoalSupervisorCheckpointPayload {
   owner_id : String
   fence_token : Int
   acquisition_event_id : String
-  expected_lease_expires_at : Int
+  expected_lease_expires_at : Int64
   basis_sequence : Int
   last_terminal_command_id : String?
   last_terminal_claim_id : String?
   last_terminal_receipt_record_id : String?
-  recorded_at : Int
-} derive(Eq, Debug, ToJson)
+  recorded_at : Int64
+} derive(Eq, Debug)
 
 ///|
 /// Decode a nullable string field without accepting coercions.
@@ -64,7 +64,7 @@ fn mooncode_goal_supervisor_checkpoint_decode(
     "session_id",
     default="",
   )
-  let envelope_recorded_at = goal_json_int(envelope, "recorded_at")
+  let envelope_recorded_at = goal_json_int64(envelope, "recorded_at")
   let envelope_sequence = goal_json_int(envelope, "sequence")
   let payload = goal_json_object(envelope, "payload")
   goal_json_require_exact_keys(
@@ -101,7 +101,7 @@ fn mooncode_goal_supervisor_checkpoint_decode(
     "acquisition_event_id",
     default="",
   )
-  let expected_lease_expires_at = goal_json_int(
+  let expected_lease_expires_at = goal_json_int64(
     payload, "expected_lease_expires_at",
   )
   let basis_sequence = goal_json_int(payload, "basis_sequence")
@@ -117,7 +117,7 @@ fn mooncode_goal_supervisor_checkpoint_decode(
   let last_terminal_receipt_record_id = mooncode_goal_supervisor_checkpoint_optional_string(
     payload, "last_terminal_receipt_record_id",
   )
-  let recorded_at = goal_json_int(payload, "recorded_at")
+  let recorded_at = goal_json_int64(payload, "recorded_at")
   guard recorded_at == envelope_recorded_at else {
     raise InvalidGoalGenesis("checkpoint recorded_at mismatch")
   }
@@ -164,12 +164,12 @@ fn mooncode_goal_supervisor_checkpoint_v1(
   owner_id : String,
   fence_token : Int,
   acquisition_event_id : String,
-  expected_lease_expires_at : Int,
+  expected_lease_expires_at : Int64,
   basis_sequence : Int,
   last_terminal_command_id : String?,
   last_terminal_claim_id : String?,
   last_terminal_receipt_record_id : String?,
-  recorded_at : Int,
+  recorded_at : Int64,
 ) -> Json raise {
   mooncode_goal_require_canonical_identity("checkpoint id", id)
   guard protocol == mooncode_protocol_version() else {
@@ -238,7 +238,9 @@ fn mooncode_goal_supervisor_checkpoint_v1(
     "owner_id": owner_id,
     "fence_token": fence_token,
     "acquisition_event_id": acquisition_event_id,
-    "expected_lease_expires_at": expected_lease_expires_at,
+    "expected_lease_expires_at": goal_json_int64_value(
+      expected_lease_expires_at,
+    ),
     "basis_sequence": basis_sequence,
     "last_terminal_command_id": match last_terminal_command_id {
       Some(value) => value.to_json()
@@ -252,6 +254,6 @@ fn mooncode_goal_supervisor_checkpoint_v1(
       Some(value) => value.to_json()
       None => null
     },
-    "recorded_at": recorded_at,
+    "recorded_at": goal_json_int64_value(recorded_at),
   }
 }

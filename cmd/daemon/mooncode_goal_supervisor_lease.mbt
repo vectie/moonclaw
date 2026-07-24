@@ -20,8 +20,8 @@ fn mooncode_goal_supervisor_lease_validate_owner_fence(
   lease : MoonCodeGoalSupervisorLease?,
   owner_id : String,
   fence_token : Int,
-  presented_lease_expires_at : Int,
-  now : Int,
+  presented_lease_expires_at : Int64,
+  now : Int64,
 ) -> Bool {
   match lease {
     Some(active) =>
@@ -40,8 +40,8 @@ priv struct MoonCodeGoalSupervisorLease {
   goal_id : String
   goal_run_id : Int
   owner_id : String
-  recorded_at : Int
-  lease_expires_at : Int
+  recorded_at : Int64
+  lease_expires_at : Int64
   fence_token : Int
   event_id : String
 } derive(Eq, Debug)
@@ -54,9 +54,9 @@ priv struct MoonCodeGoalSupervisorLeaseRenewal {
   goal_id : String
   goal_run_id : Int
   owner_id : String
-  recorded_at : Int
-  expected_lease_expires_at : Int
-  lease_expires_at : Int
+  recorded_at : Int64
+  expected_lease_expires_at : Int64
+  lease_expires_at : Int64
   fence_token : Int
   acquisition_event_id : String
   event_id : String
@@ -82,9 +82,9 @@ fn mooncode_goal_supervisor_lease_renewed_v1(
   goal_id : String,
   goal_run_id : Int,
   owner_id : String,
-  recorded_at : Int,
-  expected_lease_expires_at : Int,
-  lease_expires_at : Int,
+  recorded_at : Int64,
+  expected_lease_expires_at : Int64,
+  lease_expires_at : Int64,
   fence_token : Int,
   acquisition_event_id : String,
 ) -> Json raise {
@@ -121,9 +121,11 @@ fn mooncode_goal_supervisor_lease_renewed_v1(
     "goal_id": goal_id,
     "goal_run_id": goal_run_id,
     "owner_id": owner_id,
-    "recorded_at": recorded_at,
-    "expected_lease_expires_at": expected_lease_expires_at,
-    "lease_expires_at": lease_expires_at,
+    "recorded_at": goal_json_int64_value(recorded_at),
+    "expected_lease_expires_at": goal_json_int64_value(
+      expected_lease_expires_at,
+    ),
+    "lease_expires_at": goal_json_int64_value(lease_expires_at),
     "fence_token": fence_token,
     "acquisition_event_id": acquisition_event_id,
   }
@@ -165,14 +167,14 @@ fn mooncode_goal_supervisor_lease_renewal_decode(
   let goal_id = mooncode_json_string(payload, "goal_id", default="")
   let goal_run_id = goal_json_int(payload, "goal_run_id")
   let owner_id = mooncode_json_string(payload, "owner_id", default="")
-  let recorded_at = goal_json_int(payload, "recorded_at")
-  guard goal_json_int(envelope, "recorded_at") == recorded_at else {
+  let recorded_at = goal_json_int64(payload, "recorded_at")
+  guard goal_json_int64(envelope, "recorded_at") == recorded_at else {
     raise InvalidGoalGenesis("renewal envelope recorded at mismatch")
   }
-  let expected_lease_expires_at = goal_json_int(
+  let expected_lease_expires_at = goal_json_int64(
     payload, "expected_lease_expires_at",
   )
-  let lease_expires_at = goal_json_int(payload, "lease_expires_at")
+  let lease_expires_at = goal_json_int64(payload, "lease_expires_at")
   let fence_token = goal_json_int(payload, "fence_token")
   let acquisition_event_id = mooncode_json_string(
     payload,
@@ -216,8 +218,8 @@ fn mooncode_goal_supervisor_lease_v1(
   goal_id : String,
   goal_run_id : Int,
   owner_id : String,
-  recorded_at : Int,
-  lease_expires_at : Int,
+  recorded_at : Int64,
+  lease_expires_at : Int64,
   fence_token : Int,
 ) -> Json raise {
   mooncode_goal_require_canonical_identity("lease id", id)
@@ -247,8 +249,8 @@ fn mooncode_goal_supervisor_lease_v1(
     "goal_id": goal_id,
     "goal_run_id": goal_run_id,
     "owner_id": owner_id,
-    "recorded_at": recorded_at,
-    "lease_expires_at": lease_expires_at,
+    "recorded_at": goal_json_int64_value(recorded_at),
+    "lease_expires_at": goal_json_int64_value(lease_expires_at),
     "fence_token": fence_token,
   }
 }
@@ -276,7 +278,7 @@ fn mooncode_goal_supervisor_lease_decode(
     "session_id",
     default="",
   )
-  let envelope_recorded_at = goal_json_int(envelope, "recorded_at")
+  let envelope_recorded_at = goal_json_int64(envelope, "recorded_at")
   goal_json_require_exact_keys(
     payload,
     [
@@ -291,8 +293,8 @@ fn mooncode_goal_supervisor_lease_decode(
   let goal_id = mooncode_json_string(payload, "goal_id", default="")
   let goal_run_id = goal_json_int(payload, "goal_run_id")
   let owner_id = mooncode_json_string(payload, "owner_id", default="")
-  let recorded_at = goal_json_int(payload, "recorded_at")
-  let lease_expires_at = goal_json_int(payload, "lease_expires_at")
+  let recorded_at = goal_json_int64(payload, "recorded_at")
+  let lease_expires_at = goal_json_int64(payload, "lease_expires_at")
   let fence_token = goal_json_int(payload, "fence_token")
   ignore(
     mooncode_goal_supervisor_lease_v1(
@@ -573,8 +575,8 @@ fn mooncode_goal_supervisor_lease_matches_request(
   goal_run_id : Int,
   owner_id : String,
   event_id : String,
-  recorded_at : Int,
-  lease_expires_at : Int,
+  recorded_at : Int64,
+  lease_expires_at : Int64,
 ) -> Bool {
   lease.event_id == event_id &&
   lease.owner_id == owner_id &&
@@ -592,8 +594,8 @@ async fn mooncode_goal_supervisor_lease_acquire(
   goal_id : String,
   owner_id : String,
   event_id : String,
-  now : Int,
-  lease_expires_at : Int,
+  now : Int64,
+  lease_expires_at : Int64,
 ) -> MoonCodeGoalSupervisorLeaseResult {
   mooncode_goal_require_canonical_identity("session id", session_id)
   mooncode_goal_require_canonical_identity("goal id", goal_id)

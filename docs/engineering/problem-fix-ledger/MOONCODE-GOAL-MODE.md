@@ -14,6 +14,14 @@ Incidents encountered during the slice included an invalid `Map.insert` test hel
 
 Atomic compare-and-append remains the next P1 item, followed by the supervisor lease/fence/checkpoint loop.
 
+## 2026-07-24 — Absolute-time `Int64` migration
+
+Absolute timestamps now use `Int64` across Goal `created_at`/`updated_at`, GoalEvent `recorded_at` and evaluation retry time, daemon genesis/journal records, and supervisor lease, renewal, checkpoint, and runtime-claim state. Exact JSON numeric representations preserve values above 2^53, while legacy small numbers without a representation still decode. Counters, revisions, sequences, and fence tokens remain `Int`. Strict Goal PUT validation no longer rejects nonnegative timestamps merely because they exceed the 32-bit range. This checkpoint does **not** claim that the rolling Goal service is integrated.
+
+Problems encountered included a core-first migration that temporarily broke daemon callers; initial drafts that missed event variants and helpers and invented invalid test patterns or constructor arities; compact error collection that used zsh's readonly `status` variable; and concurrent formatting that observed an unfinished supervisor test. A final independent audit also found that malformed matching runtime-claim timestamps could raise instead of returning a safe conflict, and that an unused derived checkpoint encoder could serialize `Int64` timestamps as strings. Fixes completed the dependent daemon migration and event/helper coverage, replaced invalid tests and constructor calls with real APIs, renamed the shell variable, restored non-raising strict claim matching with byte-stable conflict coverage, removed the latent derived encoder, and used independent validation gates rather than trusting partial MoonCode receipts.
+
+Final post-format validation passes **core 100/100** on native, JavaScript, wasm, and wasm-gc, and **daemon 282/282** on native.
+
 ## 2026-07-24 — Durable supervisor lease and fencing checkpoint
 
 This checkpoint adds atomic session-journal acquisition for the durable supervisor lease. The first acquisition issues `fence=1`; takeover after expiry increments the fence. Global event-ID handling is idempotent for an exact duplicate and rejects conflicting reuse. Validation enforces the strict codec, replay, and fence sequence, including historical retries. A generic namespace guard prevents cross-namespace misuse, and a missing goal produces no artifact. The suite proves concurrent initial acquisition and concurrent expiry takeover behavior.

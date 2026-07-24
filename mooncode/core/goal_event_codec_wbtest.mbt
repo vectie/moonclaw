@@ -46,6 +46,87 @@ test "Resume encode decode equality and strict payload rejection" {
 }
 
 ///|
+test "Resume preserves Int64 timestamp number representation" {
+  let event = Resume("large-resume", 9007199254740993L)
+  let encoded = goal_event_to_json(event)
+  guard encoded is Object(fields) else { fail("expected object") }
+  guard fields["recorded_at"] is Number(_, repr=Some(recorded_repr)) else {
+    fail("expected recorded_at number")
+  }
+  assert_eq(recorded_repr, "9007199254740993")
+  assert_true(goal_event_from_json(encoded) == event)
+}
+
+///|
+test "EvaluationFailed preserves Int64 timestamp number representations" {
+  let event = EvaluationFailed(
+    "large-failure", 9007199254740994L, "evaluation", 1, 2, "digest", 3, "transient",
+    9007199254740995L,
+  )
+  let encoded = goal_event_to_json(event)
+  guard encoded is Object(fields) else { fail("expected object") }
+  guard fields["recorded_at"] is Number(_, repr=Some(recorded_repr)) else {
+    fail("expected recorded_at number")
+  }
+  assert_eq(recorded_repr, "9007199254740994")
+  guard fields["payload"] is Object(payload) else {
+    fail("expected payload object")
+  }
+  guard payload["next_retry_at"] is Number(_, repr=Some(retry_repr)) else {
+    fail("expected next_retry_at number")
+  }
+  assert_eq(retry_repr, "9007199254740995")
+  assert_true(goal_event_from_json(encoded) == event)
+}
+
+///|
+test "strict timestamp decode rejects invalid numeric representations" {
+  let invalid_recorded_at : Array[Json] = [
+    Json::number(0.0, repr="9223372036854775808"),
+    Json::number(0.0, repr="-1"),
+    Json::number(0.0, repr="1.5"),
+  ]
+  for recorded_at in invalid_recorded_at {
+    let json : Json = {
+      "schema_version": 1,
+      "kind": "mooncode.goal.resumed.v1",
+      "event_id": "invalid-resume",
+      "recorded_at": recorded_at,
+      "payload": {},
+    }
+    assert_true(decode_goal_event_v1(json) is Err(_))
+  }
+  let invalid_retry : Json = {
+    "schema_version": 1,
+    "kind": "mooncode.goal.evaluation-failed.v1",
+    "event_id": "invalid-retry",
+    "recorded_at": 100,
+    "payload": {
+      "evaluation_id": "evaluation",
+      "run_id": 1,
+      "basis_revision": 2,
+      "evidence_digest": "digest",
+      "attempt": 3,
+      "category": "transient",
+      "next_retry_at": Json::number(0.0, repr="9223372036854775808"),
+    },
+  }
+  assert_true(decode_goal_event_v1(invalid_retry) is Err(_))
+}
+
+///|
+test "legacy repr-less small Resume timestamp decodes" {
+  let legacy : Json = {
+    "schema_version": 1,
+    "kind": "mooncode.goal.resumed.v1",
+    "event_id": "legacy-resume",
+    "recorded_at": Json::number(99.0),
+    "payload": {},
+  }
+  assert_true(decode_goal_event_v1(legacy) == Ok(Resume("legacy-resume", 99L)))
+}
+
+///|
 test "CompleteRequested encode decode equality including padded digest" {
   let proof : CompletionProof = {
     projection: {

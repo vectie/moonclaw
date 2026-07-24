@@ -40,16 +40,18 @@ fn goal_store_test_record(payload : Json) -> Json raise {
     ":" +
     mooncode_goal_genesis_id(),
     "session_id": "session",
-    "recorded_at": goal_json_int(payload, "recorded_at"),
+    "recorded_at": goal_json_int64_value(
+      goal_json_int64(payload, "recorded_at"),
+    ),
     "payload": payload,
   }
 }
 
 ///|
-test "mooncode_goal_store: durable integers are strict and bounded" {
+test "mooncode_goal_store: durable counters are strict and bounded" {
   let labels = [
-    "timestamp", "recorded_at", "token_limit", "turn_limit", "wall_time_limit", "tokens_used",
-    "turns_used", "wall_time_used",
+    "token_limit", "turn_limit", "wall_time_limit", "tokens_used", "turns_used",
+    "wall_time_used",
   ]
   for label in labels {
     let mut rejected = false
@@ -91,6 +93,44 @@ test "mooncode_goal_store: durable integers are strict and bounded" {
     _ => ()
   }
   assert_true(optional_rejected)
+}
+
+///|
+test "mooncode_goal_store: durable timestamps preserve exact Int64 values" {
+  let timestamp = 9007199254740993L
+  let encoded = goal_json_int64_value(timestamp)
+  assert_true(encoded is Number(_, repr=Some("9007199254740993")))
+  assert_eq(goal_json_int64({ "value": encoded }, "value"), timestamp)
+  assert_eq(goal_json_int64({ "value": Json::number(123.0) }, "value"), 123L)
+  for
+    value in [
+      Json::number(0.0, repr="9223372036854775808"),
+      Json::number(0.0, repr="-9223372036854775809"),
+      Json::number(0.0, repr="1.5"),
+      Json::number(0.5),
+    ] {
+    let mut rejected = false
+    ignore(goal_json_int64({ "value": value }, "value")) catch {
+      InvalidGoalGenesis(_) => rejected = true
+      _ => ()
+    }
+    assert_true(rejected)
+  }
+  let payload = mooncode_goal_genesis(
+    mooncode_protocol_version(),
+    "session",
+    "goal",
+    "objective",
+    timestamp,
+    goal_store_test_budget(),
+    goal_store_test_requirements(),
+  )
+  assert_eq(goal_json_int64(payload, "recorded_at"), timestamp)
+  assert_eq(goal_json_int64(payload, "timestamp"), timestamp)
+  assert_eq(
+    mooncode_replay_goal_records([goal_store_test_record(payload)], "session").unwrap().created_at,
+    timestamp,
+  )
 }
 
 ///|

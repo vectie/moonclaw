@@ -102,7 +102,7 @@ pub(all) struct EvaluationBackoffRecord {
   evidence_digest : String
   attempt : Int
   category : String
-  next_retry_at : Int
+  next_retry_at : Int64
 } derive(Eq, Debug)
 
 ///|
@@ -133,8 +133,8 @@ pub(all) struct Goal {
   status : GoalStatus
   run_state : GoalRunState
   run_id : Int
-  created_at : Int
-  updated_at : Int
+  created_at : Int64
+  updated_at : Int64
   revision : Int
   current_goal_turn : Int
   continuation_count : Int
@@ -147,6 +147,11 @@ pub(all) struct Goal {
   approval_refs : Array[String]
   seen_ids : Array[String]
 } derive(Eq, Debug)
+
+///|
+fn goal_contract_int64_number(value : Int64) -> Json {
+  Json::number(value.to_double(), repr=value.to_string())
+}
 
 ///|
 fn goal_status_name(status : GoalStatus) -> String {
@@ -291,7 +296,7 @@ pub fn goal_evaluation_bundle_json(goal : Goal) -> Json {
         "evidence_digest": value.evidence_digest,
         "attempt": value.attempt,
         "category": value.category,
-        "next_retry_at": value.next_retry_at,
+        "next_retry_at": goal_contract_int64_number(value.next_retry_at),
       }
     None => Json::null()
   }

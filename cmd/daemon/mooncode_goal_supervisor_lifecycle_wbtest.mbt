@@ -12,8 +12,8 @@ fn lifecycle_assert_invalid(records : Array[Json]) -> Unit raise {
 fn lifecycle_lease(
   id : String,
   owner : String,
-  recorded_at : Int,
-  expires_at : Int,
+  recorded_at : Int64,
+  expires_at : Int64,
   fence : Int,
 ) -> Json raise {
   supervisor_lease_test_envelope(
@@ -36,9 +36,9 @@ fn lifecycle_lease(
 fn lifecycle_renewal(
   id : String,
   owner : String,
-  recorded_at : Int,
-  expected_expiry : Int,
-  expires_at : Int,
+  recorded_at : Int64,
+  expected_expiry : Int64,
+  expires_at : Int64,
   fence : Int,
   acquisition_id : String,
 ) -> Json raise {

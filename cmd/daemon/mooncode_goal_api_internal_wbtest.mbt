@@ -24,9 +24,12 @@ fn goal_internal_assert_error(
 ///|
 test "mooncode_goal_api_internal: checked epoch boundaries are exact" {
   assert_eq(goal_api_checked_epoch_seconds(-1L), None)
-  assert_eq(goal_api_checked_epoch_seconds(0L), Some(0))
-  assert_eq(goal_api_checked_epoch_seconds(2147483647L), Some(2147483647))
-  assert_eq(goal_api_checked_epoch_seconds(2147483648L), None)
+  assert_eq(goal_api_checked_epoch_seconds(0L), Some(0L))
+  assert_eq(goal_api_checked_epoch_seconds(2147483648L), Some(2147483648L))
+  assert_eq(
+    goal_api_checked_epoch_seconds(9223372036854775807L),
+    Some(9223372036854775807L),
+  )
 }
 
 ///|
@@ -93,17 +96,21 @@ async test "mooncode_goal_api_internal: lifecycle is exact and durable" {
       root,
       id,
       goal_api_body((7).to_json()),
-      0L,
+      9007199254740993L,
     )
     assert_eq(created.status_code, 201)
     goal_internal_assert_redacted(created.body)
     let journal_bytes = @fsx.read_file(journal)
+    assert_eq(
+      mooncode_replay_goal(root, id).unwrap().created_at,
+      9007199254740993L,
+    )
 
     let retry = mooncode_goal_api_put_internal(
       root,
       id,
       goal_api_body((7).to_json()),
-      2147483647L,
+      9223372036854775807L,
     )
     assert_eq(retry.status_code, 200)
     assert_eq(retry.body, created.body)
@@ -143,7 +150,7 @@ async test "mooncode_goal_api_internal: clock and parse failures create no journ
     }
     clock_object["session_id"] = active.to_json()
     let clock_error = mooncode_goal_api_put_internal(
-      root, active, clock_body, 2147483648L,
+      root, active, clock_body, -1L,
     )
     goal_internal_assert_error(clock_error, 500, "goal_clock_out_of_range")
     assert_false(@fsx.exists(mooncode_session_journal_path(root, active)))

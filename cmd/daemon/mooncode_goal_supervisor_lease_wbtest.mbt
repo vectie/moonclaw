@@ -4,9 +4,62 @@ fn supervisor_lease_test_envelope(id : String, payload : Json) -> Json raise {
     "record_kind": mooncode_journal_event(),
     "record_id": mooncode_journal_goal_event() + ":" + id,
     "session_id": "session",
-    "recorded_at": goal_json_int(payload, "recorded_at"),
+    "recorded_at": goal_json_int64_value(
+      goal_json_int64(payload, "recorded_at"),
+    ),
     "payload": payload,
   }
+}
+
+///|
+test "supervisor lease timestamps round-trip exactly above 2^53" {
+  let recorded_at : Int64 = 9007199254740993
+  let lease_expires_at : Int64 = 9007199254741993
+  let payload = mooncode_goal_supervisor_lease_v1(
+    "lease-int64",
+    mooncode_protocol_version(),
+    "session",
+    "goal",
+    0,
+    "owner",
+    recorded_at,
+    lease_expires_at,
+    1,
+  )
+  let encoded = payload.stringify()
+  assert_true(encoded.contains("\"recorded_at\":9007199254740993"))
+  assert_true(encoded.contains("\"lease_expires_at\":9007199254741993"))
+  let decoded = mooncode_goal_supervisor_lease_decode(
+    supervisor_lease_test_envelope("lease-int64", payload),
+  )
+  assert_eq(decoded.recorded_at, recorded_at)
+  assert_eq(decoded.lease_expires_at, lease_expires_at)
+}
+
+///|
+test "supervisor lease decoder accepts legacy repr-less small timestamps" {
+  let payload : Json = {
+    "id": "lease-legacy",
+    "kind": mooncode_goal_supervisor_lease_v1_kind(),
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session",
+    "goal_id": "goal",
+    "goal_run_id": 0,
+    "owner_id": "owner",
+    "recorded_at": Json::number(124.0),
+    "lease_expires_at": Json::number(134.0),
+    "fence_token": 1,
+  }
+  let envelope : Json = {
+    "record_kind": mooncode_journal_event(),
+    "record_id": "event:lease-legacy",
+    "session_id": "session",
+    "recorded_at": Json::number(124.0),
+    "payload": payload,
+  }
+  let decoded = mooncode_goal_supervisor_lease_decode(envelope)
+  assert_eq(decoded.recorded_at, 124)
+  assert_eq(decoded.lease_expires_at, 134)
 }
 
 ///|

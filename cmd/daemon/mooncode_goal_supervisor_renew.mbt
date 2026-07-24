@@ -15,9 +15,9 @@ async fn mooncode_goal_supervisor_lease_renew(
   acquisition_event_id : String,
   event_id : String,
   fence_token : Int,
-  expected_lease_expires_at : Int,
-  now : Int,
-  lease_expires_at : Int,
+  expected_lease_expires_at : Int64,
+  now : Int64,
+  lease_expires_at : Int64,
 ) -> MoonCodeGoalSupervisorLeaseRenewalResult {
   mooncode_goal_require_canonical_identity("session id", session_id)
   mooncode_goal_require_canonical_identity("goal id", goal_id)
