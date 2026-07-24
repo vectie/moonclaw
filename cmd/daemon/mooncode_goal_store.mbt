@@ -179,6 +179,8 @@ fn mooncode_replay_goal_records_detailed(
   expected_goal_id? : String? = None,
 ) -> MoonCodeGoalReplayState? raise {
   mooncode_goal_require_canonical_identity("session_id", session_id)
+  // Reduce ordinary Goal state first. Supervisor records are validated against
+  // the resulting Goal below, avoiding recursive detailed replay.
   let mut replay : MoonCodeGoalReplayState? = None
   for envelope in records {
     if mooncode_json_string(envelope, "record_kind", default="") !=
@@ -212,18 +214,30 @@ fn mooncode_replay_goal_records_detailed(
     if !reserved_envelope_id && !reserved_id && !goal_kind {
       continue
     }
-    if kind == mooncode_goal_supervisor_lease_v1_kind() {
+    if kind.has_prefix("mooncode.goal.supervisor.") {
       let state = match replay {
         Some(state) => state
-        None => raise InvalidGoalGenesis("supervisor lease before genesis")
+        None => raise InvalidGoalGenesis("supervisor event before genesis")
       }
-      let lease = mooncode_goal_supervisor_lease_decode(envelope)
-      if lease.session_id != state.current.session_id ||
-        lease.goal_id != state.current.id ||
-        lease.goal_run_id != state.current.run_id {
-        raise InvalidGoalGenesis("supervisor lease goal mismatch")
+      if kind == mooncode_goal_supervisor_lease_v1_kind() {
+        let lease = mooncode_goal_supervisor_lease_decode(envelope)
+        if lease.session_id != state.current.session_id ||
+          lease.goal_id != state.current.id ||
+          lease.goal_run_id != state.current.run_id {
+          raise InvalidGoalGenesis("supervisor lease goal mismatch")
+        }
+        continue
       }
-      continue
+      if kind == mooncode_goal_supervisor_lease_renewed_v1_kind() {
+        let renewal = mooncode_goal_supervisor_lease_renewal_decode(envelope)
+        if renewal.session_id != state.current.session_id ||
+          renewal.goal_id != state.current.id ||
+          renewal.goal_run_id != state.current.run_id {
+          raise InvalidGoalGenesis("supervisor lease renewal goal mismatch")
+        }
+        continue
+      }
+      raise InvalidGoalGenesis("unknown supervisor event kind")
     }
     if goal_kind && kind != mooncode_goal_genesis_kind() {
       mooncode_goal_require_canonical_identity(
@@ -375,6 +389,12 @@ fn mooncode_replay_goal_records_detailed(
     }
     replay = Some({ genesis: goal, current: goal, events: {} })
   }
+  match replay {
+    Some(state) => {
+      let _ = mooncode_goal_supervisor_lease_replay(records, state.current)
+    }
+    None => ()
+  }
   replay
 }
 
@@ -468,6 +488,9 @@ async fn mooncode_apply_goal_event(
           NoAppend(GoalMutationConflict(current))
         }
       None => {
+        if mooncode_goal_supervisor_event_record_exists(records, event_id) {
+          return NoAppend(GoalMutationConflict(current))
+        }
         let next = @mooncode_core.reduce_goal(current, event)
         if next == current {
           NoAppend(GoalMutationRejected(current))

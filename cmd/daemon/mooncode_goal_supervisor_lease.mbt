@@ -8,6 +8,33 @@ fn mooncode_goal_supervisor_lease_v1_kind() -> String {
 }
 
 ///|
+/// Reserved lifecycle record kinds. Keeping these in the lease namespace makes
+/// generic journal append reject them while lifecycle mutations remain under
+/// the session-journal transaction lock.
+fn mooncode_goal_supervisor_lease_renewed_v1_kind() -> String {
+  "mooncode.goal.supervisor.lease-renewed.v1"
+}
+
+///|
+fn mooncode_goal_supervisor_lease_validate_owner_fence(
+  lease : MoonCodeGoalSupervisorLease?,
+  owner_id : String,
+  fence_token : Int,
+  presented_lease_expires_at : Int,
+  now : Int,
+) -> Bool {
+  match lease {
+    Some(active) =>
+      active.owner_id == owner_id &&
+      active.fence_token == fence_token &&
+      presented_lease_expires_at == active.lease_expires_at &&
+      now >= 0 &&
+      now < active.lease_expires_at
+    None => false
+  }
+}
+
+///|
 priv struct MoonCodeGoalSupervisorLease {
   session_id : String
   goal_id : String
@@ -20,12 +47,163 @@ priv struct MoonCodeGoalSupervisorLease {
 } derive(Eq, Debug)
 
 ///|
+/// A decoded durable renewal. Renewals retain the acquisition fence token and
+/// identify the acquisition event they extend.
+priv struct MoonCodeGoalSupervisorLeaseRenewal {
+  session_id : String
+  goal_id : String
+  goal_run_id : Int
+  owner_id : String
+  recorded_at : Int
+  expected_lease_expires_at : Int
+  lease_expires_at : Int
+  fence_token : Int
+  acquisition_event_id : String
+  event_id : String
+} derive(Eq, Debug)
+
+///|
+/// Canonical event identities are shared by acquisitions and renewals. Replay
+/// keeps this tagged payload so nonadjacent exact duplicates can be ignored,
+/// while changed or cross-kind reuse of an event id is rejected.
+priv enum MoonCodeGoalSupervisorLeaseReplayEvent {
+  ReplayAcquisition(MoonCodeGoalSupervisorLease)
+  ReplayRenewal(MoonCodeGoalSupervisorLeaseRenewal)
+} derive(Eq, Debug)
+
+///|
+/// Canonical durable renewal payload. The acquisition event and fence are
+/// immutable request intent; only the expiry advances.
+fn mooncode_goal_supervisor_lease_renewed_v1(
+  id : String,
+  protocol : String,
+  session_id : String,
+  goal_id : String,
+  goal_run_id : Int,
+  owner_id : String,
+  recorded_at : Int,
+  expected_lease_expires_at : Int,
+  lease_expires_at : Int,
+  fence_token : Int,
+  acquisition_event_id : String,
+) -> Json raise {
+  mooncode_goal_require_canonical_identity("renewal id", id)
+  guard protocol == mooncode_protocol_version() else {
+    raise InvalidGoalGenesis("unsupported protocol")
+  }
+  mooncode_goal_require_canonical_identity("session id", session_id)
+  mooncode_goal_require_canonical_identity("goal id", goal_id)
+  mooncode_goal_require_canonical_identity("owner id", owner_id)
+  mooncode_goal_require_canonical_identity(
+    "acquisition event id", acquisition_event_id,
+  )
+  guard goal_run_id >= 0 else {
+    raise InvalidGoalGenesis("invalid goal run id: must be nonnegative")
+  }
+  guard recorded_at >= 0 else {
+    raise InvalidGoalGenesis("invalid timestamp: must be nonnegative")
+  }
+  guard fence_token > 0 else {
+    raise InvalidGoalGenesis("invalid fence token: must be positive")
+  }
+  guard expected_lease_expires_at > recorded_at else {
+    raise InvalidGoalGenesis("invalid expected lease expiry")
+  }
+  guard lease_expires_at > expected_lease_expires_at else {
+    raise InvalidGoalGenesis("invalid lease expiry")
+  }
+  {
+    "id": id,
+    "kind": mooncode_goal_supervisor_lease_renewed_v1_kind(),
+    "protocol": protocol,
+    "session_id": session_id,
+    "goal_id": goal_id,
+    "goal_run_id": goal_run_id,
+    "owner_id": owner_id,
+    "recorded_at": recorded_at,
+    "expected_lease_expires_at": expected_lease_expires_at,
+    "lease_expires_at": lease_expires_at,
+    "fence_token": fence_token,
+    "acquisition_event_id": acquisition_event_id,
+  }
+}
+
+///|
+/// Strictly decode the journal envelope and its canonical renewal payload.
+fn mooncode_goal_supervisor_lease_renewal_decode(
+  envelope : Json,
+) -> MoonCodeGoalSupervisorLeaseRenewal raise {
+  guard mooncode_json_string(envelope, "record_kind", default="") ==
+    mooncode_journal_event() else {
+    raise InvalidGoalGenesis("invalid renewal envelope record kind")
+  }
+  let payload = goal_json_object(envelope, "payload")
+  goal_json_require_exact_keys(
+    payload,
+    [
+      "id", "kind", "protocol", "session_id", "goal_id", "goal_run_id", "owner_id",
+      "recorded_at", "expected_lease_expires_at", "lease_expires_at", "fence_token",
+      "acquisition_event_id",
+    ],
+    "supervisor lease renewal",
+  )
+  let id = mooncode_json_string(payload, "id", default="")
+  guard mooncode_json_string(envelope, "record_id", default="") ==
+    mooncode_journal_goal_event() + ":" + id else {
+    raise InvalidGoalGenesis("renewal envelope record id mismatch")
+  }
+  guard mooncode_json_string(payload, "kind", default="") ==
+    mooncode_goal_supervisor_lease_renewed_v1_kind() else {
+    raise InvalidGoalGenesis("invalid renewal kind")
+  }
+  let protocol = mooncode_json_string(payload, "protocol", default="")
+  let session_id = mooncode_json_string(payload, "session_id", default="")
+  guard mooncode_json_string(envelope, "session_id", default="") == session_id else {
+    raise InvalidGoalGenesis("renewal envelope session id mismatch")
+  }
+  let goal_id = mooncode_json_string(payload, "goal_id", default="")
+  let goal_run_id = goal_json_int(payload, "goal_run_id")
+  let owner_id = mooncode_json_string(payload, "owner_id", default="")
+  let recorded_at = goal_json_int(payload, "recorded_at")
+  guard goal_json_int(envelope, "recorded_at") == recorded_at else {
+    raise InvalidGoalGenesis("renewal envelope recorded at mismatch")
+  }
+  let expected_lease_expires_at = goal_json_int(
+    payload, "expected_lease_expires_at",
+  )
+  let lease_expires_at = goal_json_int(payload, "lease_expires_at")
+  let fence_token = goal_json_int(payload, "fence_token")
+  let acquisition_event_id = mooncode_json_string(
+    payload,
+    "acquisition_event_id",
+    default="",
+  )
+  ignore(
+    mooncode_goal_supervisor_lease_renewed_v1(
+      id, protocol, session_id, goal_id, goal_run_id, owner_id, recorded_at, expected_lease_expires_at,
+      lease_expires_at, fence_token, acquisition_event_id,
+    ),
+  )
+  MoonCodeGoalSupervisorLeaseRenewal::{
+    session_id,
+    goal_id,
+    goal_run_id,
+    owner_id,
+    recorded_at,
+    expected_lease_expires_at,
+    lease_expires_at,
+    fence_token,
+    acquisition_event_id,
+    event_id: id,
+  }
+}
+
+///|
 /// Store-level outcomes always carry the projection that made the decision.
 priv enum MoonCodeGoalSupervisorLeaseResult {
   SupervisorLeaseAcquired(MoonCodeGoalSupervisorLease)
   SupervisorLeaseIdempotent(MoonCodeGoalSupervisorLease)
-  SupervisorLeaseConflict(MoonCodeGoalSupervisorLease)
-  SupervisorLeaseRejected(MoonCodeGoalSupervisorLease?)
+  SupervisorLeaseConflict(MoonCodeGoalSupervisorLease?)
 } derive(Eq, Debug)
 
 ///|
@@ -155,9 +333,9 @@ fn mooncode_goal_supervisor_lease_replay(
   goal : @mooncode_core.Goal,
 ) -> (MoonCodeGoalSupervisorLease?, Int) raise {
   let mut genesis_seen = false
-  let mut current : MoonCodeGoalSupervisorLease? = None
   let mut maximum_fence = 0
-  let seen : Map[String, MoonCodeGoalSupervisorLease] = {}
+  let seen : Map[String, MoonCodeGoalSupervisorLeaseReplayEvent] = {}
+  let mut active : MoonCodeGoalSupervisorLease? = None
   for envelope in records {
     if mooncode_json_string(envelope, "record_kind", default="") !=
       mooncode_journal_event() {
@@ -172,6 +350,9 @@ fn mooncode_goal_supervisor_lease_replay(
         raise InvalidGoalGenesis("supervisor event before goal genesis")
       }
       let lease = mooncode_goal_supervisor_lease_decode(envelope)
+      let event = MoonCodeGoalSupervisorLeaseReplayEvent::ReplayAcquisition(
+        lease,
+      )
       guard lease.session_id == goal.session_id else {
         raise InvalidGoalGenesis("supervisor lease session mismatch")
       }
@@ -183,7 +364,7 @@ fn mooncode_goal_supervisor_lease_replay(
       }
       match seen.get(lease.event_id) {
         Some(previous) =>
-          if previous == lease {
+          if previous == event {
             continue
           } else {
             raise InvalidGoalGenesis(
@@ -196,29 +377,124 @@ fn mooncode_goal_supervisor_lease_replay(
         lease.fence_token == maximum_fence + 1 else {
         raise InvalidGoalGenesis("invalid supervisor lease fence token")
       }
-      seen[lease.event_id] = lease
-      maximum_fence = lease.fence_token
-      if lease.goal_run_id == goal.run_id {
-        current = Some(lease)
+      match active {
+        Some(current) =>
+          if lease.recorded_at < current.lease_expires_at {
+            raise InvalidGoalGenesis("early supervisor lease takeover")
+          }
+        None => ()
       }
+      seen[lease.event_id] = event
+      active = Some(lease)
+      maximum_fence = lease.fence_token
+    } else if kind == mooncode_goal_supervisor_lease_renewed_v1_kind() {
+      guard genesis_seen else {
+        raise InvalidGoalGenesis("supervisor event before goal genesis")
+      }
+      let renewal = mooncode_goal_supervisor_lease_renewal_decode(envelope)
+      let event = MoonCodeGoalSupervisorLeaseReplayEvent::ReplayRenewal(renewal)
+      guard renewal.session_id == goal.session_id else {
+        raise InvalidGoalGenesis("supervisor lease renewal session mismatch")
+      }
+      guard renewal.goal_id == goal.id else {
+        raise InvalidGoalGenesis("supervisor lease renewal goal mismatch")
+      }
+      if renewal.goal_run_id > goal.run_id {
+        raise InvalidGoalGenesis("supervisor lease renewal goal run mismatch")
+      }
+      match seen.get(renewal.event_id) {
+        Some(previous) =>
+          if previous == event {
+            continue
+          } else {
+            raise InvalidGoalGenesis(
+              "conflicting duplicate supervisor lease event",
+            )
+          }
+        None => ()
+      }
+      let current = match active {
+        Some(current) => current
+        None =>
+          raise InvalidGoalGenesis(
+            "supervisor lease renewal without acquisition",
+          )
+      }
+      guard renewal.goal_run_id == current.goal_run_id &&
+        renewal.owner_id == current.owner_id &&
+        renewal.fence_token == current.fence_token else {
+        raise InvalidGoalGenesis("supervisor lease renewal identity mismatch")
+      }
+      guard renewal.acquisition_event_id == current.event_id else {
+        raise InvalidGoalGenesis(
+          "supervisor lease renewal acquisition mismatch",
+        )
+      }
+      guard renewal.expected_lease_expires_at == current.lease_expires_at else {
+        raise InvalidGoalGenesis("supervisor lease renewal expiry mismatch")
+      }
+      guard renewal.recorded_at >= current.recorded_at &&
+        renewal.recorded_at < current.lease_expires_at else {
+        raise InvalidGoalGenesis(
+          "supervisor lease renewal outside lease window",
+        )
+      }
+      seen[renewal.event_id] = event
+      active = Some({
+        session_id: current.session_id,
+        goal_id: current.goal_id,
+        goal_run_id: current.goal_run_id,
+        owner_id: current.owner_id,
+        fence_token: current.fence_token,
+        recorded_at: renewal.recorded_at,
+        lease_expires_at: renewal.lease_expires_at,
+        event_id: current.event_id,
+      })
     }
   }
-  (current, maximum_fence)
+  (active, maximum_fence)
 }
 
 ///|
-fn mooncode_goal_supervisor_lease_find(
+fn mooncode_goal_supervisor_event_record_exists(
   records : Array[Json],
   event_id : String,
-) -> MoonCodeGoalSupervisorLease? raise {
+) -> Bool {
+  let record_id = "event:\{event_id}"
+  for envelope in records {
+    if mooncode_json_string(envelope, "record_kind", default="") ==
+      mooncode_journal_event() &&
+      mooncode_json_string(envelope, "record_id", default="") == record_id {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn mooncode_goal_supervisor_event_find(
+  records : Array[Json],
+  event_id : String,
+) -> MoonCodeGoalSupervisorLeaseReplayEvent? raise {
   for envelope in records {
     if mooncode_json_string(envelope, "record_kind", default="") ==
       mooncode_journal_event() {
       let payload = goal_json_object(envelope, "payload")
-      if mooncode_json_string(payload, "kind", default="") ==
-        mooncode_goal_supervisor_lease_v1_kind() &&
-        mooncode_json_string(payload, "id", default="") == event_id {
-        return Some(mooncode_goal_supervisor_lease_decode(envelope))
+      if mooncode_json_string(payload, "id", default="") == event_id {
+        let kind = mooncode_json_string(payload, "kind", default="")
+        if kind == mooncode_goal_supervisor_lease_v1_kind() {
+          return Some(
+            ReplayAcquisition(mooncode_goal_supervisor_lease_decode(envelope)),
+          )
+        } else if kind == mooncode_goal_supervisor_lease_renewed_v1_kind() {
+          return Some(
+            ReplayRenewal(
+              mooncode_goal_supervisor_lease_renewal_decode(envelope),
+            ),
+          )
+        } else if kind.has_prefix("mooncode.goal.supervisor.") {
+          return None
+        }
       }
     }
   }
@@ -290,8 +566,8 @@ async fn mooncode_goal_supervisor_lease_acquire(
     let (current, maximum_fence) = mooncode_goal_supervisor_lease_replay(
       records, goal,
     )
-    match mooncode_goal_supervisor_lease_find(records, event_id) {
-      Some(existing) =>
+    match mooncode_goal_supervisor_event_find(records, event_id) {
+      Some(ReplayAcquisition(existing)) =>
         if mooncode_goal_supervisor_lease_matches_request(
             existing,
             session_id,
@@ -304,13 +580,21 @@ async fn mooncode_goal_supervisor_lease_acquire(
           ) {
           return NoAppend(SupervisorLeaseIdempotent(existing))
         } else {
-          return NoAppend(SupervisorLeaseConflict(existing))
+          return NoAppend(SupervisorLeaseConflict(Some(existing)))
+        }
+      Some(ReplayRenewal(_)) =>
+        match current {
+          Some(active) => return NoAppend(SupervisorLeaseConflict(Some(active)))
+          None => raise InvalidGoalGenesis("renewal without active acquisition")
         }
       None => ()
     }
+    if mooncode_goal_supervisor_event_record_exists(records, event_id) {
+      return NoAppend(SupervisorLeaseConflict(current))
+    }
     match current {
       Some(lease) if lease.lease_expires_at > now =>
-        NoAppend(SupervisorLeaseConflict(lease))
+        NoAppend(SupervisorLeaseConflict(Some(lease)))
       _ => {
         guard maximum_fence != 2147483647 else {
           raise InvalidGoalGenesis("invalid fence token: overflow")

@@ -58,6 +58,24 @@ Product code for this checkpoint was generated through MoonCode; the controller 
 - **Problem/Fix — MoonBit symlink signature:** A repair wrongly assumed the positional symlink link path was labeled `link_path`; native compiler errors 4085/4080 exposed the actual `target~`-plus-positional signature, and all three calls were restored.
 - **Problem/Fix — zsh verification variable:** The first full-suite wrapper assigned zsh read-only parameter status and stopped after the tests; rerun with task_status, confirming the full daemon suite passed 176/176.
 
+## 2026-07-24 — Durable renewal checkpoint
+
+This checkpoint implements strict durable supervisor-lease renewal while preserving the live acquire, renew, and replay APIs. Renewal records use a strict CAS schema carrying the expected expiry, with a strict envelope and exact key sets. Replay and validation now cover **243/243** verified daemon tests.
+
+- **Implementation incident — bounded turns:** Repeated eight-step-cap/no-tools false completions required fresh micro-turns; a daemon stall/restart left an unresolved claim.
+- **Implementation incident — compiler recovery and safety:** Invented envelope fields, test APIs, and async syntax were compiler-corrected; an unsafe test-log approval was rejected.
+- **Implementation incident — partial edits:** Structured-edit failures and a shell heredoc caused partial changes; cleanup deleted declarations but left four stray derive lines, caught by the controller native check and repaired.
+- **Implementation incident — parallel tests:** Parallel test attempts created a broken lifecycle test and redundant `Json.copy` assertions; both were repaired from repository patterns.
+- **Guarantee — canonical event-ID collisions:** Known acquisition/renewal cross-kind reuse is rejected; acquire, renew, and ordinary Goal mutation atomically reject canonical `event:<id>` collisions with existing ordinary/runtime/supervisor records in the directions covered by the 243-test suite, typed and byte-stable.
+- **Problem/Fix — competing-file incident:** Only the invalid duplicate competing file was neutralized; no valid competing implementation was removed or broadly replaced.
+- **Problem/Fix — backdated renewal:** Durable write accepted a backdated renewal that replay rejected. The write path and replay contract were aligned with a monotonic expiry guard.
+- **Problem/Fix — lifecycle preflight:** A fail-open lifecycle preflight was repaired to fail closed before renewal mutation.
+- **Problem/Fix — run lineage:** Lease selection could admit more than one active lease across run lineage. Replay now enforces a single active lease across the lineage.
+- Regression coverage includes cross-kind and ordinary-Goal ID collisions, historical retry behavior, backdated renewal write/replay agreement, fail-closed lifecycle preflight, and single-active lineage replay.
+- **Deferred P0:** Fencing Goal/runtime mutations remains a P0 and is explicitly deferred to the next slice.
+
+Product code for this checkpoint was generated through MoonCode; the controller only prompted, inspected, and gated the work.
+
 - **Problem/Fix — double-wrapped sessions root caused false absence:** The `goal_gate_dir` test helper passed `mooncode_sessions_root(root)` into `mooncode_session_dir_by_safe_id`, which applies the sessions-root transformation itself, so fixtures landed in a double-nested store and production falsely returned `GoalSessionAbsentOrMismatch`. Pass book `root` directly while retaining the safe session ID and `archived` label; the invalid-JSON fixture still proves the generic `GoalSessionCorrupt` path.
 
 - **Problem/Fix — independent security/evidence audit:** Dot aliases and snapshot or active-directory symlinks could evade ordinary identity fixtures, while rejection tests did not independently prove filesystem non-mutation. In particular, the sanitizer derives `mooncode_safe_session_id("..") == "_"`, so derived-name checks cannot identify the raw parent-directory token; the production gate now rejects raw `session_id == "." || session_id == ".."` before/alongside its derived safe-component checks. The session gate and its tests are async; rejection coverage captures exact immediate directory entry counts and snapshot bytes, verifies journals remain absent using the production session-root and journal-path helpers, and includes absent-root dot aliases and symlink fixtures.

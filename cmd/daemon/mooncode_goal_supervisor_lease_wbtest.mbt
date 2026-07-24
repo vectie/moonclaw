@@ -36,8 +36,8 @@ test "mooncode_goal_supervisor_lease: replay duplicate identity and fence orderi
       "goal",
       0,
       "owner-b",
-      125,
-      135,
+      134,
+      144,
       2,
     ),
   )
@@ -99,6 +99,92 @@ test "mooncode_goal_supervisor_lease: replay duplicate identity and fence orderi
     _ => ()
   }
   assert_true(gap_rejected)
+}
+
+///|
+test "mooncode_goal_supervisor_lease: single-active lineage replay" {
+  let genesis = goal_store_replay_genesis()
+  let goal_from_genesis = mooncode_replay_goal_records([genesis], "session").unwrap()
+  let final_goal = { ..goal_from_genesis, run_id: 1 }
+  let run_0 = supervisor_lease_test_envelope(
+    "lease-run-0",
+    mooncode_goal_supervisor_lease_v1(
+      "lease-run-0",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-run-0",
+      10,
+      20,
+      1,
+    ),
+  )
+  let (current, maximum_fence) = mooncode_goal_supervisor_lease_replay(
+    [genesis, run_0],
+    final_goal,
+  )
+  match current {
+    Some(lease) => {
+      assert_eq(lease.goal_run_id, 0)
+      assert_eq(lease.fence_token, 1)
+    }
+    None => abort("expected run-0 supervisor lease")
+  }
+  assert_eq(maximum_fence, 1)
+
+  let early_run_1 = supervisor_lease_test_envelope(
+    "lease-run-1-early",
+    mooncode_goal_supervisor_lease_v1(
+      "lease-run-1-early",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      1,
+      "owner-run-1",
+      19,
+      29,
+      2,
+    ),
+  )
+  let mut early_takeover_rejected = false
+  ignore(
+    mooncode_goal_supervisor_lease_replay(
+      [genesis, run_0, early_run_1],
+      final_goal,
+    ),
+  ) catch {
+    InvalidGoalGenesis(_) => early_takeover_rejected = true
+    _ => ()
+  }
+  assert_true(early_takeover_rejected)
+
+  let run_1 = supervisor_lease_test_envelope(
+    "lease-run-1",
+    mooncode_goal_supervisor_lease_v1(
+      "lease-run-1",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      1,
+      "owner-run-1",
+      20,
+      30,
+      2,
+    ),
+  )
+  let (current, maximum_fence) = mooncode_goal_supervisor_lease_replay(
+    [genesis, run_0, run_1],
+    final_goal,
+  )
+  match current {
+    Some(lease) => {
+      assert_eq(lease.goal_run_id, 1)
+      assert_eq(lease.fence_token, 2)
+    }
+    None => abort("expected run-1 supervisor lease")
+  }
+  assert_eq(maximum_fence, 2)
 }
 
 ///|
@@ -207,7 +293,8 @@ async test "mooncode_goal_supervisor_lease: active conflict is byte stable" {
       mooncode_goal_supervisor_lease_acquire(
         root, session_id, "goal", "owner-b", "lease-2", 12, 22,
       ) {
-      SupervisorLeaseConflict(lease) => assert_eq(lease.owner_id, "owner-a")
+      SupervisorLeaseConflict(lease) =>
+        assert_eq(lease.unwrap().owner_id, "owner-a")
       _ =>
         abort("expected SupervisorLeaseConflict supervisor lease acquisition")
     }
@@ -361,4 +448,208 @@ async test "mooncode_goal_supervisor_lease: missing goal is rejected without jou
     }
     assert_false(@fsx.exists(mooncode_session_journal_path(root, session_id)))
   })
+}
+
+///|
+/// Pure replay coverage for renewal and malformed lineage rejection.
+test "mooncode_goal_supervisor_lease: pure replay renewal and rejection validation" {
+  let genesis = goal_store_replay_genesis()
+  let goal = mooncode_replay_goal_records([genesis], "session").unwrap()
+  let lease_a = supervisor_lease_test_envelope(
+    "lease-a",
+    mooncode_goal_supervisor_lease_v1(
+      "lease-a",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-a",
+      10,
+      20,
+      1,
+    ),
+  )
+  let renew_a = supervisor_lease_test_envelope(
+    "renew-a",
+    mooncode_goal_supervisor_lease_renewed_v1(
+      "renew-a",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-a",
+      15,
+      20,
+      30,
+      1,
+      "lease-a",
+    ),
+  )
+  let (current, maximum_fence) = mooncode_goal_supervisor_lease_replay(
+    [genesis, lease_a, renew_a, lease_a, renew_a],
+    goal,
+  )
+  assert_eq(maximum_fence, 1)
+  match current {
+    Some(lease) => assert_eq(lease.lease_expires_at, 30)
+    None => abort("expected renewed supervisor lease")
+  }
+
+  let takeover = supervisor_lease_test_envelope(
+    "lease-b",
+    mooncode_goal_supervisor_lease_v1(
+      "lease-b",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-b",
+      19,
+      29,
+      2,
+    ),
+  )
+  let mut takeover_rejected = false
+  ignore(
+    mooncode_goal_supervisor_lease_replay([genesis, lease_a, takeover], goal),
+  ) catch {
+    InvalidGoalGenesis(_) => takeover_rejected = true
+    _ => ()
+  }
+  assert_true(takeover_rejected)
+
+  let stale_renewal = supervisor_lease_test_envelope(
+    "renew-stale",
+    mooncode_goal_supervisor_lease_renewed_v1(
+      "renew-stale",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-a",
+      15,
+      19,
+      30,
+      1,
+      "lease-a",
+    ),
+  )
+  let mut stale_rejected = false
+  ignore(
+    mooncode_goal_supervisor_lease_replay(
+      [genesis, lease_a, stale_renewal],
+      goal,
+    ),
+  ) catch {
+    InvalidGoalGenesis(_) => stale_rejected = true
+    _ => ()
+  }
+  assert_true(stale_rejected)
+
+  let reused_id_renewal = supervisor_lease_test_envelope(
+    "lease-a",
+    mooncode_goal_supervisor_lease_renewed_v1(
+      "lease-a",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-a",
+      15,
+      20,
+      30,
+      1,
+      "lease-a",
+    ),
+  )
+  let mut cross_kind_duplicate_rejected = false
+  ignore(
+    mooncode_goal_supervisor_lease_replay(
+      [genesis, lease_a, reused_id_renewal],
+      goal,
+    ),
+  ) catch {
+    InvalidGoalGenesis(_) => cross_kind_duplicate_rejected = true
+    _ => ()
+  }
+  assert_true(cross_kind_duplicate_rejected)
+}
+
+///|
+test "mooncode_goal_supervisor_lease: detailed replay rejects invalid lease lineage" {
+  let genesis = goal_store_replay_genesis()
+  let lease_a = supervisor_lease_test_envelope(
+    "detailed-lease-a",
+    mooncode_goal_supervisor_lease_v1(
+      "detailed-lease-a",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-a",
+      10,
+      20,
+      1,
+    ),
+  )
+  let renewal_without_acquisition = supervisor_lease_test_envelope(
+    "detailed-renew-orphan",
+    mooncode_goal_supervisor_lease_renewed_v1(
+      "detailed-renew-orphan",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-a",
+      15,
+      20,
+      30,
+      1,
+      "detailed-lease-a",
+    ),
+  )
+  let stale_expiry_renewal = supervisor_lease_test_envelope(
+    "detailed-renew-stale",
+    mooncode_goal_supervisor_lease_renewed_v1(
+      "detailed-renew-stale",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-a",
+      15,
+      19,
+      30,
+      1,
+      "detailed-lease-a",
+    ),
+  )
+  let early_fence2_takeover = supervisor_lease_test_envelope(
+    "detailed-lease-b",
+    mooncode_goal_supervisor_lease_v1(
+      "detailed-lease-b",
+      mooncode_protocol_version(),
+      "session",
+      "goal",
+      0,
+      "owner-b",
+      19,
+      29,
+      2,
+    ),
+  )
+  for
+    records in [
+      [genesis, renewal_without_acquisition],
+      [genesis, lease_a, stale_expiry_renewal],
+      [genesis, lease_a, early_fence2_takeover],
+    ] {
+    try {
+      ignore(mooncode_replay_goal_records_detailed(records, "session"))
+      abort("expected InvalidGoalGenesis")
+    } catch {
+      InvalidGoalGenesis(_) => ()
+      _ => abort("expected InvalidGoalGenesis")
+    }
+  }
 }
