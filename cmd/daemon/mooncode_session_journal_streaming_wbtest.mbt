@@ -38,6 +38,41 @@ fn streaming_test_v2(sequence : String) -> String raise {
 }
 
 ///|
+fn streaming_test_append_record(
+  sequence : String,
+  record_id : String,
+  command_id : String,
+  client_turn_id : String,
+) -> String raise {
+  mooncode_journal_record_v2(
+    session_id="session",
+    sequence=streaming_test_sequence(sequence),
+    record_id~,
+    record_kind="event",
+    command_id~,
+    client_turn_id~,
+    recorded_at="now",
+    payload={},
+  ).stringify()
+}
+
+///|
+async fn streaming_test_scan_file(
+  contents : String,
+  record_id : String,
+  command_id : String,
+) -> MoonCodeJournalAppendScan {
+  @fsx.with_temporary_directory("moonclaw-journal-append-scan-XXXXXX", async fn(
+    directory,
+  ) {
+    let path = @pathx.join(directory, "journal.jsonl")
+    @fsx.write_to_file(path, contents)
+    let file = @fs.open(path, mode=ReadOnly)
+    mooncode_journal_scan_for_append(file, "event", record_id, command_id)
+  })
+}
+
+///|
 fn streaming_test_expect_corrupt(action : () -> Unit raise) -> Unit raise {
   try action() catch {
     InvalidJournal(_) => ()
@@ -67,6 +102,54 @@ fn streaming_test_reject(lines : Array[String], cursor : String) -> Unit raise {
   streaming_test_expect_corrupt(fn() -> Unit raise {
     streaming_test_validate(lines, cursor)
   })
+}
+
+///|
+async test "append scan reads mixed cursor and inherits first matching client id" {
+  let contents = streaming_test_v1(1) +
+    "\n" +
+    streaming_test_append_record("2", "other", "command", "client-first") +
+    "\n" +
+    streaming_test_append_record("3", "other-2", "command", "client-later") +
+    "\n"
+  let scan = streaming_test_scan_file(contents, "missing", "command")
+  assert_eq(scan.cursor.text(), "3")
+  assert_false(scan.duplicate_found)
+  assert_eq(scan.inherited_client_turn_id, "client-first")
+}
+
+///|
+async test "append scan finds duplicate through EOF" {
+  let contents = streaming_test_append_record("1", "duplicate", "", "") +
+    "\n" +
+    streaming_test_append_record("2", "other", "", "") +
+    "\n"
+  let scan = streaming_test_scan_file(contents, "duplicate", "")
+  assert_eq(scan.cursor.text(), "2")
+  assert_true(scan.duplicate_found)
+}
+
+///|
+async test "append scan rejects corruption after duplicate" {
+  let contents = streaming_test_append_record("1", "duplicate", "", "") +
+    "\n" +
+    "malformed\n"
+  try streaming_test_scan_file(contents, "duplicate", "") catch {
+    InvalidJournal(_) => ()
+    _ => fail("unexpected error")
+  } noraise {
+    _ => fail("expected malformed journal corruption")
+  }
+}
+
+///|
+async test "append scan does not inherit client id from command mismatch" {
+  let contents = streaming_test_append_record(
+      "1", "other", "wrong-command", "client",
+    ) +
+    "\n"
+  let scan = streaming_test_scan_file(contents, "missing", "command")
+  assert_eq(scan.inherited_client_turn_id, "")
 }
 
 ///|

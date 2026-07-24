@@ -30,6 +30,8 @@ This slice intentionally does not add daemon scheduling or HTTP behavior.
 
 ## Problem/fix ledger
 
+- **Problem/Fix — append-scan test helper open mode:** Native checking failed at `cmd/daemon/mooncode_session_journal_streaming_wbtest.mbt:70` because `@fs.open(path)` omitted the required `mode~` argument. The test-only append-scan helper now opens its temporary journal explicitly in read-only mode with `mode=ReadOnly`. This fix does not wire production append behavior or enable v2 journal writes.
+
 - **Planner exhaustion falsely appeared terminal:** This clean recovery turn exhausted the legacy eight planner steps with one remaining test failure, proving the aggregate step bound can falsely terminate repairable work. Continuation resumed in a fresh command; the goal contract must never treat command/step exhaustion as terminal.
 
 - **Problem/Fix — MoonBit symlink signature:** A repair wrongly assumed the positional symlink link path was labeled `link_path`; native compiler errors 4085/4080 exposed the actual `target~`-plus-positional signature, and all three calls were restored.

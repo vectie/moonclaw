@@ -49,6 +49,64 @@ fn mooncode_journal_canonical_line(
 }
 
 ///|
+priv struct MoonCodeJournalAppendScan {
+  cursor : MoonCodeJournalSequence
+  duplicate_found : Bool
+  inherited_client_turn_id : String
+}
+
+///|
+async fn mooncode_journal_scan_for_append(
+  file : @fs.File,
+  record_kind : String,
+  record_id : String,
+  command_id : String,
+) -> MoonCodeJournalAppendScan {
+  let mut cursor = MoonCodeJournalSequence::zero()
+  let mut duplicate_found = false
+  let mut inherited_client_turn_id = ""
+  while true {
+    match file.read_until("\n") {
+      Some(line) => {
+        let (record, next) = mooncode_journal_stream_record(line, cursor)
+        cursor = next
+        let current_record_kind = mooncode_json_string(
+          record,
+          "record_kind",
+          default="",
+        )
+        let current_record_id = mooncode_json_string(
+          record,
+          "record_id",
+          default="",
+        )
+        let current_command_id = mooncode_json_string(
+          record,
+          "command_id",
+          default="",
+        )
+        let current_client_turn_id = mooncode_json_string(
+          record,
+          "client_turn_id",
+          default="",
+        )
+        if current_record_kind == record_kind && current_record_id == record_id {
+          duplicate_found = true
+        }
+        if command_id != "" &&
+          inherited_client_turn_id == "" &&
+          current_command_id == command_id &&
+          current_client_turn_id != "" {
+          inherited_client_turn_id = current_client_turn_id
+        }
+      }
+      None => break
+    }
+  }
+  { cursor, duplicate_found, inherited_client_turn_id }
+}
+
+///|
 async fn mooncode_journal_stream_file(
   file : @fs.File,
   cursor : MoonCodeJournalSequence,
