@@ -227,3 +227,11 @@ tests all pass.
 A previous turn reported completion without editing the source, while an independent check still found the line 98 type mismatch at `None => Json::null`. The proof-gated fix changed the affected option-to-JSON branches in `mooncode/core/goal_event_codec.mbt` to invoke the constructor as `None => Json::null()` and withheld completion until validation succeeded.
 
 Proof: `moon fmt mooncode/core/goal_event_codec.mbt && moon check mooncode/core --target native --warn-list +73 && moon test mooncode/core --target native` exited successfully, with all 40 tests passing.
+
+## 2026-07-24 — Atomic supervisor checkpoint store
+
+Atomic locked checkpoint append validates the live lease owner, fence, and expiry; the exact Goal run, revision, and turn; basis high-water; acquisition identity; and physical event-ID collision. An exact retry is idempotent, while a changed retry conflicts. Tests prove byte stability, ordinary Goal-event collision handling, and 16-writer linearization; the full daemon gate passes **254/254**.
+
+Two initial drafts invented APIs and were discarded. MoonBit inspect content had to be a string and required a JSON accessor. One recovery reported completion while the runtime service remained active and approval was pending, so the controller waited for the service to become terminal and stopped the daemon before running gates. The ordinary-event test omitted `goal_event_to_json`; compiler diagnostics guided the one-span repair.
+
+All-present terminal tuples currently fail closed as `CheckpointBlockedAmbiguous`. Exact command→claim→terminal validation and acceptance of terminal checkpoints are next; this checkpoint does not claim full long-task recovery. Product and test code were authored through MoonCode and independently gated.
