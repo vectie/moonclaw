@@ -201,7 +201,7 @@ fn mooncode_parse_journal_text(
 fn mooncode_journal_entries(
   records : Array[Json],
   record_kind : String,
-) -> Array[Json] {
+) -> Array[Json] raise MoonCodeGoalRuntimeStoreError {
   let entries : Array[Json] = []
   for record in records {
     if mooncode_json_string(record, "record_kind", default="") == record_kind {
@@ -210,7 +210,7 @@ fn mooncode_journal_entries(
         mooncode_json_object_with_field(
           payload,
           "journal_sequence",
-          mooncode_json_int(record, "sequence", default=0).to_json(),
+          mooncode_journal_sequence_from_record(record).text().to_json(),
         ),
       )
     }

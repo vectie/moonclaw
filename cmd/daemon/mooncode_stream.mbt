@@ -1,4 +1,7 @@
 ///|
+let mooncode_stream_contract_id : String = "mooncode-stream.v2"
+
+///|
 async fn Daemon::mooncode_stream(
   self : Daemon,
   session_id~ : StringView,
@@ -24,7 +27,21 @@ async fn Daemon::mooncode_stream(
       },
     })
   }
-  let since = mooncode_request_int(r, "since", default=0)
+  let since_text = mooncode_request_string(r, "since", default="")
+  let since = if since_text == "" {
+    MoonCodeJournalSequence::zero()
+  } else {
+    mooncode_journal_cursor_parse(since_text) catch {
+      _ =>
+        raise json_error(400, "Bad Request", {
+          "error": {
+            "code": -1,
+            "message": "MoonCode stream since must be a canonical nonnegative journal cursor",
+            "metadata": { "since": since_text },
+          },
+        })
+    }
+  }
   let format = mooncode_request_string(r, "format", default="jsonl")
   let wait_ms = mooncode_stream_wait_ms_value(
     mooncode_request_int(r, "wait_ms", default=0),
@@ -84,7 +101,7 @@ async fn Daemon::mooncode_stream_wait_for_events(
   self : Daemon,
   session_id : String,
   book_root : String,
-  since : Int,
+  since : MoonCodeJournalSequence,
   wait_ms : Int,
   poll_ms : Int,
 ) -> Json {
@@ -114,10 +131,11 @@ async fn Daemon::mooncode_stream_wait_for_events(
   {
     "kind": "mooncode-stream-wait",
     "protocol": mooncode_protocol_version(),
+    "contract_id": mooncode_stream_contract_id,
     "owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
-    "since": since,
+    "since": since.text(),
     "wait_ms": wait_ms,
     "poll_ms": poll_ms,
     "wait_elapsed_ms": elapsed_ms,
@@ -182,12 +200,12 @@ fn mooncode_stream_jsonl_payload(
   session_id : String,
   book_root : String,
   events : Array[Json],
-  since~ : Int,
+  since~ : MoonCodeJournalSequence,
   wait_ms~ : Int,
   poll_ms~ : Int,
   wait_elapsed_ms~ : Int,
   wait_attempt_count~ : Int,
-) -> String {
+) -> String raise MoonCodeGoalRuntimeStoreError {
   let records = mooncode_stream_records(
     session_id,
     book_root,
@@ -206,12 +224,12 @@ fn mooncode_stream_sse_payload(
   session_id : String,
   book_root : String,
   events : Array[Json],
-  since~ : Int,
+  since~ : MoonCodeJournalSequence,
   wait_ms~ : Int,
   poll_ms~ : Int,
   wait_elapsed_ms~ : Int,
   wait_attempt_count~ : Int,
-) -> String {
+) -> String raise MoonCodeGoalRuntimeStoreError {
   let chunks : Array[String] = []
   for
     record in mooncode_stream_records(
@@ -237,21 +255,25 @@ fn mooncode_stream_records(
   session_id : String,
   book_root : String,
   events : Array[Json],
-  since~ : Int,
+  since~ : MoonCodeJournalSequence,
   wait_ms~ : Int,
   poll_ms~ : Int,
   wait_elapsed_ms~ : Int,
   wait_attempt_count~ : Int,
-) -> Array[Json] {
+) -> Array[Json] raise MoonCodeGoalRuntimeStoreError {
   let latest_sequence = mooncode_stream_latest_sequence(events)
-  let clamped_since = if since < 0 { 0 } else { since }
-  let emitted_count = mooncode_stream_event_count_after(events, clamped_since)
+  let next_since = if since.compare(latest_sequence) >= 0 {
+    since
+  } else {
+    latest_sequence
+  }
+  let emitted_count = mooncode_stream_event_count_after(events, since)
   let records : Array[Json] = [
     mooncode_stream_meta_record(
       session_id,
       book_root,
       event_count=events.length(),
-      since=clamped_since,
+      since~,
       emitted_count~,
       latest_sequence~,
       wait_ms~,
@@ -261,19 +283,15 @@ fn mooncode_stream_records(
     ),
   ]
   for index, event in events {
-    let sequence = mooncode_json_int(
-      event,
-      "journal_sequence",
-      default=index + 1,
-    )
-    if sequence > clamped_since {
+    let sequence = mooncode_stream_event_sequence(event, index)
+    if sequence.compare(since) > 0 {
       records.push(
         mooncode_stream_event_record(
           session_id,
           book_root,
           event,
           sequence~,
-          since=clamped_since,
+          since~,
         ),
       )
     }
@@ -282,8 +300,8 @@ fn mooncode_stream_records(
     mooncode_stream_done_record(
       session_id,
       book_root,
-      latest_sequence~,
-      since=clamped_since,
+      latest_sequence=next_since,
+      since~,
       emitted_count~,
       wait_ms~,
       poll_ms~,
@@ -295,15 +313,35 @@ fn mooncode_stream_records(
 }
 
 ///|
-fn mooncode_stream_latest_sequence(events : Array[Json]) -> Int {
-  let mut latest = 0
+fn mooncode_stream_event_sequence(
+  event : Json,
+  index : Int,
+) -> MoonCodeJournalSequence raise MoonCodeGoalRuntimeStoreError {
+  let value = match event {
+    Object(fields) => fields.get("journal_sequence")
+    _ => None
+  }
+  match value {
+    Some(Number(_, repr=Some(raw))) => MoonCodeJournalSequence::parse(raw)
+    Some(Number(_, repr=None) as number) =>
+      MoonCodeJournalSequence::parse(number.stringify())
+    Some(String(raw)) => MoonCodeJournalSequence::parse(raw)
+    Some(_) =>
+      mooncode_goal_runtime_store_corrupt(
+        "stream event journal_sequence is not a number or string",
+      )
+    None => MoonCodeJournalSequence::parse("\{index + 1}")
+  }
+}
+
+///|
+fn mooncode_stream_latest_sequence(
+  events : Array[Json],
+) -> MoonCodeJournalSequence raise MoonCodeGoalRuntimeStoreError {
+  let mut latest = MoonCodeJournalSequence::zero()
   for index, event in events {
-    let sequence = mooncode_json_int(
-      event,
-      "journal_sequence",
-      default=index + 1,
-    )
-    if sequence > latest {
+    let sequence = mooncode_stream_event_sequence(event, index)
+    if sequence.compare(latest) > 0 {
       latest = sequence
     }
   }
@@ -311,10 +349,13 @@ fn mooncode_stream_latest_sequence(events : Array[Json]) -> Int {
 }
 
 ///|
-fn mooncode_stream_event_count_after(events : Array[Json], since : Int) -> Int {
+fn mooncode_stream_event_count_after(
+  events : Array[Json],
+  since : MoonCodeJournalSequence,
+) -> Int raise MoonCodeGoalRuntimeStoreError {
   let mut count = 0
   for index, event in events {
-    if mooncode_json_int(event, "journal_sequence", default=index + 1) > since {
+    if mooncode_stream_event_sequence(event, index).compare(since) > 0 {
       count += 1
     }
   }
@@ -326,26 +367,32 @@ fn mooncode_stream_meta_record(
   session_id : String,
   book_root : String,
   event_count~ : Int,
-  since~ : Int,
+  since~ : MoonCodeJournalSequence,
   emitted_count~ : Int,
-  latest_sequence~ : Int,
+  latest_sequence~ : MoonCodeJournalSequence,
   wait_ms~ : Int,
   poll_ms~ : Int,
   wait_elapsed_ms~ : Int,
   wait_attempt_count~ : Int,
 ) -> Json {
+  let next_sequence = if latest_sequence.compare(since) >= 0 {
+    latest_sequence
+  } else {
+    since
+  }
   {
     "type": "meta",
+    "contract_id": mooncode_stream_contract_id,
     "kind": "mooncode-stream-meta",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
     "event_count": event_count,
-    "since": since,
+    "since": since.text(),
     "emitted_count": emitted_count,
-    "latest_sequence": latest_sequence,
-    "next_since": latest_sequence,
+    "latest_sequence": latest_sequence.text(),
+    "next_since": next_sequence.text(),
     "wait_ms": wait_ms,
     "poll_ms": poll_ms,
     "wait_elapsed_ms": wait_elapsed_ms,
@@ -359,18 +406,19 @@ fn mooncode_stream_event_record(
   session_id : String,
   book_root : String,
   event : Json,
-  sequence~ : Int,
-  since~ : Int,
+  sequence~ : MoonCodeJournalSequence,
+  since~ : MoonCodeJournalSequence,
 ) -> Json {
   {
     "type": "event",
+    "contract_id": mooncode_stream_contract_id,
     "kind": "mooncode-stream-event",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
-    "sequence": sequence,
-    "since": since,
+    "sequence": sequence.text(),
+    "since": since.text(),
     "event": event,
     "event_id": mooncode_json_string(event, "id", default=""),
     "event_kind": mooncode_json_string(event, "kind", default=""),
@@ -383,25 +431,31 @@ fn mooncode_stream_event_record(
 fn mooncode_stream_done_record(
   session_id : String,
   book_root : String,
-  latest_sequence~ : Int,
-  since~ : Int,
+  latest_sequence~ : MoonCodeJournalSequence,
+  since~ : MoonCodeJournalSequence,
   emitted_count~ : Int,
   wait_ms~ : Int,
   poll_ms~ : Int,
   wait_elapsed_ms~ : Int,
   wait_attempt_count~ : Int,
 ) -> Json {
+  let next_sequence = if latest_sequence.compare(since) >= 0 {
+    latest_sequence
+  } else {
+    since
+  }
   {
     "type": "done",
+    "contract_id": mooncode_stream_contract_id,
     "kind": "mooncode-stream-done",
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
     "session_id": session_id,
     "book_root": book_root,
-    "sequence": latest_sequence,
-    "since": since,
+    "sequence": next_sequence.text(),
+    "since": since.text(),
     "emitted_count": emitted_count,
-    "next_since": latest_sequence,
+    "next_since": next_sequence.text(),
     "wait_ms": wait_ms,
     "poll_ms": poll_ms,
     "wait_elapsed_ms": wait_elapsed_ms,

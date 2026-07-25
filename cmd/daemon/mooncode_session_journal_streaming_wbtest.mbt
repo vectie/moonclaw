@@ -332,3 +332,56 @@ test "stream and exact last sequence preserve values beyond Int64" {
     "9223372036854775808",
   )
 }
+
+///|
+test "journal entries project mixed exact sequences and shadow payload sequence" {
+  let v1 = @moonlib_conversation.journal_record(
+    session_id="session",
+    sequence=1,
+    record_id="v1",
+    record_kind="event",
+    command_id="",
+    client_turn_id="",
+    recorded_at="now",
+    payload={ "journal_sequence": "shadow-v1", "value": "one" },
+  )
+  let v2 = mooncode_journal_record_v2(
+    session_id="session",
+    sequence=streaming_test_sequence("9223372036854775808"),
+    record_id="v2",
+    record_kind="event",
+    command_id="",
+    client_turn_id="",
+    recorded_at="now",
+    payload={ "journal_sequence": 7, "value": "two" },
+  )
+  let entries = mooncode_journal_entries([v1, v2], "event")
+  assert_eq(entries.length(), 2)
+  assert_eq(
+    mooncode_json_string(entries[0], "journal_sequence", default=""),
+    "1",
+  )
+  assert_eq(
+    mooncode_json_string(entries[1], "journal_sequence", default=""),
+    "9223372036854775808",
+  )
+}
+
+///|
+test "journal entries reject zero and malformed present physical sequences" {
+  streaming_test_expect_corrupt(fn() -> Unit raise {
+    ignore(
+      mooncode_journal_entries([mooncode_sequence_v1_envelope("0")], "event"),
+    )
+  })
+  let malformed = streaming_test_v2("1").replace(
+    old="\"sequence\":\"1\"",
+    new="\"sequence\":\"malformed\"",
+  )
+  streaming_test_expect_corrupt(fn() -> Unit raise {
+    let record = @json.parse(malformed) catch {
+      _ => fail("fixture parse failed")
+    }
+    ignore(mooncode_journal_entries([record], "event"))
+  })
+}

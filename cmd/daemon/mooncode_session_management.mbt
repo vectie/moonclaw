@@ -344,7 +344,7 @@ fn mooncode_session_management_error(
 fn mooncode_session_custom_title(
   record : Json,
   journal : Array[Json],
-) -> String {
+) -> String raise MoonCodeGoalRuntimeStoreError {
   let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
   let binding = mooncode_json_object_field_or_empty(record, "binding")
   let mut title = mooncode_json_string(
