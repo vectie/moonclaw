@@ -38,6 +38,37 @@ fn MoonCodeJournalSequence::parse(
 }
 
 ///|
+/// Parse the scan cursor, for which zero is the initial derived value.
+fn mooncode_journal_cursor_parse(
+  text : String,
+) -> MoonCodeJournalSequence raise MoonCodeGoalRuntimeStoreError {
+  if text == "0" {
+    MoonCodeJournalSequence::zero()
+  } else {
+    MoonCodeJournalSequence::parse(text)
+  }
+}
+
+///|
+/// Decode a derived cursor from either a JSON number or a JSON string. A
+/// preserved numeric representation is validated exactly; a number without one
+/// is canonicalized by JSON stringify for legacy numeric compatibility.
+fn mooncode_journal_cursor_from_json(
+  value : Json,
+) -> MoonCodeJournalSequence raise MoonCodeGoalRuntimeStoreError {
+  match value {
+    Number(_, repr=Some(raw)) => mooncode_journal_cursor_parse(raw)
+    Number(_, repr=None) as number =>
+      mooncode_journal_cursor_parse(number.stringify())
+    String(raw) => mooncode_journal_cursor_parse(raw)
+    _ =>
+      mooncode_goal_runtime_store_corrupt(
+        "journal cursor is not a number or string",
+      )
+  }
+}
+
+///|
 fn MoonCodeJournalSequence::next(
   self : MoonCodeJournalSequence,
 ) -> MoonCodeJournalSequence {

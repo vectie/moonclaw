@@ -66,10 +66,16 @@ test "journal sequence next is arbitrary precision" {
 }
 
 ///|
+test "journal physical sequence rejects zero while cursor accepts it" {
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+    ignore(MoonCodeJournalSequence::parse("0"))
+  })
+  assert_eq(mooncode_journal_cursor_parse("0").text(), "0")
+}
+
+///|
 test "journal sequence rejects noncanonical spellings" {
-  let invalid = [
-    "", "0", "00", "01", "+1", "-1", " 1", "1 ", "1.0", "1e2", "１",
-  ]
+  let invalid = ["", "00", "01", "+1", "-1", " 1", "1 ", "1.0", "1e2", "１"]
   for text in invalid {
     mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
       ignore(MoonCodeJournalSequence::parse(text))
@@ -208,4 +214,35 @@ test "v2 journal record has exact ten-key projection" {
   for key in forbidden {
     assert_eq(fields.contains(key), false)
   }
+}
+
+///|
+test "journal cursor accepts exactly canonical zero" {
+  assert_eq(mooncode_journal_cursor_parse("0").text(), "0")
+  for raw in ["00", "+0", "-0", "0.0"] {
+    mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+      ignore(mooncode_journal_cursor_parse(raw))
+    })
+  }
+}
+
+///|
+test "journal cursor JSON dual-read is canonical and arbitrary precision" {
+  assert_eq(mooncode_journal_cursor_from_json(@json.parse("0")).text(), "0")
+  assert_eq(mooncode_journal_cursor_from_json(@json.parse("1")).text(), "1")
+  let huge : Json = "9999999999999999999999999999999999999999"
+  assert_eq(
+    mooncode_journal_cursor_from_json(huge).text(),
+    "9999999999999999999999999999999999999999",
+  )
+  let noncanonical_number = Json::number(1.0, repr="1.0")
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+    ignore(mooncode_journal_cursor_from_json(noncanonical_number))
+  })
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+    ignore(mooncode_journal_cursor_from_json(("01" : Json)))
+  })
+  mooncode_sequence_expect_corrupt(fn() -> Unit raise MoonCodeGoalRuntimeStoreError {
+    ignore(mooncode_journal_cursor_from_json(true.to_json()))
+  })
 }

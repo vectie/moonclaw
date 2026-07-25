@@ -160,32 +160,39 @@ fn mooncode_parse_journal_text(
   path : String,
 ) -> Array[Json] raise MoonCodeJournalError {
   let records : Array[Json] = []
-  let mut expected_sequence = 1
-  for index, raw_line in text.split("\n") {
-    let line = raw_line.trim()
+  // An empty committed prefix contains no records. This must be handled before
+  // splitting because split produces one empty line, while blank lines in any
+  // nonempty journal remain corruption.
+  if text.is_empty() {
+    return records
+  }
+  let lines = text.split("\n").collect()
+  let line_count = if text.has_suffix("\n") {
+    lines.length() - 1
+  } else {
+    lines.length()
+  }
+  let mut cursor = MoonCodeJournalSequence::zero()
+  for index = 0; index < line_count; index = index + 1 {
+    let line = lines[index]
     if line.is_empty() {
-      continue
+      raise InvalidJournal(
+        "Invalid journal `\{path}` line \{index + 1}: blank line",
+      )
     }
-    let record = @json.parse(line.to_owned()) catch {
-      _ =>
+    try {
+      let (record, next) = mooncode_journal_stream_record(
+        line.to_owned(),
+        cursor,
+      )
+      records.push(record)
+      cursor = next
+    } catch {
+      error =>
         raise InvalidJournal(
-          "MoonCode journal contains invalid JSON at line \{index + 1}: \{path}",
+          "Invalid journal `\{path}` line \{index + 1}: \{error}",
         )
     }
-    let issues = @moonlib_conversation.journal_record_issues(record)
-    if !issues.is_empty() {
-      raise InvalidJournal(
-        "MoonCode journal record at line \{index + 1} is invalid: \{issues.join("; ")}",
-      )
-    }
-    let sequence = mooncode_json_int(record, "sequence", default=0)
-    if sequence != expected_sequence {
-      raise InvalidJournal(
-        "MoonCode journal sequence gap at line \{index + 1}: expected \{expected_sequence}, found \{sequence}",
-      )
-    }
-    records.push(record)
-    expected_sequence += 1
   }
   records
 }
@@ -223,6 +230,17 @@ fn mooncode_journal_record_count(
     }
   }
   count
+}
+
+///|
+fn mooncode_journal_last_sequence_exact(
+  records : Array[Json],
+) -> MoonCodeJournalSequence raise MoonCodeGoalRuntimeStoreError {
+  let mut sequence = MoonCodeJournalSequence::zero()
+  for record in records {
+    sequence = mooncode_journal_sequence_from_record(record)
+  }
+  sequence
 }
 
 ///|

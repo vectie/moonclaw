@@ -1,11 +1,7 @@
 ///|
 fn streaming_test_sequence(text : String) -> MoonCodeJournalSequence raise {
-  if text == "0" {
-    MoonCodeJournalSequence::zero()
-  } else {
-    MoonCodeJournalSequence::parse(text) catch {
-      _ => fail("unexpected sequence parse failure")
-    }
+  mooncode_journal_cursor_parse(text) catch {
+    _ => fail("unexpected sequence parse failure")
   }
 }
 
@@ -292,4 +288,47 @@ test "journal writer boundary accepts canonical Unicode payload" {
     MoonCodeJournalSequence::zero(),
   )
   inspect(cursor.text(), content="1")
+}
+
+///|
+test "stream rejects physical sequence zero" {
+  streaming_test_expect_corrupt(fn() -> Unit raise {
+    ignore(
+      mooncode_journal_validate_envelope(mooncode_sequence_v1_envelope("0")),
+    )
+  })
+}
+
+///|
+test "journal text replay accepts empty and mixed v1 v2 committed records" {
+  assert_eq(mooncode_parse_journal_text("", "fixture").length(), 0)
+  let text = streaming_test_v1(1) + "\n" + streaming_test_v2("2") + "\n"
+  let records = mooncode_parse_journal_text(text, "fixture") catch {
+    InvalidJournal(message) => fail(message)
+  }
+  assert_eq(records.length(), 2)
+  assert_eq(mooncode_journal_last_sequence_exact(records).text(), "2")
+}
+
+///|
+test "journal text replay rejects internal blank records" {
+  streaming_test_expect_corrupt(fn() -> Unit raise {
+    ignore(
+      mooncode_parse_journal_text(streaming_test_v1(1) + "\n\n", "fixture"),
+    )
+  })
+}
+
+///|
+test "stream and exact last sequence preserve values beyond Int64" {
+  let previous = streaming_test_sequence("9223372036854775807")
+  let (record, next) = mooncode_journal_stream_record(
+    streaming_test_v2("9223372036854775808"),
+    previous,
+  )
+  assert_eq(next.text(), "9223372036854775808")
+  assert_eq(
+    mooncode_journal_last_sequence_exact([record]).text(),
+    "9223372036854775808",
+  )
 }
