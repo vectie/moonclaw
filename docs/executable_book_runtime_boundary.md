@@ -47,20 +47,23 @@ dependencies, generated portable output, and nested repositories. Structured
 `moon_cmd` evidence may declare `expected_exit_code`; an observed expected
 nonzero exit is accepted negative-path proof rather than a runtime failure.
 
-Each durable code session may contain exactly one goal authority: legacy
-bounded `/goal` or criteria-only `mooncode-goal-runtime.v1` at
-`/goal-runtime`. Creation and cross-family exclusion share the stable session
-transaction, so concurrent writers cannot install both. Runtime genesis is
-immutable and aggregate policy fields are rejected. Runtime-turn derives typed
+Each durable code session has the criteria-only `mooncode-goal-runtime.v1`
+authority at `/goal-runtime`. The former bounded `/goal` HTTP route is removed.
+Persisted legacy records are still validated on every authority projection and
+return `legacy_goal_incompatible`; they cannot coexist with runtime genesis.
+They are not auto-converted because discarding their aggregate budget would be a
+lossy policy change. Runtime genesis is immutable and aggregate policy fields are
+rejected. Runtime-turn derives typed
 running, approval, accepted-operation, and planner-checkpoint events only after
 its source facts are durable; restart reconciliation fills the append gap by
 stable source identity. For an active runtime goal, runtime-service repeats its
 `max_turns` local quantum while claimable work remains. The planner receives the
 active objective and exact criterion IDs. A validated optional
 `finish.goal_runtime` decision settles Achieved or Blocked, exact active-target
-cancellation settles Cancelled, and ordinary finish remains nonterminal. Streaming
-replay and legacy migration/removal are deliberately postponed until the feature set
-is complete.
+cancellation settles Cancelled, and ordinary finish remains nonterminal. Authority
+replay is one-record-at-a-time with arbitrary-decimal counters and an ephemeral
+fixed-bucket identity ledger. Reconciliation uses a temporary source spool, so neither
+path retains aggregate journal, event, command, or identity collections in memory.
 
 Each model-planner runtime turn uses a local step quantum for scheduling and
 recovery, but goal progress is not aggregate-step-bounded. Reaching the quantum
@@ -91,7 +94,6 @@ For MoonCode, the target native API namespace is:
 /v1/code/sessions
 /v1/code/sessions/<id>/commands
 /v1/code/sessions/<id>/turns
-/v1/code/sessions/<id>/goal                 (legacy compatibility)
 /v1/code/sessions/<id>/goal-runtime
 /v1/code/sessions/<id>/runtime-claim
 /v1/code/sessions/<id>/runtime-turn

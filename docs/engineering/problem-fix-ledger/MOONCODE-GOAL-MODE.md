@@ -551,3 +551,45 @@ A hallucinated whole-test-file overwrite replaced validated codec coverage. The 
   target cancellation can settle a runtime goal. Timeout, failure, idle, generic finish,
   stale or dropped cancel, planner-step exhaustion, and runtime `max_turns` remain
   nonterminal observations.
+
+
+## Aggregate-memory-independent replay and legacy cutover (2026-07-26)
+
+- **Problem/Fix — replay retained the aggregate journal twice:** Production goal reads
+  materialized every JSON record, then retained runtime event and identity arrays while
+  the core reducer copied handled, operation, and checkpoint ID arrays. The live authority
+  path now validates canonical JSONL one record at a time and reduces directly into scalar
+  phase, terminal outcome, cursor, and arbitrary-decimal counters.
+- **Problem/Fix — exact idempotency appeared to require unbounded RAM:** Event,
+  operation, and checkpoint identities are stored in an ephemeral 256-bucket JSONL ledger
+  keyed by SHA-256 prefix. Bucket lookup streams every collision entry and compares the
+  exact namespace and ID, so hash collision cannot alias identities. Same ID/same digest
+  is idempotent; same ID/different digest fails closed. Ledger files are scoped to one
+  projection and removed on success or error.
+- **Problem/Fix — reconciliation still retained source and command maps:** The supervisor
+  now copies the validated committed event lane to a temporary disk spool while holding
+  the journal lock, releases that lock, then streams the spool with one active-command
+  scalar. Missing typed carriers append in source order and restart retries remain exact.
+  No journal/event/identity/command collection survives a record iteration.
+- **Problem/Fix — mixed v1/v2 normalization broke the first trial:** The initial projector
+  normalized every local validation fixture to a numeric sequence. A v2 envelope requires
+  a canonical decimal string, so committed runtime genesis incorrectly returned 409.
+  Compiler and focused trial evidence localized the mismatch; normalization now preserves
+  each envelope contract's required representation. Runtime API and supervisor suites
+  returned green after the repair.
+- **Problem/Fix — legacy auto-migration would silently change policy:** Legacy genesis
+  includes an aggregate turn budget, which the unbounded runtime contract intentionally
+  cannot represent. The `/goal` router cases are removed, `/goal-runtime` is promoted to
+  the required capability fingerprint, and valid legacy-only journals return the explicit
+  409 `legacy_goal_incompatible`. The strict legacy detector remains permanently for
+  offline/external MoonBooks; corrupt and dual histories still fail closed. No history is
+  rewritten and no aggregate policy is discarded implicitly.
+- **Evidence:** A direct 20,000-event JSONL trial plus a far-separated 1,000-record
+  semantic-conflict trial pass using the production projector. Focused goal-runtime API
+  passes 10/10 after the incompatibility expectation update, supervisor/reconciliation
+  passes 12/12, the complete daemon suite passes 335/335, and the full native repository
+  suite passes 1396/1396. Capabilities advertise runtime as required with no legacy
+  endpoint; `moon check`, `moon info`, `moon fmt`, and `git diff --check` succeed.
+- **Invariant:** Environmental disk or memory exhaustion may fail an operation, but it
+  never settles a goal. Only typed Achieved, Blocked, or exact active-target Cancelled
+  evidence is terminal; no aggregate progress count is a completion rule.

@@ -172,7 +172,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   mooncode_goal_runtime_reconcile_supervisor_events(
     book_root,
     session_id,
-    existing_events,
     self.clock.now().truncate_to_s(),
   )
   let continuation = mooncode_runtime_continuation_for_command(
@@ -931,14 +930,9 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       }
     }
   }
-  let supervisor_sources = existing_events.copy()
-  for event in events {
-    supervisor_sources.push(event)
-  }
   mooncode_goal_runtime_reconcile_supervisor_events(
     book_root,
     session_id,
-    supervisor_sources,
     self.clock.now().truncate_to_s(),
   )
   for index, package_result in package_results {

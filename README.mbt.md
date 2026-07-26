@@ -142,14 +142,18 @@ MoonClaw is strongest when you want one system to handle:
   A strict additive `GET/PUT
   /v1/code/sessions/<id>/goal-runtime?book_root=<path>` boundary now persists
   criteria-only `mooncode-goal-runtime.v1` genesis and projects replayed status.
-  It rejects aggregate token/turn/step/time/operation/LOC fields, treats retry
-  timestamps as non-semantic, and shares one atomic session-lock transaction
-  with legacy `/goal` so exactly one goal family can own a session. The legacy
-  endpoint remains only for compatibility until clients migrate; it is not a
-  second authority and cannot coexist with the new runtime genesis. The common
-  runtime-turn path now derives typed running, approval, operation, and planner
-  checkpoint events from already-committed source facts, and restart reconciliation
-  fills a crash gap idempotently from stable source IDs. For an active runtime goal,
+  It rejects aggregate token/turn/step/time/operation/LOC fields and treats retry
+  timestamps as non-semantic. Goal authority and supervisor reconciliation now
+  fold canonical JSONL one record at a time, use an ephemeral disk identity ledger
+  for exact far-apart deduplication/conflict detection, and spool source facts on
+  disk instead of retaining aggregate event/ID arrays. The legacy `/goal` HTTP
+  route has been removed and `/goal-runtime` is a required capability. Persisted
+  legacy histories remain strictly detectable and return `legacy_goal_incompatible`;
+  they are never silently converted because their aggregate budget semantics have
+  no lossless representation in the unbounded contract. The common runtime-turn
+  path derives typed running, approval, operation, and planner checkpoint events
+  from already-committed source facts, and restart reconciliation fills a crash gap
+  idempotently from stable source IDs. For an active runtime goal,
   runtime-service repeats `max_turns` as a local execution quantum instead of
   treating it as an aggregate stop. The planner receives the active objective and
   exact criterion IDs; optional typed `finish.goal_runtime` decisions settle

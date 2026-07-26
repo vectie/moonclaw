@@ -5,6 +5,19 @@ priv struct MoonCodeGoalAuthoritySnapshot {
 }
 
 ///|
+priv struct MoonCodeGoalAuthorityProjection {
+  legacy : @mooncode_core.Goal?
+  runtime : MoonCodeGoalRuntimeProjection
+}
+
+///|
+fn mooncode_goal_authority_projection_is_dual(
+  projection : MoonCodeGoalAuthorityProjection,
+) -> Bool {
+  projection.legacy is Some(_) && projection.runtime.genesis is Some(_)
+}
+
+///|
 fn mooncode_goal_authority_snapshot(
   records : Array[Json],
   session_id : String,

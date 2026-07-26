@@ -350,18 +350,10 @@ async test "goal runtime supervisor reconciles committed source facts exactly on
         source,
       )
     }
-    let sources = mooncode_journal_entries(
-      mooncode_read_session_journal(root, session_id),
-      mooncode_journal_event(),
-    )
-    mooncode_goal_runtime_reconcile_supervisor_events(
-      root, session_id, sources, 5L,
-    )
+    mooncode_goal_runtime_reconcile_supervisor_events(root, session_id, 5L)
     let journal = mooncode_session_journal_path(root, session_id)
     let bytes = @fsx.read_file(journal)
-    mooncode_goal_runtime_reconcile_supervisor_events(
-      root, session_id, sources, 99L,
-    )
+    mooncode_goal_runtime_reconcile_supervisor_events(root, session_id, 99L)
     assert_eq(@fsx.read_file(journal), bytes)
     let response = mooncode_goal_runtime_api_get_internal(root, session_id)
     assert_eq(response.status_code, 200)
@@ -563,13 +555,7 @@ async test "direct tool execution cannot enter supervised goal progress" {
       mooncode_journal_event(),
       direct,
     )
-    let sources = mooncode_journal_entries(
-      mooncode_read_session_journal(root, session_id),
-      mooncode_journal_event(),
-    )
-    mooncode_goal_runtime_reconcile_supervisor_events(
-      root, session_id, sources, 3L,
-    )
+    mooncode_goal_runtime_reconcile_supervisor_events(root, session_id, 3L)
     let response = mooncode_goal_runtime_api_get_internal(root, session_id)
     assert_eq(response.status_code, 200)
     guard response.body is Object(body) && body["status"] is Object(status) else {

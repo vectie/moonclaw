@@ -137,7 +137,7 @@ async test "legacy authority excludes goal-runtime creation" {
         2L,
       ),
       409,
-      "goal_authority_conflict",
+      "legacy_goal_incompatible",
     )
     assert_eq(@fsx.read_file(mooncode_session_journal_path(root, id)), before)
   })

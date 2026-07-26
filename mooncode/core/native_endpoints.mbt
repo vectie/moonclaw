@@ -7,6 +7,7 @@ pub(all) struct NativeCapabilityEndpoints {
   session_commands : String
   session_turns : String
   session_lifecycle : String
+  goal_runtime : String
   runtime_control : String
   runtime_claim : String
   stream : String
@@ -29,6 +30,7 @@ pub fn native_capability_endpoints() -> NativeCapabilityEndpoints {
     session_commands: "/v1/code/sessions/<id>/commands",
     session_turns: "/v1/code/sessions/<id>/turns",
     session_lifecycle: "/v1/code/sessions/<id>/lifecycle",
+    goal_runtime: "/v1/code/sessions/<id>/goal-runtime?book_root=<path>",
     runtime_control: "/v1/code/sessions/<id>/runtime-control?book_root=<path>",
     runtime_claim: "/v1/code/sessions/<id>/runtime-claim?book_root=<path>",
     stream: "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<canonical-decimal>&wait_ms=<ms>&poll_ms=<ms>",
@@ -54,6 +56,7 @@ pub fn NativeCapabilityEndpoints::required_endpoints(
     self.session_commands,
     self.session_turns,
     self.session_lifecycle,
+    self.goal_runtime,
     self.runtime_control,
     self.runtime_claim,
     self.stream,

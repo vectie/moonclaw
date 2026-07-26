@@ -63,25 +63,25 @@ async fn mooncode_goal_runtime_api_get_internal(
   if state != "active" {
     return mooncode_goal_runtime_api_error(409, "goal_runtime_session_corrupt")
   }
-  let records = mooncode_goal_authority_records_locked(book_root, session_id) catch {
-    InvalidJournal(_) => return mooncode_goal_runtime_authority_error()
-    _ => return mooncode_goal_runtime_api_error(500, "internal_error")
-  }
-  let authority = mooncode_goal_authority_snapshot(records, session_id) catch {
-    InvalidGoalGenesis(_) => return mooncode_goal_runtime_authority_error()
+  let authority = mooncode_goal_authority_project_locked(book_root, session_id) catch {
+    InvalidJournal(_) | InvalidGoalGenesis(_) =>
+      return mooncode_goal_runtime_authority_error()
     MoonCodeGoalRuntimeStoreError::CorruptStore(_) =>
       return mooncode_goal_runtime_authority_error()
     MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
       return mooncode_goal_runtime_authority_error()
     _ => return mooncode_goal_runtime_api_error(500, "internal_error")
   }
-  if mooncode_goal_authority_is_dual(authority) {
+  if mooncode_goal_authority_projection_is_dual(authority) {
     return mooncode_goal_runtime_api_error(409, "goal_authority_conflict")
+  }
+  if authority.legacy is Some(_) {
+    return mooncode_goal_runtime_api_error(409, "legacy_goal_incompatible")
   }
   match authority.runtime.genesis {
     None => mooncode_goal_runtime_api_error(404, "goal_runtime_not_found")
     Some(_) =>
-      mooncode_goal_runtime_status_response(authority.runtime) catch {
+      mooncode_goal_runtime_projection_status_response(authority.runtime) catch {
         _ => mooncode_goal_runtime_authority_error()
       }
   }
@@ -169,27 +169,27 @@ async fn mooncode_goal_runtime_api_put_internal(
         409, "goal_runtime_session_corrupt",
       )
   }
-  let records = mooncode_goal_authority_records_locked(book_root, session_id) catch {
-    InvalidJournal(_) => return mooncode_goal_runtime_authority_error()
-    _ => return mooncode_goal_runtime_api_error(500, "internal_error")
-  }
-  let authority = mooncode_goal_authority_snapshot(records, session_id) catch {
-    InvalidGoalGenesis(_) => return mooncode_goal_runtime_authority_error()
+  let authority = mooncode_goal_authority_project_locked(book_root, session_id) catch {
+    InvalidJournal(_) | InvalidGoalGenesis(_) =>
+      return mooncode_goal_runtime_authority_error()
     MoonCodeGoalRuntimeStoreError::CorruptStore(_) =>
       return mooncode_goal_runtime_authority_error()
     MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
       return mooncode_goal_runtime_authority_error()
     _ => return mooncode_goal_runtime_api_error(500, "internal_error")
   }
-  if mooncode_goal_authority_is_dual(authority) || authority.legacy is Some(_) {
+  if mooncode_goal_authority_projection_is_dual(authority) {
     return mooncode_goal_runtime_api_error(409, "goal_authority_conflict")
+  }
+  if authority.legacy is Some(_) {
+    return mooncode_goal_runtime_api_error(409, "legacy_goal_incompatible")
   }
   match authority.runtime.genesis {
     Some(entry) => {
       if entry.semantic_digest != expected.semantic_digest {
         return mooncode_goal_runtime_api_error(409, "goal_runtime_conflict")
       }
-      return mooncode_goal_runtime_status_response(authority.runtime) catch {
+      return mooncode_goal_runtime_projection_status_response(authority.runtime) catch {
         _ => mooncode_goal_runtime_authority_error()
       }
     }
@@ -216,20 +216,21 @@ async fn mooncode_goal_runtime_api_put_internal(
   if !appended {
     return mooncode_goal_runtime_api_error(409, "goal_runtime_conflict")
   }
-  let committed = mooncode_goal_authority_records_locked(book_root, session_id) catch {
-    _ => return mooncode_goal_runtime_api_error(500, "internal_error")
-  }
-  let winner = mooncode_goal_authority_snapshot(committed, session_id) catch {
+  let winner = mooncode_goal_authority_project_locked(book_root, session_id) catch {
     _ => return mooncode_goal_runtime_authority_error()
   }
-  if mooncode_goal_authority_is_dual(winner) || winner.legacy is Some(_) {
+  if mooncode_goal_authority_projection_is_dual(winner) ||
+    winner.legacy is Some(_) {
     return mooncode_goal_runtime_api_error(409, "goal_authority_conflict")
   }
   guard winner.runtime.genesis is Some(entry) &&
     entry.semantic_digest == expected.semantic_digest else {
     return mooncode_goal_runtime_api_error(409, "goal_runtime_conflict")
   }
-  mooncode_goal_runtime_status_response(winner.runtime, status_code=201) catch {
+  mooncode_goal_runtime_projection_status_response(
+    winner.runtime,
+    status_code=201,
+  ) catch {
     _ => mooncode_goal_runtime_authority_error()
   }
 }

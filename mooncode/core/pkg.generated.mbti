@@ -1417,6 +1417,7 @@ pub(all) struct NativeCapabilityEndpoints {
   session_commands : String
   session_turns : String
   session_lifecycle : String
+  goal_runtime : String
   runtime_control : String
   runtime_claim : String
   stream : String

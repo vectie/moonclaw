@@ -50,9 +50,9 @@ async fn mooncode_goal_runtime_append_supervisor_event_locked(
   event : @mooncode_core.GoalRuntimeEvent,
   recorded_at : Int64,
 ) -> MoonCodeGoalRuntimeSupervisorAppendResult {
-  let records = mooncode_goal_authority_records_locked(book_root, session_id)
-  let authority = mooncode_goal_authority_snapshot(records, session_id)
-  if mooncode_goal_authority_is_dual(authority) || authority.legacy is Some(_) {
+  let authority = mooncode_goal_authority_project_locked(book_root, session_id)
+  if mooncode_goal_authority_projection_is_dual(authority) ||
+    authority.legacy is Some(_) {
     mooncode_goal_runtime_store_corrupt(
       "legacy goal authority cannot accept runtime supervisor events",
     )
@@ -72,12 +72,17 @@ async fn mooncode_goal_runtime_append_supervisor_event_locked(
     event,
     recorded_at,
   )
-  match authority.runtime.id_index.get(stored.id) {
+  let duplicate = mooncode_goal_authority_project_locked(
+    book_root,
+    session_id,
+    target_runtime_id=Some(stored.id),
+  )
+  match duplicate.runtime.target_digest {
     Some(previous) => {
-      if previous.semantic_digest != stored.semantic_digest {
+      if previous != stored.semantic_digest {
         raise MoonCodeGoalRuntimeStoreError::IdentityConflict(
           stored.id,
-          previous.semantic_digest,
+          previous,
           stored.semantic_digest,
         )
       }
@@ -85,16 +90,8 @@ async fn mooncode_goal_runtime_append_supervisor_event_locked(
     }
     None => ()
   }
-  let state = mooncode_goal_runtime_state_from_scan(authority.runtime)
-  if @mooncode_core.goal_runtime_is_terminal(state) {
+  if duplicate.runtime.terminal {
     return Terminal
-  }
-  let next = @mooncode_core.reduce_goal_runtime(state, stored.event)
-  if @mooncode_core.goal_runtime_handled_count(next) !=
-    @mooncode_core.goal_runtime_handled_count(state) + 1 {
-    mooncode_goal_runtime_store_corrupt(
-      "supervisor event was not accepted by the goal runtime reducer",
-    )
   }
   let canonical = encode_mooncode_goal_runtime_stored_event(stored)
   let payload = encode_mooncode_goal_runtime_carrier(
@@ -106,30 +103,29 @@ async fn mooncode_goal_runtime_append_supervisor_event_locked(
     mooncode_journal_event(),
     payload,
   )
-  let committed_records = mooncode_goal_authority_records_locked(
-    book_root, session_id,
+  let committed = mooncode_goal_authority_project_locked(
+    book_root,
+    session_id,
+    target_runtime_id=Some(stored.id),
   )
-  let committed = mooncode_goal_authority_snapshot(
-    committed_records, session_id,
-  )
-  if mooncode_goal_authority_is_dual(committed) || committed.legacy is Some(_) {
+  if mooncode_goal_authority_projection_is_dual(committed) ||
+    committed.legacy is Some(_) {
     mooncode_goal_runtime_store_corrupt(
       "goal authority changed while appending a supervisor event",
     )
   }
-  guard committed.runtime.id_index.get(stored.id) is Some(winner) else {
+  guard committed.runtime.target_digest is Some(winner) else {
     mooncode_goal_runtime_store_corrupt(
       "committed supervisor event disappeared",
     )
   }
-  if winner.semantic_digest != stored.semantic_digest {
+  if winner != stored.semantic_digest {
     raise MoonCodeGoalRuntimeStoreError::IdentityConflict(
       stored.id,
-      winner.semantic_digest,
+      winner,
       stored.semantic_digest,
     )
   }
-  ignore(mooncode_goal_runtime_state_from_scan(committed.runtime))
   if appended {
     Appended
   } else {
@@ -256,92 +252,133 @@ fn mooncode_goal_runtime_events_from_source(
 }
 
 ///|
+async fn mooncode_goal_runtime_spool_sources_locked(
+  book_root : String,
+  session_id : String,
+  writer : @fs.File,
+) -> Unit {
+  let path = mooncode_session_journal_path(book_root, session_id)
+  if !(@fsx.exists(path) catch { _ => false }) {
+    return
+  }
+  let file = @fs.open(path, mode=ReadWrite, append=false)
+  defer file.close()
+  file.lock(Exclusive)
+  defer file.unlock()
+  mooncode_repair_journal_tail(file)
+  let mut cursor = MoonCodeJournalSequence::zero()
+  while true {
+    match file.read_until("\n") {
+      Some(line) => {
+        let (record, next) = mooncode_journal_stream_record(line, cursor)
+        cursor = next
+        if mooncode_json_string(record, "session_id", default="") != session_id {
+          raise InvalidJournal("journal record belongs to a different session")
+        }
+        if mooncode_json_string(record, "record_kind", default="") ==
+          mooncode_journal_event() {
+          writer.write(
+            mooncode_json_object_field_or_empty(record, "payload").stringify() +
+            "\n",
+          )
+        }
+      }
+      None => break
+    }
+  }
+}
+
+///|
 async fn mooncode_goal_runtime_reconcile_supervisor_events(
   book_root : String,
   session_id : String,
-  sources : Array[Json],
   recorded_at : Int64,
 ) -> Unit {
-  if !sources.any(fn(source) {
-      mooncode_json_string(source, "kind", default="") ==
-      mooncode_goal_runtime_carrier_kind_v1 &&
-      mooncode_json_string(source, "logical_kind", default="") == "genesis"
-    }) {
-    return
-  }
   let session_lock = mooncode_open_session_lock(book_root, session_id)
   defer session_lock.close()
   session_lock.lock(Exclusive)
   defer session_lock.unlock()
-  let records = mooncode_goal_authority_records_locked(book_root, session_id)
-  let authority = mooncode_goal_authority_snapshot(records, session_id)
-  if mooncode_goal_authority_is_dual(authority) || authority.legacy is Some(_) {
+  let authority = mooncode_goal_authority_project_locked(book_root, session_id)
+  if mooncode_goal_authority_projection_is_dual(authority) ||
+    authority.legacy is Some(_) {
     mooncode_goal_runtime_store_corrupt(
       "legacy goal authority cannot accept runtime supervisor events",
     )
   }
-  guard authority.runtime.genesis is Some(genesis_entry) &&
-    genesis_entry.carrier.record is Genesis(genesis) else {
+  guard authority.runtime.genesis is Some(_) else { return }
+  if authority.runtime.terminal {
     return
   }
-  let state = mooncode_goal_runtime_state_from_scan(authority.runtime)
-  if @mooncode_core.goal_runtime_is_terminal(state) {
-    return
-  }
-  let known : Map[String, String] = {}
-  for id, entry in authority.runtime.id_index.iter2() {
-    known[id] = entry.semantic_digest
-  }
-  let active_commands : Map[String, Bool] = {}
-  for source in sources {
-    let source_kind = mooncode_json_string(source, "kind", default="")
-    let source_command = mooncode_json_string(source, "command_id", default="")
-    if source_kind == "runtime.turn_started" &&
-      mooncode_goal_runtime_canonical(source_command) {
-      active_commands[source_command] = true
-    }
-    let requires_active_turn = mooncode_json_string(source, "tool", default="") !=
-      "" ||
-      source_kind == mooncode_runtime_continuation_kind()
-    if !requires_active_turn || active_commands.contains(source_command) {
-      for event in mooncode_goal_runtime_events_from_source(source) {
-        let stored = new_mooncode_goal_runtime_stored_event(
-          session_id,
-          genesis.goal_id,
-          event,
-          recorded_at,
-        )
-        match known.get(stored.id) {
-          Some(digest) => {
-            if digest != stored.semantic_digest {
-              raise MoonCodeGoalRuntimeStoreError::IdentityConflict(
-                stored.id,
-                digest,
-                stored.semantic_digest,
+  @moonclaw_fsx.with_temporary_directory("moonclaw-goal-reconcile-XXXXXX", async fn(
+    root,
+  ) {
+    let spool_path = @pathx.join(root, "sources.jsonl")
+    let writer = @fs.open(
+      spool_path,
+      mode=ReadWrite,
+      append=true,
+      create=0o600,
+      truncate=false,
+    )
+    mooncode_goal_runtime_spool_sources_locked(book_root, session_id, writer)
+    writer.close()
+    let reader = @fs.open(spool_path, mode=ReadOnly)
+    defer reader.close()
+    let mut active_command = ""
+    while true {
+      match reader.read_until("\n") {
+        Some(line) => {
+          let source = @json.parse(line) catch {
+            _ =>
+              mooncode_goal_runtime_store_corrupt(
+                "reconciliation source spool is corrupt",
+              )
+          }
+          let source_kind = mooncode_json_string(source, "kind", default="")
+          let source_command = mooncode_json_string(
+            source,
+            "command_id",
+            default="",
+          )
+          if source_kind == "runtime.turn_started" &&
+            mooncode_goal_runtime_canonical(source_command) {
+            if active_command != "" && active_command != source_command {
+              mooncode_goal_runtime_store_corrupt(
+                "overlapping supervised turns",
               )
             }
-            continue
+            active_command = source_command
           }
-          None => ()
+          let requires_active_turn = mooncode_json_string(
+              source,
+              "tool",
+              default="",
+            ) !=
+            "" ||
+            source_kind == mooncode_runtime_continuation_kind()
+          if !requires_active_turn || active_command == source_command {
+            for event in mooncode_goal_runtime_events_from_source(source) {
+              match
+                mooncode_goal_runtime_append_supervisor_event_locked(
+                  book_root, session_id, event, recorded_at,
+                ) {
+                NoRuntimeGoal | Terminal => return
+                Appended | Idempotent => ()
+              }
+            }
+          }
+          if (
+              source_kind == mooncode_event_runtime_turn_finished() ||
+              source_kind == "runtime.turn_invalid"
+            ) &&
+            active_command == source_command {
+            active_command = ""
+          }
         }
-        match
-          mooncode_goal_runtime_append_supervisor_event_locked(
-            book_root,
-            session_id,
-            stored.event,
-            recorded_at,
-          ) {
-          NoRuntimeGoal => return
-          Terminal => return
-          Appended | Idempotent => known[stored.id] = stored.semantic_digest
-        }
+        None => break
       }
     }
-    if source_kind == mooncode_event_runtime_turn_finished() ||
-      source_kind == "runtime.turn_invalid" {
-      active_commands.remove(source_command)
-    }
-  }
+  })
 }
 
 ///|
@@ -353,9 +390,8 @@ async fn mooncode_goal_runtime_supervisor_is_active(
   defer session_lock.close()
   session_lock.lock(Shared)
   defer session_lock.unlock()
-  let records = mooncode_goal_authority_records_locked(book_root, session_id)
-  let authority = mooncode_goal_authority_snapshot(records, session_id)
-  if mooncode_goal_authority_is_dual(authority) {
+  let authority = mooncode_goal_authority_project_locked(book_root, session_id)
+  if mooncode_goal_authority_projection_is_dual(authority) {
     mooncode_goal_runtime_store_corrupt("dual goal authority")
   }
   if authority.legacy is Some(_) {
@@ -363,10 +399,7 @@ async fn mooncode_goal_runtime_supervisor_is_active(
   }
   match authority.runtime.genesis {
     None => false
-    Some(_) =>
-      !@mooncode_core.goal_runtime_is_terminal(
-        mooncode_goal_runtime_state_from_scan(authority.runtime),
-      )
+    Some(_) => !authority.runtime.terminal
   }
 }
 
