@@ -25,13 +25,18 @@ async fn Daemon::mooncode_runtime_loop(
   }
   let result = self.mooncode_runtime_loop_execute(session_id, book_root, body)
   w.header().set("Content-Type", "application/json")
+  let busy = mooncode_json_string(result, "stopped_by", default="") == "busy"
   w.write_header(
-    if mooncode_json_int(result, "ran_turn_count", default=0) > 0 {
+    if busy {
+      409
+    } else if mooncode_json_int(result, "ran_turn_count", default=0) > 0 {
       202
     } else {
       200
     },
-    reason=if mooncode_json_int(result, "ran_turn_count", default=0) > 0 {
+    reason=if busy {
+      "Conflict"
+    } else if mooncode_json_int(result, "ran_turn_count", default=0) > 0 {
       "Accepted"
     } else {
       "OK"
@@ -47,11 +52,64 @@ async fn Daemon::mooncode_runtime_loop_execute(
   requested_book_root : String,
   payload : Json,
 ) -> Json {
+  let binding = self.mooncode_binding_for_session(session_id)
+  if !binding.bind_book_root(requested_book_root) {
+    return self.mooncode_runtime_loop_execute_with_gate_state(
+      session_id,
+      requested_book_root,
+      payload,
+      runtime_gates_held=false,
+    )
+  }
+  let book_root = binding.book_root
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Shared)
+  defer lifecycle_gate.unlock()
+  mooncode_require_active_session_state_locked(
+    book_root,
+    session_id,
+    allow_create=true,
+  )
+  let execution_lease = mooncode_open_session_execution_lease(
+    book_root, session_id,
+  )
+  defer execution_lease.close()
+  if !execution_lease.try_lock(Exclusive) {
+    return {
+      "kind": "mooncode-runtime-loop",
+      "protocol": mooncode_protocol_version(),
+      "owner": "moonclaw",
+      "accepted": false,
+      "session_id": session_id,
+      "book_root": book_root,
+      "consumer_id": mooncode_json_string(
+        payload,
+        "consumer_id",
+        default="moonclaw-native-runtime-loop",
+      ),
+      "max_turns": mooncode_runtime_loop_max_turns(payload),
+      "live_wait_ms": mooncode_runtime_loop_live_wait_ms(payload),
+      "poll_ms": mooncode_runtime_loop_poll_ms(payload),
+      "live_wait_attempt_count": 0,
+      "live_wait_elapsed_ms": 0,
+      "ran_turn_count": 0,
+      "failed_turn_count": 0,
+      "turn_count": 0,
+      "stopped_by": "busy",
+      "message": "Another MoonCode runtime owns this session's execution lease.",
+      "turns": Json::array([]),
+      "waits": Json::array([]),
+    }
+  }
+  defer execution_lease.unlock()
   self.mooncode_runtime_loop_execute_with_gate_state(
     session_id,
-    requested_book_root,
+    book_root,
     payload,
-    lifecycle_gate_held=false,
+    runtime_gates_held=true,
   )
 }
 
@@ -61,7 +119,7 @@ async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
   session_id : String,
   requested_book_root : String,
   payload : Json,
-  lifecycle_gate_held~ : Bool,
+  runtime_gates_held~ : Bool,
 ) -> Json {
   let binding = self.mooncode_binding_for_session(session_id)
   if !binding.bind_book_root(requested_book_root) {
@@ -124,8 +182,8 @@ async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
       "live_wait_ms": live_wait_ms,
       "poll_ms": poll_ms,
     }
-    let turn = if lifecycle_gate_held {
-      self.mooncode_runtime_turn_execute_under_lifecycle_gate(
+    let turn = if runtime_gates_held {
+      self.mooncode_runtime_turn_execute_under_runtime_gates(
         session_id, book_root, turn_payload,
       )
     } else {

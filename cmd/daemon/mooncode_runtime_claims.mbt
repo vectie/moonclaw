@@ -38,6 +38,36 @@ async fn Daemon::mooncode_runtime_claim(
       },
     })
   }
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Shared)
+  defer lifecycle_gate.unlock()
+  mooncode_require_active_session_state_locked(
+    book_root,
+    session_id,
+    allow_create=true,
+  )
+  let execution_lease = mooncode_open_session_execution_lease(
+    book_root, session_id,
+  )
+  defer execution_lease.close()
+  if !execution_lease.try_lock(Exclusive) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "Another MoonCode runtime owns this session's execution lease",
+        "metadata": {
+          "session_id": session_id,
+          "book_root": book_root,
+          "status": "busy",
+          "busy_reason": "execution-lease-held",
+        },
+      },
+    })
+  }
+  defer execution_lease.unlock()
   let before = self.mooncode_runtime_claim_state_payload(session_id, book_root)
   let receipts = mooncode_runtime_claim_receipts(
     session_id,

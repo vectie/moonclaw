@@ -805,6 +805,31 @@ async fn mooncode_open_session_lifecycle_gate(
 }
 
 ///|
+/// Cross-process execution ownership is separate from the lifecycle gate. A
+/// runtime first holds the lifecycle gate Shared, then this lease Exclusive, so
+/// lifecycle transitions can wait without allowing two queue consumers.
+fn mooncode_session_execution_lease_path(
+  book_root : String,
+  session_id : String,
+) -> String {
+  @moonsuite.product_artifact_for_workspace_root(
+    book_root,
+    "moonclaw",
+    "mooncode/session-locks/\{mooncode_safe_session_id(session_id)}.execution-lease",
+  )
+}
+
+///|
+async fn mooncode_open_session_execution_lease(
+  book_root : String,
+  session_id : String,
+) -> @fs.File {
+  let path = mooncode_session_execution_lease_path(book_root, session_id)
+  @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
+  @fs.open(path, mode=ReadWrite, create=0o644, truncate=false)
+}
+
+///|
 fn mooncode_session_state_path(
   book_root : String,
   session_id : String,

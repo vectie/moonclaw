@@ -536,10 +536,15 @@ current canonical session record.
 This composition is recoverable but not a crash-atomic transaction: the durable
 command remains authoritative if service startup fails or the process exits,
 and a later runtime start can resume the queue without another client write.
-Within one daemon instance, runtime execution is single-flight per session, so
-a later accepted turn reuses the active service instead of starting a competing
-queue consumer. Cross-daemon runtime-service singleton and claim exclusivity
-are not implemented or multiprocess-tested.
+Cooperating daemons now serialize runtime turn, loop, claim, and service work
+with one stable per-session execution lease outside the movable session trees.
+A service holds it from before its started event through terminal persistence;
+a direct loop holds it for the whole loop rather than releasing it between
+turns. Contention returns an explicit busy result (HTTP 409 for direct
+runtime/claim endpoints), and an archived or deleted session cannot be
+resurrected by a late runtime writer. The lock primitive is process-capable,
+but spawned-multiprocess failpoint and crash-after-external-side-effect proof
+remain open; the contract does not claim exactly-once effects across crashes.
 
 Interactive clients should use `/turns`; low-level clients may use `/commands`
 plus explicit runtime endpoints for diagnostics and controlled orchestration.

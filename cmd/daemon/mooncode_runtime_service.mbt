@@ -9,6 +9,19 @@ fn mooncode_runtime_service_release_lifecycle_gate(
 }
 
 ///|
+/// Release execution ownership before lifecycle membership, the reverse of the
+/// acquisition order. Protection from cancellation is supplied by the caller.
+fn mooncode_runtime_service_release_gates(
+  lifecycle_gate : @fs.File,
+  execution_lease : @fs.File,
+) -> Unit {
+  execution_lease.unlock()
+  execution_lease.close()
+  lifecycle_gate.unlock()
+  lifecycle_gate.close()
+}
+
+///|
 async fn Daemon::mooncode_runtime_service_state(
   self : Daemon,
   session_id~ : StringView,
@@ -72,7 +85,15 @@ async fn Daemon::mooncode_runtime_service(
     body,
   )
   w.header().set("Content-Type", "application/json")
-  w.write_header(202, reason="Accepted")
+  let busy = mooncode_json_string(response, "status", default="") == "busy"
+  w.write_header(
+    if busy {
+      409
+    } else {
+      202
+    },
+    reason=if busy { "Conflict" } else { "Accepted" },
+  )
   w.write(response.stringify(indent=2))
 }
 
@@ -127,9 +148,87 @@ async fn Daemon::mooncode_start_runtime_service(
       raise error
     }
   }
-  if binding.runtime_service_running {
+  mooncode_require_active_session_state_locked(
+    book_root,
+    session_id,
+    allow_create=true,
+  ) catch {
+    error => {
+      @async.protect_from_cancel(
+        () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+        resume_on_cancel=true,
+      )
+      raise error
+    }
+  }
+  let execution_lease = mooncode_open_session_execution_lease(
+    book_root, session_id,
+  ) catch {
+    error => {
+      @async.protect_from_cancel(
+        () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+        resume_on_cancel=true,
+      )
+      raise error
+    }
+  }
+  let owns_execution = execution_lease.try_lock(Exclusive) catch {
+    error => {
+      execution_lease.close()
+      @async.protect_from_cancel(
+        () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+        resume_on_cancel=true,
+      )
+      raise error
+    }
+  }
+  if !owns_execution {
+    let observed = mooncode_runtime_service_state_payload(
+      session_id,
+      book_root,
+      self.mooncode_runtime_service_events(session_id, book_root),
+      service_id="",
+    )
+    let service_running = mooncode_json_bool(observed, "running", default=false)
+    execution_lease.close()
     @async.protect_from_cancel(
       () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+      resume_on_cancel=true,
+    )
+    return {
+      "kind": "mooncode-runtime-service",
+      "protocol": mooncode_protocol_version(),
+      "owner": "moonclaw",
+      "accepted": service_running,
+      "session_id": session_id,
+      "book_root": book_root,
+      "service_id": if service_running {
+        mooncode_json_string(observed, "service_id", default="")
+      } else {
+        ""
+      },
+      "status": if service_running {
+        "running"
+      } else {
+        "busy"
+      },
+      "started": false,
+      "busy_reason": "execution-lease-held",
+      "message": if service_running {
+        "Another MoonCode runtime service already owns this session's cross-process execution lease."
+      } else {
+        "Another MoonCode runtime operation owns this session's cross-process execution lease."
+      },
+      "started_event": null,
+      "loop_options": mooncode_runtime_service_loop_payload(session_id, payload),
+    }
+  }
+
+  if binding.runtime_service_running {
+    @async.protect_from_cancel(
+      () => {
+        mooncode_runtime_service_release_gates(lifecycle_gate, execution_lease)
+      },
       resume_on_cancel=true,
     )
     return {
@@ -162,7 +261,11 @@ async fn Daemon::mooncode_start_runtime_service(
     error => {
       binding.runtime_service_running = false
       @async.protect_from_cancel(
-        () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+        () => {
+          mooncode_runtime_service_release_gates(
+            lifecycle_gate, execution_lease,
+          )
+        },
         resume_on_cancel=true,
       )
       raise error
@@ -172,9 +275,9 @@ async fn Daemon::mooncode_start_runtime_service(
     () => {
       defer {
         binding.runtime_service_running = false
-        mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate)
+        mooncode_runtime_service_release_gates(lifecycle_gate, execution_lease)
       }
-      let _ = self.mooncode_runtime_service_execute_under_lifecycle_gate(
+      let _ = self.mooncode_runtime_service_execute_under_runtime_gates(
         session_id, book_root, payload,
       ) catch {
         error => {
@@ -304,13 +407,36 @@ async fn Daemon::mooncode_runtime_service_execute(
   defer lifecycle_gate.close()
   lifecycle_gate.lock(Shared)
   defer lifecycle_gate.unlock()
-  self.mooncode_runtime_service_execute_under_lifecycle_gate(
+  mooncode_require_active_session_state_locked(
+    book_root,
+    session_id,
+    allow_create=true,
+  )
+  let execution_lease = mooncode_open_session_execution_lease(
+    book_root, session_id,
+  )
+  defer execution_lease.close()
+  if !execution_lease.try_lock(Exclusive) {
+    return {
+      "kind": "mooncode-runtime-service-result",
+      "protocol": mooncode_protocol_version(),
+      "owner": "moonclaw",
+      "accepted": false,
+      "session_id": session_id,
+      "book_root": book_root,
+      "service_id": mooncode_runtime_service_id(session_id, payload),
+      "status": "busy",
+      "busy_reason": "execution-lease-held",
+    }
+  }
+  defer execution_lease.unlock()
+  self.mooncode_runtime_service_execute_under_runtime_gates(
     session_id, book_root, payload,
   )
 }
 
 ///|
-async fn Daemon::mooncode_runtime_service_execute_under_lifecycle_gate(
+async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
   self : Daemon,
   session_id : String,
   book_root : String,
@@ -321,7 +447,7 @@ async fn Daemon::mooncode_runtime_service_execute_under_lifecycle_gate(
     session_id,
     book_root,
     loop_payload,
-    lifecycle_gate_held=true,
+    runtime_gates_held=true,
   )
   let finished = self.mooncode_runtime_service_finished_event(
     session_id, book_root, payload, result,
