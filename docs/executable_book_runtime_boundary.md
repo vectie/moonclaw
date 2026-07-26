@@ -47,11 +47,15 @@ dependencies, generated portable output, and nested repositories. Structured
 `moon_cmd` evidence may declare `expected_exit_code`; an observed expected
 nonzero exit is accepted negative-path proof rather than a runtime failure.
 
-The model loop is bounded for implementation quality: tool results are
-compacted before they re-enter the transcript, implementation requests take
-precedence over incidental “read” wording, repeated inspection must progress
-to a mutation, and explicit paths outside the selected MoonBook are rejected.
-These are reusable runtime controls and must not embed a domain answer.
+Each model-planner runtime turn uses a local step quantum for scheduling and
+recovery, but goal progress is not aggregate-step-bounded. Reaching the quantum
+persists a nonterminal checkpoint containing the transcript, completed tool
+results, and next absolute step; the next turn resumes without replaying those
+tools. Tool results are compacted before they re-enter the transcript,
+implementation requests take precedence over incidental “read” wording,
+repeated inspection must progress to a mutation, and explicit paths outside the
+selected MoonBook are rejected. These are reusable operation-local controls and
+must not embed a domain answer or settle the goal merely because a quantum ends.
 
 ## Executable Book Call Chain
 

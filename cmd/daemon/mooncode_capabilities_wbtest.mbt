@@ -219,6 +219,10 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(payload.contains("\"default_command_mode\""))
   assert_true(payload.contains("without spawning or messaging"))
   assert_true(payload.contains("\"prompt_planner\""))
+  assert_true(
+    payload.contains("planner_max_steps is a local resumable quantum"),
+  )
+  assert_true(payload.contains("accepted=true/completed=false/paused=true"))
   assert_true(payload.contains("\"event_lifecycle\""))
   assert_true(payload.contains("\"ContextPruned\""))
   assert_true(payload.contains("\"Pruned\""))
