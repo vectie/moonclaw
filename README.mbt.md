@@ -139,7 +139,17 @@ MoonClaw is strongest when you want one system to handle:
   `/commands` now defaults to native queue mode, which appends the durable
   command without spawning or messaging the generic MoonClaw task runtime so a
   client can call `runtime-turn` without duplicate execution.
-  Runtime-turn now also includes a resumable prompt planner: ordinary
+  A strict additive `GET/PUT
+  /v1/code/sessions/<id>/goal-runtime?book_root=<path>` boundary now persists
+  criteria-only `mooncode-goal-runtime.v1` genesis and projects replayed status.
+  It rejects aggregate token/turn/step/time/operation/LOC fields, treats retry
+  timestamps as non-semantic, and shares one atomic session-lock transaction
+  with legacy `/goal` so exactly one goal family can own a session. The legacy
+  endpoint remains only for compatibility until the long-running supervisor and
+  clients migrate; it is not a second authority and cannot coexist with the new
+  runtime genesis. Runtime event production by the supervisor remains the next
+  integration checkpoint.
+    Runtime-turn now also includes a resumable prompt planner: ordinary
   `prompt` commands that ask for a tool, script, miniapp, generated site, or
   HTML app expand into native `write`, `shell`, and `finish` tool calls under
   MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can create

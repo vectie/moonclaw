@@ -1,6 +1,6 @@
 # Executable Book Runtime Boundary
 
-Last checked: 2026-07-15.
+Last checked: 2026-07-26.
 
 MoonClaw is the execution engine for executable MoonBooks. It owns agent,
 task, session, and runtime concepts, but those concepts should remain platform
@@ -47,6 +47,14 @@ dependencies, generated portable output, and nested repositories. Structured
 `moon_cmd` evidence may declare `expected_exit_code`; an observed expected
 nonzero exit is accepted negative-path proof rather than a runtime failure.
 
+Each durable code session may contain exactly one goal authority: legacy
+bounded `/goal` or criteria-only `mooncode-goal-runtime.v1` at
+`/goal-runtime`. Creation and cross-family exclusion share the stable session
+transaction, so concurrent writers cannot install both. Runtime genesis is
+immutable and aggregate policy fields are rejected. The live endpoint currently
+owns genesis and replayed status only; supervisor-produced runtime events and
+legacy removal remain separate migration checkpoints.
+
 Each model-planner runtime turn uses a local step quantum for scheduling and
 recovery, but goal progress is not aggregate-step-bounded. Reaching the quantum
 persists a nonterminal checkpoint containing the transcript, completed tool
@@ -76,6 +84,8 @@ For MoonCode, the target native API namespace is:
 /v1/code/sessions
 /v1/code/sessions/<id>/commands
 /v1/code/sessions/<id>/turns
+/v1/code/sessions/<id>/goal                 (legacy compatibility)
+/v1/code/sessions/<id>/goal-runtime
 /v1/code/sessions/<id>/runtime-claim
 /v1/code/sessions/<id>/runtime-turn
 /v1/code/sessions/<id>/runtime-loop

@@ -18,7 +18,8 @@
 /// - GET  /v1/code/sessions/{id}?book_root={path} → `mooncode_get_session`
 /// - POST /v1/code/sessions/{id}/commands → `mooncode_accept_command`
 /// - POST /v1/code/sessions/{id}/turns → `mooncode_submit_turn`
-/// - GET/PUT /v1/code/sessions/{id}/goal?book_root={path} → goal checkpoint
+/// - GET/PUT /v1/code/sessions/{id}/goal?book_root={path} → legacy goal checkpoint
+/// - GET/PUT /v1/code/sessions/{id}/goal-runtime?book_root={path} → unbounded goal runtime genesis/status
 /// - POST /v1/code/sessions/{id}/lifecycle → `mooncode_manage_session`
 /// - GET  /v1/code/sessions/{id}/runtime-control?book_root={path} → `mooncode_runtime_control`
 /// - GET  /v1/code/sessions/{id}/runtime-claim?book_root={path} → `mooncode_runtime_claim_state`
@@ -87,6 +88,12 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.mooncode_goal_put(session_id~, r, w)
             (_, ["", "v1", "code", "sessions", _, "goal"]) =>
               self.mooncode_goal_method_not_allowed(w)
+            (Get, ["", "v1", "code", "sessions", session_id, "goal-runtime"]) =>
+              self.mooncode_goal_runtime_get(session_id~, r, w)
+            (Put, ["", "v1", "code", "sessions", session_id, "goal-runtime"]) =>
+              self.mooncode_goal_runtime_put(session_id~, r, w)
+            (_, ["", "v1", "code", "sessions", _, "goal-runtime"]) =>
+              self.mooncode_goal_runtime_method_not_allowed(w)
             (Post, ["", "v1", "code", "sessions", session_id, "lifecycle"]) =>
               self.mooncode_manage_session(session_id~, r, w)
             (Get, ["", "v1", "code", "sessions", session_id, "runtime-control"]) =>

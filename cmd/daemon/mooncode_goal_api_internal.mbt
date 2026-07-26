@@ -86,9 +86,18 @@ async fn mooncode_goal_api_get_internal(
       let records = mooncode_parse_journal_text(text, journal_path) catch {
         _ => return goal_api_error(409, "goal_corrupt")
       }
+      let runtime = mooncode_goal_runtime_scan_records(records, session_id) catch {
+        MoonCodeGoalRuntimeStoreError::CorruptStore(_) =>
+          return goal_api_error(409, "goal_corrupt")
+        MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
+          return goal_api_error(409, "goal_corrupt")
+      }
       let goal = mooncode_replay_goal_records(records, session_id) catch {
         InvalidGoalGenesis(_) => return goal_api_error(409, "goal_corrupt")
         _ => return goal_api_error(500, "internal_error")
+      }
+      if goal is Some(_) && runtime.genesis is Some(_) {
+        return goal_api_error(409, "goal_authority_conflict")
       }
       match goal {
         Some(goal) => goal_api_status(goal)
@@ -164,5 +173,6 @@ async fn mooncode_goal_api_put_internal(
     Created(goal) => goal_api_created(goal)
     Idempotent(goal) => goal_api_status(goal)
     Conflict(_) => goal_api_error(409, "goal_conflict")
+    AuthorityConflict => goal_api_error(409, "goal_authority_conflict")
   }
 }

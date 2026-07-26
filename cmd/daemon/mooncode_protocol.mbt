@@ -30,7 +30,9 @@ fn mooncode_native_capability_required_endpoints() -> Array[String] {
 
 ///|
 fn mooncode_native_capability_optional_endpoints() -> Array[String] {
-  ["/v1/code/sessions/<id>/goal?book_root=<path>"]
+  [
+    "/v1/code/sessions/<id>/goal?book_root=<path>", "/v1/code/sessions/<id>/goal-runtime?book_root=<path>",
+  ]
 }
 
 ///|

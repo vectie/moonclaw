@@ -406,3 +406,59 @@ A hallucinated whole-test-file overwrite replaced validated codec coverage. The 
 - **Evidence:** planner continuation/restart proof 5/5, approval compatibility 6/6, existing runtime-turn behavior 23/23, capabilities 2/2, daemon 311/311, and the full native repository 1372/1372. Native daemon check reports zero errors.
 - **Open boundaries:** Runtime-loop/service `max_turns` remains a local supervisor-call quantum and is not yet wired to the policy-unbounded goal-runtime HTTP authority. The legacy `/goal` surface also remains separate. Planner checkpoints currently repeat cumulative planner/tool arrays in one journal record; this removes the artificial completion bound but does not yet provide chunked, aggregate-memory-independent planner replay. Crash recovery cannot guarantee exactly-once behavior for an external side effect that succeeds immediately before its durable tool receipt; spawned-multiprocess failpoint proof remains open.
 - **Invariant:** Planner quantum exhaustion is never evidence of `Achieved`, `Blocked`, `Cancelled`, runtime failure, or command completion. Only explicit finish/failure/cancellation/settlement evidence may close the claimed command or aggregate goal.
+
+
+## Live goal-runtime authority boundary (2026-07-26)
+
+- **Problem/Fix — pure contract had no live authority:** The strict
+  `mooncode-goal-runtime.v1` codec and reducer existed only as library/store
+  primitives. `GET/PUT /v1/code/sessions/<id>/goal-runtime` now accepts an
+  exact six-field, criteria-only genesis request, persists its canonical carrier,
+  and returns immutable genesis plus replayed reducer status and exact decimal
+  cursor. Unknown fields—including token, turn, step, deadline, operation, and
+  LOC aliases—fail before session lookup.
+- **Problem/Fix — physical deduplication was semantically insufficient:** The
+  generic journal appender suppresses duplicate physical record IDs without
+  comparing semantic digests. Runtime creation now scans both goal families and
+  compares the canonical runtime semantic digest while holding the stable
+  session lock exclusively across selection and append. Identical intent is a
+  byte-stable 200 retry even with a later server time; changed intent is 409.
+- **Problem/Fix — legacy/runtime split brain:** The two valid record families
+  previously ignored one another, and legacy create performed preflight and
+  append in separate transactions. Legacy creation now uses the same lifecycle
+  and stable-lock transaction as runtime creation. Concurrent legacy/runtime
+  PUTs select exactly one winner, the loser reports
+  `goal_authority_conflict`, and handcrafted dual authority fails closed on
+  both reads.
+- **Problem/Fix — lifecycle read/write mismatch:** The active-session snapshot
+  is checked before creating lock artifacts, then revalidated under a shared
+  lifecycle gate and stable session lock. GET uses read-only lifecycle state;
+  PUT may reconcile the marker only under the exclusive stable lock. Archive or
+  delete cannot race a late goal writer into recreating the active tree.
+- **Problem/Fix — generated MoonBit catch syntax:** The first adapter draft used
+  a typed catch binding, which MoonBit does not accept. Compiler diagnostics were
+  fed back through MoonCode; constructor matches replaced all four sites. A
+  later compile also exposed every non-exhaustive match after adding the legacy
+  `AuthorityConflict` result, and all production/test matches were made exact.
+- **Problem/Fix — formatter-sensitive replacement missed behavior:** A first hardening edit targeted the pre-format reducer spelling after `moon fmt` had split the assignment. The write succeeded but changed no function, and both new adversarial tests failed. A symbol-boundary replacement applied the intended behavior; the same tests then passed.
+- **Problem/Fix — terminal and evidence replay was too permissive:** The carrier scanner validated records individually, but the absorbing reducer silently ignored a unique event after terminal settlement and core validation could not know the genesis criterion set. Status replay now requires every unique stored event to advance the handled-event count exactly once and requires Achieved evidence to cover exactly every genesis criterion ID.
+- **Evidence:** The new API file passes 10/10, including strict aggregate-field
+  rejection, create/retry/read/conflict, malformed-before-session precedence,
+  both exclusion directions, concurrent authority selection, and dual-authority
+  fail-closed replay. Focused authority tests pass 4/4, the post-format daemon
+  suite passes 321/321, and the full native repository suite passes 1382/1382.
+  `moon info`, `moon fmt`, daemon check, and `git diff --check` succeed with no
+  generated-interface change. A live create/retry/read smoke against the actual
+  authoring session returned 201/200/200 and left its 23,044,084-byte journal
+  unchanged on the semantic retry.
+- **Open boundaries:** The runtime supervisor does not yet emit goal-runtime
+  events or drive criteria to Achieved/Blocked/Cancelled. The compatibility
+  `/goal` route can be removed after that wiring and client migration (or
+  immediately after wiring if there are no persisted legacy users). Goal-runtime
+  replay currently retains event and identity arrays; streaming,
+  aggregate-memory-independent replay remains open. Environmental disk/memory
+  exhaustion is not a goal settlement rule.
+- **Invariant:** No aggregate token, turn, step, iteration, retry,
+  operation-count, LOC, deadline, wall-time, or total-output field is accepted by
+  the goal-runtime creation boundary. Only explicit runtime evidence may settle
+  the aggregate goal.
