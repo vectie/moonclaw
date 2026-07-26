@@ -51,9 +51,13 @@ Each durable code session may contain exactly one goal authority: legacy
 bounded `/goal` or criteria-only `mooncode-goal-runtime.v1` at
 `/goal-runtime`. Creation and cross-family exclusion share the stable session
 transaction, so concurrent writers cannot install both. Runtime genesis is
-immutable and aggregate policy fields are rejected. The live endpoint currently
-owns genesis and replayed status only; supervisor-produced runtime events and
-legacy removal remain separate migration checkpoints.
+immutable and aggregate policy fields are rejected. Runtime-turn derives typed
+running, approval, accepted-operation, and planner-checkpoint events only after
+its source facts are durable; restart reconciliation fills the append gap by
+stable source identity. For an active runtime goal, runtime-service repeats its
+`max_turns` local quantum while claimable work remains. Explicit criterion-backed
+Achieved/Blocked settlement, active-target cancellation, streaming replay, and
+legacy removal remain separate checkpoints.
 
 Each model-planner runtime turn uses a local step quantum for scheduling and
 recovery, but goal progress is not aggregate-step-bounded. Reaching the quantum

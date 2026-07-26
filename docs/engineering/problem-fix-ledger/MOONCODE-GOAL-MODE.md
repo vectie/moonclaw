@@ -462,3 +462,49 @@ A hallucinated whole-test-file overwrite replaced validated codec coverage. The 
   operation-count, LOC, deadline, wall-time, or total-output field is accepted by
   the goal-runtime creation boundary. Only explicit runtime evidence may settle
   the aggregate goal.
+
+## Runtime supervisor event projection and local quanta (2026-07-26)
+
+- **Problem/Fix — live runtime facts were outside goal authority:** Runtime-turn
+  persisted ordinary source events, but goal-runtime status remained at queued and
+  could not prove restart-safe progress. A private typed supervisor adapter now
+  derives Running, WaitingApproval, OperationAccepted, CheckpointAccepted, and
+  PausedExternal events only from already-committed turn facts. There is no public
+  arbitrary event-write endpoint.
+- **Problem/Fix — source/event append is not crash-atomic:** A process may stop after
+  the source fact commits but before its typed carrier appends. Goal events use stable
+  source-derived identities whose semantic digest excludes retry time. Every claimed
+  turn reconciles the durable source prefix before new work and reconciles the full
+  source prefix plus current turn after persistence; exact retries do not change journal
+  bytes, identity reuse with changed semantics fails closed, and terminal state suppresses
+  fresh later work.
+- **Problem/Fix — direct tool execution leaked into progress:** The first source mapper
+  recognized any successful tool-result payload, including direct `/tool-exec` calls.
+  Reconciliation now tracks active supervised command intervals in journal order and
+  accepts tool/checkpoint facts only between `runtime.turn_started` and its terminal or
+  invalid turn event. Direct tool execution remains outside aggregate goal progress.
+- **Problem/Fix — `max_turns` still stopped long services:** Runtime-loop keeps its
+  1..32 turn containment quantum, but runtime-service now takes a fresh quantum whenever
+  the previous one stops only at `max_turns` and the runtime goal is still active. No
+  aggregate quantum count is stored or consulted. A two-command proof with
+  `max_turns=1` drains both commands, reaches idle, and leaves the goal nonterminal.
+- **Problem/Fix — integration fixture failed before execution:** The first end-to-end
+  turn test omitted the required model field, so command validation correctly returned
+  `accepted=false`. Adding the required model repaired the fixture; production behavior
+  was not weakened.
+- **Evidence:** Supervisor append/reconcile/turn/service coverage passes 10/10, including
+  no-authority no-op, semantic conflict, terminal retry/suppression, legacy fail-closed,
+  crash-prefix replay, direct-tool isolation, generic-finish nonsettlement, and the
+  cross-quantum service proof. Capabilities pass 2/2, the complete daemon suite passes
+  331/331, and the full native repository suite passes 1392/1392. Daemon check reports
+  zero errors.
+- **Open boundaries:** Explicit criterion-backed Achieved/Blocked decisions and
+  active-target cancellation are not yet derived. Generic finish, runtime failure,
+  provider timeout, idle, service failure, and local quantum exhaustion remain
+  nonterminal. Goal replay and reconciliation still retain aggregate journal/event/id
+  arrays; streaming scalar replay is the next memory-boundary checkpoint. Legacy
+  migration/client cutover remains required before removing the `/goal` route, while a
+  fail-closed legacy record detector must survive route removal.
+- **Invariant:** `max_turns` and `planner_max_steps` are local resumable quanta only.
+  They cannot imply Achieved, Blocked, Cancelled, command failure, or aggregate goal
+  settlement.

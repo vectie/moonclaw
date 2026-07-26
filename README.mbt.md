@@ -145,10 +145,14 @@ MoonClaw is strongest when you want one system to handle:
   It rejects aggregate token/turn/step/time/operation/LOC fields, treats retry
   timestamps as non-semantic, and shares one atomic session-lock transaction
   with legacy `/goal` so exactly one goal family can own a session. The legacy
-  endpoint remains only for compatibility until the long-running supervisor and
-  clients migrate; it is not a second authority and cannot coexist with the new
-  runtime genesis. Runtime event production by the supervisor remains the next
-  integration checkpoint.
+  endpoint remains only for compatibility until clients migrate; it is not a
+  second authority and cannot coexist with the new runtime genesis. The common
+  runtime-turn path now derives typed running, approval, operation, and planner
+  checkpoint events from already-committed source facts, and restart reconciliation
+  fills a crash gap idempotently from stable source IDs. For an active runtime goal,
+  runtime-service repeats `max_turns` as a local execution quantum instead of
+  treating it as an aggregate stop. Explicit criterion-backed Achieved/Blocked
+  settlement and active-target cancellation remain the next integration checkpoint.
     Runtime-turn now also includes a resumable prompt planner: ordinary
   `prompt` commands that ask for a tool, script, miniapp, generated site, or
   HTML app expand into native `write`, `shell`, and `finish` tool calls under

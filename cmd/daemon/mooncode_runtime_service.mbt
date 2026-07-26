@@ -443,12 +443,21 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
   payload : Json,
 ) -> Json {
   let loop_payload = mooncode_runtime_service_loop_payload(session_id, payload)
-  let result = self.mooncode_runtime_loop_execute_with_gate_state(
+  let mut result = self.mooncode_runtime_loop_execute_with_gate_state(
     session_id,
     book_root,
     loop_payload,
     runtime_gates_held=true,
   )
+  while mooncode_json_string(result, "stopped_by", default="") == "max_turns" &&
+        mooncode_goal_runtime_supervisor_is_active(book_root, session_id) {
+    result = self.mooncode_runtime_loop_execute_with_gate_state(
+      session_id,
+      book_root,
+      loop_payload,
+      runtime_gates_held=true,
+    )
+  }
   let finished = self.mooncode_runtime_service_finished_event(
     session_id, book_root, payload, result,
   )
