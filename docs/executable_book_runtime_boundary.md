@@ -55,9 +55,12 @@ immutable and aggregate policy fields are rejected. Runtime-turn derives typed
 running, approval, accepted-operation, and planner-checkpoint events only after
 its source facts are durable; restart reconciliation fills the append gap by
 stable source identity. For an active runtime goal, runtime-service repeats its
-`max_turns` local quantum while claimable work remains. Explicit criterion-backed
-Achieved/Blocked settlement, active-target cancellation, streaming replay, and
-legacy removal remain separate checkpoints.
+`max_turns` local quantum while claimable work remains. The planner receives the
+active objective and exact criterion IDs. A validated optional
+`finish.goal_runtime` decision settles Achieved or Blocked, exact active-target
+cancellation settles Cancelled, and ordinary finish remains nonterminal. Streaming
+replay and legacy migration/removal are deliberately postponed until the feature set
+is complete.
 
 Each model-planner runtime turn uses a local step quantum for scheduling and
 recovery, but goal progress is not aggregate-step-bounded. Reaching the quantum

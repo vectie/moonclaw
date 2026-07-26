@@ -514,6 +514,16 @@ async fn Daemon::mooncode_submit_cancel_control(
     }
     binding.events.put(cancelled_event)
     self.mooncode_persist_event(binding, cancelled_event)
+    let supervisor_sources = mooncode_journal_entries(
+      mooncode_read_session_journal(book_root, session_id),
+      mooncode_journal_event(),
+    )
+    mooncode_goal_runtime_reconcile_supervisor_events(
+      book_root,
+      session_id,
+      supervisor_sources,
+      now.truncate_to_s(),
+    )
     ignore(
       mooncode_append_session_journal(
         book_root,

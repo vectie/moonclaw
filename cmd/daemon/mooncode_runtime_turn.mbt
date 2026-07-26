@@ -200,6 +200,10 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   let command = mooncode_runtime_turn_attach_active_capability(
     book_root, session_id, steered_command,
   )
+  let report = mooncode_validate_command_body(session_id, command)
+  let command = mooncode_goal_runtime_attach_context(
+    book_root, session_id, command,
+  )
   let control_state = self.mooncode_runtime_control_payload(
     session_id, book_root,
   )
@@ -207,7 +211,6 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
     control_state, command_id,
   )
   let web_search = mooncode_command_web_search(command)
-  let report = mooncode_validate_command_body(session_id, command)
   let now = self.clock.now()
   let started = mooncode_event(
     session_id~,

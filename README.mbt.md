@@ -151,9 +151,11 @@ MoonClaw is strongest when you want one system to handle:
   checkpoint events from already-committed source facts, and restart reconciliation
   fills a crash gap idempotently from stable source IDs. For an active runtime goal,
   runtime-service repeats `max_turns` as a local execution quantum instead of
-  treating it as an aggregate stop. Explicit criterion-backed Achieved/Blocked
-  settlement and active-target cancellation remain the next integration checkpoint.
-    Runtime-turn now also includes a resumable prompt planner: ordinary
+  treating it as an aggregate stop. The planner receives the active objective and
+  exact criterion IDs; optional typed `finish.goal_runtime` decisions settle
+  Achieved or Blocked, while ordinary finish remains nonterminal goal progress.
+  Exact active-target cancellation settles Cancelled; idle, stale, timeout, failure,
+  and local-quantum events do not. Runtime-turn now also includes a resumable prompt planner: ordinary
   `prompt` commands that ask for a tool, script, miniapp, generated site, or
   HTML app expand into native `write`, `shell`, and `finish` tool calls under
   MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can create

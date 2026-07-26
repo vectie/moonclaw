@@ -508,3 +508,46 @@ A hallucinated whole-test-file overwrite replaced validated codec coverage. The 
 - **Invariant:** `max_turns` and `planner_max_steps` are local resumable quanta only.
   They cannot imply Achieved, Blocked, Cancelled, command failure, or aggregate goal
   settlement.
+
+## Feature-first terminal settlement and cancellation (2026-07-26)
+
+- **Scope decision — finish features before hardening:** Streaming scalar replay,
+  legacy migration, and legacy route removal are deliberately postponed. The current
+  milestone completes the user-visible goal lifecycle first; compatibility remains
+  present and fail-closed rather than blocking the feature release.
+- **Problem/Fix — generic finish could not express goal completion:** `finish` now
+  accepts an optional strict `goal_runtime` Achieved or Blocked decision. The tool
+  validates that runtime authority exists and is active, uses the existing typed codec,
+  and requires Achieved evidence to cover every genesis criterion ID exactly once
+  before emitting a successful durable source fact. Ordinary `finish` remains a
+  nonterminal progress turn.
+- **Problem/Fix — a bad terminal event could poison replay:** Genesis criterion
+  coverage used to be checked only while replaying an already-appended event. The
+  supervisor now performs the same exact criterion-set check before append, so invalid
+  private settlement cannot create a durable corrupt terminal carrier.
+- **Problem/Fix — the planner lacked settlement inputs:** Model planning did not see
+  the active objective or exact criterion IDs, and follow-up tool messages omitted the
+  durable source-event ID. Runtime turns now attach read-only active goal context after
+  validating the external command, the finish schema exposes Achieved and Blocked
+  shapes, and tool messages include an `evidence_ref` derived from the durable event.
+- **Problem/Fix — internal context broke command validation:** The first integration
+  attached `goal_runtime` before validating the user command. Strict command validation
+  correctly rejected that derived field, causing three runtime tests to return
+  `accepted=false`. Validation now runs at the external command boundary before internal
+  planner enrichment; the exact rerun passes.
+- **Problem/Fix — cancellation had no goal outcome:** Active cancellation already
+  emitted a durable, exact, target-bound control event. The supervisor now maps only
+  that internal signature to Cancelled and reconciles immediately after source
+  persistence. Idle `cancel_dropped`, stale-target rejection, and cancelled service
+  diagnostics remain nonterminal.
+- **Evidence:** Focused supervisor coverage passes 12/12, runtime-turn planner coverage
+  passes 23/23, active cancellation coverage passes 6/6, and process-tool coverage
+  passes 7/7. The complete daemon suite passes 333/333 and the full native repository suite passes 1394/1394. The multi-quantum trial queues generic progress, typed achievement, and a
+  sentinel; with `max_turns=1`, two commands run across fresh local quanta, achievement
+  becomes terminal, and the sentinel remains claimable.
+- **Deferred by request:** Aggregate-memory-independent streaming replay and legacy
+  migration/removal remain later work. They are not required for this feature milestone.
+- **Invariant:** Only validated typed Achieved/Blocked decisions or an exact active-
+  target cancellation can settle a runtime goal. Timeout, failure, idle, generic finish,
+  stale or dropped cancel, planner-step exhaustion, and runtime `max_turns` remain
+  nonterminal observations.

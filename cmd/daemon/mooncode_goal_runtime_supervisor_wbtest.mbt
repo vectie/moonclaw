@@ -240,6 +240,57 @@ test "goal runtime supervisor source mapping is stable and selective" {
     }).length(),
     1,
   )
+  let blocked = mooncode_goal_runtime_events_from_source({
+    "id": "typed-finish",
+    "kind": "finish",
+    "tool": "finish",
+    "status": "done",
+    "tool_result": {
+      "metadata": {
+        "goal_runtime": {
+          "type": "blocked",
+          "reason": { "code": "external", "detail": "network unavailable" },
+          "attempted_alternatives": ["retry local fixture"],
+          "required_event": "network restored",
+        },
+      },
+    },
+  })
+  assert_eq(blocked.length(), 2)
+  assert_true(
+    blocked[1]
+    is @mooncode_core.PlannerDecision(_, @mooncode_core.Blocked(_, _, _)),
+  )
+  let cancelled_source : Json = {
+    "id": "active-cancel-source",
+    "control_kind": "turn-cancellation",
+    "control_id": "cancel-command",
+    "control_command_id": "cancel-command",
+    "command_id": "active-command",
+    "target_command_id": "active-command",
+    "kind": @moonlib_conversation.cancellation_event_kind(),
+    "event": @moonlib_conversation.cancellation_event_kind(),
+    "status": "cancelled",
+    "state": "cancelled",
+    "source": "moonclaw-native-runtime-control",
+  }
+  let cancelled = mooncode_goal_runtime_events_from_source(cancelled_source)
+  assert_eq(cancelled.length(), 1)
+  assert_true(cancelled[0] is @mooncode_core.Cancelled(_, _))
+  guard cancelled_source is Object(wrong_source) else { abort("fixture") }
+  wrong_source["source"] = "external".to_json()
+  assert_eq(
+    mooncode_goal_runtime_events_from_source(Json::object(wrong_source)).length(),
+    0,
+  )
+  assert_eq(
+    mooncode_goal_runtime_events_from_source({
+      "id": "service-cancelled",
+      "kind": "runtime.service_finished",
+      "status": "cancelled",
+    }).length(),
+    0,
+  )
 }
 
 ///|
@@ -527,5 +578,202 @@ async test "direct tool execution cannot enter supervised goal progress" {
     assert_eq(status["handled_count"], 0)
     assert_eq(status["operation_count"], 0)
     assert_eq(status["terminal"], false)
+  })
+}
+
+///|
+async test "goal runtime service crosses local quanta and stops on typed achievement" {
+  @fsx.with_temporary_directory("moonclaw-goal-supervisor-e2e-XXXXXX", async fn(
+    root,
+  ) {
+    let session_id = "session"
+    goal_gate_write_snapshot(
+      root,
+      session_id,
+      false,
+      goal_gate_snapshot(session_id, root),
+    )
+    assert_eq(
+      mooncode_goal_runtime_api_put_internal(
+        root,
+        session_id,
+        goal_runtime_test_body(session_id),
+        1L,
+      ).status_code,
+      201,
+    )
+    let tool_batches : Array[Array[Json]] = [
+      [
+        {
+          "tool": "finish",
+          "arguments": { "answer": "first progress quantum" },
+        },
+      ],
+      [
+        {
+          "tool": "finish",
+          "arguments": {
+            "answer": "all criteria proven",
+            "goal_runtime": {
+              "type": "achieved",
+              "summary": "native proof and tests completed",
+              "evidence": [
+                {
+                  "criterion": "criterion-1",
+                  "evidence_refs": ["proof-native"],
+                },
+                { "criterion": "criterion-2", "evidence_refs": ["proof-tests"] },
+              ],
+            },
+          },
+        },
+      ],
+      [
+        {
+          "tool": "finish",
+          "arguments": { "answer": "sentinel must remain queued" },
+        },
+      ],
+    ]
+    for index in 0..<tool_batches.length() {
+      let command_id = "command-" + index.to_string()
+      let command : Json = {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": root,
+        "command": "prompt",
+        "model": "codex/gpt-5.6-sol",
+        "packet": { "command_id": command_id },
+        "runtime_tool_calls": Json::array(tool_batches[index]),
+      }
+      mooncode_append_session_journal(
+        root,
+        session_id,
+        mooncode_journal_command(),
+        {
+          "kind": "mooncode-command",
+          "protocol": mooncode_protocol_version(),
+          "session_id": session_id,
+          "command_id": command_id,
+          "created_at": @clock.Timestamp::from_ms(2L + index.to_int64()),
+          "command": command,
+        },
+      )
+    }
+    let daemon = mooncode_runtime_quantum_test_daemon(root)
+    let result = daemon.mooncode_runtime_service_execute(session_id, root, {
+      "consumer_id": "goal-supervisor-e2e",
+      "service_id": "service-e2e",
+      "max_turns": 1,
+      "live_wait_ms": 0,
+    })
+    assert_true(mooncode_json_bool(result, "accepted", default=false))
+    let runtime_loop = mooncode_json_object_field_or_empty(
+      result, "runtime_loop",
+    )
+    assert_eq(mooncode_json_int(runtime_loop, "max_turns", default=0), 1)
+    assert_eq(mooncode_json_int(runtime_loop, "ran_turn_count", default=0), 1)
+    assert_eq(
+      mooncode_json_string(runtime_loop, "stopped_by", default=""),
+      "max_turns",
+    )
+    let claim_state = mooncode_json_object_field_or_empty(
+      runtime_loop, "claim_state",
+    )
+    assert_eq(
+      mooncode_json_int(claim_state, "delivered_command_count", default=0),
+      2,
+    )
+    assert_eq(
+      mooncode_json_int(claim_state, "claimable_command_count", default=0),
+      1,
+    )
+    let sources = mooncode_journal_entries(
+      mooncode_read_session_journal(root, session_id),
+      mooncode_journal_event(),
+    )
+    let mut started_count = 0
+    let mut sentinel_started = false
+    for source in sources {
+      if mooncode_json_string(source, "kind", default="") ==
+        "runtime.turn_started" {
+        started_count += 1
+        if mooncode_json_string(source, "command_id", default="") == "command-2" {
+          sentinel_started = true
+        }
+      }
+    }
+    assert_eq(started_count, 2)
+    assert_false(sentinel_started)
+    let response = mooncode_goal_runtime_api_get_internal(root, session_id)
+    assert_eq(response.status_code, 200)
+    guard response.body is Object(body) && body["status"] is Object(status) else {
+      abort("goal runtime status")
+    }
+    assert_eq(status["terminal"], true)
+    assert_eq(status["outcome"], ("achieved" : Json))
+    assert_eq(status["handled_count"], 5)
+    assert_eq(status["operation_count"], 2)
+    assert_eq(status["checkpoint_count"], 0)
+  })
+}
+
+///|
+async test "typed finish rejects incomplete goal evidence without settling" {
+  @fsx.with_temporary_directory("moonclaw-goal-finish-invalid-XXXXXX", async fn(
+    root,
+  ) {
+    let session_id = "session"
+    goal_gate_write_snapshot(
+      root,
+      session_id,
+      false,
+      goal_gate_snapshot(session_id, root),
+    )
+    assert_eq(
+      mooncode_goal_runtime_api_put_internal(
+        root,
+        session_id,
+        goal_runtime_test_body(session_id),
+        1L,
+      ).status_code,
+      201,
+    )
+    let execution = mooncode_execute_tool_call(
+      session_id,
+      root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": root,
+        "command_id": "invalid-finish",
+        "tool": "finish",
+        "arguments": {
+          "answer": "not enough proof",
+          "goal_runtime": {
+            "type": "achieved",
+            "summary": "incomplete",
+            "evidence": [
+              { "criterion": "criterion-1", "evidence_refs": ["proof-one"] },
+            ],
+          },
+        },
+      },
+      now=@clock.Timestamp::from_ms(2L),
+    )
+    assert_false(mooncode_json_bool(execution, "accepted", default=true))
+    assert_true(
+      mooncode_json_string(
+        mooncode_json_object_field_or_empty(execution, "result"),
+        "message",
+        default="",
+      ).contains("cover every goal criterion"),
+    )
+    let response = mooncode_goal_runtime_api_get_internal(root, session_id)
+    guard response.body is Object(body) && body["status"] is Object(status) else {
+      abort("goal runtime status")
+    }
+    assert_eq(status["terminal"], false)
+    assert_eq(status["handled_count"], 0)
   })
 }

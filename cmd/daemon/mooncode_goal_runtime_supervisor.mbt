@@ -7,6 +7,27 @@ priv enum MoonCodeGoalRuntimeSupervisorAppendResult {
 }
 
 ///|
+fn mooncode_goal_runtime_event_matches_genesis(
+  event : @mooncode_core.GoalRuntimeEvent,
+  genesis : MoonCodeGoalRuntimeStoredGenesis,
+) -> Bool {
+  match event {
+    @mooncode_core.PlannerDecision(_, @mooncode_core.Achieved(_, evidence)) => {
+      if evidence.length() != genesis.criteria.length() {
+        return false
+      }
+      for criterion in genesis.criteria {
+        if !evidence.any(item => item.criterion == criterion.id) {
+          return false
+        }
+      }
+      true
+    }
+    _ => true
+  }
+}
+
+///|
 async fn mooncode_goal_runtime_append_supervisor_event(
   book_root : String,
   session_id : String,
@@ -39,6 +60,11 @@ async fn mooncode_goal_runtime_append_supervisor_event_locked(
   guard authority.runtime.genesis is Some(genesis_entry) &&
     genesis_entry.carrier.record is Genesis(genesis) else {
     return NoRuntimeGoal
+  }
+  if !mooncode_goal_runtime_event_matches_genesis(event, genesis) {
+    mooncode_goal_runtime_store_corrupt(
+      "goal settlement does not cover the exact genesis criteria",
+    )
   }
   let stored = new_mooncode_goal_runtime_stored_event(
     session_id,
@@ -123,6 +149,28 @@ fn mooncode_goal_runtime_event_id_from_source(
 }
 
 ///|
+fn mooncode_goal_runtime_is_active_cancel_source(source : Json) -> Bool {
+  let command_id = mooncode_json_string(source, "command_id", default="")
+  let target_id = mooncode_json_string(source, "target_command_id", default="")
+  let control_id = mooncode_json_string(source, "control_id", default="")
+  command_id != "" &&
+  mooncode_goal_runtime_canonical(command_id) &&
+  target_id == command_id &&
+  mooncode_goal_runtime_canonical(control_id) &&
+  mooncode_json_string(source, "control_command_id", default="") == control_id &&
+  mooncode_json_string(source, "control_kind", default="") ==
+  "turn-cancellation" &&
+  mooncode_json_string(source, "kind", default="") ==
+  @moonlib_conversation.cancellation_event_kind() &&
+  mooncode_json_string(source, "event", default="") ==
+  @moonlib_conversation.cancellation_event_kind() &&
+  mooncode_json_string(source, "status", default="") == "cancelled" &&
+  mooncode_json_string(source, "state", default="") == "cancelled" &&
+  mooncode_json_string(source, "source", default="") ==
+  "moonclaw-native-runtime-control"
+}
+
+///|
 fn mooncode_goal_runtime_events_from_source(
   source : Json,
 ) -> Array[@mooncode_core.GoalRuntimeEvent] {
@@ -139,12 +187,41 @@ fn mooncode_goal_runtime_events_from_source(
       ),
     ]
   }
+  if mooncode_goal_runtime_is_active_cancel_source(source) {
+    return [
+      @mooncode_core.Cancelled(
+        mooncode_goal_runtime_event_id_from_source("cancelled", source_id),
+        "operator cancelled active MoonCode request",
+      ),
+    ]
+  }
   if mooncode_json_string(source, "tool", default="") != "" &&
     mooncode_json_string(source, "status", default="") == "done" {
+    let accepted = @mooncode_core.OperationAccepted(
+      mooncode_goal_runtime_event_id_from_source("operation", source_id),
+      source_id,
+    )
+    if mooncode_json_string(source, "tool", default="") != "finish" {
+      return [accepted]
+    }
+    let result = mooncode_json_object_field_or_empty(source, "tool_result")
+    let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+    let decision_json = match metadata {
+      Object(fields) => fields.get("goal_runtime")
+      _ => None
+    }
+    guard decision_json is Some(value) else { return [accepted] }
+    let decision = mooncode_goal_runtime_decode_decision(value) catch {
+      _ => return [accepted]
+    }
+    if decision is @mooncode_core.Continue(_, _, _) {
+      return [accepted]
+    }
     return [
-      @mooncode_core.OperationAccepted(
-        mooncode_goal_runtime_event_id_from_source("operation", source_id),
-        source_id,
+      accepted,
+      @mooncode_core.PlannerDecision(
+        mooncode_goal_runtime_event_id_from_source("decision", source_id),
+        decision,
       ),
     ]
   }
@@ -291,4 +368,37 @@ async fn mooncode_goal_runtime_supervisor_is_active(
         mooncode_goal_runtime_state_from_scan(authority.runtime),
       )
   }
+}
+
+///|
+async fn mooncode_goal_runtime_attach_context(
+  book_root : String,
+  session_id : String,
+  command : Json,
+) -> Json {
+  let response = mooncode_goal_runtime_api_get_internal(book_root, session_id)
+  if response.status_code != 200 {
+    return command
+  }
+  guard response.body is Object(body) &&
+    body["status"] is Object(status) &&
+    body["genesis"] is Object(genesis) else {
+    return command
+  }
+  if mooncode_json_bool(Json::object(status), "terminal", default=false) {
+    return command
+  }
+  mooncode_json_object_with_field(command, "goal_runtime", {
+    "contract": mooncode_goal_runtime_contract_v1,
+    "goal_id": mooncode_json_string(Json::object(body), "goal_id", default=""),
+    "objective": mooncode_json_string(
+      Json::object(genesis),
+      "objective",
+      default="",
+    ),
+    "criteria": Json::array(
+      mooncode_json_array_items(Json::object(genesis), "criteria"),
+    ),
+    "status": Json::object(status),
+  })
 }

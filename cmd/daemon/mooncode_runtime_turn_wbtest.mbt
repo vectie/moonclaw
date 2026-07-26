@@ -891,7 +891,24 @@ test "mooncode model planner sends a compact request envelope" {
   let chat_tools = mooncode_runtime_turn_model_tools_for_command(command)
   assert_eq(chat_tools.length(), 1)
   assert_true(chat_tools.to_json().stringify().contains("finish"))
+  assert_true(chat_tools.to_json().stringify().contains("goal_runtime"))
+  assert_true(chat_tools.to_json().stringify().contains("achieved"))
+  assert_true(chat_tools.to_json().stringify().contains("blocked"))
   assert_false(chat_tools.to_json().stringify().contains("moon_check"))
+
+  let goal_prompt = mooncode_runtime_turn_model_prompt({
+    "command": "prompt",
+    "text": "Continue the goal",
+    "goal_runtime": {
+      "goal_id": "goal-1",
+      "objective": "Complete all work",
+      "criteria": [{ "id": "criterion-1", "criterion": "tests pass" }],
+      "status": { "terminal": false },
+    },
+  })
+  assert_true(goal_prompt.contains("Active long-running goal"))
+  assert_true(goal_prompt.contains("criterion-1"))
+  assert_true(goal_prompt.contains("Do not infer completion from a turn limit"))
 
   let plan_request = mooncode_runtime_turn_model_plan_request(
     "gpt-5.6-sol", command,
@@ -1170,6 +1187,7 @@ test "mooncode native runtime turn builds model follow-up transcript" {
   let tool_message = mooncode_runtime_turn_model_tool_result_message(calls[0], {
     "accepted": true,
     "result": { "ok": true, "message": "read README.md", "output": "# Book" },
+    "event": { "id": "durable-read-event" },
   })
   assert_eq(mooncode_json_string(tool_message, "role", default=""), "tool")
   assert_eq(
@@ -1179,6 +1197,16 @@ test "mooncode native runtime turn builds model follow-up transcript" {
   assert_true(
     mooncode_json_string(tool_message, "content", default="").contains(
       "read README.md",
+    ),
+  )
+  assert_true(
+    mooncode_json_string(tool_message, "content", default="").contains(
+      "durable-read-event",
+    ),
+  )
+  assert_true(
+    mooncode_json_string(tool_message, "content", default="").contains(
+      "evidence_ref",
     ),
   )
   let oversized = mooncode_runtime_turn_model_tool_result_content({
