@@ -9,6 +9,23 @@ fn mooncode_stream_test_expect_corrupt(action : () -> Unit raise) -> Unit raise 
 }
 
 ///|
+test "mooncode stream HTTP cursor boundary is exact and canonical" {
+  assert_eq(mooncode_stream_query_cursor("").text(), "0")
+  let huge = "922337203685477580812345678901234567890"
+  assert_eq(mooncode_stream_query_cursor(huge).text(), huge)
+  for bad in ["00", "01", "-1", "+1", "1.0", "1e3", "not-a-cursor"] {
+    let rejected = try {
+      ignore(mooncode_stream_query_cursor(bad))
+      false
+    } catch {
+      MoonCodeGoalRuntimeStoreError::CorruptStore(_) => true
+      _ => false
+    }
+    assert_true(rejected)
+  }
+}
+
+///|
 test "mooncode durable stream records support sparse journal sequence replay" {
   let first : Json = {
     "id": "event-1",

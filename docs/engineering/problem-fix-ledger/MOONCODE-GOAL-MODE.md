@@ -293,11 +293,83 @@ A hallucinated whole-test-file overwrite replaced validated codec coverage. The 
 
 ## Lock-scoped streaming reader boundary
 
-- **Problem/Fix — 2 GiB whole-file replay:** The locked production journal reader converted the full `Int64` size to `Int`, rejected files above 2 GiB, and decoded one aggregate buffer. It now consumes newline-committed records with `File.read_until("\n")`, validates each line, and advances an arbitrary-decimal cursor. The compatibility API still returns an Array to legacy callers; fixed-memory append, goal replay, and HTTP streaming remain the next migrations.
+- **Problem/Fix — 2 GiB whole-file replay:** The locked production journal reader converted the full `Int64` size to `Int`, rejected files above 2 GiB, and decoded one aggregate buffer. It now consumes newline-committed records with `File.read_until("\n")`, validates each line, and advances an arbitrary-decimal cursor. The compatibility API still returns an Array to legacy callers; line-oriented append without whole-journal materialization, goal replay, and HTTP streaming remain the next migrations.
 - **Problem/Fix — lost v1 numeric lexemes:** MoonBit normalizes ordinary parsed `1`, `1.0`, and `1e0` to representation-less numbers. Requiring `parsed.stringify() == raw_line` rejects noncanonical durable spellings before they can normalize into acceptance. A read-only audit replayed 14,541 existing local journal lines with zero mismatches and verified Unicode, emoji, escapes, map order, and large numbers.
 - **Problem/Fix — writer/read asymmetry:** A caller can explicitly construct a noncanonical numeric `repr` that stringifies but reparses differently. A per-record canonical writer helper now reparses and compares the exact line, rejecting poison output before future append integration. Malformed JSON and envelope errors are normalized to `InvalidJournal`.
 - **Problem/Fix — streaming draft recovery:** The first draft repeated invalid `priv fn`, wrong type capitalization, ambiguous generic failures, and obsolete loop syntax. A test draft reimplemented validation instead of calling the production primitive, treated the zero cursor as a durable positive sequence, and hallucinated temporary-file and filesystem APIs. Exact compiler diagnostics replaced these with current MoonBit and real daemon APIs.
 - **Problem/Fix — nonterminal runtime defects:** Several turns stopped at step 8; two turns falsely finished without edits, one claimed tools were unavailable, and one requested approval for a diagnostic temporary-file shell pipeline. The pending diagnostic was cancelled without cancelling the aggregate goal, and deterministic MoonCode tool calls applied only exact repairs.
 - **Problem/Fix — error-contract regression:** Dual envelope failures initially leaked the goal-store error type, causing the legacy corruption test to miss `InvalidJournal`. The streaming boundary now normalizes all physical record corruption to the established journal error.
-- **Evidence:** Streaming plus sequence tests pass 13/13; the legacy session-store suite passes 19/19. Mixed v1/v2 production reading, raw numeric rejection, arbitrary cursor transition beyond Int64, malformed JSON, Unicode writer symmetry, and fixed-memory file scanning are covered.
-- **Open boundary:** v2 writes are not enabled until fixed-memory append and every sequence consumer migrate. There is still no aggregate goal bound; this checkpoint is intentionally intermediate and recoverable.
+- **Evidence:** Streaming plus sequence tests pass 13/13; the legacy session-store suite passes 19/19. Mixed v1/v2 production reading, raw numeric rejection, arbitrary cursor transition beyond Int64, malformed JSON, Unicode writer symmetry, and line-oriented file scanning without whole-journal materialization are covered.
+- **Open boundary:** v2 writes are not enabled until line-oriented append and every sequence consumer migrate. There is still no aggregate goal bound; this checkpoint is intentionally intermediate and recoverable.
+
+## Production exact-v2 append, durability, and contract propagation
+
+- **Superseded boundary:** The prior reader-only boundary above is closed.
+  Production appends now scan under a stable cross-process session lock, repair
+  only a torn suffix, validate through EOF before deduplication, choose an exact
+  arbitrary-decimal successor, and write canonical v2 envelopes. All emitted
+  journal/cursor fields in full session, conversation, and stream projections
+  preserve canonical decimal strings.
+- **Durability and lifecycle:** Successful writes request ordinary file-data
+  synchronization first. Non-Windows builds then request directory synchronization
+  across the complete leaf-to-filesystem-root chain; Windows flushes the writable
+  file only and has not run in a real Windows lane. Archive, restore, and delete
+  share the external session lock and are designed to prevent split-brain among
+  cooperating processes. This is the OS-supported process and ordinary-crash
+  boundary, not macOS `F_FULLFSYNC` or strongest sudden-power-loss proof.
+- **Session isolation and errors:** Foreign-session records are rejected on both
+  append scan and ordinary replay. Malformed cursors, timestamps, and underlying
+  store errors are normalized at the journal boundary.
+- **Problem/Fix — lifecycle resurrection and torn state:** A stable storage lock
+  serialized operations but did not stop a later writer from recreating active
+  storage after archive/delete, or survive a torn marker write. Active-state checks
+  backed by a newline-committed lifecycle state log now reject stale writers. The
+  reader streams committed entries without aggregate-file materialization, ignores
+  a torn final suffix, lets the next writer repair it, reconciles interrupted
+  transition intent with the one surviving location, and rejects simultaneous
+  active/archive storage. Runtime-turn holds a separate cross-process gate shared
+  per turn; runtime-service holds it from before started persistence through
+  terminal persistence; archive/restore/delete take it exclusively before their
+  idle/state checks and stable storage lock. Runtime-service start is single-flight
+  within one daemon instance; cross-daemon singleton and claim exclusivity are not
+  implemented or multiprocess-tested.
+- **Problem/Fix — projection and snapshot contracts:** Listing/show could mix a
+  pre-move snapshot, post-move journal, or mutable live binding. Per-row shared
+  locks now keep lifecycle recheck, selected-root snapshot, and journal in one
+  domain and omit moved rows. Durable active/archived projections exclude mutable
+  live bindings; only an unpersisted `new` row may use one. A loaded persisted v2
+  checkpoint requires a canonical decimal-string `journal_sequence`. Persisted
+  checkpoints with a missing contract ID or the v1 contract may dual-read numeric
+  cursors; an absent snapshot synthesizes the current v2 cursor `"0"`, and unknown
+  contract IDs fail closed. The legacy Int stream endpoint remains source-compatible
+  while the exact-string endpoint owns strict validation.
+- **Open aggregate-memory boundary:** Compatibility replay and the HTTP stream
+  still materialize arrays or aggregate response payloads. End-to-end goal replay
+  and HTTP-stream aggregate-memory independence remain open and are not claimed
+  complete by this checkpoint.
+- **Contract propagation:** Current contracts are journal v2, conversation v3,
+  stream v2, session snapshot/full-record/external-listing IDs v2, watch v2, and
+  v2 lifecycle/control/consumer/native capability surfaces. Only the external
+  listing envelope carries listing v2; compact and listing rows do not. Watch v2
+  is an exact builder and negotiated write contract, not a separately proven
+  production emitter. Capability fingerprint and payload describe the same fields,
+  including dual-read IDs.
+- **Runtime recovery:** Missing/nested command IDs, stale rejected turns, repeated
+  eight-step pauses, partial-edit failed receipts, truncated outputs, watcher 255,
+  skipped tests, false coverage claims, approval loops, stale numeric fixtures,
+  compiler ownership/effect errors, and stale endpoint templates were all
+  recorded and recovered through exact diagnostics plus independent validation.
+- **Evidence:** daemon check is clean; core contracts pass 75/75; focused journal
+  append passes 28/28; the same-process lifecycle/runtime-gate/projection suite
+  passes 9/9; runtime service passes 5/5; session listing passes 13/13; the
+  post-format daemon suite passes 295/295; the full native repository suite passes
+  1356/1356. `moon info`,
+  `moon fmt`, and `git diff --check` succeed. Generated interfaces contain the
+  expected exact public APIs while preserving the legacy Int stream-endpoint
+  signature. Lifecycle, recovery, gate, and projection tests use same-process
+  async scheduling and ancestor coverage verifies only the path plan; no
+  multiprocess, crash/failpoint, sudden-power-loss, or real-Windows lane has run.
+- **Invariant:** There is no aggregate token, turn, step, iteration, retry,
+  operation-count, LOC, deadline, wall-time, or total-output bound. Timeouts,
+  polling intervals, and output caps are operation-local containment and cannot
+  settle the goal.

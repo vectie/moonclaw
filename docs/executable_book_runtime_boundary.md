@@ -27,6 +27,10 @@ The shared runtime substrate does not mean one vague product protocol. MoonCode 
 | Task | Bounded executable job for background or automation work. |
 | Code session | Interactive executable-book coding workspace backed by MoonClaw runtime primitives. |
 
+MoonCode owns coding-contract semantics; MoonClaw implements the runtime and
+persists/projects session sidecars; MoonBook and Bookkeeper own accepted book
+truth.
+
 MoonClaw does not own MoonBook truth. It may write proposals, sidecars, diffs,
 run artifacts, package proof, and review receipts into a selected MoonBook, but
 Bookkeeper/MoonBook acceptance decides what becomes durable book knowledge or
@@ -92,10 +96,34 @@ Rule: MoonCode should not be implemented as generic task chat. It should use
 code-session/runtime contracts that can run tools, edit files, stream proof,
 package executable artifacts, and resume from durable session sidecars.
 
-`journal.jsonl` is the book-local, totally ordered session authority. Native
-MoonCode runtime operations append command, claim, settlement, event, package,
-and book-result records under `moonsuite-conversation-journal.v1`; receipts are
-a record kind, not a separate store or runtime API.
+`journal.jsonl` is the book-scoped MoonCode session-sidecar authority. Native
+MoonCode runtime operations write `moonsuite-conversation-journal.v2`,
+MoonCode's exact-sequence extension of MoonLib's v1 journal contract. Its
+canonical arbitrary-length decimal-string sequences remain readable alongside
+MoonLib v1 numeric envelopes. Receipts remain a record kind, not a separate store or
+runtime API. Append takes a stable cross-process session lock, repairs only a
+torn final suffix, validates the committed prefix through EOF before duplicate
+suppression, computes the exact successor, and requests ordinary file-data
+synchronization. Non-Windows builds also request directory synchronization up
+the complete parent chain; Windows flushes the writable file only. Archive,
+restore, and delete share the stable lock and are designed to prevent
+split-brain among cooperating processes. A newline-committed lifecycle state
+log outside both movable trees records transition intent/result; append and
+checkpoint persistence require active state. Its reader streams only committed
+entries and ignores an arbitrary torn suffix; the next state append repairs the
+suffix. Runtime-turn execution holds a separate shared lifecycle gate per turn,
+and runtime-service holds it from before started persistence through its
+terminal event; archive/restore/delete take it exclusive. Listing/show
+projections use the shared stable lock to recheck state/location and read one
+coherent snapshot/journal view, omitting a moved session and excluding mutable
+live bindings from durable rows. This is the OS-supported process and
+ordinary-crash boundary, not macOS `F_FULLFSYNC` or strongest sudden-power-loss
+proof, and the Windows path has not run in a real Windows lane. Newly written
+checkpoints use `mooncode-session-snapshot.v2`; full diagnostic records use
+`mooncode-session-record.v2` and derive a sibling conversation projection under
+`moonsuite-conversation.v3`. Only the outer `format=listing` envelope uses
+`mooncode-session-listing.v2`; rows do not. Streams use `mooncode-stream.v2`.
+Readers may preserve a legacy snapshot until its checkpoint is rewritten.
 
 MoonCode command intake uses the shared `mooncode/core` envelope contract.
 `native_command_body_required_fields()` and
@@ -104,9 +132,13 @@ command fields; MoonClaw validates `/v1/code/sessions/<id>/commands` against
 that contract instead of maintaining a private route-specific allowlist.
 
 Interactive clients submit through `/v1/code/sessions/<id>/turns`, which
-combines durable command append and single-flight runtime-service start into one
-MoonClaw-owned transaction. `/commands` remains the lower-level queue boundary
-for diagnostic and explicitly orchestrated clients.
+combines durable command append and a runtime-service start that is single-flight
+within one daemon instance in one composite request. It is recoverable rather
+than crash-atomic: if startup does not complete, the durable command remains
+available to a later runtime start. Cross-daemon runtime-service singleton and
+claim exclusivity are not implemented or multiprocess-tested.
+`/commands` remains the lower-level queue boundary for diagnostic and explicitly
+orchestrated clients.
 
 ## Durable Conversation Controls
 

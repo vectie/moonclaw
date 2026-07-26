@@ -58,6 +58,7 @@ priv struct MoonCodeJournalAppendScan {
 ///|
 async fn mooncode_journal_scan_for_append(
   file : @fs.File,
+  expected_session_id : String,
   record_kind : String,
   record_id : String,
   command_id : String,
@@ -69,6 +70,14 @@ async fn mooncode_journal_scan_for_append(
     match file.read_until("\n") {
       Some(line) => {
         let (record, next) = mooncode_journal_stream_record(line, cursor)
+        let current_session_id = mooncode_json_string(
+          record,
+          "session_id",
+          default="",
+        )
+        if current_session_id != expected_session_id {
+          raise InvalidJournal("journal record belongs to a different session")
+        }
         cursor = next
         let current_record_kind = mooncode_json_string(
           record,

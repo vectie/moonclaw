@@ -42,18 +42,9 @@ async fn Daemon::mooncode_list_sessions(
     let rows = records.map(record => mooncode_session_listing_row(record))
     rows.sort_by(mooncode_compare_session_listing_rows)
     w.write(
-      (
-        {
-          "kind": "mooncode-session-listing",
-          "protocol": mooncode_protocol_version(),
-          "owner": "moonclaw",
-          "scope": scope,
-          "book_root": book_root,
-          "durable_store": mooncode_sessions_root(book_root),
-          "durable_store_loaded": book_root != "",
-          "session_count": records.length(),
-          "sessions": Json::array(rows),
-        } : Json).stringify(indent=2),
+      mooncode_session_listing_envelope(book_root, scope, rows).stringify(
+        indent=2,
+      ),
     )
     return
   }
@@ -71,6 +62,26 @@ async fn Daemon::mooncode_list_sessions(
         "sessions": Json::array(records),
       } : Json).stringify(indent=2),
   )
+}
+
+///|
+fn mooncode_session_listing_envelope(
+  book_root : String,
+  scope : String,
+  rows : Array[Json],
+) -> Json {
+  {
+    "kind": "mooncode-session-listing",
+    "contract_id": @mooncode_core.session_listing_contract_id(),
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "scope": scope,
+    "book_root": book_root,
+    "durable_store": mooncode_sessions_root(book_root),
+    "durable_store_loaded": book_root != "",
+    "session_count": rows.length(),
+    "sessions": Json::array(rows),
+  }
 }
 
 ///|

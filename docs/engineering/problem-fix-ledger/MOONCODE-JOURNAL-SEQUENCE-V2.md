@@ -39,3 +39,28 @@ This slice makes validation and replay preserve exact arbitrary-precision
 sequences. Production append and `mooncode_journal_entries` still use legacy
 `Int` projections; they are the next migration slices and must not be treated as
 exact until their focused regression tests pass.
+
+## Superseding production migration completion
+
+The historical boundary above is now closed. Production append and journal
+entry consumers use exact v2 decimal strings, while v1 numeric envelopes remain
+read-compatible. Append uses a locked line-oriented scan without whole-journal
+materialization, exact successor carry, canonical JSONL, stable identity
+deduplication, stable session locking, file flush, and supported parent-directory
+synchronization. Active-state checks backed by durable lifecycle state logs
+prevent post-archive/delete append or checkpoint resurrection. The log readers
+stream committed entries without an aggregate-size cap, ignore torn marker tails,
+and let the next writer repair them. Runtime-turn
+holds the lifecycle gate shared per turn; runtime-service holds it from before
+started persistence through terminal persistence; archive/restore/delete take it
+exclusively. Shared-lock projections recheck state/location before reading the
+selected snapshot and journal and exclude mutable live bindings from durable
+rows. Conversation, stream, persisted-session snapshot, full-record,
+external-listing, lifecycle, control, consumer, and capability surfaces carry
+explicit post-migration contract IDs as appropriate; compact/listing rows and the
+default list container do not. Watch v2 is a builder and negotiated write
+contract, not a separately proven production emitter. Core proof is 75/75;
+focused production append is 28/28. Append no longer materializes the whole
+journal, but compatibility replay and HTTP response aggregation remain open
+migrations. The prior 267/267 result remains historical evidence for the earlier
+reader-only state.

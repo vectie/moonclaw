@@ -82,8 +82,21 @@ MoonClaw is strongest when you want one system to handle:
   `.moonsuite/products/moonclaw/mooncode/sessions/<session-id>/`, including
   the replaceable `session.json` checkpoint and authoritative `journal.jsonl`.
   Commands, receipts, events, package results, and book results share one
-  contiguous journal sequence under the MoonLib
-  `moonsuite-conversation-journal.v1` contract. Suite-hosted
+  contiguous exact journal sequence. Current writers use
+  `moonsuite-conversation-journal.v2`, MoonCode's exact-sequence extension of
+  MoonLib's v1 journal contract. Its canonical decimal-string sequences remain
+  replay-compatible with MoonLib v1 numeric envelopes.
+  Production append scans under an exclusive stable session lock, repairs only
+  a torn suffix, writes one canonical JSONL record with an exact successor, and
+  requests ordinary file-data synchronization plus supported parent-directory
+  synchronization. Newly written `session.json` checkpoints carry
+  `mooncode-session-snapshot.v2`. Full diagnostic projections carry
+  `mooncode-session-record.v2` and derive a sibling `mooncode_conversation`
+  projection under `moonsuite-conversation.v3`; checkpoints do not embed that
+  conversation. Only the outer `format=listing` envelope carries
+  `mooncode-session-listing.v2`; individual rows do not. A loaded legacy
+  checkpoint may remain legacy until rewritten. Stream projections use
+  `mooncode-stream.v2`. Suite-hosted
   `books/<book-id>` roots resolve to
   the owning suite's MoonClaw product home; standalone book roots use their own
   local `.moonsuite/products/moonclaw` product home. The daemon can list/show

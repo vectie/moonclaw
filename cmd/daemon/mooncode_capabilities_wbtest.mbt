@@ -42,7 +42,7 @@ test "mooncode capabilities expose native daemon endpoints" {
   )
   assert_true(
     mooncode_native_capability_endpoints().contains(
-      "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<n>&wait_ms=<ms>&poll_ms=<ms>",
+      "/v1/code/sessions/<id>/stream?book_root=<path>&format=jsonl|sse&since=<canonical-decimal>&wait_ms=<ms>&poll_ms=<ms>",
     ),
   )
   assert_true(
@@ -59,11 +59,16 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_true(mooncode_native_capability_tools().contains("apply_patch"))
   assert_eq(
     mooncode_native_capability_contract_id(),
-    "mooncode-native-capability-surface.v1",
+    "mooncode-native-capability-surface.v2",
   )
   assert_eq(
     mooncode_executable_book_lifecycle_contract_id(),
-    "mooncode-executable-book-lifecycle.v1",
+    "mooncode-executable-book-lifecycle.v2",
+  )
+  assert_false(
+    mooncode_capabilities_payload()
+    .stringify()
+    .contains("mooncode-executable-book-lifecycle.v1"),
   )
   assert_eq(mooncode_native_capability_surface_fingerprint().length(), 64)
   let surface = mooncode_native_capability_surface_json().stringify()
@@ -72,8 +77,19 @@ test "mooncode capabilities expose native daemon endpoints" {
   )
   assert_true(surface.contains("\"capability_surface_fingerprint\""))
   assert_true(surface.contains("\"required_endpoints\""))
-  assert_true(surface.contains("\"optional_endpoints\""))
-  assert_true(surface.contains("\"advertised_endpoints\""))
+  assert_true(surface.contains("\"conversation_contract\""))
+  assert_true(surface.contains("\"conversation_watch_write_contract\""))
+  assert_true(surface.contains("\"conversation_watch_read_contract_ids\""))
+  assert_true(
+    surface.contains(
+      "\"journal_write_contract_id\":\"moonsuite-conversation-journal.v2\"",
+    ),
+  )
+  assert_true(surface.contains("\"journal_read_contract_ids\""))
+  assert_true(surface.contains("\"session_contracts\""))
+  assert_true(surface.contains("\"snapshot\":\"mooncode-session-snapshot.v2\""))
+  assert_true(surface.contains("\"record\":\"mooncode-session-record.v2\""))
+  assert_true(surface.contains("\"listing\":\"mooncode-session-listing.v2\""))
   let payload_json = mooncode_capabilities_payload()
   let payload_surface = mooncode_json_object_field_or_empty(
     payload_json, "capability_surface",
@@ -123,7 +139,8 @@ test "mooncode capabilities expose native daemon endpoints" {
   )
   assert_eq(
     mooncode_json_array_items(payload_json, "endpoints").length(),
-    mooncode_json_array_items(payload_surface, "advertised_endpoints").length(),
+    mooncode_json_array_items(payload_surface, "required_endpoints").length() +
+    mooncode_native_capability_optional_endpoints().length(),
   )
   assert_eq(
     mooncode_json_array_items(payload_json, "tools").length(),
@@ -166,12 +183,12 @@ test "mooncode capabilities expose native daemon endpoints" {
   assert_false(payload.contains("runtime-receipts.jsonl"))
   assert_true(
     payload.contains(
-      "\"capability_contract_id\":\"mooncode-native-capability-surface.v1\"",
+      "\"capability_contract_id\":\"mooncode-native-capability-surface.v2\"",
     ),
   )
   assert_true(payload.contains("\"capability_surface\""))
   assert_true(payload.contains("\"executable_book_lifecycle_contract\""))
-  assert_true(payload.contains("mooncode-executable-book-lifecycle.v1"))
+  assert_true(payload.contains("mooncode-executable-book-lifecycle.v2"))
   assert_true(payload.contains("\"native_runtime_ready\":true"))
   assert_true(
     payload.contains("\"runtime_mode\":\"moonclaw-daemon-native-mooncode\""),

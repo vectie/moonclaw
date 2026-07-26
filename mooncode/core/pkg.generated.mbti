@@ -163,9 +163,17 @@ pub fn conversation_watch_contract_id() -> String
 
 pub fn conversation_watch_contract_json() -> Json
 
+pub fn conversation_watch_exact_contract_id() -> String
+
+pub fn conversation_watch_exact_contract_json() -> Json
+
 pub fn conversation_watch_kind() -> String
 
+pub fn conversation_watch_read_contract_ids() -> Array[String]
+
 pub fn conversation_watch_response(session_id~ : String, revision~ : Int, next_sequence~ : Int, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json
+
+pub fn conversation_watch_response_exact(session_id~ : String, revision~ : String, next_sequence~ : String, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json raise
 
 pub fn event_lane_artifact() -> String
 
@@ -196,6 +204,8 @@ pub fn event_lane_transcript() -> String
 pub fn event_lanes() -> Array[String]
 
 pub fn event_progress_lanes() -> Array[String]
+
+pub fn exact_cursor_is_canonical_nonnegative_decimal(String) -> Bool
 
 pub fn executable_book_lifecycle_contract_id() -> String
 
@@ -230,6 +240,8 @@ pub fn goal_runtime_status_json(GoalRuntimeState) -> Json
 pub fn goal_status_json(Goal) -> Json
 
 pub fn journal_contract_id() -> String
+
+pub fn journal_read_contract_ids() -> Array[String]
 
 pub fn model_planner_command_action_is_supported(String) -> Bool
 
@@ -430,6 +442,8 @@ pub fn native_session_show_endpoint(String, String) -> String
 pub fn native_session_turns_endpoint(String) -> String
 
 pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_ms? : Int) -> String
+
+pub fn native_stream_endpoint_exact(String, String, String, String, wait_ms? : Int, poll_ms? : Int) -> String raise
 
 pub fn native_tool_exec_endpoint(String, String) -> String
 
@@ -1005,11 +1019,17 @@ pub fn runtime_tool_web_search() -> String
 
 pub fn runtime_tool_write() -> String
 
+pub fn session_listing_contract_id() -> String
+
+pub fn session_record_contract_id() -> String
+
 pub fn session_runtime_evidence_kind() -> String
 
 pub fn session_runtime_evidence_rule() -> String
 
 pub fn session_runtime_evidence_status_for_counts(Int, Int, Int, Int, Int, Int) -> String
+
+pub fn session_snapshot_contract_id() -> String
 
 pub fn standalone_boundary_json() -> Json
 

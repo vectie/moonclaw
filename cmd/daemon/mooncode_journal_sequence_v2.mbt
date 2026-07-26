@@ -125,7 +125,7 @@ fn MoonCodeJournalSequence::text(self : MoonCodeJournalSequence) -> String {
 
 ///|
 fn mooncode_journal_contract_id_v2() -> String {
-  "moonsuite-conversation-journal.v2"
+  @mooncode_core.journal_contract_id()
 }
 
 ///|

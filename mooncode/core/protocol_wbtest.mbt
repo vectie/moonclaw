@@ -1,15 +1,21 @@
 ///|
-test "mooncode core protocol surface is stable" {
+test "mooncode core protocol v3 surface is stable" {
   assert_eq(protocol_version(), "mooncode.v1")
-  assert_eq(conversation_contract_id(), "moonsuite-conversation.v2")
-  assert_eq(journal_contract_id(), "moonsuite-conversation-journal.v1")
+  assert_eq(conversation_contract_id(), "moonsuite-conversation.v3")
+  assert_eq(journal_contract_id(), "moonsuite-conversation-journal.v2")
+  assert_eq(journal_read_contract_ids(), [
+    "moonsuite-conversation-journal.v1", "moonsuite-conversation-journal.v2",
+  ])
+  assert_eq(session_snapshot_contract_id(), "mooncode-session-snapshot.v2")
+  assert_eq(session_record_contract_id(), "mooncode-session-record.v2")
+  assert_eq(session_listing_contract_id(), "mooncode-session-listing.v2")
   assert_eq(conversation_kind(), "mooncode-conversation")
   assert_eq(conversation_turn_kind(), "mooncode-conversation-turn")
   assert_true(conversation_message_roles().contains("work"))
   assert_true(conversation_turn_required_fields().contains("client_turn_id"))
   assert_eq(
     native_capability_contract_id(),
-    "mooncode-native-capability-surface.v1",
+    "mooncode-native-capability-surface.v2",
   )
   let endpoints = native_capability_endpoints()
   assert_eq(endpoints.capabilities, "/v1/code/capabilities")
@@ -58,6 +64,12 @@ test "mooncode core protocol surface is stable" {
   assert_eq(
     native_stream_endpoint("session one", "/tmp/moon book", "sse", 7),
     "/v1/code/sessions/session%20one/stream?book_root=%2Ftmp%2Fmoon%20book&format=sse&since=7&wait_ms=0&poll_ms=100",
+  )
+  assert_eq(
+    native_stream_endpoint_exact(
+      "session one", "/tmp/moon book", "jsonl", "92233720368547758081234567890",
+    ),
+    "/v1/code/sessions/session%20one/stream?book_root=%2Ftmp%2Fmoon%20book&format=jsonl&since=92233720368547758081234567890&wait_ms=0&poll_ms=100",
   )
   assert_eq(native_endpoint_component("safe-_.~"), "safe-_.~")
   assert_eq(native_endpoint_component("!*'()"), "%21%2A%27%28%29")
@@ -132,7 +144,7 @@ test "mooncode core protocol surface is stable" {
     conversation_ownership_contract_id(),
     "mooncode-conversation-ownership.v1",
   )
-  assert_eq(runtime_control_contract_id(), "mooncode-runtime-control.v1")
+  assert_eq(runtime_control_contract_id(), "mooncode-runtime-control.v2")
   assert_true(runtime_control_action_starts_turn(command_prompt()))
   assert_true(runtime_control_action_starts_turn(command_package()))
   assert_false(runtime_control_action_starts_turn(command_steer()))
@@ -147,7 +159,7 @@ test "mooncode core protocol surface is stable" {
       runtime_control_effect_cancel_active(),
     ).contains(runtime_event_runtime_aborted()),
   )
-  assert_eq(runtime_consumer_contract_id(), "mooncode-runtime-consumer.v1")
+  assert_eq(runtime_consumer_contract_id(), "mooncode-runtime-consumer.v2")
   assert_true(runtime_receipt_status_is_delivered("runtime-completed"))
   assert_false(runtime_receipt_status_is_delivered("runtime-claimed"))
   assert_true(runtime_receipt_status_is_claimed("runtime-claimed"))
@@ -246,11 +258,11 @@ test "mooncode core protocol surface is stable" {
   )
   assert_true(surface.contains("\"runtime_control_contract\""))
   assert_true(
-    surface.contains("\"contract_id\":\"mooncode-runtime-control.v1\""),
+    surface.contains("\"contract_id\":\"mooncode-runtime-control.v2\""),
   )
   assert_true(surface.contains("\"runtime_consumer_contract\""))
   assert_true(
-    surface.contains("\"contract_id\":\"mooncode-runtime-consumer.v1\""),
+    surface.contains("\"contract_id\":\"mooncode-runtime-consumer.v2\""),
   )
   assert_true(surface.contains("\"package_review_flow_contract\""))
   assert_true(
@@ -460,10 +472,10 @@ test "mooncode core owns native command execution contract" {
 }
 
 ///|
-test "mooncode core exposes the MoonLib conversation v2 contract" {
+test "mooncode core exposes the MoonLib conversation v3 contract" {
   let payload = conversation_contract_json().stringify()
   assert_true(payload.contains("\"kind\":\"moonsuite-conversation-contract\""))
-  assert_true(payload.contains("\"contract_id\":\"moonsuite-conversation.v2\""))
+  assert_true(payload.contains("\"contract_id\":\"moonsuite-conversation.v3\""))
   assert_true(payload.contains("\"product_id\":\"mooncode\""))
   assert_true(
     payload.contains("\"conversation_kind\":\"mooncode-conversation\""),
@@ -474,10 +486,87 @@ test "mooncode core exposes the MoonLib conversation v2 contract" {
   assert_true(
     payload.contains("\"turn_order\":[\"user\",\"work\",\"assistant\"]"),
   )
-  assert_true(payload.contains("\"shared_contract_owner\":\"moonlib\""))
+  assert_true(payload.contains("\"contract_owner\":\"mooncode\""))
+  assert_true(payload.contains("\"base_contract_owner\":\"moonlib\""))
+  assert_true(
+    payload.contains(
+      "\"sequence_encoding\":\"canonical nonnegative decimal JSON string\"",
+    ),
+  )
+  assert_true(
+    payload.contains(
+      "\"journal_write_contract_id\":\"moonsuite-conversation-journal.v2\"",
+    ),
+  )
   assert_false(payload.contains("internal/mooncode"))
   assert_false(payload.contains("internal/moonwiki"))
   assert_false(payload.contains("Rabbita"))
+}
+
+///|
+test "mooncode exact conversation watch preserves arbitrary cursors" {
+  let response = conversation_watch_response_exact(
+    session_id="session",
+    revision="92233720368547758081234567890",
+    next_sequence="92233720368547758081234567891",
+    changed=true,
+    heartbeat=false,
+    terminal=false,
+    retry_after_ms=25,
+    snapshot={},
+  ).stringify()
+  assert_true(
+    response.contains("\"contract_id\":\"moonsuite-conversation-watch.v2\""),
+  )
+  assert_true(
+    response.contains("\"revision\":\"92233720368547758081234567890\""),
+  )
+  assert_true(
+    conversation_watch_exact_contract_json()
+    .stringify()
+    .contains("canonical nonnegative decimal JSON string"),
+  )
+}
+
+///|
+test "mooncode exact cursor builders reject noncanonical values" {
+  assert_true(exact_cursor_is_canonical_nonnegative_decimal("0"))
+  assert_true(
+    exact_cursor_is_canonical_nonnegative_decimal(
+      "922337203685477580812345678901234567890",
+    ),
+  )
+  for bad in ["", "00", "01", "-1", "+1", "1.0", "1e3", "a1"] {
+    assert_false(exact_cursor_is_canonical_nonnegative_decimal(bad))
+    let endpoint_rejected = try {
+      ignore(native_stream_endpoint_exact("session", "/book", "jsonl", bad))
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(endpoint_rejected)
+    let watch_rejected = try {
+      ignore(
+        conversation_watch_response_exact(
+          session_id="session",
+          revision=bad,
+          next_sequence="0",
+          changed=false,
+          heartbeat=true,
+          terminal=false,
+          retry_after_ms=25,
+          snapshot={},
+        ),
+      )
+      false
+    } catch {
+      _ => true
+    }
+    assert_true(watch_rejected)
+  }
+  assert_true(
+    native_stream_endpoint("session", "/book", "jsonl", -1).contains("since=-1"),
+  )
 }
 
 ///|
@@ -764,7 +853,7 @@ test "mooncode core owns runtime control contract" {
     payload.contains("\"kind\":\"mooncode-runtime-control-contract\""),
   )
   assert_true(
-    payload.contains("\"contract_id\":\"mooncode-runtime-control.v1\""),
+    payload.contains("\"contract_id\":\"mooncode-runtime-control.v2\""),
   )
   assert_true(payload.contains("\"command_action_contract_id\""))
   assert_true(payload.contains("\"event_name_contract_id\""))
@@ -863,7 +952,7 @@ test "mooncode core owns runtime consumer contract" {
     payload.contains("\"kind\":\"mooncode-runtime-consumer-contract\""),
   )
   assert_true(
-    payload.contains("\"contract_id\":\"mooncode-runtime-consumer.v1\""),
+    payload.contains("\"contract_id\":\"mooncode-runtime-consumer.v2\""),
   )
   assert_true(payload.contains("\"runtime-claimed\""))
   assert_true(payload.contains("\"blocked-by-prior-command\""))
@@ -1147,7 +1236,7 @@ fn native_event_projection_test_int(json : Json, key : String) -> Int {
 test "mooncode core defines executable book lifecycle contract" {
   assert_eq(
     executable_book_lifecycle_contract_id(),
-    "mooncode-executable-book-lifecycle.v1",
+    "mooncode-executable-book-lifecycle.v2",
   )
   let steps = executable_book_lifecycle_steps()
   assert_eq(steps.length(), 9)
@@ -1171,7 +1260,7 @@ test "mooncode core defines executable book lifecycle contract" {
     ),
   )
   assert_true(payload.contains("journal.jsonl"))
-  assert_true(payload.contains("moonsuite-conversation-journal.v1"))
+  assert_true(payload.contains("moonsuite-conversation-journal.v2"))
   assert_false(payload.contains("runtime-receipts.jsonl"))
   assert_true(payload.contains("package_verified"))
   assert_true(payload.contains("readiness projection"))

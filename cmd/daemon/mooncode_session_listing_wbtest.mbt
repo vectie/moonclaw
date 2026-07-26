@@ -1,4 +1,16 @@
 ///|
+test "mooncode external listing envelope carries its v2 contract" {
+  let payload = mooncode_session_listing_envelope("/book", "active", [
+    { "id": "session" },
+  ]).stringify()
+  assert_true(payload.contains("\"kind\":\"mooncode-session-listing\""))
+  assert_true(
+    payload.contains("\"contract_id\":\"mooncode-session-listing.v2\""),
+  )
+  assert_true(payload.contains("\"session_count\":1"))
+}
+
+///|
 test "mooncode session listing uses live last_updated without sidecar mtime" {
   let listing = mooncode_session_listing_row({
     "kind": "mooncode-session-record",

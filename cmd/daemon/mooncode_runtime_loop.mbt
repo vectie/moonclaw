@@ -47,6 +47,22 @@ async fn Daemon::mooncode_runtime_loop_execute(
   requested_book_root : String,
   payload : Json,
 ) -> Json {
+  self.mooncode_runtime_loop_execute_with_gate_state(
+    session_id,
+    requested_book_root,
+    payload,
+    lifecycle_gate_held=false,
+  )
+}
+
+///|
+async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
+  self : Daemon,
+  session_id : String,
+  requested_book_root : String,
+  payload : Json,
+  lifecycle_gate_held~ : Bool,
+) -> Json {
   let binding = self.mooncode_binding_for_session(session_id)
   if !binding.bind_book_root(requested_book_root) {
     return {
@@ -100,14 +116,21 @@ async fn Daemon::mooncode_runtime_loop_execute(
       stopped_by = "idle"
       break
     }
-    let turn = self.mooncode_runtime_turn_execute(session_id, book_root, {
+    let turn_payload : Json = {
       "consumer_id": consumer_id,
       "runtime_loop": true,
       "loop_index": index,
       "max_turns": max_turns,
       "live_wait_ms": live_wait_ms,
       "poll_ms": poll_ms,
-    })
+    }
+    let turn = if lifecycle_gate_held {
+      self.mooncode_runtime_turn_execute_under_lifecycle_gate(
+        session_id, book_root, turn_payload,
+      )
+    } else {
+      self.mooncode_runtime_turn_execute(session_id, book_root, turn_payload)
+    }
     turns.push(turn)
     if !mooncode_json_bool(turn, "ran", default=false) {
       stopped_by = "idle"

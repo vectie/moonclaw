@@ -134,3 +134,128 @@ results.
   focused HTTP-boundary test for those query cases.
 - Direct wait-envelope cursor assertions are not isolated in a focused unit
   test, although the v2 wait contract is exercised by the full daemon suite.
+
+## Production exact-v2 append and contract propagation
+
+This section supersedes the historical open statement above that production
+append was bounded and wrote v1. The old statement remains in place as an audit
+trail.
+
+- **Production writer:** append now acquires a stable cross-process session lock
+  outside the movable session directory, repairs only a torn suffix, and uses a
+  line-oriented scan without whole-journal materialization. The scan retains one
+  complete JSONL line and its parsed record at a time, so memory scales with the
+  largest single record but not with the whole journal. It delays duplicate suppression until validation
+  completes, computes `cursor.next()` with decimal digit carry, and writes one
+  canonical `moonsuite-conversation-journal.v2` line. Readers remain dual v1/v2.
+- **Identity semantics:** direct `client_turn_id` has precedence; otherwise the
+  first matching command identity is inherited. Foreign-session records fail
+  closed. Missing timestamps, malformed snapshot cursors, and leaked goal-store
+  errors normalize to the journal corruption contract.
+- **Durability:** a successful append or duplicate retry requests ordinary
+  journal file-data synchronization first. Non-Windows builds then request
+  directory synchronization from the leaf through the filesystem anchor.
+  Windows flushes the writable file only and has not run in a real Windows lane.
+  Archive, restore, and delete use the same stable lock and are designed to
+  prevent active/archive split-brain among cooperating processes. This is the
+  OS-supported process and ordinary-crash boundary, not macOS `F_FULLFSYNC` or
+  strongest sudden-power-loss proof.
+- **Wire contracts:** conversation projection is
+  `moonsuite-conversation.v3`; durable stream is `mooncode-stream.v2`; newly
+  written `session.json` checkpoints are `mooncode-session-snapshot.v2`; and full
+  diagnostic records are `mooncode-session-record.v2`. Only the outer
+  `format=listing` envelope carries `mooncode-session-listing.v2`; its rows,
+  compact rows, and the default session-list container do not. A full record
+  derives its conversation as a sibling of `snapshot`; the checkpoint does not
+  embed it. A legacy checkpoint may remain unchanged under the record's
+  `snapshot` field until rewritten. Derived cursor fields are canonical decimal
+  strings. Exact endpoint/watch builders reject empty, signed, leading-zero,
+  fractional, exponent, and nondigit cursors.
+- **Negotiation repair:** the daemon now delegates the fingerprinted native
+  capability payload to `mooncode/core`. The capability surface, executable-book
+  lifecycle, runtime-control, and runtime-consumer contracts were bumped to v2
+  where their journal dependency changed; they expose current-write plus
+  accepted-read journal IDs. Watch v2 plus legacy watch read IDs are advertised.
+- **Open aggregate-memory boundary:** Exact append scanning no longer materializes
+  the whole journal, but compatibility replay and the HTTP stream response still
+  build arrays or aggregate payloads. Goal replay and HTTP-stream aggregate-memory
+  independence remain separate migrations and are not claimed complete here.
+
+## Runtime and validation failures recovered in this slice
+
+- `/commands` first omitted `command_id`, then placed it at an unsupported top
+  level; the accepted contract required it inside `packet`.
+- A stale rejected turn was consumed before the replacement command.
+- Autonomous turns repeatedly paused at the hard eight-tool step boundary, and
+  one failed receipt followed partial successful edits. These receipts remained
+  nonterminal; small deterministic MoonCode continuations resumed the same goal.
+- Oversized tool results were truncated. The controller relied on file diffs,
+  compiler output, and canonical test commands instead of receipt prose.
+- Watcher status 255 and approval loops obscured diagnostics. Direct native
+  `moon check` exposed the real errors; no approval checkpoint was treated as a
+  goal bound.
+- MoonCode skipped requested tests and made unsupported coverage claims. The
+  controller independently ran focused and full suites.
+- The first consumer migration produced 266/273 because stale numeric session
+  projections remained. Exact string projections and labeled v2 shapes fixed
+  them.
+- Directory durability drafts used a `StringView` incorrectly and had catch
+  precedence errors; exact compiler diagnostics produced owned paths and an
+  exhaustive generic rethrow.
+- A partial catch triggered a compiler warning treated as failure; a generic
+  rethrow made the error boundary exhaustive.
+- A later full run reached 282/283 because the capability endpoint template was
+  stale; the canonical-decimal template and its test were corrected.
+- The first portability audit found Windows directory flushing would call
+  `FlushFileBuffers` on read-only directory handles, and a second audit found
+  existence was not a durability anchor plus lifecycle move/delete races. The
+  platform-gated directory sync, full ancestor chain, and stable external lock
+  fixed those defects. A real Windows runtime lane is still required before
+  claiming independently executed Windows durability proof.
+- A stable lock alone still allowed a later append or snapshot checkpoint to
+  recreate active storage after archive/delete. Active-state checks backed by a
+  newline-committed lifecycle state log now reject stale writers. The reader
+  streams committed entries without an aggregate-size cap, ignores a torn final
+  marker suffix, lets the next writer repair it, reconciles interrupted transitions
+  from the one surviving location, and rejects simultaneous active plus archived
+  storage. First snapshot creation
+  also syncs its parent chain.
+- Runtime-turn holds a separate cross-process lifecycle gate shared per turn, and
+  runtime-service holds it from before started persistence through success/failure
+  terminal persistence. Archive, restore, and delete take it exclusively before
+  idle/state checks and the stable storage lock. This closes the identified
+  lifecycle TOCTOU for those native paths.
+- Listing/show previously could mix a pre-move snapshot with a post-move journal
+  or mutable live-binding fields. Per-row shared locking rechecks the selected
+  store, reloads snapshot and journal within one lock domain, and omits moved
+  rows. Active/archived durable rows exclude mutable live bindings; only an
+  unpersisted `new` row may use one. The external listing envelope alone owns the
+  v2 listing contract ID.
+- Snapshot loading now validates its contract: a loaded persisted v2 checkpoint
+  requires a canonical decimal-string `journal_sequence`. Persisted checkpoints
+  with a missing contract ID or the v1 contract may dual-read numeric cursors; an
+  absent snapshot synthesizes the current v2 cursor `"0"`, and unknown contract
+  IDs fail closed. The legacy Int stream endpoint remains non-raising; exact-string
+  validation is isolated to the new exact endpoint.
+- A stale lifecycle-v1 capability description was corrected to v2 and a negative
+  regression assertion rejects any v1 leak.
+
+## Verification receipts for the production checkpoint
+
+- Native daemon check: 0 errors.
+- Core exact-contract suite: 75/75.
+- Production journal streaming suite: 28/28.
+- Same-process session-management/lifecycle/projection suite: 9/9.
+- Runtime-service suite: 5/5.
+- Session listing suite: 13/13.
+- The historical 273/273 and intermediate 283/283 receipts remain valid for
+  their exact source states.
+- **Evidence boundary:** lifecycle, recovery, runtime-gate, and projection-race
+  tests use same-process async scheduling; ancestor coverage verifies only the
+  path plan. No multiprocess, crash/failpoint, sudden-power-loss, or real-Windows
+  lane has run.
+- **Final post-format receipts:** `moon info` and `moon fmt` succeeded; generated
+  interface changes contain the expected exact cursor/watch/journal/session APIs
+  while the legacy Int stream-endpoint wrapper remains source-compatible;
+  `git diff --check` is clean; the daemon native suite passes 295/295; the full
+  repository native suite passes 1356/1356.

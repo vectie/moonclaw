@@ -145,6 +145,269 @@ async test "mooncode session lifecycle is durable and preserves book content" {
 }
 
 ///|
+async test "mooncode stable session lock serializes append storage and archive" {
+  @moonclaw_fsx.with_temporary_directory("moonclaw-session-lock-XXXXXX", book_root => {
+    let session_id = "session-lock"
+    let daemon = mooncode_control_test_daemon(book_root)
+    mooncode_management_test_create_session(daemon, book_root, session_id)
+    let session_lock = mooncode_open_session_lock(book_root, session_id)
+    session_lock.lock(Exclusive)
+    @async.with_task_group(group => {
+      let archive = group.spawn(() => {
+        daemon.mooncode_manage_session_response(session_id, {
+          "action": "archive",
+          "book_root": book_root,
+        })
+      })
+      @async.sleep(25)
+      assert_true(archive.try_wait() is None)
+      session_lock.unlock()
+      let result = archive.wait()
+      assert_true(mooncode_json_bool(result, "archived", default=false))
+    })
+    session_lock.close()
+    assert_false(@fsx.exists(mooncode_session_dir(book_root, session_id)))
+    assert_true(
+      @fsx.exists(
+        mooncode_session_dir_by_safe_id(
+          book_root,
+          mooncode_safe_session_id(session_id),
+          archived=true,
+        ),
+      ),
+    )
+  })
+}
+
+///|
+async test "mooncode lifecycle retries recover interrupted transition markers" {
+  @moonclaw_fsx.with_temporary_directory(
+    "moonclaw-session-transition-recovery-XXXXXX",
+    book_root => {
+      let session_id = "session-transition-recovery"
+      let daemon = mooncode_control_test_daemon(book_root)
+      mooncode_management_test_create_session(daemon, book_root, session_id)
+      let session_lock = mooncode_open_session_lock(book_root, session_id)
+      session_lock.lock(Exclusive)
+      mooncode_write_session_state_locked(book_root, session_id, "archiving")
+      session_lock.unlock()
+      session_lock.close()
+      assert_true(
+        mooncode_append_session_journal_once(
+          book_root,
+          session_id,
+          mooncode_journal_event(),
+          {
+            "id": "recovered-active",
+            "command_id": "cmd-1",
+            "created_at": "2026-07-15T00:03:00Z",
+          },
+        ),
+      )
+      assert_true(
+        @fsx.read_file(mooncode_session_state_path(book_root, session_id)).has_suffix(
+          "active\n",
+        ),
+      )
+      ignore(
+        daemon.mooncode_manage_session_response(session_id, {
+          "action": "archive",
+          "book_root": book_root,
+        }),
+      )
+      let restore_lock = mooncode_open_session_lock(book_root, session_id)
+      restore_lock.lock(Exclusive)
+      mooncode_write_session_state_locked(book_root, session_id, "restoring")
+      restore_lock.unlock()
+      restore_lock.close()
+      ignore(
+        daemon.mooncode_manage_session_response(session_id, {
+          "action": "restore",
+          "book_root": book_root,
+        }),
+      )
+      let delete_lock = mooncode_open_session_lock(book_root, session_id)
+      delete_lock.lock(Exclusive)
+      mooncode_write_session_state_locked(book_root, session_id, "deleting")
+      delete_lock.unlock()
+      delete_lock.close()
+      ignore(
+        daemon.mooncode_manage_session_response(session_id, {
+          "action": "delete",
+          "book_root": book_root,
+        }),
+      )
+      assert_true(
+        @fsx.read_file(mooncode_session_state_path(book_root, session_id)).has_suffix(
+          "deleted\n",
+        ),
+      )
+    },
+  )
+}
+
+///|
+async test "mooncode lifecycle reader ignores and next writer repairs torn marker suffix" {
+  @moonclaw_fsx.with_temporary_directory(
+    "moonclaw-session-marker-tail-XXXXXX",
+    book_root => {
+      let session_id = "session-marker-tail"
+      let daemon = mooncode_control_test_daemon(book_root)
+      mooncode_management_test_create_session(daemon, book_root, session_id)
+      let marker = mooncode_session_state_path(book_root, session_id)
+      let marker_file = @fs.open(
+        marker,
+        mode=ReadWrite,
+        append=false,
+        truncate=false,
+      )
+      marker_file.lock(Exclusive)
+      let position = marker_file.size()
+      marker_file.write_at(b"archiv", position~)
+      marker_file.sync()
+      marker_file.unlock()
+      marker_file.close()
+      let session_lock = mooncode_open_session_lock(book_root, session_id)
+      session_lock.lock(Shared)
+      assert_eq(mooncode_session_state_locked(book_root, session_id), "active")
+      session_lock.unlock()
+      session_lock.close()
+      ignore(
+        daemon.mooncode_manage_session_response(session_id, {
+          "action": "archive",
+          "book_root": book_root,
+        }),
+      )
+      let marker_content = @fsx.read_file(marker)
+      assert_false(marker_content.contains("archivarchiving"))
+      assert_true(marker_content.has_suffix("archived\n"))
+    },
+  )
+}
+
+///|
+async test "mooncode lifecycle reader streams committed history and ignores raw torn bytes" {
+  @moonclaw_fsx.with_temporary_directory(
+    "moonclaw-session-state-stream-XXXXXX",
+    book_root => {
+      let marker = mooncode_session_state_path(
+        book_root, "session-state-stream",
+      )
+      @fsx.make_directory(
+        @pathx.dirname(marker),
+        recursive=true,
+        exists_ok=true,
+      )
+      let file = @fs.open(
+        marker,
+        mode=ReadWrite,
+        append=false,
+        create=0o644,
+        truncate=true,
+      )
+      let mut position = 0L
+      for _ in 0..<8192 {
+        file.write_at(b"active\n", position~)
+        position += 7L
+      }
+      file.write_at(b"archived\n", position~)
+      position += 9L
+      file.write_at(Bytes::from_array([0xe2, 0x82]), position~)
+      file.sync()
+      file.close()
+      assert_eq(mooncode_session_stored_state_locked(marker), "archived")
+      @fsx.write_to_file(marker, "active\ninvalid\nrestor")
+      let invalid_committed_state_rejected = try {
+        ignore(mooncode_session_stored_state_locked(marker))
+        false
+      } catch {
+        InvalidJournal(_) => true
+        _ => false
+      }
+      assert_true(invalid_committed_state_rejected)
+    },
+  )
+}
+
+///|
+async test "mooncode runtime lifecycle gate blocks archive for active work" {
+  @moonclaw_fsx.with_temporary_directory(
+    "moonclaw-session-runtime-gate-XXXXXX",
+    book_root => {
+      let session_id = "session-runtime-gate"
+      let daemon = mooncode_control_test_daemon(book_root)
+      mooncode_management_test_create_session(daemon, book_root, session_id)
+      let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+        book_root, session_id,
+      )
+      lifecycle_gate.lock(Shared)
+      @async.with_task_group(group => {
+        let archive = group.spawn(() => {
+          daemon.mooncode_manage_session_response(session_id, {
+            "action": "archive",
+            "book_root": book_root,
+          })
+        })
+        @async.sleep(25)
+        assert_true(archive.try_wait() is None)
+        lifecycle_gate.unlock()
+        let result = archive.wait()
+        assert_true(mooncode_json_bool(result, "archived", default=false))
+      })
+      lifecycle_gate.close()
+      assert_false(@fsx.exists(mooncode_session_dir(book_root, session_id)))
+    },
+  )
+}
+
+///|
+async test "mooncode stable projection lock omits a session moved while waiting" {
+  @moonclaw_fsx.with_temporary_directory(
+    "moonclaw-session-projection-lock-XXXXXX",
+    book_root => {
+      let session_id = "session-projection-lock"
+      let safe_session_id = mooncode_safe_session_id(session_id)
+      let daemon = mooncode_control_test_daemon(book_root)
+      mooncode_management_test_create_session(daemon, book_root, session_id)
+      let session_lock = mooncode_open_session_lock(book_root, session_id)
+      session_lock.lock(Exclusive)
+      @async.with_task_group(group => {
+        let durable_projection = group.spawn(() => {
+          mooncode_durable_session_record_by_safe_id(book_root, safe_session_id)
+        })
+        let direct_projection = group.spawn(() => {
+          daemon.mooncode_session_record(session_id, book_root)
+        })
+        @async.sleep(25)
+        assert_true(durable_projection.try_wait() is None)
+        assert_true(direct_projection.try_wait() is None)
+        mooncode_write_session_state_locked(book_root, session_id, "archiving")
+        mooncode_move_session_record(
+          book_root,
+          safe_session_id,
+          from_archived=false,
+        )
+        mooncode_write_session_state_locked(book_root, session_id, "archived")
+        session_lock.unlock()
+        assert_true(durable_projection.wait() is None)
+        assert_true(direct_projection.wait() is None)
+      })
+      session_lock.close()
+      assert_false(@fsx.exists(mooncode_session_dir(book_root, session_id)))
+      assert_true(
+        mooncode_durable_session_listing_record_by_safe_id(
+          book_root,
+          safe_session_id,
+          archived=true,
+          include_log_counts=true,
+        )
+        is Some(_),
+      )
+    },
+  )
+}
+
+///|
 async test "mooncode session lifecycle refuses storage changes while running" {
   @moonclaw_fsx.with_temporary_directory("moonclaw-session-running-XXXXXX", book_root => {
     let session_id = "session-running"
@@ -166,5 +429,101 @@ async test "mooncode session lifecycle refuses storage changes while running" {
     )
     assert_true(rejected)
     assert_true(@fsx.exists(mooncode_session_dir(book_root, session_id)))
+  })
+}
+
+///|
+async test "mooncode lifecycle markers prevent archived and deleted resurrection" {
+  @moonclaw_fsx.with_temporary_directory("moonclaw-session-state-XXXXXX", book_root => {
+    let session_id = "session-state"
+    let daemon = mooncode_control_test_daemon(book_root)
+    mooncode_management_test_create_session(daemon, book_root, session_id)
+    let binding = daemon.mooncode_binding_for_session(session_id)
+    assert_true(
+      @fsx.read_file(mooncode_session_state_path(book_root, session_id)).has_suffix(
+        "active\n",
+      ),
+    )
+    ignore(
+      daemon.mooncode_manage_session_response(session_id, {
+        "action": "archive",
+        "book_root": book_root,
+      }),
+    )
+    assert_true(
+      @fsx.read_file(mooncode_session_state_path(book_root, session_id)).has_suffix(
+        "archived\n",
+      ),
+    )
+    let append_after_archive_rejected = try {
+      ignore(
+        mooncode_append_session_journal_once(
+          book_root,
+          session_id,
+          mooncode_journal_event(),
+          {
+            "id": "post-archive",
+            "command_id": "cmd-1",
+            "created_at": "2026-07-15T00:01:00Z",
+          },
+        ),
+      )
+      false
+    } catch {
+      InvalidJournal(_) => true
+      _ => false
+    }
+    assert_true(append_after_archive_rejected)
+    let persist_after_archive_rejected = try {
+      daemon.mooncode_persist_session(binding)
+      false
+    } catch {
+      InvalidJournal(_) => true
+      _ => false
+    }
+    assert_true(persist_after_archive_rejected)
+    assert_false(@fsx.exists(mooncode_session_dir(book_root, session_id)))
+    ignore(
+      daemon.mooncode_manage_session_response(session_id, {
+        "action": "restore",
+        "book_root": book_root,
+      }),
+    )
+    assert_true(
+      @fsx.read_file(mooncode_session_state_path(book_root, session_id)).has_suffix(
+        "active\n",
+      ),
+    )
+    ignore(
+      daemon.mooncode_manage_session_response(session_id, {
+        "action": "delete",
+        "book_root": book_root,
+      }),
+    )
+    assert_true(
+      @fsx.read_file(mooncode_session_state_path(book_root, session_id)).has_suffix(
+        "deleted\n",
+      ),
+    )
+    let append_after_delete_rejected = try {
+      ignore(
+        mooncode_append_session_journal_once(
+          book_root,
+          session_id,
+          mooncode_journal_event(),
+          {
+            "id": "post-delete",
+            "command_id": "cmd-1",
+            "created_at": "2026-07-15T00:02:00Z",
+          },
+        ),
+      )
+      false
+    } catch {
+      InvalidJournal(_) => true
+      _ => false
+    }
+    assert_true(append_after_delete_rejected)
+    assert_false(@fsx.exists(mooncode_session_dir(book_root, session_id)))
   })
 }

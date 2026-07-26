@@ -2,6 +2,19 @@
 let mooncode_stream_contract_id : String = "mooncode-stream.v2"
 
 ///|
+/// Parse the HTTP `since` boundary without converting its magnitude through a
+/// machine integer. An absent value means the initial zero cursor.
+fn mooncode_stream_query_cursor(
+  since_text : String,
+) -> MoonCodeJournalSequence raise MoonCodeGoalRuntimeStoreError {
+  if since_text == "" {
+    MoonCodeJournalSequence::zero()
+  } else {
+    mooncode_journal_cursor_parse(since_text)
+  }
+}
+
+///|
 async fn Daemon::mooncode_stream(
   self : Daemon,
   session_id~ : StringView,
@@ -28,19 +41,15 @@ async fn Daemon::mooncode_stream(
     })
   }
   let since_text = mooncode_request_string(r, "since", default="")
-  let since = if since_text == "" {
-    MoonCodeJournalSequence::zero()
-  } else {
-    mooncode_journal_cursor_parse(since_text) catch {
-      _ =>
-        raise json_error(400, "Bad Request", {
-          "error": {
-            "code": -1,
-            "message": "MoonCode stream since must be a canonical nonnegative journal cursor",
-            "metadata": { "since": since_text },
-          },
-        })
-    }
+  let since = mooncode_stream_query_cursor(since_text) catch {
+    _ =>
+      raise json_error(400, "Bad Request", {
+        "error": {
+          "code": -1,
+          "message": "MoonCode stream since must be a canonical nonnegative journal cursor",
+          "metadata": { "since": since_text },
+        },
+      })
   }
   let format = mooncode_request_string(r, "format", default="jsonl")
   let wait_ms = mooncode_stream_wait_ms_value(

@@ -62,6 +62,25 @@ async fn Daemon::mooncode_runtime_turn_execute(
     }
   }
   let book_root = binding.book_root
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Shared)
+  defer lifecycle_gate.unlock()
+  self.mooncode_runtime_turn_execute_under_lifecycle_gate(
+    session_id, book_root, payload,
+  )
+}
+
+///|
+async fn Daemon::mooncode_runtime_turn_execute_under_lifecycle_gate(
+  self : Daemon,
+  session_id : String,
+  book_root : String,
+  payload : Json,
+) -> Json {
+  let binding = self.mooncode_binding_for_session(session_id)
   let consumer_id = mooncode_json_string(
     payload,
     "consumer_id",

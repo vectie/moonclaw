@@ -1,6 +1,6 @@
 ///|
 pub fn runtime_control_contract_id() -> String {
-  "mooncode-runtime-control.v1"
+  "mooncode-runtime-control.v2"
 }
 
 ///|
@@ -298,7 +298,8 @@ pub fn runtime_control_contract_json() -> Json {
     "event_name_contract_id": runtime_event_name_contract_id(),
     "conversation_contract_id": conversation_contract_id(),
     "conversation_ownership_contract_id": conversation_ownership_contract_id(),
-    "journal_contract_id": journal_contract_id(),
+    "journal_write_contract_id": journal_contract_id(),
+    "journal_read_contract_ids": journal_read_contract_ids(),
     "rule": "A MoonCode runtime consumes one ordered command queue. Prompt and command actions start turns, steer targets the active turn, next pending turn, or defers into the next future turn, and cancel targets the active turn or withdraws the next pending turn.",
     "turn_starting_actions": "all supported actions except steer, cancel, and note",
     "active_statuses": runtime_control_active_statuses(),
