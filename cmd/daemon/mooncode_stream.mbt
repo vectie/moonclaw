@@ -2,6 +2,103 @@
 let mooncode_stream_contract_id : String = "mooncode-stream.v2"
 
 ///|
+/// Scalar result used by production stream scans so waiting never retains
+/// journal payloads in memory.
+priv struct MoonCodeStreamSummary {
+  event_count : Int
+  eligible_event_count : Int
+  latest_event_sequence : MoonCodeJournalSequence
+  journal_size : Int64
+}
+
+///|
+/// Scalar wait receipt. The scan summary stays local to the wait loop; the
+/// post-wait spool is the authoritative response snapshot.
+priv struct MoonCodeStreamWait {
+  wait_elapsed_ms : Int
+  wait_attempt_count : Int
+}
+
+///|
+/// Temporary on-disk projection. The writer must be closed before this value
+/// escapes the locked scan so response I/O never holds journal/session locks.
+priv struct MoonCodeStreamSpool {
+  directory : String
+  path : String
+  summary : MoonCodeStreamSummary
+}
+
+///|
+/// Scan one already-repaired journal while its caller owns the session and
+/// journal locks. Keeping this scalar avoids retaining payloads while waiting.
+async fn mooncode_stream_scan_locked(
+  file : @fs.File,
+  expected_session_id : String,
+  since : MoonCodeJournalSequence,
+) -> MoonCodeStreamSummary {
+  let mut cursor = MoonCodeJournalSequence::zero()
+  let mut event_count = 0
+  let mut eligible_event_count = 0
+  let mut latest_event_sequence = MoonCodeJournalSequence::zero()
+  while true {
+    match file.read_until("\n") {
+      Some(line) => {
+        let (record, next) = mooncode_journal_stream_record(line, cursor)
+        if mooncode_json_string(record, "session_id", default="") !=
+          expected_session_id {
+          raise InvalidJournal("journal record belongs to a different session")
+        }
+        cursor = next
+        if mooncode_json_string(record, "record_kind", default="") ==
+          mooncode_journal_event() {
+          event_count = event_count + 1
+          latest_event_sequence = next
+          if next.compare(since) > 0 {
+            eligible_event_count = eligible_event_count + 1
+          }
+        }
+      }
+      None => break
+    }
+  }
+  {
+    event_count,
+    eligible_event_count,
+    latest_event_sequence,
+    journal_size: file.size(),
+  }
+}
+
+///|
+/// Read a scalar journal summary while holding the stable session lock. A
+/// missing journal is an empty stream and uses -1 as its append fingerprint.
+async fn mooncode_stream_summary(
+  book_root : String,
+  session_id : String,
+  since : MoonCodeJournalSequence,
+) -> MoonCodeStreamSummary {
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Shared)
+  defer session_lock.unlock()
+  let journal_path = mooncode_session_journal_path(book_root, session_id)
+  if !(@fsx.exists(journal_path) catch { _ => false }) {
+    return {
+      event_count: 0,
+      eligible_event_count: 0,
+      latest_event_sequence: MoonCodeJournalSequence::zero(),
+      journal_size: -1L,
+    }
+  }
+  let file = @fs.open(journal_path, mode=ReadWrite, append=false)
+  defer file.close()
+  file.lock(Exclusive)
+  defer file.unlock()
+  mooncode_repair_journal_tail(file)
+  mooncode_stream_scan_locked(file, session_id, since)
+}
+
+///|
 /// Parse the HTTP `since` boundary without converting its magnitude through a
 /// machine integer. An absent value means the initial zero cursor.
 fn mooncode_stream_query_cursor(
@@ -58,70 +155,58 @@ async fn Daemon::mooncode_stream(
   let poll_ms = mooncode_stream_poll_ms_value(
     mooncode_request_int(r, "poll_ms", default=100),
   )
-  let wait = self.mooncode_stream_wait_for_events(
+  let wait = self.mooncode_stream_wait_for_summary(
     session_id, book_root, since, wait_ms, poll_ms,
   )
-  let events = mooncode_json_array_items(wait, "events")
-  if format == "sse" {
-    w.header().set("Content-Type", "text/event-stream")
-    w.header().set("Cache-Control", "no-cache")
-    w.write_header(200)
-    w.write(
-      mooncode_stream_sse_payload(
-        session_id,
-        book_root,
-        events,
-        since~,
-        wait_ms~,
-        poll_ms~,
-        wait_elapsed_ms=mooncode_json_int(wait, "wait_elapsed_ms", default=0),
-        wait_attempt_count=mooncode_json_int(
-          wait,
-          "wait_attempt_count",
-          default=0,
-        ),
-      ),
-    )
-  } else {
-    w.header().set("Content-Type", "application/x-ndjson")
-    w.write_header(200)
-    w.write(
-      mooncode_stream_jsonl_payload(
-        session_id,
-        book_root,
-        events,
-        since~,
-        wait_ms~,
-        poll_ms~,
-        wait_elapsed_ms=mooncode_json_int(wait, "wait_elapsed_ms", default=0),
-        wait_attempt_count=mooncode_json_int(
-          wait,
-          "wait_attempt_count",
-          default=0,
-        ),
-      ),
-    )
+  let spool = mooncode_stream_create_spool(format, book_root, session_id, since)
+  let summary = spool.summary
+  let meta = mooncode_stream_meta_record(
+    session_id,
+    book_root,
+    event_count=summary.event_count,
+    since~,
+    emitted_count=summary.eligible_event_count,
+    latest_sequence=summary.latest_event_sequence,
+    wait_ms~,
+    poll_ms~,
+    wait_elapsed_ms=wait.wait_elapsed_ms,
+    wait_attempt_count=wait.wait_attempt_count,
+  )
+  let done = mooncode_stream_done_record(
+    session_id,
+    book_root,
+    latest_sequence=summary.latest_event_sequence,
+    since~,
+    emitted_count=summary.eligible_event_count,
+    wait_ms~,
+    poll_ms~,
+    wait_elapsed_ms=wait.wait_elapsed_ms,
+    wait_attempt_count=wait.wait_attempt_count,
+  )
+  try mooncode_stream_deliver_spool(w, format, spool, meta, done) catch {
+    error => {
+      spool.cleanup()
+      raise error
+    }
+  } noraise {
+    _ => spool.cleanup()
   }
-  w.flush()
 }
 
 ///|
-async fn Daemon::mooncode_stream_wait_for_events(
+async fn Daemon::mooncode_stream_wait_for_summary(
   self : Daemon,
   session_id : String,
   book_root : String,
   since : MoonCodeJournalSequence,
   wait_ms : Int,
   poll_ms : Int,
-) -> Json {
+) -> MoonCodeStreamWait {
+  ignore(self)
   let mut elapsed_ms = 0
   let mut attempt_count = 0
-  let snapshot = self.mooncode_stream_snapshot(book_root, session_id)
-  let mut events = snapshot.0
-  let mut journal_size = snapshot.1
-  while wait_ms > 0 &&
-        mooncode_stream_event_count_after(events, since) == 0 &&
-        elapsed_ms < wait_ms {
+  let mut summary = mooncode_stream_summary(book_root, session_id, since)
+  while wait_ms > 0 && summary.eligible_event_count == 0 && elapsed_ms < wait_ms {
     if @async.is_being_cancelled() {
       break
     }
@@ -131,47 +216,11 @@ async fn Daemon::mooncode_stream_wait_for_events(
     elapsed_ms += delay
     attempt_count += 1
     let next_journal_size = mooncode_stream_journal_size(book_root, session_id)
-    if next_journal_size != journal_size {
-      let changed = self.mooncode_stream_snapshot(book_root, session_id)
-      events = changed.0
-      journal_size = changed.1
+    if next_journal_size != summary.journal_size {
+      summary = mooncode_stream_summary(book_root, session_id, since)
     }
   }
-  {
-    "kind": "mooncode-stream-wait",
-    "protocol": mooncode_protocol_version(),
-    "contract_id": mooncode_stream_contract_id,
-    "owner": "moonclaw",
-    "session_id": session_id,
-    "book_root": book_root,
-    "since": since.text(),
-    "wait_ms": wait_ms,
-    "poll_ms": poll_ms,
-    "wait_elapsed_ms": elapsed_ms,
-    "wait_attempt_count": attempt_count,
-    "ready": mooncode_stream_event_count_after(events, since) > 0,
-    "event_count": events.length(),
-    "events": Json::array(events),
-  }
-}
-
-///|
-async fn Daemon::mooncode_stream_snapshot(
-  self : Daemon,
-  book_root : String,
-  session_id : String,
-) -> (Array[Json], Int64) {
-  let mut size_before = mooncode_stream_journal_size(book_root, session_id)
-  let mut events = self.mooncode_stream_current_events(book_root, session_id)
-  let mut size_after = mooncode_stream_journal_size(book_root, session_id)
-  let mut retry_count = 0
-  while size_after != size_before && retry_count < 3 {
-    size_before = size_after
-    events = self.mooncode_stream_current_events(book_root, session_id)
-    size_after = mooncode_stream_journal_size(book_root, session_id)
-    retry_count += 1
-  }
-  (events, size_after)
+  { wait_elapsed_ms: elapsed_ms, wait_attempt_count: attempt_count }
 }
 
 ///|
@@ -189,19 +238,6 @@ async fn mooncode_stream_journal_size(
   file.size() catch {
     _ => -1L
   }
-}
-
-///|
-async fn Daemon::mooncode_stream_current_events(
-  self : Daemon,
-  book_root : String,
-  session_id : String,
-) -> Array[Json] {
-  ignore(self)
-  mooncode_journal_entries(
-    mooncode_read_session_journal(book_root, session_id),
-    mooncode_journal_event(),
-  )
 }
 
 ///|

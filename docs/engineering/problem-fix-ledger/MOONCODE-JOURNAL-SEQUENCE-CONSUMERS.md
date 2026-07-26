@@ -259,3 +259,9 @@ trail.
   while the legacy Int stream-endpoint wrapper remains source-compatible;
   `git diff --check` is clean; the daemon native suite passes 295/295; the full
   repository native suite passes 1356/1356.
+
+## HTTP stream aggregate-memory boundary closed
+
+The production MoonCode JSONL/SSE endpoint no longer builds a complete journal, event array, record array, or response string. Its wait phase keeps scalar counts, exact cursors, and a size fingerprint. Its delivery phase validates under the stable locks and writes one projected event at a time to a private temporary spool, closes the source and locks, then copies the spool through the chunked response writer. Compatibility payload builders remain test-only byte oracles.
+
+Focused evidence is 5/5 new scalar/spool/real-HTTP tests plus 9/9 existing stream tests; the daemon suite is 300/300 and the full native repository suite is 1361/1361. This closes only the HTTP stream boundary. Full session/conversation/listing projections, the separate snapshot 2 GiB compatibility guard, temporary-disk exhaustion, multiprocess/crash behavior, and real-Windows cleanup remain explicit open work. The live goal supervisor also remains legacy-bounded until its HTTP genesis, service, loop, and planner-step control flow are migrated to the policy-unbounded runtime contract.
