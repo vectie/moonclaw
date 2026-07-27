@@ -19,7 +19,7 @@ fn mooncode_session_conversation(
   commands : Array[Json],
   runtime_receipts : Array[Json],
   events : Array[Json],
-  journal_sequence~ : Int,
+  journal_sequence~ : MoonCodeJournalSequence,
 ) -> Json {
   let turns = mooncode_conversation_turns(commands, runtime_receipts, events)
   let turn_json : Array[Json] = []
@@ -31,7 +31,7 @@ fn mooncode_session_conversation(
   {
     "kind": @mooncode_core.conversation_kind(),
     "protocol": mooncode_protocol_version(),
-    "contract_id": "moonsuite-conversation.v2",
+    "contract_id": @mooncode_core.conversation_contract_id(),
     "session_id": mooncode_json_string(record, "session_id", default=""),
     "workspace_id": mooncode_conversation_workspace_field(
       commands,
@@ -44,8 +44,8 @@ fn mooncode_session_conversation(
       fallback="",
     ),
     "turn_count": turn_json.length(),
-    "revision": journal_sequence,
-    "last_sequence": journal_sequence,
+    "revision": journal_sequence.text(),
+    "last_sequence": journal_sequence.text(),
     "source_event_count": events.length(),
     "turns": Json::array(turn_json),
     "ownership_contract": @mooncode_core.conversation_ownership_contract_json(),

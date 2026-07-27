@@ -14,8 +14,7 @@ priv suberror InvalidGoalRequest {
 }
 
 ///|
-/// Internal transport-neutral result used by the strict durable goal API.
-/// Keeping this type private prevents this slice from declaring HTTP routes or endpoints.
+/// Transport-neutral response shared by the internal goal logic and HTTP adapter.
 priv struct MoonCodeGoalApiResponse {
   status_code : Int
   body : Json

@@ -82,8 +82,21 @@ MoonClaw is strongest when you want one system to handle:
   `.moonsuite/products/moonclaw/mooncode/sessions/<session-id>/`, including
   the replaceable `session.json` checkpoint and authoritative `journal.jsonl`.
   Commands, receipts, events, package results, and book results share one
-  contiguous journal sequence under the MoonLib
-  `moonsuite-conversation-journal.v1` contract. Suite-hosted
+  contiguous exact journal sequence. Current writers use
+  `moonsuite-conversation-journal.v2`, MoonCode's exact-sequence extension of
+  MoonLib's v1 journal contract. Its canonical decimal-string sequences remain
+  replay-compatible with MoonLib v1 numeric envelopes.
+  Production append scans under an exclusive stable session lock, repairs only
+  a torn suffix, writes one canonical JSONL record with an exact successor, and
+  requests ordinary file-data synchronization plus supported parent-directory
+  synchronization. Newly written `session.json` checkpoints carry
+  `mooncode-session-snapshot.v2`. Full diagnostic projections carry
+  `mooncode-session-record.v2` and derive a sibling `mooncode_conversation`
+  projection under `moonsuite-conversation.v3`; checkpoints do not embed that
+  conversation. Only the outer `format=listing` envelope carries
+  `mooncode-session-listing.v2`; individual rows do not. A loaded legacy
+  checkpoint may remain legacy until rewritten. Stream projections use
+  `mooncode-stream.v2`. Suite-hosted
   `books/<book-id>` roots resolve to
   the owning suite's MoonClaw product home; standalone book roots use their own
   local `.moonsuite/products/moonclaw` product home. The daemon can list/show
@@ -110,8 +123,10 @@ MoonClaw is strongest when you want one system to handle:
   needed, executes explicit `runtime_tool_calls` or deterministic built-in
   fallbacks such as `run_tests -> moon_check + finish`, appends runtime/tool
   events, returns the runtime-control state/decision that authorized or dropped
-  the claimed command, and closes the command with `runtime-completed` or
-  `runtime-failed`. Idle `steer` controls are persisted as `steer_deferred`
+  the claimed command, and either closes it with `runtime-completed` or
+  `runtime-failed`, or returns a durable nonterminal planner pause without a
+  receipt when the local step quantum ends. Idle `steer` controls are persisted
+  as `steer_deferred`
   context for the next eligible turn, and idle `cancel` controls are finalized
   as `cancel_dropped` evidence without invoking tools, matching runtime control
   projection instead of treating controls as ordinary prompts.
@@ -124,7 +139,27 @@ MoonClaw is strongest when you want one system to handle:
   `/commands` now defaults to native queue mode, which appends the durable
   command without spawning or messaging the generic MoonClaw task runtime so a
   client can call `runtime-turn` without duplicate execution.
-  Runtime-turn now also includes the first bounded prompt planner: ordinary
+  A strict additive `GET/PUT
+  /v1/code/sessions/<id>/goal-runtime?book_root=<path>` boundary now persists
+  criteria-only `mooncode-goal-runtime.v1` genesis and projects replayed status.
+  It rejects aggregate token/turn/step/time/operation/LOC fields and treats retry
+  timestamps as non-semantic. Goal authority and supervisor reconciliation now
+  fold canonical JSONL one record at a time, use an ephemeral disk identity ledger
+  for exact far-apart deduplication/conflict detection, and spool source facts on
+  disk instead of retaining aggregate event/ID arrays. The legacy `/goal` HTTP
+  route has been removed and `/goal-runtime` is a required capability. Persisted
+  legacy histories remain strictly detectable and return `legacy_goal_incompatible`;
+  they are never silently converted because their aggregate budget semantics have
+  no lossless representation in the unbounded contract. The common runtime-turn
+  path derives typed running, approval, operation, and planner checkpoint events
+  from already-committed source facts, and restart reconciliation fills a crash gap
+  idempotently from stable source IDs. For an active runtime goal,
+  runtime-service repeats `max_turns` as a local execution quantum instead of
+  treating it as an aggregate stop. The planner receives the active objective and
+  exact criterion IDs; optional typed `finish.goal_runtime` decisions settle
+  Achieved or Blocked, while ordinary finish remains nonterminal goal progress.
+  Exact active-target cancellation settles Cancelled; idle, stale, timeout, failure,
+  and local-quantum events do not. Runtime-turn now also includes a resumable prompt planner: ordinary
   `prompt` commands that ask for a tool, script, miniapp, generated site, or
   HTML app expand into native `write`, `shell`, and `finish` tool calls under
   MoonBook-owned `tools/` or `apps/` paths, so plain MoonCode chat can create
@@ -154,11 +189,16 @@ MoonClaw is strongest when you want one system to handle:
   generic tool result.
   When
   a queued command carries an explicit selected model, runtime-turn can also ask
-  that model for bounded MoonCode tool-call batches over `read`, `write`,
-  `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`;
-  successful tool results are fed back to the model until it calls `finish`, a
-  tool fails, the command is cancelled, or `planner_max_steps` is reached. Planner
-  start/selection/failure events, `planner_steps`, the step limit, native
+  that model for MoonCode tool-call batches over `read`, `write`, `edit`,
+  `apply_patch`, `revert_patch`, `shell`, `moon_check`, and `finish`; successful
+  tool results are fed back to the model until it calls `finish`, a tool fails,
+  or the command is cancelled. `planner_max_steps` is a per-turn execution
+  quantum, not an aggregate completion bound. Reaching it persists the complete
+  planner transcript and tool results as a nonterminal checkpoint, leaves the
+  command claimed, and returns `completed=false`, `paused=true`, and
+  `control=continue` without a terminal receipt. A later runtime turn resumes at
+  `next_step_index` and does not replay completed tools, including after daemon
+  restart. Planner start/selection/failure events, `planner_steps`, native
   `reasoning_delta` progress, optional assistant deltas, and pre-execution
   `tool_call` events are recorded so MoonDesk can render a live coding-agent
   transcript from MoonClaw-owned evidence. Unsupported or empty model plans fall

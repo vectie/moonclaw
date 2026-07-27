@@ -1,4 +1,70 @@
 ///|
+test "session snapshot dual reads numeric cursor and rejects malformed present cursor" {
+  assert_eq(
+    mooncode_snapshot_journal_sequence({ "journal_sequence": 7 }).text(),
+    "7",
+  )
+  let rejected = try {
+    ignore(
+      mooncode_snapshot_journal_sequence({
+        "journal_sequence": "not-a-canonical-decimal",
+      }),
+    )
+    false
+  } catch {
+    InvalidJournal(_) => true
+    _ => false
+  }
+  assert_true(rejected)
+  assert_eq(
+    mooncode_snapshot_journal_sequence({
+      "contract_id": @mooncode_core.session_snapshot_contract_id(),
+      "journal_sequence": "7",
+    }).text(),
+    "7",
+  )
+  let labeled_numeric_rejected = try {
+    ignore(
+      mooncode_snapshot_journal_sequence({
+        "contract_id": @mooncode_core.session_snapshot_contract_id(),
+        "journal_sequence": 7,
+      }),
+    )
+    false
+  } catch {
+    InvalidJournal(_) => true
+    _ => false
+  }
+  assert_true(labeled_numeric_rejected)
+  let unknown_contract_rejected = try {
+    ignore(
+      mooncode_snapshot_journal_sequence({
+        "contract_id": "mooncode-session-snapshot.v999",
+        "journal_sequence": "7",
+      }),
+    )
+    false
+  } catch {
+    InvalidJournal(_) => true
+    _ => false
+  }
+  assert_true(unknown_contract_rejected)
+  let labeled_missing_with_status_rejected = try {
+    ignore(
+      mooncode_snapshot_journal_sequence({
+        "contract_id": @mooncode_core.session_snapshot_contract_id(),
+        "load_status": "missing",
+      }),
+    )
+    false
+  } catch {
+    InvalidJournal(_) => true
+    _ => false
+  }
+  assert_true(labeled_missing_with_status_rejected)
+}
+
+///|
 async test "mooncode durable session sidecars use book local storage" (
   t : @test.Test,
 ) {
@@ -194,6 +260,15 @@ async test "mooncode durable sidecars list and show without live binding" (
     mooncode_json_string(listing_record, "kind", default=""),
     "mooncode-session-listing-record",
   )
+  assert_eq(mooncode_json_string(listing_record, "contract_id", default=""), "")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(listing_record, "snapshot"),
+      "contract_id",
+      default="",
+    ),
+    @mooncode_core.session_snapshot_contract_id(),
+  )
   assert_eq(
     mooncode_json_int(listing_record, "command_log_count", default=0),
     1,
@@ -242,6 +317,10 @@ async test "mooncode durable sidecars list and show without live binding" (
   assert_eq(
     mooncode_json_string(record, "kind", default=""),
     "mooncode-session-record",
+  )
+  assert_eq(
+    mooncode_json_string(record, "contract_id", default=""),
+    @mooncode_core.session_record_contract_id(),
   )
   assert_eq(
     mooncode_json_string(record, "session_id", default=""),
@@ -446,10 +525,13 @@ async test "mooncode durable session record exposes canonical conversation" (
   )
   assert_eq(
     mooncode_json_string(conversation, "contract_id", default=""),
-    "moonsuite-conversation.v2",
+    "moonsuite-conversation.v3",
   )
-  assert_eq(mooncode_json_int(conversation, "revision", default=0), 5)
-  assert_eq(mooncode_json_int(conversation, "last_sequence", default=0), 5)
+  assert_eq(mooncode_json_string(conversation, "revision", default=""), "5")
+  assert_eq(
+    mooncode_json_string(conversation, "last_sequence", default=""),
+    "5",
+  )
   assert_eq(mooncode_json_int(conversation, "turn_count", default=0), 1)
   let turns = mooncode_json_array_items(conversation, "turns")
   assert_eq(turns.length(), 1)
@@ -684,7 +766,10 @@ async test "mooncode journal preserves one thousand contiguous records" (
   let records = mooncode_read_session_journal(root, session_id)
   assert_eq(records.length(), 1000)
   for index, record in records {
-    assert_eq(mooncode_json_int(record, "sequence", default=0), index + 1)
+    assert_eq(
+      mooncode_json_string(record, "sequence", default=""),
+      (index + 1).to_string(),
+    )
   }
   let events = mooncode_journal_entries(records, mooncode_journal_event())
   assert_eq(mooncode_json_int(events[0], "index", default=-1), 0)
@@ -734,7 +819,10 @@ async test "mooncode journal serializes concurrent cross-lane writers" (
   assert_eq(records.length(), 64)
   let seen = Array::make(64, false)
   for sequence, record in records {
-    assert_eq(mooncode_json_int(record, "sequence", default=0), sequence + 1)
+    assert_eq(
+      mooncode_json_string(record, "sequence", default=""),
+      (sequence + 1).to_string(),
+    )
     let payload = mooncode_json_object_field_or_empty(record, "payload")
     let index = mooncode_json_int(payload, "index", default=-1)
     assert_true(index >= 0 && index < seen.length())
@@ -770,8 +858,8 @@ async test "mooncode journal repairs only a torn final record" (t : @test.Test) 
   })
   let records = mooncode_read_session_journal(root, session_id)
   assert_eq(records.length(), 2)
-  assert_eq(mooncode_json_int(records[0], "sequence", default=0), 1)
-  assert_eq(mooncode_json_int(records[1], "sequence", default=0), 2)
+  assert_eq(mooncode_json_string(records[0], "sequence", default=""), "1")
+  assert_eq(mooncode_json_string(records[1], "sequence", default=""), "2")
   assert_true(@fsx.read_file(path).has_suffix("\n"))
 }
 
@@ -809,8 +897,8 @@ async test "mooncode journal makes duplicate delivery idempotent" (
   })
   let records = mooncode_read_session_journal(root, session_id)
   assert_eq(records.length(), 2)
-  assert_eq(mooncode_json_int(records[0], "sequence", default=0), 1)
-  assert_eq(mooncode_json_int(records[1], "sequence", default=0), 2)
+  assert_eq(mooncode_json_string(records[0], "sequence", default=""), "1")
+  assert_eq(mooncode_json_string(records[1], "sequence", default=""), "2")
 }
 
 ///|
@@ -955,8 +1043,11 @@ async test "mooncode journal rebuilds conversation after snapshot corruption" (
   let conversation = mooncode_json_object_field_or_empty(
     record, "mooncode_conversation",
   )
-  assert_eq(mooncode_json_int(conversation, "revision", default=0), 2)
-  assert_eq(mooncode_json_int(conversation, "last_sequence", default=0), 2)
+  assert_eq(mooncode_json_string(conversation, "revision", default=""), "2")
+  assert_eq(
+    mooncode_json_string(conversation, "last_sequence", default=""),
+    "2",
+  )
   let turn = mooncode_json_array_items(conversation, "turns")[0]
   assert_eq(
     mooncode_json_string(
@@ -1052,12 +1143,12 @@ async test "mooncode canonical conversation replay is deterministic" (
     first, "mooncode_conversation",
   ).stringify()
   assert_eq(
-    mooncode_json_int(
+    mooncode_json_string(
       mooncode_json_object_field_or_empty(first, "mooncode_conversation"),
       "revision",
-      default=0,
+      default="",
     ),
-    3,
+    "3",
   )
   for _ in 0..<100 {
     let replay = mooncode_session_record_from_parts(
@@ -1135,7 +1226,7 @@ test "canonical conversation hides control commands and explains failed work" {
     [prompt, steer],
     [],
     [failed],
-    journal_sequence=3,
+    journal_sequence=mooncode_journal_cursor_parse("3"),
   )
   assert_eq(mooncode_json_int(conversation, "turn_count", default=0), 1)
   assert_eq(
@@ -1178,7 +1269,7 @@ test "canonical queued turn does not claim that runtime work started" {
     { "session_id": "session-queued", "book_root": "/tmp/book" },
     [prompt],
     [],
-    journal_sequence=1,
+    journal_sequence=mooncode_journal_cursor_parse("1"),
     [],
   )
   let turns = mooncode_json_array_items(conversation, "turns")
@@ -1269,7 +1360,7 @@ test "canonical work keeps review evidence on the matching file step" {
     [command],
     [],
     [write_a, write_b, result_a],
-    journal_sequence=4,
+    journal_sequence=mooncode_journal_cursor_parse("4"),
   )
   let turn = mooncode_json_array_items(conversation, "turns")[0]
   let steps = mooncode_json_array_items(
@@ -1320,7 +1411,7 @@ test "planner lifecycle projects as one user-facing thought without failure" {
     [command],
     [],
     [started, fallback],
-    journal_sequence=3,
+    journal_sequence=mooncode_journal_cursor_parse("3"),
   )
   let turns = mooncode_json_array_items(conversation, "turns")
   assert_eq(turns.length(), 1)
@@ -1371,7 +1462,7 @@ test "terminal events settle running work steps" {
     [command],
     [],
     [started, finished],
-    journal_sequence=3,
+    journal_sequence=mooncode_journal_cursor_parse("3"),
   )
   let turn = mooncode_json_array_items(conversation, "turns")[0]
   let steps = mooncode_json_array_items(

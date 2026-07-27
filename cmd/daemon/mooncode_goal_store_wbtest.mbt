@@ -541,6 +541,7 @@ async test "mooncode_goal_store: durable create is created idempotent then confl
       Created(goal) => goal
       Idempotent(_) => abort("first create was idempotent")
       Conflict(_) => abort("first create conflicted")
+      AuthorityConflict => abort("first create hit opposite authority")
     }
     assert_true(mooncode_replay_goal(root, "session") == Some(goal))
     let retry = mooncode_create_goal(
@@ -554,6 +555,7 @@ async test "mooncode_goal_store: durable create is created idempotent then confl
       }
       Created(_) => abort("retry created another goal")
       Conflict(_) => abort("identical retry conflicted")
+      AuthorityConflict => abort("retry hit opposite authority")
     }
     let records = mooncode_read_session_journal(root, "session")
     assert_eq(
@@ -567,6 +569,7 @@ async test "mooncode_goal_store: durable create is created idempotent then confl
       Conflict(existing) => assert_true(existing == goal)
       Created(_) => abort("conflict created another goal")
       Idempotent(_) => abort("different goal was idempotent")
+      AuthorityConflict => abort("conflict hit opposite authority")
     }
     let records = mooncode_read_session_journal(root, "session")
     assert_eq(

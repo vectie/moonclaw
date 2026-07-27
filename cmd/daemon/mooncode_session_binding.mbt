@@ -126,15 +126,16 @@ async fn Daemon::mooncode_session_records(
   for binding in self.mooncode_sessions.values() {
     if book_root == "" || binding.book_root == book_root {
       if !seen.contains(binding.session_id) {
-        records.push(
-          mooncode_session_record_from_parts(
+        match
+          mooncode_active_session_record_projection(
             binding.session_id,
             binding.book_root,
             Some(binding),
-            None,
             source="memory",
-          ),
-        )
+          ) {
+          Some(record) => records.push(record)
+          None => ()
+        }
       }
     }
   }
@@ -165,16 +166,17 @@ async fn Daemon::mooncode_session_listing_records(
   for binding in self.mooncode_sessions.values() {
     if mooncode_listing_root_matches(book_root, binding.book_root) &&
       !seen.contains(binding.session_id) {
-      records.push(
-        mooncode_session_listing_record_from_parts(
+      match
+        mooncode_active_session_listing_projection(
           binding.session_id,
           binding.book_root,
           Some(binding),
-          mooncode_session_snapshot(binding),
           source="memory",
           include_log_counts~,
-        ),
-      )
+        ) {
+        Some(record) => records.push(record)
+        None => ()
+      }
     }
   }
   records
@@ -214,41 +216,23 @@ async fn Daemon::mooncode_session_record(
 ) -> Json? {
   match self.mooncode_sessions.get(session_id) {
     Some(binding) if mooncode_listing_root_matches(book_root, binding.book_root) =>
-      return Some(
-        mooncode_session_record_from_parts(
-          session_id,
-          binding.book_root,
-          Some(binding),
-          Some(mooncode_load_session_snapshot(binding.book_root, session_id)),
-          source="memory",
-        ),
+      return mooncode_active_session_record_projection(
+        session_id,
+        binding.book_root,
+        Some(binding),
+        source="memory",
       )
     _ => ()
   }
   if book_root == "" {
     return None
   }
-  let snapshot = mooncode_load_session_snapshot(book_root, session_id)
-  if mooncode_json_string(snapshot, "load_status", default="") == "missing" {
-    None
-  } else {
-    let session_book_root = mooncode_json_string(
-      snapshot,
-      "book_root",
-      default=book_root,
-    )
-    Some(
-      mooncode_session_record_from_parts(
-        session_id,
-        session_book_root,
-        self.mooncode_sessions.get(
-          mooncode_json_string(snapshot, "session_id", default=session_id),
-        ),
-        Some(snapshot),
-        source="sidecar",
-      ),
-    )
-  }
+  mooncode_active_session_record_projection(
+    session_id,
+    book_root,
+    None,
+    source="sidecar",
+  )
 }
 
 ///|

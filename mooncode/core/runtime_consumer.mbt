@@ -1,6 +1,6 @@
 ///|
 pub fn runtime_consumer_contract_id() -> String {
-  "mooncode-runtime-consumer.v1"
+  "mooncode-runtime-consumer.v2"
 }
 
 ///|
@@ -441,7 +441,8 @@ pub fn runtime_claim_consumer_contract_json(session_id : String) -> Json {
     "kind": runtime_consumer_contract_kind(),
     "contract_id": runtime_consumer_contract_id(),
     "protocol": protocol_version(),
-    "journal_contract_id": journal_contract_id(),
+    "journal_write_contract_id": journal_contract_id(),
+    "journal_read_contract_ids": journal_read_contract_ids(),
     "consumer": "moonclaw",
     "endpoint": runtime_claim_endpoint(session_id),
     "method": "POST",

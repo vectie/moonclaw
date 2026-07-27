@@ -1,6 +1,6 @@
 # Executable Book Runtime Boundary
 
-Last checked: 2026-07-15.
+Last checked: 2026-07-26.
 
 MoonClaw is the execution engine for executable MoonBooks. It owns agent,
 task, session, and runtime concepts, but those concepts should remain platform
@@ -27,6 +27,10 @@ The shared runtime substrate does not mean one vague product protocol. MoonCode 
 | Task | Bounded executable job for background or automation work. |
 | Code session | Interactive executable-book coding workspace backed by MoonClaw runtime primitives. |
 
+MoonCode owns coding-contract semantics; MoonClaw implements the runtime and
+persists/projects session sidecars; MoonBook and Bookkeeper own accepted book
+truth.
+
 MoonClaw does not own MoonBook truth. It may write proposals, sidecars, diffs,
 run artifacts, package proof, and review receipts into a selected MoonBook, but
 Bookkeeper/MoonBook acceptance decides what becomes durable book knowledge or
@@ -43,11 +47,33 @@ dependencies, generated portable output, and nested repositories. Structured
 `moon_cmd` evidence may declare `expected_exit_code`; an observed expected
 nonzero exit is accepted negative-path proof rather than a runtime failure.
 
-The model loop is bounded for implementation quality: tool results are
-compacted before they re-enter the transcript, implementation requests take
-precedence over incidental “read” wording, repeated inspection must progress
-to a mutation, and explicit paths outside the selected MoonBook are rejected.
-These are reusable runtime controls and must not embed a domain answer.
+Each durable code session has the criteria-only `mooncode-goal-runtime.v1`
+authority at `/goal-runtime`. The former bounded `/goal` HTTP route is removed.
+Persisted legacy records are still validated on every authority projection and
+return `legacy_goal_incompatible`; they cannot coexist with runtime genesis.
+They are not auto-converted because discarding their aggregate budget would be a
+lossy policy change. Runtime genesis is immutable and aggregate policy fields are
+rejected. Runtime-turn derives typed
+running, approval, accepted-operation, and planner-checkpoint events only after
+its source facts are durable; restart reconciliation fills the append gap by
+stable source identity. For an active runtime goal, runtime-service repeats its
+`max_turns` local quantum while claimable work remains. The planner receives the
+active objective and exact criterion IDs. A validated optional
+`finish.goal_runtime` decision settles Achieved or Blocked, exact active-target
+cancellation settles Cancelled, and ordinary finish remains nonterminal. Authority
+replay is one-record-at-a-time with arbitrary-decimal counters and an ephemeral
+fixed-bucket identity ledger. Reconciliation uses a temporary source spool, so neither
+path retains aggregate journal, event, command, or identity collections in memory.
+
+Each model-planner runtime turn uses a local step quantum for scheduling and
+recovery, but goal progress is not aggregate-step-bounded. Reaching the quantum
+persists a nonterminal checkpoint containing the transcript, completed tool
+results, and next absolute step; the next turn resumes without replaying those
+tools. Tool results are compacted before they re-enter the transcript,
+implementation requests take precedence over incidental “read” wording,
+repeated inspection must progress to a mutation, and explicit paths outside the
+selected MoonBook are rejected. These are reusable operation-local controls and
+must not embed a domain answer or settle the goal merely because a quantum ends.
 
 ## Executable Book Call Chain
 
@@ -68,6 +94,7 @@ For MoonCode, the target native API namespace is:
 /v1/code/sessions
 /v1/code/sessions/<id>/commands
 /v1/code/sessions/<id>/turns
+/v1/code/sessions/<id>/goal-runtime
 /v1/code/sessions/<id>/runtime-claim
 /v1/code/sessions/<id>/runtime-turn
 /v1/code/sessions/<id>/runtime-loop
@@ -92,10 +119,34 @@ Rule: MoonCode should not be implemented as generic task chat. It should use
 code-session/runtime contracts that can run tools, edit files, stream proof,
 package executable artifacts, and resume from durable session sidecars.
 
-`journal.jsonl` is the book-local, totally ordered session authority. Native
-MoonCode runtime operations append command, claim, settlement, event, package,
-and book-result records under `moonsuite-conversation-journal.v1`; receipts are
-a record kind, not a separate store or runtime API.
+`journal.jsonl` is the book-scoped MoonCode session-sidecar authority. Native
+MoonCode runtime operations write `moonsuite-conversation-journal.v2`,
+MoonCode's exact-sequence extension of MoonLib's v1 journal contract. Its
+canonical arbitrary-length decimal-string sequences remain readable alongside
+MoonLib v1 numeric envelopes. Receipts remain a record kind, not a separate store or
+runtime API. Append takes a stable cross-process session lock, repairs only a
+torn final suffix, validates the committed prefix through EOF before duplicate
+suppression, computes the exact successor, and requests ordinary file-data
+synchronization. Non-Windows builds also request directory synchronization up
+the complete parent chain; Windows flushes the writable file only. Archive,
+restore, and delete share the stable lock and are designed to prevent
+split-brain among cooperating processes. A newline-committed lifecycle state
+log outside both movable trees records transition intent/result; append and
+checkpoint persistence require active state. Its reader streams only committed
+entries and ignores an arbitrary torn suffix; the next state append repairs the
+suffix. Runtime-turn execution holds a separate shared lifecycle gate per turn,
+and runtime-service holds it from before started persistence through its
+terminal event; archive/restore/delete take it exclusive. Listing/show
+projections use the shared stable lock to recheck state/location and read one
+coherent snapshot/journal view, omitting a moved session and excluding mutable
+live bindings from durable rows. This is the OS-supported process and
+ordinary-crash boundary, not macOS `F_FULLFSYNC` or strongest sudden-power-loss
+proof, and the Windows path has not run in a real Windows lane. Newly written
+checkpoints use `mooncode-session-snapshot.v2`; full diagnostic records use
+`mooncode-session-record.v2` and derive a sibling conversation projection under
+`moonsuite-conversation.v3`. Only the outer `format=listing` envelope uses
+`mooncode-session-listing.v2`; rows do not. Streams use `mooncode-stream.v2`.
+Readers may preserve a legacy snapshot until its checkpoint is rewritten.
 
 MoonCode command intake uses the shared `mooncode/core` envelope contract.
 `native_command_body_required_fields()` and
@@ -104,9 +155,13 @@ command fields; MoonClaw validates `/v1/code/sessions/<id>/commands` against
 that contract instead of maintaining a private route-specific allowlist.
 
 Interactive clients submit through `/v1/code/sessions/<id>/turns`, which
-combines durable command append and single-flight runtime-service start into one
-MoonClaw-owned transaction. `/commands` remains the lower-level queue boundary
-for diagnostic and explicitly orchestrated clients.
+combines durable command append and a runtime-service start that is single-flight
+within one daemon instance in one composite request. It is recoverable rather
+than crash-atomic: if startup does not complete, the durable command remains
+available to a later runtime start. Cross-daemon runtime-service singleton and
+claim exclusivity are not implemented or multiprocess-tested.
+`/commands` remains the lower-level queue boundary for diagnostic and explicitly
+orchestrated clients.
 
 ## Durable Conversation Controls
 

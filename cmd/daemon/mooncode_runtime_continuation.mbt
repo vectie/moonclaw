@@ -14,6 +14,7 @@ fn mooncode_runtime_continuation_event(
   approval : Json,
   step_index~ : Int,
   tool_index~ : Int,
+  quantum_end_step~ : Int,
   now~ : @clock.Timestamp,
 ) -> Json {
   let approval_id = mooncode_json_string(approval, "approval_id", default="")
@@ -32,11 +33,45 @@ fn mooncode_runtime_continuation_event(
     "approval_id": approval_id,
     "step_index": step_index,
     "tool_index": tool_index,
+    "quantum_end_step": quantum_end_step,
     "plan": plan,
     "planner_steps": Json::array(planner_steps),
     "tool_results": Json::array(tool_results),
     "step_results": Json::array(step_results),
     "approval": approval,
+    "created_at": now,
+    "source": "moonclaw-native-runtime-continuation",
+  }
+}
+
+///|
+fn mooncode_runtime_planner_continuation_event(
+  session_id : String,
+  command_id : String,
+  plan : Json,
+  planner_steps : Array[Json],
+  tool_results : Array[Json],
+  step_results : Array[Json],
+  next_step_index~ : Int,
+  now~ : @clock.Timestamp,
+) -> Json {
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-checkpoint-\{next_step_index}",
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "command_id": command_id,
+    "target_command_id": command_id,
+    "lane": "runtime-control",
+    "kind": mooncode_runtime_continuation_kind(),
+    "event": mooncode_runtime_continuation_kind(),
+    "state": "planner-quantum-paused",
+    "status": "paused",
+    "reason": "planner-step-quantum",
+    "next_step_index": next_step_index,
+    "plan": plan,
+    "planner_steps": Json::array(planner_steps),
+    "tool_results": Json::array(tool_results),
+    "step_results": Json::array(step_results),
     "created_at": now,
     "source": "moonclaw-native-runtime-continuation",
   }
@@ -51,8 +86,7 @@ fn mooncode_runtime_continuation_for_command(
   for event in events {
     if mooncode_json_string(event, "kind", default="") ==
       mooncode_runtime_continuation_kind() &&
-      mooncode_json_string(event, "command_id", default="") == command_id &&
-      mooncode_json_string(event, "approval_id", default="") != "" {
+      mooncode_json_string(event, "command_id", default="") == command_id {
       latest = event
     }
   }
@@ -69,6 +103,11 @@ fn mooncode_runtime_continuation_is_active(continuation : Json) -> Bool {
   let command_id = mooncode_json_string(continuation, "command_id", default="")
   let step_index = mooncode_json_int(continuation, "step_index", default=-1)
   let tool_index = mooncode_json_int(continuation, "tool_index", default=-1)
+  let quantum_end_step = mooncode_json_int(
+    continuation,
+    "quantum_end_step",
+    default=step_index + 1,
+  )
   let plan = mooncode_json_object_field_or_empty(continuation, "plan")
   let tool_calls = mooncode_json_array_items(plan, "tool_calls")
   if approval_id == "" ||
@@ -76,6 +115,7 @@ fn mooncode_runtime_continuation_is_active(continuation : Json) -> Bool {
     mooncode_json_string(continuation, "state", default="") !=
     "awaiting-approval" ||
     step_index < 0 ||
+    quantum_end_step <= step_index ||
     tool_index < 0 ||
     tool_index >= tool_calls.length() {
     return false
@@ -89,4 +129,69 @@ fn mooncode_runtime_continuation_is_active(continuation : Json) -> Bool {
     occurrence=step_index * 1000 + tool_index,
   ) ==
   approval_id
+}
+
+///|
+fn mooncode_runtime_json_array_has_suffix(
+  values : Array[Json],
+  suffix : Array[Json],
+) -> Bool {
+  if suffix.length() > values.length() {
+    return false
+  }
+  let offset = values.length() - suffix.length()
+  for index, value in suffix {
+    if values[offset + index].stringify() != value.stringify() {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn mooncode_runtime_planner_continuation_is_active(continuation : Json) -> Bool {
+  let session_id = mooncode_json_string(continuation, "session_id", default="")
+  let command_id = mooncode_json_string(continuation, "command_id", default="")
+  let next_step_index = mooncode_json_int(
+    continuation,
+    "next_step_index",
+    default=-1,
+  )
+  let plan = mooncode_json_object_field_or_empty(continuation, "plan")
+  let tool_calls = mooncode_json_array_items(plan, "tool_calls")
+  let planner_steps = mooncode_json_array_items(continuation, "planner_steps")
+  let tool_results = mooncode_json_array_items(continuation, "tool_results")
+  let step_results = mooncode_json_array_items(continuation, "step_results")
+  let expected_id = "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-checkpoint-\{next_step_index}"
+  if session_id == "" ||
+    command_id == "" ||
+    mooncode_json_string(continuation, "id", default="") != expected_id ||
+    mooncode_json_string(continuation, "protocol", default="") !=
+    mooncode_protocol_version() ||
+    mooncode_json_string(continuation, "target_command_id", default="") !=
+    command_id ||
+    mooncode_json_string(continuation, "kind", default="") !=
+    mooncode_runtime_continuation_kind() ||
+    mooncode_json_string(continuation, "lane", default="") != "runtime-control" ||
+    mooncode_json_string(continuation, "status", default="") != "paused" ||
+    mooncode_json_string(continuation, "reason", default="") !=
+    "planner-step-quantum" ||
+    mooncode_json_string(continuation, "state", default="") !=
+    "planner-quantum-paused" ||
+    next_step_index <= 0 ||
+    mooncode_json_string(plan, "planner_mode", default="") !=
+    mooncode_planner_mode_model_tool_calls() ||
+    mooncode_json_bool(plan, "failed", default=false) ||
+    tool_calls.length() == 0 ||
+    mooncode_runtime_turn_tool_calls_include_finish(tool_calls) ||
+    planner_steps.length() != next_step_index ||
+    step_results.length() != tool_calls.length() ||
+    !mooncode_runtime_turn_model_message_present(
+      mooncode_json_object_field_or_empty(plan, "model_response_message"),
+    ) ||
+    mooncode_json_array_items(plan, "model_messages").length() == 0 ||
+    !mooncode_runtime_json_array_has_suffix(tool_results, step_results) {
+    return false
+  }
+  planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
 }

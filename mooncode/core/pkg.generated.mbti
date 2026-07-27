@@ -163,9 +163,17 @@ pub fn conversation_watch_contract_id() -> String
 
 pub fn conversation_watch_contract_json() -> Json
 
+pub fn conversation_watch_exact_contract_id() -> String
+
+pub fn conversation_watch_exact_contract_json() -> Json
+
 pub fn conversation_watch_kind() -> String
 
+pub fn conversation_watch_read_contract_ids() -> Array[String]
+
 pub fn conversation_watch_response(session_id~ : String, revision~ : Int, next_sequence~ : Int, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json
+
+pub fn conversation_watch_response_exact(session_id~ : String, revision~ : String, next_sequence~ : String, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json raise
 
 pub fn event_lane_artifact() -> String
 
@@ -197,6 +205,8 @@ pub fn event_lanes() -> Array[String]
 
 pub fn event_progress_lanes() -> Array[String]
 
+pub fn exact_cursor_is_canonical_nonnegative_decimal(String) -> Bool
+
 pub fn executable_book_lifecycle_contract_id() -> String
 
 pub fn executable_book_lifecycle_contract_json() -> Json
@@ -209,9 +219,29 @@ pub let goal_checkpoint_contract_version : Int
 
 pub fn goal_evaluation_bundle_json(Goal) -> Json
 
+pub fn goal_runtime_checkpoint_count(GoalRuntimeState) -> Int
+
+pub fn goal_runtime_contract(GoalRuntimeState) -> String
+
+pub fn goal_runtime_handled_count(GoalRuntimeState) -> Int
+
+pub fn goal_runtime_is_terminal(GoalRuntimeState) -> Bool
+
+pub fn goal_runtime_operation_count(GoalRuntimeState) -> Int
+
+pub fn goal_runtime_outcome(GoalRuntimeState) -> GoalRuntimeOutcome?
+
+pub fn goal_runtime_phase(GoalRuntimeState) -> GoalRuntimePhase
+
+pub fn goal_runtime_rejects_aggregate_field(String) -> Bool
+
+pub fn goal_runtime_status_json(GoalRuntimeState) -> Json
+
 pub fn goal_status_json(Goal) -> Json
 
 pub fn journal_contract_id() -> String
+
+pub fn journal_read_contract_ids() -> Array[String]
 
 pub fn model_planner_command_action_is_supported(String) -> Bool
 
@@ -266,6 +296,8 @@ pub fn model_planner_terminal_event_kinds() -> Array[String]
 pub fn model_planner_working_evidence_rule() -> String
 
 pub fn moonclaw_event_mapping_json() -> Json
+
+pub let mooncode_goal_runtime_contract : String
 
 pub fn native_archived_session_listing_endpoint(String) -> String
 
@@ -411,9 +443,13 @@ pub fn native_session_turns_endpoint(String) -> String
 
 pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_ms? : Int) -> String
 
+pub fn native_stream_endpoint_exact(String, String, String, String, wait_ms? : Int, poll_ms? : Int) -> String raise
+
 pub fn native_tool_exec_endpoint(String, String) -> String
 
 pub fn new_goal(String, String, String, Int, GoalBudget, Array[GoalRequirement]) -> Goal raise
+
+pub fn new_goal_runtime_state() -> GoalRuntimeState
 
 pub fn package_review_flow_accept_kinds() -> Array[String]
 
@@ -516,6 +552,8 @@ pub fn package_review_flow_terminal_statuses() -> Array[String]
 pub fn protocol_version() -> String
 
 pub fn reduce_goal(Goal, GoalEvent) -> Goal
+
+pub fn reduce_goal_runtime(GoalRuntimeState, GoalRuntimeEvent) -> GoalRuntimeState
 
 pub fn runtime_claim_authorization_rule() -> String
 
@@ -981,11 +1019,17 @@ pub fn runtime_tool_web_search() -> String
 
 pub fn runtime_tool_write() -> String
 
+pub fn session_listing_contract_id() -> String
+
+pub fn session_record_contract_id() -> String
+
 pub fn session_runtime_evidence_kind() -> String
 
 pub fn session_runtime_evidence_rule() -> String
 
 pub fn session_runtime_evidence_status_for_counts(Int, Int, Int, Int, Int, Int) -> String
+
+pub fn session_snapshot_contract_id() -> String
 
 pub fn standalone_boundary_json() -> Json
 
@@ -1002,6 +1046,8 @@ pub fn tool_harness_is_proven(Int, Int, Int) -> Bool
 pub fn tool_harness_status_for_counts(Int, Int, Int) -> String
 
 pub fn tool_harness_status_no_tools() -> String
+
+pub fn validate_goal_planner_decision(GoalPlannerDecision) -> Bool
 
 // Errors
 
@@ -1229,6 +1275,11 @@ pub(all) struct Goal {
   seen_ids : Array[String]
 } derive(Eq, @debug.Debug)
 
+pub(all) struct GoalBlockedReason {
+  code : String
+  detail : String
+} derive(Eq, @debug.Debug)
+
 pub(all) struct GoalBlocker {
   identity : BlockerIdentity
   count : Int
@@ -1267,6 +1318,11 @@ pub(all) struct GoalConvergence {
   accepted_revision : Int
 } derive(Eq, @debug.Debug)
 
+pub(all) struct GoalCriterionEvidence {
+  criterion : String
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
 pub(all) enum GoalEvent {
   ContinuationAccepted(String, Int, Int, Int)
   TurnFinished(String, Int, Int, Int, BlockerIdentity?, Bool)
@@ -1282,6 +1338,17 @@ pub(all) enum GoalEvent {
   EvaluationRetryDue(String, Int, String, Int, Int)
   CompleteRequested(String, Int, CompletionProof)
   Resume(String, Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalOperationPolicy {
+  max_output_bytes : Int
+  timeout_milliseconds : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalPlannerDecision {
+  Continue(Array[GoalRuntimeOperation], String, String)
+  Achieved(String, Array[GoalCriterionEvidence])
+  Blocked(GoalBlockedReason, Array[String], String?)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct GoalRequirement {
@@ -1300,6 +1367,42 @@ pub(all) enum GoalRunState {
   EvaluationBackoff
 } derive(Eq, @debug.Debug)
 
+pub(all) enum GoalRuntimeEvent {
+  PlannerDecision(String, GoalPlannerDecision)
+  OperationAccepted(String, String)
+  CheckpointAccepted(String, String)
+  PhaseChanged(String, GoalRuntimePhase)
+  Cancelled(String, String)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalRuntimeOperation {
+  operation_id : String
+  kind : String
+  input : String
+  policy : GoalOperationPolicy
+} derive(Eq, @debug.Debug)
+
+pub enum GoalRuntimeOutcome {
+  AchievedOutcome(String, Array[GoalCriterionEvidence])
+  BlockedOutcome(GoalBlockedReason, Array[String], String?)
+  CancelledOutcome(String)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalRuntimePhase {
+  Queued
+  Running
+  WaitingApproval
+  RetryBackoff
+  PausedNoProgress
+  PausedExternal
+} derive(Eq, @debug.Debug)
+
+pub struct GoalRuntimeState {
+  contract : String
+  phase : GoalRuntimePhase
+  // private fields
+} derive(Eq, @debug.Debug)
+
 pub(all) enum GoalStatus {
   Active
   Complete
@@ -1314,6 +1417,7 @@ pub(all) struct NativeCapabilityEndpoints {
   session_commands : String
   session_turns : String
   session_lifecycle : String
+  goal_runtime : String
   runtime_control : String
   runtime_claim : String
   stream : String

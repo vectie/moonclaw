@@ -79,21 +79,7 @@ fn mooncode_native_capability_surface_fingerprint() -> String {
 
 ///|
 fn mooncode_native_capability_surface_json() -> Json {
-  {
-    "kind": "mooncode-native-capability-surface",
-    "component": "mooncode",
-    "protocol": mooncode_protocol_version(),
-    "capability_contract_id": mooncode_native_capability_contract_id(),
-    "capability_surface_fingerprint": mooncode_native_capability_surface_fingerprint(),
-    "required_endpoints": mooncode_native_capability_required_endpoints(),
-    "optional_endpoints": mooncode_native_capability_optional_endpoints(),
-    "advertised_endpoints": mooncode_native_capability_endpoints(),
-    "required_tools": mooncode_native_capability_tools(),
-    "command_body_required_fields": mooncode_native_command_body_required_fields(),
-    "command_body_supported_fields": mooncode_native_command_body_supported_fields(),
-    "runtime_loop_options": mooncode_native_capability_runtime_loop_options(),
-    "stream_options": mooncode_native_capability_stream_options(),
-  }
+  @mooncode_core.native_capability_surface_json()
 }
 
 ///|

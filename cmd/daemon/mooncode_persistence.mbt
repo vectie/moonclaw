@@ -65,15 +65,33 @@ async fn Daemon::mooncode_persist_session(
   if binding.book_root == "" {
     return
   }
-  let journal = mooncode_read_session_journal(
+  let session_lock = mooncode_open_session_lock(
+    binding.book_root,
+    binding.session_id,
+  )
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
+  mooncode_require_active_session_state_locked(
+    binding.book_root,
+    binding.session_id,
+  )
+  let journal = mooncode_read_session_journal_path(
+    mooncode_session_journal_path(binding.book_root, binding.session_id),
+    binding.session_id,
+  )
+  let snapshot_path = mooncode_session_snapshot_path(
     binding.book_root,
     binding.session_id,
   )
   mooncode_write_locked_file(
-    mooncode_session_snapshot_path(binding.book_root, binding.session_id),
+    snapshot_path,
     mooncode_session_snapshot(
       binding,
-      journal_sequence=mooncode_journal_last_sequence(journal),
+      journal_sequence=mooncode_journal_last_sequence_exact(journal),
     ).stringify(indent=2),
+  )
+  mooncode_sync_journal_directories(
+    mooncode_journal_commit_directories(snapshot_path),
   )
 }

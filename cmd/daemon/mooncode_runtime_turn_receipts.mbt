@@ -4,6 +4,7 @@ fn mooncode_runtime_turn_finished_event(
   command_id : String,
   accepted~ : Bool,
   tool_count~ : Int,
+  completion_reason? : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   mooncode_event(
@@ -17,7 +18,11 @@ fn mooncode_runtime_turn_finished_event(
       "MoonCode native runtime turn failed"
     },
     status=if accepted { "done" } else { "failed" },
-    detail="MoonClaw native runtime turn executed \{tool_count} tool call(s).",
+    detail=if completion_reason == "" {
+      "MoonClaw native runtime turn executed \{tool_count} tool call(s)."
+    } else {
+      "MoonClaw native runtime turn executed \{tool_count} tool call(s): \{completion_reason}."
+    },
     now~,
   )
 }

@@ -258,6 +258,21 @@ async test "mooncode cancel control interrupts an active process and stays hidde
   )
   let session_id = "session-cancel"
   let daemon = mooncode_control_test_daemon(book_root)
+  goal_gate_write_snapshot(
+    book_root,
+    session_id,
+    false,
+    goal_gate_snapshot(session_id, book_root),
+  )
+  assert_eq(
+    mooncode_goal_runtime_api_put_internal(
+      book_root,
+      session_id,
+      goal_runtime_test_body(session_id),
+      1L,
+    ).status_code,
+    201,
+  )
   @async.with_task_group(group => {
     let submitted = daemon.mooncode_submit_turn_response(group~, session_id, {
       "protocol": mooncode_protocol_version(),
@@ -304,6 +319,14 @@ async test "mooncode cancel control interrupts an active process and stays hidde
     assert_eq(mooncode_json_string(control, "status", default=""), "cancelled")
     group.return_immediately(())
   })
+  let goal = mooncode_goal_runtime_api_get_internal(book_root, session_id)
+  assert_eq(goal.status_code, 200)
+  guard goal.body is Object(goal_body) &&
+    goal_body["status"] is Object(goal_status) else {
+    abort("goal runtime status")
+  }
+  assert_eq(goal_status["terminal"], true)
+  assert_eq(goal_status["outcome"], ("cancelled" : Json))
   assert_false(@fsx.exists(@pathx.join(book_root, "should-not-exist.txt")))
   let claim = daemon.mooncode_runtime_claim_state_payload(session_id, book_root)
   assert_eq(mooncode_json_int(claim, "delivered_command_count", default=0), 2)

@@ -154,6 +154,65 @@ test "mooncode runtime control targets active claimed prompt" {
 }
 
 ///|
+test "mooncode runtime selects live steering in journal order" {
+  let commands : Array[Json] = [
+    {
+      "command_id": "prompt-1",
+      "command": {
+        "command": "prompt",
+        "text": "implement",
+        "packet": { "command_id": "prompt-1" },
+      },
+    },
+    {
+      "command_id": "steer-1",
+      "created_at": "2026-07-27T10:00:01Z",
+      "command": {
+        "command": "steer",
+        "text": "first correction",
+        "packet": { "command_id": "steer-1" },
+      },
+    },
+    {
+      "command_id": "steer-2",
+      "created_at": "2026-07-27T10:00:02Z",
+      "command": {
+        "command": "steer",
+        "text": "second correction",
+        "packet": { "command_id": "steer-2" },
+      },
+    },
+    {
+      "command_id": "cancel-1",
+      "command": { "command": "cancel", "packet": { "command_id": "cancel-1" } },
+    },
+  ]
+  let state = mooncode_runtime_control_state_from_logs(
+    "session-live-steer",
+    "/tmp/book",
+    commands,
+    [{ "command_id": "prompt-1", "status": "runtime-claimed" }],
+    journal_path="/tmp/book/journal.jsonl",
+  )
+  let live = mooncode_runtime_turn_pending_live_steering(state, "prompt-1")
+  assert_eq(live.length(), 2)
+  assert_eq(mooncode_json_string(live[0], "command_id", default=""), "steer-1")
+  assert_eq(
+    mooncode_json_string(live[0], "steering_text", default=""),
+    "first correction",
+  )
+  assert_eq(mooncode_json_string(live[1], "command_id", default=""), "steer-2")
+  assert_eq(
+    mooncode_json_string(live[1], "applied_to_command_id", default=""),
+    "prompt-1",
+  )
+  assert_eq(
+    mooncode_runtime_turn_pending_live_steering(state, "other-turn").length(),
+    0,
+  )
+}
+
+///|
 test "mooncode runtime control treats delivered prompt as terminal and defers idle steer" {
   let commands : Array[Json] = [
     {

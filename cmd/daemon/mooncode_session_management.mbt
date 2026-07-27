@@ -76,29 +76,36 @@ async fn Daemon::mooncode_rename_session(
   book_root : String,
   title : String,
 ) -> Json {
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
+  mooncode_require_active_session_state_locked(book_root, session_id)
   let safe_session_id = mooncode_require_session_record(
     book_root,
     session_id,
     archived=false,
   )
   let now = self.clock.now()
-  mooncode_append_session_journal(
-    book_root,
-    session_id,
-    mooncode_journal_event(),
-    {
-      "id": "mooncode-session-rename-\{self.uuid.v4()}",
-      "kind": mooncode_session_rename_event_kind(),
-      "event": mooncode_session_rename_event_kind(),
-      "lane": "session",
-      "status": "done",
-      "session_id": session_id,
-      "command_id": "",
-      "client_turn_id": "",
-      "created_at": now,
-      "title": "Session renamed",
-      "detail": title,
-    },
+  ignore(
+    mooncode_append_session_journal_once_locked(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      {
+        "id": "mooncode-session-rename-\{self.uuid.v4()}",
+        "kind": mooncode_session_rename_event_kind(),
+        "event": mooncode_session_rename_event_kind(),
+        "lane": "session",
+        "status": "done",
+        "session_id": session_id,
+        "command_id": "",
+        "client_turn_id": "",
+        "created_at": now,
+        "title": "Session renamed",
+        "detail": title,
+      },
+    ),
   )
   match self.mooncode_sessions.get(session_id) {
     Some(binding) => binding.custom_title = title
@@ -109,12 +116,13 @@ async fn Daemon::mooncode_rename_session(
   )
   let journal = mooncode_read_session_journal_path(
     mooncode_session_journal_path_by_safe_id(book_root, safe_session_id),
+    session_id,
   )
   let updated = snapshot
     |> mooncode_json_object_with_field("custom_title", title.to_json())
     |> mooncode_json_object_with_field(
       "journal_sequence",
-      mooncode_journal_last_sequence(journal).to_json(),
+      mooncode_journal_last_sequence_exact(journal).text().to_json(),
     )
   mooncode_write_locked_file(
     mooncode_session_snapshot_path_by_safe_id(book_root, safe_session_id),
@@ -135,13 +143,26 @@ async fn Daemon::mooncode_archive_session(
   session_id : String,
   book_root : String,
 ) -> Json {
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Exclusive)
+  defer lifecycle_gate.unlock()
   self.mooncode_require_idle_session(session_id)
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
+  mooncode_require_active_session_state_locked(book_root, session_id)
   let safe_session_id = mooncode_require_session_record(
     book_root,
     session_id,
     archived=false,
   )
+  mooncode_write_session_state_locked(book_root, session_id, "archiving")
   mooncode_move_session_record(book_root, safe_session_id, from_archived=false)
+  mooncode_write_session_state_locked(book_root, session_id, "archived")
   self.mooncode_sessions.remove(session_id)
   mooncode_session_management_result(
     "archive",
@@ -159,12 +180,30 @@ async fn Daemon::mooncode_restore_session(
   book_root : String,
 ) -> Json {
   ignore(self)
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Exclusive)
+  defer lifecycle_gate.unlock()
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
+  let state = mooncode_session_state_locked(book_root, session_id)
+  if state != "archived" {
+    raise InvalidJournal(
+      "MoonCode session `\{session_id}` cannot restore from lifecycle state `\{state}`",
+    )
+  }
   let safe_session_id = mooncode_require_session_record(
     book_root,
     session_id,
     archived=true,
   )
+  mooncode_write_session_state_locked(book_root, session_id, "restoring")
   mooncode_move_session_record(book_root, safe_session_id, from_archived=true)
+  mooncode_write_session_state_locked(book_root, session_id, "active")
   mooncode_session_management_result(
     "restore",
     session_id,
@@ -180,7 +219,17 @@ async fn Daemon::mooncode_delete_session(
   session_id : String,
   book_root : String,
 ) -> Json {
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Exclusive)
+  defer lifecycle_gate.unlock()
   self.mooncode_require_idle_session(session_id)
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
   let safe_session_id = mooncode_safe_session_id(session_id)
   let active = mooncode_session_record_matches(
     book_root,
@@ -199,12 +248,21 @@ async fn Daemon::mooncode_delete_session(
       404, "Not Found", "MoonCode session not found", session_id,
     )
   }
+  let state = mooncode_session_state_locked(book_root, session_id)
+  if (active && state != "active") || (archived && state != "archived") {
+    raise InvalidJournal(
+      "MoonCode session `\{session_id}` storage does not match lifecycle state `\{state}`",
+    )
+  }
   let path = mooncode_session_dir_by_safe_id(
     book_root,
     safe_session_id,
     archived=!active,
   )
+  mooncode_write_session_state_locked(book_root, session_id, "deleting")
   @fs.rmdir(path, recursive=true)
+  mooncode_sync_journal_directories(mooncode_journal_commit_directories(path))
+  mooncode_write_session_state_locked(book_root, session_id, "deleted")
   self.mooncode_sessions.remove(session_id)
   mooncode_session_management_result(
     "delete",
@@ -302,6 +360,10 @@ async fn mooncode_move_session_record(
     exists_ok=true,
   )
   @moonclaw_fsx.rename(source, destination)
+  mooncode_sync_journal_directories(mooncode_journal_commit_directories(source))
+  mooncode_sync_journal_directories(
+    mooncode_journal_commit_directories(destination),
+  )
 }
 
 ///|
@@ -344,7 +406,7 @@ fn mooncode_session_management_error(
 fn mooncode_session_custom_title(
   record : Json,
   journal : Array[Json],
-) -> String {
+) -> String raise MoonCodeJournalError {
   let snapshot = mooncode_json_object_field_or_empty(record, "snapshot")
   let binding = mooncode_json_object_field_or_empty(record, "binding")
   let mut title = mooncode_json_string(

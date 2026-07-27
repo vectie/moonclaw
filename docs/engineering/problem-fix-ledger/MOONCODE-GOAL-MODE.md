@@ -1,12 +1,38 @@
 # MoonCode goal mode: durable core reducer
 
-**Original pure-core checkpoint:** Pure `mooncode/core` contracts and reducer only; daemon persistence/replay and API integration were intentionally deferred at that checkpoint. Durable daemon genesis/replay is now implemented; HTTP/controller integration remains deferred. Caller-supplied integer timestamps make pure reducer replay deterministic. Event IDs provide idempotency. Requirements carry stable IDs, proof state, and evidence references; approvals remain caller-supplied references only. Public JSON projections are versioned and deliberately exclude approval/evidence details, internal reasoning, and secrets; this slice does not claim integration-level redaction coverage.
+## Validation trial problem: orphaned Moon lock
+
+A focused decoder-test receipt falsely reported expected status 0 after its `moon` process was killed while blocked on an orphaned `_build/.moon-lock`. The controller isolated the generated orphan lock inode and reran the exact focused validation using a fresh generated lock path. The fix is to treat killed or lock-blocked commands as failed/inconclusive rather than successful, record the actual process outcome, and rerun the exact command after lock isolation.
+
+> Command 005 recovery is in progress: controller/parallel audit identified that stored-event encoding must carry the exact `mooncode.goal.runtime.event.v1` kind and that constructor validation must cover every event variant. The decoder boundary is strict genesis-only JSON (exact keys/types/constants, canonical identities/text, checked nonnegative Int64 time, lowercase SHA-256, reconstruction and digest verification); store, HTTP, supervisor, legacy goal behavior, and aggregate caps remain out of scope.
+
+**Original pure-core checkpoint:** Pure `mooncode/core` contracts and reducer only; daemon persistence/replay and API integration were intentionally deferred at that checkpoint. Durable genesis replay and the GET/PUT genesis endpoint are now wired; automatic controller/event replay remain deferred. Caller-supplied integer timestamps make pure reducer replay deterministic. Event IDs provide idempotency. Requirements carry stable IDs, proof state, and evidence references; approvals remain caller-supplied references only. Public JSON projections are versioned and deliberately exclude approval/evidence details, internal reasoning, and secrets; this slice does not claim integration-level redaction coverage.
 
 ## Invariants
 
 Creation is `Active`, and is `Runnable` only when the initial budget is not exactly exhausted; exact exhaustion produces `AwaitingBudget`. Completion requires a nonempty set of requirements, every requirement `Proven`, and nonempty evidence references on every proof. Evaluation stores its completed report and returns an active goal to runnable. Blocker observations use structured `BlockerIdentity` values, not fingerprints. Blocker correlation is scoped by `run_id` plus per-run ordinal: only the expected next ordinal in the current run advances the consecutive count, while stale run IDs or stale/wrong ordinals are exact no-ops. Matching observations block at the configured threshold; progress or `None` resets blocker accumulation. `Resume` starts a fresh run with a new `run_id`, clears the prior blocker, and isolates new observations from the resumed run's predecessor. Budget exhaustion remains active/awaiting-budget. `ContinuationAccepted` increments only continuation count; `TurnFinished` increments only the goal turn and applies blocker state. Duplicate event IDs are exact no-ops, including revision and time. Unknown requirement IDs and blocked/complete absorption are reducer invariants, but this ledger does not claim dedicated tests unless present in the suite.
 
+## Unbounded runtime-contract slice
+
+`mooncode-goal-runtime.v1` is an additive pure-core state machine alongside the existing genesis/checkpoint contracts and bounded `mooncode.v1` runtime. It permits any number of explicit continuation and checkpoint events until the planner explicitly reports `Achieved` or `Blocked`, or an operator explicitly reports `Cancelled`. Provider timeout, empty output, no-progress pauses, and counters remain nonterminal observations. Stable event and operation IDs make replay idempotent, and terminal settlement is absorbing.
+
+The two observed **hard-eight failures** were (1) an eight-turn/continuation ceiling settling work that still had a valid next action, and (2) an eight-unit execution/time quantum being promoted from an individual operation guard into an aggregate goal-completion deadline. Both failures confused bounded execution quanta with bounded goal solvability. The fix retains per-operation timeout/output resource policy so one tool invocation cannot run forever or emit unbounded data, while omitting—and rejecting—aggregate token, turn, wall-time, LOC, and deadline fields. Goal completion therefore has no arbitrary aggregate bound; safety remains local to each operation.
+
+This slice intentionally does not add daemon scheduling or HTTP behavior.
+
+## First persistence slice: strict daemon-private codec
+
+**Exact boundary:** this slice adds only the daemon-private typed codec and whitebox tests for `mooncode-goal-runtime.v1`. It does not add a disk store, HTTP routes, supervisor/controller behavior, legacy Goal/GoalBudget changes, or core changes. Genesis semantics are independent of the legacy aggregate contract and contain only protocol, contract, session/goal identity, objective, and ordered criteria. Runtime journal integration must later retain MoonLib's supported physical `event` record kind and distinguish these records by their logical `mooncode.goal.runtime.*.v1` kind; `goal-runtime` is not a physical record kind.
+
+- **Problem — retry identity was vulnerable to recording time:** Including `recorded_at` or a stable record ID in semantic hashing makes a response-lost retry at a later time appear to be different work. **Fix:** hash fixed-order semantic JSON only; exclude timestamp, digest, and stable ID, and verify the full lowercase SHA-256 digest on decode.
+- **Problem — permissive persistence decoding hides schema drift:** defaulting readers and partial object matching silently accept misspellings, aggregate aliases, and future fields. **Fix:** the codec boundary uses exact recursive allowlists, checked integers, canonical unpadded identities, and core-equivalent decision validation before reconstructing reducer events.
+- **Problem — legacy aggregate limits can leak into unbounded runtime genesis:** budget, turn/token/time/step/iteration/operation/LOC/deadline fields would reintroduce false terminal behavior. **Fix:** genesis uses only the exact v1 semantic fields and rejects aggregate completion fields at every relevant nesting level; operation policy remains positive without arbitrary maxima.
+
 ## Problem/fix ledger
+
+- **Problem/Fix — append-scan test helper open mode:** Native checking failed at `cmd/daemon/mooncode_session_journal_streaming_wbtest.mbt:70` because `@fs.open(path)` omitted the required `mode~` argument. The test-only append-scan helper now opens its temporary journal explicitly in read-only mode with `mode=ReadOnly`. This fix does not wire production append behavior or enable v2 journal writes.
+
+- **Planner exhaustion falsely appeared terminal:** This clean recovery turn exhausted the legacy eight planner steps with one remaining test failure, proving the aggregate step bound can falsely terminate repairable work. Continuation resumed in a fresh command; the goal contract must never treat command/step exhaustion as terminal.
 
 - **Problem/Fix — MoonBit symlink signature:** A repair wrongly assumed the positional symlink link path was labeled `link_path`; native compiler errors 4085/4080 exposed the actual `target~`-plus-positional signature, and all three calls were restored.
 - **Problem/Fix — zsh verification variable:** The first full-suite wrapper assigned zsh read-only parameter status and stopped after the tests; rerun with task_status, confirming the full daemon suite passed 176/176.
@@ -14,6 +40,8 @@ Creation is `Active`, and is `Runnable` only when the initial budget is not exac
 - **Problem/Fix — double-wrapped sessions root caused false absence:** The `goal_gate_dir` test helper passed `mooncode_sessions_root(root)` into `mooncode_session_dir_by_safe_id`, which applies the sessions-root transformation itself, so fixtures landed in a double-nested store and production falsely returned `GoalSessionAbsentOrMismatch`. Pass book `root` directly while retaining the safe session ID and `archived` label; the invalid-JSON fixture still proves the generic `GoalSessionCorrupt` path.
 
 - **Problem/Fix — independent security/evidence audit:** Dot aliases and snapshot or active-directory symlinks could evade ordinary identity fixtures, while rejection tests did not independently prove filesystem non-mutation. In particular, the sanitizer derives `mooncode_safe_session_id("..") == "_"`, so derived-name checks cannot identify the raw parent-directory token; the production gate now rejects raw `session_id == "." || session_id == ".."` before/alongside its derived safe-component checks. The session gate and its tests are async; rejection coverage captures exact immediate directory entry counts and snapshot bytes, verifies journals remain absent using the production session-root and journal-path helpers, and includes absent-root dot aliases and symlink fixtures.
+
+- **HTTP recovery verification and remaining boundary:** Controller verification passed 192/192 daemon native tests and 3/3 focused HTTP seam tests, with `moon check` reporting 0 errors and formatting/diff checks clean. The route/body seam helpers are not the actual `Daemon::serve`/socket path; real socket and restart end-to-end coverage remains required.
 
 ## Chronological internal-API ledger (`goal-api-ledger-doc-2635`)
 
@@ -126,6 +154,11 @@ The original slice changed and validated only the pure core and its documentatio
 
 A bounded follow-up turn was exhausted searching for `read_link`, which was unnecessary. The recovery uses direct `symlink`, non-following `kind`, `exists`, and immediate directory-entry counts. Combined dangling active-directory and dangling `session.json` evidence now verifies exact `GoalSessionCorrupt`, no journal, absent targets, retained symlink kinds, and no containing-directory mutation.
 
+## HTTP/controller recovery checkpoint
+
+- **Problem/Fix — malformed-JSON assertion:** The focused HTTP test used a brittle Debug/Show snapshot (`Err("invalid_json")`) that rendered as `Err(invalid_json)`. Replace the snapshot with direct equality so the test proves the exact `Err("invalid_json")` contract without depending on display formatting.
+- **Problem/Fix — ledger overwrite and recovery:** A prior ledger write replaced this committed 127-line history with a 19-line file (10 additions and 118 deletions). Restore the complete committed ledger from `HEAD`, then append this recovery checkpoint so all prior engineering history remains intact.
+
 ## Producer-neutral comparator checkpoint
 
 Agreement and independent acceptance are separate outcomes: matching producer reports do not by themselves establish acceptance. Semantic evidence comparison ignores producer-local evidence IDs and compares meaningful evidence content instead. Controller basis validation rejects blank and empty bases. Checkpoint comparison traverses the sorted union of epoch/key pairs, preserving right-only checkpoints and detecting regressions that a left-only cadence would miss.
@@ -139,4 +172,424 @@ Problems met and fixes:
 - Capability-unavailable turns made no edits.
 - A failed broad-validation experiment was rolled back and replaced with incremental minimal validation.
 
-Proof at this checkpoint: an independent native core check passes, and 51/51 tests pass. A warn-list `+73` run currently reports unnecessary-annotation warnings but zero errors.
+Proof at this checkpoint: independent all-target core checks pass, and 54/54 tests pass on native, JavaScript, Wasm, and Wasm-GC. A warn-list `+73` run currently reports unnecessary-annotation warnings but zero errors.
+
+- **Command 001 recovery — Array API:** The initial runtime slice used nonexistent `Array.concat`; repaired with `copy()` plus `push()`, matching `goal_reducer.mbt`.
+- **Command 001 recovery — deprecated derive:** `Show` derives emitted deprecation diagnostics; replaced with `Debug`, while status-shape tests now inspect canonical JSON object keys rather than debug text.
+- **Command 001 recovery — failed tests:** Two tests failed during the bounded attempt; contract validation and canonical status serialization were strengthened before rerunning native verification.
+- **Command 001 recovery — forbidden redirect:** An attempted `/tmp` redirect violated the MoonBook boundary; subsequent commands keep all paths and output inside the MoonBook/tool capture.
+- **Command 001 recovery — planner exhaustion:** The bounded planner exhausted before compiler repairs were applied; recovery made the requested implementation mutation first and retained the pure-core/no-daemon boundary.
+
+
+### Command 002 recovery note
+
+Command 002 reached step 8 and exhausted its execution allowance before formatting. Its recorded pre-recovery result was 60/60 core tests passing with check/info passing; formatting and the remaining runtime-contract hardening cases were deferred to this recovery pass.
+
+- **Problem/Fix — blank runtime-event payloads (64/64 native core tests):** `OperationAccepted`, `CheckpointAccepted`, and `Cancelled` previously recorded a nonblank event ID before accepting a whitespace-only operation ID, checkpoint ID, or cancellation reason. The reducer now returns the original state before recording the event, making blank identifiers and payloads exact no-ops while preserving unbounded aggregate progress and per-operation resource guards.
+- **Problem/Fix — command 003 false green:** Command 003 used a shell pipeline without fail-fast behavior; later successful cleanup masked the earlier 63/64 core-test failure. Validation now uses fail-fast sequencing so any failed stage remains visible and stops the command.
+
+## command-005 — goal runtime v1 completion
+The legacy eight-step planner exhausted before validation. Final audit fixes enforce canonical identities and detached terminal payloads while retaining externally nonconstructible state with safe accessors. The aggregate-name helper is only a diagnostic denylist; strict exact-allowlist decoder enforcement belongs to the next persistence adapter. Persistence, HTTP, and supervisor remain deferred.
+
+- **Problem/Fix — command 007 masked compile failure:** The shell lacked `set -e`, so a successful trailing command masked the compile failure; verification now starts with strict failure propagation.
+- **Problem/Fix — command 008 unsafe broad patch:** The broad patch was rejected, and `replace_all` corrupted a scoped identifier; the repair uses a cohesive, scoped edit.
+- **Problem/Fix — command 009 labels treated as paths:** Command labels were incorrectly treated as filesystem paths; subsequent commands use actual MoonBook-relative paths only.
+- **Problem/Fix — command 010 stale anchors:** Stale patch anchors caused the command to stop; the repair was rebased on current file contents.
+
+- command-003 exhausted step 8 after valid source edits without validation; this continuation completes that validation.
+- The pure slice still does not claim end-to-end unbounded daemon behavior; strict codec/store/supervisor comes next.
+
+
+- Problem/fix: The checkpoint idempotency test initially conflated event idempotency with checkpoint deduplication; it now checks exact-event replay as a no-op and distinct-event checkpoint deduplication separately.
+
+- **Problem/Fix — Legacy async timeout flake after hardening:** After the post-hardening full native suite, the unrelated legacy async test `analysis_step_handler enforces timeout and token budget policies` failed once (1250/1251) at its 1ms timeout expectation. An immediate isolated rerun passed 1/1, identifying timing flakiness rather than a goal-runtime regression; no source or test edit was made.
+
+- Problem/Fix (command-001): Invalid `priv fn`, deprecated suberror syntax, manual UInt16 hex indexing, and exhausting step 8 before compiler repair were replaced by modern MoonBit declarations, modern `priv suberror ... { ... }`, crypto hex helpers, and fail-fast compiler validation. Decode strictness and missing/extra-field rejection remain intentionally deferred to the decoder continuation.
+
+
+# Command 006–009 problem/fix ledger
+
+## Commands 006–009 (completed by command 009)
+
+- **Problem:** Runtime codec constructors validated normalized copies but genesis hashing/storage still referenced caller-owned criteria, while stored events validated/serialized/stored the original mutable event and incompletely validated event-specific fields.
+- **Fix:** Genesis now hashes and stores normalized criteria. Stored-event construction now copies first, derives identity from the copy, validates canonical identities and exhaustive variants, hashes the normalized event, and stores that copy. Focused tests cover equal session/goal IDs, invalid operation/checkpoint/cancel details, and mutation isolation for criteria, operations, evidence references, and alternatives.
+
+- **Problem:** Provider stalls and local cancellation could be mistaken for aggregate goal exhaustion. **Fix:** Provider-stall remains a nonterminal external pause/observation, while local-cancel is terminal only when an explicit operator cancellation event is recorded; neither creates an implicit overall goal bound.
+- **Problem:** Repeated legacy command runs exhausted at step 8 even while valid implementation work remained (including commands 001, 002, and 003), conflating controller-command allowance with goal completion. **Fix:** Command exhaustion is recorded as nonterminal continuation state. Work resumes in the next command, and the unbounded goal is settled only by explicit `Achieved`, `Blocked`, or `Cancelled` outcomes.
+
+## Command 011 — semantic runtime digest regression
+
+- Runtime-event semantic digests had incorrectly included the stable event ID and omitted protocol discriminator fields.
+- The fixed-order semantic basis is now `{kind, protocol, contract, session_id, goal_id, payload}`; timestamp and stable ID are excluded.
+- Constructors reject negative recording timestamps as timestamp-integrity violations. This is not a goal deadline or aggregate bound.
+- Encoders are required to reconstruct values and enforce fixed/embedded IDs plus lowercase 64-hex digest integrity before normalized serialization.
+- Operation timeout and output limits remain operation-local safeguards.
+
+- **Problem/Fix — command 011 digest repair:** The first attempt only added `mooncode_goal_runtime_event_semantic_basis` and missed the constructor anchors, so it did not change stored-event digest behavior. This continuation preserves that history and actually wires the normalized event semantic basis into `new_mooncode_goal_runtime_stored_event`, excluding stable event IDs and `recorded_at` while retaining session, goal, and payload semantics; it also rejects negative event timestamps.
+
+## Digest encoder repair (command 003 correction)
+
+- **Problem:** Encoders trusted daemon-private envelope identity and `semantic_digest` fields, allowing forged records and post-construction nested mutation to serialize. The first focused tests also used `fail`/`noraise` inside effectful codec `try` blocks, producing a compile-time effect error, and incorrectly expected mutation of the caller-owned operations array after construction to invalidate the stored event even though the constructor correctly copies that array.
+- **Fix:** Extracted raw `genesis_envelope_json` and `event_envelope_json` helpers. Encoders reconstruct through current constructors, require fixed/embedded IDs, validate lowercase 64-hex digests, compare recomputed digests, and serialize normalized values. Rejection tests now capture `Invalid` as a boolean and assert it, avoiding the compile effect error. The mutation test first proves caller mutation leaves nested encoding valid and byte-unchanged, then mutates the constructor-owned nested operations and verifies encoding rejects the resulting digest mismatch. Focused coverage retains forged IDs/digests and valid-byte stability.
+
+## Formatter-snapshot recovery
+
+A stale/deferred steer became a standalone turn, a regex repair corrupted 63 unrelated occurrences, and the command finished without validation. Recovery restored the last formatter snapshot and reapplied five AST-local edits with exact focused tests.
+
+## Genesis `recorded_at` JSON-number decoding
+
+MoonBit core's `FromJson` implementation for `Int64` accepts a JSON `String`, not `Json::Number`; using it on the valid numeric genesis timestamp `4294967296` therefore caused the two valid-decode failures. The codec now handles `Json::Number` directly: when the parser preserved an exact representation it passes that representation straight to `@string.parse_int64` (including syntax and overflow decisions), while representation-less doubles must be finite, integral, nonnegative, and at most `2^53 - 1` before exact conversion. The common result is then checked as nonnegative, with no aggregate goal bound or arbitrary maximum on exact represented integers.
+
+
+## Codec test-file overwrite recovery
+
+A hallucinated whole-test-file overwrite replaced validated codec coverage. The file was recovered from the formatter snapshot, then checked against the controller's expected suite. Prevention is to use small fresh sessions, apply narrow surgical patches rather than whole-file rewrites, and require controller verification of the resulting diff and focused validation receipts.
+
+## Strict v1 codec decoder and event-matrix recovery
+
+- **Problem:** A shell command ran `moon test ... 2>&1 | tail -80` without `pipefail`; `tail` exited 0 and masked the failed test. **Fix:** Run MoonCode test tools directly, or use shell pipelines with strict `pipefail`, and require controller verification of the canonical command.
+- **Problem:** MoonCode repeatedly sent a native target to `moon fmt`, which does not accept a target. **Fix:** Run `moon fmt` without a target; use targets only for check and test.
+- **Problem:** A broad short numeric-pattern edit touched the protected Int64 exact-representation branch and broke Int64-max decoding and syntax. **Fix:** The controller cancelled the turn, a fresh narrow session restored the exact `parse_int64(raw)` branch, and later prompts avoided broad numeric rewrites.
+- **Problem:** A test-generation turn hallucinated nonexistent event APIs and overwrote a validated test region. **Fix:** Cancel before further formatting, restore the exact formatter snapshot through MoonCode, then re-add coverage in small typed slices using real `GoalRuntimeEvent` constructors.
+- **Problem:** Event round-trip and schema-matrix attempts hallucinated wrong type names and constructors (`GoalRuntimeEvidence`, `GoalRuntimeBlockReason`, `PlannerDecisionMade`, and named enum arguments). **Fix:** Feed exact compiler diagnostics into fresh narrow MoonCode continuations and use the existing typed positional constructor patterns.
+- **Problem:** The legacy runtime repeatedly exhausted at planner step 8 despite valid edits or even a final green tool result. **Fix:** Record the receipt as a nonterminal runtime defect and continue in a new command; it never means the goal is `Blocked`, `Achieved`, or `Cancelled`.
+- **Problem:** A schema mutation assumed the canonical envelope began with `kind`, making replacements vacuous. **Fix:** Every mutation asserts `mutated != base`, which caught the bad needle; use the actual id-first encoder order.
+- **Problem:** Store design exposed ambiguous achievement evidence because genesis allowed duplicate criterion text under different IDs. **Fix:** Require both criterion IDs and criterion texts to be canonical and unique before hashing or storing genesis.
+- **Problem:** An append-only ledger turn used a whole-file write and deleted 175 historical lines. **Fix:** Recover the exact pre-turn bytes from the durable read record with byte/newline checks, then use this exact-tail edit; accept only an additions-only diff.
+- **Evidence:** Focused native codec tests are 31/31; daemon native check reports 0 errors; `moon info` and formatting are clean; there is no `.mbti` interface diff; and an independent read-only audit found no P0/P1 blocker.
+- **Invariant:** There is no aggregate goal bound: no token, turn, step, iteration, operation-count, LOC, deadline, or wall-time cap. `max_output_bytes` and `timeout_milliseconds` are operation-local containment only and cannot settle a goal.
+
+## Canonical carrier boundary recovery
+
+- **Problem:** The first carrier test draft regressed to obsolete tuple criteria, a five-argument stored-event constructor, nonexistent phases/events, unlabeled `String.replace`, and helpers without required error effects. **Fix:** Keep the structurally valid carrier source, replace the unvalidated test draft with the real typed positional codec patterns, and feed the exact compiler diagnostics into small continuation turns.
+- **Problem:** The carrier encoder built guaranteed-valid JSON through `@json.parse`, leaking `Json::ParseError` outside its declared codec error effect. **Fix:** Construct the six-key contextual `Json` object directly after reconstructing and validating the embedded logical record.
+- **Problem:** Two legacy commands again reached planner step 8 before validation completed. **Fix:** Preserve their edits and diagnostics as nonterminal continuation state; controller validation and a fresh MoonCode repair completed the slice.
+- **Evidence:** The carrier suite passes 7/7, daemon native check reports 0 errors, and an independent read-only audit found no P0/P1 blocker. Exact canonical record bytes, every event/decision/phase, `Int64::MAX`, exact schemas, redundant-field checks, aggregate-alias rejection, and opaque operation input are covered.
+- **Boundary:** This checkpoint is pure carrier encode/decode only. Physical journal append, locks, global cursor replay, stable-ID indexing, conflict detection, HTTP, and supervisor remain the next slices.
+
+## Indexed scanner and literal-unbounded audit
+
+- **Problem:** Reserved-carrier classification initially checked `record_kind` first, so a reserved payload beneath a malformed physical kind could be silently ignored. **Fix:** Inspect `payload.kind` first, then exact-validate the 10-key MoonLib envelope, carrier kind and contract, event kind, and the string types of command and client fields; reserved versions now fail closed.
+- **Problem:** The first scanner expected outer `recorded_at` to be a JSON Number, while the actual carrier/appender copies the canonical decimal String. **Fix:** Accept only a canonical nonnegative Int64 String and compare it with the embedded record.
+- **Problem:** Removing or corrupting a carrier's inner `kind` left carrier-only fields intact but could be misclassified as unrelated. **Fix:** Treat `logical_kind`, `semantic_digest`, or `canonical_record` as carrier-shaped evidence; then require a reserved String kind and fail closed on missing, non-string, or non-reserved values.
+- **Recovery:** The legacy runtime repeatedly reached step 8 and retained parse and symbol typos despite useful edits. Every receipt remained a nonterminal pause, and fresh commands consumed the controller's exact diagnostics. One provider pause lacked a terminal journal row; cancellation targeted only that stuck legacy turn, preserving edits and journals, and a branch-local daemon was restarted.
+- **Test recovery:** An appended scanner-test draft hallucinated `JournalRecord` and `DateTime` APIs and introduced malformed edits. MoonCode restored only that uncommitted tail exactly to `HEAD` through an explicit native tool call; the committed seven-test carrier file remained byte-exact. Scanner tests were then recreated in a separate new `wbtest` and repaired from compiler diagnostics to 6/6 green.
+- **Literal-unbounded audit:** An independent audit found that the generic whole-file journal reader's 2 GiB guard and 32-bit `Int` sequence are artificial aggregate bounds; `Int64` is still finite. The next required migration is locked streaming JSONL replay plus an additive journal v2 canonical arbitrary-length decimal String sequence with a digit-carry successor, with dual v1/v2 readers deployed before v2 writes. This migration is explicitly open and is not claimed complete.
+- **Evidence:** The carrier suite passes 7/7, the new scanner suite passes 6/6, and daemon check reports 0 errors. The current scanner checkpoint has no token, turn, step, retry, operation, deadline, elapsed-time, or output-total policy, but its physical v1 sequence/reader migration remains explicitly open.
+- **Boundary:** Operation-local `max_output_bytes` and `timeout_milliseconds` do not settle goals.
+
+## Arbitrary-decimal dual-journal sequence recovery
+
+- **Problem/Fix — finite sequence and whole-file audit:** The indexed scanner used 32-bit `Int`, and ordinary journal replay still has a 2 GiB whole-file conversion. Sequence state is now canonical positive decimal text with string carry, comparison, and dual v1-number/v2-string envelope validation. The whole-file reader remains explicitly open for the streaming checkpoint; this slice does not claim end-to-end unbounded persistence yet.
+- **Problem/Fix — normal v1 number representation:** Small durable v1 numbers can parse with `repr=None` while huge values preserve their raw representation. The dual reader accepts the normalized canonical integer for ordinary v1 compatibility without converting magnitude through `Int` or `Int64`. Exact rejection of noncanonical raw v1 spellings must occur in the forthcoming line-oriented parser before JSON normalization loses the lexeme.
+- **Problem/Fix — compile and syntax recovery:** Early drafts used invalid `unsafe_to_char` invocation, obsolete `try?`, an invalid loop binder, incorrect Json assertions, wrong package aliases, wrong envelope fields, a digit-bearing local identifier that tokenized badly, and `1.to_json()` which parsed as a fractional literal. Exact compiler diagnostics were fed into small continuation turns; the final helpers and tests compile.
+- **Problem/Fix — repeated step-8 pauses:** Multiple useful MoonCode turns stopped at the legacy eight-tool allowance, including after source repairs and before verification. Each receipt was treated as a nonterminal pause and resumed; it never settled the aggregate goal.
+- **Problem/Fix — false success and unavailable tools:** One continuation emitted `finish` without applying its requested edit or testing, and another claimed no tools were available despite the daemon exposing them. Deterministic MoonCode tool calls applied only the exact compiler/audit-derived repairs, followed by independent controller validation.
+- **Problem/Fix — masked command status:** Test output pipelines and a trailing `printf` returned success even when `moon test` failed. Canonical validation now runs the unpiped test command; successful filters are never accepted as test proof.
+- **Problem/Fix — tool wrapper mistakes:** MoonCode repeatedly passed a target to `moon fmt`, which rejects targets, attempted an empty-anchor edit, and tried an out-of-book temporary redirect. Formatting uses no target; append/edit anchors remain nonempty and book-relative.
+- **Problem/Fix — session isolation:** Unrelated valid payloads were filtered before checking their outer session, allowing a foreign session to advance the cursor. Session identity is now validated for every envelope before sequence advancement or payload filtering.
+- **Problem/Fix — adversarial test maturity:** Mixed v1/v2 continuity, gaps, duplicates, contract/type failures, unknown contracts, 64-record continuation, and foreign-session unrelated records are now covered. Focused native proof is 18/18.
+- **Invariant:** There is no aggregate token, turn, step, iteration, retry, operation-count, LOC, deadline, wall-time, or total-output bound. Per-operation output bytes and timeouts remain retryable containment only.
+
+## Lock-scoped streaming reader boundary
+
+- **Problem/Fix — 2 GiB whole-file replay:** The locked production journal reader converted the full `Int64` size to `Int`, rejected files above 2 GiB, and decoded one aggregate buffer. It now consumes newline-committed records with `File.read_until("\n")`, validates each line, and advances an arbitrary-decimal cursor. The compatibility API still returns an Array to legacy callers; line-oriented append without whole-journal materialization, goal replay, and HTTP streaming remain the next migrations.
+- **Problem/Fix — lost v1 numeric lexemes:** MoonBit normalizes ordinary parsed `1`, `1.0`, and `1e0` to representation-less numbers. Requiring `parsed.stringify() == raw_line` rejects noncanonical durable spellings before they can normalize into acceptance. A read-only audit replayed 14,541 existing local journal lines with zero mismatches and verified Unicode, emoji, escapes, map order, and large numbers.
+- **Problem/Fix — writer/read asymmetry:** A caller can explicitly construct a noncanonical numeric `repr` that stringifies but reparses differently. A per-record canonical writer helper now reparses and compares the exact line, rejecting poison output before future append integration. Malformed JSON and envelope errors are normalized to `InvalidJournal`.
+- **Problem/Fix — streaming draft recovery:** The first draft repeated invalid `priv fn`, wrong type capitalization, ambiguous generic failures, and obsolete loop syntax. A test draft reimplemented validation instead of calling the production primitive, treated the zero cursor as a durable positive sequence, and hallucinated temporary-file and filesystem APIs. Exact compiler diagnostics replaced these with current MoonBit and real daemon APIs.
+- **Problem/Fix — nonterminal runtime defects:** Several turns stopped at step 8; two turns falsely finished without edits, one claimed tools were unavailable, and one requested approval for a diagnostic temporary-file shell pipeline. The pending diagnostic was cancelled without cancelling the aggregate goal, and deterministic MoonCode tool calls applied only exact repairs.
+- **Problem/Fix — error-contract regression:** Dual envelope failures initially leaked the goal-store error type, causing the legacy corruption test to miss `InvalidJournal`. The streaming boundary now normalizes all physical record corruption to the established journal error.
+- **Evidence:** Streaming plus sequence tests pass 13/13; the legacy session-store suite passes 19/19. Mixed v1/v2 production reading, raw numeric rejection, arbitrary cursor transition beyond Int64, malformed JSON, Unicode writer symmetry, and line-oriented file scanning without whole-journal materialization are covered.
+- **Open boundary:** v2 writes are not enabled until line-oriented append and every sequence consumer migrate. There is still no aggregate goal bound; this checkpoint is intentionally intermediate and recoverable.
+
+## Production exact-v2 append, durability, and contract propagation
+
+- **Superseded boundary:** The prior reader-only boundary above is closed.
+  Production appends now scan under a stable cross-process session lock, repair
+  only a torn suffix, validate through EOF before deduplication, choose an exact
+  arbitrary-decimal successor, and write canonical v2 envelopes. All emitted
+  journal/cursor fields in full session, conversation, and stream projections
+  preserve canonical decimal strings.
+- **Durability and lifecycle:** Successful writes request ordinary file-data
+  synchronization first. Non-Windows builds then request directory synchronization
+  across the complete leaf-to-filesystem-root chain; Windows flushes the writable
+  file only and has not run in a real Windows lane. Archive, restore, and delete
+  share the external session lock and are designed to prevent split-brain among
+  cooperating processes. This is the OS-supported process and ordinary-crash
+  boundary, not macOS `F_FULLFSYNC` or strongest sudden-power-loss proof.
+- **Session isolation and errors:** Foreign-session records are rejected on both
+  append scan and ordinary replay. Malformed cursors, timestamps, and underlying
+  store errors are normalized at the journal boundary.
+- **Problem/Fix — lifecycle resurrection and torn state:** A stable storage lock
+  serialized operations but did not stop a later writer from recreating active
+  storage after archive/delete, or survive a torn marker write. Active-state checks
+  backed by a newline-committed lifecycle state log now reject stale writers. The
+  reader streams committed entries without aggregate-file materialization, ignores
+  a torn final suffix, lets the next writer repair it, reconciles interrupted
+  transition intent with the one surviving location, and rejects simultaneous
+  active/archive storage. Runtime-turn holds a separate cross-process gate shared
+  per turn; runtime-service holds it from before started persistence through
+  terminal persistence; archive/restore/delete take it exclusively before their
+  idle/state checks and stable storage lock. A second stable per-session execution
+  lease now serializes runtime turn, direct claim, whole runtime loop, and service
+  ownership across cooperating daemon processes. Runtime entry points validate
+  active lifecycle state after taking the shared gate, so a late writer cannot
+  recreate archived/deleted storage. Contention is nonblocking and explicit; a
+  service reports running only when the durable service event stream identifies
+  an actual service owner. Spawned-multiprocess failpoint coverage remains open.
+- **Problem/Fix — projection and snapshot contracts:** Listing/show could mix a
+  pre-move snapshot, post-move journal, or mutable live binding. Per-row shared
+  locks now keep lifecycle recheck, selected-root snapshot, and journal in one
+  domain and omit moved rows. Durable active/archived projections exclude mutable
+  live bindings; only an unpersisted `new` row may use one. A loaded persisted v2
+  checkpoint requires a canonical decimal-string `journal_sequence`. Persisted
+  checkpoints with a missing contract ID or the v1 contract may dual-read numeric
+  cursors; an absent snapshot synthesizes the current v2 cursor `"0"`, and unknown
+  contract IDs fail closed. The legacy Int stream endpoint remains source-compatible
+  while the exact-string endpoint owns strict validation.
+- **Open aggregate-memory boundary:** Compatibility replay and the HTTP stream
+  still materialize arrays or aggregate response payloads. End-to-end goal replay
+  and HTTP-stream aggregate-memory independence remain open and are not claimed
+  complete by this checkpoint.
+- **Contract propagation:** Current contracts are journal v2, conversation v3,
+  stream v2, session snapshot/full-record/external-listing IDs v2, watch v2, and
+  v2 lifecycle/control/consumer/native capability surfaces. Only the external
+  listing envelope carries listing v2; compact and listing rows do not. Watch v2
+  is an exact builder and negotiated write contract, not a separately proven
+  production emitter. Capability fingerprint and payload describe the same fields,
+  including dual-read IDs.
+- **Runtime recovery:** Missing/nested command IDs, stale rejected turns, repeated
+  eight-step pauses, partial-edit failed receipts, truncated outputs, watcher 255,
+  skipped tests, false coverage claims, approval loops, stale numeric fixtures,
+  compiler ownership/effect errors, and stale endpoint templates were all
+  recorded and recovered through exact diagnostics plus independent validation.
+- **Evidence:** daemon check is clean; core contracts pass 75/75; focused journal
+  append passes 28/28; the same-process lifecycle/runtime-gate/projection suite
+  passes 9/9; runtime service passes 5/5; session listing passes 13/13; the
+  post-format daemon suite passes 295/295; the full native repository suite passes
+  1356/1356. `moon info`,
+  `moon fmt`, and `git diff --check` succeed. Generated interfaces contain the
+  expected exact public APIs while preserving the legacy Int stream-endpoint
+  signature. Lifecycle, recovery, gate, and projection tests use same-process
+  async scheduling and ancestor coverage verifies only the path plan; no
+  multiprocess, crash/failpoint, sudden-power-loss, or real-Windows lane has run.
+- **Invariant:** There is no aggregate token, turn, step, iteration, retry,
+  operation-count, LOC, deadline, wall-time, or total-output bound. Timeouts,
+  polling intervals, and output caps are operation-local containment and cannot
+  settle the goal.
+
+## Bounded-memory HTTP stream and live MoonCode recovery
+
+- **Problem/Fix — aggregate stream memory:** The production `/stream` path previously replayed the complete journal into an event array, built another record array, joined the entire JSONL or SSE response into one `String`, and only then wrote it. Waiting now uses a scalar validating scan. Delivery validates and projects eligible events one record at a time into a private mode-0600 temporary spool before sending HTTP 200, releases the stable session and journal locks, then sends meta, the spool through `ResponseWriter.write_reader`, and done. Peak application memory is proportional to the largest journal line/projected record plus fixed transport buffers rather than journal or response length; temporary disk usage remains proportional to the response.
+- **Problem/Fix — corruption-before-header versus lock duration:** Direct network streaming would either begin 200 before late corruption was known or hold lifecycle/append locks behind a slow client. The prevalidated spool preserves corruption-before-200 behavior and a stable response snapshot while releasing locks before network backpressure. Later appends are excluded from that spool and appear on the next request.
+- **Problem/Fix — cursor and session integrity:** Both wait and spool scans use the canonical mixed-v1/v2 line validator, arbitrary-decimal physical cursor, torn-final-line repair, and foreign-session rejection. A non-event append changes the journal-size polling fingerprint without falsely making an event cursor ready.
+- **Problem/Fix — obsolete production aggregate helpers:** The old snapshot/current-event functions were removed. Aggregate JSONL/SSE helpers remain only as compatibility test oracles; a source audit proves the production handler does not call them.
+- **Problem/Fix — live authoring step exhaustion:** The first implementation command consumed all eight legacy planner steps on inspection and ended failed after a diagnostic `grep` returned 1. A recovery command added only types and falsely declared completion. Later commands invented filesystem/session-lock APIs, hid compiler status behind successful pipelines, filtered away useful diagnostics, or exhausted the same eight steps. These were recorded as nonterminal runtime defects. Exact compiler output plus narrow MoonCode tool executions completed each recoverable edit; controller validation never treated receipt prose as proof.
+- **Problem/Fix — approval and path loops:** The legacy planner requested approvals despite standing user authorization, then tried an out-of-book `/tmp` path and entered another approval loop. The controller applied the standing authorization without another user interruption and kept project mutations inside the selected book. This remains evidence that approval policy and planner behavior need one shared source of truth.
+- **Problem/Fix — transient authoring listener refusal:** Immediate consecutive authoring requests intermittently received connection refusal; spacing retries by roughly eight seconds succeeded without restarting the active daemon. This is recorded as a daemon/listener defect rather than a goal terminal state.
+- **Problem/Fix — generated test syntax and suite flake:** The first stress test used an invalid `for` update token. MoonCode corrected it from the compiler diagnostic. The first full repository run then reached 1359/1360 because the installed-pack workflow exceeded its one-second fixture command timeout under suite load; the same test passed 1/1 in isolation, revealing that the earlier host-policy increase was ineffective because command configuration takes the minimum. Both fixture commands now use the existing 30-second host ceiling, with no production-policy change.
+- **Problem/Fix — process-local runtime ownership and session resurrection:** The runtime service originally used only an in-memory binding flag, direct loops released ownership between turns, and late turn/claim/service calls could recreate an archived active tree. MoonCode added a stable external execution-lease file, a strict lifecycle-shared → execution-exclusive → journal/session-lock order, nonblocking busy results, whole-loop/service ownership, active-state validation after lifecycle acquisition, and reverse-order release. A busy non-service operation is no longer mislabeled as someone else's running service. Internal helpers were renamed to `*_under_runtime_gates` so future callers cannot mistake lifecycle membership for execution ownership.
+- **Evidence:** New scalar/spool and real-HTTP coverage passes 5/5 over torn mixed v1/v2 input, foreign-session rejection, exact JSONL/SSE byte parity, huge cursors, non-event wakeups, and 5,000 records. Execution-lease coverage passes 6/6 for stable lock placement, nonblocking contention, separate daemon instances, whole-loop ownership, non-service busy classification, release/reacquisition, and archived-session non-resurrection. The pre-existing stream suite remains 9/9, the daemon suite is 306/306, and the full native repository suite is 1367/1367. The first full run exposed a capability-description regression (the documented runtime-service path had been shortened); restoring the exact endpoint string returned the focused capability suite to 2/2 before the green full rerun. Native daemon check reports 0 errors; `moon info`, `moon fmt`, and `git diff --check` succeed with no generated-interface diff.
+- **Open boundaries:** Full session/conversation/listing projections still contain aggregate journal-derived arrays, and snapshot loading retains its separate explicit 2 GiB compatibility limit. Temporary spool creation can fail on disk capacity or I/O errors. Spawned-multiprocess delivery/append/lease failpoints, the crash window after an external side effect but before its receipt, and real-Windows open-handle/cleanup lanes remain unproven. The policy-unbounded goal-runtime contract is also not yet the live supervisor: the legacy HTTP goal parser and runtime-loop `max_turns` still need live policy-unbounded supervisor wiring. Model-planner `max_steps` is closed below as a durable resumable local quantum rather than an aggregate terminal bound.
+- **Invariant:** No response length, journal length, aggregate turn, token, step, iteration, retry, operation-count, LOC, deadline, wall-time, or total-output policy settles a goal. Temporary storage and per-operation timeout/output controls are environmental or local containment only.
+
+
+## Resumable model-planner quantum (2026-07-26)
+
+- **Problem/Fix — planner step allowance was still terminal:** The model planner treated reaching `planner_max_steps` as the end of the command, emitted terminal runtime evidence, delivered the claim, and ran package/book/review settlement even when the model had returned a valid non-finish tool batch. The allowance is now a per-turn scheduling quantum. At its boundary runtime-turn appends a durable `planner-quantum-paused` continuation, returns `accepted=true`, `completed=false`, `paused=true`, `control=continue`, and no turn receipt, leaving the command claimed.
+- **Problem/Fix — restart could replay side effects:** A fresh daemon previously had no planner transcript cursor from which to continue. The checkpoint now carries the last plan, all planner steps, cumulative tool results, the current step results, and an absolute `next_step_index`. Resume asks the model for the next plan from that saved transcript/results suffix and never reruns already completed tools.
+- **Problem/Fix — approval and planner continuations diverged:** Approval waits also cross a planner quantum, so losing the original quantum end could silently extend or truncate the turn. Approval checkpoints now persist `quantum_end_step`; legacy checkpoints without it remain readable with a one-step-safe default. The latest continuation for a command wins by journal order regardless of subtype. Malformed latest continuations fail closed as `InvalidJournal` instead of falling back to tool replay.
+- **Problem/Fix — nonterminal work leaked into terminal settlement:** Package promotion, book results, review receipts, commit/eval/test settlement, `runtime-completed`/`runtime-failed`, claim delivery, and turn receipts are now all gated on a shared nonterminal predicate covering both approval waits and planner pauses. Compact responses preserve `completed`, `paused`, `pause_reason`, and `next_step_index`.
+- **Problem/Fix — end-to-end fixture mismatched real APIs:** The first restart proof used nonexistent `@fsx.write_file`, attempted unsupported `Json::op_get`, and returned one non-stream ChatCompletion object even though the production planner requests `stream=true`. Exact compiler/runtime diagnostics led to `@fsx.write_to_file`, object-map matching for nullable receipts, and a valid SSE ChatCompletionChunk plus `[DONE]`. The resulting test uses two daemon instances and two model responses; the write tool changes the file to `once` in quantum one, quantum two calls only `finish`, the claim is delivered only after resume, exactly one runtime completion exists, and no runtime failure exists.
+- **Problem/Fix — controller transport looked like a daemon refusal:** Local authoring POSTs temporarily reported connection refusal even while the daemon process and listening socket remained present; `nc` exposed the actual restricted-network denial. Reissuing the already-authorized localhost request outside that sandbox applied the MoonCode edit immediately. This incident is controller-environment evidence, not a MoonCode listener regression.
+- **Problem/Fix — final audit found redundant resume evaluation and loose metadata:** The approval-resume branch evaluated the same saved `step_results` expression twice; MoonBit returned only the second value, so behavior was unchanged, but the duplicate obscured the invariant and was removed. Planner checkpoint validation now also requires its deterministic ID, current protocol, session/target command identity, runtime-control lane, paused status, and exact pause reason; forged IDs or target-command substitutions fail closed.
+- **Evidence:** planner continuation/restart proof 5/5, approval compatibility 6/6, existing runtime-turn behavior 23/23, capabilities 2/2, daemon 311/311, and the full native repository 1372/1372. Native daemon check reports zero errors.
+- **Open boundaries:** Runtime-loop/service `max_turns` remains a local supervisor-call quantum and is not yet wired to the policy-unbounded goal-runtime HTTP authority. The legacy `/goal` surface also remains separate. Planner checkpoints currently repeat cumulative planner/tool arrays in one journal record; this removes the artificial completion bound but does not yet provide chunked, aggregate-memory-independent planner replay. Crash recovery cannot guarantee exactly-once behavior for an external side effect that succeeds immediately before its durable tool receipt; spawned-multiprocess failpoint proof remains open.
+- **Invariant:** Planner quantum exhaustion is never evidence of `Achieved`, `Blocked`, `Cancelled`, runtime failure, or command completion. Only explicit finish/failure/cancellation/settlement evidence may close the claimed command or aggregate goal.
+
+
+## Live goal-runtime authority boundary (2026-07-26)
+
+- **Problem/Fix — pure contract had no live authority:** The strict
+  `mooncode-goal-runtime.v1` codec and reducer existed only as library/store
+  primitives. `GET/PUT /v1/code/sessions/<id>/goal-runtime` now accepts an
+  exact six-field, criteria-only genesis request, persists its canonical carrier,
+  and returns immutable genesis plus replayed reducer status and exact decimal
+  cursor. Unknown fields—including token, turn, step, deadline, operation, and
+  LOC aliases—fail before session lookup.
+- **Problem/Fix — physical deduplication was semantically insufficient:** The
+  generic journal appender suppresses duplicate physical record IDs without
+  comparing semantic digests. Runtime creation now scans both goal families and
+  compares the canonical runtime semantic digest while holding the stable
+  session lock exclusively across selection and append. Identical intent is a
+  byte-stable 200 retry even with a later server time; changed intent is 409.
+- **Problem/Fix — legacy/runtime split brain:** The two valid record families
+  previously ignored one another, and legacy create performed preflight and
+  append in separate transactions. Legacy creation now uses the same lifecycle
+  and stable-lock transaction as runtime creation. Concurrent legacy/runtime
+  PUTs select exactly one winner, the loser reports
+  `goal_authority_conflict`, and handcrafted dual authority fails closed on
+  both reads.
+- **Problem/Fix — lifecycle read/write mismatch:** The active-session snapshot
+  is checked before creating lock artifacts, then revalidated under a shared
+  lifecycle gate and stable session lock. GET uses read-only lifecycle state;
+  PUT may reconcile the marker only under the exclusive stable lock. Archive or
+  delete cannot race a late goal writer into recreating the active tree.
+- **Problem/Fix — generated MoonBit catch syntax:** The first adapter draft used
+  a typed catch binding, which MoonBit does not accept. Compiler diagnostics were
+  fed back through MoonCode; constructor matches replaced all four sites. A
+  later compile also exposed every non-exhaustive match after adding the legacy
+  `AuthorityConflict` result, and all production/test matches were made exact.
+- **Problem/Fix — formatter-sensitive replacement missed behavior:** A first hardening edit targeted the pre-format reducer spelling after `moon fmt` had split the assignment. The write succeeded but changed no function, and both new adversarial tests failed. A symbol-boundary replacement applied the intended behavior; the same tests then passed.
+- **Problem/Fix — terminal and evidence replay was too permissive:** The carrier scanner validated records individually, but the absorbing reducer silently ignored a unique event after terminal settlement and core validation could not know the genesis criterion set. Status replay now requires every unique stored event to advance the handled-event count exactly once and requires Achieved evidence to cover exactly every genesis criterion ID.
+- **Evidence:** The new API file passes 10/10, including strict aggregate-field
+  rejection, create/retry/read/conflict, malformed-before-session precedence,
+  both exclusion directions, concurrent authority selection, and dual-authority
+  fail-closed replay. Focused authority tests pass 4/4, the post-format daemon
+  suite passes 321/321, and the full native repository suite passes 1382/1382.
+  `moon info`, `moon fmt`, daemon check, and `git diff --check` succeed with no
+  generated-interface change. A live create/retry/read smoke against the actual
+  authoring session returned 201/200/200 and left its 23,044,084-byte journal
+  unchanged on the semantic retry.
+- **Open boundaries:** The runtime supervisor does not yet emit goal-runtime
+  events or drive criteria to Achieved/Blocked/Cancelled. The compatibility
+  `/goal` route can be removed after that wiring and client migration (or
+  immediately after wiring if there are no persisted legacy users). Goal-runtime
+  replay currently retains event and identity arrays; streaming,
+  aggregate-memory-independent replay remains open. Environmental disk/memory
+  exhaustion is not a goal settlement rule.
+- **Invariant:** No aggregate token, turn, step, iteration, retry,
+  operation-count, LOC, deadline, wall-time, or total-output field is accepted by
+  the goal-runtime creation boundary. Only explicit runtime evidence may settle
+  the aggregate goal.
+
+## Runtime supervisor event projection and local quanta (2026-07-26)
+
+- **Problem/Fix — live runtime facts were outside goal authority:** Runtime-turn
+  persisted ordinary source events, but goal-runtime status remained at queued and
+  could not prove restart-safe progress. A private typed supervisor adapter now
+  derives Running, WaitingApproval, OperationAccepted, CheckpointAccepted, and
+  PausedExternal events only from already-committed turn facts. There is no public
+  arbitrary event-write endpoint.
+- **Problem/Fix — source/event append is not crash-atomic:** A process may stop after
+  the source fact commits but before its typed carrier appends. Goal events use stable
+  source-derived identities whose semantic digest excludes retry time. Every claimed
+  turn reconciles the durable source prefix before new work and reconciles the full
+  source prefix plus current turn after persistence; exact retries do not change journal
+  bytes, identity reuse with changed semantics fails closed, and terminal state suppresses
+  fresh later work.
+- **Problem/Fix — direct tool execution leaked into progress:** The first source mapper
+  recognized any successful tool-result payload, including direct `/tool-exec` calls.
+  Reconciliation now tracks active supervised command intervals in journal order and
+  accepts tool/checkpoint facts only between `runtime.turn_started` and its terminal or
+  invalid turn event. Direct tool execution remains outside aggregate goal progress.
+- **Problem/Fix — `max_turns` still stopped long services:** Runtime-loop keeps its
+  1..32 turn containment quantum, but runtime-service now takes a fresh quantum whenever
+  the previous one stops only at `max_turns` and the runtime goal is still active. No
+  aggregate quantum count is stored or consulted. A two-command proof with
+  `max_turns=1` drains both commands, reaches idle, and leaves the goal nonterminal.
+- **Problem/Fix — integration fixture failed before execution:** The first end-to-end
+  turn test omitted the required model field, so command validation correctly returned
+  `accepted=false`. Adding the required model repaired the fixture; production behavior
+  was not weakened.
+- **Evidence:** Supervisor append/reconcile/turn/service coverage passes 10/10, including
+  no-authority no-op, semantic conflict, terminal retry/suppression, legacy fail-closed,
+  crash-prefix replay, direct-tool isolation, generic-finish nonsettlement, and the
+  cross-quantum service proof. Capabilities pass 2/2, the complete daemon suite passes
+  331/331, and the full native repository suite passes 1392/1392. Daemon check reports
+  zero errors.
+- **Open boundaries:** Explicit criterion-backed Achieved/Blocked decisions and
+  active-target cancellation are not yet derived. Generic finish, runtime failure,
+  provider timeout, idle, service failure, and local quantum exhaustion remain
+  nonterminal. Goal replay and reconciliation still retain aggregate journal/event/id
+  arrays; streaming scalar replay is the next memory-boundary checkpoint. Legacy
+  migration/client cutover remains required before removing the `/goal` route, while a
+  fail-closed legacy record detector must survive route removal.
+- **Invariant:** `max_turns` and `planner_max_steps` are local resumable quanta only.
+  They cannot imply Achieved, Blocked, Cancelled, command failure, or aggregate goal
+  settlement.
+
+## Feature-first terminal settlement and cancellation (2026-07-26)
+
+- **Scope decision — finish features before hardening:** Streaming scalar replay,
+  legacy migration, and legacy route removal are deliberately postponed. The current
+  milestone completes the user-visible goal lifecycle first; compatibility remains
+  present and fail-closed rather than blocking the feature release.
+- **Problem/Fix — generic finish could not express goal completion:** `finish` now
+  accepts an optional strict `goal_runtime` Achieved or Blocked decision. The tool
+  validates that runtime authority exists and is active, uses the existing typed codec,
+  and requires Achieved evidence to cover every genesis criterion ID exactly once
+  before emitting a successful durable source fact. Ordinary `finish` remains a
+  nonterminal progress turn.
+- **Problem/Fix — a bad terminal event could poison replay:** Genesis criterion
+  coverage used to be checked only while replaying an already-appended event. The
+  supervisor now performs the same exact criterion-set check before append, so invalid
+  private settlement cannot create a durable corrupt terminal carrier.
+- **Problem/Fix — the planner lacked settlement inputs:** Model planning did not see
+  the active objective or exact criterion IDs, and follow-up tool messages omitted the
+  durable source-event ID. Runtime turns now attach read-only active goal context after
+  validating the external command, the finish schema exposes Achieved and Blocked
+  shapes, and tool messages include an `evidence_ref` derived from the durable event.
+- **Problem/Fix — internal context broke command validation:** The first integration
+  attached `goal_runtime` before validating the user command. Strict command validation
+  correctly rejected that derived field, causing three runtime tests to return
+  `accepted=false`. Validation now runs at the external command boundary before internal
+  planner enrichment; the exact rerun passes.
+- **Problem/Fix — cancellation had no goal outcome:** Active cancellation already
+  emitted a durable, exact, target-bound control event. The supervisor now maps only
+  that internal signature to Cancelled and reconciles immediately after source
+  persistence. Idle `cancel_dropped`, stale-target rejection, and cancelled service
+  diagnostics remain nonterminal.
+- **Evidence:** Focused supervisor coverage passes 12/12, runtime-turn planner coverage
+  passes 23/23, active cancellation coverage passes 6/6, and process-tool coverage
+  passes 7/7. The complete daemon suite passes 333/333 and the full native repository suite passes 1394/1394. The multi-quantum trial queues generic progress, typed achievement, and a
+  sentinel; with `max_turns=1`, two commands run across fresh local quanta, achievement
+  becomes terminal, and the sentinel remains claimable.
+- **Deferred by request:** Aggregate-memory-independent streaming replay and legacy
+  migration/removal remain later work. They are not required for this feature milestone.
+- **Invariant:** Only validated typed Achieved/Blocked decisions or an exact active-
+  target cancellation can settle a runtime goal. Timeout, failure, idle, generic finish,
+  stale or dropped cancel, planner-step exhaustion, and runtime `max_turns` remain
+  nonterminal observations.
+
+
+## Aggregate-memory-independent replay and legacy cutover (2026-07-26)
+
+- **Problem/Fix — replay retained the aggregate journal twice:** Production goal reads
+  materialized every JSON record, then retained runtime event and identity arrays while
+  the core reducer copied handled, operation, and checkpoint ID arrays. The live authority
+  path now validates canonical JSONL one record at a time and reduces directly into scalar
+  phase, terminal outcome, cursor, and arbitrary-decimal counters.
+- **Problem/Fix — exact idempotency appeared to require unbounded RAM:** Event,
+  operation, and checkpoint identities are stored in an ephemeral 256-bucket JSONL ledger
+  keyed by SHA-256 prefix. Bucket lookup streams every collision entry and compares the
+  exact namespace and ID, so hash collision cannot alias identities. Same ID/same digest
+  is idempotent; same ID/different digest fails closed. Ledger files are scoped to one
+  projection and removed on success or error.
+- **Problem/Fix — reconciliation still retained source and command maps:** The supervisor
+  now copies the validated committed event lane to a temporary disk spool while holding
+  the journal lock, releases that lock, then streams the spool with one active-command
+  scalar. Missing typed carriers append in source order and restart retries remain exact.
+  No journal/event/identity/command collection survives a record iteration.
+- **Problem/Fix — mixed v1/v2 normalization broke the first trial:** The initial projector
+  normalized every local validation fixture to a numeric sequence. A v2 envelope requires
+  a canonical decimal string, so committed runtime genesis incorrectly returned 409.
+  Compiler and focused trial evidence localized the mismatch; normalization now preserves
+  each envelope contract's required representation. Runtime API and supervisor suites
+  returned green after the repair.
+- **Problem/Fix — legacy auto-migration would silently change policy:** Legacy genesis
+  includes an aggregate turn budget, which the unbounded runtime contract intentionally
+  cannot represent. The `/goal` router cases are removed, `/goal-runtime` is promoted to
+  the required capability fingerprint, and valid legacy-only journals return the explicit
+  409 `legacy_goal_incompatible`. The strict legacy detector remains permanently for
+  offline/external MoonBooks; corrupt and dual histories still fail closed. No history is
+  rewritten and no aggregate policy is discarded implicitly.
+- **Evidence:** A direct 20,000-event JSONL trial plus a far-separated 1,000-record
+  semantic-conflict trial pass using the production projector. Focused goal-runtime API
+  passes 10/10 after the incompatibility expectation update, supervisor/reconciliation
+  passes 12/12, the complete daemon suite passes 335/335, and the full native repository
+  suite passes 1396/1396. Capabilities advertise runtime as required with no legacy
+  endpoint; `moon check`, `moon info`, `moon fmt`, and `git diff --check` succeed.
+- **Invariant:** Environmental disk or memory exhaustion may fail an operation, but it
+  never settles a goal. Only typed Achieved, Blocked, or exact active-target Cancelled
+  evidence is terminal; no aggregate progress count is a completion rule.

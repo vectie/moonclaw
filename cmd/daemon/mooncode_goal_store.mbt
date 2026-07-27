@@ -16,6 +16,7 @@ priv enum MoonCodeGoalCreateResult {
   Created(@mooncode_core.Goal)
   Idempotent(@mooncode_core.Goal)
   Conflict(@mooncode_core.Goal)
+  AuthorityConflict
 }
 
 ///|
@@ -310,7 +311,28 @@ async fn mooncode_create_goal(
     is Some(expected) else {
     raise InvalidGoalGenesis("invalid expected genesis")
   }
-  match mooncode_replay_goal(book_root, session_id) {
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Shared)
+  defer lifecycle_gate.unlock()
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
+  mooncode_require_active_session_state_locked(
+    book_root,
+    session_id,
+    allow_create=true,
+  )
+  let records = mooncode_goal_authority_records_locked(book_root, session_id)
+  let authority = mooncode_goal_authority_snapshot(records, session_id)
+  if mooncode_goal_authority_is_dual(authority) ||
+    authority.runtime.genesis is Some(_) {
+    return AuthorityConflict
+  }
+  match authority.legacy {
     Some(existing) =>
       if mooncode_same_creation_intent(existing, expected) {
         return Idempotent(existing)
@@ -319,22 +341,28 @@ async fn mooncode_create_goal(
       }
     None => ()
   }
-  let appended = mooncode_append_session_journal_once(
+  let appended = mooncode_append_session_journal_once_locked(
     book_root,
     session_id,
     mooncode_journal_goal_event(),
     genesis,
   )
-  guard mooncode_replay_goal(book_root, session_id) is Some(winner) else {
+  let committed = mooncode_goal_authority_records_locked(book_root, session_id)
+  let winner = mooncode_goal_authority_snapshot(committed, session_id)
+  if mooncode_goal_authority_is_dual(winner) ||
+    winner.runtime.genesis is Some(_) {
+    return AuthorityConflict
+  }
+  guard winner.legacy is Some(goal) else {
     raise InvalidGoalGenesis("genesis disappeared")
   }
-  if mooncode_same_creation_intent(winner, expected) {
+  if mooncode_same_creation_intent(goal, expected) {
     if appended {
-      Created(winner)
+      Created(goal)
     } else {
-      Idempotent(winner)
+      Idempotent(goal)
     }
   } else {
-    Conflict(winner)
+    Conflict(goal)
   }
 }

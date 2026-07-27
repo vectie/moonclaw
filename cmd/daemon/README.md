@@ -98,6 +98,16 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
   fields remain top-level mirrors of that surface.
 - `mooncode_request_helpers.mbt` owns route/query parameter parsing.
 - `mooncode_persistence.mbt` owns command, event, and session sidecar writes.
+- `mooncode_session_store.mbt` owns durable sidecar paths, stable cross-process
+  session locks, the runtime/lifecycle gate, durable lifecycle state logs, and
+  coherent shared-lock listing/show projections.
+- `mooncode_session_journal.mbt` owns locked streaming validation, torn-tail
+  repair, exact-v2 append, duplicate retry, and OS-supported file/directory
+  durability synchronization.
+- `mooncode/core` also owns the versioned conversation, journal, session,
+  watch, and stream contract metadata plus canonical exact-cursor validation;
+  the daemon delegates its fingerprinted capability surface to that shared
+  source of truth.
 - `mooncode_stream.mbt` owns durable MoonCode event streaming and bounded
   long polling.
 - `mooncode_json_helpers.mbt` owns small shared JSON field readers.
@@ -367,11 +377,22 @@ while durable sidecar rows use the newest mtime across authoritative
 Rows are sorted newest first by `updated_at_ms`; rows without a timestamp sort
 last.
 
+Full diagnostic records carry `mooncode-session-record.v2`; only the outer
+`format=listing` envelope carries `mooncode-session-listing.v2`.
+`journal_sequence` and the derived canonical conversation's `revision` and
+`last_sequence` fields are canonical nonnegative decimal JSON strings. Newly
+written `session.json` checkpoints carry `mooncode-session-snapshot.v2`.
+Full records derive a sibling `mooncode_conversation` projection under
+`moonsuite-conversation.v3`; snapshots do not embed that conversation. A legacy
+checkpoint may remain unchanged under a record's `snapshot` field, including
+its numeric cursor, until it is rewritten.
+
 The endpoint and projection helpers live in `mooncode_session_listing.mbt`.
 Live session/task binding and cold record resolution live in
-`mooncode_session_binding.mbt`; durable sidecar paths and JSONL persistence live
-in `mooncode_session_store.mbt`. The compact row contract is
-covered by `mooncode_session_listing_wbtest.mbt`.
+`mooncode_session_binding.mbt`; durable sidecar paths and session projection
+helpers live in `mooncode_session_store.mbt`; JSONL validation and persistence
+live in `mooncode_session_journal.mbt`. The compact row contract is covered by
+`mooncode_session_listing_wbtest.mbt`.
 
 ### `GET /v1/code/sessions/{id}/runtime-control`
 
@@ -425,15 +446,20 @@ Query parameters:
 
 - `book_root`: required unless the daemon has a MoonCode session for the id.
 - `format`: `jsonl` by default, or `sse` for server-sent event envelopes.
-- `since`: last seen 1-based sequence number. The response includes events with
-  a higher sequence and returns `next_since` for resumable polling.
+- `since`: last seen canonical nonnegative decimal text, with no magnitude
+  bound. The response includes events with a higher exact sequence and returns
+  `next_since` for resumable polling.
 - `wait_ms`: optional bounded long-poll budget. The default `0` preserves
   immediate replay; positive values wait for a sequence newer than `since`.
 - `poll_ms`: polling interval while `wait_ms` is active, clamped to a bounded
   runtime-safe range.
 
-JSONL responses contain `meta`, `event`, and `done` records. SSE responses use
-the same payloads as `event: meta`, `event: event`, and `event: done` chunks.
+JSONL responses contain `meta`, `event`, and `done` records under
+`mooncode-stream.v2`; `since`, `sequence`, `latest_sequence`, and `next_since`
+are canonical decimal JSON strings. SSE responses use the same payloads as
+`event: meta`, `event: event`, and `event: done` chunks. `wait_ms` and `poll_ms`
+are operation-local live-tail controls only and never impose an aggregate goal,
+turn, retry, or elapsed-time bound.
 The meta and done records include wait metadata so MoonDesk can distinguish an
 immediate replay from a live-tail wait that timed out with no new events.
 The transport lives in `mooncode_stream.mbt`, with durable event projection and
@@ -477,6 +503,29 @@ validates the shared `mooncode.v1` envelope, and appends the command plus a `com
 to the book-local sidecar for native `runtime-turn` consumption. This endpoint
 does not spawn or message a generic task.
 
+Every production journal append acquires a stable lock outside the movable
+active and archived session trees, repairs only a torn final suffix, then
+validates every committed record through EOF before duplicate suppression. A
+new record uses an arbitrary-precision decimal successor and one canonical v2
+JSONL line. A direct `client_turn_id` wins; otherwise the first matching command
+identity is inherited. Successful appends request ordinary file-data
+synchronization before supported parent-directory entries from the leaf through
+the filesystem anchor; duplicate retries re-sync before returning.
+
+Session snapshot and lifecycle mutations take the same stable storage lock.
+Active-state checks backed by a newline-committed lifecycle state log reject
+stale append/checkpoint writers after archive or delete. The log reader streams
+committed entries without aggregate-file materialization, ignores a torn final
+marker suffix, and lets the next state append repair that suffix. State resolution reconciles interrupted transitions
+from actual storage location. Runtime-turn execution holds a separate shared
+cross-process gate per turn, and runtime-service holds it from before its
+started event through terminal persistence; archive, restore, and delete take
+it exclusive. Listing/show projections hold the stable lock across
+state/location recheck and snapshot/journal reads, omitting a session moved
+while waiting and excluding mutable live bindings from durable rows. These
+guarantees apply to cooperating processes; multiprocess failpoint and
+real-Windows proof remain open.
+
 The command queue boundary lives in `mooncode_command_queue.mbt`, with strict
 packet validation, control classification, native queue persistence, and
 command id/book-root helpers kept together. Top-level command envelope fields
@@ -489,21 +538,26 @@ over the same command contract.
 
 ### `POST /v1/code/sessions/{id}/turns`
 
-Atomically accepts one interactive MoonCode turn. MoonClaw validates and
-durably appends the native command, starts the session's runtime service when
-one is not already active, and returns the accepted command, runtime-service
-state, and current canonical session record in one response.
+Accepts one interactive MoonCode turn through a composite request. MoonClaw
+validates and durably appends the native command, then starts or reuses the
+session's runtime service and returns the queue result, service state, and
+current canonical session record.
 
-This is the primary mutation endpoint for interactive clients such as
-MoonDesk. Runtime execution is single-flight per session: a later accepted turn
-reuses the active service instead of starting a competing queue consumer. The
-durable command remains authoritative if the service exits before processing
-it, so a subsequent runtime start can resume the queue without a second client
-write.
+This composition is recoverable but not a crash-atomic transaction: the durable
+command remains authoritative if service startup fails or the process exits,
+and a later runtime start can resume the queue without another client write.
+Cooperating daemons now serialize runtime turn, loop, claim, and service work
+with one stable per-session execution lease outside the movable session trees.
+A service holds it from before its started event through terminal persistence;
+a direct loop holds it for the whole loop rather than releasing it between
+turns. Contention returns an explicit busy result (HTTP 409 for direct
+runtime/claim endpoints), and an archived or deleted session cannot be
+resurrected by a late runtime writer. The lock primitive is process-capable,
+but spawned-multiprocess failpoint and crash-after-external-side-effect proof
+remain open; the contract does not claim exactly-once effects across crashes.
 
-Low-level clients may still use `/commands` plus the explicit runtime endpoints
-for diagnostics and controlled orchestration. Interactive clients should not
-reconstruct that transaction themselves.
+Interactive clients should use `/turns`; low-level clients may use `/commands`
+plus explicit runtime endpoints for diagnostics and controlled orchestration.
 
 ### `POST /v1/code/sessions/{id}/runtime-turn`
 

@@ -10,7 +10,22 @@ fn product_id() -> String {
 
 ///|
 pub fn conversation_contract_id() -> String {
-  "moonsuite-conversation.v2"
+  "moonsuite-conversation.v3"
+}
+
+///|
+pub fn session_snapshot_contract_id() -> String {
+  "mooncode-session-snapshot.v2"
+}
+
+///|
+pub fn session_record_contract_id() -> String {
+  "mooncode-session-record.v2"
+}
+
+///|
+pub fn session_listing_contract_id() -> String {
+  "mooncode-session-listing.v2"
 }
 
 ///|
@@ -48,6 +63,16 @@ pub fn conversation_contract_json() -> Json {
     "conversation_required_fields": [
       "contract_id", "session_id", "revision", "last_sequence", "turns",
     ],
+    "sequence_encoding": "canonical nonnegative decimal JSON string",
+    "sequence_fields": ["revision", "last_sequence"],
+    "sequence_rules": [
+      "revision equals last_sequence for a complete journal projection", "sequence values compare by arbitrary-precision decimal magnitude",
+      "sequence values never decrease across authoritative replay",
+    ],
+    "journal_write_contract_id": journal_contract_id(),
+    "journal_read_contract_ids": journal_read_contract_ids(),
+    "watch_write_contract": conversation_watch_exact_contract_json(),
+    "watch_read_contract_ids": conversation_watch_read_contract_ids(),
     "turn_required_fields": conversation_turn_required_fields(),
     "slot_required_fields": ["item_id", "status"],
     "work_required_fields": ["item_id", "status", "summary", "steps", "live"],
@@ -60,19 +85,20 @@ pub fn conversation_contract_json() -> Json {
       "durable_owner": "mooncode",
       "projection_owner": "moonclaw",
       "ui_owner": "moondesk",
-      "shared_contract_owner": "moonlib",
+      "contract_owner": "mooncode",
+      "base_contract_owner": "moonlib",
     },
   }
 }
 
 ///|
 pub fn native_capability_contract_id() -> String {
-  "mooncode-native-capability-surface.v1"
+  "mooncode-native-capability-surface.v2"
 }
 
 ///|
 pub fn executable_book_lifecycle_contract_id() -> String {
-  "mooncode-executable-book-lifecycle.v1"
+  "mooncode-executable-book-lifecycle.v2"
 }
 
 ///|
@@ -93,7 +119,8 @@ pub fn executable_book_lifecycle_contract_json() -> Json {
     "runtime_owner": "moonclaw",
     "artifact_owner": "moonbook",
     "acceptance_owner": "bookkeeper",
-    "journal_contract_id": journal_contract_id(),
+    "journal_write_contract_id": journal_contract_id(),
+    "journal_read_contract_ids": journal_read_contract_ids(),
     "host_rule": "A desktop or CLI host may select a book and render status, but the lifecycle must run through MoonClaw runtime evidence and MoonBook-owned artifacts.",
     "steps": [
       executable_book_lifecycle_step(
@@ -249,6 +276,9 @@ pub fn native_capability_runtime_loop_options() -> Json {
 ///|
 pub fn native_capability_stream_options() -> Json {
   {
+    "stream_contract_id": "mooncode-stream.v2",
+    "since_encoding": "canonical nonnegative decimal text",
+    "sequence_encoding": "canonical nonnegative decimal JSON string",
     "wait_ms": {
       "default": 0,
       "min": 0,
@@ -288,6 +318,14 @@ fn native_capability_surface_fingerprint_source() -> String {
     "component=mooncode",
     "protocol=\{protocol_version()}",
     "capability_contract_id=\{native_capability_contract_id()}",
+    "conversation_contract_id=\{conversation_contract_id()}",
+    "conversation_watch_write_contract_id=\{conversation_watch_exact_contract_id()}",
+    "conversation_watch_read_contract_ids=\{conversation_watch_read_contract_ids().join(",")}",
+    "journal_write_contract_id=\{journal_contract_id()}",
+    "journal_read_contract_ids=\{journal_read_contract_ids().join(",")}",
+    "session_snapshot_contract_id=\{session_snapshot_contract_id()}",
+    "session_record_contract_id=\{session_record_contract_id()}",
+    "session_listing_contract_id=\{session_listing_contract_id()}",
     "runtime_tool_contract_id=\{runtime_tool_contract_id()}",
     "runtime_tool_names=\{supported_runtime_tools}",
     "event_lane_contract_id=\{event_lane_contract_id()}",
@@ -332,6 +370,16 @@ pub fn native_capability_surface_json() -> Json {
     "protocol": protocol_version(),
     "capability_contract_id": native_capability_contract_id(),
     "capability_surface_fingerprint": native_capability_surface_fingerprint(),
+    "conversation_contract": conversation_contract_json(),
+    "conversation_watch_write_contract": conversation_watch_exact_contract_json(),
+    "conversation_watch_read_contract_ids": conversation_watch_read_contract_ids(),
+    "journal_write_contract_id": journal_contract_id(),
+    "journal_read_contract_ids": journal_read_contract_ids(),
+    "session_contracts": {
+      "snapshot": session_snapshot_contract_id(),
+      "record": session_record_contract_id(),
+      "listing": session_listing_contract_id(),
+    },
     "event_lane_contract": event_lane_contract_json(),
     "runtime_event_name_contract": runtime_event_name_contract_json(),
     "native_event_projection_contract": native_event_projection_contract_json(),

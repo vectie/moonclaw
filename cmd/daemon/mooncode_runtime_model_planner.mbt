@@ -743,7 +743,7 @@ fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use checkpoint/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch, spend at most two tool calls inspecting before the first mutation, and update the checkpoint whenever a milestone changes. Prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use checkpoint/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch, spend at most two tool calls inspecting before the first mutation, and update the checkpoint whenever a milestone changes. Prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch. When active goal_runtime context is present, ordinary finish is only a progress turn: use finish.goal_runtime with an exact achieved or blocked decision only when the whole goal reaches a terminal outcome. Achieved evidence must cover every listed criterion id exactly once.",
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
   ]
@@ -797,6 +797,21 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   } else {
     "\nGoverned active capability resolution: " + active_capability.stringify()
   }
+  let goal_runtime = mooncode_json_object_field_or_empty(
+    command, "goal_runtime",
+  )
+  let goal_context = if mooncode_json_string(
+      goal_runtime,
+      "goal_id",
+      default="",
+    ) ==
+    "" {
+    ""
+  } else {
+    "\nActive long-running goal (criteria ids are settlement keys): " +
+    goal_runtime.stringify() +
+    "\nDo not infer completion from a turn limit, timeout, or generic finish. Set finish.goal_runtime only for an explicit achieved or genuinely blocked terminal decision."
+  }
   "Action: \{action}\n" +
   "User request: \{request}\n" +
   mooncode_runtime_horizon_contract_prompt(command) +
@@ -804,6 +819,7 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
   steering +
   capability_context +
+  goal_context +
   mooncode_runtime_turn_language_grounding(command) +
   "\n\nChoose the smallest useful tool batch. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
 }
@@ -954,10 +970,67 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
     ),
     mooncode_runtime_turn_model_tool(
       "finish",
-      "Finish the turn with a concise operator-facing summary.",
+      "Finish this turn. With an active long-running goal, include goal_runtime only for an explicit terminal achieved or genuinely blocked decision.",
       {
         "type": "object",
-        "properties": { "answer": { "type": "string" } },
+        "properties": {
+          "answer": { "type": "string" },
+          "goal_runtime": {
+            "description": "Optional exact terminal decision for the active goal.",
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["achieved"] },
+                  "summary": { "type": "string" },
+                  "evidence": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "criterion": { "type": "string" },
+                        "evidence_refs": {
+                          "type": "array",
+                          "items": { "type": "string" },
+                        },
+                      },
+                      "required": ["criterion", "evidence_refs"],
+                      "additionalProperties": false,
+                    },
+                  },
+                },
+                "required": ["type", "summary", "evidence"],
+                "additionalProperties": false,
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["blocked"] },
+                  "reason": {
+                    "type": "object",
+                    "properties": {
+                      "code": { "type": "string" },
+                      "detail": { "type": "string" },
+                    },
+                    "required": ["code", "detail"],
+                    "additionalProperties": false,
+                  },
+                  "attempted_alternatives": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                  },
+                  "required_event": {
+                    "anyOf": [{ "type": "string" }, { "type": "null" }],
+                  },
+                },
+                "required": [
+                  "type", "reason", "attempted_alternatives", "required_event",
+                ],
+                "additionalProperties": false,
+              },
+            ],
+          },
+        },
         "required": ["answer"],
         "additionalProperties": false,
       },
@@ -1286,7 +1359,17 @@ fn mooncode_runtime_turn_model_tool_result_message(
 ///|
 fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   let result = mooncode_json_object_field_or_empty(execution, "result")
-  let text = result.stringify(indent=2)
+  let event = mooncode_json_object_field_or_empty(execution, "event")
+  let event_id = mooncode_json_string(event, "id", default="")
+  let payload : Json = {
+    "result": result,
+    "evidence_ref": if event_id == "" {
+      ""
+    } else {
+      event_id
+    },
+  }
+  let text = payload.stringify(indent=2)
   if text.length() > 4000 {
     text[:4000].to_owned() + "\n...[truncated for planner context]"
   } else {
