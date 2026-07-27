@@ -14,6 +14,43 @@ test "mooncode shell detects semantic git commit commands" {
 }
 
 ///|
+test "mooncode shell detects worktree overwrite commands without matching prose" {
+  assert_true(mooncode_shell_has_git_worktree_overwrite("git restore src"))
+  assert_true(
+    mooncode_shell_has_git_worktree_overwrite("git -C . checkout -- src"),
+  )
+  assert_true(
+    mooncode_shell_has_git_worktree_overwrite(
+      "env GIT_CONFIG_NOSYSTEM=1 git restore --worktree .",
+    ),
+  )
+  assert_false(
+    mooncode_shell_has_git_worktree_overwrite("echo 'git restore src'"),
+  )
+  assert_false(mooncode_shell_has_git_worktree_overwrite("git status --short"))
+}
+
+///|
+test "mooncode shell detects clean dependency installs without matching prose" {
+  assert_true(mooncode_shell_has_clean_dependency_install("npm ci"))
+  assert_true(
+    mooncode_shell_has_clean_dependency_install(
+      "env CI=1 pnpm install --frozen-lockfile",
+    ),
+  )
+  assert_true(
+    mooncode_shell_has_clean_dependency_install("yarn install --immutable"),
+  )
+  assert_true(
+    mooncode_shell_has_clean_dependency_install("bun install --frozen-lockfile"),
+  )
+  assert_false(mooncode_shell_has_clean_dependency_install("npm install"))
+  assert_false(
+    mooncode_shell_has_clean_dependency_install("echo 'npm ci is destructive'"),
+  )
+}
+
+///|
 test "mooncode shell identifies ambiguous pipelines by syntax" {
   assert_true(mooncode_shell_pipeline_exit_ambiguous("check|tail -20"))
   assert_true(mooncode_shell_pipeline_exit_ambiguous("check\t|\ttail -20"))

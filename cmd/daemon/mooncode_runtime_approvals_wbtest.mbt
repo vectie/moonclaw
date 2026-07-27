@@ -82,6 +82,24 @@ test "mooncode approval classifier gates hosted run reruns" {
       "arguments": { "cmd": "git status --short" },
     }),
   )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "npm ci --include=optional --ignore-scripts" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git restore --source=HEAD --worktree -- ui" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "echo 'npm ci and git restore are risky'" },
+    }),
+  )
 }
 
 ///|
@@ -721,6 +739,7 @@ async test "mooncode rejection resumes from durable checkpoint after daemon rest
         "payload": {
           "approval_id": approval_id,
           "target_command_id": "cmd-reject-restart",
+          "decision_reason": "The proposed mutation lacks causal evidence.",
           "tool_call_id": mooncode_json_string(
             request,
             "tool_call_id",
@@ -745,6 +764,18 @@ async test "mooncode rejection resumes from durable checkpoint after daemon rest
   )
   assert_false(
     @fsx.exists(@pathx.join(book_root, "rejected-after-restart.txt")),
+  )
+  let after_events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
+  assert_true(
+    after_events.any(event => {
+      mooncode_json_string(event, "kind", default="") ==
+      "tool.approval_rejected" &&
+      mooncode_json_string(event, "decision_reason", default="") ==
+      "The proposed mutation lacks causal evidence."
+    }),
   )
   let state = restarted_daemon.mooncode_runtime_claim_state_payload(
     session_id, book_root,

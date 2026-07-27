@@ -20,6 +20,12 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     if mooncode_shell_has_git_commit(command) {
       return "Creating a git commit changes durable repository history and requires operator approval."
     }
+    if mooncode_shell_has_git_worktree_overwrite(command) {
+      return "This git command can overwrite tracked worktree content and requires operator approval."
+    }
+    if mooncode_shell_has_clean_dependency_install(command) {
+      return "A clean dependency install can replace local dependency state and requires operator approval."
+    }
     for
       marker in [
         "rm ", "sudo ", "curl ", "wget ", "ssh ", "scp ", "git push", "git reset",
@@ -364,9 +370,16 @@ async fn Daemon::mooncode_submit_tool_approval_control(
   }
   let action = mooncode_json_string(command, "command", default="")
   let state = if action == "approve_tool" { "approved" } else { "rejected" }
-  let decision_reason = mooncode_json_string(command, "text", default="")
+  let decision_reason = mooncode_runtime_control_field(
+      command, "decision_reason",
+    )
     .trim()
     .to_owned()
+  let decision_reason = if decision_reason == "" {
+    mooncode_json_string(command, "text", default="").trim().to_owned()
+  } else {
+    decision_reason
+  }
   let tool_call : Json = {
     "approval_id": approval_id,
     "tool_call_id": mooncode_json_string(request, "tool_call_id", default=""),

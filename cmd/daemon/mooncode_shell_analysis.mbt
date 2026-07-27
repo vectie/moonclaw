@@ -78,9 +78,9 @@ fn mooncode_shell_git_executable(word : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_segment_has_git_commit(segment : Array[String]) -> Bool {
+fn mooncode_shell_segment_executable_index(segment : Array[String]) -> Int {
   if segment.is_empty() {
-    return false
+    return -1
   }
   let mut index = 0
   while index < segment.length() &&
@@ -103,18 +103,31 @@ fn mooncode_shell_segment_has_git_commit(segment : Array[String]) -> Bool {
       index += 1
     }
   }
-  if index >= segment.length() || !mooncode_shell_git_executable(segment[index]) {
+  if index >= segment.length() {
+    -1
+  } else {
+    index
+  }
+}
+
+///|
+fn mooncode_shell_segment_has_git_subcommand(
+  segment : Array[String],
+  subcommands : ArrayView[String],
+) -> Bool {
+  let mut index = mooncode_shell_segment_executable_index(segment)
+  if index < 0 || !mooncode_shell_git_executable(segment[index]) {
     return false
   }
   index += 1
   while index < segment.length() {
     let word = segment[index]
-    if word == "commit" {
+    if subcommands.contains(word) {
       return true
     }
     if word == "--" {
       index += 1
-      return index < segment.length() && segment[index] == "commit"
+      return index < segment.length() && subcommands.contains(segment[index])
     }
     if !word.has_prefix("-") {
       return false
@@ -137,11 +150,14 @@ fn mooncode_shell_segment_has_git_commit(segment : Array[String]) -> Bool {
 }
 
 ///|
-fn mooncode_shell_has_git_commit(command : String) -> Bool {
+fn mooncode_shell_has_git_subcommand(
+  command : String,
+  subcommands : ArrayView[String],
+) -> Bool {
   let segment : Array[String] = []
   for word in mooncode_shell_words(command) {
     if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if mooncode_shell_segment_has_git_commit(segment) {
+      if mooncode_shell_segment_has_git_subcommand(segment, subcommands) {
         return true
       }
       segment.clear()
@@ -149,7 +165,62 @@ fn mooncode_shell_has_git_commit(command : String) -> Bool {
       segment.push(word)
     }
   }
-  mooncode_shell_segment_has_git_commit(segment)
+  mooncode_shell_segment_has_git_subcommand(segment, subcommands)
+}
+
+///|
+fn mooncode_shell_has_git_commit(command : String) -> Bool {
+  mooncode_shell_has_git_subcommand(command, ["commit"])
+}
+
+///|
+fn mooncode_shell_has_git_worktree_overwrite(command : String) -> Bool {
+  mooncode_shell_has_git_subcommand(command, ["restore", "checkout"])
+}
+
+///|
+fn mooncode_shell_segment_has_clean_dependency_install(
+  segment : Array[String],
+) -> Bool {
+  let index = mooncode_shell_segment_executable_index(segment)
+  if index < 0 || index + 1 >= segment.length() {
+    return false
+  }
+  let executable = segment[index]
+  let command = segment[index + 1]
+  if (executable == "npm" || executable.has_suffix("/npm")) && command == "ci" {
+    return true
+  }
+  if command != "install" {
+    return false
+  }
+  let immutable = segment.contains("--immutable") ||
+    segment.contains("--frozen-lockfile")
+  immutable &&
+  (
+    executable == "pnpm" ||
+    executable.has_suffix("/pnpm") ||
+    executable == "yarn" ||
+    executable.has_suffix("/yarn") ||
+    executable == "bun" ||
+    executable.has_suffix("/bun")
+  )
+}
+
+///|
+fn mooncode_shell_has_clean_dependency_install(command : String) -> Bool {
+  let segment : Array[String] = []
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if mooncode_shell_segment_has_clean_dependency_install(segment) {
+        return true
+      }
+      segment.clear()
+    } else {
+      segment.push(word)
+    }
+  }
+  mooncode_shell_segment_has_clean_dependency_install(segment)
 }
 
 ///|

@@ -102,6 +102,11 @@ stream_url="$base_url/v1/code/sessions/$session_path/stream"
 resume_json="$(jq -nc --arg book_root "$book_root" '{book_root: $book_root}')"
 stream_timeout_seconds="$(((wait_ms + 999) / 1000 + request_timeout_seconds))"
 latest_sequence=0
+command_sequence=0
+approval=""
+approval_id=""
+target_status=""
+target_detail=""
 
 record_evidence() {
   [[ -n "$evidence_file" ]] || return
@@ -145,6 +150,98 @@ if [[ -n "$evidence_file" ]]; then
     fail "evidence parent directory does not exist: $evidence_parent"
   if [[ "$resume_only" == false || ! -e "$evidence_file" ]]; then
     : >"$evidence_file"
+  elif [[ -s "$evidence_file" ]]; then
+    latest_sequence="$(
+      jq -rs '
+        [
+          .[]
+          | select(.type == "event")
+          | (.event.journal_sequence // 0)
+        ] | max // 0
+      ' "$evidence_file"
+    )"
+    command_sequence="$(
+      jq -rs \
+        --arg command_id "$command_id" '
+          [
+            .[]
+            | select(.type == "event")
+            | .event
+            | select(
+                .command_id == $command_id
+                and .kind == "command.queued_for_runtime_turn"
+            )
+            | (.journal_sequence // 0)
+          ] | min // 0
+        ' "$evidence_file"
+    )"
+    approval="$(
+      jq -rcs \
+        --arg command_id "$command_id" '
+          [
+            .[]
+            | select(.type == "event")
+            | .event
+            | select(
+                (.target_command_id // .command_id // "") == $command_id
+                and (
+                  .kind == "tool.approval_requested"
+                  or .kind == "tool.approval_approved"
+                  or .kind == "tool.approval_rejected"
+                )
+            )
+          ]
+          | sort_by(.journal_sequence // 0)
+          | last
+          | select(
+              .kind == "tool.approval_requested"
+              and (.state // "") == "pending"
+            ) // empty
+        ' "$evidence_file"
+    )"
+    approval_id="$(jq -r '.approval_id // ""' <<<"$approval")"
+    terminal="$(
+      jq -rcs \
+        --arg command_id "$command_id" '
+          [
+            .[]
+            | select(.type == "event")
+            | .event
+            | select(
+                .command_id == $command_id
+                and (
+                  .kind == "runtime.turn_finished"
+                  or .kind == "runtime.turn_cancelled"
+                  or .kind == "runtime.turn_invalid"
+                )
+            )
+          ]
+          | sort_by(.journal_sequence // 0)
+          | last // empty
+        ' "$evidence_file"
+    )"
+    if [[ -n "$terminal" ]]; then
+      case "$(jq -r '.kind // ""' <<<"$terminal")" in
+        runtime.turn_finished)
+          target_status="$(jq -r '.status // ""' <<<"$terminal")"
+          target_detail="$(
+            jq -r '.detail // "runtime turn finished"' <<<"$terminal"
+          )"
+          ;;
+        runtime.turn_cancelled)
+          target_status="cancelled"
+          target_detail="$(
+            jq -r '.detail // "runtime turn cancelled"' <<<"$terminal"
+          )"
+          ;;
+        runtime.turn_invalid)
+          target_status="failed"
+          target_detail="$(
+            jq -r '.detail // "runtime turn is invalid"' <<<"$terminal"
+          )"
+          ;;
+      esac
+    fi
   fi
   record_evidence "$(
     jq -nc \
@@ -286,12 +383,11 @@ print_event() {
 if [[ "$resume_only" == false ]]; then
   submit_turn
 else
-  printf 'resuming supervision for command %s in session %s\n' \
-    "$command_id" "$session_id"
+  printf 'resuming supervision for command %s in session %s after journal sequence %s\n' \
+    "$command_id" "$session_id" "$latest_sequence"
 fi
 
-since=0
-command_sequence=0
+since="$latest_sequence"
 while true; do
   stream=""
   if stream="$(read_stream)"; then
@@ -329,11 +425,6 @@ while true; do
   fi
   service_status=""
   service_detail=""
-  target_status=""
-  target_detail=""
-  approval=""
-  approval_id=""
-
   while IFS= read -r event; do
     [[ -n "$event" ]] || continue
     print_event "$event"
