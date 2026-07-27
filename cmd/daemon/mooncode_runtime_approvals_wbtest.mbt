@@ -35,6 +35,26 @@ fn mooncode_control_test_approval_request(events : Array[Json]) -> Json {
 }
 
 ///|
+test "mooncode approval classifier gates hosted run reruns" {
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": {
+        "cmd": "gh run rerun 30277114085 --repo vectie/moondesk --failed",
+      },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": {
+        "cmd": "gh run view 30277114085 --repo vectie/moondesk --log-failed",
+      },
+    }),
+  )
+}
+
+///|
 async fn mooncode_control_test_queue(
   book_root : String,
   session_id : String,

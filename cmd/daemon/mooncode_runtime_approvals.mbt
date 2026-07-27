@@ -21,8 +21,8 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     for
       marker in [
         "rm ", "sudo ", "curl ", "wget ", "ssh ", "scp ", "git push", "git reset",
-        "moon publish", "npm publish", "pnpm publish", "npm install", "pnpm add",
-        "yarn add", "pip install", "brew ",
+        "gh run rerun", "moon publish", "npm publish", "pnpm publish", "npm install",
+        "pnpm add", "yarn add", "pip install", "brew ",
       ] {
       if command.contains(marker) {
         return "This shell command can affect external systems, dependencies, or broad workspace state."
