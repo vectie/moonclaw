@@ -52,11 +52,11 @@ fn goal_api_created(goal : @mooncode_core.Goal) -> MoonCodeGoalApiResponse {
 }
 
 ///|
-fn goal_api_checked_epoch_seconds(value : Int64) -> Int? {
-  if value < 0L || value > 2147483647L {
+fn goal_api_checked_epoch_seconds(value : Int64) -> Int64? {
+  if value < 0L {
     None
   } else {
-    Some(value.to_int())
+    Some(value)
   }
 }
 
@@ -128,8 +128,9 @@ fn goal_api_text(
 }
 
 ///|
-fn goal_api_turn_limit(json : Json) -> Int raise InvalidGoalRequest {
+fn goal_api_turn_limit(json : Json) -> Int? raise InvalidGoalRequest {
   match json {
+    Null => None
     Number(value, ..) => {
       let parsed = goal_checked_int(value, "turn_limit") catch {
         _ => {
@@ -140,11 +141,11 @@ fn goal_api_turn_limit(json : Json) -> Int raise InvalidGoalRequest {
       if parsed < 0 {
         goal_api_fail("invalid turn_limit")
       }
-      parsed
+      Some(parsed)
     }
     _ => {
       goal_api_fail("invalid turn_limit")
-      0
+      None
     }
   }
 }
@@ -195,7 +196,7 @@ fn mooncode_parse_goal_put_request(
       _ => goal_api_fail("wall_time_limit must be null")
     }
     let turn_limit = match budget_object.get("turn_limit") {
-      Some(value) => Some(goal_api_turn_limit(value))
+      Some(value) => goal_api_turn_limit(value)
       None => {
         goal_api_fail("invalid budget fields")
         None

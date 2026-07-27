@@ -20,6 +20,15 @@ priv enum MoonCodeGoalCreateResult {
 }
 
 ///|
+/// Result of atomically applying a daemon-local durable goal event.
+priv enum MoonCodeGoalMutationResult {
+  GoalMutationApplied(@mooncode_core.Goal)
+  GoalMutationIdempotent(@mooncode_core.Goal)
+  GoalMutationConflict(@mooncode_core.Goal)
+  GoalMutationRejected(@mooncode_core.Goal)
+}
+
+///|
 priv suberror MoonCodeGoalStoreError {
   InvalidGoalGenesis(String)
 }
@@ -40,15 +49,21 @@ fn mooncode_goal_genesis(
   session_id : String,
   goal_id : String,
   objective : String,
-  created_at : Int,
+  created_at : Int64,
   budget : @mooncode_core.GoalBudget,
   requirements : Array[@mooncode_core.GoalRequirement],
 ) -> Json raise {
   guard protocol == mooncode_protocol_version() else {
     raise InvalidGoalGenesis("unsupported protocol")
   }
+  mooncode_goal_require_canonical_identity("objective", objective)
+  if created_at < 0L {
+    raise InvalidGoalGenesis("invalid timestamp: must be nonnegative")
+  }
   let budget = { ..budget, tokens_used: 0, turns_used: 0, wall_time_used: 0 }
-  let requirements = requirements.map(fn(r) {
+  let requirements = requirements.map(fn(r) raise {
+    mooncode_goal_require_canonical_identity("requirement id", r.id)
+    mooncode_goal_require_canonical_identity("criterion", r.criterion)
     { ..r, state: @mooncode_core.Unproven, evidence_refs: [] }
   })
   let goal = @mooncode_core.new_goal(
@@ -63,8 +78,8 @@ fn mooncode_goal_genesis(
     "session_id": goal.session_id,
     "goal_id": goal.id,
     "objective": goal.objective,
-    "recorded_at": created_at,
-    "timestamp": created_at,
+    "recorded_at": goal_json_int64_value(created_at),
+    "timestamp": goal_json_int64_value(created_at),
     "budget": {
       "token_limit": match goal.budget.token_limit {
         Some(v) => v.to_json()
@@ -106,6 +121,40 @@ fn goal_checked_int(n : Double, key : String) -> Int raise {
 }
 
 ///|
+fn goal_checked_int64(n : Double, repr : String?, key : String) -> Int64 raise {
+  match repr {
+    Some(raw) =>
+      @string.parse_int64(raw) catch {
+        _ => raise InvalidGoalGenesis("invalid integer `\{key}`")
+      }
+    None => {
+      if n != n ||
+        n == 1.0 / 0.0 ||
+        n == -1.0 / 0.0 ||
+        n.trunc() != n ||
+        n < -9223372036854775808.0 ||
+        n >= 9223372036854775808.0 {
+        raise InvalidGoalGenesis("invalid integer `\{key}`")
+      }
+      n.to_int64()
+    }
+  }
+}
+
+///|
+fn goal_json_int64_value(value : Int64) -> Json {
+  Json::number(value.to_double(), repr=value.to_string())
+}
+
+///|
+fn goal_json_int64(json : Json, key : String) -> Int64 raise {
+  match mooncode_journal_json_field(json, key) {
+    Some(Number(n, repr~)) => goal_checked_int64(n, repr, key)
+    _ => raise InvalidGoalGenesis("missing integer `\{key}`")
+  }
+}
+
+///|
 fn goal_json_int(json : Json, key : String) -> Int raise {
   match mooncode_journal_json_field(json, key) {
     Some(Number(n, ..)) => goal_checked_int(n, key)
@@ -131,13 +180,43 @@ fn goal_json_object(json : Json, key : String) -> Json raise {
 }
 
 ///|
-fn mooncode_replay_goal_records(
+fn goal_json_require_exact_keys(
+  json : Json,
+  expected : Array[String],
+  label : String,
+) -> Unit raise {
+  match json {
+    Object(entries) => {
+      guard entries.length() == expected.length() else {
+        raise InvalidGoalGenesis("invalid " + label + " object membership")
+      }
+      for key in expected {
+        guard entries.get(key) is Some(_) else {
+          raise InvalidGoalGenesis("invalid " + label + " object membership")
+        }
+      }
+    }
+    _ => raise InvalidGoalGenesis("invalid " + label + " object")
+  }
+}
+
+///|
+priv struct MoonCodeGoalReplayState {
+  genesis : @mooncode_core.Goal
+  current : @mooncode_core.Goal
+  events : Map[String, @mooncode_core.GoalEvent]
+}
+
+///|
+fn mooncode_replay_goal_records_detailed(
   records : Array[Json],
   session_id : String,
   expected_goal_id? : String? = None,
-) -> @mooncode_core.Goal? raise {
+) -> MoonCodeGoalReplayState? raise {
   mooncode_goal_require_canonical_identity("session_id", session_id)
-  let mut winner = None
+  // Reduce ordinary Goal state first. Supervisor records are validated against
+  // the resulting Goal below, avoiding recursive detailed replay.
+  let mut replay : MoonCodeGoalReplayState? = None
   for envelope in records {
     if mooncode_json_string(envelope, "record_kind", default="") !=
       mooncode_journal_event() {
@@ -170,10 +249,96 @@ fn mooncode_replay_goal_records(
     if !reserved_envelope_id && !reserved_id && !goal_kind {
       continue
     }
+    if kind.has_prefix("mooncode.goal.supervisor.") {
+      let state = match replay {
+        Some(state) => state
+        None => raise InvalidGoalGenesis("supervisor event before genesis")
+      }
+      if kind == mooncode_goal_supervisor_lease_v1_kind() {
+        let lease = mooncode_goal_supervisor_lease_decode(envelope)
+        if lease.session_id != state.current.session_id ||
+          lease.goal_id != state.current.id ||
+          lease.goal_run_id != state.current.run_id {
+          raise InvalidGoalGenesis("supervisor lease goal mismatch")
+        }
+        continue
+      }
+      if kind == mooncode_goal_supervisor_lease_renewed_v1_kind() {
+        let renewal = mooncode_goal_supervisor_lease_renewal_decode(envelope)
+        if renewal.session_id != state.current.session_id ||
+          renewal.goal_id != state.current.id ||
+          renewal.goal_run_id != state.current.run_id {
+          raise InvalidGoalGenesis("supervisor lease renewal goal mismatch")
+        }
+        continue
+      }
+      if kind == mooncode_goal_supervisor_checkpoint_v1_kind() {
+        let checkpoint = mooncode_goal_supervisor_checkpoint_decode(envelope)
+        if checkpoint.session_id != state.current.session_id ||
+          checkpoint.goal_id != state.current.id ||
+          checkpoint.goal_run_id != state.current.run_id ||
+          checkpoint.goal_revision != state.current.revision ||
+          checkpoint.current_goal_turn != state.current.current_goal_turn {
+          raise InvalidGoalGenesis(
+            "supervisor checkpoint goal snapshot mismatch",
+          )
+        }
+        continue
+      }
+      raise InvalidGoalGenesis("unknown supervisor event kind")
+    }
+    if goal_kind && kind != mooncode_goal_genesis_kind() {
+      mooncode_goal_require_canonical_identity(
+        "envelope_session", envelope_session,
+      )
+      if envelope_session != session_id {
+        raise InvalidGoalGenesis("goal event session mismatch")
+      }
+      let state = match replay {
+        Some(state) => state
+        None => raise InvalidGoalGenesis("goal event before genesis")
+      }
+      let event = match @mooncode_core.decode_goal_event_v1(payload) {
+        Ok(event) => event
+        Err(_) => raise InvalidGoalGenesis("invalid goal event")
+      }
+      if goal_json_int64(envelope, "recorded_at") !=
+        @mooncode_core.goal_event_recorded_at(event) {
+        raise InvalidGoalGenesis("goal event recorded_at mismatch")
+      }
+      let event_id = @mooncode_core.goal_event_id(event)
+      if envelope_record_id != mooncode_journal_goal_event() + ":" + event_id {
+        raise InvalidGoalGenesis("invalid goal event identity")
+      }
+      match state.events.get(event_id) {
+        Some(mapped) => {
+          if mapped == event {
+            continue
+          }
+          raise InvalidGoalGenesis("conflicting duplicate goal event")
+        }
+        None => ()
+      }
+      let next = @mooncode_core.reduce_goal(state.current, event)
+      if next == state.current {
+        raise InvalidGoalGenesis("invalid goal event transition")
+      }
+      state.events[event_id] = event
+      replay = Some({ ..state, current: next })
+      continue
+    }
     mooncode_goal_require_canonical_identity(
       "envelope_session", envelope_session,
     )
     mooncode_goal_require_canonical_identity("payload_session", payload_session)
+    goal_json_require_exact_keys(
+      payload,
+      [
+        "id", "kind", "protocol", "session_id", "goal_id", "objective", "recorded_at",
+        "timestamp", "budget", "requirements",
+      ],
+      "goal genesis payload",
+    )
     if kind != mooncode_goal_genesis_kind() {
       raise InvalidGoalGenesis("unsupported goal event")
     }
@@ -185,7 +350,7 @@ fn mooncode_replay_goal_records(
       envelope_session != payload_session {
       raise InvalidGoalGenesis("goal genesis session mismatch")
     }
-    if winner is Some(_) {
+    if replay is Some(_) {
       raise InvalidGoalGenesis("duplicate goal genesis")
     }
     let gid = mooncode_json_string(payload, "goal_id", default="")
@@ -202,11 +367,25 @@ fn mooncode_replay_goal_records(
       mooncode_protocol_version() {
       raise InvalidGoalGenesis("protocol mismatch")
     }
-    let timestamp = goal_json_int(payload, "timestamp")
-    if goal_json_int(payload, "recorded_at") != timestamp {
+    let timestamp = goal_json_int64(payload, "timestamp")
+    if timestamp < 0L {
+      raise InvalidGoalGenesis("timestamp must be nonnegative")
+    }
+    if goal_json_int64(payload, "recorded_at") != timestamp ||
+      goal_json_int64(envelope, "recorded_at") != timestamp {
       raise InvalidGoalGenesis("recorded_at/timestamp mismatch")
     }
+    let objective = mooncode_json_string(payload, "objective", default="")
+    mooncode_goal_require_canonical_identity("objective", objective)
     let budget_json = goal_json_object(payload, "budget")
+    goal_json_require_exact_keys(
+      budget_json,
+      [
+        "token_limit", "turn_limit", "wall_time_limit", "tokens_used", "turns_used",
+        "wall_time_used",
+      ],
+      "goal genesis budget",
+    )
     let budget : @mooncode_core.GoalBudget = {
       token_limit: goal_json_optional_int(budget_json, "token_limit"),
       turn_limit: goal_json_optional_int(budget_json, "turn_limit"),
@@ -224,6 +403,17 @@ fn mooncode_replay_goal_records(
     match goal_json_object(payload, "requirements") {
       Array(items) =>
         for item in items {
+          goal_json_require_exact_keys(
+            item,
+            ["id", "criterion", "state", "evidence"],
+            "goal requirement",
+          )
+          let requirement_id = mooncode_json_string(item, "id", default="")
+          let criterion = mooncode_json_string(item, "criterion", default="")
+          mooncode_goal_require_canonical_identity(
+            "requirement id", requirement_id,
+          )
+          mooncode_goal_require_canonical_identity("criterion", criterion)
           if mooncode_json_string(item, "state", default="") != "unproven" {
             raise InvalidGoalGenesis("requirement state")
           }
@@ -232,8 +422,8 @@ fn mooncode_replay_goal_records(
             _ => raise InvalidGoalGenesis("requirement evidence")
           }
           requirements.push({
-            id: mooncode_json_string(item, "id", default=""),
-            criterion: mooncode_json_string(item, "criterion", default=""),
+            id: requirement_id,
+            criterion,
             state: @mooncode_core.Unproven,
             evidence_refs: [],
           })
@@ -241,18 +431,45 @@ fn mooncode_replay_goal_records(
       _ => raise InvalidGoalGenesis("requirements must be array")
     }
     let goal = @mooncode_core.new_goal(
-      gid,
-      payload_session,
-      mooncode_json_string(payload, "objective", default=""),
-      timestamp,
-      budget,
-      requirements,
+      gid, payload_session, objective, timestamp, budget, requirements,
     ) catch {
       _ => raise InvalidGoalGenesis("invalid durable goal genesis")
     }
-    winner = Some(goal)
+    replay = Some({ genesis: goal, current: goal, events: {} })
   }
-  winner
+  match replay {
+    Some(state) => {
+      let _ = mooncode_goal_supervisor_lease_replay(records, state.current)
+    }
+    None => ()
+  }
+  replay
+}
+
+///|
+fn mooncode_replay_goal_records(
+  records : Array[Json],
+  session_id : String,
+  expected_goal_id? : String? = None,
+) -> @mooncode_core.Goal? raise {
+  mooncode_replay_goal_records_detailed(records, session_id, expected_goal_id~).map(fn(
+      state,
+    ) {
+      state.current
+    },
+  )
+}
+
+///|
+async fn mooncode_replay_goal_detailed(
+  book_root : String,
+  session_id : String,
+) -> MoonCodeGoalReplayState? {
+  mooncode_goal_require_canonical_identity("session_id", session_id)
+  mooncode_replay_goal_records_detailed(
+    mooncode_read_session_journal(book_root, session_id),
+    session_id,
+  )
 }
 
 ///|
@@ -260,11 +477,9 @@ async fn mooncode_replay_goal(
   book_root : String,
   session_id : String,
 ) -> @mooncode_core.Goal? {
-  mooncode_goal_require_canonical_identity("session_id", session_id)
-  mooncode_replay_goal_records(
-    mooncode_read_session_journal(book_root, session_id),
-    session_id,
-  )
+  mooncode_replay_goal_detailed(book_root, session_id).map(fn(state) {
+    state.current
+  })
 }
 
 ///|
@@ -280,13 +495,73 @@ fn mooncode_same_creation_intent(
 }
 
 ///|
+async fn mooncode_apply_goal_event(
+  book_root : String,
+  session_id : String,
+  goal_id : String,
+  raw : Json,
+) -> MoonCodeGoalMutationResult {
+  mooncode_goal_require_canonical_identity("session id", session_id)
+  mooncode_goal_require_canonical_identity("goal id", goal_id)
+  let event = match @mooncode_core.decode_goal_event_v1(raw) {
+    Ok(event) => event
+    Err(_) => raise InvalidGoalGenesis("invalid goal event")
+  }
+  let canonical_payload = @mooncode_core.goal_event_to_json(event)
+  let event_id = @mooncode_core.goal_event_id(event)
+  if event_id == mooncode_goal_genesis_id() {
+    raise InvalidGoalGenesis("reserved goal event identity")
+  }
+  guard mooncode_replay_goal_detailed(book_root, session_id) is Some(_) else {
+    raise InvalidGoalGenesis("goal genesis is missing")
+  }
+  mooncode_session_journal_transaction(book_root, session_id, fn(
+    records,
+  ) raise {
+    let state = match
+      mooncode_replay_goal_records_detailed(
+        records,
+        session_id,
+        expected_goal_id=Some(goal_id),
+      ) {
+      Some(state) => state
+      None => raise InvalidGoalGenesis("goal genesis is missing")
+    }
+    let current = state.current
+    match state.events.get(event_id) {
+      Some(existing) =>
+        if existing == event {
+          NoAppend(GoalMutationIdempotent(current))
+        } else {
+          NoAppend(GoalMutationConflict(current))
+        }
+      None => {
+        if mooncode_goal_supervisor_event_record_exists(records, event_id) {
+          return NoAppend(GoalMutationConflict(current))
+        }
+        let next = @mooncode_core.reduce_goal(current, event)
+        if next == current {
+          NoAppend(GoalMutationRejected(current))
+        } else {
+          Append(
+            mooncode_journal_goal_event(),
+            canonical_payload,
+            GoalMutationApplied(next),
+          )
+        }
+      }
+    }
+  })
+}
+
+///|
 async fn mooncode_create_goal(
   book_root : String,
   protocol : String,
   session_id : String,
   goal_id : String,
   objective : String,
-  created_at : Int,
+  created_at : Int64,
   budget : @mooncode_core.GoalBudget,
   requirements : Array[@mooncode_core.GoalRequirement],
 ) -> MoonCodeGoalCreateResult {
@@ -301,6 +576,7 @@ async fn mooncode_create_goal(
     ":" +
     mooncode_goal_genesis_id(),
     "session_id": session_id,
+    "recorded_at": goal_json_int64_value(created_at),
     "payload": genesis,
   }
   guard mooncode_replay_goal_records(
@@ -311,58 +587,22 @@ async fn mooncode_create_goal(
     is Some(expected) else {
     raise InvalidGoalGenesis("invalid expected genesis")
   }
-  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
-    book_root, session_id,
-  )
-  defer lifecycle_gate.close()
-  lifecycle_gate.lock(Shared)
-  defer lifecycle_gate.unlock()
-  let session_lock = mooncode_open_session_lock(book_root, session_id)
-  defer session_lock.close()
-  session_lock.lock(Exclusive)
-  defer session_lock.unlock()
-  mooncode_require_active_session_state_locked(
-    book_root,
-    session_id,
-    allow_create=true,
-  )
-  let records = mooncode_goal_authority_records_locked(book_root, session_id)
-  let authority = mooncode_goal_authority_snapshot(records, session_id)
-  if mooncode_goal_authority_is_dual(authority) ||
-    authority.runtime.genesis is Some(_) {
-    return AuthorityConflict
-  }
-  match authority.legacy {
-    Some(existing) =>
-      if mooncode_same_creation_intent(existing, expected) {
-        return Idempotent(existing)
-      } else {
-        return Conflict(existing)
-      }
-    None => ()
-  }
-  let appended = mooncode_append_session_journal_once_locked(
-    book_root,
-    session_id,
-    mooncode_journal_goal_event(),
-    genesis,
-  )
-  let committed = mooncode_goal_authority_records_locked(book_root, session_id)
-  let winner = mooncode_goal_authority_snapshot(committed, session_id)
-  if mooncode_goal_authority_is_dual(winner) ||
-    winner.runtime.genesis is Some(_) {
-    return AuthorityConflict
-  }
-  guard winner.legacy is Some(goal) else {
-    raise InvalidGoalGenesis("genesis disappeared")
-  }
-  if mooncode_same_creation_intent(goal, expected) {
-    if appended {
-      Created(goal)
-    } else {
-      Idempotent(goal)
+  mooncode_session_journal_transaction(book_root, session_id, fn(
+    records,
+  ) raise {
+    let authority = mooncode_goal_authority_snapshot(records, session_id)
+    if mooncode_goal_authority_is_dual(authority) ||
+      authority.runtime.genesis is Some(_) {
+      return NoAppend(AuthorityConflict)
     }
-  } else {
-    Conflict(goal)
-  }
+    match mooncode_replay_goal_records_detailed(records, session_id) {
+      Some(existing) =>
+        if mooncode_same_creation_intent(existing.genesis, expected) {
+          NoAppend(Idempotent(existing.current))
+        } else {
+          NoAppend(Conflict(existing.current))
+        }
+      None => Append(mooncode_journal_goal_event(), genesis, Created(expected))
+    }
+  })
 }

@@ -1,19 +1,19 @@
 ///|
 pub(all) enum GoalEvent {
-  ContinuationAccepted(String, Int, Int, Int)
-  TurnFinished(String, Int, Int, Int, BlockerIdentity?, Bool)
-  RequirementUpdated(String, Int, String, RequirementState, Array[String])
-  AwaitingApproval(String, Int, Array[String])
-  ApprovalSettled(String, Int, Array[String], ApprovalOutcome)
-  BudgetUsageRecorded(String, Int, Int, Int, Int)
-  BudgetExhausted(String, Int)
-  BudgetExtended(String, Int, Int?, Int?, Int?)
-  EvaluationStarted(String, Int, String, String)
-  Evaluated(String, Int, String, Int, String, ConvergenceReport)
-  EvaluationFailed(String, Int, String, Int, Int, String, Int, String, Int)
-  EvaluationRetryDue(String, Int, String, Int, Int)
-  CompleteRequested(String, Int, CompletionProof)
-  Resume(String, Int)
+  ContinuationAccepted(String, Int64, Int, Int)
+  TurnFinished(String, Int64, Int, Int, BlockerIdentity?, Bool)
+  RequirementUpdated(String, Int64, String, RequirementState, Array[String])
+  AwaitingApproval(String, Int64, Array[String])
+  ApprovalSettled(String, Int64, Array[String], ApprovalOutcome)
+  BudgetUsageRecorded(String, Int64, Int, Int, Int)
+  BudgetExhausted(String, Int64)
+  BudgetExtended(String, Int64, Int?, Int?, Int?)
+  EvaluationStarted(String, Int64, String, String)
+  Evaluated(String, Int64, String, Int, String, ConvergenceReport)
+  EvaluationFailed(String, Int64, String, Int, Int, String, Int, String, Int64)
+  EvaluationRetryDue(String, Int64, String, Int, Int)
+  CompleteRequested(String, Int64, CompletionProof)
+  Resume(String, Int64)
 } derive(Eq, Debug)
 
 ///|
@@ -56,7 +56,7 @@ pub fn new_goal(
   id : String,
   session_id : String,
   objective : String,
-  now : Int,
+  now : Int64,
   budget : GoalBudget,
   requirements : Array[GoalRequirement],
 ) -> Goal raise {
@@ -77,7 +77,9 @@ pub fn new_goal(
     let criterion = requirement.criterion.trim().to_owned()
     if requirement_id.is_empty() ||
       criterion.is_empty() ||
-      ids.contains(requirement_id) {
+      ids.contains(requirement_id) ||
+      requirement.state != Unproven ||
+      !requirement.evidence_refs.is_empty() {
       raise Failure::Failure("invalid requirement")
     }
     ids.push(requirement_id)
@@ -132,7 +134,7 @@ pub fn goal_budget_exhausted(budget : GoalBudget) -> Bool {
 }
 
 ///|
-fn event_identity(event : GoalEvent) -> (String, Int) {
+fn event_identity(event : GoalEvent) -> (String, Int64) {
   match event {
     ContinuationAccepted(id, now, _, _) => (id, now)
     TurnFinished(id, now, _, _, _, _) => (id, now)
@@ -152,7 +154,7 @@ fn event_identity(event : GoalEvent) -> (String, Int) {
 }
 
 ///|
-fn accepted(goal : Goal, id : String, now : Int) -> Goal {
+fn accepted(goal : Goal, id : String, now : Int64) -> Goal {
   let seen = goal.seen_ids.copy()
   seen.push(id.trim().to_owned())
   { ..goal, seen_ids: seen, revision: goal.revision + 1, updated_at: now }
@@ -278,7 +280,11 @@ fn projection_ready(goal : Goal, proof : CompletionProof) -> Bool {
     None => false
   }) &&
   goal.requirements.all(fn(requirement) {
-    requirement.state == Proven && !requirement.evidence_refs.is_empty()
+    requirement.state == Proven &&
+    (match canonical_refs(requirement.evidence_refs) {
+      Some(refs) => !refs.is_empty()
+      None => false
+    })
   })
 }
 
@@ -286,7 +292,11 @@ fn projection_ready(goal : Goal, proof : CompletionProof) -> Bool {
 pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
   let (raw_id, now) = event_identity(event)
   let id = raw_id.trim().to_owned()
-  if id.is_empty() || goal.seen_ids.contains(id) || goal.status == Complete {
+  if raw_id != id ||
+    now < goal.updated_at ||
+    id.is_empty() ||
+    goal.seen_ids.contains(id) ||
+    goal.status == Complete {
     goal
   } else if goal.status == Blocked {
     match event {
@@ -368,15 +378,24 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
             !goal.requirements.any(fn(item) { item.id == clean_id }) {
             goal
           } else {
-            let requirements = goal.requirements.map(fn(item) {
-              if item.id == clean_id {
-                { ..item, state, evidence_refs: evidence_refs.copy() }
-              } else {
-                item
+            let clean_refs : Array[String]? = match state {
+              Unproven => if evidence_refs.is_empty() { Some([]) } else { None }
+              Proven | Contradicted => canonical_refs(evidence_refs)
+            }
+            match clean_refs {
+              None => goal
+              Some(clean) => {
+                let requirements = goal.requirements.map(fn(item) {
+                  if item.id == clean_id {
+                    { ..item, state, evidence_refs: clean }
+                  } else {
+                    item
+                  }
+                })
+                let next = accepted(goal, id, now)
+                { ..next, requirements, }
               }
-            })
-            let next = accepted(goal, id, now)
-            { ..next, requirements, }
+            }
           }
         } else {
           goal
@@ -437,7 +456,8 @@ pub fn reduce_goal(goal : Goal, event : GoalEvent) -> Goal {
           goal
         }
       BudgetExhausted(_, _) =>
-        if runnable(goal) && goal_budget_exhausted(goal.budget) {
+        if goal.run_state == AwaitingBudget &&
+          goal_budget_exhausted(goal.budget) {
           let next = accepted(goal, id, now)
           { ..next, run_state: AwaitingBudget }
         } else {

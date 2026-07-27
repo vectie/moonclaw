@@ -68,25 +68,18 @@ async fn Daemon::mooncode_runtime_claim(
     })
   }
   defer execution_lease.unlock()
-  let before = self.mooncode_runtime_claim_state_payload(session_id, book_root)
-  let receipts = mooncode_runtime_claim_receipts(
-    session_id,
+  // Claim selection and receipt append must share the session-journal lock.
+  // In particular, never restore the former read/decide/append sequence here:
+  // two daemon workers could both observe the same command as claimable.
+  let claim = mooncode_runtime_claim_atomic(
     book_root,
-    before,
+    session_id,
     body,
-    now=self.clock.now(),
+    self.clock.now(),
   )
-  for receipt in receipts {
-    ignore(
-      mooncode_append_session_journal(
-        book_root,
-        session_id,
-        mooncode_journal_runtime_receipt(),
-        receipt,
-      ),
-    )
-  }
-  let after = self.mooncode_runtime_claim_state_payload(session_id, book_root)
+  let before = claim.before
+  let receipts = claim.receipts
+  let after = claim.after
   w.header().set("Content-Type", "application/json")
   w.write_header(202, reason="Accepted")
   w.write(
@@ -291,6 +284,65 @@ fn mooncode_runtime_receipt_status_delivered(status : String) -> Bool {
   status == "runtime-failed" ||
   status == "runtime-cancelled" ||
   status == "runtime-rejected"
+}
+
+///|
+priv struct MoonCodeRuntimeAtomicClaimResult {
+  before : Json
+  receipts : Array[Json]
+  after : Json
+}
+
+///|
+/// Select and durably claim one command while holding the journal lock.
+async fn mooncode_runtime_claim_atomic(
+  book_root : String,
+  session_id : String,
+  request : Json,
+  now : @clock.Timestamp,
+) -> MoonCodeRuntimeAtomicClaimResult {
+  mooncode_session_journal_transaction(book_root, session_id, fn(
+    records,
+  ) raise {
+    let commands = mooncode_journal_entries(records, mooncode_journal_command())
+    let old_receipts = mooncode_journal_entries(
+      records,
+      mooncode_journal_runtime_receipt(),
+    )
+    let path = mooncode_session_journal_path(book_root, session_id)
+    let before = mooncode_runtime_claim_state_from_logs(
+      session_id,
+      book_root,
+      commands,
+      old_receipts,
+      journal_path=path,
+    )
+    let receipts = mooncode_runtime_claim_receipts(
+      session_id,
+      book_root,
+      before,
+      request,
+      now~,
+    )
+    if receipts.is_empty() {
+      return NoAppend({ before, receipts, after: before })
+    }
+    let receipt = receipts[0]
+    let combined = old_receipts.copy()
+    combined.push(receipt)
+    let after = mooncode_runtime_claim_state_from_logs(
+      session_id,
+      book_root,
+      commands,
+      combined,
+      journal_path=path,
+    )
+    Append(mooncode_journal_runtime_receipt(), receipt, {
+      before,
+      receipts,
+      after,
+    })
+  })
 }
 
 ///|

@@ -593,3 +593,22 @@ A hallucinated whole-test-file overwrite replaced validated codec coverage. The 
 - **Invariant:** Environmental disk or memory exhaustion may fail an operation, but it
   never settles a goal. Only typed Achieved, Blocked, or exact active-target Cancelled
   evidence is terminal; no aggregate progress count is a completion rule.
+
+## Atomic legacy-goal supervision integration (2026-07-27)
+
+- Legacy goal mutations, supervisor lease acquisition and renewal, checkpoint
+  persistence, and runtime claims now decide and append under one journal
+  transaction. Exact retries are idempotent, conflicting event-ID reuse fails
+  closed, and concurrent claimers cannot select the same command.
+- Supervisor checkpoints validate the active owner and fence, goal run and
+  revision, committed journal basis, and the exact terminal command/claim/receipt
+  boundary before append. Lease timestamps use `Int64`; an absent aggregate
+  turn budget remains representable as unbounded.
+- Pure-core goal events have a strict codec, deterministic replay, typed result
+  comparison, and trend aggregation. The legacy supervisor remains a
+  compatibility subsystem beside the unbounded goal-runtime authority; dual
+  authority is rejected rather than silently migrated.
+- The integrated transaction writes the canonical exact-sequence v2 envelope
+  and preserves the stronger file-and-directory durability boundary. The
+  compatibility supervisor still exposes an `Int` basis sequence, so it fails
+  explicitly if an exact journal cursor exceeds that legacy contract.

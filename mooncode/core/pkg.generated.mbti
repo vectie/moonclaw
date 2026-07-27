@@ -175,6 +175,8 @@ pub fn conversation_watch_response(session_id~ : String, revision~ : Int, next_s
 
 pub fn conversation_watch_response_exact(session_id~ : String, revision~ : String, next_sequence~ : String, changed~ : Bool, heartbeat~ : Bool, terminal~ : Bool, retry_after_ms~ : Int, snapshot~ : Json) -> Json raise
 
+pub fn decode_goal_event_v1(Json) -> Result[GoalEvent, String]
+
 pub fn event_lane_artifact() -> String
 
 pub fn event_lane_contract_id() -> String
@@ -217,7 +219,23 @@ pub fn goal_budget_exhausted(GoalBudget) -> Bool
 
 pub let goal_checkpoint_contract_version : Int
 
+pub fn goal_comparison_compare(GoalRunResult, GoalRunResult, Int) -> GoalComparison
+
+pub fn goal_comparison_trend(Array[GoalComparison]) -> GoalComparisonTrend
+
 pub fn goal_evaluation_bundle_json(Goal) -> Json
+
+pub fn goal_event_created_kind() -> String
+
+pub fn goal_event_from_json(Json) -> GoalEvent raise
+
+pub fn goal_event_id(GoalEvent) -> String
+
+pub fn goal_event_kind(GoalEvent) -> String
+
+pub fn goal_event_recorded_at(GoalEvent) -> Int64
+
+pub fn goal_event_to_json(GoalEvent) -> Json
 
 pub fn goal_runtime_checkpoint_count(GoalRuntimeState) -> Int
 
@@ -447,7 +465,7 @@ pub fn native_stream_endpoint_exact(String, String, String, String, wait_ms? : I
 
 pub fn native_tool_exec_endpoint(String, String) -> String
 
-pub fn new_goal(String, String, String, Int, GoalBudget, Array[GoalRequirement]) -> Goal raise
+pub fn new_goal(String, String, String, Int64, GoalBudget, Array[GoalRequirement]) -> Goal raise
 
 pub fn new_goal_runtime_state() -> GoalRuntimeState
 
@@ -1243,7 +1261,7 @@ pub(all) struct EvaluationBackoffRecord {
   evidence_digest : String
   attempt : Int
   category : String
-  next_retry_at : Int
+  next_retry_at : Int64
 } derive(Eq, @debug.Debug)
 
 pub(all) struct EvaluationRequest {
@@ -1260,8 +1278,8 @@ pub(all) struct Goal {
   status : GoalStatus
   run_state : GoalRunState
   run_id : Int
-  created_at : Int
-  updated_at : Int
+  created_at : Int64
+  updated_at : Int64
   revision : Int
   current_goal_turn : Int
   continuation_count : Int
@@ -1313,6 +1331,31 @@ pub(all) struct GoalCheckpointSnapshot {
   budget : CheckpointBudget
 } derive(Eq, @debug.Debug)
 
+pub(all) struct GoalComparison {
+  checkpoint : Int
+  verdict : GoalComparisonVerdict
+  exact_invariants_match : Bool
+  lexical_similarity_bps : Int
+  mismatches : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalComparisonTrend {
+  sample_count : Int
+  equivalent_count : Int
+  similar_count : Int
+  diverged_count : Int
+  insufficient_count : Int
+  average_similarity_bps : Int
+  stable : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalComparisonVerdict {
+  Equivalent
+  Similar
+  Diverged
+  Insufficient
+} derive(Eq, @debug.Debug)
+
 pub(all) struct GoalConvergence {
   report : ConvergenceReport
   accepted_revision : Int
@@ -1324,20 +1367,20 @@ pub(all) struct GoalCriterionEvidence {
 } derive(Eq, @debug.Debug)
 
 pub(all) enum GoalEvent {
-  ContinuationAccepted(String, Int, Int, Int)
-  TurnFinished(String, Int, Int, Int, BlockerIdentity?, Bool)
-  RequirementUpdated(String, Int, String, RequirementState, Array[String])
-  AwaitingApproval(String, Int, Array[String])
-  ApprovalSettled(String, Int, Array[String], ApprovalOutcome)
-  BudgetUsageRecorded(String, Int, Int, Int, Int)
-  BudgetExhausted(String, Int)
-  BudgetExtended(String, Int, Int?, Int?, Int?)
-  EvaluationStarted(String, Int, String, String)
-  Evaluated(String, Int, String, Int, String, ConvergenceReport)
-  EvaluationFailed(String, Int, String, Int, Int, String, Int, String, Int)
-  EvaluationRetryDue(String, Int, String, Int, Int)
-  CompleteRequested(String, Int, CompletionProof)
-  Resume(String, Int)
+  ContinuationAccepted(String, Int64, Int, Int)
+  TurnFinished(String, Int64, Int, Int, BlockerIdentity?, Bool)
+  RequirementUpdated(String, Int64, String, RequirementState, Array[String])
+  AwaitingApproval(String, Int64, Array[String])
+  ApprovalSettled(String, Int64, Array[String], ApprovalOutcome)
+  BudgetUsageRecorded(String, Int64, Int, Int, Int)
+  BudgetExhausted(String, Int64)
+  BudgetExtended(String, Int64, Int?, Int?, Int?)
+  EvaluationStarted(String, Int64, String, String)
+  Evaluated(String, Int64, String, Int, String, ConvergenceReport)
+  EvaluationFailed(String, Int64, String, Int, Int, String, Int, String, Int64)
+  EvaluationRetryDue(String, Int64, String, Int, Int)
+  CompleteRequested(String, Int64, CompletionProof)
+  Resume(String, Int64)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct GoalOperationPolicy {
@@ -1356,6 +1399,21 @@ pub(all) struct GoalRequirement {
   criterion : String
   state : RequirementState
   evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalRunRequirementResult {
+  id : String
+  passed : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalRunResult {
+  runner : String
+  checkpoint : Int
+  completed : Bool
+  verification_passed : Bool
+  requirements : Array[GoalRunRequirementResult]
+  artifact_digest : String
+  summary : String
 } derive(Eq, @debug.Debug)
 
 pub(all) enum GoalRunState {

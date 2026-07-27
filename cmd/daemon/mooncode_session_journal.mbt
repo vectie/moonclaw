@@ -34,6 +34,25 @@ fn mooncode_journal_goal_event() -> String {
 }
 
 ///|
+fn mooncode_validate_generic_journal_append(
+  record_kind : String,
+  payload : Json,
+) -> Unit raise MoonCodeJournalError {
+  if record_kind == mooncode_journal_event() {
+    let kind = mooncode_json_string(payload, "kind", default="")
+    let id = mooncode_json_string(payload, "id", default="")
+    if kind.has_prefix("mooncode.goal.") ||
+      kind.has_prefix("mooncode.goal.supervisor.") ||
+      id.has_prefix("mooncode.goal.supervisor.") ||
+      id == "goal-genesis-v1" {
+      raise InvalidJournal(
+        "Goal journal events must use the goal-specific atomic API",
+      )
+    }
+  }
+}
+
+///|
 async fn mooncode_append_session_journal(
   book_root : String,
   session_id : String,
@@ -145,6 +164,106 @@ async fn mooncode_sync_journal_commit(
 }
 
 ///|
+priv enum MoonCodeJournalTransactionDecision[T] {
+  NoAppend(T)
+  Append(String, Json, T)
+}
+
+///|
+/// Evaluate and append one record under the same lifecycle, session, and file
+/// locks. The callback sees the exact committed prefix used to choose the
+/// successor sequence.
+async fn[T] mooncode_session_journal_transaction(
+  book_root : String,
+  session_id : String,
+  decide : (Array[Json]) -> MoonCodeJournalTransactionDecision[T] raise,
+) -> T {
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Shared)
+  defer lifecycle_gate.unlock()
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
+  mooncode_require_active_session_state_locked(
+    book_root,
+    session_id,
+    allow_create=true,
+  )
+  let path = mooncode_session_journal_path(book_root, session_id)
+  let commit_directories = mooncode_journal_commit_directories(path)
+  @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
+  let file = @fs.open(
+    path,
+    mode=ReadWrite,
+    append=false,
+    create=0o644,
+    truncate=false,
+  )
+  defer file.close()
+  file.lock(Exclusive)
+  defer file.unlock()
+  mooncode_repair_journal_tail(file)
+  let records = mooncode_parse_journal_file(file, path, session_id)
+  let last_sequence = mooncode_journal_last_sequence_exact(records)
+  let identities : Array[(String, String)] = records.map(record => {
+    (
+      mooncode_json_string(record, "record_kind", default=""),
+      mooncode_json_string(record, "record_id", default=""),
+    )
+  })
+  let client_turn_inheritance : Array[(String, String)] = records.filter_map(record => {
+    let command_id = mooncode_json_string(record, "command_id", default="")
+    let client_turn_id = mooncode_json_string(
+      record,
+      "client_turn_id",
+      default="",
+    )
+    if command_id != "" && client_turn_id != "" {
+      Some((command_id, client_turn_id))
+    } else {
+      None
+    }
+  })
+  match decide(records) {
+    NoAppend(result) => result
+    Append(record_kind, payload, result) => {
+      let record_id = mooncode_journal_record_id(record_kind, payload)
+      for identity in identities {
+        let (existing_kind, existing_id) = identity
+        if existing_kind == record_kind && existing_id == record_id {
+          raise InvalidJournal(
+            "MoonCode journal record identity already exists: `\{record_kind}`/`\{record_id}`",
+          )
+        }
+      }
+      let command_id = mooncode_journal_command_id(payload)
+      let client_turn_id = mooncode_journal_client_turn_id_from_snapshot(
+        payload, client_turn_inheritance, command_id,
+      )
+      let record = mooncode_journal_record_for_append(
+        session_id,
+        record_kind,
+        payload,
+        record_id,
+        command_id,
+        {
+          cursor: last_sequence,
+          duplicate_found: false,
+          inherited_client_turn_id: client_turn_id,
+        },
+      )
+      file.write(mooncode_journal_canonical_line(record) + "\n")
+      mooncode_sync_journal_commit(file, commit_directories)
+      result
+    }
+  }
+}
+
+///|
 /// Append a validated journal record unless its stable identity already exists.
 /// Returns true only when this call durably appended the record.
 async fn mooncode_append_session_journal_once(
@@ -153,6 +272,7 @@ async fn mooncode_append_session_journal_once(
   record_kind : String,
   payload : Json,
 ) -> Bool {
+  mooncode_validate_generic_journal_append(record_kind, payload)
   let session_lock = mooncode_open_session_lock(book_root, session_id)
   defer session_lock.close()
   session_lock.lock(Exclusive)
@@ -387,6 +507,60 @@ fn mooncode_journal_last_sequence_exact(
 }
 
 ///|
+/// Compatibility projection for the legacy goal-supervisor contract, whose
+/// basis sequence remains an Int.
+fn mooncode_journal_last_sequence(
+  records : Array[Json],
+) -> Int raise MoonCodeJournalError {
+  let text = mooncode_journal_last_sequence_exact(records).text()
+  @string.parse_int(text) catch {
+    _ =>
+      raise InvalidJournal(
+        "MoonCode goal supervisor sequence exceeds its legacy Int contract",
+      )
+  }
+}
+
+///|
+fn mooncode_journal_sequence(record : Json) -> Int raise MoonCodeJournalError {
+  match mooncode_journal_json_field(record, "sequence") {
+    Some(Number(value, ..)) => {
+      if value != value || value < 1.0 || value > 2147483647.0 {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      let sequence = value.to_int()
+      if sequence.to_double() != value {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      sequence
+    }
+    Some(String(text)) => {
+      let sequence = @string.parse_int(text) catch {
+        _ =>
+          raise InvalidJournal(
+            "MoonCode goal supervisor sequence exceeds its legacy Int contract",
+          )
+      }
+      if sequence < 1 || sequence.to_string() != text {
+        raise InvalidJournal("MoonCode journal record has invalid sequence")
+      }
+      sequence
+    }
+    _ => raise InvalidJournal("MoonCode journal record has invalid sequence")
+  }
+}
+
+///|
+fn mooncode_journal_checked_next_sequence(
+  last_sequence : Int,
+) -> Int raise MoonCodeJournalError {
+  if last_sequence == 2147483647 {
+    raise InvalidJournal("MoonCode journal sequence is exhausted")
+  }
+  last_sequence + 1
+}
+
+///|
 /// Return the byte boundary after the last newline-committed record without
 /// materializing the aggregate file. A suffix after this boundary is torn.
 async fn mooncode_newline_committed_size(file : @fs.File) -> Int64 {
@@ -426,8 +600,27 @@ async fn mooncode_repair_journal_tail(file : @fs.File) -> Unit {
 }
 
 ///|
-fn mooncode_journal_record_id(record_kind : String, payload : Json) -> String {
+fn mooncode_journal_record_id(
+  record_kind : String,
+  payload : Json,
+) -> String raise MoonCodeJournalError {
   let direct_id = mooncode_json_string(payload, "id", default="")
+  let payload_kind = mooncode_json_string(payload, "kind", default="")
+  if record_kind == mooncode_journal_goal_event() &&
+    payload_kind.has_prefix("mooncode.goal.") {
+    let event_id = mooncode_json_string(payload, "event_id", default="")
+    if event_id != "" {
+      if event_id.trim() != event_id {
+        raise InvalidJournal(
+          "MoonCode logical goal event has invalid `event_id`",
+        )
+      }
+      return "event:\{event_id}"
+    }
+    if direct_id == "" {
+      raise InvalidJournal("MoonCode logical goal event has invalid `event_id`")
+    }
+  }
   if direct_id != "" {
     return "\{record_kind}:\{direct_id}"
   }
@@ -461,6 +654,28 @@ fn mooncode_journal_command_id(payload : Json) -> String {
     payload, "command_entry",
   )
   mooncode_runtime_command_entry_id(command_entry)
+}
+
+///|
+fn mooncode_journal_client_turn_id_from_snapshot(
+  payload : Json,
+  inheritance : Array[(String, String)],
+  command_id : String,
+) -> String {
+  let direct = mooncode_journal_payload_client_turn_id(payload)
+  if direct != "" {
+    return direct
+  }
+  if command_id == "" {
+    return ""
+  }
+  for entry in inheritance {
+    let (existing_command_id, client_turn_id) = entry
+    if existing_command_id == command_id {
+      return client_turn_id
+    }
+  }
+  ""
 }
 
 ///|
