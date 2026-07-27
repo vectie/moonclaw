@@ -1447,7 +1447,8 @@ fn mooncode_runtime_turn_model_message_present(message : Json) -> Bool {
 fn mooncode_runtime_turn_model_tool_call_accepts_result(
   tool_call : Json,
 ) -> Bool {
-  mooncode_json_string(tool_call, "planner", default="") == "model-tool-call" &&
+  mooncode_json_string(tool_call, "planner", default="") !=
+  "model-assistant-content" &&
   mooncode_json_string(tool_call, "tool_call_id", default="") != ""
 }
 

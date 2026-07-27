@@ -1123,6 +1123,7 @@ test "mooncode forces an exact read after a failed content mutation" {
   )
   let recovery_id = mooncode_json_string(calls[0], "tool_call_id", default="")
   assert_true(recovery_id != "")
+  assert_true(mooncode_runtime_turn_model_tool_call_accepts_result(calls[0]))
   let response_calls = mooncode_json_array_items(
     mooncode_json_object_field_or_empty(recovery, "model_response_message"),
     "tool_calls",
