@@ -135,8 +135,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
   let steered_command = mooncode_runtime_turn_command_with_deferred_steering(
     raw_command, deferred_steering,
   )
+  let horizon_command = mooncode_runtime_horizon_attach_checkpoint(
+    steered_command, existing_events,
+  )
   let command = mooncode_runtime_turn_attach_active_capability(
-    book_root, session_id, steered_command,
+    book_root, session_id, horizon_command,
   )
   let control_state = self.mooncode_runtime_control_payload(
     session_id, book_root,
@@ -228,10 +231,67 @@ async fn Daemon::mooncode_runtime_turn_execute(
           ),
         )
       }
+      let max_model_steps = mooncode_runtime_turn_model_max_steps(command)
+      let applied_live_steering : Array[Json] = []
+      let initial_live_steering : Array[Json] = []
       let mut plan = if resuming_continuation {
         mooncode_json_object_field_or_empty(continuation, "plan")
       } else {
-        self.mooncode_runtime_turn_plan_tool_calls(command, now=plan_now)
+        self.mooncode_runtime_turn_plan_tool_calls(
+          command,
+          remaining_steps=max_model_steps,
+          now=plan_now,
+        )
+      }
+      if !resuming_continuation &&
+        mooncode_runtime_turn_requires_model_planning(command) {
+        for replan_index in 0..<9 {
+          let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
+            session_id, book_root, command_id,
+          )
+          if arrived_during_planning.length() == 0 {
+            break
+          }
+          for steering in arrived_during_planning {
+            initial_live_steering.push(steering)
+            applied_live_steering.push(steering)
+            self.mooncode_runtime_turn_record_event(
+              binding,
+              events,
+              persisted_event_ids,
+              mooncode_runtime_turn_applied_live_steer_event(
+                session_id,
+                steering,
+                now=self.clock.now(),
+              ),
+            )
+          }
+          if replan_index == 8 {
+            plan = mooncode_runtime_turn_failed_planner_result(
+              command,
+              mooncode_runtime_turn_requested_model(command),
+              "model planner could not reach a stable initial live-steering boundary after 8 replans",
+              mooncode_event(
+                session_id~,
+                command_id~,
+                lane="runtime",
+                kind="runtime.planner_started",
+                title="MoonCode initial live-steering boundary",
+                status="running",
+                detail="MoonClaw is failing closed because steering continued to arrive during bounded initial replanning.",
+                now=self.clock.now(),
+              ),
+              now=self.clock.now(),
+            )
+          } else {
+            plan = self.mooncode_runtime_turn_plan_tool_calls(
+              command,
+              live_steering=initial_live_steering,
+              remaining_steps=max_model_steps,
+              now=self.clock.now(),
+            )
+          }
+        }
       }
       if mooncode_runtime_turn_model_planning_allowed(command) &&
         mooncode_runtime_turn_explicit_tool_calls(command).length() == 0 &&
@@ -259,7 +319,6 @@ async fn Daemon::mooncode_runtime_turn_execute(
       } else {
         []
       }
-      let max_model_steps = mooncode_runtime_turn_model_max_steps(command)
       let resume_step_index = if resuming_continuation {
         mooncode_json_int(continuation, "step_index", default=0)
       } else {
@@ -273,6 +332,29 @@ async fn Daemon::mooncode_runtime_turn_execute(
       for step_index in resume_step_index..<max_model_steps {
         let resuming_step = resuming_continuation &&
           step_index == resume_step_index
+        if !resuming_step {
+          let terminal_violation = mooncode_runtime_turn_terminal_plan_violation(
+            plan, step_index, max_model_steps,
+          )
+          if terminal_violation != "" {
+            plan = mooncode_runtime_turn_failed_planner_result(
+              command,
+              mooncode_json_string(plan, "model", default=""),
+              terminal_violation,
+              mooncode_event(
+                session_id~,
+                command_id~,
+                lane="runtime",
+                kind="runtime.planner_started",
+                title="MoonCode terminal planner boundary",
+                status="running",
+                detail="MoonClaw is enforcing the reserved final planner opportunity.",
+                now=self.clock.now(),
+              ),
+              now=self.clock.now(),
+            )
+          }
+        }
         if !resuming_step {
           planner_steps.push(plan)
           for event in mooncode_json_array_items(plan, "events") {
@@ -416,6 +498,37 @@ async fn Daemon::mooncode_runtime_turn_execute(
             mooncode_runtime_rejected_tool_execution(
               session_id, book_root, command_id, tool_call, approval,
             )
+          } else if mooncode_runtime_turn_comment_only_repair(
+              command, tool_call,
+            ) {
+            mooncode_runtime_turn_comment_only_repair_execution(
+              session_id,
+              book_root,
+              command_id,
+              tool_call,
+              now=self.clock.now(),
+            )
+          } else if mooncode_runtime_turn_repeats_complete_read(
+              tool_call, tool_results,
+            ) {
+            mooncode_runtime_turn_duplicate_read_execution(
+              session_id,
+              book_root,
+              command_id,
+              tool_call,
+              now=self.clock.now(),
+            )
+          } else if mooncode_json_string(tool_call, "tool", default="") ==
+            "checkpoint" {
+            mooncode_runtime_horizon_checkpoint_execution(
+              command,
+              session_id,
+              book_root,
+              command_id,
+              tool_call,
+              tool_results,
+              now=self.clock.now(),
+            )
           } else {
             mooncode_execute_tool_call(
               session_id,
@@ -446,6 +559,22 @@ async fn Daemon::mooncode_runtime_turn_execute(
           step_index + 1 >= max_model_steps {
           break
         }
+        let boundary_steering = self.mooncode_runtime_turn_claim_live_steering(
+          session_id, book_root, command_id,
+        )
+        for steering in boundary_steering {
+          applied_live_steering.push(steering)
+          self.mooncode_runtime_turn_record_event(
+            binding,
+            events,
+            persisted_event_ids,
+            mooncode_runtime_turn_applied_live_steer_event(
+              session_id,
+              steering,
+              now=self.clock.now(),
+            ),
+          )
+        }
         let followup_now = self.clock.now()
         let followup_model = mooncode_json_string(plan, "model", default="")
         self.mooncode_runtime_turn_record_event(
@@ -463,13 +592,57 @@ async fn Daemon::mooncode_runtime_turn_execute(
             now=followup_now,
           ),
         )
-        let next_plan = self.mooncode_runtime_turn_model_followup_plan(
-          command,
-          plan,
-          tool_calls,
-          step_results,
-          now=followup_now,
-        )
+        let mut next_plan = Json::object({})
+        for replan_index in 0..<8 {
+          next_plan = self.mooncode_runtime_turn_model_followup_plan(
+            command,
+            plan,
+            tool_calls,
+            step_results,
+            tool_results,
+            live_steering=boundary_steering,
+            remaining_steps=max_model_steps - step_index - 1,
+            now=followup_now,
+          )
+          let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
+            session_id, book_root, command_id,
+          )
+          if arrived_during_planning.length() == 0 {
+            break
+          }
+          for steering in arrived_during_planning {
+            boundary_steering.push(steering)
+            applied_live_steering.push(steering)
+            self.mooncode_runtime_turn_record_event(
+              binding,
+              events,
+              persisted_event_ids,
+              mooncode_runtime_turn_applied_live_steer_event(
+                session_id,
+                steering,
+                now=self.clock.now(),
+              ),
+            )
+          }
+          if replan_index == 7 {
+            next_plan = mooncode_runtime_turn_failed_planner_result(
+              command,
+              followup_model,
+              "model planner could not reach a stable live-steering boundary after 8 replans",
+              mooncode_event(
+                session_id~,
+                command_id~,
+                lane="runtime",
+                kind="runtime.planner_started",
+                title="MoonCode live-steering boundary",
+                status="running",
+                detail="MoonClaw is failing closed because steering continued to arrive during bounded replanning.",
+                now=self.clock.now(),
+              ),
+              now=self.clock.now(),
+            )
+          }
+        }
         let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
         if next_calls.length() == 0 {
           planner_steps.push(next_plan)
@@ -496,12 +669,26 @@ async fn Daemon::mooncode_runtime_turn_execute(
           default="",
         ) !=
         ""
+      let completion_verdict = mooncode_runtime_turn_completion_verdict(
+        command,
+        tool_results,
+        require_horizon=used_model_planner &&
+          mooncode_runtime_turn_requires_verification(command),
+      )
+      let completion_gate_applies = mooncode_runtime_turn_completion_gate_applies(
+        command, used_model_planner,
+      )
       let tool_accepted = if waiting {
         true
       } else if planner_failed {
         false
-      } else if used_model_planner {
-        mooncode_runtime_turn_model_execution_accepted(command, tool_results)
+      } else if completion_gate_applies {
+        mooncode_runtime_turn_model_execution_accepted(
+          command,
+          tool_results,
+          require_horizon=used_model_planner &&
+            mooncode_runtime_turn_requires_verification(command),
+        )
       } else {
         tool_results.all(result => {
           mooncode_json_bool(result, "accepted", default=false)
@@ -633,6 +820,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
           command_id,
           accepted~,
           tool_count=tool_results.length(),
+          completion_reason=completion_verdict.reason,
           now=self.clock.now(),
         )
         self.mooncode_runtime_turn_record_event(
@@ -655,6 +843,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
             "MoonClaw is waiting for operator approval before continuing this turn"
           } else if accepted {
             "MoonClaw native runtime turn completed `\{mooncode_json_string(command, "command", default="prompt")}`"
+          } else if completion_gate_applies && !completion_verdict.accepted {
+            completion_verdict.reason
           } else {
             "MoonClaw native runtime turn failed during tool execution"
           },
@@ -668,6 +858,9 @@ async fn Daemon::mooncode_runtime_turn_execute(
           ),
           "planner_step_count": planner_steps.length(),
           "model_step_limit": max_model_steps,
+          "completion_verdict": mooncode_runtime_turn_completion_verdict_json(
+            completion_verdict,
+          ),
           "tool_results": Json::array(tool_results),
           "test_results": Json::array(test_results),
           "test_events": Json::array(test_events),
@@ -678,6 +871,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
           "review_receipts": Json::array(review_receipts),
           "review_events": Json::array(review_events),
           "deferred_steering": Json::array(deferred_steering),
+          "applied_live_steering": Json::array(applied_live_steering),
           "waiting_approval": waiting,
           "approval": waiting_approval,
           "events": Json::array(events),
@@ -895,6 +1089,9 @@ fn mooncode_runtime_turn_execution_compact(execution : Json) -> Json {
       "model_step_limit",
       default=0,
     ),
+    "completion_verdict": mooncode_json_object_field_or_empty(
+      execution, "completion_verdict",
+    ),
     "planner": {
       "planner_mode": mooncode_json_string(planner, "planner_mode", default=""),
       "model": mooncode_json_string(planner, "model", default=""),
@@ -921,6 +1118,9 @@ fn mooncode_runtime_turn_execution_compact(execution : Json) -> Json {
     ),
     "deferred_steering": Json::array(
       mooncode_json_array_items(execution, "deferred_steering"),
+    ),
+    "applied_live_steering": Json::array(
+      mooncode_json_array_items(execution, "applied_live_steering"),
     ),
   }
 }
@@ -1158,5 +1358,198 @@ fn mooncode_runtime_turn_tool_body(command : Json, tool_call : Json) -> Json {
       default=mooncode_json_string(tool_call, "name", default=""),
     ),
     "arguments": mooncode_json_object_field_or_empty(tool_call, "arguments"),
+  }
+}
+
+///|
+fn mooncode_runtime_turn_comment_line(line : String) -> Bool {
+  let trimmed = line.trim()
+  trimmed == "" ||
+  trimmed.has_prefix("//") ||
+  trimmed.has_prefix("/*") ||
+  trimmed.has_prefix("*") ||
+  trimmed.has_prefix("*/")
+}
+
+///|
+fn mooncode_runtime_turn_non_comment_lines(text : String) -> String {
+  let lines : Array[String] = []
+  for line in text.split("\n") {
+    let owned = line.to_owned()
+    if !mooncode_runtime_turn_comment_line(owned) {
+      lines.push(owned.trim().to_owned())
+    }
+  }
+  lines.join("\n")
+}
+
+///|
+fn mooncode_runtime_turn_comment_only_edit(arguments : Json) -> Bool {
+  let old_string = mooncode_json_string(arguments, "old_string", default="")
+  let new_string = mooncode_json_string(arguments, "new_string", default="")
+  old_string != "" &&
+  old_string != new_string &&
+  mooncode_runtime_turn_non_comment_lines(old_string) ==
+  mooncode_runtime_turn_non_comment_lines(new_string)
+}
+
+///|
+fn mooncode_runtime_turn_comment_only_patch(arguments : Json) -> Bool {
+  let diff = mooncode_tool_patch_diff_text(arguments)
+  if diff == "" {
+    return false
+  }
+  let mut changed_line_seen = false
+  for raw_line in diff.split("\n") {
+    let line = raw_line.to_owned()
+    if (line.has_prefix("+") && !line.has_prefix("+++")) ||
+      (line.has_prefix("-") && !line.has_prefix("---")) {
+      changed_line_seen = true
+      if line.length() > 1 &&
+        !mooncode_runtime_turn_comment_line(line[1:].to_owned()) {
+        return false
+      }
+    }
+  }
+  changed_line_seen
+}
+
+///|
+/// Coding and defect-repair turns must mutate behavior, configuration, tests,
+/// or other non-comment content. Documentation-only requests remain available,
+/// but a comment-only edit cannot satisfy a requested implementation repair.
+fn mooncode_runtime_turn_comment_only_repair(
+  command : Json,
+  tool_call : Json,
+) -> Bool {
+  if !mooncode_runtime_turn_requires_verification(command) {
+    return false
+  }
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  match tool {
+    "edit" => mooncode_runtime_turn_comment_only_edit(arguments)
+    "apply_patch" | "revert_patch" =>
+      mooncode_runtime_turn_comment_only_patch(arguments)
+    _ => false
+  }
+}
+
+///|
+fn mooncode_runtime_turn_comment_only_repair_execution(
+  session_id : String,
+  book_root : String,
+  command_id : String,
+  tool_call : Json,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  let result = mooncode_tool_error_result(
+    tool,
+    message="comment-only mutation rejected: implementation and defect-repair turns require a substantive non-comment change",
+    metadata={ "comment_only_repair": true },
+  )
+  {
+    "accepted": false,
+    "kind": "mooncode-tool-execution",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command_id": command_id,
+    "tool": tool,
+    "arguments": arguments,
+    "result": result,
+    "event": mooncode_tool_result_event(
+      session_id,
+      book_root,
+      command_id,
+      tool,
+      result,
+      now~,
+    ),
+  }
+}
+
+///|
+/// A complete read remains valid until an accepted authored mutation. Rejecting
+/// an identical read in that window keeps bounded planner turns from spending
+/// multiple steps fetching bytes already present in their tool transcript.
+fn mooncode_runtime_turn_repeats_complete_read(
+  tool_call : Json,
+  results : Array[Json],
+) -> Bool {
+  if mooncode_json_string(tool_call, "tool", default="") != "read" {
+    return false
+  }
+  let path = mooncode_json_string(
+    mooncode_json_object_field_or_empty(tool_call, "arguments"),
+    "path",
+    default="",
+  )
+  if path == "" {
+    return false
+  }
+  let mut last_complete_read = -1
+  let mut last_mutation = -1
+  for index, result in results {
+    if mooncode_runtime_turn_result_is_mutation(result) {
+      last_mutation = index
+    }
+    if mooncode_json_bool(result, "accepted", default=false) &&
+      mooncode_json_string(result, "tool", default="") == "read" &&
+      mooncode_json_string(
+        mooncode_json_object_field_or_empty(result, "arguments"),
+        "path",
+        default="",
+      ) ==
+      path {
+      let tool_result = mooncode_json_object_field_or_empty(result, "result")
+      let metadata = mooncode_json_object_field_or_empty(
+        tool_result, "metadata",
+      )
+      if !mooncode_json_bool(metadata, "truncated", default=false) {
+        last_complete_read = index
+      }
+    }
+  }
+  last_complete_read >= 0 && last_mutation < last_complete_read
+}
+
+///|
+fn mooncode_runtime_turn_duplicate_read_execution(
+  session_id : String,
+  book_root : String,
+  command_id : String,
+  tool_call : Json,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  let path = mooncode_json_string(arguments, "path", default="")
+  let result = mooncode_tool_error_result(
+    "read",
+    message="duplicate complete read of `\{path}`; use the existing planner context or mutate before reading this path again",
+    metadata={ "path": path, "duplicate_complete_read": true },
+  )
+  {
+    "accepted": false,
+    "kind": "mooncode-tool-execution",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command_id": command_id,
+    "tool": "read",
+    "arguments": arguments,
+    "result": result,
+    "event": mooncode_tool_result_event(
+      session_id,
+      book_root,
+      command_id,
+      "read",
+      result,
+      now~,
+    ),
   }
 }

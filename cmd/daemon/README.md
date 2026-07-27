@@ -117,6 +117,8 @@ Boundary note: the executable-book coding API is `/v1/code/*`; generic `/v1/task
 - `mooncode_runtime_model_planner.mbt` owns explicit/model tool-call planning,
   OpenAI tool schemas, model planner request/response decoding, bounded
   follow-up turns, and planner request/result contracts.
+- `mooncode_runtime_horizon.mbt` owns compact task contracts, durable milestone
+  checkpoints, evidence validation, and bounded follow-up context.
 - `mooncode_runtime_planner_events.mbt` owns planner progress/failure event
   projection, reasoning/assistant deltas, and pre-execution tool-call events.
 - `mooncode_runtime_prompt_fallback.mbt` owns deterministic command planning
@@ -384,8 +386,16 @@ reports one active turn, pending turn ids, lifecycle rows, and per-command
 effects such as `start-turn`, `queue-turn`, `deliver-steer`, `queue-steer`,
 `defer-steer`, `cancel-active`, `withdraw-pending`, and `drop-cancel`. Deferred
 steering is persisted as runtime evidence and injected into the next turn. This
-mirrors live coding-agent prompt/steer/cancel ordering while keeping MoonClaw responsible for the
-runtime interpretation of durable MoonCode command logs.
+mirrors live coding-agent prompt/steer/cancel ordering while keeping MoonClaw
+responsible for the runtime interpretation of durable MoonCode command logs.
+During an active model-planned turn, runtime-turn reprojects the authoritative
+control state at every planner boundary and immediately after each model
+inference. A pending `deliver-steer` command receives one terminal
+`moonclaw-native-runtime-live-steer` receipt, becomes an explicit user message,
+and is recorded as one live `steer_applied` event. If the steer arrived while
+the model was choosing tools, MoonClaw discards that not-yet-executed stale plan
+and replans; this initial and follow-up stabilization is bounded to eight
+replans and fails closed if steering never quiesces.
 The implementation lives in `mooncode_runtime_control.mbt`, with focused
 white-box coverage in `mooncode_runtime_control_wbtest.mbt`, so runtime-control
 semantics stay separate from command ingestion and tool execution.
@@ -564,12 +574,19 @@ human watcher `status` separately from numeric `exit_status`, and increments
 gives MoonDesk and future standalone `mooncode` the same no-duplicate-watcher
 contract before live background `moon check --watch` streaming is introduced.
 When a command carries an explicit selected model, MoonClaw can ask that model
-for bounded MoonCode tool-call batches over `read`, `write`, `edit`,
-`apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`, `moon_check`,
-and `finish`. Successful
-tool results are fed back to the model until it calls `finish`, a tool fails,
-the command is cancelled, or
-the bounded `planner_max_steps` limit is reached. Planner
+for bounded MoonCode tool-call batches over `checkpoint`, `read`, `write`,
+`edit`, `apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`,
+`moon_check`, and `finish`. Coding turns carry a compact task contract and
+evidence-backed milestone checkpoint instead of replaying their full prior
+transcript. Successful tool results are fed back to the model until it calls
+`finish`, a tool fails, the command is cancelled, or the bounded
+`planner_max_steps` limit is reached. The last two opportunities are reserved
+for completion: the penultimate message stops discovery and requests authored
+repair plus typed verification, while the final batch must contain `finish` and
+may contain only mutation recovery or structured check/test/build/info/fmt
+tools plus the required all-done checkpoint. Runtime-turn validates that final
+batch before execution and fails closed on exploratory, shell,
+semantic-navigation, or finish-free plans. Planner
 start/selection/failure events, `planner_steps`, `planner_step_count`, and
 `model_step_limit` are included in the runtime result. Each planner step also
 emits MoonCode `reasoning_delta` progress, optional assistant transcript deltas,
@@ -578,6 +595,27 @@ clients can render live live coding-agent progress from the native event log.
 The explicit/model planner contract lives in
 `mooncode_runtime_model_planner.mbt`; runtime-turn calls that boundary and owns
 only execution sequencing around the selected tool calls.
+Coding-intent prompt completion is evidence-gated for both model-planned and
+explicit tool batches. The final result must be an accepted `finish`, an
+accepted `write`, `edit`, `apply_patch`, or `revert_patch` must precede it, and
+the accepted mutation sequence must leave at least one file in a different
+content state when the turn finishes. Native mutation results record
+before/after content fingerprints for single-file and multi-file changes, and
+completion compares the first and final state of every touched path. A
+speculative edit that is later fully reverted therefore cannot be reported as
+completed implementation. A successful typed verification must also occur at
+or after the final mutation and after every failed tool. `moon_check` and
+`moon_cmd check|test|build` are typed verification. A patch may prove its own
+mutation when its nested `metadata.verification.ok` is true. When the prompt
+requests tests, only a successful `moon_cmd test` satisfies the gate. A later
+read cannot recover a failed check or test. Explanation and other read-only
+prompts still permit an accepted `finish` without inventing mutation work.
+
+Runtime responses expose the structured `completion_verdict`; compact
+projections preserve it; `runtime.turn_finished` includes the reason; and the
+terminal receipt is `runtime-failed` when the gate rejects completion. This
+gate is distinct from the replay proof policy for proof-sensitive command
+actions: it protects ordinary coding prompts at native execution time.
 Planner progress/failure event projection lives in
 `mooncode_runtime_planner_events.mbt`, keeping live transcript shaping out of
 the model contract and out of the runtime orchestration loop.

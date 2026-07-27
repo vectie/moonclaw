@@ -2,6 +2,8 @@
 async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   self : Daemon,
   command : Json,
+  live_steering? : Array[Json] = [],
+  remaining_steps? : Int = -1,
   now~ : @clock.Timestamp,
 ) -> Json {
   // Treat the provider catalog selector as opaque. Availability is checked
@@ -63,10 +65,18 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   )
   match selected_model {
     Some(model) => {
-      let request = mooncode_runtime_turn_model_plan_request(
-        model.model_name,
-        command,
+      let messages = mooncode_runtime_turn_model_messages(
+        command, live_steering, remaining_steps,
       )
+      let request = if messages.length() == 2 {
+        mooncode_runtime_turn_model_plan_request(model.model_name, command)
+      } else {
+        mooncode_runtime_turn_model_plan_request_from_messages(
+          model.model_name,
+          messages,
+          tools=mooncode_runtime_turn_model_tools_for_command(command),
+        )
+      }
       let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
         error =>
           return mooncode_runtime_turn_failed_planner_result(
@@ -107,9 +117,7 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         "tool_call_count": tool_calls.length(),
         "tool_calls": Json::array(tool_calls),
         "events": Json::array([started, selected]),
-        "model_messages": Json::array(
-          mooncode_runtime_turn_model_initial_messages(command),
-        ),
+        "model_messages": Json::array(messages),
         "model_response_message": mooncode_runtime_turn_model_response_message(
           completion.to_json(),
         ),
@@ -295,6 +303,25 @@ fn mooncode_runtime_turn_model_needs_coding_tools(
   request : String,
 ) -> Bool {
   let action = mooncode_json_string(command, "command", default="prompt")
+  if mooncode_runtime_turn_model_has_mutation_intent(action, request) {
+    return true
+  }
+  if mooncode_runtime_turn_model_is_read_only_request(request) {
+    return false
+  }
+  mooncode_runtime_turn_request_has_word(request, "code") ||
+  mooncode_runtime_turn_request_has_word(request, "script") ||
+  mooncode_runtime_turn_request_has_word(request, "tool") ||
+  mooncode_runtime_turn_request_has_word(request, "app") ||
+  mooncode_runtime_turn_request_has_word(request, "miniapp") ||
+  mooncode_runtime_turn_request_has_word(request, "site")
+}
+
+///|
+fn mooncode_runtime_turn_model_has_mutation_intent(
+  action : String,
+  request : String,
+) -> Bool {
   action == "package" ||
   request.contains("implement") ||
   request.contains("fix ") ||
@@ -304,16 +331,32 @@ fn mooncode_runtime_turn_model_needs_coding_tools(
   request.contains("write ") ||
   request.contains("create ") ||
   request.contains("build ") ||
-  mooncode_runtime_turn_requests_tests(request) ||
-  mooncode_runtime_turn_request_has_word(request, "code") ||
-  request.contains("script") ||
-  request.contains("tool") ||
-  request.contains("app") ||
-  request.contains("site")
+  mooncode_runtime_turn_requests_tests(request)
+}
+
+///|
+fn mooncode_runtime_turn_model_is_read_only_request(request : String) -> Bool {
+  request.contains("explain") ||
+  request.contains("summarize") ||
+  request.contains("summarise") ||
+  request.contains("describe") ||
+  request.contains("analyze") ||
+  request.contains("analyse") ||
+  request.contains("review") ||
+  request.contains("compare") ||
+  request.contains("evaluate") ||
+  request.has_prefix("read ") ||
+  request.has_prefix("open ") ||
+  request.has_prefix("inspect ") ||
+  request.has_prefix("what ") ||
+  request.has_prefix("tell ")
 }
 
 ///|
 fn mooncode_runtime_turn_requests_tests(request : String) -> Bool {
+  let mentions_test = mooncode_runtime_turn_request_has_word(request, "test") ||
+    mooncode_runtime_turn_request_has_word(request, "tests") ||
+    mooncode_runtime_turn_request_has_word(request, "testing")
   request.has_prefix("test ") ||
   request.has_prefix("please test ") ||
   request.contains(" run test") ||
@@ -323,7 +366,20 @@ fn mooncode_runtime_turn_requests_tests(request : String) -> Bool {
   request.contains(" update test") ||
   request.contains(" fix test") ||
   request.contains(" test the ") ||
-  request.contains(" test this ")
+  request.contains(" test this ") ||
+  request.contains("tests pass") ||
+  (
+    mentions_test &&
+    (
+      request.contains("run ") ||
+      request.contains("add ") ||
+      request.contains("write ") ||
+      request.contains("update ") ||
+      request.contains("fix ") ||
+      request.contains("execute ") ||
+      request.contains("verify ")
+    )
+  )
 }
 
 ///|
@@ -341,60 +397,345 @@ fn mooncode_runtime_turn_request_has_word(
 }
 
 ///|
-fn mooncode_runtime_turn_model_execution_accepted(
+priv struct MoonCodeCompletionVerdict {
+  accepted : Bool
+  reason : String
+}
+
+///|
+fn mooncode_runtime_turn_requires_verification(command : Json) -> Bool {
+  let action = mooncode_json_string(command, "command", default="prompt")
+  if action == "package" || action == "apply_patch" || action == "revert_patch" {
+    return true
+  }
+  if action != "prompt" && action != "steer" {
+    return false
+  }
+  let request = mooncode_runtime_turn_prompt_text(command)
+    .to_lower()
+    .to_string()
+  let source_change = request.contains(".mbt") ||
+    request.contains(".js") ||
+    request.contains(".ts") ||
+    request.contains(".sh") ||
+    mooncode_runtime_turn_request_has_word(request, "code") ||
+    mooncode_runtime_turn_request_has_word(request, "script") ||
+    mooncode_runtime_turn_request_has_word(request, "app") ||
+    mooncode_runtime_turn_request_has_word(request, "site")
+  request.contains("implement") ||
+  request.contains("fix ") ||
+  request.contains("debug") ||
+  request.contains("refactor") ||
+  request.contains("build ") ||
+  mooncode_runtime_turn_requests_tests(request) ||
+  (
+    source_change &&
+    (
+      request.contains("edit ") ||
+      request.contains("write ") ||
+      request.contains("create ")
+    )
+  )
+}
+
+///|
+fn mooncode_runtime_turn_completion_gate_applies(
+  command : Json,
+  used_model_planner : Bool,
+) -> Bool {
+  used_model_planner || mooncode_runtime_turn_requires_verification(command)
+}
+
+///|
+fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
+  if !mooncode_json_bool(result, "accepted", default=false) {
+    return false
+  }
+  let tool = mooncode_json_string(result, "tool", default="")
+  tool == "write" ||
+  tool == "edit" ||
+  tool == "apply_patch" ||
+  tool == "revert_patch"
+}
+
+///|
+fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
+  if !mooncode_runtime_turn_result_is_mutation(result) {
+    return []
+  }
+  let metadata = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(result, "result"),
+    "metadata",
+  )
+  let files = mooncode_json_array_items(metadata, "files")
+  let candidates = if files.is_empty() { [metadata] } else { files }
+  let states : Array[Json] = []
+  for candidate in candidates {
+    if !mooncode_json_bool(candidate, "changed", default=false) {
+      continue
+    }
+    let path = mooncode_json_string(
+      candidate,
+      "file_path",
+      default=mooncode_json_string(candidate, "path", default=""),
+    )
+    let before = mooncode_json_string(
+      candidate,
+      "before_fingerprint",
+      default="",
+    )
+    let after = mooncode_json_string(candidate, "after_fingerprint", default="")
+    if path != "" && before != "" && after != "" {
+      states.push({ "path": path, "before": before, "after": after })
+    }
+  }
+  states
+}
+
+///|
+fn mooncode_runtime_turn_has_net_mutation(results : Array[Json]) -> Bool {
+  let paths : Array[Json] = []
+  let mut untracked_mutation = false
+  for result in results {
+    if !mooncode_runtime_turn_result_is_mutation(result) {
+      continue
+    }
+    let metadata = mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(result, "result"),
+      "metadata",
+    )
+    if !mooncode_json_bool(metadata, "changed", default=true) {
+      continue
+    }
+    let states = mooncode_runtime_turn_result_mutation_states(result)
+    if states.is_empty() {
+      // Older continuations and explicit test fixtures predate fingerprints.
+      // Keep them compatible, while all newly executed native mutations carry
+      // enough evidence to compare the first and final content state.
+      untracked_mutation = true
+      continue
+    }
+    for state in states {
+      let path = mooncode_json_string(state, "path", default="")
+      let mut found = false
+      for index, existing in paths {
+        if mooncode_json_string(existing, "path", default="") == path {
+          paths[index] = {
+            "path": path,
+            "before": mooncode_json_string(existing, "before", default=""),
+            "after": mooncode_json_string(state, "after", default=""),
+          }
+          found = true
+          break
+        }
+      }
+      if !found {
+        paths.push(state)
+      }
+    }
+  }
+  for state in paths {
+    if mooncode_json_string(state, "before", default="") !=
+      mooncode_json_string(state, "after", default="") {
+      return true
+    }
+  }
+  untracked_mutation
+}
+
+///|
+fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
+  if !mooncode_json_bool(result, "accepted", default=false) {
+    return ""
+  }
+  let tool = mooncode_json_string(result, "tool", default="")
+  if tool == "moon_check" {
+    return "check"
+  }
+  if tool == "moon_cmd" {
+    let command = mooncode_json_string(
+      mooncode_json_object_field_or_empty(result, "arguments"),
+      "command",
+      default="",
+    )
+    if command == "check" || command == "test" || command == "build" {
+      return command
+    }
+    return ""
+  }
+  if tool == "apply_patch" || tool == "revert_patch" {
+    let tool_result = mooncode_json_object_field_or_empty(result, "result")
+    let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
+    let verification = mooncode_json_object_field_or_empty(
+      metadata, "verification",
+    )
+    if mooncode_json_bool(verification, "ok", default=false) {
+      return "patch-verification"
+    }
+  }
+  ""
+}
+
+///|
+fn mooncode_runtime_turn_completion_verdict_json(
+  verdict : MoonCodeCompletionVerdict,
+) -> Json {
+  {
+    "kind": "mooncode-coding-completion-verdict",
+    "accepted": verdict.accepted,
+    "reason": verdict.reason,
+  }
+}
+
+///|
+/// Coding completion requires an accepted net mutation followed by successful
+/// verification. If tests were requested, a successful typed test command is
+/// required. A verified patch may prove its own mutation at the same index.
+fn mooncode_runtime_turn_completion_verdict(
   command : Json,
   results : Array[Json],
-) -> Bool {
-  if results.length() == 0 {
-    return false
+  require_horizon? : Bool = false,
+) -> MoonCodeCompletionVerdict {
+  if results.is_empty() {
+    return { accepted: false, reason: "no MoonCode tool result was recorded" }
   }
   let final_result = results[results.length() - 1]
   if mooncode_json_string(final_result, "tool", default="") != "finish" ||
     !mooncode_json_bool(final_result, "accepted", default=false) {
-    return false
+    return {
+      accepted: false,
+      reason: "the final MoonCode tool result is not an accepted finish",
+    }
   }
+  if require_horizon &&
+    !mooncode_runtime_horizon_completion_ready(command, results) {
+    return {
+      accepted: false,
+      reason: "long-horizon completion requires a final all-done checkpoint after the latest mutation and verification",
+    }
+  }
+  let request = mooncode_runtime_turn_prompt_text(command)
+    .to_lower()
+    .to_string()
+  let requires_verification = mooncode_runtime_turn_requires_verification(
+    command,
+  )
+  let requires_tests = mooncode_runtime_turn_requests_tests(request)
+  let mut last_mutation = -1
+  let mut last_verification = -1
+  let mut last_test = -1
   let mut last_failure = -1
   let mut coding_evidence = false
   let mut operator_rejected = false
-  for index in 0..<results.length() {
-    let result = results[index]
+  for index, result in results {
+    let tool = mooncode_json_string(result, "tool", default="")
+    let accepted = mooncode_json_bool(result, "accepted", default=false)
     if mooncode_json_string(result, "approval_state", default="") == "rejected" {
       operator_rejected = true
-    } else if !mooncode_json_bool(result, "accepted", default=false) {
       last_failure = index
-    } else {
-      let tool = mooncode_json_string(result, "tool", default="")
-      if tool == "write" ||
+    } else if !accepted {
+      last_failure = index
+    } else if tool != "finish" {
+      coding_evidence = coding_evidence ||
+        tool == "write" ||
         tool == "edit" ||
+        tool == "apply_patch" ||
+        tool == "revert_patch" ||
         tool == "shell" ||
         tool == "moon_cmd" ||
-        tool == "moon_check" {
-        coding_evidence = true
+        tool == "moon_check"
+    }
+    if mooncode_runtime_turn_result_is_mutation(result) {
+      last_mutation = index
+    }
+    let verification = mooncode_runtime_turn_result_verification_kind(result)
+    if verification != "" {
+      last_verification = index
+      if verification == "test" {
+        last_test = index
       }
     }
   }
-  if mooncode_runtime_turn_model_needs_coding_tools(
-      command,
-      mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
-    ) &&
+  if requires_verification {
+    if last_mutation < 0 {
+      return {
+        accepted: false,
+        reason: "coding completion has no accepted mutation evidence",
+      }
+    }
+    if !mooncode_runtime_turn_has_net_mutation(results) {
+      return {
+        accepted: false,
+        reason: "coding completion has no net mutation; all accepted file changes were reverted before finish",
+      }
+    }
+    let required_verification = if requires_tests {
+      last_test
+    } else {
+      last_verification
+    }
+    if required_verification < last_mutation {
+      return {
+        accepted: false,
+        reason: if requires_tests {
+          "coding completion has no successful typed test after the final mutation"
+        } else {
+          "coding completion has no successful verification after the final mutation"
+        },
+      }
+    }
+    if required_verification < last_failure {
+      return {
+        accepted: false,
+        reason: if requires_tests {
+          "coding completion has no successful typed test after the last failed tool"
+        } else {
+          "coding completion has no successful verification after the last failed tool"
+        },
+      }
+    }
+    return {
+      accepted: true,
+      reason: if requires_tests {
+        "coding completion has accepted mutation and subsequent successful typed test evidence"
+      } else {
+        "coding completion has accepted mutation and subsequent successful verification"
+      },
+    }
+  }
+  if mooncode_runtime_turn_model_needs_coding_tools(command, request) &&
     !coding_evidence &&
     !operator_rejected {
-    return false
+    return {
+      accepted: false,
+      reason: "the coding request has no accepted coding-tool evidence",
+    }
   }
   if last_failure >= 0 {
-    let mut recovered = false
-    for index in (last_failure + 1)..<results.length() {
-      let result = results[index]
-      if mooncode_json_bool(result, "accepted", default=false) &&
-        mooncode_json_string(result, "tool", default="") != "finish" {
-        recovered = true
+    let recovered = results[last_failure + 1:].any(result => {
+      mooncode_json_bool(result, "accepted", default=false) &&
+      mooncode_json_string(result, "tool", default="") != "finish"
+    })
+    if !recovered {
+      return {
+        accepted: false,
+        reason: "the last failed tool has no successful recovery evidence",
       }
     }
-    if !recovered {
-      return false
-    }
   }
-  true
+  {
+    accepted: true,
+    reason: "the final finish follows accepted non-verification work",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_execution_accepted(
+  command : Json,
+  results : Array[Json],
+  require_horizon? : Bool = false,
+) -> Bool {
+  mooncode_runtime_turn_completion_verdict(command, results, require_horizon~).accepted
 }
 
 ///|
@@ -402,16 +743,35 @@ fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use write/edit/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. For an implementation request, spend at most two tool calls inspecting before making the first write/edit; prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use checkpoint/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch, spend at most two tool calls inspecting before the first mutation, and update the checkpoint whenever a milestone changes. Prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
   ]
 }
 
 ///|
+fn mooncode_runtime_turn_model_messages(
+  command : Json,
+  live_steering : Array[Json],
+  remaining_steps : Int,
+) -> Array[Json] {
+  let messages = mooncode_runtime_turn_model_initial_messages(command)
+  for steering in live_steering {
+    messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
+  }
+  let terminal_boundary = mooncode_runtime_turn_model_terminal_boundary_message(
+    remaining_steps,
+  )
+  if terminal_boundary != "" {
+    messages.push({ "role": "user", "content": terminal_boundary })
+  }
+  messages
+}
+
+///|
 fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   let action = mooncode_json_string(command, "command", default="prompt")
-  let request = mooncode_runtime_turn_prompt_text(command).trim().to_owned()
+  let request = mooncode_runtime_horizon_compact_request(command)
   let context_path = mooncode_json_string(command, "context_path", default="")
   let deferred = mooncode_json_array_items(command, "deferred_steering")
   let context = if context_path == "" {
@@ -439,6 +799,7 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   }
   "Action: \{action}\n" +
   "User request: \{request}\n" +
+  mooncode_runtime_horizon_contract_prompt(command) +
   context +
   "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
   steering +
@@ -601,6 +962,62 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
         "additionalProperties": false,
       },
     ),
+    mooncode_runtime_turn_model_tool(
+      "apply_patch",
+      "Apply one unified diff, including a multi-file diff, inside the selected MoonBook.",
+      {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string" },
+          "before": { "type": "string" },
+          "after": { "type": "string" },
+          "diff": { "type": "string" },
+        },
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "checkpoint",
+      "Record durable milestone state. A done milestone is accepted only when matching runtime evidence already exists.",
+      {
+        "type": "object",
+        "properties": {
+          "horizon_id": { "type": "string" },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "title": { "type": "string" },
+                "status": {
+                  "type": "string",
+                  "enum": ["pending", "active", "done"],
+                },
+                "evidence_kind": {
+                  "type": "string",
+                  "enum": [
+                    "scope", "mutation", "path_changed", "check", "test", "build",
+                  ],
+                },
+                "path": { "type": "string" },
+                "context_paths": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                },
+              },
+              "required": [
+                "id", "title", "status", "evidence_kind", "path", "context_paths",
+              ],
+              "additionalProperties": false,
+            },
+          },
+          "next_action": { "type": "string" },
+        },
+        "required": ["horizon_id", "milestones", "next_action"],
+        "additionalProperties": false,
+      },
+    ),
   ]
 }
 
@@ -631,7 +1048,7 @@ fn mooncode_runtime_turn_tool_calls_from_model_response(
     let tool = mooncode_json_string(function, "name", default="")
     let arguments_text = mooncode_json_string(function, "arguments", default="")
     let arguments = @json.parse(arguments_text) catch { _ => Json::object({}) }
-    if mooncode_tool_supported(tool) {
+    if mooncode_tool_supported(tool) || tool == "checkpoint" {
       calls.push({
         "tool": tool,
         "arguments": arguments,
@@ -663,6 +1080,9 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   previous_plan : Json,
   tool_calls : Array[Json],
   tool_results : Array[Json],
+  all_tool_results : Array[Json],
+  live_steering? : Array[Json] = [],
+  remaining_steps? : Int = -1,
   now~ : @clock.Timestamp,
 ) -> Json {
   let model_name = mooncode_json_string(previous_plan, "model", default="")
@@ -678,24 +1098,36 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
     detail="MoonClaw is feeding tool results back to model `\{model_name}` for another bounded MoonCode tool batch.",
     now~,
   )
-  let previous_messages = mooncode_json_array_items(
-    previous_plan, "model_messages",
-  )
   let response_message = mooncode_json_object_field_or_empty(
     previous_plan, "model_response_message",
   )
   if model_name == "" ||
-    previous_messages.length() == 0 ||
     !mooncode_runtime_turn_model_message_present(response_message) {
     return mooncode_runtime_turn_failed_planner_result(
       command,
       model_name,
-      "model planner cannot continue: missing prior model transcript",
+      "model planner cannot continue: missing prior model response",
       started,
       now~,
     )
   }
-  let messages = previous_messages
+  let messages = mooncode_runtime_turn_model_initial_messages(command)
+  let prior_results : Array[Json] = []
+  let prior_count = if all_tool_results.length() > tool_results.length() {
+    all_tool_results.length() - tool_results.length()
+  } else {
+    0
+  }
+  for index in 0..<prior_count {
+    prior_results.push(all_tool_results[index])
+  }
+  if mooncode_runtime_turn_requires_verification(command) {
+    messages.push(
+      mooncode_runtime_horizon_progress_message(
+        command, prior_results, remaining_steps,
+      ),
+    )
+  }
   messages.push(response_message)
   for index in 0..<tool_calls.length() {
     if index < tool_results.length() {
@@ -707,16 +1139,25 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       )
     }
   }
+  for steering in live_steering {
+    messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
+  }
   if mooncode_runtime_turn_model_needs_coding_tools(
       command,
       mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
     ) &&
-    mooncode_runtime_turn_model_completed_steps(messages) >= 2 &&
-    !mooncode_runtime_turn_model_transcript_has_mutation(messages) {
+    all_tool_results.length() >= 2 &&
+    !mooncode_runtime_turn_has_net_mutation(all_tool_results) {
     messages.push({
       "role": "user",
-      "content": "Implementation recovery boundary: the two-call inspection budget is exhausted and no mutation has been recorded. Your next tool call must be a bounded write or edit that advances the requested implementation. Use one multi-file patch when practical. Do not perform more discovery, create a generic scaffold, or initialize a nested repository. If a concrete external blocker truly prevents any edit, call finish and state that blocker precisely.",
+      "content": "Implementation recovery boundary: the two-call inspection budget is exhausted and no mutation has been recorded. Your next tool call must be a bounded write, edit, or apply_patch that advances the requested implementation. Use one multi-file patch when practical. Do not perform more discovery, create a generic scaffold, or initialize a nested repository. If a concrete external blocker truly prevents any edit, call finish and state that blocker precisely.",
     })
+  }
+  let terminal_boundary = mooncode_runtime_turn_model_terminal_boundary_message(
+    remaining_steps,
+  )
+  if terminal_boundary != "" {
+    messages.push({ "role": "user", "content": terminal_boundary })
   }
   let requested_model : String? = Some(model_name)
   match self.models.get_model(name?=requested_model) {
@@ -781,6 +1222,29 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         started,
         now~,
       )
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_live_steering_message(steering : Json) -> Json {
+  let command_id = mooncode_json_string(steering, "command_id", default="")
+  let text = mooncode_json_string(steering, "steering_text", default="")
+  {
+    "role": "user",
+    "content": "Live steering for this active turn from command `\{command_id}`:\n\{text}\nApply this instruction before choosing the next MoonCode tool batch.",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_terminal_boundary_message(
+  remaining_steps : Int,
+) -> String {
+  if remaining_steps == 2 {
+    "Completion budget boundary: two planner opportunities remain. Stop discovery. Complete any necessary authored repair now and run the required typed check or test after the latest mutation and failure. Preserve the final opportunity for verification or recovery plus `finish`."
+  } else if remaining_steps == 1 {
+    "Final planner opportunity: this batch must include `finish`. It may contain only an authored mutation needed for recovery and structured `moon_check` or `moon_cmd` check/test/build/info/fmt calls before `finish`. Do not read, search, run semantic navigation, or use shell. The runtime will fail closed without executing a nonterminal or discovery plan."
+  } else {
+    ""
   }
 }
 
@@ -853,7 +1317,7 @@ fn mooncode_runtime_turn_model_transcript_has_mutation(
           tool_call, "function",
         )
         let name = mooncode_json_string(function, "name", default="")
-        if name == "write" || name == "edit" {
+        if name == "write" || name == "edit" || name == "apply_patch" {
           return true
         }
       }
@@ -872,4 +1336,54 @@ fn mooncode_runtime_turn_tool_calls_include_finish(
     }
   }
   false
+}
+
+///|
+fn mooncode_runtime_turn_terminal_tool_allowed(tool_call : Json) -> Bool {
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  if tool == "finish" ||
+    tool == "checkpoint" ||
+    tool == "write" ||
+    tool == "edit" ||
+    tool == "apply_patch" ||
+    tool == "revert_patch" ||
+    tool == "moon_check" {
+    return true
+  }
+  if tool != "moon_cmd" {
+    return false
+  }
+  let command = mooncode_json_string(
+    mooncode_json_object_field_or_empty(tool_call, "arguments"),
+    "command",
+    default="",
+  )
+  command == "check" ||
+  command == "test" ||
+  command == "build" ||
+  command == "info" ||
+  command == "fmt"
+}
+
+///|
+fn mooncode_runtime_turn_terminal_plan_violation(
+  plan : Json,
+  step_index : Int,
+  max_model_steps : Int,
+) -> String {
+  if mooncode_json_string(plan, "planner_mode", default="") !=
+    mooncode_planner_mode_model_tool_calls() ||
+    step_index + 1 < max_model_steps {
+    return ""
+  }
+  let calls = mooncode_json_array_items(plan, "tool_calls")
+  if !mooncode_runtime_turn_tool_calls_include_finish(calls) {
+    return "final planner opportunity rejected: the model plan did not include `finish`"
+  }
+  for call in calls {
+    if !mooncode_runtime_turn_terminal_tool_allowed(call) {
+      return "final planner opportunity rejected nonterminal tool `\{mooncode_json_string(call, "tool", default="")}`"
+    }
+  }
+  ""
 }

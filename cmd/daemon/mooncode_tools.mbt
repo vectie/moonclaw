@@ -272,6 +272,14 @@ async fn mooncode_tool_write(book_root : String, arguments : Json) -> Json {
       "absolute_path": absolute,
       "char_count": content.length(),
       "changed": before != content,
+      "before_fingerprint": mooncode_tool_content_fingerprint(
+        before,
+        exists=existed,
+      ),
+      "after_fingerprint": mooncode_tool_content_fingerprint(
+        content,
+        exists=true,
+      ),
       "diff": mooncode_tool_unified_diff(relative, before, content, existed~),
     },
   )
@@ -385,6 +393,14 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
       "absolute_path": absolute,
       "replacement_count": replacement_count,
       "changed": content != new_content,
+      "before_fingerprint": mooncode_tool_content_fingerprint(
+        content,
+        exists=true,
+      ),
+      "after_fingerprint": mooncode_tool_content_fingerprint(
+        new_content,
+        exists=true,
+      ),
       "diff": mooncode_tool_unified_diff(
         relative,
         content,
@@ -431,7 +447,7 @@ async fn mooncode_tool_patch_replace(
   let before_string = mooncode_tool_patch_before(arguments)
   let after_string = mooncode_tool_patch_after(arguments)
   let diff_text = mooncode_tool_patch_diff_text(arguments)
-  if before_string == "" && after_string == "" && diff_text != "" {
+  if diff_text != "" {
     let patch_files = mooncode_tool_patch_files_from_unified_diff(diff_text)
     if patch_files.length() > 1 {
       return mooncode_tool_apply_unified_patchset(
@@ -563,6 +579,14 @@ async fn mooncode_tool_patch_replace(
       "path": relative,
       "absolute_path": absolute,
       "changed": content != patched,
+      "before_fingerprint": mooncode_tool_content_fingerprint(
+        content,
+        exists=existed,
+      ),
+      "after_fingerprint": mooncode_tool_content_fingerprint(
+        patched,
+        exists=true,
+      ),
       "diff": mooncode_tool_unified_diff(relative, content, patched, existed~),
       "proof_event": mooncode_tool_patch_proof_event(tool),
     },
@@ -998,6 +1022,14 @@ async fn mooncode_tool_apply_unified_patchset(
       "absolute_path": absolute,
       "changed": file_changed,
       "delete_file": delete_file,
+      "before_fingerprint": mooncode_tool_content_fingerprint(
+        content,
+        exists=existed,
+      ),
+      "after_fingerprint": mooncode_tool_content_fingerprint(
+        patched,
+        exists=!delete_file,
+      ),
       "applied_hunk_count": applied_count,
       "available_hunk_count": available_hunk_count,
       "selected_hunk_index": selected_hunk_index,
@@ -1190,6 +1222,14 @@ async fn mooncode_tool_apply_unified_diff(
       "file_path": relative,
       "absolute_path": absolute,
       "changed": content != patched,
+      "before_fingerprint": mooncode_tool_content_fingerprint(
+        content,
+        exists=existed,
+      ),
+      "after_fingerprint": mooncode_tool_content_fingerprint(
+        patched,
+        exists=true,
+      ),
       "diff": mooncode_tool_unified_diff(relative, content, patched, existed~),
       "proof_event": mooncode_tool_patch_proof_event(tool),
       "applied_hunk_count": applied_count,
@@ -1610,6 +1650,18 @@ fn mooncode_tool_unified_diff(
     lines.push(line)
   }
   lines.join("\n") + "\n"
+}
+
+///|
+fn mooncode_tool_content_fingerprint(
+  content : String,
+  exists~ : Bool,
+) -> String {
+  if exists {
+    "present:\{mooncode_runtime_turn_sha256_base64(content)}"
+  } else {
+    "absent"
+  }
 }
 
 ///|
@@ -2171,7 +2223,12 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
       "book_root": book_root,
       "tool": "apply_patch",
       "command_id": "cmd-apply-patchset",
-      "arguments": { "diff": diff },
+      "arguments": {
+        "path": "tools/one.txt",
+        "before": "one\nalpha\n",
+        "after": "one\nAlpha\n",
+        "diff": diff,
+      },
     },
     now=@clock.Timestamp::from_ms(50L),
   )
