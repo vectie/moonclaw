@@ -554,6 +554,23 @@ async fn Daemon::mooncode_runtime_turn_execute(
           "" {
           break
         }
+        self.mooncode_runtime_turn_record_event(
+          binding,
+          events,
+          persisted_event_ids,
+          mooncode_runtime_continuation_event(
+            session_id,
+            command_id,
+            plan,
+            planner_steps,
+            tool_results,
+            step_results,
+            Json::object({}),
+            step_index~,
+            tool_index=tool_calls.length(),
+            now=self.clock.now(),
+          ),
+        )
         let recover_incomplete_finish = mooncode_runtime_turn_recoverable_horizon_finish(
           command, plan, tool_calls, tool_results,
         )

@@ -36,12 +36,13 @@ fn mooncode_runtime_continuation_event(
   now~ : @clock.Timestamp,
 ) -> Json {
   let approval_id = mooncode_json_string(approval, "approval_id", default="")
+  let state = if approval_id == "" { "after-step" } else { "awaiting-approval" }
   let compact_planner_steps : Array[Json] = []
   for planner_step in planner_steps {
     compact_planner_steps.push(mooncode_runtime_compact_plan(planner_step))
   }
   {
-    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-continuation-\{approval_id}",
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-continuation-\{state}-\{step_index}-\{tool_index}-\{approval_id}",
     "protocol": mooncode_protocol_version(),
     "contract_id": @moonlib_conversation.control_contract_id(),
     "session_id": session_id,
@@ -50,8 +51,12 @@ fn mooncode_runtime_continuation_event(
     "lane": "runtime-control",
     "kind": mooncode_runtime_continuation_kind(),
     "event": mooncode_runtime_continuation_kind(),
-    "state": "awaiting-approval",
-    "status": "waiting",
+    "state": state,
+    "status": if state == "awaiting-approval" {
+      "waiting"
+    } else {
+      "running"
+    },
     "approval_id": approval_id,
     "step_index": step_index,
     "tool_index": tool_index,
@@ -74,8 +79,7 @@ fn mooncode_runtime_continuation_for_command(
   for event in events {
     if mooncode_json_string(event, "kind", default="") ==
       mooncode_runtime_continuation_kind() &&
-      mooncode_json_string(event, "command_id", default="") == command_id &&
-      mooncode_json_string(event, "approval_id", default="") != "" {
+      mooncode_json_string(event, "command_id", default="") == command_id {
       latest = event
     }
   }
@@ -94,12 +98,18 @@ fn mooncode_runtime_continuation_is_active(continuation : Json) -> Bool {
   let tool_index = mooncode_json_int(continuation, "tool_index", default=-1)
   let plan = mooncode_json_object_field_or_empty(continuation, "plan")
   let tool_calls = mooncode_json_array_items(plan, "tool_calls")
-  if approval_id == "" ||
-    command_id == "" ||
-    mooncode_json_string(continuation, "state", default="") !=
-    "awaiting-approval" ||
+  if command_id == "" ||
     step_index < 0 ||
     tool_index < 0 ||
+    tool_index > tool_calls.length() {
+    return false
+  }
+  if mooncode_json_string(continuation, "state", default="") == "after-step" {
+    return approval_id == "" && tool_index == tool_calls.length()
+  }
+  if approval_id == "" ||
+    mooncode_json_string(continuation, "state", default="") !=
+    "awaiting-approval" ||
     tool_index >= tool_calls.length() {
     return false
   }

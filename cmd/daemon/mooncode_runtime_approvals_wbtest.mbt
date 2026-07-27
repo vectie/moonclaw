@@ -147,6 +147,20 @@ test "mooncode continuation stores one current planner transcript" {
   assert_eq(stored_steps.length(), 1)
   assert_false(stored_steps[0].stringify().contains("model_messages"))
   assert_true(mooncode_runtime_continuation_is_active(checkpoint))
+  let after_step = mooncode_runtime_continuation_event(
+    "session-compact",
+    "cmd-compact",
+    plan,
+    [plan],
+    [],
+    [],
+    Json::object({}),
+    step_index=0,
+    tool_index=1,
+    now=@clock.Timestamp::from_ms(2L),
+  )
+  assert_eq(mooncode_json_string(after_step, "state", default=""), "after-step")
+  assert_true(mooncode_runtime_continuation_is_active(after_step))
 }
 
 ///|
