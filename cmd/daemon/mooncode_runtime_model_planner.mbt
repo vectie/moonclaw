@@ -1200,7 +1200,8 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   }
   messages.push(response_message)
   for index in 0..<tool_calls.length() {
-    if index < tool_results.length() {
+    if index < tool_results.length() &&
+      mooncode_runtime_turn_model_tool_call_accepts_result(tool_calls[index]) {
       messages.push(
         mooncode_runtime_turn_model_tool_result_message(
           tool_calls[index],
@@ -1440,6 +1441,14 @@ fn mooncode_runtime_turn_model_response_message(response : Json) -> Json {
 fn mooncode_runtime_turn_model_message_present(message : Json) -> Bool {
   mooncode_json_array_items(message, "tool_calls").length() > 0 ||
   mooncode_json_string(message, "content", default="") != ""
+}
+
+///|
+fn mooncode_runtime_turn_model_tool_call_accepts_result(
+  tool_call : Json,
+) -> Bool {
+  mooncode_json_string(tool_call, "planner", default="") == "model-tool-call" &&
+  mooncode_json_string(tool_call, "tool_call_id", default="") != ""
 }
 
 ///|

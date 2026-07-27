@@ -587,6 +587,9 @@ fed back to the model for diagnosis and recovery. An explicit long-horizon
 `finish` that does not satisfy the durable milestone and verification contract
 is also fed back as planner evidence instead of terminating the command; the
 same turn continues until completion is accepted or the command is cancelled.
+When assistant prose is projected as a synthetic `finish`, recovery appends the
+contract rejection as a user message without inventing a provider tool-result
+item for a function call the model did not make.
 Explicit long-horizon commands have no command-wide planner-step ceiling by
 default; their accepted milestone evidence is the completion boundary, while
 every model request remains independently bounded. Ordinary commands retain an

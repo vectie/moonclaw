@@ -1412,10 +1412,18 @@ test "mooncode native runtime turn treats assistant text as finish" {
     mooncode_json_string(calls[0], "planner", default=""),
     "model-assistant-content",
   )
+  assert_false(mooncode_runtime_turn_model_tool_call_accepts_result(calls[0]))
   let arguments = mooncode_json_object_field_or_empty(calls[0], "arguments")
   assert_eq(
     mooncode_json_string(arguments, "answer", default=""),
     "Hello from model.",
+  )
+  assert_true(
+    mooncode_runtime_turn_model_tool_call_accepts_result({
+      "tool": "finish",
+      "tool_call_id": "call-finish",
+      "planner": "model-tool-call",
+    }),
   )
 }
 
