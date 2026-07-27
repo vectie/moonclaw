@@ -315,7 +315,81 @@ fn mooncode_runtime_horizon_has_verification(
 }
 
 ///|
+fn mooncode_runtime_horizon_documentation_path(path : String) -> Bool {
+  let normalized = path.to_lower().to_string()
+  normalized.has_prefix("docs/") ||
+  normalized.has_suffix(".md") ||
+  normalized.has_suffix(".mdx") ||
+  normalized.has_suffix(".rst")
+}
+
+///|
+fn mooncode_runtime_horizon_has_substantive_mutation(
+  command : Json,
+  results : Array[Json],
+) -> Bool {
+  if !mooncode_runtime_turn_requires_verification(command) {
+    return mooncode_runtime_turn_has_net_mutation(results)
+  }
+  for result in results {
+    for state in mooncode_runtime_turn_result_mutation_states(result) {
+      let path = mooncode_json_string(state, "path", default="")
+      if mooncode_json_string(state, "before", default="") !=
+        mooncode_json_string(state, "after", default="") &&
+        !mooncode_runtime_horizon_documentation_path(path) {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
+fn mooncode_runtime_horizon_result_is_substantive_mutation(
+  command : Json,
+  result : Json,
+) -> Bool {
+  if !mooncode_runtime_turn_requires_verification(command) {
+    return mooncode_runtime_turn_result_is_mutation(result)
+  }
+  mooncode_runtime_turn_result_mutation_states(result).any(state => {
+    let path = mooncode_json_string(state, "path", default="")
+    mooncode_json_string(state, "before", default="") !=
+    mooncode_json_string(state, "after", default="") &&
+    !mooncode_runtime_horizon_documentation_path(path)
+  })
+}
+
+///|
+fn mooncode_runtime_horizon_latest_checkpoint_result_index(
+  results : Array[Json],
+) -> Int {
+  let mut latest = -1
+  for index, result in results {
+    if mooncode_json_bool(result, "accepted", default=false) &&
+      mooncode_json_string(result, "tool", default="") == "checkpoint" {
+      latest = index
+    }
+  }
+  latest
+}
+
+///|
+fn mooncode_runtime_horizon_checkpoint_milestone_status(
+  checkpoint : Json,
+  id : String,
+) -> String {
+  for milestone in mooncode_json_array_items(checkpoint, "milestones") {
+    if mooncode_json_string(milestone, "id", default="") == id {
+      return mooncode_json_string(milestone, "status", default="")
+    }
+  }
+  ""
+}
+
+///|
 fn mooncode_runtime_horizon_milestone_proven(
+  command : Json,
   milestone : Json,
   results : Array[Json],
 ) -> Bool {
@@ -326,7 +400,8 @@ fn mooncode_runtime_horizon_milestone_proven(
   )
   match kind {
     "scope" => mooncode_runtime_horizon_has_scope_evidence(results)
-    "mutation" => mooncode_runtime_turn_has_net_mutation(results)
+    "mutation" =>
+      mooncode_runtime_horizon_has_substantive_mutation(command, results)
     "path_changed" =>
       mooncode_runtime_horizon_path_changed(
         results,
@@ -376,6 +451,11 @@ fn mooncode_runtime_horizon_checkpoint_error(
   if active_count > 1 || (pending_count > 0 && active_count != 1) {
     return "checkpoint must have exactly one active milestone while work remains"
   }
+  let previous = mooncode_runtime_horizon_latest_checkpoint(command, results)
+  let previous_boundary = mooncode_runtime_horizon_latest_checkpoint_result_index(
+    results,
+  )
+  let mut newly_done_mutations = 0
   for required in mooncode_runtime_horizon_required_milestones(command) {
     let required_id = mooncode_json_string(required, "id", default="")
     let mut matched = Json::object({})
@@ -394,10 +474,32 @@ fn mooncode_runtime_horizon_checkpoint_error(
       mooncode_json_string(required, "path", default="") {
       return "checkpoint changed the evidence contract for milestone `\{required_id}`"
     }
-    if mooncode_json_string(matched, "status", default="") == "done" &&
-      !mooncode_runtime_horizon_milestone_proven(required, results) {
+    let previous_status = mooncode_runtime_horizon_checkpoint_milestone_status(
+      previous, required_id,
+    )
+    let matched_status = mooncode_json_string(matched, "status", default="")
+    if previous_status == "done" && matched_status != "done" {
+      return "checkpoint cannot reopen completed milestone `\{required_id}`"
+    }
+    if matched_status == "done" &&
+      !mooncode_runtime_horizon_milestone_proven(command, required, results) {
       return "checkpoint milestone `\{required_id}` has no matching runtime evidence"
     }
+    if matched_status == "done" &&
+      previous_status != "done" &&
+      mooncode_json_string(required, "evidence_kind", default="") == "mutation" {
+      newly_done_mutations += 1
+    }
+  }
+  let mut available_mutations = 0
+  for index, result in results {
+    if index > previous_boundary &&
+      mooncode_runtime_horizon_result_is_substantive_mutation(command, result) {
+      available_mutations += 1
+    }
+  }
+  if newly_done_mutations > available_mutations {
+    return "checkpoint completes \{newly_done_mutations} mutation milestone(s) with only \{available_mutations} substantive mutation result(s) since the prior checkpoint"
   }
   ""
 }
@@ -508,11 +610,16 @@ fn mooncode_runtime_horizon_progress_message(
   } else {
     ""
   }
+  let horizon = if remaining_steps < 0 {
+    "Planner horizon: milestone-driven with no command-wide step ceiling. Continue until every required milestone has accepted evidence, then write the all-done checkpoint and finish. Do not rediscover completed milestones."
+  } else {
+    "Planner opportunities remaining: \{remaining_steps}. Reserve the final three for implementation/repair, typed verification, then an all-done checkpoint plus finish. Do not rediscover completed milestones."
+  }
   {
     "role": "user",
     "content": "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
     "Recent runtime evidence:\n\{if summaries.length() == 0 { "- none" } else { summaries.join("\n") }}\n" +
-    "Planner opportunities remaining: \{remaining_steps}. Reserve the final three for implementation/repair, typed verification, then an all-done checkpoint plus finish. Do not rediscover completed milestones." +
+    horizon +
     recovery,
   }
 }

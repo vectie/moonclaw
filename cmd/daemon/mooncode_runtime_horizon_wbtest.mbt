@@ -33,6 +33,146 @@ fn mooncode_horizon_test_milestones(
 }
 
 ///|
+test "mooncode implementation milestones reject documentation-only evidence" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Implement every missing product behavior and run tests.",
+  }
+  let documentation : Json = {
+    "tool": "edit",
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "path": "docs/STATUS.md",
+        "changed": true,
+        "before_fingerprint": "present:status-0",
+        "after_fingerprint": "present:status-1",
+      },
+    },
+  }
+  assert_false(
+    mooncode_runtime_horizon_has_substantive_mutation(command, [documentation]),
+  )
+  let implementation : Json = {
+    "tool": "apply_patch",
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "path": "src/runtime.mbt",
+        "changed": true,
+        "before_fingerprint": "present:runtime-0",
+        "after_fingerprint": "present:runtime-1",
+      },
+    },
+  }
+  assert_true(
+    mooncode_runtime_horizon_has_substantive_mutation(command, [
+      documentation, implementation,
+    ]),
+  )
+  let documentation_request : Json = {
+    "command": "prompt",
+    "text": "Document the current release workflow.",
+  }
+  assert_true(
+    mooncode_runtime_horizon_has_substantive_mutation(documentation_request, [
+      documentation,
+    ]),
+  )
+}
+
+///|
+test "mooncode requires distinct evidence for newly completed phase milestones" {
+  let milestones : Array[Json] = [
+    {
+      "id": "phase-2",
+      "title": "Complete Phase 2",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+    {
+      "id": "phase-3",
+      "title": "Complete Phase 3",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+  ]
+  let command : Json = {
+    "command": "prompt",
+    "text": "Implement Phase 2 and Phase 3, then run tests.",
+    "payload": {
+      "horizon_id": "phases",
+      "task_contract": {
+        "horizon_id": "phases",
+        "objective": "Complete both phases",
+        "milestones": Json::array(milestones),
+      },
+    },
+  }
+  let completed : Array[Json] = [
+    {
+      "id": "phase-2",
+      "title": "Complete Phase 2",
+      "status": "done",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+    {
+      "id": "phase-3",
+      "title": "Complete Phase 3",
+      "status": "done",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+  ]
+  let arguments : Json = {
+    "horizon_id": "phases",
+    "milestones": Json::array(completed),
+    "next_action": "Finish.",
+  }
+  let phase_2 : Json = {
+    "tool": "edit",
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "path": ".github/workflows/ci.yml",
+        "changed": true,
+        "before_fingerprint": "present:ci-0",
+        "after_fingerprint": "present:ci-1",
+      },
+    },
+  }
+  let insufficient = mooncode_runtime_horizon_checkpoint_error(
+    command,
+    arguments,
+    [phase_2],
+  )
+  assert_true(insufficient.contains("only 1 substantive mutation"))
+  let phase_3 : Json = {
+    "tool": "apply_patch",
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "path": "internal/mooncode/protocol.mbt",
+        "changed": true,
+        "before_fingerprint": "present:protocol-0",
+        "after_fingerprint": "present:protocol-1",
+      },
+    },
+  }
+  assert_eq(
+    mooncode_runtime_horizon_checkpoint_error(command, arguments, [
+      phase_2, phase_3,
+    ]),
+    "",
+  )
+}
+
+///|
 test "mooncode long-horizon loop compacts reference appendices and proves every milestone" {
   let mut appendix = ""
   for _ in 0..<2000 {
@@ -173,6 +313,12 @@ test "mooncode long-horizon loop compacts reference appendices and proves every 
   assert_true(progress_text.contains("Planner opportunities remaining: 3"))
   assert_true(progress_text.contains("Do not rediscover completed milestones"))
   assert_true(progress_text.length() < 16000)
+  let unbounded = mooncode_runtime_horizon_progress_message(
+    command, results, -1,
+  )
+  let unbounded_text = mooncode_json_string(unbounded, "content", default="")
+  assert_true(unbounded_text.contains("milestone-driven"))
+  assert_false(unbounded_text.contains("remaining: -1"))
 }
 
 ///|

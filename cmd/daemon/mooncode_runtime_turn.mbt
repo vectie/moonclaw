@@ -329,7 +329,8 @@ async fn Daemon::mooncode_runtime_turn_execute(
       } else {
         0
       }
-      for step_index in resume_step_index..<max_model_steps {
+      let mut step_index = resume_step_index
+      for ;; {
         let resuming_step = resuming_continuation &&
           step_index == resume_step_index
         if !resuming_step {
@@ -556,7 +557,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
         if mooncode_json_string(plan, "planner_mode", default="") !=
           mooncode_planner_mode_model_tool_calls() ||
           mooncode_runtime_turn_tool_calls_include_finish(tool_calls) ||
-          step_index + 1 >= max_model_steps {
+          (max_model_steps > 0 && step_index + 1 >= max_model_steps) {
           break
         }
         let boundary_steering = self.mooncode_runtime_turn_claim_live_steering(
@@ -601,7 +602,11 @@ async fn Daemon::mooncode_runtime_turn_execute(
             step_results,
             tool_results,
             live_steering=boundary_steering,
-            remaining_steps=max_model_steps - step_index - 1,
+            remaining_steps=if max_model_steps == 0 {
+              -1
+            } else {
+              max_model_steps - step_index - 1
+            },
             now=followup_now,
           )
           let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
@@ -643,6 +648,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
             )
           }
         }
+        next_plan = mooncode_runtime_turn_recovery_plan(next_plan, tool_results)
         let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
         if next_calls.length() == 0 {
           planner_steps.push(next_plan)
@@ -655,6 +661,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
           break
         }
         plan = next_plan
+        step_index += 1
       }
       let used_model_planner = planner_steps.any(step => {
         mooncode_json_string(step, "planner_mode", default="") ==

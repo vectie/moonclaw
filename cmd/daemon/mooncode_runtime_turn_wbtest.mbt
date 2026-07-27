@@ -987,6 +987,54 @@ test "mooncode live steering becomes an explicit planner user message" {
 }
 
 ///|
+test "mooncode retains planner memory until an accepted checkpoint" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Implement the multi-phase repair.",
+  }
+  let previous : Json = {
+    "model_messages": [
+      { "role": "system", "content": "planner" },
+      { "role": "user", "content": "authoritative request" },
+      { "role": "user", "content": "remembered plan inventory" },
+    ],
+  }
+  let retained = mooncode_runtime_turn_model_followup_base_messages(
+    command,
+    previous,
+    [
+      {
+        "tool": "read",
+        "accepted": true,
+        "result": { "output": "source contents" },
+      },
+    ],
+  )
+  assert_eq(retained.length(), 3)
+  assert_eq(
+    mooncode_json_string(retained[2], "content", default=""),
+    "remembered plan inventory",
+  )
+  let compacted = mooncode_runtime_turn_model_followup_base_messages(
+    command,
+    previous,
+    [
+      {
+        "tool": "checkpoint",
+        "accepted": true,
+        "result": { "message": "checkpoint recorded" },
+      },
+    ],
+  )
+  assert_eq(compacted.length(), 2)
+  assert_false(
+    mooncode_json_string(compacted[1], "content", default="").contains(
+      "remembered plan inventory",
+    ),
+  )
+}
+
+///|
 test "mooncode reserves and enforces the terminal planner opportunity" {
   assert_true(
     mooncode_runtime_turn_model_terminal_boundary_message(2).contains(
@@ -1035,6 +1083,75 @@ test "mooncode reserves and enforces the terminal planner opportunity" {
     mooncode_runtime_turn_terminal_plan_violation(verified_finish, 7, 8),
     "",
   )
+  assert_eq(mooncode_runtime_turn_terminal_plan_violation(read_plan, 99, 0), "")
+}
+
+///|
+test "mooncode forces an exact read after a failed content mutation" {
+  let failed_edit : Json = {
+    "tool": "edit",
+    "accepted": false,
+    "arguments": {
+      "path": "docs/STATUS.md",
+      "old_string": "guessed source",
+      "new_string": "replacement",
+    },
+    "result": { "message": "old_string not found" },
+  }
+  let guessed_retry : Json = {
+    "planner_mode": mooncode_planner_mode_model_tool_calls(),
+    "tool_calls": [
+      {
+        "tool": "apply_patch",
+        "arguments": { "path": "docs/STATUS.md", "diff": "*** Begin Patch" },
+      },
+    ],
+  }
+  let recovery = mooncode_runtime_turn_recovery_plan(guessed_retry, [
+    failed_edit,
+  ])
+  let calls = mooncode_json_array_items(recovery, "tool_calls")
+  assert_eq(calls.length(), 1)
+  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "read")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(calls[0], "arguments"),
+      "path",
+      default="",
+    ),
+    "docs/STATUS.md",
+  )
+  let recovery_id = mooncode_json_string(calls[0], "tool_call_id", default="")
+  assert_true(recovery_id != "")
+  let response_calls = mooncode_json_array_items(
+    mooncode_json_object_field_or_empty(recovery, "model_response_message"),
+    "tool_calls",
+  )
+  assert_eq(response_calls.length(), 1)
+  assert_eq(
+    mooncode_json_string(response_calls[0], "id", default=""),
+    recovery_id,
+  )
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(response_calls[0], "function"),
+      "name",
+      default="",
+    ),
+    "read",
+  )
+  let already_reads : Json = {
+    "planner_mode": mooncode_planner_mode_model_tool_calls(),
+    "tool_calls": [
+      { "tool": "read", "arguments": { "path": "docs/STATUS.md" } },
+    ],
+  }
+  let retained_calls = mooncode_json_array_items(
+    mooncode_runtime_turn_recovery_plan(already_reads, [failed_edit]),
+    "tool_calls",
+  )
+  assert_eq(retained_calls.length(), 1)
+  assert_eq(mooncode_json_string(retained_calls[0], "tool", default=""), "read")
 }
 
 ///|
@@ -1732,13 +1849,25 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     mooncode_runtime_turn_model_max_steps({
       "payload": { "planner_max_steps": 0 },
     }),
-    1,
+    0,
   )
   assert_eq(
     mooncode_runtime_turn_model_max_steps({
       "payload": { "planner_max_steps": 99 },
     }),
-    20,
+    99,
+  )
+  assert_eq(
+    mooncode_runtime_turn_model_max_steps({
+      "payload": {
+        "horizon_id": "phase-plan",
+        "task_contract": {
+          "objective": "Complete every milestone",
+          "milestones": [{ "id": "phase-2" }],
+        },
+      },
+    }),
+    0,
   )
   assert_false(
     mooncode_runtime_turn_stops_tool_batch(

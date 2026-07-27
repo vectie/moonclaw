@@ -229,14 +229,19 @@ async fn mooncode_runtime_turn_model_chat(
 ///|
 fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
-  // A real code change normally needs at least inspect, edit, verify, and
-  // finish turns. Three steps caused valid engineering prompts to exhaust the
-  // loop during workspace inspection before any diff could be produced.
-  let requested = mooncode_json_int(payload, "planner_max_steps", default=8)
-  if requested < 1 {
+  // Ordinary turns keep a bounded default. An explicit horizon is instead
+  // milestone-driven: zero means that no command-wide planner-step ceiling is
+  // imposed, while each individual model request remains independently
+  // bounded by its token and timeout controls. Callers may still request a
+  // positive operational ceiling, which is honored exactly.
+  let default = if mooncode_runtime_horizon_explicit_id(command) == "" {
+    8
+  } else {
+    0
+  }
+  let requested = mooncode_json_int(payload, "planner_max_steps", default~)
+  if requested < 0 {
     1
-  } else if requested > 20 {
-    20
   } else {
     requested
   }
@@ -750,6 +755,27 @@ fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
 }
 
 ///|
+fn mooncode_runtime_turn_model_followup_base_messages(
+  command : Json,
+  previous_plan : Json,
+  tool_results : Array[Json],
+) -> Array[Json] {
+  let checkpointed = tool_results.any(result => {
+    mooncode_json_bool(result, "accepted", default=false) &&
+    mooncode_json_string(result, "tool", default="") == "checkpoint"
+  })
+  let previous = mooncode_json_array_items(previous_plan, "model_messages")
+  if !checkpointed && previous.length() >= 2 {
+    previous
+  } else {
+    // An accepted checkpoint is the semantic compaction boundary. Before that
+    // boundary, retain the actual planner transcript so file contents and
+    // diagnostics survive more than one model call.
+    mooncode_runtime_turn_model_initial_messages(command)
+  }
+}
+
+///|
 fn mooncode_runtime_turn_model_messages(
   command : Json,
   live_steering : Array[Json],
@@ -1111,7 +1137,9 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       now~,
     )
   }
-  let messages = mooncode_runtime_turn_model_initial_messages(command)
+  let messages = mooncode_runtime_turn_model_followup_base_messages(
+    command, previous_plan, tool_results,
+  )
   let prior_results : Array[Json] = []
   let prior_count = if all_tool_results.length() > tool_results.length() {
     all_tool_results.length() - tool_results.length()
@@ -1249,6 +1277,101 @@ fn mooncode_runtime_turn_model_terminal_boundary_message(
 }
 
 ///|
+fn mooncode_runtime_turn_failed_mutation_path(results : Array[Json]) -> String {
+  if results.length() == 0 {
+    return ""
+  }
+  let result = results[results.length() - 1]
+  if mooncode_json_bool(result, "accepted", default=false) {
+    return ""
+  }
+  let tool = mooncode_json_string(result, "tool", default="")
+  if tool != "edit" &&
+    tool != "apply_patch" &&
+    tool != "write" &&
+    tool != "revert_patch" {
+    return ""
+  }
+  let arguments = mooncode_json_object_field_or_empty(result, "arguments")
+  let direct = mooncode_json_string(arguments, "path", default="")
+  if direct != "" {
+    return direct
+  }
+  mooncode_json_string(
+    mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(result, "result"),
+      "metadata",
+    ),
+    "path",
+    default="",
+  )
+}
+
+///|
+fn mooncode_runtime_turn_plan_reads_path(plan : Json, path : String) -> Bool {
+  mooncode_json_array_items(plan, "tool_calls").any(call => {
+    mooncode_json_string(call, "tool", default="") == "read" &&
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(call, "arguments"),
+      "path",
+      default="",
+    ) ==
+    path
+  })
+}
+
+///|
+fn mooncode_runtime_turn_recovery_plan(
+  plan : Json,
+  results : Array[Json],
+) -> Json {
+  let path = mooncode_runtime_turn_failed_mutation_path(results)
+  if path == "" || mooncode_runtime_turn_plan_reads_path(plan, path) {
+    return plan
+  }
+  // Content-based mutation tools fail closed when their assumed source text is
+  // stale. Force one exact read before allowing the model to plan another
+  // mutation so milestone-driven execution cannot spin on guessed hunks.
+  let original_calls = mooncode_json_array_items(plan, "tool_calls")
+  let original_id = if original_calls.length() == 0 {
+    ""
+  } else {
+    mooncode_json_string(original_calls[0], "tool_call_id", default="")
+  }
+  let tool_call_id = if original_id == "" {
+    "mooncode-recovery-read-\{results.length()}"
+  } else {
+    original_id
+  }
+  let arguments : Json = { "path": path, "max_output_chars": 120000 }
+  let calls : Array[Json] = [
+    {
+      "tool": "read",
+      "arguments": arguments,
+      "tool_call_id": tool_call_id,
+      "planner": "runtime-mutation-recovery",
+    },
+  ]
+  let response_calls : Array[Json] = [
+    {
+      "id": tool_call_id,
+      "type": "function",
+      "function": { "name": "read", "arguments": arguments.stringify() },
+    },
+  ]
+  let recovered = mooncode_json_object_with_field(
+    plan,
+    "tool_calls",
+    Json::array(calls),
+  )
+  mooncode_json_object_with_field(recovered, "model_response_message", {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": Json::array(response_calls),
+  })
+}
+
+///|
 fn mooncode_runtime_turn_model_response_message(response : Json) -> Json {
   let choices = match response {
     { "choices": Array(items), .. } => items
@@ -1371,7 +1494,8 @@ fn mooncode_runtime_turn_terminal_plan_violation(
   step_index : Int,
   max_model_steps : Int,
 ) -> String {
-  if mooncode_json_string(plan, "planner_mode", default="") !=
+  if max_model_steps == 0 ||
+    mooncode_json_string(plan, "planner_mode", default="") !=
     mooncode_planner_mode_model_tool_calls() ||
     step_index + 1 < max_model_steps {
     return ""

@@ -578,15 +578,32 @@ for bounded MoonCode tool-call batches over `checkpoint`, `read`, `write`,
 `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`,
 `moon_check`, and `finish`. Coding turns carry a compact task contract and
 evidence-backed milestone checkpoint instead of replaying their full prior
-transcript. Successful tool results are fed back to the model until it calls
-`finish`, a tool fails, the command is cancelled, or the bounded
-`planner_max_steps` limit is reached. The last two opportunities are reserved
-for completion: the penultimate message stops discovery and requests authored
-repair plus typed verification, while the final batch must contain `finish` and
-may contain only mutation recovery or structured check/test/build/info/fmt
-tools plus the required all-done checkpoint. Runtime-turn validates that final
-batch before execution and fails closed on exploratory, shell,
-semantic-navigation, or finish-free plans. Planner
+transcript. Between checkpoints, the actual planner messages and tool results
+remain in the model conversation so source reads and diagnostics survive the
+next planning call. An accepted checkpoint is the semantic compaction boundary:
+the older transcript is discarded and the durable checkpoint plus current
+evidence become the new working context. Successful tool results are fed back
+to the model until it calls
+`finish`, a tool fails, or the command is cancelled. Explicit long-horizon
+commands have no command-wide planner-step ceiling by default; their accepted
+milestone evidence is the completion boundary, while every model request
+remains independently bounded. Ordinary commands retain an eight-step default.
+Callers may set a positive `planner_max_steps` operational ceiling, which is
+honored exactly, or zero for milestone-driven execution. When a positive limit
+is configured, the last two opportunities are reserved for completion: the
+penultimate message stops discovery and requests authored repair plus typed
+verification, while the final batch must contain `finish` and may contain only
+mutation recovery or structured check/test/build/info/fmt tools plus the
+required all-done checkpoint. Runtime-turn validates that final batch before
+execution and fails closed on exploratory, shell, semantic-navigation, or
+finish-free plans. If a content-based mutation fails, runtime-turn forces an
+exact read of the affected path before another model-selected mutation can run;
+this prevents milestone-driven tasks from spinning on guessed stale hunks.
+For a verification-sensitive implementation task, a documentation-only
+mutation cannot prove the implementation milestone; at least one net mutation
+to behavior, configuration, tests, workflows, or another non-documentation
+artifact is required.
+Planner
 start/selection/failure events, `planner_steps`, `planner_step_count`, and
 `model_step_limit` are included in the runtime result. Each planner step also
 emits MoonCode `reasoning_delta` progress, optional assistant transcript deltas,
@@ -678,6 +695,29 @@ returns `202 Accepted`, then records `runtime.service_finished` or
 same durable queue, claim receipts, turn execution, and `max_turns` /
 `live_wait_ms` / `poll_ms` limits as `runtime-loop`, with a default
 `live_wait_ms` of 5000 ms for live steering.
+
+### Patient long-horizon harness
+
+`scripts/mooncode-patient-harness.sh` is a thin client around `turns`,
+`runtime-service`, and `stream`. It accepts a complete turn request rather than
+encoding a task plan. The request prompt remains the source of intent, and
+callers may add an optional `task_contract` with milestone, constraint, and
+context-path hints.
+
+The harness has no task-duration or model-step ceiling. It follows durable
+journal sequence, retries transport interruptions without cancelling the turn,
+idempotently restarts the runtime service after silence, and exits only when the
+requested command records completion, failure, cancellation, or an operator
+approval boundary. A service cycle reaching idle is not treated as task
+completion. Re-run the harness with `--resume` after a daemon restart or
+approval; the existing command and checkpoint remain authoritative.
+
+Pass `--evidence <path>.jsonl` to preserve the unchanged request, exact
+command-related events, service lifecycle, checkpoints, tool results, and a
+terminal harness summary for a separate read-only observer. The observer
+receives that evidence and the repository through its prompt-defined contract;
+the harness does not encode product phases or let observer opinions steer or
+cancel the worker.
 
 ### `POST /v1/task/{id}/publish`
 
