@@ -744,11 +744,53 @@ fn mooncode_runtime_turn_model_execution_accepted(
 }
 
 ///|
+fn mooncode_runtime_turn_recoverable_horizon_finish(
+  command : Json,
+  plan : Json,
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+) -> Bool {
+  if mooncode_runtime_horizon_explicit_id(command) == "" ||
+    mooncode_json_string(plan, "planner_mode", default="") !=
+    mooncode_planner_mode_model_tool_calls() ||
+    !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
+    return false
+  }
+  !mooncode_runtime_turn_completion_verdict(
+    command,
+    tool_results,
+    require_horizon=true,
+  ).accepted
+}
+
+///|
+fn mooncode_runtime_turn_horizon_finish_rejection_message(
+  command : Json,
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+) -> String {
+  if mooncode_runtime_horizon_explicit_id(command) == "" ||
+    !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
+    return ""
+  }
+  let verdict = mooncode_runtime_turn_completion_verdict(
+    command,
+    tool_results,
+    require_horizon=true,
+  )
+  if verdict.accepted {
+    ""
+  } else {
+    "Completion was rejected by the durable task contract: \{verdict.reason}. Continue the same task from the retained evidence. Do not summarize or call finish again until the rejected condition is resolved and the final all-done checkpoint is accepted."
+  }
+}
+
+///|
 fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use checkpoint/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch, spend at most two tool calls inspecting before the first mutation, and update the checkpoint whenever a milestone changes. Prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use checkpoint/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch, spend at most two tool calls inspecting before the first mutation, and update the checkpoint whenever a milestone changes. Prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
   ]
@@ -1166,6 +1208,12 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         ),
       )
     }
+  }
+  let finish_rejection = mooncode_runtime_turn_horizon_finish_rejection_message(
+    command, tool_calls, all_tool_results,
+  )
+  if finish_rejection != "" {
+    messages.push({ "role": "user", "content": finish_rejection })
   }
   for steering in live_steering {
     messages.push(mooncode_runtime_turn_model_live_steering_message(steering))

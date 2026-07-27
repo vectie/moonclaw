@@ -554,9 +554,15 @@ async fn Daemon::mooncode_runtime_turn_execute(
           "" {
           break
         }
+        let recover_incomplete_finish = mooncode_runtime_turn_recoverable_horizon_finish(
+          command, plan, tool_calls, tool_results,
+        )
         if mooncode_json_string(plan, "planner_mode", default="") !=
           mooncode_planner_mode_model_tool_calls() ||
-          mooncode_runtime_turn_tool_calls_include_finish(tool_calls) ||
+          (
+            mooncode_runtime_turn_tool_calls_include_finish(tool_calls) &&
+            !recover_incomplete_finish
+          ) ||
           (max_model_steps > 0 && step_index + 1 >= max_model_steps) {
           break
         }

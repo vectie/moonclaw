@@ -582,12 +582,15 @@ transcript. Between checkpoints, the actual planner messages and tool results
 remain in the model conversation so source reads and diagnostics survive the
 next planning call. An accepted checkpoint is the semantic compaction boundary:
 the older transcript is discarded and the durable checkpoint plus current
-evidence become the new working context. Successful tool results are fed back
-to the model until it calls
-`finish`, a tool fails, or the command is cancelled. Explicit long-horizon
-commands have no command-wide planner-step ceiling by default; their accepted
-milestone evidence is the completion boundary, while every model request
-remains independently bounded. Ordinary commands retain an eight-step default.
+evidence become the new working context. Tool results, including failures, are
+fed back to the model for diagnosis and recovery. An explicit long-horizon
+`finish` that does not satisfy the durable milestone and verification contract
+is also fed back as planner evidence instead of terminating the command; the
+same turn continues until completion is accepted or the command is cancelled.
+Explicit long-horizon commands have no command-wide planner-step ceiling by
+default; their accepted milestone evidence is the completion boundary, while
+every model request remains independently bounded. Ordinary commands retain an
+eight-step default.
 Callers may set a positive `planner_max_steps` operational ceiling, which is
 honored exactly, or zero for milestone-driven execution. When a positive limit
 is configured, the last two opportunities are reserved for completion: the
@@ -711,6 +714,13 @@ requested command records completion, failure, cancellation, or an operator
 approval boundary. A service cycle reaching idle is not treated as task
 completion. Re-run the harness with `--resume` after a daemon restart or
 approval; the existing command and checkpoint remain authoritative.
+
+This harness is temporary supervision scaffolding, not a planner. Patient
+continuation, failed-tool recovery, rejected-finish recovery, evidence-backed
+checkpoints, and completion gating belong to MoonCode's native runtime so a
+standalone MoonCode process retains the same behavior after the harness is
+removed. Only external authority decisions and optional independent acceptance
+remain outside the worker.
 
 Pass `--evidence <path>.jsonl` to preserve the unchanged request, exact
 command-related events, service lifecycle, checkpoints, tool results, and a

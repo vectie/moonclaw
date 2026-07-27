@@ -1844,6 +1844,52 @@ test "mooncode native runtime turn builds model follow-up transcript" {
       { "tool": "finish", "arguments": { "answer": "done" } },
     ]),
   )
+  let incomplete_horizon : Json = {
+    "command": "prompt",
+    "text": "Implement the requested fix and run tests.",
+    "payload": {
+      "horizon_id": "recover-finish",
+      "task_contract": {
+        "objective": "Complete the requested fix.",
+        "milestones": [{ "id": "implementation" }],
+      },
+    },
+  }
+  let finish_plan : Json = { "planner_mode": "model-tool-calls" }
+  let finish_calls : Array[Json] = [
+    { "tool": "finish", "arguments": { "answer": "incomplete" } },
+  ]
+  assert_true(
+    mooncode_runtime_turn_recoverable_horizon_finish(
+      incomplete_horizon,
+      finish_plan,
+      finish_calls,
+      [{ "tool": "finish", "accepted": true }],
+    ),
+  )
+  let rejection = mooncode_runtime_turn_horizon_finish_rejection_message(
+    incomplete_horizon,
+    finish_calls,
+    [{ "tool": "finish", "accepted": true }],
+  )
+  assert_true(rejection.contains("Completion was rejected"))
+  assert_true(rejection.contains("Continue the same task"))
+  assert_false(
+    mooncode_runtime_turn_recoverable_horizon_finish(
+      { "command": "prompt", "text": "Reply only." },
+      finish_plan,
+      finish_calls,
+      [{ "tool": "finish", "accepted": true }],
+    ),
+  )
+  assert_eq(
+    mooncode_runtime_turn_horizon_finish_rejection_message(
+      { "command": "prompt", "text": "Reply only." },
+      finish_calls,
+      [{ "tool": "finish", "accepted": true }],
+    ),
+    "",
+  )
   assert_eq(mooncode_runtime_turn_model_max_steps({}), 8)
   assert_eq(
     mooncode_runtime_turn_model_max_steps({
@@ -2049,6 +2095,16 @@ test "mooncode rejects comment-only implementation mutations before execution" {
   assert_true(
     mooncode_json_string(initial[0], "content", default="").contains(
       "comment-only or documentation-only mutation does not satisfy",
+    ),
+  )
+  assert_true(
+    mooncode_json_string(initial[0], "content", default="").contains(
+      "do not repeat it against the same intended dirty state",
+    ),
+  )
+  assert_true(
+    mooncode_json_string(initial[0], "content", default="").contains(
+      "Never guess a toolchain or dependency-management command",
     ),
   )
 }
