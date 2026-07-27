@@ -29,12 +29,36 @@ fn mooncode_journal_book_result() -> String {
 }
 
 ///|
+fn mooncode_journal_goal_event() -> String {
+  mooncode_journal_event()
+}
+
+///|
 async fn mooncode_append_session_journal(
   book_root : String,
   session_id : String,
   record_kind : String,
   payload : Json,
 ) -> Unit {
+  ignore(
+    mooncode_append_session_journal_once(
+      book_root, session_id, record_kind, payload,
+    ),
+  )
+}
+
+///|
+/// Append a validated journal record unless its stable identity already exists.
+/// Returns true only when this call durably appended the record.
+async fn mooncode_append_session_journal_once(
+  book_root : String,
+  session_id : String,
+  record_kind : String,
+  payload : Json,
+) -> Bool {
+  // Stable identity is the only payload validation required before duplicate lookup.
+  // Existing records must remain retryable even when later validation rules tighten.
+  let record_id = mooncode_journal_record_id(record_kind, payload)
   let path = mooncode_session_journal_path(book_root, session_id)
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
   let file = @fs.open(
@@ -49,11 +73,10 @@ async fn mooncode_append_session_journal(
   defer file.unlock()
   mooncode_repair_journal_tail(file)
   let records = mooncode_parse_journal_file(file, path)
-  let record_id = mooncode_journal_record_id(record_kind, payload)
   for record in records {
     if mooncode_json_string(record, "record_kind", default="") == record_kind &&
       mooncode_json_string(record, "record_id", default="") == record_id {
-      return
+      return false
     }
   }
   let sequence = mooncode_journal_last_sequence(records) + 1
@@ -85,6 +108,7 @@ async fn mooncode_append_session_journal(
   }
   file.write(record.stringify() + "\n")
   file.sync(only_data=true)
+  true
 }
 
 ///|

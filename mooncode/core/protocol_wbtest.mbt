@@ -1212,7 +1212,9 @@ test "mooncode core names standalone package boundaries" {
     ),
   )
   assert_true(
-    payload.contains("MoonCode, book workflows, and generic tasks share MoonClaw"),
+    payload.contains(
+      "MoonCode, book workflows, and generic tasks share MoonClaw",
+    ),
   )
   assert_true(
     payload.contains("mooncode/core must contain only stable protocol"),

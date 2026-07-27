@@ -137,6 +137,10 @@ pub fn command_supported_actions() -> Array[String]
 
 pub fn command_turn_actions() -> Array[String]
 
+pub fn compare_goal_checkpoint_sequences(Array[GoalCheckpointSnapshot], Array[GoalCheckpointSnapshot]) -> Array[CheckpointComparisonReport]
+
+pub fn compare_goal_checkpoints(GoalCheckpointSnapshot, GoalCheckpointSnapshot) -> CheckpointComparisonReport
+
 pub fn conversation_contract_id() -> String
 
 pub fn conversation_contract_json() -> Json
@@ -198,6 +202,14 @@ pub fn executable_book_lifecycle_contract_id() -> String
 pub fn executable_book_lifecycle_contract_json() -> Json
 
 pub fn executable_book_lifecycle_steps() -> Array[String]
+
+pub fn goal_budget_exhausted(GoalBudget) -> Bool
+
+pub let goal_checkpoint_contract_version : Int
+
+pub fn goal_evaluation_bundle_json(Goal) -> Json
+
+pub fn goal_status_json(Goal) -> Json
 
 pub fn journal_contract_id() -> String
 
@@ -401,6 +413,8 @@ pub fn native_stream_endpoint(String, String, String, Int, wait_ms? : Int, poll_
 
 pub fn native_tool_exec_endpoint(String, String) -> String
 
+pub fn new_goal(String, String, String, Int, GoalBudget, Array[GoalRequirement]) -> Goal raise
+
 pub fn package_review_flow_accept_kinds() -> Array[String]
 
 pub fn package_review_flow_accepted_sequence() -> Array[String]
@@ -500,6 +514,8 @@ pub fn package_review_flow_status_waiting_for_tests() -> String
 pub fn package_review_flow_terminal_statuses() -> Array[String]
 
 pub fn protocol_version() -> String
+
+pub fn reduce_goal(Goal, GoalEvent) -> Goal
 
 pub fn runtime_claim_authorization_rule() -> String
 
@@ -990,6 +1006,306 @@ pub fn tool_harness_status_no_tools() -> String
 // Errors
 
 // Types and methods
+pub(all) enum ApprovalOutcome {
+  Approved
+  Rejected
+} derive(Eq, @debug.Debug)
+
+pub(all) struct BlockerIdentity {
+  kind : String
+  authority : String
+  resource : String
+  required_change : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CheckpointAcceptanceOutcome {
+  Accepted
+  Rejected
+  InsufficientEvidence
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointBlocker {
+  blocker_id : String
+  kind : String
+  evidence_ref : String
+  digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointBudget {
+  token_limit : Int?
+  turn_limit : Int?
+  wall_time_limit : Int?
+  tokens_used : Int
+  turns_used : Int
+  wall_time_used : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CheckpointComparisonOutcome {
+  Exact
+  FunctionallyEquivalent
+  Disagreed
+  InsufficientEvidence
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointComparisonReport {
+  contract_version : Int
+  left_checkpoint_id : String
+  right_checkpoint_id : String
+  agreement_outcome : CheckpointComparisonOutcome
+  outcome : CheckpointComparisonOutcome
+  left_acceptance : CheckpointAcceptanceOutcome
+  right_acceptance : CheckpointAcceptanceOutcome
+  same_basis : Bool
+  deltas : Array[CheckpointDelta]
+  regression : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointDelta {
+  kind : CheckpointDeltaKind
+  subject_id : String
+  left_digest : String
+  right_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CheckpointDeltaKind {
+  StaleBasis
+  MissingRequirement
+  RequirementStateMismatch
+  RequirementEvidenceMissing
+  MissingOutput
+  OutputEvidenceMissing
+  OutputContentMismatch
+  OutputApiMismatch
+  OutputArtifactMismatch
+  MissingVerificationCheck
+  VerificationResultMismatch
+  MissingEvidenceRecord
+  EvidenceSemanticMismatch
+  InvalidIdentifier
+  DuplicateIdentifier
+  InvalidDigest
+  RemainingWorkMismatch
+  BlockerMismatch
+  MissingSequenceSide
+  Regression
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointEvidenceRecord {
+  evidence_id : String
+  role : String
+  spec_digest : String
+  content_digest : String
+  evidence_ref : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointIdentity {
+  checkpoint_id : String
+  comparison_epoch : Int
+  checkpoint_key : String
+  parent_checkpoint_id : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointOutputManifest {
+  output_id : String
+  spec_digest : String
+  content_digest : String
+  api_digest : String
+  artifact_digest : String
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointProducerIdentity {
+  producer_id : String
+  producer_version : String
+  contract_version : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointRemainingWork {
+  work_id : String
+  requirement_id : String
+  description_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointRequirementEvidence {
+  requirement_id : String
+  spec_digest : String
+  state : RequirementState
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointVerificationCheck {
+  check_id : String
+  spec_digest : String
+  passed : Bool
+  result_digest : String
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CheckpointVerificationManifest {
+  checks : Array[CheckpointVerificationCheck]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonBasis {
+  version : Int
+  basis_digest : String
+  policy_digest : String
+  comparison_epoch : Int
+  checkpoint_key : String
+  required_requirements : Array[ComparisonRequirementDefinition]
+  required_outputs : Array[ComparisonOutputDefinition]
+  required_checks : Array[ComparisonCheckDefinition]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonCheckDefinition {
+  check_id : String
+  spec_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonOutputDefinition {
+  output_id : String
+  spec_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ComparisonRequirementDefinition {
+  requirement_id : String
+  spec_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CompletionProof {
+  projection : ValidatedProjection
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Convergence {
+  Converged
+  Disagreed
+  InsufficientEvidence
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ConvergenceReport {
+  evaluation_id : String
+  evaluated_revision : Int
+  evidence_digest : String
+  outcome : Convergence
+  requirement_deltas : Array[String]
+  residual_risks : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EvaluationBackoffRecord {
+  evaluation_id : String
+  run_id : Int
+  basis_revision : Int
+  evidence_digest : String
+  attempt : Int
+  category : String
+  next_retry_at : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EvaluationRequest {
+  id : String
+  run_id : Int
+  revision : Int
+  evidence_digest : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Goal {
+  id : String
+  session_id : String
+  objective : String
+  status : GoalStatus
+  run_state : GoalRunState
+  run_id : Int
+  created_at : Int
+  updated_at : Int
+  revision : Int
+  current_goal_turn : Int
+  continuation_count : Int
+  budget : GoalBudget
+  requirements : Array[GoalRequirement]
+  blocker : GoalBlocker?
+  convergence : GoalConvergence?
+  active_evaluation : EvaluationRequest?
+  evaluation_backoff : EvaluationBackoffRecord?
+  approval_refs : Array[String]
+  seen_ids : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalBlocker {
+  identity : BlockerIdentity
+  count : Int
+  last_consecutive_turn : Int
+  run_id : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalBudget {
+  token_limit : Int?
+  turn_limit : Int?
+  wall_time_limit : Int?
+  tokens_used : Int
+  turns_used : Int
+  wall_time_used : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalCheckpointSnapshot {
+  contract_version : Int
+  producer : CheckpointProducerIdentity
+  identity : CheckpointIdentity
+  basis : ComparisonBasis
+  goal_id : String
+  objective_digest : String
+  base_workspace_digest : String
+  requirements : Array[CheckpointRequirementEvidence]
+  evidence : Array[CheckpointEvidenceRecord]
+  outputs : Array[CheckpointOutputManifest]
+  remaining_work : Array[CheckpointRemainingWork]
+  blockers : Array[CheckpointBlocker]
+  verification : CheckpointVerificationManifest
+  budget : CheckpointBudget
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalConvergence {
+  report : ConvergenceReport
+  accepted_revision : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalEvent {
+  ContinuationAccepted(String, Int, Int, Int)
+  TurnFinished(String, Int, Int, Int, BlockerIdentity?, Bool)
+  RequirementUpdated(String, Int, String, RequirementState, Array[String])
+  AwaitingApproval(String, Int, Array[String])
+  ApprovalSettled(String, Int, Array[String], ApprovalOutcome)
+  BudgetUsageRecorded(String, Int, Int, Int, Int)
+  BudgetExhausted(String, Int)
+  BudgetExtended(String, Int, Int?, Int?, Int?)
+  EvaluationStarted(String, Int, String, String)
+  Evaluated(String, Int, String, Int, String, ConvergenceReport)
+  EvaluationFailed(String, Int, String, Int, Int, String, Int, String, Int)
+  EvaluationRetryDue(String, Int, String, Int, Int)
+  CompleteRequested(String, Int, CompletionProof)
+  Resume(String, Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GoalRequirement {
+  id : String
+  criterion : String
+  state : RequirementState
+  evidence_refs : Array[String]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalRunState {
+  Runnable
+  AwaitingApproval
+  AwaitingInput
+  AwaitingBudget
+  Evaluating
+  EvaluationBackoff
+} derive(Eq, @debug.Debug)
+
+pub(all) enum GoalStatus {
+  Active
+  Complete
+  Blocked
+} derive(Eq, @debug.Debug)
+
 pub(all) struct NativeCapabilityEndpoints {
   capabilities : String
   session_list : String
@@ -1010,6 +1326,25 @@ pub(all) struct NativeCapabilityEndpoints {
   package_result : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 pub fn NativeCapabilityEndpoints::required_endpoints(Self) -> Array[String]
+
+pub(all) enum RequirementState {
+  Unproven
+  Proven
+  Contradicted
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ValidatedProjection {
+  revision : Int
+  evaluation_basis_revision : Int
+  journal_digest : String
+  workspace_digest : String
+  evaluation_digest : String
+  pending_approvals : Bool
+  active_or_retryable_commands : Bool
+  open_claims : Bool
+  command_evidence_complete_and_passing : Bool
+  mutations_have_later_passing_checks : Bool
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
