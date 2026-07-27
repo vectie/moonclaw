@@ -949,6 +949,8 @@ pub fn runtime_tool_package_app_tool() -> String
 
 pub fn runtime_tool_read() -> String
 
+pub fn runtime_tool_read_skill() -> String
+
 pub fn runtime_tool_requires_authorization_snapshot(String) -> Bool
 
 pub fn runtime_tool_requires_review(String) -> Bool

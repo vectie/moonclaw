@@ -38,6 +38,7 @@ import {
   "moonbitlang/x/crypto",
   "moonbitlang/core/test",
   "vectie/moonclaw/internal/pino",
+  "vectie/moonclaw/internal/skills",
   "vectie/moonclaw/mooncode/core" @mooncode_core,
 }
 

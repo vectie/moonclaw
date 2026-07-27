@@ -1069,6 +1069,18 @@ fn mooncode_runtime_turn_stops_tool_batch(
   plan : Json,
   execution : Json,
 ) -> Bool {
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+  let approval_state = mooncode_json_string(
+    metadata,
+    "approval_state",
+    default="",
+  )
+  if approval_state == "rejected" ||
+    mooncode_json_bool(metadata, "pipeline_exit_ambiguous", default=false) ||
+    mooncode_json_string(execution, "tool", default="") == "read_skill" {
+    return true
+  }
   !mooncode_json_bool(execution, "accepted", default=false) &&
   mooncode_json_string(plan, "planner_mode", default="") !=
   mooncode_planner_mode_model_tool_calls()

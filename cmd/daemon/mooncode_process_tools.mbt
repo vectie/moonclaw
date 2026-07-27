@@ -29,31 +29,35 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
     output,
     mooncode_json_int(arguments, "max_output_chars", default=12000),
   )
-  let result = if process.status == 0 {
+  let pipeline_exit_ambiguous = mooncode_shell_pipeline_exit_ambiguous(cmd)
+  let metadata : Json = {
+    "cmd": cmd,
+    "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+    "status": process.status,
+    "elapsed_ms": process.elapsed,
+    "truncated": mooncode_json_bool(capped, "truncated", default=false),
+    "pipeline_exit_ambiguous": pipeline_exit_ambiguous,
+  }
+  let result = if pipeline_exit_ambiguous {
+    mooncode_tool_error_result(
+      "shell",
+      message="shell pipeline exit is ambiguous because pipefail was not enabled",
+      output=mooncode_json_string(capped, "output", default=""),
+      metadata~,
+    )
+  } else if process.status == 0 {
     mooncode_tool_ok_result(
       "shell",
       message="shell exited 0",
       output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "cmd": cmd,
-        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
+      metadata~,
     )
   } else {
     mooncode_tool_error_result(
       "shell",
       message="shell exited \{process.status}",
       output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "cmd": cmd,
-        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
+      metadata~,
     )
   }
   result

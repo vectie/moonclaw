@@ -116,6 +116,7 @@ async fn mooncode_execute_tool_call(
   let arguments = mooncode_json_object_field_or_empty(body, "arguments")
   let result = match tool {
     "read" => mooncode_tool_read(book_root, arguments)
+    "read_skill" => mooncode_tool_read_skill(book_root, arguments)
     "write" => mooncode_tool_write(book_root, arguments)
     "edit" => mooncode_tool_edit(book_root, arguments)
     "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
@@ -157,6 +158,7 @@ async fn mooncode_execute_tool_call(
 ///|
 fn mooncode_tool_supported(tool : String) -> Bool {
   tool == "read" ||
+  tool == "read_skill" ||
   tool == "edit" ||
   tool == "write" ||
   tool == "apply_patch" ||

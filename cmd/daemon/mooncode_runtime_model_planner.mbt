@@ -65,18 +65,20 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   )
   match selected_model {
     Some(model) => {
-      let messages = mooncode_runtime_turn_model_messages(
-        command, live_steering, remaining_steps,
+      let skill_catalog = mooncode_runtime_turn_skill_catalog(
+        mooncode_book_root(command),
       )
-      let request = if messages.length() == 2 {
-        mooncode_runtime_turn_model_plan_request(model.model_name, command)
-      } else {
-        mooncode_runtime_turn_model_plan_request_from_messages(
-          model.model_name,
-          messages,
-          tools=mooncode_runtime_turn_model_tools_for_command(command),
-        )
-      }
+      let messages = mooncode_runtime_turn_model_messages(
+        command,
+        live_steering,
+        remaining_steps,
+        skill_catalog~,
+      )
+      let request = mooncode_runtime_turn_model_plan_request_from_messages(
+        model.model_name,
+        messages,
+        tools=mooncode_runtime_turn_model_tools_for_command(command),
+      )
       let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
         error =>
           return mooncode_runtime_turn_failed_planner_result(
@@ -297,9 +299,9 @@ fn mooncode_runtime_turn_model_tools_for_command(
     return tools
   }
   if path != "" && mooncode_runtime_turn_read_needs_model(request) {
-    return [tools[0], tools[7]]
+    return [tools[0], tools[7], tools[10]]
   }
-  [tools[7]]
+  [tools[7], tools[10]]
 }
 
 ///|
@@ -786,11 +788,15 @@ fn mooncode_runtime_turn_horizon_finish_rejection_message(
 }
 
 ///|
-fn mooncode_runtime_turn_model_initial_messages(command : Json) -> Array[Json] {
+fn mooncode_runtime_turn_model_initial_messages(
+  command : Json,
+  skill_catalog? : String = "",
+) -> Array[Json] {
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Prefer semantic MoonBit discovery with moon_ide before broad source reads, and prefer moon_cmd/moon_check over raw shell for MoonBit validation. Use checkpoint/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch, spend at most two tool calls inspecting before the first mutation, and update the checkpoint whenever a milestone changes. Prefer one multi-file patch over serial exploration, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch.",
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Use checkpoint/read_skill/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. When a selected skill directs MoonBit work, prefer semantic discovery with moon_ide before broad source reads and prefer moon_cmd/moon_check over raw shell for validation. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch and update the checkpoint whenever a milestone changes. Gather enough evidence to distinguish plausible causes before mutating. Avoid repeating equivalent inspections of the same evidence; every additional diagnostic should distinguish competing causes or expose missing causal evidence. Prefer one cohesive multi-file patch when the evidence supports it, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. Do not infer environment-specific causality from a local pass: reproduce in the failing environment or expose the exact underlying error before claiming a fix. A shell pipeline used as evidence must enable pipefail, because its ordinary exit status reflects only the final stage. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. If the operator rejects a tool call, obey its rationale and do not retry the same action by rewriting or splitting the command. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch." +
+      skill_catalog,
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
   ]
@@ -801,6 +807,8 @@ fn mooncode_runtime_turn_model_followup_base_messages(
   command : Json,
   previous_plan : Json,
   tool_results : Array[Json],
+  all_tool_results? : Array[Json] = [],
+  skill_catalog? : String = "",
 ) -> Array[Json] {
   let checkpointed = tool_results.any(result => {
     mooncode_json_bool(result, "accepted", default=false) &&
@@ -813,7 +821,15 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     // An accepted checkpoint is the semantic compaction boundary. Before that
     // boundary, retain the actual planner transcript so file contents and
     // diagnostics survive more than one model call.
-    mooncode_runtime_turn_model_initial_messages(command)
+    let messages = mooncode_runtime_turn_model_initial_messages(
+      command,
+      skill_catalog~,
+    )
+    for
+      retained in mooncode_runtime_turn_loaded_skill_messages(all_tool_results) {
+      messages.push(retained)
+    }
+    messages
   }
 }
 
@@ -822,8 +838,12 @@ fn mooncode_runtime_turn_model_messages(
   command : Json,
   live_steering : Array[Json],
   remaining_steps : Int,
+  skill_catalog? : String = "",
 ) -> Array[Json] {
-  let messages = mooncode_runtime_turn_model_initial_messages(command)
+  let messages = mooncode_runtime_turn_model_initial_messages(
+    command,
+    skill_catalog~,
+  )
   for steering in live_steering {
     messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
   }
@@ -872,22 +892,7 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   "\nWeb search allowed: \{mooncode_command_web_search(command)}." +
   steering +
   capability_context +
-  mooncode_runtime_turn_language_grounding(command) +
   "\n\nChoose the smallest useful tool batch. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
-}
-
-///|
-fn mooncode_runtime_turn_language_grounding(command : Json) -> String {
-  let request = mooncode_runtime_turn_prompt_text(command)
-    .to_lower()
-    .to_string()
-  if !request.contains("moonbit") &&
-    !request.contains("moon check") &&
-    !request.contains("moon test") &&
-    !request.contains(".mbt") {
-    return ""
-  }
-  "\nMoonBit baseline: `moon.mod` uses current assignments such as `name = \"org/module\"`; module dependencies use an exact block such as `import { \"moonbitlang/x@0.4.46\", }`. Package imports and `supported_targets = \"native\"` belong in `moon.pkg`, not `moon.mod`. `Json` is a built-in type (do not alias `@json.Json`), while parsing is `@json.parse(text)` in a raising/try context without legacy bang syntax. Current entry-point syntax is `fn main { ... }`. A simple native sync CLI can import `moonbitlang/core/env`, `moonbitlang/x/fs` as `@fsx` (for `read_file_to_string`), and `moonbitlang/x/sys` (for `exit`) in `moon.pkg`, then use `@env.args()`. Use compiler diagnostics and MoonCode's moon tools; do not inspect SDK files outside the MoonBook."
 }
 
 ///|
@@ -1086,6 +1091,19 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
         "additionalProperties": false,
       },
     ),
+    mooncode_runtime_turn_model_tool(
+      "read_skill",
+      "Load the complete installed SKILL.md, or a referenced file inside that selected skill. Use path only after SKILL.md identifies the resource as relevant.",
+      {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+        },
+        "required": ["name"],
+        "additionalProperties": false,
+      },
+    ),
   ]
 }
 
@@ -1179,8 +1197,15 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       now~,
     )
   }
+  let skill_catalog = mooncode_runtime_turn_skill_catalog(
+    mooncode_book_root(command),
+  )
   let messages = mooncode_runtime_turn_model_followup_base_messages(
-    command, previous_plan, tool_results,
+    command,
+    previous_plan,
+    tool_results,
+    all_tool_results~,
+    skill_catalog~,
   )
   let prior_results : Array[Json] = []
   let prior_count = if all_tool_results.length() > tool_results.length() {
@@ -1210,6 +1235,12 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       )
     }
   }
+  let pipeline_warning = mooncode_runtime_turn_pipeline_evidence_warning(
+    tool_results,
+  )
+  if pipeline_warning != "" {
+    messages.push({ "role": "user", "content": pipeline_warning })
+  }
   let finish_rejection = mooncode_runtime_turn_horizon_finish_rejection_message(
     command, tool_calls, all_tool_results,
   )
@@ -1218,17 +1249,6 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   }
   for steering in live_steering {
     messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
-  }
-  if mooncode_runtime_turn_model_needs_coding_tools(
-      command,
-      mooncode_runtime_turn_prompt_text(command).to_lower().to_string(),
-    ) &&
-    all_tool_results.length() >= 2 &&
-    !mooncode_runtime_turn_has_net_mutation(all_tool_results) {
-    messages.push({
-      "role": "user",
-      "content": "Implementation recovery boundary: the two-call inspection budget is exhausted and no mutation has been recorded. Your next tool call must be a bounded write, edit, or apply_patch that advances the requested implementation. Use one multi-file patch when practical. Do not perform more discovery, create a generic scaffold, or initialize a nested repository. If a concrete external blocker truly prevents any edit, call finish and state that blocker precisely.",
-    })
   }
   let terminal_boundary = mooncode_runtime_turn_model_terminal_boundary_message(
     remaining_steps,
@@ -1300,6 +1320,25 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         now~,
       )
   }
+}
+
+///|
+fn mooncode_runtime_turn_pipeline_evidence_warning(
+  tool_results : Array[Json],
+) -> String {
+  for result in tool_results {
+    if mooncode_json_string(result, "tool", default="") != "shell" {
+      continue
+    }
+    let metadata = mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(result, "result"),
+      "metadata",
+    )
+    if mooncode_json_bool(metadata, "pipeline_exit_ambiguous", default=false) {
+      return "Evidence boundary: this shell pipeline did not enable pipefail, so its exit status reflects only the final pipeline stage and cannot prove that an upstream command succeeded. Do not rely on it, commit from it, or advance a checkpoint from it. Rerun the evidence command directly or with pipefail enabled."
+    }
+  }
+  ""
 }
 
 ///|
@@ -1468,7 +1507,9 @@ fn mooncode_runtime_turn_model_tool_result_message(
 fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
   let result = mooncode_json_object_field_or_empty(execution, "result")
   let text = result.stringify(indent=2)
-  if text.length() > 4000 {
+  if mooncode_json_string(execution, "tool", default="") == "read_skill" {
+    text
+  } else if text.length() > 4000 {
     text[:4000].to_owned() + "\n...[truncated for planner context]"
   } else {
     text

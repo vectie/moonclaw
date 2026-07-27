@@ -52,6 +52,36 @@ test "mooncode approval classifier gates hosted run reruns" {
       },
     }),
   )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git commit -m 'validated change'" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git -C . commit -m 'validated change'" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git commit-tree HEAD^{tree}" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "echo 'git commit -m only-prose'" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git status --short" },
+    }),
+  )
 }
 
 ///|
@@ -251,7 +281,51 @@ async test "mooncode rejected approval never executes the tool" (t : @test.Test)
     state="rejected",
     tool_call_id=mooncode_json_string(request, "tool_call_id", default=""),
     control_command_id="cmd-reject",
+    decision_reason="The proposed change lacks causal evidence.",
     now=@clock.Timestamp::from_ms(20L),
+  )
+  assert_eq(
+    mooncode_json_string(decision, "decision_reason", default=""),
+    "The proposed change lacks causal evidence.",
+  )
+  let rejected_execution = mooncode_runtime_rejected_tool_execution(
+    session_id,
+    book_root,
+    "cmd-rejection",
+    {
+      "tool": "write",
+      "arguments": { "path": "rejected.txt", "content": "no" },
+    },
+    decision,
+  )
+  assert_true(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(rejected_execution, "result"),
+      "output",
+      default="",
+    ).contains("lacks causal evidence"),
+  )
+  let resumed_message = mooncode_runtime_turn_model_tool_result_message(
+    {
+      "tool": "write",
+      "tool_call_id": mooncode_json_string(
+        request,
+        "tool_call_id",
+        default="rejected-tool",
+      ),
+    },
+    rejected_execution,
+  )
+  assert_true(
+    mooncode_json_string(resumed_message, "content", default="").contains(
+      "lacks causal evidence",
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      rejected_execution,
+    ),
   )
   ignore(
     mooncode_append_session_journal(

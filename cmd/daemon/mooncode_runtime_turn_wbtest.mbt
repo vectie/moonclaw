@@ -889,8 +889,9 @@ test "mooncode model planner sends a compact request envelope" {
   assert_true(prompt.length() < 1000)
 
   let chat_tools = mooncode_runtime_turn_model_tools_for_command(command)
-  assert_eq(chat_tools.length(), 1)
+  assert_eq(chat_tools.length(), 2)
   assert_true(chat_tools.to_json().stringify().contains("finish"))
+  assert_true(chat_tools.to_json().stringify().contains("read_skill"))
   assert_false(chat_tools.to_json().stringify().contains("moon_check"))
 
   let plan_request = mooncode_runtime_turn_model_plan_request(
@@ -906,7 +907,7 @@ test "mooncode model planner sends a compact request envelope" {
     "text": "Read README.md and summarize it.",
   }
   let summary_tools = mooncode_runtime_turn_model_tools_for_command(summary)
-  assert_eq(summary_tools.length(), 2)
+  assert_eq(summary_tools.length(), 3)
   let summary_json = summary_tools.to_json().stringify()
   assert_true(summary_json.contains("read"))
   assert_true(summary_json.contains("finish"))
@@ -916,24 +917,23 @@ test "mooncode model planner sends a compact request envelope" {
     "command": "prompt",
     "text": "Fix the parser and run tests.",
   }
-  assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 10)
-  assert_eq(
-    mooncode_runtime_turn_language_grounding({
-      "text": "Write a TypeScript file",
-    }),
-    "",
-  )
+  assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 11)
   let coding_with_path : Json = {
     "command": "prompt",
     "text": "Edit first. The scaffold has already been read. Overwrite tools/robot-design-validator/src/main.mbt with a substantive validator, then add tests, fixtures, and a README; run moon check and moon test before finishing. Implement the result; do not merely explain it.",
   }
   assert_eq(
     mooncode_runtime_turn_model_tools_for_command(coding_with_path).length(),
-    10,
+    11,
   )
-  let grounding = mooncode_runtime_turn_language_grounding(coding_with_path)
-  assert_true(grounding.contains("Json` is a built-in type"))
-  assert_true(grounding.contains("do not inspect SDK files"))
+  let initial = mooncode_runtime_turn_model_initial_messages(
+    coding_with_path,
+    skill_catalog="\n<available_skills><skill><name>moonbit-agent-guide</name></skill></available_skills>",
+  )
+  let system = mooncode_json_string(initial[0], "content", default="")
+  assert_true(system.contains("read_skill"))
+  assert_true(system.contains("moonbit-agent-guide"))
+  assert_false(system.contains("MoonBit baseline:"))
 
   let codex = @model.codex_oauth_model(
     access_token="test",
@@ -1025,11 +1025,31 @@ test "mooncode retains planner memory until an accepted checkpoint" {
         "result": { "message": "checkpoint recorded" },
       },
     ],
+    all_tool_results=[
+      {
+        "tool": "read_skill",
+        "accepted": true,
+        "result": {
+          "output": "complete retained skill instructions",
+          "metadata": {
+            "name": "fixture-review",
+            "path": "SKILL.md",
+            "location": "/installed/fixture-review/SKILL.md",
+          },
+        },
+      },
+    ],
+    skill_catalog="<available_skills />",
   )
-  assert_eq(compacted.length(), 2)
+  assert_eq(compacted.length(), 3)
   assert_false(
     mooncode_json_string(compacted[1], "content", default="").contains(
       "remembered plan inventory",
+    ),
+  )
+  assert_true(
+    mooncode_json_string(compacted[2], "content", default="").contains(
+      "complete retained skill instructions",
     ),
   )
 }
@@ -1848,6 +1868,28 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     mooncode_runtime_turn_model_transcript_has_mutation([transcript[0]]),
   )
   assert_true(!mooncode_runtime_turn_tool_calls_include_finish(calls))
+  assert_eq(
+    mooncode_runtime_turn_pipeline_evidence_warning([
+      {
+        "tool": "shell",
+        "arguments": { "cmd": "scripts/validate.sh full 2>&1 | tail -100" },
+        "result": { "metadata": { "pipeline_exit_ambiguous": true } },
+      },
+    ]).contains("cannot prove"),
+    true,
+  )
+  assert_eq(
+    mooncode_runtime_turn_pipeline_evidence_warning([
+      {
+        "tool": "shell",
+        "arguments": {
+          "cmd": "set -o pipefail; scripts/validate.sh full 2>&1 | tail -100",
+        },
+        "result": { "metadata": { "pipeline_exit_ambiguous": false } },
+      },
+    ]),
+    "",
+  )
   assert_true(
     mooncode_runtime_turn_tool_calls_include_finish([
       { "tool": "finish", "arguments": { "answer": "done" } },
@@ -1934,6 +1976,42 @@ test "mooncode native runtime turn builds model follow-up transcript" {
     mooncode_runtime_turn_stops_tool_batch(
       { "planner_mode": "explicit-tool-calls" },
       { "accepted": false },
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      {
+        "accepted": true,
+        "tool": "shell",
+        "result": { "metadata": { "approval_state": "rejected" } },
+      },
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      {
+        "accepted": false,
+        "tool": "shell",
+        "result": { "metadata": { "pipeline_exit_ambiguous": true } },
+      },
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      { "accepted": true, "tool": "read_skill", "result": {} },
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      {
+        "accepted": false,
+        "tool": "read_skill",
+        "result": { "is_error": true, "message": "installed skill not found" },
+      },
     ),
   )
 }
