@@ -151,75 +151,91 @@ if [[ -n "$evidence_file" ]]; then
   if [[ "$resume_only" == false || ! -e "$evidence_file" ]]; then
     : >"$evidence_file"
   elif [[ -s "$evidence_file" ]]; then
-    latest_sequence="$(
-      jq -rs '
-        [
-          .[]
-          | select(.type == "event")
-          | (.event.journal_sequence // 0)
-        ] | max // 0
-      ' "$evidence_file"
-    )"
-    command_sequence="$(
-      jq -rs \
+    evidence_state="$(
+      jq -nc \
         --arg command_id "$command_id" '
-          [
-            .[]
-            | select(.type == "event")
-            | .event
-            | select(
-                .command_id == $command_id
-                and .kind == "command.queued_for_runtime_turn"
-            )
-            | (.journal_sequence // 0)
-          ] | min // 0
-        ' "$evidence_file"
-    )"
-    approval="$(
-      jq -rcs \
-        --arg command_id "$command_id" '
-          [
-            .[]
-            | select(.type == "event")
-            | .event
-            | select(
-                (.target_command_id // .command_id // "") == $command_id
-                and (
-                  .kind == "tool.approval_requested"
-                  or .kind == "tool.approval_approved"
-                  or .kind == "tool.approval_rejected"
+          reduce inputs as $row (
+            {
+              latest_sequence: 0,
+              command_sequence: 0,
+              approval_sequence: 0,
+              approval: {},
+              terminal_sequence: 0,
+              terminal: {}
+            };
+            if ($row.type // "") != "event" then
+              .
+            else
+              ($row.event // {}) as $event
+              | ($event.journal_sequence // 0) as $sequence
+              | .latest_sequence = (
+                  if $sequence > .latest_sequence then
+                    $sequence
+                  else
+                    .latest_sequence
+                  end
                 )
-            )
-          ]
-          | sort_by(.journal_sequence // 0)
-          | last
-          | select(
-              .kind == "tool.approval_requested"
-              and (.state // "") == "pending"
-            ) // empty
+              | if (
+                  ($event.command_id // "") == $command_id
+                  and ($event.kind // "") == "command.queued_for_runtime_turn"
+                ) then
+                  .command_sequence = (
+                    if (
+                      .command_sequence == 0
+                      or $sequence < .command_sequence
+                    ) then
+                      $sequence
+                    else
+                      .command_sequence
+                    end
+                  )
+                else
+                  .
+                end
+              | if (
+                  ($event.target_command_id // $event.command_id // "") ==
+                  $command_id
+                  and (
+                    ($event.kind // "") == "tool.approval_requested"
+                    or ($event.kind // "") == "tool.approval_approved"
+                    or ($event.kind // "") == "tool.approval_rejected"
+                  )
+                  and $sequence >= .approval_sequence
+                ) then
+                  .approval_sequence = $sequence
+                  | .approval = $event
+                else
+                  .
+                end
+              | if (
+                  ($event.command_id // "") == $command_id
+                  and (
+                    ($event.kind // "") == "runtime.turn_finished"
+                    or ($event.kind // "") == "runtime.turn_cancelled"
+                    or ($event.kind // "") == "runtime.turn_invalid"
+                  )
+                  and $sequence >= .terminal_sequence
+                ) then
+                  .terminal_sequence = $sequence
+                  | .terminal = $event
+                else
+                  .
+                end
+            end
+          )
         ' "$evidence_file"
     )"
+    latest_sequence="$(jq -r '.latest_sequence' <<<"$evidence_state")"
+    command_sequence="$(jq -r '.command_sequence' <<<"$evidence_state")"
+    approval="$(jq -rc '
+      .approval
+      | select(
+          (.kind // "") == "tool.approval_requested"
+          and (.state // "") == "pending"
+        ) // empty
+    ' <<<"$evidence_state")"
     approval_id="$(jq -r '.approval_id // ""' <<<"$approval")"
-    terminal="$(
-      jq -rcs \
-        --arg command_id "$command_id" '
-          [
-            .[]
-            | select(.type == "event")
-            | .event
-            | select(
-                .command_id == $command_id
-                and (
-                  .kind == "runtime.turn_finished"
-                  or .kind == "runtime.turn_cancelled"
-                  or .kind == "runtime.turn_invalid"
-                )
-            )
-          ]
-          | sort_by(.journal_sequence // 0)
-          | last // empty
-        ' "$evidence_file"
-    )"
+    terminal="$(jq -rc '.terminal | select(length > 0) // empty' <<<"$evidence_state")"
     if [[ -n "$terminal" ]]; then
       case "$(jq -r '.kind // ""' <<<"$terminal")" in
         runtime.turn_finished)

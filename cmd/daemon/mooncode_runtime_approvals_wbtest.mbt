@@ -103,6 +103,53 @@ test "mooncode approval classifier gates hosted run reruns" {
 }
 
 ///|
+test "mooncode continuation stores one current planner transcript" {
+  let tool_call : Json = {
+    "tool": "write",
+    "arguments": { "path": "approved.txt", "content": "approved" },
+  }
+  let plan : Json = {
+    "kind": "mooncode-runtime-turn-planner",
+    "tool_calls": [tool_call],
+    "model_messages": [
+      { "role": "system", "content": "large reconstructible transcript" },
+    ],
+    "model_response_message": {
+      "role": "assistant",
+      "content": "selected write",
+    },
+  }
+  let approval_id = mooncode_runtime_tool_approval_id(
+    "cmd-compact",
+    tool_call,
+    occurrence=0,
+  )
+  let approval : Json = {
+    "approval_id": approval_id,
+    "target_command_id": "cmd-compact",
+  }
+  let checkpoint = mooncode_runtime_continuation_event(
+    "session-compact",
+    "cmd-compact",
+    plan,
+    [plan],
+    [],
+    [],
+    approval,
+    step_index=0,
+    tool_index=0,
+    now=@clock.Timestamp::from_ms(1L),
+  )
+  let stored_plan = mooncode_json_object_field_or_empty(checkpoint, "plan")
+  assert_true(stored_plan.stringify().contains("model_messages"))
+  assert_true(stored_plan.stringify().contains("model_response_message"))
+  let stored_steps = mooncode_json_array_items(checkpoint, "planner_steps")
+  assert_eq(stored_steps.length(), 1)
+  assert_false(stored_steps[0].stringify().contains("model_messages"))
+  assert_true(mooncode_runtime_continuation_is_active(checkpoint))
+}
+
+///|
 async fn mooncode_control_test_queue(
   book_root : String,
   session_id : String,

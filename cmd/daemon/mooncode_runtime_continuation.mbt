@@ -4,6 +4,25 @@ fn mooncode_runtime_continuation_kind() -> String {
 }
 
 ///|
+/// Checkpoints retain the current plan's transcript once so the first
+/// post-restart follow-up preserves model context. Historical planner steps
+/// need only their selected calls and response metadata; duplicating the same
+/// accumulated transcript in every step makes checkpoint records quadratic.
+fn mooncode_runtime_compact_plan(plan : Json) -> Json {
+  let compact : Map[String, Json] = {}
+  match plan {
+    Object(fields) =>
+      for key, value in fields.iter2() {
+        if key != "model_messages" {
+          compact[key] = value
+        }
+      }
+    _ => ()
+  }
+  Json::object(compact)
+}
+
+///|
 fn mooncode_runtime_continuation_event(
   session_id : String,
   command_id : String,
@@ -17,6 +36,10 @@ fn mooncode_runtime_continuation_event(
   now~ : @clock.Timestamp,
 ) -> Json {
   let approval_id = mooncode_json_string(approval, "approval_id", default="")
+  let compact_planner_steps : Array[Json] = []
+  for planner_step in planner_steps {
+    compact_planner_steps.push(mooncode_runtime_compact_plan(planner_step))
+  }
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-continuation-\{approval_id}",
     "protocol": mooncode_protocol_version(),
@@ -33,7 +56,7 @@ fn mooncode_runtime_continuation_event(
     "step_index": step_index,
     "tool_index": tool_index,
     "plan": plan,
-    "planner_steps": Json::array(planner_steps),
+    "planner_steps": Json::array(compact_planner_steps),
     "tool_results": Json::array(tool_results),
     "step_results": Json::array(step_results),
     "approval": approval,
