@@ -12,9 +12,11 @@ REQUEST.json is a normal POST /v1/code/sessions/{id}/turns body. The prompt is
 the source of task intent. Optional task_contract hints remain part of that
 request; this harness does not prescribe milestones, files, or tool calls.
 
-The harness submits the turn once, follows durable journal events without a
-task timeout, resumes the runtime service after a daemon interruption, and
-stops only for completion, failure, cancellation, or operator approval.
+The harness submits the worker turn once, follows durable journal events
+without a task timeout, resumes the runtime service after a daemon interruption,
+and stops only for worker completion, failure, cancellation, or operator
+approval. Worker completion is a candidate result; an independent observer must
+compare its evidence with the prompt contract before the task is accepted.
 
 Options:
   --url URL       MoonClaw daemon base URL
@@ -411,8 +413,11 @@ while true; do
 
   case "$target_status" in
     done)
-      printf 'MoonCode completed command %s: %s\n' "$command_id" "$target_detail"
-      finish_harness "completed" 0 "$target_detail"
+      printf 'MoonCode worker completed command %s: %s\n' "$command_id" "$target_detail"
+      if [[ -n "$evidence_file" ]]; then
+        printf 'observer audit required before accepting the task result\n'
+      fi
+      finish_harness "worker_completed" 0 "$target_detail"
       ;;
     failed)
       printf 'MoonCode failed command %s: %s\n' "$command_id" "$target_detail" >&2

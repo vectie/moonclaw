@@ -717,7 +717,9 @@ command-related events, service lifecycle, checkpoints, tool results, and a
 terminal harness summary for a separate read-only observer. The observer
 receives that evidence and the repository through its prompt-defined contract;
 the harness does not encode product phases or let observer opinions steer or
-cancel the worker.
+cancel the worker. A successful worker exit is explicitly a candidate result,
+not contract acceptance: the task closes only after the independent observer
+compares the evidence and resulting repository state with the original prompt.
 
 ### `POST /v1/task/{id}/publish`
 
