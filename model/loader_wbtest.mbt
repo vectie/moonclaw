@@ -158,6 +158,11 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
                 "name": "qwen3.5-plus",
                 "contextWindow": 1000000,
               },
+              {
+                "id": "openai/gpt-5.6-sol",
+                "name": "openai/gpt-5.6-sol",
+                "contextWindow": 400000,
+              },
             ],
           },
         },
@@ -183,6 +188,9 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
         "supports_apply_patch": false,
       },
     ])
+    let nested = loader.get_model(name="bailian/openai/gpt-5.6-sol").unwrap()
+    assert_eq(nested.selector(), "bailian/openai/gpt-5.6-sol")
+    assert_eq(nested.model_name, "openai/gpt-5.6-sol")
   })
 }
 
@@ -199,6 +207,15 @@ test "model loader paths use MoonSuite product home" {
 }
 
 ///|
+test "provider selectors preserve model ids containing slashes" {
+  assert_eq(
+    split_provider_model_selector("moongate/openai/gpt-5.6-sol"),
+    (Some("moongate"), "openai/gpt-5.6-sol"),
+  )
+  assert_eq(split_provider_model_selector("gpt-5.6-sol"), (None, "gpt-5.6-sol"))
+}
+
+///|
 test "moongate catalog models become OpenAI-compatible routed models" {
   let catalog : Json = {
     "models": [
@@ -212,7 +229,8 @@ test "moongate catalog models become OpenAI-compatible routed models" {
     "http://127.0.0.1:15721/openclaw/v1",
     models[0],
   )
-  assert_eq(model.name, "gpt-5.6-sol")
+  assert_eq(model.name, "moongate/gpt-5.6-sol")
+  assert_eq(model.selector(), "moongate/gpt-5.6-sol")
   assert_eq(model.model_name, "gpt-5.6-sol")
   assert_eq(model.base_url, "http://127.0.0.1:15721/openclaw/v1")
   assert_eq(model.safe_zone_tokens, 400000)
@@ -406,7 +424,7 @@ async test "unreachable MoonGate status never becomes a selectable model" (
     let loader = Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
     let models = loader.models()
     assert_false(models.any(fn(model) { model.name == "phantom-gpt" }))
-    assert_true(loader.get_model(name="phantom-gpt") is None)
+    assert_true(loader.get_model(name="moongate/phantom-gpt") is None)
   })
 }
 

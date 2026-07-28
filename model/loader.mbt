@@ -334,15 +334,20 @@ async fn Loader::load_kimi_coding_api_key(self : Loader) -> String? {
 }
 
 ///|
-async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
-  let (target_provider, model_id) = if name.contains("/") {
+fn split_provider_model_selector(name : String) -> (String?, String) {
+  if name.contains("/") {
     let parts = name.split("/").to_array()
     let provider_name = parts.get(0).unwrap_or("").to_owned()
-    let id = parts.get(1).unwrap_or(name).to_owned()
+    let id = parts[1:].join("/")
     (Some(provider_name), id)
   } else {
     (None, name)
   }
+}
+
+///|
+async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
+  let (target_provider, model_id) = split_provider_model_selector(name)
   for provider_name, config in self.providers {
     if target_provider is Some(target) && provider_name != target {
       continue
@@ -430,12 +435,12 @@ fn model_from_moongate_catalog(
   base_url : String,
   catalog_model : @moongate.MoonGateModel,
 ) -> Model {
-  let name = catalog_model.id()
+  let model_name = catalog_model.id()
   Model::new(
     api_key="",
     base_url~,
-    name~,
-    model_name=name,
+    name="moongate/\{model_name}",
+    model_name~,
     model_type=SaaS(OpenAI),
     safe_zone_tokens=catalog_model.context_window().unwrap_or(128_000),
     description="Routed through the active MoonGate service",
@@ -444,6 +449,8 @@ fn model_from_moongate_catalog(
 
 ///|
 async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
+  guard name.strip_prefix("moongate/") is Some(requested) else { return None }
+  let requested_model = requested.to_owned()
   let discovered = @moongate.discover_from_suite_status_for_workspace_root(
     self.cwd.to_owned(),
   )
@@ -463,8 +470,10 @@ async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
     }
   }
   for catalog_model in catalog {
-    if catalog_model.id() == name {
-      logger.info("Loaded model '\{name}' from active MoonGate catalog")
+    if catalog_model.id() == requested_model {
+      logger.info(
+        "Loaded model '\{requested_model}' from active MoonGate catalog",
+      )
       return Some(
         model_from_moongate_catalog(
           client.base_url() + "/openclaw/v1",

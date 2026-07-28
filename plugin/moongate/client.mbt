@@ -169,8 +169,13 @@ pub async fn Client::stats(self : Client) -> Result[Json, String] {
 }
 
 ///|
+fn Client::models_path(_self : Client) -> String {
+  "/openclaw/v1/models"
+}
+
+///|
 pub async fn Client::models(self : Client) -> Result[Json, String] {
-  self.get("/v1/models")
+  self.get(self.models_path())
 }
 
 ///|
