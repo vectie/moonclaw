@@ -138,6 +138,12 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     default="",
   )
   assert_true(commit_sha.length() >= 7)
+  let commit_tree = mooncode_json_string(
+    commit_results[0],
+    "commit_tree",
+    default="",
+  )
+  assert_true(commit_tree.length() >= 7)
   assert_eq(
     mooncode_json_string(commit_results[0], "commit_message", default=""),
     "MoonCode test commit",
@@ -202,4 +208,111 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   assert_false(committed_output.contains(".moonsuite/"))
   let after = mooncode_json_object_field_or_empty(result, "claim_state")
   assert_true(after.stringify().contains("\"delivered_command_count\":1"))
+}
+
+///|
+test "commit event reports durable creation when exact sealing fails" {
+  let command : Json = {
+    "book_root": ".",
+    "packet": { "command_id": "commit-unsealed" },
+  }
+  let result = mooncode_runtime_turn_commit_result(
+    "session-unsealed",
+    ".",
+    command,
+    accepted=false,
+    created=true,
+    message="commit",
+    status_before="M tracked.txt\n",
+    commit_sha="0123456789abcdef",
+    commit_tree="fedcba9876543210",
+    status_after="?? later.txt\n",
+    detail="commit created but exact seal failed",
+    output="",
+    now=@clock.Timestamp::from_ms(9L),
+  )
+  assert_eq(mooncode_json_string(result, "event", default=""), "commit_created")
+  assert_true(mooncode_json_bool(result, "commit_created", default=false))
+  assert_false(mooncode_json_bool(result, "accepted", default=true))
+  let event = mooncode_runtime_turn_commit_event(
+    "session-unsealed",
+    "commit-unsealed",
+    command,
+    result,
+    now=@clock.Timestamp::from_ms(10L),
+  )
+  assert_eq(
+    mooncode_json_string(event, "kind", default=""),
+    "runtime.commit_created",
+  )
+  assert_eq(mooncode_json_string(event, "status", default=""), "failed")
+}
+
+///|
+async test "commit execution reports created when post-commit hook prevents exact seal" {
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-commit-unsealed-XXXXXX"),
+  )
+  let setup_args : Array[Array[StringView]] = [
+    ["init", "-q"],
+    ["config", "user.name", "MoonClaw Test"],
+    ["config", "user.email", "moonclaw-test@local"],
+  ]
+  for args in setup_args {
+    assert_true(
+      mooncode_json_bool(
+        mooncode_runtime_turn_git(
+          book_root,
+          args,
+          timeout_ms=10000,
+          max_output_chars=4000,
+        ),
+        "ok",
+        default=false,
+      ),
+    )
+  }
+  @fsx.write_to_file(@pathx.join(book_root, "tracked.txt"), "commit me\n")
+  let hook = @pathx.join(book_root, ".git/hooks/post-commit")
+  @fsx.write_to_file(hook, "#!/bin/sh\nprintf 'later\\n' > later.txt\n")
+  let chmod = @spawn.spawn("chmod", ["+x", hook], timeout=10000, cwd=book_root)
+  assert_eq(chmod.status, 0)
+  let command : Json = {
+    "book_root": book_root,
+    "packet": {
+      "command_id": "commit-hook-unsealed",
+      "payload": { "commit_message": "commit with dirty hook" },
+    },
+    "payload": { "commit_message": "commit with dirty hook" },
+  }
+  let results = mooncode_runtime_turn_commit_results(
+    "session-hook-unsealed",
+    book_root,
+    command,
+    now=@clock.Timestamp::from_ms(11L),
+  )
+  assert_eq(results.length(), 1)
+  assert_true(mooncode_json_bool(results[0], "commit_created", default=false))
+  assert_eq(
+    mooncode_json_string(results[0], "event", default=""),
+    "commit_created",
+  )
+  assert_false(mooncode_json_bool(results[0], "accepted", default=true))
+  assert_true(
+    mooncode_json_string(results[0], "status_after", default="").contains(
+      "later.txt",
+    ),
+  )
+  assert_true(@fsx.exists(@pathx.join(book_root, "later.txt")))
+  let event = mooncode_runtime_turn_commit_event(
+    "session-hook-unsealed",
+    "commit-hook-unsealed",
+    command,
+    results[0],
+    now=@clock.Timestamp::from_ms(12L),
+  )
+  assert_eq(
+    mooncode_json_string(event, "kind", default=""),
+    "runtime.commit_created",
+  )
 }

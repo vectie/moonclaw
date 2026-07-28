@@ -177,8 +177,88 @@ fn mooncode_shell_has_git_subcommand(
 }
 
 ///|
+fn mooncode_shell_segment_has_git_commit(segment : Array[String]) -> Bool {
+  if mooncode_shell_segment_has_git_subcommand(segment, ["commit"]) {
+    return true
+  }
+  let executable_index = mooncode_shell_segment_executable_index(segment)
+  if executable_index < 0 {
+    return false
+  }
+  let executable = segment[executable_index]
+  if !mooncode_shell_executable_is(executable, "sh") &&
+    !mooncode_shell_executable_is(executable, "bash") &&
+    !mooncode_shell_executable_is(executable, "zsh") {
+    return false
+  }
+  let nested_index = mooncode_shell_nested_command_index(
+    segment, executable_index,
+  )
+  nested_index >= 0 && mooncode_shell_has_git_commit(segment[nested_index])
+}
+
+///|
 fn mooncode_shell_has_git_commit(command : String) -> Bool {
-  mooncode_shell_has_git_subcommand(command, ["commit"])
+  let segment : Array[String] = []
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if mooncode_shell_segment_has_git_commit(segment) {
+        return true
+      }
+      segment.clear()
+    } else {
+      segment.push(word)
+    }
+  }
+  mooncode_shell_segment_has_git_commit(segment)
+}
+
+///|
+fn mooncode_shell_git_commit_is_terminal(command : String) -> Bool {
+  let segment : Array[String] = []
+  let mut commit_seen = false
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if !segment.is_empty() {
+        if commit_seen {
+          return false
+        }
+        if mooncode_shell_segment_has_git_subcommand(segment, ["commit"]) {
+          commit_seen = true
+        }
+        segment.clear()
+      }
+    } else {
+      segment.push(word)
+    }
+  }
+  if !segment.is_empty() {
+    if commit_seen {
+      return false
+    }
+    if mooncode_shell_segment_has_git_subcommand(segment, ["commit"]) {
+      commit_seen = true
+    }
+  }
+  commit_seen
+}
+
+///|
+fn mooncode_shell_has_git_workspace_mutation(command : String) -> Bool {
+  mooncode_shell_has_git_subcommand(command, [
+    "add", "am", "apply", "branch", "checkout", "cherry-pick", "clean", "commit",
+    "config", "init", "merge", "mv", "rebase", "reset", "restore", "revert", "rm",
+    "stash", "switch", "tag",
+  ])
+}
+
+///|
+fn mooncode_shell_has_workspace_mutation(command : String) -> Bool {
+  mooncode_shell_has_file_output_redirection(command) ||
+  mooncode_shell_has_in_place_authoring(command) ||
+  mooncode_shell_has_git_workspace_mutation(command) ||
+  mooncode_shell_has_clean_dependency_install(command) ||
+  mooncode_shell_has_sensitive_command(command)
 }
 
 ///|

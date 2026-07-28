@@ -36,10 +36,15 @@ async fn Daemon::mooncode_tool_execute(
       },
     })
   }
-  let execution = mooncode_execute_tool_call(
+  let command_id = mooncode_tool_command_id(body)
+  let prior_results = mooncode_tool_prior_command_results(
+    book_root, session_id, command_id,
+  )
+  let execution = mooncode_execute_guarded_tool_call(
     session_id,
     book_root,
     body,
+    prior_results,
     now=self.clock.now(),
   )
   let event = mooncode_json_object_field_or_empty(execution, "event")
@@ -60,6 +65,51 @@ async fn Daemon::mooncode_tool_execute(
   w.header().set("Content-Type", "application/json")
   w.write_header(202, reason="Accepted")
   w.write(execution.stringify(indent=2))
+}
+
+///|
+async fn mooncode_tool_prior_command_results(
+  book_root : String,
+  session_id : String,
+  command_id : String,
+) -> Array[Json] {
+  let prior_results : Array[Json] = []
+  for
+    event in mooncode_journal_entries(
+      mooncode_read_session_journal(book_root, session_id),
+      mooncode_journal_event(),
+    ) {
+    if mooncode_json_string(event, "command_id", default="") == command_id {
+      prior_results.push(event)
+    }
+  }
+  prior_results
+}
+
+///|
+async fn mooncode_execute_guarded_tool_call(
+  session_id : String,
+  book_root : String,
+  body : Json,
+  prior_results : Array[Json],
+  now~ : @clock.Timestamp,
+) -> Json {
+  let command_id = mooncode_tool_command_id(body)
+  let post_commit_guard = mooncode_runtime_post_commit_guard(
+    book_root, body, prior_results,
+  )
+  if mooncode_json_bool(post_commit_guard, "allowed", default=false) {
+    mooncode_execute_tool_call(session_id, book_root, body, now~)
+  } else {
+    mooncode_runtime_post_commit_rejected_execution(
+      session_id,
+      book_root,
+      command_id,
+      body,
+      post_commit_guard,
+      now~,
+    )
+  }
 }
 
 ///|
@@ -114,7 +164,7 @@ async fn mooncode_execute_tool_call(
   let tool = mooncode_tool_name(body)
   let command_id = mooncode_tool_command_id(body)
   let arguments = mooncode_json_object_field_or_empty(body, "arguments")
-  let result = match tool {
+  let raw_result = match tool {
     "read" => mooncode_tool_read(book_root, arguments)
     "read_skill" => mooncode_tool_read_skill(book_root, arguments)
     "write" => mooncode_tool_write(book_root, arguments)
@@ -133,6 +183,9 @@ async fn mooncode_execute_tool_call(
         message="unsupported MoonCode tool `\{tool}`",
       )
   }
+  let result = mooncode_runtime_post_commit_capture(
+    book_root, tool, arguments, raw_result,
+  )
   let event = mooncode_tool_result_event(
     session_id,
     book_root,

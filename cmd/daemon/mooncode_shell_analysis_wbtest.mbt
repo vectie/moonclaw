@@ -8,9 +8,52 @@ test "mooncode shell detects semantic git commit commands" {
   assert_true(
     mooncode_shell_has_git_commit("env GIT_AUTHOR_NAME=test git commit -m ok"),
   )
+  assert_true(
+    mooncode_shell_has_git_commit(
+      "sh -c 'git add tracked.txt && git commit -m sealed && touch later.txt'",
+    ),
+  )
   assert_false(mooncode_shell_has_git_commit("git commit-tree HEAD^{tree}"))
   assert_false(mooncode_shell_has_git_commit("echo 'git commit -m nope'"))
   assert_false(mooncode_shell_has_git_commit("git status --short"))
+  assert_true(
+    mooncode_shell_git_commit_is_terminal(
+      "git add tracked.txt && git commit -m validated",
+    ),
+  )
+  assert_false(
+    mooncode_shell_git_commit_is_terminal(
+      "git commit -m validated && git status --short",
+    ),
+  )
+  assert_false(
+    mooncode_shell_git_commit_is_terminal(
+      "git commit -m validated && touch later.txt",
+    ),
+  )
+  assert_false(
+    mooncode_shell_git_commit_is_terminal(
+      "sh -c 'git commit -m validated && touch later.txt'",
+    ),
+  )
+}
+
+///|
+test "mooncode shell classifies post-commit workspace mutations without blocking verification" {
+  for
+    command in [
+      "git add src/main.mbt", "git reset --hard HEAD^", "git checkout -- src/main.mbt",
+      "git commit -m next", "npm ci", "sed -i.bak 's/a/b/' src/main.mbt", "printf changed > src/main.mbt",
+    ] {
+    assert_true(mooncode_shell_has_workspace_mutation(command))
+  }
+  for
+    command in [
+      "git status --short", "git diff --check", "git show --stat HEAD", "moon check --target all",
+      "moon test cmd/daemon",
+    ] {
+    assert_false(mooncode_shell_has_workspace_mutation(command))
+  }
 }
 
 ///|

@@ -545,9 +545,25 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               ),
             )
           }
+          let post_commit_guard = mooncode_runtime_post_commit_guard(
+            book_root, tool_call, tool_results,
+          )
           let execution = if approval_state == "rejected" {
             mooncode_runtime_rejected_tool_execution(
               session_id, book_root, command_id, tool_call, approval,
+            )
+          } else if !mooncode_json_bool(
+              post_commit_guard,
+              "allowed",
+              default=false,
+            ) {
+            mooncode_runtime_post_commit_rejected_execution(
+              session_id,
+              book_root,
+              command_id,
+              tool_call,
+              post_commit_guard,
+              now=self.clock.now(),
             )
           } else if mooncode_runtime_turn_comment_only_repair(
               command, tool_call,

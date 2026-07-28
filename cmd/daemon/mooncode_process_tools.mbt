@@ -4,6 +4,13 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   if cmd == "" {
     return mooncode_tool_error_result("shell", message="cmd must be non-empty")
   }
+  if mooncode_shell_has_git_commit(cmd) &&
+    !mooncode_shell_git_commit_is_terminal(cmd) {
+    return mooncode_tool_error_result(
+      "shell",
+      message="git commit must be the terminal command in a shell tool call so the runtime can seal the exact committed state",
+    )
+  }
   if mooncode_shell_has_file_output_redirection(cmd) {
     return mooncode_tool_error_result(
       "shell",

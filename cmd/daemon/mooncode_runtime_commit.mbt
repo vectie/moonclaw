@@ -114,6 +114,7 @@ async fn mooncode_runtime_turn_commit_results(
         book_root,
         command,
         accepted=false,
+        created=true,
         message~,
         status_before~,
         commit_sha="",
@@ -130,16 +131,40 @@ async fn mooncode_runtime_turn_commit_results(
   let committed_paths = mooncode_runtime_commit_changed_paths(
     book_root, commit_sha,
   )
+  let snapshot = mooncode_runtime_post_commit_snapshot(book_root)
+  let commit_tree = mooncode_json_string(snapshot, "commit_tree", default="")
+  if !mooncode_json_bool(snapshot, "valid", default=false) {
+    return [
+      mooncode_runtime_turn_commit_result(
+        session_id,
+        book_root,
+        command,
+        accepted=false,
+        created=true,
+        message~,
+        status_before~,
+        commit_sha~,
+        commit_tree~,
+        status_after=mooncode_json_string(snapshot, "status", default=""),
+        detail="git commit succeeded, but the exact committed tree and clean product worktree could not be sealed",
+        output=mooncode_json_string(commit, "output", default=""),
+        now~,
+      ),
+    ]
+  }
   [
     mooncode_runtime_turn_commit_result(
       session_id,
       book_root,
       command,
       accepted=true,
+      created=true,
       message~,
       status_before~,
       commit_sha~,
       changed_paths=committed_paths,
+      commit_tree~,
+      status_after="",
       detail="MoonClaw created a book-local git commit for the accepted MoonCode changes.",
       output=mooncode_json_string(commit, "output", default=""),
       now~,
@@ -219,10 +244,13 @@ fn mooncode_runtime_turn_commit_result(
   book_root : String,
   command : Json,
   accepted~ : Bool,
+  created? : Bool = false,
   message~ : String,
   status_before~ : String,
   commit_sha~ : String,
   changed_paths? : Array[String] = [],
+  commit_tree? : String = "",
+  status_after? : String = "",
   detail~ : String,
   output~ : String,
   now~ : @clock.Timestamp,
@@ -230,20 +258,23 @@ fn mooncode_runtime_turn_commit_result(
   {
     "kind": "mooncode-commit-result",
     "protocol": mooncode_protocol_version(),
-    "event": if accepted {
+    "event": if created {
       "commit_created"
     } else {
       "commit_failed"
     },
     "accepted": accepted,
+    "commit_created": created,
     "session_id": session_id,
     "book_root": book_root,
     "command_id": mooncode_command_id(command),
     "horizon_id": mooncode_runtime_horizon_explicit_id(command),
     "commit_sha": commit_sha,
+    "commit_tree": commit_tree,
     "commit_message": message,
     "status_before": status_before,
     "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
+    "status_after": status_after,
     "detail": detail,
     "output": output,
     "created_at": now,
@@ -267,9 +298,19 @@ fn mooncode_runtime_turn_commit_event(
   now~ : @clock.Timestamp,
 ) -> Json {
   let accepted = mooncode_json_bool(commit_result, "accepted", default=false)
+  let created = mooncode_json_bool(
+    commit_result,
+    "commit_created",
+    default=accepted,
+  )
   let commit_sha = mooncode_json_string(commit_result, "commit_sha", default="")
   let changed_paths = mooncode_json_array_string_items(
     commit_result, "changed_paths",
+  )
+  let commit_tree = mooncode_json_string(
+    commit_result,
+    "commit_tree",
+    default="",
   )
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-commit-\{now}",
@@ -279,18 +320,20 @@ fn mooncode_runtime_turn_commit_event(
     "command_id": command_id,
     "horizon_id": mooncode_runtime_horizon_explicit_id(command),
     "lane": "review",
-    "kind": if accepted {
+    "kind": if created {
       "runtime.commit_created"
     } else {
       "runtime.commit_failed"
     },
-    "event": if accepted {
+    "event": if created {
       "commit_created"
     } else {
       "commit_failed"
     },
     "title": if accepted {
       "MoonCode git commit created"
+    } else if created {
+      "MoonCode git commit created without an exact seal"
     } else {
       "MoonCode git commit failed"
     },
@@ -301,6 +344,7 @@ fn mooncode_runtime_turn_commit_event(
     },
     "detail": mooncode_json_string(commit_result, "detail", default=""),
     "commit_sha": commit_sha,
+    "commit_tree": commit_tree,
     "commit_message": mooncode_json_string(
       commit_result,
       "commit_message",
@@ -312,6 +356,11 @@ fn mooncode_runtime_turn_commit_event(
       default="",
     ),
     "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
+    "status_after": mooncode_json_string(
+      commit_result,
+      "status_after",
+      default="",
+    ),
     "commit_result": commit_result,
     "command": "commit",
     "command_packet": mooncode_json_object_field_or_empty(command, "packet"),
