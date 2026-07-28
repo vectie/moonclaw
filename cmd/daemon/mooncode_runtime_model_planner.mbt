@@ -935,7 +935,15 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     // inventory used to reach that milestone. Keep the actual transcript so a
     // long-horizon task continues from retained reasoning instead of repeating
     // discovery after every checkpoint.
-    previous
+    // Build the follow-up transcript without mutating the durable prior plan.
+    // A resumed patient-replan checkpoint stores `plan` and `planner_steps`
+    // separately after journal decoding; mutating only `plan.model_messages`
+    // would make the next continuation fail its integrity check.
+    let messages : Array[Json] = []
+    for message in previous {
+      messages.push(message)
+    }
+    messages
   } else {
     let messages = mooncode_runtime_turn_model_initial_messages(
       command,
@@ -1464,6 +1472,7 @@ fn mooncode_runtime_turn_model_followup_messages(
   all_tool_results : Array[Json],
   live_steering : Array[Json],
   remaining_steps : Int,
+  patient_replan_guidance? : String = "",
   skill_catalog? : String = "",
 ) -> Array[Json] {
   let messages = mooncode_runtime_turn_model_followup_base_messages(
@@ -1516,6 +1525,9 @@ fn mooncode_runtime_turn_model_followup_messages(
   if mooncode_runtime_turn_model_message_present(evidence_ledger) {
     messages.push(evidence_ledger)
   }
+  if patient_replan_guidance != "" {
+    messages.push({ "role": "user", "content": patient_replan_guidance })
+  }
   for steering in live_steering {
     messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
   }
@@ -1532,6 +1544,7 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   all_tool_results : Array[Json],
   live_steering? : Array[Json] = [],
   remaining_steps? : Int = -1,
+  patient_replan_guidance? : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   let model_name = mooncode_json_string(previous_plan, "model", default="")
@@ -1571,6 +1584,7 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
     all_tool_results,
     live_steering,
     remaining_steps,
+    patient_replan_guidance~,
     skill_catalog~,
   )
   ignore(remaining_steps)
@@ -1598,6 +1612,32 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         response_json,
       )
       if next_tool_calls.length() == 0 {
+        if mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(
+            command, all_tool_results,
+          ) {
+          let guidance = "The previous follow-up produced no usable MoonCode tool call while the retained checkpoint still has active or pending milestones. Continue the same claimed task from retained evidence now: choose one causally relevant supported tool call. Do not summarize, abandon, or call finish until the active milestone is repaired or completed and an all-done checkpoint is accepted."
+          let replanning = mooncode_event(
+            session_id~,
+            command_id~,
+            lane="runtime",
+            kind="runtime.planner_replan_requested",
+            title="MoonCode model planner retained unfinished work",
+            status="paused",
+            detail="MoonClaw retained the claimed command and will ask the model to replan because its accepted checkpoint is unfinished.",
+            now~,
+          )
+          return {
+            "kind": mooncode_kind_runtime_turn_planner(),
+            "protocol": mooncode_protocol_version(),
+            "planner_mode": mooncode_planner_mode_model_tool_calls(),
+            "patient_replan": true,
+            "model": model_name,
+            "tool_calls": Json::array([]),
+            "events": Json::array([started, replanning]),
+            "message": "model planner follow-up returned no usable MoonCode tool calls while retained milestones remain unfinished",
+            "patient_replan_guidance": guidance,
+          }
+        }
         return mooncode_runtime_turn_failed_planner_result(
           command,
           model_name,

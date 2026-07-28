@@ -968,11 +968,10 @@ test "mooncode long-horizon loop compacts reference appendices and proves every 
   assert_true(progress_text.contains("Planner opportunities remaining: 3"))
   assert_true(progress_text.contains("Do not rediscover completed milestones"))
   assert_true(progress_text.length() < 16000)
-  let unbounded = mooncode_runtime_horizon_progress_message(
-    command, results, -1,
-  )
+  let unbounded = mooncode_runtime_horizon_progress_message(command, results, 0)
   let unbounded_text = mooncode_json_string(unbounded, "content", default="")
   assert_true(unbounded_text.contains("milestone-driven"))
+  assert_false(unbounded_text.contains("opportunities remaining"))
   assert_true(
     unbounded_text.contains(
       "task-contract context_paths remain authoritative starting points",

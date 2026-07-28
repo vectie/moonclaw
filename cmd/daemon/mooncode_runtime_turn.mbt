@@ -184,9 +184,13 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   let resuming_planner_transport = mooncode_runtime_planner_transport_continuation_is_active(
     continuation,
   )
+  let resuming_planner_replan = mooncode_runtime_planner_replan_continuation_is_active(
+    continuation,
+  )
   let resuming_continuation = resuming_approval ||
     resuming_planner ||
-    resuming_planner_transport
+    resuming_planner_transport ||
+    resuming_planner_replan
   if mooncode_json_string(continuation, "command_id", default="") != "" &&
     !resuming_continuation {
     raise InvalidJournal(
@@ -308,6 +312,20 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       } else {
         []
       }
+      let retained_replan_guidance = if resuming_planner_replan {
+        mooncode_json_string(
+          continuation,
+          "patient_replan_guidance",
+          default="",
+        )
+      } else {
+        ""
+      }
+      let retained_replan_count = if resuming_planner_replan {
+        mooncode_json_int(continuation, "replan_count", default=0)
+      } else {
+        0
+      }
       let mut plan = if resuming_approval {
         mooncode_json_object_field_or_empty(continuation, "plan")
       } else if resuming_planner {
@@ -351,6 +369,20 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             now=plan_now,
           )
         }
+      } else if resuming_planner_replan {
+        let previous_plan = mooncode_json_object_field_or_empty(
+          continuation, "plan",
+        )
+        self.mooncode_runtime_turn_model_followup_plan(
+          command,
+          previous_plan,
+          mooncode_json_array_items(previous_plan, "tool_calls"),
+          mooncode_json_array_items(continuation, "step_results"),
+          mooncode_json_array_items(continuation, "tool_results"),
+          remaining_steps=max_model_steps,
+          patient_replan_guidance=retained_replan_guidance,
+          now=plan_now,
+        )
       } else {
         self.mooncode_runtime_turn_plan_tool_calls(
           command,
@@ -417,7 +449,9 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       }
       let resume_step_index = if resuming_approval {
         mooncode_json_int(continuation, "step_index", default=0)
-      } else if resuming_planner || resuming_planner_transport {
+      } else if resuming_planner ||
+        resuming_planner_transport ||
+        resuming_planner_replan {
         mooncode_json_int(continuation, "next_step_index", default=0)
       } else {
         0
@@ -493,6 +527,42 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           planner_paused = true
           planner_pause_reason = "planner-transport-interrupted"
           next_step_index = step_index
+          break
+        }
+        if mooncode_json_bool(plan, "patient_replan", default=false) {
+          for event in mooncode_json_array_items(plan, "events") {
+            self.mooncode_runtime_turn_record_event(
+              binding, events, persisted_event_ids, event,
+            )
+          }
+          let guidance = mooncode_json_string(
+            plan,
+            "patient_replan_guidance",
+            default="",
+          )
+          let retained_plan = mooncode_json_object_field_or_empty(
+            continuation, "plan",
+          )
+          self.mooncode_runtime_turn_record_event(
+            binding,
+            events,
+            persisted_event_ids,
+            mooncode_runtime_planner_replan_continuation_event(
+              session_id,
+              command_id,
+              retained_plan,
+              planner_steps,
+              tool_results,
+              mooncode_json_array_items(continuation, "step_results"),
+              next_step_index=resume_step_index,
+              replan_count=retained_replan_count + 1,
+              guidance~,
+              now=self.clock.now(),
+            ),
+          )
+          planner_paused = true
+          planner_pause_reason = "planner-empty-followup"
+          next_step_index = resume_step_index
           break
         }
         if !resuming_step {
@@ -892,6 +962,39 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           next_step_index = step_index + 1
           break
         }
+        if mooncode_json_bool(next_plan, "patient_replan", default=false) {
+          for event in mooncode_json_array_items(next_plan, "events") {
+            self.mooncode_runtime_turn_record_event(
+              binding, events, persisted_event_ids, event,
+            )
+          }
+          let guidance = mooncode_json_string(
+            next_plan,
+            "patient_replan_guidance",
+            default="",
+          )
+          self.mooncode_runtime_turn_record_event(
+            binding,
+            events,
+            persisted_event_ids,
+            mooncode_runtime_planner_replan_continuation_event(
+              session_id,
+              command_id,
+              plan,
+              planner_steps,
+              tool_results,
+              step_results,
+              next_step_index=step_index + 1,
+              replan_count=retained_replan_count + 1,
+              guidance~,
+              now=self.clock.now(),
+            ),
+          )
+          planner_paused = true
+          planner_pause_reason = "planner-empty-followup"
+          next_step_index = step_index + 1
+          break
+        }
         next_plan = mooncode_runtime_turn_recovery_plan(next_plan, tool_results)
         let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
         if next_calls.length() == 0 {
@@ -1113,6 +1216,8 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           } else if planner_paused {
             if planner_pause_reason == "planner-transport-interrupted" {
               "MoonClaw retained the claimed command after a transient planner transport close; the runtime service will resume from its durable checkpoint"
+            } else if planner_pause_reason == "planner-empty-followup" {
+              "MoonClaw retained the claimed command because its accepted checkpoint is unfinished; the runtime service will ask the model to replan without a retry ceiling"
             } else {
               "MoonClaw paused after one model-planner quantum; the command remains claimed for durable continuation"
             }

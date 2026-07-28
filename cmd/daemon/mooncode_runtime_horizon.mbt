@@ -636,6 +636,21 @@ fn mooncode_runtime_horizon_checkpoint_all_done(checkpoint : Json) -> Bool {
 }
 
 ///|
+fn mooncode_runtime_horizon_checkpoint_has_unfinished_milestones(
+  command : Json,
+  results : Array[Json],
+) -> Bool {
+  if mooncode_runtime_horizon_explicit_id(command) == "" {
+    return false
+  }
+  let checkpoint = mooncode_runtime_horizon_latest_checkpoint(command, results)
+  mooncode_json_array_items(checkpoint, "milestones").any(milestone => {
+    let status = mooncode_json_string(milestone, "status", default="")
+    status == "active" || status == "pending"
+  })
+}
+
+///|
 fn mooncode_runtime_horizon_checkpoint_execution(
   command : Json,
   session_id : String,
@@ -732,7 +747,7 @@ fn mooncode_runtime_horizon_progress_message(
   } else {
     ""
   }
-  let horizon = if remaining_steps < 0 {
+  let horizon = if remaining_steps <= 0 {
     "Planner horizon: milestone-driven with no command-wide step ceiling. Continue until every required milestone has accepted evidence, then write the all-done checkpoint and finish. Do not rediscover completed milestones."
   } else {
     "Planner opportunities remaining: \{remaining_steps}. Reserve the final three for implementation/repair, typed verification, then an all-done checkpoint plus finish. Do not rediscover completed milestones."

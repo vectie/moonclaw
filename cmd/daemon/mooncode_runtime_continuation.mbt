@@ -145,6 +145,43 @@ fn mooncode_runtime_planner_transport_continuation_event(
 }
 
 ///|
+fn mooncode_runtime_planner_replan_continuation_event(
+  session_id : String,
+  command_id : String,
+  plan : Json,
+  planner_steps : Array[Json],
+  tool_results : Array[Json],
+  step_results : Array[Json],
+  next_step_index~ : Int,
+  replan_count~ : Int,
+  guidance~ : String,
+  now~ : @clock.Timestamp,
+) -> Json {
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}",
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "command_id": command_id,
+    "target_command_id": command_id,
+    "lane": "runtime-control",
+    "kind": mooncode_runtime_continuation_kind(),
+    "event": mooncode_runtime_continuation_kind(),
+    "state": "planner-replan-paused",
+    "status": "paused",
+    "reason": "planner-empty-followup",
+    "next_step_index": next_step_index,
+    "replan_count": replan_count,
+    "patient_replan_guidance": guidance,
+    "plan": plan,
+    "planner_steps": Json::array(planner_steps),
+    "tool_results": Json::array(tool_results),
+    "step_results": Json::array(step_results),
+    "created_at": now,
+    "source": "moonclaw-native-runtime-continuation",
+  }
+}
+
+///|
 fn mooncode_runtime_continuation_for_command(
   events : Array[Json],
   command_id : String,
@@ -334,4 +371,60 @@ fn mooncode_runtime_planner_transport_continuation_is_active(
       planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
     _ => false
   }
+}
+
+///|
+fn mooncode_runtime_planner_replan_continuation_is_active(
+  continuation : Json,
+) -> Bool {
+  let session_id = mooncode_json_string(continuation, "session_id", default="")
+  let command_id = mooncode_json_string(continuation, "command_id", default="")
+  let next_step_index = mooncode_json_int(
+    continuation,
+    "next_step_index",
+    default=-1,
+  )
+  let replan_count = mooncode_json_int(continuation, "replan_count", default=0)
+  let guidance = mooncode_json_string(
+    continuation,
+    "patient_replan_guidance",
+    default="",
+  )
+  let plan = mooncode_json_object_field_or_empty(continuation, "plan")
+  let tool_calls = mooncode_json_array_items(plan, "tool_calls")
+  let planner_steps = mooncode_json_array_items(continuation, "planner_steps")
+  let tool_results = mooncode_json_array_items(continuation, "tool_results")
+  let step_results = mooncode_json_array_items(continuation, "step_results")
+  let expected_id = "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}"
+  session_id != "" &&
+  command_id != "" &&
+  mooncode_json_string(continuation, "id", default="") == expected_id &&
+  mooncode_json_string(continuation, "protocol", default="") ==
+  mooncode_protocol_version() &&
+  mooncode_json_string(continuation, "target_command_id", default="") ==
+  command_id &&
+  mooncode_json_string(continuation, "kind", default="") ==
+  mooncode_runtime_continuation_kind() &&
+  mooncode_json_string(continuation, "lane", default="") == "runtime-control" &&
+  mooncode_json_string(continuation, "status", default="") == "paused" &&
+  mooncode_json_string(continuation, "reason", default="") ==
+  "planner-empty-followup" &&
+  mooncode_json_string(continuation, "state", default="") ==
+  "planner-replan-paused" &&
+  next_step_index > 0 &&
+  replan_count > 0 &&
+  guidance != "" &&
+  mooncode_json_string(plan, "planner_mode", default="") ==
+  mooncode_planner_mode_model_tool_calls() &&
+  !mooncode_json_bool(plan, "failed", default=false) &&
+  tool_calls.length() > 0 &&
+  !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) &&
+  planner_steps.length() == next_step_index &&
+  step_results.length() == tool_calls.length() &&
+  mooncode_runtime_turn_model_message_present(
+    mooncode_json_object_field_or_empty(plan, "model_response_message"),
+  ) &&
+  mooncode_json_array_items(plan, "model_messages").length() > 0 &&
+  mooncode_runtime_json_array_has_suffix(tool_results, step_results) &&
+  planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
 }
