@@ -1376,7 +1376,7 @@ fn mooncode_tool_apply_unified_chunks_to_content(
       if occurrences == 0 {
         return mooncode_tool_error_result(
           tool,
-          message="unified diff hunk did not match \{relative}",
+          message="unified diff hunk did not match \{relative}. `@@ ... @@` hunk labels are descriptive, not match anchors; matching uses unchanged hunk body context. Retry with unique unchanged lines from \{relative}, or use `edit`/`write` with exact content.",
           metadata={
             "path": relative,
             "absolute_path": absolute,
@@ -1388,7 +1388,7 @@ fn mooncode_tool_apply_unified_chunks_to_content(
       if occurrences > 1 {
         return mooncode_tool_error_result(
           tool,
-          message="unified diff hunk matched \{occurrences} times in \{relative}; refusing ambiguous patch",
+          message="unified diff hunk matched \{occurrences} times in \{relative}; refusing ambiguous patch. `@@ ... @@` hunk labels are descriptive, not match anchors; matching uses unchanged hunk body context. Retry with unique unchanged lines from \{relative}, or use `edit`/`write` with exact content.",
           metadata={
             "path": relative,
             "absolute_path": absolute,
