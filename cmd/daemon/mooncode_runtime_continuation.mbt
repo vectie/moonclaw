@@ -158,6 +158,44 @@ fn mooncode_runtime_planner_replan_continuation_event(
   guidance~ : String,
   now~ : @clock.Timestamp,
 ) -> Json {
+  let compact_planner_steps : Array[Json] = []
+  for planner_step in planner_steps {
+    compact_planner_steps.push(mooncode_runtime_compact_plan(planner_step))
+  }
+  let tool_result_references : Array[Json] = []
+  for execution in tool_results {
+    let event = mooncode_json_object_field_or_empty(execution, "event")
+    let event_id = mooncode_json_string(event, "id", default="")
+    let journaled_result = mooncode_json_string(event, "event", default="") ==
+      "tool_result" &&
+      event_id != ""
+    if journaled_result {
+      let compact_execution : Map[String, Json] = {}
+      match execution {
+        Object(fields) =>
+          for key, value in fields.iter2() {
+            if key != "result" && key != "event" {
+              compact_execution[key] = value
+            }
+          }
+        _ => ()
+      }
+      tool_result_references.push({
+        "event_id": event_id,
+        "event_digest": mooncode_goal_runtime_sha256_hex(event.stringify()),
+        "execution": Json::object(compact_execution),
+        "journaled_result": true,
+      })
+    } else {
+      tool_result_references.push({
+        "inline_execution": execution,
+        "journaled_result": false,
+      })
+    }
+  }
+  let tool_result_digest = mooncode_goal_runtime_sha256_hex(
+    Json::array(tool_results).stringify(),
+  )
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-replan-checkpoint-\{next_step_index}-\{replan_count}",
     "protocol": mooncode_protocol_version(),
@@ -175,11 +213,29 @@ fn mooncode_runtime_planner_replan_continuation_event(
     "patient_replan_guidance": guidance,
     "plan": plan,
     "finish_rejected": finish_rejected,
-    "planner_steps": Json::array(planner_steps),
-    "tool_results": Json::array(tool_results),
-    "step_results": Json::array(step_results),
+    "planner_steps": Json::array(compact_planner_steps),
+    "tool_result_count": tool_results.length(),
+    "tool_result_digest": tool_result_digest,
+    "tool_result_references": Json::array(tool_result_references),
+    "step_result_suffix_count": step_results.length(),
     "created_at": now,
     "source": "moonclaw-native-runtime-continuation",
+  }
+}
+
+///|
+fn mooncode_runtime_unproject_journal_event(event : Json) -> Json {
+  match event {
+    Object(fields) => {
+      let normalized : Map[String, Json] = {}
+      for key, value in fields.iter2() {
+        if key != "journal_sequence" {
+          normalized[key] = value
+        }
+      }
+      Json::object(normalized)
+    }
+    _ => event
   }
 }
 
@@ -189,11 +245,134 @@ fn mooncode_runtime_continuation_for_command(
   command_id : String,
 ) -> Json {
   let mut latest = Json::object({})
+  let prior_command_events : Array[Json] = []
   for event in events {
+    if mooncode_json_string(event, "command_id", default="") == command_id {
+      prior_command_events.push(event)
+    }
     if mooncode_json_string(event, "kind", default="") ==
       mooncode_runtime_continuation_kind() &&
       mooncode_json_string(event, "command_id", default="") == command_id {
-      latest = event
+      latest = Json::object({})
+      let result_count = mooncode_json_int(
+        event,
+        "tool_result_count",
+        default=-1,
+      )
+      if result_count < 0 {
+        latest = event
+      } else {
+        let references = mooncode_json_array_items(
+          event, "tool_result_references",
+        )
+        let hydrated_results : Array[Json] = []
+        if references.length() == result_count {
+          for reference in references {
+            if mooncode_json_bool(reference, "journaled_result", default=false) {
+              let event_id = mooncode_json_string(
+                reference,
+                "event_id",
+                default="",
+              )
+              let event_digest = mooncode_json_string(
+                reference,
+                "event_digest",
+                default="",
+              )
+              let mut match_count = 0
+              let mut matched_event = Json::object({})
+              if event_id != "" && event_digest != "" {
+                for projected_event in prior_command_events {
+                  let referenced_event = mooncode_runtime_unproject_journal_event(
+                    projected_event,
+                  )
+                  if mooncode_json_string(referenced_event, "id", default="") ==
+                    event_id &&
+                    mooncode_goal_runtime_sha256_hex(
+                      referenced_event.stringify(),
+                    ) ==
+                    event_digest {
+                    match_count += 1
+                    matched_event = referenced_event
+                  }
+                }
+              }
+              if match_count == 1 {
+                let with_result = mooncode_json_object_with_field(
+                  mooncode_json_object_field_or_empty(reference, "execution"),
+                  "result",
+                  mooncode_json_object_field_or_empty(
+                    matched_event, "tool_result",
+                  ),
+                )
+                hydrated_results.push(
+                  mooncode_json_object_with_field(
+                    with_result, "event", matched_event,
+                  ),
+                )
+              }
+            } else {
+              match reference {
+                Object(fields) =>
+                  if fields.contains("inline_execution") {
+                    hydrated_results.push(
+                      mooncode_json_object_field_or_empty(
+                        reference, "inline_execution",
+                      ),
+                    )
+                  }
+                _ => ()
+              }
+            }
+          }
+        }
+        if hydrated_results.length() == result_count {
+          let suffix_count = mooncode_json_int(
+            event,
+            "step_result_suffix_count",
+            default=-1,
+          )
+          let expected_digest = mooncode_json_string(
+            event,
+            "tool_result_digest",
+            default="",
+          )
+          if suffix_count >= 0 &&
+            suffix_count <= result_count &&
+            expected_digest != "" &&
+            mooncode_goal_runtime_sha256_hex(
+              Json::array(hydrated_results).stringify(),
+            ) ==
+            expected_digest {
+            let hydrated_steps = mooncode_json_array_items(
+              event, "planner_steps",
+            )
+            if hydrated_steps.length() > 0 {
+              hydrated_steps[hydrated_steps.length() - 1] = mooncode_json_object_field_or_empty(
+                event, "plan",
+              )
+              let mut hydrated = mooncode_json_object_with_field(
+                event,
+                "planner_steps",
+                Json::array(hydrated_steps),
+              )
+              hydrated = mooncode_json_object_with_field(
+                hydrated,
+                "tool_results",
+                Json::array(hydrated_results),
+              )
+              hydrated = mooncode_json_object_with_field(
+                hydrated,
+                "step_results",
+                Json::array(
+                  hydrated_results[result_count - suffix_count:].to_owned(),
+                ),
+              )
+              latest = hydrated
+            }
+          }
+        }
+      }
     }
   }
   latest

@@ -161,8 +161,12 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
     guidance="Continue the same unfinished task.",
     now=@clock.Timestamp::from_ms(44L),
   )
+  let hydrated_checkpoint = mooncode_runtime_continuation_for_command(
+    [checkpoint],
+    "cmd-replan",
+  )
   assert_true(
-    mooncode_runtime_planner_replan_continuation_is_active(checkpoint),
+    mooncode_runtime_planner_replan_continuation_is_active(hydrated_checkpoint),
   )
   assert_false(mooncode_runtime_planner_continuation_is_active(checkpoint))
   assert_false(
@@ -201,20 +205,26 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
     guidance="Continue the unfinished task without replaying completed tools.",
     now=@clock.Timestamp::from_ms(45L),
   )
+  let hydrated_rejected_finish_checkpoint = mooncode_runtime_continuation_for_command(
+    [rejected_finish_checkpoint],
+    "cmd-rejected-finish",
+  )
   assert_true(
     mooncode_runtime_planner_replan_continuation_is_active(
-      @json.parse(rejected_finish_checkpoint.stringify()),
-    ),
-  )
-  assert_false(
-    mooncode_runtime_planner_replan_continuation_is_active(
-      mooncode_json_object_with_field(checkpoint, "finish_rejected", true),
+      hydrated_rejected_finish_checkpoint,
     ),
   )
   assert_false(
     mooncode_runtime_planner_replan_continuation_is_active(
       mooncode_json_object_with_field(
-        rejected_finish_checkpoint,
+        hydrated_checkpoint, "finish_rejected", true,
+      ),
+    ),
+  )
+  assert_false(
+    mooncode_runtime_planner_replan_continuation_is_active(
+      mooncode_json_object_with_field(
+        hydrated_rejected_finish_checkpoint,
         "plan",
         mooncode_json_object_with_field(
           rejected_finish_plan,
@@ -234,7 +244,7 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
   assert_false(
     mooncode_runtime_planner_replan_continuation_is_active(
       mooncode_json_object_with_field(
-        checkpoint,
+        hydrated_checkpoint,
         "patient_replan_guidance",
         "".to_json(),
       ),
@@ -243,7 +253,7 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
   assert_false(
     mooncode_runtime_planner_replan_continuation_is_active(
       mooncode_json_object_with_field(
-        checkpoint,
+        hydrated_checkpoint,
         "replan_count",
         Json::number(0.0),
       ),
