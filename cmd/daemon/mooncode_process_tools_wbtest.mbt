@@ -25,6 +25,41 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
 }
 
 ///|
+async test "mooncode shell timeout cancels children and permits cleanup traps" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-timeout-XXXXXX"),
+  )
+  let execution = mooncode_execute_tool_call(
+    "session-shell-timeout",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-shell-timeout",
+      "book_root": book_root,
+      "tool": "shell",
+      "command_id": "cmd-shell-timeout",
+      "arguments": {
+        "cmd": "printf partial-output; trap 'printf cleanup-ran >&2; exit 0' TERM; sleep 10",
+        "timeout_ms": 20,
+      },
+    },
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  assert_true(mooncode_json_bool(result, "is_error", default=false))
+  assert_eq(
+    mooncode_json_string(result, "message", default=""),
+    "shell timed out after 20ms",
+  )
+  let output = mooncode_json_string(result, "output", default="")
+  assert_true(output.contains("partial-output"))
+  assert_true(output.contains("cleanup-ran"))
+}
+
+///|
 async test "mooncode native shell rejects explicit paths outside book root" (
   t : @test.Test,
 ) {
@@ -58,6 +93,59 @@ async test "mooncode native shell rejects explicit paths outside book root" (
       ),
     )
   }
+}
+
+///|
+async test "mooncode native shell allows read-only inline interpreter inspection" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-inline-XXXXXX"),
+  )
+  let execution = mooncode_execute_tool_call(
+    "session-shell-inline",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-shell-inline",
+      "book_root": book_root,
+      "tool": "shell",
+      "command_id": "cmd-shell-inline",
+      "arguments": {
+        "cmd": "node -e \"console.log(JSON.stringify({answer: 42}))\"",
+        "timeout_ms": 5000,
+      },
+    },
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  assert_true(mooncode_json_bool(result, "ok", default=false))
+  assert_true(
+    mooncode_json_string(result, "output", default="").contains(
+      "{\"answer\":42}",
+    ),
+  )
+}
+
+///|
+test "MoonCode planner reserves authored mutations for reviewable tools" {
+  let messages = mooncode_runtime_turn_model_initial_messages({
+    "command": "prompt",
+    "text": "Update the workspace",
+  })
+  let system = mooncode_json_string(messages[0], "content", default="")
+  assert_true(system.contains("write/edit/apply_patch"))
+  assert_true(
+    system.contains(
+      "Never use shell, an interpreter, or an inline script to author workspace files",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "all authored mutations must use edit, write, or apply_patch",
+    ),
+  )
 }
 
 ///|
@@ -203,6 +291,34 @@ async test "mooncode moon_check records reusable watcher state" (t : @test.Test)
 }
 
 ///|
+test "mooncode moon_ide qualifies line-column locations with path" {
+  let book_root = "/tmp/mooncode-loc-book"
+  assert_eq(
+    mooncode_moon_ide_loc(
+      { "path": "cmd/daemon/mooncode_runtime_turn.mbt", "loc": "1031:4" },
+      book_root,
+      book_root,
+    ),
+    "cmd/daemon/mooncode_runtime_turn.mbt:1031:4",
+  )
+  assert_eq(
+    mooncode_moon_ide_loc(
+      {
+        "path": "cmd/daemon/mooncode_runtime_turn.mbt",
+        "loc": "cmd/daemon/mooncode_runtime_turn.mbt:1031:4",
+      },
+      book_root,
+      book_root,
+    ),
+    "cmd/daemon/mooncode_runtime_turn.mbt:1031:4",
+  )
+  assert_eq(
+    mooncode_moon_ide_loc({ "loc": "1031:4" }, book_root, book_root),
+    "1031:4",
+  )
+}
+
+///|
 async test "mooncode executes moon_ide and moon_cmd tools in book root" (
   t : @test.Test,
 ) {
@@ -318,12 +434,54 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
     @pathx.join(nested_module, "moon.mod"),
     "name = \"example/demo\"\n",
   )
+  @fsx.write_to_file(@pathx.join(nested_module, "src/moon.pkg"), "")
+  @fsx.write_to_file(
+    @pathx.join(nested_module, "src/main.mbt"),
+    "///|\nfn nested_answer() -> Int {\n  42\n}\n",
+  )
   let inferred = mooncode_moon_ide_cwd(book_root, {
     "path": "tools/demo/src/main.mbt",
   })
   assert_eq(
     mooncode_json_string(inferred, "relative_path", default=""),
     "tools/demo",
+  )
+  let nested_outline = mooncode_execute_tool_call(
+    "session-tool-validation",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-tool-validation",
+      "book_root": book_root,
+      "tool": "moon_ide",
+      "command_id": "cmd-nested-outline",
+      "arguments": {
+        "action": "outline",
+        "path": "tools/demo/src/main.mbt",
+        "target": "native",
+      },
+    },
+    now=@clock.Timestamp::from_ms(72L),
+  )
+  let nested_result = mooncode_json_object_field_or_empty(
+    nested_outline, "result",
+  )
+  assert_true(mooncode_json_bool(nested_result, "ok", default=false))
+  assert_true(
+    mooncode_json_string(nested_result, "output", default="").contains(
+      "nested_answer",
+    ),
+  )
+  let nested_metadata = mooncode_json_object_field_or_empty(
+    nested_result, "metadata",
+  )
+  assert_eq(
+    mooncode_json_string(nested_metadata, "cwd", default=""),
+    "tools/demo",
+  )
+  assert_eq(
+    mooncode_json_string(nested_metadata, "command", default=""),
+    "moon ide outline --target native src/main.mbt",
   )
   assert_true(mooncode_moon_check_args("") == ["check"])
   assert_true(

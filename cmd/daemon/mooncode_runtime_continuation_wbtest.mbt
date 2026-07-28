@@ -182,13 +182,13 @@ test "latest planner or approval checkpoint wins by journal order" {
     approval,
     step_index=0,
     tool_index=0,
-    quantum_end_step=8,
+    planner_turn_end_step=0,
     now=@clock.Timestamp::from_ms(3L),
   )
   assert_true(mooncode_runtime_continuation_is_active(waiting))
   let legacy : Json = @json.parse(waiting.stringify())
   guard legacy is Object(object) else { abort("approval checkpoint object") }
-  object.remove("quantum_end_step")
+  object.remove("planner_turn_end_step")
   assert_true(mooncode_runtime_continuation_is_active(legacy))
   assert_true(
     mooncode_runtime_continuation_is_active(

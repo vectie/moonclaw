@@ -328,11 +328,9 @@ fn mooncode_runtime_loop_cancel_control(control : String) -> Bool {
 
 ///|
 fn mooncode_runtime_loop_max_turns(payload : Json) -> Int {
-  let requested = mooncode_json_int(payload, "max_turns", default=8)
+  let requested = mooncode_json_int(payload, "max_turns", default=1)
   if requested < 1 {
     1
-  } else if requested > 32 {
-    32
   } else {
     requested
   }

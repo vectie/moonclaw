@@ -19,6 +19,11 @@ pub fn runtime_tool_read() -> String {
 }
 
 ///|
+pub fn runtime_tool_read_skill() -> String {
+  "read_skill"
+}
+
+///|
 pub fn runtime_tool_edit() -> String {
   "edit"
 }
@@ -103,6 +108,7 @@ pub fn runtime_tool_names() -> Array[String] {
   [
     runtime_tool_shell(),
     runtime_tool_read(),
+    runtime_tool_read_skill(),
     runtime_tool_edit(),
     runtime_tool_write(),
     runtime_tool_moon_ide(),
@@ -131,6 +137,7 @@ pub fn runtime_tool_capability_names() -> Array[String] {
 pub fn runtime_tool_native_required_tools() -> Array[String] {
   [
     runtime_tool_read(),
+    runtime_tool_read_skill(),
     runtime_tool_edit(),
     runtime_tool_write(),
     runtime_tool_apply_patch(),
@@ -356,6 +363,14 @@ pub fn runtime_tool_capability_specs() -> Array[Json] {
       outputs=[runtime_event_tool_result()],
     ),
     runtime_tool_capability_spec(
+      id=runtime_tool_read_skill(),
+      owner="moonclaw",
+      lane=event_lane_tool(),
+      approval="auto",
+      purpose="Load complete installed skill instructions or an explicitly referenced resource inside the selected skill.",
+      outputs=[runtime_event_tool_result(), runtime_event_runtime_update()],
+    ),
+    runtime_tool_capability_spec(
       id=runtime_tool_edit(),
       owner="moonclaw",
       lane=event_lane_diff(),
@@ -524,6 +539,32 @@ fn runtime_tool_contract_entries() -> Array[Json] {
       ],
       output_events=[runtime_event_tool_result()],
       safety_policy="Only read files inside the selected MoonBook workspace; never traverse outside the book root.",
+    ),
+    runtime_tool_contract_entry(
+      id=runtime_tool_read_skill(),
+      lane=event_lane_tool(),
+      approval="auto",
+      mutates_files=false,
+      requires_review=false,
+      input_fields=[
+        runtime_tool_field(
+          "name",
+          "string",
+          required=true,
+          "Installed skill name selected from the advertised catalog.",
+        ),
+        runtime_tool_field(
+          "path",
+          "string",
+          required=false,
+          "Optional resource path confined to the selected skill directory.",
+        ),
+      ],
+      output_events=[
+        runtime_event_tool_result(),
+        runtime_event_runtime_update(),
+      ],
+      safety_policy="Load SKILL.md completely before task work and confine referenced resources to the selected installed skill.",
     ),
     runtime_tool_contract_entry(
       id=runtime_tool_edit(),

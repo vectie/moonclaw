@@ -322,52 +322,30 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       }
       if !resuming_continuation &&
         mooncode_runtime_turn_requires_model_planning(command) {
-        for replan_index in 0..<9 {
-          let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
-            session_id, book_root, command_id,
+        let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
+          session_id, book_root, command_id,
+        )
+        for steering in arrived_during_planning {
+          initial_live_steering.push(steering)
+          applied_live_steering.push(steering)
+          self.mooncode_runtime_turn_record_event(
+            binding,
+            events,
+            persisted_event_ids,
+            mooncode_runtime_turn_applied_live_steer_event(
+              session_id,
+              steering,
+              now=self.clock.now(),
+            ),
           )
-          if arrived_during_planning.length() == 0 {
-            break
-          }
-          for steering in arrived_during_planning {
-            initial_live_steering.push(steering)
-            applied_live_steering.push(steering)
-            self.mooncode_runtime_turn_record_event(
-              binding,
-              events,
-              persisted_event_ids,
-              mooncode_runtime_turn_applied_live_steer_event(
-                session_id,
-                steering,
-                now=self.clock.now(),
-              ),
-            )
-          }
-          if replan_index == 8 {
-            plan = mooncode_runtime_turn_failed_planner_result(
-              command,
-              mooncode_runtime_turn_requested_model(command),
-              "model planner could not reach a stable initial live-steering boundary after 8 replans",
-              mooncode_event(
-                session_id~,
-                command_id~,
-                lane="runtime",
-                kind="runtime.planner_started",
-                title="MoonCode initial live-steering boundary",
-                status="running",
-                detail="MoonClaw is failing closed because steering continued to arrive during bounded initial replanning.",
-                now=self.clock.now(),
-              ),
-              now=self.clock.now(),
-            )
-          } else {
-            plan = self.mooncode_runtime_turn_plan_tool_calls(
-              command,
-              live_steering=initial_live_steering,
-              remaining_steps=max_model_steps,
-              now=self.clock.now(),
-            )
-          }
+        }
+        if arrived_during_planning.length() > 0 {
+          plan = self.mooncode_runtime_turn_plan_tool_calls(
+            command,
+            live_steering=initial_live_steering,
+            remaining_steps=max_model_steps,
+            now=self.clock.now(),
+          )
         }
       }
       if mooncode_runtime_turn_model_planning_allowed(command) &&
@@ -408,20 +386,24 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       } else {
         0
       }
-      let stored_quantum_end = mooncode_json_int(
+      let stored_planner_turn_end = mooncode_json_int(
         continuation,
-        "quantum_end_step",
-        default=max_model_steps,
+        "planner_turn_end_step",
+        default=0,
       )
-      let quantum_end_step = if resuming_approval &&
-        stored_quantum_end > resume_step_index {
-        stored_quantum_end
-      } else {
+      let planner_turn_end_step = if resuming_approval &&
+        stored_planner_turn_end > resume_step_index {
+        stored_planner_turn_end
+      } else if max_model_steps > 0 {
         resume_step_index + max_model_steps
+      } else {
+        0
       }
       let mut planner_paused = false
       let mut next_step_index = 0
-      for step_index in resume_step_index..<quantum_end_step {
+      for step_index = resume_step_index
+          planner_turn_end_step == 0 || step_index < planner_turn_end_step
+          step_index = step_index + 1 {
         let resuming_step = resuming_approval && step_index == resume_step_index
         if !resuming_step {
           planner_steps.push(plan)
@@ -524,7 +506,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
                   request,
                   step_index~,
                   tool_index~,
-                  quantum_end_step~,
+                  planner_turn_end_step~,
                   now=self.clock.now(),
                 ),
               )
@@ -622,13 +604,37 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           "" {
           break
         }
+        self.mooncode_runtime_turn_record_event(
+          binding,
+          events,
+          persisted_event_ids,
+          mooncode_runtime_continuation_event(
+            session_id,
+            command_id,
+            plan,
+            planner_steps,
+            tool_results,
+            step_results,
+            Json::object({}),
+            step_index~,
+            tool_index=tool_calls.length(),
+            planner_turn_end_step~,
+            now=self.clock.now(),
+          ),
+        )
+        let recover_incomplete_finish = mooncode_runtime_turn_recoverable_horizon_finish(
+          command, plan, tool_calls, tool_results,
+        )
         if planner_failed ||
           mooncode_json_string(plan, "planner_mode", default="") !=
           mooncode_planner_mode_model_tool_calls() ||
-          mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
+          (
+            mooncode_runtime_turn_tool_calls_include_finish(tool_calls) &&
+            !recover_incomplete_finish
+          ) {
           break
         }
-        if step_index + 1 >= quantum_end_step {
+        if planner_turn_end_step > 0 && step_index + 1 >= planner_turn_end_step {
           next_step_index = step_index + 1
           self.mooncode_runtime_turn_record_event(
             binding,
@@ -681,24 +687,24 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             now=followup_now,
           ),
         )
-        let mut next_plan = Json::object({})
-        for replan_index in 0..<8 {
-          next_plan = self.mooncode_runtime_turn_model_followup_plan(
-            command,
-            plan,
-            tool_calls,
-            step_results,
-            tool_results,
-            live_steering=boundary_steering,
-            remaining_steps=quantum_end_step - step_index - 1,
-            now=followup_now,
-          )
-          let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
-            session_id, book_root, command_id,
-          )
-          if arrived_during_planning.length() == 0 {
-            break
-          }
+        let mut next_plan = self.mooncode_runtime_turn_model_followup_plan(
+          command,
+          plan,
+          tool_calls,
+          step_results,
+          tool_results,
+          live_steering=boundary_steering,
+          remaining_steps=if planner_turn_end_step == 0 {
+            -1
+          } else {
+            planner_turn_end_step - step_index - 1
+          },
+          now=followup_now,
+        )
+        let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
+          session_id, book_root, command_id,
+        )
+        if arrived_during_planning.length() > 0 {
           for steering in arrived_during_planning {
             boundary_steering.push(steering)
             applied_live_steering.push(steering)
@@ -713,25 +719,22 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               ),
             )
           }
-          if replan_index == 7 {
-            next_plan = mooncode_runtime_turn_failed_planner_result(
-              command,
-              followup_model,
-              "model planner could not reach a stable live-steering boundary after 8 replans",
-              mooncode_event(
-                session_id~,
-                command_id~,
-                lane="runtime",
-                kind="runtime.planner_started",
-                title="MoonCode live-steering boundary",
-                status="running",
-                detail="MoonClaw is failing closed because steering continued to arrive during bounded replanning.",
-                now=self.clock.now(),
-              ),
-              now=self.clock.now(),
-            )
-          }
+          next_plan = self.mooncode_runtime_turn_model_followup_plan(
+            command,
+            plan,
+            tool_calls,
+            step_results,
+            tool_results,
+            live_steering=boundary_steering,
+            remaining_steps=if planner_turn_end_step == 0 {
+              -1
+            } else {
+              planner_turn_end_step - step_index - 1
+            },
+            now=followup_now,
+          )
         }
+        next_plan = mooncode_runtime_turn_recovery_plan(next_plan, tool_results)
         let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
         if next_calls.length() == 0 {
           planner_steps.push(next_plan)
@@ -1173,6 +1176,18 @@ fn mooncode_runtime_turn_stops_tool_batch(
   plan : Json,
   execution : Json,
 ) -> Bool {
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+  let approval_state = mooncode_json_string(
+    metadata,
+    "approval_state",
+    default="",
+  )
+  if approval_state == "rejected" ||
+    mooncode_json_bool(metadata, "pipeline_exit_ambiguous", default=false) ||
+    mooncode_json_string(execution, "tool", default="") == "read_skill" {
+    return true
+  }
   !mooncode_json_bool(execution, "accepted", default=false) &&
   mooncode_json_string(plan, "planner_mode", default="") !=
   mooncode_planner_mode_model_tool_calls()

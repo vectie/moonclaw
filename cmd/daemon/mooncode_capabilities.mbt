@@ -43,7 +43,7 @@ fn mooncode_capabilities_payload() -> Json {
     "runtime_loop_options": mooncode_native_capability_runtime_loop_options(),
     "runtime_service_endpoint": "GET/POST /v1/code/sessions/<id>/runtime-service?book_root=<path> reads event-sourced service state or starts/reuses a supervisor that holds the stable per-session execution lease from before runtime.service_started through terminal persistence. For an active goal-runtime authority, max_turns is a local execution quantum and the service takes fresh quanta while claimable work remains; it is never aggregate goal policy. A non-service lease owner returns HTTP 409 busy and is never attributed the caller's service_id.",
     "runtime_service_options": {
-      "max_turns": { "default": 8, "min": 1, "max": 32 },
+      "max_turns": { "default": 1, "min": 1 },
       "live_wait_ms": { "default": 5000, "min": 0, "max": 30000 },
       "poll_ms": { "default": 250, "min": 25, "max": 2000 },
     },

@@ -4,6 +4,12 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   if cmd == "" {
     return mooncode_tool_error_result("shell", message="cmd must be non-empty")
   }
+  if mooncode_shell_has_file_output_redirection(cmd) {
+    return mooncode_tool_error_result(
+      "shell",
+      message="shell output redirection cannot author MoonBook files; use write, edit, or apply_patch",
+    )
+  }
   match mooncode_shell_boundary_error(book_root, cmd) {
     Some(message) => return mooncode_tool_error_result("shell", message~)
     None => ()
@@ -17,7 +23,51 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   }
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=30000)
-  let process = @spawn.spawn("sh", ["-lc", cmd], timeout~, cwd=cwd_path) catch {
+  let max_output_chars = mooncode_json_int(
+    arguments,
+    "max_output_chars",
+    default=12000,
+  )
+  let shell_wrapper =
+    #|child_pid=""
+    #|terminate_tree() {
+    #|  for descendant_pid in $(pgrep -P "$1" 2>/dev/null || true); do
+    #|    terminate_tree "$descendant_pid"
+    #|  done
+    #|  kill -TERM "$1" 2>/dev/null || true
+    #|}
+    #|cancel_tree() {
+    #|  if [ -n "$child_pid" ]; then
+    #|    terminate_tree "$child_pid"
+    #|    wait "$child_pid" 2>/dev/null || true
+    #|  fi
+    #|  exit 124
+    #|}
+    #|trap cancel_tree TERM INT
+    #|sh -lc "$1" &
+    #|child_pid=$!
+    #|wait "$child_pid"
+    #|
+  let process = @spawn.spawn(
+    "sh",
+    ["-c", shell_wrapper, "mooncode-shell", cmd],
+    timeout~,
+    cwd=cwd_path,
+  ) catch {
+    @spawn.TimedOut(timeout~, stdout~, stderr~) => {
+      let capped = mooncode_cap_tool_output(stdout + stderr, max_output_chars)
+      return mooncode_tool_error_result(
+        "shell",
+        message="shell timed out after \{timeout}ms",
+        output=mooncode_json_string(capped, "output", default=""),
+        metadata={
+          "cmd": cmd,
+          "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+          "timeout_ms": timeout,
+          "truncated": mooncode_json_bool(capped, "truncated", default=false),
+        },
+      )
+    }
     error =>
       return mooncode_tool_error_result(
         "shell",
@@ -25,35 +75,36 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
       )
   }
   let output = process.stdout + process.stderr
-  let capped = mooncode_cap_tool_output(
-    output,
-    mooncode_json_int(arguments, "max_output_chars", default=12000),
-  )
-  let result = if process.status == 0 {
+  let capped = mooncode_cap_tool_output(output, max_output_chars)
+  let pipeline_exit_ambiguous = mooncode_shell_pipeline_exit_ambiguous(cmd)
+  let metadata : Json = {
+    "cmd": cmd,
+    "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+    "status": process.status,
+    "elapsed_ms": process.elapsed,
+    "truncated": mooncode_json_bool(capped, "truncated", default=false),
+    "pipeline_exit_ambiguous": pipeline_exit_ambiguous,
+  }
+  let result = if pipeline_exit_ambiguous {
+    mooncode_tool_error_result(
+      "shell",
+      message="shell pipeline exit is ambiguous because pipefail was not enabled",
+      output=mooncode_json_string(capped, "output", default=""),
+      metadata~,
+    )
+  } else if process.status == 0 {
     mooncode_tool_ok_result(
       "shell",
       message="shell exited 0",
       output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "cmd": cmd,
-        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
+      metadata~,
     )
   } else {
     mooncode_tool_error_result(
       "shell",
       message="shell exited \{process.status}",
       output=mooncode_json_string(capped, "output", default=""),
-      metadata={
-        "cmd": cmd,
-        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-        "status": process.status,
-        "elapsed_ms": process.elapsed,
-        "truncated": mooncode_json_bool(capped, "truncated", default=false),
-      },
+      metadata~,
     )
   }
   result
@@ -145,6 +196,20 @@ async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
       metadata={ "target": target },
     )
   }
+  let outline_path = mooncode_json_string(arguments, "path", default="")
+  if action == "outline" {
+    let resolved_path = mooncode_resolve_book_path(book_root, outline_path)
+    if !mooncode_json_bool(resolved_path, "ok", default=false) {
+      return mooncode_tool_error_result(
+        "moon_ide",
+        message=mooncode_json_string(
+          resolved_path,
+          "message",
+          default="invalid outline path",
+        ),
+      )
+    }
+  }
   let cwd = mooncode_moon_ide_cwd(book_root, arguments)
   if mooncode_json_bool(cwd, "ok", default=false) == false {
     return mooncode_tool_error_result(
@@ -152,9 +217,9 @@ async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
       message=mooncode_json_string(cwd, "message", default="invalid cwd"),
     )
   }
-  let args = mooncode_moon_ide_args(arguments, action)
-  let timeout = mooncode_json_int(arguments, "timeout_ms", default=30000)
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
+  let args = mooncode_moon_ide_args(arguments, action, book_root, cwd_path)
+  let timeout = mooncode_json_int(arguments, "timeout_ms", default=30000)
   let process = @spawn.spawn(
     "moon",
     args.map(fn(arg) { arg }),
@@ -234,7 +299,12 @@ fn mooncode_moon_ide_argument_error(
 }
 
 ///|
-fn mooncode_moon_ide_args(arguments : Json, action : String) -> Array[String] {
+fn mooncode_moon_ide_args(
+  arguments : Json,
+  action : String,
+  book_root : String,
+  cwd_path : String,
+) -> Array[String] {
   let args : Array[String] = ["ide", mooncode_moon_ide_cli_action(action)]
   if mooncode_json_bool(arguments, "no_check", default=false) {
     args.push("--no-check")
@@ -246,13 +316,18 @@ fn mooncode_moon_ide_args(arguments : Json, action : String) -> Array[String] {
     args.push("--target")
     args.push(target)
   }
-  let loc = mooncode_json_string(arguments, "loc", default="")
+  let loc = mooncode_moon_ide_loc(arguments, book_root, cwd_path)
   if loc != "" {
     args.push("--loc")
     args.push(loc)
   }
   let operand = if action == "outline" {
-    mooncode_json_string(arguments, "path", default="")
+    let path = mooncode_json_string(arguments, "path", default="")
+    let resolved = mooncode_resolve_book_path(book_root, path)
+    let absolute = mooncode_json_string(resolved, "absolute_path", default=path)
+    @pathx.relative(cwd_path, absolute) catch {
+      _ => path
+    }
   } else {
     mooncode_json_string(arguments, "query", default="")
   }
@@ -260,6 +335,37 @@ fn mooncode_moon_ide_args(arguments : Json, action : String) -> Array[String] {
     args.push(operand)
   }
   args
+}
+
+///|
+/// The model schema carries `path` and `loc` separately, while `moon ide`
+/// requires `--loc path:line:column`. Preserve already-qualified locations and
+/// combine a numeric `line:column` with the resolved book-local path.
+fn mooncode_moon_ide_loc(
+  arguments : Json,
+  book_root : String,
+  cwd_path : String,
+) -> String {
+  let loc = mooncode_json_string(arguments, "loc", default="")
+  let path = mooncode_json_string(arguments, "path", default="")
+  let parts = loc.split(":").to_array()
+  if loc == "" || path == "" || parts.length() != 2 {
+    return loc
+  }
+  let line_column_only = try {
+    ignore(@string.parse_int(parts[0]))
+    ignore(@string.parse_int(parts[1]))
+    true
+  } catch {
+    _ => false
+  }
+  if !line_column_only {
+    return loc
+  }
+  let resolved = mooncode_resolve_book_path(book_root, path)
+  let absolute = mooncode_json_string(resolved, "absolute_path", default=path)
+  let relative = @pathx.relative(cwd_path, absolute) catch { _ => path }
+  relative + ":" + loc
 }
 
 ///|

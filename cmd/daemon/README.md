@@ -618,6 +618,13 @@ arbitrary shell commands.
 These process-backed tools live in `mooncode_process_tools.mbt`, with focused
 coverage in `mooncode_process_tools_wbtest.mbt`, while the generic tool
 endpoint and patch/file tools stay in `mooncode_tools.mbt`.
+Shell commands run through a cancellation wrapper that tracks the command's
+descendant process tree. On timeout MoonClaw requests descendant termination,
+waits for shell cleanup traps, and preserves capped partial stdout/stderr in the
+failed tool result before the process layer's hard-cancel fallback. Read-only
+inline interpreter commands remain available; the planner contract, rather
+than a misleading syntactic block, requires authored workspace mutations to
+use reviewable `write`, `edit`, or `apply_patch` tools.
 
 The native `moon_check` tool also records a MoonCode watcher snapshot
 under `.moonsuite/products/moonclaw/mooncode/watchers/moon-check.json`.
@@ -632,15 +639,51 @@ for bounded MoonCode tool-call batches over `checkpoint`, `read`, `write`,
 `edit`, `apply_patch`, `revert_patch`, `shell`, `moon_ide`, `moon_cmd`,
 `moon_check`, and `finish`. Coding turns carry a compact task contract and
 evidence-backed milestone checkpoint instead of replaying their full prior
-transcript. Successful tool results are fed back to the model until it calls
-`finish`, a tool fails, the command is cancelled, or the bounded
-`planner_max_steps` limit is reached. The last two opportunities are reserved
-for completion: the penultimate message stops discovery and requests authored
-repair plus typed verification, while the final batch must contain `finish` and
-may contain only mutation recovery or structured check/test/build/info/fmt
-tools plus the required all-done checkpoint. Runtime-turn validates that final
-batch before execution and fails closed on exploratory, shell,
-semantic-navigation, or finish-free plans. Planner
+transcript. Between checkpoints, the actual planner messages and tool results
+remain in the model conversation so source reads and diagnostics survive the
+next planning call. An accepted checkpoint is the semantic compaction boundary:
+the older transcript is discarded and the durable checkpoint plus current
+evidence become the new working context. Tool results, including failures, are
+fed back to the model for diagnosis and recovery.
+Shell commands may declare `verification_kind=check|test|build` only when a
+zero exit status directly proves that exact gate, such as a hosted check
+watcher. Untyped inspection commands remain evidence but cannot complete a
+typed verification milestone.
+When an earlier call ends a selected multi-tool batch, the model transcript
+settles every remaining provider tool call with an explicit skipped result.
+Those calls are not recorded as executions or evidence; the planner must select
+each still-needed call again. This keeps provider transcripts valid without
+claiming that skipped work occurred.
+An explicit long-horizon
+`finish` that does not satisfy the durable milestone and verification contract
+is also fed back as planner evidence instead of terminating the command; the
+same turn continues until completion is accepted or the command is cancelled.
+When assistant prose is projected as a synthetic `finish`, recovery appends the
+contract rejection as a user message without inventing a provider tool-result
+item for a function call the model did not make.
+Installed skills are exposed to the planner as a compact catalog. When a skill
+is named or clearly applicable, the planner must select `read_skill`; that call
+ends the current batch so the complete skill resource governs the next prompt.
+This progressive-disclosure path is shared by MoonBit-specific and general
+coding workflows rather than being special-cased to one language.
+When a selected tool needs operator authority, the planner selects that exact
+tool call and the runtime pauses before execution. Assistant prose and
+`finish` are not approval requests. Approve/reject controls validate the
+pending approval target before any durable command is queued.
+Commands have no command-wide planner-step ceiling by default; their accepted
+task and verification evidence is the completion boundary, while every model
+request remains independently bounded. Callers may set a positive
+`planner_max_steps` scheduling quantum explicitly, or leave it at zero for
+milestone-driven execution. Reaching an explicit quantum persists a resumable
+checkpoint instead of forcing a premature `finish`. If a content-based mutation
+fails, runtime-turn forces an
+exact read of the affected path before another model-selected mutation can run;
+this prevents milestone-driven tasks from spinning on guessed stale hunks.
+For a verification-sensitive implementation task, a documentation-only
+mutation cannot prove the implementation milestone; at least one net mutation
+to behavior, configuration, tests, workflows, or another non-documentation
+artifact is required.
+Planner
 start/selection/failure events, `planner_steps`, `planner_step_count`, and
 `model_step_limit` are included in the runtime result. Each planner step also
 emits MoonCode `reasoning_delta` progress, optional assistant transcript deltas,
@@ -670,6 +713,10 @@ projections preserve it; `runtime.turn_finished` includes the reason; and the
 terminal receipt is `runtime-failed` when the gate rejects completion. This
 gate is distinct from the replay proof policy for proof-sensitive command
 actions: it protects ordinary coding prompts at native execution time.
+Durable terminal receipts keep that verdict and the final `finish` result used
+for conversation projection, but do not duplicate tool payloads or events that
+already have their own journal records. This keeps long-horizon journal growth
+proportional to new evidence instead of replaying the whole turn at completion.
 Planner progress/failure event projection lives in
 `mooncode_runtime_planner_events.mbt`, keeping live transcript shaping out of
 the model contract and out of the runtime orchestration loop.
@@ -732,6 +779,38 @@ returns `202 Accepted`, then records `runtime.service_finished` or
 same durable queue, claim receipts, turn execution, and `max_turns` /
 `live_wait_ms` / `poll_ms` limits as `runtime-loop`, with a default
 `live_wait_ms` of 5000 ms for live steering.
+
+### Patient long-horizon harness
+
+`scripts/mooncode-patient-harness.sh` is a thin client around `turns`,
+`runtime-service`, and `stream`. It accepts a complete turn request rather than
+encoding a task plan. The request prompt remains the source of intent, and
+callers may add an optional `task_contract` with milestone, constraint, and
+context-path hints.
+
+The harness has no task-duration or model-step ceiling. It follows durable
+journal sequence, retries transport interruptions without cancelling the turn,
+idempotently restarts the runtime service after silence, and exits only when the
+requested command records completion, failure, cancellation, or an operator
+approval boundary. A service cycle reaching idle is not treated as task
+completion. Re-run the harness with `--resume` after a daemon restart or
+approval; the existing command and checkpoint remain authoritative.
+
+This harness is temporary supervision scaffolding, not a planner. Patient
+continuation, failed-tool recovery, rejected-finish recovery, evidence-backed
+checkpoints, and completion gating belong to MoonCode's native runtime so a
+standalone MoonCode process retains the same behavior after the harness is
+removed. Only external authority decisions and optional independent acceptance
+remain outside the worker.
+
+Pass `--evidence <path>.jsonl` to preserve the unchanged request, exact
+command-related events, service lifecycle, checkpoints, tool results, and a
+terminal harness summary for a separate read-only observer. The observer
+receives that evidence and the repository through its prompt-defined contract;
+the harness does not encode product phases or let observer opinions steer or
+cancel the worker. A successful worker exit is explicitly a candidate result,
+not contract acceptance: the task closes only after the independent observer
+compares the evidence and resulting repository state with the original prompt.
 
 ### `POST /v1/task/{id}/publish`
 

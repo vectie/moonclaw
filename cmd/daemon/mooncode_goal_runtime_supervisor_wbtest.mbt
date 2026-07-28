@@ -339,7 +339,7 @@ async test "goal runtime supervisor reconciles committed source facts exactly on
       [],
       [],
       [],
-      next_step_index=8,
+      next_step_index=1,
       now=@clock.Timestamp::from_ms(4000L),
     )
     for source in [started, tool, checkpoint] {

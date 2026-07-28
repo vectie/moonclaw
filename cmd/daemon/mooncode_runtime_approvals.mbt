@@ -15,18 +15,19 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   }
   let tool = mooncode_json_string(tool_call, "tool", default="")
   if tool == "shell" {
-    let command = mooncode_json_string(arguments, "cmd", default="")
-      .to_lower()
-      .to_string()
-    for
-      marker in [
-        "rm ", "sudo ", "curl ", "wget ", "ssh ", "scp ", "git push", "git reset",
-        "moon publish", "npm publish", "pnpm publish", "npm install", "pnpm add",
-        "yarn add", "pip install", "brew ",
-      ] {
-      if command.contains(marker) {
-        return "This shell command can affect external systems, dependencies, or broad workspace state."
-      }
+    let raw_command = mooncode_json_string(arguments, "cmd", default="")
+    let command = raw_command.to_lower().to_string()
+    if mooncode_shell_has_git_commit(command) {
+      return "Creating a git commit changes durable repository history and requires operator approval."
+    }
+    if mooncode_shell_has_git_worktree_overwrite(command) {
+      return "This git command can overwrite tracked worktree content and requires operator approval."
+    }
+    if mooncode_shell_has_clean_dependency_install(command) {
+      return "A clean dependency install can replace local dependency state and requires operator approval."
+    }
+    if mooncode_shell_has_sensitive_command(command) {
+      return "This shell command can affect external systems, dependencies, or broad workspace state."
     }
   }
   if tool == "moon_cmd" {
@@ -75,6 +76,7 @@ fn mooncode_runtime_tool_approval_event(
   state~ : String,
   tool_call_id? : String = "",
   control_command_id? : String = "",
+  decision_reason? : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   let approval_id = mooncode_runtime_tool_approval_id(
@@ -97,7 +99,12 @@ fn mooncode_runtime_tool_approval_event(
   let detail = match state {
     "approved" =>
       "Operator approved `\{tool}`. MoonClaw may continue this turn."
-    "rejected" => "Operator rejected `\{tool}`. MoonClaw will not execute it."
+    "rejected" =>
+      if decision_reason == "" {
+        "Operator rejected `\{tool}`. MoonClaw will not execute it."
+      } else {
+        "Operator rejected `\{tool}`. MoonClaw will not execute it. Reason: \{decision_reason}"
+      }
     _ => mooncode_runtime_tool_approval_reason(tool_call)
   }
   {
@@ -111,6 +118,7 @@ fn mooncode_runtime_tool_approval_event(
     "command_id": command_id,
     "target_command_id": command_id,
     "control_command_id": control_command_id,
+    "decision_reason": decision_reason,
     "tool_call_id": tool_call_id,
     "tool": tool,
     "arguments": arguments,
@@ -220,6 +228,16 @@ fn mooncode_runtime_rejected_tool_execution(
 ) -> Json {
   let tool = mooncode_json_string(tool_call, "tool", default="")
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  let decision_reason = mooncode_json_string(
+    decision,
+    "decision_reason",
+    default="",
+  )
+  let rejection_output = if decision_reason == "" {
+    "The operator rejected `\{tool}`; do not execute it."
+  } else {
+    "The operator rejected `\{tool}`; do not execute it. Reason: \{decision_reason}"
+  }
   {
     "accepted": true,
     "executed": false,
@@ -236,8 +254,11 @@ fn mooncode_runtime_rejected_tool_execution(
       "tool": tool,
       "is_error": false,
       "message": "Operator rejected this tool call.",
-      "output": "The operator rejected `\{tool}`; do not execute it.",
-      "metadata": { "approval_state": "rejected" },
+      "output": rejection_output,
+      "metadata": {
+        "approval_state": "rejected",
+        "decision_reason": decision_reason,
+      },
     },
     "event": decision,
   }
@@ -292,9 +313,7 @@ fn mooncode_runtime_control_receipt(
 }
 
 ///|
-async fn Daemon::mooncode_submit_tool_approval_control(
-  self : Daemon,
-  group~ : @async.TaskGroup[Unit],
+async fn mooncode_runtime_tool_approval_control_request(
   session_id : String,
   book_root : String,
   command : Json,
@@ -340,8 +359,38 @@ async fn Daemon::mooncode_submit_tool_approval_control(
       },
     })
   }
+  request
+}
+
+///|
+async fn Daemon::mooncode_submit_tool_approval_control(
+  self : Daemon,
+  group~ : @async.TaskGroup[Unit],
+  session_id : String,
+  book_root : String,
+  command : Json,
+) -> Json {
+  let approval_id = mooncode_runtime_control_field(command, "approval_id")
+  let request = mooncode_runtime_tool_approval_control_request(
+    session_id, book_root, command,
+  )
+  let target_command_id = mooncode_json_string(
+    request,
+    "target_command_id",
+    default="",
+  )
   let action = mooncode_json_string(command, "command", default="")
   let state = if action == "approve_tool" { "approved" } else { "rejected" }
+  let decision_reason = mooncode_runtime_control_field(
+      command, "decision_reason",
+    )
+    .trim()
+    .to_owned()
+  let decision_reason = if decision_reason == "" {
+    mooncode_json_string(command, "text", default="").trim().to_owned()
+  } else {
+    decision_reason
+  }
   let tool_call : Json = {
     "approval_id": approval_id,
     "tool_call_id": mooncode_json_string(request, "tool_call_id", default=""),
@@ -356,6 +405,7 @@ async fn Daemon::mooncode_submit_tool_approval_control(
     state~,
     tool_call_id=mooncode_json_string(request, "tool_call_id", default=""),
     control_command_id=mooncode_command_id(command),
+    decision_reason~,
     now=self.clock.now(),
   )
   let binding = self.mooncode_binding_for_session(session_id)

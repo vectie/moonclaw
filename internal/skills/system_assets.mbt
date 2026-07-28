@@ -339,6 +339,24 @@ let system_assets : Array[@assets.Asset] = [
       #|description: Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.
       #|---
       #|
+      #|# Current MoonBit workflow (takes precedence)
+      #|
+      #|MoonBit's current manifest names are `moon.mod` and `moon.pkg`. Any later
+      #|reference in this bundled guide to `moon.mod.json` or `moon.pkg.json`
+      #|describes the legacy format and must not be used for new work.
+      #|
+      #|Before editing, inspect the repository's `moon.mod`, relevant `moon.pkg`,
+      #|and any `AGENTS.md`. Prefer `moon ide doc`, `moon ide outline`,
+      #|`moon ide peek-def`, and `moon ide find-references` for semantic
+      #|discovery. Keep changes package-local and separate top-level blocks with
+      #|`///|`. Use compiler diagnostics rather than guessing APIs or syntax.
+      #|
+      #|Validate proportionally with `moon check` and targeted `moon test`
+      #|commands. Before handoff run `moon info && moon fmt`, review generated
+      #|`pkg.generated.mbti` changes, and run the repository's required tests.
+      #|Use `moon test --update` only when an intentional snapshot change has
+      #|been reviewed.
+      #|
       #|# MoonBit Project Layouts
       #|
       #|MoonBit use the `.mbt` extension and interface files `.mbti`. At
@@ -1265,6 +1283,24 @@ let system_assets : Array[@assets.Asset] = [
       #|name: moonbit-agent-guide
       #|description: Guide for writing, refactoring, and testing MoonBit projects. Use when working in MoonBit modules or packages, organizing MoonBit files, using moon tooling (build/check/test/doc/ide), or following MoonBit-specific layout, documentation, and testing conventions.
       #|---
+      #|
+      #|# Current MoonBit workflow (takes precedence)
+      #|
+      #|MoonBit's current manifest names are `moon.mod` and `moon.pkg`. Any later
+      #|reference in this bundled guide to `moon.mod.json` or `moon.pkg.json`
+      #|describes the legacy format and must not be used for new work.
+      #|
+      #|Before editing, inspect the repository's `moon.mod`, relevant `moon.pkg`,
+      #|and any `AGENTS.md`. Prefer `moon ide doc`, `moon ide outline`,
+      #|`moon ide peek-def`, and `moon ide find-references` for semantic
+      #|discovery. Keep changes package-local and separate top-level blocks with
+      #|`///|`. Use compiler diagnostics rather than guessing APIs or syntax.
+      #|
+      #|Validate proportionally with `moon check` and targeted `moon test`
+      #|commands. Before handoff run `moon info && moon fmt`, review generated
+      #|`pkg.generated.mbti` changes, and run the repository's required tests.
+      #|Use `moon test --update` only when an intentional snapshot change has
+      #|been reviewed.
       #|
       #|# MoonBit Project Layouts
       #|
@@ -3280,4 +3316,4 @@ let system_assets : Array[@assets.Asset] = [
 ]
 
 ///|
-let system_assets_fingerprint : String = "6694c37e13f8c50f8779b2a648cd65e3bd3a8691daa2a8ad2ea891cb6031d059"
+let system_assets_fingerprint : String = "9c301e9a26c10dc05d3ca9516dc513fa58b50b8de143a0b61c4e54b9947e4947"

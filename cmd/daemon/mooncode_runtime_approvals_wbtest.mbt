@@ -35,6 +35,187 @@ fn mooncode_control_test_approval_request(events : Array[Json]) -> Json {
 }
 
 ///|
+async test "invalid approval is rejected before durable queueing" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-invalid-approval-XXXXXX"),
+  )
+  let session_id = "session-invalid-approval"
+  let daemon = mooncode_control_test_daemon(book_root)
+  @async.with_task_group(group => {
+    let result : Result[Json, String] = Ok(
+      daemon.mooncode_submit_turn_response(group~, session_id, {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": book_root,
+        "command": "approve_tool",
+        "model": "codex/gpt-5.6-sol",
+        "text": "Invalid approval",
+        "payload": {
+          "approval_id": "mooncode-approval-missing",
+          "target_command_id": "cmd-missing",
+        },
+        "packet": { "command_id": "cmd-invalid-approval" },
+      }),
+    ) catch {
+      error => Err("\{error}")
+    }
+    assert_true(result is Err(_))
+    group.return_immediately(())
+  })
+  assert_false(
+    @fsx.exists(mooncode_session_journal_path(book_root, session_id)),
+  )
+}
+
+///|
+test "mooncode approval classifier gates hosted run reruns" {
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": {
+        "cmd": "gh run rerun 30277114085 --repo vectie/moondesk --failed",
+      },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": {
+        "cmd": "gh run view 30277114085 --repo vectie/moondesk --log-failed",
+      },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git commit -m 'validated change'" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git -C . commit -m 'validated change'" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git commit-tree HEAD^{tree}" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "echo 'git commit -m only-prose'" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git status --short" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "npm ci --include=optional --ignore-scripts" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "npm ci --help | sed -n '1,120p'" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "git restore --source=HEAD --worktree -- ui" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "echo 'npm ci and git restore are risky'" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": {
+        "cmd": "set -o pipefail; find . -name package.json -print; grep -RInE 'npm ci|npm install|registry|git push' .github package-lock.json | head -n 300",
+      },
+    }),
+  )
+}
+
+///|
+test "mooncode continuation stores one current planner transcript" {
+  let tool_call : Json = {
+    "tool": "write",
+    "arguments": { "path": "approved.txt", "content": "approved" },
+  }
+  let plan : Json = {
+    "kind": "mooncode-runtime-turn-planner",
+    "tool_calls": [tool_call],
+    "model_messages": [
+      { "role": "system", "content": "large reconstructible transcript" },
+    ],
+    "model_response_message": {
+      "role": "assistant",
+      "content": "selected write",
+    },
+  }
+  let approval_id = mooncode_runtime_tool_approval_id(
+    "cmd-compact",
+    tool_call,
+    occurrence=0,
+  )
+  let approval : Json = {
+    "approval_id": approval_id,
+    "target_command_id": "cmd-compact",
+  }
+  let checkpoint = mooncode_runtime_continuation_event(
+    "session-compact",
+    "cmd-compact",
+    plan,
+    [plan],
+    [],
+    [],
+    approval,
+    step_index=0,
+    tool_index=0,
+    planner_turn_end_step=0,
+    now=@clock.Timestamp::from_ms(1L),
+  )
+  let stored_plan = mooncode_json_object_field_or_empty(checkpoint, "plan")
+  assert_true(stored_plan.stringify().contains("model_messages"))
+  assert_true(stored_plan.stringify().contains("model_response_message"))
+  let stored_steps = mooncode_json_array_items(checkpoint, "planner_steps")
+  assert_eq(stored_steps.length(), 1)
+  assert_false(stored_steps[0].stringify().contains("model_messages"))
+  assert_true(mooncode_runtime_continuation_is_active(checkpoint))
+  let after_step = mooncode_runtime_continuation_event(
+    "session-compact",
+    "cmd-compact",
+    plan,
+    [plan],
+    [],
+    [],
+    Json::object({}),
+    step_index=0,
+    tool_index=1,
+    planner_turn_end_step=0,
+    now=@clock.Timestamp::from_ms(2L),
+  )
+  assert_eq(mooncode_json_string(after_step, "state", default=""), "after-step")
+  assert_true(mooncode_runtime_continuation_is_active(after_step))
+}
+
+///|
 async fn mooncode_control_test_queue(
   book_root : String,
   session_id : String,
@@ -231,7 +412,51 @@ async test "mooncode rejected approval never executes the tool" (t : @test.Test)
     state="rejected",
     tool_call_id=mooncode_json_string(request, "tool_call_id", default=""),
     control_command_id="cmd-reject",
+    decision_reason="The proposed change lacks causal evidence.",
     now=@clock.Timestamp::from_ms(20L),
+  )
+  assert_eq(
+    mooncode_json_string(decision, "decision_reason", default=""),
+    "The proposed change lacks causal evidence.",
+  )
+  let rejected_execution = mooncode_runtime_rejected_tool_execution(
+    session_id,
+    book_root,
+    "cmd-rejection",
+    {
+      "tool": "write",
+      "arguments": { "path": "rejected.txt", "content": "no" },
+    },
+    decision,
+  )
+  assert_true(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(rejected_execution, "result"),
+      "output",
+      default="",
+    ).contains("lacks causal evidence"),
+  )
+  let resumed_message = mooncode_runtime_turn_model_tool_result_message(
+    {
+      "tool": "write",
+      "tool_call_id": mooncode_json_string(
+        request,
+        "tool_call_id",
+        default="rejected-tool",
+      ),
+    },
+    rejected_execution,
+  )
+  assert_true(
+    mooncode_json_string(resumed_message, "content", default="").contains(
+      "lacks causal evidence",
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      rejected_execution,
+    ),
   )
   ignore(
     mooncode_append_session_journal(
@@ -447,8 +672,8 @@ async test "mooncode approval resumes from durable checkpoint after daemon resta
     "payload": { "approval_wait_ms": 0 },
     "runtime_tool_calls": [
       {
-        "tool": "shell",
-        "arguments": { "cmd": "printf once >> pre-approval-count.txt" },
+        "tool": "write",
+        "arguments": { "path": "pre-approval-count.txt", "content": "once" },
       },
       {
         "tool": "write",
@@ -600,8 +825,8 @@ async test "mooncode rejection resumes from durable checkpoint after daemon rest
     "payload": { "approval_wait_ms": 0 },
     "runtime_tool_calls": [
       {
-        "tool": "shell",
-        "arguments": { "cmd": "printf once >> pre-reject-count.txt" },
+        "tool": "write",
+        "arguments": { "path": "pre-reject-count.txt", "content": "once" },
       },
       {
         "tool": "write",
@@ -650,6 +875,7 @@ async test "mooncode rejection resumes from durable checkpoint after daemon rest
         "payload": {
           "approval_id": approval_id,
           "target_command_id": "cmd-reject-restart",
+          "decision_reason": "The proposed mutation lacks causal evidence.",
           "tool_call_id": mooncode_json_string(
             request,
             "tool_call_id",
@@ -674,6 +900,18 @@ async test "mooncode rejection resumes from durable checkpoint after daemon rest
   )
   assert_false(
     @fsx.exists(@pathx.join(book_root, "rejected-after-restart.txt")),
+  )
+  let after_events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
+  assert_true(
+    after_events.any(event => {
+      mooncode_json_string(event, "kind", default="") ==
+      "tool.approval_rejected" &&
+      mooncode_json_string(event, "decision_reason", default="") ==
+      "The proposed mutation lacks causal evidence."
+    }),
   )
   let state = restarted_daemon.mooncode_runtime_claim_state_payload(
     session_id, book_root,
