@@ -487,6 +487,145 @@ fn mooncode_shell_has_sensitive_command(command : String) -> Bool {
 }
 
 ///|
+fn mooncode_shell_segment_is_read_only_git(segment : Array[String]) -> Bool {
+  mooncode_shell_segment_has_git_subcommand(segment, [
+    "annotate", "blame", "cat-file", "describe", "diff", "diff-files", "diff-index",
+    "diff-tree", "for-each-ref", "grep", "log", "ls-files", "ls-tree", "merge-base",
+    "name-rev", "rev-list", "rev-parse", "show", "show-ref", "status", "verify",
+  ])
+}
+
+///|
+fn mooncode_shell_segment_read_only_executable_index(
+  segment : Array[String],
+) -> Int {
+  let mut index = mooncode_shell_segment_executable_index(segment)
+  if index < 0 {
+    return -1
+  }
+  let executable = segment[index]
+  if !mooncode_shell_executable_is(executable, "time") {
+    return index
+  }
+  index += 1
+  while index < segment.length() && segment[index].has_prefix("-") {
+    let option = segment[index]
+    if option == "-o" || option == "--output" || option.has_prefix("--output=") {
+      return -1
+    }
+    if (option == "-f" || option == "--format") && !option.contains("=") {
+      index += 2
+    } else {
+      index += 1
+    }
+  }
+  if index < segment.length() {
+    index
+  } else {
+    -1
+  }
+}
+
+///|
+fn mooncode_shell_segment_is_demonstrably_read_only(
+  segment : Array[String],
+) -> Bool {
+  if segment.is_empty() {
+    return true
+  }
+  let index = mooncode_shell_segment_read_only_executable_index(segment)
+  if index < 0 {
+    return false
+  }
+  let executable = segment[index]
+  if mooncode_shell_executable_is(executable, "git") {
+    return mooncode_shell_segment_is_read_only_git(segment[index:].to_owned())
+  }
+  if mooncode_shell_executable_is(executable, "moon") {
+    let subcommand_index = mooncode_shell_subcommand_index_after_options(
+      segment,
+      index,
+      ["-C", "--directory"],
+    )
+    if subcommand_index < 0 {
+      return false
+    }
+    let subcommand = segment[subcommand_index]
+    if subcommand != "check" && subcommand != "test" && subcommand != "build" {
+      return false
+    }
+    return !segment.contains("--update") && !segment.contains("-u")
+  }
+  if mooncode_shell_executable_is(executable, "sh") ||
+    mooncode_shell_executable_is(executable, "bash") ||
+    mooncode_shell_executable_is(executable, "zsh") {
+    let nested_index = mooncode_shell_nested_command_index(segment, index)
+    return nested_index >= 0 &&
+      mooncode_shell_is_demonstrably_read_only(segment[nested_index])
+  }
+  if mooncode_shell_executable_is(executable, "find") {
+    for word in segment[index + 1:] {
+      if word == "-delete" ||
+        word == "-exec" ||
+        word == "-execdir" ||
+        word == "-ok" ||
+        word == "-okdir" ||
+        word == "-fprint" ||
+        word == "-fprintf" ||
+        word == "-fls" {
+        return false
+      }
+    }
+    return true
+  }
+  for
+    name in [
+      "basename", "cut", "dirname", "echo", "false", "file", "grep", "head", "jq",
+      "ls", "printf", "pwd", "rg", "sed", "set", "sort", "stat", "tail", "test",
+      "tr", "true", "type", "uniq", "wc", "which",
+    ] {
+    if mooncode_shell_executable_is(executable, name) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn mooncode_shell_is_demonstrably_read_only(command : String) -> Bool {
+  if command.trim().is_empty() ||
+    mooncode_shell_has_command_substitution(command) ||
+    command.contains("<(") ||
+    command.contains(">(") ||
+    mooncode_shell_has_file_output_redirection(command) ||
+    mooncode_shell_has_in_place_authoring(command) {
+    return false
+  }
+  let segment : Array[String] = []
+  let mut executable_seen = false
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if !segment.is_empty() {
+        executable_seen = true
+        if !mooncode_shell_segment_is_demonstrably_read_only(segment) {
+          return false
+        }
+        segment.clear()
+      }
+    } else {
+      segment.push(word)
+    }
+  }
+  if !segment.is_empty() {
+    executable_seen = true
+    if !mooncode_shell_segment_is_demonstrably_read_only(segment) {
+      return false
+    }
+  }
+  executable_seen
+}
+
+///|
 fn mooncode_shell_has_command_substitution(command : String) -> Bool {
   let chars = command.to_array()
   let mut single_quoted = false

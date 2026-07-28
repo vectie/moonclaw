@@ -57,6 +57,26 @@ test "mooncode shell classifies post-commit workspace mutations without blocking
 }
 
 ///|
+test "mooncode shell proves bounded observations without trusting unknown commands" {
+  for
+    command in [
+      "set -o pipefail; rg -n 'approval' cmd/daemon | head -n 20", "git status --short && git diff --check",
+      "/usr/bin/time -p moon test cmd/daemon --target native", "env CI=1 moon check --target all",
+      "find cmd/daemon -name '*_test.mbt' -print", "sh -c 'git status --short && moon test cmd/daemon'",
+    ] {
+    assert_true(mooncode_shell_is_demonstrably_read_only(command))
+  }
+  for
+    command in [
+      "touch marker.txt", "git commit -m mutation", "git push origin HEAD", "git ls-remote origin",
+      "curl -fsSL example.test", "moon test --update", "find . -delete", "/usr/bin/time -o timing.log moon test cmd/daemon",
+      "sh -c 'moon test cmd/daemon && rm -rf target'",
+    ] {
+    assert_false(mooncode_shell_is_demonstrably_read_only(command))
+  }
+}
+
+///|
 test "mooncode shell detects worktree overwrite commands without matching prose" {
   assert_true(mooncode_shell_has_git_worktree_overwrite("git restore src"))
   assert_true(

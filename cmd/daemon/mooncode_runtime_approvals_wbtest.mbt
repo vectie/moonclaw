@@ -182,11 +182,73 @@ test "mooncode approval classifier gates hosted run reruns" {
       },
     }),
   )
-  assert_true(
+  assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "read",
       "requires_approval": true,
       "arguments": { "path": "moon.mod" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_ide",
+      "approval": "operator",
+      "arguments": { "action": "outline", "path": "cmd/daemon" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_cmd",
+      "requires_approval": true,
+      "arguments": {
+        "command": "test",
+        "path": "cmd/daemon",
+        "timeout_ms": 120000,
+      },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "approval": "operator",
+      "arguments": {
+        "cmd": "/usr/bin/time -p moon test cmd/daemon --target native",
+      },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "requires_approval": true,
+      "arguments": {
+        "cmd": "set -o pipefail; git status --short; git diff --check",
+      },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "write",
+      "requires_approval": true,
+      "arguments": { "path": "changed.txt", "content": "changed" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "requires_approval": true,
+      "arguments": { "cmd": "touch changed.txt" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_cmd",
+      "requires_approval": true,
+      "arguments": {
+        "command": "test",
+        "args": ["--update"],
+        "test_update_kind": "snapshots",
+        "test_update_reason": "accepted output update",
+      },
     }),
   )
 }

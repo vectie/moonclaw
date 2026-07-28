@@ -1,22 +1,6 @@
 ///|
 fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  // An explicit flag can come from an operator-authored command, not only from
-  // the planner. Do not erase caller-controlled authorization merely because
-  // the current operation appears read-only. The planner prompt prevents
-  // invented approval flags on safe reads and local validators.
-  if mooncode_json_bool(tool_call, "requires_approval", default=false) ||
-    mooncode_json_bool(arguments, "requires_approval", default=false) {
-    return "This operation explicitly requires operator approval."
-  }
-  let approval = mooncode_json_string(
-    tool_call,
-    "approval",
-    default=mooncode_json_string(arguments, "approval", default=""),
-  )
-  if approval == "operator" {
-    return "This operation crosses an operator-controlled boundary."
-  }
   let tool = mooncode_json_string(tool_call, "tool", default="")
   if tool == "shell" {
     let raw_command = mooncode_json_string(arguments, "cmd", default="")
@@ -40,7 +24,49 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
       return "This Moon command can update accepted outputs or publish a package."
     }
   }
+  // Approval annotations are requests, not authority facts. The runtime keeps
+  // them for mutation-capable and unclassified operations, but a planner cannot
+  // turn an operation the runtime can prove read-only into a teacher pause.
+  if mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
+    return ""
+  }
+  if mooncode_json_bool(tool_call, "requires_approval", default=false) ||
+    mooncode_json_bool(arguments, "requires_approval", default=false) {
+    return "This operation explicitly requires operator approval."
+  }
+  let approval = mooncode_json_string(
+    tool_call,
+    "approval",
+    default=mooncode_json_string(arguments, "approval", default=""),
+  )
+  if approval == "operator" {
+    return "This operation crosses an operator-controlled boundary."
+  }
   ""
+}
+
+///|
+fn mooncode_runtime_tool_is_demonstrably_read_only(tool_call : Json) -> Bool {
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  match tool {
+    "read"
+    | "read_skill"
+    | "moon_ide"
+    | "moon_check"
+    | "checkpoint"
+    | "finish" => true
+    "shell" =>
+      mooncode_shell_is_demonstrably_read_only(
+        mooncode_json_string(arguments, "cmd", default=""),
+      )
+    "moon_cmd" => {
+      let command = mooncode_json_string(arguments, "command", default="")
+      (command == "check" || command == "test" || command == "build") &&
+      !mooncode_moon_cmd_is_test_update(arguments)
+    }
+    _ => false
+  }
 }
 
 ///|
