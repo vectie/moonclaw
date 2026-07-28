@@ -345,6 +345,23 @@ fn mooncode_runtime_horizon_has_substantive_mutation(
 }
 
 ///|
+fn mooncode_runtime_horizon_has_documentation_mutation(
+  results : Array[Json],
+) -> Bool {
+  for result in results {
+    for state in mooncode_runtime_turn_result_mutation_states(result) {
+      let path = mooncode_json_string(state, "path", default="")
+      if mooncode_json_string(state, "before", default="") !=
+        mooncode_json_string(state, "after", default="") &&
+        mooncode_runtime_horizon_documentation_path(path) {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
 fn mooncode_runtime_horizon_result_is_substantive_mutation(
   command : Json,
   result : Json,
@@ -471,6 +488,13 @@ fn mooncode_runtime_horizon_checkpoint_error(
     }
     if matched_status == "done" &&
       !mooncode_runtime_horizon_milestone_proven(command, required, results) {
+      if mooncode_runtime_turn_requires_verification(command) &&
+        mooncode_json_string(required, "evidence_kind", default="") ==
+        "mutation" &&
+        mooncode_runtime_horizon_has_documentation_mutation(results) &&
+        !mooncode_runtime_horizon_has_substantive_mutation(command, results) {
+        return "checkpoint milestone `\{required_id}` is blocked by the immutable task contract: documentation-only changes do not satisfy evidence_kind `mutation`; a documentation deliverable must be declared as evidence_kind `path_changed` with its exact path in the initial task contract"
+      }
       return "checkpoint milestone `\{required_id}` has no matching runtime evidence"
     }
     if matched_status == "done" &&

@@ -15,22 +15,25 @@ printf '%s\n' \
   '{"session_id":"session-test","book_root":"/book","packet":{"command_id":"cmd-test"}}' \
   >"$request"
 printf '%s\n' \
-  '{"type":"event","event":{"journal_sequence":5,"command_id":"cmd-test","kind":"command.queued_for_runtime_turn"}}' \
-  '{"type":"event","event":{"journal_sequence":91,"command_id":"cmd-test","kind":"reasoning_delta"}}' \
+  '{"type":"event","event":{"journal_sequence":"5","command_id":"cmd-test","kind":"command.queued_for_runtime_turn"}}' \
+  '{"type":"event","event":{"journal_sequence":"98","target_command_id":"cmd-test","kind":"tool.approval_requested","state":"pending","approval_id":"approval-test"}}' \
+  '{"type":"event","event":{"journal_sequence":"98","command_id":"cmd-test","kind":"runtime.turn_cancelled","status":"cancelled","detail":"stale terminal"}}' \
+  '{"type":"event","event":{"journal_sequence":"239","target_command_id":"cmd-test","kind":"tool.approval_approved","state":"approved","approval_id":"approval-test"}}' \
+  '{"type":"event","event":{"journal_sequence":"239","command_id":"cmd-test","kind":"runtime.turn_finished","status":"done","detail":"fixture complete"}}' \
   >"$evidence"
 
 cat >"$fixture_root/bin/curl" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 printf '%s\n' "$*" >"$HARNESS_TEST_MARKER"
-if [[ "$*" != *"since=91"* ]]; then
-  printf 'expected resume cursor since=91, got: %s\n' "$*" >&2
+if [[ "$*" != *"since=239"* ]]; then
+  printf 'expected numeric resume cursor since=239, got: %s\n' "$*" >&2
   exit 1
 fi
 printf '%s\n' \
-  '{"type":"meta","next_since":92,"emitted_count":1}' \
-  '{"type":"event","event":{"journal_sequence":92,"command_id":"cmd-test","kind":"runtime.turn_finished","status":"done","detail":"fixture complete"}}' \
-  '{"type":"done","next_since":92,"emitted_count":1}' \
+  '{"type":"meta","next_since":"240","emitted_count":"1"}' \
+  '{"type":"event","event":{"journal_sequence":"240","command_id":"cmd-test","kind":"runtime.turn_finished","status":"done","detail":"fixture complete"}}' \
+  '{"type":"done","next_since":"240","emitted_count":"1"}' \
   '200'
 EOF
 chmod +x "$fixture_root/bin/curl"
@@ -46,11 +49,14 @@ output="$(
       --resume
 )"
 
-[[ "$output" == *"after journal sequence 91"* ]]
+[[ "$output" == *"after journal sequence 239"* ]]
 [[ "$output" == *"fixture complete"* ]]
+[[ "$output" != *"operator approval required"* ]]
+[[ "$output" != *"stale terminal"* ]]
 [[ -s "$marker" ]]
-[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == 5)] | length' "$evidence")" == "1" ]]
-[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == 91)] | length' "$evidence")" == "1" ]]
-[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == 92)] | length' "$evidence")" == "1" ]]
+[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "5")] | length' "$evidence")" == "1" ]]
+[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "98")] | length' "$evidence")" == "2" ]]
+[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "239")] | length' "$evidence")" == "2" ]]
+[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "240")] | length' "$evidence")" == "1" ]]
 
 printf 'patient harness resume cursor test passed\n'

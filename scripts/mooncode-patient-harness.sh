@@ -105,6 +105,8 @@ latest_sequence=0
 command_sequence=0
 approval=""
 approval_id=""
+approval_sequence=0
+terminal_sequence=0
 target_status=""
 target_detail=""
 
@@ -167,7 +169,9 @@ if [[ -n "$evidence_file" ]]; then
               .
             else
               ($row.event // {}) as $event
-              | ($event.journal_sequence // 0) as $sequence
+              | (
+                  (($event.journal_sequence // 0) | tonumber?) // 0 | floor
+                ) as $sequence
               | .latest_sequence = (
                   if $sequence > .latest_sequence then
                     $sequence
@@ -227,6 +231,8 @@ if [[ -n "$evidence_file" ]]; then
     )"
     latest_sequence="$(jq -r '.latest_sequence' <<<"$evidence_state")"
     command_sequence="$(jq -r '.command_sequence' <<<"$evidence_state")"
+    approval_sequence="$(jq -r '.approval_sequence' <<<"$evidence_state")"
+    terminal_sequence="$(jq -r '.terminal_sequence' <<<"$evidence_state")"
     approval="$(jq -rc '
       .approval
       | select(
@@ -418,9 +424,31 @@ while true; do
     continue
   fi
 
-  next_since="$(jq -rs 'map(select(.type == "meta")) | last | .next_since // 0' <<<"$stream")"
-  emitted_count="$(jq -rs 'map(select(.type == "meta")) | last | .emitted_count // 0' <<<"$stream")"
-  latest_sequence="$next_since"
+  next_since="$(
+    jq -rs '
+      (
+        (
+          (map(select(.type == "meta")) | last | .next_since // 0) |
+          tonumber?
+        ) // 0 | floor
+      )
+    ' <<<"$stream"
+  )"
+  emitted_count="$(
+    jq -rs '
+      (
+        (
+          (map(select(.type == "meta")) | last | .emitted_count // 0) |
+          tonumber?
+        ) // 0 | floor
+      )
+    ' <<<"$stream"
+  )"
+  if ((next_since > latest_sequence)); then
+    latest_sequence="$next_since"
+  else
+    next_since="$latest_sequence"
+  fi
   if [[ "$command_sequence" == "0" ]]; then
     command_sequence="$(
       jq -rs \
@@ -433,7 +461,7 @@ while true; do
                 .command_id == $command_id
                 and .kind == "command.queued_for_runtime_turn"
             )
-            | .journal_sequence
+            | (((.journal_sequence // 0) | tonumber?) // 0 | floor)
           ]
           | min // 0
         ' <<<"$stream"
@@ -446,6 +474,11 @@ while true; do
     print_event "$event"
     kind="$(jq -r '.kind // ""' <<<"$event")"
     status="$(jq -r '.status // .state // ""' <<<"$event")"
+    event_sequence="$(
+      jq -r '
+        (((.journal_sequence // 0) | tonumber?) // 0 | floor)
+      ' <<<"$event"
+    )"
     event_command_id="$(jq -r '.command_id // ""' <<<"$event")"
     target_command_id="$(jq -r '.target_command_id // .command_id // ""' <<<"$event")"
     if [[ "$event_command_id" == "$command_id" ||
@@ -456,32 +489,43 @@ while true; do
     case "$kind" in
       tool.approval_requested)
         if [[ "$target_command_id" == "$command_id" &&
+          "$event_sequence" -ge "$approval_sequence" &&
           "$(jq -r '.state // ""' <<<"$event")" == "pending" ]]; then
+          approval_sequence="$event_sequence"
           approval="$event"
           approval_id="$(jq -r '.approval_id // ""' <<<"$event")"
         fi
         ;;
       tool.approval_approved | tool.approval_rejected)
         decision_id="$(jq -r '.approval_id // ""' <<<"$event")"
-        if [[ -n "$approval_id" && "$decision_id" == "$approval_id" ]]; then
+        if [[ "$event_sequence" -ge "$approval_sequence" &&
+          -n "$approval_id" &&
+          "$decision_id" == "$approval_id" ]]; then
+          approval_sequence="$event_sequence"
           approval=""
           approval_id=""
         fi
         ;;
       runtime.turn_finished)
-        if [[ "$event_command_id" == "$command_id" ]]; then
+        if [[ "$event_command_id" == "$command_id" &&
+          "$event_sequence" -ge "$terminal_sequence" ]]; then
+          terminal_sequence="$event_sequence"
           target_status="$status"
           target_detail="$(jq -r '.detail // "runtime turn finished"' <<<"$event")"
         fi
         ;;
       runtime.turn_cancelled)
-        if [[ "$event_command_id" == "$command_id" ]]; then
+        if [[ "$event_command_id" == "$command_id" &&
+          "$event_sequence" -ge "$terminal_sequence" ]]; then
+          terminal_sequence="$event_sequence"
           target_status="cancelled"
           target_detail="$(jq -r '.detail // "runtime turn cancelled"' <<<"$event")"
         fi
         ;;
       runtime.turn_invalid)
-        if [[ "$event_command_id" == "$command_id" ]]; then
+        if [[ "$event_command_id" == "$command_id" &&
+          "$event_sequence" -ge "$terminal_sequence" ]]; then
+          terminal_sequence="$event_sequence"
           target_status="failed"
           target_detail="$(jq -r '.detail // "runtime turn is invalid"' <<<"$event")"
         fi
@@ -506,7 +550,8 @@ while true; do
         | .event
         | select(
             $command_sequence > 0
-            and (.journal_sequence // 0) >= $command_sequence
+            and (((.journal_sequence // 0) | tonumber?) // 0 | floor) >=
+              $command_sequence
           )
       ' <<<"$stream"
   )

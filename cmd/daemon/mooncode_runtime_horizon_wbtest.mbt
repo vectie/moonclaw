@@ -82,6 +82,80 @@ test "mooncode implementation milestones reject documentation-only evidence" {
 }
 
 ///|
+test "mooncode checkpoint explains immutable documentation evidence contract" {
+  let milestones : Array[Json] = [
+    {
+      "id": "deliverable",
+      "title": "Caller-supplied deliverable",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+    {
+      "id": "verification",
+      "title": "Caller-supplied verification",
+      "evidence_kind": "test",
+      "path": "",
+      "context_paths": [],
+    },
+  ]
+  let command : Json = {
+    "command": "prompt",
+    "text": "Implement the requested deliverable and run tests.",
+    "payload": {
+      "horizon_id": "immutable-documentation-contract",
+      "task_contract": {
+        "horizon_id": "immutable-documentation-contract",
+        "objective": "Caller-supplied objective",
+        "milestones": Json::array(milestones),
+      },
+    },
+  }
+  let supplied : Array[Json] = [
+    {
+      "id": "deliverable",
+      "title": "Caller-supplied deliverable",
+      "status": "done",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+    {
+      "id": "verification",
+      "title": "Caller-supplied verification",
+      "status": "active",
+      "evidence_kind": "test",
+      "path": "",
+      "context_paths": [],
+    },
+  ]
+  let documentation : Json = {
+    "tool": "edit",
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "path": "docs/deliverable.md",
+        "changed": true,
+        "before_fingerprint": "present:documentation-0",
+        "after_fingerprint": "present:documentation-1",
+      },
+    },
+  }
+  assert_eq(
+    mooncode_runtime_horizon_checkpoint_error(
+      command,
+      {
+        "horizon_id": "immutable-documentation-contract",
+        "milestones": Json::array(supplied),
+        "next_action": "Continue.",
+      },
+      [documentation],
+    ),
+    "checkpoint milestone `deliverable` is blocked by the immutable task contract: documentation-only changes do not satisfy evidence_kind `mutation`; a documentation deliverable must be declared as evidence_kind `path_changed` with its exact path in the initial task contract",
+  )
+}
+
+///|
 test "mooncode requires distinct evidence for newly completed phase milestones" {
   let milestones : Array[Json] = [
     {
