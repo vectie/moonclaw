@@ -913,6 +913,10 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
       assert_true(
         mooncode_json_bool(first_continuation, "finish_rejected", default=false),
       )
+      let first_event_count = mooncode_journal_entries(
+        mooncode_read_session_journal(root, session_id),
+        mooncode_journal_event(),
+      ).length()
       let rejected_plan = mooncode_json_object_field_or_empty(
         first_continuation, "plan",
       )
@@ -924,7 +928,44 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         mooncode_json_string(rejected_calls[0], "tool", default=""),
         "finish",
       )
+      assert_false(
+        mooncode_runtime_service_continues_goal_runtime(
+          first_loop, root, session_id,
+        ),
+      )
+      let first_turns = mooncode_json_array_items(first_loop, "turns")
+      let first_execution = mooncode_json_object_field_or_empty(
+        first_turns[first_turns.length() - 1],
+        "execution",
+      )
+      let approval_shaped_loop = mooncode_json_object_with_field(
+        first_loop,
+        "turns",
+        Json::array([
+          mooncode_json_object_with_field(
+            first_turns[first_turns.length() - 1],
+            "execution",
+            mooncode_json_object_with_field(
+              first_execution,
+              "pause_reason",
+              "approval-required".to_json(),
+            ),
+          ),
+        ]),
+      )
+      assert_false(
+        mooncode_runtime_service_continues_goal_runtime(
+          approval_shaped_loop, root, session_id,
+        ),
+      )
       let second_daemon = mooncode_runtime_quantum_test_daemon(root)
+      let restarted_state = second_daemon.mooncode_runtime_claim_state_payload(
+        session_id, root,
+      )
+      let restarted_claims = mooncode_json_array_items(
+        restarted_state, "claimed_commands",
+      )
+      assert_eq(restarted_claims.length(), 1)
       let second = second_daemon.mooncode_runtime_service_execute(
         session_id,
         root,
@@ -948,6 +989,11 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
       assert_true(
         mooncode_json_bool(final_execution, "completed", default=false),
       )
+      let final_event_count = mooncode_journal_entries(
+        mooncode_read_session_journal(root, session_id),
+        mooncode_journal_event(),
+      ).length()
+      assert_true(final_event_count > first_event_count)
       assert_false(mooncode_json_bool(final_execution, "paused", default=false))
       assert_eq(calls.val, 7)
       assert_eq(@fsx.read_file(@pathx.join(root, "patient-result.txt")), "once")
@@ -974,6 +1020,19 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           default="",
         ),
         claim_id,
+      )
+      let runtime_receipts = mooncode_journal_entries(
+        final_journal,
+        mooncode_journal_runtime_receipt(),
+      )
+      assert_eq(
+        runtime_receipts
+        .filter(receipt => {
+          mooncode_json_string(receipt, "status", default="") ==
+          "runtime-claimed"
+        })
+        .length(),
+        1,
       )
       let final_events = mooncode_journal_entries(
         final_journal,

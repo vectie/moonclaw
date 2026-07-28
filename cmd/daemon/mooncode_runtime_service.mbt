@@ -449,11 +449,9 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
     loop_payload,
     runtime_gates_held=true,
   )
-  while (
-          mooncode_json_string(result, "stopped_by", default="") == "max_turns" ||
-          mooncode_json_string(result, "stopped_by", default="") == "retryable"
-        ) &&
-        mooncode_goal_runtime_supervisor_is_active(book_root, session_id) {
+  while mooncode_runtime_service_continues_goal_runtime(
+          result, book_root, session_id,
+        ) {
     if mooncode_json_string(result, "stopped_by", default="") == "retryable" {
       @async.sleep(mooncode_runtime_loop_poll_ms(loop_payload))
     }
@@ -492,6 +490,29 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
     "runtime_loop": result,
     "finished_event": finished,
   }
+}
+
+///|
+async fn mooncode_runtime_service_continues_goal_runtime(
+  result : Json,
+  book_root : String,
+  session_id : String,
+) -> Bool {
+  let stopped_by = mooncode_json_string(result, "stopped_by", default="")
+  if stopped_by != "max_turns" && stopped_by != "retryable" {
+    return false
+  }
+  let turns = mooncode_json_array_items(result, "turns")
+  if turns.length() > 0 {
+    let execution = mooncode_json_object_field_or_empty(
+      turns[turns.length() - 1],
+      "execution",
+    )
+    if mooncode_json_bool(execution, "paused", default=false) {
+      return false
+    }
+  }
+  mooncode_goal_runtime_supervisor_is_active(book_root, session_id)
 }
 
 ///|
