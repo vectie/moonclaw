@@ -72,6 +72,38 @@ async test "invalid approval is rejected before durable queueing" (
 
 ///|
 test "mooncode approval classifier gates hosted run reruns" {
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "read",
+      "arguments": { "path": "moon.mod" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_ide",
+      "arguments": { "action": "outline", "path": "cmd/daemon" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_check",
+      "arguments": { "target": "all" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": {
+        "cmd": "set -o pipefail; rg -n 'runtime-turn' cmd/daemon; git diff --check",
+      },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "moon test cmd/daemon --target native" },
+    }),
+  )
   assert_true(
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
@@ -148,6 +180,13 @@ test "mooncode approval classifier gates hosted run reruns" {
       "arguments": {
         "cmd": "set -o pipefail; find . -name package.json -print; grep -RInE 'npm ci|npm install|registry|git push' .github package-lock.json | head -n 300",
       },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "read",
+      "requires_approval": true,
+      "arguments": { "path": "moon.mod" },
     }),
   )
 }

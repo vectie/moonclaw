@@ -1,6 +1,10 @@
 ///|
 fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  // An explicit flag can come from an operator-authored command, not only from
+  // the planner. Do not erase caller-controlled authorization merely because
+  // the current operation appears read-only. The planner prompt prevents
+  // invented approval flags on safe reads and local validators.
   if mooncode_json_bool(tool_call, "requires_approval", default=false) ||
     mooncode_json_bool(arguments, "requires_approval", default=false) {
     return "This operation explicitly requires operator approval."

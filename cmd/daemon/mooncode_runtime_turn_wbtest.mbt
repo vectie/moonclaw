@@ -937,6 +937,38 @@ test "mooncode model planner sends a compact request envelope" {
   assert_true(system.contains("read_skill"))
   assert_true(system.contains("moonbit-agent-guide"))
   assert_true(system.contains("Never ask for tool approval in assistant prose"))
+  assert_true(
+    system.contains(
+      "read their authoritative local implementation or specification",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "never invent fields or call a synthetic subset a captured runtime payload",
+    ),
+  )
+  assert_true(system.contains("Before any replace-all or repeated replacement"))
+  assert_true(system.contains("rerun the nearest affected tests"))
+  assert_true(
+    system.contains(
+      "Never create marker files, no-op edits, comments, or other artifacts",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "Interpret `no cleanup` and similar scope constraints as forbidding unrelated refactors",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "not as permission to skip the repository's canonical formatter",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "Do not set `requires_approval` or `approval=operator` for read, moon_ide, moon_check",
+    ),
+  )
   assert_false(system.contains("MoonBit baseline:"))
 
   let codex = @model.codex_oauth_model(
