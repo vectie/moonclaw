@@ -853,7 +853,7 @@ fn mooncode_runtime_turn_recoverable_horizon_finish(
   tool_calls : Array[Json],
   tool_results : Array[Json],
 ) -> Bool {
-  if mooncode_runtime_horizon_explicit_id(command) == "" ||
+  if !mooncode_runtime_turn_requires_verification(command) ||
     mooncode_json_string(plan, "planner_mode", default="") !=
     mooncode_planner_mode_model_tool_calls() ||
     !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
@@ -872,7 +872,7 @@ fn mooncode_runtime_turn_horizon_finish_rejection_message(
   tool_calls : Array[Json],
   tool_results : Array[Json],
 ) -> String {
-  if mooncode_runtime_horizon_explicit_id(command) == "" ||
+  if !mooncode_runtime_turn_requires_verification(command) ||
     !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
     return ""
   }
