@@ -973,6 +973,16 @@ test "mooncode long-horizon loop compacts reference appendices and proves every 
   )
   let unbounded_text = mooncode_json_string(unbounded, "content", default="")
   assert_true(unbounded_text.contains("milestone-driven"))
+  assert_true(
+    unbounded_text.contains(
+      "task-contract context_paths remain authoritative starting points",
+    ),
+  )
+  assert_true(
+    unbounded_text.contains(
+      "resolve it with narrow discovery rather than guessing or abandoning",
+    ),
+  )
   assert_false(unbounded_text.contains("remaining: -1"))
 }
 

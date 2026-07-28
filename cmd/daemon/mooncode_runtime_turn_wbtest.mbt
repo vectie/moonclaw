@@ -979,6 +979,21 @@ test "mooncode model planner sends a compact request envelope" {
       "a path inside a nested module lets the runtime infer its nearest module root",
     ),
   )
+  assert_true(
+    system.contains(
+      "Treat exact paths named by the user and task-contract `context_paths` as authoritative starting evidence",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "that failed lookup is not a blocker while a causally different next action remains",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "If any required milestone is pending or active, choose the next useful tool batch",
+    ),
+  )
   assert_false(system.contains("MoonBit baseline:"))
 
   let codex = @model.codex_oauth_model(

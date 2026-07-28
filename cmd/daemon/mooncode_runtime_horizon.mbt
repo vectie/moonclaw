@@ -737,11 +737,13 @@ fn mooncode_runtime_horizon_progress_message(
   } else {
     "Planner opportunities remaining: \{remaining_steps}. Reserve the final three for implementation/repair, typed verification, then an all-done checkpoint plus finish. Do not rediscover completed milestones."
   }
+  let path_guidance = "\nPath guidance: exact user-supplied paths and task-contract context_paths remain authoritative starting points. Use them before broader discovery; if one fails, consume its exact error and resolve it with narrow discovery rather than guessing or abandoning an unfinished milestone."
   {
     "role": "user",
     "content": "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
     "Recent runtime evidence:\n\{if summaries.length() == 0 { "- none" } else { summaries.join("\n") }}\n" +
     horizon +
+    path_guidance +
     recovery,
   }
 }
