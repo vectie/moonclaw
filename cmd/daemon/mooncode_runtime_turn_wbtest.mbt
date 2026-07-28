@@ -2508,6 +2508,86 @@ test "mooncode model planner rejects only stale duplicate complete reads" {
 }
 
 ///|
+test "mooncode context mismatch permits one same-path complete reread" {
+  let main_read : Json = {
+    "accepted": true,
+    "tool": "read",
+    "arguments": { "path": "src/main.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": { "path": "src/main.mbt", "truncated": false },
+    },
+  }
+  let other_read : Json = {
+    "accepted": true,
+    "tool": "read",
+    "arguments": { "path": "src/other.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": { "path": "src/other.mbt", "truncated": false },
+    },
+  }
+  let failed_patch : Json = {
+    "accepted": false,
+    "tool": "apply_patch",
+    "result": {
+      "ok": false,
+      "metadata": { "path": "src/main.mbt#hunk-2", "context_mismatch": true },
+    },
+  }
+  let main_call : Json = {
+    "tool": "read",
+    "arguments": { "path": "src/main.mbt" },
+  }
+  let other_call : Json = {
+    "tool": "read",
+    "arguments": { "path": "src/other.mbt" },
+  }
+  assert_false(
+    mooncode_runtime_turn_repeats_complete_read(main_call, [
+      main_read, other_read, failed_patch,
+    ]),
+  )
+  assert_true(
+    mooncode_runtime_turn_repeats_complete_read(other_call, [
+      main_read, other_read, failed_patch,
+    ]),
+  )
+  let refreshed_main = main_read
+  assert_true(
+    mooncode_runtime_turn_repeats_complete_read(main_call, [
+      main_read, other_read, failed_patch, refreshed_main,
+    ]),
+  )
+  let failed_other : Json = {
+    "accepted": false,
+    "tool": "edit",
+    "result": {
+      "ok": false,
+      "metadata": { "path": "src/other.mbt", "context_mismatch": true },
+    },
+  }
+  assert_true(
+    mooncode_runtime_turn_repeats_complete_read(main_call, [
+      main_read, failed_patch, refreshed_main, failed_other,
+    ]),
+  )
+  let second_failed_main : Json = {
+    "accepted": false,
+    "tool": "write",
+    "result": {
+      "ok": false,
+      "metadata": { "path": "src/main.mbt", "context_mismatch": true },
+    },
+  }
+  assert_false(
+    mooncode_runtime_turn_repeats_complete_read(main_call, [
+      main_read, failed_patch, refreshed_main, second_failed_main,
+    ]),
+  )
+}
+
+///|
 test "mooncode shell observation ordering preserves causal narrow rereads" {
   let complete_read : Json = {
     "accepted": true,

@@ -25,6 +25,43 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
 }
 
 ///|
+async test "mooncode context application failures identify their file" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-context-failure-XXXXXX"),
+  )
+  @fsx.write_to_file(@pathx.join(book_root, "target.mbt"), "actual\n")
+  for tool in ["edit", "apply_patch"] {
+    let execution = mooncode_execute_tool_call(
+      "session-context-failure",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-context-failure",
+        "book_root": book_root,
+        "tool": tool,
+        "command_id": "cmd-context-failure-\{tool}",
+        "arguments": {
+          "path": "target.mbt",
+          "old_string": "stale",
+          "new_string": "replacement",
+        },
+      },
+      now=@clock.Timestamp::from_ms(45L),
+    )
+    assert_false(mooncode_json_bool(execution, "accepted", default=true))
+    let metadata = mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(execution, "result"),
+      "metadata",
+    )
+    assert_true(mooncode_json_bool(metadata, "context_mismatch", default=false))
+    assert_eq(mooncode_json_string(metadata, "path", default=""), "target.mbt")
+  }
+}
+
+///|
 async test "mooncode shell retains complete and partial local file observations" (
   t : @test.Test,
 ) {

@@ -386,6 +386,7 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
     )
   }
   let absolute = mooncode_json_string(path, "absolute_path", default="")
+  let relative = mooncode_json_string(path, "relative_path", default="")
   let old_string = mooncode_json_string(arguments, "old_string", default="")
   let new_string = mooncode_json_string(arguments, "new_string", default="")
   let replace_all = mooncode_json_bool(arguments, "replace_all", default=false)
@@ -410,12 +411,21 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   }
   let occurrences = content.split(old_string).count() - 1
   if occurrences == 0 {
-    return mooncode_tool_error_result("edit", message="old_string not found")
+    return mooncode_tool_error_result("edit", message="old_string not found", metadata={
+      "path": relative,
+      "absolute_path": absolute,
+      "context_mismatch": true,
+    })
   }
   if occurrences > 1 && !replace_all {
     return mooncode_tool_error_result(
       "edit",
       message="old_string matched \{occurrences} times; set replace_all=true to replace all occurrences",
+      metadata={
+        "path": relative,
+        "absolute_path": absolute,
+        "context_mismatch": true,
+      },
     )
   }
   let replacement_count = if replace_all { occurrences } else { 1 }
@@ -428,7 +438,6 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   } else {
     content.replace(old=old_string, new=new_string)
   }
-  let relative = mooncode_json_string(path, "relative_path", default="")
   if mooncode_moonbit_manifest_write_error(relative, new_content, existed=true)
     is Some(message) {
     return mooncode_tool_error_result("edit", message~)
@@ -610,7 +619,11 @@ async fn mooncode_tool_patch_replace(
       return mooncode_tool_error_result(
         tool,
         message="patch before-content not found in \{relative}",
-        metadata={ "path": relative, "absolute_path": absolute },
+        metadata={
+          "path": relative,
+          "absolute_path": absolute,
+          "context_mismatch": true,
+        },
       )
     }
     let replace_all = mooncode_json_bool(
@@ -622,7 +635,11 @@ async fn mooncode_tool_patch_replace(
       return mooncode_tool_error_result(
         tool,
         message="patch before-content matched \{occurrences} times; set replace_all=true to replace all occurrences",
-        metadata={ "path": relative, "absolute_path": absolute },
+        metadata={
+          "path": relative,
+          "absolute_path": absolute,
+          "context_mismatch": true,
+        },
       )
     }
     if replace_all {
@@ -1364,6 +1381,7 @@ fn mooncode_tool_apply_unified_chunks_to_content(
             "path": relative,
             "absolute_path": absolute,
             "hunk": chunk,
+            "context_mismatch": true,
           },
         )
       }
@@ -1375,6 +1393,7 @@ fn mooncode_tool_apply_unified_chunks_to_content(
             "path": relative,
             "absolute_path": absolute,
             "hunk": chunk,
+            "context_mismatch": true,
           },
         )
       }

@@ -1692,15 +1692,44 @@ fn mooncode_runtime_turn_result_file_observation(execution : Json) -> Json {
 }
 
 ///|
+fn mooncode_runtime_turn_context_mismatch_path(execution : Json) -> String {
+  let tool = mooncode_json_string(execution, "tool", default="")
+  if tool != "apply_patch" && tool != "edit" && tool != "write" {
+    return ""
+  }
+  let result = mooncode_runtime_turn_result_payload(execution)
+  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+  if mooncode_json_bool(execution, "accepted", default=false) ||
+    mooncode_json_bool(result, "ok", default=false) ||
+    !mooncode_json_bool(metadata, "context_mismatch", default=false) {
+    return ""
+  }
+  let path = mooncode_json_string(
+    metadata,
+    "file_path",
+    default=mooncode_json_string(metadata, "path", default=""),
+  )
+  if path.contains("#hunk-") {
+    mooncode_tool_first_split_piece(path, "#hunk-")
+  } else {
+    path
+  }
+}
+
+///|
 fn mooncode_runtime_turn_path_has_retained_complete_observation(
   path : String,
   results : Array[Json],
 ) -> Bool {
   let mut last_complete_observation = -1
+  let mut last_context_mismatch = -1
   let mut last_mutation = -1
   for index, result in results {
     if mooncode_runtime_turn_result_is_mutation(result) {
       last_mutation = index
+    }
+    if mooncode_runtime_turn_context_mismatch_path(result) == path {
+      last_context_mismatch = index
     }
     let observation = mooncode_runtime_turn_result_file_observation(result)
     if mooncode_json_string(observation, "path", default="") == path &&
@@ -1708,13 +1737,16 @@ fn mooncode_runtime_turn_path_has_retained_complete_observation(
       last_complete_observation = index
     }
   }
-  last_complete_observation >= 0 && last_mutation < last_complete_observation
+  last_complete_observation >= 0 &&
+  last_mutation < last_complete_observation &&
+  last_context_mismatch < last_complete_observation
 }
 
 ///|
 /// A complete local-file observation remains valid until an accepted authored
-/// mutation. Rejecting an identical native read in that window keeps bounded
-/// planner turns from spending steps fetching bytes already in the transcript.
+/// mutation. A later same-path context mismatch makes exactly one complete
+/// reread causal; that reread becomes the newest observation and consumes the
+/// allowance without any separate counter or ledger.
 fn mooncode_runtime_turn_repeats_complete_read(
   tool_call : Json,
   results : Array[Json],
