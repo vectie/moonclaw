@@ -1883,6 +1883,9 @@ fn mooncode_tool_result_event(
   let metadata = mooncode_json_object_field_or_empty(result, "metadata")
   let path = mooncode_json_string(metadata, "path", default="")
   let diff = mooncode_json_string(metadata, "diff", default="")
+  let changed_paths = mooncode_json_array_string_items(
+    metadata, "changed_paths",
+  )
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-tool-\{tool}-\{now}",
     "protocol": mooncode_protocol_version(),
@@ -1900,6 +1903,7 @@ fn mooncode_tool_result_event(
     },
     "detail": mooncode_json_string(result, "message", default=""),
     "path": path,
+    "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
     "diff": diff,
     "tool": tool,
     "tool_result": result,

@@ -458,11 +458,30 @@ fn mooncode_runtime_turn_completion_gate_applies(
 }
 
 ///|
+fn mooncode_runtime_turn_result_payload(result : Json) -> Json {
+  let direct = mooncode_json_object_field_or_empty(result, "result")
+  match direct {
+    Object(fields) if !fields.is_empty() => direct
+    _ => mooncode_json_object_field_or_empty(result, "tool_result")
+  }
+}
+
+///|
 fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
-  if !mooncode_json_bool(result, "accepted", default=false) {
+  let payload = mooncode_runtime_turn_result_payload(result)
+  let tool = mooncode_json_string(result, "tool", default="")
+  let accepted = mooncode_json_bool(
+    result,
+    "accepted",
+    default=tool == "shell" &&
+      mooncode_json_string(result, "kind", default="") == "tool_result" &&
+      mooncode_json_string(result, "status", default="") == "done" &&
+      mooncode_json_bool(payload, "ok", default=false),
+  )
+  if !accepted {
     return false
   }
-  let tool = mooncode_json_string(result, "tool", default="")
+  let metadata = mooncode_json_object_field_or_empty(payload, "metadata")
   tool == "write" ||
   tool == "edit" ||
   tool == "apply_patch" ||
@@ -478,6 +497,13 @@ fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
       default="",
     ) ==
     "runtime.commit_created"
+  ) ||
+  (
+    tool == "shell" &&
+    mooncode_json_bool(metadata, "post_commit_boundary", default=false) &&
+    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false) &&
+    mooncode_json_string(metadata, "commit_sha", default="") != "" &&
+    !mooncode_json_array_string_items(metadata, "changed_paths").is_empty()
   )
 }
 
@@ -487,10 +513,15 @@ fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
     return []
   }
   let metadata = mooncode_json_object_field_or_empty(
-    mooncode_json_object_field_or_empty(result, "result"),
+    mooncode_runtime_turn_result_payload(result),
     "metadata",
   )
-  if mooncode_json_string(result, "tool", default="") == "commit" {
+  let tool = mooncode_json_string(result, "tool", default="")
+  if tool == "commit" ||
+    (
+      tool == "shell" &&
+      mooncode_json_bool(metadata, "post_commit_boundary", default=false)
+    ) {
     let commit_sha = mooncode_json_string(metadata, "commit_sha", default="")
       .trim()
       .to_owned()

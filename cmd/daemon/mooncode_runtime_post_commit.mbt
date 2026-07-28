@@ -55,6 +55,12 @@ async fn mooncode_runtime_post_commit_capture(
     return result
   }
   let snapshot = mooncode_runtime_post_commit_snapshot(book_root)
+  let commit_sha = mooncode_json_string(snapshot, "commit_sha", default="")
+  let changed_paths = if commit_sha == "" {
+    []
+  } else {
+    mooncode_runtime_commit_changed_paths(book_root, commit_sha)
+  }
   let mut metadata = mooncode_json_object_field_or_empty(result, "metadata")
   metadata = mooncode_json_object_with_field(
     metadata,
@@ -69,12 +75,17 @@ async fn mooncode_runtime_post_commit_capture(
   metadata = mooncode_json_object_with_field(
     metadata,
     "commit_sha",
-    mooncode_json_string(snapshot, "commit_sha", default="").to_json(),
+    commit_sha.to_json(),
   )
   metadata = mooncode_json_object_with_field(
     metadata,
     "commit_tree",
     mooncode_json_string(snapshot, "commit_tree", default="").to_json(),
+  )
+  metadata = mooncode_json_object_with_field(
+    metadata,
+    "changed_paths",
+    Json::array(changed_paths.map(path => path.to_json())),
   )
   mooncode_json_object_with_field(result, "metadata", metadata)
 }
