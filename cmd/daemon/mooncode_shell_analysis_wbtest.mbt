@@ -154,6 +154,69 @@ async test "mooncode shell refuses workspace authoring by redirection" (
 }
 
 ///|
+test "mooncode shell detects in-place sed authoring inside compound commands" {
+  assert_true(
+    mooncode_shell_has_in_place_authoring("sed -i.bak s/old/new/ file"),
+  )
+  assert_true(
+    mooncode_shell_has_in_place_authoring(
+      "for file in src/*.mbt; do sed -E -i '' s/old/new/ \"$file\"; done",
+    ),
+  )
+  assert_true(
+    mooncode_shell_has_in_place_authoring(
+      "if env LC_ALL=C sed --in-place=.bak s/old/new/ file; then check; fi",
+    ),
+  )
+  assert_true(
+    mooncode_shell_has_in_place_authoring(
+      "sh -c 'while ready; do busybox sed -i s/old/new/ file; done'",
+    ),
+  )
+  assert_false(mooncode_shell_has_in_place_authoring("sed -n '1,20p' file"))
+  assert_false(mooncode_shell_has_in_place_authoring("sed -e '-i' input.txt"))
+  assert_false(
+    mooncode_shell_has_in_place_authoring(
+      "printf '%s\\n' 'sed -i is prohibited for authoring'",
+    ),
+  )
+}
+
+///|
+async test "mooncode shell refuses in-place authoring inside a loop" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-shell-in-place-XXXXXX"),
+  )
+  let target = @pathx.join(book_root, "tracked.txt")
+  @fsx.write_to_file(target, "old\n")
+  let execution = mooncode_execute_tool_call(
+    "session-in-place",
+    book_root,
+    {
+      "tool": "shell",
+      "command_id": "cmd-in-place",
+      "arguments": {
+        "cmd": "for file in tracked.txt; do sed -i.bak s/old/new/ \"$file\"; done",
+      },
+    },
+    now=@clock.Timestamp::from_ms(1L),
+  )
+  assert_false(mooncode_json_bool(execution, "accepted", default=true))
+  assert_eq(@fsx.read_file(target), "old\n")
+  assert_false(@fsx.exists(target + ".bak"))
+  assert_true(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(execution, "result"),
+      "message",
+      default="",
+    ).contains("use write, edit, or apply_patch"),
+  )
+}
+
+///|
 test "mooncode shell identifies ambiguous pipelines by syntax" {
   assert_true(mooncode_shell_pipeline_exit_ambiguous("check|tail -20"))
   assert_true(mooncode_shell_pipeline_exit_ambiguous("check\t|\ttail -20"))

@@ -10,6 +10,12 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
       message="shell output redirection cannot author MoonBook files; use write, edit, or apply_patch",
     )
   }
+  if mooncode_shell_has_in_place_authoring(cmd) {
+    return mooncode_tool_error_result(
+      "shell",
+      message="shell in-place editing cannot author MoonBook files; use write, edit, or apply_patch",
+    )
+  }
   match mooncode_shell_boundary_error(book_root, cmd) {
     Some(message) => return mooncode_tool_error_result("shell", message~)
     None => ()

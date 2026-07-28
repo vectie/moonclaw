@@ -78,11 +78,14 @@ fn mooncode_shell_git_executable(word : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_segment_executable_index(segment : Array[String]) -> Int {
+fn mooncode_shell_segment_executable_index_from(
+  segment : Array[String],
+  start : Int,
+) -> Int {
   if segment.is_empty() {
     return -1
   }
-  let mut index = 0
+  let mut index = start
   while index < segment.length() &&
         mooncode_shell_word_is_assignment(segment[index]) {
     index += 1
@@ -108,6 +111,11 @@ fn mooncode_shell_segment_executable_index(segment : Array[String]) -> Int {
   } else {
     index
   }
+}
+
+///|
+fn mooncode_shell_segment_executable_index(segment : Array[String]) -> Int {
+  mooncode_shell_segment_executable_index_from(segment, 0)
 }
 
 ///|
@@ -428,6 +436,104 @@ fn mooncode_shell_has_command_substitution(command : String) -> Bool {
     }
   }
   false
+}
+
+///|
+fn mooncode_shell_compound_command_executable_index(
+  segment : Array[String],
+) -> Int {
+  let mut index = 0
+  while index < segment.length() &&
+        ["!", "(", "{", "do", "then", "else", "elif", "if", "while", "until"].contains(
+          segment[index],
+        ) {
+    index += 1
+  }
+  mooncode_shell_segment_executable_index_from(segment, index)
+}
+
+///|
+fn mooncode_shell_sed_short_option(option : String) -> (Bool, Bool) {
+  let chars = option.to_array()
+  if chars.length() < 2 || chars[0] != '-' || chars[1] == '-' {
+    return (false, false)
+  }
+  for index in 1..<chars.length() {
+    match chars[index] {
+      'i' => return (true, false)
+      'e' | 'f' => return (false, index + 1 == chars.length())
+      _ => ()
+    }
+  }
+  (false, false)
+}
+
+///|
+fn mooncode_shell_segment_has_in_place_sed(segment : Array[String]) -> Bool {
+  let executable_index = mooncode_shell_compound_command_executable_index(
+    segment,
+  )
+  if executable_index < 0 {
+    return false
+  }
+  let executable = segment[executable_index]
+  if mooncode_shell_executable_is(executable, "sh") ||
+    mooncode_shell_executable_is(executable, "bash") ||
+    mooncode_shell_executable_is(executable, "zsh") {
+    let nested_index = mooncode_shell_nested_command_index(
+      segment, executable_index,
+    )
+    return nested_index >= 0 &&
+      mooncode_shell_has_in_place_authoring(segment[nested_index])
+  }
+  let mut option_index = executable_index + 1
+  if mooncode_shell_executable_is(executable, "busybox") {
+    if option_index >= segment.length() || segment[option_index] != "sed" {
+      return false
+    }
+    option_index += 1
+  } else if !mooncode_shell_executable_is(executable, "sed") {
+    return false
+  }
+  while option_index < segment.length() {
+    let option = segment[option_index]
+    if option == "--" {
+      return false
+    }
+    if option == "--in-place" || option.has_prefix("--in-place=") {
+      return true
+    }
+    if option == "--expression" || option == "--file" {
+      option_index += 2
+      continue
+    }
+    if option.has_prefix("--expression=") || option.has_prefix("--file=") {
+      option_index += 1
+      continue
+    }
+    let (in_place, consumes_next) = mooncode_shell_sed_short_option(option)
+    if in_place {
+      return true
+    }
+    option_index += if consumes_next { 2 } else { 1 }
+  }
+  false
+}
+
+///|
+fn mooncode_shell_has_in_place_authoring(command : String) -> Bool {
+  let segment : Array[String] = []
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if mooncode_shell_segment_has_in_place_sed(segment) {
+        return true
+      }
+      segment.clear()
+    } else {
+      segment.push(word)
+    }
+  }
+  mooncode_shell_segment_has_in_place_sed(segment)
 }
 
 ///|
