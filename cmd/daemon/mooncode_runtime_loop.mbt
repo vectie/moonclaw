@@ -177,6 +177,11 @@ async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
     let turn_payload : Json = {
       "consumer_id": consumer_id,
       "runtime_loop": true,
+      "runtime_service": mooncode_json_bool(
+        payload,
+        "runtime_service",
+        default=false,
+      ),
       "loop_index": index,
       "max_turns": max_turns,
       "live_wait_ms": live_wait_ms,

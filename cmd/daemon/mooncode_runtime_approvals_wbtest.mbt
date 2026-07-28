@@ -572,6 +572,134 @@ async test "mooncode runtime keeps an approval-gated command claimed until appro
 }
 
 ///|
+async test "runtime service yields pending approval and approval control resumes one claim" {
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-service-approval-XXXXXX"),
+  )
+  let session_id = "session-service-approval"
+  let command_id = "cmd-service-approval"
+  mooncode_control_test_queue(
+    book_root,
+    session_id,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "book_root": book_root,
+      "command": "prompt",
+      "model": "codex/gpt-5.6-sol",
+      "text": "Create the approved service file",
+      "packet": { "command_id": command_id },
+      "runtime_tool_calls": [
+        {
+          "tool": "write",
+          "requires_approval": true,
+          "arguments": {
+            "path": "service-approved.txt",
+            "content": "approved once",
+          },
+        },
+        { "tool": "finish", "arguments": { "answer": "service approved" } },
+      ],
+    },
+    now=@clock.Timestamp::from_ms(10L),
+  )
+  let daemon = mooncode_control_test_daemon(book_root)
+  let first = daemon.mooncode_runtime_service_execute(session_id, book_root, {
+    "service_id": "service-approval-first",
+    "max_turns": 1,
+    "live_wait_ms": 0,
+  })
+  assert_true(mooncode_json_bool(first, "accepted", default=false))
+  let first_journal = mooncode_read_session_journal(book_root, session_id)
+  let first_receipts = mooncode_journal_entries(
+    first_journal,
+    mooncode_journal_runtime_receipt(),
+  )
+  assert_eq(
+    first_receipts
+    .filter(receipt => {
+      mooncode_json_string(receipt, "status", default="") == "runtime-claimed"
+    })
+    .length(),
+    1,
+  )
+  let first_events = mooncode_journal_entries(
+    first_journal,
+    mooncode_journal_event(),
+  )
+  assert_eq(
+    first_events
+    .filter(event => {
+      mooncode_json_string(event, "kind", default="") ==
+      "tool.approval_requested"
+    })
+    .length(),
+    1,
+  )
+  let request = mooncode_control_test_approval_request(first_events)
+  let approval_id = mooncode_json_string(request, "approval_id", default="")
+  assert_true(approval_id.has_prefix("mooncode-approval-"))
+  assert_false(@fsx.exists(@pathx.join(book_root, "service-approved.txt")))
+  let claimed = daemon.mooncode_runtime_claim_state_payload(
+    session_id, book_root,
+  )
+  assert_eq(mooncode_json_int(claimed, "claimed_command_count", default=-1), 1)
+  @async.with_task_group(group => {
+    let approved = daemon.mooncode_submit_turn_response(group~, session_id, {
+      "protocol": mooncode_protocol_version(),
+      "session_id": session_id,
+      "book_root": book_root,
+      "command": "approve_tool",
+      "model": "codex/gpt-5.6-sol",
+      "text": "Approve the selected tool",
+      "payload": {
+        "approval_id": approval_id,
+        "target_command_id": command_id,
+        "tool_call_id": mooncode_json_string(
+          request,
+          "tool_call_id",
+          default="",
+        ),
+      },
+      "packet": { "command_id": "cmd-service-approve" },
+    })
+    assert_true(mooncode_json_bool(approved, "accepted", default=false))
+    let binding = daemon.mooncode_binding_for_session(session_id)
+    let mut attempts = 0
+    while binding.runtime_service_running && attempts < 200 {
+      @async.sleep(10)
+      attempts += 1
+    }
+    assert_false(binding.runtime_service_running)
+    group.return_immediately(())
+  })
+  assert_eq(
+    @fsx.read_file(@pathx.join(book_root, "service-approved.txt")),
+    "approved once",
+  )
+  let final_journal = mooncode_read_session_journal(book_root, session_id)
+  let final_receipts = mooncode_journal_entries(
+    final_journal,
+    mooncode_journal_runtime_receipt(),
+  )
+  assert_eq(
+    final_receipts
+    .filter(receipt => {
+      mooncode_json_string(receipt, "status", default="") == "runtime-claimed"
+    })
+    .length(),
+    1,
+  )
+  let final_state = daemon.mooncode_runtime_claim_state_payload(
+    session_id, book_root,
+  )
+  assert_eq(
+    mooncode_json_int(final_state, "claimed_command_count", default=-1),
+    0,
+  )
+}
+
+///|
 async test "mooncode rejected approval never executes the tool" (t : @test.Test) {
   ignore(t)
   let book_root = @fsx.mkdtemp(

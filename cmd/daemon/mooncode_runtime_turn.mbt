@@ -687,7 +687,15 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               book_root,
               session_id,
               approval_id,
-              timeout_ms=mooncode_runtime_approval_wait_ms(command),
+              timeout_ms=if mooncode_json_bool(
+                  payload,
+                  "runtime_service",
+                  default=false,
+                ) {
+                0
+              } else {
+                mooncode_runtime_approval_wait_ms(command)
+              },
             )
             if mooncode_json_string(approval, "state", default="pending") ==
               "pending" {
