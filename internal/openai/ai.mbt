@@ -85,10 +85,6 @@ async fn chat_openai(
   extra_body~ : Map[String, Json],
   on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
-  let moongate_client = @moongate.discover_from_suite_status()
-  let moongate_chat_url = moongate_client.map(fn(client) {
-    client.route_openclaw_chat_url()
-  })
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
     max_retry=5,
@@ -99,7 +95,7 @@ async fn chat_openai(
       }
     },
     () => {
-      let route = openai_chat_route_for_model(model, moongate_chat_url)
+      let route = openai_chat_route_for_model(model)
       logger.debug("RequestSent", data={
         "model": { "name": model.model_name, "base_url": model.base_url },
         "route": { "url": route.url, "via_moongate": route.via_moongate },
@@ -163,21 +159,17 @@ priv struct OpenAIChatRoute {
 }
 
 ///|
-fn openai_chat_route_for_model(
-  model : @model.Model,
-  moongate_chat_url : String?,
-) -> OpenAIChatRoute {
-  let route = match moongate_chat_url {
-    Some(url) =>
-      { url, headers: moonclaw_moongate_chat_headers(), via_moongate: true }
-    None =>
-      {
-        url: "\{model.base_url}/chat/completions",
-        headers: openai_direct_chat_headers(model.api_key),
-        via_moongate: model.base_url.contains("/openclaw/v1"),
-      }
+fn openai_chat_route_for_model(model : @model.Model) -> OpenAIChatRoute {
+  let via_moongate = model.base_url.contains("/openclaw/v1")
+  {
+    url: "\{model.base_url}/chat/completions",
+    headers: if via_moongate {
+      moonclaw_moongate_chat_headers()
+    } else {
+      openai_direct_chat_headers(model.api_key)
+    },
+    via_moongate,
   }
-  route
 }
 
 ///|

@@ -158,6 +158,11 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
                 "name": "qwen3.5-plus",
                 "contextWindow": 1000000,
               },
+              {
+                "id": "openai/gpt-5.6-sol",
+                "name": "openai/gpt-5.6-sol",
+                "contextWindow": 400000,
+              },
             ],
           },
         },
@@ -183,6 +188,9 @@ async test "load providers from moonclaw root config" (t : @test.Test) {
         "supports_apply_patch": false,
       },
     ])
+    let nested = loader.get_model(name="bailian/openai/gpt-5.6-sol").unwrap()
+    assert_eq(nested.selector(), "bailian/openai/gpt-5.6-sol")
+    assert_eq(nested.model_name, "openai/gpt-5.6-sol")
   })
 }
 
@@ -199,6 +207,15 @@ test "model loader paths use MoonSuite product home" {
 }
 
 ///|
+test "provider selectors preserve model ids containing slashes" {
+  assert_eq(
+    split_provider_model_selector("moongate/openai/gpt-5.6-sol"),
+    (Some("moongate"), "openai/gpt-5.6-sol"),
+  )
+  assert_eq(split_provider_model_selector("gpt-5.6-sol"), (None, "gpt-5.6-sol"))
+}
+
+///|
 test "moongate catalog models become OpenAI-compatible routed models" {
   let catalog : Json = {
     "models": [
@@ -212,7 +229,8 @@ test "moongate catalog models become OpenAI-compatible routed models" {
     "http://127.0.0.1:15721/openclaw/v1",
     models[0],
   )
-  assert_eq(model.name, "gpt-5.6-sol")
+  assert_eq(model.name, "moongate/gpt-5.6-sol")
+  assert_eq(model.selector(), "moongate/gpt-5.6-sol")
   assert_eq(model.model_name, "gpt-5.6-sol")
   assert_eq(model.base_url, "http://127.0.0.1:15721/openclaw/v1")
   assert_eq(model.safe_zone_tokens, 400000)
@@ -266,6 +284,92 @@ async test "Codex loader retains explicit 5.4 compatibility without fallback" {
     }
     assert_eq(model.selector(), "codex/gpt-5.4")
     assert_eq(model.model_name, "gpt-5.4")
+  })
+}
+
+///|
+async test "Copilot loader resolves valid workspace credentials" {
+  @fsx.with_temporary_directory("moonclaw-copilot-workspace-loader-XXXXXX", dir => {
+    @copilot.save_credentials_for_workspace_root(
+      {
+        github_token: "workspace-github-token",
+        copilot_token: "workspace-copilot-token",
+        copilot_token_expires_at: @async.now() / 1000L + 3600L,
+      },
+      root=dir,
+    )
+    let loader = Loader::new(home=dir, cwd=dir)
+    guard loader.get_model(name="copilot/gpt-4.1") is Some(model) else {
+      fail("expected workspace Copilot credentials to yield a model")
+    }
+    assert_eq(model.selector(), "copilot/gpt-4.1")
+    assert_eq(model.model_name, "gpt-4.1")
+    assert_eq(model.api_key, "workspace-copilot-token")
+  })
+}
+
+///|
+async test "Copilot credentials prefer workspace-local credentials over global" {
+  @fsx.with_temporary_directory(
+    "moonclaw-copilot-workspace-precedence-XXXXXX",
+    workspace_root => {
+      @fsx.with_temporary_directory(
+        "moonclaw-copilot-global-precedence-XXXXXX",
+        global_root => {
+          let expires_at = @async.now() / 1000L + 3600L
+          @copilot.save_credentials_for_workspace_root(
+            {
+              github_token: "global-github-token",
+              copilot_token: "global-copilot-token",
+              copilot_token_expires_at: expires_at,
+            },
+            root=global_root,
+          )
+          @copilot.save_credentials_for_workspace_root(
+            {
+              github_token: "workspace-github-token",
+              copilot_token: "workspace-copilot-token",
+              copilot_token_expires_at: expires_at,
+            },
+            root=workspace_root,
+          )
+          guard resolve_copilot_credentials(
+              workspace_root,
+              global_root_for_test=global_root,
+            )
+            is Some(credentials) else {
+            fail("expected workspace Copilot credentials")
+          }
+          assert_eq(credentials.github_token, "workspace-github-token")
+          assert_eq(credentials.copilot_token, "workspace-copilot-token")
+        },
+      )
+    },
+  )
+}
+
+///|
+async test "Copilot credentials fall back to injectable global credentials" {
+  @fsx.with_temporary_directory("moonclaw-copilot-workspace-fallback-XXXXXX", workspace_root => {
+    @fsx.with_temporary_directory("moonclaw-copilot-global-fallback-XXXXXX", global_root => {
+      @copilot.save_credentials_for_workspace_root(
+        {
+          github_token: "global-github-token",
+          copilot_token: "global-copilot-token",
+          copilot_token_expires_at: @async.now() / 1000L + 3600L,
+        },
+        root=global_root,
+      )
+      guard resolve_copilot_credentials(
+          workspace_root,
+          global_root_for_test=global_root,
+        )
+        is Some(credentials) else {
+        fail("expected global Copilot credentials")
+      }
+      assert_eq(credentials.github_token, "global-github-token")
+      assert_eq(credentials.copilot_token, "global-copilot-token")
+    })
   })
 }
 
@@ -406,7 +510,7 @@ async test "unreachable MoonGate status never becomes a selectable model" (
     let loader = Loader::new(home=mock.cwd.path(), cwd=mock.cwd.path())
     let models = loader.models()
     assert_false(models.any(fn(model) { model.name == "phantom-gpt" }))
-    assert_true(loader.get_model(name="phantom-gpt") is None)
+    assert_true(loader.get_model(name="moongate/phantom-gpt") is None)
   })
 }
 

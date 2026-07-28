@@ -8,7 +8,6 @@ import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/openai/responses",
-  "vectie/moonclaw/plugin/moongate",
   "moonbitlang/core/json",
   "moonbitlang/core/test",
 }

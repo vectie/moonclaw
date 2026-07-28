@@ -62,6 +62,12 @@ test "moongate client builds openclaw route url" {
 }
 
 ///|
+test "moongate client uses the OpenClaw-scoped model catalog" {
+  let client = Client::{ base_url: "http://127.0.0.1:18081" }
+  assert_eq(client.models_path(), "/openclaw/v1/models")
+}
+
+///|
 test "moongate client separates HTTP origin and request path" {
   assert_true(
     moongate_http_parts("http://127.0.0.1:15721/v1/models") ==
