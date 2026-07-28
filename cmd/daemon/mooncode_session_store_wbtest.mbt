@@ -1472,3 +1472,82 @@ test "terminal events settle running work steps" {
   assert_eq(steps.length(), 1)
   assert_eq(mooncode_json_string(steps[0], "status", default=""), "done")
 }
+
+///|
+test "canonical conversation rolls back rejected finish before accepted finish" {
+  let command : Json = {
+    "command_id": "cmd-replan",
+    "created_at": "2026-07-29T00:00:00Z",
+    "command": {
+      "command": "prompt",
+      "text": "Implement the change",
+      "packet": {
+        "command_id": "cmd-replan",
+        "client_turn_id": "client-replan",
+      },
+    },
+  }
+  let rejected_delta : Json = {
+    "command_id": "cmd-replan",
+    "kind": "assistant_delta",
+    "content": "Unable to complete within this run.",
+    "created_at": "2026-07-29T00:00:01Z",
+  }
+  let rejected_finish : Json = {
+    "command_id": "cmd-replan",
+    "kind": "runtime.turn_finished",
+    "status": "done",
+    "created_at": "2026-07-29T00:00:02Z",
+  }
+  let rejected_replan : Json = {
+    "command_id": "cmd-replan",
+    "kind": "runtime.turn_checkpointed",
+    "state": "planner-replan-paused",
+    "finish_rejected": true,
+    "created_at": "2026-07-29T00:00:03Z",
+  }
+  let accepted_delta : Json = {
+    "command_id": "cmd-replan",
+    "kind": "assistant_delta",
+    "content": "Implemented and verified.",
+    "created_at": "2026-07-29T00:00:04Z",
+  }
+  let accepted_finish : Json = {
+    "command_id": "cmd-replan",
+    "kind": "runtime.turn_finished",
+    "status": "done",
+    "created_at": "2026-07-29T00:00:05Z",
+  }
+  let rejected = mooncode_session_conversation(
+    { "session_id": "session-replan" },
+    [command],
+    [],
+    [rejected_delta, rejected_finish, rejected_replan],
+    journal_sequence=mooncode_journal_cursor_parse("4"),
+  )
+  let rejected_turn = mooncode_json_array_items(rejected, "turns")[0]
+  assert_eq(
+    mooncode_json_string(rejected_turn, "status", default=""),
+    "running",
+  )
+  assert_false(
+    rejected_turn.stringify().contains("Unable to complete within this run."),
+  )
+  let accepted = mooncode_session_conversation(
+    { "session_id": "session-replan" },
+    [command],
+    [],
+    [
+      rejected_delta, rejected_finish, rejected_replan, accepted_delta, accepted_finish,
+    ],
+    journal_sequence=mooncode_journal_cursor_parse("6"),
+  )
+  let accepted_turn = mooncode_json_array_items(accepted, "turns")[0]
+  assert_eq(mooncode_json_string(accepted_turn, "status", default=""), "done")
+  let accepted_text = accepted_turn.stringify()
+  assert_eq(
+    accepted_text.split("Implemented and verified.").collect().length(),
+    2,
+  )
+  assert_false(accepted_text.contains("Unable to complete within this run."))
+}

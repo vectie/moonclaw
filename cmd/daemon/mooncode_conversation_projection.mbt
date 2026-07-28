@@ -147,7 +147,14 @@ fn mooncode_conversation_apply_event(
   }
   let turn = turns[index]
   let created_at = mooncode_json_string(event, "created_at", default="")
-  if mooncode_conversation_event_is_assistant_delta(event) {
+  if mooncode_json_string(event, "kind", default="") ==
+    mooncode_runtime_continuation_kind() &&
+    mooncode_json_string(event, "state", default="") == "planner-replan-paused" &&
+    mooncode_json_bool(event, "finish_rejected", default=false) {
+    turn.assistant = Json::object({})
+    turn.assistant_delta = ""
+    turn.status = "running"
+  } else if mooncode_conversation_event_is_assistant_delta(event) {
     let content = mooncode_conversation_event_content(event)
     if content != "" {
       turn.assistant_delta = turn.assistant_delta + content
