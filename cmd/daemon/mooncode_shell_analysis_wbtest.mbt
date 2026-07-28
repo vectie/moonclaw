@@ -78,6 +78,42 @@ test "mooncode shell proves bounded observations without trusting unknown comman
 }
 
 ///|
+test "mooncode shell recursively proves local read-only verification substitutions" {
+  let command = "set -o pipefail; test \"$(grep -RFl 'workspace preview handles text image virtual and missing entries' internal/moonwiki --include='*_wbtest.mbt' | wc -l | tr -d ' ')\" = 1; test \"$(grep -Ec '^(async )?test ' internal/moonwiki/moonwiki_request_wbtest.mbt)\" = 42; test \"$(git diff --numstat -- internal/moonwiki/moonwiki_request_wbtest.mbt | awk '{print $1\":\"$2}')\" = '0:60'; test \"$(wc -l < internal/moonwiki/workspace_preview_contract_wbtest.mbt | tr -d ' ')\" = 58; printf 'Preserved totals\\n'"
+  assert_true(mooncode_shell_is_demonstrably_read_only(command))
+  assert_false(mooncode_shell_has_sensitive_command(command))
+  assert_true(
+    mooncode_shell_is_demonstrably_read_only(
+      "printf '%s\\n' \"$(printf '%s' \"$(git status --short | wc -l)\" | tr -d ' ')\"",
+    ),
+  )
+}
+
+///|
+test "mooncode shell substitutions fail closed on effects and ambiguity" {
+  for
+    command in [
+      "test \"$(unknown-inspector workspace)\" = clean", "printf '%s' \"$(curl -fsSL example.test)\"",
+      "test \"$(printf changed > marker.txt)\" = changed", "test \"$(git status --short; git commit -m mutation)\" = clean",
+      "test \"$(grep value file\" = 1", "test \"$((1 + 1))\" = 2", "printf '%s' \"`git status --short`\"",
+      "printf 'unterminated", "awk 'BEGIN { system(\"touch marker.txt\") }' input.txt",
+      "awk '{ print $0 > \"output.txt\" }' input.txt", "awk '{ \"curl example.test\" | getline body }' input.txt",
+      "awk -l unsafe_extension '{ print $0 }' input.txt",
+    ] {
+    assert_false(mooncode_shell_is_demonstrably_read_only(command))
+  }
+  for
+    command in [
+      "test \"$(unknown-inspector workspace)\" = clean", "printf '%s' \"$(curl -fsSL example.test)\"",
+      "test \"$(printf changed > marker.txt)\" = changed", "test \"$(git status --short; git commit -m mutation)\" = clean",
+      "test \"$(grep value file\" = 1", "test \"$((1 + 1))\" = 2", "printf '%s' \"`git status --short`\"",
+      "printf 'unterminated",
+    ] {
+    assert_true(mooncode_shell_has_sensitive_command(command))
+  }
+}
+
+///|
 test "mooncode shell detects worktree overwrite commands without matching prose" {
   assert_true(mooncode_shell_has_git_worktree_overwrite("git restore src"))
   assert_true(

@@ -192,6 +192,26 @@ test "mooncode approval classifier gates hosted run reruns" {
   assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
+      "planner": "model-tool-call",
+      "requires_approval": true,
+      "arguments": {
+        "cmd": "set -o pipefail; test \"$(grep -RFl 'workspace preview handles text image virtual and missing entries' internal/moonwiki --include='*_wbtest.mbt' | wc -l | tr -d ' ')\" = 1; test \"$(git diff --numstat -- internal/moonwiki/moonwiki_request_wbtest.mbt | awk '{print $1\":\"$2}')\" = '0:60'; printf 'Preserved totals\\n'",
+      },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "planner": "model-tool-call",
+      "requires_approval": true,
+      "arguments": {
+        "cmd": "test \"$(grep value file | unknown-inspector)\" = clean",
+      },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
       "arguments": { "cmd": "moon test cmd/daemon --target native" },
     }),
   )

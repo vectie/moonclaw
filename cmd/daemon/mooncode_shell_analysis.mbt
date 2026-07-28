@@ -469,11 +469,19 @@ fn mooncode_shell_segment_has_sensitive_command(
 
 ///|
 fn mooncode_shell_has_sensitive_command(command : String) -> Bool {
-  if mooncode_shell_has_command_substitution(command) {
+  let (substitutions_valid, outer_command, substitutions) = mooncode_shell_extract_command_substitutions(
+    command,
+  )
+  if !substitutions_valid {
     return true
   }
+  for substitution in substitutions {
+    if !mooncode_shell_is_demonstrably_read_only(substitution) {
+      return true
+    }
+  }
   let segment : Array[String] = []
-  for word in mooncode_shell_words(command) {
+  for word in mooncode_shell_words(outer_command) {
     if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
       if mooncode_shell_segment_has_sensitive_command(segment) {
         return true
@@ -484,6 +492,50 @@ fn mooncode_shell_has_sensitive_command(command : String) -> Bool {
     }
   }
   mooncode_shell_segment_has_sensitive_command(segment)
+}
+
+///|
+fn mooncode_shell_segment_is_read_only_awk(
+  segment : Array[String],
+  executable_index : Int,
+) -> Bool {
+  let mut index = executable_index + 1
+  while index < segment.length() {
+    let word = segment[index]
+    if word == "--" {
+      index += 1
+      break
+    }
+    if !word.has_prefix("-") {
+      break
+    }
+    if word == "-f" ||
+      word == "--file" ||
+      word.has_prefix("--file=") ||
+      word == "-e" ||
+      word == "--source" ||
+      word.has_prefix("--source=") {
+      return false
+    }
+    if word == "-F" || word == "-v" || word == "--assign" {
+      index += 2
+    } else if word.has_prefix("-F") ||
+      word.has_prefix("-v") ||
+      word.has_prefix("--assign=") {
+      index += 1
+    } else {
+      return false
+    }
+  }
+  if index >= segment.length() {
+    return false
+  }
+  let program = segment[index].to_lower().to_string()
+  !program.contains("system") &&
+  !program.contains("getline") &&
+  !program.contains(">") &&
+  !program.contains("|") &&
+  !program.contains("@load")
 }
 
 ///|
@@ -599,6 +651,9 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
     }
     return true
   }
+  if mooncode_shell_executable_is(executable, "awk") {
+    return mooncode_shell_segment_is_read_only_awk(segment, index)
+  }
   for
     name in [
       "basename", "cut", "dirname", "echo", "false", "file", "grep", "head", "jq",
@@ -615,16 +670,26 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
 ///|
 fn mooncode_shell_is_demonstrably_read_only(command : String) -> Bool {
   if command.trim().is_empty() ||
-    mooncode_shell_has_command_substitution(command) ||
     command.contains("<(") ||
-    command.contains(">(") ||
-    mooncode_shell_has_file_output_redirection(command) ||
-    mooncode_shell_has_in_place_authoring(command) {
+    command.contains(">(") {
     return false
+  }
+  let (substitutions_valid, outer_command, substitutions) = mooncode_shell_extract_command_substitutions(
+    command,
+  )
+  if !substitutions_valid ||
+    mooncode_shell_has_file_output_redirection(outer_command) ||
+    mooncode_shell_has_in_place_authoring(outer_command) {
+    return false
+  }
+  for substitution in substitutions {
+    if !mooncode_shell_is_demonstrably_read_only(substitution) {
+      return false
+    }
   }
   let segment : Array[String] = []
   let mut executable_seen = false
-  for word in mooncode_shell_words(command) {
+  for word in mooncode_shell_words(outer_command) {
     if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
       if !segment.is_empty() {
         executable_seen = true
@@ -647,35 +712,138 @@ fn mooncode_shell_is_demonstrably_read_only(command : String) -> Bool {
 }
 
 ///|
-fn mooncode_shell_has_command_substitution(command : String) -> Bool {
-  let chars = command.to_array()
+fn mooncode_shell_command_substitution_at(
+  chars : Array[Char],
+  start : Int,
+) -> (String, Int)? {
+  if start + 1 >= chars.length() ||
+    chars[start] != '$' ||
+    chars[start + 1] != '(' {
+    return None
+  }
+  if start + 2 < chars.length() && chars[start + 2] == '(' {
+    return None
+  }
+  let content = StringBuilder()
+  let mut depth = 1
+  let mut index = start + 2
   let mut single_quoted = false
+  let mut double_quoted = false
   let mut escaped = false
-  for index, ch in chars {
+  while index < chars.length() {
+    let ch = chars[index]
+    if escaped {
+      content.write_char(ch)
+      escaped = false
+      index += 1
+      continue
+    }
+    if ch == '\\' && !single_quoted {
+      content.write_char(ch)
+      escaped = true
+      index += 1
+      continue
+    }
+    if ch == '\'' && !double_quoted {
+      single_quoted = !single_quoted
+      content.write_char(ch)
+      index += 1
+      continue
+    }
+    if ch == '"' && !single_quoted {
+      double_quoted = !double_quoted
+      content.write_char(ch)
+      index += 1
+      continue
+    }
+    if !single_quoted && !double_quoted {
+      if ch == '$' && index + 1 < chars.length() && chars[index + 1] == '(' {
+        depth += 1
+        content.write_string("$(")
+        index += 2
+        continue
+      }
+      if ch == '(' {
+        depth += 1
+      } else if ch == ')' {
+        depth -= 1
+        if depth == 0 {
+          return Some((content.to_string(), index + 1))
+        }
+      }
+    }
+    content.write_char(ch)
+    index += 1
+  }
+  None
+}
+
+///|
+fn mooncode_shell_extract_command_substitutions(
+  command : String,
+) -> (Bool, String, Array[String]) {
+  let chars = command.to_array()
+  let outer = StringBuilder()
+  let substitutions : Array[String] = []
+  let mut index = 0
+  let mut single_quoted = false
+  let mut double_quoted = false
+  let mut escaped = false
+  while index < chars.length() {
+    let ch = chars[index]
     if single_quoted {
+      outer.write_char(ch)
       if ch == '\'' {
         single_quoted = false
       }
+      index += 1
       continue
     }
     if escaped {
+      outer.write_char(ch)
       escaped = false
+      index += 1
       continue
     }
     if ch == '\\' {
+      outer.write_char(ch)
       escaped = true
+      index += 1
       continue
     }
-    if ch == '\'' {
+    if ch == '\'' && !double_quoted {
+      outer.write_char(ch)
       single_quoted = true
+      index += 1
       continue
     }
-    if ch == '`' ||
-      (ch == '$' && index + 1 < chars.length() && chars[index + 1] == '(') {
-      return true
+    if ch == '"' {
+      double_quoted = !double_quoted
+      outer.write_char(ch)
+      index += 1
+      continue
     }
+    if ch == '`' {
+      return (false, "", [])
+    }
+    if ch == '$' && index + 1 < chars.length() && chars[index + 1] == '(' {
+      match mooncode_shell_command_substitution_at(chars, index) {
+        Some((content, next_index)) => {
+          substitutions.push(content)
+          outer.write_string("mooncode-substitution")
+          index = next_index
+          continue
+        }
+        None => return (false, "", [])
+      }
+    }
+    outer.write_char(ch)
+    index += 1
   }
-  false
+  if single_quoted || double_quoted || escaped {
+    return (false, "", [])
+  }
+  (true, outer.to_string(), substitutions)
 }
 
 ///|
