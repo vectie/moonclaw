@@ -603,6 +603,7 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
     @pathx.join(nested_module, "moon.mod"),
     "name = \"example/demo\"\n",
   )
+  @fsx.write_to_file(@pathx.join(nested_module, ".gitignore"), "/_build/\n")
   @fsx.write_to_file(@pathx.join(nested_module, "src/moon.pkg"), "")
   @fsx.write_to_file(
     @pathx.join(nested_module, "src/main.mbt"),
@@ -612,6 +613,7 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
     @pathx.join(nested_module, "src/main_wbtest.mbt"),
     "///|\ntest \"nested answer\" {\n  assert_eq(nested_answer(), 42)\n}\n",
   )
+  mooncode_moon_fmt_test_commit_baseline(book_root)
   let inferred = mooncode_moon_ide_cwd(book_root, {
     "path": "tools/demo/src/main.mbt",
   })

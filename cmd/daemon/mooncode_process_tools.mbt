@@ -513,6 +513,23 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
       )
     }
   }
+  let explicit_paths = mooncode_moon_cmd_paths(arguments)
+  let fmt_scope_before = if command == "fmt" && explicit_paths.length() > 0 {
+    mooncode_moon_fmt_snapshot(book_root)
+  } else {
+    MoonCodeFmtSnapshot::{ error: "", states: {} }
+  }
+  if fmt_scope_before.error != "" {
+    return mooncode_tool_error_result(
+      "moon_cmd",
+      message="moon fmt with explicit paths requires a verified Git worktree snapshot before execution: \{fmt_scope_before.error}",
+      metadata={
+        "command": command,
+        "requested_paths": explicit_paths,
+        "scope_verification": "failed-before-execution",
+      },
+    )
+  }
   let args = mooncode_moon_cmd_args(
     arguments,
     command,
@@ -549,6 +566,44 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
       "test_update_kind",
       default="",
     ),
+  }
+  if command == "fmt" && explicit_paths.length() > 0 {
+    let scope = mooncode_moon_fmt_verify_and_restore(
+      book_root, selector_root, explicit_paths, fmt_scope_before,
+    )
+    guard metadata is Object(fields) else {
+      return mooncode_tool_error_result(
+        "moon_cmd",
+        message="moon fmt scope verification could not attach evidence",
+      )
+    }
+    fields["formatter_scope"] = scope.to_json()
+    if scope.snapshot_error != "" {
+      return mooncode_tool_error_result(
+        "moon_cmd",
+        message="moon fmt scope verification failed after execution: \{scope.snapshot_error}; inspect the working tree before any commit",
+        output=mooncode_json_string(capped, "output", default=""),
+        metadata~,
+      )
+    }
+    if scope.out_of_scope_paths.length() > 0 {
+      let restored = if scope.restored_paths.length() > 0 {
+        " Restored and verified: \{scope.restored_paths.join(", ")}."
+      } else {
+        ""
+      }
+      let retained = if scope.retained_paths.length() > 0 {
+        " Retained for inspection: \{scope.retained_paths.join(", ")}."
+      } else {
+        ""
+      }
+      return mooncode_tool_error_result(
+        "moon_cmd",
+        message="moon fmt changed paths outside its explicit scope: \{scope.out_of_scope_paths.join(", ")}.\{restored}\{retained} Reissue moon fmt with explicit paths covering every intended formatter mutation before continuing to commit.",
+        output=mooncode_json_string(capped, "output", default=""),
+        metadata~,
+      )
+    }
   }
   if mooncode_moon_cmd_exit_expected(arguments, process.status) {
     mooncode_tool_ok_result(
