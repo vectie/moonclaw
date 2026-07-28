@@ -2362,6 +2362,16 @@ test "mooncode native runtime turn builds model follow-up transcript" {
 }
 
 ///|
+test "mooncode finish is a hard boundary for its planner tool batch" {
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      { "accepted": true, "tool": "finish", "result": {} },
+    ),
+  )
+}
+
+///|
 test "mooncode native runtime turn emits planner progress events" {
   let plan : Json = {
     "planner_mode": "model-tool-calls",

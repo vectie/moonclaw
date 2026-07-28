@@ -508,6 +508,24 @@ fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
 }
 
 ///|
+fn mooncode_runtime_turn_result_is_commit_boundary(result : Json) -> Bool {
+  let payload = mooncode_runtime_turn_result_payload(result)
+  let metadata = mooncode_json_object_field_or_empty(payload, "metadata")
+  let tool = mooncode_json_string(result, "tool", default="")
+  (
+    tool == "commit" &&
+    mooncode_json_string(metadata, "evidence_kind", default="") ==
+    "runtime.commit_created"
+  ) ||
+  (
+    tool == "shell" &&
+    mooncode_json_bool(metadata, "post_commit_boundary", default=false) &&
+    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false) &&
+    mooncode_json_string(metadata, "commit_sha", default="") != ""
+  )
+}
+
+///|
 fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
   if !mooncode_runtime_turn_result_is_mutation(result) {
     return []
@@ -707,6 +725,7 @@ fn mooncode_runtime_turn_completion_verdict(
   let mut last_verification = -1
   let mut last_test = -1
   let mut last_failure = -1
+  let mut accepted_mutation = false
   let mut coding_evidence = false
   let mut operator_rejected = false
   for index, result in results {
@@ -728,7 +747,13 @@ fn mooncode_runtime_turn_completion_verdict(
         tool == "moon_check"
     }
     if mooncode_runtime_turn_result_is_mutation(result) {
-      last_mutation = index
+      accepted_mutation = true
+      // Creating an exact commit seal does not change the source tree that
+      // earlier checks exercised. It remains mutation evidence, but it must
+      // not invalidate successful verification of that same tree.
+      if !mooncode_runtime_turn_result_is_commit_boundary(result) {
+        last_mutation = index
+      }
     }
     let verification = mooncode_runtime_turn_result_verification_kind(result)
     if verification != "" {
@@ -739,7 +764,7 @@ fn mooncode_runtime_turn_completion_verdict(
     }
   }
   if requires_verification {
-    if last_mutation < 0 {
+    if !accepted_mutation {
       return {
         accepted: false,
         reason: "coding completion has no accepted mutation evidence",
@@ -756,7 +781,7 @@ fn mooncode_runtime_turn_completion_verdict(
     } else {
       last_verification
     }
-    if required_verification < last_mutation {
+    if required_verification < 0 || required_verification < last_mutation {
       return {
         accepted: false,
         reason: if requires_tests {

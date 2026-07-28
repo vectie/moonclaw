@@ -17,9 +17,8 @@ printf '%s\n' \
 printf '%s\n' \
   '{"type":"event","event":{"journal_sequence":"5","command_id":"cmd-test","kind":"command.queued_for_runtime_turn"}}' \
   '{"type":"event","event":{"journal_sequence":"98","target_command_id":"cmd-test","kind":"tool.approval_requested","state":"pending","approval_id":"approval-test"}}' \
-  '{"type":"event","event":{"journal_sequence":"98","command_id":"cmd-test","kind":"runtime.turn_cancelled","status":"cancelled","detail":"stale terminal"}}' \
   '{"type":"event","event":{"journal_sequence":"239","target_command_id":"cmd-test","kind":"tool.approval_approved","state":"approved","approval_id":"approval-test"}}' \
-  '{"type":"event","event":{"journal_sequence":"239","command_id":"cmd-test","kind":"runtime.turn_finished","status":"done","detail":"fixture complete"}}' \
+  '{"type":"event","event":{"journal_sequence":"239","command_id":"cmd-test","kind":"runtime.turn_checkpointed","status":"running","detail":"patient fixture remains active"}}' \
   >"$evidence"
 
 cat >"$fixture_root/bin/curl" <<'EOF'
@@ -52,11 +51,37 @@ output="$(
 [[ "$output" == *"after journal sequence 239"* ]]
 [[ "$output" == *"fixture complete"* ]]
 [[ "$output" != *"operator approval required"* ]]
-[[ "$output" != *"stale terminal"* ]]
 [[ -s "$marker" ]]
 [[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "5")] | length' "$evidence")" == "1" ]]
-[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "98")] | length' "$evidence")" == "2" ]]
+[[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "98")] | length' "$evidence")" == "1" ]]
 [[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "239")] | length' "$evidence")" == "2" ]]
 [[ "$(jq -s '[.[] | select(.type == "event" and .event.journal_sequence == "240")] | length' "$evidence")" == "1" ]]
 
-printf 'patient harness resume cursor test passed\n'
+terminal_evidence="$fixture_root/terminal-evidence.jsonl"
+rm -f "$marker"
+printf '%s\n' \
+  '{"type":"event","event":{"journal_sequence":"5","command_id":"cmd-test","kind":"command.queued_for_runtime_turn"}}' \
+  '{"type":"event","event":{"journal_sequence":"238","command_id":"cmd-test","kind":"runtime.commit_created","status":"done","commit_sha":"ccf291e8"}}' \
+  '{"type":"event","event":{"journal_sequence":"239","command_id":"cmd-test","kind":"runtime.turn_checkpointed","status":"running"}}' \
+  '{"type":"event","event":{"journal_sequence":"240","command_id":"cmd-test","kind":"finish","status":"done","tool":"finish","detail":"finished"}}' \
+  '{"type":"event","event":{"journal_sequence":"241","command_id":"cmd-test","kind":"runtime.turn_finished","status":"done","detail":"committed fixture complete"}}' \
+  >"$terminal_evidence"
+
+terminal_output="$(
+  PATH="$fixture_root/bin:$PATH" \
+    HARNESS_TEST_MARKER="$marker" \
+    MOONCODE_HARNESS_WAIT_MS=0 \
+    "$repo_root/scripts/mooncode-patient-harness.sh" \
+      --url http://fixture.invalid \
+      --request "$request" \
+      --evidence "$terminal_evidence" \
+      --resume
+)"
+
+[[ "$terminal_output" == *"committed fixture complete"* ]]
+[[ "$terminal_output" == *"observer audit required"* ]]
+[[ ! -e "$marker" ]]
+[[ "$(jq -s '[.[] | select(.type == "harness_summary" and .status == "worker_completed")] | length' "$terminal_evidence")" == "1" ]]
+[[ "$(jq -s '[.[] | select(.type == "event" and (.event.kind == "moon_cmd.finished" or .event.kind == "runtime.planner_started"))] | length' "$terminal_evidence")" == "0" ]]
+
+printf 'patient harness terminal freeze tests passed\n'

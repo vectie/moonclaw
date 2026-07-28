@@ -146,6 +146,26 @@ finish_harness() {
   exit "$exit_code"
 }
 
+finish_if_target_terminal() {
+  case "$target_status" in
+    done)
+      printf 'MoonCode worker completed command %s: %s\n' "$command_id" "$target_detail"
+      if [[ -n "$evidence_file" ]]; then
+        printf 'observer audit required before accepting the task result\n'
+      fi
+      finish_harness "worker_completed" 0 "$target_detail"
+      ;;
+    failed)
+      printf 'MoonCode failed command %s: %s\n' "$command_id" "$target_detail" >&2
+      finish_harness "failed" 1 "$target_detail"
+      ;;
+    cancelled)
+      printf 'MoonCode cancelled command %s: %s\n' "$command_id" "$target_detail" >&2
+      finish_harness "cancelled" 3 "$target_detail"
+      ;;
+  esac
+}
+
 if [[ -n "$evidence_file" ]]; then
   evidence_parent="$(dirname "$evidence_file")"
   [[ -d "$evidence_parent" ]] ||
@@ -284,6 +304,8 @@ if [[ -n "$evidence_file" ]]; then
   )"
   printf 'recording observer evidence: %s\n' "$evidence_file"
 fi
+
+finish_if_target_terminal
 
 trap 'finish_harness "supervisor_interrupted" 130 "Supervision stopped without cancelling MoonCode."' INT TERM
 
@@ -563,23 +585,7 @@ while true; do
     finish_harness "approval_required" 2 "The target command requires operator approval."
   fi
 
-  case "$target_status" in
-    done)
-      printf 'MoonCode worker completed command %s: %s\n' "$command_id" "$target_detail"
-      if [[ -n "$evidence_file" ]]; then
-        printf 'observer audit required before accepting the task result\n'
-      fi
-      finish_harness "worker_completed" 0 "$target_detail"
-      ;;
-    failed)
-      printf 'MoonCode failed command %s: %s\n' "$command_id" "$target_detail" >&2
-      finish_harness "failed" 1 "$target_detail"
-      ;;
-    cancelled)
-      printf 'MoonCode cancelled command %s: %s\n' "$command_id" "$target_detail" >&2
-      finish_harness "cancelled" 3 "$target_detail"
-      ;;
-  esac
+  finish_if_target_terminal
 
   case "$service_status" in
     failed)

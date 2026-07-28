@@ -1199,7 +1199,8 @@ fn mooncode_runtime_turn_stops_tool_batch(
     "approval_state",
     default="",
   )
-  if approval_state == "rejected" ||
+  if mooncode_json_string(execution, "tool", default="") == "finish" ||
+    approval_state == "rejected" ||
     mooncode_json_bool(metadata, "pipeline_exit_ambiguous", default=false) ||
     mooncode_json_string(execution, "tool", default="") == "read_skill" {
     return true
