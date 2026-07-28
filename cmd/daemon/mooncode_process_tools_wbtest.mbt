@@ -25,6 +25,89 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
 }
 
 ///|
+async test "mooncode shell retains complete and partial local file observations" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-observation-XXXXXX"),
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "observed.txt"),
+    "one\ntwo\nthree\n",
+  )
+  let partial = mooncode_tool_shell(book_root, {
+    "cmd": "sed -n '1,2p' observed.txt",
+    "timeout_ms": 5000,
+  })
+  let partial_metadata = mooncode_json_object_field_or_empty(
+    partial, "metadata",
+  )
+  let partial_observation = mooncode_json_object_field_or_empty(
+    partial_metadata, "file_observation",
+  )
+  assert_eq(
+    mooncode_json_string(partial_observation, "path", default=""),
+    "observed.txt",
+  )
+  assert_eq(
+    mooncode_json_string(partial_observation, "scope", default=""),
+    "partial",
+  )
+  let complete = mooncode_tool_shell(book_root, {
+    "cmd": "sed -n '1,99p' observed.txt",
+    "timeout_ms": 5000,
+  })
+  let complete_observation = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(complete, "metadata"),
+    "file_observation",
+  )
+  assert_eq(
+    mooncode_json_string(complete_observation, "scope", default=""),
+    "complete",
+  )
+  let cat_complete = mooncode_tool_shell(book_root, {
+    "cmd": "cat observed.txt",
+    "timeout_ms": 5000,
+  })
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(
+        mooncode_json_object_field_or_empty(cat_complete, "metadata"),
+        "file_observation",
+      ),
+      "scope",
+      default="",
+    ),
+    "complete",
+  )
+  for transformed in ["grep two observed.txt", "cat -n observed.txt"] {
+    let result = mooncode_tool_shell(book_root, {
+      "cmd": transformed,
+      "timeout_ms": 5000,
+    })
+    let observation = mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(result, "metadata"),
+      "file_observation",
+    )
+    assert_eq(mooncode_json_string(observation, "scope", default=""), "partial")
+  }
+  let outside_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-shell-observation-outside-XXXXXX"),
+  )
+  let outside_path = @pathx.join(outside_root, "outside.txt")
+  @fsx.write_to_file(outside_path, "outside\n")
+  let outside = mooncode_shell_file_observation(
+    book_root,
+    book_root,
+    "cat \{outside_path}",
+    "outside\n",
+    false,
+  )
+  assert_eq(mooncode_json_string(outside, "path", default=""), "")
+}
+
+///|
 async test "mooncode shell timeout cancels children and permits cleanup traps" (
   t : @test.Test,
 ) {

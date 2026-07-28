@@ -89,14 +89,27 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   }
   let output = process.stdout + process.stderr
   let capped = mooncode_cap_tool_output(output, max_output_chars)
+  let truncated = mooncode_json_bool(capped, "truncated", default=false)
+  let file_observation = if process.status == 0 {
+    mooncode_shell_file_observation(
+      book_root,
+      cwd_path,
+      cmd,
+      mooncode_json_string(capped, "output", default=""),
+      truncated,
+    )
+  } else {
+    {}
+  }
   let pipeline_exit_ambiguous = mooncode_shell_pipeline_exit_ambiguous(cmd)
   let metadata : Json = {
     "cmd": cmd,
     "cwd": mooncode_json_string(cwd, "relative_path", default="."),
     "status": process.status,
     "elapsed_ms": process.elapsed,
-    "truncated": mooncode_json_bool(capped, "truncated", default=false),
+    "truncated": truncated,
     "pipeline_exit_ambiguous": pipeline_exit_ambiguous,
+    "file_observation": file_observation,
   }
   let result = if pipeline_exit_ambiguous {
     mooncode_tool_error_result(

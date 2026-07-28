@@ -1392,6 +1392,7 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
   tool_results : Array[Json],
 ) -> Json {
   let read_paths : Array[String] = []
+  let complete_read_paths : Array[String] = []
   let failed_calls : Array[Json] = []
   for index in 0..<tool_calls.length() {
     if index >= tool_results.length() {
@@ -1405,9 +1406,25 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
     let accepted = mooncode_json_bool(execution, "accepted", default=false)
     let result = mooncode_json_object_field_or_empty(execution, "result")
     let ok = mooncode_json_bool(result, "ok", default=accepted)
-    if tool == "read" && accepted && ok && path != "" {
-      if !read_paths.contains(path) {
-        read_paths.push(path)
+    if accepted && ok {
+      let normalized_execution : Json = {
+        "accepted": accepted,
+        "tool": tool,
+        "arguments": arguments,
+        "result": result,
+      }
+      let observation = mooncode_runtime_turn_result_file_observation(
+        normalized_execution,
+      )
+      let observed_path = mooncode_json_string(observation, "path", default="")
+      let scope = mooncode_json_string(observation, "scope", default="partial")
+      if observed_path != "" {
+        if !read_paths.contains(observed_path) {
+          read_paths.push(observed_path)
+        }
+        if scope == "complete" && !complete_read_paths.contains(observed_path) {
+          complete_read_paths.push(observed_path)
+        }
       }
     } else if !accepted || !ok {
       failed_calls.push({
@@ -1421,14 +1438,18 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
     return {}
   }
   let retained_reads : Array[Json] = read_paths.map(path => Json::string(path))
+  let retained_complete_reads : Array[Json] = complete_read_paths.map(path => {
+    Json::string(path)
+  })
   {
     "role": "user",
     "content": "Retained evidence for the next planner opportunity:\n" +
     Json::object({
       "successful_read_paths": Json::array(retained_reads),
+      "complete_read_paths": Json::array(retained_complete_reads),
       "failed_tool_calls": Json::array(failed_calls),
     }).stringify(indent=2) +
-    "\nDo not reread a successful path merely to recover context; its prior tool result remains in this transcript. Reread only when a mutation, truncation, or explicit new question requires fresh bytes. Consume each exact tool error before acting: while relevant repository and environment state is unchanged, do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. After a relevant repair or transient cause is resolved, rerun the exact focused verification that previously failed. Use repository discovery or an explicit steering path to choose a causally different next action.",
+    "\n`successful_read_paths` includes complete and partial observations; `complete_read_paths` identifies paths whose full bytes remain in the transcript. Do not completely reread a retained complete path merely to recover context. A causally targeted narrow reread remains appropriate after a compiler or patch error, as does a fresh read after mutation or truncation. Consume each exact tool error before acting: while relevant repository and environment state is unchanged, do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. After a relevant repair or transient cause is resolved, rerun the exact focused verification that previously failed. Use repository discovery or an explicit steering path to choose a causally different next action.",
   }
 }
 

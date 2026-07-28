@@ -1151,6 +1151,14 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
             "arguments": "{\"path\":\"src/guessed.mbt\"}",
           },
         },
+        {
+          "id": "shell-observation",
+          "type": "function",
+          "function": {
+            "name": "shell",
+            "arguments": "{\"cmd\":\"sed -n '1,80p' src/adapter.mbt\"}",
+          },
+        },
       ],
     },
   }
@@ -1165,6 +1173,11 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
       "tool_call_id": "read-guessed",
       "arguments": { "path": "src/guessed.mbt" },
     },
+    {
+      "tool": "shell",
+      "tool_call_id": "shell-observation",
+      "arguments": { "cmd": "sed -n '1,80p' src/adapter.mbt" },
+    },
   ]
   let tool_results : Array[Json] = [
     {
@@ -1176,6 +1189,20 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
       "tool": "read",
       "accepted": false,
       "result": { "ok": false, "message": "path does not exist" },
+    },
+    {
+      "tool": "shell",
+      "accepted": true,
+      "result": {
+        "ok": true,
+        "metadata": {
+          "file_observation": {
+            "path": "src/adapter.mbt",
+            "scope": "partial",
+            "source": "shell",
+          },
+        },
+      },
     },
   ]
   let steering : Json = {
@@ -1193,11 +1220,16 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
   )
   let transcript = Json::array(messages).stringify()
   assert_true(transcript.contains("successful_read_paths"))
+  assert_true(transcript.contains("complete_read_paths"))
   assert_true(transcript.contains("src/parser.mbt"))
+  assert_true(transcript.contains("src/adapter.mbt"))
   assert_true(transcript.contains("failed_tool_calls"))
   assert_true(transcript.contains("src/guessed.mbt"))
   assert_true(transcript.contains("path does not exist"))
-  assert_true(transcript.contains("Do not reread a successful path"))
+  assert_true(
+    transcript.contains("Do not completely reread a retained complete path"),
+  )
+  assert_true(transcript.contains("causally targeted narrow reread"))
   assert_true(transcript.contains("do not repeat an identical failed call"))
   assert_true(
     transcript.contains(
@@ -2471,6 +2503,94 @@ test "mooncode model planner rejects only stale duplicate complete reads" {
     mooncode_runtime_turn_repeats_complete_read(
       { "tool": "edit", "arguments": { "path": "src/main.mbt" } },
       [complete_read],
+    ),
+  )
+}
+
+///|
+test "mooncode shell observation ordering preserves causal narrow rereads" {
+  let complete_read : Json = {
+    "accepted": true,
+    "tool": "read",
+    "arguments": { "path": "src/main.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": { "path": "src/main.mbt", "truncated": false },
+    },
+  }
+  let compiler_failure : Json = {
+    "accepted": false,
+    "tool": "moon_check",
+    "result": { "ok": false, "message": "compiler error at line 12" },
+  }
+  let patch_failure : Json = {
+    "accepted": false,
+    "tool": "apply_patch",
+    "result": { "ok": false, "message": "patch context did not match" },
+  }
+  let unrelated_complete : Json = {
+    "accepted": true,
+    "tool": "read",
+    "arguments": { "path": "src/other.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": { "path": "src/other.mbt", "truncated": false },
+    },
+  }
+  let narrow_shell : Json = {
+    "accepted": true,
+    "tool": "shell",
+    "arguments": { "cmd": "sed -n '8,16p' src/main.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": {
+        "file_observation": {
+          "path": "src/main.mbt",
+          "scope": "partial",
+          "source": "shell",
+        },
+      },
+    },
+  }
+  let complete_shell : Json = {
+    "accepted": true,
+    "tool": "shell",
+    "arguments": { "cmd": "cat src/main.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": {
+        "file_observation": {
+          "path": "src/main.mbt",
+          "scope": "complete",
+          "source": "shell",
+        },
+      },
+    },
+  }
+  assert_true(
+    mooncode_runtime_turn_duplicate_complete_observation_path(narrow_shell, [
+      complete_read, unrelated_complete, compiler_failure, patch_failure,
+    ])
+    is None,
+  )
+  assert_true(
+    mooncode_runtime_turn_duplicate_complete_observation_path(complete_shell, [
+      complete_read, unrelated_complete, compiler_failure, patch_failure, narrow_shell,
+    ])
+    is Some("src/main.mbt"),
+  )
+  assert_true(
+    mooncode_runtime_turn_repeats_complete_read(
+      { "tool": "read", "arguments": { "path": "src/main.mbt" } },
+      [complete_shell],
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_repeats_complete_read(
+      { "tool": "read", "arguments": { "path": "src/other.mbt" } },
+      [
+        complete_read, unrelated_complete, compiler_failure, patch_failure, narrow_shell,
+      ],
     ),
   )
 }

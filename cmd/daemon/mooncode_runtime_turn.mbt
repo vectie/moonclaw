@@ -597,12 +597,27 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               now=self.clock.now(),
             )
           } else {
-            mooncode_execute_tool_call(
+            let candidate = mooncode_execute_tool_call(
               session_id,
               book_root,
               mooncode_runtime_turn_tool_body(command, tool_call),
               now=self.clock.now(),
             )
+            match
+              mooncode_runtime_turn_duplicate_complete_observation_path(
+                candidate, tool_results,
+              ) {
+              Some(path) =>
+                mooncode_runtime_turn_duplicate_read_execution(
+                  session_id,
+                  book_root,
+                  command_id,
+                  tool_call,
+                  path~,
+                  now=self.clock.now(),
+                )
+              None => candidate
+            }
           }
           step_results.push(execution)
           tool_results.push(execution)
@@ -1630,9 +1645,76 @@ fn mooncode_runtime_turn_comment_only_repair_execution(
 }
 
 ///|
-/// A complete read remains valid until an accepted authored mutation. Rejecting
-/// an identical read in that window keeps bounded planner turns from spending
-/// multiple steps fetching bytes already present in their tool transcript.
+/// Return normalized local-file observations retained by one successful tool
+/// execution. Native reads and shell analysis share this vocabulary so either
+/// route can provide the evidence used by later planner turns.
+fn mooncode_runtime_turn_result_file_observation(execution : Json) -> Json {
+  let accepted = mooncode_json_bool(execution, "accepted", default=false)
+  let result = mooncode_runtime_turn_result_payload(execution)
+  if !accepted || !mooncode_json_bool(result, "ok", default=accepted) {
+    return {}
+  }
+  let tool = mooncode_json_string(execution, "tool", default="")
+  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+  if tool == "shell" {
+    let observation = mooncode_json_object_field_or_empty(
+      metadata, "file_observation",
+    )
+    if mooncode_json_string(observation, "path", default="") == "" {
+      return {}
+    }
+    return observation
+  }
+  if tool != "read" {
+    return {}
+  }
+  let path = mooncode_json_string(
+    metadata,
+    "path",
+    default=mooncode_json_string(
+      mooncode_json_object_field_or_empty(execution, "arguments"),
+      "path",
+      default="",
+    ),
+  )
+  if path == "" {
+    return {}
+  }
+  {
+    "path": path,
+    "scope": if mooncode_json_bool(metadata, "truncated", default=false) {
+      "partial"
+    } else {
+      "complete"
+    },
+    "source": "read",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_path_has_retained_complete_observation(
+  path : String,
+  results : Array[Json],
+) -> Bool {
+  let mut last_complete_observation = -1
+  let mut last_mutation = -1
+  for index, result in results {
+    if mooncode_runtime_turn_result_is_mutation(result) {
+      last_mutation = index
+    }
+    let observation = mooncode_runtime_turn_result_file_observation(result)
+    if mooncode_json_string(observation, "path", default="") == path &&
+      mooncode_json_string(observation, "scope", default="") == "complete" {
+      last_complete_observation = index
+    }
+  }
+  last_complete_observation >= 0 && last_mutation < last_complete_observation
+}
+
+///|
+/// A complete local-file observation remains valid until an accepted authored
+/// mutation. Rejecting an identical native read in that window keeps bounded
+/// planner turns from spending steps fetching bytes already in the transcript.
 fn mooncode_runtime_turn_repeats_complete_read(
   tool_call : Json,
   results : Array[Json],
@@ -1648,30 +1730,31 @@ fn mooncode_runtime_turn_repeats_complete_read(
   if path == "" {
     return false
   }
-  let mut last_complete_read = -1
-  let mut last_mutation = -1
-  for index, result in results {
-    if mooncode_runtime_turn_result_is_mutation(result) {
-      last_mutation = index
-    }
-    if mooncode_json_bool(result, "accepted", default=false) &&
-      mooncode_json_string(result, "tool", default="") == "read" &&
-      mooncode_json_string(
-        mooncode_json_object_field_or_empty(result, "arguments"),
-        "path",
-        default="",
-      ) ==
-      path {
-      let tool_result = mooncode_json_object_field_or_empty(result, "result")
-      let metadata = mooncode_json_object_field_or_empty(
-        tool_result, "metadata",
-      )
-      if !mooncode_json_bool(metadata, "truncated", default=false) {
-        last_complete_read = index
-      }
+  mooncode_runtime_turn_path_has_retained_complete_observation(path, results)
+}
+
+///|
+/// Shell completeness is established only after successful output is captured.
+/// A partial observation is never rejected, which leaves causal narrow rereads
+/// available after compiler or patch failures.
+fn mooncode_runtime_turn_duplicate_complete_observation_path(
+  execution : Json,
+  prior_results : Array[Json],
+) -> String? {
+  if mooncode_json_string(execution, "tool", default="") != "shell" {
+    return None
+  }
+  let observation = mooncode_runtime_turn_result_file_observation(execution)
+  if mooncode_json_string(observation, "scope", default="") == "complete" {
+    let path = mooncode_json_string(observation, "path", default="")
+    if path != "" &&
+      mooncode_runtime_turn_path_has_retained_complete_observation(
+        path, prior_results,
+      ) {
+      return Some(path)
     }
   }
-  last_complete_read >= 0 && last_mutation < last_complete_read
+  None
 }
 
 ///|
@@ -1680,12 +1763,18 @@ fn mooncode_runtime_turn_duplicate_read_execution(
   book_root : String,
   command_id : String,
   tool_call : Json,
+  path? : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
+  let tool = mooncode_json_string(tool_call, "tool", default="read")
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
-  let path = mooncode_json_string(arguments, "path", default="")
+  let path = if path == "" {
+    mooncode_json_string(arguments, "path", default="")
+  } else {
+    path
+  }
   let result = mooncode_tool_error_result(
-    "read",
+    tool,
     message="duplicate complete read of `\{path}`; use the existing planner context or mutate before reading this path again",
     metadata={ "path": path, "duplicate_complete_read": true },
   )
@@ -1697,14 +1786,14 @@ fn mooncode_runtime_turn_duplicate_read_execution(
     "session_id": session_id,
     "book_root": book_root,
     "command_id": command_id,
-    "tool": "read",
+    "tool": tool,
     "arguments": arguments,
     "result": result,
     "event": mooncode_tool_result_event(
       session_id,
       book_root,
       command_id,
-      "read",
+      tool,
       result,
       now~,
     ),
