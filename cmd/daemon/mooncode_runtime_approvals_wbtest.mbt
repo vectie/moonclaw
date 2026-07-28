@@ -35,6 +35,42 @@ fn mooncode_control_test_approval_request(events : Array[Json]) -> Json {
 }
 
 ///|
+async test "invalid approval is rejected before durable queueing" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "mooncode-invalid-approval-XXXXXX"),
+  )
+  let session_id = "session-invalid-approval"
+  let daemon = mooncode_control_test_daemon(book_root)
+  @async.with_task_group(group => {
+    let result : Result[Json, String] = Ok(
+      daemon.mooncode_submit_turn_response(group~, session_id, {
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "book_root": book_root,
+        "command": "approve_tool",
+        "model": "codex/gpt-5.6-sol",
+        "text": "Invalid approval",
+        "payload": {
+          "approval_id": "mooncode-approval-missing",
+          "target_command_id": "cmd-missing",
+        },
+        "packet": { "command_id": "cmd-invalid-approval" },
+      }),
+    ) catch {
+      error => Err("\{error}")
+    }
+    assert_true(result is Err(_))
+    group.return_immediately(())
+  })
+  assert_false(
+    @fsx.exists(mooncode_session_journal_path(book_root, session_id)),
+  )
+}
+
+///|
 test "mooncode approval classifier gates hosted run reruns" {
   assert_true(
     mooncode_runtime_tool_requires_approval({
@@ -88,6 +124,12 @@ test "mooncode approval classifier gates hosted run reruns" {
       "arguments": { "cmd": "npm ci --include=optional --ignore-scripts" },
     }),
   )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": { "cmd": "npm ci --help | sed -n '1,120p'" },
+    }),
+  )
   assert_true(
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
@@ -98,6 +140,14 @@ test "mooncode approval classifier gates hosted run reruns" {
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
       "arguments": { "cmd": "echo 'npm ci and git restore are risky'" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "arguments": {
+        "cmd": "set -o pipefail; find . -name package.json -print; grep -RInE 'npm ci|npm install|registry|git push' .github package-lock.json | head -n 300",
+      },
     }),
   )
 }
@@ -597,8 +647,8 @@ async test "mooncode approval resumes from durable checkpoint after daemon resta
     "payload": { "approval_wait_ms": 0 },
     "runtime_tool_calls": [
       {
-        "tool": "shell",
-        "arguments": { "cmd": "printf once >> pre-approval-count.txt" },
+        "tool": "write",
+        "arguments": { "path": "pre-approval-count.txt", "content": "once" },
       },
       {
         "tool": "write",
@@ -750,8 +800,8 @@ async test "mooncode rejection resumes from durable checkpoint after daemon rest
     "payload": { "approval_wait_ms": 0 },
     "runtime_tool_calls": [
       {
-        "tool": "shell",
-        "arguments": { "cmd": "printf once >> pre-reject-count.txt" },
+        "tool": "write",
+        "arguments": { "path": "pre-reject-count.txt", "content": "once" },
       },
       {
         "tool": "write",

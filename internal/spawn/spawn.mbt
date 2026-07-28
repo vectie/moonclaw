@@ -116,6 +116,7 @@ pub async fn spawn(
         stdout=stdout.1,
         stderr=stderr.1,
         extra_env?=env,
+        cancel_handler=@process.graceful_cancel(timeout=1000),
       )
     }
 

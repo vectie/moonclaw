@@ -361,20 +361,6 @@ fn mooncode_runtime_horizon_result_is_substantive_mutation(
 }
 
 ///|
-fn mooncode_runtime_horizon_latest_checkpoint_result_index(
-  results : Array[Json],
-) -> Int {
-  let mut latest = -1
-  for index, result in results {
-    if mooncode_json_bool(result, "accepted", default=false) &&
-      mooncode_json_string(result, "tool", default="") == "checkpoint" {
-      latest = index
-    }
-  }
-  latest
-}
-
-///|
 fn mooncode_runtime_horizon_checkpoint_milestone_status(
   checkpoint : Json,
   id : String,
@@ -452,10 +438,8 @@ fn mooncode_runtime_horizon_checkpoint_error(
     return "checkpoint must have exactly one active milestone while work remains"
   }
   let previous = mooncode_runtime_horizon_latest_checkpoint(command, results)
-  let previous_boundary = mooncode_runtime_horizon_latest_checkpoint_result_index(
-    results,
-  )
   let mut newly_done_mutations = 0
+  let mut previously_done_mutations = 0
   for required in mooncode_runtime_horizon_required_milestones(command) {
     let required_id = mooncode_json_string(required, "id", default="")
     let mut matched = Json::object({})
@@ -478,6 +462,10 @@ fn mooncode_runtime_horizon_checkpoint_error(
       previous, required_id,
     )
     let matched_status = mooncode_json_string(matched, "status", default="")
+    if previous_status == "done" &&
+      mooncode_json_string(required, "evidence_kind", default="") == "mutation" {
+      previously_done_mutations += 1
+    }
     if previous_status == "done" && matched_status != "done" {
       return "checkpoint cannot reopen completed milestone `\{required_id}`"
     }
@@ -491,15 +479,15 @@ fn mooncode_runtime_horizon_checkpoint_error(
       newly_done_mutations += 1
     }
   }
-  let mut available_mutations = 0
-  for index, result in results {
-    if index > previous_boundary &&
-      mooncode_runtime_horizon_result_is_substantive_mutation(command, result) {
-      available_mutations += 1
+  let mut total_mutations = 0
+  for result in results {
+    if mooncode_runtime_horizon_result_is_substantive_mutation(command, result) {
+      total_mutations += 1
     }
   }
+  let available_mutations = total_mutations - previously_done_mutations
   if newly_done_mutations > available_mutations {
-    return "checkpoint completes \{newly_done_mutations} mutation milestone(s) with only \{available_mutations} substantive mutation result(s) since the prior checkpoint"
+    return "checkpoint completes \{newly_done_mutations} new mutation milestone(s) with only \{available_mutations} unconsumed substantive mutation result(s) across the task"
   }
   ""
 }

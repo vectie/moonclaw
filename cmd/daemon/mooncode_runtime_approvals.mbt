@@ -26,15 +26,8 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     if mooncode_shell_has_clean_dependency_install(command) {
       return "A clean dependency install can replace local dependency state and requires operator approval."
     }
-    for
-      marker in [
-        "rm ", "sudo ", "curl ", "wget ", "ssh ", "scp ", "git push", "git reset",
-        "gh run rerun", "moon publish", "npm publish", "pnpm publish", "npm install",
-        "pnpm add", "yarn add", "pip install", "brew ",
-      ] {
-      if command.contains(marker) {
-        return "This shell command can affect external systems, dependencies, or broad workspace state."
-      }
+    if mooncode_shell_has_sensitive_command(command) {
+      return "This shell command can affect external systems, dependencies, or broad workspace state."
     }
   }
   if tool == "moon_cmd" {
@@ -320,9 +313,7 @@ fn mooncode_runtime_control_receipt(
 }
 
 ///|
-async fn Daemon::mooncode_submit_tool_approval_control(
-  self : Daemon,
-  group~ : @async.TaskGroup[Unit],
+async fn mooncode_runtime_tool_approval_control_request(
   session_id : String,
   book_root : String,
   command : Json,
@@ -368,6 +359,26 @@ async fn Daemon::mooncode_submit_tool_approval_control(
       },
     })
   }
+  request
+}
+
+///|
+async fn Daemon::mooncode_submit_tool_approval_control(
+  self : Daemon,
+  group~ : @async.TaskGroup[Unit],
+  session_id : String,
+  book_root : String,
+  command : Json,
+) -> Json {
+  let approval_id = mooncode_runtime_control_field(command, "approval_id")
+  let request = mooncode_runtime_tool_approval_control_request(
+    session_id, book_root, command,
+  )
+  let target_command_id = mooncode_json_string(
+    request,
+    "target_command_id",
+    default="",
+  )
   let action = mooncode_json_string(command, "command", default="")
   let state = if action == "approve_tool" { "approved" } else { "rejected" }
   let decision_reason = mooncode_runtime_control_field(

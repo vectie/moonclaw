@@ -187,7 +187,18 @@ fn mooncode_shell_segment_has_clean_dependency_install(
     return false
   }
   let executable = segment[index]
-  let command = segment[index + 1]
+  let command_index = mooncode_shell_subcommand_index_after_options(
+    segment,
+    index,
+    [
+      "--cache", "--prefix", "--registry", "--userconfig", "--workspace", "-C", "-w",
+    ],
+  )
+  if command_index < 0 ||
+    mooncode_shell_segment_requests_help(segment, command_index) {
+    return false
+  }
+  let command = segment[command_index]
   if (executable == "npm" || executable.has_suffix("/npm")) && command == "ci" {
     return true
   }
@@ -221,6 +232,273 @@ fn mooncode_shell_has_clean_dependency_install(command : String) -> Bool {
     }
   }
   mooncode_shell_segment_has_clean_dependency_install(segment)
+}
+
+///|
+fn mooncode_shell_executable_is(word : String, name : String) -> Bool {
+  word == name || word.has_suffix("/" + name)
+}
+
+///|
+fn mooncode_shell_subcommand_index_after_options(
+  segment : Array[String],
+  executable_index : Int,
+  options_with_values : ArrayView[String],
+) -> Int {
+  let mut index = executable_index + 1
+  while index < segment.length() {
+    let word = segment[index]
+    if word == "--" {
+      index += 1
+      break
+    }
+    if !word.has_prefix("-") {
+      break
+    }
+    if options_with_values.contains(word) && !word.contains("=") {
+      index += 2
+    } else {
+      index += 1
+    }
+  }
+  if index < segment.length() {
+    index
+  } else {
+    -1
+  }
+}
+
+///|
+fn mooncode_shell_segment_requests_help(
+  segment : Array[String],
+  subcommand_index : Int,
+) -> Bool {
+  for index in (subcommand_index + 1)..<segment.length() {
+    let word = segment[index]
+    if word == "--" {
+      return false
+    }
+    if word == "--help" || word == "-h" {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn mooncode_shell_nested_command_index(
+  segment : Array[String],
+  executable_index : Int,
+) -> Int {
+  let mut index = executable_index + 1
+  while index < segment.length() {
+    let word = segment[index]
+    if word == "--" || !word.has_prefix("-") {
+      return -1
+    }
+    if word == "-c" ||
+      (!word.has_prefix("--") && word.length() > 1 && word[1:].contains("c")) {
+      return if index + 1 < segment.length() { index + 1 } else { -1 }
+    }
+    if word == "--rcfile" ||
+      word == "--init-file" ||
+      word == "-o" ||
+      word == "+o" ||
+      word == "-O" ||
+      word == "+O" {
+      index += 2
+    } else {
+      index += 1
+    }
+  }
+  -1
+}
+
+///|
+fn mooncode_shell_segment_has_sensitive_command(
+  segment : Array[String],
+) -> Bool {
+  let index = mooncode_shell_segment_executable_index(segment)
+  if index < 0 {
+    return false
+  }
+  let executable = segment[index]
+  if mooncode_shell_executable_is(executable, "sudo") ||
+    mooncode_shell_executable_is(executable, "rm") ||
+    mooncode_shell_executable_is(executable, "curl") ||
+    mooncode_shell_executable_is(executable, "wget") ||
+    mooncode_shell_executable_is(executable, "ssh") ||
+    mooncode_shell_executable_is(executable, "scp") ||
+    mooncode_shell_executable_is(executable, "brew") {
+    return true
+  }
+  if mooncode_shell_executable_is(executable, "git") {
+    return mooncode_shell_segment_has_git_subcommand(segment, ["push", "reset"])
+  }
+  if mooncode_shell_executable_is(executable, "sh") ||
+    mooncode_shell_executable_is(executable, "bash") ||
+    mooncode_shell_executable_is(executable, "zsh") {
+    let nested_index = mooncode_shell_nested_command_index(segment, index)
+    return nested_index >= 0 &&
+      mooncode_shell_has_sensitive_command(segment[nested_index])
+  }
+  let subcommand_index = mooncode_shell_subcommand_index_after_options(
+    segment,
+    index,
+    [
+      "--cache", "--cwd", "--dir", "--prefix", "--registry", "--userconfig", "--workspace",
+      "-C", "-w",
+    ],
+  )
+  if subcommand_index < 0 ||
+    mooncode_shell_segment_requests_help(segment, subcommand_index) {
+    return false
+  }
+  let subcommand = segment[subcommand_index]
+  if mooncode_shell_executable_is(executable, "gh") {
+    return subcommand == "run" &&
+      subcommand_index + 1 < segment.length() &&
+      segment[subcommand_index + 1] == "rerun"
+  }
+  if mooncode_shell_executable_is(executable, "moon") {
+    return subcommand == "publish"
+  }
+  if mooncode_shell_executable_is(executable, "npm") {
+    return subcommand == "publish" || subcommand == "install"
+  }
+  if mooncode_shell_executable_is(executable, "pnpm") {
+    return subcommand == "publish" || subcommand == "add"
+  }
+  if mooncode_shell_executable_is(executable, "yarn") {
+    return subcommand == "add"
+  }
+  if mooncode_shell_executable_is(executable, "pip") ||
+    mooncode_shell_executable_is(executable, "pip3") {
+    return subcommand == "install"
+  }
+  false
+}
+
+///|
+fn mooncode_shell_has_sensitive_command(command : String) -> Bool {
+  if mooncode_shell_has_command_substitution(command) {
+    return true
+  }
+  let segment : Array[String] = []
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if mooncode_shell_segment_has_sensitive_command(segment) {
+        return true
+      }
+      segment.clear()
+    } else {
+      segment.push(word)
+    }
+  }
+  mooncode_shell_segment_has_sensitive_command(segment)
+}
+
+///|
+fn mooncode_shell_has_command_substitution(command : String) -> Bool {
+  let chars = command.to_array()
+  let mut single_quoted = false
+  let mut escaped = false
+  for index, ch in chars {
+    if single_quoted {
+      if ch == '\'' {
+        single_quoted = false
+      }
+      continue
+    }
+    if escaped {
+      escaped = false
+      continue
+    }
+    if ch == '\\' {
+      escaped = true
+      continue
+    }
+    if ch == '\'' {
+      single_quoted = true
+      continue
+    }
+    if ch == '`' ||
+      (ch == '$' && index + 1 < chars.length() && chars[index + 1] == '(') {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn mooncode_shell_chars_match(
+  chars : Array[Char],
+  start : Int,
+  expected : String,
+) -> Bool {
+  let expected_chars = expected.to_array()
+  if start + expected_chars.length() > chars.length() {
+    return false
+  }
+  for index, expected_char in expected_chars {
+    if chars[start + index] != expected_char {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn mooncode_shell_has_file_output_redirection(command : String) -> Bool {
+  let chars = command.to_array()
+  let mut single_quoted = false
+  let mut double_quoted = false
+  let mut escaped = false
+  for index, ch in chars {
+    if escaped {
+      escaped = false
+      continue
+    }
+    if single_quoted {
+      if ch == '\'' {
+        single_quoted = false
+      }
+      continue
+    }
+    if double_quoted {
+      if ch == '"' {
+        double_quoted = false
+      } else if ch == '\\' {
+        escaped = true
+      }
+      continue
+    }
+    match ch {
+      '\\' => escaped = true
+      '\'' => single_quoted = true
+      '"' => double_quoted = true
+      '>' => {
+        let mut target = index + 1
+        if target < chars.length() && chars[target] == '>' {
+          target += 1
+        }
+        while target < chars.length() &&
+              (chars[target] == ' ' || chars[target] == '\t') {
+          target += 1
+        }
+        let target_is_descriptor = target < chars.length() &&
+          (chars[target] == '&' || chars[target] == '(')
+        let target_is_dev_null = mooncode_shell_chars_match(
+          chars, target, "/dev/null",
+        )
+        if !target_is_descriptor && !target_is_dev_null {
+          return true
+        }
+      }
+      _ => ()
+    }
+  }
+  false
 }
 
 ///|

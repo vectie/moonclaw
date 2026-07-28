@@ -151,7 +151,7 @@ test "mooncode requires distinct evidence for newly completed phase milestones" 
     arguments,
     [phase_2],
   )
-  assert_true(insufficient.contains("only 1 substantive mutation"))
+  assert_true(insufficient.contains("only 1 unconsumed substantive mutation"))
   let phase_3 : Json = {
     "tool": "apply_patch",
     "accepted": true,
@@ -167,6 +167,111 @@ test "mooncode requires distinct evidence for newly completed phase milestones" 
   assert_eq(
     mooncode_runtime_horizon_checkpoint_error(command, arguments, [
       phase_2, phase_3,
+    ]),
+    "",
+  )
+}
+
+///|
+test "mooncode retains mutation evidence while an active milestone is validated" {
+  let milestones : Array[Json] = [
+    {
+      "id": "repair",
+      "title": "Implement and validate the repair",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+    {
+      "id": "hosted",
+      "title": "Observe hosted validation",
+      "evidence_kind": "test",
+      "path": "",
+      "context_paths": [],
+    },
+  ]
+  let active : Array[Json] = [
+    {
+      "id": "repair",
+      "title": "Implement and validate the repair",
+      "status": "active",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+    {
+      "id": "hosted",
+      "title": "Observe hosted validation",
+      "status": "pending",
+      "evidence_kind": "test",
+      "path": "",
+      "context_paths": [],
+    },
+  ]
+  let completed : Array[Json] = [
+    {
+      "id": "repair",
+      "title": "Implement and validate the repair",
+      "status": "done",
+      "evidence_kind": "mutation",
+      "path": "",
+      "context_paths": [],
+    },
+    {
+      "id": "hosted",
+      "title": "Observe hosted validation",
+      "status": "active",
+      "evidence_kind": "test",
+      "path": "",
+      "context_paths": [],
+    },
+  ]
+  let command : Json = {
+    "command": "prompt",
+    "text": "Implement the repair and observe hosted validation.",
+    "payload": {
+      "horizon_id": "retained-mutation",
+      "task_contract": {
+        "horizon_id": "retained-mutation",
+        "objective": "Repair and validate",
+        "milestones": Json::array(milestones),
+      },
+    },
+  }
+  let mutation : Json = {
+    "tool": "edit",
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "path": "src/runtime.mbt",
+        "changed": true,
+        "before_fingerprint": "present:runtime-0",
+        "after_fingerprint": "present:runtime-1",
+      },
+    },
+  }
+  let prior_checkpoint : Json = {
+    "tool": "checkpoint",
+    "accepted": true,
+    "result": {
+      "metadata": {
+        "horizon_id": "retained-mutation",
+        "checkpoint": {
+          "horizon_id": "retained-mutation",
+          "milestones": Json::array(active),
+          "next_action": "Validate the repair.",
+        },
+      },
+    },
+  }
+  let arguments : Json = {
+    "horizon_id": "retained-mutation",
+    "milestones": Json::array(completed),
+    "next_action": "Observe hosted validation.",
+  }
+  assert_eq(
+    mooncode_runtime_horizon_checkpoint_error(command, arguments, [
+      mutation, prior_checkpoint,
     ]),
     "",
   )

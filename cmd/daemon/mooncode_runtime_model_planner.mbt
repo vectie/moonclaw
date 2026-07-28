@@ -570,6 +570,19 @@ fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
     }
     return ""
   }
+  if tool == "shell" {
+    let verification_kind = mooncode_json_string(
+      mooncode_json_object_field_or_empty(result, "arguments"),
+      "verification_kind",
+      default="",
+    )
+    if verification_kind == "check" ||
+      verification_kind == "test" ||
+      verification_kind == "build" {
+      return verification_kind
+    }
+    return ""
+  }
   if tool == "apply_patch" || tool == "revert_patch" {
     let tool_result = mooncode_json_object_field_or_empty(result, "result")
     let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
@@ -795,7 +808,7 @@ fn mooncode_runtime_turn_model_initial_messages(
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Use checkpoint/read_skill/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. When a selected skill directs MoonBit work, prefer semantic discovery with moon_ide before broad source reads and prefer moon_cmd/moon_check over raw shell for validation. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch and update the checkpoint whenever a milestone changes. Gather enough evidence to distinguish plausible causes before mutating. Avoid repeating equivalent inspections of the same evidence; every additional diagnostic should distinguish competing causes or expose missing causal evidence. Prefer one cohesive multi-file patch when the evidence supports it, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. Do not infer environment-specific causality from a local pass: reproduce in the failing environment or expose the exact underlying error before claiming a fix. A shell pipeline used as evidence must enable pipefail, because its ordinary exit status reflects only the final stage. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. If the operator rejects a tool call, obey its rationale and do not retry the same action by rewriting or splitting the command. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch." +
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Use checkpoint/read_skill/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. When a selected skill directs MoonBit work, prefer semantic discovery with moon_ide before broad source reads and prefer moon_cmd/moon_check over raw shell for validation. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch and update the checkpoint whenever a milestone changes. Gather enough evidence to distinguish plausible causes before mutating. Avoid repeating equivalent inspections of the same evidence; every additional diagnostic should distinguish competing causes or expose missing causal evidence. Treat successful repository status, diff, and hosted-result reads as retained until repository or hosted state changes. Prefer one cohesive multi-file patch when the evidence supports it, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. Once a repair passes the exact gate it targeted, retain that result as established evidence; a later failure at a different gate is a new problem, and does not justify reverting the earlier repair unless new evidence directly falsifies it. Do not infer environment-specific causality from a local pass: reproduce in the failing environment or expose the exact underlying error before claiming a fix. A shell pipeline used as evidence must enable pipefail, because its ordinary exit status reflects only the final stage. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. If a necessary tool call requires operator approval, select the exact tool call; the runtime will pause before execution. Never ask for tool approval in assistant prose or use finish to request it. If the operator rejects a tool call, obey its rationale and do not retry the same action by rewriting or splitting the command. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch." +
       skill_catalog,
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
@@ -941,7 +954,7 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
     ),
     mooncode_runtime_turn_model_tool(
       "shell",
-      "Run a bounded shell command inside the selected MoonBook.",
+      "Run a bounded shell command inside the selected MoonBook. Set verification_kind only when this command's zero exit status directly proves that exact check, test, or build gate; ordinary inspection commands must omit it.",
       {
         "type": "object",
         "properties": {
@@ -949,6 +962,10 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
           "cwd": { "type": "string" },
           "timeout_ms": { "type": "integer" },
           "max_output_chars": { "type": "integer" },
+          "verification_kind": {
+            "type": "string",
+            "enum": ["check", "test", "build"],
+          },
         },
         "required": ["cmd"],
         "additionalProperties": false,
@@ -1027,7 +1044,7 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
     ),
     mooncode_runtime_turn_model_tool(
       "finish",
-      "Finish the turn with a concise operator-facing summary.",
+      "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause.",
       {
         "type": "object",
         "properties": { "answer": { "type": "string" } },
@@ -1037,7 +1054,7 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
     ),
     mooncode_runtime_turn_model_tool(
       "apply_patch",
-      "Apply one unified diff, including a multi-file diff, inside the selected MoonBook.",
+      "Apply one unified diff, including a multi-file diff, inside the selected MoonBook. The diff must use standard `--- a/path`, `+++ b/path`, and `@@` syntax; do not wrap it in `*** Begin Patch` / `*** Update File` markers. For a diff, omit path because targets come from its file headers.",
       {
         "type": "object",
         "properties": {
@@ -1224,16 +1241,11 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
     )
   }
   messages.push(response_message)
-  for index in 0..<tool_calls.length() {
-    if index < tool_results.length() &&
-      mooncode_runtime_turn_model_tool_call_accepts_result(tool_calls[index]) {
-      messages.push(
-        mooncode_runtime_turn_model_tool_result_message(
-          tool_calls[index],
-          tool_results[index],
-        ),
-      )
-    }
+  for
+    message in mooncode_runtime_turn_model_tool_result_messages(
+      tool_calls, tool_results,
+    ) {
+    messages.push(message)
   }
   let pipeline_warning = mooncode_runtime_turn_pipeline_evidence_warning(
     tool_results,
@@ -1382,10 +1394,18 @@ fn mooncode_runtime_turn_failed_mutation_path(results : Array[Json]) -> String {
   }
   let arguments = mooncode_json_object_field_or_empty(result, "arguments")
   let direct = mooncode_json_string(arguments, "path", default="")
-  if direct != "" {
+  if mooncode_runtime_turn_mutation_file_path(direct) {
     return direct
   }
-  mooncode_json_string(
+  if tool == "apply_patch" || tool == "revert_patch" {
+    let diff_path = mooncode_tool_patch_path_from_diff(
+      mooncode_json_string(arguments, "diff", default=""),
+    )
+    if mooncode_runtime_turn_mutation_file_path(diff_path) {
+      return diff_path
+    }
+  }
+  let metadata_path = mooncode_json_string(
     mooncode_json_object_field_or_empty(
       mooncode_json_object_field_or_empty(result, "result"),
       "metadata",
@@ -1393,6 +1413,16 @@ fn mooncode_runtime_turn_failed_mutation_path(results : Array[Json]) -> String {
     "path",
     default="",
   )
+  if mooncode_runtime_turn_mutation_file_path(metadata_path) {
+    metadata_path
+  } else {
+    ""
+  }
+}
+
+///|
+fn mooncode_runtime_turn_mutation_file_path(path : String) -> Bool {
+  path != "" && path != "." && !path.has_suffix("/")
 }
 
 ///|
@@ -1501,6 +1531,36 @@ fn mooncode_runtime_turn_model_tool_result_message(
     "tool_call_id": mooncode_json_string(tool_call, "tool_call_id", default=""),
     "content": mooncode_runtime_turn_model_tool_result_content(execution),
   }
+}
+
+///|
+fn mooncode_runtime_turn_model_tool_result_messages(
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+) -> Array[Json] {
+  let messages : Array[Json] = []
+  for index in 0..<tool_calls.length() {
+    let tool_call = tool_calls[index]
+    if mooncode_runtime_turn_model_tool_call_accepts_result(tool_call) {
+      let execution = if index < tool_results.length() {
+        tool_results[index]
+      } else {
+        {
+          "tool": mooncode_json_string(tool_call, "tool", default=""),
+          "accepted": false,
+          "result": {
+            "ok": false,
+            "message": "tool call was not executed because an earlier call ended the batch; select it again only if it is still needed",
+            "metadata": { "skipped": true },
+          },
+        }
+      }
+      messages.push(
+        mooncode_runtime_turn_model_tool_result_message(tool_call, execution),
+      )
+    }
+  }
+  messages
 }
 
 ///|

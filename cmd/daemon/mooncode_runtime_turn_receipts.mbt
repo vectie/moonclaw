@@ -4,6 +4,7 @@ fn mooncode_runtime_turn_finished_event(
   command_id : String,
   accepted~ : Bool,
   tool_count~ : Int,
+  completion_reason? : String = "",
   now~ : @clock.Timestamp,
 ) -> Json {
   mooncode_event(
@@ -17,9 +18,33 @@ fn mooncode_runtime_turn_finished_event(
       "MoonCode native runtime turn failed"
     },
     status=if accepted { "done" } else { "failed" },
-    detail="MoonClaw native runtime turn executed \{tool_count} tool call(s).",
+    detail=if completion_reason == "" {
+      "MoonClaw native runtime turn executed \{tool_count} tool call(s)."
+    } else {
+      "MoonClaw native runtime turn executed \{tool_count} tool call(s): \{completion_reason}."
+    },
     now~,
   )
+}
+
+///|
+fn mooncode_runtime_turn_receipt_execution(execution : Json) -> Json {
+  let finish_results : Array[Json] = []
+  for result in mooncode_json_array_items(execution, "tool_results") {
+    if mooncode_json_string(result, "tool", default="") == "finish" {
+      finish_results.push(result)
+    }
+  }
+  {
+    "accepted": mooncode_json_bool(execution, "accepted", default=false),
+    "control": mooncode_json_string(execution, "control", default=""),
+    "message": mooncode_json_string(execution, "message", default=""),
+    "planner_mode": mooncode_json_string(execution, "planner_mode", default=""),
+    "completion_verdict": mooncode_json_object_field_or_empty(
+      execution, "completion_verdict",
+    ),
+    "tool_results": Json::array(finish_results),
+  }
 }
 
 ///|
@@ -60,7 +85,7 @@ fn mooncode_runtime_turn_receipt(
     "command_entry": mooncode_json_object_field_or_empty(
       claim_item, "command_entry",
     ),
-    "execution": execution,
-    "events": Json::array(mooncode_json_array_items(execution, "events")),
+    "execution": mooncode_runtime_turn_receipt_execution(execution),
+    "events": [],
   }
 }

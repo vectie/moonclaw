@@ -564,6 +564,13 @@ arbitrary shell commands.
 These process-backed tools live in `mooncode_process_tools.mbt`, with focused
 coverage in `mooncode_process_tools_wbtest.mbt`, while the generic tool
 endpoint and patch/file tools stay in `mooncode_tools.mbt`.
+Shell commands run through a cancellation wrapper that tracks the command's
+descendant process tree. On timeout MoonClaw requests descendant termination,
+waits for shell cleanup traps, and preserves capped partial stdout/stderr in the
+failed tool result before the process layer's hard-cancel fallback. Read-only
+inline interpreter commands remain available; the planner contract, rather
+than a misleading syntactic block, requires authored workspace mutations to
+use reviewable `write`, `edit`, or `apply_patch` tools.
 
 The native `moon_check` tool also records a MoonCode watcher snapshot
 under `.moonsuite/products/moonclaw/mooncode/watchers/moon-check.json`.
@@ -583,13 +590,32 @@ remain in the model conversation so source reads and diagnostics survive the
 next planning call. An accepted checkpoint is the semantic compaction boundary:
 the older transcript is discarded and the durable checkpoint plus current
 evidence become the new working context. Tool results, including failures, are
-fed back to the model for diagnosis and recovery. An explicit long-horizon
+fed back to the model for diagnosis and recovery.
+Shell commands may declare `verification_kind=check|test|build` only when a
+zero exit status directly proves that exact gate, such as a hosted check
+watcher. Untyped inspection commands remain evidence but cannot complete a
+typed verification milestone.
+When an earlier call ends a selected multi-tool batch, the model transcript
+settles every remaining provider tool call with an explicit skipped result.
+Those calls are not recorded as executions or evidence; the planner must select
+each still-needed call again. This keeps provider transcripts valid without
+claiming that skipped work occurred.
+An explicit long-horizon
 `finish` that does not satisfy the durable milestone and verification contract
 is also fed back as planner evidence instead of terminating the command; the
 same turn continues until completion is accepted or the command is cancelled.
 When assistant prose is projected as a synthetic `finish`, recovery appends the
 contract rejection as a user message without inventing a provider tool-result
 item for a function call the model did not make.
+Installed skills are exposed to the planner as a compact catalog. When a skill
+is named or clearly applicable, the planner must select `read_skill`; that call
+ends the current batch so the complete skill resource governs the next prompt.
+This progressive-disclosure path is shared by MoonBit-specific and general
+coding workflows rather than being special-cased to one language.
+When a selected tool needs operator authority, the planner selects that exact
+tool call and the runtime pauses before execution. Assistant prose and
+`finish` are not approval requests. Approve/reject controls validate the
+pending approval target before any durable command is queued.
 Explicit long-horizon commands have no command-wide planner-step ceiling by
 default; their accepted milestone evidence is the completion boundary, while
 every model request remains independently bounded. Ordinary commands retain an
@@ -639,6 +665,10 @@ projections preserve it; `runtime.turn_finished` includes the reason; and the
 terminal receipt is `runtime-failed` when the gate rejects completion. This
 gate is distinct from the replay proof policy for proof-sensitive command
 actions: it protects ordinary coding prompts at native execution time.
+Durable terminal receipts keep that verdict and the final `finish` result used
+for conversation projection, but do not duplicate tool payloads or events that
+already have their own journal records. This keeps long-horizon journal growth
+proportional to new evidence instead of replaying the whole turn at completion.
 Planner progress/failure event projection lives in
 `mooncode_runtime_planner_events.mbt`, keeping live transcript shaping out of
 the model contract and out of the runtime orchestration loop.

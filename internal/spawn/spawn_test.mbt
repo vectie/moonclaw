@@ -74,3 +74,23 @@ async test "spawn/failed" (t : @test.Test) {
     )
   })
 }
+
+///|
+async test "spawn timeout permits process cleanup traps" (t : @test.Test) {
+  @mock.run(t, _ => {
+    try
+      @spawn.spawn(
+        "sh",
+        [
+          "-c", "trap 'printf cleanup-ran >&2; exit 0' TERM; while :; do :; done",
+        ],
+        timeout=20,
+      )
+    catch {
+      @spawn.TimedOut(stderr~, ..) => inspect(stderr, content="cleanup-ran")
+      _ => fail("unexpected process error")
+    } noraise {
+      _ => fail("expected process timeout")
+    }
+  })
+}

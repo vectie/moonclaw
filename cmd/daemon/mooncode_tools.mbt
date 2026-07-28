@@ -449,8 +449,12 @@ async fn mooncode_tool_patch_replace(
   let before_string = mooncode_tool_patch_before(arguments)
   let after_string = mooncode_tool_patch_after(arguments)
   let diff_text = mooncode_tool_patch_diff_text(arguments)
+  let patch_files = if diff_text != "" {
+    mooncode_tool_patch_files_from_unified_diff(diff_text)
+  } else {
+    []
+  }
   if diff_text != "" {
-    let patch_files = mooncode_tool_patch_files_from_unified_diff(diff_text)
     if patch_files.length() > 1 {
       return mooncode_tool_apply_unified_patchset(
         tool,
@@ -461,8 +465,23 @@ async fn mooncode_tool_patch_replace(
         reverse~,
       )
     }
+    if patch_files.length() == 0 && before_string == "" && after_string == "" {
+      return mooncode_tool_error_result(
+        tool,
+        message="patch diff must use unified diff syntax with `--- a/path` and `+++ b/path`; `*** Begin Patch` envelopes are not supported",
+      )
+    }
   }
-  let path = mooncode_tool_patch_path(book_root, arguments)
+  let path = if before_string == "" &&
+    after_string == "" &&
+    patch_files.length() == 1 {
+    mooncode_resolve_book_path(
+      book_root,
+      mooncode_json_string(patch_files[0], "path", default=""),
+    )
+  } else {
+    mooncode_tool_patch_path(book_root, arguments)
+  }
   if mooncode_json_bool(path, "ok", default=false) == false {
     return mooncode_tool_error_result(
       tool,
@@ -2051,7 +2070,7 @@ async test "mooncode native patch tools apply and revert unified diffs" (
       "book_root": book_root,
       "tool": "apply_patch",
       "command_id": "cmd-apply-unified",
-      "arguments": { "diff": diff },
+      "arguments": { "path": ".", "diff": diff },
     },
     now=@clock.Timestamp::from_ms(48L),
   )
@@ -2289,6 +2308,39 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
   assert_eq(
     mooncode_json_string(revert_event, "kind", default=""),
     "runtime.patch_reverted",
+  )
+}
+
+///|
+async test "mooncode unified patch rejects apply-patch envelopes before reading path" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patch-envelope-XXXXXX"),
+  )
+  let execution = mooncode_execute_tool_call(
+    "session-patch-envelope",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-patch-envelope",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-patch-envelope",
+      "arguments": {
+        "path": ".",
+        "diff": "*** Begin Patch\n*** Update File: demo.txt\n@@\n-old\n+new\n*** End Patch",
+      },
+    },
+    now=@clock.Timestamp::from_ms(4901L),
+  )
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  assert_false(mooncode_json_bool(result, "ok", default=true))
+  assert_true(
+    mooncode_json_string(result, "message", default="").contains(
+      "must use unified diff syntax",
+    ),
   )
 }
 
