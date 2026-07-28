@@ -152,6 +152,7 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
     "session-replan",
     "cmd-replan",
     plan,
+    finish_rejected=false,
     [plan],
     [result],
     [result],
@@ -176,6 +177,60 @@ test "planner empty-followup checkpoint is durable and contract-scoped" {
     "planner-empty-followup",
   )
   assert_eq(mooncode_json_int(checkpoint, "replan_count", default=0), 2)
+  let rejected_finish_plan = mooncode_json_object_with_field(
+    plan,
+    "tool_calls",
+    Json::array([
+      {
+        "tool": "finish",
+        "tool_call_id": "call-finish-rejected",
+        "arguments": { "answer": "premature" },
+      },
+    ]),
+  )
+  let rejected_finish_checkpoint = mooncode_runtime_planner_replan_continuation_event(
+    "session-rejected-finish",
+    "cmd-rejected-finish",
+    rejected_finish_plan,
+    finish_rejected=true,
+    [rejected_finish_plan],
+    [result],
+    [result],
+    next_step_index=1,
+    replan_count=1,
+    guidance="Continue the unfinished task without replaying completed tools.",
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  assert_true(
+    mooncode_runtime_planner_replan_continuation_is_active(
+      @json.parse(rejected_finish_checkpoint.stringify()),
+    ),
+  )
+  assert_false(
+    mooncode_runtime_planner_replan_continuation_is_active(
+      mooncode_json_object_with_field(checkpoint, "finish_rejected", true),
+    ),
+  )
+  assert_false(
+    mooncode_runtime_planner_replan_continuation_is_active(
+      mooncode_json_object_with_field(
+        rejected_finish_checkpoint,
+        "plan",
+        mooncode_json_object_with_field(
+          rejected_finish_plan,
+          "tool_calls",
+          Json::array([
+            {
+              "tool": "read",
+              "tool_call_id": "call-forged-read",
+              "arguments": { "path": "README.md" },
+            },
+            mooncode_json_array_items(rejected_finish_plan, "tool_calls")[0],
+          ]),
+        ),
+      ),
+    ),
+  )
   assert_false(
     mooncode_runtime_planner_replan_continuation_is_active(
       mooncode_json_object_with_field(
@@ -702,7 +757,11 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
             arguments.stringify(),
           )
         }
-        1 | 2 => mooncode_runtime_quantum_test_empty_completion()
+        1 =>
+          mooncode_runtime_quantum_test_completion(
+            "call-finish-rejected", "finish", "{\"answer\":\"premature\"}",
+          )
+        2 => mooncode_runtime_quantum_test_empty_completion()
         3 =>
           mooncode_runtime_quantum_test_completion(
             "call-write", "write", "{\"path\":\"patient-result.txt\",\"content\":\"once\"}",
@@ -774,13 +833,26 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         ),
       )
       let first_daemon = mooncode_runtime_quantum_test_daemon(root)
-      let first = first_daemon.mooncode_runtime_turn_execute(session_id, root, {
-        "consumer_id": "patient-first",
-      })
-      let first_execution = mooncode_json_object_field_or_empty(
-        first, "execution",
+      let first = first_daemon.mooncode_runtime_service_execute(
+        session_id,
+        root,
+        {
+          "service_id": "patient-first-service",
+          "consumer_id": "patient-restart-claim",
+          "max_turns": 1,
+          "live_wait_ms": 0,
+        },
       )
-      assert_true(mooncode_json_bool(first, "accepted", default=false))
+      let first_loop = mooncode_json_object_field_or_empty(
+        first, "runtime_loop",
+      )
+      let first_turns = mooncode_json_array_items(first_loop, "turns")
+      assert_eq(first_turns.length(), 1)
+      let first_turn = first_turns[0]
+      let first_execution = mooncode_json_object_field_or_empty(
+        first_turn, "execution",
+      )
+      assert_true(mooncode_json_bool(first_turn, "accepted", default=false))
       assert_true(mooncode_json_bool(first_execution, "paused", default=false))
       assert_false(
         mooncode_json_bool(first_execution, "completed", default=true),
@@ -793,7 +865,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         mooncode_json_int(first_execution, "model_step_limit", default=-1),
         0,
       )
-      guard first is Object(first_object) else {
+      guard first_turn is Object(first_object) else {
         abort("first patient replan response must be an object")
       }
       assert_true(first_object.get("turn_receipt") is Some(Null))
@@ -808,6 +880,20 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         mooncode_json_int(first_state, "delivered_command_count", default=-1),
         0,
       )
+      let first_claims = mooncode_json_array_items(
+        first_state, "claimed_commands",
+      )
+      assert_eq(first_claims.length(), 1)
+      let first_claim_receipt = mooncode_json_object_field_or_empty(
+        first_claims[0],
+        "receipt",
+      )
+      let claim_id = mooncode_json_string(
+        first_claim_receipt,
+        "claim_id",
+        default="",
+      )
+      assert_true(claim_id != "")
       let first_continuation = mooncode_runtime_continuation_for_command(
         mooncode_journal_entries(
           mooncode_read_session_journal(root, session_id),
@@ -824,45 +910,41 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         mooncode_json_int(first_continuation, "replan_count", default=0),
         1,
       )
+      assert_true(
+        mooncode_json_bool(first_continuation, "finish_rejected", default=false),
+      )
+      let rejected_plan = mooncode_json_object_field_or_empty(
+        first_continuation, "plan",
+      )
+      let rejected_calls = mooncode_json_array_items(
+        rejected_plan, "tool_calls",
+      )
+      assert_eq(rejected_calls.length(), 1)
+      assert_eq(
+        mooncode_json_string(rejected_calls[0], "tool", default=""),
+        "finish",
+      )
       let second_daemon = mooncode_runtime_quantum_test_daemon(root)
-      let second = second_daemon.mooncode_runtime_turn_execute(
+      let second = second_daemon.mooncode_runtime_service_execute(
         session_id,
         root,
-        { "consumer_id": "patient-second" },
-      )
-      let second_execution = mooncode_json_object_field_or_empty(
-        second, "execution",
+        {
+          "service_id": "patient-second-service",
+          "consumer_id": "patient-restart-claim",
+          "max_turns": 1,
+          "live_wait_ms": 0,
+        },
       )
       assert_true(mooncode_json_bool(second, "accepted", default=false))
-      assert_true(mooncode_json_bool(second_execution, "paused", default=false))
-      guard second is Object(second_object) else {
-        abort("second patient replan response must be an object")
-      }
-      assert_true(second_object.get("turn_receipt") is Some(Null))
-      let second_continuation = mooncode_runtime_continuation_for_command(
-        mooncode_journal_entries(
-          mooncode_read_session_journal(root, session_id),
-          mooncode_journal_event(),
-        ),
-        command_id,
+      let second_loop = mooncode_json_object_field_or_empty(
+        second, "runtime_loop",
       )
-      assert_true(
-        mooncode_runtime_planner_replan_continuation_is_active(
-          second_continuation,
-        ),
-      )
-      assert_eq(
-        mooncode_json_int(second_continuation, "replan_count", default=0),
-        2,
-      )
-      let final_daemon = mooncode_runtime_quantum_test_daemon(root)
-      let final = final_daemon.mooncode_runtime_turn_execute(session_id, root, {
-        "consumer_id": "patient-final",
-      })
+      let second_turns = mooncode_json_array_items(second_loop, "turns")
+      assert_eq(second_turns.length(), 1)
       let final_execution = mooncode_json_object_field_or_empty(
-        final, "execution",
+        second_turns[0],
+        "execution",
       )
-      assert_true(mooncode_json_bool(final, "accepted", default=false))
       assert_true(
         mooncode_json_bool(final_execution, "completed", default=false),
       )
@@ -878,6 +960,21 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         request_bodies.join("\n").contains("Planner opportunities remaining"),
       )
       let final_journal = mooncode_read_session_journal(root, session_id)
+      let final_state = second_daemon.mooncode_runtime_claim_state_payload(
+        session_id, root,
+      )
+      let delivered = mooncode_json_array_items(
+        final_state, "delivered_commands",
+      )
+      assert_eq(delivered.length(), 1)
+      assert_eq(
+        mooncode_json_string(
+          mooncode_json_object_field_or_empty(delivered[0], "receipt"),
+          "claim_id",
+          default="",
+        ),
+        claim_id,
+      )
       let final_events = mooncode_journal_entries(
         final_journal,
         mooncode_journal_event(),
@@ -889,7 +986,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
           "runtime.planner_replan_requested"
         })
         .length(),
-        2,
+        1,
       )
       assert_eq(
         final_events
@@ -900,7 +997,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         .length(),
         0,
       )
-      let final_state = final_daemon.mooncode_runtime_claim_state_payload(
+      let final_state = second_daemon.mooncode_runtime_claim_state_payload(
         session_id, root,
       )
       assert_eq(
@@ -943,7 +1040,7 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
         "tool": "read",
         "result": { "ok": true, "output": "# Book" },
       }
-      let terminal = final_daemon.mooncode_runtime_turn_model_followup_plan(
+      let terminal = second_daemon.mooncode_runtime_turn_model_followup_plan(
         {
           "protocol": mooncode_protocol_version(),
           "session_id": "session-terminal-empty",

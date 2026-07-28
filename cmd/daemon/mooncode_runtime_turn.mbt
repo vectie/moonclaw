@@ -169,13 +169,24 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
     mooncode_read_session_journal(book_root, session_id),
     mooncode_journal_event(),
   )
+  let continuation = mooncode_runtime_continuation_for_command(
+    existing_events, command_id,
+  )
+  let continuation_active = mooncode_runtime_continuation_is_active(
+      continuation,
+    ) ||
+    mooncode_runtime_planner_continuation_is_active(continuation) ||
+    mooncode_runtime_planner_transport_continuation_is_active(continuation) ||
+    mooncode_runtime_planner_replan_continuation_is_active(continuation)
+  if claim_receipts.is_empty() && !continuation_active {
+    raise InvalidJournal(
+      "MoonCode runtime-claimed command \{command_id} has no valid active continuation",
+    )
+  }
   mooncode_goal_runtime_reconcile_supervisor_events(
     book_root,
     session_id,
     self.clock.now().truncate_to_s(),
-  )
-  let continuation = mooncode_runtime_continuation_for_command(
-    existing_events, command_id,
   )
   let resuming_approval = mooncode_runtime_continuation_is_active(continuation)
   let resuming_planner = mooncode_runtime_planner_continuation_is_active(
@@ -551,6 +562,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               session_id,
               command_id,
               retained_plan,
+              finish_rejected=false,
               planner_steps,
               tool_results,
               mooncode_json_array_items(continuation, "step_results"),
@@ -981,6 +993,9 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               session_id,
               command_id,
               plan,
+              finish_rejected=mooncode_runtime_turn_tool_calls_include_finish(
+                mooncode_json_array_items(plan, "tool_calls"),
+              ),
               planner_steps,
               tool_results,
               step_results,

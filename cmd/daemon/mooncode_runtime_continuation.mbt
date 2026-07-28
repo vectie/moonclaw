@@ -149,6 +149,7 @@ fn mooncode_runtime_planner_replan_continuation_event(
   session_id : String,
   command_id : String,
   plan : Json,
+  finish_rejected~ : Bool,
   planner_steps : Array[Json],
   tool_results : Array[Json],
   step_results : Array[Json],
@@ -173,6 +174,7 @@ fn mooncode_runtime_planner_replan_continuation_event(
     "replan_count": replan_count,
     "patient_replan_guidance": guidance,
     "plan": plan,
+    "finish_rejected": finish_rejected,
     "planner_steps": Json::array(planner_steps),
     "tool_results": Json::array(tool_results),
     "step_results": Json::array(step_results),
@@ -418,7 +420,13 @@ fn mooncode_runtime_planner_replan_continuation_is_active(
   mooncode_planner_mode_model_tool_calls() &&
   !mooncode_json_bool(plan, "failed", default=false) &&
   tool_calls.length() > 0 &&
-  !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) &&
+  (if mooncode_runtime_turn_tool_calls_include_finish(tool_calls) {
+    mooncode_json_bool(continuation, "finish_rejected", default=false) &&
+    tool_calls.length() == 1 &&
+    mooncode_json_string(tool_calls[0], "tool", default="") == "finish"
+  } else {
+    !mooncode_json_bool(continuation, "finish_rejected", default=false)
+  }) &&
   planner_steps.length() == next_step_index &&
   step_results.length() == tool_calls.length() &&
   mooncode_runtime_turn_model_message_present(
