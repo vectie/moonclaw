@@ -46,6 +46,33 @@ async test "restricted Flow capsule exposes only scoped files and optional publi
 }
 
 ///|
+async test "read-only agent setup excludes mutation and execution tools" (
+  t : @test.Test,
+) {
+  let _ = t
+  let agent = @agent.new(
+    @model.Model::new(
+      api_key="",
+      base_url="https://example.invalid/v1",
+      name="test-model",
+      safe_zone_tokens=4096,
+    ),
+    home="/tmp",
+    cwd="/tmp",
+  )
+  defer agent.close()
+  @moonclaw.setup_read_only_agent(agent, cwd="/tmp")
+  let tools = agent.tools()
+  assert_true(tools.contains("list_files"))
+  assert_true(tools.contains("read_file"))
+  assert_true(tools.contains("search_files"))
+  assert_false(tools.contains("execute_command"))
+  assert_false(tools.contains("apply_patch"))
+  assert_false(tools.contains("write_to_file"))
+  assert_false(tools.contains("web_search"))
+}
+
+///|
 #skip
 async test "moonclaw/resume" (t : @test.Test) {
   @mock.run(t, mock => {

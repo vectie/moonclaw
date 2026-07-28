@@ -20,8 +20,8 @@ async fn Daemon::mooncode_persist_command(
         "command_id": mooncode_command_id(body),
         "created_at": self.clock.now(),
         "web_search": mooncode_command_web_search(body),
-        "planner_mode": if mooncode_runtime_turn_explicit_tool_calls(body)
-          .length() > 0 {
+        "planner_mode": if mooncode_runtime_turn_explicit_tool_calls(body).length() >
+          0 {
           "explicit-tool-calls"
         } else {
           ""

@@ -154,6 +154,47 @@ async test "GatewayJobApp::confirm_proposal registers workflow and persists prop
 }
 
 ///|
+async test "GatewayJobApp::confirm_proposal_in_workspace preserves the caller workspace" {
+  @fsx.with_temporary_directory("job-app-workspace-confirm-XXXXXX", dir => {
+    let root = @pathx.join(dir, "jobs")
+    let default_cwd = @pathx.join(dir, "default")
+    let selected_cwd = @pathx.join(dir, "selected")
+    let workspace = @workspace.WorkspaceRuntime::new(home=dir, cwd=default_cwd)
+    let app = GatewayJobApp::new(
+      root~,
+      cwd=default_cwd,
+      home=dir,
+      workspace~,
+      next_id=fn() { "proposal-workspace-next" },
+      now=fn() { 200 },
+    )
+    let proposal = draft_job_proposal(
+      "proposal-workspace", "Research the selected workspace.", 100,
+    )
+    let result = app.confirm_proposal_in_workspace(
+      proposal,
+      "proposal-workspace",
+      selected_cwd,
+      selected_cwd,
+      async fn(job_id, _initial_input) {
+        app.runtime().trigger_definition("run-workspace", job_id, Manual, 200)
+      },
+    )
+    let confirmed = match result {
+      Ok(confirmed) => confirmed
+      Err(error) => fail(error)
+    }
+    inspect(
+      match confirmed.compilation.definition.config {
+        { "workspace": String(value), .. } => value
+        _ => ""
+      },
+      content=selected_cwd,
+    )
+  })
+}
+
+///|
 async test "GatewayJobApp::confirm_proposal initializes generic controller records" {
   @fsx.with_temporary_directory("job-app-controller-confirm-XXXXXX", dir => {
     let root = @pathx.join(dir, "jobs")

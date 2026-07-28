@@ -19,6 +19,8 @@ pub async fn get_copilot_token(String) -> CopilotTokenResponse
 
 pub async fn get_valid_credentials() -> Credentials
 
+pub async fn get_valid_credentials_for_workspace_root(root~ : String) -> Credentials
+
 pub async fn load_credentials() -> Credentials
 
 pub async fn load_credentials_for_workspace_root(root~ : String) -> Credentials
@@ -26,6 +28,8 @@ pub async fn load_credentials_for_workspace_root(root~ : String) -> Credentials
 pub async fn poll_for_access_token(String, Int, Int) -> String
 
 pub async fn refresh_and_save_credentials() -> Credentials
+
+pub async fn refresh_and_save_credentials_for_workspace_root(root~ : String) -> Credentials
 
 pub async fn request_device_code() -> DeviceCodeResponse
 

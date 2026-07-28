@@ -615,9 +615,14 @@ async fn Gateway::execute_cowork_agent_message(
     cwd~,
     logger=self.logger,
     uuid=self.uuid,
-    system_message=content,
+    system_message=(
+      $|You are a MoonClaw Cowork agent with read-only access to the selected workspace.
+      $|Treat the incoming content as the user's request. Inspect only the files needed to answer it, cite durable workspace-relative paths when applicable, and never claim to have changed the workspace.
+    ),
+    user_message=content,
     home=self.home,
   )
+  @moonclaw.setup_read_only_agent(agent, cwd~)
   let mut updated_session = session
   let mut final_content = ""
   let mut thinking_started = false
@@ -728,7 +733,12 @@ async fn Gateway::handle_cowork_send_message(
     Some(state) => {
       let notes = [..state.notes, content]
       let effective_request = planning_request_text(state.request_text, notes)
-      let candidate = self.job_app.plan_proposal(effective_request)
+      let candidate = self.job_app.plan_proposal_in_workspace(
+        effective_request,
+        cwd,
+        cwd,
+        model=final_session.model_override,
+      )
       let candidate = @job.promote_plan_candidate(
         candidate,
         "plan-preview",
@@ -835,11 +845,15 @@ async fn Gateway::handle_cowork_plan(
     params.cwd.unwrap_or(self.cwd),
   )
   let cwd = params.cwd.unwrap_or(cowork_effective_cwd(session, self.cwd))
-  ignore(cwd)
   session = self.append_session_message(
     session, "user", "command", request_text,
   )
-  let candidate = self.job_app.plan_proposal(request_text)
+  let candidate = self.job_app.plan_proposal_in_workspace(
+    request_text,
+    cwd,
+    cwd,
+    model=session.model_override,
+  )
   let preview_text = @job.render_job_plan_preview_for_chat(
     @job.plan_preview_from_proposal(candidate),
   )
@@ -900,8 +914,12 @@ async fn Gateway::handle_cowork_preview(
     state
   } else {
     let notes = [..state.notes, guidance]
-    let candidate = self.job_app.plan_proposal(
+    let cwd = params.cwd.unwrap_or(cowork_effective_cwd(session, self.cwd))
+    let candidate = self.job_app.plan_proposal_in_workspace(
       planning_request_text(state.request_text, notes),
+      cwd,
+      cwd,
+      model=session.model_override,
     )
     let candidate = @job.promote_plan_candidate(
       candidate,
@@ -967,8 +985,12 @@ async fn Gateway::handle_cowork_promote(
     state
   } else {
     let notes = [..state.notes, guidance]
-    let candidate = self.job_app.plan_proposal(
+    let cwd = params.cwd.unwrap_or(cowork_effective_cwd(session, self.cwd))
+    let candidate = self.job_app.plan_proposal_in_workspace(
       planning_request_text(state.request_text, notes),
+      cwd,
+      cwd,
+      model=session.model_override,
     )
     let candidate = @job.promote_plan_candidate(
       candidate,
@@ -1056,12 +1078,15 @@ async fn Gateway::handle_cowork_confirm_proposal(
       })
   }
   let confirmed = match
-    self.job_app.confirm_proposal(proposal, proposal_id, async fn(
-      job_id,
-      initial_input,
+    self.job_app.confirm_proposal_in_workspace(
+      proposal,
+      proposal_id,
+      cowork_effective_cwd(session, self.cwd),
+      cowork_effective_cwd(session, self.cwd),
+      async fn(job_id, initial_input) {
+        self.trigger_job_definition(job_id, initial_input~)
+      },
     ) {
-      self.trigger_job_definition(job_id, initial_input~)
-    }) {
     Ok(confirmed) => confirmed
     Err(error) =>
       raise json_error(409, "Conflict", {

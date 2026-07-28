@@ -424,11 +424,31 @@ pub async fn GatewayJobApp::confirm_proposal(
   proposal_id : String,
   launch_run : async (String, Json?) -> Result[JobRun, String],
 ) -> Result[ConfirmProposalResult, String] {
+  self.confirm_proposal_in_workspace(
+    proposal,
+    proposal_id,
+    self.cwd,
+    self.workspace_root(),
+    launch_run,
+  )
+}
+
+///|
+pub async fn GatewayJobApp::confirm_proposal_in_workspace(
+  self : GatewayJobApp,
+  proposal : JobProposal,
+  proposal_id : String,
+  cwd : String,
+  workspace_root : String,
+  launch_run : async (String, Json?) -> Result[JobRun, String],
+) -> Result[ConfirmProposalResult, String] {
   match ensure_draft_proposal(proposal, proposal_id) {
     Some(error) => return Err(error)
     None => ()
   }
-  let compilation = self.compile_proposal(proposal)
+  let compilation = self.compile_proposal_in_workspace(
+    proposal, cwd, workspace_root,
+  )
   let definition = compilation.definition
   let workflow = compilation.workflow
   self.runtime().register_definition(definition)
