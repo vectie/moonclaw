@@ -969,6 +969,16 @@ test "mooncode model planner sends a compact request envelope" {
       "Do not set `requires_approval` or `approval=operator` for read, moon_ide, moon_check",
     ),
   )
+  assert_true(
+    system.contains(
+      "`moon fmt` accepts path/paths but never target or package selectors",
+    ),
+  )
+  assert_true(
+    system.contains(
+      "a path inside a nested module lets the runtime infer its nearest module root",
+    ),
+  )
   assert_false(system.contains("MoonBit baseline:"))
 
   let codex = @model.codex_oauth_model(

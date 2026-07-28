@@ -275,7 +275,7 @@ fn mooncode_runtime_turn_moon_cmd_arguments(command : Json) -> Json {
   } else {
     {
       "command": moon_command,
-      "path": target,
+      "target": target,
       "timeout_ms": 60000,
       "max_output_chars": 16000,
     }

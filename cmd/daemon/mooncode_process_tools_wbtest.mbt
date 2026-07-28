@@ -417,6 +417,78 @@ test "mooncode moon_cmd supports explicit negative-path exit expectations" {
 }
 
 ///|
+test "mooncode normalizes command-specific moon arguments" {
+  assert_true(
+    mooncode_moon_cmd_args(
+      {
+        "command": "fmt",
+        "target": "native",
+        "args": ["--package", "example/demo/src", "--target=native", "--check"],
+        "path": "tools/demo/src",
+      },
+      "fmt",
+      selector_root="/book",
+      cwd_path="/book/tools/demo",
+    ) ==
+    ["fmt", "--check", "src"],
+  )
+  assert_true(
+    mooncode_moon_cmd_args(
+      {
+        "command": "check",
+        "target": "native",
+        "args": ["--warn-list", "+73"],
+        "path": "tools/demo/src",
+      },
+      "check",
+      selector_root="/book",
+      cwd_path="/book/tools/demo",
+    ) ==
+    ["check", "--target", "native", "--warn-list", "+73", "src"],
+  )
+  assert_true(
+    mooncode_moon_cmd_args(
+      {
+        "command": "test",
+        "target": "native",
+        "args": ["--package", "example/demo/src"],
+      },
+      "test",
+      selector_root="/book",
+      cwd_path="/book/tools/demo",
+    ) ==
+    ["test", "--target", "native", "--package", "example/demo/src"],
+  )
+  assert_true(
+    mooncode_moon_cmd_args(
+      { "command": "info", "target": "all", "path": "tools/demo/src/main.mbt" },
+      "info",
+      selector_root="/book",
+      cwd_path="/book/tools/demo",
+    ) ==
+    ["info", "--target", "all", "src/main.mbt"],
+  )
+  assert_true(
+    mooncode_moon_cmd_args(
+      { "command": "check", "path": "src" },
+      "check",
+      selector_root="/book/tools/demo",
+      cwd_path="/book/tools/demo",
+    ) ==
+    ["check", "src"],
+  )
+  let fallback = mooncode_runtime_turn_moon_cmd_arguments({
+    "command": "run_tests",
+    "payload": { "moon_cmd_command": "test", "moon_cmd_target": "native" },
+  })
+  assert_eq(mooncode_json_string(fallback, "target", default=""), "native")
+  assert_eq(
+    mooncode_json_string(fallback, "path", default="missing"),
+    "missing",
+  )
+}
+
+///|
 async test "mooncode validates moon_ide and moon_cmd arguments before process spawn" (
   t : @test.Test,
 ) {
@@ -437,7 +509,11 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
   @fsx.write_to_file(@pathx.join(nested_module, "src/moon.pkg"), "")
   @fsx.write_to_file(
     @pathx.join(nested_module, "src/main.mbt"),
-    "///|\nfn nested_answer() -> Int {\n  42\n}\n",
+    "///|\npub fn nested_answer()->Int{42}\n",
+  )
+  @fsx.write_to_file(
+    @pathx.join(nested_module, "src/main_wbtest.mbt"),
+    "///|\ntest \"nested answer\" {\n  assert_eq(nested_answer(), 42)\n}\n",
   )
   let inferred = mooncode_moon_ide_cwd(book_root, {
     "path": "tools/demo/src/main.mbt",
@@ -530,6 +606,62 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
     mooncode_json_string(target_result, "message", default=""),
     "unsupported moon_ide target: python",
   )
+  let nested_commands : Array[(String, Json, String)] = [
+    (
+      "check",
+      { "command": "check", "target": "native", "path": "tools/demo/src" },
+      "moon check --target native src",
+    ),
+    (
+      "test",
+      { "command": "test", "target": "native", "path": "tools/demo/src" },
+      "moon test --target native src",
+    ),
+    (
+      "info",
+      { "command": "info", "target": "native", "path": "tools/demo/src" },
+      "moon info --target native src",
+    ),
+    (
+      "fmt",
+      {
+        "command": "fmt",
+        "target": "native",
+        "args": ["--package", "example/demo/src", "--target", "native"],
+        "path": "tools/demo/src",
+      },
+      "moon fmt src",
+    ),
+  ]
+  for item in nested_commands {
+    let (command, arguments, expected_command) = item
+    let execution = mooncode_execute_tool_call(
+      "session-tool-validation",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-tool-validation",
+        "book_root": book_root,
+        "tool": "moon_cmd",
+        "command_id": "cmd-nested-\{command}",
+        "arguments": arguments,
+      },
+      now=@clock.Timestamp::from_ms(75L),
+    )
+    let result = mooncode_json_object_field_or_empty(execution, "result")
+    assert_true(mooncode_json_bool(result, "ok", default=false))
+    let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+    assert_eq(mooncode_json_string(metadata, "cwd", default=""), "tools/demo")
+    assert_eq(
+      mooncode_json_string(metadata, "command", default=""),
+      expected_command,
+    )
+  }
+  assert_true(
+    @fsx.read_file(@pathx.join(nested_module, "src/main.mbt")).contains(
+      "pub fn nested_answer() -> Int",
+    ),
+  )
   let invalid_program_args = mooncode_execute_tool_call(
     "session-tool-validation",
     book_root,
@@ -541,7 +673,7 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
       "command_id": "cmd-bad-program-args",
       "arguments": { "command": "test", "program_args": ["--bad"] },
     },
-    now=@clock.Timestamp::from_ms(75L),
+    now=@clock.Timestamp::from_ms(76L),
   )
   let cmd_result = mooncode_json_object_field_or_empty(
     invalid_program_args, "result",

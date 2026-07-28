@@ -92,6 +92,42 @@ test "mooncode approval classifier gates hosted run reruns" {
   )
   assert_false(
     mooncode_runtime_tool_requires_approval({
+      "tool": "moon_cmd",
+      "planner": "model-tool-call",
+      "requires_approval": true,
+      "arguments": { "command": "fmt", "target": "native" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_cmd",
+      "planner": "model-tool-call",
+      "approval": "operator",
+      "arguments": { "command": "test", "target": "native" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_cmd",
+      "requires_approval": true,
+      "arguments": { "command": "fmt" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "moon_cmd",
+      "planner": "model-tool-call",
+      "requires_approval": true,
+      "arguments": {
+        "command": "test",
+        "args": ["--update"],
+        "test_update_kind": "snapshot",
+        "test_update_reason": "accepted change",
+      },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
       "tool": "shell",
       "arguments": {
         "cmd": "set -o pipefail; rg -n 'runtime-turn' cmd/daemon; git diff --check",

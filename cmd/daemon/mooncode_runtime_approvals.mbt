@@ -1,6 +1,9 @@
 ///|
 fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  let planner_local_validation = mooncode_runtime_planner_local_validation(
+    tool_call,
+  )
   let tool = mooncode_json_string(tool_call, "tool", default="")
   if tool == "shell" {
     let raw_command = mooncode_json_string(arguments, "cmd", default="")
@@ -30,8 +33,14 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   if mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
     return ""
   }
-  if mooncode_json_bool(tool_call, "requires_approval", default=false) ||
-    mooncode_json_bool(arguments, "requires_approval", default=false) {
+  // Preserve caller-controlled authorization for operations whose authority
+  // the runtime cannot prove, while ignoring approval annotations invented by
+  // the model for canonical local validation.
+  if !planner_local_validation &&
+    (
+      mooncode_json_bool(tool_call, "requires_approval", default=false) ||
+      mooncode_json_bool(arguments, "requires_approval", default=false)
+    ) {
     return "This operation explicitly requires operator approval."
   }
   let approval = mooncode_json_string(
@@ -39,7 +48,7 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     "approval",
     default=mooncode_json_string(arguments, "approval", default=""),
   )
-  if approval == "operator" {
+  if approval == "operator" && !planner_local_validation {
     return "This operation crosses an operator-controlled boundary."
   }
   ""
@@ -67,6 +76,30 @@ fn mooncode_runtime_tool_is_demonstrably_read_only(tool_call : Json) -> Bool {
     }
     _ => false
   }
+}
+
+///|
+fn mooncode_runtime_planner_local_validation(tool_call : Json) -> Bool {
+  if mooncode_json_string(tool_call, "planner", default="") != "model-tool-call" {
+    return false
+  }
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  if tool == "moon_check" {
+    return true
+  }
+  if tool != "moon_cmd" {
+    return false
+  }
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  let command = mooncode_json_string(arguments, "command", default="")
+  (
+    command == "check" ||
+    command == "test" ||
+    command == "info" ||
+    command == "fmt" ||
+    command == "build"
+  ) &&
+  !mooncode_moon_cmd_is_test_update(arguments)
 }
 
 ///|
