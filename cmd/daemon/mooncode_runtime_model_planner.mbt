@@ -832,17 +832,16 @@ fn mooncode_runtime_turn_model_followup_base_messages(
   all_tool_results? : Array[Json] = [],
   skill_catalog? : String = "",
 ) -> Array[Json] {
-  let checkpointed = tool_results.any(result => {
-    mooncode_json_bool(result, "accepted", default=false) &&
-    mooncode_json_string(result, "tool", default="") == "checkpoint"
-  })
+  ignore(tool_results)
   let previous = mooncode_json_array_items(previous_plan, "model_messages")
-  if !checkpointed && previous.length() >= 2 {
+  if previous.length() >= 2 {
+    // A milestone checkpoint records durable task progress; it is not evidence
+    // that the planner can forget the source, diagnostics, and ownership
+    // inventory used to reach that milestone. Keep the actual transcript so a
+    // long-horizon task continues from retained reasoning instead of repeating
+    // discovery after every checkpoint.
     previous
   } else {
-    // An accepted checkpoint is the semantic compaction boundary. Before that
-    // boundary, retain the actual planner transcript so file contents and
-    // diagnostics survive more than one model call.
     let messages = mooncode_runtime_turn_model_initial_messages(
       command,
       skill_catalog~,

@@ -1000,7 +1000,7 @@ test "mooncode live steering becomes an explicit planner user message" {
 }
 
 ///|
-test "mooncode retains planner memory until an accepted checkpoint" {
+test "mooncode retains planner memory across accepted checkpoints" {
   let command : Json = {
     "command": "prompt",
     "text": "Implement the multi-phase repair.",
@@ -1028,7 +1028,7 @@ test "mooncode retains planner memory until an accepted checkpoint" {
     mooncode_json_string(retained[2], "content", default=""),
     "remembered plan inventory",
   )
-  let compacted = mooncode_runtime_turn_model_followup_base_messages(
+  let checkpointed = mooncode_runtime_turn_model_followup_base_messages(
     command,
     previous,
     [
@@ -1054,16 +1054,10 @@ test "mooncode retains planner memory until an accepted checkpoint" {
     ],
     skill_catalog="<available_skills />",
   )
-  assert_eq(compacted.length(), 3)
-  assert_false(
-    mooncode_json_string(compacted[1], "content", default="").contains(
-      "remembered plan inventory",
-    ),
-  )
-  assert_true(
-    mooncode_json_string(compacted[2], "content", default="").contains(
-      "complete retained skill instructions",
-    ),
+  assert_eq(checkpointed.length(), 3)
+  assert_eq(
+    mooncode_json_string(checkpointed[2], "content", default=""),
+    "remembered plan inventory",
   )
 }
 
