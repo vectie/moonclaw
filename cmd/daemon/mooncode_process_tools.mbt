@@ -587,22 +587,22 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
       )
     }
     if scope.out_of_scope_paths.length() > 0 {
-      let restored = if scope.restored_paths.length() > 0 {
-        " Restored and verified: \{scope.restored_paths.join(", ")}."
-      } else {
-        ""
+      if scope.retained_paths.length() > 0 {
+        return mooncode_tool_error_result(
+          "moon_cmd",
+          message="moon fmt changed paths outside its explicit scope and could not restore and verify: \{scope.retained_paths.join(", ")}. Stop before committing and inspect the working tree; do not widen formatter scope to resolve this containment failure.",
+          output=mooncode_json_string(capped, "output", default=""),
+          metadata~,
+        )
       }
-      let retained = if scope.retained_paths.length() > 0 {
-        " Retained for inspection: \{scope.retained_paths.join(", ")}."
-      } else {
-        ""
+      if mooncode_moon_cmd_exit_expected(arguments, process.status) {
+        return mooncode_tool_ok_result(
+          "moon_cmd",
+          message="moon fmt formatted the requested paths: \{scope.requested_paths.join(", ")}. Out-of-scope formatter changes were restored and verified: \{scope.restored_paths.join(", ")}. Continue with the task; do not widen formatter scope unless a restored path is independently task-owned.",
+          output=mooncode_json_string(capped, "output", default=""),
+          metadata~,
+        )
       }
-      return mooncode_tool_error_result(
-        "moon_cmd",
-        message="moon fmt changed paths outside its explicit scope: \{scope.out_of_scope_paths.join(", ")}.\{restored}\{retained} Reissue moon fmt with explicit paths covering every intended formatter mutation before continuing to commit.",
-        output=mooncode_json_string(capped, "output", default=""),
-        metadata~,
-      )
     }
   }
   if mooncode_moon_cmd_exit_expected(arguments, process.status) {

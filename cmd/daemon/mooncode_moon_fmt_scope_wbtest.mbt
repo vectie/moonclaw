@@ -22,7 +22,7 @@ async fn mooncode_moon_fmt_test_commit_baseline(book_root : String) -> Unit {
 }
 
 ///|
-async test "mooncode scoped fmt restores unrelated nested-module changes without erasing dirty files" (
+async test "mooncode scoped fmt restores unrelated changes and allows continuation without erasing task-owned dirty files" (
   t : @test.Test,
 ) {
   ignore(t)
@@ -67,12 +67,25 @@ async test "mooncode scoped fmt restores unrelated nested-module changes without
     now=@clock.Timestamp::from_ms(80L),
   )
   let result = mooncode_json_object_field_or_empty(execution, "result")
-  assert_false(mooncode_json_bool(result, "ok", default=true))
+  assert_true(mooncode_json_bool(result, "ok", default=false))
+  let message = mooncode_json_string(result, "message", default="")
   assert_true(
-    mooncode_json_string(result, "message", default="").contains(
-      "moon fmt changed paths outside its explicit scope",
+    message.contains(
+      "moon fmt formatted the requested paths: tools/demo/src/requested.mbt",
     ),
   )
+  assert_true(
+    message.contains(
+      "Out-of-scope formatter changes were restored and verified",
+    ),
+  )
+  assert_true(message.contains("Continue with the task"))
+  assert_true(
+    message.contains(
+      "do not widen formatter scope unless a restored path is independently task-owned",
+    ),
+  )
+  assert_false(message.contains("Reissue moon fmt"))
   let metadata = mooncode_json_object_field_or_empty(result, "metadata")
   assert_eq(mooncode_json_int(metadata, "status", default=-1), 0)
   assert_eq(
