@@ -1113,6 +1113,100 @@ test "mooncode live steering becomes an explicit planner user message" {
       "steer-live-1",
     ),
   )
+  assert_true(
+    mooncode_json_string(messages[2], "content", default="").contains(
+      "paths in this steering as authoritative",
+    ),
+  )
+}
+
+///|
+test "mooncode followup makes retained reads errors and path hints actionable" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Repair the parser without repeating discovery.",
+  }
+  let previous : Json = {
+    "model_messages": [
+      { "role": "system", "content": "planner contract" },
+      { "role": "user", "content": "repair request" },
+    ],
+    "model_response_message": {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "read-good",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\":\"src/parser.mbt\"}",
+          },
+        },
+        {
+          "id": "read-guessed",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\":\"src/guessed.mbt\"}",
+          },
+        },
+      ],
+    },
+  }
+  let tool_calls : Array[Json] = [
+    {
+      "tool": "read",
+      "tool_call_id": "read-good",
+      "arguments": { "path": "src/parser.mbt" },
+    },
+    {
+      "tool": "read",
+      "tool_call_id": "read-guessed",
+      "arguments": { "path": "src/guessed.mbt" },
+    },
+  ]
+  let tool_results : Array[Json] = [
+    {
+      "tool": "read",
+      "accepted": true,
+      "result": { "ok": true, "output": "current parser source" },
+    },
+    {
+      "tool": "read",
+      "accepted": false,
+      "result": { "ok": false, "message": "path does not exist" },
+    },
+  ]
+  let steering : Json = {
+    "command_id": "steer-exact-path",
+    "steering_text": "The implementation is at internal/parser/parser.mbt.",
+  }
+  let messages = mooncode_runtime_turn_model_followup_messages(
+    command,
+    previous,
+    tool_calls,
+    tool_results,
+    tool_results,
+    [steering],
+    -1,
+  )
+  let transcript = Json::array(messages).stringify()
+  assert_true(transcript.contains("successful_read_paths"))
+  assert_true(transcript.contains("src/parser.mbt"))
+  assert_true(transcript.contains("failed_tool_calls"))
+  assert_true(transcript.contains("src/guessed.mbt"))
+  assert_true(transcript.contains("path does not exist"))
+  assert_true(transcript.contains("Do not reread a successful path"))
+  assert_true(transcript.contains("do not repeat an identical failed call"))
+  assert_true(transcript.contains("internal/parser/parser.mbt"))
+  assert_true(transcript.contains("paths in this steering as authoritative"))
+  assert_eq(
+    mooncode_json_string(messages[messages.length() - 1], "content", default="").contains(
+      "steer-exact-path",
+    ),
+    true,
+  )
 }
 
 ///|

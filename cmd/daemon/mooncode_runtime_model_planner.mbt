@@ -1362,6 +1362,119 @@ fn mooncode_runtime_turn_tool_calls_from_model_response(
 }
 
 ///|
+fn mooncode_runtime_turn_model_evidence_ledger_message(
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+) -> Json {
+  let read_paths : Array[String] = []
+  let failed_calls : Array[Json] = []
+  for index in 0..<tool_calls.length() {
+    if index >= tool_results.length() {
+      continue
+    }
+    let call = tool_calls[index]
+    let execution = tool_results[index]
+    let tool = mooncode_json_string(call, "tool", default="")
+    let arguments = mooncode_json_object_field_or_empty(call, "arguments")
+    let path = mooncode_json_string(arguments, "path", default="")
+    let accepted = mooncode_json_bool(execution, "accepted", default=false)
+    let result = mooncode_json_object_field_or_empty(execution, "result")
+    let ok = mooncode_json_bool(result, "ok", default=accepted)
+    if tool == "read" && accepted && ok && path != "" {
+      if !read_paths.contains(path) {
+        read_paths.push(path)
+      }
+    } else if !accepted || !ok {
+      failed_calls.push({
+        "tool": tool,
+        "path": path,
+        "message": mooncode_json_string(result, "message", default=""),
+      })
+    }
+  }
+  if read_paths.length() == 0 && failed_calls.length() == 0 {
+    return {}
+  }
+  let retained_reads : Array[Json] = read_paths.map(path => Json::string(path))
+  {
+    "role": "user",
+    "content": "Retained evidence for the next planner opportunity:\n" +
+    Json::object({
+      "successful_read_paths": Json::array(retained_reads),
+      "failed_tool_calls": Json::array(failed_calls),
+    }).stringify(indent=2) +
+    "\nDo not reread a successful path merely to recover context; its prior tool result remains in this transcript. Reread only when a mutation, truncation, or explicit new question requires fresh bytes. Consume each exact tool error before acting: do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. Use repository discovery or an explicit steering path to choose a causally different next action.",
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_followup_messages(
+  command : Json,
+  previous_plan : Json,
+  tool_calls : Array[Json],
+  tool_results : Array[Json],
+  all_tool_results : Array[Json],
+  live_steering : Array[Json],
+  remaining_steps : Int,
+  skill_catalog? : String = "",
+) -> Array[Json] {
+  let messages = mooncode_runtime_turn_model_followup_base_messages(
+    command,
+    previous_plan,
+    tool_results,
+    all_tool_results~,
+    skill_catalog~,
+  )
+  let prior_results : Array[Json] = []
+  let prior_count = if all_tool_results.length() > tool_results.length() {
+    all_tool_results.length() - tool_results.length()
+  } else {
+    0
+  }
+  for index in 0..<prior_count {
+    prior_results.push(all_tool_results[index])
+  }
+  if mooncode_runtime_turn_requires_verification(command) {
+    messages.push(
+      mooncode_runtime_horizon_progress_message(
+        command, prior_results, remaining_steps,
+      ),
+    )
+  }
+  messages.push(
+    mooncode_json_object_field_or_empty(previous_plan, "model_response_message"),
+  )
+  for
+    message in mooncode_runtime_turn_model_tool_result_messages(
+      tool_calls, tool_results,
+    ) {
+    messages.push(message)
+  }
+  let pipeline_warning = mooncode_runtime_turn_pipeline_evidence_warning(
+    tool_results,
+  )
+  if pipeline_warning != "" {
+    messages.push({ "role": "user", "content": pipeline_warning })
+  }
+  let finish_rejection = mooncode_runtime_turn_horizon_finish_rejection_message(
+    command, tool_calls, all_tool_results,
+  )
+  if finish_rejection != "" {
+    messages.push({ "role": "user", "content": finish_rejection })
+  }
+  let evidence_ledger = mooncode_runtime_turn_model_evidence_ledger_message(
+    tool_calls, tool_results,
+  )
+  if mooncode_runtime_turn_model_message_present(evidence_ledger) {
+    messages.push(evidence_ledger)
+  }
+  for steering in live_steering {
+    messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
+  }
+  messages
+}
+
+///|
 async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   self : Daemon,
   command : Json,
@@ -1402,51 +1515,16 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
   let skill_catalog = mooncode_runtime_turn_skill_catalog(
     mooncode_book_root(command),
   )
-  let messages = mooncode_runtime_turn_model_followup_base_messages(
+  let messages = mooncode_runtime_turn_model_followup_messages(
     command,
     previous_plan,
+    tool_calls,
     tool_results,
-    all_tool_results~,
+    all_tool_results,
+    live_steering,
+    remaining_steps,
     skill_catalog~,
   )
-  let prior_results : Array[Json] = []
-  let prior_count = if all_tool_results.length() > tool_results.length() {
-    all_tool_results.length() - tool_results.length()
-  } else {
-    0
-  }
-  for index in 0..<prior_count {
-    prior_results.push(all_tool_results[index])
-  }
-  if mooncode_runtime_turn_requires_verification(command) {
-    messages.push(
-      mooncode_runtime_horizon_progress_message(
-        command, prior_results, remaining_steps,
-      ),
-    )
-  }
-  messages.push(response_message)
-  for
-    message in mooncode_runtime_turn_model_tool_result_messages(
-      tool_calls, tool_results,
-    ) {
-    messages.push(message)
-  }
-  let pipeline_warning = mooncode_runtime_turn_pipeline_evidence_warning(
-    tool_results,
-  )
-  if pipeline_warning != "" {
-    messages.push({ "role": "user", "content": pipeline_warning })
-  }
-  let finish_rejection = mooncode_runtime_turn_horizon_finish_rejection_message(
-    command, tool_calls, all_tool_results,
-  )
-  if finish_rejection != "" {
-    messages.push({ "role": "user", "content": finish_rejection })
-  }
-  for steering in live_steering {
-    messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
-  }
   ignore(remaining_steps)
   let requested_model : String? = Some(model_name)
   match self.models.get_model(name?=requested_model) {
@@ -1539,7 +1617,7 @@ fn mooncode_runtime_turn_model_live_steering_message(steering : Json) -> Json {
   let text = mooncode_json_string(steering, "steering_text", default="")
   {
     "role": "user",
-    "content": "Live steering for this active turn from command `\{command_id}`:\n\{text}\nApply this instruction before choosing the next MoonCode tool batch.",
+    "content": "Live steering for this active turn from command `\{command_id}`:\n\{text}\nApply this instruction before choosing the next MoonCode tool batch. Treat exact file and directory paths in this steering as authoritative; do not substitute guessed paths.",
   }
 }
 
