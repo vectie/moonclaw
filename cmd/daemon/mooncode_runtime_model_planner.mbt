@@ -466,7 +466,19 @@ fn mooncode_runtime_turn_result_is_mutation(result : Json) -> Bool {
   tool == "write" ||
   tool == "edit" ||
   tool == "apply_patch" ||
-  tool == "revert_patch"
+  tool == "revert_patch" ||
+  (
+    tool == "commit" &&
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(
+        mooncode_json_object_field_or_empty(result, "result"),
+        "metadata",
+      ),
+      "evidence_kind",
+      default="",
+    ) ==
+    "runtime.commit_created"
+  )
 }
 
 ///|
@@ -478,6 +490,21 @@ fn mooncode_runtime_turn_result_mutation_states(result : Json) -> Array[Json] {
     mooncode_json_object_field_or_empty(result, "result"),
     "metadata",
   )
+  if mooncode_json_string(result, "tool", default="") == "commit" {
+    let commit_sha = mooncode_json_string(metadata, "commit_sha", default="")
+      .trim()
+      .to_owned()
+    if commit_sha == "" {
+      return []
+    }
+    return mooncode_json_array_string_items(metadata, "changed_paths")
+      .filter(path => path != "")
+      .map(path => {
+        "path": path,
+        "before": "uncommitted",
+        "after": "commit:\{commit_sha}",
+      })
+  }
   let files = mooncode_json_array_items(metadata, "files")
   let candidates = if files.is_empty() { [metadata] } else { files }
   let states : Array[Json] = []

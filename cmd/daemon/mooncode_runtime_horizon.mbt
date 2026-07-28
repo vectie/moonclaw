@@ -24,6 +24,31 @@ fn mooncode_runtime_horizon_id(command : Json) -> String {
 }
 
 ///|
+fn mooncode_runtime_commit_event_horizon_id(event : Json) -> String {
+  let direct = mooncode_runtime_horizon_explicit_id(event)
+  if direct != "" {
+    return direct
+  }
+  let commit_result = mooncode_json_object_field_or_empty(
+    event, "commit_result",
+  )
+  let result_id = mooncode_runtime_horizon_explicit_id(commit_result)
+  if result_id != "" {
+    return result_id
+  }
+  let event_packet = mooncode_json_object_field_or_empty(
+    event, "command_packet",
+  )
+  let packet_id = mooncode_runtime_horizon_explicit_id(event_packet)
+  if packet_id != "" {
+    return packet_id
+  }
+  mooncode_runtime_horizon_explicit_id(
+    mooncode_json_object_field_or_empty(commit_result, "command_packet"),
+  )
+}
+
+///|
 fn mooncode_runtime_horizon_task_contract(command : Json) -> Json {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let nested = mooncode_json_object_field_or_empty(payload, "task_contract")
@@ -216,29 +241,104 @@ fn mooncode_runtime_horizon_attach_checkpoint(
     return command
   }
   let mut latest = Json::object({})
+  let retained_evidence : Array[Json] = []
+  let seen_commits : Map[String, Bool] = {}
+  let mut horizon_started = false
   for event in events {
-    if mooncode_json_string(event, "tool", default="") != "checkpoint" {
+    if mooncode_json_string(event, "tool", default="") == "checkpoint" {
+      let tool_result = mooncode_json_object_field_or_empty(
+        event, "tool_result",
+      )
+      if mooncode_json_bool(tool_result, "ok", default=false) {
+        let metadata = mooncode_json_object_field_or_empty(
+          tool_result, "metadata",
+        )
+        if mooncode_json_string(metadata, "horizon_id", default="") == explicit {
+          latest = mooncode_json_object_field_or_empty(metadata, "checkpoint")
+          horizon_started = true
+        } else {
+          horizon_started = false
+        }
+      }
       continue
     }
-    let tool_result = mooncode_json_object_field_or_empty(event, "tool_result")
-    if !mooncode_json_bool(tool_result, "ok", default=false) {
-      continue
-    }
-    let metadata = mooncode_json_object_field_or_empty(tool_result, "metadata")
-    if mooncode_json_string(metadata, "horizon_id", default="") == explicit {
-      latest = mooncode_json_object_field_or_empty(metadata, "checkpoint")
+    if horizon_started &&
+      mooncode_json_string(event, "kind", default="") ==
+      "runtime.commit_created" &&
+      mooncode_json_string(event, "status", default="") == "done" {
+      if mooncode_runtime_commit_event_horizon_id(event) != explicit {
+        continue
+      }
+      let commit_sha = mooncode_json_string(event, "commit_sha", default="")
+      if commit_sha == "" || seen_commits.contains(commit_sha) {
+        continue
+      }
+      let direct_paths = mooncode_json_array_string_items(
+        event, "changed_paths",
+      )
+      let commit_result = mooncode_json_object_field_or_empty(
+        event, "commit_result",
+      )
+      let result_paths = mooncode_json_array_string_items(
+        commit_result, "changed_paths",
+      )
+      let status_before = mooncode_json_string(
+        event,
+        "status_before",
+        default=mooncode_json_string(commit_result, "status_before", default=""),
+      )
+      let changed_paths = if !direct_paths.is_empty() {
+        direct_paths
+      } else if !result_paths.is_empty() {
+        result_paths
+      } else {
+        mooncode_runtime_commit_status_paths(status_before)
+      }
+      if changed_paths.is_empty() {
+        continue
+      }
+      seen_commits[commit_sha] = true
+      retained_evidence.push({
+        "tool": "commit",
+        "accepted": true,
+        "result": {
+          "metadata": {
+            "evidence_kind": "runtime.commit_created",
+            "commit_sha": commit_sha,
+            "changed_paths": Json::array(
+              changed_paths.map(path => path.to_json()),
+            ),
+          },
+        },
+      })
     }
   }
-  if mooncode_json_array_items(latest, "milestones").length() == 0 {
-    command
-  } else {
-    let payload = mooncode_json_object_field_or_empty(command, "payload")
-    mooncode_json_object_with_field(
-      command,
-      "payload",
-      mooncode_json_object_with_field(payload, "horizon_checkpoint", latest),
+  if mooncode_json_array_items(latest, "milestones").is_empty() &&
+    retained_evidence.is_empty() {
+    return command
+  }
+  let mut payload = mooncode_json_object_field_or_empty(command, "payload")
+  if mooncode_json_array_items(latest, "milestones").length() > 0 {
+    payload = mooncode_json_object_with_field(
+      payload, "horizon_checkpoint", latest,
     )
   }
+  if !retained_evidence.is_empty() {
+    payload = mooncode_json_object_with_field(
+      payload,
+      "horizon_evidence",
+      Json::array(retained_evidence),
+    )
+  }
+  mooncode_json_object_with_field(command, "payload", payload)
+}
+
+///|
+fn mooncode_runtime_horizon_retained_evidence(command : Json) -> Array[Json] {
+  mooncode_json_array_items(
+    mooncode_json_object_field_or_empty(command, "payload"),
+    "horizon_evidence",
+  )
 }
 
 ///|
@@ -279,9 +379,19 @@ fn mooncode_runtime_horizon_path_changed(
   results : Array[Json],
   path : String,
 ) -> Bool {
+  let normalized = path.trim(chars="/").to_owned()
+  if normalized == "" {
+    return false
+  }
   for result in results {
     for state in mooncode_runtime_turn_result_mutation_states(result) {
-      if mooncode_json_string(state, "path", default="") == path &&
+      let changed_path = mooncode_json_string(state, "path", default="")
+        .trim(chars="/")
+        .to_owned()
+      if (
+          changed_path == normalized ||
+          changed_path.has_prefix(normalized + "/")
+        ) &&
         mooncode_json_string(state, "before", default="") !=
         mooncode_json_string(state, "after", default="") {
         return true

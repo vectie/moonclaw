@@ -127,6 +127,9 @@ async fn mooncode_runtime_turn_commit_results(
       ),
     ]
   }
+  let committed_paths = mooncode_runtime_commit_changed_paths(
+    book_root, commit_sha,
+  )
   [
     mooncode_runtime_turn_commit_result(
       session_id,
@@ -136,6 +139,7 @@ async fn mooncode_runtime_turn_commit_results(
       message~,
       status_before~,
       commit_sha~,
+      changed_paths=committed_paths,
       detail="MoonClaw created a book-local git commit for the accepted MoonCode changes.",
       output=mooncode_json_string(commit, "output", default=""),
       now~,
@@ -154,6 +158,62 @@ fn mooncode_runtime_turn_commit_add_args() -> Array[StringView] {
 }
 
 ///|
+async fn mooncode_runtime_commit_changed_paths(
+  book_root : String,
+  commit_sha : String,
+) -> Array[String] {
+  let process = @spawn.spawn(
+    "git",
+    [
+      "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "-z", commit_sha,
+      "--", ".", ":(exclude).moonsuite", ":(exclude).tmp",
+    ],
+    timeout=10000,
+    cwd=book_root,
+  ) catch {
+    _ => return []
+  }
+  if process.status != 0 {
+    []
+  } else {
+    mooncode_runtime_commit_nul_paths(process.stdout)
+  }
+}
+
+///|
+fn mooncode_runtime_commit_nul_paths(output : String) -> Array[String] {
+  let paths : Array[String] = []
+  for item in output.split("\x00") {
+    let path = item.to_owned()
+    if path != "" && !paths.contains(path) {
+      paths.push(path)
+    }
+  }
+  paths
+}
+
+///|
+fn mooncode_runtime_commit_status_paths(status : String) -> Array[String] {
+  let paths : Array[String] = []
+  for item in status.split("\n") {
+    let line = item.to_owned()
+    if line.length() < 4 {
+      continue
+    }
+    let raw = line[3:].to_owned().trim().to_owned()
+    let mut path = raw
+    for candidate in raw.split(" -> ") {
+      path = candidate.to_owned()
+    }
+    let path = path.trim(chars="\"").to_owned()
+    if path != "" && !paths.contains(path) {
+      paths.push(path)
+    }
+  }
+  paths
+}
+
+///|
 fn mooncode_runtime_turn_commit_result(
   session_id : String,
   book_root : String,
@@ -162,6 +222,7 @@ fn mooncode_runtime_turn_commit_result(
   message~ : String,
   status_before~ : String,
   commit_sha~ : String,
+  changed_paths? : Array[String] = [],
   detail~ : String,
   output~ : String,
   now~ : @clock.Timestamp,
@@ -178,9 +239,11 @@ fn mooncode_runtime_turn_commit_result(
     "session_id": session_id,
     "book_root": book_root,
     "command_id": mooncode_command_id(command),
+    "horizon_id": mooncode_runtime_horizon_explicit_id(command),
     "commit_sha": commit_sha,
     "commit_message": message,
     "status_before": status_before,
+    "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
     "detail": detail,
     "output": output,
     "created_at": now,
@@ -205,12 +268,16 @@ fn mooncode_runtime_turn_commit_event(
 ) -> Json {
   let accepted = mooncode_json_bool(commit_result, "accepted", default=false)
   let commit_sha = mooncode_json_string(commit_result, "commit_sha", default="")
+  let changed_paths = mooncode_json_array_string_items(
+    commit_result, "changed_paths",
+  )
   {
     "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-commit-\{now}",
     "protocol": mooncode_protocol_version(),
     "session_id": session_id,
     "book_root": mooncode_book_root(command),
     "command_id": command_id,
+    "horizon_id": mooncode_runtime_horizon_explicit_id(command),
     "lane": "review",
     "kind": if accepted {
       "runtime.commit_created"
@@ -244,6 +311,7 @@ fn mooncode_runtime_turn_commit_event(
       "status_before",
       default="",
     ),
+    "changed_paths": Json::array(changed_paths.map(path => path.to_json())),
     "commit_result": commit_result,
     "command": "commit",
     "command_packet": mooncode_json_object_field_or_empty(command, "packet"),

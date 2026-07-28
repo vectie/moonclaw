@@ -227,7 +227,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   let tool_results : Array[Json] = if resuming_continuation {
     mooncode_json_array_items(continuation, "tool_results")
   } else {
-    []
+    mooncode_runtime_horizon_retained_evidence(command)
   }
   let events : Array[Json] = []
   let persisted_event_ids : Map[String, Bool] = {}

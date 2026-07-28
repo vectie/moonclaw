@@ -1,4 +1,12 @@
 ///|
+test "mooncode historical commit status paths retain renamed and quoted targets" {
+  let paths = mooncode_runtime_commit_status_paths(
+    "R  \"docs/old name.md\" -> \"docs/new name.md\"\n?? \"src/new file.mbt\"\n",
+  )
+  assert_eq(paths, ["docs/new name.md", "src/new file.mbt"])
+}
+
+///|
 async test "mooncode native runtime turn creates commit proof" (t : @test.Test) {
   ignore(t)
   let book_root = @fsx.mkdtemp(
@@ -134,6 +142,12 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     mooncode_json_string(commit_results[0], "commit_message", default=""),
     "MoonCode test commit",
   )
+  let changed_paths = mooncode_json_array_string_items(
+    commit_results[0],
+    "changed_paths",
+  )
+  assert_true(changed_paths.contains("README.md"))
+  assert_true(changed_paths.contains("code/runtime.txt"))
   let events_log = @fsx.read_file(
     mooncode_session_journal_path(book_root, session_id),
   )
