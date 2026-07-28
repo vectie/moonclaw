@@ -287,6 +287,7 @@ async test "Codex loader retains explicit 5.4 compatibility without fallback" {
   })
 }
 
+///|
 async test "Codex credentials prefer workspace-local credentials over global" {
   @fsx.with_temporary_directory("moonclaw-codex-workspace-precedence-XXXXXX", workspace_root => {
     @fsx.with_temporary_directory("moonclaw-codex-global-precedence-XXXXXX", global_root => {

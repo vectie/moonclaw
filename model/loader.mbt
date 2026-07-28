@@ -657,6 +657,7 @@ async fn resolve_codex_credentials(
   )
 }
 
+///|
 async fn Loader::start_codex_login(self : Loader) -> @codex.Credentials? {
   logger.info("Codex OAuth credentials not found, starting login...")
   Some(@codex.start_oauth_flow_for_workspace_root(root=self.home.to_owned())) catch {
