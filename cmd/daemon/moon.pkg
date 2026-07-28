@@ -27,6 +27,7 @@ import {
   "vectie/moonclaw/internal/signal",
   "vectie/moonclaw/internal/conversation",
   "moonbitlang/async/semaphore",
+  "moonbitlang/async/tls",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/oauth/codex",
   "vectie/moonclaw/oauth/copilot",

@@ -81,10 +81,11 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       )
       let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
         error =>
-          return mooncode_runtime_turn_failed_planner_result(
+          return mooncode_runtime_turn_planner_error_result(
             command,
             model_name,
-            "model planner failed: \{@openai.error_summary(error)}",
+            "model planner failed",
+            error,
             started,
             now~,
           )
@@ -1583,10 +1584,11 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
       )
       let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
         error =>
-          return mooncode_runtime_turn_failed_planner_result(
+          return mooncode_runtime_turn_planner_error_result(
             command,
             model_name,
-            "model planner follow-up failed: \{@openai.error_summary(error)}",
+            "model planner follow-up failed",
+            error,
             started,
             now~,
           )

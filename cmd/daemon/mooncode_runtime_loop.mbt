@@ -200,6 +200,11 @@ async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
       stopped_by = "approval"
       break
     }
+    if mooncode_json_string(execution, "pause_reason", default="") ==
+      "planner-transport-interrupted" {
+      stopped_by = "retryable"
+      break
+    }
     if !mooncode_json_bool(turn, "accepted", default=false) {
       failed_turn_count += 1
       stopped_by = "failed"
@@ -379,6 +384,8 @@ fn mooncode_runtime_loop_message(
       "MoonClaw native runtime loop stopped after a cancel command."
     "approval" =>
       "MoonClaw native runtime loop is waiting for operator approval."
+    "retryable" =>
+      "MoonClaw native runtime loop retained a transient planner transport checkpoint for runtime-owned continuation."
     _ =>
       "MoonClaw native runtime loop reached its max_turns limit after \{ran_turn_count} turn(s)."
   }

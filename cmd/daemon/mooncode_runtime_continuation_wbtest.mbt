@@ -142,6 +142,61 @@ test "planner quantum checkpoint validation fails closed" {
 }
 
 ///|
+test "planner transport checkpoints preserve initial and follow-up resume state" {
+  let initial = mooncode_runtime_planner_transport_continuation_event(
+    "session-transport",
+    "cmd-transport",
+    Json::object({}),
+    [],
+    [],
+    [],
+    [{ "command_id": "steer-one", "text": "Keep the scope narrow." }],
+    resume_mode="initial",
+    next_step_index=0,
+    detail="model planner failed: ConnectionClosed",
+    now=@clock.Timestamp::from_ms(44L),
+  )
+  assert_true(
+    mooncode_runtime_planner_transport_continuation_is_active(initial),
+  )
+  assert_eq(
+    mooncode_json_array_items(initial, "pending_live_steering").length(),
+    1,
+  )
+  let plan = mooncode_runtime_planner_checkpoint_test_plan()
+  let result : Json = {
+    "accepted": true,
+    "result": { "ok": true, "output": "# Book" },
+  }
+  let followup = mooncode_runtime_planner_transport_continuation_event(
+    "session-transport",
+    "cmd-transport",
+    plan,
+    [plan],
+    [result],
+    [result],
+    [{ "command_id": "steer-two", "text": "Finish the same slice." }],
+    resume_mode="followup",
+    next_step_index=1,
+    detail="model planner follow-up failed: ConnectionClosed",
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  assert_true(
+    mooncode_runtime_planner_transport_continuation_is_active(followup),
+  )
+  assert_false(mooncode_runtime_planner_continuation_is_active(followup))
+  assert_false(
+    mooncode_runtime_planner_transport_continuation_is_active(
+      mooncode_json_object_with_field(
+        followup,
+        "resume_mode",
+        "initial".to_json(),
+      ),
+    ),
+  )
+}
+
+///|
 test "latest planner or approval checkpoint wins by journal order" {
   let plan = mooncode_runtime_planner_checkpoint_test_plan()
   let result : Json = { "accepted": true, "result": { "ok": true } }
@@ -413,6 +468,215 @@ async test "planner max steps is a resumable quantum without tool replay" {
       )
       let receipts = mooncode_journal_entries(
         mooncode_read_session_journal(root, session_id),
+        mooncode_journal_runtime_receipt(),
+      )
+      assert_eq(
+        receipts
+        .filter(receipt => {
+          mooncode_json_string(receipt, "status", default="") ==
+          "runtime-completed"
+        })
+        .length(),
+        1,
+      )
+      assert_eq(
+        receipts
+        .filter(receipt => {
+          mooncode_json_string(receipt, "status", default="") ==
+          "runtime-failed"
+        })
+        .length(),
+        0,
+      )
+      group.return_immediately(())
+    })
+  })
+}
+
+///|
+async test "transient planner close resumes through runtime service without replay" {
+  @fsx.with_temporary_directory("mooncode-planner-transport-resume-XXXXXX", async fn(
+    root,
+  ) {
+    let model_server = @httpx.Server::new("[::1]", 0, reuse_addr=true)
+    defer model_server.close()
+    let calls = Ref::Ref(0)
+    let request_bodies : Array[String] = []
+    let router = @httpx.Router::new()
+    router.add_handler(Post, "/v1/chat/completions", (r, w) => {
+      let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
+      let body : Json = reader.read()
+      request_bodies.push(body.stringify())
+      let response = if calls.val == 0 {
+        mooncode_runtime_quantum_test_completion(
+          "call-write", "write", "{\"path\":\"transport-result.txt\",\"content\":\"once\"}",
+        )
+      } else {
+        mooncode_runtime_quantum_test_completion(
+          "call-finish", "finish", "{\"answer\":\"transport continuation completed\"}",
+        )
+      }
+      calls.val += 1
+      w.header().set("Content-Type", "text/event-stream")
+      w.write_header(200)
+      w.write("data: " + response.stringify() + "\n\ndata: [DONE]\n\n")
+    })
+    let model = @model.Model::new(
+      api_key="test",
+      base_url="http://localhost:\{model_server.port()}/v1",
+      name="test-planner",
+      model_name="test-planner-model",
+      safe_zone_tokens=4096,
+    )
+    let models_path = @moonsuite.product_artifact_for_workspace_root(
+      root, "moonclaw", "models/models.json",
+    )
+    @fsx.make_directory(
+      @pathx.dirname(models_path),
+      recursive=true,
+      exists_ok=true,
+    )
+    @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+    @async.with_task_group(group => {
+      group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
+      @async.pause()
+      let session_id = "session-planner-transport"
+      let command_id = "cmd-planner-transport"
+      ignore(
+        mooncode_append_session_journal(
+          root,
+          session_id,
+          mooncode_journal_command(),
+          {
+            "kind": "mooncode-command",
+            "protocol": mooncode_protocol_version(),
+            "session_id": session_id,
+            "command_id": command_id,
+            "created_at": @clock.Timestamp::from_ms(1L),
+            "command": {
+              "protocol": mooncode_protocol_version(),
+              "session_id": session_id,
+              "book_root": root,
+              "command": "prompt",
+              "text": "Write the result exactly once, then finish.",
+              "model": "test-planner",
+              "packet": { "command_id": command_id },
+              "payload": { "planner_max_steps": 1, "planner_timeout_ms": 5000 },
+            },
+          },
+        ),
+      )
+      let first_daemon = mooncode_runtime_quantum_test_daemon(root)
+      let first = first_daemon.mooncode_runtime_turn_execute(session_id, root, {
+        "consumer_id": "transport-first",
+      })
+      assert_true(mooncode_json_bool(first, "accepted", default=false))
+      assert_eq(
+        @fsx.read_file(@pathx.join(root, "transport-result.txt")),
+        "once",
+      )
+      let events = mooncode_journal_entries(
+        mooncode_read_session_journal(root, session_id),
+        mooncode_journal_event(),
+      )
+      let quantum = mooncode_runtime_continuation_for_command(
+        events, command_id,
+      )
+      assert_true(mooncode_runtime_planner_continuation_is_active(quantum))
+      let started = mooncode_event(
+        session_id~,
+        command_id~,
+        lane="runtime",
+        kind="runtime.planner_started",
+        title="continued",
+        status="running",
+        detail="continued",
+        now=@clock.Timestamp::from_ms(2L),
+      )
+      let interrupted = mooncode_runtime_turn_transient_transport_result(
+        "test-planner", "model planner follow-up failed: ConnectionClosed", started,
+      )
+      assert_true(
+        mooncode_json_bool(
+          interrupted,
+          "transient_transport_close",
+          default=false,
+        ),
+      )
+      let transport = mooncode_runtime_planner_transport_continuation_event(
+        session_id,
+        command_id,
+        mooncode_json_object_field_or_empty(quantum, "plan"),
+        mooncode_json_array_items(quantum, "planner_steps"),
+        mooncode_json_array_items(quantum, "tool_results"),
+        mooncode_json_array_items(quantum, "step_results"),
+        [
+          {
+            "command_id": "steer-transport",
+            "steering_text": "KEEP_TRANSPORT_SCOPE",
+          },
+        ],
+        resume_mode="followup",
+        next_step_index=1,
+        detail=mooncode_json_string(interrupted, "message", default=""),
+        now=@clock.Timestamp::from_ms(4L),
+      )
+      assert_true(
+        mooncode_runtime_planner_transport_continuation_is_active(transport),
+      )
+      ignore(
+        mooncode_append_session_journal(
+          root,
+          session_id,
+          mooncode_journal_event(),
+          transport,
+        ),
+      )
+      let service_daemon = mooncode_runtime_quantum_test_daemon(root)
+      let service = service_daemon.mooncode_runtime_service_execute_under_runtime_gates(
+        session_id,
+        root,
+        {
+          "service_id": "transport-service",
+          "consumer_id": "transport-service",
+          "max_turns": 1,
+          "live_wait_ms": 0,
+          "poll_ms": 25,
+        },
+      )
+      assert_true(mooncode_json_bool(service, "accepted", default=false))
+      assert_eq(calls.val, 2)
+      assert_eq(
+        @fsx.read_file(@pathx.join(root, "transport-result.txt")),
+        "once",
+      )
+      let request_text = request_bodies.join("\n")
+      assert_eq(request_text.split("KEEP_TRANSPORT_SCOPE").length(), 2)
+      let final_journal = mooncode_read_session_journal(root, session_id)
+      let final_events = mooncode_journal_entries(
+        final_journal,
+        mooncode_journal_event(),
+      )
+      assert_eq(
+        final_events
+        .filter(event => {
+          mooncode_json_string(event, "kind", default="") == "tool_result" &&
+          mooncode_json_string(event, "tool", default="") == "write"
+        })
+        .length(),
+        1,
+      )
+      assert_eq(
+        final_events
+        .filter(event => {
+          mooncode_json_string(event, "kind", default="") ==
+          "runtime.planner_failed"
+        })
+        .length(),
+        0,
+      )
+      let receipts = mooncode_journal_entries(
+        final_journal,
         mooncode_journal_runtime_receipt(),
       )
       assert_eq(

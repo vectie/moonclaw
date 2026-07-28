@@ -181,7 +181,12 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   let resuming_planner = mooncode_runtime_planner_continuation_is_active(
     continuation,
   )
-  let resuming_continuation = resuming_approval || resuming_planner
+  let resuming_planner_transport = mooncode_runtime_planner_transport_continuation_is_active(
+    continuation,
+  )
+  let resuming_continuation = resuming_approval ||
+    resuming_planner ||
+    resuming_planner_transport
   if mooncode_json_string(continuation, "command_id", default="") != "" &&
     !resuming_continuation {
     raise InvalidJournal(
@@ -298,6 +303,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       let max_model_steps = mooncode_runtime_turn_model_max_steps(command)
       let applied_live_steering : Array[Json] = []
       let initial_live_steering : Array[Json] = []
+      let retained_transport_steering = if resuming_planner_transport {
+        mooncode_json_array_items(continuation, "pending_live_steering")
+      } else {
+        []
+      }
       let mut plan = if resuming_approval {
         mooncode_json_object_field_or_empty(continuation, "plan")
       } else if resuming_planner {
@@ -313,6 +323,34 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           remaining_steps=max_model_steps,
           now=plan_now,
         )
+      } else if resuming_planner_transport {
+        let resume_mode = mooncode_json_string(
+          continuation,
+          "resume_mode",
+          default="",
+        )
+        if resume_mode == "initial" {
+          self.mooncode_runtime_turn_plan_tool_calls(
+            command,
+            live_steering=retained_transport_steering,
+            remaining_steps=max_model_steps,
+            now=plan_now,
+          )
+        } else {
+          let previous_plan = mooncode_json_object_field_or_empty(
+            continuation, "plan",
+          )
+          self.mooncode_runtime_turn_model_followup_plan(
+            command,
+            previous_plan,
+            mooncode_json_array_items(previous_plan, "tool_calls"),
+            mooncode_json_array_items(continuation, "step_results"),
+            mooncode_json_array_items(continuation, "tool_results"),
+            live_steering=retained_transport_steering,
+            remaining_steps=max_model_steps,
+            now=plan_now,
+          )
+        }
       } else {
         self.mooncode_runtime_turn_plan_tool_calls(
           command,
@@ -379,7 +417,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       }
       let resume_step_index = if resuming_approval {
         mooncode_json_int(continuation, "step_index", default=0)
-      } else if resuming_planner {
+      } else if resuming_planner || resuming_planner_transport {
         mooncode_json_int(continuation, "next_step_index", default=0)
       } else {
         0
@@ -403,11 +441,60 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
         0
       }
       let mut planner_paused = false
+      let mut planner_pause_reason = ""
       let mut next_step_index = 0
       for step_index = resume_step_index
           planner_turn_end_step == 0 || step_index < planner_turn_end_step
           step_index = step_index + 1 {
         let resuming_step = resuming_approval && step_index == resume_step_index
+        if mooncode_json_bool(plan, "transient_transport_close", default=false) {
+          for event in mooncode_json_array_items(plan, "events") {
+            self.mooncode_runtime_turn_record_event(
+              binding, events, persisted_event_ids, event,
+            )
+          }
+          let resume_mode = if planner_steps.length() == 0 {
+            "initial"
+          } else {
+            "followup"
+          }
+          let checkpoint_plan = if resume_mode == "initial" {
+            Json::object({})
+          } else {
+            planner_steps[planner_steps.length() - 1]
+          }
+          let checkpoint_step_results = if resume_mode == "initial" {
+            []
+          } else {
+            mooncode_json_array_items(continuation, "step_results")
+          }
+          self.mooncode_runtime_turn_record_event(
+            binding,
+            events,
+            persisted_event_ids,
+            mooncode_runtime_planner_transport_continuation_event(
+              session_id,
+              command_id,
+              checkpoint_plan,
+              planner_steps,
+              tool_results,
+              checkpoint_step_results,
+              if initial_live_steering.length() > 0 {
+                initial_live_steering
+              } else {
+                retained_transport_steering
+              },
+              resume_mode~,
+              next_step_index=step_index,
+              detail=mooncode_json_string(plan, "message", default=""),
+              now=self.clock.now(),
+            ),
+          )
+          planner_paused = true
+          planner_pause_reason = "planner-transport-interrupted"
+          next_step_index = step_index
+          break
+        }
         if !resuming_step {
           planner_steps.push(plan)
           for event in mooncode_json_array_items(plan, "events") {
@@ -686,6 +773,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             ),
           )
           planner_paused = true
+          planner_pause_reason = "planner-step-quantum"
           break
         }
         let boundary_steering = self.mooncode_runtime_turn_claim_live_steering(
@@ -770,6 +858,39 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             },
             now=followup_now,
           )
+        }
+        if mooncode_json_bool(
+            next_plan,
+            "transient_transport_close",
+            default=false,
+          ) {
+          for event in mooncode_json_array_items(next_plan, "events") {
+            self.mooncode_runtime_turn_record_event(
+              binding, events, persisted_event_ids, event,
+            )
+          }
+          self.mooncode_runtime_turn_record_event(
+            binding,
+            events,
+            persisted_event_ids,
+            mooncode_runtime_planner_transport_continuation_event(
+              session_id,
+              command_id,
+              plan,
+              planner_steps,
+              tool_results,
+              step_results,
+              boundary_steering,
+              resume_mode="followup",
+              next_step_index=step_index + 1,
+              detail=mooncode_json_string(next_plan, "message", default=""),
+              now=self.clock.now(),
+            ),
+          )
+          planner_paused = true
+          planner_pause_reason = "planner-transport-interrupted"
+          next_step_index = step_index + 1
+          break
         }
         next_plan = mooncode_runtime_turn_recovery_plan(next_plan, tool_results)
         let next_calls = mooncode_json_array_items(next_plan, "tool_calls")
@@ -971,7 +1092,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           "completed": !nonterminal,
           "paused": planner_paused,
           "pause_reason": if planner_paused {
-            "planner-step-quantum"
+            planner_pause_reason
           } else {
             ""
           },
@@ -990,7 +1111,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           "message": if waiting {
             "MoonClaw is waiting for operator approval before continuing this turn"
           } else if planner_paused {
-            "MoonClaw paused after one model-planner quantum; the command remains claimed for durable continuation"
+            if planner_pause_reason == "planner-transport-interrupted" {
+              "MoonClaw retained the claimed command after a transient planner transport close; the runtime service will resume from its durable checkpoint"
+            } else {
+              "MoonClaw paused after one model-planner quantum; the command remains claimed for durable continuation"
+            }
           } else if accepted {
             "MoonClaw native runtime turn completed `\{mooncode_json_string(command, "command", default="prompt")}`"
           } else if completion_gate_applies && !completion_verdict.accepted {

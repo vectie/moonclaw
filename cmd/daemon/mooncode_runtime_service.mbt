@@ -449,8 +449,14 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
     loop_payload,
     runtime_gates_held=true,
   )
-  while mooncode_json_string(result, "stopped_by", default="") == "max_turns" &&
+  while (
+          mooncode_json_string(result, "stopped_by", default="") == "max_turns" ||
+          mooncode_json_string(result, "stopped_by", default="") == "retryable"
+        ) &&
         mooncode_goal_runtime_supervisor_is_active(book_root, session_id) {
+    if mooncode_json_string(result, "stopped_by", default="") == "retryable" {
+      @async.sleep(mooncode_runtime_loop_poll_ms(loop_payload))
+    }
     result = self.mooncode_runtime_loop_execute_with_gate_state(
       session_id,
       book_root,

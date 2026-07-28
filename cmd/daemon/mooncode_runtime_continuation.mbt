@@ -106,6 +106,45 @@ fn mooncode_runtime_planner_continuation_event(
 }
 
 ///|
+fn mooncode_runtime_planner_transport_continuation_event(
+  session_id : String,
+  command_id : String,
+  plan : Json,
+  planner_steps : Array[Json],
+  tool_results : Array[Json],
+  step_results : Array[Json],
+  pending_live_steering : Array[Json],
+  resume_mode~ : String,
+  next_step_index~ : Int,
+  detail~ : String,
+  now~ : @clock.Timestamp,
+) -> Json {
+  {
+    "id": "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-transport-checkpoint-\{resume_mode}-\{next_step_index}-\{now}",
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "command_id": command_id,
+    "target_command_id": command_id,
+    "lane": "runtime-control",
+    "kind": mooncode_runtime_continuation_kind(),
+    "event": mooncode_runtime_continuation_kind(),
+    "state": "planner-transport-paused",
+    "status": "paused",
+    "reason": "planner-transport-interrupted",
+    "resume_mode": resume_mode,
+    "next_step_index": next_step_index,
+    "plan": plan,
+    "planner_steps": Json::array(planner_steps),
+    "tool_results": Json::array(tool_results),
+    "step_results": Json::array(step_results),
+    "pending_live_steering": Json::array(pending_live_steering),
+    "detail": detail,
+    "created_at": now,
+    "source": "moonclaw-native-runtime-continuation",
+  }
+}
+
+///|
 fn mooncode_runtime_continuation_for_command(
   events : Array[Json],
   command_id : String,
@@ -229,4 +268,70 @@ fn mooncode_runtime_planner_continuation_is_active(continuation : Json) -> Bool 
     return false
   }
   planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
+}
+
+///|
+fn mooncode_runtime_planner_transport_continuation_is_active(
+  continuation : Json,
+) -> Bool {
+  let session_id = mooncode_json_string(continuation, "session_id", default="")
+  let command_id = mooncode_json_string(continuation, "command_id", default="")
+  let next_step_index = mooncode_json_int(
+    continuation,
+    "next_step_index",
+    default=-1,
+  )
+  let resume_mode = mooncode_json_string(
+    continuation,
+    "resume_mode",
+    default="",
+  )
+  let plan = mooncode_json_object_field_or_empty(continuation, "plan")
+  let tool_calls = mooncode_json_array_items(plan, "tool_calls")
+  let planner_steps = mooncode_json_array_items(continuation, "planner_steps")
+  let tool_results = mooncode_json_array_items(continuation, "tool_results")
+  let step_results = mooncode_json_array_items(continuation, "step_results")
+  let event_id = mooncode_json_string(continuation, "id", default="")
+  let expected_id_prefix = "moonclaw-\{mooncode_safe_session_id(session_id)}-\{command_id}-planner-transport-checkpoint-\{resume_mode}-\{next_step_index}-"
+  if session_id == "" ||
+    command_id == "" ||
+    !event_id.has_prefix(expected_id_prefix) ||
+    mooncode_json_string(continuation, "protocol", default="") !=
+    mooncode_protocol_version() ||
+    mooncode_json_string(continuation, "target_command_id", default="") !=
+    command_id ||
+    mooncode_json_string(continuation, "kind", default="") !=
+    mooncode_runtime_continuation_kind() ||
+    mooncode_json_string(continuation, "lane", default="") != "runtime-control" ||
+    mooncode_json_string(continuation, "status", default="") != "paused" ||
+    mooncode_json_string(continuation, "reason", default="") !=
+    "planner-transport-interrupted" ||
+    mooncode_json_string(continuation, "state", default="") !=
+    "planner-transport-paused" ||
+    next_step_index < 0 {
+    return false
+  }
+  match resume_mode {
+    "initial" =>
+      next_step_index == 0 &&
+      planner_steps.length() == 0 &&
+      step_results.length() == 0
+    "followup" =>
+      next_step_index > 0 &&
+      mooncode_json_string(plan, "planner_mode", default="") ==
+      mooncode_planner_mode_model_tool_calls() &&
+      !mooncode_json_bool(plan, "failed", default=false) &&
+      !mooncode_json_bool(plan, "transient_transport_close", default=false) &&
+      tool_calls.length() > 0 &&
+      !mooncode_runtime_turn_tool_calls_include_finish(tool_calls) &&
+      planner_steps.length() == next_step_index &&
+      step_results.length() == tool_calls.length() &&
+      mooncode_runtime_turn_model_message_present(
+        mooncode_json_object_field_or_empty(plan, "model_response_message"),
+      ) &&
+      mooncode_json_array_items(plan, "model_messages").length() > 0 &&
+      mooncode_runtime_json_array_has_suffix(tool_results, step_results) &&
+      planner_steps[planner_steps.length() - 1].stringify() == plan.stringify()
+    _ => false
+  }
 }

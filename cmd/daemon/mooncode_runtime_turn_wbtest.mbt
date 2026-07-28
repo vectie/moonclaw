@@ -743,6 +743,50 @@ test "mooncode failed planner cannot become a successful fallback" {
 }
 
 ///|
+test "transient planner close is retryable while other errors stay terminal" {
+  let command : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": "session-planner-transport",
+    "book_root": "/tmp/book",
+    "command": "prompt",
+    "text": "Continue the current task",
+    "model": "codex/gpt-5.6-sol",
+    "packet": { "command_id": "cmd-planner-transport" },
+  }
+  let started = mooncode_event(
+    session_id="session-planner-transport",
+    command_id="cmd-planner-transport",
+    lane="runtime",
+    kind="runtime.planner_started",
+    title="started",
+    status="running",
+    detail="started",
+    now=@clock.Timestamp::from_ms(1L),
+  )
+  let transient = mooncode_runtime_turn_transient_transport_result(
+    "codex/gpt-5.6-sol", "model planner follow-up failed: ConnectionClosed", started,
+  )
+  assert_true(
+    mooncode_json_bool(transient, "transient_transport_close", default=false),
+  )
+  assert_false(mooncode_json_bool(transient, "failed", default=false))
+  assert_false(transient.stringify().contains("runtime.planner_failed"))
+  let terminal = mooncode_runtime_turn_planner_error_result(
+    command,
+    "codex/gpt-5.6-sol",
+    "model planner follow-up failed",
+    InvalidJournal("malformed model response"),
+    started,
+    now=@clock.Timestamp::from_ms(3L),
+  )
+  assert_false(
+    mooncode_json_bool(terminal, "transient_transport_close", default=false),
+  )
+  assert_true(mooncode_json_bool(terminal, "failed", default=false))
+  assert_true(terminal.stringify().contains("runtime.planner_failed"))
+}
+
+///|
 test "mooncode model planner selects runtime default when model is omitted" {
   let command : Json = {
     "command": "prompt",

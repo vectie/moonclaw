@@ -228,3 +228,46 @@ fn mooncode_runtime_turn_failed_planner_result(
     "message": message,
   }
 }
+
+///|
+fn mooncode_runtime_turn_planner_error_result(
+  command : Json,
+  model_name : String,
+  context : String,
+  error : Error,
+  started : Json,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let message = "\{context}: \{@openai.error_summary(error)}"
+  if error is @tls.ConnectionClosed {
+    mooncode_runtime_turn_transient_transport_result(
+      model_name, message, started,
+    )
+  } else {
+    mooncode_runtime_turn_failed_planner_result(
+      command,
+      model_name,
+      message,
+      started,
+      now~,
+    )
+  }
+}
+
+///|
+fn mooncode_runtime_turn_transient_transport_result(
+  model_name : String,
+  message : String,
+  started : Json,
+) -> Json {
+  {
+    "kind": mooncode_kind_runtime_turn_planner(),
+    "protocol": mooncode_protocol_version(),
+    "planner_mode": mooncode_planner_mode_model_tool_calls(),
+    "transient_transport_close": true,
+    "model": model_name,
+    "tool_calls": Json::array([]),
+    "events": Json::array([started]),
+    "message": message,
+  }
+}
