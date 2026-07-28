@@ -1153,7 +1153,11 @@ fn mooncode_runtime_turn_model_tools(
     ),
     mooncode_runtime_turn_model_tool(
       "finish",
-      "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause. goal_runtime is available only when the current request explicitly includes an active long-running goal.",
+      if active_goal_runtime {
+        "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause. goal_runtime is available because the current request explicitly includes an active long-running goal."
+      } else {
+        "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause."
+      },
       mooncode_runtime_turn_model_finish_parameters(active_goal_runtime),
     ),
     mooncode_runtime_turn_model_tool(
