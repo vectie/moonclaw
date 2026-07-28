@@ -334,15 +334,20 @@ async fn Loader::load_kimi_coding_api_key(self : Loader) -> String? {
 }
 
 ///|
-async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
-  let (target_provider, model_id) = if name.contains("/") {
+fn split_provider_model_selector(name : String) -> (String?, String) {
+  if name.contains("/") {
     let parts = name.split("/").to_array()
     let provider_name = parts.get(0).unwrap_or("").to_owned()
-    let id = parts.get(1).unwrap_or(name).to_owned()
+    let id = parts[1:].join("/")
     (Some(provider_name), id)
   } else {
     (None, name)
   }
+}
+
+///|
+async fn Loader::load_from_providers(self : Loader, name : String) -> Model? {
+  let (target_provider, model_id) = split_provider_model_selector(name)
   for provider_name, config in self.providers {
     if target_provider is Some(target) && provider_name != target {
       continue
@@ -430,12 +435,12 @@ fn model_from_moongate_catalog(
   base_url : String,
   catalog_model : @moongate.MoonGateModel,
 ) -> Model {
-  let name = catalog_model.id()
+  let model_name = catalog_model.id()
   Model::new(
     api_key="",
     base_url~,
-    name~,
-    model_name=name,
+    name="moongate/\{model_name}",
+    model_name~,
     model_type=SaaS(OpenAI),
     safe_zone_tokens=catalog_model.context_window().unwrap_or(128_000),
     description="Routed through the active MoonGate service",
@@ -444,6 +449,8 @@ fn model_from_moongate_catalog(
 
 ///|
 async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
+  guard name.strip_prefix("moongate/") is Some(requested) else { return None }
+  let requested_model = requested.to_owned()
   let discovered = @moongate.discover_from_suite_status_for_workspace_root(
     self.cwd.to_owned(),
   )
@@ -463,8 +470,10 @@ async fn Loader::load_moongate_model(self : Loader, name : String) -> Model? {
     }
   }
   for catalog_model in catalog {
-    if catalog_model.id() == name {
-      logger.info("Loaded model '\{name}' from active MoonGate catalog")
+    if catalog_model.id() == requested_model {
+      logger.info(
+        "Loaded model '\{requested_model}' from active MoonGate catalog",
+      )
       return Some(
         model_from_moongate_catalog(
           client.base_url() + "/openclaw/v1",
@@ -649,6 +658,31 @@ async fn resolve_codex_credentials(
 }
 
 ///|
+async fn resolve_copilot_credentials(
+  workspace_root : String,
+  global_root_for_test? : String,
+) -> @copilot.Credentials? {
+  if @copilot.credentials_exist_for_workspace_root(root=workspace_root) {
+    return Some(
+      @copilot.get_valid_credentials_for_workspace_root(root=workspace_root),
+    )
+  }
+  let global_credentials_exist = match global_root_for_test {
+    Some(root) => @copilot.credentials_exist_for_workspace_root(root~)
+    None => @copilot.credentials_exist()
+  }
+  if !global_credentials_exist {
+    return None
+  }
+  Some(
+    match global_root_for_test {
+      Some(root) => @copilot.get_valid_credentials_for_workspace_root(root~)
+      None => @copilot.get_valid_credentials()
+    },
+  )
+}
+
+///|
 async fn Loader::start_codex_login(self : Loader) -> @codex.Credentials? {
   logger.info("Codex OAuth credentials not found, starting login...")
   Some(@codex.start_oauth_flow_for_workspace_root(root=self.home.to_owned())) catch {
@@ -696,23 +730,28 @@ async fn Loader::load_codex_model(
 
 ///|
 async fn Loader::load_copilot_model(
-  _self : Loader,
+  self : Loader,
   name : String,
   allow_auto_login~ : Bool,
 ) -> Model? {
-  let credentials = @copilot.get_valid_credentials() catch {
-    _ => {
-      if !allow_auto_login {
-        return None
-      }
+  let credentials = resolve_copilot_credentials(self.home.to_owned()) catch {
+    err => {
+      logger.error("Failed to load Copilot OAuth credentials: \{err}")
+      return None
+    }
+  }
+  let credentials = match credentials {
+    Some(credentials) => credentials
+    None if allow_auto_login => {
       logger.info("Copilot credentials not found, starting login...")
-      @copilot.start_oauth_flow() catch {
+      @copilot.start_oauth_flow_for_workspace_root(root=self.home.to_owned()) catch {
         err => {
           logger.error("Copilot OAuth login failed: \{err}")
           return None
         }
       }
     }
+    None => return None
   }
   let selected_model : CopilotModels = match name {
     // OpenAI models
