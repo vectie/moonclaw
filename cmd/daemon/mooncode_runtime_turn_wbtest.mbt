@@ -891,25 +891,11 @@ test "mooncode model planner sends a compact request envelope" {
   let chat_tools = mooncode_runtime_turn_model_tools_for_command(command)
   assert_eq(chat_tools.length(), 2)
   assert_true(chat_tools.to_json().stringify().contains("finish"))
-  assert_true(chat_tools.to_json().stringify().contains("goal_runtime"))
-  assert_true(chat_tools.to_json().stringify().contains("achieved"))
-  assert_true(chat_tools.to_json().stringify().contains("blocked"))
+  assert_false(chat_tools.to_json().stringify().contains("goal_runtime"))
+  assert_false(chat_tools.to_json().stringify().contains("achieved"))
+  assert_false(chat_tools.to_json().stringify().contains("blocked"))
   assert_true(chat_tools.to_json().stringify().contains("read_skill"))
   assert_false(chat_tools.to_json().stringify().contains("moon_check"))
-
-  let goal_prompt = mooncode_runtime_turn_model_prompt({
-    "command": "prompt",
-    "text": "Continue the goal",
-    "goal_runtime": {
-      "goal_id": "goal-1",
-      "objective": "Complete all work",
-      "criteria": [{ "id": "criterion-1", "criterion": "tests pass" }],
-      "status": { "terminal": false },
-    },
-  })
-  assert_true(goal_prompt.contains("Active long-running goal"))
-  assert_true(goal_prompt.contains("criterion-1"))
-  assert_true(goal_prompt.contains("Do not infer completion from a turn limit"))
 
   let plan_request = mooncode_runtime_turn_model_plan_request(
     "gpt-5.6-sol", command,
@@ -970,6 +956,94 @@ test "mooncode model planner sends a compact request envelope" {
   assert_true(
     mooncode_runtime_turn_model_timeout_for_provider(direct, command)
     is Some(60000),
+  )
+}
+
+///|
+test "mooncode planner has no implicit budget and scopes goal settlement" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Continue implementation until the requested work is complete.",
+  }
+  let system = mooncode_json_string(
+    mooncode_runtime_turn_model_initial_messages(command)[0],
+    "content",
+    default="",
+  )
+  assert_true(system.contains("no implicit token, turn, time, step"))
+  assert_true(system.contains("Difficulty, elapsed work, a large context"))
+  assert_true(system.contains("Honor real caller-supplied budgets exactly"))
+  assert_true(system.contains("time-budget-exhausted"))
+  assert_true(
+    system.contains("unless that exact caller-supplied budget exists"),
+  )
+  assert_true(system.contains("genuine external dependency"))
+  assert_true(
+    system.contains(
+      "Never include finish.goal_runtime unless active goal_runtime context is explicitly present",
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_model_tools_for_command(command)
+    .to_json()
+    .stringify()
+    .contains("goal_runtime"),
+  )
+
+  let goal_command : Json = {
+    "command": "prompt",
+    "text": "Continue the goal",
+    "goal_runtime": {
+      "goal_id": "goal-1",
+      "objective": "Complete all work",
+      "criteria": [{ "id": "criterion-1", "criterion": "tests pass" }],
+      "status": { "terminal": false },
+    },
+  }
+  let goal_prompt = mooncode_runtime_turn_model_prompt(goal_command)
+  assert_true(goal_prompt.contains("Active long-running goal"))
+  assert_true(goal_prompt.contains("criterion-1"))
+  assert_true(goal_prompt.contains("There is no implicit task budget"))
+  assert_true(
+    goal_prompt.contains("genuine external or user-authority blocker"),
+  )
+  let goal_tools_json = mooncode_runtime_turn_model_tools_for_command(
+      goal_command,
+    )
+    .to_json()
+    .stringify()
+  assert_true(goal_tools_json.contains("goal_runtime"))
+  assert_true(goal_tools_json.contains("achieved"))
+  assert_true(goal_tools_json.contains("blocked"))
+  assert_true(goal_tools_json.contains("genuine external dependency"))
+  assert_true(goal_tools_json.contains("implicit token, turn, time, step"))
+}
+
+///|
+async test "mooncode finish rejects goal settlement without active authority" {
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-no-implicit-goal-XXXXXX"),
+  )
+  let ordinary = mooncode_tool_finish({ "answer": "completed ordinary task" })
+  assert_true(mooncode_json_bool(ordinary, "ok", default=false))
+
+  let invented = mooncode_tool_finish_for_session("no-active-goal", book_root, {
+    "answer": "blocked by invented budget",
+    "goal_runtime": {
+      "type": "blocked",
+      "reason": {
+        "code": "time-budget-exhausted",
+        "detail": "No caller supplied a time budget.",
+      },
+      "attempted_alternatives": ["continue useful work"],
+      "required_event": null,
+    },
+  })
+  assert_false(mooncode_json_bool(invented, "ok", default=true))
+  assert_true(
+    mooncode_json_string(invented, "message", default="").contains(
+      "requires an active runtime goal",
+    ),
   )
 }
 

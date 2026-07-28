@@ -279,7 +279,17 @@ fn mooncode_runtime_turn_model_plan_request_from_messages(
 fn mooncode_runtime_turn_model_tools_for_command(
   command : Json,
 ) -> Array[@openai.ChatCompletionToolParam] {
-  let tools = mooncode_runtime_turn_model_tools()
+  let goal_runtime = mooncode_json_object_field_or_empty(
+    command, "goal_runtime",
+  )
+  let tools = mooncode_runtime_turn_model_tools(
+    active_goal_runtime=mooncode_json_string(
+        goal_runtime,
+        "goal_id",
+        default="",
+      ) !=
+      "",
+  )
   let request = mooncode_runtime_turn_prompt_text(command)
     .to_lower()
     .to_string()
@@ -816,8 +826,8 @@ fn mooncode_runtime_turn_model_initial_messages(
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. Use checkpoint/read_skill/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. When a selected skill directs MoonBit work, prefer semantic discovery with moon_ide before broad source reads and prefer moon_cmd/moon_check over raw shell for validation. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch and update the checkpoint whenever a milestone changes. Gather enough evidence to distinguish plausible causes before mutating. Avoid repeating equivalent inspections of the same evidence; every additional diagnostic should distinguish competing causes or expose missing causal evidence. Treat successful repository status, diff, and hosted-result reads as retained until repository or hosted state changes. Prefer one cohesive multi-file patch when the evidence supports it, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. Once a repair passes the exact gate it targeted, retain that result as established evidence; a later failure at a different gate is a new problem, and does not justify reverting the earlier repair unless new evidence directly falsifies it. Do not infer environment-specific causality from a local pass: reproduce in the failing environment or expose the exact underlying error before claiming a fix. A shell pipeline used as evidence must enable pipefail, because its ordinary exit status reflects only the final stage. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. If a necessary tool call requires operator approval, select the exact tool call; the runtime will pause before execution. Never ask for tool approval in assistant prose or use finish to request it. If the operator rejects a tool call, obey its rationale and do not retry the same action by rewriting or splitting the command. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch." +
-      " When active goal_runtime context is present, ordinary finish is only a progress turn: use finish.goal_runtime with an exact achieved or blocked decision only when the whole goal reaches a terminal outcome. Achieved evidence must cover every listed criterion id exactly once." +
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. A bounded tool batch is not a task budget. Unless the caller explicitly supplies a budget, the task has no implicit token, turn, time, step, context-size, or effort ceiling. Difficulty, elapsed work, a large context, or needing more tool batches are not blockers; continue useful work. Honor real caller-supplied budgets exactly. Never invent a token-budget-exhausted, turn-budget-exhausted, time-budget-exhausted, or step-budget-exhausted blocker unless that exact caller-supplied budget exists and is actually exhausted. Only a genuine external dependency or missing user input or authority that prevents meaningful progress can block a task. Use checkpoint/read_skill/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/finish. When a selected skill directs MoonBit work, prefer semantic discovery with moon_ide before broad source reads and prefer moon_cmd/moon_check over raw shell for validation. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch and update the checkpoint whenever a milestone changes. Gather enough evidence to distinguish plausible causes before mutating. Avoid repeating equivalent inspections of the same evidence; every additional diagnostic should distinguish competing causes or expose missing causal evidence. Treat successful repository status, diff, and hosted-result reads as retained until repository or hosted state changes. Prefer one cohesive multi-file patch when the evidence supports it, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. Once a repair passes the exact gate it targeted, retain that result as established evidence; a later failure at a different gate is a new problem, and does not justify reverting the earlier repair unless new evidence directly falsifies it. Do not infer environment-specific causality from a local pass: reproduce in the failing environment or expose the exact underlying error before claiming a fix. A shell pipeline used as evidence must enable pipefail, because its ordinary exit status reflects only the final stage. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. If a necessary tool call requires operator approval, select the exact tool call; the runtime will pause before execution. Never ask for tool approval in assistant prose or use finish to request it. If the operator rejects a tool call, obey its rationale and do not retry the same action by rewriting or splitting the command. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch." +
+      " Never include finish.goal_runtime unless active goal_runtime context is explicitly present in the current request. When it is present, ordinary finish is only a progress turn: use finish.goal_runtime with an exact achieved or blocked decision only when the whole goal reaches a terminal outcome. Blocked still requires a genuine external or user-authority blocker; task difficulty, elapsed work, context size, and implicit limits do not qualify. Achieved evidence must cover every listed criterion id exactly once." +
       skill_catalog,
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
@@ -914,7 +924,7 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   } else {
     "\nActive long-running goal (criteria ids are settlement keys): " +
     goal_runtime.stringify() +
-    "\nDo not infer completion from a turn limit, timeout, or generic finish. Set finish.goal_runtime only for an explicit achieved or genuinely blocked terminal decision."
+    "\nDo not infer completion or blockage from difficulty, elapsed work, context size, a turn limit, timeout, or generic finish. There is no implicit task budget. Set finish.goal_runtime only for an explicit achieved terminal decision or a genuine external or user-authority blocker."
   }
   "Action: \{action}\n" +
   "User request: \{request}\n" +
@@ -929,7 +939,86 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
 }
 
 ///|
-fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam] {
+fn mooncode_runtime_turn_model_finish_parameters(
+  active_goal_runtime : Bool,
+) -> Json {
+  if !active_goal_runtime {
+    return {
+      "type": "object",
+      "properties": { "answer": { "type": "string" } },
+      "required": ["answer"],
+      "additionalProperties": false,
+    }
+  }
+  {
+    "type": "object",
+    "properties": {
+      "answer": { "type": "string" },
+      "goal_runtime": {
+        "description": "Exact terminal decision for the explicitly active goal only. Blocked requires a genuine external dependency or missing user input or authority; difficulty, elapsed work, context size, and implicit token, turn, time, step, or effort limits are not blockers.",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["achieved"] },
+              "summary": { "type": "string" },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "criterion": { "type": "string" },
+                    "evidence_refs": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                    },
+                  },
+                  "required": ["criterion", "evidence_refs"],
+                  "additionalProperties": false,
+                },
+              },
+            },
+            "required": ["type", "summary", "evidence"],
+            "additionalProperties": false,
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["blocked"] },
+              "reason": {
+                "type": "object",
+                "properties": {
+                  "code": { "type": "string" },
+                  "detail": { "type": "string" },
+                },
+                "required": ["code", "detail"],
+                "additionalProperties": false,
+              },
+              "attempted_alternatives": {
+                "type": "array",
+                "items": { "type": "string" },
+              },
+              "required_event": {
+                "anyOf": [{ "type": "string" }, { "type": "null" }],
+              },
+            },
+            "required": [
+              "type", "reason", "attempted_alternatives", "required_event",
+            ],
+            "additionalProperties": false,
+          },
+        ],
+      },
+    },
+    "required": ["answer"],
+    "additionalProperties": false,
+  }
+}
+
+///|
+fn mooncode_runtime_turn_model_tools(
+  active_goal_runtime? : Bool = false,
+) -> Array[@openai.ChatCompletionToolParam] {
   [
     mooncode_runtime_turn_model_tool(
       "read",
@@ -1064,70 +1153,8 @@ fn mooncode_runtime_turn_model_tools() -> Array[@openai.ChatCompletionToolParam]
     ),
     mooncode_runtime_turn_model_tool(
       "finish",
-      "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause. With an active long-running goal, include goal_runtime only for an explicit terminal achieved or genuinely blocked decision.",
-      {
-        "type": "object",
-        "properties": {
-          "answer": { "type": "string" },
-          "goal_runtime": {
-            "description": "Optional exact terminal decision for the active goal.",
-            "anyOf": [
-              {
-                "type": "object",
-                "properties": {
-                  "type": { "type": "string", "enum": ["achieved"] },
-                  "summary": { "type": "string" },
-                  "evidence": {
-                    "type": "array",
-                    "items": {
-                      "type": "object",
-                      "properties": {
-                        "criterion": { "type": "string" },
-                        "evidence_refs": {
-                          "type": "array",
-                          "items": { "type": "string" },
-                        },
-                      },
-                      "required": ["criterion", "evidence_refs"],
-                      "additionalProperties": false,
-                    },
-                  },
-                },
-                "required": ["type", "summary", "evidence"],
-                "additionalProperties": false,
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "type": { "type": "string", "enum": ["blocked"] },
-                  "reason": {
-                    "type": "object",
-                    "properties": {
-                      "code": { "type": "string" },
-                      "detail": { "type": "string" },
-                    },
-                    "required": ["code", "detail"],
-                    "additionalProperties": false,
-                  },
-                  "attempted_alternatives": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                  },
-                  "required_event": {
-                    "anyOf": [{ "type": "string" }, { "type": "null" }],
-                  },
-                },
-                "required": [
-                  "type", "reason", "attempted_alternatives", "required_event",
-                ],
-                "additionalProperties": false,
-              },
-            ],
-          },
-        },
-        "required": ["answer"],
-        "additionalProperties": false,
-      },
+      "Finish only completed work with a concise operator-facing summary. Never use finish to request approval; select the exact gated tool call and let the runtime pause. goal_runtime is available only when the current request explicitly includes an active long-running goal.",
+      mooncode_runtime_turn_model_finish_parameters(active_goal_runtime),
     ),
     mooncode_runtime_turn_model_tool(
       "apply_patch",
