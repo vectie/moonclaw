@@ -322,24 +322,27 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
       }
       if !resuming_continuation &&
         mooncode_runtime_turn_requires_model_planning(command) {
-        let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
-          session_id, book_root, command_id,
-        )
-        for steering in arrived_during_planning {
-          initial_live_steering.push(steering)
-          applied_live_steering.push(steering)
-          self.mooncode_runtime_turn_record_event(
-            binding,
-            events,
-            persisted_event_ids,
-            mooncode_runtime_turn_applied_live_steer_event(
-              session_id,
-              steering,
-              now=self.clock.now(),
-            ),
+        for ;; {
+          let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
+            session_id, book_root, command_id,
           )
-        }
-        if arrived_during_planning.length() > 0 {
+          if arrived_during_planning.length() == 0 {
+            break
+          }
+          for steering in arrived_during_planning {
+            initial_live_steering.push(steering)
+            applied_live_steering.push(steering)
+            self.mooncode_runtime_turn_record_event(
+              binding,
+              events,
+              persisted_event_ids,
+              mooncode_runtime_turn_applied_live_steer_event(
+                session_id,
+                steering,
+                now=self.clock.now(),
+              ),
+            )
+          }
           plan = self.mooncode_runtime_turn_plan_tool_calls(
             command,
             live_steering=initial_live_steering,
@@ -732,10 +735,13 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           },
           now=followup_now,
         )
-        let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
-          session_id, book_root, command_id,
-        )
-        if arrived_during_planning.length() > 0 {
+        for ;; {
+          let arrived_during_planning = self.mooncode_runtime_turn_claim_live_steering(
+            session_id, book_root, command_id,
+          )
+          if arrived_during_planning.length() == 0 {
+            break
+          }
           for steering in arrived_during_planning {
             boundary_steering.push(steering)
             applied_live_steering.push(steering)
