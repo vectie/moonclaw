@@ -578,11 +578,32 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
     }
     return true
   }
+  if mooncode_shell_executable_is(executable, "sort") {
+    for word in segment[index + 1:] {
+      if word == "-o" || word == "--output" || word.has_prefix("--output=") {
+        return false
+      }
+    }
+    return true
+  }
+  if mooncode_shell_executable_is(executable, "sed") {
+    for word in segment[index + 1:] {
+      if word == "-i" ||
+        word.has_prefix("-i") ||
+        word == "--in-place" ||
+        word.has_prefix("--in-place=") ||
+        word == "w" ||
+        word.has_prefix("w ") {
+        return false
+      }
+    }
+    return true
+  }
   for
     name in [
       "basename", "cut", "dirname", "echo", "false", "file", "grep", "head", "jq",
-      "ls", "printf", "pwd", "rg", "sed", "set", "sort", "stat", "tail", "test",
-      "tr", "true", "type", "uniq", "wc", "which",
+      "ls", "printf", "pwd", "rg", "set", "stat", "tail", "test", "tr", "true", "type",
+      "uniq", "wc", "which",
     ] {
     if mooncode_shell_executable_is(executable, name) {
       return true

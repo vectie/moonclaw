@@ -419,6 +419,20 @@ test "mooncode moon_cmd supports explicit negative-path exit expectations" {
 ///|
 test "mooncode normalizes command-specific moon arguments" {
   assert_true(
+    mooncode_moon_fmt_has_malformed_selector(["--package", "--check"]),
+  )
+  assert_false(
+    mooncode_moon_fmt_has_malformed_selector([
+      "--package", "example/demo/src", "--check",
+    ]),
+  )
+  assert_true(
+    mooncode_moon_cmd_is_test_update({ "command": "test", "arg": "-u" }),
+  )
+  assert_true(
+    mooncode_moon_cmd_is_test_update({ "command": "test", "args": ["-u"] }),
+  )
+  assert_true(
     mooncode_moon_cmd_args(
       {
         "command": "fmt",
@@ -661,6 +675,62 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
     @fsx.read_file(@pathx.join(nested_module, "src/main.mbt")).contains(
       "pub fn nested_answer() -> Int",
     ),
+  )
+  let malformed_fmt = mooncode_execute_tool_call(
+    "session-tool-validation",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-tool-validation",
+      "book_root": book_root,
+      "tool": "moon_cmd",
+      "command_id": "cmd-malformed-fmt",
+      "arguments": { "command": "fmt", "args": ["--package", "--check"] },
+    },
+    now=@clock.Timestamp::from_ms(75L),
+  )
+  let malformed_fmt_result = mooncode_json_object_field_or_empty(
+    malformed_fmt, "result",
+  )
+  assert_false(mooncode_json_bool(malformed_fmt_result, "ok", default=true))
+  assert_eq(
+    mooncode_json_string(malformed_fmt_result, "message", default=""),
+    "moon fmt selector options require a non-option value",
+  )
+  let sibling_module = @pathx.join(book_root, "tools/other")
+  @fsx.make_directory(
+    @pathx.join(sibling_module, "src"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(
+    @pathx.join(sibling_module, "moon.mod"),
+    "name = \"example/other\"\n",
+  )
+  @fsx.write_to_file(@pathx.join(sibling_module, "src/moon.pkg"), "")
+  let mixed_modules = mooncode_execute_tool_call(
+    "session-tool-validation",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-tool-validation",
+      "book_root": book_root,
+      "tool": "moon_cmd",
+      "command_id": "cmd-mixed-modules",
+      "arguments": {
+        "command": "fmt",
+        "paths": ["tools/demo/src", "tools/other/src"],
+      },
+    },
+    now=@clock.Timestamp::from_ms(75L),
+  )
+  let mixed_modules_result = mooncode_json_object_field_or_empty(
+    mixed_modules, "result",
+  )
+  assert_false(mooncode_json_bool(mixed_modules_result, "ok", default=true))
+  assert_eq(
+    mooncode_json_string(mixed_modules_result, "message", default=""),
+    "moon_cmd paths must belong to one Moon module",
   )
   let invalid_program_args = mooncode_execute_tool_call(
     "session-tool-validation",

@@ -70,7 +70,8 @@ test "mooncode shell proves bounded observations without trusting unknown comman
     command in [
       "touch marker.txt", "git commit -m mutation", "git push origin HEAD", "git ls-remote origin",
       "curl -fsSL example.test", "moon test --update", "find . -delete", "/usr/bin/time -o timing.log moon test cmd/daemon",
-      "sh -c 'moon test cmd/daemon && rm -rf target'",
+      "sh -c 'moon test cmd/daemon && rm -rf target'", "sort -o output.txt input.txt",
+      "sed -e 'w output.txt' input.txt",
     ] {
     assert_false(mooncode_shell_is_demonstrably_read_only(command))
   }

@@ -1403,7 +1403,7 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
       "successful_read_paths": Json::array(retained_reads),
       "failed_tool_calls": Json::array(failed_calls),
     }).stringify(indent=2) +
-    "\nDo not reread a successful path merely to recover context; its prior tool result remains in this transcript. Reread only when a mutation, truncation, or explicit new question requires fresh bytes. Consume each exact tool error before acting: do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. Use repository discovery or an explicit steering path to choose a causally different next action.",
+    "\nDo not reread a successful path merely to recover context; its prior tool result remains in this transcript. Reread only when a mutation, truncation, or explicit new question requires fresh bytes. Consume each exact tool error before acting: while relevant repository and environment state is unchanged, do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. After a relevant repair or transient cause is resolved, rerun the exact focused verification that previously failed. Use repository discovery or an explicit steering path to choose a causally different next action.",
   }
 }
 

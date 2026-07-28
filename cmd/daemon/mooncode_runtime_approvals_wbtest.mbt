@@ -126,6 +126,61 @@ test "mooncode approval classifier gates hosted run reruns" {
       },
     }),
   )
+  let update_argument_cases : Array[Json] = [
+    {
+      "command": "test",
+      "arg": "-u",
+      "test_update_kind": "snapshot",
+      "test_update_reason": "accepted change",
+    },
+    {
+      "command": "test",
+      "args": ["-u"],
+      "test_update_kind": "snapshot",
+      "test_update_reason": "accepted change",
+    },
+  ]
+  for update_arguments in update_argument_cases {
+    assert_true(
+      mooncode_runtime_tool_requires_approval({
+        "tool": "moon_cmd",
+        "planner": "model-tool-call",
+        "requires_approval": true,
+        "arguments": update_arguments,
+      }),
+    )
+  }
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "requires_approval": true,
+      "arguments": { "cmd": "git status --short" },
+    }),
+  )
+  assert_false(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "planner": "model-tool-call",
+      "requires_approval": true,
+      "arguments": { "cmd": "git status --short" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "planner": "model-tool-call",
+      "requires_approval": true,
+      "arguments": { "cmd": "sort -o output.txt input.txt" },
+    }),
+  )
+  assert_true(
+    mooncode_runtime_tool_requires_approval({
+      "tool": "shell",
+      "planner": "model-tool-call",
+      "requires_approval": true,
+      "arguments": { "cmd": "sed -e 'w output.txt' input.txt" },
+    }),
+  )
   assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
@@ -221,6 +276,7 @@ test "mooncode approval classifier gates hosted run reruns" {
   assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "read",
+      "planner": "model-tool-call",
       "requires_approval": true,
       "arguments": { "path": "moon.mod" },
     }),
@@ -228,6 +284,7 @@ test "mooncode approval classifier gates hosted run reruns" {
   assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "moon_ide",
+      "planner": "model-tool-call",
       "approval": "operator",
       "arguments": { "action": "outline", "path": "cmd/daemon" },
     }),
@@ -235,6 +292,7 @@ test "mooncode approval classifier gates hosted run reruns" {
   assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "moon_cmd",
+      "planner": "model-tool-call",
       "requires_approval": true,
       "arguments": {
         "command": "test",
@@ -246,6 +304,7 @@ test "mooncode approval classifier gates hosted run reruns" {
   assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
+      "planner": "model-tool-call",
       "approval": "operator",
       "arguments": {
         "cmd": "/usr/bin/time -p moon test cmd/daemon --target native",
@@ -255,6 +314,7 @@ test "mooncode approval classifier gates hosted run reruns" {
   assert_false(
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
+      "planner": "model-tool-call",
       "requires_approval": true,
       "arguments": {
         "cmd": "set -o pipefail; git status --short; git diff --check",

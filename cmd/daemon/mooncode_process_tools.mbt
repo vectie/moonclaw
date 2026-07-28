@@ -444,6 +444,13 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
       message="moon test --update requires test_update_kind and test_update_reason",
     )
   }
+  let command_args = mooncode_moon_cmd_command_args(arguments)
+  if command == "fmt" && mooncode_moon_fmt_has_malformed_selector(command_args) {
+    return mooncode_tool_error_result(
+      "moon_cmd",
+      message="moon fmt selector options require a non-option value",
+    )
+  }
   let selector = mooncode_moon_cmd_primary_path(arguments)
   let explicit_cwd = mooncode_json_string(arguments, "cwd", default="") != ""
   let cwd = if explicit_cwd {
@@ -459,6 +466,12 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
   }
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
   let selector_root = if explicit_cwd { cwd_path } else { book_root }
+  let module_cwd = mooncode_moon_module_cwd_for_path(book_root, cwd_path)
+  let module_root = mooncode_json_string(
+    module_cwd,
+    "absolute_path",
+    default=cwd_path,
+  )
   for path in mooncode_moon_cmd_paths(arguments) {
     let resolved = mooncode_resolve_book_path(selector_root, path)
     if !mooncode_json_bool(resolved, "ok", default=false) {
@@ -469,6 +482,21 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
           "message",
           default="invalid moon_cmd path",
         ),
+      )
+    }
+    let absolute_path = mooncode_json_string(
+      resolved,
+      "absolute_path",
+      default="",
+    )
+    let path_module = mooncode_moon_module_cwd_for_path(
+      book_root, absolute_path,
+    )
+    if mooncode_json_string(path_module, "absolute_path", default=book_root) !=
+      module_root {
+      return mooncode_tool_error_result(
+        "moon_cmd",
+        message="moon_cmd paths must belong to one Moon module",
       )
     }
   }
@@ -638,6 +666,18 @@ fn mooncode_moon_fmt_normalized_args(values : Array[String]) -> Array[String] {
 }
 
 ///|
+fn mooncode_moon_fmt_has_malformed_selector(values : Array[String]) -> Bool {
+  for index, value in values {
+    if value == "--target" || value == "--package" || value == "-p" {
+      if index + 1 >= values.length() || values[index + 1].has_prefix("-") {
+        return true
+      }
+    }
+  }
+  false
+}
+
+///|
 fn mooncode_moon_cmd_path_relative_to_cwd(
   path : String,
   selector_root : String,
@@ -658,11 +698,12 @@ fn mooncode_moon_cmd_is_test_update(arguments : Json) -> Bool {
   if mooncode_json_string(arguments, "command", default="") != "test" {
     return false
   }
-  if mooncode_json_string(arguments, "arg", default="") == "--update" {
+  let arg = mooncode_json_string(arguments, "arg", default="")
+  if arg == "--update" || arg == "-u" {
     return true
   }
   for arg in mooncode_json_array_string_items(arguments, "args") {
-    if arg == "--update" {
+    if arg == "--update" || arg == "-u" {
       return true
     }
   }

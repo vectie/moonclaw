@@ -1199,6 +1199,11 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
   assert_true(transcript.contains("path does not exist"))
   assert_true(transcript.contains("Do not reread a successful path"))
   assert_true(transcript.contains("do not repeat an identical failed call"))
+  assert_true(
+    transcript.contains(
+      "After a relevant repair or transient cause is resolved, rerun the exact focused verification",
+    ),
+  )
   assert_true(transcript.contains("internal/parser/parser.mbt"))
   assert_true(transcript.contains("paths in this steering as authoritative"))
   assert_eq(

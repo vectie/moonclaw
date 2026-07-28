@@ -22,15 +22,19 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     }
   }
   if tool == "moon_cmd" {
-    let command = arguments.stringify().to_lower().to_string()
-    if command.contains("--update") || command.contains("publish") {
+    let serialized = arguments.stringify().to_lower().to_string()
+    if mooncode_moon_cmd_is_test_update(arguments) ||
+      serialized.contains("publish") {
       return "This Moon command can update accepted outputs or publish a package."
     }
   }
   // Approval annotations are requests, not authority facts. The runtime keeps
   // them for mutation-capable and unclassified operations, but a planner cannot
   // turn an operation the runtime can prove read-only into a teacher pause.
-  if mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
+  let planner_generated = mooncode_json_string(tool_call, "planner", default="") ==
+    "model-tool-call"
+  if planner_generated &&
+    mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
     return ""
   }
   // Preserve caller-controlled authorization for operations whose authority
