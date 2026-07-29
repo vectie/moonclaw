@@ -161,6 +161,17 @@ async fn mooncode_execute_tool_call(
   body : Json,
   now~ : @clock.Timestamp,
 ) -> Json {
+  mooncode_execute_tool_call_in_runtime(None, session_id, book_root, body, now~)
+}
+
+///|
+async fn mooncode_execute_tool_call_in_runtime(
+  runtime : (Daemon, @async.TaskGroup[Unit])?,
+  session_id : String,
+  book_root : String,
+  body : Json,
+  now~ : @clock.Timestamp,
+) -> Json {
   let tool = mooncode_tool_name(body)
   let command_id = mooncode_tool_command_id(body)
   let arguments = mooncode_json_object_field_or_empty(body, "arguments")
@@ -185,6 +196,30 @@ async fn mooncode_execute_tool_call(
         "moon_check" => mooncode_tool_moon_check(book_root, arguments)
         "finish" =>
           mooncode_tool_finish_for_session(session_id, book_root, arguments)
+        "spawn_workers" =>
+          match runtime {
+            Some((daemon, group)) =>
+              daemon.mooncode_tool_spawn_workers(
+                group, session_id, book_root, command_id, arguments,
+              )
+            None =>
+              mooncode_tool_error_result(
+                tool,
+                message="spawn_workers requires the native Daemon task-group runtime path",
+              )
+          }
+        "wait_workers" =>
+          match runtime {
+            Some((daemon, _)) =>
+              daemon.mooncode_tool_wait_workers(
+                session_id, book_root, arguments,
+              )
+            None =>
+              mooncode_tool_error_result(
+                tool,
+                message="wait_workers requires the native Daemon runtime path",
+              )
+          }
         _ =>
           mooncode_tool_error_result(
             tool,
@@ -233,7 +268,9 @@ fn mooncode_tool_supported(tool : String) -> Bool {
   tool == "moon_ide" ||
   tool == "moon_cmd" ||
   tool == "moon_check" ||
-  tool == "finish"
+  tool == "finish" ||
+  tool == "spawn_workers" ||
+  tool == "wait_workers"
 }
 
 ///|

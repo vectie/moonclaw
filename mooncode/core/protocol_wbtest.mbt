@@ -213,6 +213,8 @@ test "mooncode core protocol v3 surface is stable" {
   assert_true(runtime_tool_names().contains("web_search"))
   assert_true(runtime_tool_capability_names().contains("eval_harness"))
   assert_true(runtime_tool_native_required_tools().contains("apply_patch"))
+  assert_true(runtime_tool_native_required_tools().contains("spawn_workers"))
+  assert_true(runtime_tool_native_required_tools().contains("wait_workers"))
   assert_eq(runtime_tool_canonical_name("Bash"), "shell")
   assert_eq(runtime_tool_canonical_name("FileRead"), "read")
   assert_eq(runtime_tool_from_moonclaw_tool("execute_command"), "shell")
@@ -1154,8 +1156,13 @@ test "mooncode core owns runtime tool contract" {
   assert_eq(runtime_tool_read_skill(), "read_skill")
   assert_eq(runtime_tool_apply_patch(), "apply_patch")
   assert_eq(runtime_tool_web_search(), "web_search")
-  assert_eq(runtime_tool_names().length(), 17)
-  assert_eq(runtime_tool_capability_names().length(), 18)
+  let runtime_tools = runtime_tool_names()
+  assert_true(runtime_tools.contains("spawn_workers"))
+  assert_true(runtime_tools.contains("wait_workers"))
+  assert_eq(
+    runtime_tool_capability_names().length(),
+    runtime_tools.length() + 1,
+  )
   assert_true(runtime_tool_is_supported("moon_cmd"))
   assert_false(runtime_tool_is_supported("delete_world"))
   assert_true(runtime_tool_requires_authorization_snapshot("moon_check"))

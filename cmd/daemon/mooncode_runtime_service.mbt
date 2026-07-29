@@ -278,7 +278,10 @@ async fn Daemon::mooncode_start_runtime_service(
         mooncode_runtime_service_release_gates(lifecycle_gate, execution_lease)
       }
       let _ = self.mooncode_runtime_service_execute_under_runtime_gates(
-        session_id, book_root, payload,
+        group~,
+        session_id,
+        book_root,
+        payload,
       ) catch {
         error => {
           let cancelled = @async.is_being_cancelled()
@@ -438,12 +441,14 @@ async fn Daemon::mooncode_runtime_service_execute(
 ///|
 async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
   self : Daemon,
+  group? : @async.TaskGroup[Unit],
   session_id : String,
   book_root : String,
   payload : Json,
 ) -> Json {
   let loop_payload = mooncode_runtime_service_loop_payload(session_id, payload)
   let mut result = self.mooncode_runtime_loop_execute_with_gate_state(
+    group?,
     session_id,
     book_root,
     loop_payload,
@@ -456,6 +461,7 @@ async fn Daemon::mooncode_runtime_service_execute_under_runtime_gates(
       @async.sleep(mooncode_runtime_loop_poll_ms(loop_payload))
     }
     result = self.mooncode_runtime_loop_execute_with_gate_state(
+      group?,
       session_id,
       book_root,
       loop_payload,

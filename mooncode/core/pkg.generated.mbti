@@ -1031,7 +1031,11 @@ pub fn runtime_tool_revert_patch() -> String
 
 pub fn runtime_tool_shell() -> String
 
+pub fn runtime_tool_spawn_workers() -> String
+
 pub fn runtime_tool_todo_write() -> String
+
+pub fn runtime_tool_wait_workers() -> String
 
 pub fn runtime_tool_web_fetch() -> String
 

@@ -105,6 +105,7 @@ async fn Daemon::mooncode_runtime_turn_execute(
 ///|
 async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
   self : Daemon,
+  group? : @async.TaskGroup[Unit],
   session_id : String,
   book_root : String,
   payload : Json,
@@ -787,7 +788,8 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               now=self.clock.now(),
             )
           } else {
-            let candidate = mooncode_execute_tool_call(
+            let candidate = mooncode_execute_tool_call_in_runtime(
+              group.map(group => (self, group)),
               session_id,
               book_root,
               mooncode_runtime_turn_tool_body(command, tool_call),

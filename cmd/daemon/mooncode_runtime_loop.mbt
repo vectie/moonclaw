@@ -116,6 +116,7 @@ async fn Daemon::mooncode_runtime_loop_execute(
 ///|
 async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
   self : Daemon,
+  group? : @async.TaskGroup[Unit],
   session_id : String,
   requested_book_root : String,
   payload : Json,
@@ -189,7 +190,10 @@ async fn Daemon::mooncode_runtime_loop_execute_with_gate_state(
     }
     let turn = if runtime_gates_held {
       self.mooncode_runtime_turn_execute_under_runtime_gates(
-        session_id, book_root, turn_payload,
+        group?,
+        session_id,
+        book_root,
+        turn_payload,
       )
     } else {
       self.mooncode_runtime_turn_execute(session_id, book_root, turn_payload)

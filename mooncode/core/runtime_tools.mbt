@@ -69,6 +69,16 @@ pub fn runtime_tool_finish() -> String {
 }
 
 ///|
+pub fn runtime_tool_spawn_workers() -> String {
+  "spawn_workers"
+}
+
+///|
+pub fn runtime_tool_wait_workers() -> String {
+  "wait_workers"
+}
+
+///|
 pub fn runtime_tool_package_app_tool() -> String {
   "package_app_tool"
 }
@@ -115,6 +125,8 @@ pub fn runtime_tool_names() -> Array[String] {
     runtime_tool_moon_cmd(),
     runtime_tool_moon_check(),
     runtime_tool_finish(),
+    runtime_tool_spawn_workers(),
+    runtime_tool_wait_workers(),
     runtime_tool_apply_patch(),
     runtime_tool_revert_patch(),
     runtime_tool_package_app_tool(),
@@ -147,6 +159,8 @@ pub fn runtime_tool_native_required_tools() -> Array[String] {
     runtime_tool_moon_cmd(),
     runtime_tool_moon_check(),
     runtime_tool_finish(),
+    runtime_tool_spawn_workers(),
+    runtime_tool_wait_workers(),
   ]
 }
 
@@ -502,6 +516,22 @@ pub fn runtime_tool_capability_specs() -> Array[Json] {
       approval="auto",
       purpose="Run MoonCode tool_harness and file_edit evals, then publish native eval proof for this MoonCode session.",
       outputs=[runtime_event_test_result(), "eval_report.manifest"],
+    ),
+    runtime_tool_capability_spec(
+      id=runtime_tool_spawn_workers(),
+      owner="moonclaw",
+      lane=event_lane_runtime(),
+      approval="auto",
+      purpose="Start ordinary child MoonCode prompt sessions in caller-supplied isolated MoonBook roots.",
+      outputs=[runtime_event_runtime_update(), runtime_event_tool_result()],
+    ),
+    runtime_tool_capability_spec(
+      id=runtime_tool_wait_workers(),
+      owner="moonclaw",
+      lane=event_lane_runtime(),
+      approval="auto",
+      purpose="Project durable terminal state for any or all linked child sessions.",
+      outputs=[runtime_event_runtime_update(), runtime_event_tool_result()],
     ),
     runtime_tool_capability_spec(
       id=runtime_tool_finish(),
@@ -995,6 +1025,52 @@ fn runtime_tool_contract_entries() -> Array[Json] {
         runtime_event_tool_result(),
       ],
       safety_policy="Package accepted executable MoonBook output and emit source inventory plus package verification proof.",
+    ),
+    runtime_tool_contract_entry(
+      id=runtime_tool_spawn_workers(),
+      lane=event_lane_runtime(),
+      approval="auto",
+      mutates_files=false,
+      requires_review=false,
+      input_fields=[
+        runtime_tool_field(
+          "workers",
+          "array<object>",
+          required=true,
+          "Child ids, existing absolute isolated MoonBook roots, prompts, and optional model or task-intent hints.",
+        ),
+      ],
+      output_events=[
+        runtime_event_runtime_update(),
+        runtime_event_tool_result(),
+      ],
+      safety_policy="The parent remains the controller; every child is an ordinary MoonCode prompt session in a caller-supplied isolated root with no special authority.",
+    ),
+    runtime_tool_contract_entry(
+      id=runtime_tool_wait_workers(),
+      lane=event_lane_runtime(),
+      approval="auto",
+      mutates_files=false,
+      requires_review=false,
+      input_fields=[
+        runtime_tool_field(
+          "mode",
+          "string",
+          required=true,
+          "Terminal projection mode: any or all.",
+        ),
+        runtime_tool_field(
+          "worker_ids",
+          "array<string>",
+          required=false,
+          "Optional linked worker ids; omit to project all children.",
+        ),
+      ],
+      output_events=[
+        runtime_event_runtime_update(),
+        runtime_event_tool_result(),
+      ],
+      safety_policy="Read only durable parent-child links and child runtime-service events; do not create a second controller or worker authority.",
     ),
     runtime_tool_contract_entry(
       id=runtime_tool_finish(),

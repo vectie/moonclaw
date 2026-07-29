@@ -982,7 +982,14 @@ test "mooncode model planner sends a compact request envelope" {
     "command": "prompt",
     "text": "Fix the parser and run tests.",
   }
-  assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 11)
+  let coding_tools = mooncode_runtime_turn_model_tools_for_command(coding).map(tool => {
+    tool.to_json().stringify()
+  })
+  for tool_name in ["edit", "apply_patch", "spawn_workers", "wait_workers"] {
+    assert_true(
+      coding_tools.any(tool => tool.contains("\"name\":\"\{tool_name}\"")),
+    )
+  }
 
   let workspace_prompts = [
     "Complete the Phase 4 extraction", "Replace the legacy boundary with the typed provider",
@@ -995,9 +1002,11 @@ test "mooncode model planner sends a compact request envelope" {
       "payload": { "task_intent": "workspace_change" },
     }
     let tools = mooncode_runtime_turn_model_tools_for_command(command)
-    assert_eq(tools.length(), 11)
     let serialized_tools = tools.map(tool => tool.to_json().stringify())
-    for tool_name in ["edit", "apply_patch", "shell"] {
+    for
+      tool_name in [
+        "edit", "apply_patch", "shell", "spawn_workers", "wait_workers",
+      ] {
       assert_true(
         serialized_tools.any(tool => tool.contains("\"name\":\"\{tool_name}\"")),
       )
@@ -1041,10 +1050,16 @@ test "mooncode model planner sends a compact request envelope" {
     "command": "prompt",
     "text": "Edit first. The scaffold has already been read. Overwrite tools/robot-design-validator/src/main.mbt with a substantive validator, then add tests, fixtures, and a README; run moon check and moon test before finishing. Implement the result; do not merely explain it.",
   }
-  assert_eq(
-    mooncode_runtime_turn_model_tools_for_command(coding_with_path).length(),
-    11,
-  )
+  let coding_with_path_tools = mooncode_runtime_turn_model_tools_for_command(
+    coding_with_path,
+  ).map(tool => tool.to_json().stringify())
+  for tool_name in ["edit", "apply_patch", "spawn_workers", "wait_workers"] {
+    assert_true(
+      coding_with_path_tools.any(tool => {
+        tool.contains("\"name\":\"\{tool_name}\"")
+      }),
+    )
+  }
   let initial = mooncode_runtime_turn_model_initial_messages(
     coding_with_path,
     skill_catalog="\n<available_skills><skill><name>moonbit-agent-guide</name></skill></available_skills>",
