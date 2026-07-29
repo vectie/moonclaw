@@ -787,6 +787,24 @@ test "transient planner close is retryable while other errors stay terminal" {
 }
 
 ///|
+test "retryable planner HTTP statuses retain the durable turn" {
+  for
+    summary in [
+      "HTTP 408: timed out", "HTTP 429: rate limited", "HTTP 500", "HTTP 502: overloaded",
+      "HTTP 503: unavailable", "HTTP 504: gateway timeout",
+    ] {
+    assert_true(
+      mooncode_runtime_turn_planner_error_summary_is_transient(summary),
+    )
+  }
+  for terminal in ["HTTP 400: invalid request", "HTTP 401: unauthorized"] {
+    assert_false(
+      mooncode_runtime_turn_planner_error_summary_is_transient(terminal),
+    )
+  }
+}
+
+///|
 test "mooncode model planner selects runtime default when model is omitted" {
   let command : Json = {
     "command": "prompt",

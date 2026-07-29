@@ -239,7 +239,7 @@ fn mooncode_runtime_turn_planner_error_result(
   now~ : @clock.Timestamp,
 ) -> Json {
   let message = "\{context}: \{@openai.error_summary(error)}"
-  if error is @tls.ConnectionClosed {
+  if mooncode_runtime_turn_planner_error_is_transient(error) {
     mooncode_runtime_turn_transient_transport_result(
       model_name, message, started,
     )
@@ -252,6 +252,31 @@ fn mooncode_runtime_turn_planner_error_result(
       now~,
     )
   }
+}
+
+///|
+fn mooncode_runtime_turn_planner_error_is_transient(error : Error) -> Bool {
+  if error is @tls.ConnectionClosed {
+    return true
+  }
+  mooncode_runtime_turn_planner_error_summary_is_transient(
+    @openai.error_summary(error),
+  )
+}
+
+///|
+fn mooncode_runtime_turn_planner_error_summary_is_transient(
+  summary : String,
+) -> Bool {
+  for
+    status in [
+      "HTTP 408", "HTTP 429", "HTTP 500", "HTTP 502", "HTTP 503", "HTTP 504",
+    ] {
+    if summary.has_prefix(status) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
