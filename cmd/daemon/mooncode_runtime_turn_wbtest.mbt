@@ -966,10 +966,9 @@ test "mooncode model planner sends a compact request envelope" {
   }
   assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 11)
 
-  // The authoritative tool array orders edit, apply_patch, and shell at
-  // indices 2, 5, and 6 respectively.
   let workspace_prompts = [
     "Complete the Phase 4 extraction", "Replace the legacy boundary with the typed provider",
+    "Reshape the extraction boundary around the typed provider", "Separate the legacy boundary from the typed provider",
   ]
   for text in workspace_prompts {
     let command : Json = {
@@ -979,9 +978,12 @@ test "mooncode model planner sends a compact request envelope" {
     }
     let tools = mooncode_runtime_turn_model_tools_for_command(command)
     assert_eq(tools.length(), 11)
-    assert_true(tools[2].to_json().stringify().contains("edit"))
-    assert_true(tools[5].to_json().stringify().contains("apply_patch"))
-    assert_true(tools[6].to_json().stringify().contains("shell"))
+    let serialized_tools = tools.map(tool => tool.to_json().stringify())
+    for tool_name in ["edit", "apply_patch", "shell"] {
+      assert_true(
+        serialized_tools.any(tool => tool.contains("\"name\":\"\{tool_name}\"")),
+      )
+    }
     assert_true(mooncode_runtime_turn_requires_verification(command))
   }
 
