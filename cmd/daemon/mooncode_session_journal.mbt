@@ -209,6 +209,11 @@ async fn[T] mooncode_session_journal_transaction(
   mooncode_repair_journal_tail(file)
   let records = mooncode_parse_journal_file(file, path, session_id)
   let last_sequence = mooncode_journal_last_sequence_exact(records)
+  let canonical_path = @fs.realpath(path)
+  let state = mooncode_journal_append_state_from_records(
+    file, records, last_sequence,
+  )
+  mooncode_journal_append_states[canonical_path] = state
   let identities : Array[(String, String)] = records.map(record => {
     (
       mooncode_json_string(record, "record_kind", default=""),
@@ -258,6 +263,13 @@ async fn[T] mooncode_session_journal_transaction(
       )
       file.write(mooncode_journal_canonical_line(record) + "\n")
       mooncode_sync_journal_commit(file, commit_directories)
+      state.cursor = last_sequence.next()
+      state.committed_size = file.size()
+      state.boundary_fingerprint = mooncode_journal_boundary_fingerprint(
+        file,
+        state.committed_size,
+      )
+      mooncode_journal_append_state_add_record(state, record)
       result
     }
   }
@@ -313,9 +325,24 @@ async fn mooncode_append_session_journal_once_locked(
   defer file.unlock()
   mooncode_repair_journal_tail(file)
   let command_id = mooncode_journal_command_id(payload)
-  let scan = mooncode_journal_scan_for_append(
-    file, session_id, record_kind, record_id, command_id,
-  )
+  let canonical_path = @fs.realpath(path)
+  let committed_size = file.size()
+  let state = match mooncode_journal_append_states.get(canonical_path) {
+    Some(state) if mooncode_journal_append_state_matches(
+        state, file, committed_size,
+      ) => state
+    _ => {
+      mooncode_journal_append_states.remove(canonical_path)
+      let rebuilt = mooncode_journal_scan_append_state(file, session_id)
+      mooncode_journal_append_scan_counts[canonical_path] = mooncode_journal_append_scan_count_get(
+          canonical_path,
+        ) +
+        1
+      mooncode_journal_append_states[canonical_path] = rebuilt
+      rebuilt
+    }
+  }
+  let scan = state.scan(record_kind, record_id, command_id)
   // Duplicate suppression is deliberately delayed until the streaming scan has
   // validated every committed record through EOF.
   if scan.duplicate_found {
@@ -327,8 +354,18 @@ async fn mooncode_append_session_journal_once_locked(
   let record = mooncode_journal_record_for_append(
     session_id, record_kind, payload, record_id, command_id, scan,
   )
-  file.write(mooncode_journal_canonical_line(record) + "\n")
+  file.write_at(
+    @encoding/utf8.encode(mooncode_journal_canonical_line(record) + "\n"),
+    position=committed_size,
+  )
   mooncode_sync_journal_commit(file, commit_directories)
+  state.cursor = scan.cursor.next()
+  state.committed_size = file.size()
+  state.boundary_fingerprint = mooncode_journal_boundary_fingerprint(
+    file,
+    state.committed_size,
+  )
+  mooncode_journal_append_state_add_record(state, record)
   true
 }
 

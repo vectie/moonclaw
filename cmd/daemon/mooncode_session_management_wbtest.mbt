@@ -408,6 +408,62 @@ async test "mooncode stable projection lock omits a session moved while waiting"
 }
 
 ///|
+async test "transaction seeded append state survives ordinary append and persist" {
+  @moonclaw_fsx.with_temporary_directory(
+    "moonclaw-session-append-state-XXXXXX",
+    book_root => {
+      let session_id = "session-append-state"
+      let daemon = mooncode_control_test_daemon(book_root)
+      mooncode_management_test_create_session(daemon, book_root, session_id)
+      let binding = daemon.mooncode_binding_for_session(session_id)
+      let journal_path = mooncode_session_journal_path(book_root, session_id)
+      ignore(
+        mooncode_session_journal_transaction(book_root, session_id, fn(_) {
+          NoAppend(())
+        }),
+      )
+      let canonical_path = @fs.realpath(journal_path)
+      mooncode_journal_append_scan_count_reset(canonical_path)
+      assert_true(
+        mooncode_append_session_journal_once(
+          book_root,
+          session_id,
+          mooncode_journal_event(),
+          {
+            "id": "persisted-event",
+            "kind": "append-state-test",
+            "command_id": "cmd-1",
+            "created_at": "2026-07-15T00:01:00Z",
+          },
+        ),
+      )
+      assert_eq(mooncode_journal_append_scan_count_get(canonical_path), 0)
+      daemon.mooncode_persist_session(binding)
+      assert_eq(mooncode_journal_append_scan_count_get(canonical_path), 0)
+      let warm_snapshot = @json.parse(
+        @fsx.read_file(mooncode_session_snapshot_path(book_root, session_id)),
+      )
+      assert_eq(
+        mooncode_json_string(warm_snapshot, "journal_sequence", default=""),
+        "2",
+      )
+      mooncode_journal_append_cache_clear()
+      daemon.mooncode_persist_session(binding)
+      assert_eq(mooncode_journal_append_scan_count_get(canonical_path), 1)
+      let cold_snapshot = @json.parse(
+        @fsx.read_file(mooncode_session_snapshot_path(book_root, session_id)),
+      )
+      assert_eq(
+        mooncode_json_string(cold_snapshot, "journal_sequence", default=""),
+        "2",
+      )
+      daemon.mooncode_persist_session(binding)
+      assert_eq(mooncode_journal_append_scan_count_get(canonical_path), 1)
+    },
+  )
+}
+
+///|
 async test "mooncode session lifecycle refuses storage changes while running" {
   @moonclaw_fsx.with_temporary_directory("moonclaw-session-running-XXXXXX", book_root => {
     let session_id = "session-running"

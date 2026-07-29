@@ -114,6 +114,206 @@ priv struct MoonCodeJournalAppendScan {
 }
 
 ///|
+priv struct MoonCodeJournalAppendState {
+  mut committed_size : Int64
+  mut boundary_fingerprint : Bytes
+  mut cursor : MoonCodeJournalSequence
+  identities : Map[String, Bool]
+  command_client_turn_ids : Map[String, String]
+}
+
+///|
+let mooncode_journal_append_states : Map[String, MoonCodeJournalAppendState] = {}
+
+///|
+let mooncode_journal_append_scan_counts : Map[String, Int] = {}
+
+///|
+async fn mooncode_journal_boundary_fingerprint(
+  file : @fs.File,
+  committed_size : Int64,
+) -> Bytes {
+  let length = if committed_size >= mooncode_journal_read_chunk_size.to_int64() {
+    mooncode_journal_read_chunk_size
+  } else {
+    committed_size.to_int()
+  }
+  let boundary = if length == 0 {
+    b""
+  } else {
+    file.read_exactly_at(length, position=committed_size - length.to_int64())
+  }
+  Bytes::from_array(@crypto.sha256(boundary))
+}
+
+///|
+async fn mooncode_journal_append_state_matches(
+  state : MoonCodeJournalAppendState,
+  file : @fs.File,
+  committed_size : Int64,
+) -> Bool {
+  state.committed_size == committed_size &&
+  state.boundary_fingerprint ==
+  mooncode_journal_boundary_fingerprint(file, committed_size)
+}
+
+///|
+fn mooncode_journal_identity_key(
+  record_kind : String,
+  record_id : String,
+) -> String {
+  "\{record_kind.length()}:\{record_kind}\{record_id}"
+}
+
+///|
+fn mooncode_journal_append_cache_clear() -> Unit {
+  mooncode_journal_append_states.clear()
+}
+
+///|
+fn mooncode_journal_append_scan_count_reset(path : String) -> Unit {
+  mooncode_journal_append_scan_counts[path] = 0
+}
+
+///|
+fn mooncode_journal_append_scan_count_get(path : String) -> Int {
+  mooncode_journal_append_scan_counts.get_or_default(path, 0)
+}
+
+///|
+fn MoonCodeJournalAppendState::scan(
+  self : MoonCodeJournalAppendState,
+  record_kind : String,
+  record_id : String,
+  command_id : String,
+) -> MoonCodeJournalAppendScan {
+  {
+    cursor: self.cursor,
+    duplicate_found: self.identities.contains(
+      mooncode_journal_identity_key(record_kind, record_id),
+    ),
+    inherited_client_turn_id: if command_id == "" {
+      ""
+    } else {
+      self.command_client_turn_ids.get_or_default(command_id, "")
+    },
+  }
+}
+
+///|
+async fn mooncode_journal_append_state_from_records(
+  file : @fs.File,
+  records : Array[Json],
+  cursor : MoonCodeJournalSequence,
+) -> MoonCodeJournalAppendState {
+  let identities : Map[String, Bool] = {}
+  let command_client_turn_ids : Map[String, String] = {}
+  for record in records {
+    let record_kind = mooncode_json_string(record, "record_kind", default="")
+    let record_id = mooncode_json_string(record, "record_id", default="")
+    identities[mooncode_journal_identity_key(record_kind, record_id)] = true
+    let command_id = mooncode_json_string(record, "command_id", default="")
+    let client_turn_id = mooncode_json_string(
+      record,
+      "client_turn_id",
+      default="",
+    )
+    if command_id != "" &&
+      client_turn_id != "" &&
+      !command_client_turn_ids.contains(command_id) {
+      command_client_turn_ids[command_id] = client_turn_id
+    }
+  }
+  let committed_size = file.size()
+  {
+    committed_size,
+    boundary_fingerprint: mooncode_journal_boundary_fingerprint(
+      file, committed_size,
+    ),
+    cursor,
+    identities,
+    command_client_turn_ids,
+  }
+}
+
+///|
+fn mooncode_journal_append_state_add_record(
+  state : MoonCodeJournalAppendState,
+  record : Json,
+) -> Unit {
+  let record_kind = mooncode_json_string(record, "record_kind", default="")
+  let record_id = mooncode_json_string(record, "record_id", default="")
+  state.identities[mooncode_journal_identity_key(record_kind, record_id)] = true
+  let command_id = mooncode_json_string(record, "command_id", default="")
+  let client_turn_id = mooncode_json_string(
+    record,
+    "client_turn_id",
+    default="",
+  )
+  if command_id != "" &&
+    client_turn_id != "" &&
+    !state.command_client_turn_ids.contains(command_id) {
+    state.command_client_turn_ids[command_id] = client_turn_id
+  }
+}
+
+///|
+async fn mooncode_journal_scan_append_state(
+  file : @fs.File,
+  expected_session_id : String,
+) -> MoonCodeJournalAppendState {
+  let mut cursor = MoonCodeJournalSequence::zero()
+  let identities : Map[String, Bool] = {}
+  let command_client_turn_ids : Map[String, String] = {}
+  mooncode_journal_read_lines(file, async fn(line) {
+    let (record, next) = mooncode_journal_stream_record(line, cursor)
+    if mooncode_json_string(record, "session_id", default="") !=
+      expected_session_id {
+      raise InvalidJournal("journal record belongs to a different session")
+    }
+    cursor = next
+    let current_record_kind = mooncode_json_string(
+      record,
+      "record_kind",
+      default="",
+    )
+    let current_record_id = mooncode_json_string(
+      record,
+      "record_id",
+      default="",
+    )
+    identities[mooncode_journal_identity_key(
+      current_record_kind, current_record_id,
+    )] = true
+    let current_command_id = mooncode_json_string(
+      record,
+      "command_id",
+      default="",
+    )
+    let current_client_turn_id = mooncode_json_string(
+      record,
+      "client_turn_id",
+      default="",
+    )
+    if current_command_id != "" &&
+      current_client_turn_id != "" &&
+      !command_client_turn_ids.contains(current_command_id) {
+      command_client_turn_ids[current_command_id] = current_client_turn_id
+    }
+  })
+  let committed_size = file.size()
+  {
+    committed_size,
+    boundary_fingerprint: mooncode_journal_boundary_fingerprint(
+      file, committed_size,
+    ),
+    cursor,
+    identities,
+    command_client_turn_ids,
+  }
+}
+
+///|
 async fn mooncode_journal_scan_for_append(
   file : @fs.File,
   expected_session_id : String,

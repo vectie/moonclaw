@@ -530,6 +530,121 @@ async test "production append direct client id wins then command inheritance app
 }
 
 ///|
+async test "production append cache preserves append semantics and invalidates safely" {
+  @fsx.with_temporary_directory("moonclaw-journal-cache-XXXXXX", async fn(
+    directory,
+  ) {
+    let session_id = "session"
+    let book_root = @pathx.join(directory, "book")
+    let path = mooncode_session_journal_path(book_root, session_id)
+    mooncode_journal_append_cache_clear()
+    mooncode_journal_append_scan_count_reset(path)
+    let first : Json = {
+      "id": "first",
+      "kind": "cache-test",
+      "command_id": "command",
+      "client_turn_id": "client-first",
+      "created_at": "now",
+    }
+    assert_true(
+      mooncode_append_session_journal_once(
+        book_root,
+        session_id,
+        mooncode_journal_event(),
+        first,
+      ),
+    )
+    assert_false(
+      mooncode_append_session_journal_once(
+        book_root,
+        session_id,
+        mooncode_journal_event(),
+        first,
+      ),
+    )
+    let second : Json = {
+      "id": "second",
+      "kind": "cache-test",
+      "command_id": "command",
+      "created_at": "now",
+    }
+    assert_true(
+      mooncode_append_session_journal_once(
+        book_root,
+        session_id,
+        mooncode_journal_event(),
+        second,
+      ),
+    )
+    assert_eq(mooncode_journal_append_scan_count_get(@fs.realpath(path)), 1)
+    let records = mooncode_read_session_journal(book_root, session_id)
+    assert_eq(records.length(), 2)
+    assert_eq(mooncode_json_string(records[1], "sequence", default=""), "2")
+    assert_eq(
+      mooncode_json_string(records[1], "client_turn_id", default=""),
+      "client-first",
+    )
+
+    let path = mooncode_session_journal_path(book_root, session_id)
+    let external = streaming_test_append_record(
+      "3", "external", "command", "client-external",
+    )
+    @fs.write_file(path, external + "\n", append=true, truncate=false)
+    let fourth : Json = {
+      "id": "fourth",
+      "kind": "cache-test",
+      "command_id": "command",
+      "created_at": "now",
+    }
+    assert_true(
+      mooncode_append_session_journal_once(
+        book_root,
+        session_id,
+        mooncode_journal_event(),
+        fourth,
+      ),
+    )
+    assert_eq(mooncode_journal_append_scan_count_get(@fs.realpath(path)), 2)
+    let after_growth = mooncode_read_session_journal(book_root, session_id)
+    assert_eq(
+      mooncode_json_string(after_growth[3], "sequence", default=""),
+      "4",
+    )
+    assert_eq(
+      mooncode_json_string(after_growth[3], "client_turn_id", default=""),
+      "client-first",
+    )
+
+    mooncode_journal_append_cache_clear()
+    let fifth : Json = {
+      "id": "fifth",
+      "kind": "cache-test",
+      "command_id": "command",
+      "created_at": "now",
+    }
+    assert_true(
+      mooncode_append_session_journal_once(
+        book_root,
+        session_id,
+        mooncode_journal_event(),
+        fifth,
+      ),
+    )
+    assert_eq(mooncode_journal_append_scan_count_get(@fs.realpath(path)), 3)
+    let after_restart = mooncode_read_session_journal(book_root, session_id)
+    assert_eq(
+      mooncode_json_string(after_restart[4], "sequence", default=""),
+      "5",
+    )
+    assert_eq(
+      mooncode_json_string(after_restart[4], "client_turn_id", default=""),
+      "client-first",
+    )
+    mooncode_journal_append_cache_clear()
+  })
+}
+
+///|
 async test "production append continues a legacy v1 prefix with v2" {
   @fsx.with_temporary_directory("moonclaw-journal-v1-v2-XXXXXX", async fn(
     root,
