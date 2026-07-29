@@ -310,10 +310,25 @@ fn mooncode_runtime_turn_model_tools_for_command(
 }
 
 ///|
+fn mooncode_runtime_turn_task_intent(command : Json) -> String? {
+  let payload = mooncode_json_object_field_or_empty(command, "payload")
+  match mooncode_json_string(payload, "task_intent", default="") {
+    "workspace_change" => Some("workspace_change")
+    "read_only" => Some("read_only")
+    _ => None
+  }
+}
+
+///|
 fn mooncode_runtime_turn_model_needs_coding_tools(
   command : Json,
   request : String,
 ) -> Bool {
+  match mooncode_runtime_turn_task_intent(command) {
+    Some("workspace_change") => return true
+    Some("read_only") => return false
+    _ => ()
+  }
   let action = mooncode_json_string(command, "command", default="prompt")
   if mooncode_runtime_turn_model_has_mutation_intent(action, request) {
     return true
@@ -416,6 +431,11 @@ priv struct MoonCodeCompletionVerdict {
 
 ///|
 fn mooncode_runtime_turn_requires_verification(command : Json) -> Bool {
+  match mooncode_runtime_turn_task_intent(command) {
+    Some("workspace_change") => return true
+    Some("read_only") => return false
+    _ => ()
+  }
   let action = mooncode_json_string(command, "command", default="prompt")
   if action == "package" || action == "apply_patch" || action == "revert_patch" {
     return true

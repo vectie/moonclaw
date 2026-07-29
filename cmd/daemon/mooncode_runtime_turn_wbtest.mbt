@@ -965,6 +965,58 @@ test "mooncode model planner sends a compact request envelope" {
     "text": "Fix the parser and run tests.",
   }
   assert_eq(mooncode_runtime_turn_model_tools_for_command(coding).length(), 11)
+
+  // The authoritative tool array orders edit, apply_patch, and shell at
+  // indices 2, 5, and 6 respectively.
+  let workspace_prompts = [
+    "Complete the Phase 4 extraction", "Replace the legacy boundary with the typed provider",
+  ]
+  for text in workspace_prompts {
+    let command : Json = {
+      "command": "prompt",
+      "text": text,
+      "payload": { "task_intent": "workspace_change" },
+    }
+    let tools = mooncode_runtime_turn_model_tools_for_command(command)
+    assert_eq(tools.length(), 11)
+    assert_true(tools[2].to_json().stringify().contains("edit"))
+    assert_true(tools[5].to_json().stringify().contains("apply_patch"))
+    assert_true(tools[6].to_json().stringify().contains("shell"))
+    assert_true(mooncode_runtime_turn_requires_verification(command))
+  }
+
+  let review_prompts = [
+    "Review the app code for naming consistency.", "Review the code for the app boundary.",
+  ]
+  for text in review_prompts {
+    let command : Json = {
+      "command": "prompt",
+      "text": text,
+      "payload": { "task_intent": "read_only" },
+    }
+    assert_eq(
+      mooncode_runtime_turn_model_tools_for_command(command).length(),
+      2,
+    )
+    assert_false(mooncode_runtime_turn_requires_verification(command))
+  }
+
+  let fallback_prompt = "Fix the parser and run tests."
+  let absent_hint : Json = { "command": "prompt", "text": fallback_prompt }
+  let unknown_hint : Json = {
+    "command": "prompt",
+    "text": fallback_prompt,
+    "payload": { "task_intent": "deployment" },
+  }
+  assert_eq(
+    mooncode_runtime_turn_model_tools_for_command(absent_hint).length(),
+    mooncode_runtime_turn_model_tools_for_command(unknown_hint).length(),
+  )
+  assert_eq(
+    mooncode_runtime_turn_requires_verification(absent_hint),
+    mooncode_runtime_turn_requires_verification(unknown_hint),
+  )
+
   let coding_with_path : Json = {
     "command": "prompt",
     "text": "Edit first. The scaffold has already been read. Overwrite tools/robot-design-validator/src/main.mbt with a substantive validator, then add tests, fixtures, and a README; run moon check and moon test before finishing. Implement the result; do not merely explain it.",
