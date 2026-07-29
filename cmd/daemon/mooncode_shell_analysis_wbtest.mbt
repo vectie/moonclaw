@@ -57,6 +57,34 @@ test "mooncode shell classifies post-commit workspace mutations without blocking
 }
 
 ///|
+test "mooncode derives shell verification from the command instead of its label" {
+  assert_eq(
+    mooncode_shell_verification_kind("moon check --target native"),
+    "check",
+  )
+  assert_eq(
+    mooncode_shell_verification_kind(
+      "/usr/bin/time -p moon test cmd/daemon --target native",
+    ),
+    "test",
+  )
+  assert_eq(
+    mooncode_shell_verification_kind("moon build --target native"),
+    "build",
+  )
+  assert_eq(mooncode_shell_verification_kind("test -f result.txt"), "check")
+  assert_eq(mooncode_shell_verification_kind("git diff --check"), "check")
+  assert_eq(mooncode_shell_verification_kind("gh pr checks 4 --watch"), "check")
+  for
+    inspection in [
+      "git status --short", "find cmd/daemon -name '*.mbt'", "rg -n planner cmd/daemon",
+      "sed -n '1,80p' cmd/daemon/main.mbt",
+    ] {
+    assert_eq(mooncode_shell_verification_kind(inspection), "")
+  }
+}
+
+///|
 test "mooncode shell proves bounded observations without trusting unknown commands" {
   for
     command in [

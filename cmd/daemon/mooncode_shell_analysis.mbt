@@ -462,6 +462,129 @@ fn mooncode_shell_nested_command_index(
 }
 
 ///|
+fn mooncode_shell_segment_verification_kind(segment : Array[String]) -> String {
+  let executable_index = mooncode_shell_segment_executable_index(segment)
+  if executable_index < 0 {
+    return ""
+  }
+  let executable = segment[executable_index]
+  if mooncode_shell_executable_is(executable, "sh") ||
+    mooncode_shell_executable_is(executable, "bash") ||
+    mooncode_shell_executable_is(executable, "zsh") {
+    let nested_index = mooncode_shell_nested_command_index(
+      segment, executable_index,
+    )
+    return if nested_index < 0 {
+      ""
+    } else {
+      mooncode_shell_verification_kind(segment[nested_index])
+    }
+  }
+  if mooncode_shell_executable_is(executable, "test") || executable == "[" {
+    return "check"
+  }
+  if mooncode_shell_executable_is(executable, "git") &&
+    mooncode_shell_segment_has_git_subcommand(segment, ["diff"]) &&
+    segment.contains("--check") {
+    return "check"
+  }
+  if mooncode_shell_executable_is(executable, "gh") {
+    let subcommand_index = mooncode_shell_subcommand_index_after_options(
+      segment,
+      executable_index,
+      ["--hostname", "-R", "--repo"],
+    )
+    if subcommand_index >= 0 &&
+      segment[subcommand_index] == "pr" &&
+      subcommand_index + 1 < segment.length() &&
+      segment[subcommand_index + 1] == "checks" {
+      return "check"
+    }
+    return ""
+  }
+  let moon_index = if mooncode_shell_executable_is(executable, "time") {
+    mooncode_shell_subcommand_index_after_options(segment, executable_index, [
+      "-f", "-o",
+    ])
+  } else {
+    executable_index
+  }
+  if moon_index < 0 ||
+    !mooncode_shell_executable_is(segment[moon_index], "moon") {
+    return ""
+  }
+  let subcommand_index = mooncode_shell_subcommand_index_after_options(
+    segment,
+    moon_index,
+    ["--source-dir", "--target-dir"],
+  )
+  if subcommand_index < 0 {
+    return ""
+  }
+  let subcommand = segment[subcommand_index]
+  if subcommand == "check" || subcommand == "info" {
+    "check"
+  } else if subcommand == "test" {
+    "test"
+  } else if subcommand == "build" {
+    "build"
+  } else {
+    ""
+  }
+}
+
+///|
+fn mooncode_shell_verification_kind(command : String) -> String {
+  let segment : Array[String] = []
+  let mut saw_check = false
+  let mut saw_build = false
+  let mut saw_test = false
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      let kind = mooncode_shell_segment_verification_kind(segment)
+      saw_test = saw_test || kind == "test"
+      saw_build = saw_build || kind == "build"
+      saw_check = saw_check || kind == "check"
+      segment.clear()
+    } else {
+      segment.push(word)
+    }
+  }
+  let kind = mooncode_shell_segment_verification_kind(segment)
+  saw_test = saw_test || kind == "test"
+  saw_build = saw_build || kind == "build"
+  saw_check = saw_check || kind == "check"
+  if saw_test {
+    "test"
+  } else if saw_build {
+    "build"
+  } else if saw_check {
+    "check"
+  } else {
+    ""
+  }
+}
+
+///|
+fn mooncode_shell_verifies_kind(command : String, expected : String) -> Bool {
+  if expected != "check" && expected != "test" && expected != "build" {
+    return false
+  }
+  let segment : Array[String] = []
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if mooncode_shell_segment_verification_kind(segment) == expected {
+        return true
+      }
+      segment.clear()
+    } else {
+      segment.push(word)
+    }
+  }
+  mooncode_shell_segment_verification_kind(segment) == expected
+}
+
+///|
 fn mooncode_shell_segment_has_sensitive_command(
   segment : Array[String],
 ) -> Bool {

@@ -672,15 +672,17 @@ fn mooncode_runtime_turn_result_verification_kind(result : Json) -> String {
     return ""
   }
   if tool == "shell" {
-    let verification_kind = mooncode_json_string(
-      mooncode_json_object_field_or_empty(result, "arguments"),
+    let arguments = mooncode_json_object_field_or_empty(result, "arguments")
+    let claimed = mooncode_json_string(
+      arguments,
       "verification_kind",
       default="",
     )
-    if verification_kind == "check" ||
-      verification_kind == "test" ||
-      verification_kind == "build" {
-      return verification_kind
+    if mooncode_shell_verifies_kind(
+        mooncode_json_string(arguments, "cmd", default=""),
+        claimed,
+      ) {
+      return claimed
     }
     return ""
   }

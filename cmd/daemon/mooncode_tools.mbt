@@ -164,25 +164,37 @@ async fn mooncode_execute_tool_call(
   let tool = mooncode_tool_name(body)
   let command_id = mooncode_tool_command_id(body)
   let arguments = mooncode_json_object_field_or_empty(body, "arguments")
-  let raw_result = match tool {
-    "read" => mooncode_tool_read(book_root, arguments)
-    "read_skill" => mooncode_tool_read_skill(book_root, arguments)
-    "write" => mooncode_tool_write(book_root, arguments)
-    "edit" => mooncode_tool_edit(book_root, arguments)
-    "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
-    "revert_patch" => mooncode_tool_revert_patch(book_root, arguments)
-    "shell" => mooncode_tool_shell(book_root, arguments)
-    "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
-    "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
-    "moon_check" => mooncode_tool_moon_check(book_root, arguments)
-    "finish" =>
-      mooncode_tool_finish_for_session(session_id, book_root, arguments)
-    _ =>
-      mooncode_tool_error_result(
-        tool,
-        message="unsupported MoonCode tool `\{tool}`",
-      )
+  let scope_error = mooncode_task_scope_preflight_error(body, tool, arguments)
+  let scope_before = match scope_error {
+    Some(_) => None
+    None => mooncode_task_scope_snapshot(book_root, body, tool)
   }
+  let raw_result = match scope_error {
+    Some(message) => mooncode_tool_error_result(tool, message~)
+    None =>
+      match tool {
+        "read" => mooncode_tool_read(book_root, arguments)
+        "read_skill" => mooncode_tool_read_skill(book_root, arguments)
+        "write" => mooncode_tool_write(book_root, arguments)
+        "edit" => mooncode_tool_edit(book_root, arguments)
+        "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
+        "revert_patch" => mooncode_tool_revert_patch(book_root, arguments)
+        "shell" => mooncode_tool_shell(book_root, arguments)
+        "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
+        "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
+        "moon_check" => mooncode_tool_moon_check(book_root, arguments)
+        "finish" =>
+          mooncode_tool_finish_for_session(session_id, book_root, arguments)
+        _ =>
+          mooncode_tool_error_result(
+            tool,
+            message="unsupported MoonCode tool `\{tool}`",
+          )
+      }
+  }
+  let raw_result = mooncode_task_scope_finish(
+    book_root, body, tool, raw_result, scope_before,
+  )
   let result = mooncode_runtime_post_commit_capture(
     book_root, tool, arguments, raw_result,
   )

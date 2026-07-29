@@ -755,6 +755,16 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               tool_call,
               now=self.clock.now(),
             )
+          } else if mooncode_runtime_turn_repeats_failed_verification(
+              tool_call, tool_results,
+            ) {
+            mooncode_runtime_turn_duplicate_failed_verification_execution(
+              session_id,
+              book_root,
+              command_id,
+              tool_call,
+              now=self.clock.now(),
+            )
           } else if mooncode_runtime_turn_repeats_complete_read(
               tool_call, tool_results,
             ) {
@@ -1783,6 +1793,7 @@ fn mooncode_runtime_turn_tool_body(command : Json, tool_call : Json) -> Json {
     "book_root": mooncode_book_root(command),
     "command_id": command_id,
     "command_packet": mooncode_json_object_field_or_empty(command, "packet"),
+    "task_contract": mooncode_runtime_horizon_task_contract(command),
     "tool": mooncode_json_string(
       tool_call,
       "tool",
@@ -1972,6 +1983,95 @@ fn mooncode_runtime_turn_context_mismatch_path(execution : Json) -> String {
     mooncode_tool_first_split_piece(path, "#hunk-")
   } else {
     path
+  }
+}
+
+///|
+fn mooncode_runtime_turn_call_is_verification(tool_call : Json) -> Bool {
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  if tool == "moon_check" {
+    return true
+  }
+  if tool == "moon_cmd" {
+    let command = mooncode_json_string(arguments, "command", default="")
+    return command == "check" || command == "test" || command == "build"
+  }
+  if tool != "shell" {
+    return false
+  }
+  let kind = mooncode_json_string(arguments, "verification_kind", default="")
+  mooncode_shell_verifies_kind(
+    mooncode_json_string(arguments, "cmd", default=""),
+    kind,
+  )
+}
+
+///|
+fn mooncode_runtime_turn_call_identity(tool_call : Json) -> String {
+  mooncode_json_string(tool_call, "tool", default="") +
+  ":" +
+  mooncode_json_object_field_or_empty(tool_call, "arguments").stringify()
+}
+
+///|
+/// A failed validation remains failed until authored source state changes. The
+/// runtime therefore rejects an identical retry rather than relying on a retry
+/// count. A changed command is new evidence; a real intervening mutation is a
+/// new repository state.
+fn mooncode_runtime_turn_repeats_failed_verification(
+  tool_call : Json,
+  results : Array[Json],
+) -> Bool {
+  if !mooncode_runtime_turn_call_is_verification(tool_call) {
+    return false
+  }
+  let identity = mooncode_runtime_turn_call_identity(tool_call)
+  let mut last_failure = -1
+  for index, result in results {
+    if mooncode_runtime_turn_call_identity(result) == identity &&
+      !mooncode_json_bool(result, "accepted", default=false) {
+      last_failure = index
+    }
+  }
+  last_failure >= 0 &&
+  !mooncode_runtime_turn_has_net_mutation(results[last_failure + 1:].to_owned())
+}
+
+///|
+fn mooncode_runtime_turn_duplicate_failed_verification_execution(
+  session_id : String,
+  book_root : String,
+  command_id : String,
+  tool_call : Json,
+  now~ : @clock.Timestamp,
+) -> Json {
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
+  let result = mooncode_tool_error_result(
+    tool,
+    message="identical verification already failed with unchanged authored source state; inspect the failure, mutate the relevant source, or run a meaningfully different diagnostic",
+    metadata={ "duplicate_failed_verification": true },
+  )
+  {
+    "accepted": false,
+    "kind": "mooncode-tool-execution",
+    "protocol": mooncode_protocol_version(),
+    "owner": "moonclaw",
+    "session_id": session_id,
+    "book_root": book_root,
+    "command_id": command_id,
+    "tool": tool,
+    "arguments": arguments,
+    "result": result,
+    "event": mooncode_tool_result_event(
+      session_id,
+      book_root,
+      command_id,
+      tool,
+      result,
+      now~,
+    ),
   }
 }
 

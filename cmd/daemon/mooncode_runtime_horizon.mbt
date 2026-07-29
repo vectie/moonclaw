@@ -53,7 +53,8 @@ fn mooncode_runtime_horizon_task_contract(command : Json) -> Json {
   let payload = mooncode_json_object_field_or_empty(command, "payload")
   let nested = mooncode_json_object_field_or_empty(payload, "task_contract")
   if mooncode_json_string(nested, "objective", default="") != "" ||
-    mooncode_json_array_items(nested, "milestones").length() > 0 {
+    mooncode_json_array_items(nested, "milestones").length() > 0 ||
+    mooncode_json_array_items(nested, "scope").length() > 0 {
     nested
   } else {
     mooncode_json_object_field_or_empty(command, "task_contract")

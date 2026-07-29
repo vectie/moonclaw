@@ -1516,12 +1516,21 @@ test "mooncode accepts explicitly typed successful shell verification" {
     "tool": "shell",
     "accepted": true,
     "arguments": {
-      "cmd": "gh pr checks 4 --watch",
+      "cmd": "moon test cmd/daemon --target native",
       "verification_kind": "test",
     },
     "result": { "ok": true, "metadata": { "status": 0 } },
   }
   assert_eq(mooncode_runtime_turn_result_verification_kind(hosted), "test")
+  assert_eq(
+    mooncode_runtime_turn_result_verification_kind({
+      "tool": "shell",
+      "accepted": true,
+      "arguments": { "cmd": "git status --short", "verification_kind": "check" },
+      "result": { "ok": true, "metadata": { "status": 0 } },
+    }),
+    "",
+  )
   assert_eq(
     mooncode_runtime_turn_result_verification_kind({
       "tool": "shell",
@@ -1536,12 +1545,74 @@ test "mooncode accepts explicitly typed successful shell verification" {
       "tool": "shell",
       "accepted": false,
       "arguments": {
-        "cmd": "gh pr checks 4 --watch",
+        "cmd": "moon test cmd/daemon --target native",
         "verification_kind": "test",
       },
       "result": { "ok": false, "metadata": { "status": 1 } },
     }),
     "",
+  )
+}
+
+///|
+test "mooncode rejects unchanged repetition of an identical failed verification" {
+  let call : Json = {
+    "tool": "shell",
+    "arguments": {
+      "cmd": "moon test cmd/daemon --target native",
+      "verification_kind": "test",
+    },
+  }
+  let failed : Json = {
+    "tool": "shell",
+    "accepted": false,
+    "arguments": {
+      "cmd": "moon test cmd/daemon --target native",
+      "verification_kind": "test",
+    },
+    "result": { "ok": false, "metadata": { "status": 1 } },
+  }
+  assert_true(mooncode_runtime_turn_repeats_failed_verification(call, [failed]))
+  assert_false(
+    mooncode_runtime_turn_repeats_failed_verification(
+      {
+        "tool": "shell",
+        "arguments": {
+          "cmd": "moon test cmd/daemon/mooncode_runtime_turn_wbtest.mbt --target native",
+          "verification_kind": "test",
+        },
+      },
+      [failed],
+    ),
+  )
+  let changed : Json = {
+    "tool": "edit",
+    "accepted": true,
+    "arguments": { "path": "cmd/daemon/runtime.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": {
+        "changed": true,
+        "path": "cmd/daemon/runtime.mbt",
+        "before_fingerprint": "before",
+        "after_fingerprint": "after",
+      },
+    },
+  }
+  assert_false(
+    mooncode_runtime_turn_repeats_failed_verification(call, [failed, changed]),
+  )
+  assert_false(
+    mooncode_runtime_turn_repeats_failed_verification(
+      {
+        "tool": "shell",
+        "arguments": {
+          "cmd": "git status --short",
+          "verification_kind": "check",
+        },
+      },
+      [failed],
+    ),
   )
 }
 
