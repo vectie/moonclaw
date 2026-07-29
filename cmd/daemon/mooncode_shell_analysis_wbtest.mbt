@@ -85,6 +85,27 @@ test "mooncode derives shell verification from the command instead of its label"
 }
 
 ///|
+test "mooncode counts only the shell command that determines final status" {
+  assert_true(
+    mooncode_shell_verifies_kind(
+      "set -o pipefail; moon test cmd/daemon", "test",
+    ),
+  )
+  assert_true(
+    mooncode_shell_verifies_kind(
+      "sh -c 'git status --short && moon test cmd/daemon'", "test",
+    ),
+  )
+  for
+    masked in [
+      "moon test cmd/daemon || true", "moon test cmd/daemon; git diff --check", "set -o pipefail; moon test cmd/daemon 2>&1 | grep cmd/daemon || true; git diff --check",
+      "moon test cmd/daemon | tail -n 20", "sh -c 'moon test cmd/daemon || true'",
+    ] {
+    assert_false(mooncode_shell_verifies_kind(masked, "test"))
+  }
+}
+
+///|
 test "mooncode shell proves bounded observations without trusting unknown commands" {
   for
     command in [

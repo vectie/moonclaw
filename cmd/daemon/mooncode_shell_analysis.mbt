@@ -536,33 +536,21 @@ fn mooncode_shell_segment_verification_kind(segment : Array[String]) -> String {
 ///|
 fn mooncode_shell_verification_kind(command : String) -> String {
   let segment : Array[String] = []
-  let mut saw_check = false
-  let mut saw_build = false
-  let mut saw_test = false
+  let mut kind = ""
   for word in mooncode_shell_words(command) {
     if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      let kind = mooncode_shell_segment_verification_kind(segment)
-      saw_test = saw_test || kind == "test"
-      saw_build = saw_build || kind == "build"
-      saw_check = saw_check || kind == "check"
-      segment.clear()
+      if !segment.is_empty() {
+        kind = mooncode_shell_segment_verification_kind(segment)
+        segment.clear()
+      }
     } else {
       segment.push(word)
     }
   }
-  let kind = mooncode_shell_segment_verification_kind(segment)
-  saw_test = saw_test || kind == "test"
-  saw_build = saw_build || kind == "build"
-  saw_check = saw_check || kind == "check"
-  if saw_test {
-    "test"
-  } else if saw_build {
-    "build"
-  } else if saw_check {
-    "check"
-  } else {
-    ""
+  if !segment.is_empty() {
+    kind = mooncode_shell_segment_verification_kind(segment)
   }
+  kind
 }
 
 ///|
@@ -570,18 +558,7 @@ fn mooncode_shell_verifies_kind(command : String, expected : String) -> Bool {
   if expected != "check" && expected != "test" && expected != "build" {
     return false
   }
-  let segment : Array[String] = []
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
-      if mooncode_shell_segment_verification_kind(segment) == expected {
-        return true
-      }
-      segment.clear()
-    } else {
-      segment.push(word)
-    }
-  }
-  mooncode_shell_segment_verification_kind(segment) == expected
+  mooncode_shell_verification_kind(command) == expected
 }
 
 ///|
