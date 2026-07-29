@@ -21,7 +21,7 @@ fn route_query_string(url : @url.Url) -> String? {
     Some(fragment) =>
       match fragment.split_once("?") {
         Some((_, query)) => Some(query.to_string())
-        None => None
+        None => url.query
       }
     None => url.query
   }
@@ -524,7 +524,7 @@ extern "js" fn browser_copy_text(text : String) -> @js.Promise =
   #| async (text) => {
   #|   try {
   #|     await navigator.clipboard.writeText(text);
-  #|     return JSON.stringify({ ok: true, value: "copied", error: null });
+  #|     return JSON.stringify({ ok: true, value: "copied" });
   #|   } catch (error) {
   #|     return JSON.stringify({ ok: false, value: "", error: String(error) });
   #|   }
@@ -623,7 +623,7 @@ extern "js" fn browser_pick_local_files() -> @js.Promise =
   #|       input.click();
   #|     });
   #|     const loaded = await Promise.all(files.map((file) => readFile(file, "picker")));
-  #|     return JSON.stringify({ ok: true, files: loaded, error: null });
+  #|     return JSON.stringify({ ok: true, files: loaded });
   #|   } catch (error) {
   #|     return JSON.stringify({ ok: false, files: [], error: String(error) });
   #|   }
@@ -681,7 +681,7 @@ extern "js" fn browser_take_dropped_files() -> String =
   #|     state.installed = true;
   #|   }
   #|   const files = state.queue.splice(0, state.queue.length);
-  #|   return JSON.stringify({ ok: true, files, error: null });
+  #|   return JSON.stringify({ ok: true, files });
   #| }
 
 ///|
@@ -764,7 +764,7 @@ extern "js" fn browser_download_text(
   #|     link.click();
   #|     link.remove();
   #|     URL.revokeObjectURL(url);
-  #|     return JSON.stringify({ ok: true, value: "downloaded", error: null });
+  #|     return JSON.stringify({ ok: true, value: "downloaded" });
   #|   } catch (error) {
   #|     return JSON.stringify({ ok: false, value: "", error: String(error) });
   #|   }

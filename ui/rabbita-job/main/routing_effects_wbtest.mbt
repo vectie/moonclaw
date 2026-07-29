@@ -24,6 +24,44 @@ test "display_error hides Rabbita request implementation detail" {
 }
 
 ///|
+test "browser local upload success accepts an omitted optional error" {
+  let result = parse_browser_local_upload_batch(
+    (
+      {
+        "ok": true,
+        "files": [
+          {
+            "id": "picker:page-2.jpg:10:1",
+            "name": "page-2.jpg",
+            "media_type": "image/jpeg",
+            "content": "data:image/jpeg;base64,AA==",
+            "source": "picker",
+          },
+        ],
+      } : Json).stringify(),
+  )
+  match result {
+    Ok([upload]) => {
+      inspect(upload.name, content="page-2.jpg")
+      inspect(upload.media_type, content="image/jpeg")
+    }
+    Ok(_) => fail("expected one local upload")
+    Err(error) => fail(error)
+  }
+}
+
+///|
+test "browser copy success accepts an omitted optional error" {
+  match
+    parse_browser_copy_result(
+      ({ "ok": true, "value": "copied" } : Json).stringify(),
+    ) {
+    Ok(value) => inspect(value, content="copied")
+    Err(error) => fail(error)
+  }
+}
+
+///|
 test "parse_acp_stream_drain_payload still parses normal entries" {
   let result = parse_acp_stream_drain_payload(
     (
@@ -46,6 +84,11 @@ test "route_from_url parses cowork route and panel query" {
     "http://127.0.0.1:18123/ui#/cowork?session=session-1&panel=run",
   )
   inspect(route_from_url(url) is Cowork, content="true")
+  inspect(query_value(url, "session") == Some("session-1"), content="true")
+  inspect(
+    cowork_panel_from_query(query_value(url, "panel")) is CoworkRun,
+    content="true",
+  )
 }
 
 ///|

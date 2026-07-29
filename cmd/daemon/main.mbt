@@ -129,6 +129,24 @@ pub async fn detach(
 }
 
 ///|
+/// Prepares the foreground daemon using the served directory as its runtime
+/// home. Model credentials are intentionally not a startup prerequisite: the
+/// daemon must be available to expose health, authentication, and model routes
+/// while the runtime is still unconfigured.
+async fn prepare_foreground_daemon(
+  exec_path : String?,
+  port : Int,
+  serve : String,
+  lock? : Bool = true,
+) -> Daemon? {
+  let exec_path = match exec_path {
+    Some(exec_path) => exec_path
+    None => @os.executable()
+  }
+  Daemon::new(exec_path~, port~, serve~, home=serve, cwd=serve, lock~)
+}
+
+///|
 /// CLI entry point used by `moon run cmd/main -- daemon`. Parses flags,
 /// optionally detaches into a background process, and otherwise starts the
 /// HTTP server in the foreground.
@@ -167,19 +185,11 @@ pub async fn start(args : ArrayView[String]) -> Unit {
       [] => break
     }
   }
-  guard @model.load(home=serve, cwd=serve) is Some(_) else { @os.exit(-1) }
   if to_detach {
     let pid = detach(exec_path?, port~, serve~)
     logger.info("Detached moonclaw daemon with PID \{pid}.")
   } else {
-    let home = serve
-    let exec_path = if exec_path is Some(exec_path) {
-      exec_path
-    } else {
-      @os.executable()
-    }
-    guard Daemon::new(exec_path~, port~, serve~, home~, cwd=serve)
-      is Some(daemon) else {
+    guard prepare_foreground_daemon(exec_path, port, serve) is Some(daemon) else {
       return
     }
     daemon.serve()

@@ -305,15 +305,16 @@ fn update(dispatch : Dispatch[Msg], msg : Msg, model : Model) -> (Cmd, Model) {
           match sessions {
             [first, ..] =>
               (
-                @nav.push_url(
-                  cowork_url(
-                    selected_session_key=Some(first.session_key),
-                    panel=model.cowork_panel,
-                  ),
+                fetch_cowork_session(
+                  dispatch,
+                  model.gateway_base,
+                  first.session_key,
                 ),
                 {
                   ..next_model,
                   selected_cowork_session_key: Some(first.session_key),
+                  cowork_detail_loading: true,
+                  cowork_detail_error: None,
                 },
               )
             _ => (@rabbita.none, next_model)

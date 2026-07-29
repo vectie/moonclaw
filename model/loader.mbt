@@ -658,6 +658,31 @@ async fn resolve_codex_credentials(
 }
 
 ///|
+async fn resolve_copilot_credentials(
+  workspace_root : String,
+  global_root_for_test? : String,
+) -> @copilot.Credentials? {
+  if @copilot.credentials_exist_for_workspace_root(root=workspace_root) {
+    return Some(
+      @copilot.get_valid_credentials_for_workspace_root(root=workspace_root),
+    )
+  }
+  let global_credentials_exist = match global_root_for_test {
+    Some(root) => @copilot.credentials_exist_for_workspace_root(root~)
+    None => @copilot.credentials_exist()
+  }
+  if !global_credentials_exist {
+    return None
+  }
+  Some(
+    match global_root_for_test {
+      Some(root) => @copilot.get_valid_credentials_for_workspace_root(root~)
+      None => @copilot.get_valid_credentials()
+    },
+  )
+}
+
+///|
 async fn Loader::start_codex_login(self : Loader) -> @codex.Credentials? {
   logger.info("Codex OAuth credentials not found, starting login...")
   Some(@codex.start_oauth_flow_for_workspace_root(root=self.home.to_owned())) catch {
@@ -705,23 +730,28 @@ async fn Loader::load_codex_model(
 
 ///|
 async fn Loader::load_copilot_model(
-  _self : Loader,
+  self : Loader,
   name : String,
   allow_auto_login~ : Bool,
 ) -> Model? {
-  let credentials = @copilot.get_valid_credentials() catch {
-    _ => {
-      if !allow_auto_login {
-        return None
-      }
+  let credentials = resolve_copilot_credentials(self.home.to_owned()) catch {
+    err => {
+      logger.error("Failed to load Copilot OAuth credentials: \{err}")
+      return None
+    }
+  }
+  let credentials = match credentials {
+    Some(credentials) => credentials
+    None if allow_auto_login => {
       logger.info("Copilot credentials not found, starting login...")
-      @copilot.start_oauth_flow() catch {
+      @copilot.start_oauth_flow_for_workspace_root(root=self.home.to_owned()) catch {
         err => {
           logger.error("Copilot OAuth login failed: \{err}")
           return None
         }
       }
     }
+    None => return None
   }
   let selected_model : CopilotModels = match name {
     // OpenAI models

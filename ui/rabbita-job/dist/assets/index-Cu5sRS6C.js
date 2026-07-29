@@ -8,4 +8,4 @@
         </div>
       </header>
     </div>
-  `);b(()=>import("./_rabbita_main-entry-yxqr_BHL.js"),[]);
+  `);b(()=>import("./_rabbita_main-entry-CcrQe-NW.js"),[]);

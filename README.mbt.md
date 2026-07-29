@@ -203,6 +203,12 @@ MoonClaw is strongest when you want one system to handle:
   `tool_call` events are recorded so MoonDesk can render a live coding-agent
   transcript from MoonClaw-owned evidence. Unsupported or empty model plans fall
   back to the deterministic planner.
+  Coding-intent prompt completion is now ordered evidence rather than a trusted
+  `finish` assertion. Model-planned and explicit batches require an accepted
+  mutation followed by typed verification; prompts that request tests require
+  a successful `moon_cmd test`, and neither an earlier check nor a later read
+  can hide a subsequent edit or failed tool. The verdict and reason survive the
+  compact runtime response, terminal event, and completed/failed receipt.
   Native `apply_patch` and `revert_patch` execute bounded reviewed text
   replacements plus single-file or multi-file unified-diff patchsets inside
   the selected MoonBook root, infer target paths from diff headers when needed,

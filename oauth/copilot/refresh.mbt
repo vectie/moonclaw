@@ -1,6 +1,7 @@
 ///|
-pub async fn refresh_and_save_credentials() -> Credentials raise Error {
-  let credentials = load_credentials()
+async fn refresh_credentials(
+  credentials : Credentials,
+) -> Credentials raise Error {
   println("Refreshing Copilot token...")
   let (response, data) = @http.get(COPILOT_API_KEY_URL, headers={
     "Authorization": "Bearer \{credentials.github_token}",
@@ -33,17 +34,38 @@ pub async fn refresh_and_save_credentials() -> Credentials raise Error {
     copilot_token: token,
     copilot_token_expires_at: expires_at,
   }
-  save_credentials(updated)
+  updated
+}
+
+///|
+pub async fn refresh_and_save_credentials_for_workspace_root(
+  root~ : String,
+) -> Credentials raise Error {
+  let credentials = load_credentials_for_workspace_root(root~)
+  let updated = refresh_credentials(credentials)
+  save_credentials_for_workspace_root(updated, root~)
   println("Copilot token refreshed")
   updated
 }
 
 ///|
-pub async fn get_valid_credentials() -> Credentials raise Error {
-  let credentials = load_credentials()
+pub async fn refresh_and_save_credentials() -> Credentials raise Error {
+  refresh_and_save_credentials_for_workspace_root(root=get_home())
+}
+
+///|
+pub async fn get_valid_credentials_for_workspace_root(
+  root~ : String,
+) -> Credentials raise Error {
+  let credentials = load_credentials_for_workspace_root(root~)
   let now = @async.now() / 1000L
   if credentials.is_token_valid(now) {
     return credentials
   }
-  refresh_and_save_credentials()
+  refresh_and_save_credentials_for_workspace_root(root~)
+}
+
+///|
+pub async fn get_valid_credentials() -> Credentials raise Error {
+  get_valid_credentials_for_workspace_root(root=get_home())
 }

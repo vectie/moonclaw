@@ -259,10 +259,12 @@ pub fn runtime_tool_canonical_name(tool_name : String) -> String {
   let normalized = tool_name.replace(old="-", new="_").to_lower()
   match normalized {
     "bash" => runtime_tool_shell()
-    "fileread" | "file_read" => runtime_tool_read()
-    "fileedit" | "file_edit" | "notebookedit" | "notebook_edit" =>
+    "read" | "fileread" | "file_read" => runtime_tool_read()
+    "edit" | "fileedit" | "file_edit" | "notebookedit" | "notebook_edit" =>
       runtime_tool_edit()
-    "filewrite" | "file_write" => runtime_tool_write()
+    "write" | "filewrite" | "file_write" => runtime_tool_write()
+    "glob" => runtime_tool_glob()
+    "grep" => runtime_tool_grep()
     "todowrite" | "todo_write" => runtime_tool_todo_write()
     "webfetch" | "web_fetch" => runtime_tool_web_fetch()
     "websearch" | "web_search" => runtime_tool_web_search()
@@ -272,7 +274,7 @@ pub fn runtime_tool_canonical_name(tool_name : String) -> String {
 
 ///|
 pub fn runtime_tool_is_supported(tool_name : String) -> Bool {
-  runtime_tool_names().contains(tool_name)
+  runtime_tool_names().contains(runtime_tool_canonical_name(tool_name))
 }
 
 ///|

@@ -32,3 +32,14 @@ test "model listing puts the executable default first and removes duplicates" {
   assert_eq(mooncode_json_string(models[1], "name", default=""), "gpt-5.6-sol")
   assert_false(mooncode_json_bool(models[1], "default", default=true))
 }
+
+///|
+test "model listing remains available without a configured model" {
+  let listing = mooncode_model_listing_json(None, [])
+  assert_eq(
+    mooncode_json_string(listing, "default_model", default="missing"),
+    "",
+  )
+  assert_false(mooncode_json_bool(listing, "ready", default=true))
+  assert_eq(mooncode_json_array_items(listing, "models").length(), 0)
+}

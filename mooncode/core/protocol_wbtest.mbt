@@ -1176,6 +1176,12 @@ test "mooncode core owns runtime tool contract" {
   assert_true(aliases.contains("FileRead->read"))
   assert_true(aliases.contains("TodoWrite->todo_write"))
   assert_true(aliases.contains("WebSearch->web_search"))
+  for row in runtime_tool_alias_rows() {
+    let alias_name = runtime_tool_test_string(row, "alias")
+    let canonical = runtime_tool_test_string(row, "canonical")
+    assert_eq(runtime_tool_canonical_name(alias_name), canonical)
+    assert_true(runtime_tool_is_supported(alias_name))
+  }
   let mappings = runtime_tool_moonclaw_mapping_rows().map(row => {
     runtime_tool_test_string(row, "source") +
     "->" +
@@ -1184,6 +1190,12 @@ test "mooncode core owns runtime tool contract" {
   assert_true(mappings.contains("execute_command->shell"))
   assert_true(mappings.contains("replace_in_file->edit"))
   assert_true(mappings.contains("WebSearch->web_search"))
+  for row in runtime_tool_moonclaw_mapping_rows() {
+    assert_eq(
+      runtime_tool_from_moonclaw_tool(runtime_tool_test_string(row, "source")),
+      runtime_tool_test_string(row, "mooncode_tool"),
+    )
+  }
   let call_contract = runtime_tool_call_contract_json().stringify()
   assert_true(
     call_contract.contains("\"kind\":\"mooncode-tool-call-contract\""),

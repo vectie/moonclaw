@@ -50,6 +50,19 @@ fn setup_agent(
 }
 
 ///|
+/// Gives an agent bounded, read-only workspace discovery. This is intended for
+/// retained Q&A and other Cowork sessions that must inspect durable artifacts
+/// without acquiring shell or workspace-mutation authority.
+pub fn setup_read_only_agent(agent : @agent.Agent, cwd~ : String) -> Unit {
+  let file_manager = @file.manager(cwd~)
+  agent.add_tools([
+    @list_files.new(file_manager).to_agent_tool(),
+    @read_file.new(file_manager).to_agent_tool(),
+    @search_files.new(cwd).to_agent_tool(),
+  ])
+}
+
+///|
 fn default_log_path() -> String {
   @moonsuite.product_artifact_for_workspace_root(
     @os.home() catch {
