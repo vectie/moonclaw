@@ -40,27 +40,22 @@ async fn mooncode_stream_scan_locked(
   let mut event_count = 0
   let mut eligible_event_count = 0
   let mut latest_event_sequence = MoonCodeJournalSequence::zero()
-  while true {
-    match file.read_until("\n") {
-      Some(line) => {
-        let (record, next) = mooncode_journal_stream_record(line, cursor)
-        if mooncode_json_string(record, "session_id", default="") !=
-          expected_session_id {
-          raise InvalidJournal("journal record belongs to a different session")
-        }
-        cursor = next
-        if mooncode_json_string(record, "record_kind", default="") ==
-          mooncode_journal_event() {
-          event_count = event_count + 1
-          latest_event_sequence = next
-          if next.compare(since) > 0 {
-            eligible_event_count = eligible_event_count + 1
-          }
-        }
-      }
-      None => break
+  mooncode_journal_read_lines(file, async fn(line) {
+    let (record, next) = mooncode_journal_stream_record(line, cursor)
+    if mooncode_json_string(record, "session_id", default="") !=
+      expected_session_id {
+      raise InvalidJournal("journal record belongs to a different session")
     }
-  }
+    cursor = next
+    if mooncode_json_string(record, "record_kind", default="") ==
+      mooncode_journal_event() {
+      event_count = event_count + 1
+      latest_event_sequence = next
+      if next.compare(since) > 0 {
+        eligible_event_count = eligible_event_count + 1
+      }
+    }
+  })
   {
     event_count,
     eligible_event_count,

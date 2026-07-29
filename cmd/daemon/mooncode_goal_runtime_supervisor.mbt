@@ -267,25 +267,20 @@ async fn mooncode_goal_runtime_spool_sources_locked(
   defer file.unlock()
   mooncode_repair_journal_tail(file)
   let mut cursor = MoonCodeJournalSequence::zero()
-  while true {
-    match file.read_until("\n") {
-      Some(line) => {
-        let (record, next) = mooncode_journal_stream_record(line, cursor)
-        cursor = next
-        if mooncode_json_string(record, "session_id", default="") != session_id {
-          raise InvalidJournal("journal record belongs to a different session")
-        }
-        if mooncode_json_string(record, "record_kind", default="") ==
-          mooncode_journal_event() {
-          writer.write(
-            mooncode_json_object_field_or_empty(record, "payload").stringify() +
-            "\n",
-          )
-        }
-      }
-      None => break
+  mooncode_journal_read_lines(file, async fn(line) {
+    let (record, next) = mooncode_journal_stream_record(line, cursor)
+    cursor = next
+    if mooncode_json_string(record, "session_id", default="") != session_id {
+      raise InvalidJournal("journal record belongs to a different session")
     }
-  }
+    if mooncode_json_string(record, "record_kind", default="") ==
+      mooncode_journal_event() {
+      writer.write(
+        mooncode_json_object_field_or_empty(record, "payload").stringify() +
+        "\n",
+      )
+    }
+  })
 }
 
 ///|
@@ -325,59 +320,52 @@ async fn mooncode_goal_runtime_reconcile_supervisor_events(
     let reader = @fs.open(spool_path, mode=ReadOnly)
     defer reader.close()
     let mut active_command = ""
-    while true {
-      match reader.read_until("\n") {
-        Some(line) => {
-          let source = @json.parse(line) catch {
-            _ =>
-              mooncode_goal_runtime_store_corrupt(
-                "reconciliation source spool is corrupt",
-              )
-          }
-          let source_kind = mooncode_json_string(source, "kind", default="")
-          let source_command = mooncode_json_string(
-            source,
-            "command_id",
-            default="",
+    mooncode_journal_read_lines(reader, async fn(line) {
+      let source = @json.parse(line) catch {
+        _ =>
+          mooncode_goal_runtime_store_corrupt(
+            "reconciliation source spool is corrupt",
           )
-          if source_kind == "runtime.turn_started" &&
-            mooncode_goal_runtime_canonical(source_command) {
-            if active_command != "" && active_command != source_command {
-              mooncode_goal_runtime_store_corrupt(
-                "overlapping supervised turns",
-              )
-            }
-            active_command = source_command
-          }
-          let requires_active_turn = mooncode_json_string(
-              source,
-              "tool",
-              default="",
-            ) !=
-            "" ||
-            source_kind == mooncode_runtime_continuation_kind()
-          if !requires_active_turn || active_command == source_command {
-            for event in mooncode_goal_runtime_events_from_source(source) {
-              match
-                mooncode_goal_runtime_append_supervisor_event_locked(
-                  book_root, session_id, event, recorded_at,
-                ) {
-                NoRuntimeGoal | Terminal => return
-                Appended | Idempotent => ()
-              }
-            }
-          }
-          if (
-              source_kind == mooncode_event_runtime_turn_finished() ||
-              source_kind == "runtime.turn_invalid"
-            ) &&
-            active_command == source_command {
-            active_command = ""
+      }
+      let source_kind = mooncode_json_string(source, "kind", default="")
+      let source_command = mooncode_json_string(
+        source,
+        "command_id",
+        default="",
+      )
+      if source_kind == "runtime.turn_started" &&
+        mooncode_goal_runtime_canonical(source_command) {
+        if active_command != "" && active_command != source_command {
+          mooncode_goal_runtime_store_corrupt("overlapping supervised turns")
+        }
+        active_command = source_command
+      }
+      let requires_active_turn = mooncode_json_string(
+          source,
+          "tool",
+          default="",
+        ) !=
+        "" ||
+        source_kind == mooncode_runtime_continuation_kind()
+      if !requires_active_turn || active_command == source_command {
+        for event in mooncode_goal_runtime_events_from_source(source) {
+          match
+            mooncode_goal_runtime_append_supervisor_event_locked(
+              book_root, session_id, event, recorded_at,
+            ) {
+            NoRuntimeGoal | Terminal => return
+            Appended | Idempotent => ()
           }
         }
-        None => break
       }
-    }
+      if (
+          source_kind == mooncode_event_runtime_turn_finished() ||
+          source_kind == "runtime.turn_invalid"
+        ) &&
+        active_command == source_command {
+        active_command = ""
+      }
+    })
   })
 }
 

@@ -24,40 +24,35 @@ async fn mooncode_stream_spool_scan_locked(
   let mut event_count = 0
   let mut eligible_event_count = 0
   let mut latest_event_sequence = MoonCodeJournalSequence::zero()
-  while true {
-    match file.read_until("\n") {
-      Some(line) => {
-        let (record, next) = mooncode_journal_stream_record(line, cursor)
-        if mooncode_json_string(record, "session_id", default="") !=
-          expected_session_id {
-          raise InvalidJournal("journal record belongs to a different session")
-        }
-        cursor = next
-        if mooncode_json_string(record, "record_kind", default="") ==
-          mooncode_journal_event() {
-          event_count += 1
-          latest_event_sequence = next
-          if next.compare(since) > 0 {
-            eligible_event_count += 1
-            let event = mooncode_json_object_with_field(
-              mooncode_json_object_field_or_empty(record, "payload"),
-              "journal_sequence",
-              next.text().to_json(),
-            )
-            let stream_record = mooncode_stream_event_record(
-              expected_session_id,
-              book_root,
-              event,
-              sequence=next,
-              since~,
-            )
-            writer.write(mooncode_stream_record_frame(format, stream_record))
-          }
-        }
-      }
-      None => break
+  mooncode_journal_read_lines(file, async fn(line) {
+    let (record, next) = mooncode_journal_stream_record(line, cursor)
+    if mooncode_json_string(record, "session_id", default="") !=
+      expected_session_id {
+      raise InvalidJournal("journal record belongs to a different session")
     }
-  }
+    cursor = next
+    if mooncode_json_string(record, "record_kind", default="") ==
+      mooncode_journal_event() {
+      event_count += 1
+      latest_event_sequence = next
+      if next.compare(since) > 0 {
+        eligible_event_count += 1
+        let event = mooncode_json_object_with_field(
+          mooncode_json_object_field_or_empty(record, "payload"),
+          "journal_sequence",
+          next.text().to_json(),
+        )
+        let stream_record = mooncode_stream_event_record(
+          expected_session_id,
+          book_root,
+          event,
+          sequence=next,
+          since~,
+        )
+        writer.write(mooncode_stream_record_frame(format, stream_record))
+      }
+    }
+  })
   {
     event_count,
     eligible_event_count,

@@ -230,80 +230,73 @@ async fn mooncode_goal_authority_project_file(
     let mut runtime = mooncode_goal_runtime_empty_projection()
     let mut legacy : @mooncode_core.Goal? = None
     let mut genesis_record : Json? = None
-    while true {
-      match file.read_until("\n") {
-        Some(line) => {
-          let (record, cursor) = mooncode_journal_stream_record(
-            line,
-            runtime.cursor,
+    mooncode_journal_read_lines(file, async fn(line) {
+      let (record, cursor) = mooncode_journal_stream_record(
+        line,
+        runtime.cursor,
+      )
+      if mooncode_json_string(record, "session_id", default="") !=
+        expected_session_id {
+        raise InvalidJournal("journal record belongs to a different session")
+      }
+      runtime = { ..runtime, cursor, }
+      match mooncode_replay_goal_records([record], expected_session_id) {
+        Some(goal) => {
+          if legacy is Some(_) {
+            raise InvalidGoalGenesis("duplicate goal genesis")
+          }
+          legacy = Some(goal)
+        }
+        None => ()
+      }
+      match
+        mooncode_goal_runtime_carrier_from_stream_record(
+          record, genesis_record, expected_session_id,
+        ) {
+        None => ()
+        Some(entry) => {
+          let carrier = entry.carrier
+          let identity = mooncode_goal_identity_check_and_add(
+            ledger_root,
+            "runtime-event",
+            carrier.id,
+            carrier.semantic_digest,
           )
-          if mooncode_json_string(record, "session_id", default="") !=
-            expected_session_id {
-            raise InvalidJournal(
-              "journal record belongs to a different session",
-            )
-          }
-          runtime = { ..runtime, cursor, }
-          match mooncode_replay_goal_records([record], expected_session_id) {
-            Some(goal) => {
-              if legacy is Some(_) {
-                raise InvalidGoalGenesis("duplicate goal genesis")
+          match target_runtime_id {
+            Some(target) if target == carrier.id =>
+              runtime = {
+                ..runtime,
+                target_digest: Some(carrier.semantic_digest),
               }
-              legacy = Some(goal)
+            _ => ()
+          }
+          if identity is IdentitySeen {
+            return
+          }
+          match carrier.record {
+            Genesis(_) => {
+              if runtime.genesis is Some(_) {
+                mooncode_goal_runtime_store_corrupt("second genesis")
+              }
+              runtime = { ..runtime, genesis: Some(entry) }
+              genesis_record = Some(record)
             }
-            None => ()
-          }
-          match
-            mooncode_goal_runtime_carrier_from_stream_record(
-              record, genesis_record, expected_session_id,
-            ) {
-            None => ()
-            Some(entry) => {
-              let carrier = entry.carrier
-              let identity = mooncode_goal_identity_check_and_add(
-                ledger_root,
-                "runtime-event",
-                carrier.id,
-                carrier.semantic_digest,
+            Event(value) => {
+              guard runtime.genesis is Some(first) &&
+                first.carrier.record is Genesis(genesis) else {
+                mooncode_goal_runtime_store_corrupt("event before genesis")
+              }
+              if value.goal_id != genesis.goal_id {
+                mooncode_goal_runtime_store_corrupt("event goal mismatch")
+              }
+              runtime = mooncode_goal_runtime_apply_projected_event(
+                runtime, genesis, value, ledger_root,
               )
-              match target_runtime_id {
-                Some(target) if target == carrier.id =>
-                  runtime = {
-                    ..runtime,
-                    target_digest: Some(carrier.semantic_digest),
-                  }
-                _ => ()
-              }
-              if identity is IdentitySeen {
-                continue
-              }
-              match carrier.record {
-                Genesis(_) => {
-                  if runtime.genesis is Some(_) {
-                    mooncode_goal_runtime_store_corrupt("second genesis")
-                  }
-                  runtime = { ..runtime, genesis: Some(entry) }
-                  genesis_record = Some(record)
-                }
-                Event(value) => {
-                  guard runtime.genesis is Some(first) &&
-                    first.carrier.record is Genesis(genesis) else {
-                    mooncode_goal_runtime_store_corrupt("event before genesis")
-                  }
-                  if value.goal_id != genesis.goal_id {
-                    mooncode_goal_runtime_store_corrupt("event goal mismatch")
-                  }
-                  runtime = mooncode_goal_runtime_apply_projected_event(
-                    runtime, genesis, value, ledger_root,
-                  )
-                }
-              }
             }
           }
         }
-        None => break
       }
-    }
+    })
     MoonCodeGoalAuthorityProjection::{ legacy, runtime }
   })
 }

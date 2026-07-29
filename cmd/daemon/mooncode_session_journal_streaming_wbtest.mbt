@@ -695,3 +695,72 @@ test "production append finalizer advances beyond signed 64 bit" {
     "client-inherited",
   )
 }
+
+///|
+async test "production journal paths handle a giant canonical record" {
+  @fsx.with_temporary_directory("moonclaw-journal-giant-XXXXXX", async fn(
+    directory,
+  ) {
+    let session_id = "session"
+    let book_root = directory.to_string()
+    let giant_text = "x".repeat(60 * 1024 * 1024)
+    let first_payload : Json = {
+      "id": "giant-record",
+      "recorded_at": "now",
+      "session_id": session_id,
+      "client_turn_id": "giant-client",
+      "giant": giant_text,
+    }
+    assert_true(
+      mooncode_append_session_journal_once(
+        book_root, session_id, "event", first_payload,
+      ),
+    )
+    assert_false(
+      mooncode_append_session_journal_once(
+        book_root, session_id, "event", first_payload,
+      ),
+    )
+    let second_payload : Json = {
+      "id": "successor-record",
+      "recorded_at": "later",
+      "session_id": session_id,
+    }
+    assert_true(
+      mooncode_append_session_journal_once(
+        book_root, session_id, "event", second_payload,
+      ),
+    )
+    let records = mooncode_read_session_journal(book_root, session_id)
+    assert_eq(records.length(), 2)
+    assert_eq(
+      mooncode_json_string(records[0], "session_id", default=""),
+      session_id,
+    )
+    assert_eq(
+      mooncode_json_string(records[0], "record_id", default=""),
+      "event:giant-record",
+    )
+    assert_eq(
+      mooncode_json_string(records[0], "client_turn_id", default=""),
+      "giant-client",
+    )
+    assert_eq(
+      mooncode_json_string(
+        mooncode_json_object_field_or_empty(records[0], "payload"),
+        "giant",
+        default="",
+      ).length(),
+      giant_text.length(),
+    )
+    assert_eq(mooncode_journal_sequence_checked(records[1], "test").text(), "2")
+    let path = mooncode_session_journal_path(book_root, session_id)
+    let file = @fs.open(path, mode=ReadOnly)
+    defer file.close()
+    let cursor = mooncode_journal_stream_file(
+      file,
+      MoonCodeJournalSequence::zero(),
+    )
+    assert_eq(cursor.text(), "2")
+  })
+}

@@ -371,28 +371,23 @@ async fn mooncode_parse_journal_file(
 ) -> Array[Json] {
   let records : Array[Json] = []
   let mut cursor = MoonCodeJournalSequence::zero()
-  while true {
-    match file.read_until("\n") {
-      Some(line) => {
-        let (record, next) = mooncode_journal_stream_record(line, cursor) catch {
-          InvalidJournal(message) =>
-            raise InvalidJournal(
-              "Invalid journal `\{path}` line \{records.length() + 1}: \{message}",
-            )
-          error => raise error
-        }
-        if mooncode_json_string(record, "session_id", default="") !=
-          expected_session_id {
-          raise InvalidJournal(
-            "Invalid journal `\{path}` line \{records.length() + 1}: record belongs to a different session",
-          )
-        }
-        records.push(record)
-        cursor = next
-      }
-      None => break
+  mooncode_journal_read_lines(file, async fn(line) {
+    let (record, next) = mooncode_journal_stream_record(line, cursor) catch {
+      InvalidJournal(message) =>
+        raise InvalidJournal(
+          "Invalid journal `\{path}` line \{records.length() + 1}: \{message}",
+        )
+      error => raise error
     }
-  }
+    if mooncode_json_string(record, "session_id", default="") !=
+      expected_session_id {
+      raise InvalidJournal(
+        "Invalid journal `\{path}` line \{records.length() + 1}: record belongs to a different session",
+      )
+    }
+    records.push(record)
+    cursor = next
+  })
   records
 }
 
