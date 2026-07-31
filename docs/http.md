@@ -7,6 +7,22 @@ Server‑Sent Events (SSE). The canonical usage lives in
 All requests are prefixed with a base URL stored in the Redux `urlSlice`.
 Below we describe just the paths and payload shapes as seen from the UI.
 
+## Gateway installed-capability endpoints
+
+The long-running gateway also exposes the generic installed-pack boundary:
+
+- `POST /v1/capability/submit`
+- `POST /v1/capability/reconcile`
+- `POST /v1/capability/status`
+
+Each request and successful response uses the bare
+`moonclaw.capability-invocation.v1` and
+`moonclaw.capability-invocation-receipt.v1` shapes respectively. These are
+host-to-host execution routes, not general browser APIs. See
+[Generic installed-pack capability invocation](CAPABILITY_INVOCATION.md) for
+host policy, exact route, authentication, same-origin, authority, provider and
+restart behavior.
+
 ## `GET /task/:id`
 
 Request is not used.

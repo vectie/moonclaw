@@ -540,8 +540,135 @@ enum Msg {
 }
 
 ///|
+fn canonical_gateway_base(candidate : String) -> String? {
+  let value = candidate.trim(chars=" \t\r\n/").to_owned()
+  if value.is_empty() {
+    return None
+  }
+  let parsed = @url.parse(value) catch { _ => return None }
+  match parsed.protocol {
+    @url.Http | @url.Https => ()
+    _ => return None
+  }
+  if parsed.host.trim().is_empty() ||
+    parsed.query is Some(_) ||
+    parsed.fragment is Some(_) {
+    return None
+  }
+  let authority = match value.strip_prefix("http://") {
+    Some(rest) => rest
+    None =>
+      match value.strip_prefix("https://") {
+        Some(rest) => rest
+        None => return None
+      }
+  }
+  let authority = match authority.split_once("/") {
+    Some((head, _)) => head
+    None => authority
+  }
+  if authority.contains("@") {
+    return None
+  }
+  Some(value)
+}
+
+///|
+fn loopback_gateway_host(host : String) -> Bool {
+  host == "127.0.0.1" || host == "localhost" || host == "[::1]" || host == "::1"
+}
+
+///|
+fn explicit_gateway_base_allowed(candidate : String, current : String) -> Bool {
+  let candidate_url = @url.parse(candidate) catch { _ => return false }
+  let current_url = @url.parse(current) catch { _ => return false }
+  let host_allowed = candidate_url.host == current_url.host ||
+    (
+      loopback_gateway_host(candidate_url.host) &&
+      loopback_gateway_host(current_url.host)
+    )
+  let protocol_allowed = match current_url.protocol {
+    @url.Https => candidate_url.protocol == @url.Https
+    @url.Http =>
+      candidate_url.protocol == @url.Http ||
+      candidate_url.protocol == @url.Https
+    _ => false
+  }
+  host_allowed && protocol_allowed
+}
+
+///|
+fn resolve_gateway_base(
+  host_supplied : String,
+  explicit_override : String,
+  current_origin : String,
+) -> String {
+  match canonical_gateway_base(host_supplied) {
+    Some(value) => return value
+    None => ()
+  }
+  let current = canonical_gateway_base(current_origin)
+  match canonical_gateway_base(explicit_override) {
+    Some(value) =>
+      match current {
+        Some(current_value) =>
+          if explicit_gateway_base_allowed(value, current_value) {
+            return value
+          }
+        None => ()
+      }
+    None => ()
+  }
+  current.unwrap_or("http://127.0.0.1:18123")
+}
+
+///|
+#cfg(target="js")
+extern "js" fn browser_host_gateway_base() -> String =
+  #| () => {
+  #|   const runtime = globalThis.__MOONCLAW_RUNTIME_CONFIG__;
+  #|   const meta =
+  #|     typeof document === "undefined"
+  #|       ? null
+  #|       : document.querySelector('meta[name="moonclaw-gateway-base"]');
+  #|   const candidates = [
+  #|     globalThis.__MOONCLAW_GATEWAY_BASE__,
+  #|     globalThis.__MOONCLAW_RUNTIME_BASE__,
+  #|     runtime?.gatewayBase,
+  #|     runtime?.gateway_base,
+  #|     meta?.content,
+  #|   ];
+  #|   const selected = candidates.find(
+  #|     (candidate) => typeof candidate === "string" && candidate.trim() !== "",
+  #|   );
+  #|   return selected ?? "";
+  #| }
+
+///|
+#cfg(target="js")
+extern "js" fn browser_explicit_gateway_base() -> String =
+  #| () => {
+  #|   const search = globalThis.location?.search ?? "";
+  #|   const params = new URLSearchParams(search);
+  #|   return (
+  #|     params.get("moonclaw_gateway_base") ??
+  #|     params.get("gateway_base") ??
+  #|     ""
+  #|   );
+  #| }
+
+///|
+#cfg(target="js")
+extern "js" fn browser_current_origin() -> String =
+  #| () => globalThis.location?.origin ?? ""
+
+///|
 fn gateway_base_url() -> String {
-  "http://127.0.0.1:18123"
+  resolve_gateway_base(
+    browser_host_gateway_base(),
+    browser_explicit_gateway_base(),
+    browser_current_origin(),
+  )
 }
 
 ///|

@@ -51,7 +51,7 @@
   "claw.gateway_unavailable": "网关不可用",
   "claw.switch_intro": "在同一操作界面中切换实时 AI 协作、持久任务检查和基于 ACP 的远程执行。",
   "claw.local_remote_view": "本地与远程操作视图",
-  "claw.gateway_error": "无法连接 MoonClaw 网关。请在 http://localhost:18123 启动网关后重新加载。",
+  "claw.gateway_error": "无法连接已配置的 MoonClaw 网关。请检查 Gateway 目标后重新加载。",
   "claw.live_disconnected": "实时更新已断开。请检查 MoonClaw 网关是否正在运行。",
   "claw.select_both": "请选择或加载本地运行和 ACP 状态，以检查本地与远程活动之间的关联。",
   "claw.acp_runs": "ACP 运行",

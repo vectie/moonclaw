@@ -47,6 +47,12 @@ pub async fn Gateway::handle_request(
       (Get, ["", "v1", "artifacts", _artifact_id]) =>
         self.handle_get_artifact(r, w)
       (Get, ["", "v1", "workspace"]) => self.handle_get_workspace(r, w)
+      (Post, ["", "v1", "capability", "submit"]) =>
+        self.handle_capability_submit(r, w)
+      (Post, ["", "v1", "capability", "reconcile"]) =>
+        self.handle_capability_reconcile(r, w)
+      (Post, ["", "v1", "capability", "status"]) =>
+        self.handle_capability_status(r, w)
       (Get, ["", "v1", "cowork", "sessions"]) =>
         self.handle_list_cowork_sessions(r, w)
       (Post, ["", "v1", "cowork", "sessions"]) =>

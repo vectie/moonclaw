@@ -96,6 +96,7 @@ pub fn Middleware::handler(Self) -> Handler
 pub struct RequestReader {
   body : &@io.Reader
   method_ : Method
+  headers : Map[String, String]
   path : StringView
   vars : Map[StringView, StringView]
 }

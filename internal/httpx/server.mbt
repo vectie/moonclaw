@@ -59,7 +59,13 @@ pub async fn Server::serve(self : Server, handler : Handler) -> Unit {
   self.server.run_forever(
     (rh, rb, w) => {
       let method_ = Method::from_async_http(rh.meth)
-      let r : RequestReader = { body: rb, method_, path: rh.path, vars: {} }
+      let r : RequestReader = {
+        body: rb,
+        method_,
+        headers: rh.headers,
+        path: rh.path,
+        vars: {},
+      }
       let w : ResponseWriter = ResponseWriter::new(w)
       (handler.0)(r, w) catch {
         JsonError(_) as error => error.write(w)

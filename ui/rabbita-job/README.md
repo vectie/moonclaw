@@ -12,7 +12,19 @@ npm i
 npm run dev
 ```
 
-By default the app talks to the gateway at `http://localhost:18123`.
+By default the app talks to the origin that served the published UI. This
+keeps an isolated gateway such as `http://127.0.0.1:4317/ui` bound to its
+actual runtime instead of assuming port `18123`.
+
+A trusted host may supply an absolute HTTP(S) base before the Rabbita bundle
+loads through `globalThis.__MOONCLAW_GATEWAY_BASE__`,
+`globalThis.__MOONCLAW_RUNTIME_BASE__`,
+`globalThis.__MOONCLAW_RUNTIME_CONFIG__.gatewayBase`, or a
+`<meta name="moonclaw-gateway-base" content="...">` element. For local
+development, `?moonclaw_gateway_base=http://127.0.0.1:18123` (or
+`?gateway_base=...`) is accepted only for the same browser host or between
+loopback aliases. Overrides reject non-HTTP schemes, embedded credentials,
+query strings, fragments, and HTTPS-to-HTTP downgrade.
 
 ## Serve Through Gateway
 

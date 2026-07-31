@@ -607,6 +607,40 @@ async fn existing_capability_receipt(
 }
 
 ///|
+/// Read one durable capability receipt without submitting, retrying, or
+/// reconciling the adapter. The invocation is still verified against the
+/// installed pack and catalog before the receipt identity is accepted.
+pub async fn inspect_installed_capability_v1(
+  workspace~ : String,
+  catalog_json~ : Json,
+  invocation~ : CapabilityInvocationV1,
+) -> CapabilityInvocationOutcomeV1? {
+  if !capability_timestamp(invocation.evaluated_at) ||
+    !capability_timestamp(invocation.recorded_at) {
+    fail("capability inspection timestamps must be canonical UTC")
+  }
+  let installed = load_installed_capability_v1(
+    workspace~,
+    catalog_json~,
+    operation_ref=invocation.request.operation,
+    evaluated_at=invocation.evaluated_at,
+  )
+  let receipt_ref = capability_receipt_ref(invocation.request.idempotency_key)
+  let receipt_path = @pathx.join(workspace, receipt_ref)
+  if !@fsx.exists_as_file(receipt_path) {
+    return None
+  }
+  let lock_file = @fs.open(receipt_path + ".lock", mode=WriteOnly, create=0o600)
+  defer lock_file.close()
+  @fsx.lock_file(lock_file)
+  guard existing_capability_receipt(receipt_path) is Some(receipt) else {
+    return None
+  }
+  require_same_capability_attempt(receipt, installed, invocation)
+  Some({ receipt_ref, receipt, replayed: true })
+}
+
+///|
 fn require_same_capability_attempt(
   receipt : CapabilityInvocationReceiptV1,
   installed : InstalledPackCapabilityV1,

@@ -53,6 +53,12 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-07-31`: exposed the exact installed-pack seam at loopback-only
+  `/v1/capability/submit`, `/reconcile`, and `/status`. The gateway reads
+  authority and provider routes from host-owned policy, returns canonical
+  receipts directly, and preserves the existing restart-safe idempotency
+  record. The HTTP layer is an adapter to the existing runtime, not another
+  runtime.
 - `2026-07-31`: added generic `moonflow.adapter.v2` installed-pack capability
   invocation. Canonical product/tool and schema identities are rechecked
   against the active receipt-verified pack, health evidence bytes are verified,

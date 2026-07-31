@@ -186,6 +186,12 @@ async fn install_capability_fixture(
 async test "capability invocation is exact durable and idempotent" {
   @fsx.with_temporary_directory("packtool-capability-XXXXXX", root => {
     let (workspace, catalog, invocation) = install_capability_fixture(root)
+    let absent = inspect_installed_capability_v1(
+      workspace~,
+      catalog_json=catalog,
+      invocation~,
+    )
+    assert_true(absent is None)
     let calls = Ref::Ref(0)
     let executor = PackToolExecutor::new(
       run=request => {
@@ -228,6 +234,16 @@ async test "capability invocation is exact durable and idempotent" {
     assert_false(first.replayed)
     assert_eq(calls.val, 1)
     assert_true(@fsx.exists_as_file(@pathx.join(workspace, first.receipt_ref)))
+    let inspected = inspect_installed_capability_v1(
+      workspace~,
+      catalog_json=catalog,
+      invocation~,
+    )
+    guard inspected is Some(inspected) else {
+      fail("expected the durable capability receipt to be inspectable")
+    }
+    assert_true(inspected.replayed)
+    assert_eq(inspected.receipt.result_id, first.receipt.result_id)
 
     let repeated = execute_installed_capability_v1(
       workspace~,

@@ -16,6 +16,11 @@
       "id": "agent-goal-execution-receipt",
       "version": "1.0.0",
       "path": "schemas/agent-goal-execution-receipt.schema.json"
+    },
+    {
+      "id": "capability-http-policy",
+      "version": "1.0.0",
+      "path": "schemas/capability-http-policy.schema.json"
     }
   ],
   "tools": [

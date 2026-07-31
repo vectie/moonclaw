@@ -25,6 +25,8 @@ pub fn decode_workflow_declaration(String) -> PackWorkflowDeclaration raise
 
 pub async fn execute_installed_capability_v1(workspace~ : String, catalog_json~ : Json, invocation~ : CapabilityInvocationV1, executor~ : PackToolExecutor, policy~ : CapabilityInvocationPolicyV1) -> CapabilityInvocationOutcomeV1
 
+pub async fn inspect_installed_capability_v1(workspace~ : String, catalog_json~ : Json, invocation~ : CapabilityInvocationV1) -> CapabilityInvocationOutcomeV1?
+
 pub fn installed_pack_command_executor(InstalledPackWorkflow, max_timeout_ms~ : Int) -> PackToolExecutor
 
 pub async fn intake_installed_workflow(workspace~ : String, pack_id~ : String, workflow_id~ : String, run_id~ : String, now_ms~ : Int, trigger? : @job.TriggerSource, schedule_id? : String) -> InstalledPackWorkflowIntake

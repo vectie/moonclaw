@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moonclaw.local/contracts/capability-http-policy.v1.schema.json",
+  "title": "MoonClaw capability HTTP host policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_id",
+    "catalog_ref",
+    "granted_authorities",
+    "reviewed_operation_refs",
+    "max_attempts",
+    "timeout_ms",
+    "remaining_budget_micros",
+    "approved_provider_route_refs",
+    "routes"
+  ],
+  "properties": {
+    "contract_id": {
+      "const": "moonclaw.capability-http-policy.v1"
+    },
+    "catalog_ref": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[\\\\?#]).+$"
+    },
+    "granted_authorities": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "observe",
+          "cognitive-maintenance",
+          "sandbox-execution",
+          "workspace-mutation",
+          "external-effect",
+          "physical-effect"
+        ]
+      }
+    },
+    "reviewed_operation_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "max_attempts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timeout_ms": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "remaining_budget_micros": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "approved_provider_route_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/route"
+      }
+    }
+  },
+  "$defs": {
+    "loopbackUrl": {
+      "type": "string",
+      "pattern": "^http://(?:127\\.0\\.0\\.1|localhost):[1-9][0-9]{0,4}(?:/[^?#\\\\]*)?$"
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route_id",
+        "operation_ref",
+        "adapter_id",
+        "transport",
+        "estimated_cost_micros"
+      ],
+      "properties": {
+        "route_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operation_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transport": {
+          "enum": [
+            "moonclaw.pack-tool-http.v1",
+            "moonclaw.agent-goal-http.v1"
+          ]
+        },
+        "submit_url": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/loopbackUrl"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reconcile_url": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/loopbackUrl"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "base_url": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/loopbackUrl"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "estimated_cost_micros": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "provider_route_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

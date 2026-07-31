@@ -1,0 +1,25 @@
+{
+  "contract_id": "moonclaw.capability-http-policy.v1",
+  "catalog_ref": "flow/capability-catalog.json",
+  "granted_authorities": [
+    "sandbox-execution"
+  ],
+  "reviewed_operation_refs": [],
+  "max_attempts": 2,
+  "timeout_ms": 30000,
+  "remaining_budget_micros": 5000000,
+  "approved_provider_route_refs": [],
+  "routes": [
+    {
+      "route_id": "pack-local-analysis-preparation",
+      "operation_ref": "example-product/research.prepare-analysis@1.0.0",
+      "adapter_id": "example-product-pack-local-v1",
+      "transport": "moonclaw.pack-tool-http.v1",
+      "submit_url": "http://127.0.0.1:4313/v1/pack-tool/submit",
+      "reconcile_url": "http://127.0.0.1:4313/v1/pack-tool/reconcile",
+      "base_url": null,
+      "estimated_cost_micros": 0,
+      "provider_route_ref": null
+    }
+  ]
+}

@@ -51,7 +51,7 @@
   "claw.gateway_unavailable": "Gateway unavailable",
   "claw.switch_intro": "Switch between live AI coworking, durable job inspection, and ACP-backed remote execution from one operator surface.",
   "claw.local_remote_view": "Local + remote operator view",
-  "claw.gateway_error": "Unable to reach the MoonClaw gateway. Start it at http://localhost:18123 and reload.",
+  "claw.gateway_error": "Unable to reach the configured MoonClaw gateway. Verify the Gateway target and reload.",
   "claw.live_disconnected": "Live updates disconnected. Check that the MoonClaw gateway is running.",
   "claw.select_both": "Select or load both a local run and ACP state to inspect cross-linked local↔remote activity.",
   "claw.acp_runs": "ACP Runs",

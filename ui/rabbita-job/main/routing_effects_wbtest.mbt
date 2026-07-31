@@ -19,7 +19,7 @@ test "parse_acp_stream_drain_payload accepts structured error payloads" {
 test "display_error hides Rabbita request implementation detail" {
   inspect(
     display_error("moonbit-community/rabbita/http.RequestError.RequestError"),
-    content="Unable to reach the MoonClaw gateway. Start it at http://127.0.0.1:18123 and reload.",
+    content="Unable to reach the configured MoonClaw gateway. Verify the Gateway target and reload.",
   )
 }
 
