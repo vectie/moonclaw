@@ -7,7 +7,7 @@ import {
   "moonbitlang/x@0.4.40",
   "moonbitlang/regexp@0.3.5",
   "moonbit-community/yaml@0.0.6",
-  "vectie/moonlib@0.1.18",
+  "vectie/moonlib@0.1.19",
 }
 
 readme = "README.md"
