@@ -2,16 +2,29 @@
 
 This document describes the expected behavior of MoonClaw's Rabbita operator UI at `/ui`.
 
-## Main Surfaces
+## Ordinary Journey
 
-The operator UI has three main surfaces:
+The first viewport names one next action from current durable state and shows:
 
-- `Jobs`
+```text
+Ask → Plan → Review → Run → Inspect
+```
+
+The operator UI has four main surfaces:
+
+- `Home`
+  next action, progress, local/remote summary and recovery guidance
+- `Work`
+  outcome request, evidence attachments, conversation, plan preview and
+  promotion
+- `Runs`
   local job expansion, workflow progress, artifacts, memory, and run workspace inspection
-- `ACP`
+- `Remote`
   remote-agent control for ACP targets, sessions, runs, stdout/stderr, and remote run history
-- `Overview`
-  mixed local<->remote operator view showing recorded handoffs, explicit links, inferred links, and lineage focus
+
+Runtime/provider vocabulary belongs in progressive disclosure. A primary
+screen should state the operator's goal, current stage, one dominant action,
+the durable outcome, and a plain-language recovery path when blocked.
 
 ## Local Job Expectations
 
@@ -74,3 +87,7 @@ The gateway should serve the built operator UI bundle from:
 - `/ui`
 
 The operator UI should remain usable through gateway-hosted static serving after the frontend bundle is built.
+
+Keyboard users can skip directly to the workspace, every visible control has
+a 44-pixel target and focus indicator, asynchronous outcomes are announced,
+and reduced-motion preferences disable nonessential animation.

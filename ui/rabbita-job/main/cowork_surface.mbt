@@ -103,14 +103,15 @@ fn render_cowork_sidebar(dispatch : Dispatch[Msg], model : Model) -> Html {
   section(class="panel cowork-sidebar", [
     header(class="panel-header", [
       div(class="cowork-panel-heading", [
-        h2(class="panel-title", "Cowork"),
-        p(class="muted", "Conversations, planning threads, and linked runs."),
+        h2(class="panel-title", "Work threads"),
+        p(class="muted", "Requests, reviewed plans, and linked outcomes."),
       ]),
       div(class="cowork-header-actions", [
         button(
           class="tree-control-button",
+          title="Start a new work thread",
           on_click=dispatch(CreateCoworkSession),
-          "New Chat",
+          [operator_icon("work", size=18), span("New")],
         ),
       ]),
     ]),
@@ -124,7 +125,27 @@ fn render_cowork_sidebar(dispatch : Dispatch[Msg], model : Model) -> Html {
       if model.cowork_sessions_loading {
         p(class="empty", "Loading conversations...")
       } else if model.cowork_sessions_error is Some(error) {
-        p(class="empty", error)
+        article(
+          class="operator-blocker",
+          attrs=@html.Attrs::build().role("alert").aria_live("assertive"),
+          [
+            p(class="node-title", "Work threads could not be loaded"),
+            p(
+              class="muted",
+              "Retry the safe read. Existing durable work is not changed.",
+            ),
+            button(
+              class="tree-control-button",
+              title="Retry loading work threads",
+              on_click=dispatch(LoadCoworkSessions),
+              [operator_icon("retry", size=18), span("Retry")],
+            ),
+            @html.details(class="runtime-disclosure", [
+              @html.summary("Technical details"),
+              p(class="mono", error),
+            ]),
+          ],
+        )
       } else if sessions.is_empty() {
         p(
           class="empty",
@@ -711,19 +732,10 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
               ),
               div(class="cowork-empty-actions", [
                 button(
-                  class="tree-control-button",
+                  class="operator-primary-action",
+                  title="Start a reviewable plan for this request",
                   on_click=dispatch(StartCoworkPlan),
-                  "Plan",
-                ),
-                button(
-                  class="tree-control-button",
-                  on_click=dispatch(PreviewCoworkPlan),
-                  "Preview",
-                ),
-                button(
-                  class="tree-control-button",
-                  on_click=dispatch(PromoteCoworkPlan),
-                  "Promote",
+                  [operator_icon("plan"), span("Start with a plan")],
                 ),
               ]),
             ])
@@ -767,24 +779,31 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
         Some(detail) =>
           div(class="tree-controls cowork-primary-actions", [
             button(
-              class="tree-control-button",
+              class=if detail.session.has_plan_mode {
+                "tree-control-button"
+              } else {
+                "operator-primary-action compact"
+              },
+              title="Start plan mode",
               on_click=dispatch(StartCoworkPlan),
-              "Plan",
+              [operator_icon("plan", size=18), span("Plan")],
             ),
             if detail.session.has_plan_mode {
               button(
                 class="tree-control-button",
+                title="Preview the current plan without running it",
                 on_click=dispatch(PreviewCoworkPlan),
-                "Preview",
+                [operator_icon("inspect", size=18), span("Preview")],
               )
             } else {
               nothing
             },
             if detail.session.has_plan_mode {
               button(
-                class="tree-control-button",
+                class="operator-primary-action compact",
+                title="Promote this reviewed plan into a durable proposal",
                 on_click=dispatch(PromoteCoworkPlan),
-                "Promote",
+                [operator_icon("review", size=18), span("Promote")],
               )
             } else {
               nothing
@@ -846,20 +865,30 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
         },
         [
           div(class="cowork-composer", [
-            article(class="cowork-dropzone", [
-              p(class="node-title", "Local Files"),
-              p(
-                class="muted",
-                "Click Upload Files or drag files onto the page to attach local content to this conversation.",
-              ),
-              div(class="cowork-action-row", [
-                button(
-                  class="tree-control-button",
-                  on_click=dispatch(OpenCoworkFilePicker),
-                  "Upload",
-                ),
-              ]),
-            ]),
+            @html.details(
+              class="cowork-attachments",
+              open=!model.cowork_local_uploads.is_empty(),
+              [
+                @html.summary(title="Attach local evidence to this request", [
+                  operator_icon("attach", size=18),
+                  span("Add files or context"),
+                ]),
+                article(class="cowork-dropzone", [
+                  p(
+                    class="muted",
+                    "Upload files or drag them onto the page. Attachments remain visible before you send.",
+                  ),
+                  div(class="cowork-action-row", [
+                    button(
+                      class="tree-control-button",
+                      title="Choose local files",
+                      on_click=dispatch(OpenCoworkFilePicker),
+                      "Choose files",
+                    ),
+                  ]),
+                ]),
+              ],
+            ),
             if model.cowork_local_uploads.is_empty() {
               nothing
             } else {
@@ -896,6 +925,9 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
             },
             textarea(
               class="artifact-editor-textarea cowork-composer-textarea",
+              title="Describe the outcome you want",
+              placeholder="Describe the outcome you want, the evidence to use, and any limits…",
+              attrs=@html.Attrs::build().aria_label("Work request"),
               value=model.cowork_composer,
               on_input=value => dispatch(SetCoworkComposer(value)),
               nothing,
@@ -920,9 +952,12 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
                   "Queue",
                 ),
                 button(
-                  class="tree-control-button",
+                  class="operator-primary-action cowork-send-action",
+                  title="Send this request to the current work thread",
+                  disabled=model.cowork_action_loading ||
+                    model.cowork_composer.trim().is_empty(),
                   on_click=dispatch(SendCoworkMessage),
-                  "Send",
+                  [operator_icon("arrow", size=18), span("Send request")],
                 ),
               ]),
               if model.cowork_action_loading {
@@ -931,11 +966,25 @@ fn render_cowork_center(dispatch : Dispatch[Msg], model : Model) -> Html {
                 nothing
               },
               match model.cowork_action_error {
-                Some(error) => p(class="empty", error)
+                Some(error) =>
+                  p(
+                    class="operator-inline-error",
+                    attrs=@html.Attrs::build()
+                      .role("alert")
+                      .aria_live("assertive"),
+                    "Request was not completed: \{error}. Check the work thread, then retry when the cause is resolved.",
+                  )
                 None => nothing
               },
               match model.cowork_notice {
-                Some(notice) => p(class="muted", notice)
+                Some(notice) =>
+                  p(
+                    class="muted",
+                    attrs=@html.Attrs::build()
+                      .role("status")
+                      .aria_live("polite"),
+                    notice,
+                  )
                 None => nothing
               },
             ]),

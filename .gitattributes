@@ -1,0 +1,3 @@
+# Rabbita bundles include generated whitespace-table template literals whose
+# trailing bytes are semantic. Keep authored-file whitespace checks enabled.
+ui/rabbita-job/dist/assets/*.js whitespace=-blank-at-eol,-blank-at-eof

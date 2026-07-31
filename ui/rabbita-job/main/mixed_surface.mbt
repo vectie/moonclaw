@@ -754,21 +754,22 @@ fn render_overview(dispatch : Dispatch[Msg], model : Model) -> Html {
     None => (0, 0, 0, 0)
   }
   section(class="panel", [
-    header(class="panel-header", [h2(class="panel-title", "Mixed Overview")]),
+    header(class="panel-header", [h2(class="panel-title", "Work overview")]),
     div(class="panel-body", [
+      render_operator_next_step(dispatch, model),
       div(class="overview-grid", [
         article(class="overview-stat", [
-          p(class="kv-label", "Local Runs"),
+          p(class="kv-label", "Durable runs"),
           p(class="detail-title", "\{model.runs.length()}"),
           p(class="muted", "\{local_running} live"),
         ]),
         article(class="overview-stat", [
-          p(class="kv-label", "ACP Targets"),
+          p(class="kv-label", "Remote workers"),
           p(class="detail-title", "\{acp_targets}"),
           p(class="muted", "\{acp_sessions} sessions"),
         ]),
         article(class="overview-stat", [
-          p(class="kv-label", "ACP Runs"),
+          p(class="kv-label", "Remote runs"),
           p(class="detail-title", "\{acp_runs}"),
           p(class="muted", "\{acp_live_runs} live"),
         ]),

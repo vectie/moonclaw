@@ -4,13 +4,18 @@ This is a [MoonBit](https://docs.moonbitlang.com) project.
 
 ## Project Structure
 
-- MoonBit packages are organized per directory, for each directory, there is a
-  `package.json` file listing its dependencies. Each package has its files and
+- MoonBit packages are organized per directory; each package has a `moon.pkg`
+  file listing its dependencies. Each package has its files and
   blackbox test files (common, ending in `_test.mbt`) and whitebox test files
   (ending in `_wbtest.mbt`).
 
-- In the toplevel directory, this is a `moon.mod.json` file listing about the
-  module and some meta information.
+- In the toplevel directory, `moon.mod` declares the module. Do not recreate
+  the legacy `moon.mod.json` form.
+
+- Keep `cmd/` packages as composition roots. Runtime rules belong in the
+  named packages that own them; Rabbita operator UI code belongs in
+  `ui/rabbita-job/main/` and should be split into cohesive surface, routing,
+  state, and effect files.
 
 ## Coding convention
 

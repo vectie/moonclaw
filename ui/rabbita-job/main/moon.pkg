@@ -9,6 +9,4 @@ import {
   "moonbitlang/core/strconv",
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")

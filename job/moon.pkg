@@ -14,6 +14,7 @@ import {
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
   "vectie/moonlib/moonsuite",
+  "vectie/moonlib/capability",
   "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/resource_providers",

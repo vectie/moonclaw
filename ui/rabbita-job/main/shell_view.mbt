@@ -1,19 +1,31 @@
 ///|
 fn render_surface_tabs(model : Model) -> Html {
-  let tab = fn(label : String, route : Surface, url : String) {
+  let tab = fn(label : String, icon : String, route : Surface, url : String) {
     let active = route_surface(model.route) == route
     button(
       class=if active { "surface-tab active-filter" } else { "surface-tab" },
+      title=label,
+      attrs=@html.Attrs::build().aria_current(
+        if active {
+          "page"
+        } else {
+          "false"
+        },
+      ),
       on_click=@nav.push_url(url),
-      label,
+      [operator_icon(icon), span(label)],
     )
   }
-  div(class="surface-tabs", [
-    tab("Overview", SurfaceOverview, "/"),
-    tab("Jobs", SurfaceJobs, "/jobs"),
-    tab("Cowork", SurfaceCowork, "/cowork"),
-    tab("ACP", SurfaceAcp, "/acp"),
-  ])
+  @html.nav(
+    class="surface-tabs",
+    attrs=@html.Attrs::build().aria_label("MoonClaw workspace"),
+    [
+      tab("Home", "home", SurfaceOverview, "/"),
+      tab("Work", "work", SurfaceCowork, "/cowork"),
+      tab("Runs", "runs", SurfaceJobs, "/jobs"),
+      tab("Remote", "remote", SurfaceAcp, "/acp"),
+    ],
+  )
 }
 
 ///|
@@ -37,47 +49,55 @@ fn render_artifact_modal(dispatch : Dispatch[Msg], model : Model) -> Html {
     None => "text/plain"
   }
   div(class="artifact-modal-backdrop", [
-    div(class="artifact-modal", [
-      div(class="artifact-modal-header", [
-        div([
-          p(class="eyebrow", "Artifact Editor"),
-          h2(class="detail-title", title),
-          if subtitle == "" {
-            nothing
+    div(
+      class="artifact-modal",
+      attrs=@html.Attrs::build()
+        .role("dialog")
+        .aria_modal("true")
+        .aria_labelledby("artifact-modal-title"),
+      [
+        div(class="artifact-modal-header", [
+          div([
+            p(class="eyebrow", "Artifact Editor"),
+            h2(id="artifact-modal-title", class="detail-title", title),
+            if subtitle == "" {
+              nothing
+            } else {
+              p(class="mono artifact-modal-path", subtitle)
+            },
+          ]),
+          div(class="tree-controls", [
+            span(class="meta-chip", content_type),
+            button(
+              class="tree-control-button",
+              title="Close artifact viewer",
+              on_click=dispatch(CloseArtifactModal),
+              "Close",
+            ),
+          ]),
+        ]),
+        div(class="artifact-modal-body", [
+          if model.artifact_modal_loading {
+            p(class="empty", "Loading artifact content...")
+          } else if model.artifact_modal_error is Some(error) {
+            p(class="empty", error)
           } else {
-            p(class="mono artifact-modal-path", subtitle)
+            div(class="artifact-editor-stack", [
+              p(
+                class="muted",
+                "Local editing only for now. Changes here are not persisted back to the artifact yet.",
+              ),
+              textarea(
+                class="artifact-editor-textarea mono",
+                value=model.artifact_editor_draft,
+                on_input=value => dispatch(SetArtifactEditorDraft(value)),
+                nothing,
+              ),
+            ])
           },
         ]),
-        div(class="tree-controls", [
-          span(class="meta-chip", content_type),
-          button(
-            class="tree-control-button",
-            on_click=dispatch(CloseArtifactModal),
-            "Close",
-          ),
-        ]),
-      ]),
-      div(class="artifact-modal-body", [
-        if model.artifact_modal_loading {
-          p(class="empty", "Loading artifact content...")
-        } else if model.artifact_modal_error is Some(error) {
-          p(class="empty", error)
-        } else {
-          div(class="artifact-editor-stack", [
-            p(
-              class="muted",
-              "Local editing only for now. Changes here are not persisted back to the artifact yet.",
-            ),
-            textarea(
-              class="artifact-editor-textarea mono",
-              value=model.artifact_editor_draft,
-              on_input=value => dispatch(SetArtifactEditorDraft(value)),
-              nothing,
-            ),
-          ])
-        },
-      ]),
-    ]),
+      ],
+    ),
   ])
 }
 
@@ -108,25 +128,33 @@ fn view(dispatch : Dispatch[Msg], model : Model) -> Html {
     "layout"
   }
   div(class=shell_class, [
+    @html.a(class="operator-skip-link", href="#moonclaw-main", "Skip to work"),
     header(class=topbar_class, [
       div([
-        p(class="eyebrow", "MoonClaw Console"),
-        h1(class="headline", "Jobs, Runs, Conversations, and Remote Agents"),
+        p(class="eyebrow", "MoonClaw · governed agent runtime"),
+        h1(class="headline", "What do you want MoonClaw to accomplish?"),
         p(
           class="subline",
-          "Switch between live AI coworking, durable job inspection, and ACP-backed remote execution from one operator surface.",
+          "Describe the outcome, review the plan, then follow durable work and its evidence from one place.",
         ),
         render_surface_tabs(model),
       ]),
       div(class="topbar-side", [
-        div(class="live-stack", [
-          render_live_chip(model),
-          span(class="gateway-chip", last_update_label(model)),
+        render_live_chip(model),
+        @html.details(class="runtime-disclosure", [
+          @html.summary(title="Show runtime connection details", [
+            operator_icon("settings", size=18),
+            span("Runtime details"),
+          ]),
+          div(class="runtime-disclosure-body", [
+            span(class="gateway-chip", last_update_label(model)),
+            span(class="gateway-chip", "Gateway · \{model.gateway_base}"),
+          ]),
         ]),
-        div(class="gateway-chip", "Gateway: \{model.gateway_base}"),
       ]),
     ]),
     main_(
+      id="moonclaw-main",
       class=main_class,
       match route_surface(model.route) {
         SurfaceOverview => [render_overview(dispatch, model)]

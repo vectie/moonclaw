@@ -1,6 +1,7 @@
-# Rabbita Job Expansion Viewer
+# MoonClaw Rabbita Operator UI
 
-Standalone MoonBit web app for MoonClaw's local job + ACP operator UI.
+MoonBit web application for requesting, reviewing, running and inspecting
+governed MoonClaw work. MoonClaw remains the sole agent runtime.
 
 ## Run
 
@@ -76,8 +77,11 @@ from the repo root, or use `moon -C /path/to/moonclaw run cmd/main -- ...`.
 
 Current surfaces:
 
-- cowork conversation sidebar + transcript + composer
-- job runs list
+- `Home`: one state-derived next action plus Ask → Plan → Review → Run →
+  Inspect progress
+- `Work`: request threads, transcript, attachments and reviewed-plan actions
+- `Runs`: durable job list, expansion and evidence inspection
+- `Remote`: ACP target/session/run inspection
 - local job expansion viewer
 - full-screen run canvas toggle
 - ACP remote-agent viewer
@@ -102,7 +106,15 @@ Current limitation:
 
 Current workflow notes:
 
-- `Cowork` is the conversation-first surface: create a chat, send messages, enter plan mode, preview/promote, confirm linked proposals, and resume waiting runs without leaving the UI
+- `Work` is the ordinary conversation-first surface: create a thread, describe
+  an outcome, enter plan mode, preview/promote, confirm linked proposals, and
+  resume waiting runs without leaving the UI
+- runtime connection data and advanced attachment controls use progressive
+  disclosure so the first viewport stays task-focused
+- blocked states name the retained work and a safe retry or inspection action
 - final run `report.md` and `result.json` are surfaced as synthetic artifact cards when they exist only as workspace files
 - starter attachment digest/text/summary/manifest artifacts are grouped into one `Starter Docs` card in the main artifact-facing surfaces
 - after frontend changes, rebuild with `./scripts/build-rabbita-ui.sh`
+
+The release journey and negative/recovery cases are recorded in
+`docs/qualification/UI_TO_UI_USE_CASES.md`.

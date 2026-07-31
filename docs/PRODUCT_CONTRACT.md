@@ -1,6 +1,6 @@
 # MoonClaw product contract
 
-Class: platform
+Class: platform service
 Maturity: advanced local alpha
 Last reviewed: 2026-07-30
 
@@ -43,6 +43,10 @@ MoonClaw does not own:
 | Live pack tool execution | conditional on an installed, healthy, conformant adapter |
 | Autonomous product/domain policy | excluded |
 | Production multi-user deployment | planned |
+
+Conformance: **L2 usable locally** for request → reviewed plan → durable run →
+outcome inspection. L3 is conditional on the receiving pack's installed,
+healthy adapter and correlated reconciliation receipt.
 
 ## Authority and evidence
 
