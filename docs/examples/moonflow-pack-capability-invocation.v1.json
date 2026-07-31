@@ -1,0 +1,41 @@
+{
+  "contract_id": "moonclaw.capability-invocation.v1",
+  "adapter_id": "moonmold-pack-local-v1",
+  "evaluated_at": "2026-07-31T01:00:00Z",
+  "recorded_at": "2026-07-31T01:00:01Z",
+  "attempt": 1,
+  "request": {
+    "request_id": "request-run-robotics-model-a1",
+    "run_id": "run-robotics-1",
+    "book_id": "robotics-design-book",
+    "work_item_id": "model-assets",
+    "declaration_id": "model-assets-r1",
+    "attempt_id": "attempt-model-assets-1",
+    "idempotency_key": "run-robotics-1/model-assets/1/sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "product_id": "moonmold",
+    "operation": "moonmold/spatial.operation.execute@0.2.0",
+    "requested_authority": "workspace-mutation",
+    "acceptance_criteria": [
+      "the declared model artifact exists and carries a verified digest"
+    ],
+    "input_contracts": [
+      "moonmold/spatial-operation-request@1.0.0"
+    ],
+    "output_contracts": [
+      "moonmold/spatial-operation-receipt@1.0.0"
+    ],
+    "required_claim": "digital-artifact",
+    "input_digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "input_artifacts": [
+      "inputs/spatial-operation-request.json"
+    ],
+    "timeout_ms": 30000,
+    "created_at": "2026-07-31T00:59:59Z"
+  },
+  "config": {
+    "adapter_mode": "installed-pack"
+  },
+  "input": {
+    "request_artifact": "inputs/spatial-operation-request.json"
+  }
+}

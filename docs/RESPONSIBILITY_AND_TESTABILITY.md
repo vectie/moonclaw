@@ -23,6 +23,12 @@ Legacy compatibility is quarantined in `cmd/main/flow_adapter`. It exists only
 to replay older cross-product runs while their callers migrate to pack-owned
 adapters. New integrations must not add another product branch there.
 
+The production replacement is the generic installed-pack seam documented in
+[Generic Capability Invocation](CAPABILITY_INVOCATION.md). It consumes
+MoonFlow's compiled capability catalog, independently verifies the active pack
+and health-evidence bytes, then calls a pack-owned executor. It does not import
+MoonFlow's state machine or introduce another orchestration engine.
+
 ## Removed product lanes
 
 MoonClaw no longer ships:
@@ -57,12 +63,12 @@ domain policy to MoonClaw.
 
 ## Focused verification
 
-The proportional validation pass for this refactor is:
+The proportional validation pass for the capability boundary is:
 
 ```sh
-moon check --target native
-moon test cmd/main/flow_adapter/flow_adapter_wbtest.mbt --target native
-moon test mooncode/core/protocol_wbtest.mbt --target native
+moon check packtool --target native
+moon test packtool/capability_invocation_wbtest.mbt --target native
+moon test suite_adapter_test.mbt --target native
 moon info
 moon fmt
 ```
@@ -71,11 +77,11 @@ The repository still has pre-existing warning debt, mostly in the vendored
 async dependency, so warning cleanup is tracked separately from this boundary
 change.
 
-Relevant tests prove that external work is rejected without a matching
-pack-owned policy, declared tool provenance must succeed, configured job
-profiles remain loadable, and removed built-in product routes are absent from
-the gateway. Full provider/live-network exercises are integration tests owned
-by the calling pack, not by MoonClaw core.
+Relevant tests prove exact version/schema/authority/health matching, durable
+idempotent replay, reconcile-before-retry after an uncertain checkpoint,
+workspace-contained evidence, and the absence of hand-authored product
+operations in MoonClaw's host description. Full provider/live-network
+exercises remain integration tests owned by the calling pack.
 
 ## Remaining migration
 

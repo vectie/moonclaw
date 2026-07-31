@@ -1,8 +1,13 @@
 import {
   "moonbitlang/async/fs",
+  "moonbitlang/async/http",
+  "moonbitlang/async/io",
+  "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
   "vectie/moonclaw/internal/spawn",
   "vectie/moonclaw/job",
+  "vectie/moonclaw/mooncode/core" @mooncode_core,
   "vectie/moonlib/fsx",
   "vectie/moonlib/pack",
   "vectie/moonlib/pack/host",
@@ -13,5 +18,9 @@ import {
 import {
   "moonbitlang/async",
 } for "test"
+
+import {
+  "moonbitlang/async",
+} for "wbtest"
 
 supported_targets = "native"

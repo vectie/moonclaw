@@ -5,6 +5,10 @@ pub(all) struct PackToolExecutionRequest {
   config : Json
   initial_input : Json?
   outputs : Map[String, Json]
+  request_id : String
+  attempt_id : String
+  idempotency_key : String
+  operation_ref : String
   run_id : String
   step_id : String
   evidence_path : String
@@ -15,21 +19,47 @@ pub(all) struct PackToolExecutionRequest {
 ///|
 /// Generic result returned by a pack-owned executor.
 pub(all) struct PackToolExecutionResult {
+  status : String
   output : Json
   summary : String?
   metrics : Json
   logs : Array[String]
+  output_artifacts : Array[String]
+  external_job_id : String
+  compensable : Bool
 } derive(Debug, ToJson, FromJson)
 
 ///|
 pub fn PackToolExecutionResult::new(
   output~ : Json,
+  status? : String = "succeeded",
   summary? : String? = None,
-  metrics? : Json = {},
+  metrics? : Json = Json::empty_object(),
   logs? : Array[String] = [],
+  output_artifacts? : Array[String] = [],
+  external_job_id? : String = "",
+  compensable? : Bool = false,
 ) -> PackToolExecutionResult {
-  { output, summary, metrics, logs }
+  {
+    status,
+    output,
+    summary,
+    metrics,
+    logs,
+    output_artifacts,
+    external_job_id,
+    compensable,
+  }
 }
+
+///|
+/// Result of asking a pack-owned adapter to reconcile a previously submitted
+/// idempotency key. A terminal success must carry the original tool result.
+pub(all) struct PackToolReconciliation {
+  status : String
+  result : PackToolExecutionResult?
+  error_kind : String
+} derive(Debug, ToJson, FromJson)
 
 ///|
 /// Opaque pack execution boundary supplied by the host.
@@ -39,6 +69,14 @@ pub struct PackToolExecutor {
     PackToolExecutionResult,
     String,
   ]
+  reconcile : (async (PackToolExecutionRequest) -> Result[
+    PackToolReconciliation,
+    String,
+  ])?
+  cancel : (async (PackToolExecutionRequest) -> Result[
+    PackToolReconciliation,
+    String,
+  ])?
 }
 
 ///|
@@ -48,8 +86,16 @@ pub fn PackToolExecutor::new(
     String,
   ],
   estimate_cost_micros? : (ToolBinding, Json) -> Int = (_, _) => 0,
+  reconcile? : (async (PackToolExecutionRequest) -> Result[
+    PackToolReconciliation,
+    String,
+  ])? = None,
+  cancel? : (async (PackToolExecutionRequest) -> Result[
+    PackToolReconciliation,
+    String,
+  ])? = None,
 ) -> PackToolExecutor {
-  { estimate_cost_micros, run }
+  { estimate_cost_micros, run, reconcile, cancel }
 }
 
 ///|
@@ -95,6 +141,10 @@ fn pack_tool_step_request(
     config,
     initial_input: context.initial_input,
     outputs: context.outputs,
+    request_id: "\{context.run.id}/\{context.step.id}",
+    attempt_id: "\{context.run.id}/\{context.step.id}/\{context.run.attempt}",
+    idempotency_key: "\{context.run.id}/\{context.step.id}/\{context.run.attempt}",
+    operation_ref: "\{binding.product_id}/\{binding.tool_id}",
     run_id: context.run.id,
     step_id: context.step.id,
     evidence_path: pack_tool_evidence_path(

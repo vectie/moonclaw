@@ -17,9 +17,13 @@ pub fn authorize(ToolBinding, InvocationRequest, InvocationPolicy) -> Invocation
 
 pub fn bindings(@host.HostActivationProjection) -> Array[ToolBinding] raise
 
+pub async fn cancel_installed_capability_v1(workspace~ : String, catalog_json~ : Json, invocation~ : CapabilityInvocationV1, executor~ : PackToolExecutor, policy~ : CapabilityInvocationPolicyV1) -> CapabilityInvocationOutcomeV1
+
 pub fn compile_workflow_job(@host.HostActivationProjection, PackWorkflowDeclaration, Int, schedule_id? : String) -> PackJobCompilation raise
 
 pub fn decode_workflow_declaration(String) -> PackWorkflowDeclaration raise
+
+pub async fn execute_installed_capability_v1(workspace~ : String, catalog_json~ : Json, invocation~ : CapabilityInvocationV1, executor~ : PackToolExecutor, policy~ : CapabilityInvocationPolicyV1) -> CapabilityInvocationOutcomeV1
 
 pub fn installed_pack_command_executor(InstalledPackWorkflow, max_timeout_ms~ : Int) -> PackToolExecutor
 
@@ -29,7 +33,13 @@ pub async fn intake_workflow_run(@job.RuntimeManager, @host.HostActivationProjec
 
 pub async fn load_installed_workflow(workspace~ : String, pack_id~ : String, workflow_id~ : String) -> InstalledPackWorkflow
 
+pub fn moonclaw_agent_goal_executor(AgentGoalRuntimeTransport) -> PackToolExecutor
+
+pub fn moonclaw_agent_goal_http_transport(String) -> AgentGoalRuntimeTransport raise
+
 pub fn pack_tool_step_handler(PackToolExecutor, InvocationPolicy) -> @job.WorkflowStepHandler
+
+pub async fn probe_moonclaw_agent_goal_http(String) -> Result[Json, String]
 
 pub fn resolve(Array[ToolBinding], String) -> ToolBinding?
 
@@ -40,6 +50,69 @@ pub async fn run_installed_workflow(workspace~ : String, pack_id~ : String, work
 // Errors
 
 // Types and methods
+pub struct AgentGoalRuntimeTransport {
+  submit : async (Json) -> Result[Json, String]
+  reconcile : async (Json) -> Result[Json, String]
+  cancel : async (Json) -> Result[Json, String]
+}
+pub fn AgentGoalRuntimeTransport::new(submit~ : async (Json) -> Result[Json, String], reconcile~ : async (Json) -> Result[Json, String], cancel~ : async (Json) -> Result[Json, String]) -> Self
+
+pub(all) struct CapabilityInvocationOutcomeV1 {
+  receipt_ref : String
+  receipt : CapabilityInvocationReceiptV1
+  replayed : Bool
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CapabilityInvocationPolicyV1 {
+  granted_authorities : Array[String]
+  reviewed_operation_refs : Array[String]
+  max_attempts : Int
+  timeout_ms : Int
+  remaining_budget_micros : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CapabilityInvocationReceiptV1 {
+  contract_id : String
+  result_id : String
+  request_id : String
+  attempt_id : String
+  idempotency_key : String
+  product_id : String
+  external_job_id : String
+  status : String
+  output_digest : String
+  output_artifacts : Array[String]
+  error_kind : String
+  compensable : Bool
+  recorded_at : String
+  catalog_id : String
+  pack_id : String
+  pack_version : String
+  adapter_id : String
+  operation_ref : String
+  input_schema_ref : String
+  output_schema_ref : String
+  requested_authority : String
+  input_digest : String
+  health_evidence_ref : String
+  health_evidence_digest : String
+  output : Json?
+  summary : String?
+  metrics : Json
+  logs : Array[String]
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct CapabilityInvocationV1 {
+  contract_id : String
+  adapter_id : String
+  evaluated_at : String
+  recorded_at : String
+  attempt : Int
+  request : MoonFlowAdapterRequestV2
+  config : Json
+  input : Json
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) struct InstalledPackWorkflow {
   pointer : @installer.ActivePackPointer
   receipt : @installer.InstallationReceipt
@@ -80,6 +153,27 @@ pub(all) struct InvocationRequest {
   evidence_path : String
   attempt : Int
   estimated_cost_micros : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFlowAdapterRequestV2 {
+  request_id : String
+  run_id : String
+  book_id : String
+  work_item_id : String
+  declaration_id : String
+  attempt_id : String
+  idempotency_key : String
+  product_id : String
+  operation : String
+  requested_authority : String
+  acceptance_criteria : Array[String]
+  input_contracts : Array[String]
+  output_contracts : Array[String]
+  required_claim : String
+  input_digest : String
+  input_artifacts : Array[String]
+  timeout_ms : Int
+  created_at : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PackJobCompilation {
@@ -127,6 +221,10 @@ pub(all) struct PackToolExecutionRequest {
   config : Json
   initial_input : Json?
   outputs : Map[String, Json]
+  request_id : String
+  attempt_id : String
+  idempotency_key : String
+  operation_ref : String
   run_id : String
   step_id : String
   evidence_path : String
@@ -135,18 +233,30 @@ pub(all) struct PackToolExecutionRequest {
 } derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PackToolExecutionResult {
+  status : String
   output : Json
   summary : String?
   metrics : Json
   logs : Array[String]
+  output_artifacts : Array[String]
+  external_job_id : String
+  compensable : Bool
 } derive(ToJson, @debug.Debug, @json.FromJson)
-pub fn PackToolExecutionResult::new(output~ : Json, summary? : String?, metrics? : Json, logs? : Array[String]) -> Self
+pub fn PackToolExecutionResult::new(output~ : Json, status? : String, summary? : String?, metrics? : Json, logs? : Array[String], output_artifacts? : Array[String], external_job_id? : String, compensable? : Bool) -> Self
 
 pub struct PackToolExecutor {
   estimate_cost_micros : (ToolBinding, Json) -> Int
   run : async (PackToolExecutionRequest) -> Result[PackToolExecutionResult, String]
+  reconcile : (async (PackToolExecutionRequest) -> Result[PackToolReconciliation, String])?
+  cancel : (async (PackToolExecutionRequest) -> Result[PackToolReconciliation, String])?
 }
-pub fn PackToolExecutor::new(run~ : async (PackToolExecutionRequest) -> Result[PackToolExecutionResult, String], estimate_cost_micros? : (ToolBinding, Json) -> Int) -> Self
+pub fn PackToolExecutor::new(run~ : async (PackToolExecutionRequest) -> Result[PackToolExecutionResult, String], estimate_cost_micros? : (ToolBinding, Json) -> Int, reconcile? : (async (PackToolExecutionRequest) -> Result[PackToolReconciliation, String])?, cancel? : (async (PackToolExecutionRequest) -> Result[PackToolReconciliation, String])?) -> Self
+
+pub(all) struct PackToolReconciliation {
+  status : String
+  result : PackToolExecutionResult?
+  error_kind : String
+} derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) struct PackWorkflowDeclaration {
   contract : String

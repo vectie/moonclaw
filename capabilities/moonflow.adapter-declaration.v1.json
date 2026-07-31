@@ -1,0 +1,16 @@
+{
+  "contract_id": "moonflow.adapter-declaration.v1",
+  "adapter_id": "moonclaw-agent-goal-v1",
+  "product_id": "moonclaw",
+  "pack_id": "moonclaw",
+  "pack_version": "0.1.5",
+  "protocol": "moonflow.adapter.v2",
+  "operations": [
+    {
+      "operation_id": "agent.goal.execute",
+      "claim_ceiling": "digital-artifact",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    }
+  ]
+}

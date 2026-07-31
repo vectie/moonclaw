@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "moonclaw/agent-goal-execution-receipt@1.0.0",
+  "title": "MoonClaw agent goal execution receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_id",
+    "operation_ref",
+    "execution_status",
+    "goal_outcome",
+    "acceptance_status",
+    "session_id",
+    "goal_id",
+    "command_id",
+    "service_id",
+    "role",
+    "model",
+    "goal_runtime_ref",
+    "journal_ref",
+    "receipt_ref",
+    "evidence_refs",
+    "artifact_evidence",
+    "message"
+  ],
+  "properties": {
+    "contract_id": {
+      "const": "moonclaw.agent-goal-execution-receipt.v1"
+    },
+    "operation_ref": {
+      "const": "moonclaw/agent.goal.execute@0.1.5"
+    },
+    "execution_status": {
+      "enum": [
+        "submitted",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "unknown"
+      ]
+    },
+    "goal_outcome": {
+      "enum": [
+        "none",
+        "achieved",
+        "blocked",
+        "cancelled",
+        "unknown"
+      ]
+    },
+    "acceptance_status": {
+      "const": "review-required"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "command_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "service_id": {
+      "type": "string"
+    },
+    "role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "goal_runtime_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "journal_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "receipt_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "artifact_evidence": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ref",
+          "digest"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string",
+            "minLength": 1
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    },
+    "message": {
+      "type": "string"
+    }
+  }
+}

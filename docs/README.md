@@ -1,5 +1,8 @@
 # MoonClaw Documentation Guide
 
+Start with the [product contract](PRODUCT_CONTRACT.md) for current maturity,
+capability labels, boundaries and release gates.
+
 MoonClaw is the bounded agent runtime for MoonSuite. It owns agent execution,
 job/session state, tool use, runtime evidence, gateway APIs, and MoonCode
 execution behavior. It should not become a desktop shell, durable knowledge
@@ -40,6 +43,9 @@ health/usage, and MoonLib defines shared paths.
    artifacts, and fail-closed workspace containment.
 10. [RESPONSIBILITY_AND_TESTABILITY.md](RESPONSIBILITY_AND_TESTABILITY.md):
     product-neutral runtime ownership, pack boundaries, and focused tests.
+11. [CAPABILITY_INVOCATION.md](CAPABILITY_INVOCATION.md): canonical installed
+    pack/tool resolution, health verification, durable invocation receipts and
+    restart reconciliation.
 
 ## Implementation Guidance
 

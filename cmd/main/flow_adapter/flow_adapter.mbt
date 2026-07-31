@@ -1936,15 +1936,12 @@ async fn review(args : Array[String]) -> Unit {
 }
 
 ///|
+fn retirement_message() -> String {
+  "moonclaw flow-adapter is retired and cannot execute product work; use the exact installed-pack capability path documented in docs/CAPABILITY_INVOCATION.md"
+}
+
+///|
 pub async fn run(args : ArrayView[String]) -> Unit {
-  let owned = args.to_owned()
-  match owned {
-    ["execute", .. rest] => execute(rest.to_owned())
-    ["attest", .. rest] => attest(rest.to_owned())
-    ["review", .. rest] => review(rest.to_owned())
-    _ =>
-      println(
-        "moonclaw flow-adapter usage:\n  moonclaw flow-adapter execute --workspace <root> --request <ref> --result <ref> --model <id> --artifact <ref>... [--max-trials <n>]\n  moonclaw flow-adapter attest --workspace <root> --request <ref> --result <ref> --attestation <ref> --attestor-id <id>\n  moonclaw flow-adapter review --workspace <root> --review-packet <ref> --model <id>",
-      )
-  }
+  ignore(args)
+  fail(retirement_message())
 }

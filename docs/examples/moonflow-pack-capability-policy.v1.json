@@ -1,0 +1,11 @@
+{
+  "granted_authorities": [
+    "workspace-mutation"
+  ],
+  "reviewed_operation_refs": [
+    "moonmold/spatial.operation.execute@0.2.0"
+  ],
+  "max_attempts": 2,
+  "timeout_ms": 30000,
+  "remaining_budget_micros": 5000000
+}

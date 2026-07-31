@@ -1,0 +1,67 @@
+{
+  "id": "moonclaw",
+  "version": "0.1.5",
+  "display_name": "MoonClaw Agent Runtime",
+  "product_id": "moonclaw",
+  "kind": "RuntimeExtension",
+  "required_runtime_extensions": [],
+  "book_templates": [],
+  "schemas": [
+    {
+      "id": "agent-goal-execution-request",
+      "version": "1.0.0",
+      "path": "schemas/agent-goal-execution-request.schema.json"
+    },
+    {
+      "id": "agent-goal-execution-receipt",
+      "version": "1.0.0",
+      "path": "schemas/agent-goal-execution-receipt.schema.json"
+    }
+  ],
+  "tools": [
+    {
+      "id": "agent.goal.execute",
+      "owner_product": "moonclaw",
+      "input_schema_id": "agent-goal-execution-request",
+      "output_schema_id": "agent-goal-execution-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [
+        ".moonsuite/products/moonclaw/agent-goal-receipts",
+        ".moonsuite/products/moonclaw/mooncode/sessions"
+      ],
+      "review_required": true
+    }
+  ],
+  "workflows": [],
+  "skills": [],
+  "policies": [
+    {
+      "id": "agent-goal-runtime-boundary",
+      "version": "1.0.0",
+      "path": "policies/agent-goal-runtime-boundary.md"
+    }
+  ],
+  "provider_ports": [
+    {
+      "id": "native-agent-goal-adapter",
+      "version": "1.0.0",
+      "path": "providers/native-agent-goal-adapter.port.md"
+    }
+  ],
+  "schedules": [],
+  "app_entrypoints": [],
+  "migrations": [],
+  "evaluations": [
+    {
+      "id": "agent-goal-adapter-conformance",
+      "version": "1.0.0",
+      "path": "evaluations/agent-goal-adapter-conformance.md"
+    }
+  ],
+  "uninstall_contract": {
+    "id": "moonclaw-runtime-evidence-preservation",
+    "version": "1.0.0",
+    "path": "UNINSTALL.md"
+  }
+}

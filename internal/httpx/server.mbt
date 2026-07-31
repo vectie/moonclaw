@@ -25,18 +25,18 @@ pub fn Server::close(self : Server) -> Unit {
 /// * `reuse_addr` : Enable address reuse on the socket.
 ///
 /// The actual bound port can be retrieved via `Server::port`.
-pub fn Server::new(
+pub async fn Server::new(
   host : String,
   port : Int,
   dual_stack? : Bool = true,
   reuse_addr? : Bool = false,
-) -> Server raise {
-  let server = @http.Server::new(
+) -> Server {
+  let server = @http.Server(
     @socket.Addr::parse("\{host}:\{port}"),
     dual_stack~,
     reuse_addr~,
   )
-  let port = server.addr().port()
+  let port = server.addr.port()
   { server, port }
 }
 

@@ -1,5 +1,9 @@
 # MoonClaw
 
+> **Platform · advanced local alpha.** Read the
+> [product contract](docs/PRODUCT_CONTRACT.md) for the single-runtime boundary,
+> authority model, capability status and release gates.
+
 > 🐇 MoonBit-native agent runtime + 📡 gateway + 🧠 memory + 🗂️ job system + 🤖 ACP remote-agent control
 
 `MoonBit` `Agent Runtime` `Gateway` `Jobs` `ACP` `Feishu` `Weixin` `Memory` `Artifacts` `Operator UI`
@@ -12,6 +16,11 @@ Start with [docs/README.md](docs/README.md) for the product boundary,
 implementation map, testing guidance, operational notes, and future plan.
 The stricter pack/runtime ownership rules are documented in
 [Responsibility and Testability](docs/RESPONSIBILITY_AND_TESTABILITY.md).
+Cross-product execution now uses the
+[generic installed-pack capability seam](docs/CAPABILITY_INVOCATION.md):
+MoonFlow supplies a compiled, versioned capability catalog; MoonClaw verifies
+the active pack, exact schemas, authority and expiring health evidence; and the
+pack-owned adapter executes and reconciles the effect.
 
 It is designed for:
 
@@ -44,6 +53,13 @@ MoonClaw is strongest when you want one system to handle:
 
 ## News
 
+- `2026-07-31`: added generic `moonflow.adapter.v2` installed-pack capability
+  invocation. Canonical product/tool and schema identities are rechecked
+  against the active receipt-verified pack, health evidence bytes are verified,
+  and every idempotency key receives a durable MoonFlow-reconcilable result.
+  Uncertain restart state reconciles through the pack adapter and is never
+  blindly re-executed. MoonClaw's host description no longer advertises
+  hand-written product operations.
 - `2026-07-12`: added `mooncode.quality-trial.v1` to native `run_eval` receipts. MoonCode now diagnoses incomplete inventory, domain assumptions, native tool uncertainty, missing positive/negative cases, exit-code proof, packaging, review, and unsupported claims; it revises general inputs within a bounded budget and turns repeated identical failure into a Bookkeeper execution gap.
 - `2026-07-11`: added workspace-aware evidence-dossier validation. `moonclaw
   evidence validate <book-root> <dossier.json> <receipt.json>` now requires

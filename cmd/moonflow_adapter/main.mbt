@@ -1,6 +1,6 @@
 ///|
 fn main {
   println(
-    @moonclaw.moonclaw_moonflow_adapter_capability_json().stringify(indent=2),
+    @moonclaw.moonclaw_agent_goal_adapter_declaration_json().stringify(indent=2),
   )
 }

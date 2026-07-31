@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "moonclaw/agent-goal-execution-request@1.0.0",
+  "title": "MoonClaw agent goal execution request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_id",
+    "session_id",
+    "goal_id",
+    "workspace_root",
+    "objective",
+    "criteria",
+    "role",
+    "profile",
+    "config"
+  ],
+  "properties": {
+    "contract_id": {
+      "const": "moonclaw.agent-goal-execution-request.v1"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "goal_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "workspace_root": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "criterion"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+$",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "criterion": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          }
+        }
+      }
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "A runtime role/profile value such as mooncode or wiki; it is not a product identity or a separate runtime."
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "default": "gpt-5.6-sol"
+        },
+        "instructions": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "default": []
+        },
+        "web_search": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "planner_max_steps": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000,
+          "default": 0,
+          "description": "A resumable local execution quantum, never aggregate goal policy."
+        },
+        "planner_timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000,
+          "default": 60000
+        },
+        "max_turns": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 1,
+          "description": "A service quantum; the existing goal supervisor may take fresh quanta until terminal."
+        },
+        "live_wait_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30000,
+          "default": 5000
+        },
+        "poll_ms": {
+          "type": "integer",
+          "minimum": 25,
+          "maximum": 2000,
+          "default": 250
+        }
+      }
+    }
+  }
+}
