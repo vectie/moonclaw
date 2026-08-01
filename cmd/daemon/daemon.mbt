@@ -123,6 +123,7 @@ pub async fn Daemon::new(
     pending_codex_auth: {},
     mooncode_sessions: {},
   }
+  ignore(daemon.supervisor_runtime())
   daemon.load_stopped()
   Some(daemon)
 }

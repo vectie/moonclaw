@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "moonclaw/supervisor-delegate-intent@1.0.0",
+  "title": "MoonClaw bounded supervisor delegate intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["envelope", "supervisor_id", "instruction", "task", "scope"],
+  "properties": {
+    "envelope": { "$ref": "supervisor-command.schema.json#/properties/envelope" },
+    "supervisor_id": { "type": "string", "minLength": 1 },
+    "instruction": { "type": "string", "minLength": 1 },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["task_id", "conversation_id", "title", "cwd", "model", "web_search", "metadata"],
+      "properties": {
+        "task_id": { "type": "string", "minLength": 1 },
+        "conversation_id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "cwd": { "type": "string", "minLength": 1 },
+        "model": { "type": ["string", "null"] },
+        "web_search": { "type": "boolean" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_ceiling", "budget", "artifact_prefixes", "expires_at"],
+      "properties": {
+        "claim_ceiling": { "enum": ["evidence-only", "draft", "reviewable"] },
+        "budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_cost_micro_usd", "max_runtime_ms", "max_tokens", "max_artifacts"],
+          "properties": {
+            "max_cost_micro_usd": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+            "max_runtime_ms": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+            "max_tokens": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+            "max_artifacts": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "artifact_prefixes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "not": { "pattern": "\\*" } }
+        },
+        "expires_at": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

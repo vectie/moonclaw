@@ -36,7 +36,7 @@ async fn Daemon::spawn_task(
   let args = ["server"]
   if model is Some(model) {
     args.push("--model")
-    args.push(model.name)
+    args.push(model.selector())
   }
   if name is Some(name) {
     args.push("--name")

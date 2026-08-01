@@ -21,6 +21,31 @@
       "id": "capability-http-policy",
       "version": "1.0.0",
       "path": "schemas/capability-http-policy.schema.json"
+    },
+    {
+      "id": "supervisor-command",
+      "version": "1.0.0",
+      "path": "schemas/supervisor-command.schema.json"
+    },
+    {
+      "id": "supervisor-command-receipt",
+      "version": "1.0.0",
+      "path": "schemas/supervisor-command-receipt.schema.json"
+    },
+    {
+      "id": "supervisor-delegate-intent",
+      "version": "1.0.0",
+      "path": "schemas/supervisor-delegate-intent.schema.json"
+    },
+    {
+      "id": "supervisor-worker-command",
+      "version": "1.0.0",
+      "path": "schemas/supervisor-worker-command.schema.json"
+    },
+    {
+      "id": "supervisor-delegate-intent-result",
+      "version": "1.0.0",
+      "path": "schemas/supervisor-delegate-intent-result.schema.json"
     }
   ],
   "tools": [
@@ -36,6 +61,156 @@
         ".moonsuite/products/moonclaw/mooncode/sessions"
       ],
       "review_required": true
+    },
+    {
+      "id": "supervisor.activate",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": true
+    },
+    {
+      "id": "supervisor.message.send",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.wake",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.steer",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.stop",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.retry-resume",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.delegate",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-delegate-intent",
+      "output_schema_id": "supervisor-delegate-intent-result",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": true
+    },
+    {
+      "id": "supervisor.worker.steer",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-worker-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.worker.stop",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-worker-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.worker.retry-resume",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-worker-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.outcome-evidence.propose",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": true
+    },
+    {
+      "id": "supervisor.mailbox.claim",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.mailbox.ack",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.outcome-outbox.claim",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
+    },
+    {
+      "id": "supervisor.outcome-outbox.ack",
+      "owner_product": "moonclaw",
+      "input_schema_id": "supervisor-command",
+      "output_schema_id": "supervisor-command-receipt",
+      "authority": "WorkspaceMutation",
+      "idempotent": true,
+      "evidence_outputs": [".moonsuite/products/moonclaw/jobs/supervisors"],
+      "review_required": false
     }
   ],
   "workflows": [],
@@ -52,6 +227,11 @@
       "id": "native-agent-goal-adapter",
       "version": "1.0.0",
       "path": "providers/native-agent-goal-adapter.port.md"
+    },
+    {
+      "id": "native-supervisor-runtime",
+      "version": "1.0.0",
+      "path": "providers/native-supervisor-runtime.port.md"
     }
   ],
   "schedules": [],

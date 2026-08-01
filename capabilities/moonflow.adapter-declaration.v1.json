@@ -11,6 +11,96 @@
       "claim_ceiling": "digital-artifact",
       "supports_cancel": true,
       "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.activate",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.message.send",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.wake",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.steer",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.stop",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.retry-resume",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.delegate",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.worker.steer",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.worker.stop",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.worker.retry-resume",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": true,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.outcome-evidence.propose",
+      "claim_ceiling": "research-evidence",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.mailbox.claim",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.mailbox.ack",
+      "claim_ceiling": "execution-result",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.outcome-outbox.claim",
+      "claim_ceiling": "research-evidence",
+      "supports_cancel": false,
+      "supports_reconcile": true
+    },
+    {
+      "operation_id": "supervisor.outcome-outbox.ack",
+      "claim_ceiling": "research-evidence",
+      "supports_cancel": false,
+      "supports_reconcile": true
     }
   ]
 }

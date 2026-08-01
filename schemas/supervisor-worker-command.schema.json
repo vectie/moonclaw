@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "moonclaw/supervisor-worker-command@1.0.0",
+  "title": "MoonClaw child-targeted supervisor command",
+  "type": "object",
+  "required": ["envelope", "supervisor_id", "worker_run_id"],
+  "properties": {
+    "envelope": { "$ref": "supervisor-command.schema.json#/properties/envelope" },
+    "supervisor_id": { "type": "string", "minLength": 1 },
+    "worker_run_id": { "type": "string", "minLength": 1 },
+    "instruction": { "type": "string", "minLength": 1 },
+    "metadata": { "type": "object" },
+    "reason": { "type": "string", "minLength": 1 },
+    "force": { "type": "boolean" }
+  },
+  "oneOf": [
+    { "required": ["instruction", "metadata"], "not": { "anyOf": [{ "required": ["reason"] }, { "required": ["force"] }] } },
+    { "required": ["reason", "force"], "not": { "required": ["instruction"] } },
+    { "required": ["reason"], "not": { "anyOf": [{ "required": ["instruction"] }, { "required": ["force"] }] } }
+  ],
+  "additionalProperties": false
+}

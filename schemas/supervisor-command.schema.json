@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "moonclaw/supervisor-command@1.0.0",
+  "title": "MoonClaw governed supervisor command",
+  "type": "object",
+  "required": ["envelope"],
+  "properties": {
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "command_id", "request_digest", "issued_at", "evaluated_at", "authority"],
+      "properties": {
+        "contract_id": { "const": "moonclaw.supervisor-command.v1" },
+        "command_id": { "type": "string", "minLength": 1 },
+        "request_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "issued_at": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+        "evaluated_at": { "type": "string", "minLength": 1 },
+        "expected_cursor": { "type": ["integer", "null"], "minimum": 0 },
+        "authority": { "type": "object" }
+      }
+    }
+  }
+}

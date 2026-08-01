@@ -123,7 +123,11 @@ priv struct ChildDelegationWireV1 {
 
 ///|
 fn child_runtime_ref_is_canonical(value : String) -> Bool {
-  !value.is_empty() && value.length() <= 512 && value.iter().all(char =>
+  !value.is_empty() &&
+  value.length() <= 512 &&
+  value
+  .iter()
+  .all(char => {
     char.is_ascii_alphabetic() ||
     char.is_ascii_digit() ||
     char == '.' ||
@@ -132,7 +136,7 @@ fn child_runtime_ref_is_canonical(value : String) -> Bool {
     char == ':' ||
     char == '/' ||
     char == '@'
-  )
+  })
 }
 
 ///|
@@ -158,9 +162,9 @@ fn child_delegation_payload_v1(
     child_run_id,
     parent_principal: @capability.encode_principal_ref_v1(parent_principal),
     child_principal: @capability.encode_principal_ref_v1(child_principal),
-    allowed_operations: allowed_operations.map(operation =>
+    allowed_operations: allowed_operations.map(operation => {
       @capability.encode_operation_ref_v1(operation)
-    ),
+    }),
     artifact_prefixes,
     claim_ceiling: claim_ceiling.id(),
     max_cost_micro_usd: budget.max_cost_micro_usd(),
@@ -170,9 +174,9 @@ fn child_delegation_payload_v1(
     authority: @capability.encode_authority_decision_ref_v1(authority),
     issued_at,
     expires_at,
-    parent_delegation: parent_delegation.map(reference =>
+    parent_delegation: parent_delegation.map(reference => {
       @capability.encode_delegation_ref_v1(reference)
-    ),
+    }),
   }
 }
 
@@ -205,7 +209,9 @@ fn validate_child_delegation_scope_v1(
   }
   guard authority.is_fresh_for(child_principal, issued_at) &&
     authority.expires_at() >= expires_at else {
-    fail("child delegation requires receiver-bound authority for its full lifetime")
+    fail(
+      "child delegation requires receiver-bound authority for its full lifetime",
+    )
   }
   let operation_ids : Array[String] = []
   for operation in allowed_operations {
@@ -218,7 +224,8 @@ fn validate_child_delegation_scope_v1(
   let prefixes : Array[String] = []
   for prefix in artifact_prefixes {
     guard @capability.evidence_artifact_ref_is_canonical(prefix) &&
-      !prefix.contains("*") && !prefixes.contains(prefix) else {
+      !prefix.contains("*") &&
+      !prefixes.contains(prefix) else {
       fail("child delegation artifact prefixes must be unique exact paths")
     }
     prefixes.push(prefix)
@@ -254,12 +261,8 @@ pub fn child_delegation_consumption_v1(
   evidence : @capability.ContentAddressedEvidenceRefV1,
 ) -> ChildDelegationConsumptionV1 raise {
   let i64_values = [
-    accumulated_cost_micro_usd,
-    requested_cost_micro_usd,
-    accumulated_runtime_ms,
-    requested_runtime_ms,
-    accumulated_tokens,
-    requested_tokens,
+    accumulated_cost_micro_usd, requested_cost_micro_usd, accumulated_runtime_ms,
+    requested_runtime_ms, accumulated_tokens, requested_tokens,
   ]
   let int_values = [accumulated_artifacts, requested_artifacts]
   guard !i64_values.any(value => value is Some(amount) && amount < 0L) &&
@@ -324,31 +327,13 @@ fn build_child_delegation_v1(
   parent_delegation : @capability.DelegationRefV1?,
 ) -> ChildDelegationV1 raise {
   validate_child_delegation_scope_v1(
-    delegation_id,
-    parent_run_id,
-    child_run_id,
-    parent_principal,
-    child_principal,
-    allowed_operations,
-    artifact_prefixes,
-    authority,
-    issued_at,
-    expires_at,
+    delegation_id, parent_run_id, child_run_id, parent_principal, child_principal,
+    allowed_operations, artifact_prefixes, authority, issued_at, expires_at,
   )
   let payload = child_delegation_payload_v1(
-    delegation_id,
-    parent_run_id,
-    child_run_id,
-    parent_principal,
-    child_principal,
-    allowed_operations,
-    artifact_prefixes,
-    claim_ceiling,
-    budget,
-    authority,
-    issued_at,
-    expires_at,
-    parent_delegation,
+    delegation_id, parent_run_id, child_run_id, parent_principal, child_principal,
+    allowed_operations, artifact_prefixes, claim_ceiling, budget, authority, issued_at,
+    expires_at, parent_delegation,
   )
   let digest = @capability.sha256_digest_ref_v1(
     @encoding/utf8.encode(payload.to_json().stringify()),
@@ -448,18 +433,18 @@ pub fn narrow_child_delegation_v1(
   issued_at : String,
   expires_at : String,
 ) -> ChildDelegationV1 raise {
-  guard issued_at >= parent.issued_at && expires_at <= parent.expires_at &&
-    delegation_claim_rank(claim_ceiling) <= delegation_claim_rank(
-      parent.claim_ceiling,
-    ) &&
-    allowed_operations.all(operation =>
+  guard issued_at >= parent.issued_at &&
+    expires_at <= parent.expires_at &&
+    delegation_claim_rank(claim_ceiling) <=
+    delegation_claim_rank(parent.claim_ceiling) &&
+    allowed_operations.all(operation => {
       parent.allowed_operations.contains(operation)
-    ) &&
-    artifact_prefixes.all(prefix =>
-      parent.artifact_prefixes.any(parent_prefix =>
+    }) &&
+    artifact_prefixes.all(prefix => {
+      parent.artifact_prefixes.any(parent_prefix => {
         child_prefix_is_within(prefix, parent_prefix)
-      )
-    ) &&
+      })
+    }) &&
     optional_i64_is_narrower(
       budget.max_cost_micro_usd(),
       parent.budget.max_cost_micro_usd(),
@@ -468,10 +453,7 @@ pub fn narrow_child_delegation_v1(
       budget.max_runtime_ms(),
       parent.budget.max_runtime_ms(),
     ) &&
-    optional_i64_is_narrower(
-      budget.max_tokens(),
-      parent.budget.max_tokens(),
-    ) &&
+    optional_i64_is_narrower(budget.max_tokens(), parent.budget.max_tokens()) &&
     optional_int_is_narrower(
       budget.max_artifacts(),
       parent.budget.max_artifacts(),
@@ -521,17 +503,17 @@ pub fn authorize_child_delegation_use_v1(
   guard child_principal == delegation.child_principal &&
     child_run_id == delegation.child_run_id &&
     @capability.wire_timestamp_is_canonical(evaluated_at) &&
-    delegation.issued_at <= evaluated_at && evaluated_at < delegation.expires_at &&
+    delegation.issued_at <= evaluated_at &&
+    evaluated_at < delegation.expires_at &&
     delegation.allowed_operations.contains(operation) &&
-    delegation_claim_rank(requested_claim) <= delegation_claim_rank(
-      delegation.claim_ceiling,
-    ) &&
-    artifact_refs.all(reference =>
+    delegation_claim_rank(requested_claim) <=
+    delegation_claim_rank(delegation.claim_ceiling) &&
+    artifact_refs.all(reference => {
       @capability.evidence_artifact_ref_is_canonical(reference) &&
-      delegation.artifact_prefixes.any(prefix =>
+      delegation.artifact_prefixes.any(prefix => {
         child_prefix_is_within(reference, prefix)
-      )
-    ) &&
+      })
+    }) &&
     i64_consumption_within_ceiling(
       delegation.budget.max_cost_micro_usd(),
       consumption.accumulated_cost_micro_usd,
@@ -570,6 +552,37 @@ pub fn authorize_child_delegation_use_v1(
     evaluated_at,
     receipt_digest: digest,
   })
+}
+
+///|
+/// Durable JSON evidence for the exact authorization consumed at the child
+/// provider boundary.
+pub fn encode_child_delegation_use_receipt_v1(
+  receipt : ChildDelegationUseReceiptV1,
+) -> Json {
+  {
+    "contract_id": "moonclaw.child-delegation-use-receipt.v1",
+    "delegation_ref": @capability.encode_delegation_ref_v1(
+      receipt.delegation_ref,
+    ),
+    "child_run_id": receipt.child_run_id,
+    "operation": @capability.encode_operation_ref_v1(receipt.operation),
+    "artifact_refs": receipt.artifact_refs.iter().to_array(),
+    "requested_claim": receipt.requested_claim.id(),
+    "consumption": {
+      "accumulated_cost_micro_usd": receipt.consumption.accumulated_cost_micro_usd,
+      "requested_cost_micro_usd": receipt.consumption.requested_cost_micro_usd,
+      "accumulated_runtime_ms": receipt.consumption.accumulated_runtime_ms,
+      "requested_runtime_ms": receipt.consumption.requested_runtime_ms,
+      "accumulated_tokens": receipt.consumption.accumulated_tokens,
+      "requested_tokens": receipt.consumption.requested_tokens,
+      "accumulated_artifacts": receipt.consumption.accumulated_artifacts,
+      "requested_artifacts": receipt.consumption.requested_artifacts,
+      "evidence": receipt.consumption.evidence.to_json(),
+    },
+    "evaluated_at": receipt.evaluated_at,
+    "receipt_digest": receipt.receipt_digest.text(),
+  }
 }
 
 ///|
@@ -613,16 +626,17 @@ pub fn bind_child_run_execution_request_v1(
     request.child_run.id == delegation.child_run_id else {
     return Err("child execution request lineage does not match delegation")
   }
-  match authorize_child_delegation_use_v1(
-    delegation,
-    child_principal,
-    request.child_run.id,
-    operation,
-    artifact_refs,
-    requested_claim,
-    consumption,
-    evaluated_at,
-  ) {
+  match
+    authorize_child_delegation_use_v1(
+      delegation,
+      child_principal,
+      request.child_run.id,
+      operation,
+      artifact_refs,
+      requested_claim,
+      consumption,
+      evaluated_at,
+    ) {
     Ok(authorization) => Ok({ request, delegation, authorization })
     Err(reason) => Err(reason)
   }
@@ -659,18 +673,18 @@ pub fn decode_child_delegation_v1(value : Json) -> ChildDelegationV1 raise {
   guard payload.contract_id == "moonclaw.child-delegation.v1" else {
     fail("unsupported child delegation contract")
   }
-  let parent_delegation = payload.parent_delegation.map(value =>
+  let parent_delegation = payload.parent_delegation.map(value => {
     @capability.decode_delegation_ref_v1(value)
-  )
+  })
   let rebuilt = build_child_delegation_v1(
     payload.delegation_id,
     payload.parent_run_id,
     payload.child_run_id,
     @capability.decode_principal_ref_v1(payload.parent_principal),
     @capability.decode_principal_ref_v1(payload.child_principal),
-    payload.allowed_operations.map(value =>
+    payload.allowed_operations.map(value => {
       @capability.decode_operation_ref_v1(value)
-    ),
+    }),
     payload.artifact_prefixes,
     delegation_claim_ceiling_from_id(payload.claim_ceiling),
     @capability.handover_budget_ceilings_v1(

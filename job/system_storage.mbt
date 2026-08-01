@@ -882,7 +882,7 @@ async fn SystemStore::reconcile_delegate_parent_runs_unlocked(
     })
     let (status, summary, error) = if saw_failed {
       (
-        Failed,
+        RunStatus::Failed,
         Some("Recovered workflow failure from terminal delegate child runs"),
         Some("delegate child run failed"),
       )

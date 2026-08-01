@@ -8,6 +8,7 @@ import {
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/resource_providers",
   "vectie/moonclaw/workspace",
+  "vectie/moonlib/capability",
 }
 
 // Values
@@ -29,6 +30,10 @@ pub fn analysis_working_directory(WorkflowStepContext, AnalysisStepConfig) -> St
 
 pub async fn apply_named_job_profile(JobProposal, String, String, String, String?) -> JobProposal
 
+pub fn authorize_child_delegation_use_v1(ChildDelegationV1, @capability.PrincipalRefV1, String, @capability.OperationRef, Array[String], DelegationClaimCeilingV1, ChildDelegationConsumptionV1, String) -> Result[ChildDelegationUseReceiptV1, String]
+
+pub fn bind_child_run_execution_request_v1(ChildRunExecutionRequest, ChildDelegationV1, @capability.PrincipalRefV1, @capability.OperationRef, Array[String], DelegationClaimCeilingV1, ChildDelegationConsumptionV1, String) -> Result[GovernedChildRunExecutionRequestV1, String]
+
 pub fn build_analysis_prompt(WorkflowStepContext, AnalysisStepConfig, String, String) -> String
 
 pub async fn build_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
@@ -38,6 +43,8 @@ pub async fn build_job_ui_snapshot(SystemStore, String, linked_remote? : Array[J
 pub async fn capture_successful_run_memories(SystemStore, JobDefinition, JobRun, Int) -> Array[MemoryRecord]
 
 pub async fn checkpoint_run_workspace(SystemStore, String, String) -> Bool
+
+pub fn child_delegation_consumption_v1(accumulated_cost_micro_usd? : Int64, requested_cost_micro_usd? : Int64, accumulated_runtime_ms? : Int64, requested_runtime_ms? : Int64, accumulated_tokens? : Int64, requested_tokens? : Int64, accumulated_artifacts? : Int, requested_artifacts? : Int, @capability.ContentAddressedEvidenceRefV1) -> ChildDelegationConsumptionV1 raise
 
 pub fn child_runs_for(SystemStore, String) -> Array[JobRun]
 
@@ -67,6 +74,8 @@ pub fn current_step_label(SystemStore, JobDefinition, String) -> String
 
 pub fn decide_active_job_notifications(String, JobRun, Array[JobRunEvent], JobNotifyTarget, JobNotificationRuntimeState, Int) -> JobNotificationDecision
 
+pub fn decode_child_delegation_v1(Json) -> ChildDelegationV1 raise
+
 pub fn default_analysis_executor() -> AnalysisExecutor
 
 pub fn definition_display_title(JobDefinition) -> String
@@ -80,6 +89,10 @@ pub fn e2e_planner_prompt_sections(Json?) -> Array[String]
 pub fn e2e_planner_system_guidance() -> Array[String]
 
 pub fn e2e_requests_presentation(JobProposal) -> Bool
+
+pub fn encode_child_delegation_use_receipt_v1(ChildDelegationUseReceiptV1) -> Json
+
+pub fn encode_child_delegation_v1(ChildDelegationV1) -> Json
 
 pub async fn ensure_controller_iteration_for_step(SystemStore, JobRun, WorkflowStepDefinition, Int) -> Unit
 
@@ -113,6 +126,8 @@ pub fn initial_notification_runtime_state(Int, last_notified_event_count? : Int)
 
 pub async fn initialize_analysis_tool_journal(AnalysisRequest) -> String
 
+pub fn issue_child_delegation_v1(String, String, String, @capability.PrincipalRefV1, @capability.PrincipalRefV1, Array[@capability.OperationRef], Array[String], DelegationClaimCeilingV1, @capability.HandoverBudgetCeilingsV1, @capability.AuthorityDecisionRefV1, String, String) -> ChildDelegationV1 raise
+
 pub fn job_intake_json(String, Array[E2EStarterAttachment], channel_id? : String?, account_id? : String?, recipient? : String?, message_id? : String?, thread_id? : String?, content_type? : String?) -> Json
 
 pub async fn list_job_profiles(String, String) -> Array[JobProfile]
@@ -134,6 +149,8 @@ pub fn merge_job_intake_metadata(Json, Json?) -> Json
 pub fn moonclaw_jobs_root(String) -> String
 
 pub fn moonclaw_product_home(String) -> String
+
+pub fn narrow_child_delegation_v1(ChildDelegationV1, String, String, @capability.PrincipalRefV1, Array[@capability.OperationRef], Array[String], DelegationClaimCeilingV1, @capability.HandoverBudgetCeilingsV1, @capability.AuthorityDecisionRefV1, String, String) -> ChildDelegationV1 raise
 
 pub fn normalized_request_text(String) -> String
 
@@ -290,6 +307,36 @@ pub fn subtask_execution_isolation_metadata(String, String, String, String?) -> 
 pub fn subtask_prefers_git_worktree(String, String, String?) -> Bool
 
 pub async fn suggest_job_profile_family(String, String, String) -> String?
+
+pub fn supervisor_activate_payload_v1(SupervisorProfileActivationV1) -> Json
+
+pub fn supervisor_command_digest_v1(SupervisorCommandEnvelopeV1, Json) -> String
+
+pub fn supervisor_delegate_existing_payload_v1(String, String, String, Json) -> Json
+
+pub fn supervisor_delegate_intent_payload_v1(String, String, SupervisorWorkerTaskV1, SupervisorWorkerScopeV1) -> Json
+
+pub fn supervisor_epoch_ms_v1(Int64) -> SupervisorEpochMsV1 raise
+
+pub fn supervisor_message_payload_v1(String, SupervisorMessageV1) -> Json
+
+pub fn supervisor_outcome_evidence_payload_v1(String, Array[String], SupervisorBookkeeperOutcomeEvidenceV1) -> Json
+
+pub fn supervisor_payload_digest_v1(Json) -> String
+
+pub fn supervisor_retry_resume_payload_v1(String, SupervisorRecoveryActionV1) -> Json
+
+pub fn supervisor_steer_payload_v1(String, SupervisorMessageV1, String) -> Json
+
+pub fn supervisor_stop_payload_v1(String, String, Bool) -> Json
+
+pub fn supervisor_wake_payload_v1(String, String?) -> Json
+
+pub fn supervisor_worker_retry_payload_v1(String, String, String) -> Json
+
+pub fn supervisor_worker_steer_payload_v1(String, String, String, Json) -> Json
+
+pub fn supervisor_worker_stop_payload_v1(String, String, String, Bool) -> Json
 
 pub fn with_e2e_postprocess_steps(JobProposal) -> JobProposal
 
@@ -554,6 +601,51 @@ pub fn CheckpointStore::new(root~ : String) -> Self
 pub async fn CheckpointStore::save(Self) -> Unit
 pub async fn CheckpointStore::save_checkpoint(Self, CheckpointRecord) -> Unit
 
+pub struct ChildDelegationConsumptionV1 {
+  accumulated_cost_micro_usd : Int64?
+  requested_cost_micro_usd : Int64?
+  accumulated_runtime_ms : Int64?
+  requested_runtime_ms : Int64?
+  accumulated_tokens : Int64?
+  requested_tokens : Int64?
+  accumulated_artifacts : Int?
+  requested_artifacts : Int?
+  evidence : @capability.ContentAddressedEvidenceRefV1
+} derive(Eq, @debug.Debug)
+
+pub struct ChildDelegationUseReceiptV1 {
+  delegation_ref : @capability.DelegationRefV1
+  child_run_id : String
+  operation : @capability.OperationRef
+  artifact_refs : ReadOnlyArray[String]
+  requested_claim : DelegationClaimCeilingV1
+  consumption : ChildDelegationConsumptionV1
+  evaluated_at : String
+  receipt_digest : @capability.DigestRefV1
+} derive(Eq, @debug.Debug)
+
+pub struct ChildDelegationV1 {
+  reference : @capability.DelegationRefV1
+  parent_run_id : String
+  child_run_id : String
+  parent_principal : @capability.PrincipalRefV1
+  child_principal : @capability.PrincipalRefV1
+  allowed_operations : ReadOnlyArray[@capability.OperationRef]
+  artifact_prefixes : ReadOnlyArray[String]
+  claim_ceiling : DelegationClaimCeilingV1
+  budget : @capability.HandoverBudgetCeilingsV1
+  authority : @capability.AuthorityDecisionRefV1
+  issued_at : String
+  expires_at : String
+  parent_delegation : @capability.DelegationRefV1?
+} derive(Eq, @debug.Debug)
+pub fn ChildDelegationV1::allowed_operations(Self) -> ReadOnlyArray[@capability.OperationRef]
+pub fn ChildDelegationV1::artifact_prefixes(Self) -> ReadOnlyArray[String]
+pub fn ChildDelegationV1::budget(Self) -> @capability.HandoverBudgetCeilingsV1
+pub fn ChildDelegationV1::claim_ceiling(Self) -> DelegationClaimCeilingV1
+pub fn ChildDelegationV1::expires_at(Self) -> String
+pub fn ChildDelegationV1::reference(Self) -> @capability.DelegationRefV1
+
 pub(all) struct ChildRunExecutionRequest {
   parent_context : WorkflowStepContext
   child_run : JobRun
@@ -590,6 +682,13 @@ type ControllerLineageFile derive(ToJson, @debug.Debug, @json.FromJson)
 type ControllerStateFile derive(ToJson, @debug.Debug, @json.FromJson)
 
 type DefinitionsIndexFile derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum DelegationClaimCeilingV1 {
+  EvidenceOnly
+  Draft
+  Reviewable
+} derive(Eq, @debug.Debug)
+pub fn DelegationClaimCeilingV1::id(Self) -> String
 
 pub struct E2EJobIntake {
   request_text : String
@@ -719,6 +818,14 @@ pub fn GatewayJobState::runtime(Self) -> RuntimeManager
 pub fn GatewayJobState::set_notification_runtime_state(Self, String, JobNotificationRuntimeState) -> Unit
 pub fn GatewayJobState::should_cancel(Self, String) -> Bool
 pub fn GatewayJobState::should_force_stop(Self, String) -> Bool
+
+pub struct GovernedChildRunExecutionRequestV1 {
+  request : ChildRunExecutionRequest
+  delegation : ChildDelegationV1
+  authorization : ChildDelegationUseReceiptV1
+}
+pub fn GovernedChildRunExecutionRequestV1::authorization(Self) -> ChildDelegationUseReceiptV1
+pub fn GovernedChildRunExecutionRequestV1::request(Self) -> ChildRunExecutionRequest
 
 pub(all) struct Id(Int) derive(Eq, Hash)
 pub impl Show for Id
@@ -1484,6 +1591,418 @@ pub(all) struct SubjobStepConfig {
   max_depth : Int
 } derive(ToJson, @debug.Debug, @json.FromJson)
 pub fn SubjobStepConfig::new(request_text~ : String, cwd? : String?, home? : String?, child_profile? : String?, execution_mode? : String?, execution_target? : String?, include_parent_outputs? : Bool, max_depth? : Int) -> Self
+
+pub(all) struct SupervisorActivateRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  profile : SupervisorProfileActivationV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorAuthorityVerificationV1 {
+  operation_ref : String
+  operation_digest : String
+  capability_resolution : Json
+  verified_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorAuthorityVerifierV1 {
+  verify : async (SupervisorCommandEnvelopeV1, String) -> Result[SupervisorAuthorityVerificationV1, String]
+}
+pub fn SupervisorAuthorityVerifierV1::new(verify~ : async (SupervisorCommandEnvelopeV1, String) -> Result[SupervisorAuthorityVerificationV1, String]) -> Self
+
+pub(all) struct SupervisorBookkeeperOutcomeEvidenceV1 {
+  contract_version : String
+  submission : SupervisorVersionedRecordRefV1
+  source_product : String
+  deliverable_title : String
+  deliverable_summary : String
+  outcome_summary : String
+  owner_route : String
+  evidence_refs : Array[SupervisorEvidenceRefV1]
+  decision_evidence_id : String
+  observed_at : Int
+  recorded_at : Int
+  information_gap : SupervisorGapStatementV1
+  recognition_gap : SupervisorGapStatementV1
+  decisiveness_gap : SupervisorGapStatementV1
+  capability_id : String
+  capability_version : String
+  capability_change_digest : String
+  capability_summary : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorCommandEnvelopeV1 {
+  contract_id : String
+  command_id : String
+  request_digest : String
+  issued_at : SupervisorEpochMsV1
+  evaluated_at : String
+  expected_cursor : Int?
+  authority : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorCommandReceiptV1 {
+  contract_id : String
+  command_id : String
+  request_digest : String
+  supervisor_id : String
+  cursor : Int
+  event_id : String
+  status : String
+  duplicate : Bool
+  response : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorDelegateExistingRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  worker_run_id : String
+  worker_job_id : String
+  delegation : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorDelegateIntentPreparedV1 {
+  receipt : SupervisorCommandReceiptV1
+  worker_run_id : String
+  worker_job_id : String
+  execution_status : String
+  delegation : Json
+} derive(Eq, ToJson, @debug.Debug)
+
+pub(all) struct SupervisorDelegateIntentRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  instruction : String
+  task : SupervisorWorkerTaskV1
+  scope : SupervisorWorkerScopeV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct SupervisorDelegateRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  request : ChildRunExecutionRequest
+  delegation : ChildDelegationV1
+  child_principal : @capability.PrincipalRefV1
+  operation : @capability.OperationRef
+  artifact_refs : Array[String]
+  requested_claim : DelegationClaimCeilingV1
+  consumption : ChildDelegationConsumptionV1
+}
+
+pub struct SupervisorDelegateResponseV1 {
+  receipt : SupervisorCommandReceiptV1
+  governed : GovernedChildRunExecutionRequestV1
+}
+
+pub struct SupervisorEpochMsV1(Int64) derive(Compare, Eq, @debug.Debug)
+pub fn SupervisorEpochMsV1::value(Self) -> Int64
+pub impl ToJson for SupervisorEpochMsV1
+pub impl @json.FromJson for SupervisorEpochMsV1
+
+pub(all) struct SupervisorEvidenceRefV1 {
+  reference_id : String
+  reference_version : String
+  digest : String
+  provenance_ref : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorGapStatementV1 {
+  present : Bool
+  severity : Int
+  summary : String
+  evidence_refs : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorJournalEventV1 {
+  contract_id : String
+  event_id : String
+  supervisor_id : String
+  cursor : Int
+  command_id : String
+  command_digest : String
+  event_type : String
+  timestamp : SupervisorEpochMsV1
+  conversation_id : String?
+  task_id : String?
+  parent_run_id : String?
+  worker_run_id : String?
+  payload : Json
+  state_after : SupervisorStateV1
+  receipt : SupervisorCommandReceiptV1
+  lineage : SupervisorWorkerLineageV1?
+  outcome_evidence : SupervisorBookkeeperOutcomeEvidenceV1?
+  authority_verification : SupervisorAuthorityVerificationV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SupervisorLifecycleV1 {
+  Dormant
+  Running
+  Stopped
+  Failed
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorMailboxAckRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  claim_id : String
+  message_ids : Array[String]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorMailboxClaimRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  claim_id : String
+  max_messages : Int
+  lease_expires_at : SupervisorEpochMsV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorMessageV1 {
+  message_id : String
+  conversation_id : String
+  task_id : String?
+  sender_ref : String
+  content : String
+  content_type : String
+  reply_to_message_id : String?
+  created_at : SupervisorEpochMsV1
+  metadata : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorOutcomeEvidenceRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  source_event_ids : Array[String]
+  projection : SupervisorBookkeeperOutcomeEvidenceV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorOutcomeOutboxAckRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  claim_id : String
+  submission_ids : Array[String]
+  bookkeeper_receipts : Array[Json]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorOutcomeOutboxClaimRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  claim_id : String
+  max_items : Int
+  lease_expires_at : SupervisorEpochMsV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorProfileActivationV1 {
+  contract_id : String
+  supervisor_id : String
+  profile_id : String
+  profile_version : Int
+  profile_digest : String
+  source_product : String
+  runtime_profile : Json
+  runtime_binding : Json
+  activated_at : SupervisorEpochMsV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum SupervisorRecoveryActionV1 {
+  Resume
+  Retry(new_run_id~ : String)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorReplayResponseV1 {
+  contract_id : String
+  supervisor_id : String
+  after_cursor : Int
+  next_cursor : Int
+  has_more : Bool
+  events : Array[SupervisorJournalEventV1]
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorRetryResumeRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  action : SupervisorRecoveryActionV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub struct SupervisorRuntime {
+  runtime : RuntimeManager
+  receiver : @capability.PrincipalRefV1
+  verifier : SupervisorAuthorityVerifierV1
+  states : Map[String, SupervisorStateV1]
+  receipts : Map[String, SupervisorCommandReceiptV1]
+  events : Array[SupervisorJournalEventV1]
+  lineage : Array[SupervisorWorkerLineageV1]
+  outcome_evidence : Array[SupervisorBookkeeperOutcomeEvidenceV1]
+  verified_commands : Map[String, SupervisorAuthorityVerificationV1]
+}
+pub async fn SupervisorRuntime::ack_mailbox(Self, SupervisorMailboxAckRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::ack_outcome_outbox(Self, SupervisorOutcomeOutboxAckRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::activate_profile(Self, SupervisorActivateRequestV1, String) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::claim_mailbox(Self, SupervisorMailboxClaimRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::claim_outcome_outbox(Self, SupervisorOutcomeOutboxClaimRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::delegate(Self, SupervisorDelegateRequestV1) -> Result[SupervisorDelegateResponseV1, String]
+pub async fn SupervisorRuntime::delegate_existing(Self, SupervisorDelegateExistingRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::delegate_intent(Self, SupervisorDelegateIntentRequestV1, String, String) -> Result[SupervisorDelegateIntentPreparedV1, String]
+pub async fn SupervisorRuntime::emit_outcome_evidence(Self, SupervisorOutcomeEvidenceRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub fn SupervisorRuntime::list_status(Self) -> Array[SupervisorStatusProjectionV1]
+pub async fn SupervisorRuntime::load(Self) -> Unit
+pub fn SupervisorRuntime::new(runtime~ : RuntimeManager, receiver~ : @capability.PrincipalRefV1, verifier~ : SupervisorAuthorityVerifierV1) -> Self
+pub fn SupervisorRuntime::pending_mailbox(Self, String, SupervisorEpochMsV1) -> Array[SupervisorMessageV1]
+pub async fn SupervisorRuntime::record_assistant_response(Self, String, String, String, Json, SupervisorEpochMsV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::record_message_delivery(Self, String, String, String, SupervisorEpochMsV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::record_worker_provider_acceptance(Self, String, String, Json, SupervisorEpochMsV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::record_worker_provider_terminal(Self, String, String, Bool, String, Json, SupervisorEpochMsV1) -> Result[SupervisorCommandReceiptV1, String]
+pub fn SupervisorRuntime::replay(Self, String, after_cursor? : Int, limit? : Int) -> Result[SupervisorReplayResponseV1, String]
+pub async fn SupervisorRuntime::retry_resume(Self, SupervisorRetryResumeRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::send_message(Self, SupervisorSendMessageRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub fn SupervisorRuntime::status(Self, String) -> Result[SupervisorStatusProjectionV1, String]
+pub async fn SupervisorRuntime::steer(Self, SupervisorSteerRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::stop_cancel(Self, SupervisorStopRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::verify_activation(Self, SupervisorActivateRequestV1) -> Result[SupervisorCommandReceiptV1?, String]
+pub async fn SupervisorRuntime::verify_delegate_intent(Self, SupervisorDelegateIntentRequestV1, String) -> Result[SupervisorDelegateIntentPreparedV1?, String]
+pub async fn SupervisorRuntime::verify_worker_retry(Self, SupervisorWorkerRetryRequestV1) -> Result[SupervisorCommandReceiptV1?, String]
+pub async fn SupervisorRuntime::verify_worker_steer(Self, SupervisorWorkerSteerRequestV1) -> Result[SupervisorCommandReceiptV1?, String]
+pub async fn SupervisorRuntime::verify_worker_stop(Self, SupervisorWorkerStopRequestV1) -> Result[SupervisorCommandReceiptV1?, String]
+pub async fn SupervisorRuntime::wake_resume(Self, SupervisorWakeRequestV1) -> Result[SupervisorCommandReceiptV1, String]
+pub fn SupervisorRuntime::worker_intent(Self, String, String) -> Result[SupervisorDelegateIntentRequestV1, String]
+pub async fn SupervisorRuntime::worker_retry(Self, SupervisorWorkerRetryRequestV1, Json) -> Result[SupervisorCommandReceiptV1, String]
+pub fn SupervisorRuntime::worker_status(Self, String, String) -> Result[SupervisorWorkerStatusV1, String]
+pub async fn SupervisorRuntime::worker_steer(Self, SupervisorWorkerSteerRequestV1, Json) -> Result[SupervisorCommandReceiptV1, String]
+pub async fn SupervisorRuntime::worker_stop(Self, SupervisorWorkerStopRequestV1, Json) -> Result[SupervisorCommandReceiptV1, String]
+
+pub(all) struct SupervisorSendMessageRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  message : SupervisorMessageV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorStateV1 {
+  contract_id : String
+  supervisor_id : String
+  profile : SupervisorProfileActivationV1
+  lifecycle : SupervisorLifecycleV1
+  active_run_id : String?
+  cursor : Int
+  updated_at : SupervisorEpochMsV1
+  last_error : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorStatusProjectionV1 {
+  contract_id : String
+  state : SupervisorStateV1
+  pending_message_count : Int
+  worker_lineage : Array[SupervisorWorkerLineageV1]
+  workers : Array[SupervisorWorkerStatusV1]
+  latest_event : SupervisorJournalEventV1?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorSteerRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  message : SupervisorMessageV1
+  target_run_id : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorStopRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  reason : String
+  force : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorVersionedRecordRefV1 {
+  record_id : String
+  record_version : String
+  record_digest : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWakeRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  run_id : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerBudgetV1 {
+  max_cost_micro_usd : Int64
+  max_runtime_ms : Int64
+  max_tokens : Int64
+  max_artifacts : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerLineageV1 {
+  supervisor_id : String
+  parent_run_id : String
+  parent_step_id : String
+  worker_run_id : String
+  worker_job_id : String
+  depth : Int
+  delegation_ref : Json
+  recorded_at : SupervisorEpochMsV1
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerRetryRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  worker_run_id : String
+  reason : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerScopeV1 {
+  claim_ceiling : String
+  budget : SupervisorWorkerBudgetV1
+  artifact_prefixes : Array[String]
+  expires_at : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerStatusV1 {
+  contract_id : String
+  supervisor_id : String
+  parent_run_id : String
+  parent_step_id : String
+  worker_run_id : String
+  worker_job_id : String
+  provider_task_id : String
+  run_status : RunStatus
+  execution_status : String
+  attempt : Int
+  accounting_mode : String
+  started_at : Int?
+  finished_at : Int?
+  delegation : Json
+  authorization : Json
+  summary : String?
+  error : String?
+  result_evidence : Json?
+  artifact_refs : Array[String]
+  artifact_evidence : Array[Json]
+  outcome_evidence_status : String
+  outcome_source_event_id : String?
+  outcome_evidence_candidate : SupervisorBookkeeperOutcomeEvidenceV1?
+} derive(ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerSteerRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  worker_run_id : String
+  instruction : String
+  metadata : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerStopRequestV1 {
+  envelope : SupervisorCommandEnvelopeV1
+  supervisor_id : String
+  worker_run_id : String
+  reason : String
+  force : Bool
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SupervisorWorkerTaskV1 {
+  task_id : String
+  conversation_id : String
+  title : String
+  cwd : String
+  model : String?
+  web_search : Bool
+  metadata : Json
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub struct SystemStore {
   root : String

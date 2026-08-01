@@ -39,11 +39,28 @@
 /// - POST /v1/auth/copilot/start → `start_copilot_auth`
 /// - POST /v1/auth/copilot/logout → `logout_copilot`
 /// - POST /v1/shutdown   → graceful shutdown response then stop server
+/// - POST /v1/supervisors/activate → activate an external product profile
+/// - POST /v1/supervisors/{id}/commands/{command} → governed supervisor command
+/// - GET  /v1/supervisors/{id}/status → durable status projection
+/// - GET  /v1/supervisors/{id}/events → cursor replay
 /// - POST /v1/moonbit/publish → `publish_moonbit_module`
 /// - GET  /{file}        → `serve_static_file`
 pub async fn Daemon::serve(self : Daemon) -> Unit {
   @async.with_task_group(group => {
     group.spawn_bg(() => self.process.start())
+    // Recovery can spawn provider processes that register through this daemon's
+    // own HTTP endpoint. Run it concurrently with `serve` so startup never
+    // waits for a registration request before the listener can accept it.
+    group.spawn_bg(
+      () => {
+        // Let the foreground enter `httpx.serve` and register its accept event
+        // before a recovered child posts `/v1/task/register` back to us.
+        @async.sleep(1)
+        self.restore_supervisors(group~)
+        self.restore_supervisor_workers(group~)
+      },
+      no_wait=true,
+    )
     self.httpx.serve(
       @httpx.cors((r, w) => {
         let route_path = r.path.split("?").head().unwrap_or(r.path)
@@ -65,6 +82,51 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
             (Get, ["", "v1", "health"]) => self.health(w)
             (Get, ["", "v1", "events"]) => self.get_events(w)
             (Get, ["", "v1", "models"]) => self.list_models(w)
+            (Post, ["", "v1", "supervisors", "activate"]) =>
+              self.supervisor_activate(group~, r, w)
+            (Post, ["", "v1", "supervisors", id, "commands", "message"]) =>
+              self.supervisor_send_message(id.to_owned(), r, w)
+            (Post, ["", "v1", "supervisors", id, "commands", "delegate"]) =>
+              self.supervisor_delegate_intent(group~, id.to_owned(), r, w)
+            (Post, ["", "v1", "supervisors", id, "commands", "worker-steer"]) =>
+              self.supervisor_worker_command(
+                group~,
+                id.to_owned(),
+                "worker-steer",
+                r,
+                w,
+              )
+            (Post, ["", "v1", "supervisors", id, "commands", "worker-stop"]) =>
+              self.supervisor_worker_command(
+                group~,
+                id.to_owned(),
+                "worker-stop",
+                r,
+                w,
+              )
+            (
+              Post,
+              ["", "v1", "supervisors", id, "commands", "worker-retry-resume"],
+            ) =>
+              self.supervisor_worker_command(
+                group~,
+                id.to_owned(),
+                "worker-retry-resume",
+                r,
+                w,
+              )
+            (Post, ["", "v1", "supervisors", id, "commands", command]) =>
+              self.supervisor_command(
+                group~,
+                id.to_owned(),
+                command.to_owned(),
+                r,
+                w,
+              )
+            (Get, ["", "v1", "supervisors", id, "status"]) =>
+              self.supervisor_status(id.to_owned(), w)
+            (Get, ["", "v1", "supervisors", id, "events"]) =>
+              self.supervisor_replay(id.to_owned(), r, w)
             (Post, ["", "v1", "task", "register"]) => self.register_task(r, w)
             (Get, ["", "v1", "tasks"]) => self.list_tasks(w)
             (Post, ["", "v1", "task"]) => self.create_task(group~, r, w)

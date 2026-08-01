@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "moonclaw/supervisor-command-receipt@1.0.0",
+  "title": "MoonClaw supervisor command receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_id", "command_id", "request_digest", "supervisor_id", "cursor", "event_id", "status", "duplicate", "response"],
+  "properties": {
+    "contract_id": { "const": "moonclaw.supervisor-command-receipt.v1" },
+    "command_id": { "type": "string", "minLength": 1 },
+    "request_digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "supervisor_id": { "type": "string", "minLength": 1 },
+    "cursor": { "type": "integer", "minimum": 1 },
+    "event_id": { "type": "string", "minLength": 1 },
+    "status": { "const": "accepted" },
+    "duplicate": { "type": "boolean" },
+    "response": {}
+  }
+}

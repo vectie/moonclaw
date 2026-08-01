@@ -4,7 +4,7 @@ priv enum MoonCodeGoalHttpRoute {
   GoalPut
   GoalMethodNotAllowed
   NotGoalRoute
-} derive(Eq, Show)
+} derive(Debug, Eq, Show)
 
 ///|
 fn mooncode_goal_http_allow() -> String {

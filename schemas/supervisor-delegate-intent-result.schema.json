@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "moonclaw/supervisor-delegate-intent-result@1.0.0",
+  "title": "MoonClaw supervisor delegate intent result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_id", "receipt", "provider_receipt", "worker"],
+  "properties": {
+    "contract_id": { "const": "moonclaw.supervisor-delegate-intent-result.v1" },
+    "receipt": { "$ref": "supervisor-command-receipt.schema.json" },
+    "provider_receipt": {
+      "oneOf": [
+        { "$ref": "supervisor-command-receipt.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "worker": {
+      "type": "object",
+      "required": [
+        "contract_id",
+        "supervisor_id",
+        "parent_run_id",
+        "parent_step_id",
+        "worker_run_id",
+        "worker_job_id",
+        "provider_task_id",
+        "run_status",
+        "execution_status",
+        "attempt",
+        "accounting_mode",
+        "delegation",
+        "authorization",
+        "artifact_refs",
+        "artifact_evidence",
+        "outcome_evidence_status",
+        "outcome_source_event_id",
+        "outcome_evidence_candidate"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome_evidence_status": { "const": "review_ready" }
+            }
+          },
+          "then": {
+            "properties": {
+              "outcome_source_event_id": { "type": "string", "minLength": 1 },
+              "outcome_evidence_candidate": {
+                "$ref": "#/$defs/productOutcomeSubmission"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "outcome_evidence_candidate": { "type": "null" }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "contract_id": { "const": "moonclaw.supervisor-worker-status.v1" },
+        "supervisor_id": { "type": "string", "minLength": 1 },
+        "parent_run_id": { "type": "string", "minLength": 1 },
+        "parent_step_id": { "const": "delegate" },
+        "worker_run_id": { "type": "string", "minLength": 1 },
+        "worker_job_id": { "type": "string", "minLength": 1 },
+        "provider_task_id": { "type": "string", "minLength": 1 },
+        "run_status": { "enum": ["Pending", "Running", "WaitingForInput", "Succeeded", "Failed", "Cancelled"] },
+        "execution_status": { "enum": ["pending_provider", "running", "waiting_for_input", "succeeded", "failed", "cancelled"] },
+        "attempt": { "type": "integer", "minimum": 1 },
+        "accounting_mode": { "enum": ["local-unmetered", "metered-external"] },
+        "started_at": { "type": ["integer", "null"] },
+        "finished_at": { "type": ["integer", "null"] },
+        "delegation": { "type": "object" },
+        "authorization": { "type": "object" },
+        "summary": { "type": ["string", "null"] },
+        "error": { "type": ["string", "null"] },
+        "result_evidence": { "type": ["object", "null"] },
+        "artifact_refs": { "type": "array", "items": { "type": "string" } },
+        "artifact_evidence": { "type": "array", "items": { "type": "object" } },
+        "outcome_evidence_status": { "enum": ["not_ready", "outcome_evidence_required", "review_ready"] },
+        "outcome_source_event_id": { "type": ["string", "null"] },
+        "outcome_evidence_candidate": {
+          "oneOf": [
+            { "$ref": "#/$defs/productOutcomeSubmission" },
+            { "type": "null" }
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "recordReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_id", "record_version", "record_digest"],
+      "properties": {
+        "record_id": { "type": "string", "minLength": 1 },
+        "record_version": { "type": "string", "minLength": 1 },
+        "record_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "evidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reference_id",
+        "reference_version",
+        "digest",
+        "provenance_ref"
+      ],
+      "properties": {
+        "reference_id": { "type": "string", "minLength": 1 },
+        "reference_version": { "type": "string", "minLength": 1 },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "provenance_ref": { "type": "string", "minLength": 1 }
+      }
+    },
+    "gapStatement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "severity", "summary", "evidence_refs"],
+      "allOf": [
+        {
+          "if": { "properties": { "present": { "const": true } } },
+          "then": { "properties": { "severity": { "minimum": 1 } } },
+          "else": { "properties": { "severity": { "const": 0 } } }
+        }
+      ],
+      "properties": {
+        "present": { "type": "boolean" },
+        "severity": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "summary": { "type": "string", "minLength": 1 },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "productOutcomeSubmission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contract_version",
+        "submission",
+        "source_product",
+        "deliverable_title",
+        "deliverable_summary",
+        "outcome_summary",
+        "owner_route",
+        "evidence_refs",
+        "decision_evidence_id",
+        "observed_at",
+        "recorded_at",
+        "information_gap",
+        "recognition_gap",
+        "decisiveness_gap",
+        "capability_id",
+        "capability_version",
+        "capability_change_digest",
+        "capability_summary"
+      ],
+      "properties": {
+        "contract_version": {
+          "const": "moonbook.bookkeeper.product_outcome_submission.v1"
+        },
+        "submission": { "$ref": "#/$defs/recordReference" },
+        "source_product": { "const": "moonclaw" },
+        "deliverable_title": { "type": "string", "minLength": 1 },
+        "deliverable_summary": { "type": "string", "minLength": 1 },
+        "outcome_summary": { "type": "string", "minLength": 1 },
+        "owner_route": { "type": "string", "minLength": 1 },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidenceReference" }
+        },
+        "decision_evidence_id": { "type": "string", "minLength": 1 },
+        "observed_at": { "type": "integer", "minimum": 0 },
+        "recorded_at": { "type": "integer", "minimum": 0 },
+        "information_gap": { "$ref": "#/$defs/gapStatement" },
+        "recognition_gap": { "$ref": "#/$defs/gapStatement" },
+        "decisiveness_gap": { "$ref": "#/$defs/gapStatement" },
+        "capability_id": { "type": "string", "minLength": 1 },
+        "capability_version": { "type": "string", "minLength": 1 },
+        "capability_change_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "capability_summary": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

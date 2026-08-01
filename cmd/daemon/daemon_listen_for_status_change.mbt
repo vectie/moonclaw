@@ -31,17 +31,147 @@ async fn Daemon::listen_for_status_change(
   }
   logger.info("Connected to task \{task.id} event stream.")
   let eb = @httpx.EventStreamReader::new(eb)
+  let mut latest_assistant : String? = None
+  let mut latest_assistant_event : Json? = None
+  let mut latest_total_tokens : Int? = None
   while eb.read() is Some((event : @server.ServerStreamEvent)) {
     task.broadcast.put(event)
     if event is Moonclaw(event) {
+      match event.desc {
+        AssistantMessage(usage~, content, ..) => {
+          latest_assistant = Some(content)
+          latest_assistant_event = Some(event.to_json())
+          latest_total_tokens = usage.map(fn(value) { value.total_tokens })
+        }
+        _ => ()
+      }
       if event.is_stopping() || event.is_cancellation() {
         logger.info("Task \{task.id} is now idle.")
         task.status = Idle
         self.events.put(StatusChange(task.id))
+        match self.supervisor_worker_owner(task.id.to_string()) {
+          Some(supervisor_id) =>
+            match event.desc {
+              PostConversation => {
+                let supervisors = self.supervisor_runtime()
+                ignore(
+                  supervisors.record_worker_provider_terminal(
+                    supervisor_id,
+                    task.id.to_string(),
+                    true,
+                    latest_assistant.unwrap_or(
+                      "MoonClaw worker provider completed without a textual result",
+                    ),
+                    {
+                      "assistant_event": latest_assistant_event,
+                      "terminal_event": event.to_json(),
+                      "total_tokens": latest_total_tokens,
+                    },
+                    @job.supervisor_epoch_ms_v1(self.clock.now().ms()),
+                  ),
+                ) catch {
+                  error =>
+                    logger.error(
+                      "Failed to record worker provider completion: \{error}",
+                    )
+                }
+                latest_assistant = None
+                latest_assistant_event = None
+                latest_total_tokens = None
+              }
+              Failed(failure) => {
+                let supervisors = self.supervisor_runtime()
+                ignore(
+                  supervisors.record_worker_provider_terminal(
+                    supervisor_id,
+                    task.id.to_string(),
+                    false,
+                    failure.stringify(),
+                    { "event": event.to_json() },
+                    @job.supervisor_epoch_ms_v1(self.clock.now().ms()),
+                  ),
+                ) catch {
+                  error =>
+                    logger.error(
+                      "Failed to record worker provider failure: \{error}",
+                    )
+                }
+                latest_assistant = None
+                latest_assistant_event = None
+                latest_total_tokens = None
+              }
+              _ => ()
+            }
+          None =>
+            match event.desc {
+              PostConversation =>
+                match
+                  (
+                    self.supervisor_executor_owner(task.id.to_string()),
+                    latest_assistant,
+                  ) {
+                  (Some(supervisor_id), Some(content)) => {
+                    let supervisors = self.supervisor_runtime()
+                    ignore(
+                      supervisors.record_assistant_response(
+                        supervisor_id,
+                        task.id.to_string(),
+                        content,
+                        {
+                          "assistant_event": latest_assistant_event,
+                          "terminal_event": event.to_json(),
+                          "total_tokens": latest_total_tokens,
+                        },
+                        @job.supervisor_epoch_ms_v1(self.clock.now().ms()),
+                      ),
+                    ) catch {
+                      error =>
+                        logger.error(
+                          "Failed to record supervisor assistant response: \{error}",
+                        )
+                    }
+                  }
+                  _ => ()
+                }
+              _ => ()
+            }
+        }
+        latest_assistant = None
+        latest_assistant_event = None
+        latest_total_tokens = None
       } else if event.is_starting() {
         logger.info("Task \{task.id} is now busy.")
         task.status = Busy
         self.events.put(StatusChange(task.id))
+        match self.supervisor_worker_owner(task.id.to_string()) {
+          Some(supervisor_id) => {
+            let supervisors = self.supervisor_runtime()
+            match
+              supervisors.worker_status(supervisor_id, task.id.to_string()) {
+              Ok(status) if status.run_status is @job.Pending =>
+                ignore(
+                  supervisors.record_worker_provider_acceptance(
+                    supervisor_id,
+                    task.id.to_string(),
+                    {
+                      "provider_task_id": task.id.to_string(),
+                      "accepted": true,
+                      "accounting_mode": status.accounting_mode,
+                      "event": event.to_json(),
+                    },
+                    @job.supervisor_epoch_ms_v1(self.clock.now().ms()),
+                  ),
+                ) catch {
+                  error =>
+                    logger.error(
+                      "Failed to record worker provider acceptance: \{error}",
+                    )
+                }
+              _ => ()
+            }
+          }
+          None => ()
+        }
       }
     }
   }

@@ -24,6 +24,26 @@ const SUITE_SERVICE_NAME : String = "moongate"
 const SUITE_STATUS_FILE : String = "suite-status.json"
 
 ///|
+const MOONGATE_CONTROL_TOKEN_HEADER : String = "x-moongate-control-token"
+
+///|
+fn moongate_request_headers(
+  content_type? : Bool = false,
+) -> Map[String, String] {
+  let headers : Map[String, String] = Map([])
+  if content_type {
+    headers["Content-Type"] = "application/json"
+  }
+  let configured = @os.getenv("MOONGATE_CONTROL_TOKEN") catch { _ => None }
+  match configured {
+    Some(token) if !token.trim().is_empty() =>
+      headers[MOONGATE_CONTROL_TOKEN_HEADER] = token.trim().to_owned()
+    _ => ()
+  }
+  headers
+}
+
+///|
 pub struct Client {
   base_url : String
 }
@@ -238,7 +258,7 @@ pub async fn Client::get_text(
     Ok(parts) => parts
     Err(error) => return Err(error)
   }
-  let client = @http.Client::new(origin, headers={}) catch {
+  let client = @http.Client::new(origin, headers=moongate_request_headers()) catch {
     err => return Err("client error: \{err}")
   }
   defer client.close()
@@ -266,9 +286,10 @@ pub async fn Client::post(
     Ok(parts) => parts
     Err(error) => return Err(error)
   }
-  let client = @http.Client::new(origin, headers={
-    "Content-Type": "application/json",
-  }) catch {
+  let client = @http.Client::new(
+    origin,
+    headers=moongate_request_headers(content_type=true),
+  ) catch {
     err => return Err("client error: \{err}")
   }
   defer client.close()
