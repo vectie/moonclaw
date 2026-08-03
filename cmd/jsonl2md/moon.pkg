@@ -23,7 +23,8 @@ import {
   "vectie/moonclaw/internal/pino",
 } for "wbtest"
 
+pkgtype(kind: "executable")
+
 options(
-  "is-main": true,
   overrides: [ "vectie/moonclaw/internal/abort" ],
 )

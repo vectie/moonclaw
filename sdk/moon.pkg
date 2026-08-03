@@ -15,7 +15,8 @@ import {
 
 supported_targets = "native"
 
+pkgtype(kind: "executable")
+
 options(
-  "is-main": true,
   overrides: [ "vectie/moonclaw/internal/abort" ],
 )

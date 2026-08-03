@@ -24,11 +24,7 @@ test "child delegation requires an agent and enforces metered ceilings" {
     "2026-07-31T01:00:00Z",
     "2026-07-31T03:00:00Z",
   )
-  let operation = @capability.operation_ref(
-    "moonclaw",
-    "job.delegate",
-    "1.0.0",
-  )
+  let operation = @capability.operation_ref("moonclaw", "job.delegate", "1.0.0")
   let budget = @capability.handover_budget_ceilings_v1(
     max_cost_micro_usd=1000L,
     max_runtime_ms=60000L,
@@ -74,7 +70,8 @@ test "child delegation requires an agent and enforces metered ceilings" {
       Draft,
       within,
       "2026-07-31T01:10:00Z",
-    ) is Ok(_),
+    )
+    is Ok(_),
   )
   let over = child_delegation_consumption_v1(
     accumulated_cost_micro_usd=900L,
@@ -97,7 +94,8 @@ test "child delegation requires an agent and enforces metered ceilings" {
       Draft,
       over,
       "2026-07-31T01:10:00Z",
-    ) is Err(_),
+    )
+    is Err(_),
   )
   let human_child = @capability.principal_ref_v1(
     "human-child",
