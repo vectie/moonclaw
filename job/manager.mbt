@@ -38,6 +38,7 @@ pub impl ToJson for Job with fn to_json(self : Job) -> Json {
 
 ///|
 pub struct Manager {
+  home : String
   cwd : String
   priv mut id : Int
   priv process : @spawn.Manager
@@ -89,6 +90,13 @@ pub async fn Manager::spawn(
   let cwd = match cwd {
     Some(cwd) => cwd
     None => self.cwd
+  }
+  let assessment = @security.assess_shell_command(command, cwd, Some(self.cwd))
+  if !assessment.allowed_by_policy {
+    raise CommandBlocked(assessment)
+  }
+  if assessment.requires_approval {
+    raise CommandApprovalRequired(assessment)
   }
   let id = self.new_id()
   let jobs_dir = moonclaw_jobs_root(self.cwd)

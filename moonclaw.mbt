@@ -167,6 +167,7 @@ pub async fn Moonclaw::resume_(
   id : @uuid.Uuid,
   user_message? : String,
   web_search? : Bool,
+  command_approval_scope? : String,
 ) -> Moonclaw {
   let home = match home {
     Some(home) => home

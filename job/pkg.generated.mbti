@@ -343,6 +343,14 @@ pub fn with_e2e_postprocess_steps(JobProposal) -> JobProposal
 pub fn with_e2e_preprocess_steps(JobProposal) -> JobProposal
 
 // Errors
+pub suberror CommandApprovalRequired {
+  CommandApprovalRequired(@security.CommandAssessment)
+}
+
+pub suberror CommandBlocked {
+  CommandBlocked(@security.CommandAssessment)
+}
+
 pub suberror InvalidJobId {
   InvalidJobId(Id)
 }
@@ -1208,12 +1216,13 @@ pub(all) struct JobUiTimelineEntry {
 } derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct Manager {
+  home : String
   cwd : String
   // private fields
 }
 pub fn Manager::get(Self, Id) -> Job?
 pub fn Manager::list(Self) -> Array[Job]
-pub fn Manager::new(cwd~ : String) -> Self
+pub fn Manager::new(cwd~ : String, home? : String) -> Self
 pub async fn Manager::spawn(Self, name~ : String, description? : String, command~ : String, cwd? : String) -> Job
 pub async fn Manager::start(Self) -> Unit
 pub async fn Manager::wait(Self, Id) -> Int

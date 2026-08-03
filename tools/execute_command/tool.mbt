@@ -7,6 +7,13 @@ pub struct CommandOutput {
 
 ///|
 pub enum CommandResult {
+  Simulated(assessment~ : @security.CommandAssessment)
+  ApprovalRequired(
+    command~ : String,
+    assessment~ : @security.CommandAssessment,
+    token~ : String
+  )
+  Blocked(command~ : String, assessment~ : @security.CommandAssessment)
   Completed(
     command~ : String,
     status~ : Int,
@@ -53,6 +60,25 @@ pub impl Show for CommandResult with fn output(
   logger : &Logger,
 ) -> Unit {
   match self {
+    Simulated(assessment~) => {
+      let reasons = assessment.reasons.join("; ")
+      let effects = assessment.predicted_effects.join(", ")
+      logger.write_string(
+        "Simulation only. Risk=\{assessment.risk_level}, intent=\{assessment.intent}, reasons=\{reasons}, effects=\{effects}.",
+      )
+    }
+    ApprovalRequired(command~, assessment~, token~) => {
+      ignore(command)
+      logger.write_string(
+        @security.render_command_approval_required(assessment, token~),
+      )
+    }
+    Blocked(command~, assessment~) => {
+      let reasons = assessment.reasons.join("; ")
+      logger.write_string(
+        "Command \{command} is blocked by sandbox policy. Reasons: \{reasons}.",
+      )
+    }
     Completed(command~, status~, stdout~, stderr~, max_output_lines~) => {
       let formatted = []
       formatted.push("Command \{command} exited with status \{status}.")
@@ -131,6 +157,38 @@ pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
         }
       } else {
         false
+      }
+      let simulate = if args is { "simulate": simulate, .. } {
+        match simulate {
+          True => true
+          False => false
+          _ => return @tool.error("'simulate' must be a boolean")
+        }
+      } else {
+        false
+      }
+      let approval_token = if args is { "approval_token": String(token), .. } {
+        token.trim().to_string()
+      } else {
+        ""
+      }
+      let assessment = @security.assess_shell_command(
+        command,
+        working_directory,
+        Some(ctx.cwd),
+      )
+      let scope_key = approval_scope.unwrap_or("local:\{ctx.cwd}")
+      let security_result : Result[@security.SecurityRuntime, Error] = try? @security.SecurityRuntime::new(
+        home=ctx.home,
+        cwd=ctx.cwd,
+      )
+      let security = match security_result {
+        Ok(runtime) => runtime
+        Err(error) =>
+          return @tool.error(
+            "Failed to initialize command approval runtime: \{error}",
+            error~,
+          )
       }
       // FIXME: enable background execution when supported
       guard background is false else {

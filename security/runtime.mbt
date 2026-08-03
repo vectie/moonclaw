@@ -109,6 +109,40 @@ pub fn approval_scope_key(
 }
 
 ///|
+pub fn command_approval_target(assessment : CommandAssessment) -> String {
+  let workspace = assessment.workspace.unwrap_or("")
+  let effects = assessment.predicted_effects.join(",")
+  "\{assessment.cwd}|\{workspace}|\{assessment.command}|\{effects}"
+}
+
+///|
+pub fn command_approval_token(
+  assessment : CommandAssessment,
+  now_ms : Int,
+) -> String {
+  "cmd-\{now_ms}-\{command_approval_target(assessment).length()}"
+}
+
+///|
+pub fn render_command_approval_required(
+  assessment : CommandAssessment,
+  token? : String = "",
+) -> String {
+  let reasons = assessment.reasons.join("; ")
+  let lines = [
+    "Approval required for command execution.",
+    "Risk: \{assessment.risk_level}",
+    "Command: `\{assessment.command}`",
+    "CWD: `\{assessment.cwd}`",
+    "Reasons: \{reasons}",
+  ]
+  if !token.is_blank() {
+    lines.push("Token: `\{token}`")
+  }
+  lines.join("\n")
+}
+
+///|
 async fn load_security_config(home : String, cwd : String) -> Json? {
   let mut loaded : Json? = None
   for path in config_path_candidates(home, cwd) {

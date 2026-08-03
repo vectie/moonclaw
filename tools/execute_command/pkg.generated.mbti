@@ -19,6 +19,9 @@ pub struct CommandOutput {
 } derive(ToJson, @json.FromJson)
 
 pub enum CommandResult {
+  Simulated(assessment~ : @security.CommandAssessment)
+  ApprovalRequired(command~ : String, assessment~ : @security.CommandAssessment, token~ : String)
+  Blocked(command~ : String, assessment~ : @security.CommandAssessment)
   Completed(command~ : String, status~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
   TimedOut(command~ : String, timeout~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
   Background(command~ : String, job_id~ : Int)
