@@ -403,6 +403,11 @@ pub enum PipelineStatus {
 
 type PlanModeState derive(ToJson, @debug.Debug, @json.FromJson)
 
+type RobotBridgeTargetConfig
+pub impl Show for RobotBridgeTargetConfig
+pub impl ToJson for RobotBridgeTargetConfig
+pub impl @json.FromJson for RobotBridgeTargetConfig
+
 pub struct SendMessageParams {
   from_agent : String
   to_agent : String?

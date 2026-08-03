@@ -1,0 +1,59 @@
+{
+  "jobs": {
+    "profiles": {
+      "robot_dds_action": {
+        "family": "robot.dds.action",
+        "role": "controller",
+        "priority": 100,
+        "tags": ["robot", "dds", "custom-board", "humanoid"],
+        "match": {
+          "any": ["robot", "wave", "walk", "turn", "go home", "stop"]
+        },
+        "metadata": {
+          "controller_policy": {
+            "acceptance_source": "step_output"
+          }
+        },
+        "steps": [
+          {
+            "id": "interpret_request",
+            "title": "Interpret the requested robot action",
+            "kind": "job.analysis",
+            "metadata": {
+              "enable_tools": false,
+              "board_lane": "Control",
+              "board_order": 0
+            }
+          },
+          {
+            "id": "dispatch_robot_action",
+            "title": "Dispatch the action to the DDS robot bridge",
+            "kind": "job.analysis",
+            "metadata": {
+              "enable_tools": false,
+              "execution_mode": "robot.dds",
+              "execution_target": "robot-main",
+              "robot_action": "wave",
+              "robot_params": {
+                "arm": "right"
+              },
+              "robot_safety_class": "high_level_motion",
+              "board_lane": "Robot",
+              "board_order": 1
+            }
+          },
+          {
+            "id": "report_result",
+            "title": "Report the robot result back to the operator",
+            "kind": "job.analysis",
+            "metadata": {
+              "enable_tools": false,
+              "board_lane": "Operator",
+              "board_order": 2
+            }
+          }
+        ]
+      }
+    }
+  }
+}

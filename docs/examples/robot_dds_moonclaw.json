@@ -1,0 +1,25 @@
+{
+  "robots": {
+    "targets": {
+      "robot-main": {
+        "command": "python3",
+        "args": ["/Users/kq/Workspace/moonclaw/scripts/robot_dds_bridge.py"],
+        "env": {
+          "MOONCLAW_ROBOT_BACKEND": "custom",
+          "MOONCLAW_ROBOT_DRY_RUN": "true",
+          "MOONCLAW_ROBOT_ALLOW_MOTION": "false",
+          "ROBOT_ALLOWED_ACTIONS": "inspect,stand,wave,walk,turn,go_home,stop",
+          "ROBOT_DDS_DOMAIN": "17",
+          "ROBOT_DDS_TASK_TOPIC": "robot/task_request",
+          "ROBOT_DDS_STATUS_TOPIC": "robot/task_status",
+          "ROBOT_BOARD_URI": "board://main-controller",
+          "ROBOT_BOARD_CONNECT_COMMAND": "python3 /Users/kq/Workspace/moonclaw/scripts/robot_hook_example.py",
+          "ROBOT_BOARD_SAFE_MODE_COMMAND": "python3 /Users/kq/Workspace/moonclaw/scripts/robot_hook_example.py",
+          "ROBOT_DDS_CONNECT_COMMAND": "python3 /Users/kq/Workspace/moonclaw/scripts/robot_hook_example.py",
+          "ROBOT_DDS_PUBLISH_COMMAND": "python3 /Users/kq/Workspace/moonclaw/scripts/robot_hook_example.py",
+          "ROBOT_DDS_WAIT_COMMAND": "python3 /Users/kq/Workspace/moonclaw/scripts/robot_hook_example.py"
+        }
+      }
+    }
+  }
+}
