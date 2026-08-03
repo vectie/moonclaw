@@ -11,8 +11,10 @@ pub struct Moonclaw {
 fn setup_agent(
   agent : @agent.Agent,
   cwd~ : String,
+  home~ : String,
   restricted_workspace~ : Bool,
   web_search~ : Bool,
+  command_approval_scope? : String,
 ) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
@@ -32,8 +34,13 @@ fn setup_agent(
       ])
     }
   } else {
+    let execute_command_tool = match command_approval_scope {
+      Some(scope) =>
+        @execute_command.new(agent.cwd, home~, approval_scope=scope)
+      None => @execute_command.new(agent.cwd, home~)
+    }
     agent.add_tools([
-      @execute_command.new(agent.cwd).to_agent_tool(),
+      execute_command_tool.to_agent_tool(),
       @list_files.new(file_manager).to_agent_tool(),
       @read_file.new(file_manager).to_agent_tool(),
       @todo.new_tool(todo_list).to_agent_tool(),
@@ -97,6 +104,7 @@ pub async fn Moonclaw::new(
   user_message? : String,
   web_search? : Bool = false,
   restricted_workspace? : Bool = false,
+  command_approval_scope? : String,
 ) -> Moonclaw {
   let cwd = match cwd {
     Some(cwd) => cwd
@@ -115,7 +123,14 @@ pub async fn Moonclaw::new(
     user_message?,
     web_search~,
   )
-  setup_agent(agent, cwd~, restricted_workspace~, web_search~)
+  setup_agent(
+    agent,
+    cwd~,
+    home=home.unwrap_or(cwd),
+    restricted_workspace~,
+    web_search~,
+    command_approval_scope?,
+  )
   { logger, agent }
 }
 
@@ -191,8 +206,10 @@ pub async fn Moonclaw::resume_(
   setup_agent(
     agent,
     cwd=conversation.cwd(),
+    home~,
     restricted_workspace=false,
     web_search~,
+    command_approval_scope?,
   )
   { logger, agent }
 }

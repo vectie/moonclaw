@@ -1,5 +1,5 @@
-import { useEventsQuery } from "@maria/core/features/api/apiSlice.ts";
-import type { WebviewApi } from "@maria/core/lib/types.js";
+import { useEventsQuery } from "@moonclaw/core/features/api/apiSlice.ts";
+import type { WebviewApi } from "@moonclaw/core/lib/types.js";
 import * as comlink from "comlink";
 import { useEffect } from "react";
 import { Outlet, useNavigate } from "react-router";

@@ -237,7 +237,7 @@ fn robot_bridge_request_json(request : @job.AnalysisRequest) -> Json {
     "preferred_skills": request.preferred_skills,
     "enable_tools": request.enable_tools,
     "web_search": request.web_search,
-    "metadata": request.metadata,
+    "metadata": request.step_metadata,
   }
 }
 

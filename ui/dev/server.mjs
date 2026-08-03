@@ -129,7 +129,7 @@ for (const t of tasks) {
 
     // Send initial connection message
     res.write(
-      'event: maria\ndata: {"type":"connected","timestamp":' +
+      'event: moonclaw\ndata: {"type":"connected","timestamp":' +
         Date.now() +
         "}\n\n",
     );
@@ -140,7 +140,7 @@ for (const t of tasks) {
       // Check if file exists
       if (!fs.existsSync(logFilePath)) {
         res.write(
-          'event: maria\ndata: {"type":"error","message":"Log file not found"}\n\n',
+          'event: moonclaw\ndata: {"type":"error","message":"Log file not found"}\n\n',
         );
         return;
       }
@@ -163,7 +163,7 @@ for (const t of tasks) {
             json.id = crypto.randomUUID(); // Add an ID for tracking
 
             // Send the event
-            res.write(`event: maria\ndata: ${JSON.stringify(json)}\n\n`);
+            res.write(`event: moonclaw\ndata: ${JSON.stringify(json)}\n\n`);
             lineCount++;
 
             // Small delay to simulate streaming (optional, can be removed for faster streaming)
@@ -178,14 +178,14 @@ for (const t of tasks) {
 
       // Send completion event
       res.write(
-        'event: maria\ndata: {"type":"completed","count":' +
+        'event: moonclaw\ndata: {"type":"completed","count":' +
           lineCount +
           "}\n\n",
       );
     } catch (error) {
       logger.error("Error reading log file:", error);
       res.write(
-        'event: maria\ndata: {"type":"error","message":"' +
+        'event: moonclaw\ndata: {"type":"error","message":"' +
           error.message +
           '"}\n\n',
       );

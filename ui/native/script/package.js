@@ -13,12 +13,12 @@ function buildUI() {
   sh("pnpm build");
 }
 
-function buildMaria() {
-  sh("moon build", { cwd: path.join(__dirname, "..") });
+function buildMoonclaw() {
+  sh("moon build --target native --release", { cwd: path.join(__dirname, "..") });
   fs.mkdirSync("./dist/bin", { recursive: true });
   fs.copyFileSync(
     "../../target/native/release/build/cmd/main/main.exe",
-    "./dist/bin/maria",
+    "./dist/bin/moonclaw",
   );
 }
 
@@ -35,7 +35,7 @@ const today = dateString();
 async function main() {
   // Build the native app
   buildUI();
-  buildMaria();
+  buildMoonclaw();
   fs.copyFileSync("./package.dist.json", "./dist/package.json");
 
   fs.rmSync("./out", { recursive: true, force: true });
@@ -54,20 +54,20 @@ async function main() {
       teamId: process.env.TEAM_ID,
     },
   });
-  sh("zip -r -X -y ../maria.zip Maria.app", {
-    cwd: "./out/Maria-darwin-arm64",
+  sh("zip -r -X -y ../moonclaw.zip moonclaw.app", {
+    cwd: "./out/moonclaw-darwin-arm64",
   });
   sh(
-    `rsync -azvhP --rsync-path='mkdir -p /home/ci0/Services/static-server/public/maria-electron/latest/darwin-arm64 && rsync' ./out/maria.zip ci0@192.168.86.2:/home/ci0/Services/static-server/public/maria-electron/latest/darwin-arm64/maria.zip`,
+    `rsync -azvhP --rsync-path='mkdir -p /home/ci0/Services/static-server/public/moonclaw-electron/latest/darwin-arm64 && rsync' ./out/moonclaw.zip ci0@192.168.86.2:/home/ci0/Services/static-server/public/moonclaw-electron/latest/darwin-arm64/moonclaw.zip`,
   );
   sh(
-    `rsync -azvhP --rsync-path='mkdir -p /home/ci0/Services/static-server/public/maria-electron/${today}/darwin-arm64 && rsync' ./out/maria.zip ci0@192.168.86.2:/home/ci0/Services/static-server/public/maria-electron/${today}/darwin-arm64/maria.zip`,
+    `rsync -azvhP --rsync-path='mkdir -p /home/ci0/Services/static-server/public/moonclaw-electron/${today}/darwin-arm64 && rsync' ./out/moonclaw.zip ci0@192.168.86.2:/home/ci0/Services/static-server/public/moonclaw-electron/${today}/darwin-arm64/moonclaw.zip`,
   );
 
   console.log("Build and upload completed.");
 
   console.log(
-    `Download url: http://192.168.86.2:10009/maria-electron/${today}/darwin-arm64/maria.zip`,
+    `Download url: http://192.168.86.2:10009/moonclaw-electron/${today}/darwin-arm64/moonclaw.zip`,
   );
 }
 

@@ -1,4 +1,4 @@
-import type { Status } from "@maria/core/lib/types.ts";
+import type { Status } from "@moonclaw/core/lib/types.ts";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 export function getTaskIcon(status: Status) {

@@ -1,14 +1,14 @@
-import { useAppSelector } from "@maria/core/app/hooks.ts";
+import { useAppSelector } from "@moonclaw/core/app/hooks.ts";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@maria/core/components/ui/card.tsx";
-import { ScrollArea } from "@maria/core/components/ui/scroll-area.tsx";
-import { selectTasks } from "@maria/core/features/session/tasksSlice.ts";
-import { getTaskIcon } from "@maria/core/lib/task-utils.tsx";
-import type { TaskOverview } from "@maria/core/lib/types.ts";
+} from "@moonclaw/core/components/ui/card.tsx";
+import { ScrollArea } from "@moonclaw/core/components/ui/scroll-area.tsx";
+import { selectTasks } from "@moonclaw/core/features/session/tasksSlice.ts";
+import { getTaskIcon } from "@moonclaw/core/lib/task-utils.tsx";
+import type { TaskOverview } from "@moonclaw/core/lib/types.ts";
 import { Clock, Folder } from "lucide-react";
 import { useNavigate } from "react-router";
 

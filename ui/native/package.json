@@ -26,6 +26,7 @@
     "@electron/packager": "^19.0.1",
     "@tailwindcss/vite": "^4.1.17",
     "@types/electron-squirrel-startup": "^1.0.2",
+    "@types/node": "^24.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "@types/wicg-file-system-access": "^2023.10.7",

@@ -502,7 +502,7 @@ pub fn configure_analysis_agent_for_contract(
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
   let builtin_tools = []
   if contract.shell {
-    builtin_tools.push(@execute_command.new(cwd).to_agent_tool())
+    builtin_tools.push(@execute_command.new(cwd, home?).to_agent_tool())
   }
   if contract.list_files {
     builtin_tools.push(@list_files.new(file_manager).to_agent_tool())

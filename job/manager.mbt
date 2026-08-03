@@ -68,8 +68,19 @@ pub impl @json.FromJson for Id with fn from_json(
 }
 
 ///|
-pub fn Manager::new(cwd~ : String) -> Manager {
-  { cwd, id: 0, process: @spawn.Manager::new(cwd~), jobs: {} }
+pub fn Manager::new(cwd~ : String, home? : String) -> Manager {
+  let home = home.unwrap_or(cwd)
+  { home, cwd, id: 0, process: @spawn.Manager::new(cwd~), jobs: {} }
+}
+
+///|
+pub suberror CommandApprovalRequired {
+  CommandApprovalRequired(@security.CommandAssessment)
+}
+
+///|
+pub suberror CommandBlocked {
+  CommandBlocked(@security.CommandAssessment)
 }
 
 ///|

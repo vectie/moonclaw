@@ -1,4 +1,4 @@
-import { setupmoonclawProcess } from "@moonclaw/core/lib/node/moonclaw-setup.js";
+import { setupMoonclawProcess } from "@moonclaw/core/lib/node/moonclaw-setup.js";
 import { getApi } from "@moonclaw/core/lib/node/moonclaw-util.js";
 import { TaskOverview } from "@moonclaw/core/lib/types.js";
 import { get } from "./global-state";
@@ -15,7 +15,7 @@ export class DaemonService {
       const moonclawPath = context.asAbsolutePath(
         `bin/${process.platform}/moonclaw`,
       );
-      const [_, error] = await setupmoonclawProcess(moonclawPath, cwd);
+      const [_, error] = await setupMoonclawProcess(moonclawPath, cwd);
       if (error) {
         // TODO: Handle error properly
         throw new Error("Failed to setup moonclaw process: " + error.message);

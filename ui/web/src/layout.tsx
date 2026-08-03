@@ -1,15 +1,15 @@
-import { useAppSelector } from "@maria/core/app/hooks.ts";
-import { AppSidebar } from "@maria/core/components/app-sidebar.tsx";
+import { useAppSelector } from "@moonclaw/core/app/hooks.ts";
+import { AppSidebar } from "@moonclaw/core/components/app-sidebar.tsx";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@maria/core/components/ui/sidebar.tsx";
-import { useEventsQuery } from "@maria/core/features/api/apiSlice.ts";
+} from "@moonclaw/core/components/ui/sidebar.tsx";
+import { useEventsQuery } from "@moonclaw/core/features/api/apiSlice.ts";
 import {
   selectActiveTaskId,
   selectTasks,
-} from "@maria/core/features/session/tasksSlice.ts";
+} from "@moonclaw/core/features/session/tasksSlice.ts";
 import { Outlet } from "react-router";
 
 function Sidebar({ className }: { className?: string }) {

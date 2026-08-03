@@ -32,18 +32,20 @@ function sh(command, options = {}) {
   cp.execSync(command, { stdio: "inherit", ...options });
 }
 
-function buildMaria() {
-  sh("moon build", { cwd: path.join(__dirname, "../..") });
+function buildMoonclaw() {
+  sh("moon build --target native --release", {
+    cwd: path.join(__dirname, "../.."),
+  });
   fs.mkdirSync(`./bin/${process.platform}`, { recursive: true });
   fs.copyFileSync(
     "../../target/native/release/build/cmd/main/main.exe",
-    `./bin/${process.platform}/maria`,
+    `./bin/${process.platform}/moonclaw`,
   );
 }
 
 async function main() {
-  if (!process.env.NO_BUILD_MARIA) {
-    buildMaria();
+  if (!process.env.NO_BUILD_MOONCLAW) {
+    buildMoonclaw();
   }
   const ctx = await esbuild.context({
     entryPoints: ["src/extension.ts"],

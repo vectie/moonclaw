@@ -65,6 +65,7 @@ async test "analysis executor routes robot.dds through configured bridge command
         job_id: "job.robot",
         run_id: "run.robot",
         step_id: "step.robot",
+        source_prompt: "Ask the robot to wave.",
         prompt: "Ask the robot to wave.",
         model_name: "default",
         cwd: dir,
@@ -75,7 +76,14 @@ async test "analysis executor routes robot.dds through configured bridge command
         preferred_skills: [],
         enable_tools: false,
         web_search: false,
-        metadata: {},
+        tool_contract: @job.AnalysisToolContract::new(
+          shell=false,
+          file_write=false,
+          patch_edit=false,
+        ),
+        step_metadata: {},
+        execution_isolation: None,
+        role_runtime_contract: None,
       }) {
       Ok(execution) => execution
       Err(error) => fail(error)
@@ -126,6 +134,7 @@ async test "analysis executor still accepts robot.e1 as compatibility alias" {
         job_id: "job.robot",
         run_id: "run.robot",
         step_id: "step.robot",
+        source_prompt: "Ask the robot to wave.",
         prompt: "Ask the robot to wave.",
         model_name: "default",
         cwd: dir,
@@ -136,7 +145,14 @@ async test "analysis executor still accepts robot.e1 as compatibility alias" {
         preferred_skills: [],
         enable_tools: false,
         web_search: false,
-        metadata: {},
+        tool_contract: @job.AnalysisToolContract::new(
+          shell=false,
+          file_write=false,
+          patch_edit=false,
+        ),
+        step_metadata: {},
+        execution_isolation: None,
+        role_runtime_contract: None,
       }) {
       Ok(execution) => execution
       Err(error) => fail(error)
@@ -175,6 +191,7 @@ async test "analysis executor forwards structured metadata to robot bridge" {
         job_id: "job.robot",
         run_id: "run.robot",
         step_id: "step.robot",
+        source_prompt: "Wave at the operator.",
         prompt: "Wave at the operator.",
         model_name: "default",
         cwd: dir,
@@ -185,11 +202,18 @@ async test "analysis executor forwards structured metadata to robot bridge" {
         preferred_skills: [],
         enable_tools: false,
         web_search: false,
-        metadata: {
+        tool_contract: @job.AnalysisToolContract::new(
+          shell=false,
+          file_write=false,
+          patch_edit=false,
+        ),
+        step_metadata: {
           "robot_action": "wave",
           "robot_params": { "arm": "right" },
           "robot_safety_class": "high_level_motion",
         },
+        execution_isolation: None,
+        role_runtime_contract: None,
       }) {
       Ok(execution) => execution
       Err(error) => fail(error)

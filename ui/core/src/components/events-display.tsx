@@ -351,15 +351,16 @@ function EventErrorFallback({
   error,
   event,
 }: {
-  error: Error;
+  error: unknown;
   event: TaskEvent;
 }) {
+  const message = error instanceof Error ? error.message : String(error);
   return (
     <div className="border-destructive/50 bg-destructive/10 mb-4 w-full rounded-md border p-3 text-sm">
       <p className="text-destructive font-semibold">
         Error rendering event {event.desc.msg}
       </p>
-      <p className="text-muted-foreground mt-1 text-xs">{error.message}</p>
+      <p className="text-muted-foreground mt-1 text-xs">{message}</p>
     </div>
   );
 }

@@ -1,21 +1,21 @@
-import { useAppSelector } from "@maria/core/app/hooks.ts";
-import { AppSidebar } from "@maria/core/components/app-sidebar.tsx";
-import { Button } from "@maria/core/components/ui/button.js";
+import { useAppSelector } from "@moonclaw/core/app/hooks.ts";
+import { AppSidebar } from "@moonclaw/core/components/app-sidebar.tsx";
+import { Button } from "@moonclaw/core/components/ui/button.js";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@maria/core/components/ui/sidebar.tsx";
+} from "@moonclaw/core/components/ui/sidebar.tsx";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@maria/core/components/ui/tooltip.js";
-import { useEventsQuery } from "@maria/core/features/api/apiSlice.ts";
+} from "@moonclaw/core/components/ui/tooltip.js";
+import { useEventsQuery } from "@moonclaw/core/features/api/apiSlice.ts";
 import {
   selectActiveTaskId,
   selectTasks,
-} from "@maria/core/features/session/tasksSlice.ts";
+} from "@moonclaw/core/features/session/tasksSlice.ts";
 import { RotateCw } from "lucide-react";
 import { Outlet } from "react-router";
 
@@ -43,7 +43,7 @@ function Sidebar({ className }: { className?: string }) {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Restart Maria</p>
+            <p>Restart MoonClaw</p>
           </TooltipContent>
         </Tooltip>
       }

@@ -1,5 +1,7 @@
 import {
   "vectie/moonclaw/tool",
+  "vectie/moonclaw/clock",
+  "vectie/moonclaw/security",
   "vectie/moonlib/spawn",
   "vectie/moonlib/pathx",
   "moonbitlang/core/json",
@@ -10,5 +12,6 @@ supported_targets = "native"
 
 import {
   "moonbitlang/async",
+  "vectie/moonlib/fsx",
   "vectie/moonclaw/internal/mock",
 } for "test"

@@ -1,7 +1,7 @@
-import { makeStore } from "@maria/core/app/store.js";
-import { Skeleton } from "@maria/core/components/ui/skeleton.tsx";
-import Home from "@maria/core/routes/Home.tsx";
-import Task from "@maria/core/routes/Task.tsx";
+import { makeStore } from "@moonclaw/core/app/store.js";
+import { Skeleton } from "@moonclaw/core/components/ui/skeleton.tsx";
+import Home from "@moonclaw/core/routes/Home.tsx";
+import Task from "@moonclaw/core/routes/Task.tsx";
 import { StrictMode, Suspense, use, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
@@ -10,13 +10,13 @@ import "./index.css";
 import { Layout } from "./layout";
 import { install } from "./ril";
 
-const mariaReadyPromise = (async () => {
-  await window.electronAPI.mariaReady();
+const moonclawReadyPromise = (async () => {
+  await window.electronAPI.moonclawReady();
   return await window.electronAPI.getUrl();
 })();
 
 function App() {
-  const url = use(mariaReadyPromise);
+  const url = use(moonclawReadyPromise);
 
   return (
     <Provider store={makeStore({ url: { url } })}>

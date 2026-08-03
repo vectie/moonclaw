@@ -2,7 +2,7 @@
 async test "timeout" (t : @test.Test) {
   @mock.run(t, mock => {
     @async.with_task_group(_ => {
-      let tool = @execute_command.new(mock.cwd.path())
+      let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
       json_inspect(tool.call({ "command": "sleep 5", "timeout": 1000 }), content=[
         "Ok",
         [
@@ -24,7 +24,7 @@ async test "timeout" (t : @test.Test) {
 async test "cat" (t : @test.Test) {
   @mock.run(t, mock => {
     mock.add_json_tree({ "file.txt": "hello world" })
-    let tool = @execute_command.new(mock.cwd.path())
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({ "command": "cat file.txt", "timeout": 5000 })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -48,7 +48,7 @@ async test "output-overflow" (t : @test.Test) {
       lines.push("hello")
     }
     mock.add_json_tree({ "file.txt": lines.join("\n") })
-    let tool = @execute_command.new(mock.cwd.path())
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({
       "command": "cat file.txt",
       "timeout": 5000,
@@ -82,7 +82,7 @@ async test "cd" (t : @test.Test) {
       "file.txt": "hello world",
       "subdir": { "file.txt": "hello from subdir" },
     })
-    let tool = @execute_command.new(mock.cwd.path())
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({ "command": "cat file.txt", "timeout": 5000 })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -97,7 +97,7 @@ async test "cd" (t : @test.Test) {
         "max_output_lines": 100,
       },
     ])
-    let tool = @execute_command.new(mock.cwd.path())
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({
       "command": "cd subdir && cat file.txt",
       "timeout": 5000,
@@ -123,7 +123,7 @@ async test "simulate returns command assessment without executing" (
   t : @test.Test,
 ) {
   @mock.run(t, mock => {
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({
       "command": "echo hello > out.txt",
       "simulate": true,
@@ -147,7 +147,7 @@ async test "simulate returns command assessment without executing" (
 ///|
 async test "high risk command requires explicit approval" (t : @test.Test) {
   @mock.run(t, mock => {
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({ "command": "echo hello > out.txt" })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")
@@ -177,7 +177,8 @@ async test "high risk command records approval under injected scope" (
 ) {
   @mock.run(t, mock => {
     let tool = @execute_command.new(
-      @job.Manager::new(cwd=mock.cwd.path()),
+      mock.cwd.path(),
+      home=mock.cwd.path(),
       approval_scope="feishu:default:chat-1",
     )
     let result = tool.call({ "command": "echo hello > out.txt" })
@@ -200,7 +201,7 @@ async test "high risk command records approval under injected scope" (
 ///|
 async test "approved high risk command executes" (t : @test.Test) {
   @mock.run(t, mock => {
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let first = tool.call({ "command": "echo hello > out.txt" })
     guard first is Ok(ApprovalRequired(command~, assessment~, token~)) else {
       fail("Expected approval-required result but got: \{first}")
@@ -233,7 +234,8 @@ async test "pre-approved high risk command executes without resending token" (
 ) {
   @mock.run(t, mock => {
     let tool = @execute_command.new(
-      @job.Manager::new(cwd=mock.cwd.path()),
+      mock.cwd.path(),
+      home=mock.cwd.path(),
       approval_scope="feishu:default:chat-1",
     )
     let first = tool.call({ "command": "echo hello > out.txt" })
@@ -266,7 +268,7 @@ async test "pre-approved high risk command executes without resending token" (
 ///|
 async test "blocked command is denied even with approval flag" (t : @test.Test) {
   @mock.run(t, mock => {
-    let tool = @execute_command.new(@job.Manager::new(cwd=mock.cwd.path()))
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({
       "command": "sudo rm -rf /",
       "approval_token": "ignored",
@@ -288,7 +290,7 @@ async test "blocked command is denied even with approval flag" (t : @test.Test) 
 #cfg(false)
 async test "background" (t : @test.Test) {
   @mock.run(t, mock => {
-    let tool = @execute_command.new(mock.cwd.path())
+    let tool = @execute_command.new(mock.cwd.path(), home=mock.cwd.path())
     let result = tool.call({ "command": "sleep 2", "background": true })
     guard result is Ok(output) else {
       fail("Expected Ok result but got: \{result}")

@@ -1,4 +1,4 @@
-import { setupmoonclawProcess } from "@moonclaw/core/lib/node/moonclaw-setup.js";
+import { setupMoonclawProcess } from "@moonclaw/core/lib/node/moonclaw-setup.js";
 import { getApi, shutdown } from "@moonclaw/core/lib/node/moonclaw-util.js";
 import {
   app,
@@ -55,7 +55,7 @@ async function setupmoonclaw() {
         "../../../../target/native/release/build/cmd/main/main.exe",
       )
     : path.join(__dirname, "../bin/moonclaw");
-  return await setupmoonclawProcess(
+  return await setupMoonclawProcess(
     moonclawPath,
     moonclawWorkspaceRoot(),
     shellEnv,

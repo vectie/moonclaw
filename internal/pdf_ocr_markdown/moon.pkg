@@ -1,7 +1,7 @@
 import {
-  "moonbitlang/moonclaw/internal/fsx",
-  "moonbitlang/moonclaw/internal/pathx",
-  "moonbitlang/moonclaw/internal/spawn",
+  "vectie/moonclaw/internal/fsx",
+  "vectie/moonclaw/internal/pathx",
+  "vectie/moonclaw/internal/spawn",
   "moonbitlang/core/cmp",
   "moonbitlang/core/test",
 }

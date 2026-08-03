@@ -1,31 +1,31 @@
 import cp from "child_process";
 import type { ResultTuple } from "../types";
 
-const setupmoonclawPromises = new Map<
+const setupMoonclawPromises = new Map<
   string,
   Promise<ResultTuple<undefined>>
 >();
 
-export async function setupmoonclawProcess(
+export async function setupMoonclawProcess(
   moonclawPath: string,
   workspaceRoot: string,
   env?: NodeJS.ProcessEnv,
 ) {
   const setupKey = `${moonclawPath}\n${workspaceRoot}`;
-  const existing = setupmoonclawPromises.get(setupKey);
+  const existing = setupMoonclawPromises.get(setupKey);
   if (existing) {
     return await existing;
   }
-  const promise = doSetupmoonclawProcess(
+  const promise = doSetupMoonclawProcess(
     moonclawPath,
     workspaceRoot,
     env ?? process.env,
   );
-  setupmoonclawPromises.set(setupKey, promise);
+  setupMoonclawPromises.set(setupKey, promise);
   return await promise;
 }
 
-async function doSetupmoonclawProcess(
+async function doSetupMoonclawProcess(
   moonclawPath: string,
   workspaceRoot: string,
   env: NodeJS.ProcessEnv,

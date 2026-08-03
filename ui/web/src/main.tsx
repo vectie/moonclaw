@@ -1,6 +1,6 @@
-import { store } from "@maria/core/app/store.ts";
-import Home from "@maria/core/routes/Home.tsx";
-import Task from "@maria/core/routes/Task.tsx";
+import { store } from "@moonclaw/core/app/store.ts";
+import Home from "@moonclaw/core/routes/Home.tsx";
+import Task from "@moonclaw/core/routes/Task.tsx";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";

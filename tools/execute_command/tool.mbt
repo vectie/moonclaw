@@ -109,7 +109,12 @@ pub impl Show for CommandResult with fn output(
 }
 
 ///|
-pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
+pub fn new(
+  cwd : String,
+  home? : String,
+  approval_scope? : String,
+) -> @tool.Tool[CommandResult] {
+  let home = home.unwrap_or(cwd)
   @tool.new(
     description="Execute an shell command with arguments and capture its output.",
     name="execute_command",
@@ -175,12 +180,12 @@ pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
       let assessment = @security.assess_shell_command(
         command,
         working_directory,
-        Some(ctx.cwd),
+        Some(cwd),
       )
-      let scope_key = approval_scope.unwrap_or("local:\{ctx.cwd}")
+      let scope_key = approval_scope.unwrap_or("local:\{cwd}")
       let security_result : Result[@security.SecurityRuntime, Error] = try? @security.SecurityRuntime::new(
-        home=ctx.home,
-        cwd=ctx.cwd,
+        home~,
+        cwd~,
       )
       let security = match security_result {
         Ok(runtime) => runtime
@@ -190,9 +195,60 @@ pub fn new(cwd : String) -> @tool.Tool[CommandResult] {
             error~,
           )
       }
-      // FIXME: enable background execution when supported
+      if simulate {
+        return @tool.ok(CommandResult::Simulated(assessment~))
+      }
+      if !assessment.allowed_by_policy {
+        return @tool.ok(CommandResult::Blocked(command~, assessment~))
+      }
+      if assessment.requires_approval {
+        let target = @security.command_approval_target(assessment)
+        if !approval_token.is_blank() {
+          let now_ms = @clock.epoch.now().ms().to_int()
+          let _ : Result[@security.ApprovalRecord?, Error] = try? security.approve_token(
+            approval_token, now_ms,
+          )
+        }
+        let approved_result : Result[Bool, Error] = try? security.consume_approval(
+          "command.execute", target, scope_key,
+        )
+        let approved = approved_result.unwrap_or(false)
+        if !approved {
+          let pending = security.matching_pending_approval(
+            "command.execute", target, scope_key,
+          )
+          let record = match pending {
+            Some(record) => record
+            None => {
+              let now_ms = @clock.epoch.now().ms().to_int()
+              let request_result : Result[@security.ApprovalRecord, Error] = try? security.request_approval(
+                @security.command_approval_token(assessment, now_ms),
+                "command.execute",
+                target,
+                scope_key,
+                now_ms,
+              )
+              match request_result {
+                Ok(record) => record
+                Err(error) =>
+                  return @tool.error(
+                    "Failed to create approval request for command '\{command}': \{error}",
+                    error~,
+                  )
+              }
+            }
+          }
+          return @tool.ok(
+            CommandResult::ApprovalRequired(
+              command~,
+              assessment~,
+              token=record.token,
+            ),
+          )
+        }
+      }
       guard background is false else {
-        @tool.error(
+        return @tool.error(
           "Background execution is not supported in this environment.",
         )
       }

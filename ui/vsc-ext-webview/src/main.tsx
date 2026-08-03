@@ -1,8 +1,8 @@
-import { makeStore } from "@maria/core/app/store.ts";
-import { Skeleton } from "@maria/core/components/ui/skeleton.js";
-import * as homeSlice from "@maria/core/features/session/homeSlice.js";
-import Home from "@maria/core/routes/Home.tsx";
-import Task from "@maria/core/routes/Task.tsx";
+import { makeStore } from "@moonclaw/core/app/store.ts";
+import { Skeleton } from "@moonclaw/core/components/ui/skeleton.js";
+import * as homeSlice from "@moonclaw/core/features/session/homeSlice.js";
+import Home from "@moonclaw/core/routes/Home.tsx";
+import Task from "@moonclaw/core/routes/Task.tsx";
 import { StrictMode, Suspense, use, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
@@ -53,7 +53,7 @@ document.getElementById("_defaultStyles")?.remove();
 
 const container = document.getElementById("root")!;
 
-const mariaReadyPromise = (async () => {
+const moonclawReadyPromise = (async () => {
   return await window.vscodeApi.getUrl();
 })();
 
@@ -115,7 +115,7 @@ function LoadingFallback() {
 }
 
 function App() {
-  const url = use(mariaReadyPromise);
+  const url = use(moonclawReadyPromise);
   return (
     <Provider
       store={makeStore({
