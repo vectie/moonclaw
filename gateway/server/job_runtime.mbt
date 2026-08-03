@@ -504,13 +504,7 @@ async fn Gateway::execute_child_run_via_acp(
 ///|
 fn Gateway::job_child_run_executor(self : Gateway) -> @job.ChildRunExecutor {
   @job.ChildRunExecutor::new(run=async fn(request) {
-    if !acp_execution_requested(request.config) {
-      return Ok(None)
-    }
-    match self.execute_child_run_via_acp(request) {
-      Ok(result) => Ok(Some(result))
-      Err(error) => Err(error)
-    }
+    self.execute_child_run_via_external_backend(request)
   })
 }
 
@@ -518,10 +512,11 @@ fn Gateway::job_child_run_executor(self : Gateway) -> @job.ChildRunExecutor {
 fn Gateway::analysis_executor(self : Gateway) -> @job.AnalysisExecutor {
   let fallback_executor = @job.default_analysis_executor()
   @job.AnalysisExecutor::new(run=async fn(request) {
-    if !acp_analysis_execution_requested(request) {
-      return (fallback_executor.run)(request)
+    match self.execute_analysis_via_external_backend(request) {
+      Ok(Some(result)) => Ok(result)
+      Ok(None) => (fallback_executor.run)(request)
+      Err(error) => Err(error)
     }
-    self.execute_analysis_via_acp(request)
   })
 }
 
