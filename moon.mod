@@ -1,6 +1,6 @@
 name = "vectie/moonclaw"
 
-version = "0.1.5"
+version = "0.1.6"
 
 import {
   "moonbitlang/async@0.19.4",
