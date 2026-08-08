@@ -3,11 +3,12 @@ package "vectie/moonclaw/tools/execute_command"
 
 import {
   "moonbitlang/core/json",
+  "vectie/moonclaw/security",
   "vectie/moonclaw/tool",
 }
 
 // Values
-pub fn new(String) -> @tool.Tool[CommandResult]
+pub fn new(String, home? : String, approval_scope? : String) -> @tool.Tool[CommandResult]
 
 // Errors
 
@@ -31,4 +32,3 @@ pub impl Show for CommandResult
 // Type aliases
 
 // Traits
-

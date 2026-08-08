@@ -138,7 +138,7 @@ fn mooncode_runtime_horizon_required_milestones(command : Json) -> Array[Json] {
   } else {
     "check"
   }
-  [
+  let milestones : Array[Json] = [
     {
       "id": "scope",
       "title": "Locate the owned implementation surface",
@@ -169,6 +169,30 @@ fn mooncode_runtime_horizon_required_milestones(command : Json) -> Array[Json] {
       "context_paths": [],
     },
   ]
+  if request.contains("build") {
+    milestones.push({
+      "id": "build",
+      "title": "Assemble the runnable distribution",
+      "evidence_kind": "build",
+      "path": "",
+      "context_paths": [],
+    })
+  }
+  if request.contains("ui-to-ui") ||
+    request.contains("visual validation") ||
+    request.contains("visually validate") ||
+    request.contains("rendered validation") ||
+    request.contains("desktop and phone") ||
+    request.contains("screenshot") {
+    milestones.push({
+      "id": "visual-validation",
+      "title": "Validate the rendered interaction on target viewports",
+      "evidence_kind": "visual",
+      "path": "",
+      "context_paths": [],
+    })
+  }
+  milestones
 }
 
 ///|
@@ -205,6 +229,16 @@ fn mooncode_runtime_horizon_contract_prompt(command : Json) -> String {
     return ""
   }
   "Durable task contract: \{mooncode_runtime_horizon_contract(command).stringify()}\n"
+}
+
+///|
+fn mooncode_runtime_horizon_checkpoint_contract(command : Json) -> Json {
+  {
+    "horizon_id": mooncode_runtime_horizon_id(command),
+    "milestones": Json::array(
+      mooncode_runtime_horizon_required_milestones(command),
+    ),
+  }
 }
 
 ///|
@@ -426,6 +460,30 @@ fn mooncode_runtime_horizon_has_verification(
 }
 
 ///|
+fn mooncode_runtime_horizon_has_visual_validation(
+  results : Array[Json],
+) -> Bool {
+  let boundary = {
+    let mutation = mooncode_runtime_horizon_last_mutation(results)
+    let failure = mooncode_runtime_horizon_last_failure(results)
+    if mutation > failure {
+      mutation
+    } else {
+      failure
+    }
+  }
+  for index, result in results {
+    let tool = mooncode_json_string(result, "tool", default="")
+    if index > boundary &&
+      mooncode_json_bool(result, "accepted", default=false) &&
+      (tool == "browser" || tool == "view_image") {
+      return true
+    }
+  }
+  false
+}
+
+///|
 fn mooncode_runtime_horizon_documentation_path(path : String) -> Bool {
   let normalized = path.to_lower().to_string()
   normalized.has_prefix("docs/") ||
@@ -523,6 +581,7 @@ fn mooncode_runtime_horizon_milestone_proven(
       )
     "check" | "test" | "build" =>
       mooncode_runtime_horizon_has_verification(results, kind)
+    "visual" => mooncode_runtime_horizon_has_visual_validation(results)
     _ => false
   }
 }
@@ -687,6 +746,9 @@ fn mooncode_runtime_horizon_checkpoint_execution(
     mooncode_tool_error_result("checkpoint", message=error, metadata={
       "horizon_id": mooncode_runtime_horizon_id(command),
       "checkpoint": checkpoint,
+      "required_checkpoint_contract": mooncode_runtime_horizon_checkpoint_contract(
+        command,
+      ),
     })
   }
   {
@@ -738,6 +800,9 @@ fn mooncode_runtime_horizon_progress_message(
   remaining_steps : Int,
 ) -> Json {
   let checkpoint = mooncode_runtime_horizon_latest_checkpoint(command, results)
+  let checkpoint_contract = mooncode_runtime_horizon_checkpoint_contract(
+    command,
+  )
   let summaries : Array[String] = []
   let start = if results.length() > 4 { results.length() - 4 } else { 0 }
   for index in start..<results.length() {
@@ -756,7 +821,9 @@ fn mooncode_runtime_horizon_progress_message(
   let path_guidance = "\nPath guidance: exact user-supplied paths and task-contract context_paths remain authoritative starting points. Use them before broader discovery; if one fails, consume its exact error and resolve it with narrow discovery rather than guessing or abandoning an unfinished milestone."
   {
     "role": "user",
-    "content": "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
+    "content": "Authoritative immutable checkpoint contract:\n\{checkpoint_contract.stringify(indent=2)}\n" +
+    "Copy every milestone id, title, evidence_kind, path, and context_paths from this contract exactly. Add only status (pending, active, or done) and next_action; never guess or reconstruct the contract from memory.\n" +
+    "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
     "Recent runtime evidence:\n\{if summaries.length() == 0 { "- none" } else { summaries.join("\n") }}\n" +
     horizon +
     path_guidance +

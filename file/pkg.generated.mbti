@@ -16,4 +16,3 @@ pub fn Manager::resolve_scoped(Self, String) -> String?
 // Type aliases
 
 // Traits
-

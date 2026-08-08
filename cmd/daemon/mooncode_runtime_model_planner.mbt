@@ -49,7 +49,12 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
       "events": Json::array([]),
     }
   }
-  let selected_model = self.models.get_model(name=requested_model)
+  let selected_model = mooncode_runtime_turn_resolve_model(
+    self.models,
+    self.home,
+    command,
+    requested_model,
+  )
   let model_name = requested_model
   let session_id = mooncode_json_string(command, "session_id", default="")
   let command_id = mooncode_command_id(command)
@@ -65,21 +70,28 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
   )
   match selected_model {
     Some(model) => {
-      let skill_catalog = mooncode_runtime_turn_skill_catalog(
-        mooncode_book_root(command),
-      )
-      let messages = mooncode_runtime_turn_model_messages(
-        command,
-        live_steering,
-        remaining_steps,
-        skill_catalog~,
-      )
+      let messages = if mooncode_runtime_turn_model_is_kimi(model.model_name) {
+        mooncode_runtime_turn_kimi_messages(command, live_steering)
+      } else {
+        let skill_catalog = mooncode_runtime_turn_skill_catalog(
+          mooncode_book_root(command),
+        )
+        mooncode_runtime_turn_model_messages(
+          command,
+          live_steering,
+          remaining_steps,
+          skill_catalog~,
+        )
+      }
       let request = mooncode_runtime_turn_model_plan_request_from_messages(
         model.model_name,
         messages,
         tools=mooncode_runtime_turn_model_tools_for_command(command),
+        reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
       )
-      let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
+      let (completion, effective_messages) = mooncode_runtime_turn_model_chat(
+        model, request, command,
+      ) catch {
         error =>
           return mooncode_runtime_turn_planner_error_result(
             command,
@@ -120,9 +132,12 @@ async fn Daemon::mooncode_runtime_turn_plan_tool_calls(
         "tool_call_count": tool_calls.length(),
         "tool_calls": Json::array(tool_calls),
         "events": Json::array([started, selected]),
-        "model_messages": Json::array(messages),
+        "model_messages": Json::array(
+          mooncode_runtime_turn_durable_model_messages(effective_messages),
+        ),
         "model_response_message": mooncode_runtime_turn_model_response_message(
           completion.to_json(),
+          normalized_tool_calls=tool_calls,
         ),
       }
     }
@@ -170,6 +185,29 @@ fn mooncode_runtime_turn_requested_model_label(command : Json) -> String {
 }
 
 ///|
+/// Resolve against the daemon cache first, then rehydrate from the command's
+/// persisted MoonBook root. A daemon may serve its own package directory while
+/// resumed MoonCode commands depend on the workspace-local MoonGate catalog.
+async fn mooncode_runtime_turn_resolve_model(
+  models : @model.Loader,
+  home : StringView,
+  command : Json,
+  selector : String,
+) -> @model.Model? {
+  match models.get_model(name=selector) {
+    Some(model) => Some(model)
+    None => {
+      let book_root = mooncode_book_root(command)
+      if book_root == "" {
+        return None
+      }
+      let book_models = @model.Loader::new(home~, cwd=book_root)
+      book_models.get_model(name=selector)
+    }
+  }
+}
+
+///|
 fn mooncode_runtime_turn_requested_model(command : Json) -> String {
   let model = mooncode_json_string(command, "model", default="")
   if model != "" {
@@ -212,7 +250,17 @@ fn mooncode_runtime_turn_model_timeout_for_provider(
 ) -> Int? {
   match model.model_type {
     SaaS(CodexOAuth) => None
-    _ => Some(mooncode_runtime_turn_model_timeout_ms(command))
+    _ =>
+      // Models routed through MoonGate can legitimately perform a long
+      // uninterrupted reasoning pass before their next tool call. A local
+      // wall-clock deadline converts healthy provider work into a false
+      // transport failure, so these routes run until completion or explicit
+      // cancellation by the MoonCode/MoonDesk control plane.
+      if mooncode_runtime_turn_model_uses_patient_transport(model) {
+        None
+      } else {
+        Some(mooncode_runtime_turn_model_timeout_ms(command))
+      }
   }
 }
 
@@ -221,12 +269,136 @@ async fn mooncode_runtime_turn_model_chat(
   model : @model.Model,
   request : @openai.Request,
   command : Json,
-) -> @openai.ChatCompletion {
-  match mooncode_runtime_turn_model_timeout_for_provider(model, command) {
-    Some(timeout_ms) =>
-      @openai.chat(model~, request, timeout_ms=Some(timeout_ms))
-    None => @openai.chat(model~, request)
+) -> (@openai.ChatCompletion, Array[Json]) {
+  let mut retry_count = 0
+  let mut active_request = request
+  while true {
+    let completion = Some(
+      match mooncode_runtime_turn_model_timeout_for_provider(model, command) {
+        Some(timeout_ms) =>
+          @openai.chat(model~, active_request, timeout_ms=Some(timeout_ms))
+        None => @openai.chat(model~, active_request)
+      },
+    ) catch {
+      error => {
+        let summary = @openai.error_summary(error)
+        let provider_error_class = @openai.error_class(error)
+        let retry_after_ms = @openai.error_retry_after_ms(error)
+        if !mooncode_runtime_turn_model_retries_until_cancelled(model, error) ||
+          @async.is_being_cancelled() {
+          raise error
+        }
+        let delay_ms = mooncode_runtime_turn_model_retry_delay_ms(
+          retry_count,
+          summary~,
+          retry_after_ms~,
+          entropy=mooncode_json_string(command, "session_id", default="") +
+            ":" +
+            mooncode_command_id(command) +
+            ":" +
+            model.model_name,
+        )
+        let overload_compaction_tier = if provider_error_class ==
+          "server_overloaded" {
+          // Begin at tier 2 because the unshaped request has already failed,
+          // then reach the emergency tier within one monitoring interval.
+          (retry_count + 2).min(7)
+        } else {
+          0
+        }
+        active_request = request.compact_for_overload(overload_compaction_tier)
+        let retry_request_chars = active_request.to_json().stringify().length()
+        mooncode_runtime_turn_record_model_retry(
+          command,
+          model.model_name,
+          retry_count + 1,
+          summary,
+          delay_ms,
+          provider_error_class~,
+          retry_after_ms~,
+          overload_compaction_tier~,
+          retry_request_chars~,
+        )
+        @async.sleep(delay_ms)
+        retry_count += 1
+        None
+      }
+    }
+    match completion {
+      Some(value) => {
+        if retry_count > 0 {
+          mooncode_runtime_turn_record_model_retry_recovered(
+            command,
+            model.model_name,
+            retry_count,
+          )
+        }
+        return (
+          value,
+          mooncode_json_array_items(active_request.to_json(), "messages"),
+        )
+      }
+      None => continue
+    }
   }
+  abort("unreachable model retry loop")
+}
+
+///|
+fn mooncode_runtime_turn_model_retries_until_cancelled(
+  model : @model.Model,
+  error : Error,
+) -> Bool {
+  mooncode_runtime_turn_model_uses_patient_transport(model) &&
+  (error is @tls.ConnectionClosed || @openai.error_is_transient(error))
+}
+
+///|
+fn mooncode_runtime_turn_model_retries_transient_summary(
+  model_name : String,
+  summary : String,
+) -> Bool {
+  mooncode_runtime_turn_model_name_uses_patient_transport(model_name) &&
+  mooncode_runtime_turn_planner_error_summary_is_transient(summary)
+}
+
+///|
+fn mooncode_runtime_turn_model_retry_delay_ms(
+  retry_count : Int,
+  summary? : String = "",
+  retry_after_ms? : Int? = None,
+  entropy? : String = "",
+) -> Int {
+  let rate_limited = summary.contains("HTTP 429")
+  let mut delay = if rate_limited { 30000 } else { 1000 }
+  let exponent_cap = if rate_limited { 4 } else { 5 }
+  for _ in 0..<retry_count.min(exponent_cap) {
+    delay *= 2
+  }
+  let cap = if rate_limited { 300000 } else { 30000 }
+  let capped = delay.min(cap)
+  let jitter_percent = mooncode_runtime_turn_model_retry_jitter_percent(
+    "\{entropy}:\{summary}:\{retry_count}",
+  )
+  let jittered = capped * (100 + jitter_percent) / 100
+  match retry_after_ms {
+    Some(provider_delay) => jittered.max(provider_delay).min(cap)
+    None => jittered.min(cap)
+  }
+}
+
+///|
+/// Stable ±15% jitter prevents synchronized MoonCode workers from retrying an
+/// overloaded provider together while keeping replay tests deterministic.
+fn mooncode_runtime_turn_model_retry_jitter_percent(seed : String) -> Int {
+  let mut hash = 5381
+  for ch in seed {
+    hash = (hash * 33 + ch.to_int()) % 1000003
+  }
+  if hash < 0 {
+    hash = -hash
+  }
+  hash % 31 - 15
 }
 
 ///|
@@ -253,7 +425,24 @@ fn mooncode_runtime_turn_model_plan_request(
     model_name,
     mooncode_runtime_turn_model_initial_messages(command),
     tools=mooncode_runtime_turn_model_tools_for_command(command),
+    reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
   )
+}
+
+///|
+fn mooncode_runtime_turn_model_reasoning_effort(
+  command : Json,
+) -> @openai.ChatCompletionReasoningEffort {
+  let payload = mooncode_json_object_field_or_empty(command, "payload")
+  match
+    mooncode_json_string(payload, "planner_reasoning_effort", default="none") {
+    "minimal" => Minimal
+    "low" => Low
+    "medium" => Medium
+    "high" => High
+    "xhigh" => Xhigh
+    _ => None_
+  }
 }
 
 ///|
@@ -261,6 +450,7 @@ fn mooncode_runtime_turn_model_plan_request_from_messages(
   model_name : String,
   message_jsons : Array[Json],
   tools? : Array[@openai.ChatCompletionToolParam] = mooncode_runtime_turn_model_tools(),
+  reasoning_effort? : @openai.ChatCompletionReasoningEffort = None_,
 ) -> @openai.Request raise {
   let messages : Array[@openai.ChatCompletionMessageParam] = @json.from_json(
     Json::array(message_jsons),
@@ -269,11 +459,22 @@ fn mooncode_runtime_turn_model_plan_request_from_messages(
     model=model_name,
     messages~,
     tools~,
-    max_tokens=1200,
-    reasoning_effort=None_,
+    max_tokens=mooncode_runtime_turn_model_max_tokens(model_name),
+    reasoning_effort~,
     stream=true,
     temperature=0.0,
+    tool_choice=Required,
+    parallel_tool_calls=true,
   )
+}
+
+///|
+fn mooncode_runtime_turn_model_max_tokens(model_name : String) -> Int {
+  if mooncode_runtime_turn_model_name_uses_patient_transport(model_name) {
+    2000
+  } else {
+    1200
+  }
 }
 
 ///|
@@ -291,6 +492,26 @@ fn mooncode_runtime_turn_model_tools_for_command(
       ) !=
       "",
   )
+  let payload = mooncode_json_object_field_or_empty(command, "payload")
+  let allowed_tool_names = mooncode_json_array_items(
+    payload, "planner_allowed_tools",
+  ).filter_map(item => {
+    match item {
+      String(name) if name != "" => Some(name)
+      _ => None
+    }
+  })
+  if allowed_tool_names.length() > 0 {
+    return tools.filter(tool => {
+      let function = mooncode_json_object_field_or_empty(
+        tool.to_json(),
+        "function",
+      )
+      allowed_tool_names.contains(
+        mooncode_json_string(function, "name", default=""),
+      )
+    })
+  }
   let request = mooncode_runtime_turn_prompt_text(command)
     .to_lower()
     .to_string()
@@ -304,9 +525,25 @@ fn mooncode_runtime_turn_model_tools_for_command(
     return tools
   }
   if path != "" && mooncode_runtime_turn_read_needs_model(request) {
-    return [tools[0], tools[7], tools[10]]
+    return mooncode_runtime_turn_select_model_tools(tools, [
+      "read", "finish", "read_skill",
+    ])
   }
-  [tools[7], tools[10]]
+  mooncode_runtime_turn_select_model_tools(tools, ["finish", "read_skill"])
+}
+
+///|
+fn mooncode_runtime_turn_select_model_tools(
+  tools : Array[@openai.ChatCompletionToolParam],
+  names : ArrayView[String],
+) -> Array[@openai.ChatCompletionToolParam] {
+  tools.filter(tool => {
+    let function = mooncode_json_object_field_or_empty(
+      tool.to_json(),
+      "function",
+    )
+    names.contains(mooncode_json_string(function, "name", default=""))
+  })
 }
 
 ///|
@@ -925,6 +1162,55 @@ fn mooncode_runtime_turn_language_grounding(command : Json) -> String {
 }
 
 ///|
+fn mooncode_runtime_turn_model_is_kimi(model_name : String) -> Bool {
+  model_name.to_lower().contains("kimi")
+}
+
+///|
+fn mooncode_runtime_turn_model_name_uses_patient_transport(
+  model_name : String,
+) -> Bool {
+  let normalized = model_name.to_lower()
+  normalized.has_prefix("moongate/") ||
+  mooncode_runtime_turn_model_is_kimi(normalized)
+}
+
+///|
+fn mooncode_runtime_turn_model_uses_patient_transport(
+  model : @model.Model,
+) -> Bool {
+  mooncode_runtime_turn_model_name_uses_patient_transport(model.name) ||
+  mooncode_runtime_turn_model_name_uses_patient_transport(model.model_name)
+}
+
+///|
+fn mooncode_runtime_turn_dynamic_skill_gate_message() -> String {
+  "Dynamic skill gate: the user's wording may omit the implementation language. As soon as repository evidence shows .mbt files or a MoonBit command is needed, call read_skill for moonbit-agent-guide when available, read it completely, and follow it before the next MoonBit mutation or command. If accepted read_skill evidence or a loaded-skill receipt for that guide already exists in this preserved command, the gate is already satisfied: continue following it and do not reload it or search filesystem paths. A missing or empty filesystem result cannot invalidate the receipt. Installed skill resources are accessible only through read_skill, never through read, shell, glob, grep, find, ls, or web tools. For MoonTown, treat the application as MoonBit plus Rabbita once those artifacts are discovered."
+}
+
+///|
+fn mooncode_runtime_turn_kimi_messages(
+  command : Json,
+  live_steering : Array[Json],
+) -> Array[Json] {
+  let messages : Array[Json] = [
+    {
+      "role": "system",
+      "content": "You are Kimi K3 operating as MoonCode's autonomous design and implementation agent. Treat the user's complete request as the task contract; do not ask for micro-instructions or wait for another agent to design the solution. Work only inside the selected workspace root. Use your judgment: when the target and intended change are already clear from the task and current context, edit directly; inspect only what is needed to resolve real uncertainty. Form your own coherent plan, implement substantive changes, inspect rendered results when requested, verify important behavior, and continue until the whole request is complete. There is no implicit step, turn, time, or effort budget. Preserve unrelated work and user data. Use read with start_line/end_line for native range reads, and use glob, grep, web_fetch, or web_search for other evidence; use edit, write, or apply_patch for authored file changes rather than shell redirection; use shell and project tools for bounded inspection and verification. Batch independent inspections in one response; start another inference round only when a later action depends on an earlier result. Call finish only after implementation and verification are complete, or after a genuine external blocker prevents further progress.",
+    },
+    {
+      "role": "system",
+      "content": mooncode_runtime_turn_dynamic_skill_gate_message(),
+    },
+    { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
+  ]
+  for steering in live_steering {
+    messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
+  }
+  messages
+}
+
+///|
 fn mooncode_runtime_turn_model_initial_messages(
   command : Json,
   skill_catalog? : String = "",
@@ -932,10 +1218,14 @@ fn mooncode_runtime_turn_model_initial_messages(
   [
     {
       "role": "system",
-      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. A bounded tool batch is not a task budget. Unless the caller explicitly supplies a budget, the task has no implicit token, turn, time, step, context-size, or effort ceiling. Difficulty, elapsed work, a large context, or needing more tool batches are not blockers; continue useful work. Honor real caller-supplied budgets exactly. Never invent a token-budget-exhausted, turn-budget-exhausted, time-budget-exhausted, or step-budget-exhausted blocker unless that exact caller-supplied budget exists and is actually exhausted. Only a genuine external dependency or missing user input or authority that prevents meaningful progress can block a task. Use checkpoint/read_skill/write/edit/apply_patch/read/shell/moon_ide/moon_cmd/moon_check/spawn_workers/wait_workers/finish. Use spawn_workers only for caller-supplied isolated MoonBook roots; children are ordinary prompt sessions with no special authority, and use wait_workers to project any/all child state. When a selected skill directs MoonBit work, prefer semantic discovery with moon_ide before broad source reads and prefer moon_cmd/moon_check over raw shell for validation. For moon_cmd, select the MoonBit module root with cwd and express package or file selectors with path/paths relative to that module; when cwd is omitted, a path inside a nested module lets the runtime infer its nearest module root. Backend target belongs only to commands that support it. `moon fmt` accepts path/paths but never target or package selectors. Canonical local check, test, info, build, and format calls do not require planner-supplied approval. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch and update the checkpoint whenever a milestone changes. Gather enough evidence to distinguish plausible causes before mutating. Before writing contract literals, protocol payloads, schemas, or fixtures, read their authoritative local implementation or specification and derive the current shape from that source; never invent fields or call a synthetic subset a captured runtime payload. Avoid repeating equivalent inspections of the same evidence; every additional diagnostic should distinguish competing causes or expose missing causal evidence. Treat successful repository status, diff, and hosted-result reads as retained until repository or hosted state changes. Prefer narrow, reviewable edits. Before any replace-all or repeated replacement, inspect every match and verify that the same semantic change applies to each one; then rerun the nearest affected tests so adjacent cases are not silently damaged. Prefer one cohesive multi-file patch when the evidence supports it, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Never create marker files, no-op edits, comments, or other artifacts merely to manufacture checkpoint or completion evidence; evidence must come from requested outputs and real validation. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. Once a repair passes the exact gate it targeted, retain that result as established evidence; a later failure at a different gate is a new problem, and does not justify reverting the earlier repair unless new evidence directly falsifies it. Do not infer environment-specific causality from a local pass: reproduce in the failing environment or expose the exact underlying error before claiming a fix. A shell pipeline used as evidence must enable pipefail, because its ordinary exit status reflects only the final stage. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. Interpret `no cleanup` and similar scope constraints as forbidding unrelated refactors, not as permission to skip the repository's canonical formatter after semantic work; run required formatting and review its diff for unintended churn. If a necessary tool call requires operator approval, select the exact tool call; the runtime will pause before execution. Never ask for tool approval in assistant prose or use finish to request it. Do not set `requires_approval` or `approval=operator` for read, moon_ide, moon_check, local check/test/format commands, repository status/diff reads, or hosted-result reads unless the user explicitly required approval or the runtime identifies an operator-controlled boundary. If the operator rejects a tool call, obey its rationale and do not retry the same action by rewriting or splitting the command. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch." +
-      " Treat exact paths named by the user and task-contract `context_paths` as authoritative starting evidence: use them before broader repository discovery and never substitute guessed paths. If a supplied path fails, consume its exact error and use narrow repository discovery to resolve it; that failed lookup is not a blocker while a causally different next action remains. If any required milestone is pending or active, choose the next useful tool batch instead of calling finish or returning partial-status prose as terminal work." +
+      "content": "You are MoonClaw's MoonCode planner. Choose bounded MoonCode tool batches to satisfy the user's request inside the selected MoonBook only. A bounded tool batch is not a task budget. Unless the caller explicitly supplies a budget, the task has no implicit token, turn, time, step, context-size, or effort ceiling. Difficulty, elapsed work, a large context, or needing more tool batches are not blockers; continue useful work. Honor real caller-supplied budgets exactly. Never invent a token-budget-exhausted, turn-budget-exhausted, time-budget-exhausted, or step-budget-exhausted blocker unless that exact caller-supplied budget exists and is actually exhausted. Only a genuine external dependency or missing user input or authority that prevents meaningful progress can block a task. Use checkpoint/read_skill/write/edit/apply_patch/read/view_image/browser/shell/moon_ide/moon_cmd/moon_check/spawn_workers/wait_workers/finish. Use view_image to inspect screenshot pixels; use browser for first-class UI navigation, semantic snapshots, interaction, screenshots, console, and errors instead of installing a project-local browser harness. Use spawn_workers only for caller-supplied isolated MoonBook roots; children are ordinary prompt sessions with no special authority, and use wait_workers to project any/all child state. When a selected skill directs MoonBit work, prefer semantic discovery with moon_ide before broad source reads and prefer moon_cmd/moon_check over raw shell for validation. For moon_cmd, select the MoonBit module root with cwd and express package or file selectors with path/paths relative to that module; when cwd is omitted, a path inside a nested module lets the runtime infer its nearest module root. Backend target belongs only to commands that support it. `moon fmt` accepts path/paths but never target or package selectors. Canonical local check, test, info, build, and format calls do not require planner-supplied approval. Never use paths outside the MoonBook root. Never use shell, an interpreter, or an inline script to author workspace files; all authored mutations must use edit, write, or apply_patch. For an implementation request, include a checkpoint in the first batch and update the checkpoint whenever a milestone changes. Batch independent inspections in one response; start another inference round only when a later action depends on an earlier result. Resolve material uncertainty early, but do not treat inspection as a prerequisite to mutation. Implementation discovery is finite: the runtime permits at most six broad and twelve total source-discovery observations without an authored mutation. If a discovery-saturated result appears, the next tool batch must contain edit, write, or apply_patch and no source-discovery call; use retained evidence and let focused validation expose any remaining mistake. Do not vary read ranges, find, ls, status, outline, or search commands to evade the boundary. Before writing contract literals, protocol payloads, schemas, or fixtures, read their authoritative local implementation or specification and derive the current shape from that source; never invent fields or call a synthetic subset a captured runtime payload. Avoid repeating equivalent inspections of the same evidence; every additional diagnostic should distinguish competing causes or expose missing causal evidence. Treat successful repository status, diff, and hosted-result reads as retained until repository or hosted state changes. Prefer narrow, reviewable edits. Before any replace-all or repeated replacement, inspect every match and verify that the same semantic change applies to each one; then rerun the nearest affected tests so adjacent cases are not silently damaged. Prefer one cohesive multi-file patch when the evidence supports it, and do not initialize a nested repository or generic project scaffold unless explicitly requested. A comment-only or documentation-only mutation does not satisfy an implementation or defect-repair request; repair behavior, configuration, tests, or another substantive contract instead. Never create marker files, no-op edits, comments, or other artifacts merely to manufacture checkpoint or completion evidence; evidence must come from requested outputs and real validation. Treat validation failures as new evidence: inspect the exact failure before changing the implementation or environment. Once a repair passes the exact gate it targeted, retain that result as established evidence; a later failure at a different gate is a new problem, and does not justify reverting the earlier repair unless new evidence directly falsifies it. Do not infer environment-specific causality from a local pass: reproduce in the failing environment or expose the exact underlying error before claiming a fix. A shell pipeline used as verification evidence must enable pipefail; a successful inspection pipeline without pipefail is usable observation but not proof of a check, test, or build gate. If a required validator enforces a clean version-control state, do not repeat it against the same intended dirty state; use an authorized reversible checkpoint, validate that clean state, and publish only after validation succeeds. Interpret `no cleanup` and similar scope constraints as forbidding unrelated refactors, not as permission to skip the repository's canonical formatter after semantic work; run required formatting and review its diff for unintended churn. If a necessary tool call requires operator approval, select the exact tool call; the runtime will pause before execution. Never ask for tool approval in assistant prose or use finish to request it. Do not set `requires_approval` or `approval=operator` for read, view_image, local browser observation, moon_ide, moon_check, local check/test/format commands, repository status/diff reads, or hosted-result reads unless the user explicitly required approval or the runtime identifies an operator-controlled boundary. If the operator rejects a tool call, obey its rationale and do not retry the same action by rewriting or splitting the command. Never guess a toolchain or dependency-management command; inspect its local help or the repository's existing version mechanism before changing versions. Respect explicit user constraints as hard boundaries. When an active capability resolution is supplied, use only selected_capability as the active version; shadow_capability is observation-only, and an unavailable assignment must never be invented or treated as active. Before finish, record a checkpoint with every required milestone done. Call `finish` only when the task is complete; otherwise use tools and wait for tool results before deciding the next batch." +
+      " Autonomy clarification: inspection is proportional to uncertainty, not a prerequisite to every mutation. When the requested target and current context already establish a safe change, edit directly; otherwise inspect only enough to resolve the missing fact. Prefer native read start_line/end_line ranges over shell-based sed slices. Treat exact paths named by the user and task-contract `context_paths` as authoritative starting evidence: use them before broader repository discovery and never substitute guessed paths. If a supplied path fails, consume its exact error and use narrow repository discovery to resolve it; that failed lookup is not a blocker while a causally different next action remains. If any required milestone is pending or active, choose the next useful tool batch instead of calling finish or returning partial-status prose as terminal work." +
       " Never include finish.goal_runtime unless active goal_runtime context is explicitly present in the current request. When it is present, ordinary finish is only a progress turn: use finish.goal_runtime with an exact achieved or blocked decision only when the whole goal reaches a terminal outcome. Blocked still requires a genuine external or user-authority blocker; task difficulty, elapsed work, context size, and implicit limits do not qualify. Achieved evidence must cover every listed criterion id exactly once." +
       skill_catalog,
+    },
+    {
+      "role": "system",
+      "content": mooncode_runtime_turn_dynamic_skill_gate_message(),
     },
     { "role": "user", "content": mooncode_runtime_turn_model_prompt(command) },
   ]
@@ -961,9 +1251,32 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     // A resumed patient-replan checkpoint stores `plan` and `planner_steps`
     // separately after journal decoding; mutating only `plan.model_messages`
     // would make the next continuation fail its integrity check.
+    let compacted = mooncode_runtime_turn_compact_followup_transcript(
+      previous,
+      task_contract=mooncode_runtime_turn_model_prompt(command),
+    )
     let messages : Array[Json] = []
-    for message in previous {
-      messages.push(message)
+    // Replace any prior receipt with the current durable receipts so they do
+    // not accumulate across long runs and survive transcript compaction.
+    for message in compacted {
+      let content = mooncode_json_string(message, "content", default="")
+      if content.has_prefix("Dynamic skill gate:") {
+        messages.push(
+          mooncode_json_object_with_field(
+            message,
+            "content",
+            Json::string(mooncode_runtime_turn_dynamic_skill_gate_message()),
+          ),
+        )
+      } else if !content.has_prefix("Loaded-skill receipt:") {
+        messages.push(message)
+      }
+    }
+    for
+      receipt in mooncode_runtime_turn_loaded_skill_receipt_messages(
+        all_tool_results,
+      ) {
+      messages.push(receipt)
     }
     messages
   } else {
@@ -977,6 +1290,230 @@ fn mooncode_runtime_turn_model_followup_base_messages(
     }
     messages
   }
+}
+
+///|
+/// Keep the task contract plus a valid recent assistant/tool suffix. Durable
+/// evidence remains in the journal, while the provider request and the next
+/// restart checkpoint stay bounded during long autonomous runs.
+fn mooncode_runtime_turn_compact_followup_transcript(
+  previous : Array[Json],
+  task_contract? : String = "",
+) -> Array[Json] {
+  let previous = mooncode_runtime_turn_compact_provider_tool_evidence(previous)
+  // Keep enough raw evidence for roughly eight recent tool quanta. Older raw
+  // source and DOM payloads make capable providers time out long before they
+  // can act, so retain a small set of the model's own reasoning anchors from
+  // the preceding window instead of retaining every byte of those tool calls.
+  let compact_after = 32
+  let retained_suffix_count = 24
+  if previous.length() <= compact_after {
+    let retained : Array[Json] = []
+    for message in previous {
+      retained.push(message)
+    }
+    return retained
+  }
+  // Retain every leading system contract plus the first user message. Kimi
+  // sessions deliberately start with two system messages (planner contract
+  // and dynamic skill gate), so assuming `previous[1]` is the user task drops
+  // the actual mission after the first long-run compaction.
+  let messages : Array[Json] = []
+  let mut task_end = 0
+  let mut leading_end = 0
+  for index in 0..<previous.length() {
+    let role = mooncode_json_string(previous[index], "role", default="")
+    if role == "system" {
+      messages.push(previous[index])
+      leading_end = index + 1
+    } else if role == "user" {
+      messages.push(
+        if task_contract != "" {
+          { "role": "user", "content": task_contract }
+        } else {
+          previous[index]
+        },
+      )
+      task_end = index + 1
+      break
+    } else {
+      break
+    }
+  }
+  if task_end == 0 {
+    if task_contract != "" {
+      messages.push({ "role": "user", "content": task_contract })
+      task_end = leading_end
+    }
+  }
+  if task_end == 0 {
+    // Defensive fallback for malformed legacy transcripts: retain the first
+    // two messages rather than compacting away their only available context.
+    let prefix_count = previous.length().min(2)
+    for index in 0..<prefix_count {
+      messages.push(previous[index])
+    }
+    task_end = prefix_count
+  }
+  let mut suffix_start = previous.length() - retained_suffix_count
+  suffix_start = suffix_start.max(task_end)
+  while suffix_start < previous.length() {
+    let candidate = previous[suffix_start]
+    if mooncode_json_string(candidate, "role", default="") == "assistant" &&
+      mooncode_json_array_items(candidate, "tool_calls").length() > 0 {
+      break
+    }
+    suffix_start += 1
+  }
+  let compacted_count = suffix_start - task_end
+  messages.push({
+    "role": "user",
+    "content": "MoonCode compacted \{compacted_count} older provider messages from this request. The complete task contract is retained above and all tool evidence remains durable in the session journal. Continue from the recent valid suffix; do not repeat discovery solely because older transport messages were compacted.",
+  })
+  let older_reasoning : Array[String] = []
+  for index in task_end..<suffix_start {
+    let candidate = previous[index]
+    if mooncode_json_string(candidate, "role", default="") == "assistant" {
+      let content = mooncode_json_string(candidate, "content", default="")
+      if content != "" {
+        older_reasoning.push(
+          if content.length() > 1200 {
+            content[:1200].to_owned() + "…"
+          } else {
+            content
+          },
+        )
+      }
+    }
+  }
+  if older_reasoning.length() > 0 {
+    let anchor_start = if older_reasoning.length() > 6 {
+      older_reasoning.length() - 6
+    } else {
+      0
+    }
+    let anchors : Array[String] = []
+    for index in anchor_start..<older_reasoning.length() {
+      anchors.push(older_reasoning[index])
+    }
+    messages.push({
+      "role": "user",
+      "content": "Earlier model-authored reasoning anchors retained across transport compaction:\n- " +
+      anchors.join("\n- "),
+    })
+  }
+  for index in suffix_start..<previous.length() {
+    messages.push(previous[index])
+  }
+  messages
+}
+
+///|
+/// A skill or source is delivered in full on the turn that reads it. Later
+/// provider calls retain a bounded head/tail receipt while the complete bytes
+/// remain in the journal. This prevents one 40–70KB read from dominating every
+/// subsequent Ark request after the model has already consumed it.
+fn mooncode_runtime_turn_compact_provider_tool_evidence(
+  previous : Array[Json],
+) -> Array[Json] {
+  let tool_names : Map[String, String] = {}
+  for message in previous {
+    if mooncode_json_string(message, "role", default="") != "assistant" {
+      continue
+    }
+    for tool_call in mooncode_json_array_items(message, "tool_calls") {
+      let tool_call_id = mooncode_json_string(tool_call, "id", default="")
+      let function = mooncode_json_object_field_or_empty(tool_call, "function")
+      let tool_name = mooncode_json_string(function, "name", default="")
+      if tool_call_id != "" && tool_name != "" {
+        tool_names[tool_call_id] = tool_name
+      }
+    }
+  }
+  let compacted : Array[Json] = []
+  for message in previous {
+    let durable = mooncode_runtime_turn_durable_model_message(message)
+    if mooncode_json_string(durable, "role", default="") != "tool" {
+      compacted.push(durable)
+      continue
+    }
+    let tool_call_id = mooncode_json_string(durable, "tool_call_id", default="")
+    let tool_name = tool_names.get(tool_call_id).unwrap_or("tool")
+    let content = mooncode_json_string(durable, "content", default="")
+    let limit = if tool_name == "read_skill" {
+      12000
+    } else if tool_name == "read" {
+      10000
+    } else {
+      6000
+    }
+    if content.length() <= limit {
+      compacted.push(durable)
+      continue
+    }
+    let head_size = limit * 2 / 3
+    let tail_size = limit - head_size
+    let omitted = content.length() - head_size - tail_size
+    let compact_content = content[:head_size].to_owned() +
+      "\n...[MoonCode compacted \{omitted} chars of previously consumed `\{tool_name}` evidence; complete bytes remain in the durable journal]...\n" +
+      content[content.length() - tail_size:].to_owned()
+    compacted.push(
+      mooncode_json_object_with_field(
+        durable,
+        "content",
+        Json::string(compact_content),
+      ),
+    )
+  }
+  compacted
+}
+
+///|
+/// Image bytes are transport evidence for one provider call, not durable
+/// conversation state. Keep the adjacent path-bearing text and replace each
+/// data URL with a stable textual receipt after the model has inspected it.
+/// This prevents screenshots from being copied into every later checkpoint.
+fn mooncode_runtime_turn_durable_model_message(message : Json) -> Json {
+  let content = match message {
+    Object(fields) => fields.get("content")
+    _ => None
+  }
+  guard content is Some(Array(parts)) else { return message }
+  let durable_parts : Array[Json] = []
+  let mut removed_image_count = 0
+  for part in parts {
+    let image_url = mooncode_json_object_field_or_empty(part, "image_url")
+    let url = mooncode_json_string(image_url, "url", default="")
+    if mooncode_json_string(part, "type", default="") == "image_url" &&
+      url.has_prefix("data:image/") {
+      removed_image_count += 1
+    } else {
+      durable_parts.push(part)
+    }
+  }
+  if removed_image_count == 0 {
+    return message
+  }
+  durable_parts.push({
+    "type": "text",
+    "text": "MoonCode delivered {removed_image_count} image evidence item(s) to the model for pixel inspection. Binary data URLs are intentionally omitted from durable checkpoints; the adjacent text and tool-result metadata retain their MoonBook paths.",
+  })
+  mooncode_json_object_with_field(
+    message,
+    "content",
+    Json::array(durable_parts),
+  )
+}
+
+///|
+fn mooncode_runtime_turn_durable_model_messages(
+  messages : Array[Json],
+) -> Array[Json] {
+  let durable : Array[Json] = []
+  for message in messages {
+    durable.push(mooncode_runtime_turn_durable_model_message(message))
+  }
+  durable
 }
 
 ///|
@@ -1050,7 +1587,7 @@ fn mooncode_runtime_turn_model_prompt(command : Json) -> String {
   capability_context +
   goal_context +
   mooncode_runtime_turn_language_grounding(command) +
-  "\n\nChoose the smallest useful tool batch. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
+  "\n\nChoose one dependency-aware bounded tool batch. Batch every independent inspection or mutation that can run from current evidence; do not spend a new inference round on a trivial action unless its result is required first. Use finish immediately when no code or tool work is needed. Keep all paths relative to the selected MoonBook."
 }
 
 ///|
@@ -1142,13 +1679,25 @@ fn mooncode_runtime_turn_model_tools(
   [
     mooncode_runtime_turn_model_tool(
       "read",
-      "Read a file inside the selected MoonBook.",
+      "Read a whole file or an inclusive line range inside the selected MoonBook. Prefer start_line/end_line over shell-based sed slices.",
       {
         "type": "object",
         "properties": {
           "path": { "type": "string" },
+          "start_line": { "type": "integer", "minimum": 1 },
+          "end_line": { "type": "integer", "minimum": 1 },
           "max_output_chars": { "type": "integer" },
         },
+        "required": ["path"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "view_image",
+      "Inspect PNG, JPEG, WebP, or GIF pixels from a file inside the selected MoonBook. The image is attached to the next model turn without embedding its bytes in the durable journal.",
+      {
+        "type": "object",
+        "properties": { "path": { "type": "string" } },
         "required": ["path"],
         "additionalProperties": false,
       },
@@ -1183,7 +1732,7 @@ fn mooncode_runtime_turn_model_tools(
     ),
     mooncode_runtime_turn_model_tool(
       "shell",
-      "Run a bounded shell command inside the selected MoonBook. Set verification_kind only when this command's zero exit status directly proves that exact check, test, or build gate; ordinary inspection commands must omit it.",
+      "Run a bounded shell command inside the selected MoonBook. Use the typed cwd field instead of an inline cd; parent-relative paths are permitted only when they resolve inside the MoonBook from that cwd. For a long-lived local preview server, set background=true and submit only the foreground server command without `&`; the native daemon owns its lifetime. Set verification_kind only when this command's zero exit status directly proves that exact check, test, or build gate; ordinary inspection commands must omit it.",
       {
         "type": "object",
         "properties": {
@@ -1191,12 +1740,51 @@ fn mooncode_runtime_turn_model_tools(
           "cwd": { "type": "string" },
           "timeout_ms": { "type": "integer" },
           "max_output_chars": { "type": "integer" },
+          "background": { "type": "boolean" },
           "verification_kind": {
             "type": "string",
             "enum": ["check", "test", "build"],
           },
         },
         "required": ["cmd"],
+        "additionalProperties": false,
+      },
+    ),
+    mooncode_runtime_turn_model_tool(
+      "browser",
+      "Operate an isolated native browser session for UI-to-UI work. Prefer snapshot for semantic state, screenshot plus view_image for visual judgment, and console/errors for diagnosis. Snapshot returns element refs such as e21; pass them to click/fill/wait as selectors with the required @ prefix (for example @e21). Visible labels such as button text are not selectors. Take a fresh snapshot after navigation or a DOM-changing action before reusing refs.",
+      {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "open", "snapshot", "screenshot", "set_viewport", "click", "fill",
+              "press", "wait", "get", "eval", "console", "errors", "reload", "close",
+            ],
+          },
+          "url": { "type": "string" },
+          "selector": {
+            "type": "string",
+            "description": "CSS, XPath, or a snapshot element reference with @ prefix such as @e21; never pass visible label text as the selector.",
+          },
+          "text": { "type": "string" },
+          "key": { "type": "string" },
+          "path": { "type": "string" },
+          "full_page": { "type": "boolean" },
+          "interactive": { "type": "boolean" },
+          "compact": { "type": "boolean" },
+          "depth": { "type": "integer" },
+          "width": { "type": "integer" },
+          "height": { "type": "integer" },
+          "what": { "type": "string" },
+          "attribute": { "type": "string" },
+          "script": { "type": "string" },
+          "wait_ms": { "type": "integer" },
+          "timeout_ms": { "type": "integer" },
+          "max_output_chars": { "type": "integer" },
+        },
+        "required": ["action"],
         "additionalProperties": false,
       },
     ),
@@ -1434,14 +2022,26 @@ fn mooncode_runtime_turn_tool_calls_from_model_response(
     let function = mooncode_json_object_field_or_empty(call, "function")
     let tool = mooncode_json_string(function, "name", default="")
     let arguments_text = mooncode_json_string(function, "arguments", default="")
-    let arguments = @json.parse(arguments_text) catch { _ => Json::object({}) }
-    if mooncode_tool_supported(tool) || tool == "checkpoint" {
-      calls.push({
-        "tool": tool,
-        "arguments": arguments,
-        "tool_call_id": mooncode_json_string(call, "id", default=""),
-        "planner": "model-tool-call",
-      })
+    let arguments = mooncode_runtime_turn_model_argument_values(arguments_text)
+    let source_call_id = mooncode_json_string(call, "id", default="")
+    for index, argument in arguments {
+      let normalized_tool = mooncode_runtime_turn_infer_tool_name(
+        tool, argument,
+      )
+      if mooncode_tool_supported(normalized_tool) ||
+        normalized_tool == "checkpoint" {
+        let tool_call_id = if arguments.length() == 1 {
+          source_call_id
+        } else {
+          "\{source_call_id}-\{index + 1}"
+        }
+        calls.push({
+          "tool": normalized_tool,
+          "arguments": argument,
+          "tool_call_id": tool_call_id,
+          "planner": "model-tool-call",
+        })
+      }
     }
   }
   if calls.length() == 0 {
@@ -1461,26 +2061,173 @@ fn mooncode_runtime_turn_tool_calls_from_model_response(
 }
 
 ///|
+/// Recover provider batches that contain adjacent heterogeneous argument
+/// objects under one function name. Strong argument shapes take precedence;
+/// ambiguous shapes retain the provider's original function name.
+fn mooncode_runtime_turn_infer_tool_name(
+  original : String,
+  arguments : Json,
+) -> String {
+  guard arguments is Object(fields) else { return original }
+  if fields.contains("cmd") {
+    return "shell"
+  }
+  if fields.contains("diff") {
+    return "apply_patch"
+  }
+  if fields.contains("old_string") && fields.contains("new_string") {
+    return "edit"
+  }
+  if fields.contains("path") && fields.contains("content") {
+    return "write"
+  }
+  if fields.contains("milestones") || fields.contains("horizon_id") {
+    return "checkpoint"
+  }
+  if fields.contains("command") {
+    return "moon_cmd"
+  }
+  if fields.contains("action") {
+    let action = mooncode_json_string(arguments, "action", default="")
+    if mooncode_browser_action_supported(action) {
+      return "browser"
+    }
+    if action == "doc" ||
+      action == "outline" ||
+      action == "peek_def" ||
+      action == "hover" ||
+      action == "find_references" {
+      return "moon_ide"
+    }
+  }
+  if fields.contains("workers") {
+    return "spawn_workers"
+  }
+  if fields.contains("worker_ids") && fields.contains("mode") {
+    return "wait_workers"
+  }
+  if fields.length() == 1 && fields.contains("name") {
+    // `read_skill` is the only native MoonCode tool with a name-only argument.
+    // Recover it when a provider serializes an adjacent read + read_skill batch
+    // under the first function name.
+    return "read_skill"
+  }
+  if fields.contains("path") {
+    // A bare path is the strong shape of a read call. Preserve tools for which
+    // path is already a valid native argument, but recover adjacent path-only
+    // objects that an OpenAI-compatible provider serialized under the
+    // preceding heterogeneous function name (for example checkpoint + read).
+    return match original {
+      "read"
+      | "view_image"
+      | "write"
+      | "edit"
+      | "apply_patch"
+      | "revert_patch"
+      | "read_skill" => original
+      _ => "read"
+    }
+  }
+  original
+}
+
+///|
+fn mooncode_runtime_turn_parse_model_argument(text : String) -> Json? {
+  let parsed = @json.parse(text) catch { _ => return None }
+  Some(parsed)
+}
+
+///|
+/// Some OpenAI-compatible providers occasionally serialize multiple requested
+/// calls as adjacent JSON objects inside one `function.arguments` string. Keep
+/// the task model-owned by recovering those objects as separate calls instead
+/// of silently replacing the arguments with `{}`.
+fn mooncode_runtime_turn_model_argument_values(text : String) -> Array[Json] {
+  if mooncode_runtime_turn_parse_model_argument(text) is Some(parsed) {
+    return [parsed]
+  }
+  let values : Array[Json] = []
+  let current = StringBuilder()
+  let mut depth = 0
+  let mut in_string = false
+  let mut escaped = false
+  let mut started = false
+  for ch in text {
+    if !started {
+      if ch is (' ' | '\t' | '\r' | '\n') {
+        continue
+      }
+      if ch != '{' && ch != '[' {
+        return []
+      }
+      started = true
+    }
+    current.write_char(ch)
+    if in_string {
+      if escaped {
+        escaped = false
+      } else if ch == '\\' {
+        escaped = true
+      } else if ch == '"' {
+        in_string = false
+      }
+      continue
+    }
+    if ch == '"' {
+      in_string = true
+      continue
+    }
+    if ch == '{' || ch == '[' {
+      depth += 1
+    } else if ch == '}' || ch == ']' {
+      depth -= 1
+      if depth < 0 {
+        return []
+      }
+      if depth == 0 {
+        guard mooncode_runtime_turn_parse_model_argument(current.to_string())
+          is Some(parsed) else {
+          return []
+        }
+        values.push(parsed)
+        current.reset()
+        started = false
+      }
+    }
+  }
+  if depth != 0 || in_string || escaped || started {
+    return []
+  }
+  values
+}
+
+///|
 fn mooncode_runtime_turn_model_evidence_ledger_message(
-  tool_calls : Array[Json],
   tool_results : Array[Json],
 ) -> Json {
   let read_paths : Array[String] = []
   let complete_read_paths : Array[String] = []
+  let successful_inspections : Array[Json] = []
   let failed_calls : Array[Json] = []
-  for index in 0..<tool_calls.length() {
-    if index >= tool_results.length() {
-      continue
-    }
-    let call = tool_calls[index]
-    let execution = tool_results[index]
-    let tool = mooncode_json_string(call, "tool", default="")
-    let arguments = mooncode_json_object_field_or_empty(call, "arguments")
+  for execution in tool_results {
+    let tool = mooncode_json_string(execution, "tool", default="")
+    let arguments = mooncode_json_object_field_or_empty(execution, "arguments")
     let path = mooncode_json_string(arguments, "path", default="")
     let accepted = mooncode_json_bool(execution, "accepted", default=false)
     let result = mooncode_json_object_field_or_empty(execution, "result")
     let ok = mooncode_json_bool(result, "ok", default=accepted)
     if accepted && ok {
+      if tool == "shell" {
+        let output = mooncode_json_string(result, "output", default="")
+        let cmd = mooncode_json_string(arguments, "cmd", default="")
+        successful_inspections.push({
+          "tool": tool,
+          "command": cmd,
+          "output_chars": output.length(),
+          "output_sha256_base64": mooncode_runtime_turn_sha256_base64(output),
+          "output_excerpt": mooncode_runtime_turn_inspection_excerpt(output),
+        })
+      }
       let normalized_execution : Json = {
         "accepted": accepted,
         "tool": tool,
@@ -1496,7 +2243,11 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
         if !read_paths.contains(observed_path) {
           read_paths.push(observed_path)
         }
-        if scope == "complete" && !complete_read_paths.contains(observed_path) {
+        if scope == "complete" &&
+          !mooncode_runtime_turn_model_tool_result_content(execution).contains(
+            "...[truncated for planner context]",
+          ) &&
+          !complete_read_paths.contains(observed_path) {
           complete_read_paths.push(observed_path)
         }
       }
@@ -1508,7 +2259,9 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
       })
     }
   }
-  if read_paths.length() == 0 && failed_calls.length() == 0 {
+  if read_paths.length() == 0 &&
+    successful_inspections.length() == 0 &&
+    failed_calls.length() == 0 {
     return {}
   }
   let retained_reads : Array[Json] = read_paths.map(path => Json::string(path))
@@ -1521,14 +2274,29 @@ fn mooncode_runtime_turn_model_evidence_ledger_message(
     Json::object({
       "successful_read_paths": Json::array(retained_reads),
       "complete_read_paths": Json::array(retained_complete_reads),
+      "successful_inspections": Json::array(successful_inspections),
       "failed_tool_calls": Json::array(failed_calls),
     }).stringify(indent=2) +
-    "\n`successful_read_paths` includes complete and partial observations; `complete_read_paths` identifies paths whose full bytes remain in the transcript. Do not completely reread a retained complete path merely to recover context. A causally targeted narrow reread remains appropriate after a compiler or patch error, as does a fresh read after mutation or truncation. Consume each exact tool error before acting: while relevant repository and environment state is unchanged, do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. After a relevant repair or transient cause is resolved, rerun the exact focused verification that previously failed. Use repository discovery or an explicit steering path to choose a causally different next action.",
+    "\n`successful_read_paths` includes complete and partial observations; `complete_read_paths` identifies paths whose full bytes remain in the transcript. `successful_inspections` is a compact durable receipt for successful shell observations whose raw output may be reduced by provider-overload transport shaping. Treat its command, output digest, and excerpt as retained evidence: do not repeat the same or an equivalent directory, status, or inventory inspection merely because older raw output was compacted. Use a causally targeted read of an exact relevant file only when a specific fact is still missing. Do not completely reread a retained complete path merely to recover context. A causally targeted narrow reread remains appropriate after a compiler or patch error, as does a fresh read after mutation or truncation. Consume each exact tool error before acting: while relevant repository and environment state is unchanged, do not repeat an identical failed call, guess an alternative path, or patch against pre-error assumptions. After a relevant repair or transient cause is resolved, rerun the exact focused verification that previously failed. Use repository discovery or an explicit steering path to choose a causally different next action.",
   }
 }
 
 ///|
-fn mooncode_runtime_turn_model_followup_messages(
+fn mooncode_runtime_turn_inspection_excerpt(output : String) -> String {
+  let limit = 1200
+  if output.length() <= limit {
+    return output
+  }
+  let head_size = limit * 2 / 3
+  let tail_size = limit - head_size
+  let omitted = output.length() - head_size - tail_size
+  output[:head_size].to_owned() +
+  "\n...[MoonCode retained inspection receipt omits \{omitted} chars]...\n" +
+  output[output.length() - tail_size:].to_owned()
+}
+
+///|
+async fn mooncode_runtime_turn_model_followup_messages(
   command : Json,
   previous_plan : Json,
   tool_calls : Array[Json],
@@ -1546,28 +2314,18 @@ fn mooncode_runtime_turn_model_followup_messages(
     all_tool_results~,
     skill_catalog~,
   )
-  let prior_results : Array[Json] = []
-  let prior_count = if all_tool_results.length() > tool_results.length() {
-    all_tool_results.length() - tool_results.length()
-  } else {
-    0
-  }
-  for index in 0..<prior_count {
-    prior_results.push(all_tool_results[index])
-  }
-  if mooncode_runtime_turn_requires_verification(command) {
-    messages.push(
-      mooncode_runtime_horizon_progress_message(
-        command, prior_results, remaining_steps,
-      ),
-    )
-  }
   messages.push(
     mooncode_json_object_field_or_empty(previous_plan, "model_response_message"),
   )
   for
     message in mooncode_runtime_turn_model_tool_result_messages(
       tool_calls, tool_results,
+    ) {
+    messages.push(message)
+  }
+  for
+    message in mooncode_runtime_turn_model_image_evidence_messages(
+      command, tool_results,
     ) {
     messages.push(message)
   }
@@ -1583,8 +2341,14 @@ fn mooncode_runtime_turn_model_followup_messages(
   if finish_rejection != "" {
     messages.push({ "role": "user", "content": finish_rejection })
   }
+  // Rebuild one cumulative receipt from every durable execution. The recent
+  // provider suffix is deliberately compacted during long autonomous runs;
+  // a per-batch receipt lets older observations disappear with that suffix
+  // and encourages the model to start discovery again. Keeping the compact
+  // path/digest ledger cumulative preserves evidence without copying source
+  // bytes back into every request.
   let evidence_ledger = mooncode_runtime_turn_model_evidence_ledger_message(
-    tool_calls, tool_results,
+    all_tool_results,
   )
   if mooncode_runtime_turn_model_message_present(evidence_ledger) {
     messages.push(evidence_ledger)
@@ -1592,8 +2356,120 @@ fn mooncode_runtime_turn_model_followup_messages(
   if patient_replan_guidance != "" {
     messages.push({ "role": "user", "content": patient_replan_guidance })
   }
+  let skill_receipts = mooncode_runtime_turn_loaded_skill_receipt_messages(
+    all_tool_results,
+  )
+  if mooncode_runtime_turn_requires_verification(command) {
+    // Keep the immutable contract after the assistant/tool suffix. Long-lived
+    // provider context is weighted toward recent messages; placing recovery
+    // guidance before a stale failed checkpoint allowed the stale explanation
+    // to override the authoritative contract after compaction.
+    let progress = mooncode_runtime_horizon_progress_message(
+      command, all_tool_results, remaining_steps,
+    )
+    if skill_receipts.length() == 0 {
+      messages.push(progress)
+    } else {
+      let content = StringBuilder()
+      content.write_string(
+        mooncode_json_string(progress, "content", default=""),
+      )
+      for receipt in skill_receipts {
+        content.write_string("\n\n")
+        content.write_string(
+          mooncode_json_string(receipt, "content", default=""),
+        )
+      }
+      messages.push(
+        mooncode_json_object_with_field(
+          progress,
+          "content",
+          Json::string(content.to_string()),
+        ),
+      )
+    }
+  } else {
+    for receipt in skill_receipts {
+      messages.push(receipt)
+    }
+  }
+  if mooncode_runtime_turn_discovery_saturation_active(all_tool_results) {
+    messages.push({
+      "role": "user",
+      "content": "Implementation lock is active because source discovery saturated without an authored mutation. Your next tool batch MUST contain a substantive edit, write, or apply_patch and MUST NOT contain read, moon_ide, or source-discovery shell calls. Use the retained source snippets and rendered evidence already present. Make the smallest coherent implementation step now; then use focused format/check/build results to discover any correction needed. Repeating or rephrasing an inspection will remain rejected and cannot add evidence.",
+    })
+  }
   for steering in live_steering {
     messages.push(mooncode_runtime_turn_model_live_steering_message(steering))
+  }
+  messages
+}
+
+///|
+fn mooncode_runtime_turn_discovery_saturation_active(
+  results : Array[Json],
+) -> Bool {
+  let mut active = false
+  for execution in results {
+    if mooncode_runtime_turn_result_is_mutation(execution) {
+      active = false
+    } else {
+      let result = mooncode_runtime_turn_result_payload(execution)
+      let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+      if mooncode_json_bool(metadata, "discovery_saturated", default=false) {
+        active = true
+      }
+    }
+  }
+  active
+}
+
+///|
+async fn mooncode_runtime_turn_model_image_evidence_messages(
+  command : Json,
+  tool_results : Array[Json],
+) -> Array[Json] {
+  let messages : Array[Json] = []
+  let book_root = mooncode_book_root(command)
+  if book_root == "" {
+    return messages
+  }
+  for execution in tool_results {
+    let result = mooncode_json_object_field_or_empty(execution, "result")
+    let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+    if !mooncode_json_bool(result, "ok", default=false) ||
+      !mooncode_json_bool(metadata, "model_image_evidence", default=false) {
+      continue
+    }
+    let relative = mooncode_json_string(metadata, "path", default="")
+    let mime_type = mooncode_json_string(
+      metadata,
+      "mime_type",
+      default="image/png",
+    )
+    let resolved = mooncode_resolve_book_path(book_root, relative)
+    if relative == "" || !mooncode_json_bool(resolved, "ok", default=false) {
+      continue
+    }
+    let absolute = mooncode_json_string(resolved, "absolute_path", default="")
+    let bytes = @fs.read_file(absolute).binary() catch { _ => continue }
+    if bytes.length() == 0 || bytes.length() > 8 * 1024 * 1024 {
+      continue
+    }
+    let data_url = "data:\{mime_type};base64," + @base64.encode(bytes)
+    messages.push({
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Visual evidence from MoonBook path `\{relative}`. Inspect the pixels directly and use them with the tool result evidence.",
+        },
+        {
+          "type": "image_url",
+          "image_url": { "url": data_url, "detail": "high" },
+        },
+      ],
+    })
   }
   messages
 }
@@ -1652,15 +2528,22 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
     skill_catalog~,
   )
   ignore(remaining_steps)
-  let requested_model : String? = Some(model_name)
-  match self.models.get_model(name?=requested_model) {
+  match
+    mooncode_runtime_turn_resolve_model(
+      self.models,
+      self.home,
+      command,
+      model_name,
+    ) {
     Some(model) => {
       let request = mooncode_runtime_turn_model_plan_request_from_messages(
         model.model_name,
         messages,
         tools=mooncode_runtime_turn_model_tools_for_command(command),
       )
-      let completion = mooncode_runtime_turn_model_chat(model, request, command) catch {
+      let (completion, effective_messages) = mooncode_runtime_turn_model_chat(
+        model, request, command,
+      ) catch {
         error =>
           return mooncode_runtime_turn_planner_error_result(
             command,
@@ -1728,9 +2611,12 @@ async fn Daemon::mooncode_runtime_turn_model_followup_plan(
         "tool_call_count": next_tool_calls.length(),
         "tool_calls": Json::array(next_tool_calls),
         "events": Json::array([started, selected]),
-        "model_messages": Json::array(messages),
+        "model_messages": Json::array(
+          mooncode_runtime_turn_durable_model_messages(effective_messages),
+        ),
         "model_response_message": mooncode_runtime_turn_model_response_message(
           response_json,
+          normalized_tool_calls=next_tool_calls,
         ),
       }
     }
@@ -1758,7 +2644,7 @@ fn mooncode_runtime_turn_pipeline_evidence_warning(
       "metadata",
     )
     if mooncode_json_bool(metadata, "pipeline_exit_ambiguous", default=false) {
-      return "Evidence boundary: this shell pipeline did not enable pipefail, so its exit status reflects only the final pipeline stage and cannot prove that an upstream command succeeded. Do not rely on it, commit from it, or advance a checkpoint from it. Rerun the evidence command directly or with pipefail enabled."
+      return "Evidence boundary: this inspection pipeline did not enable pipefail. Its output is usable observation, but its exit status cannot prove that an upstream command succeeded and cannot advance a check, test, or build checkpoint. Rerun only if verification evidence is required, using a direct command or pipefail."
     }
   }
   ""
@@ -1888,7 +2774,10 @@ fn mooncode_runtime_turn_recovery_plan(
 }
 
 ///|
-fn mooncode_runtime_turn_model_response_message(response : Json) -> Json {
+fn mooncode_runtime_turn_model_response_message(
+  response : Json,
+  normalized_tool_calls? : Array[Json] = [],
+) -> Json {
   let choices = match response {
     { "choices": Array(items), .. } => items
     _ => []
@@ -1897,10 +2786,22 @@ fn mooncode_runtime_turn_model_response_message(response : Json) -> Json {
     return {}
   }
   let message = mooncode_json_object_field_or_empty(choices[0], "message")
+  let response_tool_calls = if normalized_tool_calls.length() == 0 {
+    mooncode_json_array_items(message, "tool_calls")
+  } else {
+    normalized_tool_calls.map(call => {
+      "id": mooncode_json_string(call, "tool_call_id", default=""),
+      "type": "function",
+      "function": {
+        "name": mooncode_json_string(call, "tool", default=""),
+        "arguments": mooncode_json_object_field_or_empty(call, "arguments").stringify(),
+      },
+    })
+  }
   {
     "role": "assistant",
     "content": mooncode_json_string(message, "content", default=""),
-    "tool_calls": Json::array(mooncode_json_array_items(message, "tool_calls")),
+    "tool_calls": Json::array(response_tool_calls),
   }
 }
 
@@ -1975,10 +2876,12 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
     },
   }
   let text = payload.stringify(indent=2)
-  if mooncode_json_string(execution, "tool", default="") == "read_skill" {
+  let tool = mooncode_json_string(execution, "tool", default="")
+  let context_limit = if tool == "read" { 40000 } else { 4000 }
+  if tool == "read_skill" {
     text
-  } else if text.length() > 4000 {
-    text[:4000].to_owned() + "\n...[truncated for planner context]"
+  } else if text.length() > context_limit {
+    text[:context_limit].to_owned() + "\n...[truncated for planner context]"
   } else {
     text
   }

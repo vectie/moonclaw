@@ -283,4 +283,3 @@ pub struct BrowserWorkerSnapshot {
 // Type aliases
 
 // Traits
-

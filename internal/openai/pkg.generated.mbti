@@ -14,7 +14,7 @@ pub fn[T : ToChatCompletionMessageParamContent] assistant_message(content? : T, 
 
 pub async fn chat(model~ : @model.Model, Request, logger? : @pino.Logger, extra_body? : Map[String, Json], timeout_ms? : Int?) -> ChatCompletion
 
-pub fn chat_completion(model~ : String, messages~ : Array[ChatCompletionMessageParam], tools? : Array[ChatCompletionToolParam], usage? : CompletionUsageParam, user? : String, max_tokens? : Int, temperature? : Double, reasoning_effort? : ChatCompletionReasoningEffort, response_format? : ResponseFormat, stream? : Bool, stream_options? : ChatCompletionStreamOptionsParam, tool_choice? : ChatCompletionToolChoice) -> Request
+pub fn chat_completion(model~ : String, messages~ : Array[ChatCompletionMessageParam], tools? : Array[ChatCompletionToolParam], usage? : CompletionUsageParam, user? : String, max_tokens? : Int, temperature? : Double, reasoning_effort? : ChatCompletionReasoningEffort, response_format? : ResponseFormat, stream? : Bool, stream_options? : ChatCompletionStreamOptionsParam, tool_choice? : ChatCompletionToolChoice, parallel_tool_calls? : Bool) -> Request
 
 pub async fn chat_with_text_deltas(model~ : @model.Model, Request, logger? : @pino.Logger, extra_body? : Map[String, Json], on_text_delta? : (String) -> Unit, timeout_ms? : Int?) -> ChatCompletion
 
@@ -30,7 +30,15 @@ pub fn chunk_choice_delta_tool_call_function(arguments? : String, name? : String
 
 pub async fn[T : Structural] data(model~ : @model.Model, prompt~ : String) -> T
 
+pub fn error_class(Error) -> String
+
+pub fn error_is_transient(Error) -> Bool
+
+pub fn error_retry_after_ms(Error) -> Int?
+
 pub fn error_summary(Error) -> String
+
+pub fn image_url_content_part(String, detail? : String) -> ChatCompletionContentPartParam
 
 pub async fn json(model~ : @model.Model, prompt~ : String) -> Json
 
@@ -215,8 +223,14 @@ pub struct ChatCompletionChunkChoiceDeltaToolCallFunction {
   name : String?
 } derive(ToJson)
 
+pub struct ChatCompletionContentPartImageUrlParam {
+  url : String
+  detail : String?
+}
+
 pub enum ChatCompletionContentPartParam {
   Text(ChatCompletionContentPartTextParam)
+  ImageUrl(ChatCompletionContentPartImageUrlParam)
 }
 pub fn ChatCompletionContentPartParam::new(text~ : String, cache_control? : CacheControl) -> Self
 pub impl ToJson for ChatCompletionContentPartParam
@@ -391,7 +405,9 @@ pub struct Request {
   stream : Bool?
   stream_options : ChatCompletionStreamOptionsParam?
   tool_choice : ChatCompletionToolChoice?
+  parallel_tool_calls : Bool?
 }
+pub fn Request::compact_for_overload(Self, Int) -> Self
 pub impl ToJson for Request
 
 pub(all) enum ResponseFormat {
@@ -414,4 +430,3 @@ trait ToChatCompletionMessageParamContent
 pub impl ToChatCompletionMessageParamContent for String
 pub impl[T : ToChatCompletionMessageParamContent] ToChatCompletionMessageParamContent for Array[T]
 pub impl ToChatCompletionMessageParamContent for StringView
-

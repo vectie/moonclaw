@@ -25,6 +25,58 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
 }
 
 ///|
+async test "mooncode shell rejects unmanaged background children without hanging" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-background-XXXXXX"),
+  )
+  for
+    command in [
+      "sleep 2 & printf detached", "python3 -m http.server 17842 --bind 127.0.0.1 --directory dist &\necho started\nsleep 1",
+    ] {
+    let result = mooncode_tool_shell(book_root, {
+      "cmd": command,
+      "timeout_ms": 500,
+    })
+    assert_true(mooncode_json_bool(result, "is_error", default=false))
+    assert_true(
+      mooncode_json_string(result, "message", default="").contains(
+        "set background=true",
+      ),
+    )
+  }
+  assert_false(mooncode_shell_has_background_operator("printf 'a & b'"))
+  assert_false(mooncode_shell_has_background_operator("true && printf ok"))
+  assert_false(
+    mooncode_shell_has_background_operator("moon check 2>&1 | head -80"),
+  )
+  assert_false(mooncode_shell_has_background_operator("cat <&3"))
+  assert_false(mooncode_shell_has_background_operator("check &>output.log"))
+  assert_true(mooncode_shell_has_background_operator("check 2>&1 &"))
+}
+
+///|
+test "failed process output keeps the actionable tail when capped" {
+  let warning_prefix = "warning: wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww wwww "
+  let diagnostic_tail = "error: unresolved symbol at final line"
+  let capped = mooncode_cap_failed_process_output(
+    warning_prefix + diagnostic_tail,
+    96,
+  )
+  let output = mooncode_json_string(capped, "output", default="")
+  assert_true(mooncode_json_bool(capped, "truncated", default=false))
+  assert_eq(
+    mooncode_json_string(capped, "truncation_mode", default=""),
+    "head_tail",
+  )
+  assert_true(output.starts_with("warning:"))
+  assert_true(output.contains(diagnostic_tail))
+  assert_true(output.length() <= 96)
+}
+
+///|
 async test "mooncode context application failures identify their file" (
   t : @test.Test,
 ) {
@@ -216,6 +268,87 @@ async test "mooncode native shell rejects explicit paths outside book root" (
 }
 
 ///|
+async test "mooncode shell permits parent paths that remain inside typed cwd" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-shell-parent-inside-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "app/main"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "app/styles"),
+    recursive=true,
+    exists_ok=true,
+  )
+  let execution = mooncode_execute_tool_call(
+    "session-shell-parent-inside",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-shell-parent-inside",
+      "book_root": book_root,
+      "tool": "shell",
+      "command_id": "cmd-shell-parent-inside",
+      "arguments": {
+        "cmd": "ls ../styles",
+        "cwd": "app/main",
+        "timeout_ms": 5000,
+      },
+    },
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  assert_true(mooncode_json_bool(result, "ok", default=false))
+}
+
+///|
+async test "mooncode shell resolves parent paths after a static leading cd" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-shell-leading-cd-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "moontown/src/ui/rabbita-town"),
+    recursive=true,
+    exists_ok=true,
+  )
+  @fsx.write_to_file(@pathx.join(book_root, "moon.mod"), "fixture\n")
+  let execution = mooncode_execute_tool_call(
+    "session-shell-leading-cd",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-shell-leading-cd",
+      "book_root": book_root,
+      "tool": "shell",
+      "command_id": "cmd-shell-leading-cd",
+      "arguments": {
+        "cmd": "cd moontown/src/ui/rabbita-town 2>/dev/null && cat ../../../../moon.mod",
+        "timeout_ms": 5000,
+      },
+    },
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  assert_true(mooncode_json_bool(result, "ok", default=false))
+  assert_true(
+    mooncode_json_string(result, "output", default="").contains("fixture"),
+  )
+  assert_true(
+    mooncode_shell_parent_path_escapes(
+      book_root, book_root, "cd moontown/src/ui/rabbita-town && cat ../../../../../outside",
+    ),
+  )
+}
+
+///|
 async test "mooncode native shell allows read-only inline interpreter inspection" (
   t : @test.Test,
 ) {
@@ -245,6 +378,43 @@ async test "mooncode native shell allows read-only inline interpreter inspection
     mooncode_json_string(result, "output", default="").contains(
       "{\"answer\":42}",
     ),
+  )
+}
+
+///|
+async test "mooncode native shell rejects inline interpreter authoring" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-shell-authoring-XXXXXX"),
+  )
+  let target = @pathx.join(book_root, "tracked.mbt")
+  @fsx.write_to_file(target, "preserved\n")
+  let execution = mooncode_execute_tool_call(
+    "session-shell-authoring",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-shell-authoring",
+      "book_root": book_root,
+      "tool": "shell",
+      "command_id": "cmd-shell-authoring",
+      "arguments": {
+        "cmd": "python3 - <<'PY'\np='tracked.mbt'\ns=open(p).read()\nopen(p, 'w', encoding='utf-8').write(s + 'changed\\n')\nPY",
+        "timeout_ms": 5000,
+      },
+    },
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  assert_false(mooncode_json_bool(execution, "accepted", default=true))
+  assert_eq(@fsx.read_file(target), "preserved\n")
+  assert_true(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(execution, "result"),
+      "message",
+      default="",
+    ).contains("use write, edit, or apply_patch"),
   )
 }
 

@@ -18,4 +18,3 @@ pub fn chacha8() -> @random.Rand raise @errno.Errno
 // Type aliases
 
 // Traits
-

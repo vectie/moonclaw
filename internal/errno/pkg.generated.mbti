@@ -34,4 +34,3 @@ pub impl ToJson for Errno
 // Type aliases
 
 // Traits
-

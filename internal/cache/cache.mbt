@@ -8,6 +8,7 @@ fn cache_content_parts(
     let i = parts_length - 1 - i
     match parts[i] {
       Text(text) => break (i, text.text)
+      ImageUrl(_) => continue
     }
   } nobreak {
     return parts

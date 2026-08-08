@@ -7,6 +7,7 @@ import {
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/internal/resource_providers",
+  "vectie/moonclaw/security",
   "vectie/moonclaw/workspace",
   "vectie/moonlib/capability",
 }
@@ -2148,4 +2149,3 @@ pub fn WorkflowStepResult::new(output~ : Json, summary? : String?, metrics? : Js
 // Type aliases
 
 // Traits
-

@@ -20,7 +20,10 @@ async fn Daemon::mooncode_list_sessions(
   } else if format == "json" {
     self.mooncode_session_listing_records(book_root, include_log_counts=false)
   } else if format == "listing" {
-    self.mooncode_session_listing_records(book_root, include_log_counts=true)
+    // Session snapshots already retain the fields the desktop list needs.
+    // Replaying every large journal here made opening MoonDesk proportional to
+    // the entire history of every session.
+    self.mooncode_session_listing_records(book_root, include_log_counts=false)
   } else {
     self.mooncode_session_records(book_root)
   }

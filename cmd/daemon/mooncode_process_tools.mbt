@@ -1,8 +1,98 @@
 ///|
+async fn mooncode_tool_shell_in_runtime(
+  runtime : (Daemon, @async.TaskGroup[Unit])?,
+  book_root : String,
+  arguments : Json,
+) -> Json {
+  if !mooncode_json_bool(arguments, "background", default=false) {
+    return mooncode_tool_shell(book_root, arguments)
+  }
+  let cmd = mooncode_json_string(arguments, "cmd", default="")
+  if cmd == "" {
+    return mooncode_tool_error_result("shell", message="cmd must be non-empty")
+  }
+  if mooncode_shell_has_background_operator(cmd) {
+    return mooncode_tool_error_result(
+      "shell",
+      message="background=true already detaches the complete command; remove the shell `&` operator and submit only the long-lived command",
+    )
+  }
+  if mooncode_shell_has_git_commit(cmd) ||
+    mooncode_shell_has_file_output_redirection(cmd) ||
+    mooncode_shell_has_inline_interpreter_authoring(cmd) ||
+    mooncode_shell_has_in_place_authoring(cmd) {
+    return mooncode_tool_error_result(
+      "shell",
+      message="background shell is only for a long-lived read-only process; authored mutations and git commits are not permitted",
+    )
+  }
+  let cwd = mooncode_tool_cwd(book_root, arguments)
+  if !mooncode_json_bool(cwd, "ok", default=false) {
+    return mooncode_tool_error_result(
+      "shell",
+      message=mooncode_json_string(cwd, "message", default="invalid cwd"),
+    )
+  }
+  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
+  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
+    Some(message) => return mooncode_tool_error_result("shell", message~)
+    None => ()
+  }
+  match runtime {
+    None =>
+      mooncode_tool_error_result(
+        "shell",
+        message="background shell requires the native Daemon task-group runtime path",
+      )
+    Some((_, group)) => {
+      let detached_arguments : Json = {
+        "cmd": cmd,
+        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+        "timeout_ms": mooncode_json_int(
+          arguments,
+          "timeout_ms",
+          default=3600000,
+        ),
+        "max_output_chars": mooncode_json_int(
+          arguments,
+          "max_output_chars",
+          default=12000,
+        ),
+      }
+      group.spawn_bg(
+        () => ignore(mooncode_tool_shell(book_root, detached_arguments)),
+        no_wait=true,
+      )
+      mooncode_tool_ok_result(
+        "shell",
+        message="background shell started",
+        output="",
+        metadata={
+          "cmd": cmd,
+          "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+          "background": true,
+          "timeout_ms": mooncode_json_int(
+            detached_arguments,
+            "timeout_ms",
+            default=3600000,
+          ),
+        },
+      )
+    }
+  }
+}
+
+///|
 async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   let cmd = mooncode_json_string(arguments, "cmd", default="")
   if cmd == "" {
     return mooncode_tool_error_result("shell", message="cmd must be non-empty")
+  }
+  if mooncode_shell_has_background_operator(cmd) {
+    return mooncode_tool_error_result(
+      "shell",
+      message="shell background operators can keep process capture open; set background=true and submit only the long-lived command without `&`",
+    )
   }
   if mooncode_shell_has_git_commit(cmd) &&
     !mooncode_shell_git_commit_is_terminal(cmd) {
@@ -17,15 +107,17 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
       message="shell output redirection cannot author MoonBook files; use write, edit, or apply_patch",
     )
   }
+  if mooncode_shell_has_inline_interpreter_authoring(cmd) {
+    return mooncode_tool_error_result(
+      "shell",
+      message="inline interpreters cannot author MoonBook files; use write, edit, or apply_patch",
+    )
+  }
   if mooncode_shell_has_in_place_authoring(cmd) {
     return mooncode_tool_error_result(
       "shell",
       message="shell in-place editing cannot author MoonBook files; use write, edit, or apply_patch",
     )
-  }
-  match mooncode_shell_boundary_error(book_root, cmd) {
-    Some(message) => return mooncode_tool_error_result("shell", message~)
-    None => ()
   }
   let cwd = mooncode_tool_cwd(book_root, arguments)
   if mooncode_json_bool(cwd, "ok", default=false) == false {
@@ -35,6 +127,10 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
     )
   }
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
+  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
+    Some(message) => return mooncode_tool_error_result("shell", message~)
+    None => ()
+  }
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=30000)
   let max_output_chars = mooncode_json_int(
     arguments,
@@ -43,6 +139,13 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   )
   let shell_wrapper =
     #|child_pid=""
+    #|capture="$(mktemp "${TMPDIR:-/tmp}/mooncode-shell.XXXXXX")" || exit 125
+    #|emit_capture() {
+    #|  if [ -f "$capture" ]; then
+    #|    cat "$capture"
+    #|    rm -f "$capture"
+    #|  fi
+    #|}
     #|terminate_tree() {
     #|  for descendant_pid in $(pgrep -P "$1" 2>/dev/null || true); do
     #|    terminate_tree "$descendant_pid"
@@ -54,12 +157,21 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
     #|    terminate_tree "$child_pid"
     #|    wait "$child_pid" 2>/dev/null || true
     #|  fi
+    #|  emit_capture
     #|  exit 124
     #|}
     #|trap cancel_tree TERM INT
-    #|sh -lc "$1" &
+    #|script=$1
+    #|script="${script}
+    #|mooncode_status=\$?
+    #|exec sh -c \"exit \$mooncode_status\"
+    #|"
+    #|sh -lc "$script" >"$capture" 2>&1 &
     #|child_pid=$!
     #|wait "$child_pid"
+    #|status=$?
+    #|emit_capture
+    #|exit "$status"
     #|
   let process = @spawn.spawn(
     "sh",
@@ -68,7 +180,10 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
     cwd=cwd_path,
   ) catch {
     @spawn.TimedOut(timeout~, stdout~, stderr~) => {
-      let capped = mooncode_cap_tool_output(stdout + stderr, max_output_chars)
+      let capped = mooncode_cap_failed_process_output(
+        stdout + stderr,
+        max_output_chars,
+      )
       return mooncode_tool_error_result(
         "shell",
         message="shell timed out after \{timeout}ms",
@@ -88,7 +203,11 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
       )
   }
   let output = process.stdout + process.stderr
-  let capped = mooncode_cap_tool_output(output, max_output_chars)
+  let capped = if process.status == 0 {
+    mooncode_cap_tool_output(output, max_output_chars)
+  } else {
+    mooncode_cap_failed_process_output(output, max_output_chars)
+  }
   let truncated = mooncode_json_bool(capped, "truncated", default=false)
   let file_observation = if process.status == 0 {
     mooncode_shell_file_observation(
@@ -111,17 +230,28 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
     "pipeline_exit_ambiguous": pipeline_exit_ambiguous,
     "file_observation": file_observation,
   }
-  let result = if pipeline_exit_ambiguous {
+  let verification_pipeline = mooncode_json_string(
+      arguments,
+      "verification_kind",
+      default="",
+    ) !=
+    "" ||
+    mooncode_shell_pipeline_looks_like_verification(cmd)
+  let result = if pipeline_exit_ambiguous && verification_pipeline {
     mooncode_tool_error_result(
       "shell",
-      message="shell pipeline exit is ambiguous because pipefail was not enabled",
+      message="verification pipeline exit is ambiguous because pipefail was not enabled",
       output=mooncode_json_string(capped, "output", default=""),
       metadata~,
     )
   } else if process.status == 0 {
     mooncode_tool_ok_result(
       "shell",
-      message="shell exited 0",
+      message=if pipeline_exit_ambiguous {
+        "shell inspection exited 0; pipeline status is observation-only"
+      } else {
+        "shell exited 0"
+      },
       output=mooncode_json_string(capped, "output", default=""),
       metadata~,
     )
@@ -137,13 +267,92 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
 }
 
 ///|
-fn mooncode_shell_boundary_error(book_root : String, cmd : String) -> String? {
+fn mooncode_shell_has_background_operator(cmd : String) -> Bool {
+  let mut single_quoted = false
+  let mut double_quoted = false
+  let mut escaped = false
+  let mut pending_ampersand = false
+  let mut previous_was_redirection = false
+  for ch in cmd {
+    if escaped {
+      escaped = false
+      previous_was_redirection = false
+      continue
+    }
+    if single_quoted {
+      if ch == '\'' {
+        single_quoted = false
+      }
+      previous_was_redirection = false
+      continue
+    }
+    if double_quoted {
+      if ch == '"' {
+        double_quoted = false
+      } else if ch == '\\' {
+        escaped = true
+      }
+      previous_was_redirection = false
+      continue
+    }
+    if pending_ampersand {
+      if ch == '&' || ch == '>' {
+        pending_ampersand = false
+        previous_was_redirection = false
+        continue
+      }
+      return true
+    }
+    match ch {
+      '\\' => {
+        escaped = true
+        previous_was_redirection = false
+      }
+      '\'' => {
+        single_quoted = true
+        previous_was_redirection = false
+      }
+      '"' => {
+        double_quoted = true
+        previous_was_redirection = false
+      }
+      '&' =>
+        if previous_was_redirection {
+          previous_was_redirection = false
+        } else {
+          pending_ampersand = true
+        }
+      '>' | '<' => previous_was_redirection = true
+      _ => previous_was_redirection = false
+    }
+  }
+  pending_ampersand
+}
+
+///|
+fn mooncode_shell_pipeline_looks_like_verification(cmd : String) -> Bool {
+  let lower = cmd.to_lower().to_string()
+  lower.contains("moon check") ||
+  lower.contains("moon test") ||
+  lower.contains("moon build") ||
+  lower.contains("npm test") ||
+  lower.contains("npm run test") ||
+  lower.contains("cargo test") ||
+  lower.contains("pytest")
+}
+
+///|
+fn mooncode_shell_boundary_error(
+  book_root : String,
+  cwd_path : String,
+  cmd : String,
+) -> String? {
   // The shell inherits a cwd inside the book, but an absolute path in the
   // command can otherwise bypass the executable-document boundary. Toolchain
   // programs may load their own installation implicitly; the planner must not
   // address SDK, home, temp, or parent paths directly.
   let normalized_root = @pathx.normalize(book_root)
-  if cmd.contains("../") ||
+  if mooncode_shell_parent_path_escapes(book_root, cwd_path, cmd) ||
     cmd.contains("$HOME") ||
     cmd.contains("${HOME}") ||
     cmd.contains("~/") ||
@@ -159,6 +368,127 @@ fn mooncode_shell_boundary_error(book_root : String, cmd : String) -> String? {
   } else {
     None
   }
+}
+
+///|
+fn mooncode_shell_parent_path_escapes(
+  book_root : String,
+  cwd_path : String,
+  cmd : String,
+) -> Bool {
+  if !cmd.contains("../") {
+    return false
+  }
+  // Parent-relative inline directory changes remain deliberately rejected.
+  // A single static leading `cd <book-relative-path> && ...` is different: it
+  // has an unambiguous effective cwd and is common in generated inspection
+  // commands. Resolve that cwd before measuring later parent hops.
+  if cmd.contains("cd ..") {
+    return true
+  }
+  let root = @pathx.normalize(book_root)
+  let mut cwd = @pathx.normalize(cwd_path)
+  if mooncode_shell_has_cd_command(cmd) {
+    match mooncode_shell_leading_static_cd_cwd(root, cwd, cmd) {
+      Some(effective_cwd) => cwd = effective_cwd
+      None => return true
+    }
+  }
+  if cwd == root {
+    return true
+  }
+  let relative = cwd[root.length() + 1:].to_owned()
+  let available_parent_hops = relative.split("/").length()
+  mooncode_shell_max_parent_hops(cmd) > available_parent_hops
+}
+
+///|
+fn mooncode_shell_segment_is_cd(segment : Array[String]) -> Bool {
+  let executable_index = mooncode_shell_segment_executable_index(segment)
+  executable_index >= 0 && segment[executable_index] == "cd"
+}
+
+///|
+fn mooncode_shell_has_cd_command(cmd : String) -> Bool {
+  let segment : Array[String] = []
+  for word in mooncode_shell_words(cmd) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN {
+      if mooncode_shell_segment_is_cd(segment) {
+        return true
+      }
+      segment.clear()
+    } else {
+      segment.push(word)
+    }
+  }
+  mooncode_shell_segment_is_cd(segment)
+}
+
+///|
+fn mooncode_shell_leading_static_cd_cwd(
+  book_root : String,
+  cwd_path : String,
+  cmd : String,
+) -> String? {
+  let and_segments = cmd.split("&&").to_array()
+  if and_segments.length() < 2 {
+    return None
+  }
+  let leading = and_segments[0].to_owned()
+  if leading.contains(";") || leading.contains("|") || leading.contains("\n") {
+    return None
+  }
+  let segment : Array[String] = []
+  for word in mooncode_shell_words(leading) {
+    if word != MOONCODE_SHELL_BOUNDARY_TOKEN {
+      segment.push(word)
+    }
+  }
+  let executable_index = mooncode_shell_segment_executable_index(segment)
+  if executable_index < 0 ||
+    segment[executable_index] != "cd" ||
+    executable_index + 1 >= segment.length() {
+    return None
+  }
+  let target = segment[executable_index + 1]
+  if target == "" ||
+    target.has_prefix("-") ||
+    target.contains("..") ||
+    target.contains("$") ||
+    target.contains("`") ||
+    target.contains("~") {
+    return None
+  }
+  let absolute = if @pathx.is_absolute(target) {
+    @pathx.normalize(target)
+  } else {
+    @pathx.normalize(@pathx.join(cwd_path, target))
+  }
+  if absolute == book_root || absolute.has_prefix(book_root + "/") {
+    Some(absolute)
+  } else {
+    None
+  }
+}
+
+///|
+fn mooncode_shell_max_parent_hops(cmd : String) -> Int {
+  let mut maximum = 0
+  let mut current = 0
+  let mut index = 0
+  while index + 2 < cmd.length() {
+    if cmd[index:index + 3] == "../" {
+      current += 1
+      if current > maximum {
+        maximum = current
+      }
+      index += 3
+    } else {
+      current = 0
+      index += 1
+    }
+  }
+  maximum
 }
 
 ///|
@@ -266,10 +596,17 @@ async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
         message="error running moon ide: \{error}",
       )
   }
-  let capped = mooncode_cap_tool_output(
-    process.stdout + process.stderr,
-    mooncode_json_int(arguments, "max_output_chars", default=12000),
+  let process_output = process.stdout + process.stderr
+  let max_output_chars = mooncode_json_int(
+    arguments,
+    "max_output_chars",
+    default=12000,
   )
+  let capped = if process.status == 0 {
+    mooncode_cap_tool_output(process_output, max_output_chars)
+  } else {
+    mooncode_cap_failed_process_output(process_output, max_output_chars)
+  }
   let metadata : Json = {
     "action": action,
     "cwd": mooncode_json_string(cwd, "relative_path", default="."),
@@ -549,10 +886,17 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
         message="error running moon command: \{error}",
       )
   }
-  let capped = mooncode_cap_tool_output(
-    process.stdout + process.stderr,
-    mooncode_json_int(arguments, "max_output_chars", default=12000),
+  let process_output = process.stdout + process.stderr
+  let max_output_chars = mooncode_json_int(
+    arguments,
+    "max_output_chars",
+    default=12000,
   )
+  let capped = if mooncode_moon_cmd_exit_expected(arguments, process.status) {
+    mooncode_cap_tool_output(process_output, max_output_chars)
+  } else {
+    mooncode_cap_failed_process_output(process_output, max_output_chars)
+  }
   let metadata : Json = {
     "command": "moon \{args.join(" ")}",
     "moon_command": command,
@@ -868,10 +1212,16 @@ async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json 
       )
   }
   let output = process.stdout + process.stderr
-  let capped = mooncode_cap_tool_output(
-    output,
-    mooncode_json_int(arguments, "max_output_chars", default=12000),
+  let max_output_chars = mooncode_json_int(
+    arguments,
+    "max_output_chars",
+    default=12000,
   )
+  let capped = if process.status == 0 {
+    mooncode_cap_tool_output(output, max_output_chars)
+  } else {
+    mooncode_cap_failed_process_output(output, max_output_chars)
+  }
   let seq = previous_seq + 1
   let state = mooncode_moon_check_state(
     book_root,

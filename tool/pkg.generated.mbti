@@ -52,4 +52,3 @@ pub impl[Output : Show] Show for ToolResult[Output]
 // Type aliases
 
 // Traits
-

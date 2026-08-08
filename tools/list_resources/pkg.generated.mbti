@@ -38,4 +38,3 @@ pub enum ResourceSummaryKind {
 // Type aliases
 
 // Traits
-

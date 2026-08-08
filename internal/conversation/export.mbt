@@ -136,6 +136,7 @@ fn format_content_parts(
         if !text_part.text.is_empty() {
           lines.push(text_part.text)
         }
+      ImageUrl(image) => lines.push("![image evidence](\{image.url})")
     }
   }
 }

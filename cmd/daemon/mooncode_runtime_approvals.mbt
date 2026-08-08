@@ -21,6 +21,13 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
       return "This shell command can affect external systems, dependencies, or broad workspace state."
     }
   }
+  if tool == "browser" {
+    let action = mooncode_json_string(arguments, "action", default="")
+    let url = mooncode_json_string(arguments, "url", default="")
+    if action == "open" && !mooncode_browser_loopback_url(url) {
+      return "Navigating the native browser to a non-loopback destination requires operator approval."
+    }
+  }
   if tool == "moon_cmd" {
     let serialized = arguments.stringify().to_lower().to_string()
     if mooncode_moon_cmd_is_test_update(arguments) ||
@@ -65,10 +72,29 @@ fn mooncode_runtime_tool_is_demonstrably_read_only(tool_call : Json) -> Bool {
   match tool {
     "read"
     | "read_skill"
+    | "view_image"
     | "moon_ide"
     | "moon_check"
     | "checkpoint"
     | "finish" => true
+    "browser" => {
+      let action = mooncode_json_string(arguments, "action", default="")
+      action == "snapshot" ||
+      action == "screenshot" ||
+      action == "set_viewport" ||
+      action == "get" ||
+      action == "eval" ||
+      action == "console" ||
+      action == "errors" ||
+      action == "reload" ||
+      action == "close" ||
+      (
+        action == "open" &&
+        mooncode_browser_loopback_url(
+          mooncode_json_string(arguments, "url", default=""),
+        )
+      )
+    }
     "shell" =>
       mooncode_shell_is_demonstrably_read_only(
         mooncode_json_string(arguments, "cmd", default=""),
@@ -239,6 +265,105 @@ fn mooncode_runtime_tool_approval_request_for_id(
 }
 
 ///|
+/// Approval control is intentionally a tail-local operation. A pending request
+/// is the last durable planner action before the runtime enters its waiting
+/// state, so replaying every (potentially very large) planner checkpoint merely
+/// to find it makes long-running sessions unable to accept an approval.
+///
+/// Parse only a bounded committed suffix and return matching approval events.
+/// The normal journal append path still owns whole-prefix validation and
+/// sequence continuity; this reader validates the canonical envelopes it does
+/// consume and never mutates the journal.
+async fn mooncode_runtime_recent_tool_approval_events(
+  book_root : String,
+  session_id : String,
+  approval_id : String,
+) -> Array[Json] {
+  let path = mooncode_session_journal_path(book_root, session_id)
+  if path == "" || !(@fsx.exists(path) catch { _ => false }) {
+    return []
+  }
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Shared)
+  defer session_lock.unlock()
+  let file = @fs.open(path, mode=ReadOnly)
+  defer file.close()
+  file.lock(Shared)
+  defer file.unlock()
+  let committed_size = mooncode_newline_committed_size(file)
+  if committed_size == 0L {
+    return []
+  }
+  let max_tail_bytes = 4L * 1024L * 1024L
+  let tail_size = if committed_size > max_tail_bytes {
+    max_tail_bytes
+  } else {
+    committed_size
+  }
+  let start = committed_size - tail_size
+  let starts_at_record_boundary = start == 0L ||
+    file.read_exactly_at(1, position=start - 1L) == b"\n"
+  let text = @encoding/utf8.decode(
+    file.read_exactly_at(tail_size.to_int(), position=start),
+  ) catch {
+    _ => raise InvalidJournal("MoonCode approval journal tail is not UTF-8")
+  }
+  let lines = text.split("\n").collect()
+  let first_line = if starts_at_record_boundary { 0 } else { 1 }
+  let events : Array[Json] = []
+  for index = first_line; index < lines.length(); index = index + 1 {
+    let line = lines[index]
+    if line.is_empty() {
+      continue
+    }
+    let raw = line.to_owned()
+    let record = @json.parse(raw) catch {
+      _ =>
+        raise InvalidJournal(
+          "MoonCode approval journal tail contains invalid JSON",
+        )
+    }
+    if record.stringify() != raw {
+      raise InvalidJournal(
+        "MoonCode approval journal tail contains a non-canonical record",
+      )
+    }
+    if mooncode_json_string(record, "session_id", default="") != session_id {
+      raise InvalidJournal(
+        "MoonCode approval journal tail contains a different session",
+      )
+    }
+    if mooncode_json_string(record, "record_kind", default="") !=
+      mooncode_journal_event() {
+      continue
+    }
+    let payload = mooncode_json_object_field_or_empty(record, "payload")
+    if mooncode_json_string(payload, "approval_id", default="") == approval_id &&
+      mooncode_json_string(payload, "kind", default="").has_prefix(
+        "tool.approval_",
+      ) {
+      events.push(payload)
+    }
+  }
+  events
+}
+
+///|
+async fn mooncode_runtime_recent_tool_approval_event_for_id(
+  book_root : String,
+  session_id : String,
+  approval_id : String,
+) -> Json {
+  mooncode_runtime_tool_approval_event_for_id(
+    mooncode_runtime_recent_tool_approval_events(
+      book_root, session_id, approval_id,
+    ),
+    approval_id,
+  )
+}
+
+///|
 async fn mooncode_runtime_wait_for_tool_approval(
   book_root : String,
   session_id : String,
@@ -246,12 +371,8 @@ async fn mooncode_runtime_wait_for_tool_approval(
   timeout_ms~ : Int,
 ) -> Json {
   let mut elapsed = 0
-  let mut latest = mooncode_runtime_tool_approval_event_for_id(
-    mooncode_journal_entries(
-      mooncode_read_session_journal(book_root, session_id),
-      mooncode_journal_event(),
-    ),
-    approval_id,
+  let mut latest = mooncode_runtime_recent_tool_approval_event_for_id(
+    book_root, session_id, approval_id,
   )
   let mut state = mooncode_json_string(latest, "state", default="pending")
   while state != "approved" && state != "rejected" && elapsed < timeout_ms {
@@ -262,11 +383,9 @@ async fn mooncode_runtime_wait_for_tool_approval(
     }
     @async.sleep(delay)
     elapsed += delay
-    let events = mooncode_journal_entries(
-      mooncode_read_session_journal(book_root, session_id),
-      mooncode_journal_event(),
+    latest = mooncode_runtime_recent_tool_approval_event_for_id(
+      book_root, session_id, approval_id,
     )
-    latest = mooncode_runtime_tool_approval_event_for_id(events, approval_id)
     state = mooncode_json_string(latest, "state", default="pending")
   }
   latest
@@ -394,9 +513,8 @@ async fn mooncode_runtime_tool_approval_control_request(
       },
     })
   }
-  let events = mooncode_journal_entries(
-    mooncode_read_session_journal(book_root, session_id),
-    mooncode_journal_event(),
+  let events = mooncode_runtime_recent_tool_approval_events(
+    book_root, session_id, approval_id,
   )
   let request = mooncode_runtime_tool_approval_request_for_id(
     events, approval_id,

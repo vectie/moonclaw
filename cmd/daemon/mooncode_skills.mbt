@@ -184,3 +184,41 @@ fn mooncode_runtime_turn_loaded_skill_messages(
   }
   messages
 }
+
+///|
+/// Keep the fact that a skill was fully loaded available after provider and
+/// transcript compaction without resending the complete skill body on every
+/// planner round. The original accepted tool result remains in the durable
+/// journal and continues to govern the command.
+fn mooncode_runtime_turn_loaded_skill_receipt_messages(
+  all_tool_results : Array[Json],
+) -> Array[Json] {
+  let messages : Array[Json] = []
+  let retained : Map[String, Bool] = {}
+  for execution in all_tool_results {
+    if !mooncode_json_bool(execution, "accepted", default=false) ||
+      mooncode_json_string(execution, "tool", default="") != "read_skill" {
+      continue
+    }
+    let result = mooncode_json_object_field_or_empty(execution, "result")
+    let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+    let location = mooncode_json_string(metadata, "location", default="")
+    if location == "" || retained.contains(location) {
+      continue
+    }
+    retained[location] = true
+    let name = mooncode_json_string(metadata, "name", default="")
+    let path = mooncode_json_string(metadata, "path", default="SKILL.md")
+    let digest = mooncode_json_string(
+      metadata,
+      "content_sha256_base64",
+      default="unrecorded",
+    )
+    let content_chars = mooncode_json_int(metadata, "content_chars", default=0)
+    messages.push({
+      "role": "system",
+      "content": "Loaded-skill receipt: `\{name}/\{path}` was loaded completely earlier in this preserved command (chars=\{content_chars}, sha256=\{digest}). Its full bytes remain in the durable journal and it already governs this run. Treat its trigger and loading gate as satisfied and continue following it. A missing or empty filesystem result cannot invalidate this receipt. Do not select read, shell, glob, grep, find, ls, or web tools to locate this skill, and do not call `read_skill` again unless this receipt is absent or the recorded version digest changes. Installed skill resources are served only through `read_skill`; they are not MoonBook or home-directory filesystem paths.",
+    })
+  }
+  messages
+}

@@ -25,6 +25,7 @@ pub fn Message::from_openai(
       for part in user.content {
         match part {
           Text(param) => content.write_string(param.text)
+          ImageUrl(_) => ()
         }
       }
       user_message(content=content.to_string())
@@ -34,6 +35,7 @@ pub fn Message::from_openai(
       for part in system.content {
         match part {
           Text(param) => content.write_string(param.text)
+          ImageUrl(_) => ()
         }
       }
       system_message(content=content.to_string())
@@ -43,6 +45,7 @@ pub fn Message::from_openai(
       for part in assistant.content {
         match part {
           Text(param) => content.write_string(param.text)
+          ImageUrl(_) => ()
         }
       }
       assistant_message(
@@ -55,6 +58,7 @@ pub fn Message::from_openai(
       for part in tool.content {
         match part {
           Text(param) => content.write_string(param.text)
+          ImageUrl(_) => ()
         }
       }
       tool_message(content=content.to_string(), tool_call_id=tool.tool_call_id)

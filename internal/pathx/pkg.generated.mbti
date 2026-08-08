@@ -35,4 +35,3 @@ pub fn stem(StringView) -> StringView
 // Type aliases
 
 // Traits
-

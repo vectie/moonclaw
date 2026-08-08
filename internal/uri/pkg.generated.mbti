@@ -29,4 +29,3 @@ pub fn Uri::parse(StringView) -> Self raise ParseError
 // Type aliases
 
 // Traits
-

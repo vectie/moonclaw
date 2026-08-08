@@ -50,4 +50,3 @@ pub(all) enum RunnerJsonSource {
 // Type aliases
 
 // Traits
-

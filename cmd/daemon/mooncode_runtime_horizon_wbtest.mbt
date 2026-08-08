@@ -78,6 +78,55 @@ test "mooncode multi-file patch evidence retains every changed path" {
 }
 
 ///|
+test "mooncode long-horizon fallback retains build and visual validation" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Implement the UI, run tests, build it, and UI-to-UI visually validate desktop and phone.",
+  }
+  let milestones = mooncode_runtime_horizon_required_milestones(command)
+  assert_eq(milestones.length(), 5)
+  assert_eq(
+    mooncode_json_string(milestones[2], "evidence_kind", default=""),
+    "test",
+  )
+  assert_eq(
+    mooncode_json_string(milestones[3], "evidence_kind", default=""),
+    "build",
+  )
+  assert_eq(
+    mooncode_json_string(milestones[4], "evidence_kind", default=""),
+    "visual",
+  )
+  let results : Array[Json] = [
+    {
+      "tool": "edit",
+      "accepted": true,
+      "result": {
+        "metadata": {
+          "path": "src/ui.mbt",
+          "changed": true,
+          "before_fingerprint": "present:old",
+          "after_fingerprint": "present:new",
+        },
+      },
+    },
+    {
+      "tool": "browser",
+      "accepted": true,
+      "result": { "message": "desktop and phone rendered" },
+    },
+  ]
+  assert_true(
+    mooncode_runtime_horizon_milestone_proven(command, milestones[4], results),
+  )
+  assert_false(
+    mooncode_runtime_horizon_milestone_proven(command, milestones[4], [
+      results[0],
+    ]),
+  )
+}
+
+///|
 test "mooncode dirty continuation derives exact mutation evidence from commit" {
   let milestones : Array[Json] = [
     {
@@ -967,6 +1016,17 @@ test "mooncode long-horizon loop compacts reference appendices and proves every 
   let progress_text = mooncode_json_string(progress, "content", default="")
   assert_true(progress_text.contains("Planner opportunities remaining: 3"))
   assert_true(progress_text.contains("Do not rediscover completed milestones"))
+  assert_true(
+    progress_text.contains("Authoritative immutable checkpoint contract"),
+  )
+  assert_true(progress_text.contains("\"horizon_id\": \"horizon-1\""))
+  assert_true(progress_text.contains("\"id\": \"implementation\""))
+  assert_true(progress_text.contains("\"evidence_kind\": \"mutation\""))
+  assert_true(
+    progress_text.contains(
+      "never guess or reconstruct the contract from memory",
+    ),
+  )
   assert_true(progress_text.length() < 16000)
   let unbounded = mooncode_runtime_horizon_progress_message(command, results, 0)
   let unbounded_text = mooncode_json_string(unbounded, "content", default="")
@@ -1012,12 +1072,31 @@ test "mooncode long-horizon completion rejects unproven milestone claims" {
     now=@clock.Timestamp::from_ms(3L),
   )
   assert_false(mooncode_json_bool(rejected, "accepted", default=true))
+  let rejected_result = mooncode_json_object_field_or_empty(rejected, "result")
   assert_true(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(rejected, "result"),
-      "message",
-      default="",
-    ).contains("no matching runtime evidence"),
+    mooncode_json_string(rejected_result, "message", default="").contains(
+      "no matching runtime evidence",
+    ),
+  )
+  let required_contract = mooncode_json_object_field_or_empty(
+    mooncode_json_object_field_or_empty(rejected_result, "metadata"),
+    "required_checkpoint_contract",
+  )
+  assert_eq(
+    mooncode_json_string(required_contract, "horizon_id", default=""),
+    "horizon-reject",
+  )
+  let required_milestones = mooncode_json_array_items(
+    required_contract, "milestones",
+  )
+  assert_eq(required_milestones.length(), 3)
+  assert_eq(
+    mooncode_json_string(required_milestones[1], "id", default=""),
+    "implementation",
+  )
+  assert_eq(
+    mooncode_json_string(required_milestones[1], "evidence_kind", default=""),
+    "mutation",
   )
 }
 

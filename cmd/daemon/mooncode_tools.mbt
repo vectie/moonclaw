@@ -180,52 +180,64 @@ async fn mooncode_execute_tool_call_in_runtime(
     Some(_) => None
     None => mooncode_task_scope_snapshot(book_root, body, tool)
   }
-  let raw_result = match scope_error {
-    Some(message) => mooncode_tool_error_result(tool, message~)
-    None =>
-      match tool {
-        "read" => mooncode_tool_read(book_root, arguments)
-        "read_skill" => mooncode_tool_read_skill(book_root, arguments)
-        "write" => mooncode_tool_write(book_root, arguments)
-        "edit" => mooncode_tool_edit(book_root, arguments)
-        "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
-        "revert_patch" => mooncode_tool_revert_patch(book_root, arguments)
-        "shell" => mooncode_tool_shell(book_root, arguments)
-        "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
-        "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
-        "moon_check" => mooncode_tool_moon_check(book_root, arguments)
-        "finish" =>
-          mooncode_tool_finish_for_session(session_id, book_root, arguments)
-        "spawn_workers" =>
-          match runtime {
-            Some((daemon, group)) =>
-              daemon.mooncode_tool_spawn_workers(
-                group, session_id, book_root, command_id, arguments,
-              )
-            None =>
-              mooncode_tool_error_result(
-                tool,
-                message="spawn_workers requires the native Daemon task-group runtime path",
-              )
-          }
-        "wait_workers" =>
-          match runtime {
-            Some((daemon, _)) =>
-              daemon.mooncode_tool_wait_workers(
-                session_id, book_root, arguments,
-              )
-            None =>
-              mooncode_tool_error_result(
-                tool,
-                message="wait_workers requires the native Daemon runtime path",
-              )
-          }
-        _ =>
-          mooncode_tool_error_result(
-            tool,
-            message="unsupported MoonCode tool `\{tool}`",
-          )
-      }
+  let raw_result = try {
+    match scope_error {
+      Some(message) => mooncode_tool_error_result(tool, message~)
+      None =>
+        match tool {
+          "read" => mooncode_tool_read(book_root, arguments)
+          "view_image" => mooncode_tool_view_image(book_root, arguments)
+          "read_skill" => mooncode_tool_read_skill(book_root, arguments)
+          "write" => mooncode_tool_write(book_root, arguments)
+          "edit" => mooncode_tool_edit(book_root, arguments)
+          "apply_patch" => mooncode_tool_apply_patch(book_root, arguments)
+          "revert_patch" => mooncode_tool_revert_patch(book_root, arguments)
+          "shell" =>
+            mooncode_tool_shell_in_runtime(runtime, book_root, arguments)
+          "browser" => mooncode_tool_browser(session_id, book_root, arguments)
+          "moon_ide" => mooncode_tool_moon_ide(book_root, arguments)
+          "moon_cmd" => mooncode_tool_moon_cmd(book_root, arguments)
+          "moon_check" => mooncode_tool_moon_check(book_root, arguments)
+          "finish" =>
+            mooncode_tool_finish_for_session(session_id, book_root, arguments)
+          "spawn_workers" =>
+            match runtime {
+              Some((daemon, group)) =>
+                daemon.mooncode_tool_spawn_workers(
+                  group, session_id, book_root, command_id, arguments,
+                )
+              None =>
+                mooncode_tool_error_result(
+                  tool,
+                  message="spawn_workers requires the native Daemon task-group runtime path",
+                )
+            }
+          "wait_workers" =>
+            match runtime {
+              Some((daemon, _)) =>
+                daemon.mooncode_tool_wait_workers(
+                  session_id, book_root, arguments,
+                )
+              None =>
+                mooncode_tool_error_result(
+                  tool,
+                  message="wait_workers requires the native Daemon runtime path",
+                )
+            }
+          _ =>
+            mooncode_tool_error_result(
+              tool,
+              message="unsupported MoonCode tool `\{tool}`",
+            )
+        }
+    }
+  } catch {
+    error =>
+      mooncode_tool_error_result(
+        tool,
+        message="MoonCode contained an unexpected `\{tool}` tool failure: \{error}",
+        metadata={ "exception_contained": true },
+      )
   }
   let raw_result = mooncode_task_scope_finish(
     book_root, body, tool, raw_result, scope_before,
@@ -259,12 +271,14 @@ async fn mooncode_execute_tool_call_in_runtime(
 ///|
 fn mooncode_tool_supported(tool : String) -> Bool {
   tool == "read" ||
+  tool == "view_image" ||
   tool == "read_skill" ||
   tool == "edit" ||
   tool == "write" ||
   tool == "apply_patch" ||
   tool == "revert_patch" ||
   tool == "shell" ||
+  tool == "browser" ||
   tool == "moon_ide" ||
   tool == "moon_cmd" ||
   tool == "moon_check" ||
@@ -319,19 +333,134 @@ async fn mooncode_tool_read(book_root : String, arguments : Json) -> Json {
         message="error reading \{absolute}: \{error}",
       )
   }
+  let lines = content.split("\n").to_array()
+  let range_requested = match arguments {
+    Object(fields) =>
+      fields.contains("start_line") || fields.contains("end_line")
+    _ => false
+  }
+  let start_line = mooncode_json_int(arguments, "start_line", default=1)
+  if start_line < 1 {
+    return mooncode_tool_error_result(
+      "read",
+      message="start_line must be at least 1, got \{start_line}",
+    )
+  }
+  if start_line > lines.length() {
+    return mooncode_tool_error_result(
+      "read",
+      message="start_line \{start_line} exceeds the file's \{lines.length()} lines",
+      metadata={
+        "path": mooncode_json_string(path, "relative_path", default=""),
+        "line_count": lines.length(),
+      },
+    )
+  }
+  let requested_end_line = mooncode_json_int(arguments, "end_line", default=0)
+  if requested_end_line < 0 {
+    return mooncode_tool_error_result(
+      "read",
+      message="end_line must be at least 1 when supplied, got \{requested_end_line}",
+    )
+  }
+  if requested_end_line > 0 && requested_end_line < start_line {
+    return mooncode_tool_error_result(
+      "read",
+      message="end_line \{requested_end_line} must be greater than or equal to start_line \{start_line}",
+    )
+  }
+  let end_line = if requested_end_line == 0 ||
+    requested_end_line > lines.length() {
+    lines.length()
+  } else {
+    requested_end_line
+  }
+  let selected = if range_requested {
+    lines[start_line - 1:end_line].join("\n")
+  } else {
+    content
+  }
   let capped = mooncode_cap_tool_output(
-    content,
+    selected,
     mooncode_json_int(arguments, "max_output_chars", default=12000),
   )
   mooncode_tool_ok_result(
     "read",
-    message="read \{mooncode_json_string(path, "relative_path", default="")}",
+    message=if range_requested {
+      "read \{mooncode_json_string(path, "relative_path", default="")} lines \{start_line}-\{end_line}"
+    } else {
+      "read \{mooncode_json_string(path, "relative_path", default="")}"
+    },
     output=mooncode_json_string(capped, "output", default=""),
     metadata={
       "path": mooncode_json_string(path, "relative_path", default=""),
       "absolute_path": absolute,
       "char_count": content.length(),
+      "selected_char_count": selected.length(),
+      "line_count": lines.length(),
+      "start_line": start_line,
+      "end_line": end_line,
+      "range_requested": range_requested,
       "truncated": mooncode_json_bool(capped, "truncated", default=false),
+    },
+  )
+}
+
+///|
+async fn mooncode_tool_view_image(book_root : String, arguments : Json) -> Json {
+  let path = mooncode_tool_path(book_root, arguments)
+  if !mooncode_json_bool(path, "ok", default=false) {
+    return mooncode_tool_error_result(
+      "view_image",
+      message=mooncode_json_string(path, "message", default="invalid path"),
+    )
+  }
+  let absolute = mooncode_json_string(path, "absolute_path", default="")
+  let relative = mooncode_json_string(path, "relative_path", default="")
+  let lower = @pathx.basename(relative).to_lower().to_string()
+  let mime_type = if lower.has_suffix(".png") {
+    "image/png"
+  } else if lower.has_suffix(".jpg") || lower.has_suffix(".jpeg") {
+    "image/jpeg"
+  } else if lower.has_suffix(".webp") {
+    "image/webp"
+  } else if lower.has_suffix(".gif") {
+    "image/gif"
+  } else {
+    return mooncode_tool_error_result(
+      "view_image",
+      message="unsupported image type for `\{relative}`; use PNG, JPEG, WebP, or GIF",
+    )
+  }
+  let bytes = @fs.read_file(absolute).binary() catch {
+    error =>
+      return mooncode_tool_error_result(
+        "view_image",
+        message="error reading image `\{relative}`: \{error}",
+      )
+  }
+  let max_bytes = 8 * 1024 * 1024
+  if bytes.length() == 0 || bytes.length() > max_bytes {
+    return mooncode_tool_error_result(
+      "view_image",
+      message=if bytes.length() == 0 {
+        "image `\{relative}` is empty"
+      } else {
+        "image `\{relative}` exceeds the 8 MiB model-evidence limit"
+      },
+      metadata={ "path": relative, "size_bytes": bytes.length() },
+    )
+  }
+  mooncode_tool_ok_result(
+    "view_image",
+    message="image evidence ready for the next model turn: \{relative}",
+    output="",
+    metadata={
+      "path": relative,
+      "absolute_path": absolute,
+      "mime_type": mime_type,
+      "size_bytes": bytes.length(),
+      "model_image_evidence": true,
     },
   )
 }
@@ -1852,6 +1981,45 @@ fn mooncode_cap_tool_output(text : String, limit : Int) -> Json {
 }
 
 ///|
+/// Preserve both the command preamble and the diagnostic tail when a process
+/// fails. Compiler and test runners commonly print warnings first and the
+/// actionable error last, so prefix-only truncation hides the reason for the
+/// failure and forces an agent to rerun the command.
+fn mooncode_cap_failed_process_output(text : String, limit : Int) -> Json {
+  let capped = mooncode_cap_tool_output(text, limit)
+  if !mooncode_json_bool(capped, "truncated", default=false) {
+    return capped
+  }
+  let max_output_chars = mooncode_json_int(
+    capped,
+    "max_output_chars",
+    default=12000,
+  )
+  let marker = "\n... output omitted; tail preserved ...\n"
+  if marker.length() >= max_output_chars {
+    return {
+      "output": text[text.length() - max_output_chars:].to_owned(),
+      "truncated": true,
+      "truncation_mode": "tail",
+      "max_output_chars": max_output_chars,
+      "char_count": text.length(),
+    }
+  }
+  let available = max_output_chars - marker.length()
+  let head_chars = available / 4
+  let tail_chars = available - head_chars
+  {
+    "output": text[:head_chars].to_owned() +
+    marker +
+    text[text.length() - tail_chars:].to_owned(),
+    "truncated": true,
+    "truncation_mode": "head_tail",
+    "max_output_chars": max_output_chars,
+    "char_count": text.length(),
+  }
+}
+
+///|
 fn mooncode_tool_unified_diff(
   path : String,
   before : String,
@@ -2156,6 +2324,43 @@ async test "mooncode native tool execution writes edits and reads book files" (
       "-hello mooncode",
     ),
   )
+}
+
+///|
+async test "mooncode native read supports inclusive line ranges" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-read-range-XXXXXX"),
+  )
+  @fsx.write_to_file(
+    @pathx.join(book_root, "source.mbt"),
+    "line one\nline two\nline three\nline four",
+  )
+  let read = mooncode_execute_tool_call(
+    "session-read-range",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-read-range",
+      "book_root": book_root,
+      "tool": "read",
+      "command_id": "cmd-read-range",
+      "arguments": { "path": "source.mbt", "start_line": 2, "end_line": 3 },
+    },
+    now=@clock.Timestamp::from_ms(45L),
+  )
+  let result = mooncode_json_object_field_or_empty(read, "result")
+  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+  assert_eq(
+    mooncode_json_string(result, "output", default=""),
+    "line two\nline three",
+  )
+  assert_eq(mooncode_json_int(metadata, "start_line", default=0), 2)
+  assert_eq(mooncode_json_int(metadata, "end_line", default=0), 3)
+  assert_eq(mooncode_json_int(metadata, "line_count", default=0), 4)
+  assert_true(mooncode_json_bool(metadata, "range_requested", default=false))
 }
 
 ///|

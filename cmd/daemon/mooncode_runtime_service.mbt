@@ -285,8 +285,19 @@ async fn Daemon::mooncode_start_runtime_service(
       ) catch {
         error => {
           let cancelled = @async.is_being_cancelled()
-          if !cancelled {
-            logger.error("MoonCode runtime service failed: \{error}")
+          let recovered_waiting_approval = if cancelled {
+            false
+          } else {
+            self.mooncode_runtime_service_recover_waiting_approval(
+              session_id, book_root, payload,
+            ) catch {
+              _ => false
+            }
+          }
+          if !cancelled && !recovered_waiting_approval {
+            logger.error(
+              "MoonCode runtime service failed: \{mooncode_runtime_service_error_detail(error)}",
+            )
           }
           @async.protect_from_cancel(
             () => {
@@ -294,12 +305,12 @@ async fn Daemon::mooncode_start_runtime_service(
                 self.mooncode_runtime_service_persist_cancelled(
                   session_id, book_root, payload,
                 )
-              } else {
+              } else if !recovered_waiting_approval {
                 self.mooncode_runtime_service_persist_failed(
                   session_id,
                   book_root,
                   payload,
-                  "\{error}",
+                  mooncode_runtime_service_error_detail(error),
                 )
               }
             },
@@ -326,6 +337,94 @@ async fn Daemon::mooncode_start_runtime_service(
     "message": "MoonClaw native runtime service started in the daemon task group.",
     "started_event": started,
     "loop_options": mooncode_runtime_service_loop_payload(session_id, payload),
+  }
+}
+
+///|
+/// Preserve an authoritative pending-approval checkpoint when post-checkpoint
+/// bookkeeping raises. A valid durable continuation is sufficient to resume;
+/// reporting the service as failed here is both misleading and disruptive.
+/// Truly corrupt journals fail the validation/read below and retain the normal
+/// failure path.
+async fn Daemon::mooncode_runtime_service_recover_waiting_approval(
+  self : Daemon,
+  session_id : String,
+  book_root : String,
+  payload : Json,
+) -> Bool {
+  let events = mooncode_journal_entries(
+    mooncode_read_session_journal(book_root, session_id),
+    mooncode_journal_event(),
+  )
+  guard mooncode_runtime_service_pending_approval(events) is Some(_) else {
+    return false
+  }
+  let result : Json = {
+    "accepted": true,
+    "session_id": session_id,
+    "book_root": book_root,
+    "ran_turn_count": 1,
+    "failed_turn_count": 0,
+    "turn_count": 1,
+    "stopped_by": "approval",
+    "turns": [],
+    "waits": [],
+  }
+  let finished = self.mooncode_runtime_service_finished_event(
+    session_id, book_root, payload, result,
+  )
+  ignore(
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_event(),
+      finished,
+    ),
+  )
+  true
+}
+
+///|
+fn mooncode_runtime_service_pending_approval(events : Array[Json]) -> Json? {
+  let mut latest = Json::object({})
+  for event in events {
+    if mooncode_json_string(event, "kind", default="") ==
+      mooncode_runtime_continuation_kind() &&
+      mooncode_json_string(event, "state", default="") == "awaiting-approval" {
+      latest = event
+    }
+  }
+  let command_id = mooncode_json_string(latest, "command_id", default="")
+  if command_id == "" {
+    return None
+  }
+  let continuation = mooncode_runtime_continuation_for_command(
+    events, command_id,
+  )
+  if !mooncode_runtime_continuation_is_active(continuation) {
+    return None
+  }
+  let approval_id = mooncode_json_string(
+    continuation,
+    "approval_id",
+    default="",
+  )
+  for event in events {
+    if mooncode_json_string(event, "approval_id", default="") == approval_id {
+      let state = mooncode_json_string(event, "state", default="")
+      if state == "approved" || state == "rejected" || state == "cancelled" {
+        return None
+      }
+    }
+  }
+  Some(continuation)
+}
+
+///|
+fn mooncode_runtime_service_error_detail(error : Error) -> String {
+  match error {
+    InvalidJournal(message) => "MoonCode journal invalid: \{message}"
+    _ => "\{error}"
   }
 }
 

@@ -15,4 +15,3 @@ pub fn unavailable_message(String, String) -> String
 // Type aliases
 
 // Traits
-

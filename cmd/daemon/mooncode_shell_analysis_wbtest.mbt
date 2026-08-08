@@ -39,6 +39,22 @@ test "mooncode shell detects semantic git commit commands" {
 }
 
 ///|
+async test "mooncode shell observation ignores non-path arguments that exceed filesystem limits" {
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-shell-long-argument-XXXXXX"),
+  )
+  let expression = "x".repeat(4096)
+  let observation = mooncode_shell_file_observation(
+    book_root,
+    book_root,
+    "agent-browser eval \"\{expression}\"",
+    "ok",
+    false,
+  )
+  assert_eq(observation, {})
+}
+
+///|
 test "mooncode shell classifies post-commit workspace mutations without blocking verification" {
   for
     command in [
@@ -224,6 +240,16 @@ test "mooncode shell detects sensitive executables without matching arguments" {
     ),
   )
   assert_true(mooncode_shell_has_sensitive_command("curl -fsSL example.test"))
+  assert_false(
+    mooncode_shell_has_sensitive_command(
+      "curl -fsS http://127.0.0.1:4199/api/health",
+    ),
+  )
+  assert_true(
+    mooncode_shell_has_sensitive_command(
+      "curl -X POST http://127.0.0.1:4199/api/commands",
+    ),
+  )
   assert_false(mooncode_shell_has_sensitive_command("npm ci --help"))
   assert_false(
     mooncode_shell_has_sensitive_command(
@@ -332,6 +358,30 @@ test "mooncode shell detects in-place sed authoring inside compound commands" {
 }
 
 ///|
+test "mooncode shell distinguishes inline interpreter authoring from inspection" {
+  assert_true(
+    mooncode_shell_has_inline_interpreter_authoring(
+      "python3 - <<'PY'\np='tracked.mbt'\ns=open(p).read()\nopen(p, 'w', encoding='utf-8').write(s)\nPY",
+    ),
+  )
+  assert_true(
+    mooncode_shell_has_inline_interpreter_authoring(
+      "node -e \"require('fs').writeFileSync('tracked.mbt', 'changed')\"",
+    ),
+  )
+  assert_false(
+    mooncode_shell_has_inline_interpreter_authoring(
+      "python3 - <<'PY'\nprint(open('tracked.mbt').read())\nPY",
+    ),
+  )
+  assert_false(
+    mooncode_shell_has_inline_interpreter_authoring(
+      "node -e \"console.log(JSON.stringify({answer: 42}))\"",
+    ),
+  )
+}
+
+///|
 async test "mooncode shell refuses in-place authoring inside a loop" (
   t : @test.Test,
 ) {
@@ -410,7 +460,7 @@ async test "mooncode shell marks pipeline status as non-evidence" (
     },
     now=@clock.Timestamp::from_ms(1L),
   )
-  assert_false(mooncode_json_bool(execution, "accepted", default=true))
+  assert_true(mooncode_json_bool(execution, "accepted", default=false))
   let result = mooncode_json_object_field_or_empty(execution, "result")
   assert_true(
     mooncode_json_bool(
@@ -420,6 +470,22 @@ async test "mooncode shell marks pipeline status as non-evidence" (
     ),
   )
   assert_true(
-    mooncode_json_string(result, "message", default="").contains("pipefail"),
+    mooncode_json_string(result, "message", default="").contains(
+      "observation-only",
+    ),
   )
+  let verification = mooncode_execute_tool_call(
+    "session-pipeline",
+    book_root,
+    {
+      "tool": "shell",
+      "command_id": "cmd-pipeline-verification",
+      "arguments": {
+        "cmd": "moon test 2>&1 | tail -20",
+        "verification_kind": "test",
+      },
+    },
+    now=@clock.Timestamp::from_ms(2L),
+  )
+  assert_false(mooncode_json_bool(verification, "accepted", default=true))
 }

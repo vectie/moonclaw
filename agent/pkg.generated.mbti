@@ -62,4 +62,3 @@ pub fn Tool::enabled(Self) -> Bool
 // Type aliases
 
 // Traits
-

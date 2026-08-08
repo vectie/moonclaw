@@ -41,6 +41,7 @@ wait_ms="${MOONCODE_HARNESS_WAIT_MS:-30000}"
 poll_ms="${MOONCODE_HARNESS_POLL_MS:-250}"
 connect_timeout_seconds="${MOONCODE_HARNESS_CONNECT_TIMEOUT_SECONDS:-5}"
 request_timeout_seconds="${MOONCODE_HARNESS_REQUEST_TIMEOUT_SECONDS:-30}"
+quota_wait_max_seconds="${MOONCODE_HARNESS_QUOTA_WAIT_MAX_SECONDS:-60}"
 
 while (($# > 0)); do
   case "$1" in
@@ -86,6 +87,8 @@ command -v jq >/dev/null || fail "jq is required"
   fail "MOONCODE_HARNESS_REQUEST_TIMEOUT_SECONDS must be an integer"
 [[ "$retry_seconds" =~ ^[0-9]+([.][0-9]+)?$ ]] ||
   fail "MOONCODE_HARNESS_RETRY_SECONDS must be numeric"
+[[ "$quota_wait_max_seconds" =~ ^[1-9][0-9]*$ ]] ||
+  fail "MOONCODE_HARNESS_QUOTA_WAIT_MAX_SECONDS must be a positive integer"
 
 request_json="$(jq -c . "$request_file")" ||
   fail "request is not valid JSON: $request_file"
@@ -109,9 +112,11 @@ approval_sequence=0
 terminal_sequence=0
 target_status=""
 target_detail=""
+provider_quota_detail=""
+provider_quota_reset_epoch=0
 
 record_evidence() {
-  [[ -n "$evidence_file" ]] || return
+  [[ -n "$evidence_file" ]] || return 0
   printf '%s\n' "$1" >>"$evidence_file"
 }
 
@@ -183,7 +188,9 @@ if [[ -n "$evidence_file" ]]; then
               approval_sequence: 0,
               approval: {},
               terminal_sequence: 0,
-              terminal: {}
+              terminal: {},
+              provider_quota_sequence: 0,
+              provider_quota_detail: ""
             };
             if ($row.type // "") != "event" then
               .
@@ -245,6 +252,25 @@ if [[ -n "$evidence_file" ]]; then
                 else
                   .
                 end
+              | if (
+                  ($event.command_id // "") == $command_id
+                  and ($event.kind // "") == "runtime.turn_checkpointed"
+                  and ($event.state // "") == "planner-transport-paused"
+                  and (($event.detail // "") | contains("AccountQuotaExceeded"))
+                  and $sequence >= .provider_quota_sequence
+                ) then
+                  .provider_quota_sequence = $sequence
+                  | .provider_quota_detail = ($event.detail // "")
+                elif (
+                  ($event.command_id // "") == $command_id
+                  and ($event.kind // "") == "runtime.planner_selected"
+                  and $sequence > .provider_quota_sequence
+                ) then
+                  .provider_quota_sequence = $sequence
+                  | .provider_quota_detail = ""
+                else
+                  .
+                end
             end
           )
         ' "$evidence_file"
@@ -253,6 +279,7 @@ if [[ -n "$evidence_file" ]]; then
     command_sequence="$(jq -r '.command_sequence' <<<"$evidence_state")"
     approval_sequence="$(jq -r '.approval_sequence' <<<"$evidence_state")"
     terminal_sequence="$(jq -r '.terminal_sequence' <<<"$evidence_state")"
+    provider_quota_detail="$(jq -r '.provider_quota_detail // ""' <<<"$evidence_state")"
     approval="$(jq -rc '
       .approval
       | select(
@@ -341,6 +368,61 @@ post_json() {
   return 65
 }
 
+provider_quota_reset_epoch_from_detail() {
+  local detail="$1"
+  local reset_at
+  local epoch
+  reset_at="$(
+    sed -nE \
+      's/.*reset at ([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} [+-][0-9]{4}).*/\1/p' \
+      <<<"$detail"
+  )"
+  [[ -n "$reset_at" ]] || return 1
+  if epoch="$(date -j -f '%Y-%m-%d %H:%M:%S %z' "$reset_at" '+%s' 2>/dev/null)"; then
+    printf '%s' "$epoch"
+    return 0
+  fi
+  if epoch="$(date -d "$reset_at" '+%s' 2>/dev/null)"; then
+    printf '%s' "$epoch"
+    return 0
+  fi
+  return 1
+}
+
+remember_provider_quota_pause() {
+  local detail="$1"
+  local epoch
+  if epoch="$(provider_quota_reset_epoch_from_detail "$detail")"; then
+    provider_quota_detail="$detail"
+    provider_quota_reset_epoch="$epoch"
+  else
+    provider_quota_detail=""
+    provider_quota_reset_epoch=0
+  fi
+}
+
+wait_for_provider_quota_if_needed() {
+  local now
+  local remaining
+  local wait_seconds
+  ((provider_quota_reset_epoch > 0)) || return 1
+  now="$(date '+%s')"
+  if ((provider_quota_reset_epoch <= now)); then
+    provider_quota_detail=""
+    provider_quota_reset_epoch=0
+    return 1
+  fi
+  remaining="$((provider_quota_reset_epoch - now))"
+  wait_seconds="$remaining"
+  if ((wait_seconds > quota_wait_max_seconds)); then
+    wait_seconds="$quota_wait_max_seconds"
+  fi
+  printf 'provider quota paused until epoch %s; waiting %ss without restarting runtime service\n' \
+    "$provider_quota_reset_epoch" "$wait_seconds"
+  sleep "$wait_seconds"
+  return 0
+}
+
 submit_turn() {
   local response
   local result
@@ -423,6 +505,10 @@ print_event() {
     ] | @tsv
   ' <<<"$1"
 }
+
+if [[ -n "$provider_quota_detail" ]]; then
+  remember_provider_quota_pause "$provider_quota_detail"
+fi
 
 if [[ "$resume_only" == false ]]; then
   submit_turn
@@ -552,6 +638,21 @@ while true; do
           target_detail="$(jq -r '.detail // "runtime turn is invalid"' <<<"$event")"
         fi
         ;;
+      runtime.turn_checkpointed)
+        event_state="$(jq -r '.state // ""' <<<"$event")"
+        event_detail="$(jq -r '.detail // ""' <<<"$event")"
+        if [[ "$event_command_id" == "$command_id" &&
+          "$event_state" == "planner-transport-paused" &&
+          "$event_detail" == *"AccountQuotaExceeded"* ]]; then
+          remember_provider_quota_pause "$event_detail"
+        fi
+        ;;
+      runtime.planner_selected)
+        if [[ "$event_command_id" == "$command_id" ]]; then
+          provider_quota_detail=""
+          provider_quota_reset_epoch=0
+        fi
+        ;;
       runtime.service_started)
         service_status=""
         service_detail=""
@@ -598,6 +699,9 @@ while true; do
     "$service_status" == "done" ||
     "$service_status" == "waiting" ||
     "$service_status" == "cancelled" ]]; then
+    if wait_for_provider_quota_if_needed; then
+      continue
+    fi
     resume_service || sleep "$retry_seconds"
   fi
 done

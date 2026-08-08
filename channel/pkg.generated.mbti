@@ -410,4 +410,3 @@ pub(open) trait MessageHandler {
   async fn handle_message(Self, String, String, Message) -> Message
   async fn handle_event(Self, String, String, ChannelEvent) -> Unit
 }
-

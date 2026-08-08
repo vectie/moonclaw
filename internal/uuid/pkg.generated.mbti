@@ -67,4 +67,3 @@ pub(open) trait Source {
   fn uint64(Self) -> UInt64
 }
 pub impl Source for @random.Rand
-

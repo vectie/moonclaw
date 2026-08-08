@@ -598,4 +598,3 @@ pub fn UserMessage::text(Self) -> String
 // Type aliases
 
 // Traits
-

@@ -59,4 +59,3 @@ pub impl ToJson for ResponsesRequest
 // Type aliases
 
 // Traits
-

@@ -33,4 +33,3 @@ pub impl Show for PatchEditResult
 // Type aliases
 
 // Traits
-

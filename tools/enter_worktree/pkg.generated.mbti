@@ -23,4 +23,3 @@ pub impl Show for EnterWorktreeResult
 // Type aliases
 
 // Traits
-

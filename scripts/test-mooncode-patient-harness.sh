@@ -84,4 +84,54 @@ terminal_output="$(
 [[ "$(jq -s '[.[] | select(.type == "harness_summary" and .status == "worker_completed")] | length' "$terminal_evidence")" == "1" ]]
 [[ "$(jq -s '[.[] | select(.type == "event" and (.event.kind == "moon_cmd.finished" or .event.kind == "runtime.planner_started"))] | length' "$terminal_evidence")" == "0" ]]
 
+quota_evidence="$fixture_root/quota-evidence.jsonl"
+quota_marker="$fixture_root/quota-marker"
+printf '%s\n' \
+  '{"type":"event","event":{"journal_sequence":"5","command_id":"cmd-test","kind":"command.queued_for_runtime_turn"}}' \
+  '{"type":"event","event":{"journal_sequence":"6","command_id":"cmd-test","kind":"runtime.turn_checkpointed","status":"paused","state":"planner-transport-paused","detail":"HTTP 429 AccountQuotaExceeded; reset at 2099-08-10 00:00:00 +0800 CST"}}' \
+  '{"type":"event","event":{"journal_sequence":"7","command_id":"cmd-test","kind":"runtime.service_finished","status":"done"}}' \
+  >"$quota_evidence"
+
+cat >"$fixture_root/bin/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ "$*" == *"runtime-service"* ]]; then
+  printf 'unexpected runtime-service restart\n' >>"$HARNESS_TEST_MARKER"
+  exit 1
+fi
+printf '%s\n' \
+  '{"type":"meta","next_since":"7","emitted_count":"0"}' \
+  '{"type":"done","next_since":"7","emitted_count":"0"}' \
+  '200'
+EOF
+chmod +x "$fixture_root/bin/curl"
+
+cat >"$fixture_root/bin/sleep" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'quota-wait=%s\n' "$1" >>"$HARNESS_TEST_MARKER"
+kill -TERM "$PPID"
+exit 0
+EOF
+chmod +x "$fixture_root/bin/sleep"
+
+set +e
+quota_output="$(
+  PATH="$fixture_root/bin:$PATH" \
+    HARNESS_TEST_MARKER="$quota_marker" \
+    MOONCODE_HARNESS_WAIT_MS=0 \
+    "$repo_root/scripts/mooncode-patient-harness.sh" \
+      --url http://fixture.invalid \
+      --request "$request" \
+      --evidence "$quota_evidence" \
+      --resume 2>&1
+)"
+quota_status=$?
+set -e
+
+[[ "$quota_status" == "130" ]]
+[[ "$quota_output" == *"waiting 60s without restarting runtime service"* ]]
+[[ "$(cat "$quota_marker")" == "quota-wait=60" ]]
+[[ "$quota_output" != *"runtime service"* ]]
+
 printf 'patient harness terminal freeze tests passed\n'

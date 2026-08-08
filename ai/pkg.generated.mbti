@@ -53,4 +53,3 @@ pub fn Usage::to_openai(Self) -> @openai.CompletionUsage
 // Type aliases
 
 // Traits
-

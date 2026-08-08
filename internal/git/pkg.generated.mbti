@@ -31,4 +31,3 @@ pub async fn[T] with_worktree(String, new_branch? : String, force_new_branch? : 
 // Type aliases
 
 // Traits
-

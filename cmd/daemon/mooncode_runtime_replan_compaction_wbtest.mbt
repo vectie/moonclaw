@@ -90,6 +90,163 @@ fn replan_compaction_test_checkpoint(
 }
 
 ///|
+test "provider compaction retains a useful long-horizon working suffix" {
+  let previous : Array[Json] = [
+    { "role": "system", "content": "planner contract" },
+    { "role": "user", "content": "redesign the complete interface" },
+  ]
+  for index in 0..<20 {
+    let content = if index == 0 {
+      "obsolete discovery"
+    } else if index == 10 {
+      "settled map-hero diagnosis"
+    } else {
+      "planner quantum \{index}"
+    }
+    previous.push({
+      "role": "assistant",
+      "content": content,
+      "tool_calls": [
+        {
+          "id": "call-\{index}",
+          "type": "function",
+          "function": { "name": "read", "arguments": "{}" },
+        },
+      ],
+    })
+    previous.push({
+      "role": "tool",
+      "tool_call_id": "call-\{index}",
+      "content": "result \{index}",
+    })
+    previous.push({ "role": "user", "content": "evidence ledger \{index}" })
+  }
+  let compacted = mooncode_runtime_turn_compact_followup_transcript(previous)
+  let transcript = Json::array(compacted).stringify()
+  assert_true(transcript.contains("settled map-hero diagnosis"))
+  assert_false(transcript.contains("obsolete discovery"))
+  assert_true(transcript.contains("MoonCode compacted"))
+  assert_true(compacted.length() <= 47)
+}
+
+///|
+test "provider compaction retains Kimi task after two system messages" {
+  let previous : Array[Json] = [
+    { "role": "system", "content": "Kimi autonomy contract" },
+    { "role": "system", "content": "Dynamic skill gate" },
+    {
+      "role": "user",
+      "content": "Transform MoonTown into a coherent living AI-agent town",
+    },
+  ]
+  for index in 0..<20 {
+    previous.push({
+      "role": "assistant",
+      "content": "planner quantum \{index}",
+      "tool_calls": [
+        {
+          "id": "kimi-call-\{index}",
+          "type": "function",
+          "function": { "name": "read", "arguments": "{}" },
+        },
+      ],
+    })
+    previous.push({
+      "role": "tool",
+      "tool_call_id": "kimi-call-\{index}",
+      "content": "result \{index}",
+    })
+  }
+  let compacted = mooncode_runtime_turn_compact_followup_transcript(previous)
+  let transcript = Json::array(compacted).stringify()
+  assert_true(transcript.contains("Kimi autonomy contract"))
+  assert_true(transcript.contains("Dynamic skill gate"))
+  assert_true(
+    transcript.contains(
+      "Transform MoonTown into a coherent living AI-agent town",
+    ),
+  )
+  assert_true(transcript.contains("MoonCode compacted"))
+}
+
+///|
+test "provider compaction restores canonical task over stale notice" {
+  let previous : Array[Json] = [
+    { "role": "system", "content": "Kimi autonomy contract" },
+    { "role": "system", "content": "Dynamic skill gate" },
+    {
+      "role": "user",
+      "content": "MoonCode compacted older provider messages from this request.",
+    },
+  ]
+  for index in 0..<20 {
+    previous.push({
+      "role": "assistant",
+      "content": "planner quantum \{index}",
+      "tool_calls": [
+        {
+          "id": "recovery-call-\{index}",
+          "type": "function",
+          "function": { "name": "read", "arguments": "{}" },
+        },
+      ],
+    })
+    previous.push({
+      "role": "tool",
+      "tool_call_id": "recovery-call-\{index}",
+      "content": "result \{index}",
+    })
+  }
+  let compacted = mooncode_runtime_turn_compact_followup_transcript(
+    previous,
+    task_contract="Implement the complete living-agent-town mission",
+  )
+  let transcript = Json::array(compacted).stringify()
+  assert_true(
+    transcript.contains("Implement the complete living-agent-town mission"),
+  )
+  assert_false(
+    transcript.contains(
+      "MoonCode compacted older provider messages from this request.",
+    ),
+  )
+}
+
+///|
+test "provider compaction bounds a previously consumed complete skill" {
+  let skill_body = "moonbit-agent-guide-start\n" +
+    "skill-evidence\n".repeat(5000) +
+    "moonbit-agent-guide-end"
+  let previous : Array[Json] = [
+    { "role": "system", "content": "planner contract" },
+    { "role": "user", "content": "complete the MoonBit implementation" },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call-skill",
+          "type": "function",
+          "function": {
+            "name": "read_skill",
+            "arguments": "{\"name\":\"moonbit-agent-guide\"}",
+          },
+        },
+      ],
+    },
+    { "role": "tool", "tool_call_id": "call-skill", "content": skill_body },
+  ]
+  let compacted = mooncode_runtime_turn_compact_followup_transcript(previous)
+  let transcript = Json::array(compacted).stringify()
+  assert_true(transcript.contains("moonbit-agent-guide-start"))
+  assert_true(transcript.contains("moonbit-agent-guide-end"))
+  assert_true(
+    transcript.contains("complete bytes remain in the durable journal"),
+  )
+  assert_true(transcript.length() < skill_body.length() / 2)
+}
+
+///|
 test "compact continuation hydrates inline result events" {
   let execution = replan_compaction_test_execution(
     "replan-inline-result", "replan-compaction-command", "inline execution result",

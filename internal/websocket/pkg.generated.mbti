@@ -59,4 +59,3 @@ pub(all) enum MessageKind {
 // Type aliases
 
 // Traits
-

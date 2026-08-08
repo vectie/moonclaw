@@ -19,4 +19,3 @@ pub fn Extractor::new(model~ : @model.Model, safe_zone_tokens~ : Int, window_siz
 // Type aliases
 
 // Traits
-

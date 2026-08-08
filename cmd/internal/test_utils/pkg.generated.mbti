@@ -27,4 +27,3 @@ pub impl @httpx.FromEvent for ServerEvent
 // Type aliases
 
 // Traits
-

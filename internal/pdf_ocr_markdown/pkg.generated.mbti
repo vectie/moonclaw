@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "moonbitlang/moonclaw/internal/pdf_ocr_markdown"
+package "vectie/moonclaw/internal/pdf_ocr_markdown"
 
 // Values
 pub async fn convert_pdf_to_markdown(String, options? : OcrMarkdownOptions, executor? : CommandExecutor) -> OcrMarkdownDocument raise PdfOcrMarkdownError
@@ -12,8 +12,7 @@ pub suberror PdfOcrMarkdownError {
   RasterizationFailed(String)
   NoPagesGenerated(String)
   OcrFailed(String)
-}
-pub impl Show for PdfOcrMarkdownError
+} derive(Show)
 
 // Types and methods
 pub(all) struct CommandExecutor {
@@ -26,9 +25,7 @@ pub(all) struct CommandRequest {
   arguments : Array[String]
   cwd : String?
   timeout_ms : Int?
-}
-pub impl Eq for CommandRequest
-pub impl Show for CommandRequest
+} derive(Eq, Show)
 
 pub(all) struct CommandResult {
   command : String
@@ -38,9 +35,7 @@ pub(all) struct CommandResult {
   stderr : String
   elapsed_ms : Int
   timeout_ms : Int?
-}
-pub impl Eq for CommandResult
-pub impl Show for CommandResult
+} derive(Eq, Show)
 
 pub struct OcrMarkdownDocument {
   source_path : String
@@ -48,29 +43,22 @@ pub struct OcrMarkdownDocument {
   markdown : String
   pages : Array[OcrMarkdownPage]
   engine : String
-}
-pub impl Eq for OcrMarkdownDocument
-pub impl Show for OcrMarkdownDocument
+} derive(Eq, Show)
 
 pub struct OcrMarkdownOptions {
   language : String?
   dpi : Int
   timeout_ms : Int?
   page_segmentation_mode : Int?
-}
+} derive(Eq, Show)
 pub fn OcrMarkdownOptions::new(language? : String?, dpi? : Int, timeout_ms? : Int?, page_segmentation_mode? : Int?) -> Self
-pub impl Eq for OcrMarkdownOptions
-pub impl Show for OcrMarkdownOptions
 
 pub struct OcrMarkdownPage {
   page_number : Int
   text : String
   markdown : String
-}
-pub impl Eq for OcrMarkdownPage
-pub impl Show for OcrMarkdownPage
+} derive(Eq, Show)
 
 // Type aliases
 
 // Traits
-

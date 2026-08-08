@@ -75,4 +75,3 @@ pub fn Stat::mtime(Self) -> Int64
 // Type aliases
 
 // Traits
-

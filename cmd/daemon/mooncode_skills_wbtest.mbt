@@ -100,6 +100,8 @@ test "mooncode retains full loaded skill instructions across checkpoints" {
         "name": "fixture-review",
         "path": "SKILL.md",
         "location": "/installed/fixture-review/SKILL.md",
+        "content_sha256_base64": "fixture-digest",
+        "content_chars": 6000,
       },
     },
   }
@@ -111,4 +113,13 @@ test "mooncode retains full loaded skill instructions across checkpoints" {
   assert_true(
     mooncode_json_string(retained[0], "content", default="").contains(long_body),
   )
+  let receipts = mooncode_runtime_turn_loaded_skill_receipt_messages([execution])
+  assert_eq(receipts.length(), 1)
+  let receipt = mooncode_json_string(receipts[0], "content", default="")
+  assert_true(receipt.contains("loaded completely earlier"))
+  assert_true(receipt.contains("fixture-review/SKILL.md"))
+  assert_true(receipt.contains("fixture-digest"))
+  assert_true(receipt.contains("A missing or empty filesystem result"))
+  assert_true(receipt.contains("Do not select read, shell, glob, grep"))
+  assert_false(receipt.contains(long_body))
 }

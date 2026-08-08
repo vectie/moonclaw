@@ -143,4 +143,3 @@ pub(all) enum Class {
 // Type aliases
 
 // Traits
-

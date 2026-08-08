@@ -26,4 +26,3 @@ pub fn Pattern::cl100k_base() -> Self
 // Type aliases
 
 // Traits
-

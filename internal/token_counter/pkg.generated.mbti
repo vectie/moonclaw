@@ -22,4 +22,3 @@ pub fn Counter::new(logger~ : @pino.Logger, calibration_alpha? : Double) -> Self
 // Type aliases
 
 // Traits
-

@@ -54,4 +54,3 @@ pub fn MaterializedStarterAttachment::new(id~ : String, mime_type~ : String, sou
 // Type aliases
 
 // Traits
-

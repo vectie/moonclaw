@@ -72,3 +72,43 @@ async test "MoonCode uses the provider model selected by the loader" {
     }
   })
 }
+
+///|
+async test "MoonCode rehydrates a persisted model from its MoonBook root" {
+  @fsx.with_temporary_directory("moonclaw-mooncode-model-rehydrate-XXXXXX", book_root => {
+    @fsx.with_temporary_directory("moonclaw-mooncode-daemon-root-XXXXXX", daemon_root => {
+      let model = @model.Model::new(
+        api_key="test",
+        base_url="http://127.0.0.1:15721/v1",
+        name="moongate/kimi-k3",
+        model_name="kimi-k3",
+        safe_zone_tokens=131072,
+      )
+      let models_path = @moonsuite.product_artifact_for_workspace_root(
+        book_root, "moonclaw", "models/models.json",
+      )
+      @fsx.make_directory(
+        @pathx.dirname(models_path),
+        recursive=true,
+        exists_ok=true,
+      )
+      @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
+      let primary = @model.Loader::new(home=daemon_root, cwd=daemon_root)
+      let resolved = mooncode_runtime_turn_resolve_model(
+        primary,
+        daemon_root,
+        {
+          "book_root": book_root,
+          "command": "prompt",
+          "model": "moongate/kimi-k3",
+        },
+        "moongate/kimi-k3",
+      )
+      guard resolved is Some(resolved_model) else {
+        fail("expected persisted MoonBook model to rehydrate")
+      }
+      assert_eq(resolved_model.name, "moongate/kimi-k3")
+      assert_eq(resolved_model.model_name, "kimi-k3")
+    })
+  })
+}

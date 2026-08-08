@@ -962,10 +962,19 @@ test "mooncode model planner sends a compact request envelope" {
   let plan_request = mooncode_runtime_turn_model_plan_request(
     "gpt-5.6-sol", command,
   ).to_json()
+  assert_eq(mooncode_json_int(plan_request, "max_tokens", default=0), 1200)
   assert_eq(
     mooncode_json_string(plan_request, "reasoning_effort", default=""),
     "none",
   )
+  let kimi_request = mooncode_runtime_turn_model_plan_request(
+    "moongate/kimi-k3", command,
+  ).to_json()
+  assert_eq(mooncode_json_int(kimi_request, "max_tokens", default=0), 2000)
+  let deepseek_request = mooncode_runtime_turn_model_plan_request(
+    "moongate/deepseek-v4-flash", command,
+  ).to_json()
+  assert_eq(mooncode_json_int(deepseek_request, "max_tokens", default=0), 2000)
 
   let summary : Json = {
     "command": "prompt",
@@ -990,6 +999,17 @@ test "mooncode model planner sends a compact request envelope" {
       coding_tools.any(tool => tool.contains("\"name\":\"\{tool_name}\"")),
     )
   }
+
+  let ui_command : Json = {
+    "command": "prompt",
+    "text": "Test the app UI in the browser and fix the interaction.",
+  }
+  let ui_tools = mooncode_runtime_turn_model_tools_for_command(ui_command).map(tool => {
+    tool.to_json().stringify()
+  })
+  assert_true(ui_tools.any(tool => tool.contains("\"name\":\"browser\"")))
+  assert_true(ui_tools.any(tool => tool.contains("@ prefix")))
+  assert_true(ui_tools.any(tool => tool.contains("Visible labels")))
 
   let workspace_prompts = [
     "Complete the Phase 4 extraction", "Replace the legacy boundary with the typed provider",
@@ -1067,6 +1087,23 @@ test "mooncode model planner sends a compact request envelope" {
   let system = mooncode_json_string(initial[0], "content", default="")
   assert_true(system.contains("read_skill"))
   assert_true(system.contains("moonbit-agent-guide"))
+  assert_true(
+    initial
+    .to_json()
+    .stringify()
+    .contains(
+      "Dynamic skill gate: the user's wording may omit the implementation language",
+    ),
+  )
+  assert_true(
+    initial.to_json().stringify().contains("the gate is already satisfied"),
+  )
+  assert_true(
+    initial
+    .to_json()
+    .stringify()
+    .contains("never through read, shell, glob, grep, find, ls, or web tools"),
+  )
   assert_true(system.contains("Never ask for tool approval in assistant prose"))
   assert_true(
     system.contains(
@@ -1097,7 +1134,7 @@ test "mooncode model planner sends a compact request envelope" {
   )
   assert_true(
     system.contains(
-      "Do not set `requires_approval` or `approval=operator` for read, moon_ide, moon_check",
+      "Do not set `requires_approval` or `approval=operator` for read, view_image, local browser observation, moon_ide, moon_check",
     ),
   )
   assert_true(
@@ -1125,6 +1162,11 @@ test "mooncode model planner sends a compact request envelope" {
       "If any required milestone is pending or active, choose the next useful tool batch",
     ),
   )
+  assert_true(
+    system.contains(
+      "Batch independent inspections in one response; start another inference round only when a later action depends on an earlier result",
+    ),
+  )
   assert_false(system.contains("MoonBit baseline:"))
 
   let codex = @model.codex_oauth_model(
@@ -1145,6 +1187,231 @@ test "mooncode model planner sends a compact request envelope" {
     mooncode_runtime_turn_model_timeout_for_provider(direct, command)
     is Some(60000),
   )
+  let slow_command : Json = { "payload": { "planner_timeout_ms": 300000 } }
+  assert_true(
+    mooncode_runtime_turn_model_timeout_for_provider(direct, slow_command)
+    is Some(120000),
+  )
+  let kimi = @model.Model::new(
+    api_key="test",
+    base_url="http://127.0.0.1:15721/v1",
+    name="moongate/kimi-k3",
+    model_name="kimi-k3",
+    safe_zone_tokens=1000,
+  )
+  assert_true(
+    mooncode_runtime_turn_model_timeout_for_provider(kimi, command) is None,
+  )
+  assert_true(
+    mooncode_runtime_turn_model_timeout_for_provider(kimi, slow_command) is None,
+  )
+  let deepseek = @model.Model::new(
+    api_key="test",
+    base_url="http://127.0.0.1:15721/v1",
+    name="moongate/deepseek-v4-flash",
+    model_name="deepseek-v4-flash",
+    safe_zone_tokens=1000,
+  )
+  assert_true(
+    mooncode_runtime_turn_model_timeout_for_provider(deepseek, command) is None,
+  )
+  assert_true(
+    mooncode_runtime_turn_model_timeout_for_provider(deepseek, slow_command)
+    is None,
+  )
+}
+
+///|
+test "mooncode planner permits parallel tool calls" {
+  let request = mooncode_runtime_turn_model_plan_request_from_messages(
+    "test-model",
+    [
+      { "role": "system", "content": "inspect independently" },
+      { "role": "user", "content": "read both files" },
+    ],
+  ) catch {
+    _ => abort("planner request should be valid")
+  }
+  assert_true(
+    mooncode_json_bool(request.to_json(), "parallel_tool_calls", default=false),
+  )
+  assert_false(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      { "accepted": true, "tool": "read", "result": { "ok": true } },
+    ),
+  )
+  let tools_json = mooncode_runtime_turn_model_tools().to_json().stringify()
+  assert_true(tools_json.contains("start_line"))
+  assert_true(tools_json.contains("end_line"))
+  let kimi_system = mooncode_json_string(
+    mooncode_runtime_turn_kimi_messages(
+      { "command": "prompt", "text": "repair the UI" },
+      [],
+    )[0],
+    "content",
+    default="",
+  )
+  assert_true(
+    kimi_system.contains(
+      "when the target and intended change are already clear",
+    ),
+  )
+  assert_true(kimi_system.contains("read with start_line/end_line"))
+  let prompt = mooncode_runtime_turn_model_prompt({
+    "command": "prompt",
+    "text": "repair the UI",
+  })
+  assert_true(prompt.contains("Choose one dependency-aware bounded tool batch"))
+  assert_true(prompt.contains("Batch every independent inspection or mutation"))
+  assert_false(prompt.contains("Choose the smallest useful tool batch"))
+  let planner_system = mooncode_json_string(
+    mooncode_runtime_turn_model_initial_messages({
+      "command": "prompt",
+      "text": "repair the UI",
+    })[0],
+    "content",
+    default="",
+  )
+  assert_true(planner_system.contains("at most six broad and twelve total"))
+  assert_true(
+    planner_system.contains(
+      "the next tool batch must contain edit, write, or apply_patch",
+    ),
+  )
+}
+
+///|
+test "mooncode discovery saturation locks implementation until mutation" {
+  let saturated : Json = {
+    "accepted": false,
+    "tool": "read",
+    "result": { "ok": false, "metadata": { "discovery_saturated": true } },
+  }
+  assert_true(mooncode_runtime_turn_discovery_saturation_active([saturated]))
+  let mutation : Json = {
+    "accepted": true,
+    "tool": "edit",
+    "arguments": { "path": "src/main.mbt" },
+    "result": { "ok": true },
+  }
+  assert_false(
+    mooncode_runtime_turn_discovery_saturation_active([saturated, mutation]),
+  )
+}
+
+///|
+test "mooncode MoonGate planner survives transient overload until cancellation" {
+  assert_true(
+    mooncode_runtime_turn_model_retries_transient_summary(
+      "moongate/kimi-k3", "HTTP 429: provider overloaded",
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_model_retries_transient_summary(
+      "kimi-k3", "HTTP 503: service unavailable",
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_model_retries_transient_summary(
+      "moongate/deepseek-v4-flash", "HTTP 429: provider overloaded",
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_model_retries_transient_summary(
+      "gpt-5.6-sol", "HTTP 429: provider overloaded",
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_model_retries_transient_summary(
+      "kimi-k3", "HTTP 400: invalid request",
+    ),
+  )
+  let transient_delay = mooncode_runtime_turn_model_retry_delay_ms(
+    0,
+    entropy="session-a",
+  )
+  assert_true(transient_delay >= 850 && transient_delay <= 1150)
+  let capped_transient_delay = mooncode_runtime_turn_model_retry_delay_ms(
+    50,
+    entropy="session-a",
+  )
+  assert_true(capped_transient_delay >= 25500)
+  assert_true(capped_transient_delay <= 30000)
+  let overload_delay = mooncode_runtime_turn_model_retry_delay_ms(
+    0,
+    summary="HTTP 429: provider overloaded",
+    entropy="session-a",
+  )
+  assert_true(overload_delay >= 25500 && overload_delay <= 34500)
+  assert_eq(
+    mooncode_runtime_turn_model_retry_delay_ms(
+      0,
+      summary="HTTP 429: provider overloaded",
+      retry_after_ms=Some(90000),
+      entropy="session-a",
+    ),
+    90000,
+  )
+  assert_eq(
+    mooncode_runtime_turn_model_retry_jitter_percent("stable"),
+    mooncode_runtime_turn_model_retry_jitter_percent("stable"),
+  )
+  let retry_event = mooncode_runtime_turn_model_retry_event(
+    {
+      "session_id": "session-kimi",
+      "book_root": "/tmp/book",
+      "packet": { "command_id": "command-kimi" },
+    },
+    "kimi-k3",
+    3,
+    "HTTP 429: provider overloaded",
+    120000,
+    provider_error_class="server_overloaded",
+    retry_after_ms=Some(90000),
+    overload_compaction_tier=2,
+    retry_request_chars=32000,
+    now=@clock.Timestamp::from_ms(42L),
+  )
+  assert_eq(
+    mooncode_json_string(retry_event, "kind", default=""),
+    "runtime.planner_retrying",
+  )
+  assert_eq(mooncode_json_string(retry_event, "status", default=""), "waiting")
+  assert_true(
+    mooncode_json_string(retry_event, "detail", default="").contains("HTTP 429"),
+  )
+  assert_eq(
+    mooncode_json_string(retry_event, "provider_error_class", default=""),
+    "server_overloaded",
+  )
+  assert_eq(mooncode_json_int(retry_event, "retry_after_ms", default=0), 90000)
+  assert_eq(
+    mooncode_json_int(retry_event, "overload_compaction_tier", default=0),
+    2,
+  )
+  assert_eq(
+    mooncode_json_int(retry_event, "retry_request_chars", default=0),
+    32000,
+  )
+}
+
+///|
+test "mooncode line-range reads remain partial observations" {
+  let observation = mooncode_runtime_turn_result_file_observation({
+    "accepted": true,
+    "tool": "read",
+    "arguments": { "path": "src/main.mbt", "start_line": 20, "end_line": 40 },
+    "result": {
+      "ok": true,
+      "metadata": {
+        "path": "src/main.mbt",
+        "range_requested": true,
+        "truncated": false,
+      },
+    },
+  })
+  assert_eq(mooncode_json_string(observation, "scope", default=""), "partial")
 }
 
 ///|
@@ -1208,6 +1475,26 @@ test "mooncode planner has no implicit budget and scopes goal settlement" {
 }
 
 ///|
+test "kimi planner uses a concise autonomous execution envelope" {
+  let command : Json = {
+    "command": "prompt",
+    "text": "Redesign the complete interface and verify it visually.",
+  }
+  let messages = mooncode_runtime_turn_kimi_messages(command, [])
+  assert_eq(messages.length(), 3)
+  let system = mooncode_json_string(messages[0], "content", default="")
+  assert_true(system.contains("complete request as the task contract"))
+  assert_true(system.contains("do not ask for micro-instructions"))
+  assert_true(system.contains("no implicit step, turn, time, or effort budget"))
+  assert_false(system.contains("<available_skills>"))
+  assert_true(
+    mooncode_json_string(messages[2], "content", default="").contains(
+      "Redesign the complete interface",
+    ),
+  )
+}
+
+///|
 async test "mooncode finish rejects goal settlement without active authority" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-no-implicit-goal-XXXXXX"),
@@ -1252,25 +1539,25 @@ test "mooncode live steering becomes an explicit planner user message" {
     [steering],
     1,
   )
-  assert_eq(messages.length(), 3)
-  assert_eq(mooncode_json_string(messages[2], "role", default=""), "user")
+  assert_eq(messages.length(), 4)
+  assert_eq(mooncode_json_string(messages[3], "role", default=""), "user")
   assert_true(
-    mooncode_json_string(messages[2], "content", default="").contains(
+    mooncode_json_string(messages[3], "content", default="").contains(
       "steer-live-1",
     ),
   )
   assert_true(
-    mooncode_json_string(messages[2], "content", default="").contains(
+    mooncode_json_string(messages[3], "content", default="").contains(
       "paths in this steering as authoritative",
     ),
   )
 }
 
 ///|
-test "mooncode followup makes retained reads errors and path hints actionable" {
+async test "mooncode followup makes retained reads errors and path hints actionable" {
   let command : Json = {
     "command": "prompt",
-    "text": "Repair the parser without repeating discovery.",
+    "text": "Implement the parser repair without repeating discovery.",
   }
   let previous : Json = {
     "model_messages": [
@@ -1341,12 +1628,43 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
       "accepted": true,
       "result": {
         "ok": true,
+        "output": "current adapter source",
         "metadata": {
           "file_observation": {
             "path": "src/adapter.mbt",
             "scope": "partial",
             "source": "shell",
           },
+        },
+      },
+    },
+  ]
+  let all_tool_results : Array[Json] = [
+    {
+      "tool": "read",
+      "arguments": { "path": "src/earlier-retained.mbt" },
+      "accepted": true,
+      "result": {
+        "ok": true,
+        "output": "earlier retained source",
+        "metadata": { "path": "src/earlier-retained.mbt", "truncated": false },
+      },
+    },
+    tool_results[0],
+    tool_results[1],
+    tool_results[2],
+    {
+      "tool": "read_skill",
+      "accepted": true,
+      "result": {
+        "ok": true,
+        "output": "complete skill body",
+        "metadata": {
+          "name": "moonbit-agent-guide",
+          "path": "SKILL.md",
+          "location": "/installed/moonbit-agent-guide/SKILL.md",
+          "content_sha256_base64": "guide-digest",
+          "content_chars": 34084,
         },
       },
     },
@@ -1360,15 +1678,24 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
     previous,
     tool_calls,
     tool_results,
-    tool_results,
+    all_tool_results,
     [steering],
     -1,
   )
   let transcript = Json::array(messages).stringify()
   assert_true(transcript.contains("successful_read_paths"))
   assert_true(transcript.contains("complete_read_paths"))
+  assert_true(transcript.contains("successful_inspections"))
+  assert_true(transcript.contains("sed -n '1,80p' src/adapter.mbt"))
+  assert_true(transcript.contains("current adapter source"))
+  assert_true(
+    transcript.contains(
+      "do not repeat the same or an equivalent directory, status, or inventory inspection",
+    ),
+  )
   assert_true(transcript.contains("src/parser.mbt"))
   assert_true(transcript.contains("src/adapter.mbt"))
+  assert_true(transcript.contains("src/earlier-retained.mbt"))
   assert_true(transcript.contains("failed_tool_calls"))
   assert_true(transcript.contains("src/guessed.mbt"))
   assert_true(transcript.contains("path does not exist"))
@@ -1384,6 +1711,19 @@ test "mooncode followup makes retained reads errors and path hints actionable" {
   )
   assert_true(transcript.contains("internal/parser/parser.mbt"))
   assert_true(transcript.contains("paths in this steering as authoritative"))
+  let recovery = mooncode_json_string(
+    messages[messages.length() - 2],
+    "content",
+    default="",
+  )
+  assert_true(recovery.contains("Authoritative immutable checkpoint contract"))
+  assert_true(recovery.contains("\"id\": \"implementation\""))
+  assert_true(recovery.contains("Recent runtime evidence"))
+  assert_true(recovery.contains("Loaded-skill receipt"))
+  assert_true(recovery.contains("moonbit-agent-guide/SKILL.md"))
+  assert_true(
+    recovery.contains("A missing or empty filesystem result cannot invalidate"),
+  )
   assert_eq(
     mooncode_json_string(messages[messages.length() - 1], "content", default="").contains(
       "steer-exact-path",
@@ -1401,7 +1741,10 @@ test "mooncode retains planner memory across accepted checkpoints" {
   let previous : Json = {
     "model_messages": [
       { "role": "system", "content": "planner" },
-      { "role": "user", "content": "authoritative request" },
+      {
+        "role": "system",
+        "content": "Dynamic skill gate: legacy checkpoint wording",
+      },
       { "role": "user", "content": "remembered plan inventory" },
     ],
   }
@@ -1441,16 +1784,28 @@ test "mooncode retains planner memory across accepted checkpoints" {
             "name": "fixture-review",
             "path": "SKILL.md",
             "location": "/installed/fixture-review/SKILL.md",
+            "content_sha256_base64": "fixture-digest",
+            "content_chars": 36,
           },
         },
       },
     ],
     skill_catalog="<available_skills />",
   )
-  assert_eq(checkpointed.length(), 3)
+  assert_eq(checkpointed.length(), 4)
   assert_eq(
     mooncode_json_string(checkpointed[2], "content", default=""),
     "remembered plan inventory",
+  )
+  let receipt = mooncode_json_string(checkpointed[3], "content", default="")
+  assert_true(receipt.contains("Loaded-skill receipt"))
+  assert_true(receipt.contains("fixture-review/SKILL.md"))
+  assert_true(receipt.contains("fixture-digest"))
+  assert_false(receipt.contains("complete retained skill instructions"))
+  assert_true(
+    mooncode_json_string(checkpointed[1], "content", default="").contains(
+      "A missing or empty filesystem result cannot invalidate the receipt",
+    ),
   )
 }
 
@@ -1888,6 +2243,176 @@ test "mooncode native runtime turn decodes model-selected tool calls" {
     "tools/model-plan/run.sh",
   )
   assert_eq(mooncode_json_string(calls[1], "tool", default=""), "finish")
+}
+
+///|
+test "mooncode native runtime recovers adjacent provider tool arguments" {
+  let response : Json = {
+    "choices": [
+      {
+        "message": {
+          "tool_calls": [
+            {
+              "id": "shell-0",
+              "type": "function",
+              "function": {
+                "name": "shell",
+                "arguments": "{\"cmd\":\"pwd\"}{\"cmd\":\"git status --short\"}",
+              },
+            },
+          ],
+        },
+      },
+    ],
+  }
+  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
+  assert_eq(calls.length(), 2)
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(calls[0], "arguments"),
+      "cmd",
+      default="",
+    ),
+    "pwd",
+  )
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(calls[1], "arguments"),
+      "cmd",
+      default="",
+    ),
+    "git status --short",
+  )
+  assert_eq(
+    mooncode_json_string(calls[0], "tool_call_id", default=""),
+    "shell-0-1",
+  )
+  assert_eq(
+    mooncode_json_string(calls[1], "tool_call_id", default=""),
+    "shell-0-2",
+  )
+  let assistant = mooncode_runtime_turn_model_response_message(
+    response,
+    normalized_tool_calls=calls,
+  )
+  let normalized = mooncode_json_array_items(assistant, "tool_calls")
+  assert_eq(normalized.length(), 2)
+  assert_eq(mooncode_json_string(normalized[1], "id", default=""), "shell-0-2")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(normalized[1], "function"),
+      "arguments",
+      default="",
+    ),
+    "{\"cmd\":\"git status --short\"}",
+  )
+}
+
+///|
+test "mooncode native runtime normalizes heterogeneous adjacent provider calls" {
+  let response : Json = {
+    "choices": [
+      {
+        "message": {
+          "tool_calls": [
+            {
+              "id": "mixed-0",
+              "type": "function",
+              "function": {
+                "name": "edit",
+                "arguments": "{\"path\":\"src/ui.mbt\",\"old_string\":\"old\",\"new_string\":\"new\"}{\"cmd\":\"git diff --check\"}",
+              },
+            },
+          ],
+        },
+      },
+    ],
+  }
+  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
+  assert_eq(calls.length(), 2)
+  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "edit")
+  assert_eq(mooncode_json_string(calls[1], "tool", default=""), "shell")
+  let assistant = mooncode_runtime_turn_model_response_message(
+    response,
+    normalized_tool_calls=calls,
+  )
+  let normalized = mooncode_json_array_items(assistant, "tool_calls")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(normalized[1], "function"),
+      "name",
+      default="",
+    ),
+    "shell",
+  )
+}
+
+///|
+test "mooncode native runtime recovers checkpoint followed by path read" {
+  let response : Json = {
+    "choices": [
+      {
+        "message": {
+          "tool_calls": [
+            {
+              "id": "checkpoint-read-0",
+              "type": "function",
+              "function": {
+                "name": "checkpoint",
+                "arguments": "{\"horizon_id\":\"horizon\",\"milestones\":[],\"next_action\":\"read exact file\"}{\"path\":\"src/ui/types.mbt\"}",
+              },
+            },
+          ],
+        },
+      },
+    ],
+  }
+  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
+  assert_eq(calls.length(), 2)
+  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "checkpoint")
+  assert_eq(mooncode_json_string(calls[1], "tool", default=""), "read")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(calls[1], "arguments"),
+      "path",
+      default="",
+    ),
+    "src/ui/types.mbt",
+  )
+}
+
+///|
+test "mooncode native runtime recovers read followed by named skill" {
+  let response : Json = {
+    "choices": [
+      {
+        "message": {
+          "tool_calls": [
+            {
+              "id": "read-skill-0",
+              "type": "function",
+              "function": {
+                "name": "read",
+                "arguments": "{\"path\":\"src/ui.mbt\"}{\"name\":\"moonbit-agent-guide\"}",
+              },
+            },
+          ],
+        },
+      },
+    ],
+  }
+  let calls = mooncode_runtime_turn_tool_calls_from_model_response(response)
+  assert_eq(calls.length(), 2)
+  assert_eq(mooncode_json_string(calls[0], "tool", default=""), "read")
+  assert_eq(mooncode_json_string(calls[1], "tool", default=""), "read_skill")
+  assert_eq(
+    mooncode_json_string(
+      mooncode_json_object_field_or_empty(calls[1], "arguments"),
+      "name",
+      default="",
+    ),
+    "moonbit-agent-guide",
+  )
 }
 
 ///|
@@ -2446,6 +2971,18 @@ test "mooncode native runtime turn builds model follow-up transcript" {
   })
   assert_true(oversized.length() < 4100)
   assert_true(oversized.contains("truncated for planner context"))
+  let retained_source = mooncode_runtime_turn_model_tool_result_content({
+    "tool": "read",
+    "result": { "output": "x".repeat(9000) },
+  })
+  assert_true(retained_source.length() > 9000)
+  assert_false(retained_source.contains("truncated for planner context"))
+  let oversized_source = mooncode_runtime_turn_model_tool_result_content({
+    "tool": "read",
+    "result": { "output": "x".repeat(50000) },
+  })
+  assert_true(oversized_source.length() < 40100)
+  assert_true(oversized_source.contains("truncated for planner context"))
   let transcript : Array[Json] = [
     {
       "role": "assistant",
@@ -2592,6 +3129,19 @@ test "mooncode native runtime turn builds model follow-up transcript" {
       },
     ),
   )
+  assert_false(
+    mooncode_runtime_turn_stops_tool_batch(
+      { "planner_mode": "model-tool-calls" },
+      {
+        "accepted": true,
+        "tool": "shell",
+        "result": {
+          "ok": true,
+          "metadata": { "pipeline_exit_ambiguous": true },
+        },
+      },
+    ),
+  )
   assert_true(
     mooncode_runtime_turn_stops_tool_batch(
       { "planner_mode": "model-tool-calls" },
@@ -2606,6 +3156,71 @@ test "mooncode native runtime turn builds model follow-up transcript" {
         "tool": "read_skill",
         "result": { "is_error": true, "message": "installed skill not found" },
       },
+    ),
+  )
+}
+
+///|
+test "mooncode skill boundary keeps safe inspections in one planner batch" {
+  let plan : Json = { "planner_mode": "model-tool-calls" }
+  let loaded : Json = {
+    "accepted": true,
+    "tool": "read_skill",
+    "result": { "ok": true },
+  }
+  let status : Json = {
+    "tool": "shell",
+    "arguments": {
+      "cmd": "git status --short | head -60 && echo \"---\" && git log --oneline -8",
+    },
+  }
+  assert_false(
+    mooncode_runtime_turn_stops_tool_batch(
+      plan,
+      loaded,
+      skill_boundary_active=true,
+      next_tool_call=status,
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_stops_tool_batch(
+      plan,
+      { "accepted": true, "tool": "shell", "result": { "ok": true } },
+      skill_boundary_active=true,
+      next_tool_call={ "tool": "read", "arguments": { "path": "README.md" } },
+    ),
+  )
+}
+
+///|
+test "mooncode skill boundary stops before pre-skill mutations" {
+  let plan : Json = { "planner_mode": "model-tool-calls" }
+  let loaded : Json = {
+    "accepted": true,
+    "tool": "read_skill",
+    "result": { "ok": true },
+  }
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      plan,
+      loaded,
+      skill_boundary_active=true,
+      next_tool_call={
+        "tool": "edit",
+        "arguments": {
+          "path": "src/main.mbt",
+          "old_text": "a",
+          "new_text": "b",
+        },
+      },
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_stops_tool_batch(
+      plan,
+      { "accepted": false, "tool": "read_skill", "result": { "ok": false } },
+      skill_boundary_active=true,
+      next_tool_call={ "tool": "read", "arguments": { "path": "README.md" } },
     ),
   )
 }
@@ -2720,6 +3335,257 @@ test "mooncode model planner rejects only stale duplicate complete reads" {
     mooncode_runtime_turn_repeats_complete_read(
       { "tool": "edit", "arguments": { "path": "src/main.mbt" } },
       [complete_read],
+    ),
+  )
+}
+
+///|
+test "mooncode implementation discovery bounds broad and total reads until mutation" {
+  let implementation : Json = {
+    "command": "prompt",
+    "text": "Implement the requested UI behavior and run checks.",
+    "payload": { "task_intent": "workspace_change" },
+  }
+  let discoveries : Array[Json] = []
+  for index in 0..<6 {
+    discoveries.push({
+      "accepted": true,
+      "tool": "shell",
+      "arguments": { "cmd": "find src -maxdepth {index + 1} -type f" },
+      "result": { "ok": true, "output": "src/main.mbt" },
+    })
+  }
+  assert_true(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      { "tool": "shell", "arguments": { "cmd": "ls -la src" } },
+      discoveries,
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      { "tool": "read", "arguments": { "path": "src/main.mbt" } },
+      discoveries,
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      {
+        "tool": "read",
+        "arguments": {
+          "path": "src/main.mbt",
+          "start_line": 40,
+          "end_line": 80,
+        },
+      },
+      discoveries,
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      {
+        "tool": "shell",
+        "arguments": { "cmd": "rg -n 'render_agent' src/main.mbt" },
+      },
+      discoveries,
+    ),
+  )
+  let targeted = discoveries.copy()
+  for index in 0..<6 {
+    targeted.push({
+      "accepted": true,
+      "tool": "read",
+      "arguments": {
+        "path": "src/main.mbt",
+        "start_line": index * 20 + 1,
+        "end_line": index * 20 + 20,
+      },
+      "result": { "ok": true, "output": "source range" },
+    })
+  }
+  assert_true(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      {
+        "tool": "read",
+        "arguments": {
+          "path": "src/other.mbt",
+          "start_line": 1,
+          "end_line": 20,
+        },
+      },
+      targeted,
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      {
+        "tool": "moon_ide",
+        "arguments": { "action": "outline", "path": "src/main.mbt" },
+      },
+      targeted,
+    ),
+  )
+  let failed_edit : Json = {
+    "accepted": false,
+    "tool": "edit",
+    "arguments": {
+      "path": "src/main.mbt",
+      "old_string": "stale bytes",
+      "new_string": "replacement",
+    },
+    "result": {
+      "ok": false,
+      "message": "old_string not found",
+      "metadata": { "context_mismatch": true, "path": "src/main.mbt" },
+    },
+  }
+  let after_failed_edit = targeted.copy()
+  after_failed_edit.push(failed_edit)
+  assert_false(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      { "tool": "read", "arguments": { "path": "src/main.mbt" } },
+      after_failed_edit,
+    ),
+  )
+  assert_true(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      { "tool": "read", "arguments": { "path": "src/other.mbt" } },
+      after_failed_edit,
+    ),
+  )
+  let after_recovery_read = after_failed_edit.copy()
+  after_recovery_read.push({
+    "accepted": true,
+    "tool": "read",
+    "arguments": { "path": "src/main.mbt" },
+    "result": {
+      "ok": true,
+      "output": "current source bytes",
+      "metadata": { "path": "src/main.mbt", "truncated": false },
+    },
+  })
+  assert_true(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      { "tool": "read", "arguments": { "path": "src/main.mbt" } },
+      after_recovery_read,
+    ),
+  )
+  let after_mutation = discoveries.copy()
+  after_mutation.push({
+    "accepted": true,
+    "tool": "edit",
+    "arguments": { "path": "src/main.mbt" },
+    "result": { "ok": true },
+  })
+  assert_false(
+    mooncode_runtime_turn_discovery_saturated(
+      implementation,
+      { "tool": "shell", "arguments": { "cmd": "ls -la src" } },
+      after_mutation,
+    ),
+  )
+}
+
+///|
+test "mooncode compacted provider context retains complete-read receipts and permits ranges" {
+  let read_call : Json = {
+    "tool": "read",
+    "arguments": { "path": "src/main.mbt" },
+  }
+  let complete_read : Json = {
+    "accepted": true,
+    "tool": "read",
+    "arguments": { "path": "src/main.mbt" },
+    "result": {
+      "ok": true,
+      "metadata": { "path": "src/main.mbt", "truncated": false },
+    },
+  }
+  let retained_messages : Array[Json] = [
+    {
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "id": "read-main",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"path\":\"src/main.mbt\"}",
+          },
+        },
+      ],
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "read-main",
+      "content": "current source bytes",
+    },
+  ]
+  assert_true(
+    mooncode_runtime_turn_repeats_complete_read(
+      read_call,
+      [complete_read],
+      active_model_messages=retained_messages,
+    ),
+  )
+  assert_false(
+    mooncode_runtime_turn_repeats_complete_read(read_call, [complete_read], active_model_messages=[
+      { "role": "system", "content": "planner contract" },
+      { "role": "user", "content": "task contract" },
+      {
+        "role": "user",
+        "content": "MoonCode compacted older provider messages.",
+      },
+    ]),
+  )
+  assert_true(
+    mooncode_runtime_turn_repeats_complete_read(read_call, [complete_read], active_model_messages=[
+      {
+        "role": "user",
+        "content": "Retained evidence: {\"complete_read_paths\":[\"src/main.mbt\"]}",
+      },
+    ]),
+  )
+  assert_false(
+    mooncode_runtime_turn_repeats_complete_read(
+      {
+        "tool": "read",
+        "arguments": {
+          "path": "src/main.mbt",
+          "start_line": 40,
+          "end_line": 80,
+        },
+      },
+      [complete_read],
+      active_model_messages=[
+        {
+          "role": "user",
+          "content": "Retained evidence: {\"complete_read_paths\":[\"src/main.mbt\"]}",
+        },
+      ],
+    ),
+  )
+  let truncated_messages : Array[Json] = [
+    retained_messages[0],
+    {
+      "role": "tool",
+      "tool_call_id": "read-main",
+      "content": "partial bytes\n...[truncated for planner context]",
+    },
+  ]
+  assert_false(
+    mooncode_runtime_turn_repeats_complete_read(
+      read_call,
+      [complete_read],
+      active_model_messages=truncated_messages,
     ),
   )
 }

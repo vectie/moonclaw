@@ -29,4 +29,3 @@ pub impl Show for WebFetchResult
 // Type aliases
 
 // Traits
-

@@ -28,7 +28,7 @@ pub struct Moonclaw {
 }
 pub fn Moonclaw::close(Self) -> Unit
 #as_free_fn
-pub async fn Moonclaw::new(name? : String, logger? : @pino.Logger, model~ : @model.Model, home? : String, cwd? : String, user_message? : String, web_search? : Bool, restricted_workspace? : Bool) -> Self
+pub async fn Moonclaw::new(name? : String, logger? : @pino.Logger, model~ : @model.Model, home? : String, cwd? : String, user_message? : String, web_search? : Bool, restricted_workspace? : Bool, command_approval_scope? : String) -> Self
 #as_free_fn
 pub async fn Moonclaw::resume_(logger? : @pino.Logger, model~ : @model.Model, home? : String, @uuid.Uuid, user_message? : String, web_search? : Bool, command_approval_scope? : String) -> Self
 pub async fn Moonclaw::start(Self, prompt? : String) -> Unit
@@ -36,4 +36,3 @@ pub async fn Moonclaw::start(Self, prompt? : String) -> Unit
 // Type aliases
 
 // Traits
-

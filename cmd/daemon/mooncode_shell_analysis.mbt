@@ -95,8 +95,8 @@ async fn mooncode_shell_file_observation(
     } else {
       @pathx.join(cwd_path, word)
     }
-    if (absolute != root && !absolute.has_prefix(root + "/")) ||
-      !@fsx.exists_as_file(absolute) {
+    let exists_as_file = @fsx.exists_as_file(absolute) catch { _ => false }
+    if (absolute != root && !absolute.has_prefix(root + "/")) || !exists_as_file {
       continue
     }
     let relative = if absolute == root {
@@ -570,9 +570,11 @@ fn mooncode_shell_segment_has_sensitive_command(
     return false
   }
   let executable = segment[index]
+  if mooncode_shell_executable_is(executable, "curl") {
+    return !mooncode_shell_segment_is_safe_loopback_curl(segment, index)
+  }
   if mooncode_shell_executable_is(executable, "sudo") ||
     mooncode_shell_executable_is(executable, "rm") ||
-    mooncode_shell_executable_is(executable, "curl") ||
     mooncode_shell_executable_is(executable, "wget") ||
     mooncode_shell_executable_is(executable, "ssh") ||
     mooncode_shell_executable_is(executable, "scp") ||
@@ -624,6 +626,75 @@ fn mooncode_shell_segment_has_sensitive_command(
     return subcommand == "install"
   }
   false
+}
+
+///|
+/// A GET/HEAD-only request to a loopback preview is local observation. Any
+/// upload, body, output-file, custom mutating method, or remote URL remains
+/// sensitive.
+fn mooncode_shell_segment_is_safe_loopback_curl(
+  segment : Array[String],
+  executable_index : Int,
+) -> Bool {
+  let mut index = executable_index + 1
+  let mut url_seen = false
+  while index < segment.length() {
+    let word = segment[index]
+    if word == "-X" || word == "--request" {
+      if index + 1 >= segment.length() {
+        return false
+      }
+      let method = segment[index + 1].to_upper().to_string()
+      if method != "GET" && method != "HEAD" {
+        return false
+      }
+      index += 2
+      continue
+    }
+    if word.has_prefix("--request=") {
+      let method = word[10:].to_upper().to_string()
+      if method != "GET" && method != "HEAD" {
+        return false
+      }
+      index += 1
+      continue
+    }
+    if word == "-d" ||
+      word == "--data" ||
+      word == "--data-raw" ||
+      word == "--data-binary" ||
+      word == "-F" ||
+      word == "--form" ||
+      word == "-T" ||
+      word == "--upload-file" ||
+      word == "-O" ||
+      word == "--remote-name" {
+      return false
+    }
+    if word == "-o" || word == "--output" {
+      if index + 1 < segment.length() && segment[index + 1] == "/dev/null" {
+        index += 2
+        continue
+      }
+      return false
+    }
+    if word.has_prefix("--data=") ||
+      word.has_prefix("--data-raw=") ||
+      word.has_prefix("--data-binary=") ||
+      word.has_prefix("--form=") ||
+      word.has_prefix("--upload-file=") ||
+      (word.has_prefix("--output=") && word != "--output=/dev/null") {
+      return false
+    }
+    if word.has_prefix("http://") || word.has_prefix("https://") {
+      if !mooncode_browser_loopback_url(word) {
+        return false
+      }
+      url_seen = true
+    }
+    index += 1
+  }
+  url_seen
 }
 
 ///|
@@ -751,6 +822,9 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
   let executable = segment[index]
   if mooncode_shell_executable_is(executable, "git") {
     return mooncode_shell_segment_is_read_only_git(segment[index:].to_owned())
+  }
+  if mooncode_shell_executable_is(executable, "curl") {
+    return mooncode_shell_segment_is_safe_loopback_curl(segment, index)
   }
   if mooncode_shell_executable_is(executable, "moon") {
     let subcommand_index = mooncode_shell_subcommand_index_after_options(
@@ -1101,6 +1175,67 @@ fn mooncode_shell_has_in_place_authoring(command : String) -> Bool {
     }
   }
   mooncode_shell_segment_has_in_place_sed(segment)
+}
+
+///|
+fn mooncode_shell_word_is_interpreter(word : String) -> Bool {
+  mooncode_shell_executable_is(word, "python") ||
+  mooncode_shell_executable_is(word, "python3") ||
+  word.contains("/python3.") ||
+  mooncode_shell_executable_is(word, "pypy") ||
+  mooncode_shell_executable_is(word, "pypy3") ||
+  mooncode_shell_executable_is(word, "node") ||
+  mooncode_shell_executable_is(word, "deno") ||
+  mooncode_shell_executable_is(word, "bun") ||
+  mooncode_shell_executable_is(word, "ruby") ||
+  mooncode_shell_executable_is(word, "perl") ||
+  mooncode_shell_executable_is(word, "php")
+}
+
+///|
+/// Inline interpreters remain useful for bounded read-only inspection, but
+/// their file-writing APIs must not bypass MoonCode's reviewable mutation
+/// tools. This recognizes the concrete write primitives rather than rejecting
+/// all interpreter use.
+fn mooncode_shell_has_inline_interpreter_authoring(command : String) -> Bool {
+  let mut has_interpreter = false
+  for word in mooncode_shell_words(command) {
+    if word != MOONCODE_SHELL_BOUNDARY_TOKEN &&
+      mooncode_shell_word_is_interpreter(word) {
+      has_interpreter = true
+      break
+    }
+  }
+  if !has_interpreter {
+    return false
+  }
+  let compact = command
+    .to_lower()
+    .to_string()
+    .replace_all(old=" ", new="")
+    .replace_all(old="\t", new="")
+  let writable_open = compact.contains("open(") &&
+    [
+      ",\"w\"", ",\"wb\"", ",\"a\"", ",\"ab\"", ",\"x\"", ",\"xb\"", ",'w'", ",'wb'",
+      ",'a'", ",'ab'", ",'x'", ",'xb'",
+    ].any(mode => compact.contains(mode))
+  writable_open ||
+  compact.contains(".write_text(") ||
+  compact.contains(".write_bytes(") ||
+  compact.contains("file.write(") ||
+  compact.contains("file.open(") ||
+  compact.contains(".writefile(") ||
+  compact.contains(".writefilesync(") ||
+  compact.contains(".appendfile(") ||
+  compact.contains(".appendfilesync(") ||
+  compact.contains("fs.writefile(") ||
+  compact.contains("fs.writefilesync(") ||
+  compact.contains("fs.appendfile(") ||
+  compact.contains("fs.appendfilesync(") ||
+  compact.contains("deno.write") ||
+  compact.contains("os.rename(") ||
+  compact.contains("os.replace(") ||
+  compact.contains("shutil.copy")
 }
 
 ///|

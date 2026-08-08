@@ -15,4 +15,3 @@ pub let unicode_version : (Int, Int, Int)
 // Type aliases
 
 // Traits
-

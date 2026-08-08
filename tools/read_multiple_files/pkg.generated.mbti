@@ -19,4 +19,3 @@ pub impl Show for ReadMultipleFilesResult
 // Type aliases
 
 // Traits
-

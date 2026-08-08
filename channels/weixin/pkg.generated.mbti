@@ -52,4 +52,3 @@ pub fn WeixinClient::test_sent_messages(Self) -> Array[Json]
 pub type WeixinOriginalId = String
 
 // Traits
-

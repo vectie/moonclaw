@@ -69,4 +69,3 @@ pub struct DeviceCodeResponse {
 // Type aliases
 
 // Traits
-

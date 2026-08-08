@@ -63,6 +63,7 @@ fn Counter::count_content_parts(
   for part in parts {
     match part {
       Text(text) => count += self._count_string(text.text)
+      ImageUrl(image) => count += self._count_string(image.url) + 85
     }
   }
   count

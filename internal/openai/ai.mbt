@@ -4,19 +4,109 @@ priv suberror HttpError {
 } derive(Debug, ToJson)
 
 ///|
+/// HTTP failure that retains the provider's explicit retry window. MoonGate
+/// forwards only safe retry/rate-limit headers, so callers can pace a durable
+/// retry loop without guessing or immediately bursting again.
+priv suberror HttpRetryError {
+  HttpRetryError(code~ : Int, body~ : String, retry_after_ms~ : Int?)
+} derive(Debug, ToJson)
+
+///|
 pub fn error_summary(error : Error) -> String {
   match error {
-    HttpError(code~, body~) => {
-      let body = body.trim().to_owned()
-      if body == "" {
-        "HTTP \{code}"
-      } else if body.length() > 500 {
-        "HTTP \{code}: \{body[:500]}..."
-      } else {
-        "HTTP \{code}: \{body}"
-      }
-    }
+    HttpError(code~, body~) => http_error_summary(code, body)
+    HttpRetryError(code~, body~, ..) => http_error_summary(code, body)
     _ => error.to_string()
+  }
+}
+
+///|
+fn http_error_summary(code : Int, body : String) -> String {
+  let body = body.trim().to_owned()
+  if body == "" {
+    "HTTP \{code}"
+  } else if body.length() > 500 {
+    "HTTP \{code}: \{body[:500]}..."
+  } else {
+    "HTTP \{code}: \{body}"
+  }
+}
+
+///|
+/// Stable provider failure classes used by MoonCode's durable retry owner.
+/// These names are intentionally transport-neutral and safe for journals.
+pub fn error_class(error : Error) -> String {
+  match error {
+    HttpError(code~, body~) | HttpRetryError(code~, body~, ..) =>
+      http_error_class(code, body)
+    _ => "transport"
+  }
+}
+
+///|
+pub fn error_retry_after_ms(error : Error) -> Int? {
+  match error {
+    HttpRetryError(retry_after_ms~, ..) => retry_after_ms
+    _ => None
+  }
+}
+
+///|
+pub fn error_is_transient(error : Error) -> Bool {
+  match error {
+    HttpError(code~, body~) | HttpRetryError(code~, body~, ..) => {
+      let class = http_error_class(code, body)
+      class == "server_overloaded" ||
+      class == "request_burst" ||
+      class == "rate_limited" ||
+      class == "transient_http"
+    }
+    _ => false
+  }
+}
+
+///|
+fn http_error_class(code : Int, body : String) -> String {
+  let normalized = body.to_lower()
+  if normalized.contains("serveroverloaded") ||
+    normalized.contains("server overloaded") {
+    return "server_overloaded"
+  }
+  if normalized.contains("requestbursttoofast") ||
+    normalized.contains("request burst too fast") {
+    return "request_burst"
+  }
+  if normalized.contains("quotaexceeded") ||
+    normalized.contains("quota exhausted") ||
+    normalized.contains("insufficient_quota") ||
+    normalized.contains("accountoverdue") ||
+    normalized.contains("account overdue") {
+    return "quota_exhausted"
+  }
+  if code == 429 {
+    return "rate_limited"
+  }
+  if code == 408 || code == 500 || code == 502 || code == 503 || code == 504 {
+    return "transient_http"
+  }
+  "permanent_http"
+}
+
+///|
+fn response_retry_after_ms(headers : Map[String, String]) -> Int? {
+  let mut raw : String? = None
+  for key, value in headers {
+    if key.to_lower() == "retry-after" {
+      raw = Some(value.trim().to_owned())
+      break
+    }
+  }
+  guard raw is Some(value) else { return None }
+  let seconds = @string.parse_int(value, base=10) catch { _ => return None }
+  if seconds < 0 {
+    None
+  } else {
+    Some((seconds * 1000).min(300000))
   }
 }
 
@@ -85,17 +175,21 @@ async fn chat_openai(
   extra_body~ : Map[String, Json],
   on_text_delta~ : (String) -> Unit,
 ) -> ChatCompletion {
+  let route = openai_chat_route_for_model(model)
   @async.retry(
     ExponentialDelay(initial=1000, factor=2.0, maximum=16000),
-    max_retry=5,
+    // MoonCode owns durable retries for MoonGate requests. Retrying here as
+    // well multiplied one logical attempt into six immediate Ark requests and
+    // made overload recovery worse. Direct API users retain the legacy retry.
+    max_retry=if route.via_moongate { 0 } else { 5 },
     fatal_error=error => {
       match error {
         HttpError(code~, ..) => codex_http_status_is_fatal(code)
+        HttpRetryError(code~, ..) => codex_http_status_is_fatal(code)
         _ => false
       }
     },
     () => {
-      let route = openai_chat_route_for_model(model)
       logger.debug("RequestSent", data={
         "model": { "name": model.model_name, "base_url": model.base_url },
         "route": { "url": route.url, "via_moongate": route.via_moongate },
@@ -119,7 +213,11 @@ async fn chat_openai(
       }
       let response = client.post(uri.path, Json::object(body))
       guard response.code is (200..=299) else {
-        raise HttpError(code=response.code, body=client.read_all().text())
+        raise HttpRetryError(
+          code=response.code,
+          body=client.read_all().text(),
+          retry_after_ms=response_retry_after_ms(response.headers),
+        )
       }
       if route.via_moongate || request.stream is Some(true) {
         let reader = ChunkReader::new(client)
@@ -692,6 +790,7 @@ fn extract_text_content(
   for part in parts {
     match part {
       Text(text_part) => texts.push(text_part.text)
+      ImageUrl(_) => ()
     }
   }
   texts

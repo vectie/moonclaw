@@ -123,6 +123,7 @@ async fn Extractor::extract_code_snippets_from_chunk(
     for part in parts {
       match part {
         Text(text) => builder.write_string(text.text)
+        ImageUrl(_) => builder.write_string("[image evidence]")
       }
     }
     builder.to_string()

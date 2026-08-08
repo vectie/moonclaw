@@ -51,6 +51,7 @@ pub fn chat_completion(
   stream? : Bool,
   stream_options? : ChatCompletionStreamOptionsParam,
   tool_choice? : ChatCompletionToolChoice,
+  parallel_tool_calls? : Bool,
 ) -> Request {
   {
     model,
@@ -65,6 +66,7 @@ pub fn chat_completion(
     stream,
     stream_options,
     tool_choice,
+    parallel_tool_calls,
   }
 }
 
@@ -84,6 +86,15 @@ pub fn text_content_part(
   cache_control? : CacheControl,
 ) -> ChatCompletionContentPartParam {
   Text({ text, cache_control })
+}
+
+///|
+/// Create an image-url content part for a vision-capable chat model.
+pub fn image_url_content_part(
+  url : String,
+  detail? : String,
+) -> ChatCompletionContentPartParam {
+  ImageUrl({ url, detail })
 }
 
 ///|

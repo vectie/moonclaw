@@ -260,6 +260,16 @@ async fn MoonCodeSessionBinding::restore_first_user_prompt(
   if self.first_user_prompt != "" || self.book_root == "" {
     return
   }
+  let snapshot = mooncode_load_session_snapshot(self.book_root, self.session_id)
+  let snapshot_prompt = mooncode_json_string(
+    snapshot,
+    "first_user_prompt",
+    default="",
+  )
+  if snapshot_prompt != "" {
+    self.first_user_prompt = snapshot_prompt
+    return
+  }
   let journal = mooncode_read_session_journal(self.book_root, self.session_id)
   for entry in mooncode_journal_entries(journal, mooncode_journal_command()) {
     self.remember_first_user_prompt(
@@ -287,6 +297,30 @@ async fn MoonCodeSessionBinding::restore_session_metadata(
     )
   }
   self.model = mooncode_json_string(snapshot, "model", default=self.model)
+  if self.workspace_id == "" {
+    self.workspace_id = mooncode_json_string(
+      snapshot,
+      "workspace_id",
+      default="",
+    )
+  }
+  if self.workspace_name == "" {
+    self.workspace_name = mooncode_json_string(
+      snapshot,
+      "workspace_name",
+      default="",
+    )
+  }
+  if self.first_user_prompt == "" {
+    self.first_user_prompt = mooncode_json_string(
+      snapshot,
+      "first_user_prompt",
+      default="",
+    )
+  }
+  if self.command_count == 0 {
+    self.command_count = mooncode_json_int(snapshot, "command_count", default=0)
+  }
 }
 
 ///|

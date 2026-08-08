@@ -58,4 +58,3 @@ pub impl Store for UInt16
 pub impl Store for UInt64
 pub impl Store for Float
 pub impl Store for Double
-

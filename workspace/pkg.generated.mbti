@@ -41,4 +41,3 @@ pub struct WorkspaceSnapshot {
 // Type aliases
 
 // Traits
-

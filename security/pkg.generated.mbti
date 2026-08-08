@@ -54,10 +54,7 @@ pub struct CommandAssessment {
   predicted_effects : Array[String]
   requires_approval : Bool
   allowed_by_policy : Bool
-}
-pub impl Show for CommandAssessment
-pub impl ToJson for CommandAssessment
-pub impl @json.FromJson for CommandAssessment
+} derive(Show, ToJson, @json.FromJson)
 
 pub enum CommandIntent {
   Binary
@@ -65,11 +62,7 @@ pub enum CommandIntent {
   PackageManager
   Vcs
   Unknown
-}
-pub impl Eq for CommandIntent
-pub impl Show for CommandIntent
-pub impl ToJson for CommandIntent
-pub impl @json.FromJson for CommandIntent
+} derive(Eq, Show, ToJson, @json.FromJson)
 
 pub struct CommandPolicy {
   native : String
@@ -83,11 +76,7 @@ pub enum CommandRiskLevel {
   Medium
   High
   Blocked
-}
-pub impl Eq for CommandRiskLevel
-pub impl Show for CommandRiskLevel
-pub impl ToJson for CommandRiskLevel
-pub impl @json.FromJson for CommandRiskLevel
+} derive(Eq, Show, ToJson, @json.FromJson)
 
 pub struct PairingRecord {
   key : String
@@ -137,4 +126,3 @@ pub fn SecurityRuntime::session_dm_scope(Self) -> String
 // Type aliases
 
 // Traits
-

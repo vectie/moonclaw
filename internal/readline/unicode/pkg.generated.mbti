@@ -17,4 +17,3 @@ pub fn char_width_right(BytesView, Int) -> Int
 // Type aliases
 
 // Traits
-

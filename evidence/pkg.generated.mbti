@@ -61,4 +61,3 @@ pub(all) struct EvidenceSource {
 // Type aliases
 
 // Traits
-

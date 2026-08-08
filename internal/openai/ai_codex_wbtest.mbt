@@ -49,3 +49,32 @@ test "Codex retries only transient or refreshable HTTP failures" {
   assert_false(codex_http_status_is_fatal(429))
   assert_false(codex_http_status_is_fatal(500))
 }
+
+///|
+test "provider error classification separates Ark overload from quota" {
+  let overloaded : Error = HttpRetryError(
+    code=429,
+    body="{\"error\":{\"code\":\"ServerOverloaded\"}}",
+    retry_after_ms=Some(45000),
+  )
+  assert_eq(error_class(overloaded), "server_overloaded")
+  assert_true(error_is_transient(overloaded))
+  assert_eq(error_retry_after_ms(overloaded), Some(45000))
+  let quota : Error = HttpRetryError(
+    code=429,
+    body="{\"error\":{\"code\":\"QuotaExceeded\"}}",
+    retry_after_ms=None,
+  )
+  assert_eq(error_class(quota), "quota_exhausted")
+  assert_false(error_is_transient(quota))
+}
+
+///|
+test "retry after parser accepts seconds and rejects non numeric dates" {
+  assert_eq(response_retry_after_ms({ "Retry-After": "42" }), Some(42000))
+  assert_eq(response_retry_after_ms({ "retry-after": "999" }), Some(300000))
+  assert_eq(
+    response_retry_after_ms({ "retry-after": "Wed, 21 Oct 2015" }),
+    None,
+  )
+}
