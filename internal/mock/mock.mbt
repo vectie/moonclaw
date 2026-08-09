@@ -334,7 +334,7 @@ fn init {
     _ => false
   }
   if is_ci {
-    @os.atexit(() => println("\{to_repr(os_args)} exited"))
+    ignore(@os.atexit(() => println("\{to_repr(os_args)} exited")))
   }
 }
 

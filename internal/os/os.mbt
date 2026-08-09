@@ -227,4 +227,4 @@ pub fn executable() -> String raise {
 ///
 /// * `f` : The function to be called at program exit. This function takes no
 ///   parameters and returns no value.
-pub extern "c" fn atexit(f : FuncRef[() -> Unit]) = "atexit"
+pub extern "c" fn atexit(f : FuncRef[() -> Unit]) -> Int = "atexit"
