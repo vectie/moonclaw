@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: moonclaw-ci-${{ github.ref }}-${{ matrix.channel }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native (${{ matrix.channel }})
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.channel == 'nightly' }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [latest, nightly]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+      - name: Install MoonBit
+        uses: ./.github/actions/install-moonbit
+        with:
+          channel: ${{ matrix.channel }}
+      - name: Inspect toolchain
+        run: moon version --all
+      - name: Check formatting
+        if: matrix.channel == 'latest'
+        run: moon fmt --check
+      - name: Check native packages
+        run: moon check --target native --warn-list +73
+      - name: Test native packages
+        run: moon test --target native --warn-list +73
+      - name: Verify generated interfaces
+        if: matrix.channel == 'nightly'
+        run: |
+          moon info --target native
+          git diff --exit-code -- '*.mbti'
