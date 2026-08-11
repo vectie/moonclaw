@@ -246,14 +246,33 @@ pub(all) enum Version {
 } derive(Debug, ToJson)
 
 ///|
-fn Version::from_uint64_unchecked(value : UInt64) -> Version = "%identity"
+fn Version::from_uint64(value : UInt64) -> Version {
+  match value & 0xFUL {
+    0UL => V0
+    1UL => V1
+    2UL => V2
+    3UL => V3
+    4UL => V4
+    5UL => V5
+    6UL => V6
+    7UL => V7
+    8UL => V8
+    9UL => V9
+    10UL => V10
+    11UL => V11
+    12UL => V12
+    13UL => V13
+    14UL => V14
+    _ => V15
+  }
+}
 
 ///|
 pub fn Uuid::variant(self : Uuid) -> Variant {
   if (self.lo & (0x8000UL << 48)) == 0UL {
     ReservedNCS
   } else if (self.lo & (0x4000UL << 48)) == 0UL {
-    RFC9562(Version::from_uint64_unchecked((self.hi >> 12) & 0xFUL))
+    RFC9562(Version::from_uint64(self.hi >> 12))
   } else if (self.lo & (0x2000UL << 48)) == 0UL {
     ReservedMicrosoft
   } else {

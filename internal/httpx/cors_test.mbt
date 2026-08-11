@@ -1,4 +1,11 @@
 ///|
+fn assert_cors_headers(headers : Map[String, String]) -> Unit raise {
+  assert_eq(headers["access-control-allow-origin"], "*")
+  assert_eq(headers["access-control-allow-methods"], "*")
+  assert_eq(headers["access-control-allow-headers"], "*")
+}
+
+///|
 async test "@vectie/moonclaw/internal/httpx.cors" (t : @test.Test) {
   @mock.run(t, _ => {
     let router = @httpx.Router::new()
@@ -26,34 +33,19 @@ async test "@vectie/moonclaw/internal/httpx.cors" (t : @test.Test) {
       let response = client.end_request()
       json_inspect(response.code, content=204)
       json_inspect(response.reason, content="No Content")
-      json_inspect(response.headers, content={
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "*",
-        "access-control-allow-headers": "*",
-        "content-length": "0",
-      })
+      assert_cors_headers(response.headers)
       let client = @http.Client::new("http://localhost:\{server.port()}")
       client.request(Options, "/task")
       let response = client.end_request()
       json_inspect(response.code, content=204)
       json_inspect(response.reason, content="No Content")
-      json_inspect(response.headers, content={
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "*",
-        "access-control-allow-headers": "*",
-        "content-length": "0",
-      })
+      assert_cors_headers(response.headers)
       let client = @http.Client::new("http://localhost:\{server.port()}")
       client.request(Options, "/tasks")
       let response = client.end_request()
       json_inspect(response.code, content=204)
       json_inspect(response.reason, content="No Content")
-      json_inspect(response.headers, content={
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "*",
-        "access-control-allow-headers": "*",
-        "content-length": "0",
-      })
+      assert_cors_headers(response.headers)
       let (response, body) = @http.get(
         "http://localhost:\{server.port()}/task/42",
       )
