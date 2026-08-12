@@ -1,0 +1,25 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/moondesk_sandbox_config"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}
+
+// Values
+pub async fn load() -> Config?
+
+// Errors
+
+// Types and methods
+pub(all) struct Config {
+  protocol_version : Int
+  instance_id : String
+  auth_token : String
+  workspace_id : String
+  workspace_root : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

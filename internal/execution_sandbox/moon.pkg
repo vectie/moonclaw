@@ -1,0 +1,13 @@
+import {
+  "vectie/moonclaw/clock",
+  "vectie/moonclaw/security",
+  "vectie/moonclaw/internal/execution_sandbox_adapter" @sandbox_adapter,
+  "vectie/moonlib/pathx",
+  "vectie/moonlib/fsx",
+  "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+  "moonbitlang/x/crypto",
+}
+
+supported_targets = "native"

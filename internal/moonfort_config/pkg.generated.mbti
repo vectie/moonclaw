@@ -1,0 +1,28 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/moonfort_config"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonclaw/internal/execution_sandbox",
+}
+
+// Values
+pub async fn load_promotion_adapter_config() -> PromotionAdapterConfig?
+
+pub async fn load_sandbox_executor_config() -> @execution_sandbox.SandboxExecutorConfig?
+
+// Errors
+
+// Types and methods
+pub(all) struct PromotionAdapterConfig {
+  protocol_version : Int
+  promotion_path : String
+  promotion_args : Array[String]
+  executor_config_path : String
+  receipt_root : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits

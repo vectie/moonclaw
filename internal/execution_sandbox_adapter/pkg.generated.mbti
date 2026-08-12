@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/execution_sandbox_adapter"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub struct Client {
+  publisher_path : String
+  publisher_args : Array[String]
+  executor_path : String
+  executor_args : Array[String]
+  executor_config_path : String
+  receipt_root : String
+}
+pub async fn Client::invoke_executor(Self, String, Int) -> ProcessResponse
+pub async fn Client::new(String, Array[String], String, Array[String], String, String) -> Self
+pub async fn Client::publish_grant(Self, String) -> ProcessResponse
+
+pub(all) struct ProcessResponse {
+  status : Int
+  stdout : String
+} derive(Eq, @debug.Debug)
+
+pub struct PromotionClient {
+  promotion_path : String
+  promotion_args : Array[String]
+  executor_config_path : String
+  receipt_root : String
+}
+pub async fn PromotionClient::new(String, Array[String], String, String) -> Self
+pub async fn PromotionClient::promote_retention(Self, String) -> ProcessResponse
+
+// Type aliases
+
+// Traits

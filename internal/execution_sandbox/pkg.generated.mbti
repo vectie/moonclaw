@@ -1,0 +1,207 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/execution_sandbox"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+  "vectie/moonclaw/security",
+}
+
+// Values
+pub fn approved_plan(@security.ApprovalRecord) -> SandboxApprovalPlan raise
+
+pub async fn invoke_moonfort(SandboxExecutorConfig, SandboxApprovalPlan) -> MoonFortReceipt
+
+pub fn local_sandbox_executor_config(String, String, String, String, String, allow_degraded? : Bool) -> SandboxExecutorConfig
+
+pub async fn make_exec_plan(SandboxExecutorConfig, String, String, String, Array[String], Int) -> SandboxApprovalPlan
+
+pub async fn make_moon_check_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
+
+pub async fn make_moon_diagnostics_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
+
+pub async fn make_sandbox_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
+
+pub fn moonfort_full_output_artifact_valid(MoonFortReceipt) -> Bool
+
+pub fn moonfort_grant_digest(MoonFortExecutionGrant) -> String
+
+pub async fn persist_sandbox_audit(SandboxExecutorConfig, SandboxApprovalPlan, MoonFortReceipt) -> String
+
+pub async fn run_approved_exec(SandboxExecutorConfig, String, String, String, Array[String], SandboxApprovalPlan) -> SandboxExecution
+
+pub async fn run_approved_shell(SandboxExecutorConfig, String, String, String, SandboxApprovalPlan) -> SandboxExecution
+
+pub async fn run_exec(SandboxExecutorConfig, String, String, String, Array[String], Int) -> SandboxExecution
+
+pub async fn run_moon_check(SandboxExecutorConfig, String, String, String, Int) -> SandboxExecution
+
+pub async fn run_moon_diagnostics(SandboxExecutorConfig, String, String, String, Int) -> SandboxExecution
+
+pub async fn validate_approved_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String) -> Unit
+
+pub async fn validate_exec_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String, Array[String]) -> Unit
+
+pub async fn validate_moon_check_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String) -> Unit
+
+pub async fn validate_moon_diagnostics_plan(SandboxApprovalPlan, SandboxExecutorConfig, String, String, String) -> Unit
+
+// Errors
+
+// Types and methods
+pub(all) enum MoonFortBackendKind {
+  LocalOs
+  MicroVm
+  Unavailable
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MoonFortCommand {
+  Exec(tool~ : String, args~ : Array[String])
+  Shell(script~ : String)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MoonFortEnforcement {
+  Enforced
+  Degraded
+  Refused
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MoonFortEnforcementRequirement {
+  RequireEnforced
+  AllowDegraded
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFortExecutionGrant {
+  protocol_version : Int
+  approval_id : String
+  request_id : String
+  workspace_id : String
+  backend : MoonFortBackendKind
+  enforcement_requirement : MoonFortEnforcementRequirement
+  network : MoonFortNetworkMode
+  allowed_egress : Array[String]
+  allowed_commands : Array[String]
+  limits : MoonFortLimits
+  working_directory : String
+  command : MoonFortCommand
+  backend_config_id : String
+  expires_at_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type MoonFortExecutorResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type MoonFortGrantPublicationRequest derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type MoonFortGrantPublicationResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type MoonFortInvocation derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFortLimits {
+  wall_clock_ms : Int
+  cpu_seconds : Int
+  memory_mib : Int
+  disk_mib : Int
+  processes : Int
+  output_bytes : Int
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MoonFortNetworkMode {
+  Deny
+  AllowList
+  Unrestricted
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type MoonFortProtocolError derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFortReceipt {
+  run_id : String
+  approval_id : String
+  approval_digest : String
+  command_digest : String
+  backend : MoonFortBackendKind
+  enforcement : MoonFortEnforcement
+  status : MoonFortRunStatus
+  profile_digest : String
+  exit_code : Int?
+  output : String
+  output_truncated : Bool
+  limit_reason : String?
+  unverified_limits : Array[String]
+  changed_paths : Array[String]
+  changes : Array[MoonFortScratchChange]
+  artifacts : Array[String]
+  full_output_artifact : String?
+  denial_reason : String?
+  cleanup_verified : Bool
+  retention_id : String?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MoonFortRunStatus {
+  Created
+  Running
+  Exited
+  Killed
+  Failed
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFortScratchChange {
+  relative_path : String
+  change : MoonFortScratchChangeKind
+  before : MoonFortScratchEntry?
+  after : MoonFortScratchEntry?
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MoonFortScratchChangeKind {
+  Added
+  Modified
+  Removed
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFortScratchEntry {
+  relative_path : String
+  kind : MoonFortScratchEntryKind
+  size_bytes : Int64
+  fingerprint : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) enum MoonFortScratchEntryKind {
+  RegularFile
+  DirectoryEntry
+  SymbolicLink
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SandboxApprovalPlan {
+  grant : MoonFortExecutionGrant
+  expected_approval_digest : String
+  runtime_binding_digest : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+type SandboxAuditRecord derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SandboxExecution {
+  plan : SandboxApprovalPlan
+  receipt : MoonFortReceipt
+  audit_path : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct SandboxExecutorConfig {
+  grant_publisher_path : String
+  grant_publisher_args : Array[String]
+  executor_path : String
+  executor_args : Array[String]
+  executor_config_path : String
+  receipt_root : String
+  workspace_id : String
+  backend_config_id : String
+  backend : MoonFortBackendKind
+  enforcement_requirement : MoonFortEnforcementRequirement
+  network : MoonFortNetworkMode
+  allowed_egress : Array[String]
+  allowed_commands : Array[String]
+  limits : MoonFortLimits
+  grant_ttl_ms : Int64
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+// Type aliases
+
+// Traits
