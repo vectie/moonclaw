@@ -615,6 +615,21 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
         } else {
           []
         }
+        let parallel_read_executions = if mooncode_runtime_turn_parallel_read_batch_allowed(
+            command,
+            book_root,
+            plan,
+            tool_calls,
+            tool_results,
+            mooncode_json_array_items(plan, "model_messages"),
+            resuming_step~,
+          ) {
+          self.mooncode_runtime_turn_execute_parallel_reads(
+            command, session_id, book_root, tool_calls,
+          )
+        } else {
+          []
+        }
         let mut skill_boundary_active = false
         for tool_index, tool_call in tool_calls {
           if resuming_step && tool_index < resume_tool_index {
@@ -651,10 +666,17 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               "" {
               stored_request
             } else {
+              let approval_tool_call = mooncode_runtime_bind_sandbox_approval_plan(
+                  book_root, tool_call,
+                )
+                |> mooncode_json_object_with_field(
+                  "approval_id",
+                  approval_id.to_json(),
+                )
               mooncode_runtime_tool_approval_event(
                 session_id,
                 command_id,
-                tool_call,
+                approval_tool_call,
                 occurrence~,
                 state="pending",
                 tool_call_id=mooncode_runtime_turn_tool_call_id(
@@ -730,6 +752,12 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               ),
             )
           }
+          // For approved process capabilities, execute only the arguments
+          // durably bound into the approval event. This prevents the planner's
+          // in-memory call from substituting command text or argv after review.
+          let tool_call = mooncode_runtime_authorized_tool_call(
+            tool_call, approval,
+          )
           let post_commit_guard = mooncode_runtime_post_commit_guard(
             book_root, tool_call, tool_results,
           )
@@ -806,13 +834,18 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
               now=self.clock.now(),
             )
           } else {
-            let candidate = mooncode_execute_tool_call_in_runtime(
-              group.map(group => (self, group)),
-              session_id,
-              book_root,
-              mooncode_runtime_turn_tool_body(command, tool_call),
-              now=self.clock.now(),
-            )
+            let candidate = if parallel_read_executions.length() ==
+              tool_calls.length() {
+              parallel_read_executions[tool_index]
+            } else {
+              mooncode_execute_tool_call_in_runtime(
+                group.map(group => (self, group)),
+                session_id,
+                book_root,
+                mooncode_runtime_turn_tool_body(command, tool_call),
+                now=self.clock.now(),
+              )
+            }
             match
               mooncode_runtime_turn_duplicate_complete_observation_path(
                 candidate,
@@ -1882,6 +1915,16 @@ async fn Daemon::mooncode_runtime_turn_record_event(
 ///|
 fn mooncode_runtime_turn_tool_body(command : Json, tool_call : Json) -> Json {
   let command_id = mooncode_command_id(command)
+  let tool = mooncode_json_string(
+    tool_call,
+    "tool",
+    default=mooncode_json_string(tool_call, "name", default=""),
+  )
+  let arguments = mooncode_runtime_turn_apply_output_policy(
+    command,
+    tool,
+    mooncode_json_object_field_or_empty(tool_call, "arguments"),
+  )
   {
     "protocol": mooncode_protocol_version(),
     "session_id": mooncode_json_string(command, "session_id", default=""),
@@ -1889,12 +1932,8 @@ fn mooncode_runtime_turn_tool_body(command : Json, tool_call : Json) -> Json {
     "command_id": command_id,
     "command_packet": mooncode_json_object_field_or_empty(command, "packet"),
     "task_contract": mooncode_runtime_horizon_task_contract(command),
-    "tool": mooncode_json_string(
-      tool_call,
-      "tool",
-      default=mooncode_json_string(tool_call, "name", default=""),
-    ),
-    "arguments": mooncode_json_object_field_or_empty(tool_call, "arguments"),
+    "tool": tool,
+    "arguments": arguments,
   }
 }
 
@@ -1922,6 +1961,17 @@ fn mooncode_runtime_turn_non_comment_lines(text : String) -> String {
 
 ///|
 fn mooncode_runtime_turn_comment_only_edit(arguments : Json) -> Bool {
+  let edits = mooncode_json_array_items(arguments, "edits")
+  if edits.length() > 0 {
+    return edits.all(edit => {
+      let old_string = mooncode_json_string(edit, "old_string", default="")
+      let new_string = mooncode_json_string(edit, "new_string", default="")
+      old_string != "" &&
+      old_string != new_string &&
+      mooncode_runtime_turn_non_comment_lines(old_string) ==
+      mooncode_runtime_turn_non_comment_lines(new_string)
+    })
+  }
   let old_string = mooncode_json_string(arguments, "old_string", default="")
   let new_string = mooncode_json_string(arguments, "new_string", default="")
   old_string != "" &&

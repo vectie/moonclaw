@@ -20,6 +20,7 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     if mooncode_shell_has_sensitive_command(command) {
       return "This shell command can affect external systems, dependencies, or broad workspace state."
     }
+    return "Arbitrary shell text requires a separate operator approval bound to the exact ExecutionSandbox grant."
   }
   if tool == "browser" {
     let action = mooncode_json_string(arguments, "action", default="")
@@ -63,6 +64,46 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     return "This operation crosses an operator-controlled boundary."
   }
   ""
+}
+
+///|
+async fn mooncode_runtime_bind_sandbox_approval_plan(
+  book_root : String,
+  request : Json,
+) -> Json {
+  let tool = mooncode_json_string(request, "tool", default="")
+  if tool != "shell" && tool != "moon_cmd" {
+    return request
+  }
+  let arguments = mooncode_json_object_field_or_empty(request, "arguments")
+  guard arguments is Object(argument_fields) else { return request }
+  let prepared = if tool == "shell" {
+    mooncode_prepare_shell_approval_plan(book_root, arguments)
+  } else {
+    mooncode_prepare_moon_cmd_approval_plan(book_root, arguments)
+  }
+  match prepared {
+    Ok(plan) => argument_fields["_execution_sandbox_plan"] = plan.to_json()
+    Err(error) =>
+      argument_fields["_execution_sandbox_plan_error"] = error.to_json()
+  }
+  request
+}
+
+///|
+fn mooncode_runtime_authorized_tool_call(
+  tool_call : Json,
+  approval : Json,
+) -> Json {
+  let tool = mooncode_json_string(tool_call, "tool", default="")
+  if (tool != "shell" && tool != "moon_cmd") ||
+    mooncode_json_string(approval, "state", default="") != "approved" {
+    return tool_call
+  }
+  {
+    "tool": tool,
+    "arguments": mooncode_json_object_field_or_empty(approval, "arguments"),
+  }
 }
 
 ///|
@@ -525,6 +566,25 @@ async fn mooncode_runtime_tool_approval_control_request(
         "code": -1,
         "message": "MoonCode approval does not target a pending tool call",
         "metadata": { "session_id": session_id, "approval_id": approval_id },
+      },
+    })
+  }
+  let requested_tool = mooncode_json_string(request, "tool", default="")
+  let requested_arguments = mooncode_json_object_field_or_empty(
+    request, "arguments",
+  )
+  if (requested_tool == "shell" || requested_tool == "moon_cmd") &&
+    !(requested_arguments is { "_execution_sandbox_plan": _, .. }) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode process approval is not bound to a complete ExecutionSandbox grant",
+        "metadata": {
+          "session_id": session_id,
+          "approval_id": approval_id,
+          "execution_sandbox_required": true,
+          "execution_sandbox_policy": "fail-closed",
+        },
       },
     })
   }

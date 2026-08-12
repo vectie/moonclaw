@@ -592,6 +592,177 @@ fn mooncode_conversation_work_step(event : Json) -> Json {
 }
 
 ///|
+fn mooncode_conversation_sandbox_string_array(
+  items : Array[Json],
+  relative_paths? : Bool = false,
+) -> Array[String] {
+  let output : Array[String] = []
+  guard items.length() <= 256 else { return output }
+  for item in items {
+    guard item is String(text) &&
+      text.length() <= 4_096 &&
+      (!relative_paths || moondesk_promotion_safe_relative_path(text)) else {
+      return []
+    }
+    output.push(text)
+  }
+  output
+}
+
+///|
+fn mooncode_conversation_sandbox_entry(value : Json) -> Json {
+  let relative_path = mooncode_json_string(value, "relative_path", default="")
+  let fingerprint = mooncode_json_string(value, "fingerprint", default="")
+  let kind = mooncode_json_string(value, "kind", default="")
+  guard moondesk_promotion_safe_relative_path(relative_path) &&
+    (fingerprint == "" || moondesk_promotion_safe_digest(fingerprint)) &&
+    (
+      kind == "RegularFile" ||
+      kind == "DirectoryEntry" ||
+      kind == "SymbolicLink"
+    ) else {
+    return Json::object({})
+  }
+  {
+    "relative_path": relative_path,
+    "kind": kind,
+    "size_bytes": mooncode_json_int(value, "size_bytes", default=0),
+    "fingerprint": fingerprint,
+  }
+}
+
+///|
+fn mooncode_conversation_sandbox_changes(items : Array[Json]) -> Array[Json] {
+  let output : Array[Json] = []
+  guard items.length() <= 256 else { return output }
+  for item in items {
+    let relative_path = mooncode_json_string(item, "relative_path", default="")
+    let change = mooncode_json_string(item, "change", default="")
+    guard moondesk_promotion_safe_relative_path(relative_path) &&
+      (change == "Added" || change == "Modified" || change == "Removed") else {
+      return []
+    }
+    let before = mooncode_json_object_field_or_empty(item, "before")
+    let after = mooncode_json_object_field_or_empty(item, "after")
+    output.push({
+      "relative_path": relative_path,
+      "change": change,
+      "before": if before is Object(fields) && !fields.is_empty() {
+        mooncode_conversation_sandbox_entry(before)
+      } else {
+        Json::null()
+      },
+      "after": if after is Object(fields) && !fields.is_empty() {
+        mooncode_conversation_sandbox_entry(after)
+      } else {
+        Json::null()
+      },
+    })
+  }
+  output
+}
+
+///|
+fn mooncode_conversation_sandbox_evidence(metadata : Json) -> Json {
+  let source = mooncode_json_object_field_or_empty(metadata, "sandbox_evidence")
+  guard source is Object(fields) && !fields.is_empty() else {
+    return Json::object({})
+  }
+  let approval_digest = mooncode_json_string(
+    source,
+    "approval_digest",
+    default="",
+  )
+  let approval_plan_digest = mooncode_json_string(
+    source,
+    "approval_plan_digest",
+    default=mooncode_json_string(metadata, "approval_plan_digest", default=""),
+  )
+  let profile_digest = mooncode_json_string(
+    source,
+    "profile_digest",
+    default="",
+  )
+  let command_digest = mooncode_json_string(
+    source,
+    "command_digest",
+    default="",
+  )
+  guard moondesk_promotion_safe_digest(approval_digest) &&
+    moondesk_promotion_safe_digest(approval_plan_digest) &&
+    moondesk_promotion_safe_digest(profile_digest) &&
+    moondesk_promotion_safe_digest(command_digest) else {
+    return Json::object({})
+  }
+  let policy = mooncode_json_object_field_or_empty(source, "requested_policy")
+  let limits = mooncode_json_object_field_or_empty(policy, "limits")
+  let backend = mooncode_json_string(source, "backend", default="")
+  let enforcement = mooncode_json_string(source, "enforcement", default="")
+  let network = mooncode_json_string(policy, "network", default="")
+  guard (
+      backend == "LocalOs" || backend == "MicroVm" || backend == "Unavailable"
+    ) &&
+    (
+      enforcement == "Enforced" ||
+      enforcement == "Degraded" ||
+      enforcement == "Refused"
+    ) &&
+    (network == "Deny" || network == "AllowList" || network == "Unrestricted") else {
+    return Json::object({})
+  }
+  let retention_id = mooncode_json_string(source, "retention_id", default="")
+  guard retention_id == "" ||
+    (
+      retention_id.length() <= 128 &&
+      retention_id.all(character => {
+        character.is_ascii_alphabetic() ||
+        character.is_ascii_digit() ||
+        character == '-' ||
+        character == '_'
+      })
+    ) else {
+    return Json::object({})
+  }
+  {
+    "approval_digest": approval_digest,
+    "approval_plan_digest": approval_plan_digest,
+    "backend": backend,
+    "enforcement": enforcement,
+    "cleanup_verified": mooncode_json_bool(
+      source,
+      "cleanup_verified",
+      default=false,
+    ),
+    "profile_digest": profile_digest,
+    "command_digest": command_digest,
+    "network": network,
+    "limits": {
+      "wall_clock_ms": mooncode_json_int(limits, "wall_clock_ms", default=0),
+      "cpu_seconds": mooncode_json_int(limits, "cpu_seconds", default=0),
+      "memory_mib": mooncode_json_int(limits, "memory_mib", default=0),
+      "disk_mib": mooncode_json_int(limits, "disk_mib", default=0),
+      "processes": mooncode_json_int(limits, "processes", default=0),
+      "output_bytes": mooncode_json_int(limits, "output_bytes", default=0),
+    },
+    "unverified_limits": mooncode_conversation_sandbox_string_array(
+      mooncode_json_array_items(source, "unverified_limits"),
+    ),
+    "changed_paths": mooncode_conversation_sandbox_string_array(
+      mooncode_json_array_items(source, "changed_paths"),
+      relative_paths=true,
+    ),
+    "changes": mooncode_conversation_sandbox_changes(
+      mooncode_json_array_items(source, "changes"),
+    ),
+    "artifacts": mooncode_conversation_sandbox_string_array(
+      mooncode_json_array_items(source, "artifacts"),
+      relative_paths=true,
+    ),
+    "retention_id": retention_id,
+  }
+}
+
+///|
 fn mooncode_conversation_work_evidence(event : Json) -> Json {
   let lane = mooncode_json_string(event, "lane", default="")
   let kind = mooncode_conversation_work_step_kind(event)
@@ -647,6 +818,7 @@ fn mooncode_conversation_work_evidence(event : Json) -> Json {
     "arguments": mooncode_json_object_field_or_empty(event, "arguments").stringify(
       indent=2,
     ),
+    "sandbox_evidence": mooncode_conversation_sandbox_evidence(metadata),
   }
 }
 

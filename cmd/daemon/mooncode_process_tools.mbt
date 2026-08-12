@@ -4,86 +4,34 @@ async fn mooncode_tool_shell_in_runtime(
   book_root : String,
   arguments : Json,
 ) -> Json {
+  ignore(runtime)
   if !mooncode_json_bool(arguments, "background", default=false) {
     return mooncode_tool_shell(book_root, arguments)
   }
-  let cmd = mooncode_json_string(arguments, "cmd", default="")
-  if cmd == "" {
-    return mooncode_tool_error_result("shell", message="cmd must be non-empty")
-  }
-  if mooncode_shell_has_background_operator(cmd) {
-    return mooncode_tool_error_result(
-      "shell",
-      message="background=true already detaches the complete command; remove the shell `&` operator and submit only the long-lived command",
-    )
-  }
-  if mooncode_shell_has_git_commit(cmd) ||
-    mooncode_shell_has_file_output_redirection(cmd) ||
-    mooncode_shell_has_inline_interpreter_authoring(cmd) ||
-    mooncode_shell_has_in_place_authoring(cmd) {
-    return mooncode_tool_error_result(
-      "shell",
-      message="background shell is only for a long-lived read-only process; authored mutations and git commits are not permitted",
-    )
-  }
-  let cwd = mooncode_tool_cwd(book_root, arguments)
-  if !mooncode_json_bool(cwd, "ok", default=false) {
-    return mooncode_tool_error_result(
-      "shell",
-      message=mooncode_json_string(cwd, "message", default="invalid cwd"),
-    )
-  }
-  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
-    Some(message) => return mooncode_tool_error_result("shell", message~)
-    None => ()
-  }
-  match runtime {
-    None =>
-      mooncode_tool_error_result(
-        "shell",
-        message="background shell requires the native Daemon task-group runtime path",
-      )
-    Some((_, group)) => {
-      let detached_arguments : Json = {
-        "cmd": cmd,
-        "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-        "timeout_ms": mooncode_json_int(
-          arguments,
-          "timeout_ms",
-          default=3600000,
-        ),
-        "max_output_chars": mooncode_json_int(
-          arguments,
-          "max_output_chars",
-          default=12000,
-        ),
-      }
-      group.spawn_bg(
-        () => ignore(mooncode_tool_shell(book_root, detached_arguments)),
-        no_wait=true,
-      )
-      mooncode_tool_ok_result(
-        "shell",
-        message="background shell started",
-        output="",
-        metadata={
-          "cmd": cmd,
-          "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-          "background": true,
-          "timeout_ms": mooncode_json_int(
-            detached_arguments,
-            "timeout_ms",
-            default=3600000,
-          ),
-        },
-      )
-    }
-  }
+  mooncode_tool_error_result(
+    "shell",
+    message="background execution is not supported by the one-shot ExecutionSandbox contract",
+    metadata={
+      "execution_sandbox_required": true,
+      "execution_sandbox_policy": "fail-closed",
+    },
+  )
 }
 
 ///|
 async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
+  match mooncode_execution_sandbox_config("shell") {
+    Err(refusal) => refusal
+    Ok(config) => mooncode_tool_shell_with_config(book_root, arguments, config)
+  }
+}
+
+///|
+async fn mooncode_tool_shell_with_config(
+  book_root : String,
+  arguments : Json,
+  config : @execution_sandbox.SandboxExecutorConfig,
+) -> Json {
   let cmd = mooncode_json_string(arguments, "cmd", default="")
   if cmd == "" {
     return mooncode_tool_error_result("shell", message="cmd must be non-empty")
@@ -135,101 +83,46 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
   let max_output_chars = mooncode_json_int(
     arguments,
     "max_output_chars",
-    default=12000,
+    default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
-  let shell_wrapper =
-    #|child_pid=""
-    #|capture="$(mktemp "${TMPDIR:-/tmp}/mooncode-shell.XXXXXX")" || exit 125
-    #|emit_capture() {
-    #|  if [ -f "$capture" ]; then
-    #|    cat "$capture"
-    #|    rm -f "$capture"
-    #|  fi
-    #|}
-    #|terminate_tree() {
-    #|  for descendant_pid in $(pgrep -P "$1" 2>/dev/null || true); do
-    #|    terminate_tree "$descendant_pid"
-    #|  done
-    #|  kill -TERM "$1" 2>/dev/null || true
-    #|}
-    #|cancel_tree() {
-    #|  if [ -n "$child_pid" ]; then
-    #|    terminate_tree "$child_pid"
-    #|    wait "$child_pid" 2>/dev/null || true
-    #|  fi
-    #|  emit_capture
-    #|  exit 124
-    #|}
-    #|trap cancel_tree TERM INT
-    #|script=$1
-    #|script="${script}
-    #|mooncode_status=\$?
-    #|exec sh -c \"exit \$mooncode_status\"
-    #|"
-    #|sh -lc "$script" >"$capture" 2>&1 &
-    #|child_pid=$!
-    #|wait "$child_pid"
-    #|status=$?
-    #|emit_capture
-    #|exit "$status"
-    #|
-  let process = @spawn.spawn(
-    "sh",
-    ["-c", shell_wrapper, "mooncode-shell", cmd],
-    timeout~,
-    cwd=cwd_path,
-  ) catch {
-    @spawn.TimedOut(timeout~, stdout~, stderr~) => {
-      let capped = mooncode_cap_failed_process_output(
-        stdout + stderr,
-        max_output_chars,
-      )
-      return mooncode_tool_error_result(
-        "shell",
-        message="shell timed out after \{timeout}ms",
-        output=mooncode_json_string(capped, "output", default=""),
-        metadata={
-          "cmd": cmd,
-          "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-          "timeout_ms": timeout,
-          "truncated": mooncode_json_bool(capped, "truncated", default=false),
-        },
-      )
-    }
+  let plan = mooncode_approved_sandbox_plan(arguments) catch {
     error =>
       return mooncode_tool_error_result(
         "shell",
-        message="error running shell: \{error}",
+        message="ExecutionSandbox shell authorization failed closed: \{error}",
+        metadata={
+          "execution_sandbox_required": true,
+          "execution_sandbox_configured": true,
+          "execution_sandbox_policy": "operator-approval-required",
+        },
       )
   }
-  let output = process.stdout + process.stderr
-  let capped = if process.status == 0 {
-    mooncode_cap_tool_output(output, max_output_chars)
-  } else {
-    mooncode_cap_failed_process_output(output, max_output_chars)
+  let execution = @execution_sandbox.run_approved_shell(
+    config, book_root, cwd_path, cmd, plan,
+  ) catch {
+    error =>
+      return mooncode_tool_error_result(
+        "shell",
+        message="MoonFort execution failed closed: \{error}",
+        metadata={
+          "execution_sandbox_required": true,
+          "execution_sandbox_configured": true,
+          "execution_sandbox_policy": "fail-closed",
+        },
+      )
   }
-  let truncated = mooncode_json_bool(capped, "truncated", default=false)
-  let file_observation = if process.status == 0 {
-    mooncode_shell_file_observation(
-      book_root,
-      cwd_path,
-      cmd,
-      mooncode_json_string(capped, "output", default=""),
-      truncated,
-    )
-  } else {
-    {}
-  }
-  let pipeline_exit_ambiguous = mooncode_shell_pipeline_exit_ambiguous(cmd)
-  let metadata : Json = {
-    "cmd": cmd,
-    "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-    "status": process.status,
-    "elapsed_ms": process.elapsed,
-    "truncated": truncated,
-    "pipeline_exit_ambiguous": pipeline_exit_ambiguous,
-    "file_observation": file_observation,
-  }
+  let result = mooncode_sandbox_terminal_result(
+    "shell",
+    execution,
+    0,
+    max_output_chars,
+    {
+      "cmd": cmd,
+      "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+      "timeout_ms": timeout,
+      "pipeline_exit_ambiguous": mooncode_shell_pipeline_exit_ambiguous(cmd),
+    },
+  )
   let verification_pipeline = mooncode_json_string(
       arguments,
       "verification_kind",
@@ -237,33 +130,18 @@ async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
     ) !=
     "" ||
     mooncode_shell_pipeline_looks_like_verification(cmd)
-  let result = if pipeline_exit_ambiguous && verification_pipeline {
+  if mooncode_shell_pipeline_exit_ambiguous(cmd) &&
+    verification_pipeline &&
+    mooncode_json_bool(result, "ok", default=false) {
     mooncode_tool_error_result(
       "shell",
       message="verification pipeline exit is ambiguous because pipefail was not enabled",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata~,
-    )
-  } else if process.status == 0 {
-    mooncode_tool_ok_result(
-      "shell",
-      message=if pipeline_exit_ambiguous {
-        "shell inspection exited 0; pipeline status is observation-only"
-      } else {
-        "shell exited 0"
-      },
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata~,
+      output=mooncode_json_string(result, "output", default=""),
+      metadata=mooncode_json_object_field_or_empty(result, "metadata"),
     )
   } else {
-    mooncode_tool_error_result(
-      "shell",
-      message="shell exited \{process.status}",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata~,
-    )
+    result
   }
-  result
 }
 
 ///|
@@ -539,7 +417,11 @@ async fn mooncode_moon_ide_cwd(book_root : String, arguments : Json) -> Json {
 }
 
 ///|
-async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
+async fn mooncode_tool_moon_ide(
+  book_root : String,
+  arguments : Json,
+  sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
+) -> Json {
   let action = mooncode_json_string(arguments, "action", default="")
   if !mooncode_moon_ide_action_supported(action) {
     return mooncode_tool_error_result(
@@ -584,52 +466,43 @@ async fn mooncode_tool_moon_ide(book_root : String, arguments : Json) -> Json {
   let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
   let args = mooncode_moon_ide_args(arguments, action, book_root, cwd_path)
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=30000)
-  let process = @spawn.spawn(
-    "moon",
-    args.map(fn(arg) { arg }),
-    timeout~,
-    cwd=cwd_path,
+  let config = match sandbox_config {
+    Some(config) => config
+    None =>
+      match mooncode_execution_sandbox_config("moon_ide") {
+        Err(refusal) => return refusal
+        Ok(config) => config
+      }
+  }
+  let execution = @execution_sandbox.run_exec(
+    config, book_root, cwd_path, "moon", args, timeout,
   ) catch {
     error =>
       return mooncode_tool_error_result(
         "moon_ide",
-        message="error running moon ide: \{error}",
+        message="MoonFort execution failed closed: \{error}",
+        metadata={
+          "execution_sandbox_required": true,
+          "execution_sandbox_configured": true,
+          "execution_sandbox_policy": "fail-closed",
+        },
       )
   }
-  let process_output = process.stdout + process.stderr
-  let max_output_chars = mooncode_json_int(
-    arguments,
-    "max_output_chars",
-    default=12000,
+  mooncode_sandbox_terminal_result(
+    "moon_ide",
+    execution,
+    0,
+    mooncode_json_int(
+      arguments,
+      "max_output_chars",
+      default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+    ),
+    {
+      "action": action,
+      "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+      "command": "moon \{args.join(" ")}",
+    },
   )
-  let capped = if process.status == 0 {
-    mooncode_cap_tool_output(process_output, max_output_chars)
-  } else {
-    mooncode_cap_failed_process_output(process_output, max_output_chars)
-  }
-  let metadata : Json = {
-    "action": action,
-    "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-    "command": "moon \{args.join(" ")}",
-    "status": process.status,
-    "elapsed_ms": process.elapsed,
-    "truncated": mooncode_json_bool(capped, "truncated", default=false),
-  }
-  if process.status == 0 {
-    mooncode_tool_ok_result(
-      "moon_ide",
-      message="moon ide \{action} exited 0",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata~,
-    )
-  } else {
-    mooncode_tool_error_result(
-      "moon_ide",
-      message="moon ide \{action} exited \{process.status}",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata~,
-    )
-  }
 }
 
 ///|
@@ -749,7 +622,11 @@ fn mooncode_moon_ide_cli_action(action : String) -> String {
 }
 
 ///|
-async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
+async fn mooncode_tool_moon_cmd(
+  book_root : String,
+  arguments : Json,
+  sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
+) -> Json {
   let command = mooncode_json_string(arguments, "command", default="")
   if !mooncode_moon_cmd_supported(command) {
     return mooncode_tool_error_result(
@@ -874,96 +751,59 @@ async fn mooncode_tool_moon_cmd(book_root : String, arguments : Json) -> Json {
     cwd_path~,
   )
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=60000)
-  let process = @spawn.spawn(
-    "moon",
-    args.map(fn(arg) { arg }),
-    timeout~,
-    cwd=cwd_path,
-  ) catch {
+  let config = match sandbox_config {
+    Some(config) => config
+    None =>
+      match mooncode_execution_sandbox_config("moon_cmd") {
+        Err(refusal) => return refusal
+        Ok(config) => config
+      }
+  }
+  let execution = try {
+    if arguments is { "_execution_sandbox_plan": _, .. } {
+      let approved = mooncode_approved_sandbox_plan(arguments)
+      @execution_sandbox.run_approved_exec(
+        config, book_root, cwd_path, "moon", args, approved,
+      )
+    } else {
+      @execution_sandbox.run_exec(
+        config, book_root, cwd_path, "moon", args, timeout,
+      )
+    }
+  } catch {
     error =>
       return mooncode_tool_error_result(
         "moon_cmd",
-        message="error running moon command: \{error}",
+        message="MoonFort execution failed closed: \{error}",
+        metadata={
+          "execution_sandbox_required": true,
+          "execution_sandbox_configured": true,
+          "execution_sandbox_policy": "fail-closed",
+        },
       )
   }
-  let process_output = process.stdout + process.stderr
-  let max_output_chars = mooncode_json_int(
-    arguments,
-    "max_output_chars",
-    default=12000,
-  )
-  let capped = if mooncode_moon_cmd_exit_expected(arguments, process.status) {
-    mooncode_cap_tool_output(process_output, max_output_chars)
-  } else {
-    mooncode_cap_failed_process_output(process_output, max_output_chars)
-  }
-  let metadata : Json = {
-    "command": "moon \{args.join(" ")}",
-    "moon_command": command,
-    "cwd": mooncode_json_string(cwd, "relative_path", default="."),
-    "status": process.status,
-    "expected_exit_code": expected_exit_code,
-    "elapsed_ms": process.elapsed,
-    "truncated": mooncode_json_bool(capped, "truncated", default=false),
-    "test_update_kind": mooncode_json_string(
+  ignore(fmt_scope_before)
+  mooncode_sandbox_terminal_result(
+    "moon_cmd",
+    execution,
+    expected_exit_code,
+    mooncode_json_int(
       arguments,
-      "test_update_kind",
-      default="",
+      "max_output_chars",
+      default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
     ),
-  }
-  if command == "fmt" && explicit_paths.length() > 0 {
-    let scope = mooncode_moon_fmt_verify_and_restore(
-      book_root, selector_root, explicit_paths, fmt_scope_before,
-    )
-    guard metadata is Object(fields) else {
-      return mooncode_tool_error_result(
-        "moon_cmd",
-        message="moon fmt scope verification could not attach evidence",
-      )
-    }
-    fields["formatter_scope"] = scope.to_json()
-    if scope.snapshot_error != "" {
-      return mooncode_tool_error_result(
-        "moon_cmd",
-        message="moon fmt scope verification failed after execution: \{scope.snapshot_error}; inspect the working tree before any commit",
-        output=mooncode_json_string(capped, "output", default=""),
-        metadata~,
-      )
-    }
-    if scope.out_of_scope_paths.length() > 0 {
-      if scope.retained_paths.length() > 0 {
-        return mooncode_tool_error_result(
-          "moon_cmd",
-          message="moon fmt changed paths outside its explicit scope and could not restore and verify: \{scope.retained_paths.join(", ")}. Stop before committing and inspect the working tree; do not widen formatter scope to resolve this containment failure.",
-          output=mooncode_json_string(capped, "output", default=""),
-          metadata~,
-        )
-      }
-      if mooncode_moon_cmd_exit_expected(arguments, process.status) {
-        return mooncode_tool_ok_result(
-          "moon_cmd",
-          message="moon fmt formatted the requested paths: \{scope.requested_paths.join(", ")}. Out-of-scope formatter changes were restored and verified: \{scope.restored_paths.join(", ")}. Continue with the task; do not widen formatter scope unless a restored path is independently task-owned.",
-          output=mooncode_json_string(capped, "output", default=""),
-          metadata~,
-        )
-      }
-    }
-  }
-  if mooncode_moon_cmd_exit_expected(arguments, process.status) {
-    mooncode_tool_ok_result(
-      "moon_cmd",
-      message="moon \{command} exited expected status \{expected_exit_code}",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata~,
-    )
-  } else {
-    mooncode_tool_error_result(
-      "moon_cmd",
-      message="moon \{command} exited \{process.status}",
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata~,
-    )
-  }
+    {
+      "command": "moon \{args.join(" ")}",
+      "moon_command": command,
+      "cwd": mooncode_json_string(cwd, "relative_path", default="."),
+      "expected_exit_code": expected_exit_code,
+      "test_update_kind": mooncode_json_string(
+        arguments,
+        "test_update_kind",
+        default="",
+      ),
+    },
+  )
 }
 
 ///|
@@ -1159,6 +999,30 @@ fn mooncode_json_array_string_items(json : Json, key : String) -> Array[String] 
 
 ///|
 async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json {
+  let config = @moonfort_config.load_sandbox_executor_config() catch {
+    error =>
+      return mooncode_tool_error_result(
+        "moon_check",
+        message="ExecutionSandbox configuration failed closed: \{error}",
+        metadata={
+          "execution_sandbox_required": true,
+          "execution_sandbox_configured": true,
+          "execution_sandbox_policy": "fail-closed",
+        },
+      )
+  }
+  mooncode_tool_moon_check_with_config(book_root, arguments, config)
+}
+
+///|
+async fn mooncode_tool_moon_check_with_config(
+  book_root : String,
+  arguments : Json,
+  config : @execution_sandbox.SandboxExecutorConfig?,
+) -> Json {
+  guard config is Some(config) else {
+    return mooncode_execution_sandbox_refusal("moon_check")
+  }
   let target = mooncode_json_string(arguments, "target", default="")
   if !mooncode_moon_target_supported(target) {
     return mooncode_tool_error_result(
@@ -1199,61 +1063,84 @@ async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json 
     restart_count
   }
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=60000)
-  let process = @spawn.spawn(
-    "moon",
-    args.map(fn(arg) { arg }),
-    timeout~,
-    cwd=cwd_path,
+  ignore(args)
+  let execution = @execution_sandbox.run_moon_check(
+    config, book_root, cwd_path, target, timeout,
   ) catch {
     error =>
       return mooncode_tool_error_result(
         "moon_check",
-        message="error running moon check: \{error}",
+        message="MoonFort execution failed closed: \{error}",
+        metadata={
+          "execution_sandbox_required": true,
+          "execution_sandbox_configured": true,
+          "execution_sandbox_policy": "fail-closed",
+        },
       )
   }
-  let output = process.stdout + process.stderr
+  let receipt = execution.receipt
+  guard receipt.status is @execution_sandbox.Exited &&
+    receipt.exit_code is Some(exit_code) else {
+    return mooncode_tool_error_result(
+      "moon_check",
+      message="MoonFort did not return a terminal moon check exit receipt",
+      output=receipt.output,
+      metadata={
+        "execution_sandbox_required": true,
+        "execution_sandbox_configured": true,
+        "execution_sandbox_policy": "fail-closed",
+        "approval_plan_digest": execution.plan.expected_approval_digest,
+        "approval_id": receipt.approval_id,
+        "run_id": receipt.run_id,
+        "audit_path": execution.audit_path,
+        "receipt": receipt,
+      },
+    )
+  }
   let max_output_chars = mooncode_json_int(
     arguments,
     "max_output_chars",
-    default=12000,
+    default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
-  let capped = if process.status == 0 {
-    mooncode_cap_tool_output(output, max_output_chars)
+  let capped = if exit_code == 0 {
+    mooncode_cap_tool_output(receipt.output, max_output_chars)
   } else {
-    mooncode_cap_failed_process_output(output, max_output_chars)
+    mooncode_cap_failed_process_output(receipt.output, max_output_chars)
   }
-  let seq = previous_seq + 1
-  let state = mooncode_moon_check_state(
-    book_root,
-    command,
-    target,
-    key,
-    watcher,
-    seq,
-    restart_count,
-    process.status,
-    process.elapsed,
-    mooncode_json_string(capped, "output", default=""),
-    mooncode_json_bool(capped, "truncated", default=false),
-    mooncode_json_int(capped, "max_output_chars", default=12000),
-  )
-  mooncode_moon_check_write_state(book_root, state)
-  if process.status == 0 {
+  ignore(previous_seq)
+  ignore(restart_count)
+  ignore(watcher)
+  ignore(key)
+  let metadata : Json = {
+    "target": target,
+    "cwd": cwd_relative,
+    "exit_code": exit_code,
+    "truncated": mooncode_json_bool(capped, "truncated", default=false),
+    "execution_sandbox_required": true,
+    "execution_sandbox_configured": true,
+    "execution_sandbox_policy": "grant-bound",
+    "approval_plan_digest": execution.plan.expected_approval_digest,
+    "approval_id": receipt.approval_id,
+    "run_id": receipt.run_id,
+    "profile_digest": receipt.profile_digest,
+    "audit_path": execution.audit_path,
+    "receipt": receipt,
+    "sandbox_evidence": mooncode_sandbox_evidence(execution),
+  }
+  let output = mooncode_json_string(capped, "output", default="")
+  if exit_code == 0 {
     mooncode_tool_ok_result(
       "moon_check",
-      message=mooncode_moon_check_message("moon check passed", state),
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata=state,
+      message="moon check completed inside ExecutionSandbox",
+      output~,
+      metadata~,
     )
   } else {
     mooncode_tool_error_result(
       "moon_check",
-      message=mooncode_moon_check_message(
-        "moon check failed with status \{process.status}",
-        state,
-      ),
-      output=mooncode_json_string(capped, "output", default=""),
-      metadata=state,
+      message="moon check exited with status \{exit_code} inside ExecutionSandbox",
+      output~,
+      metadata~,
     )
   }
 }

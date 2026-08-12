@@ -5,66 +5,21 @@ async fn Daemon::mooncode_tool_execute(
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
-  let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
-  let body : Json = reader.read() catch {
-    _ =>
-      raise json_error(400, "Bad Request", {
-        "error": {
-          "code": -1,
-          "message": "Invalid JSON body for MoonCode tool execution",
-        },
-      })
-  }
-  let session_id = session_id.to_owned()
-  let requested_book_root = mooncode_request_book_root(r)
-  let book_root = if requested_book_root == "" {
-    mooncode_json_string(body, "book_root", default="")
-  } else {
-    requested_book_root
-  }
-  let report = mooncode_validate_tool_call_body(session_id, book_root, body)
-  if !mooncode_json_bool(report, "ok", default=false) {
-    raise json_error(400, "Bad Request", {
-      "error": {
-        "code": -1,
-        "message": mooncode_json_string(
-          report,
-          "message",
-          default="Invalid MoonCode tool execution payload",
-        ),
-        "metadata": report,
+  ignore(self)
+  ignore(session_id)
+  ignore(r)
+  ignore(w)
+  raise json_error(503, "Service Unavailable", {
+    "error": {
+      "code": -1,
+      "message": "direct MoonCode /tool-exec is disabled until it is bound to an approved ExecutionSandbox grant",
+      "metadata": {
+        "execution_sandbox_required": true,
+        "execution_sandbox_configured": false,
+        "execution_sandbox_policy": "fail-closed",
       },
-    })
-  }
-  let command_id = mooncode_tool_command_id(body)
-  let prior_results = mooncode_tool_prior_command_results(
-    book_root, session_id, command_id,
-  )
-  let execution = mooncode_execute_guarded_tool_call(
-    session_id,
-    book_root,
-    body,
-    prior_results,
-    now=self.clock.now(),
-  )
-  let event = mooncode_json_object_field_or_empty(execution, "event")
-  let binding = self.mooncode_binding_for_session(session_id)
-  if binding.book_root == "" {
-    binding.book_root = book_root
-  }
-  binding.command_count += 1
-  binding.last_command_id = mooncode_json_string(
-    execution,
-    "command_id",
-    default="",
-  )
-  binding.last_updated = self.clock.now()
-  binding.events.put(event)
-  self.mooncode_persist_event(binding, event)
-  self.mooncode_persist_session(binding)
-  w.header().set("Content-Type", "application/json")
-  w.write_header(202, reason="Accepted")
-  w.write(execution.stringify(indent=2))
+    },
+  })
 }
 
 ///|
@@ -382,7 +337,12 @@ async fn mooncode_tool_read(book_root : String, arguments : Json) -> Json {
   }
   let capped = mooncode_cap_tool_output(
     selected,
-    mooncode_json_int(arguments, "max_output_chars", default=12000),
+    mooncode_json_int(
+      arguments,
+      "max_output_chars",
+      default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+    ),
+    maximum=mooncode_tool_output_maximum(arguments),
   )
   mooncode_tool_ok_result(
     "read",
@@ -565,19 +525,42 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   }
   let absolute = mooncode_json_string(path, "absolute_path", default="")
   let relative = mooncode_json_string(path, "relative_path", default="")
-  let old_string = mooncode_json_string(arguments, "old_string", default="")
-  let new_string = mooncode_json_string(arguments, "new_string", default="")
-  let replace_all = mooncode_json_bool(arguments, "replace_all", default=false)
-  if old_string == "" {
+  let has_batch = match arguments {
+    Object(fields) => fields.contains("edits")
+    _ => false
+  }
+  let has_legacy_edit = match arguments {
+    Object(fields) =>
+      fields.contains("old_string") ||
+      fields.contains("new_string") ||
+      fields.contains("replace_all")
+    _ => false
+  }
+  if has_batch && has_legacy_edit {
     return mooncode_tool_error_result(
       "edit",
-      message="old_string must be non-empty",
+      message="use either edits or old_string/new_string, not both",
     )
   }
-  if old_string == new_string {
+  let edits = if has_batch {
+    mooncode_json_array_items(arguments, "edits")
+  } else {
+    [
+      {
+        "old_string": mooncode_json_string(arguments, "old_string", default=""),
+        "new_string": mooncode_json_string(arguments, "new_string", default=""),
+        "replace_all": mooncode_json_bool(
+          arguments,
+          "replace_all",
+          default=false,
+        ),
+      },
+    ]
+  }
+  if edits.length() == 0 {
     return mooncode_tool_error_result(
       "edit",
-      message="old_string and new_string are identical",
+      message="edits must contain at least one replacement",
     )
   }
   let content = @fsx.read_file(absolute) catch {
@@ -587,34 +570,73 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
         message="error reading \{absolute}: \{error}",
       )
   }
-  let occurrences = content.split(old_string).count() - 1
-  if occurrences == 0 {
-    return mooncode_tool_error_result("edit", message="old_string not found", metadata={
-      "path": relative,
-      "absolute_path": absolute,
-      "context_mismatch": true,
-    })
-  }
-  if occurrences > 1 && !replace_all {
-    return mooncode_tool_error_result(
-      "edit",
-      message="old_string matched \{occurrences} times; set replace_all=true to replace all occurrences",
-      metadata={
-        "path": relative,
-        "absolute_path": absolute,
-        "context_mismatch": true,
-      },
-    )
-  }
-  let replacement_count = if replace_all { occurrences } else { 1 }
-  let new_content = if replace_all {
-    content
-    .split(old_string)
-    .map(part => part.to_owned())
-    .collect()
-    .join(new_string)
-  } else {
-    content.replace(old=old_string, new=new_string)
+  let mut new_content = content
+  let mut replacement_count = 0
+  for edit_index, edit in edits {
+    let old_string = mooncode_json_string(edit, "old_string", default="")
+    let new_string = mooncode_json_string(edit, "new_string", default="")
+    let replace_all = mooncode_json_bool(edit, "replace_all", default=false)
+    if old_string == "" {
+      return mooncode_tool_error_result(
+        "edit",
+        message="edit \{edit_index}: old_string must be non-empty",
+        metadata={
+          "path": relative,
+          "absolute_path": absolute,
+          "edit_index": edit_index,
+          "atomic": true,
+        },
+      )
+    }
+    if old_string == new_string {
+      return mooncode_tool_error_result(
+        "edit",
+        message="edit \{edit_index}: old_string and new_string are identical",
+        metadata={
+          "path": relative,
+          "absolute_path": absolute,
+          "edit_index": edit_index,
+          "atomic": true,
+        },
+      )
+    }
+    let occurrences = new_content.split(old_string).count() - 1
+    if occurrences == 0 {
+      return mooncode_tool_error_result(
+        "edit",
+        message="edit \{edit_index}: old_string not found",
+        metadata={
+          "path": relative,
+          "absolute_path": absolute,
+          "edit_index": edit_index,
+          "context_mismatch": true,
+          "atomic": true,
+        },
+      )
+    }
+    if occurrences > 1 && !replace_all {
+      return mooncode_tool_error_result(
+        "edit",
+        message="edit \{edit_index}: old_string matched \{occurrences} times; set replace_all=true to replace all occurrences",
+        metadata={
+          "path": relative,
+          "absolute_path": absolute,
+          "edit_index": edit_index,
+          "context_mismatch": true,
+          "atomic": true,
+        },
+      )
+    }
+    replacement_count += if replace_all { occurrences } else { 1 }
+    new_content = if replace_all {
+      new_content
+      .split(old_string)
+      .map(part => part.to_owned())
+      .collect()
+      .join(new_string)
+    } else {
+      new_content.replace(old=old_string, new=new_string)
+    }
   }
   if mooncode_moonbit_manifest_write_error(relative, new_content, existed=true)
     is Some(message) {
@@ -629,12 +651,14 @@ async fn mooncode_tool_edit(book_root : String, arguments : Json) -> Json {
   }
   mooncode_tool_ok_result(
     "edit",
-    message="replaced \{replacement_count} occurrence(s) in \{relative}",
+    message="applied \{edits.length()} atomic edit(s), replacing \{replacement_count} occurrence(s) in \{relative}",
     output="",
     metadata={
       "path": relative,
       "absolute_path": absolute,
+      "edit_count": edits.length(),
       "replacement_count": replacement_count,
+      "atomic": true,
       "changed": content != new_content,
       "before_fingerprint": mooncode_tool_content_fingerprint(
         content,
@@ -1693,69 +1717,9 @@ async fn mooncode_tool_run_patch_verification(
   book_root : String,
   arguments : Json,
 ) -> Json {
-  let command = mooncode_tool_patch_verification_command(arguments)
-  let timeout = mooncode_json_int(
-    arguments,
-    "verification_timeout_ms",
-    default=mooncode_json_int(arguments, "timeout_ms", default=60000),
-  )
-  let max_output_chars = mooncode_json_int(
-    arguments,
-    "verification_max_output_chars",
-    default=mooncode_json_int(arguments, "max_output_chars", default=12000),
-  )
-  if command != "" {
-    let process = @spawn.spawn("sh", ["-lc", command], timeout~, cwd=book_root) catch {
-      error =>
-        return {
-          "ok": false,
-          "tool": "shell",
-          "command": command,
-          "message": "error running post-change verification: \{error}",
-        }
-    }
-    return mooncode_tool_patch_verification_result(
-      "shell",
-      command,
-      process.status,
-      process.elapsed,
-      process.stdout + process.stderr,
-      max_output_chars,
-    )
-  }
-  let target = mooncode_json_string(arguments, "moon_check_target", default="")
-  let args : Array[StringView] = if target == "" {
-    ["check"]
-  } else {
-    ["check", target]
-  }
-  let process = @spawn.spawn("moon", args, timeout~, cwd=book_root) catch {
-    error =>
-      return {
-        "ok": false,
-        "tool": "moon_check",
-        "target": target,
-        "command": if target == "" {
-          "moon check"
-        } else {
-          "moon check \{target}"
-        },
-        "message": "error running post-change moon check: \{error}",
-      }
-  }
-  mooncode_tool_patch_verification_result(
-    "moon_check",
-    if target == "" {
-      "moon check"
-    } else {
-      "moon check \{target}"
-    },
-    process.status,
-    process.elapsed,
-    process.stdout + process.stderr,
-    max_output_chars,
-    target~,
-  )
+  ignore(book_root)
+  ignore(arguments)
+  mooncode_patch_verification_sandbox_refusal()
 }
 
 ///|
@@ -1955,14 +1919,12 @@ fn mooncode_resolve_book_path(book_root : String, path : String) -> Json {
 }
 
 ///|
-fn mooncode_cap_tool_output(text : String, limit : Int) -> Json {
-  let limit = if limit <= 0 {
-    12000
-  } else if limit > 50000 {
-    50000
-  } else {
-    limit
-  }
+fn mooncode_cap_tool_output(
+  text : String,
+  limit : Int,
+  maximum? : Int = MOONCODE_DEFAULT_TOOL_OUTPUT_MAX_CHARS,
+) -> Json {
+  let limit = mooncode_normalize_tool_output_chars(limit, maximum~)
   if text.length() > limit {
     {
       "output": text[:limit].to_owned(),
@@ -1993,7 +1955,7 @@ fn mooncode_cap_failed_process_output(text : String, limit : Int) -> Json {
   let max_output_chars = mooncode_json_int(
     capped,
     "max_output_chars",
-    default=12000,
+    default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
   let marker = "\n... output omitted; tail preserved ...\n"
   if marker.length() >= max_output_chars {

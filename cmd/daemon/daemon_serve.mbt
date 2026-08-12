@@ -135,6 +135,10 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
               self.get_task_events(id~, w)
             (Get, ["", "v1", "code", "capabilities"]) =>
               self.mooncode_capabilities(w)
+            (Post, ["", "v1", "execution-sandbox", "moon-diagnostics"]) =>
+              self.moondesk_moon_diagnostics(r, w)
+            (Post, ["", "v1", "execution-sandbox", "promote"]) =>
+              self.moondesk_promote_retention(r, w)
             (Get, ["", "v1", "code", "sessions"]) =>
               self.mooncode_list_sessions(r, w)
             (Get, ["", "v1", "code", "sessions", session_id]) =>
