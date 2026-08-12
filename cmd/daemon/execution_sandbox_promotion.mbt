@@ -110,8 +110,8 @@ fn moondesk_promotion_moonfort_request(
     "approval_digest": request.approval_digest,
     "command_digest": request.command_digest,
     "items": request.items.map(item => {
-      "source_relative_path": item.source_relative,
-      "destination_relative_path": item.destination_relative,
+      "artifact_path": item.source_relative,
+      "destination_path": item.destination_relative,
     }),
   }
 }

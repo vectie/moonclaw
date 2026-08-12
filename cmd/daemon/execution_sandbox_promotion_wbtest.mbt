@@ -21,8 +21,10 @@ fn moondesk_test_promotion_request() -> MoonDeskPromotionRequest {
 test "promotion public request translates to MoonFort v3 without host paths" {
   let request = moondesk_test_promotion_request()
   let encoded = moondesk_promotion_moonfort_request(request).stringify()
-  assert_true(encoded.contains("source_relative_path"))
-  assert_true(encoded.contains("destination_relative_path"))
+  assert_true(encoded.contains("artifact_path"))
+  assert_true(encoded.contains("destination_path"))
+  assert_false(encoded.contains("source_relative_path"))
+  assert_false(encoded.contains("destination_relative_path"))
   assert_true(encoded.contains("reports/result.txt"))
   assert_false(encoded.contains("/Users/"))
   assert_false(encoded.contains("workspace_root"))
