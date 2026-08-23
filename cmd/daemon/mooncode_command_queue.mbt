@@ -48,6 +48,35 @@ async fn Daemon::mooncode_queue_command_response(
   queue_source~ : String,
 ) -> Json {
   let book_root = mooncode_book_root(body)
+  if mooncode_session_suspension_requested(book_root, session_id) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode session suspension is in progress",
+        "metadata": { "session_id": session_id, "book_root": book_root },
+      },
+    })
+  }
+  let lifecycle_gate = mooncode_open_session_lifecycle_gate(
+    book_root, session_id,
+  )
+  defer lifecycle_gate.close()
+  lifecycle_gate.lock(Shared)
+  defer lifecycle_gate.unlock()
+  if mooncode_session_suspension_requested(book_root, session_id) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode session suspension is in progress",
+        "metadata": { "session_id": session_id, "book_root": book_root },
+      },
+    })
+  }
+  mooncode_require_active_session_state_locked(
+    book_root,
+    session_id,
+    allow_create=true,
+  )
   let now = self.clock.now()
   let binding = self.mooncode_binding_for_session(session_id)
   if !binding.bind_book_root(book_root) {

@@ -379,6 +379,16 @@ async fn mooncode_session_listing_record_from_parts_locked(
     "safe_session_id": safe_session_id,
     "book_root": book_root,
     "model": mooncode_json_string(snapshot, "model", default=""),
+    "source_kind": mooncode_json_string(
+      snapshot,
+      "source_kind",
+      default="mooncode",
+    ),
+    "workspace_trust": mooncode_json_string(
+      snapshot,
+      "workspace_trust",
+      default="trusted",
+    ),
     "live_binding_ready": live_binding is Some(_),
     "binding": match live_binding {
       Some(binding) => binding.to_json()
@@ -500,6 +510,8 @@ fn mooncode_missing_session_snapshot(
     "contract_id": @mooncode_core.session_snapshot_contract_id(),
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
+    "source_kind": "mooncode",
+    "workspace_trust": "trusted",
     "session_id": safe_session_id,
     "book_root": book_root,
     "load_status": load_status,
@@ -582,6 +594,16 @@ async fn mooncode_session_record_from_parts_locked(
     "safe_session_id": safe_session_id,
     "book_root": book_root,
     "model": mooncode_json_string(resolved_snapshot, "model", default=""),
+    "source_kind": mooncode_json_string(
+      resolved_snapshot,
+      "source_kind",
+      default="mooncode",
+    ),
+    "workspace_trust": mooncode_json_string(
+      resolved_snapshot,
+      "workspace_trust",
+      default="trusted",
+    ),
     "live_binding_ready": live_binding is Some(_),
     "binding": match live_binding {
       Some(binding) => binding.to_json()
@@ -644,6 +666,8 @@ fn mooncode_session_snapshot(
     "contract_id": @mooncode_core.session_snapshot_contract_id(),
     "protocol": mooncode_protocol_version(),
     "owner": "moonclaw",
+    "source_kind": "mooncode",
+    "workspace_trust": "trusted",
     "session_id": binding.session_id,
     "book_root": binding.book_root,
     "workspace_id": binding.workspace_id,
@@ -800,7 +824,8 @@ async fn mooncode_session_stored_state_locked(marker : String) -> String {
         }
         let state = line.trim().to_owned()
         if ![
-            "active", "archiving", "archived", "restoring", "deleting", "deleted",
+            "active", "suspending", "suspended", "resuming", "archiving", "archived",
+            "restoring", "deleting", "deleted",
           ].contains(state) {
           raise InvalidJournal(
             "Invalid MoonCode session lifecycle marker entry `\{state}`",
@@ -861,6 +886,7 @@ async fn mooncode_session_state_locked(
       } else {
         "restoring"
       }
+    "resuming" => if active { "active" } else { "resuming" }
     "deleting" =>
       if active {
         "active"

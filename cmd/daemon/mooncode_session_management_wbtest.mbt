@@ -145,6 +145,167 @@ async test "mooncode session lifecycle is durable and preserves book content" {
 }
 
 ///|
+async test "mooncode suspension seals descendants and resume reopens only parent" {
+  @moonclaw_fsx.with_temporary_directory("moonclaw-suspend-parent-XXXXXX", parent_root => {
+    @moonclaw_fsx.with_temporary_directory("moonclaw-suspend-child-XXXXXX", child_root => {
+      let daemon = mooncode_control_test_daemon(parent_root)
+      let parent_id = "session-suspend-parent"
+      let child_id = "session-suspend-child"
+      mooncode_management_test_create_session(daemon, parent_root, parent_id)
+      mooncode_management_test_create_session(daemon, child_root, child_id)
+      mooncode_append_session_journal(
+        parent_root,
+        parent_id,
+        mooncode_journal_event(),
+        mooncode_worker_record(
+          parent_id,
+          parent_root,
+          {
+            "id": "child",
+            "book_root": child_root,
+            "prompt": "Validate the child workspace",
+            "task_intent": "read_only",
+          },
+          child_id,
+          "cmd-child",
+          "service-child",
+          "cmd-parent",
+          @clock.Timestamp::from_ms(101L),
+        ),
+      )
+      let suspended = daemon.mooncode_manage_session_response(parent_id, {
+        "action": "suspend",
+        "book_root": parent_root,
+      })
+      assert_true(mooncode_json_bool(suspended, "suspended", default=false))
+      assert_eq(mooncode_json_int(suspended, "descendant_count", default=-1), 1)
+      assert_eq(
+        mooncode_session_state_locked(parent_root, parent_id),
+        "suspended",
+      )
+      assert_eq(
+        mooncode_session_state_locked(child_root, child_id),
+        "suspended",
+      )
+      let rejected : Result[Json, String] = Ok(
+        daemon.mooncode_queue_command_response(
+          session_id=parent_id,
+          {
+            "protocol": mooncode_protocol_version(),
+            "session_id": parent_id,
+            "book_root": parent_root,
+            "command": "prompt",
+            "model": "codex/gpt-5.6-sol",
+            "text": "must stay suspended",
+            "packet": { "command_id": "cmd-after-suspend" },
+          },
+          queue_source="test",
+        ),
+      ) catch {
+        error => Err("\{error}")
+      }
+      assert_true(rejected is Err(_))
+      let resumed = daemon.mooncode_manage_session_response(parent_id, {
+        "action": "resume",
+        "book_root": parent_root,
+      })
+      assert_false(mooncode_json_bool(resumed, "suspended", default=true))
+      assert_eq(mooncode_session_state_locked(parent_root, parent_id), "active")
+      assert_eq(
+        mooncode_session_state_locked(child_root, child_id),
+        "suspended",
+      )
+      let archived = daemon.mooncode_manage_session_response(parent_id, {
+        "action": "archive",
+        "book_root": parent_root,
+      })
+      assert_true(mooncode_json_bool(archived, "archived", default=false))
+    })
+  })
+}
+
+///|
+async test "mooncode archive rejects an unsealed worker descendant" {
+  @moonclaw_fsx.with_temporary_directory("moonclaw-archive-parent-XXXXXX", parent_root => {
+    @moonclaw_fsx.with_temporary_directory("moonclaw-archive-child-XXXXXX", child_root => {
+      let daemon = mooncode_control_test_daemon(parent_root)
+      let parent_id = "session-archive-parent"
+      let child_id = "session-archive-child"
+      mooncode_management_test_create_session(daemon, parent_root, parent_id)
+      mooncode_management_test_create_session(daemon, child_root, child_id)
+      mooncode_append_session_journal(
+        parent_root,
+        parent_id,
+        mooncode_journal_event(),
+        mooncode_worker_record(
+          parent_id,
+          parent_root,
+          {
+            "id": "child",
+            "book_root": child_root,
+            "prompt": "Validate the child workspace",
+            "task_intent": "read_only",
+          },
+          child_id,
+          "cmd-child",
+          "service-child",
+          "cmd-parent",
+          @clock.Timestamp::from_ms(101L),
+        ),
+      )
+      let result : Result[Json, String] = Ok(
+        daemon.mooncode_manage_session_response(parent_id, {
+          "action": "archive",
+          "book_root": parent_root,
+        }),
+      ) catch {
+        error => Err("\{error}")
+      }
+      assert_true(result is Err(_))
+      assert_eq(mooncode_session_state_locked(parent_root, parent_id), "active")
+      assert_eq(mooncode_session_state_locked(child_root, child_id), "active")
+    })
+  })
+}
+
+///|
+async test "mooncode suspension cancels an active runtime before sealing" {
+  @moonclaw_fsx.with_temporary_directory("moonclaw-suspend-runtime-XXXXXX", book_root => {
+    let daemon = mooncode_control_test_daemon(book_root)
+    let session_id = "session-suspend-runtime"
+    mooncode_management_test_create_session(daemon, book_root, session_id)
+    let binding = daemon.mooncode_binding_for_session(session_id)
+    @async.with_task_group(group => {
+      let task = group.spawn(
+        () => {
+          while true {
+            @async.sleep(1000)
+          }
+        },
+        no_wait=true,
+        allow_failure=true,
+      )
+      binding.runtime_service_running = true
+      binding.runtime_service_task = Some(task)
+      binding.active_command_id = "cmd-running"
+      let result = daemon.mooncode_manage_session_response(session_id, {
+        "action": "suspend",
+        "book_root": book_root,
+      })
+      assert_true(mooncode_json_bool(result, "suspended", default=false))
+      assert_false(binding.runtime_service_running)
+      assert_true(binding.runtime_service_task is None)
+      assert_eq(binding.active_command_id, "")
+      assert_eq(
+        mooncode_session_state_locked(book_root, session_id),
+        "suspended",
+      )
+      group.return_immediately(())
+    })
+  })
+}
+
+///|
 async test "mooncode stable session lock serializes append storage and archive" {
   @moonclaw_fsx.with_temporary_directory("moonclaw-session-lock-XXXXXX", book_root => {
     let session_id = "session-lock"

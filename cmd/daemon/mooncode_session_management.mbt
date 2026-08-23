@@ -60,6 +60,8 @@ async fn Daemon::mooncode_manage_session_response(
       self.mooncode_rename_session(session_id, book_root, title)
     }
     "archive" => self.mooncode_archive_session(session_id, book_root)
+    "suspend" => self.mooncode_suspend_session_tree(session_id, book_root)
+    "resume" => self.mooncode_resume_session(session_id, book_root)
     "restore" => self.mooncode_restore_session(session_id, book_root)
     "delete" => self.mooncode_delete_session(session_id, book_root)
     _ =>
@@ -150,11 +152,17 @@ async fn Daemon::mooncode_archive_session(
   lifecycle_gate.lock(Exclusive)
   defer lifecycle_gate.unlock()
   self.mooncode_require_idle_session(session_id)
+  mooncode_require_descendants_sealed(book_root, session_id)
   let session_lock = mooncode_open_session_lock(book_root, session_id)
   defer session_lock.close()
   session_lock.lock(Exclusive)
   defer session_lock.unlock()
-  mooncode_require_active_session_state_locked(book_root, session_id)
+  let lifecycle_state = mooncode_session_state_locked(book_root, session_id)
+  if lifecycle_state != "active" && lifecycle_state != "suspended" {
+    raise InvalidJournal(
+      "MoonCode session `\{session_id}` cannot archive from lifecycle state `\{lifecycle_state}`",
+    )
+  }
   let safe_session_id = mooncode_require_session_record(
     book_root,
     session_id,
@@ -226,6 +234,7 @@ async fn Daemon::mooncode_delete_session(
   lifecycle_gate.lock(Exclusive)
   defer lifecycle_gate.unlock()
   self.mooncode_require_idle_session(session_id)
+  mooncode_require_descendants_sealed(book_root, session_id)
   let session_lock = mooncode_open_session_lock(book_root, session_id)
   defer session_lock.close()
   session_lock.lock(Exclusive)

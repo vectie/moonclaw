@@ -301,12 +301,25 @@ async fn mooncode_append_session_journal_once_locked(
   session_id : String,
   record_kind : String,
   payload : Json,
+  require_active? : Bool = true,
 ) -> Bool {
-  mooncode_require_active_session_state_locked(
-    book_root,
-    session_id,
-    allow_create=true,
-  )
+  if require_active {
+    mooncode_require_active_session_state_locked(
+      book_root,
+      session_id,
+      allow_create=true,
+    )
+  } else {
+    let lifecycle_state = mooncode_session_state_locked(book_root, session_id)
+    if lifecycle_state != "active" &&
+      lifecycle_state != "suspending" &&
+      lifecycle_state != "suspended" &&
+      lifecycle_state != "resuming" {
+      raise InvalidJournal(
+        "MoonCode session `\{session_id}` cannot append lifecycle evidence in state `\{lifecycle_state}`",
+      )
+    }
+  }
   // Stable identity is the only payload validation required before duplicate lookup.
   // Existing records must remain retryable even when later validation rules tighten.
   let record_id = mooncode_journal_record_id(record_kind, payload)

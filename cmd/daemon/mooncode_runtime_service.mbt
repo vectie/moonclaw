@@ -106,6 +106,18 @@ async fn Daemon::mooncode_start_runtime_service(
   payload : Json,
 ) -> Json {
   let binding = self.mooncode_binding_for_session(session_id)
+  if mooncode_session_suspension_requested(requested_book_root, session_id) {
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode session suspension is in progress",
+        "metadata": {
+          "session_id": session_id,
+          "book_root": requested_book_root,
+        },
+      },
+    })
+  }
   if !binding.bind_book_root(requested_book_root) {
     raise json_error(409, "Conflict", {
       "error": {
@@ -147,6 +159,19 @@ async fn Daemon::mooncode_start_runtime_service(
       )
       raise error
     }
+  }
+  if mooncode_session_suspension_requested(book_root, session_id) {
+    @async.protect_from_cancel(
+      () => mooncode_runtime_service_release_lifecycle_gate(lifecycle_gate),
+      resume_on_cancel=true,
+    )
+    raise json_error(409, "Conflict", {
+      "error": {
+        "code": -1,
+        "message": "MoonCode session suspension is in progress",
+        "metadata": { "session_id": session_id, "book_root": book_root },
+      },
+    })
   }
   mooncode_require_active_session_state_locked(
     book_root,
