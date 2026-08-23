@@ -26,66 +26,74 @@ async test "mooncode native runtime turn executes explicit tool calls" (
       { "tool": "finish", "arguments": { "answer": "done" } },
     ],
   }
-  mooncode_append_session_journal(
-    book_root,
-    session_id,
-    mooncode_journal_command(),
-    {
-      "kind": "mooncode-command",
-      "protocol": mooncode_protocol_version(),
-      "session_id": session_id,
-      "command_id": command_id,
-      "created_at": @clock.Timestamp::from_ms(1L),
-      "command": command,
-    },
-  )
-  let daemon = Daemon::{
-    clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
-    uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
-    by_cwd: {},
-    by_id: {},
-    rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
-    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
-    port: 0,
-    events: @broadcast.Broadcast::new(),
-    serve: book_root,
-    conversations: @conversation.Manager::new(
-      home=book_root,
-      uuid=@uuid.generator(@rand.chacha8()),
-    ),
-    home: book_root,
-    pending_codex_auth: {},
-    mooncode_sessions: {},
-  }
-  let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
-    "consumer_id": "test-runtime",
+  mooncode_with_fixture_moonfort(book_root, async fn(config) {
+    let command = mooncode_fixture_authorized_runtime_command(
+      config, book_root, command,
+    )
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": command_id,
+        "created_at": @clock.Timestamp::from_ms(1L),
+        "command": command,
+      },
+    )
+    mooncode_fixture_approve_runtime_commands(book_root, command)
+    let daemon = Daemon::{
+      clock: @clock.epoch,
+      models: @model.Loader::new(home=@os.home(), cwd=book_root),
+      uuid: @uuid.generator(@rand.chacha8()),
+      process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
+      by_cwd: {},
+      by_id: {},
+      rqs: {},
+      httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+      port: 0,
+      events: @broadcast.Broadcast::new(),
+      serve: book_root,
+      conversations: @conversation.Manager::new(
+        home=book_root,
+        uuid=@uuid.generator(@rand.chacha8()),
+      ),
+      home: book_root,
+      pending_codex_auth: {},
+      mooncode_sessions: {},
+    }
+    let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+      "consumer_id": "test-runtime",
+    })
+    assert_true(mooncode_json_bool(result, "accepted", default=false))
+    assert_eq(
+      mooncode_json_string(result, "command_id", default=""),
+      command_id,
+    )
+    let execution = mooncode_json_object_field_or_empty(result, "execution")
+    assert_true(mooncode_json_bool(execution, "web_search", default=false))
+    let tool_results = mooncode_json_array_items(execution, "tool_results")
+    assert_eq(tool_results.length(), 3)
+    assert_true(execution.stringify().contains("turn-ok"))
+    let receipt_log = @fsx.read_file(
+      mooncode_session_journal_path(book_root, session_id),
+    )
+    assert_true(receipt_log.contains("\"runtime-claimed\""))
+    assert_true(receipt_log.contains("\"runtime-completed\""))
+    assert_true(receipt_log.contains("\"web_search\":true"))
+    let events_log = @fsx.read_file(
+      mooncode_session_journal_path(book_root, session_id),
+    )
+    assert_true(events_log.contains("\"runtime.turn_started\""))
+    assert_true(events_log.contains("\"tool_result\""))
+    assert_true(events_log.contains("\"runtime.turn_finished\""))
+    let after = mooncode_json_object_field_or_empty(result, "claim_state")
+    assert_true(after.stringify().contains("\"delivered_command_count\":1"))
+    let snapshot = mooncode_load_session_snapshot(book_root, session_id)
+    assert_eq(mooncode_json_int(snapshot, "command_count", default=0), 1)
   })
-  assert_true(mooncode_json_bool(result, "accepted", default=false))
-  assert_eq(mooncode_json_string(result, "command_id", default=""), command_id)
-  let execution = mooncode_json_object_field_or_empty(result, "execution")
-  assert_true(mooncode_json_bool(execution, "web_search", default=false))
-  let tool_results = mooncode_json_array_items(execution, "tool_results")
-  assert_eq(tool_results.length(), 3)
-  assert_true(execution.stringify().contains("turn-ok"))
-  let receipt_log = @fsx.read_file(
-    mooncode_session_journal_path(book_root, session_id),
-  )
-  assert_true(receipt_log.contains("\"runtime-claimed\""))
-  assert_true(receipt_log.contains("\"runtime-completed\""))
-  assert_true(receipt_log.contains("\"web_search\":true"))
-  let events_log = @fsx.read_file(
-    mooncode_session_journal_path(book_root, session_id),
-  )
-  assert_true(events_log.contains("\"runtime.turn_started\""))
-  assert_true(events_log.contains("\"tool_result\""))
-  assert_true(events_log.contains("\"runtime.turn_finished\""))
-  let after = mooncode_json_object_field_or_empty(result, "claim_state")
-  assert_true(after.stringify().contains("\"delivered_command_count\":1"))
-  let snapshot = mooncode_load_session_snapshot(book_root, session_id)
-  assert_eq(mooncode_json_int(snapshot, "command_count", default=0), 1)
 }
 
 ///|
@@ -125,11 +133,10 @@ async test "mooncode native runtime turn defers idle steer into next command" (
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -261,11 +268,10 @@ async test "mooncode native runtime turn drops idle cancel commands" (
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -341,11 +347,10 @@ async test "mooncode native runtime loop stops on dropped cancel commands" (
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -440,11 +445,10 @@ async test "mooncode native runtime turn records review receipts" (
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -832,11 +836,10 @@ async test "mooncode caller supplied explicit tools execute without model delay"
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -1278,6 +1281,39 @@ test "mooncode planner permits parallel tool calls" {
     planner_system.contains(
       "the next tool batch must contain edit, write, or apply_patch",
     ),
+  )
+}
+
+///|
+test "mooncode planner scopes prompt cache identity to MoonGate sessions" {
+  let moongate = @model.Model::new(
+    api_key="test",
+    base_url="http://127.0.0.1:15721/openclaw/v1",
+    name="moongate/test-model",
+    model_name="test-model",
+    safe_zone_tokens=1000,
+  )
+  let cached = mooncode_runtime_turn_model_extra_body(moongate, {
+    "session_id": "session-cache-stable",
+  })
+  assert_eq(
+    cached.get("prompt_cache_key"),
+    Some(Json::string("moonclaw-session:session-cache-stable")),
+  )
+  let direct = @model.Model::new(
+    api_key="test",
+    base_url="https://example.invalid/v1",
+    name="direct/test-model",
+    model_name="test-model",
+    safe_zone_tokens=1000,
+  )
+  assert_true(
+    mooncode_runtime_turn_model_extra_body(direct, {
+      "session_id": "session-cache-stable",
+    }).is_empty(),
+  )
+  assert_true(
+    mooncode_runtime_turn_model_extra_body(moongate, { "session_id": "   " }).is_empty(),
   )
 }
 
@@ -1844,6 +1880,21 @@ test "mooncode forces an exact read after a failed content mutation" {
     ),
     "docs/STATUS.md",
   )
+  let recovery_arguments = mooncode_json_object_field_or_empty(
+    calls[0],
+    "arguments",
+  )
+  assert_eq(
+    mooncode_json_int(recovery_arguments, "max_output_chars", default=0),
+    MOONCODE_MUTATION_RECOVERY_READ_CHARS,
+  )
+  assert_true(
+    mooncode_json_bool(
+      recovery_arguments,
+      "mooncode_large_output_enabled",
+      default=false,
+    ),
+  )
   let recovery_id = mooncode_json_string(calls[0], "tool_call_id", default="")
   assert_true(recovery_id != "")
   assert_true(mooncode_runtime_turn_model_tool_call_accepts_result(calls[0]))
@@ -2066,11 +2117,10 @@ async test "mooncode live steering settles once before later queue work" (
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -2157,11 +2207,10 @@ async test "mooncode runtime turn records progress immediately and once" (
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -3881,166 +3930,173 @@ async test "mooncode native runtime turn packages an explicit executable tool pl
       },
     ],
   }
-  mooncode_append_session_journal(
-    book_root,
-    session_id,
-    mooncode_journal_command(),
-    {
-      "kind": "mooncode-command",
-      "protocol": mooncode_protocol_version(),
-      "session_id": session_id,
-      "command_id": command_id,
-      "created_at": @clock.Timestamp::from_ms(2L),
-      "command": command,
-    },
-  )
-  let daemon = Daemon::{
-    clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
-    uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
-    by_cwd: {},
-    by_id: {},
-    rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
-    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
-    port: 0,
-    events: @broadcast.Broadcast::new(),
-    serve: book_root,
-    conversations: @conversation.Manager::new(
-      home=book_root,
-      uuid=@uuid.generator(@rand.chacha8()),
-    ),
-    home: book_root,
-    pending_codex_auth: {},
-    mooncode_sessions: {},
-  }
-  let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
-    "consumer_id": "test-runtime",
+  mooncode_with_fixture_moonfort(book_root, async fn(config) {
+    let command = mooncode_fixture_authorized_runtime_command(
+      config, book_root, command,
+    )
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": command_id,
+        "created_at": @clock.Timestamp::from_ms(2L),
+        "command": command,
+      },
+    )
+    mooncode_fixture_approve_runtime_commands(book_root, command)
+    let daemon = Daemon::{
+      clock: @clock.epoch,
+      models: @model.Loader::new(home=@os.home(), cwd=book_root),
+      uuid: @uuid.generator(@rand.chacha8()),
+      process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
+      by_cwd: {},
+      by_id: {},
+      rqs: {},
+      httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+      port: 0,
+      events: @broadcast.Broadcast::new(),
+      serve: book_root,
+      conversations: @conversation.Manager::new(
+        home=book_root,
+        uuid=@uuid.generator(@rand.chacha8()),
+      ),
+      home: book_root,
+      pending_codex_auth: {},
+      mooncode_sessions: {},
+    }
+    let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+      "consumer_id": "test-runtime",
+    })
+    assert_true(mooncode_json_bool(result, "accepted", default=false))
+    let execution = mooncode_json_object_field_or_empty(result, "execution")
+    let tool_results = mooncode_json_array_items(execution, "tool_results")
+    assert_eq(tool_results.length(), 4)
+    assert_true(
+      execution.stringify().contains("MoonCode generated tool executed."),
+    )
+    let script_path = @pathx.join(
+      book_root, "tools/mooncode-generated/cmd-runtime-prompt/run.sh",
+    )
+    let readme_path = @pathx.join(
+      book_root, "tools/mooncode-generated/cmd-runtime-prompt/README.md",
+    )
+    assert_true(@fsx.exists(script_path))
+    assert_true(@fsx.exists(readme_path))
+    let package_results = mooncode_json_array_items(result, "package_results")
+    assert_eq(package_results.length(), 2)
+    assert_eq(
+      mooncode_json_string(package_results[0], "event", default=""),
+      "package_built",
+    )
+    assert_eq(
+      mooncode_json_string(package_results[1], "event", default=""),
+      "package_verified",
+    )
+    let manifest_path = @pathx.join(
+      book_root, "portable/app-tool/mooncode/session-runtime-prompt/package-cmd-runtime-prompt.json",
+    )
+    let index_path = @pathx.join(
+      book_root, "portable/app-tool/mooncode/session-runtime-prompt/index.json",
+    )
+    assert_true(@fsx.exists(manifest_path))
+    assert_true(@fsx.exists(index_path))
+    let manifest_text = @fsx.read_file(manifest_path)
+    assert_true(manifest_text.contains("mooncode-package-manifest"))
+    assert_true(manifest_text.contains("\"package_kind\""))
+    assert_true(manifest_text.contains("\"tool\""))
+    assert_true(
+      manifest_text.contains("\"source_promotion_status\": \"promoted\""),
+    )
+    assert_true(manifest_text.contains("\"promoted_source_count\": 2"))
+    assert_true(manifest_text.contains("\"sha256_base64\""))
+    assert_true(manifest_text.contains("\"promoted_path\""))
+    let promoted_script_path = @pathx.join(
+      book_root, "portable/app-tool/mooncode/session-runtime-prompt/sources/cmd-runtime-prompt/tools/mooncode-generated/cmd-runtime-prompt/run.sh",
+    )
+    let promoted_readme_path = @pathx.join(
+      book_root, "portable/app-tool/mooncode/session-runtime-prompt/sources/cmd-runtime-prompt/tools/mooncode-generated/cmd-runtime-prompt/README.md",
+    )
+    assert_true(@fsx.exists(promoted_script_path))
+    assert_true(@fsx.exists(promoted_readme_path))
+    assert_eq(@fsx.read_file(promoted_script_path), @fsx.read_file(script_path))
+    let package_log = @fsx.read_file(
+      mooncode_session_journal_path(book_root, session_id),
+    )
+    assert_true(package_log.contains("\"package_built\""))
+    assert_true(package_log.contains("\"package_verified\""))
+    let book_results = mooncode_json_array_items(result, "book_results")
+    assert_eq(book_results.length(), 1)
+    let book_result_record = book_results[0]
+    assert_eq(
+      mooncode_json_string(book_result_record, "protocol", default=""),
+      "moonbook.executable_event.v1",
+    )
+    assert_eq(
+      mooncode_json_string(book_result_record, "command_id", default=""),
+      command_id,
+    )
+    let result_id = mooncode_json_string(
+      book_result_record,
+      "result_id",
+      default="",
+    )
+    assert_true(result_id.contains("cmd-runtime-prompt"))
+    let book_result = mooncode_json_object_field_or_empty(
+      book_result_record, "book_result",
+    )
+    assert_eq(
+      mooncode_json_string(book_result, "result_id", default=""),
+      result_id,
+    )
+    assert_eq(mooncode_json_string(book_result, "task_id", default=""), "")
+    assert_true(
+      mooncode_json_bool(book_result, "requires_review", default=false),
+    )
+    assert_true(mooncode_json_bool(book_result, "notify_town", default=false))
+    assert_true(
+      book_result
+      .stringify()
+      .contains("tools/mooncode-generated/cmd-runtime-prompt/run.sh"),
+    )
+    let book_event = mooncode_json_object_field_or_empty(
+      book_result_record, "executable_book_event",
+    )
+    assert_eq(
+      mooncode_json_string(book_event, "command_id", default=""),
+      command_id,
+    )
+    assert_eq(
+      mooncode_json_string(book_event, "result_id", default=""),
+      result_id,
+    )
+    assert_eq(
+      mooncode_json_string(book_event, "event_type", default=""),
+      "review_required",
+    )
+    assert_true(!mooncode_json_bool(book_event, "accepted", default=true))
+    let result_path = @pathx.join(
+      book_root, "portable/app-tool/mooncode/session-runtime-prompt/book-result-cmd-runtime-prompt.json",
+    )
+    assert_true(@fsx.exists(result_path))
+    let book_result_log = @fsx.read_file(
+      mooncode_session_journal_path(book_root, session_id),
+    )
+    assert_true(book_result_log.contains("\"mooncode-book-result\""))
+    assert_true(book_result_log.contains("\"moonbook.executable_event.v1\""))
+    let events_log = @fsx.read_file(
+      mooncode_session_journal_path(book_root, session_id),
+    )
+    assert_true(events_log.contains("\"runtime.turn_started\""))
+    assert_true(events_log.contains("\"tool_result\""))
+    assert_true(events_log.contains("\"finish\""))
+    assert_true(events_log.contains("\"runtime.package_built\""))
+    assert_true(events_log.contains("\"runtime.package_verified\""))
+    assert_true(events_log.contains("\"runtime.turn_finished\""))
   })
-  assert_true(mooncode_json_bool(result, "accepted", default=false))
-  let execution = mooncode_json_object_field_or_empty(result, "execution")
-  let tool_results = mooncode_json_array_items(execution, "tool_results")
-  assert_eq(tool_results.length(), 4)
-  assert_true(
-    execution.stringify().contains("MoonCode generated tool executed."),
-  )
-  let script_path = @pathx.join(
-    book_root, "tools/mooncode-generated/cmd-runtime-prompt/run.sh",
-  )
-  let readme_path = @pathx.join(
-    book_root, "tools/mooncode-generated/cmd-runtime-prompt/README.md",
-  )
-  assert_true(@fsx.exists(script_path))
-  assert_true(@fsx.exists(readme_path))
-  let package_results = mooncode_json_array_items(result, "package_results")
-  assert_eq(package_results.length(), 2)
-  assert_eq(
-    mooncode_json_string(package_results[0], "event", default=""),
-    "package_built",
-  )
-  assert_eq(
-    mooncode_json_string(package_results[1], "event", default=""),
-    "package_verified",
-  )
-  let manifest_path = @pathx.join(
-    book_root, "portable/app-tool/mooncode/session-runtime-prompt/package-cmd-runtime-prompt.json",
-  )
-  let index_path = @pathx.join(
-    book_root, "portable/app-tool/mooncode/session-runtime-prompt/index.json",
-  )
-  assert_true(@fsx.exists(manifest_path))
-  assert_true(@fsx.exists(index_path))
-  let manifest_text = @fsx.read_file(manifest_path)
-  assert_true(manifest_text.contains("mooncode-package-manifest"))
-  assert_true(manifest_text.contains("\"package_kind\""))
-  assert_true(manifest_text.contains("\"tool\""))
-  assert_true(
-    manifest_text.contains("\"source_promotion_status\": \"promoted\""),
-  )
-  assert_true(manifest_text.contains("\"promoted_source_count\": 2"))
-  assert_true(manifest_text.contains("\"sha256_base64\""))
-  assert_true(manifest_text.contains("\"promoted_path\""))
-  let promoted_script_path = @pathx.join(
-    book_root, "portable/app-tool/mooncode/session-runtime-prompt/sources/cmd-runtime-prompt/tools/mooncode-generated/cmd-runtime-prompt/run.sh",
-  )
-  let promoted_readme_path = @pathx.join(
-    book_root, "portable/app-tool/mooncode/session-runtime-prompt/sources/cmd-runtime-prompt/tools/mooncode-generated/cmd-runtime-prompt/README.md",
-  )
-  assert_true(@fsx.exists(promoted_script_path))
-  assert_true(@fsx.exists(promoted_readme_path))
-  assert_eq(@fsx.read_file(promoted_script_path), @fsx.read_file(script_path))
-  let package_log = @fsx.read_file(
-    mooncode_session_journal_path(book_root, session_id),
-  )
-  assert_true(package_log.contains("\"package_built\""))
-  assert_true(package_log.contains("\"package_verified\""))
-  let book_results = mooncode_json_array_items(result, "book_results")
-  assert_eq(book_results.length(), 1)
-  let book_result_record = book_results[0]
-  assert_eq(
-    mooncode_json_string(book_result_record, "protocol", default=""),
-    "moonbook.executable_event.v1",
-  )
-  assert_eq(
-    mooncode_json_string(book_result_record, "command_id", default=""),
-    command_id,
-  )
-  let result_id = mooncode_json_string(
-    book_result_record,
-    "result_id",
-    default="",
-  )
-  assert_true(result_id.contains("cmd-runtime-prompt"))
-  let book_result = mooncode_json_object_field_or_empty(
-    book_result_record, "book_result",
-  )
-  assert_eq(
-    mooncode_json_string(book_result, "result_id", default=""),
-    result_id,
-  )
-  assert_eq(mooncode_json_string(book_result, "task_id", default=""), "")
-  assert_true(mooncode_json_bool(book_result, "requires_review", default=false))
-  assert_true(mooncode_json_bool(book_result, "notify_town", default=false))
-  assert_true(
-    book_result
-    .stringify()
-    .contains("tools/mooncode-generated/cmd-runtime-prompt/run.sh"),
-  )
-  let book_event = mooncode_json_object_field_or_empty(
-    book_result_record, "executable_book_event",
-  )
-  assert_eq(
-    mooncode_json_string(book_event, "command_id", default=""),
-    command_id,
-  )
-  assert_eq(
-    mooncode_json_string(book_event, "result_id", default=""),
-    result_id,
-  )
-  assert_eq(
-    mooncode_json_string(book_event, "event_type", default=""),
-    "review_required",
-  )
-  assert_true(!mooncode_json_bool(book_event, "accepted", default=true))
-  let result_path = @pathx.join(
-    book_root, "portable/app-tool/mooncode/session-runtime-prompt/book-result-cmd-runtime-prompt.json",
-  )
-  assert_true(@fsx.exists(result_path))
-  let book_result_log = @fsx.read_file(
-    mooncode_session_journal_path(book_root, session_id),
-  )
-  assert_true(book_result_log.contains("\"mooncode-book-result\""))
-  assert_true(book_result_log.contains("\"moonbook.executable_event.v1\""))
-  let events_log = @fsx.read_file(
-    mooncode_session_journal_path(book_root, session_id),
-  )
-  assert_true(events_log.contains("\"runtime.turn_started\""))
-  assert_true(events_log.contains("\"tool_result\""))
-  assert_true(events_log.contains("\"finish\""))
-  assert_true(events_log.contains("\"runtime.package_built\""))
-  assert_true(events_log.contains("\"runtime.package_verified\""))
-  assert_true(events_log.contains("\"runtime.turn_finished\""))
 }
 
 ///|
@@ -4123,82 +4179,83 @@ async test "mooncode native runtime turn emits run_tests proof" (t : @test.Test)
     "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": command_id },
   }
-  mooncode_append_session_journal(
-    book_root,
-    session_id,
-    mooncode_journal_command(),
-    {
-      "kind": "mooncode-command",
-      "protocol": mooncode_protocol_version(),
-      "session_id": session_id,
-      "command_id": command_id,
-      "created_at": @clock.Timestamp::from_ms(5L),
-      "command": command,
-    },
-  )
-  let daemon = Daemon::{
-    clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
-    uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
-    by_cwd: {},
-    by_id: {},
-    rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
-    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
-    port: 0,
-    events: @broadcast.Broadcast::new(),
-    serve: book_root,
-    conversations: @conversation.Manager::new(
-      home=book_root,
-      uuid=@uuid.generator(@rand.chacha8()),
-    ),
-    home: book_root,
-    pending_codex_auth: {},
-    mooncode_sessions: {},
-  }
-  let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
-    "consumer_id": "test-runtime",
+  mooncode_with_fixture_moonfort(book_root, async fn(_) {
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": command_id,
+        "created_at": @clock.Timestamp::from_ms(5L),
+        "command": command,
+      },
+    )
+    let daemon = Daemon::{
+      clock: @clock.epoch,
+      models: @model.Loader::new(home=@os.home(), cwd=book_root),
+      uuid: @uuid.generator(@rand.chacha8()),
+      process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
+      by_cwd: {},
+      by_id: {},
+      rqs: {},
+      httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+      port: 0,
+      events: @broadcast.Broadcast::new(),
+      serve: book_root,
+      conversations: @conversation.Manager::new(
+        home=book_root,
+        uuid=@uuid.generator(@rand.chacha8()),
+      ),
+      home: book_root,
+      pending_codex_auth: {},
+      mooncode_sessions: {},
+    }
+    let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+      "consumer_id": "test-runtime",
+    })
+    assert_true(mooncode_json_bool(result, "accepted", default=false))
+    let execution = mooncode_json_object_field_or_empty(result, "execution")
+    let tool_results = mooncode_json_array_items(execution, "tool_results")
+    assert_eq(tool_results.length(), 3)
+    assert_eq(
+      mooncode_json_string(tool_results[0], "tool", default=""),
+      "moon_cmd",
+    )
+    assert_eq(
+      mooncode_json_string(tool_results[1], "tool", default=""),
+      "moon_check",
+    )
+    let test_results = mooncode_json_array_items(execution, "test_results")
+    assert_eq(test_results.length(), 1)
+    assert_eq(
+      mooncode_json_string(test_results[0], "kind", default=""),
+      "test_result",
+    )
+    assert_eq(
+      mooncode_json_string(test_results[0], "test_status", default=""),
+      "passed",
+    )
+    assert_eq(mooncode_json_int(test_results[0], "exit_status", default=-1), 0)
+    assert_eq(
+      mooncode_json_string(
+        mooncode_json_object_field_or_empty(test_results[0], "command_packet"),
+        "command_id",
+        default="",
+      ),
+      command_id,
+    )
+    let events_log = @fsx.read_file(
+      mooncode_session_journal_path(book_root, session_id),
+    )
+    assert_true(events_log.contains("\"moon_cmd.finished\""))
+    assert_true(events_log.contains("\"moon_check.finished\""))
+    assert_true(events_log.contains("\"test_result\""))
+    assert_true(events_log.contains("\"test_status\":\"passed\""))
+    assert_true(events_log.contains("\"runtime.turn_finished\""))
   })
-  assert_true(mooncode_json_bool(result, "accepted", default=false))
-  let execution = mooncode_json_object_field_or_empty(result, "execution")
-  let tool_results = mooncode_json_array_items(execution, "tool_results")
-  assert_eq(tool_results.length(), 3)
-  assert_eq(
-    mooncode_json_string(tool_results[0], "tool", default=""),
-    "moon_cmd",
-  )
-  assert_eq(
-    mooncode_json_string(tool_results[1], "tool", default=""),
-    "moon_check",
-  )
-  let test_results = mooncode_json_array_items(execution, "test_results")
-  assert_eq(test_results.length(), 1)
-  assert_eq(
-    mooncode_json_string(test_results[0], "kind", default=""),
-    "test_result",
-  )
-  assert_eq(
-    mooncode_json_string(test_results[0], "test_status", default=""),
-    "passed",
-  )
-  assert_eq(mooncode_json_int(test_results[0], "exit_status", default=-1), 0)
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(test_results[0], "command_packet"),
-      "command_id",
-      default="",
-    ),
-    command_id,
-  )
-  let events_log = @fsx.read_file(
-    mooncode_session_journal_path(book_root, session_id),
-  )
-  assert_true(events_log.contains("\"moon_cmd.finished\""))
-  assert_true(events_log.contains("\"moon_check.finished\""))
-  assert_true(events_log.contains("\"test_result\""))
-  assert_true(events_log.contains("\"test_status\":\"passed\""))
-  assert_true(events_log.contains("\"runtime.turn_finished\""))
 }
 
 ///|
@@ -4226,89 +4283,90 @@ async test "mooncode native runtime turn emits run_build proof" (t : @test.Test)
     "model": "codex/gpt-5.6-sol",
     "packet": { "command_id": command_id },
   }
-  mooncode_append_session_journal(
-    book_root,
-    session_id,
-    mooncode_journal_command(),
-    {
-      "kind": "mooncode-command",
-      "protocol": mooncode_protocol_version(),
-      "session_id": session_id,
-      "command_id": command_id,
-      "created_at": @clock.Timestamp::from_ms(5L),
-      "command": command,
-    },
-  )
-  let daemon = Daemon::{
-    clock: @clock.epoch,
-    models: @model.Loader::new(home=@os.home(), cwd=book_root),
-    uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
-    by_cwd: {},
-    by_id: {},
-    rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
-    httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
-    port: 0,
-    events: @broadcast.Broadcast::new(),
-    serve: book_root,
-    conversations: @conversation.Manager::new(
-      home=book_root,
-      uuid=@uuid.generator(@rand.chacha8()),
-    ),
-    home: book_root,
-    pending_codex_auth: {},
-    mooncode_sessions: {},
-  }
-  let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
-    "consumer_id": "test-runtime",
+  mooncode_with_fixture_moonfort(book_root, async fn(_) {
+    mooncode_append_session_journal(
+      book_root,
+      session_id,
+      mooncode_journal_command(),
+      {
+        "kind": "mooncode-command",
+        "protocol": mooncode_protocol_version(),
+        "session_id": session_id,
+        "command_id": command_id,
+        "created_at": @clock.Timestamp::from_ms(5L),
+        "command": command,
+      },
+    )
+    let daemon = Daemon::{
+      clock: @clock.epoch,
+      models: @model.Loader::new(home=@os.home(), cwd=book_root),
+      uuid: @uuid.generator(@rand.chacha8()),
+      process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
+      by_cwd: {},
+      by_id: {},
+      rqs: {},
+      httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
+      port: 0,
+      events: @broadcast.Broadcast::new(),
+      serve: book_root,
+      conversations: @conversation.Manager::new(
+        home=book_root,
+        uuid=@uuid.generator(@rand.chacha8()),
+      ),
+      home: book_root,
+      pending_codex_auth: {},
+      mooncode_sessions: {},
+    }
+    let result = daemon.mooncode_runtime_turn_execute(session_id, book_root, {
+      "consumer_id": "test-runtime",
+    })
+    assert_true(mooncode_json_bool(result, "accepted", default=false))
+    let execution = mooncode_json_object_field_or_empty(result, "execution")
+    let tool_results = mooncode_json_array_items(execution, "tool_results")
+    assert_eq(tool_results.length(), 3)
+    assert_eq(
+      mooncode_json_string(tool_results[0], "tool", default=""),
+      "moon_cmd",
+    )
+    let moon_cmd_metadata = mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(tool_results[0], "result"),
+      "metadata",
+    )
+    assert_eq(
+      mooncode_json_string(moon_cmd_metadata, "moon_command", default=""),
+      "build",
+    )
+    assert_eq(
+      mooncode_json_string(tool_results[1], "tool", default=""),
+      "moon_check",
+    )
+    let test_results = mooncode_json_array_items(execution, "test_results")
+    assert_eq(test_results.length(), 1)
+    assert_eq(
+      mooncode_json_string(test_results[0], "kind", default=""),
+      "test_result",
+    )
+    assert_eq(
+      mooncode_json_string(test_results[0], "test_status", default=""),
+      "passed",
+    )
+    assert_eq(mooncode_json_int(test_results[0], "exit_status", default=-1), 0)
+    assert_eq(
+      mooncode_json_string(
+        mooncode_json_object_field_or_empty(test_results[0], "command_packet"),
+        "command_id",
+        default="",
+      ),
+      command_id,
+    )
+    let events_log = @fsx.read_file(
+      mooncode_session_journal_path(book_root, session_id),
+    )
+    assert_true(events_log.contains("\"moon_cmd.finished\""))
+    assert_true(events_log.contains("\"moon_command\":\"build\""))
+    assert_true(events_log.contains("\"moon_check.finished\""))
+    assert_true(events_log.contains("\"test_result\""))
+    assert_true(events_log.contains("\"test_status\":\"passed\""))
+    assert_true(events_log.contains("\"runtime.turn_finished\""))
   })
-  assert_true(mooncode_json_bool(result, "accepted", default=false))
-  let execution = mooncode_json_object_field_or_empty(result, "execution")
-  let tool_results = mooncode_json_array_items(execution, "tool_results")
-  assert_eq(tool_results.length(), 3)
-  assert_eq(
-    mooncode_json_string(tool_results[0], "tool", default=""),
-    "moon_cmd",
-  )
-  let moon_cmd_metadata = mooncode_json_object_field_or_empty(
-    mooncode_json_object_field_or_empty(tool_results[0], "result"),
-    "metadata",
-  )
-  assert_eq(
-    mooncode_json_string(moon_cmd_metadata, "moon_command", default=""),
-    "build",
-  )
-  assert_eq(
-    mooncode_json_string(tool_results[1], "tool", default=""),
-    "moon_check",
-  )
-  let test_results = mooncode_json_array_items(execution, "test_results")
-  assert_eq(test_results.length(), 1)
-  assert_eq(
-    mooncode_json_string(test_results[0], "kind", default=""),
-    "test_result",
-  )
-  assert_eq(
-    mooncode_json_string(test_results[0], "test_status", default=""),
-    "passed",
-  )
-  assert_eq(mooncode_json_int(test_results[0], "exit_status", default=-1), 0)
-  assert_eq(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(test_results[0], "command_packet"),
-      "command_id",
-      default="",
-    ),
-    command_id,
-  )
-  let events_log = @fsx.read_file(
-    mooncode_session_journal_path(book_root, session_id),
-  )
-  assert_true(events_log.contains("\"moon_cmd.finished\""))
-  assert_true(events_log.contains("\"moon_command\":\"build\""))
-  assert_true(events_log.contains("\"moon_check.finished\""))
-  assert_true(events_log.contains("\"test_result\""))
-  assert_true(events_log.contains("\"test_status\":\"passed\""))
-  assert_true(events_log.contains("\"runtime.turn_finished\""))
 }

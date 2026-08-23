@@ -61,12 +61,22 @@ fn acp_patch_receipt_contract() -> String {
 }
 
 ///|
-async fn acp_git_stdout(cwd : String, args : Array[String]) -> String? {
-  let process = @spawn.spawn("git", args.map(fn(arg) { arg }), cwd~) catch {
+priv struct AcpProcessResult {
+  status : Int
+  stdout : String
+  stderr : String
+}
+
+///|
+async fn acp_git_stdout(
+  cwd : String,
+  operation : @trusted_host_process.GitOperation,
+) -> String? {
+  let process = @trusted_host_process.run_git(cwd, operation) catch {
     _ => return None
   }
-  if process.status == 0 {
-    Some(process.stdout.trim().to_owned())
+  if process.status() == 0 {
+    Some(process.stdout().trim().to_owned())
   } else {
     None
   }
@@ -74,22 +84,23 @@ async fn acp_git_stdout(cwd : String, args : Array[String]) -> String? {
 
 ///|
 async fn acp_git_head(cwd : String) -> String {
-  acp_git_stdout(cwd, ["rev-parse", "HEAD"]).unwrap_or("")
+  acp_git_stdout(cwd, @trusted_host_process.Head).unwrap_or("")
 }
 
 ///|
 async fn acp_git_status(cwd : String) -> String {
-  acp_git_stdout(cwd, ["status", "--short", "--untracked-files=all"]).unwrap_or(
-    "",
-  )
+  acp_git_stdout(cwd, @trusted_host_process.StatusShort).unwrap_or("")
 }
 
 ///|
 async fn acp_git_diff_check_status(cwd : String) -> String {
-  let process = @spawn.spawn("git", ["diff", "--check"], cwd~) catch {
+  let process = @trusted_host_process.run_git(
+    cwd,
+    @trusted_host_process.DiffCheck,
+  ) catch {
     _ => return "unavailable"
   }
-  if process.status == 0 {
+  if process.status() == 0 {
     "passed"
   } else {
     "failed"
@@ -105,7 +116,7 @@ async fn acp_git_commit_message(
   if base_head.is_blank() || final_head.is_blank() || base_head == final_head {
     return ""
   }
-  acp_git_stdout(cwd, ["log", "-1", "--pretty=%s"]).unwrap_or("")
+  acp_git_stdout(cwd, @trusted_host_process.CommitSubject).unwrap_or("")
 }
 
 ///|
@@ -155,7 +166,11 @@ async fn acp_changed_files_between_heads(
   if base_head.is_blank() || final_head.is_blank() || base_head == final_head {
     return []
   }
-  match acp_git_stdout(cwd, ["diff", "--name-only", base_head, final_head]) {
+  match
+    acp_git_stdout(
+      cwd,
+      @trusted_host_process.DiffNamesBetween(base=base_head, target=final_head),
+    ) {
     Some(output) => {
       let files : Array[String] = []
       for line in output.split("\n") {
@@ -347,10 +362,13 @@ fn acp_filter_new_non_target_files(
 
 ///|
 async fn acp_restore_tracked_files(cwd : String, files : Array[String]) -> Unit {
-  for file in files {
+  if !files.is_empty() {
     ignore(
-      @spawn.spawn("git", ["restore", "--source=HEAD", "--", file], cwd~) catch {
-        _ => continue
+      @trusted_host_process.run_git(
+        cwd,
+        @trusted_host_process.RestoreHeadFiles(files),
+      ) catch {
+        _ => return
       },
     )
   }
@@ -379,33 +397,28 @@ async fn acp_git_add_and_commit(
   if files.is_empty() {
     return false
   }
-  let add_args = ["add", "--"]
-  for file in files {
-    add_args.push(file)
-  }
-  let add = @spawn.spawn("git", add_args.map(fn(arg) { arg }), cwd~) catch {
-    _ => return false
-  }
-  if add.status != 0 {
-    return false
-  }
-  let commit = @spawn.spawn(
-    "git",
-    [
-      "-c", "user.name=MoonClaw ACP", "-c", "user.email=moonclaw-acp@local", "commit",
-      "-m", message,
-    ],
-    cwd~,
+  let add = @trusted_host_process.run_git(
+    cwd,
+    @trusted_host_process.AddFiles(files),
   ) catch {
     _ => return false
   }
-  commit.status == 0
+  if add.status() != 0 {
+    return false
+  }
+  let commit = @trusted_host_process.run_git(
+    cwd,
+    @trusted_host_process.Commit(message),
+  ) catch {
+    _ => return false
+  }
+  commit.status() == 0
 }
 
 ///|
 async fn acp_commit_repair_owned_files_after_validation(
   plan : AcpLaunchPlan,
-  process : @spawn.CompletedProcess,
+  process : AcpProcessResult,
   linkage : Json,
   base_status : String,
 ) -> Unit {
@@ -436,7 +449,7 @@ async fn acp_commit_repair_owned_files_after_validation(
 
 ///|
 fn acp_patch_receipt_result_decision(
-  process : @spawn.CompletedProcess,
+  process : AcpProcessResult,
   changed_files : Array[String],
   diff_check_status : String,
   commit_status : String,
@@ -473,7 +486,7 @@ fn acp_patch_receipt_commit_status(
 async fn acp_patch_receipt(
   plan : AcpLaunchPlan,
   request : AcpRunRequest,
-  process : @spawn.CompletedProcess,
+  process : AcpProcessResult,
   base_head : String,
   base_status : String,
   final_head : String,
@@ -534,7 +547,7 @@ async fn acp_patch_receipt(
 }
 
 ///|
-fn codex_output_summary(process : @spawn.CompletedProcess) -> String {
+fn codex_output_summary(process : AcpProcessResult) -> String {
   let stdout = process.stdout.trim().to_owned()
   let stderr = process.stderr.trim().to_owned()
   process_output_summary(stdout, stderr, process.status)
@@ -564,60 +577,8 @@ pub async fn execute_launch_plan(
   plan : AcpLaunchPlan,
   request : AcpRunRequest,
 ) -> Result[Json, String] {
-  if plan.backend == "codex" &&
-    plan.command == Some("codex") &&
-    !@codex.credentials_exist() {
-    return Err(
-      "Codex credentials are not available. Authenticate first with the Codex OAuth flow.",
-    )
-  }
-  let command = match prepare_launch_command(plan, request) {
-    Ok(command) => command
-    Err(error) => return Err(error)
-  }
-  let base_head = acp_git_head(plan.cwd)
-  let base_status = acp_git_status(plan.cwd)
-  let process = @spawn.spawn(
-    command.command,
-    command.args.map(fn(arg) { arg }),
-    cwd=plan.cwd,
-    env=command.env,
-  ) catch {
-    error => return Err("Failed to start ACP backend: \{error}")
-  }
-  let linkage = request.metadata.unwrap_or({})
-  acp_commit_repair_owned_files_after_validation(
-    plan, process, linkage, base_status,
+  ignore(request)
+  Err(
+    "ACP backend execution is disabled for target \{plan.target_id}: a MoonFort ExecutionSandbox grant is required",
   )
-  let final_head = acp_git_head(plan.cwd)
-  let final_status = acp_git_status(plan.cwd)
-  let patch_receipt = acp_patch_receipt(
-    plan, request, process, base_head, base_status, final_head, final_status,
-  )
-  let result : Json = {
-    "backend": plan.backend,
-    "target_id": plan.target_id,
-    "session_id": plan.session_id,
-    "session_key": plan.session_key,
-    "cwd": plan.cwd,
-    "workspace": plan.workspace,
-    "command": command.command,
-    "args": command.args,
-    "status": if process.status == 0 {
-      "completed"
-    } else {
-      "failed"
-    },
-    "exit_status": process.status,
-    "stdout": process.stdout,
-    "stderr": process.stderr,
-    "elapsed_ms": process.elapsed,
-    "content": codex_output_summary(process),
-    "patch_receipt": patch_receipt,
-  }
-  if process.status == 0 {
-    Ok(result)
-  } else {
-    Err(codex_output_summary(process))
-  }
 }

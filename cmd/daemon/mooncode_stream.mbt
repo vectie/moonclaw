@@ -132,6 +132,11 @@ async fn Daemon::mooncode_stream(
       },
     })
   }
+  let resume_cursor = mooncode_request_string(r, "resume_cursor", default="")
+  if resume_cursor != "" {
+    self.mooncode_stream_resume(session_id, book_root, resume_cursor, r, w)
+    return
+  }
   let since_text = mooncode_request_string(r, "since", default="")
   let since = mooncode_stream_query_cursor(since_text) catch {
     _ =>

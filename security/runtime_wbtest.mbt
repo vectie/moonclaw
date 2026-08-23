@@ -76,6 +76,35 @@ async test "security runtime tracks approval lifecycle" {
 }
 
 ///|
+async test "approval consumption returns persisted immutable context" {
+  @fsx.with_temporary_directory("security-runtime-XXXXXX", async fn(dir) {
+    let runtime = SecurityRuntime::new(home=dir, cwd=dir)
+    ignore(
+      runtime.request_approval(
+        "tok-context",
+        "command.execute",
+        "target",
+        "scope",
+        10,
+        context={ "profile_digest": "abc123" },
+      ),
+    )
+    let reloaded = SecurityRuntime::new(home=dir, cwd=dir)
+    ignore(reloaded.approve_token("tok-context", 11))
+    guard reloaded.consume_approval_record("command.execute", "target", "scope")
+      is Some(record) else {
+      fail("expected an approved record")
+    }
+    json_inspect(record.context, content=[{ "profile_digest": "abc123" }])
+    inspect(
+      reloaded.consume_approval_record("command.execute", "target", "scope")
+      is None,
+      content="true",
+    )
+  })
+}
+
+///|
 test "security runtime command approval helpers are stable" {
   let assessment = assess_shell_command(
     "echo hello > out.txt",

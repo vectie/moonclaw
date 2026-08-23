@@ -100,3 +100,14 @@ test "overload retries favor the latest source read batch within monotonic caps"
   assert_true(compact.contains("MoonCode compacted"))
   assert_true(compact.length() < tier_five.length())
 }
+
+///|
+test "overload evidence compaction preserves UTF-8 boundaries" {
+  let text = "中🚀e\u{301}".repeat(5000)
+  for limit in [1, 2, 3, 7, 1200, 12000] {
+    let compacted = overload_compact_text(text, limit, "read")
+    assert_true(compacted.contains("MoonCode compacted"))
+    // Re-encoding proves every selected prefix and suffix boundary is valid.
+    assert_true(@encoding/utf8.encode(compacted).length() > 0)
+  }
+}

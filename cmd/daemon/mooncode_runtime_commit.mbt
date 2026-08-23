@@ -9,9 +9,9 @@ async fn mooncode_runtime_turn_commit_results(
   let message = mooncode_runtime_turn_commit_message(command, command_id)
   let status = mooncode_runtime_turn_git(
     book_root,
-    mooncode_runtime_turn_commit_status_args(),
+    @trusted_host_process.StatusProductPorcelain,
     timeout_ms=10000,
-    max_output_chars=12000,
+    max_output_chars=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
   if !mooncode_json_bool(status, "ok", default=false) {
     return [
@@ -52,9 +52,9 @@ async fn mooncode_runtime_turn_commit_results(
   }
   let add = mooncode_runtime_turn_git(
     book_root,
-    mooncode_runtime_turn_commit_add_args(),
+    @trusted_host_process.AddProductAll,
     timeout_ms=10000,
-    max_output_chars=12000,
+    max_output_chars=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
   if !mooncode_json_bool(add, "ok", default=false) {
     return [
@@ -74,7 +74,7 @@ async fn mooncode_runtime_turn_commit_results(
   }
   let commit = mooncode_runtime_turn_git(
     book_root,
-    ["commit", "-m", message],
+    @trusted_host_process.Commit(message),
     timeout_ms=30000,
     max_output_chars=20000,
   )
@@ -100,7 +100,7 @@ async fn mooncode_runtime_turn_commit_results(
   }
   let head = mooncode_runtime_turn_git(
     book_root,
-    ["rev-parse", "HEAD"],
+    @trusted_host_process.Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -173,35 +173,21 @@ async fn mooncode_runtime_turn_commit_results(
 }
 
 ///|
-fn mooncode_runtime_turn_commit_status_args() -> Array[StringView] {
-  ["status", "--porcelain", "--", ".", ":(exclude).moonsuite", ":(exclude).tmp"]
-}
-
-///|
-fn mooncode_runtime_turn_commit_add_args() -> Array[StringView] {
-  ["add", "-A", "--", ".", ":(exclude).moonsuite", ":(exclude).tmp"]
-}
-
-///|
 async fn mooncode_runtime_commit_changed_paths(
   book_root : String,
   commit_sha : String,
 ) -> Array[String] {
-  let process = @spawn.spawn(
-    "git",
-    [
-      "diff-tree", "--root", "--no-commit-id", "--name-only", "-r", "-z", commit_sha,
-      "--", ".", ":(exclude).moonsuite", ":(exclude).tmp",
-    ],
-    timeout=10000,
-    cwd=book_root,
+  let process = @trusted_host_process.run_git(
+    book_root,
+    @trusted_host_process.DiffTree(commit_sha),
+    timeout_ms=10000,
   ) catch {
     _ => return []
   }
-  if process.status != 0 {
+  if process.status() != 0 {
     []
   } else {
-    mooncode_runtime_commit_nul_paths(process.stdout)
+    mooncode_runtime_commit_nul_paths(process.stdout())
   }
 }
 
@@ -372,11 +358,11 @@ fn mooncode_runtime_turn_commit_event(
 ///|
 async fn mooncode_runtime_turn_git(
   book_root : String,
-  args : Array[StringView],
+  operation : @trusted_host_process.GitOperation,
   timeout_ms~ : Int,
   max_output_chars~ : Int,
 ) -> Json {
-  let process = @spawn.spawn("git", args, timeout=timeout_ms, cwd=book_root) catch {
+  let process = @trusted_host_process.run_git(book_root, operation, timeout_ms~) catch {
     error =>
       return {
         "ok": false,
@@ -386,17 +372,17 @@ async fn mooncode_runtime_turn_git(
       }
   }
   let capped = mooncode_cap_tool_output(
-    process.stdout + process.stderr,
+    process.stdout() + process.stderr(),
     max_output_chars,
   )
   {
-    "ok": process.status == 0,
-    "status": process.status,
-    "elapsed_ms": process.elapsed,
-    "message": if process.status == 0 {
+    "ok": process.status() == 0,
+    "status": process.status(),
+    "elapsed_ms": process.elapsed(),
+    "message": if process.status() == 0 {
       "git exited 0"
     } else {
-      "git exited \{process.status}"
+      "git exited \{process.status()}"
     },
     "output": mooncode_json_string(capped, "output", default=""),
     "truncated": mooncode_json_bool(capped, "truncated", default=false),

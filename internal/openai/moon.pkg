@@ -9,6 +9,7 @@ import {
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/openai/responses",
   "moonbitlang/core/json",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/string",
   "moonbitlang/core/test",
 }

@@ -283,41 +283,11 @@ async fn run_provider_task_stdout(
   extra_args : Array[String],
   context : String,
 ) -> Result[String, String] {
-  let protocol_args = match
-    provider_metadata_string_array(
-      command.provider.metadata,
-      "task_args_prefix",
-    ) {
-    [] => ["wiki", "book"]
-    values => values
-  }
-  let arguments : Array[String] = [
-    ..command.args,
-    ..protocol_args,
-    subcommand,
-    command.workspace_root,
-    ..extra_args,
-  ]
-  let process = @spawn.spawn(
-    command.command,
-    arguments.map(fn(arg) { arg }),
-    cwd?=command.cwd.map(fn(value) { value }),
-  ) catch {
-    error => return Err("Failed to launch provider task \{context}: \{error}")
-  }
-  if process.status != 0 {
-    let stderr = process.stderr.trim().to_owned()
-    let stdout = process.stdout.trim().to_owned()
-    let reason = if !stderr.is_blank() {
-      stderr
-    } else if !stdout.is_blank() {
-      stdout
-    } else {
-      "exit status \{process.status}"
-    }
-    return Err("Provider task \{context} failed: \{reason}")
-  }
-  Ok(process.stdout)
+  ignore(subcommand)
+  ignore(extra_args)
+  Err(
+    "Provider task \{context} execution is disabled for target \{command.provider.name}: a MoonFort ExecutionSandbox grant is required",
+  )
 }
 
 ///|

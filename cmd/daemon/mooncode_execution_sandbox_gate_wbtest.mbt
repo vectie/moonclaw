@@ -180,8 +180,10 @@ async test "MoonCode moon_check pairs missing-config refusal with configured gra
         mooncode_json_string(metadata, "approval_plan_digest", default=""),
         digest,
       )
+      assert_false(metadata.stringify().contains("audit_path"))
+      let run_id = mooncode_json_string(metadata, "run_id", default="")
       assert_true(
-        @fsx.exists(mooncode_json_string(metadata, "audit_path", default="")),
+        @fsx.exists(@pathx.join(config.receipt_root, "\{run_id}.json")),
       )
       let command = mooncode_json_array_items(
         mooncode_json_object_field_or_empty(capture, "grant"),

@@ -13,6 +13,15 @@ import {
 // Errors
 
 // Types and methods
+pub struct CompileResult {
+  messages : Array[@openai.ChatCompletionMessageParam]
+  origin_token_count : Int
+  final_token_count : Int
+  redacted_tool_results : Int
+  compacted_messages : Int
+  within_budget : Bool
+}
+
 pub struct PruneResult {
   pruned_ids : Array[@uuid.Uuid]
   origin_token_count : Int
@@ -21,6 +30,7 @@ pub struct PruneResult {
 
 type Pruner
 pub async fn Pruner::calculate_pruning(Self, @conversation.Conversation, tools? : Array[@openai.ChatCompletionToolParam]) -> PruneResult
+pub async fn Pruner::compile_messages(Self, Array[@openai.ChatCompletionMessageParam], tools? : Array[@openai.ChatCompletionToolParam]) -> CompileResult
 pub fn Pruner::new(safe_zone_tokens~ : Int, logger~ : @pino.Logger) -> Self raise
 pub async fn Pruner::prune_messages(Self, Array[@openai.ChatCompletionMessageParam], tools? : Array[@openai.ChatCompletionToolParam]) -> Unit
 

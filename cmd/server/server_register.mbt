@@ -34,9 +34,14 @@ async fn RegisterInfo::register(
     web_search,
     model,
   }
-  let (r, b) = @httpx.post_json(
+  let (r, b) = @http.post(
     "http://\{register.host}:\{register.port}/v1/task/register",
     req.to_json(),
+    headers={
+      "X-MoonClaw-Worker-Registration-Instance": register.instance_id,
+      "X-MoonClaw-Worker-Registration-Token": register.token,
+      "Content-Type": "application/json",
+    },
   )
   guard r.code is (200..=299) else {
     raise json_error(500, "InternalServerError", {

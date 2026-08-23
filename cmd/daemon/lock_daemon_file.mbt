@@ -60,9 +60,11 @@ pub async fn lock_daemon_file(home~ : StringView) -> @fs.File? {
   )
   if !request_shutdown(old.pid, old.port) {
     logger.error("Failed to send shutdown request to older daemon.")
-    @spawn.kill(old.pid, @signal.sigkill) catch {
+    @trusted_host_process.terminate_stale_daemon(old.pid) catch {
       error => {
-        logger.error("Failed to kill older daemon (pid=\{old.pid}): \{error}")
+        logger.error(
+          "Failed to kill older daemon (pid=\{old.pid}): \{Repr(error)}",
+        )
         return None
       }
     }

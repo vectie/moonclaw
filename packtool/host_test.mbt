@@ -151,7 +151,7 @@ fn installed_fixture_policy() -> InvocationPolicy {
 }
 
 ///|
-async test "installed pack workflow is intaken executed and durable after reload" {
+async test "installed pack workflow refuses native execution without a sandbox adapter" {
   @fsx.with_temporary_directory("packtool-installed-host-XXXXXX", dir => {
     let source = @pathx.join(dir, "source")
     let workspace = @pathx.join(dir, "workspace")
@@ -170,42 +170,20 @@ async test "installed pack workflow is intaken executed and durable after reload
       clock.val = clock.val + 1
       clock.val
     }
-    let hosted = run_installed_command_workflow(
-      workspace~,
-      pack_id="fixture-host",
-      workflow_id="daily",
-      run_id="run-installed-1",
-      policy=installed_fixture_policy(),
-      now~,
-    )
-    assert_true(hosted.execution.run.status is Succeeded)
-    guard hosted.execution.outputs.get("acquire")
-      is Some({ "value": Number(acquired, ..), .. }) else {
-      fail("expected acquired command output")
+    try
+      run_installed_command_workflow(
+        workspace~,
+        pack_id="fixture-host",
+        workflow_id="daily",
+        run_id="run-installed-1",
+        policy=installed_fixture_policy(),
+        now~,
+      )
+    catch {
+      error =>
+        assert_true("\{error}".contains("requires an explicit sandbox adapter"))
+    } noraise {
+      _ => fail("installed native command unexpectedly executed on the host")
     }
-    assert_eq(acquired.to_int(), 41)
-    guard hosted.execution.outputs.get("transform")
-      is Some({ "value": Number(value, ..), .. }) else {
-      fail("expected transformed output")
-    }
-    assert_eq(value.to_int(), 42)
-
-    let reloaded = @job.RuntimeManager::new(
-      root=@job.moonclaw_jobs_root(workspace),
-    )
-    reloaded.load()
-    let job_id = hosted.intake.definition.id
-    let workflow_id = hosted.intake.workflow.id
-    assert_true(reloaded.store().get_definition(job_id) is Some(_))
-    assert_true(reloaded.store().get_workflow(workflow_id) is Some(_))
-    guard reloaded.store().get_run("run-installed-1") is Some(run) else {
-      fail("expected durable installed workflow run")
-    }
-    assert_true(run.status is Succeeded)
-    assert_eq(reloaded.store().list_step_runs(run.id).length(), 2)
-    guard reloaded.checkpoints().get(job_id) is Some(checkpoint) else {
-      fail("expected durable installed workflow checkpoint")
-    }
-    assert_true(checkpoint.last_success_at is Some(_))
   })
 }

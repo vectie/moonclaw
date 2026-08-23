@@ -157,9 +157,12 @@ fn overload_recent_read_tool_ids(
 /// Prefer the active source batch over older evidence without letting it defeat
 /// stronger overload tiers. Even the emergency tier retains enough head/tail
 /// context to identify the file and current edit site.
+const OVERLOAD_TIER_ONE_RECENT_READ_CHARS : Int = 12000
+
+///|
 fn overload_recent_read_evidence_limit(tier : Int) -> Int {
   match tier {
-    1 => 12000
+    1 => OVERLOAD_TIER_ONE_RECENT_READ_CHARS
     2 => 8000
     3 => 6000
     4 => 4000
@@ -293,10 +296,52 @@ fn overload_compact_text(
   }
   let head_size = limit * 2 / 3
   let tail_size = limit - head_size
-  let omitted = text.length() - head_size - tail_size
-  text[:head_size].to_owned() +
+  let head = openai_utf8_prefix_within(text, head_size)
+  let tail = openai_utf8_suffix_within(text, tail_size)
+  let omitted = text.length() - head.length() - tail.length()
+  head +
   "\n...[MoonCode compacted \{omitted} chars of previously consumed `\{tool_name}` evidence for an overloaded-provider retry; complete bytes remain in the durable journal]...\n" +
-  text[text.length() - tail_size:].to_owned()
+  tail
+}
+
+///|
+fn openai_utf8_prefix_within(text : String, limit : Int) -> String {
+  if limit <= 0 {
+    return ""
+  }
+  let bytes = @encoding/utf8.encode(text)
+  if bytes.length() <= limit {
+    return text
+  }
+  let mut end = limit.min(bytes.length())
+  while end > 0 {
+    let decoded = Some(@encoding/utf8.decode(bytes[:end])) catch { _ => None }
+    match decoded {
+      Some(value) => return value
+      None => end -= 1
+    }
+  }
+  ""
+}
+
+///|
+fn openai_utf8_suffix_within(text : String, limit : Int) -> String {
+  if limit <= 0 {
+    return ""
+  }
+  let bytes = @encoding/utf8.encode(text)
+  if bytes.length() <= limit {
+    return text
+  }
+  let mut start = (bytes.length() - limit).max(0)
+  while start < bytes.length() {
+    let decoded = Some(@encoding/utf8.decode(bytes[start:])) catch { _ => None }
+    match decoded {
+      Some(value) => return value
+      None => start += 1
+    }
+  }
+  ""
 }
 
 ///|

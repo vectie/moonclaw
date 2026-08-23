@@ -2,10 +2,13 @@
 async fn mooncode_native_eval_harness_report(
   session_id : String,
   now~ : @clock.Timestamp,
+  fixture_book_root? : String = "",
 ) -> Json {
-  let fixture_root = @fsx.mkdtemp(
-    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-eval-XXXXXX"),
-  )
+  let fixture_root = match mooncode_fixture_sandbox_config(fixture_book_root) {
+    Some(_) => fixture_book_root
+    None =>
+      @fsx.mkdtemp(@pathx.join(@os.tmpdir(), "moonclaw-mooncode-eval-XXXXXX"))
+  }
   mooncode_prepare_eval_fixture(fixture_root)
   let write_case = mooncode_eval_tool_case(
     session_id,
@@ -231,8 +234,8 @@ async fn mooncode_native_eval_harness_report(
 async fn mooncode_prepare_eval_fixture(root : String) -> Unit {
   @fsx.make_directory(root, recursive=true, exists_ok=true)
   @fsx.write_to_file(
-    @pathx.join(root, "moon.mod.json"),
-    "{\n  \"name\": \"mooncode/eval_fixture\",\n  \"version\": \"0.0.1\",\n  \"deps\": {},\n  \"preferred-target\": \"native\"\n}\n",
+    @pathx.join(root, "moon.mod"),
+    "name = \"mooncode/eval_fixture\"\n\noptions(\"preferred-target\": \"native\")\n",
   )
   @fsx.write_to_file(@pathx.join(root, "moon.pkg"), "")
   @fsx.write_to_file(
@@ -255,17 +258,23 @@ async fn mooncode_eval_tool_case(
   expected_kind? : String = "",
   expected_detail~ : String,
 ) -> Json {
+  let body : Json = {
+    "protocol": mooncode_protocol_version(),
+    "session_id": session_id,
+    "book_root": fixture_root,
+    "tool": tool,
+    "command_id": command_id,
+    "arguments": arguments,
+  }
+  let body = match mooncode_fixture_sandbox_config(fixture_root) {
+    Some(config) =>
+      mooncode_fixture_authorized_tool_body(config, fixture_root, body)
+    None => body
+  }
   let execution = mooncode_execute_tool_call(
     session_id,
     fixture_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": session_id,
-      "book_root": fixture_root,
-      "tool": tool,
-      "command_id": command_id,
-      "arguments": arguments,
-    },
+    body,
     now~,
   )
   let accepted = mooncode_json_bool(execution, "accepted", default=false)
@@ -364,10 +373,16 @@ async test "mooncode native eval harness proves tools and file edits" (
   t : @test.Test,
 ) {
   ignore(t)
-  let report = mooncode_native_eval_harness_report(
-    "session-eval",
-    now=@clock.Timestamp::from_ms(99L),
+  let fixture_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-eval-test-XXXXXX"),
   )
+  let report = mooncode_with_fixture_moonfort(fixture_root, async fn(_) {
+    mooncode_native_eval_harness_report(
+      "session-eval",
+      fixture_book_root=fixture_root,
+      now=@clock.Timestamp::from_ms(99L),
+    )
+  })
   assert_eq(mooncode_json_string(report, "status", default=""), "passed")
   let harnesses = mooncode_json_array_items(report, "harnesses")
   assert_eq(harnesses.length(), 2)

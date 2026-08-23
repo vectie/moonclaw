@@ -37,7 +37,7 @@ async test "resolve_robot_target_config reads generic target from moonclaw confi
 }
 
 ///|
-async test "analysis executor routes robot.dds through configured bridge command" {
+async test "analysis executor refuses robot bridge without sandbox grant" {
   @fsx.with_temporary_directory("gateway-robot-exec-XXXXXX", dir => {
     let home_config_dir = @path.Path(dir)
       .join(@path.Path(".moonclaw"))
@@ -60,45 +60,36 @@ async test "analysis executor routes robot.dds through configured bridge command
     })
     @fsx.write_to_file(config_path, config.stringify())
 
-    let execution = match
-      execute_robot_bridge_analysis(dir, "/tmp/no-project", @job.AnalysisRequest::{
-        job_id: "job.robot",
-        run_id: "run.robot",
-        step_id: "step.robot",
-        source_prompt: "Ask the robot to wave.",
-        prompt: "Ask the robot to wave.",
-        model_name: "default",
-        cwd: dir,
-        home: Some(dir),
-        execution_mode: Some("robot.dds"),
-        execution_target: Some("robot-main"),
-        system_prompt: "Use the robot bridge.",
-        preferred_skills: [],
-        enable_tools: false,
-        web_search: false,
-        tool_contract: @job.AnalysisToolContract::new(
-          shell=false,
-          file_write=false,
-          patch_edit=false,
-        ),
-        step_metadata: {},
-        execution_isolation: None,
-        role_runtime_contract: None,
-      }) {
-      Ok(execution) => execution
-      Err(error) => fail(error)
-    }
-    inspect(execution.model_name, content="robot.dds:robot-main")
-    inspect(execution.content, content="Robot waved at the operator.")
     inspect(
-      execution.metadata
-      .stringify()
-      .contains("\"execution_mode\":\"robot.dds\""),
-      content="true",
-    )
-    inspect(
-      execution.metadata.stringify().contains("\"action\":\"wave\""),
-      content="true",
+      match
+        execute_robot_bridge_analysis(dir, "/tmp/no-project", @job.AnalysisRequest::{
+          job_id: "job.robot",
+          run_id: "run.robot",
+          step_id: "step.robot",
+          source_prompt: "Ask the robot to wave.",
+          prompt: "Ask the robot to wave.",
+          model_name: "default",
+          cwd: dir,
+          home: Some(dir),
+          execution_mode: Some("robot.dds"),
+          execution_target: Some("robot-main"),
+          system_prompt: "Use the robot bridge.",
+          preferred_skills: [],
+          enable_tools: false,
+          web_search: false,
+          tool_contract: @job.AnalysisToolContract::new(
+            shell=false,
+            file_write=false,
+            patch_edit=false,
+          ),
+          step_metadata: {},
+          execution_isolation: None,
+          role_runtime_contract: None,
+        }) {
+        Ok(_) => "unexpected execution"
+        Err(error) => error
+      },
+      content="robot.dds robot bridge execution is disabled for target robot-main: a MoonFort ExecutionSandbox grant is required",
     )
   })
 }

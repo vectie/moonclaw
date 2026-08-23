@@ -50,10 +50,17 @@ pub struct ResponsesRequest {
   tools : Array[Json]
   tool_choice : String
   reasoning_effort : String?
+  reasoning_context : String?
   stream : Bool?
   store : Bool?
+  previous_response_id : String?
+  prompt_cache_key : String?
+  prompt_cache_mode : String?
+  prompt_cache_ttl : String?
+  max_output_tokens : Int?
+  parallel_tool_calls : Bool?
 } derive(@debug.Debug)
-pub fn ResponsesRequest::new(model~ : String, input~ : Array[ResponseInputItem], instructions~ : String, tools? : Array[Json], tool_choice? : String, reasoning_effort? : String, stream? : Bool, store? : Bool) -> Self
+pub fn ResponsesRequest::new(model~ : String, input~ : Array[ResponseInputItem], instructions~ : String, tools? : Array[Json], tool_choice? : String, reasoning_effort? : String, reasoning_context? : String, stream? : Bool, store? : Bool, previous_response_id? : String, prompt_cache_key? : String, prompt_cache_mode? : String, prompt_cache_ttl? : String, max_output_tokens? : Int, parallel_tool_calls? : Bool) -> Self
 pub impl ToJson for ResponsesRequest
 
 // Type aliases

@@ -1,0 +1,13 @@
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/io",
+  "moonbitlang/async/stdio",
+  "moonbitlang/core/json",
+  "vectie/moonclaw/internal/harness_replay" @replay,
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/os",
+}
+
+supported_targets = "native"
+
+pkgtype(kind: "executable")

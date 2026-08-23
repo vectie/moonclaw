@@ -26,6 +26,10 @@ pub struct ApprovalRecord {
   status : String
   created_at : Int
   approved_at : Int?
+  /// Immutable, action-specific data that must survive the approval
+  /// round-trip. Command execution uses this to bind an approval to the exact
+  /// MoonFort profile and command that were presented before approval.
+  context : Json?
 } derive(ToJson, FromJson, Debug)
 
 ///|
@@ -384,6 +388,7 @@ pub async fn SecurityRuntime::request_approval(
   action_target : String,
   scope_key : String,
   now_ms : Int,
+  context? : Json,
 ) -> ApprovalRecord {
   let record = ApprovalRecord::{
     token,
@@ -393,6 +398,7 @@ pub async fn SecurityRuntime::request_approval(
     status: "pending",
     created_at: now_ms,
     approved_at: None,
+    context,
   }
   self.approvals[token] = record
   self.save()
@@ -458,6 +464,19 @@ pub async fn SecurityRuntime::consume_approval(
   action_target : String,
   scope_key : String,
 ) -> Bool {
+  self.consume_approval_record(action_kind, action_target, scope_key) is Some(_)
+}
+
+///|
+/// Consume a matching approval and return its immutable context. Returning
+/// the record avoids a time-of-check/time-of-use gap where a caller would
+/// otherwise have to look up policy data separately from consuming it.
+pub async fn SecurityRuntime::consume_approval_record(
+  self : SecurityRuntime,
+  action_kind : String,
+  action_target : String,
+  scope_key : String,
+) -> ApprovalRecord? {
   let mut matched : String? = None
   for token, record in self.approvals {
     if record.scope_key == scope_key &&
@@ -470,11 +489,12 @@ pub async fn SecurityRuntime::consume_approval(
   }
   match matched {
     Some(token) => {
+      let record = self.approvals.get(token)
       self.approvals.remove(token)
       self.save()
-      true
+      record
     }
-    None => false
+    None => None
   }
 }
 

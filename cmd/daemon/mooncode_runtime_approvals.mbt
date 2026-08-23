@@ -5,6 +5,8 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     tool_call,
   )
   let tool = mooncode_json_string(tool_call, "tool", default="")
+  let planner_generated = mooncode_json_string(tool_call, "planner", default="") ==
+    "model-tool-call"
   if tool == "shell" {
     let raw_command = mooncode_json_string(arguments, "cmd", default="")
     let command = raw_command.to_lower().to_string()
@@ -19,6 +21,23 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
     }
     if mooncode_shell_has_sensitive_command(command) {
       return "This shell command can affect external systems, dependencies, or broad workspace state."
+    }
+    if mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
+      let explicit_operator_boundary = mooncode_json_bool(
+          tool_call,
+          "requires_approval",
+          default=false,
+        ) ||
+        mooncode_json_bool(arguments, "requires_approval", default=false) ||
+        mooncode_json_string(
+          tool_call,
+          "approval",
+          default=mooncode_json_string(arguments, "approval", default=""),
+        ) ==
+        "operator"
+      if planner_generated || !explicit_operator_boundary {
+        return ""
+      }
     }
     return "Arbitrary shell text requires a separate operator approval bound to the exact ExecutionSandbox grant."
   }
@@ -39,8 +58,6 @@ fn mooncode_runtime_tool_approval_reason(tool_call : Json) -> String {
   // Approval annotations are requests, not authority facts. The runtime keeps
   // them for mutation-capable and unclassified operations, but a planner cannot
   // turn an operation the runtime can prove read-only into a teacher pause.
-  let planner_generated = mooncode_json_string(tool_call, "planner", default="") ==
-    "model-tool-call"
   if planner_generated &&
     mooncode_runtime_tool_is_demonstrably_read_only(tool_call) {
     return ""
@@ -108,6 +125,9 @@ fn mooncode_runtime_authorized_tool_call(
 
 ///|
 fn mooncode_runtime_tool_is_demonstrably_read_only(tool_call : Json) -> Bool {
+  if mooncode_runtime_tool_effect(tool_call) is ConcurrentRead {
+    return true
+  }
   let tool = mooncode_json_string(tool_call, "tool", default="")
   let arguments = mooncode_json_object_field_or_empty(tool_call, "arguments")
   match tool {

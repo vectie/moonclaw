@@ -140,19 +140,12 @@ pub async fn list_worktrees(
     None => fail("No git repository found for worktree listing: \{cwd}")
   }
   let base_dir = base_dir.unwrap_or(default_worktree_base_dir(repo_root))
-  let process = @spawn.spawn(
-    "git",
-    ["worktree", "list", "--porcelain"],
-    cwd=repo_root,
-  )
-  process.check() catch {
-    error => fail("Failed to list git worktrees for \{repo_root}: \{error}")
+  let process = @trusted_host_process.run_git(repo_root, WorktreeList)
+  if process.status() != 0 {
+    fail("Failed to list git worktrees for \{repo_root}: \{process.stderr()}")
   }
-  let worktrees = parse_worktree_list_output(
-    repo_root,
-    base_dir,
-    process.stdout,
-  )
+  let stdout = process.stdout()
+  let worktrees = parse_worktree_list_output(repo_root, base_dir, stdout)
   { repo_root, base_dir, worktrees }
 }
 

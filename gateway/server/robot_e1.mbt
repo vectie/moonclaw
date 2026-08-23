@@ -308,69 +308,11 @@ async fn execute_robot_bridge_analysis(
         "\{execution_mode} analysis execution requires execution_target",
       )
   }
-  let target = match resolve_robot_target_config(home, cwd, target_id) {
-    Ok(target) => target
-    Err(error) => return Err(error)
-  }
-  let bridge_cwd = target.cwd.unwrap_or(request.cwd)
-  let env = target.env
-  env["MOONCLAW_ROBOT_EXECUTION_MODE"] = execution_mode
-  env["MOONCLAW_ROBOT_TARGET_ID"] = target_id
-  env["MOONCLAW_JOB_ID"] = request.job_id
-  env["MOONCLAW_RUN_ID"] = request.run_id
-  env["MOONCLAW_STEP_ID"] = request.step_id
-  let process = @spawn.spawn(
-    target.command[:],
-    target.args.map(fn(arg) { arg[:] }),
-    stdin=robot_bridge_request_json(request).stringify(indent=2),
-    cwd=bridge_cwd[:],
-    env~,
-  ) catch {
-    error => return Err("Failed to start robot bridge: \{error}")
-  }
-  if process.status != 0 {
-    return Err(
-      @acp.process_output_summary(
-        process.stdout,
-        process.stderr,
-        process.status,
-      ),
-    )
-  }
-  let stdout = process.stdout.trim().to_string()
-  let response : Json = if stdout.is_blank() {
-    ({} : Json)
-  } else {
-    @json.parse(stdout) catch {
-      _ =>
-        return Ok(@job.AnalysisExecution::{
-          model_name: "\{execution_mode}:\{target_id}",
-          content: stdout,
-          conversation_id: None,
-          usage: None,
-          metadata: robot_bridge_response_metadata(
-            {},
-            execution_mode,
-            target_id,
-            target,
-            bridge_cwd,
-          ),
-        })
-    }
-  }
-  match robot_bridge_error(response) {
-    Some(error) => return Err(error)
-    None => ()
-  }
-  Ok(@job.AnalysisExecution::{
-    model_name: "\{execution_mode}:\{target_id}",
-    content: robot_bridge_response_content(response, stdout),
-    conversation_id: None,
-    usage: None,
-    metadata: robot_bridge_response_metadata(
-      response, execution_mode, target_id, target, bridge_cwd,
-    ),
-  })
+  ignore(home)
+  ignore(cwd)
+  Err(
+    "\{execution_mode} robot bridge execution is disabled for target \{target_id}: a MoonFort ExecutionSandbox grant is required",
+  )
 }
 
 ///|

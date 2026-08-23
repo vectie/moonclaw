@@ -6,12 +6,11 @@ struct Daemon {
   clock : &@clock.Clock
   models : @model.Loader
   uuid : @uuid.Generator
-  process : @spawn.Manager
+  process : @trusted_host_process.DaemonChildManager
   /// Maps from working directory to a running task.
   by_cwd : Map[String, TaskLock]
   by_id : Map[@uuid.Uuid, Task]
-  rqs : Map[String, @aqueue.Queue[@server.RegisterRequest]]
-  exec_path : String
+  rqs : Map[String, PendingTaskRegistration]
   httpx : @httpx.Server
   port : Int
   events : @broadcast.Broadcast[Event]
@@ -21,6 +20,17 @@ struct Daemon {
   /// Pending Codex PKCE flows, keyed by state parameter
   pending_codex_auth : Map[String, PendingCodexAuth]
   mooncode_sessions : Map[String, MoonCodeSessionBinding]
+}
+
+///|
+/// One launch-bound, single-use capability for a child server registration.
+/// The queue survives capability consumption because `spawn_task` also retains
+/// its own reference while waiting for the authenticated callback.
+priv struct PendingTaskRegistration {
+  queue : @aqueue.Queue[@server.RegisterRequest]
+  instance_id : String
+  token : String
+  expires_at_ms : Int64
 }
 
 ///|
@@ -88,7 +98,11 @@ pub async fn Daemon::new(
   if info_file is Some(info_file) {
     @fsx.truncate(info_file, 0)
     info_file.write(
-      DaemonInfo::{ version: @buildinfo.version, port, pid: @spawn.getpid() }
+      DaemonInfo::{
+        version: @buildinfo.version,
+        port,
+        pid: @trusted_host_process.current_process_id(),
+      }
       .to_json()
       .stringify(),
     )
@@ -109,11 +123,14 @@ pub async fn Daemon::new(
     clock: @clock.epoch,
     models: @model.Loader::new(home~, cwd~),
     uuid,
-    process: @spawn.Manager::new(cwd~),
+    process: @trusted_host_process.DaemonChildManager::new(
+      cwd~,
+      executable=exec_path,
+      home~,
+    ),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path,
     httpx: httpx_server,
     port,
     events: @broadcast.Broadcast::new(),

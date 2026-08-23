@@ -68,6 +68,9 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
         logger.info("Received request: \{r.method_} \{r.path}")
         logger.info("Handling request paths: \{to_repr(paths)}")
         try {
+          if moondesk_control_route_requires_auth(r.method_, paths) {
+            self.require_moondesk_control_auth(r, w)
+          }
           match (r.method_, paths) {
             (Options, _) => w.write_header(204)
             // GET /

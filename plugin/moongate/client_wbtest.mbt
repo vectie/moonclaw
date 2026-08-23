@@ -84,6 +84,42 @@ test "moongate client separates HTTP origin and request path" {
 }
 
 ///|
+async test "moongate client posts planner metrics to the aggregate route" {
+  let server = @httpx.Server::new("[::1]", 0, reuse_addr=true)
+  defer server.close()
+  let received = Ref::Ref(Json::null())
+  let router = @httpx.Router::new()
+  router.add_handler(Post, "/usage/planner-metrics", (r, w) => {
+    let reader : @httpx.JsonRequestReader = @httpx.JsonRequestReader::new(r)
+    received.val = reader.read()
+    w.header().set("Content-Type", "application/json")
+    w.write_header(200)
+    let response : Json = { "accepted": true }
+    w.write(response.stringify())
+  })
+  @async.with_task_group(group => {
+    group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
+    @async.pause()
+    let client = Client::{ base_url: "http://localhost:\{server.port()}" }
+    let result = client.record_planner_metrics({
+      "contract": "moonclaw.planner.metrics.v1",
+      "prompt_tokens": 42,
+    })
+    assert_true(result is Ok(_))
+    assert_eq(
+      moongate_json_string_field(
+        match received.val {
+          Object(fields) => fields
+          _ => Map([])
+        },
+        "contract",
+      ),
+      Some("moonclaw.planner.metrics.v1"),
+    )
+  })
+}
+
+///|
 test "moongate client parses typed models" {
   let catalog = {
     "models": [

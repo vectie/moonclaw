@@ -5,7 +5,7 @@ import {
   "vectie/moonlib/fsx",
   "vectie/moonlib/moonsuite",
   "vectie/moonclaw/internal/httpx",
-  "vectie/moonlib/spawn",
+  "vectie/moonclaw/internal/trusted_host_process",
   "moonbitlang/x/crypto",
   "moonbitlang/x/codec/base64",
   "moonbitlang/async/http",

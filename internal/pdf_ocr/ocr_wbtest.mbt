@@ -23,6 +23,15 @@ async test "extract_text_from_pdf reports missing local tools" {
 }
 
 ///|
+async test "default PDF OCR process route fails closed" {
+  let result = run_process("pdftotext", ["input.pdf", "output.txt"])
+  guard result is Err(message) else {
+    fail("expected ExecutionSandbox refusal")
+  }
+  assert_true(message.contains("ExecutionSandbox"))
+}
+
+///|
 async test "extract_text_from_pdf uses pdftotext output when available" {
   @fsx.with_temporary_directory("pdf-ocr-pdftotext-XXXXXX", async fn(dir) {
     let saved_path = dir + "/brief.pdf"
@@ -39,7 +48,7 @@ async test "extract_text_from_pdf uses pdftotext output when available" {
           @fsx.write_to_file(extracted_path, "converted text") catch {
             _ => ()
           }
-          Ok(@spawn.spawn("sh", ["-c", "true"]))
+          Ok(PdfOcrProcess::{ status: 0 })
         } else {
           Err("unexpected command")
         }
@@ -69,7 +78,7 @@ async test "extract_text_from_pdf uses pypdf when pdftotext is unavailable" {
           @fsx.write_to_file(extracted_path, "converted with pypdf") catch {
             _ => ()
           }
-          Ok(@spawn.spawn("sh", ["-c", "true"]))
+          Ok(PdfOcrProcess::{ status: 0 })
         } else {
           Err("unexpected command")
         }

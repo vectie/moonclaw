@@ -4,11 +4,10 @@ async fn mooncode_control_test_daemon(book_root : String) -> Daemon {
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -243,7 +242,7 @@ test "mooncode approval classifier gates hosted run reruns" {
       "arguments": { "cmd": "git -C . commit -m 'validated change'" },
     }),
   )
-  assert_false(
+  assert_true(
     mooncode_runtime_tool_requires_approval({
       "tool": "shell",
       "arguments": { "cmd": "git commit-tree HEAD^{tree}" },

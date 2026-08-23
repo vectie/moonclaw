@@ -16,31 +16,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     mooncode_json_bool(
       mooncode_runtime_turn_git(
         book_root,
-        ["init", "-q"],
-        timeout_ms=10000,
-        max_output_chars=4000,
-      ),
-      "ok",
-      default=false,
-    ),
-  )
-  assert_true(
-    mooncode_json_bool(
-      mooncode_runtime_turn_git(
-        book_root,
-        ["config", "user.name", "MoonClaw Test"],
-        timeout_ms=10000,
-        max_output_chars=4000,
-      ),
-      "ok",
-      default=false,
-    ),
-  )
-  assert_true(
-    mooncode_json_bool(
-      mooncode_runtime_turn_git(
-        book_root,
-        ["config", "user.email", "moonclaw-test@local"],
+        @trusted_host_process.Init,
         timeout_ms=10000,
         max_output_chars=4000,
       ),
@@ -99,11 +75,10 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -161,7 +136,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   assert_true(events_log.contains(commit_sha))
   let git_head = mooncode_runtime_turn_git(
     book_root,
-    ["rev-parse", "HEAD"],
+    @trusted_host_process.Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -171,7 +146,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   )
   let git_status = mooncode_runtime_turn_git(
     book_root,
-    ["status", "--porcelain"],
+    @trusted_host_process.StatusPorcelain,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -193,7 +168,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   )
   let committed_files = mooncode_runtime_turn_git(
     book_root,
-    ["ls-tree", "-r", "--name-only", "HEAD"],
+    @trusted_host_process.ListHeadTree,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -249,34 +224,26 @@ test "commit event reports durable creation when exact sealing fails" {
 }
 
 ///|
-async test "commit execution reports created when post-commit hook prevents exact seal" {
+async test "trusted commit does not execute repository post-commit hooks" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-commit-unsealed-XXXXXX"),
   )
-  let setup_args : Array[Array[StringView]] = [
-    ["init", "-q"],
-    ["config", "user.name", "MoonClaw Test"],
-    ["config", "user.email", "moonclaw-test@local"],
-  ]
-  for args in setup_args {
-    assert_true(
-      mooncode_json_bool(
-        mooncode_runtime_turn_git(
-          book_root,
-          args,
-          timeout_ms=10000,
-          max_output_chars=4000,
-        ),
-        "ok",
-        default=false,
+  assert_true(
+    mooncode_json_bool(
+      mooncode_runtime_turn_git(
+        book_root,
+        @trusted_host_process.Init,
+        timeout_ms=10000,
+        max_output_chars=4000,
       ),
-    )
-  }
+      "ok",
+      default=false,
+    ),
+  )
   @fsx.write_to_file(@pathx.join(book_root, "tracked.txt"), "commit me\n")
   let hook = @pathx.join(book_root, ".git/hooks/post-commit")
   @fsx.write_to_file(hook, "#!/bin/sh\nprintf 'later\\n' > later.txt\n")
-  let chmod = @spawn.spawn("chmod", ["+x", hook], timeout=10000, cwd=book_root)
-  assert_eq(chmod.status, 0)
+  @fs.chmod(hook, 0o700)
   let command : Json = {
     "book_root": book_root,
     "packet": {
@@ -297,13 +264,8 @@ async test "commit execution reports created when post-commit hook prevents exac
     mooncode_json_string(results[0], "event", default=""),
     "commit_created",
   )
-  assert_false(mooncode_json_bool(results[0], "accepted", default=true))
-  assert_true(
-    mooncode_json_string(results[0], "status_after", default="").contains(
-      "later.txt",
-    ),
-  )
-  assert_true(@fsx.exists(@pathx.join(book_root, "later.txt")))
+  assert_true(mooncode_json_bool(results[0], "accepted", default=false))
+  assert_false(@fsx.exists(@pathx.join(book_root, "later.txt")))
   let event = mooncode_runtime_turn_commit_event(
     "session-hook-unsealed",
     "commit-hook-unsealed",

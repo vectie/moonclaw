@@ -292,73 +292,12 @@ async fn Gateway::execute_managed_acp_process(
   launch : @acp.AcpLaunchPlan,
   request : @acp.AcpRunRequest,
 ) -> Result[AcpProcessOutcome, String] {
-  if launch.backend == "codex" &&
-    launch.command == Some("codex") &&
-    !@codex.credentials_exist() {
-    return Err(
-      "Codex credentials are not available. Authenticate first with the Codex OAuth flow.",
-    )
-  }
-  let command = match @acp.prepare_launch_command(launch, request) {
-    Ok(command) => command
-    Err(error) => return Err(error)
-  }
-  let stdout = @spawn.Buffer::new()
-  let stderr = @spawn.Buffer::new()
-  let process = self.acp_process_manager.spawn(
-    command.command,
-    command.args,
-    stdout=Capture(stdout),
-    stderr=Capture(stderr),
-    cwd=launch.cwd,
-    env=command.env,
-  ) catch {
-    error => return Err("Failed to start ACP backend: \{error}")
-  }
-  self.register_active_acp_run(run_id, process, stdout, stderr)
-  let status = process.wait()
-  self.clear_active_acp_run(run_id)
-  let stdout_text = stdout.to_string()
-  let stderr_text = stderr.to_string()
-  let cancelled = self.consume_acp_run_cancel_requested(run_id)
-  let outcome_status = if cancelled {
-    "cancelled"
-  } else if status == 0 {
-    "completed"
-  } else {
-    "failed"
-  }
-  let summary = @acp.process_output_summary(stdout_text, stderr_text, status)
-  let result : Json = {
-    "backend": launch.backend,
-    "target_id": launch.target_id,
-    "session_id": launch.session_id,
-    "session_key": launch.session_key,
-    "cwd": launch.cwd,
-    "workspace": launch.workspace,
-    "command": command.command,
-    "args": command.args,
-    "status": outcome_status,
-    "exit_status": status,
-    "stdout": stdout_text,
-    "stderr": stderr_text,
-    "content": if outcome_status == "cancelled" {
-      "ACP run cancelled."
-    } else {
-      summary
-    },
-  }
-  Ok({
-    status: outcome_status,
-    result,
-    error: if outcome_status == "completed" {
-      None
-    } else if outcome_status == "cancelled" {
-      Some("ACP run cancelled.")
-    } else {
-      Some(summary)
-    },
-  })
+  ignore(self)
+  ignore(run_id)
+  ignore(request)
+  Err(
+    "ACP backend execution is disabled for target \{launch.target_id}: a MoonFort ExecutionSandbox grant is required",
+  )
 }
 
 ///|

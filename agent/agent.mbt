@@ -107,11 +107,11 @@ pub fn Agent::close(_ : Agent) -> Unit {
 /// Prepares messages for an API request by counting tokens, pruning if needed, and applying caching.
 ///
 /// This function performs the following operations:
-/// 1. Calculates which events need to be pruned to fit within token budget
-/// 2. Emits `Pruned` events for each event to prune (making pruning persistent)
+/// 1. Gets messages from the durable conversation
+/// 2. Applies skills and rules, then compiles the complete model-facing prompt
+///    against the token budget without changing the durable conversation
 /// 3. Emits `TokenCounted` and `ContextPruned` events for monitoring
-/// 4. Gets messages from conversation (respecting pruned events)
-/// 5. Applies prompt caching to optimize API performance
+/// 4. Applies prompt caching to optimize API performance
 ///
 /// Parameters:
 ///
@@ -125,37 +125,29 @@ async fn Agent::prepare_messages_for_request(
 ) -> (Array[@openai.ChatCompletionMessageParam], Int) {
   let tools_openai = tools.map(x => x.to_openai())
 
-  // Calculate which events need to be pruned (does not modify conversation)
-  let prune_result = agent.context_pruner.calculate_pruning(
-    agent.history,
-    tools=tools_openai,
-  )
-
-  // Emit TokenCounted event with original token count for monitoring
-  agent.emit(TokenCounted(prune_result.origin_token_count))
-
-  // Emit Pruned events for each event to prune (makes pruning persistent)
-  for event_id in prune_result.pruned_ids {
-    agent.emit(Pruned(id=event_id))
-  }
-
-  // Emit ContextPruned event with before/after token counts
-  agent.emit(
-    ContextPruned(
-      origin_token_count=prune_result.origin_token_count,
-      pruned_token_count=prune_result.pruned_token_count,
-    ),
-  )
-
-  // Get messages from conversation (respects newly emitted Pruned events)
+  // Compile the actual request once, after all prompt injections. This avoids
+  // tokenizing every normal request twice and keeps pruning projection-only.
+  // Existing Pruned events remain respected by Conversation::messages.
   let messages = agent.history.messages(include_system=true)
   agent.skills.load_and_apply(messages)
   agent.rules.apply(messages)
   let openai_messages = messages.map(fn(msg) { msg.to_openai() })
 
+  let compiled = agent.context_pruner.compile_messages(
+    openai_messages,
+    tools=tools_openai,
+  )
+  agent.emit(TokenCounted(compiled.origin_token_count))
+  agent.emit(
+    ContextPruned(
+      origin_token_count=compiled.origin_token_count,
+      pruned_token_count=compiled.final_token_count,
+    ),
+  )
+
   // Apply prompt caching to messages to improve API performance
-  let cached_messages = @cache.cache_messages(openai_messages)
-  (cached_messages, prune_result.pruned_token_count)
+  let cached_messages = @cache.cache_messages(compiled.messages)
+  (cached_messages, compiled.final_token_count)
 }
 
 ///|

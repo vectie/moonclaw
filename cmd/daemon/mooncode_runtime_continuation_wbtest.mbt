@@ -564,11 +564,10 @@ async fn mooncode_runtime_quantum_test_daemon(book_root : String) -> Daemon {
     clock: @clock.epoch,
     models: @model.Loader::new(home=book_root, cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),
-    process: @spawn.Manager::new(cwd=book_root),
+    process: @trusted_host_process.DaemonChildManager::new(cwd=book_root),
     by_cwd: {},
     by_id: {},
     rqs: {},
-    exec_path: @pathx.join(book_root, "moonclaw"),
     httpx: @httpx.Server::new("[::1]", 0, reuse_addr=true),
     port: 0,
     events: @broadcast.Broadcast::new(),
@@ -819,319 +818,332 @@ async test "unfinished checkpoint patiently replans without a ceiling or claim l
       exists_ok=true,
     )
     @fsx.write_to_file(models_path, [model].to_json().stringify(indent=2))
-    @async.with_task_group(group => {
-      group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
-      @async.pause()
-      let session_id = "session-patient-replan"
-      let command_id = "cmd-patient-replan"
-      let command = mooncode_runtime_patient_test_command(
-        root, session_id, command_id,
-      )
-      ignore(
-        mooncode_append_session_journal(
-          root,
-          session_id,
-          mooncode_journal_command(),
-          {
-            "kind": "mooncode-command",
-            "protocol": mooncode_protocol_version(),
-            "session_id": session_id,
-            "command_id": command_id,
-            "created_at": @clock.Timestamp::from_ms(1L),
-            "command": command,
-          },
-        ),
-      )
-      let first_daemon = mooncode_runtime_quantum_test_daemon(root)
-      let first = first_daemon.mooncode_runtime_service_execute(
-        session_id,
-        root,
-        {
-          "service_id": "patient-first-service",
-          "consumer_id": "patient-restart-claim",
-          "max_turns": 1,
-          "live_wait_ms": 0,
-        },
-      )
-      let first_loop = mooncode_json_object_field_or_empty(
-        first, "runtime_loop",
-      )
-      let first_turns = mooncode_json_array_items(first_loop, "turns")
-      assert_eq(first_turns.length(), 1)
-      let first_turn = first_turns[0]
-      let first_execution = mooncode_json_object_field_or_empty(
-        first_turn, "execution",
-      )
-      assert_true(mooncode_json_bool(first_turn, "accepted", default=false))
-      assert_true(mooncode_json_bool(first_execution, "paused", default=false))
-      assert_false(
-        mooncode_json_bool(first_execution, "completed", default=true),
-      )
-      assert_eq(
-        mooncode_json_string(first_execution, "pause_reason", default=""),
-        "planner-empty-followup",
-      )
-      assert_eq(
-        mooncode_json_int(first_execution, "model_step_limit", default=-1),
-        0,
-      )
-      guard first_turn is Object(first_object) else {
-        abort("first patient replan response must be an object")
-      }
-      assert_true(first_object.get("turn_receipt") is Some(Null))
-      let first_state = first_daemon.mooncode_runtime_claim_state_payload(
-        session_id, root,
-      )
-      assert_eq(
-        mooncode_json_int(first_state, "claimed_command_count", default=0),
-        1,
-      )
-      assert_eq(
-        mooncode_json_int(first_state, "delivered_command_count", default=-1),
-        0,
-      )
-      let first_claims = mooncode_json_array_items(
-        first_state, "claimed_commands",
-      )
-      assert_eq(first_claims.length(), 1)
-      let first_claim_receipt = mooncode_json_object_field_or_empty(
-        first_claims[0],
-        "receipt",
-      )
-      let claim_id = mooncode_json_string(
-        first_claim_receipt,
-        "claim_id",
-        default="",
-      )
-      assert_true(claim_id != "")
-      let first_continuation = mooncode_runtime_continuation_for_command(
-        mooncode_journal_entries(
-          mooncode_read_session_journal(root, session_id),
-          mooncode_journal_event(),
-        ),
-        command_id,
-      )
-      assert_true(
-        mooncode_runtime_planner_replan_continuation_is_active(
-          first_continuation,
-        ),
-      )
-      assert_eq(
-        mooncode_json_int(first_continuation, "replan_count", default=0),
-        1,
-      )
-      assert_true(
-        mooncode_json_bool(first_continuation, "finish_rejected", default=false),
-      )
-      let first_event_count = mooncode_journal_entries(
-        mooncode_read_session_journal(root, session_id),
-        mooncode_journal_event(),
-      ).length()
-      let rejected_plan = mooncode_json_object_field_or_empty(
-        first_continuation, "plan",
-      )
-      let rejected_calls = mooncode_json_array_items(
-        rejected_plan, "tool_calls",
-      )
-      assert_eq(rejected_calls.length(), 1)
-      assert_eq(
-        mooncode_json_string(rejected_calls[0], "tool", default=""),
-        "finish",
-      )
-      assert_false(
-        mooncode_runtime_service_continues_goal_runtime(
-          first_loop, root, session_id,
-        ),
-      )
-      let first_turns = mooncode_json_array_items(first_loop, "turns")
-      let first_execution = mooncode_json_object_field_or_empty(
-        first_turns[first_turns.length() - 1],
-        "execution",
-      )
-      let approval_shaped_loop = mooncode_json_object_with_field(
-        first_loop,
-        "turns",
-        Json::array([
-          mooncode_json_object_with_field(
-            first_turns[first_turns.length() - 1],
-            "execution",
-            mooncode_json_object_with_field(
-              first_execution,
-              "pause_reason",
-              "approval-required".to_json(),
-            ),
+    mooncode_with_fixture_moonfort(root, async fn(_) {
+      @async.with_task_group(group => {
+        group.spawn_bg(() => model_server.serve(router.handler()), no_wait=true)
+        @async.pause()
+        let session_id = "session-patient-replan"
+        let command_id = "cmd-patient-replan"
+        let command = mooncode_runtime_patient_test_command(
+          root, session_id, command_id,
+        )
+        ignore(
+          mooncode_append_session_journal(
+            root,
+            session_id,
+            mooncode_journal_command(),
+            {
+              "kind": "mooncode-command",
+              "protocol": mooncode_protocol_version(),
+              "session_id": session_id,
+              "command_id": command_id,
+              "created_at": @clock.Timestamp::from_ms(1L),
+              "command": command,
+            },
           ),
-        ]),
-      )
-      assert_false(
-        mooncode_runtime_service_continues_goal_runtime(
-          approval_shaped_loop, root, session_id,
-        ),
-      )
-      let second_daemon = mooncode_runtime_quantum_test_daemon(root)
-      let restarted_state = second_daemon.mooncode_runtime_claim_state_payload(
-        session_id, root,
-      )
-      let restarted_claims = mooncode_json_array_items(
-        restarted_state, "claimed_commands",
-      )
-      assert_eq(restarted_claims.length(), 1)
-      let second = second_daemon.mooncode_runtime_service_execute(
-        session_id,
-        root,
-        {
-          "service_id": "patient-second-service",
-          "consumer_id": "patient-restart-claim",
-          "max_turns": 1,
-          "live_wait_ms": 0,
-        },
-      )
-      assert_true(mooncode_json_bool(second, "accepted", default=false))
-      let second_loop = mooncode_json_object_field_or_empty(
-        second, "runtime_loop",
-      )
-      let second_turns = mooncode_json_array_items(second_loop, "turns")
-      assert_eq(second_turns.length(), 1)
-      let final_execution = mooncode_json_object_field_or_empty(
-        second_turns[0],
-        "execution",
-      )
-      assert_true(
-        mooncode_json_bool(final_execution, "completed", default=false),
-      )
-      let final_event_count = mooncode_journal_entries(
-        mooncode_read_session_journal(root, session_id),
-        mooncode_journal_event(),
-      ).length()
-      assert_true(final_event_count > first_event_count)
-      assert_false(mooncode_json_bool(final_execution, "paused", default=false))
-      assert_eq(calls.val, 7)
-      assert_eq(@fsx.read_file(@pathx.join(root, "patient-result.txt")), "once")
-      assert_true(
-        request_bodies
-        .join("\n")
-        .contains("previous follow-up produced no usable MoonCode tool call"),
-      )
-      assert_false(
-        request_bodies.join("\n").contains("Planner opportunities remaining"),
-      )
-      let final_journal = mooncode_read_session_journal(root, session_id)
-      let final_state = second_daemon.mooncode_runtime_claim_state_payload(
-        session_id, root,
-      )
-      let delivered = mooncode_json_array_items(
-        final_state, "delivered_commands",
-      )
-      assert_eq(delivered.length(), 1)
-      assert_eq(
-        mooncode_json_string(
-          mooncode_json_object_field_or_empty(delivered[0], "receipt"),
+        )
+        let first_daemon = mooncode_runtime_quantum_test_daemon(root)
+        let first = first_daemon.mooncode_runtime_service_execute(
+          session_id,
+          root,
+          {
+            "service_id": "patient-first-service",
+            "consumer_id": "patient-restart-claim",
+            "max_turns": 1,
+            "live_wait_ms": 0,
+          },
+        )
+        let first_loop = mooncode_json_object_field_or_empty(
+          first, "runtime_loop",
+        )
+        let first_turns = mooncode_json_array_items(first_loop, "turns")
+        assert_eq(first_turns.length(), 1)
+        let first_turn = first_turns[0]
+        let first_execution = mooncode_json_object_field_or_empty(
+          first_turn, "execution",
+        )
+        assert_true(mooncode_json_bool(first_turn, "accepted", default=false))
+        assert_true(
+          mooncode_json_bool(first_execution, "paused", default=false),
+        )
+        assert_false(
+          mooncode_json_bool(first_execution, "completed", default=true),
+        )
+        assert_eq(
+          mooncode_json_string(first_execution, "pause_reason", default=""),
+          "planner-empty-followup",
+        )
+        assert_eq(
+          mooncode_json_int(first_execution, "model_step_limit", default=-1),
+          0,
+        )
+        guard first_turn is Object(first_object) else {
+          abort("first patient replan response must be an object")
+        }
+        assert_true(first_object.get("turn_receipt") is Some(Null))
+        let first_state = first_daemon.mooncode_runtime_claim_state_payload(
+          session_id, root,
+        )
+        assert_eq(
+          mooncode_json_int(first_state, "claimed_command_count", default=0),
+          1,
+        )
+        assert_eq(
+          mooncode_json_int(first_state, "delivered_command_count", default=-1),
+          0,
+        )
+        let first_claims = mooncode_json_array_items(
+          first_state, "claimed_commands",
+        )
+        assert_eq(first_claims.length(), 1)
+        let first_claim_receipt = mooncode_json_object_field_or_empty(
+          first_claims[0],
+          "receipt",
+        )
+        let claim_id = mooncode_json_string(
+          first_claim_receipt,
           "claim_id",
           default="",
-        ),
-        claim_id,
-      )
-      let runtime_receipts = mooncode_journal_entries(
-        final_journal,
-        mooncode_journal_runtime_receipt(),
-      )
-      assert_eq(
-        runtime_receipts
-        .filter(receipt => {
-          mooncode_json_string(receipt, "status", default="") ==
-          "runtime-claimed"
-        })
-        .length(),
-        1,
-      )
-      let final_events = mooncode_journal_entries(
-        final_journal,
-        mooncode_journal_event(),
-      )
-      assert_eq(
-        final_events
-        .filter(event => {
-          mooncode_json_string(event, "kind", default="") ==
-          "runtime.planner_replan_requested"
-        })
-        .length(),
-        1,
-      )
-      assert_eq(
-        final_events
-        .filter(event => {
-          mooncode_json_string(event, "kind", default="") ==
-          "runtime.planner_failed"
-        })
-        .length(),
-        0,
-      )
-      let final_state = second_daemon.mooncode_runtime_claim_state_payload(
-        session_id, root,
-      )
-      assert_eq(
-        mooncode_json_int(final_state, "claimed_command_count", default=-1),
-        0,
-      )
-      assert_eq(
-        mooncode_json_int(final_state, "delivered_command_count", default=0),
-        1,
-      )
-      let receipts = mooncode_journal_entries(
-        final_journal,
-        mooncode_journal_runtime_receipt(),
-      )
-      assert_eq(
-        receipts
-        .filter(receipt => {
-          mooncode_json_string(receipt, "status", default="") ==
-          "runtime-completed"
-        })
-        .length(),
-        1,
-      )
-      assert_eq(
-        receipts
-        .filter(receipt => {
-          mooncode_json_string(receipt, "status", default="") ==
-          "runtime-failed"
-        })
-        .length(),
-        0,
-      )
-      let terminal_plan = mooncode_json_object_with_field(
-        mooncode_runtime_planner_checkpoint_test_plan(),
-        "model",
-        "test-planner".to_json(),
-      )
-      let terminal_result : Json = {
-        "accepted": true,
-        "tool": "read",
-        "result": { "ok": true, "output": "# Book" },
-      }
-      let terminal = second_daemon.mooncode_runtime_turn_model_followup_plan(
-        {
-          "protocol": mooncode_protocol_version(),
-          "session_id": "session-terminal-empty",
-          "book_root": root,
-          "command": "prompt",
-          "text": "Answer the question.",
-          "model": "test-planner",
-          "packet": { "command_id": "cmd-terminal-empty" },
-          "payload": { "planner_timeout_ms": 5000 },
-        },
-        terminal_plan,
-        mooncode_json_array_items(terminal_plan, "tool_calls"),
-        [terminal_result],
-        [terminal_result],
-        now=@clock.Timestamp::from_ms(8L),
-      )
-      assert_true(mooncode_json_bool(terminal, "failed", default=false))
-      assert_false(
-        mooncode_json_bool(terminal, "patient_replan", default=false),
-      )
-      assert_eq(calls.val, 8)
-      group.return_immediately(())
+        )
+        assert_true(claim_id != "")
+        let first_continuation = mooncode_runtime_continuation_for_command(
+          mooncode_journal_entries(
+            mooncode_read_session_journal(root, session_id),
+            mooncode_journal_event(),
+          ),
+          command_id,
+        )
+        assert_true(
+          mooncode_runtime_planner_replan_continuation_is_active(
+            first_continuation,
+          ),
+        )
+        assert_eq(
+          mooncode_json_int(first_continuation, "replan_count", default=0),
+          1,
+        )
+        assert_true(
+          mooncode_json_bool(
+            first_continuation,
+            "finish_rejected",
+            default=false,
+          ),
+        )
+        let first_event_count = mooncode_journal_entries(
+          mooncode_read_session_journal(root, session_id),
+          mooncode_journal_event(),
+        ).length()
+        let rejected_plan = mooncode_json_object_field_or_empty(
+          first_continuation, "plan",
+        )
+        let rejected_calls = mooncode_json_array_items(
+          rejected_plan, "tool_calls",
+        )
+        assert_eq(rejected_calls.length(), 1)
+        assert_eq(
+          mooncode_json_string(rejected_calls[0], "tool", default=""),
+          "finish",
+        )
+        assert_false(
+          mooncode_runtime_service_continues_goal_runtime(
+            first_loop, root, session_id,
+          ),
+        )
+        let first_turns = mooncode_json_array_items(first_loop, "turns")
+        let first_execution = mooncode_json_object_field_or_empty(
+          first_turns[first_turns.length() - 1],
+          "execution",
+        )
+        let approval_shaped_loop = mooncode_json_object_with_field(
+          first_loop,
+          "turns",
+          Json::array([
+            mooncode_json_object_with_field(
+              first_turns[first_turns.length() - 1],
+              "execution",
+              mooncode_json_object_with_field(
+                first_execution,
+                "pause_reason",
+                "approval-required".to_json(),
+              ),
+            ),
+          ]),
+        )
+        assert_false(
+          mooncode_runtime_service_continues_goal_runtime(
+            approval_shaped_loop, root, session_id,
+          ),
+        )
+        let second_daemon = mooncode_runtime_quantum_test_daemon(root)
+        let restarted_state = second_daemon.mooncode_runtime_claim_state_payload(
+          session_id, root,
+        )
+        let restarted_claims = mooncode_json_array_items(
+          restarted_state, "claimed_commands",
+        )
+        assert_eq(restarted_claims.length(), 1)
+        let second = second_daemon.mooncode_runtime_service_execute(
+          session_id,
+          root,
+          {
+            "service_id": "patient-second-service",
+            "consumer_id": "patient-restart-claim",
+            "max_turns": 1,
+            "live_wait_ms": 0,
+          },
+        )
+        assert_true(mooncode_json_bool(second, "accepted", default=false))
+        let second_loop = mooncode_json_object_field_or_empty(
+          second, "runtime_loop",
+        )
+        let second_turns = mooncode_json_array_items(second_loop, "turns")
+        assert_eq(second_turns.length(), 1)
+        let final_execution = mooncode_json_object_field_or_empty(
+          second_turns[0],
+          "execution",
+        )
+        assert_true(
+          mooncode_json_bool(final_execution, "completed", default=false),
+        )
+        let final_event_count = mooncode_journal_entries(
+          mooncode_read_session_journal(root, session_id),
+          mooncode_journal_event(),
+        ).length()
+        assert_true(final_event_count > first_event_count)
+        assert_false(
+          mooncode_json_bool(final_execution, "paused", default=false),
+        )
+        assert_eq(calls.val, 7)
+        assert_eq(
+          @fsx.read_file(@pathx.join(root, "patient-result.txt")),
+          "once",
+        )
+        assert_true(
+          request_bodies
+          .join("\n")
+          .contains("previous follow-up produced no usable MoonCode tool call"),
+        )
+        assert_false(
+          request_bodies.join("\n").contains("Planner opportunities remaining"),
+        )
+        let final_journal = mooncode_read_session_journal(root, session_id)
+        let final_state = second_daemon.mooncode_runtime_claim_state_payload(
+          session_id, root,
+        )
+        let delivered = mooncode_json_array_items(
+          final_state, "delivered_commands",
+        )
+        assert_eq(delivered.length(), 1)
+        assert_eq(
+          mooncode_json_string(
+            mooncode_json_object_field_or_empty(delivered[0], "receipt"),
+            "claim_id",
+            default="",
+          ),
+          claim_id,
+        )
+        let runtime_receipts = mooncode_journal_entries(
+          final_journal,
+          mooncode_journal_runtime_receipt(),
+        )
+        assert_eq(
+          runtime_receipts
+          .filter(receipt => {
+            mooncode_json_string(receipt, "status", default="") ==
+            "runtime-claimed"
+          })
+          .length(),
+          1,
+        )
+        let final_events = mooncode_journal_entries(
+          final_journal,
+          mooncode_journal_event(),
+        )
+        assert_eq(
+          final_events
+          .filter(event => {
+            mooncode_json_string(event, "kind", default="") ==
+            "runtime.planner_replan_requested"
+          })
+          .length(),
+          1,
+        )
+        assert_eq(
+          final_events
+          .filter(event => {
+            mooncode_json_string(event, "kind", default="") ==
+            "runtime.planner_failed"
+          })
+          .length(),
+          0,
+        )
+        let final_state = second_daemon.mooncode_runtime_claim_state_payload(
+          session_id, root,
+        )
+        assert_eq(
+          mooncode_json_int(final_state, "claimed_command_count", default=-1),
+          0,
+        )
+        assert_eq(
+          mooncode_json_int(final_state, "delivered_command_count", default=0),
+          1,
+        )
+        let receipts = mooncode_journal_entries(
+          final_journal,
+          mooncode_journal_runtime_receipt(),
+        )
+        assert_eq(
+          receipts
+          .filter(receipt => {
+            mooncode_json_string(receipt, "status", default="") ==
+            "runtime-completed"
+          })
+          .length(),
+          1,
+        )
+        assert_eq(
+          receipts
+          .filter(receipt => {
+            mooncode_json_string(receipt, "status", default="") ==
+            "runtime-failed"
+          })
+          .length(),
+          0,
+        )
+        let terminal_plan = mooncode_json_object_with_field(
+          mooncode_runtime_planner_checkpoint_test_plan(),
+          "model",
+          "test-planner".to_json(),
+        )
+        let terminal_result : Json = {
+          "accepted": true,
+          "tool": "read",
+          "result": { "ok": true, "output": "# Book" },
+        }
+        let terminal = second_daemon.mooncode_runtime_turn_model_followup_plan(
+          {
+            "protocol": mooncode_protocol_version(),
+            "session_id": "session-terminal-empty",
+            "book_root": root,
+            "command": "prompt",
+            "text": "Answer the question.",
+            "model": "test-planner",
+            "packet": { "command_id": "cmd-terminal-empty" },
+            "payload": { "planner_timeout_ms": 5000 },
+          },
+          terminal_plan,
+          mooncode_json_array_items(terminal_plan, "tool_calls"),
+          [terminal_result],
+          [terminal_result],
+          now=@clock.Timestamp::from_ms(8L),
+        )
+        assert_true(mooncode_json_bool(terminal, "failed", default=false))
+        assert_false(
+          mooncode_json_bool(terminal, "patient_replan", default=false),
+        )
+        assert_eq(calls.val, 8)
+        group.return_immediately(())
+      })
     })
   })
 }

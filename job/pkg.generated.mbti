@@ -6,6 +6,7 @@ import {
   "moonbitlang/core/json",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
+  "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/internal/resource_providers",
   "vectie/moonclaw/security",
   "vectie/moonclaw/workspace",
@@ -13,7 +14,7 @@ import {
 }
 
 // Values
-pub fn analysis_execution_isolation_spec(WorkflowStepContext, AnalysisStepConfig) -> ExecutionIsolationSpec?
+pub fn analysis_execution_isolation_spec(WorkflowStepContext, AnalysisStepConfig) -> ExecutionIsolationSpec? raise
 
 pub fn analysis_memory_prompt(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> String
 
@@ -61,11 +62,11 @@ pub async fn complete_controller_run(SystemStore, JobRun, RunStatus, Int) -> Uni
 
 pub async fn compose_job_analysis_request(SystemStore, WorkflowStepContext, AnalysisStepConfig) -> AnalysisRequest
 
-pub fn configure_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract) -> Unit
+pub fn configure_analysis_agent_for_contract(@agent.Agent, String, String?, AnalysisToolContract, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> Unit
 
-pub fn configure_analysis_agent_for_request(@agent.Agent, AnalysisRequest) -> Unit
+pub fn configure_analysis_agent_for_request(@agent.Agent, AnalysisRequest, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> Unit
 
-pub fn configure_analysis_agent_tools(@agent.Agent, String, web_search? : Bool) -> Unit
+pub fn configure_analysis_agent_tools(@agent.Agent, String, web_search? : Bool, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> Unit
 
 pub fn constrain_tool_contract_for_role(AnalysisToolContract, RoleRuntimeContract?) -> AnalysisToolContract
 
@@ -350,6 +351,10 @@ pub suberror CommandApprovalRequired {
 
 pub suberror CommandBlocked {
   CommandBlocked(@security.CommandAssessment)
+}
+
+pub suberror ExecutionSandboxRequired {
+  ExecutionSandboxRequired(String)
 }
 
 pub suberror InvalidJobId {
@@ -1217,7 +1222,6 @@ pub(all) struct JobUiTimelineEntry {
 } derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct Manager {
-  home : String
   cwd : String
   // private fields
 }

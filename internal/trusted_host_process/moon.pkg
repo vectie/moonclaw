@@ -1,0 +1,25 @@
+import {
+  "moonbitlang/async/fs",
+  "moonbitlang/async",
+  "vectie/moonlib/os",
+  "vectie/moonclaw/internal/signal",
+  "moonbitlang/async/process",
+  "moonbitlang/async/io",
+  "moonbitlang/async/aqueue",
+  "moonbitlang/core/encoding/utf8" @encoding/utf8,
+  "vectie/moonclaw/clock",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
+}
+
+supported_targets = "native"
+
+import {
+  "moonbitlang/async",
+  "moonbitlang/core/test",
+  "vectie/moonclaw/internal/mock",
+} for "test"
+
+options(
+  "native-stub": [ "process.c" ],
+)

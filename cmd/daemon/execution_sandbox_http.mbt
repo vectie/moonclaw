@@ -41,12 +41,14 @@ fn moondesk_sandbox_safe_relative_directory(value : String) -> Bool {
 
 ///|
 fn moondesk_sandbox_constant_time_equal(left : String, right : String) -> Bool {
-  if left.length() != right.length() {
-    return false
-  }
-  let mut mismatch = 0
-  for index in 0..<left.length() {
-    mismatch = mismatch | (left[index].to_int() ^ right[index].to_int())
+  let left_length = left.length()
+  let right_length = right.length()
+  let mut mismatch = left_length ^ right_length
+  // Iterate for the configured credential length even when the attacker sends
+  // a shorter or longer value. Credential length is fixed and non-secret.
+  for index in 0..<right_length {
+    let left_byte = if index < left_length { left[index].to_int() } else { 0 }
+    mismatch = mismatch | (left_byte ^ right[index].to_int())
   }
   mismatch == 0
 }

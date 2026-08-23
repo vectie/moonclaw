@@ -12,8 +12,15 @@ pub struct ResponsesRequest {
   tools : Array[Json]
   tool_choice : String
   reasoning_effort : String?
+  reasoning_context : String?
   stream : Bool?
   store : Bool?
+  previous_response_id : String?
+  prompt_cache_key : String?
+  prompt_cache_mode : String?
+  prompt_cache_ttl : String?
+  max_output_tokens : Int?
+  parallel_tool_calls : Bool?
 } derive(Debug)
 
 ///|
@@ -94,8 +101,15 @@ pub fn ResponsesRequest::new(
   tools? : Array[Json] = [],
   tool_choice? : String = "auto",
   reasoning_effort? : String,
+  reasoning_context? : String,
   stream? : Bool,
   store? : Bool,
+  previous_response_id? : String,
+  prompt_cache_key? : String,
+  prompt_cache_mode? : String,
+  prompt_cache_ttl? : String,
+  max_output_tokens? : Int,
+  parallel_tool_calls? : Bool,
 ) -> ResponsesRequest {
   {
     model,
@@ -104,8 +118,15 @@ pub fn ResponsesRequest::new(
     tools,
     tool_choice,
     reasoning_effort,
+    reasoning_context,
     stream,
     store,
+    previous_response_id,
+    prompt_cache_key,
+    prompt_cache_mode,
+    prompt_cache_ttl,
+    max_output_tokens,
+    parallel_tool_calls,
   }
 }
 
@@ -121,11 +142,40 @@ pub impl ToJson for ResponsesRequest with fn to_json(self : ResponsesRequest) ->
   if self.stream is Some(v) {
     obj["stream"] = v.to_json()
   }
-  if self.reasoning_effort is Some(effort) {
-    obj["reasoning"] = { "effort": effort }
+  if self.reasoning_effort is Some(_) || self.reasoning_context is Some(_) {
+    let reasoning : Map[String, Json] = Map([])
+    if self.reasoning_effort is Some(effort) {
+      reasoning["effort"] = effort.to_json()
+    }
+    if self.reasoning_context is Some(context) {
+      reasoning["context"] = context.to_json()
+    }
+    obj["reasoning"] = Json::object(reasoning)
   }
   if self.store is Some(v) {
     obj["store"] = v.to_json()
+  }
+  if self.previous_response_id is Some(id) {
+    obj["previous_response_id"] = id.to_json()
+  }
+  if self.prompt_cache_key is Some(key) {
+    obj["prompt_cache_key"] = key.to_json()
+  }
+  if self.prompt_cache_mode is Some(_) || self.prompt_cache_ttl is Some(_) {
+    let options : Map[String, Json] = Map([])
+    if self.prompt_cache_mode is Some(mode) {
+      options["mode"] = mode.to_json()
+    }
+    if self.prompt_cache_ttl is Some(ttl) {
+      options["ttl"] = ttl.to_json()
+    }
+    obj["prompt_cache_options"] = Json::object(options)
+  }
+  if self.max_output_tokens is Some(limit) {
+    obj["max_output_tokens"] = limit.to_json()
+  }
+  if self.parallel_tool_calls is Some(enabled) {
+    obj["parallel_tool_calls"] = enabled.to_json()
   }
   Json::object(obj)
 }

@@ -7,17 +7,20 @@ pub struct Job {
   cwd : String
   stdout : String
   stderr : String
-  priv process : @spawn.Process
+  priv exit_status : Int?
 }
 
 ///|
 pub fn Job::status(self : Job) -> Int? {
-  self.process.status()
+  self.exit_status
 }
 
 ///|
 pub async fn Job::wait(self : Job) -> Int {
-  self.process.wait()
+  match self.exit_status {
+    Some(status) => status
+    None => raise ExecutionSandboxRequired(self.command)
+  }
 }
 
 ///|
@@ -38,10 +41,7 @@ pub impl ToJson for Job with fn to_json(self : Job) -> Json {
 
 ///|
 pub struct Manager {
-  home : String
   cwd : String
-  priv mut id : Int
-  priv process : @spawn.Manager
   priv jobs : Map[Id, Job]
 }
 
@@ -69,8 +69,8 @@ pub impl @json.FromJson for Id with fn from_json(
 
 ///|
 pub fn Manager::new(cwd~ : String, home? : String) -> Manager {
-  let home = home.unwrap_or(cwd)
-  { home, cwd, id: 0, process: @spawn.Manager::new(cwd~), jobs: {} }
+  ignore(home)
+  { cwd, jobs: {} }
 }
 
 ///|
@@ -84,10 +84,11 @@ pub suberror CommandBlocked {
 }
 
 ///|
-fn Manager::new_id(self : Manager) -> Id {
-  let id = self.id
-  self.id += 1
-  Id(id)
+/// Background host processes are disabled until the MoonFort executor exposes
+/// a durable asynchronous-job lifecycle. Static command assessment is not an
+/// execution boundary and must never authorize a host shell.
+pub suberror ExecutionSandboxRequired {
+  ExecutionSandboxRequired(String)
 }
 
 ///|
@@ -109,34 +110,12 @@ pub async fn Manager::spawn(
   if assessment.requires_approval {
     raise CommandApprovalRequired(assessment)
   }
-  let id = self.new_id()
-  let jobs_dir = moonclaw_jobs_root(self.cwd)
-    |> @pathx.join("processes")
-    |> @pathx.join("\{id.0}")
-  @fsx.make_directory(jobs_dir, recursive=true, exists_ok=true)
-  let stdout_path = jobs_dir |> @pathx.join("stdout")
-  @fsx.FileRead::create(stdout_path).close()
-  let stderr_path = jobs_dir |> @pathx.join("stderr")
-  @fsx.FileRead::create(stderr_path).close()
-  let process = self.process.spawn(
-    "sh",
-    ["-c", command],
-    stderr=File(stderr_path),
-    stdout=File(stdout_path),
-    cwd~,
-  )
-  let job = Job::{
-    id,
-    name,
-    description,
-    command,
-    cwd,
-    stdout: stdout_path,
-    stderr: stderr_path,
-    process,
-  }
-  self.jobs[id] = job
-  job
+  // Deliberately do not create output files or a job record. A caller must
+  // obtain a MoonFort execution grant and use the sandbox executor instead.
+  ignore(name)
+  ignore(description)
+  ignore(cwd)
+  raise ExecutionSandboxRequired(command)
 }
 
 ///|
@@ -152,7 +131,9 @@ pub async fn Manager::wait(self : Manager, id : Id) -> Int {
 
 ///|
 pub async fn Manager::start(self : Manager) -> Unit {
-  self.process.start()
+  // Retained for source compatibility with list_jobs/wait_job wiring. There is
+  // no host-process manager to start.
+  ignore(self)
 }
 
 ///|

@@ -32,18 +32,20 @@ health/usage, and MoonLib defines shared paths.
 2. [executable_book_runtime_boundary.md](executable_book_runtime_boundary.md):
    MoonCode and executable-book runtime boundary.
 3. [events.md](events.md): runtime event model.
-4. [http.md](http.md): HTTP surface.
-5. [daemon_vs_gateway.md](daemon_vs_gateway.md): service boundary.
-6. [job_system_architecture.md](job_system_architecture.md): job runtime
+4. [MOONCODE_STREAM_RESUME.md](MOONCODE_STREAM_RESUME.md): bounded,
+   user-facing resume cursors and stream privacy.
+5. [http.md](http.md): HTTP surface.
+6. [daemon_vs_gateway.md](daemon_vs_gateway.md): service boundary.
+7. [job_system_architecture.md](job_system_architecture.md): job runtime
    internals.
-7. [e2e_architecture.md](e2e_architecture.md): end-to-end test direction.
-8. [expected_behaviors/README.md](expected_behaviors/README.md): expected
+8. [e2e_architecture.md](e2e_architecture.md): end-to-end test direction.
+9. [expected_behaviors/README.md](expected_behaviors/README.md): expected
    operator and job behavior.
-9. [evidence_quality.md](evidence_quality.md): dossier policy, local retrieval
+10. [evidence_quality.md](evidence_quality.md): dossier policy, local retrieval
    artifacts, and fail-closed workspace containment.
-10. [RESPONSIBILITY_AND_TESTABILITY.md](RESPONSIBILITY_AND_TESTABILITY.md):
+11. [RESPONSIBILITY_AND_TESTABILITY.md](RESPONSIBILITY_AND_TESTABILITY.md):
     product-neutral runtime ownership, pack boundaries, and focused tests.
-11. [CAPABILITY_INVOCATION.md](CAPABILITY_INVOCATION.md): canonical installed
+12. [CAPABILITY_INVOCATION.md](CAPABILITY_INVOCATION.md): canonical installed
     pack/tool resolution, health verification, durable invocation receipts and
     restart reconciliation.
 

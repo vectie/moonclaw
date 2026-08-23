@@ -11,12 +11,9 @@ import {
 
 // Types and methods
 pub struct ProcessBrowserHost {
-  executable : String
-  arguments : Array[String]
-  cwd : String?
 }
 pub async fn ProcessBrowserHost::execute(Self, @browser.BrowserHostCommand, timeout_ms? : Int) -> Result[@browser.BrowserHostResult, String]
-pub fn ProcessBrowserHost::new(executable~ : String, arguments? : Array[String], cwd? : String) -> Self
+pub fn ProcessBrowserHost::new() -> Self
 
 // Type aliases
 

@@ -14,6 +14,8 @@ test "MoonDesk diagnostics request is typed and traversal-free" {
   }
   assert_true(moondesk_sandbox_constant_time_equal("aabbcc", "aabbcc"))
   assert_false(moondesk_sandbox_constant_time_equal("aabbcc", "aabbcd"))
+  assert_false(moondesk_sandbox_constant_time_equal("aabb", "aabbcc"))
+  assert_false(moondesk_sandbox_constant_time_equal("aabbccdd", "aabbcc"))
 }
 
 ///|

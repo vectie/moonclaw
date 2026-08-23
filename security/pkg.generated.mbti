@@ -42,6 +42,7 @@ pub struct ApprovalRecord {
   status : String
   created_at : Int
   approved_at : Int?
+  context : Json?
 } derive(ToJson, @debug.Debug, @json.FromJson)
 
 pub struct CommandAssessment {
@@ -112,13 +113,14 @@ pub async fn SecurityRuntime::approve_pairing(Self, String, String, String, Int)
 pub async fn SecurityRuntime::approve_token(Self, String, Int) -> ApprovalRecord?
 pub fn SecurityRuntime::command_policy(Self) -> CommandPolicy
 pub async fn SecurityRuntime::consume_approval(Self, String, String, String) -> Bool
+pub async fn SecurityRuntime::consume_approval_record(Self, String, String, String) -> ApprovalRecord?
 pub fn SecurityRuntime::is_paired(Self, String, String, String) -> Bool
 pub fn SecurityRuntime::list_pending_approvals(Self, String) -> Array[ApprovalRecord]
 pub async fn SecurityRuntime::load(Self) -> Unit
 pub fn SecurityRuntime::matching_pending_approval(Self, String, String, String) -> ApprovalRecord?
 pub async fn SecurityRuntime::new(home~ : String, cwd~ : String) -> Self
 pub fn SecurityRuntime::pairing_status_text(Self, String, String, String) -> String
-pub async fn SecurityRuntime::request_approval(Self, String, String, String, String, Int) -> ApprovalRecord
+pub async fn SecurityRuntime::request_approval(Self, String, String, String, String, Int, context? : Json) -> ApprovalRecord
 pub async fn SecurityRuntime::revoke_pairing(Self, String, String, String) -> Bool
 pub async fn SecurityRuntime::save(Self) -> Unit
 pub fn SecurityRuntime::session_dm_scope(Self) -> String

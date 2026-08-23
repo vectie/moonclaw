@@ -22,9 +22,9 @@ pub async fn make_moon_diagnostics_plan(SandboxExecutorConfig, String, String, S
 
 pub async fn make_sandbox_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
 
-pub fn moonfort_full_output_artifact_valid(MoonFortReceipt) -> Bool
-
 pub fn moonfort_grant_digest(MoonFortExecutionGrant) -> String
+
+pub fn moonfort_output_artifact_valid(MoonFortReceipt, Int, Int64) -> Bool
 
 pub async fn persist_sandbox_audit(SandboxExecutorConfig, SandboxApprovalPlan, MoonFortReceipt) -> String
 
@@ -58,6 +58,17 @@ pub(all) enum MoonFortBackendKind {
 pub(all) enum MoonFortCommand {
   Exec(tool~ : String, args~ : Array[String])
   Shell(script~ : String)
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFortCommandOutputArtifactRef {
+  artifact_id : String
+  run_id : String
+  sha256 : String
+  size_bytes : Int64
+  media_type : String
+  expires_at_ms : Int64
+  key_id : String
+  signature : String
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
 pub(all) enum MoonFortEnforcement {
@@ -125,12 +136,12 @@ pub(all) struct MoonFortReceipt {
   exit_code : Int?
   output : String
   output_truncated : Bool
+  output_artifact : MoonFortCommandOutputArtifactRef?
   limit_reason : String?
   unverified_limits : Array[String]
   changed_paths : Array[String]
   changes : Array[MoonFortScratchChange]
   artifacts : Array[String]
-  full_output_artifact : String?
   denial_reason : String?
   cleanup_verified : Bool
   retention_id : String?

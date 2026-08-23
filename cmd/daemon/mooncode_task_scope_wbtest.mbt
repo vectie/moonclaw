@@ -10,24 +10,24 @@ test "mooncode retains a payload contract that declares only task scope" {
 ///|
 async fn mooncode_task_scope_test_git(
   book_root : String,
-  args : Array[String],
+  operation : @trusted_host_process.GitOperation,
 ) -> Unit {
-  let result = mooncode_moon_fmt_git(book_root, args)
+  let result = mooncode_moon_fmt_git(book_root, operation)
   if !mooncode_json_bool(result, "ok", default=false) {
     fail(
-      "git \{args.join(" ")} failed: \{mooncode_json_string(result, "message", default="")}",
+      "trusted git operation failed: \{mooncode_json_string(result, "message", default="")}",
     )
   }
 }
 
 ///|
 async fn mooncode_task_scope_test_commit_baseline(book_root : String) -> Unit {
-  mooncode_task_scope_test_git(book_root, ["init", "-q"])
-  mooncode_task_scope_test_git(book_root, ["add", "."])
-  mooncode_task_scope_test_git(book_root, [
-    "-c", "user.name=MoonClaw Test", "-c", "user.email=moonclaw-test@local", "commit",
-    "-qm", "baseline",
-  ])
+  mooncode_task_scope_test_git(book_root, @trusted_host_process.Init)
+  mooncode_task_scope_test_git(book_root, @trusted_host_process.AddAll)
+  mooncode_task_scope_test_git(
+    book_root,
+    @trusted_host_process.Commit("baseline"),
+  )
 }
 
 ///|
@@ -154,20 +154,22 @@ async test "mooncode restores indirect shell-tool changes outside task scope" (
   @fsx.write_to_file(allowed, allowed_before)
   @fsx.write_to_file(outside, outside_before)
   mooncode_task_scope_test_commit_baseline(book_root)
-  let execution = mooncode_execute_tool_call(
-    "session-task-scope",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-task-scope",
-      "book_root": book_root,
-      "tool": "moon_cmd",
-      "command_id": "cmd-task-scope",
-      "task_contract": { "scope": ["allowed"] },
-      "arguments": { "command": "fmt" },
-    },
-    now=@clock.Timestamp::from_ms(3L),
-  )
+  let execution = mooncode_with_fixture_moonfort(book_root, async fn(_) {
+    mooncode_execute_tool_call(
+      "session-task-scope",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-task-scope",
+        "book_root": book_root,
+        "tool": "moon_cmd",
+        "command_id": "cmd-task-scope",
+        "task_contract": { "scope": ["allowed"] },
+        "arguments": { "command": "fmt" },
+      },
+      now=@clock.Timestamp::from_ms(3L),
+    )
+  })
   assert_false(mooncode_json_bool(execution, "accepted", default=true))
   assert_true(@fsx.read_file(allowed) != allowed_before)
   let metadata = mooncode_json_object_field_or_empty(

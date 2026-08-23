@@ -75,112 +75,37 @@ fn command_timeout(
 }
 
 ///|
-fn command_result_error(
-  result : PackToolCommandResult,
-  request : PackToolExecutionRequest,
-) -> String? {
-  if result.contract != "moonsuite.pack-tool-result.v1" {
-    return Some("unsupported pack tool command result contract")
-  }
-  if result.pack_id is Some(pack_id) && pack_id != request.binding.pack_id {
-    return Some("pack tool command result pack_id does not match invocation")
-  }
-  if result.run_id is Some(run_id) && run_id != request.run_id {
-    return Some("pack tool command result run_id does not match invocation")
-  }
-  if result.tool_id is Some(tool_id) && tool_id != request.binding.tool_id {
-    return Some("pack tool command result tool_id does not match invocation")
-  }
-  match result.ok {
-    Some(false) =>
-      Some(result.error.unwrap_or("pack tool command reported failure"))
-    _ => None
-  }
-}
-
-///|
-async fn execute_installed_pack_command(
+fn validate_installed_pack_command(
   installed : InstalledPackWorkflow,
   max_timeout_ms : Int,
   request : PackToolExecutionRequest,
-) -> Result[PackToolExecutionResult, String] {
+) -> Result[Unit, String] {
   let config : PackToolCommandConfig = @json.from_json(request.config) catch {
     error => return Err("invalid pack tool command config: \{error}")
   }
   if config.contract != "moonsuite.pack-tool-command.v1" {
     return Err("unsupported pack tool command config contract")
   }
-  let executable = match
-    require_installed_artifact(installed, config.executable, "executable") {
-    Ok(path) => path
-    Err(error) => return Err(error)
-  }
-  let input_path = match
-    require_installed_artifact(installed, config.input, "input") {
-    Ok(path) => path
-    Err(error) => return Err(error)
-  }
-  let input = @json.parse(@fsx.read_file(input_path)) catch {
-    error => return Err("invalid pack tool command input JSON: \{error}")
-  }
-  let timeout = match command_timeout(config, max_timeout_ms) {
-    Ok(timeout) => timeout
-    Err(error) => return Err(error)
-  }
-  let invocation : PackToolCommandInvocation = {
-    contract: "moonsuite.pack-tool-invocation.v1",
-    pack_id: request.binding.pack_id,
-    run_id: request.run_id,
-    tool_id: request.binding.tool_id,
-    input,
-  }
-  @fs.chmod(executable, 0o500) catch {
-    error =>
-      return Err(
-        "failed to make verified pack tool command executable: \{error}",
-      )
-  }
-  let process = @spawn.spawn(
-    executable,
-    config.arguments.map(argument => argument[:]),
-    stdin=invocation.to_json().stringify() + "\n",
-    timeout~,
-    cwd=installed.pointer.installed_root,
-  ) catch {
-    error => return Err("failed to execute pack tool command: \{error}")
-  }
-  if process.status != 0 {
-    let detail = if !process.stderr.trim().is_blank() {
-      process.stderr.trim().to_owned()
-    } else if !process.stdout.trim().is_blank() {
-      process.stdout.trim().to_owned()
-    } else {
-      "exit status \{process.status}"
-    }
-    return Err("pack tool command failed: " + detail)
-  }
-  let result_json = @json.parse(process.stdout.trim().to_owned()) catch {
-    error => return Err("invalid pack tool command result JSON: \{error}")
-  }
-  let result : PackToolCommandResult = @json.from_json(result_json) catch {
-    error => return Err("invalid pack tool command result: \{error}")
-  }
-  match command_result_error(result, request) {
-    Some(error) => return Err(error)
-    None => ()
-  }
-  let logs = result.logs.unwrap_or([])
-  if !process.stderr.trim().is_blank() {
-    logs.push(process.stderr.trim().to_owned())
-  }
-  Ok(
-    PackToolExecutionResult::new(
-      output=result.output.unwrap_or(result_json),
-      summary=result.summary,
-      metrics=result.metrics.unwrap_or({}),
-      logs~,
-    ),
+  ignore(
+    match
+      require_installed_artifact(installed, config.executable, "executable") {
+      Ok(path) => path
+      Err(error) => return Err(error)
+    },
   )
+  ignore(
+    match require_installed_artifact(installed, config.input, "input") {
+      Ok(path) => path
+      Err(error) => return Err(error)
+    },
+  )
+  ignore(
+    match command_timeout(config, max_timeout_ms) {
+      Ok(timeout) => timeout
+      Err(error) => return Err(error)
+    },
+  )
+  Ok(())
 }
 
 ///|
@@ -191,6 +116,12 @@ pub fn installed_pack_command_executor(
   max_timeout_ms~ : Int,
 ) -> PackToolExecutor {
   PackToolExecutor::new(run=request => {
-    execute_installed_pack_command(installed, max_timeout_ms, request)
+    match validate_installed_pack_command(installed, max_timeout_ms, request) {
+      Err(error) => Err(error)
+      Ok(_) =>
+        Err(
+          "installed pack native execution requires an explicit sandbox adapter",
+        )
+    }
   })
 }

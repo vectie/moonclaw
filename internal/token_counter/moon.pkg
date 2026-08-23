@@ -9,4 +9,5 @@ supported_targets = "native"
 import {
   "vectie/moonclaw/internal/mock",
   "moonbitlang/async",
+  "moonbitlang/core/test",
 } for "wbtest"

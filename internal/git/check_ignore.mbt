@@ -3,17 +3,45 @@ pub async fn check_ignore(
   paths : Array[StringView],
   cwd? : StringView,
 ) -> Array[String] {
-  let args : Array[StringView] = ["check-ignore"]
-  for path in paths {
-    args.push(path)
+  if paths.is_empty() {
+    return []
   }
-  let process = @spawn.spawn("git", args, cwd?)
-  process.check()
-  let output = process.stdout.trim()
+  let root = cwd.map(fn(value) { value.to_owned() }).unwrap_or(".")
+  let normalized : Array[String] = []
+  for path in paths {
+    let owned = path.to_owned()
+    normalized.push(
+      if @pathx.is_absolute(owned) {
+        @pathx.relative(root, owned)
+      } else {
+        owned
+      },
+    )
+  }
+  let result = @trusted_host_process.run_git(root, CheckIgnore(normalized))
+  if result.status() == 1 {
+    return []
+  }
+  if result.status() != 0 {
+    fail("trusted git check-ignore failed: \{result.stderr()}")
+  }
+  let output = result.stdout().trim()
   if output.is_empty() {
     return []
   }
-  output.split("\n").map(line => line.to_owned()).collect()
+  let ignored : Array[String] = []
+  for line in output.split("\n") {
+    let relative = line.to_owned()
+    let mut restored = relative
+    for index, normalized_path in normalized {
+      if normalized_path == relative {
+        restored = paths[index].to_owned()
+        break
+      }
+    }
+    ignored.push(restored)
+  }
+  ignored
 }
 
 ///|

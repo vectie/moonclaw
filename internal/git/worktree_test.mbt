@@ -35,26 +35,24 @@ async test "add_worktree/new-branch" (t : @test.Test) {
       |> @fsx.read_file(),
       content="Hello, Moonbit!",
     )
-    let process = @spawn.spawn(
-      "git",
-      ["branch", "--show-current"],
-      cwd=mock.cwd.path() |> @pathx.join("worktree"),
+    let result = @trusted_host_process.run_git(
+      mock.cwd.path() |> @pathx.join("worktree"),
+      CurrentBranch,
     )
-    inspect(
-      process.stdout,
-      content=(
-        #|new-branch
-        #|
-      ),
-    )
+    assert_eq(result.status(), 0)
+    inspect(result.stdout(), content="new-branch\n")
   })
 }
 
 ///|
 pub async fn rev_parse(commit : String, cwd? : StringView) -> String {
-  let process = @spawn.spawn("git", ["rev-parse", commit], cwd?)
-  process.check()
-  return process.stdout.trim().to_owned()
+  guard commit == "HEAD" else { fail("test rev_parse only accepts HEAD") }
+  let root = cwd.map(fn(value) { value.to_owned() }).unwrap_or(".")
+  let result = @trusted_host_process.run_git(root, Head)
+  if result.status() != 0 {
+    fail("trusted git rev-parse failed: \{result.stderr()}")
+  }
+  result.stdout().trim().to_owned()
 }
 
 ///|

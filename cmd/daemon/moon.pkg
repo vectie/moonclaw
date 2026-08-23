@@ -28,6 +28,7 @@ import {
   "vectie/moonclaw/event",
   "vectie/moonclaw/internal/buildinfo",
   "vectie/moonclaw/internal/conversation",
+  "vectie/moonclaw/internal/context_pruner",
   "moonbitlang/async/semaphore",
   "moonbitlang/async/tls",
   "vectie/moonclaw/ai",

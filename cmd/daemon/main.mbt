@@ -67,19 +67,11 @@ pub async fn detach(
   serve? : StringView,
 ) -> Int {
   let home = moonclaw_daemon_home_for_serve(serve)
-  let args = ["daemon"]
-  if port is Some(port) {
-    args.push("--port")
-    args.push(port.to_string())
-  }
-  if serve is Some(serve) {
-    args.push("--serve")
-    args.push(serve.to_owned())
-  }
-  if exec_path is Some(exec_path) {
-    args.push(exec_path)
-  }
-  let pid = @process.spawn_orphan(@os.executable(), args)
+  let pid = @trusted_host_process.spawn_detached_daemon(
+    server_exec_path?=exec_path,
+    port?,
+    serve?=serve.map(value => value.to_owned()),
+  )
   @async.with_timeout(60_000, () => {
     let mut resolved_pid : Int? = None
     while resolved_pid is None {

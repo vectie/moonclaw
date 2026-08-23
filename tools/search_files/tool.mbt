@@ -11,7 +11,6 @@ priv struct SearchResult {
 /// Error types for search operations
 priv suberror SearchError {
   FileReadError(path~ : String, error~ : String)
-  MoonAnalysisError(query~ : String, error~ : String)
 } derive(ToJson, Debug)
 
 ///|
@@ -146,58 +145,6 @@ async fn search_in_file(
 }
 
 ///|
-/// Execute MoonBit IDE goto-definition command
-async fn goto_definition(
-  query : String,
-  working_dir : String,
-) -> String raise SearchError {
-  let process = @spawn.spawn(
-    "moon",
-    ["ide", "goto-definition", query],
-    cwd=working_dir,
-  ) catch {
-    error => raise MoonAnalysisError(query~, error="\{to_repr(error)}")
-  }
-  if process.status != 0 {
-    process.stdout
-  } else {
-    (
-      $|Search completed using fuzzy symbolic search for MoonBit definitions.
-      $|Note: The search pattern "\{query}" was used for fuzzy matching of symbol names.
-      $|
-      $|\{process.stdout}
-    )
-  }
-}
-
-///|
-/// Execute MoonBit IDE find-references command
-async fn find_references(
-  query : String,
-  working_dir : String,
-) -> String raise SearchError {
-  let process = @spawn.spawn(
-    "moon",
-    ["ide", "find-references", query],
-    cwd=working_dir,
-  ) catch {
-    error => raise MoonAnalysisError(query~, error="\{to_repr(error)}")
-  }
-  if process.status != 0 {
-    raise MoonAnalysisError(
-      query~,
-      error="moon ide find-references failed with exit code \{process.status}",
-    )
-  }
-  let result = process.stdout
-  if result.is_empty() {
-    "No references found for query '\{query}'"
-  } else {
-    "Search completed using MoonBit IDE find-references tool.\nQuery: \"\{query}\"\nWorking directory: \{working_dir}\n\n\{result}"
-  }
-}
-
-///|
 /// Check if path exists and get its type
 async fn check_path(path : String) -> (Bool, Bool) { // (exists, is_file)
   try {
@@ -278,9 +225,6 @@ pub impl Show for SearchFilesResult with fn output(
 }
 
 ///|
-const MoonBitIdeEnabled : Bool = false
-
-///|
 /// Main tool implementation function
 async fn search_files_impl(
   args : Json,
@@ -339,69 +283,13 @@ async fn search_files_impl(
   try {
     // Handle MoonBit symbol searches
     match search_kind {
-      MoonbitDefinition if MoonBitIdeEnabled => {
-        let path_result = check_path(absolute_search_path)
-        let exists = path_result.0
-        let is_file = path_result.1
-        if !exists {
-          @tool.error("Error: Directory not found: \{search_path}")
-        } else if is_file {
-          @tool.error(
-            "Error: Path must be a directory for MoonBit definition search: \{search_path}",
-          )
-        } else {
-          let output = goto_definition(search_pattern, absolute_search_path)
-          let message = if output.contains("No matching symbols found") {
-            "No matching symbols found for query '\{search_pattern}'"
-          } else {
-            "Search completed using fuzzy symbolic search for MoonBit definitions."
-          }
-          let result = MoonbitToolResult::{
-            kind: search_kind,
-            query: search_pattern,
-            path: search_path,
-            working_directory: absolute_search_path,
-            output,
-            message,
-          }
-          @tool.ok(MoonbitToolResult(result))
-        }
-      }
       MoonbitDefinition =>
         @tool.error(
-          "Error: MoonBit IDE features are not enabled in this build.",
+          "MoonBit definition analysis refused: no configured ExecutionSandbox route is available.",
         )
-      MoonbitReferences if MoonBitIdeEnabled => {
-        let path_result = check_path(absolute_search_path)
-        let exists = path_result.0
-        let is_file = path_result.1
-        if !exists {
-          @tool.error("Error: Directory not found: \{search_path}")
-        } else if is_file {
-          @tool.error(
-            "Error: Path must be a directory for MoonBit references search: \{search_path}",
-          )
-        } else {
-          let output = find_references(search_pattern, absolute_search_path)
-          let message = if output.contains("No references found") {
-            "No references found for query '\{search_pattern}'"
-          } else {
-            "Search completed using MoonBit IDE find-references tool."
-          }
-          let result = MoonbitToolResult::{
-            kind: search_kind,
-            query: search_pattern,
-            path: search_path,
-            working_directory: absolute_search_path,
-            output,
-            message,
-          }
-          @tool.ok(MoonbitToolResult(result))
-        }
-      }
       MoonbitReferences =>
         @tool.error(
-          "Error: MoonBit IDE features are not enabled in this build.",
+          "MoonBit reference analysis refused: no configured ExecutionSandbox route is available.",
         )
       Regex => {
         // Validate path exists
@@ -486,8 +374,6 @@ async fn search_files_impl(
   } catch {
     SearchError::FileReadError(path~, error~) =>
       @tool.error("Could not read file '\{path}': \{error}")
-    SearchError::MoonAnalysisError(query~, error~) =>
-      @tool.error("Error performing MoonBit analysis for '\{query}': \{error}")
     error => @tool.error("Error searching files: \{error}", error~)
   }
 }

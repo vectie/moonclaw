@@ -1,14 +1,21 @@
 ///|
-#skip
-async test "clone" (t : @test.Test) {
+async test "clone fails closed without an ExecutionSandbox grant" (
+  t : @test.Test,
+) {
   @mock.run(t, mock => {
-    @git.clone(
-      "https://github.com/vectie/moonclaw.git",
-      to=mock.cwd.path(),
-      depth=1,
-    )
-    let entries = mock.cwd.list().map((entry : @mock.Entry) => entry.name())
-    json_inspect(entries.contains("moon.mod.json"), content=true)
+    let result = Ok(
+      @git.clone(
+        "https://github.com/vectie/moonclaw.git",
+        to=mock.cwd.path(),
+        depth=1,
+      ),
+    ) catch {
+      error => Err(error)
+    }
+    guard result is Err(error) else {
+      @test.fail("expected git clone to fail closed")
+    }
+    assert_true(error.to_string().contains("ExecutionSandbox grant required"))
   })
 }
 

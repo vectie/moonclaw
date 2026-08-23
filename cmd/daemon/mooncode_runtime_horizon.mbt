@@ -62,6 +62,9 @@ fn mooncode_runtime_horizon_task_contract(command : Json) -> Json {
 }
 
 ///|
+const MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS : Int = 12000
+
+///|
 fn mooncode_runtime_horizon_compact_request(command : Json) -> String {
   let request = mooncode_runtime_turn_prompt_text(command).trim().to_owned()
   let markers = [
@@ -81,8 +84,11 @@ fn mooncode_runtime_horizon_compact_request(command : Json) -> String {
   } else {
     request
   }
-  if compact.length() > 12000 {
-    compact[:12000].to_owned() +
+  if compact.length() > MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS {
+    mooncode_utf8_prefix_within(
+      compact,
+      MOONCODE_HORIZON_TASK_CONTRACT_MAX_CHARS,
+    ) +
     "\n[Request truncated to the executable task contract.]"
   } else {
     compact
@@ -819,16 +825,20 @@ fn mooncode_runtime_horizon_progress_message(
     "Planner opportunities remaining: \{remaining_steps}. Reserve the final three for implementation/repair, typed verification, then an all-done checkpoint plus finish. Do not rediscover completed milestones."
   }
   let path_guidance = "\nPath guidance: exact user-supplied paths and task-contract context_paths remain authoritative starting points. Use them before broader discovery; if one fails, consume its exact error and resolve it with narrow discovery rather than guessing or abandoning an unfinished milestone."
-  {
-    "role": "user",
-    "content": "Authoritative immutable checkpoint contract:\n\{checkpoint_contract.stringify(indent=2)}\n" +
-    "Copy every milestone id, title, evidence_kind, path, and context_paths from this contract exactly. Add only status (pending, active, or done) and next_action; never guess or reconstruct the contract from memory.\n" +
-    "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
-    "Recent runtime evidence:\n\{if summaries.length() == 0 { "- none" } else { summaries.join("\n") }}\n" +
-    horizon +
-    path_guidance +
-    recovery,
-  }
+  mooncode_runtime_context_message(
+    {
+      "role": "user",
+      "content": "Authoritative immutable checkpoint contract:\n\{checkpoint_contract.stringify(indent=2)}\n" +
+      "Copy every milestone id, title, evidence_kind, path, and context_paths from this contract exactly. Add only status (pending, active, or done) and next_action; never guess or reconstruct the contract from memory.\n" +
+      "Latest accepted checkpoint:\n\{checkpoint.stringify(indent=2)}\n" +
+      "Recent runtime evidence:\n\{if summaries.length() == 0 { "- none" } else { summaries.join("\n") }}\n" +
+      horizon +
+      path_guidance +
+      recovery,
+    },
+    EnvironmentContext,
+    "environment.horizon_progress",
+  )
 }
 
 ///|

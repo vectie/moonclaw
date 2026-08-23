@@ -1,6 +1,5 @@
 import {
   "vectie/moonlib/fsx",
-  "vectie/moonlib/spawn",
 }
 
 import {

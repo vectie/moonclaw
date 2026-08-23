@@ -204,7 +204,7 @@ fn mooncode_moon_check_update_text(watcher_state : Json) -> String {
       "truncated",
       default=false,
     ) {
-    "\ntruncated=true\nmax_output_chars=\{mooncode_json_int(watcher_state, "max_output_chars", default=12000)}"
+    "\ntruncated=true\nmax_output_chars=\{mooncode_json_int(watcher_state, "max_output_chars", default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS)}"
   } else {
     ""
   }

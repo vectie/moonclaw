@@ -1166,6 +1166,7 @@ test "mooncode core owns runtime tool contract" {
   assert_true(runtime_tool_is_supported("moon_cmd"))
   assert_false(runtime_tool_is_supported("delete_world"))
   assert_true(runtime_tool_requires_authorization_snapshot("moon_check"))
+  assert_true(runtime_tool_requires_authorization_snapshot("moon_cmd"))
   assert_false(runtime_tool_requires_authorization_snapshot("read"))
   let aliases = runtime_tool_alias_rows().map(row => {
     runtime_tool_test_string(row, "alias") +

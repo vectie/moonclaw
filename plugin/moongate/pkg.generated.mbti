@@ -31,6 +31,7 @@ pub async fn Client::model_catalog(Self) -> Result[Array[MoonGateModel], String]
 pub async fn Client::models(Self) -> Result[Json, String]
 pub async fn Client::post(Self, String, Json) -> Result[Json, String]
 pub async fn Client::provider_presets(Self) -> Result[Json, String]
+pub async fn Client::record_planner_metrics(Self, Json) -> Result[Json, String]
 pub async fn Client::route_openclaw_chat(Self, Json) -> Result[Json, String]
 pub fn Client::route_openclaw_chat_url(Self) -> String
 pub async fn Client::stats(Self) -> Result[Json, String]

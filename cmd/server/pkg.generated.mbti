@@ -29,6 +29,8 @@ pub(all) struct RegisterInfo {
   host : String
   port : Int
   id : String
+  instance_id : String
+  token : String
 }
 
 pub struct RegisterRequest {

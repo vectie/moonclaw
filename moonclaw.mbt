@@ -15,6 +15,7 @@ fn setup_agent(
   restricted_workspace~ : Bool,
   web_search~ : Bool,
   command_approval_scope? : String,
+  sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
@@ -34,11 +35,12 @@ fn setup_agent(
       ])
     }
   } else {
-    let execute_command_tool = match command_approval_scope {
-      Some(scope) =>
-        @execute_command.new(agent.cwd, home~, approval_scope=scope)
-      None => @execute_command.new(agent.cwd, home~)
-    }
+    let execute_command_tool = @execute_command.new(
+      agent.cwd,
+      home~,
+      approval_scope?=command_approval_scope,
+      sandbox_config?,
+    )
     agent.add_tools([
       execute_command_tool.to_agent_tool(),
       @list_files.new(file_manager).to_agent_tool(),
@@ -113,6 +115,11 @@ pub async fn Moonclaw::new(
   let system_prompt = [@prompt.prelude, @todo.prompt, @search_files.prompt].join(
     "\n",
   )
+  let sandbox_config = if restricted_workspace {
+    None
+  } else {
+    @moonfort_config.load_sandbox_executor_config()
+  }
   let agent = @agent.new(
     name?,
     model,
@@ -130,6 +137,7 @@ pub async fn Moonclaw::new(
     restricted_workspace~,
     web_search~,
     command_approval_scope?,
+    sandbox_config?,
   )
   { logger, agent }
 }
@@ -193,6 +201,7 @@ pub async fn Moonclaw::resume_(
   guard session_manager.load(id) is Some(conversation) else {
     fail("Conversation with id '\{id}' not found.")
   }
+  let sandbox_config = @moonfort_config.load_sandbox_executor_config()
   // Use the conversation's web_search setting if not explicitly overridden.
   let web_search = web_search.unwrap_or(conversation.web_search())
   let agent = @agent.load(
@@ -210,6 +219,7 @@ pub async fn Moonclaw::resume_(
     restricted_workspace=false,
     web_search~,
     command_approval_scope?,
+    sandbox_config?,
   )
   { logger, agent }
 }

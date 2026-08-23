@@ -119,13 +119,16 @@ fn default_execution_isolation_task_key(
 pub fn analysis_execution_isolation_spec(
   context : WorkflowStepContext,
   config : AnalysisStepConfig,
-) -> ExecutionIsolationSpec? {
+) -> ExecutionIsolationSpec? raise {
   match metadata_with_step_metadata(config.metadata, "execution_isolation") {
     Some(Object(obj)) => {
       let mode = match obj.get("mode") {
         Some(String("git_worktree")) => GitWorktree
         Some(String("shared_workspace")) => SharedWorkspace
-        _ => SharedWorkspace
+        None => SharedWorkspace
+        Some(String(mode)) =>
+          raise Failure("unsupported execution isolation mode: \{mode}")
+        Some(_) => raise Failure("execution isolation mode must be a string")
       }
       let task_key = match obj.get("task_key") {
         Some(String(task_key)) if !task_key.trim().is_blank() =>
@@ -215,9 +218,17 @@ pub async fn resolve_analysis_execution_isolation(
             base_dir=spec.base_dir,
             branch_name=spec.branch_name,
           ) catch {
-            _ => return ExecutionIsolationResolution::new(cwd=fallback_cwd)
+            error =>
+              raise Failure(
+                "failed to plan required git worktree isolation: \{error}",
+              )
           }
-          let exists = @fsx.exists(handle.path) catch { _ => false }
+          let exists = @fsx.exists(handle.path) catch {
+            error =>
+              raise Failure(
+                "failed to inspect required git worktree isolation: \{error}",
+              )
+          }
           let auto_created = !exists
           if !exists {
             ignore(
@@ -226,7 +237,10 @@ pub async fn resolve_analysis_execution_isolation(
                 commit=spec.commit,
                 force_new_branch=spec.force_new_branch,
               ) catch {
-                _ => return ExecutionIsolationResolution::new(cwd=fallback_cwd)
+                error =>
+                  raise Failure(
+                    "failed to create required git worktree isolation: \{error}",
+                  )
               },
             )
           }

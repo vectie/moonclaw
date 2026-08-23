@@ -1,17 +1,19 @@
 ///|
+pub(all) struct PdfOcrProcess {
+  status : Int
+}
+
+///|
 pub async fn run_process(
   command : String,
   arguments : Array[String],
   cwd? : String? = None,
-) -> Result[@spawn.CompletedProcess, String] {
-  Ok(
-    @spawn.spawn(
-      command[:],
-      arguments.map(fn(arg) { arg[:] }),
-      cwd?=cwd.map(fn(path) { path[:] }),
-    ) catch {
-      error => return Err(error.to_string())
-    },
+) -> Result[PdfOcrProcess, String] {
+  ignore(command)
+  ignore(arguments)
+  ignore(cwd)
+  Err(
+    "native PDF extraction refused: no configured ExecutionSandbox route is available",
   )
 }
 
@@ -21,7 +23,7 @@ pub async fn extract_text_from_pdf(
   extracted_text_path : String,
   scratch_dir : String,
   run_command : async (String, Array[String], String?) -> Result[
-    @spawn.CompletedProcess,
+    PdfOcrProcess,
     String,
   ],
 ) -> (String?, String?) {

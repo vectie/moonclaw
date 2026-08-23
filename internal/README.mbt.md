@@ -66,7 +66,18 @@ pub async fn[T] Broadcast::flush(self : Broadcast[T]) -> Unit
 
 ## context_pruner
 
-Manages token budgets by pruning tool outputs.
+Manages token budgets in two layers:
+
+- persistent pruning marks replayable tool-result events as cleared;
+- request compilation shapes only the model-facing projection after skills and
+  rules are injected.
+
+In-budget requests pass through unchanged. Overflow compilation preserves the
+system/rules/initial-task prefix and newest complete exchange, redacts older
+tool evidence first, then replaces older history with a deterministic bounded
+checkpoint. The durable conversation is never rewritten. If protected content
+or tool schemas alone exceed the budget, compilation returns
+`within_budget = false` without dropping them.
 
 ```moonbit nocheck
 struct Pruner {
@@ -81,19 +92,40 @@ pub struct PruneResult {
   pruned_token_count : Int
 }
 
+pub struct CompileResult {
+  messages : Array[@openai.ChatCompletionMessageParam]
+  origin_token_count : Int
+  final_token_count : Int
+  redacted_tool_results : Int
+  compacted_messages : Int
+  within_budget : Bool
+}
+
 pub fn Pruner::new(safe_zone_tokens~ : Int, logger~ : @pino.Logger) -> Pruner
 pub async fn Pruner::calculate_pruning(
   pruner : Pruner,
   conversation : @conversation.Conversation,
   tools? : Array[@openai.ChatCompletionToolParam],
 ) -> PruneResult
+
+pub async fn Pruner::compile_messages(
+  pruner : Pruner,
+  messages : Array[@openai.ChatCompletionMessageParam],
+  tools? : Array[@openai.ChatCompletionToolParam],
+) -> CompileResult
 ```
 
-**Algorithm:**
-1. Count current tokens in conversation
-2. If over budget, identify oldest `PostToolCall` events
-3. Greedily prune until within budget
-4. Replace tool outputs with placeholder text
+**Live request algorithm:**
+
+1. Apply skills and rules, then count the complete request once.
+2. Return an identical projection when it is within budget.
+3. On overflow, redact old tool evidence while retaining the newest tool batch.
+4. If needed, retain the protected task prefix and newest complete turn around a
+   bounded deterministic checkpoint.
+5. Emit before/after metrics and apply prompt caching.
+
+`calculate_pruning` remains available for callers that explicitly need legacy
+persistent `Pruned` events; the live agent path uses projection-only compilation.
 
 ---
 

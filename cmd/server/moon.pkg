@@ -12,7 +12,7 @@ import {
   "vectie/moonlib/pathx",
   "moonbitlang/async/os_error",
   "vectie/moonclaw/internal/broadcast",
-  "vectie/moonlib/spawn",
+  "vectie/moonclaw/internal/trusted_host_process",
   "vectie/moonlib/uuid",
   "vectie/moonlib/rand",
   "vectie/moonclaw/internal/httpx",

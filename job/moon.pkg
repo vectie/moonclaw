@@ -1,7 +1,6 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
-  "moonbitlang/async/process",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/acp",
   "vectie/moonclaw/ai",
@@ -9,13 +8,14 @@ import {
   "vectie/moonclaw/file",
   "vectie/moonclaw/model",
   "vectie/moonclaw/prompt",
-  "vectie/moonclaw/internal/spawn",
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
   "vectie/moonlib/os",
   "vectie/moonlib/moonsuite",
   "vectie/moonlib/capability",
   "vectie/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/moonfort_config",
+  "vectie/moonclaw/internal/trusted_host_process",
   "vectie/moonclaw/internal/pino",
   "vectie/moonclaw/internal/resource_providers",
   "vectie/moonclaw/internal/worktree",
@@ -29,6 +29,7 @@ import {
   "vectie/moonclaw/tools/apply_patch",
   "vectie/moonclaw/tools/delegate_run",
   "vectie/moonclaw/tools/execute_command",
+  "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/tools/glob_files",
   "vectie/moonclaw/tools/enter_worktree",
   "vectie/moonclaw/tools/exit_worktree",
@@ -57,4 +58,5 @@ import {
 import {
   "moonbitlang/async",
   "vectie/moonclaw/internal/git",
+  "vectie/moonclaw/internal/trusted_host_process",
 } for "wbtest"

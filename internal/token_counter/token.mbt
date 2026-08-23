@@ -55,6 +55,40 @@ pub fn Counter::count_string(self : Counter, text : String) -> Int {
 }
 
 ///|
+fn Counter::decode_prefix(
+  self : Counter,
+  tokens : Array[Int],
+  end : Int,
+) -> String {
+  if end <= 0 {
+    return ""
+  }
+  self.encoding.decode(tokens[0:end]) catch {
+    // A token boundary can bisect a multi-token UTF-8 scalar. Step back to the
+    // nearest valid boundary rather than using unsafe character slicing.
+    _ => self.decode_prefix(tokens, end - 1)
+  }
+}
+
+///|
+/// Truncate text at a tokenizer boundary. This is used for compact prompt
+/// checkpoints where byte or UTF-16 slicing could corrupt non-ASCII content.
+pub fn Counter::truncate_string(
+  self : Counter,
+  text : String,
+  max_tokens : Int,
+) -> String {
+  if max_tokens <= 0 {
+    return ""
+  }
+  let tokens = self.encoding.encode(text)
+  if tokens.length() <= max_tokens {
+    return text
+  }
+  self.decode_prefix(tokens, max_tokens) + " …"
+}
+
+///|
 fn Counter::count_content_parts(
   self : Counter,
   parts : Array[@openai.ChatCompletionContentPartParam],

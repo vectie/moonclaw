@@ -1,6 +1,6 @@
 import {
   "vectie/moonlib/pathx",
-  "vectie/moonlib/spawn",
+  "vectie/moonclaw/internal/trusted_host_process",
   "vectie/moonlib/fsx",
   "moonbitlang/async",
   "vectie/moonclaw/internal/mock",

@@ -104,7 +104,10 @@ fn mooncode_runtime_turn_deterministic_preplan(command : Json) -> Array[Json] {
     return [
       {
         "tool": "read",
-        "arguments": { "path": path, "max_output_chars": 12000 },
+        "arguments": {
+          "path": path,
+          "max_output_chars": MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+        },
         "planner": "deterministic-explicit-read",
       },
       {

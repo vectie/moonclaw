@@ -1,5 +1,5 @@
 ///|
-async test "execute_launch_plan runs configured codex command" {
+async test "execute_launch_plan refuses host execution without sandbox grant" {
   let plan = AcpLaunchPlan::{
     backend: "codex",
     target_id: "codex-main",
@@ -14,28 +14,17 @@ async test "execute_launch_plan runs configured codex command" {
     metadata: {},
   }
   let request = new_run_request(message="review-this", cwd="/tmp")
-  let result = match execute_launch_plan(plan, request) {
-    Ok(result) => result
-    Err(error) => fail(error)
-  }
   inspect(
-    match result {
-      { "status": String(status), .. } => status
-      _ => ""
+    match execute_launch_plan(plan, request) {
+      Ok(_) => "unexpected execution"
+      Err(error) => error
     },
-    content="completed",
-  )
-  inspect(
-    match result {
-      { "content": String(content), .. } => content
-      _ => ""
-    },
-    content="acp-session-1|review-this",
+    content="ACP backend execution is disabled for target codex-main: a MoonFort ExecutionSandbox grant is required",
   )
 }
 
 ///|
-async test "execute_launch_plan reports backend failure" {
+async test "execute_launch_plan never starts a configured failing backend" {
   let plan = AcpLaunchPlan::{
     backend: "codex",
     target_id: "codex-main",
@@ -55,7 +44,7 @@ async test "execute_launch_plan reports backend failure" {
       Ok(_) => "ok"
       Err(error) => error
     },
-    content="backend-failed",
+    content="ACP backend execution is disabled for target codex-main: a MoonFort ExecutionSandbox grant is required",
   )
 }
 
@@ -112,27 +101,27 @@ test "changed file parser keeps path for raw and trimmed status lines" {
 }
 
 ///|
-async fn acp_test_git(cwd : String, args : Array[String]) -> Unit {
-  let process = @spawn.spawn("git", args.map(fn(arg) { arg[:] }), cwd~) catch {
+async fn acp_test_git(
+  cwd : String,
+  operation : @trusted_host_process.GitOperation,
+) -> Unit {
+  let process = @trusted_host_process.run_git(cwd, operation) catch {
     error => fail(error.to_string())
   }
-  if process.status != 0 {
-    fail(process.stderr)
+  if process.status() != 0 {
+    fail(process.stderr())
   }
 }
 
 ///|
 async fn acp_test_init_repo(cwd : String) -> Unit {
-  acp_test_git(cwd, ["init"])
+  acp_test_git(cwd, @trusted_host_process.Init)
   @fsx.write_to_file(
     @path.Path(cwd).join(Path("README.md")).to_string(),
     "# Test\n",
   )
-  acp_test_git(cwd, ["add", "README.md"])
-  acp_test_git(cwd, [
-    "-c", "user.name=MoonClaw Test", "-c", "user.email=moonclaw-test@local", "commit",
-    "-m", "Initial commit",
-  ])
+  acp_test_git(cwd, @trusted_host_process.AddFiles(["README.md"]))
+  acp_test_git(cwd, @trusted_host_process.Commit("Initial commit"))
 }
 
 ///|
@@ -220,11 +209,8 @@ async test "execute_launch_plan commits repair owned files after validation" {
       @path.Path(dir).join(Path("generated.txt")).to_string(),
       "generated\n",
     )
-    acp_test_git(dir, ["add", "generated.txt"])
-    acp_test_git(dir, [
-      "-c", "user.name=MoonClaw Test", "-c", "user.email=moonclaw-test@local", "commit",
-      "-m", "Add generated baseline",
-    ])
+    acp_test_git(dir, @trusted_host_process.AddFiles(["generated.txt"]))
+    acp_test_git(dir, @trusted_host_process.Commit("Add generated baseline"))
     let target_path = @path.Path(dir).join(Path("source.txt")).to_string()
     let plan = AcpLaunchPlan::{
       backend: "codex",

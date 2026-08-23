@@ -119,7 +119,12 @@ async fn run_local_analysis_runner(
   )
   defer agent.close()
   if request.enable_tools {
-    configure_analysis_agent_for_request(agent, request)
+    let sandbox_config = if constrain_tool_contract_for_request(request).shell {
+      @moonfort_config.load_sandbox_executor_config()
+    } else {
+      None
+    }
+    configure_analysis_agent_for_request(agent, request, sandbox_config?)
   }
 
   let mut final_content = ""

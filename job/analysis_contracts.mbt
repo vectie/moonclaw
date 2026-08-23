@@ -497,12 +497,15 @@ pub fn configure_analysis_agent_for_contract(
   cwd : String,
   home : String?,
   contract : AnalysisToolContract,
+  sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Unit {
   let file_manager = @file.manager(cwd~)
   let todo_list = @todo.new(uuid=agent.uuid, cwd=agent.cwd)
   let builtin_tools = []
   if contract.shell {
-    builtin_tools.push(@execute_command.new(cwd, home?).to_agent_tool())
+    builtin_tools.push(
+      @execute_command.new(cwd, home?, sandbox_config?).to_agent_tool(),
+    )
   }
   if contract.list_files {
     builtin_tools.push(@list_files.new(file_manager).to_agent_tool())
@@ -562,6 +565,7 @@ pub fn configure_analysis_agent_for_contract(
 pub fn configure_analysis_agent_for_request(
   agent : @agent.Agent,
   request : AnalysisRequest,
+  sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Unit {
   let constrained = constrain_tool_contract_for_request(request)
   configure_analysis_agent_for_contract(
@@ -569,6 +573,7 @@ pub fn configure_analysis_agent_for_request(
     request.cwd,
     request.home,
     constrained,
+    sandbox_config?,
   )
   if constrained.runtime_context {
     agent.add_tool(@runtime_context.new(runtime_context_tool_result(request)))
@@ -583,11 +588,13 @@ pub fn configure_analysis_agent_tools(
   agent : @agent.Agent,
   cwd : String,
   web_search? : Bool = false,
+  sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
 ) -> Unit {
   configure_analysis_agent_for_contract(
     agent,
     cwd,
     None,
     AnalysisToolContract::new(web_fetch=web_search, web_search~),
+    sandbox_config?,
   )
 }

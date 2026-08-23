@@ -79,7 +79,7 @@ pub async fn Server::new(
     |> ignore()
   } else {
     logger.warn("No register information provided; skipping registration.")
-    let pid = @spawn.getpid()
+    let pid = @trusted_host_process.current_process_id()
     logger.info("Listening on port \{port}", data={ "pid": pid })
     logger.info("Visit http://127.0.0.1:\{port}/ to access the server.", data={
       "pid": pid,

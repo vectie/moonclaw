@@ -7,9 +7,62 @@ fn mooncode_execution_sandbox_route_available() -> Bool {
 }
 
 ///|
+let mooncode_fixture_sandbox_configs : Map[
+  String,
+  @execution_sandbox.SandboxExecutorConfig,
+] = {}
+
+///|
+let mooncode_fixture_sandbox_configs_lock : @semaphore.Semaphore = @semaphore.Semaphore::new(
+  1,
+)
+
+///|
+async fn mooncode_install_fixture_sandbox_config(
+  book_root : String,
+  config : @execution_sandbox.SandboxExecutorConfig,
+) -> Unit {
+  let canonical_root = @fsx.resolve(book_root)
+  mooncode_fixture_sandbox_configs_lock.acquire()
+  defer mooncode_fixture_sandbox_configs_lock.release()
+  guard !mooncode_fixture_sandbox_configs.contains(canonical_root) else {
+    fail(
+      "MoonFort fixture configuration is already installed for this MoonBook",
+    )
+  }
+  mooncode_fixture_sandbox_configs[canonical_root] = config
+}
+
+///|
+async fn mooncode_remove_fixture_sandbox_config(book_root : String) -> Unit {
+  let canonical_root = @fsx.resolve(book_root)
+  mooncode_fixture_sandbox_configs_lock.acquire()
+  defer mooncode_fixture_sandbox_configs_lock.release()
+  mooncode_fixture_sandbox_configs.remove(canonical_root)
+}
+
+///|
+async fn mooncode_fixture_sandbox_config(
+  book_root : String,
+) -> @execution_sandbox.SandboxExecutorConfig? {
+  if book_root == "" {
+    return None
+  }
+  let canonical_root = @fsx.resolve(book_root) catch { _ => return None }
+  mooncode_fixture_sandbox_configs_lock.acquire()
+  defer mooncode_fixture_sandbox_configs_lock.release()
+  mooncode_fixture_sandbox_configs.get(canonical_root)
+}
+
+///|
 async fn mooncode_execution_sandbox_config(
   tool : String,
+  book_root? : String = "",
 ) -> Result[@execution_sandbox.SandboxExecutorConfig, Json] {
+  match mooncode_fixture_sandbox_config(book_root) {
+    Some(config) => return Ok(config)
+    None => ()
+  }
   let config = @moonfort_config.load_sandbox_executor_config() catch {
     error =>
       return Err(
@@ -35,6 +88,18 @@ fn mooncode_sandbox_evidence(
   execution : @execution_sandbox.SandboxExecution,
 ) -> Json {
   let receipt = execution.receipt
+  let output_artifact : Json = match receipt.output_artifact {
+    None => Json::null()
+    Some(artifact) =>
+      {
+        "artifact_id": artifact.artifact_id,
+        "run_id": artifact.run_id,
+        "sha256": artifact.sha256,
+        "size_bytes": artifact.size_bytes,
+        "media_type": artifact.media_type,
+        "expires_at_ms": artifact.expires_at_ms,
+      }
+  }
   {
     "approval_digest": receipt.approval_digest,
     "approval_plan_digest": execution.plan.expected_approval_digest,
@@ -48,6 +113,7 @@ fn mooncode_sandbox_evidence(
     "changed_paths": receipt.changed_paths,
     "changes": receipt.changes,
     "artifacts": receipt.artifacts,
+    "output_artifact": output_artifact,
     "retention_id": receipt.retention_id,
     "requested_policy": {
       "backend": execution.plan.grant.backend,
@@ -83,8 +149,6 @@ fn mooncode_sandbox_terminal_result(
         "approval_plan_digest": execution.plan.expected_approval_digest,
         "approval_id": receipt.approval_id,
         "run_id": receipt.run_id,
-        "audit_path": execution.audit_path,
-        "receipt": receipt,
         "sandbox_evidence": mooncode_sandbox_evidence(execution),
       },
     )
@@ -101,6 +165,7 @@ fn mooncode_sandbox_terminal_result(
     )
   }
   fields["exit_code"] = exit_code.to_json()
+  fields["status"] = exit_code.to_json()
   fields["truncated"] = mooncode_json_bool(capped, "truncated", default=false).to_json()
   fields["execution_sandbox_required"] = true.to_json()
   fields["execution_sandbox_configured"] = true.to_json()
@@ -109,8 +174,6 @@ fn mooncode_sandbox_terminal_result(
   fields["approval_id"] = receipt.approval_id.to_json()
   fields["run_id"] = receipt.run_id.to_json()
   fields["profile_digest"] = receipt.profile_digest.to_json()
-  fields["audit_path"] = execution.audit_path.to_json()
-  fields["receipt"] = receipt.to_json()
   fields["sandbox_evidence"] = mooncode_sandbox_evidence(execution)
   let output = mooncode_json_string(capped, "output", default="")
   if exit_code == expected_exit_code {
@@ -178,7 +241,7 @@ async fn mooncode_prepare_shell_approval_plan(
     Some(message) => return Err(mooncode_tool_error_result("shell", message~))
     None => ()
   }
-  let config = match mooncode_execution_sandbox_config("shell") {
+  let config = match mooncode_execution_sandbox_config("shell", book_root~) {
     Err(refusal) => return Err(refusal)
     Ok(config) => config
   }
@@ -234,7 +297,7 @@ async fn mooncode_prepare_moon_cmd_approval_plan(
     selector_root~,
     cwd_path~,
   )
-  let config = match mooncode_execution_sandbox_config("moon_cmd") {
+  let config = match mooncode_execution_sandbox_config("moon_cmd", book_root~) {
     Err(refusal) => return Err(refusal)
     Ok(config) => config
   }

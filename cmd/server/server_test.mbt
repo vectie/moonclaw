@@ -77,12 +77,19 @@ async test "register" (t : @test.Test) {
         host: "localhost",
         port: daemon.addr().port(),
         id: "test-server",
+        instance_id: "test-server",
+        token: "a".repeat(72),
       })
     })
     let (conn, _) = daemon.accept()
     let conn = @http.ServerConnection::new(conn)
     let r = conn.read_request()
     guard r.path is "/v1/task/register" else { return }
+    assert_eq(
+      r.headers["x-moonclaw-worker-registration-instance"],
+      "test-server",
+    )
+    assert_eq(r.headers["x-moonclaw-worker-registration-token"], "a".repeat(72))
     let rb = conn.read_all()
     let res : @server.RegisterResponse = @server.RegisterResponse::{  }
     conn.send_response(200, "OK", extra_headers={

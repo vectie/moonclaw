@@ -176,11 +176,15 @@ fn mooncode_runtime_turn_loaded_skill_messages(
     retained[location] = true
     let name = mooncode_json_string(metadata, "name", default="")
     let path = mooncode_json_string(metadata, "path", default="SKILL.md")
-    messages.push({
-      "role": "user",
-      "content": "Retained installed skill resource `\{name}/\{path}`. Continue to follow it:\n\n" +
-      mooncode_json_string(result, "output", default=""),
-    })
+    messages.push(
+      mooncode_runtime_context_text_message(
+        "user",
+        "Retained installed skill resource `\{name}/\{path}`. Continue to follow it:\n\n" +
+        mooncode_json_string(result, "output", default=""),
+        SkillContext,
+        "skill.loaded_resource",
+      ),
+    )
   }
   messages
 }
@@ -215,10 +219,14 @@ fn mooncode_runtime_turn_loaded_skill_receipt_messages(
       default="unrecorded",
     )
     let content_chars = mooncode_json_int(metadata, "content_chars", default=0)
-    messages.push({
-      "role": "system",
-      "content": "Loaded-skill receipt: `\{name}/\{path}` was loaded completely earlier in this preserved command (chars=\{content_chars}, sha256=\{digest}). Its full bytes remain in the durable journal and it already governs this run. Treat its trigger and loading gate as satisfied and continue following it. A missing or empty filesystem result cannot invalidate this receipt. Do not select read, shell, glob, grep, find, ls, or web tools to locate this skill, and do not call `read_skill` again unless this receipt is absent or the recorded version digest changes. Installed skill resources are served only through `read_skill`; they are not MoonBook or home-directory filesystem paths.",
-    })
+    messages.push(
+      mooncode_runtime_context_text_message(
+        "system",
+        "Loaded-skill receipt: `\{name}/\{path}` was loaded completely earlier in this preserved command (chars=\{content_chars}, sha256=\{digest}). Its full bytes remain in the durable journal and it already governs this run. Treat its trigger and loading gate as satisfied and continue following it. A missing or empty filesystem result cannot invalidate this receipt. Do not select read, shell, glob, grep, find, ls, or web tools to locate this skill, and do not call `read_skill` again unless this receipt is absent or the recorded version digest changes. Installed skill resources are served only through `read_skill`; they are not MoonBook or home-directory filesystem paths.",
+        SkillContext,
+        "skill.loaded_receipt",
+      ),
+    )
   }
   messages
 }

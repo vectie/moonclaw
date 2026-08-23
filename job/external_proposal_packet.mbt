@@ -51,14 +51,6 @@ fn detached_run_args(
 }
 
 ///|
-async fn default_detached_run_spawner(
-  exec_path : String,
-  args : Array[String],
-) -> Unit {
-  ignore(@process.spawn_orphan(exec_path, args))
-}
-
-///|
 fn detached_run_executable_candidate(
   configured : String?,
   process_executable : String,
@@ -948,26 +940,9 @@ pub async fn GatewayJobApp::launch_definition_detached(
   self : GatewayJobApp,
   job_id : String,
   initial_input? : Json? = None,
-  spawn_runner? : async (String, Array[String]) -> Unit = default_detached_run_spawner,
+  spawn_runner? : async (String, Array[String]) -> Unit,
   detached_exec_path? : String,
 ) -> Result[JobRun, String] {
-  let process_executable = match detached_exec_path {
-    Some(path) => path
-    None =>
-      @os.executable() catch {
-        error =>
-          return Err("Failed to resolve MoonClaw executable path: \{error}")
-      }
-  }
-  let exec_path = detached_run_executable_candidate(
-    configured_detached_run_executable(),
-    process_executable,
-  )
-  if !detached_run_executable_supported(exec_path) {
-    return Err(
-      "Detached proposal launch requires a MoonClaw application executable, but the current runtime is \{exec_path}. Use --inline for source-tree execution or set MOONCLAW_EXECUTABLE to an installed MoonClaw binary.",
-    )
-  }
   let run = match
     self
     .runtime()
@@ -995,10 +970,45 @@ pub async fn GatewayJobApp::launch_definition_detached(
     }
     None => None
   }
-  spawn_runner(
-    exec_path,
-    detached_run_args(run.id, self.home, self.cwd, initial_input_path~),
-  )
+  match spawn_runner {
+    Some(spawn_runner) => {
+      let process_executable = match detached_exec_path {
+        Some(path) => path
+        None =>
+          @os.executable() catch {
+            error =>
+              return Err("Failed to resolve MoonClaw executable path: \{error}")
+          }
+      }
+      let exec_path = detached_run_executable_candidate(
+        configured_detached_run_executable(),
+        process_executable,
+      )
+      if !detached_run_executable_supported(exec_path) {
+        return Err(
+          "Detached proposal launch test adapter requires a MoonClaw application executable, but the current runtime is \{exec_path}.",
+        )
+      }
+      spawn_runner(
+        exec_path,
+        detached_run_args(run.id, self.home, self.cwd, initial_input_path~),
+      )
+    }
+    None =>
+      ignore(
+        @trusted_host_process.spawn_detached_proposal_run(
+          run_id=run.id,
+          home=self.home,
+          cwd=self.cwd,
+          initial_input_path?,
+        ) catch {
+          error =>
+            return Err(
+              "Failed to launch governed detached proposal run: \{error}",
+            )
+        },
+      )
+  }
   Ok(self.runtime().store().get_run(run.id).unwrap_or(run))
 }
 
@@ -1025,7 +1035,7 @@ pub async fn GatewayJobApp::confirm_proposal_and_launch(
   self : GatewayJobApp,
   proposal : JobProposal,
   proposal_id : String,
-  spawn_runner? : async (String, Array[String]) -> Unit = default_detached_run_spawner,
+  spawn_runner? : async (String, Array[String]) -> Unit,
   detached_exec_path? : String,
 ) -> Result[ConfirmProposalResult, String] {
   self.confirm_proposal(proposal, proposal_id, async fn(job_id, initial_input) {
@@ -1034,11 +1044,11 @@ pub async fn GatewayJobApp::confirm_proposal_and_launch(
         self.launch_definition_detached(
           job_id,
           initial_input~,
-          spawn_runner~,
+          spawn_runner?,
           detached_exec_path=path,
         )
       None =>
-        self.launch_definition_detached(job_id, initial_input~, spawn_runner~)
+        self.launch_definition_detached(job_id, initial_input~, spawn_runner?)
     }
   })
 }

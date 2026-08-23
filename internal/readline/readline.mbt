@@ -1395,7 +1395,7 @@ async fn Interface::handle_keypress(
       Byte(b'n') => self.history_next()
       Byte(b'p') => self.history_prev()
       Byte(b'y') => self.yank()
-      Byte(b'z') => @spawn.kill(@spawn.getppid(), @signal.sigtstp)
+      Byte(b'z') => @trusted_host_process.suspend_parent_process()
       Byte(b'w') | Backspace => self.delete_word_left()
       Delete => self.delete_word_right()
       Left => self.word_left()

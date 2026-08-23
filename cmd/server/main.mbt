@@ -19,6 +19,8 @@ pub(all) struct RegisterInfo {
   host : String
   port : Int
   id : String
+  instance_id : String
+  token : String
 }
 
 ///|
@@ -110,7 +112,16 @@ pub async fn start(args : ArrayView[String]) -> Unit {
     }
   }
   let register = match (register_host, register_port, register_id) {
-    (Some(host), Some(port), Some(id)) => Some({ host, port, id })
+    (Some(host), Some(port), Some(id)) => {
+      let instance_id = @os.getenv("MOONCLAW_WORKER_REGISTRATION_INSTANCE").unwrap_or(
+        "",
+      )
+      let token = @os.getenv("MOONCLAW_WORKER_REGISTRATION_TOKEN").unwrap_or("")
+      guard instance_id == id && token.length() == 72 else {
+        fail("worker registration capability is unavailable")
+      }
+      Some({ host, port, id, instance_id, token })
+    }
     (None, None, None) => None
     _ =>
       fail(

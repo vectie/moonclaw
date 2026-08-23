@@ -1,9 +1,8 @@
 import {
   "moonbitlang/core/json",
   "vectie/moonlib/fsx",
-  "vectie/moonlib/spawn",
+  "vectie/moonclaw/internal/trusted_host_process",
   "vectie/moonlib/moonsuite",
-  "vectie/moonclaw/oauth/codex",
 }
 
 supported_targets = "native"

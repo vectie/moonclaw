@@ -1,0 +1,93 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "vectie/moonclaw/internal/trusted_host_process"
+
+import {
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn current_process_id() -> Int
+
+pub async fn open_browser_url(String, timeout_ms? : Int) -> Bool raise TrustedHostProcessError
+
+pub async fn run_git(String, GitOperation, timeout_ms? : Int) -> GitResult
+
+pub async fn spawn_detached_daemon(server_exec_path? : String, port? : Int, serve? : String) -> Int
+
+pub async fn spawn_detached_proposal_run(run_id~ : String, home~ : String, cwd~ : String, initial_input_path? : String) -> Int
+
+pub fn suspend_parent_process() -> Unit raise TrustedHostProcessError
+
+pub fn terminate_stale_daemon(Int) -> Unit raise TrustedHostProcessError
+
+// Errors
+pub suberror TrustedHostProcessError {
+  InvalidWorkspace(String)
+  InvalidParameter(String)
+  UnsafeRepositoryConfig(String)
+  HostToolUnavailable(String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub struct DaemonChildManager {
+  executable : String?
+  home : String
+  cwd : String
+  // private fields
+}
+pub fn DaemonChildManager::new(cwd~ : String, executable? : String, home? : String) -> Self
+pub async fn DaemonChildManager::spawn_server(Self, cwd~ : String, name? : String, model_selector? : String, web_search? : Bool, resume_id? : String, register_id~ : String, register_port~ : Int, register_token~ : String) -> DaemonChildProcess
+pub async fn DaemonChildManager::start(Self) -> Unit
+
+pub struct DaemonChildProcess {
+  // private fields
+}
+pub fn DaemonChildProcess::pid_string(Self) -> String
+pub async fn DaemonChildProcess::wait(Self) -> Int
+
+pub(all) enum GitOperation {
+  Init
+  CheckIgnore(Array[String])
+  ListFiles
+  AddFiles(Array[String])
+  AddAll
+  Commit(String)
+  StatusPorcelain
+  StatusProductPorcelain
+  StatusShort
+  RecentLog(Int)
+  RevListCount
+  Head
+  HeadTree
+  CurrentBranch
+  ListHeadTree
+  CommitSubject
+  DiffCheck
+  DiffNamesBetween(base~ : String, target~ : String)
+  DiffTree(String)
+  AddProductAll
+  RestoreHeadFiles(Array[String])
+  DiffNoIndex(original~ : String, modified~ : String)
+  WorktreeList
+  WorktreeAdd(path~ : String, branch~ : String?, commit~ : String?, force_new_branch~ : Bool)
+  WorktreeRemove(path~ : String, force~ : Bool)
+  FmtTrackedPaths
+  FmtUntrackedPaths
+  FmtPathDiff(String)
+  FmtRestorePath(String)
+} derive(@debug.Debug)
+
+pub struct GitResult {
+  status : Int
+  stdout : String
+  stderr : String
+  elapsed : Int
+}
+pub fn GitResult::elapsed(Self) -> Int
+pub fn GitResult::status(Self) -> Int
+pub fn GitResult::stderr(Self) -> String
+pub fn GitResult::stdout(Self) -> String
+
+// Type aliases
+
+// Traits

@@ -44,6 +44,10 @@ pub async fn json(model~ : @model.Model, prompt~ : String) -> Json
 
 pub fn json_schema(name~ : String, schema~ : Map[String, Json], description? : String, strict? : Bool) -> ResponseFormat
 
+pub async fn responses_chat(model~ : @model.Model, Request, prompt_cache_key? : String, prompt_cache_mode? : String, prompt_cache_ttl? : String, reasoning_context? : String, timeout_ms? : Int?) -> ChatCompletion
+
+pub async fn responses_chat_with_text_deltas(model~ : @model.Model, Request, prompt_cache_key? : String, prompt_cache_mode? : String, prompt_cache_ttl? : String, reasoning_context? : String, on_text_delta? : (String) -> Unit, timeout_ms? : Int?) -> ChatCompletion
+
 pub fn stream_options(include_obfuscation? : Bool, include_usage? : Bool) -> ChatCompletionStreamOptionsParam
 
 pub fn[T : ToChatCompletionMessageParamContent] system_message(content~ : T, name? : String) -> ChatCompletionMessageParam
@@ -388,9 +392,10 @@ pub impl @json.FromJson for OpenRouterErrorResponse
 
 pub struct PromptTokensDetails {
   cached_tokens : Int?
+  cache_write_tokens : Int?
   audio_tokens : Int?
 } derive(ToJson, @debug.Debug)
-pub fn PromptTokensDetails::new(cached_tokens? : Int, audio_tokens? : Int) -> Self
+pub fn PromptTokensDetails::new(cached_tokens? : Int, cache_write_tokens? : Int, audio_tokens? : Int) -> Self
 
 pub struct Request {
   model : String

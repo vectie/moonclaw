@@ -24,7 +24,6 @@ import {
   "vectie/moonlib/os",
   "vectie/moonclaw/internal/git",
   "vectie/moonclaw/internal/buildinfo",
-  "vectie/moonclaw/internal/spawn",
   "vectie/moonclaw/internal/signal",
   "vectie/moonclaw/plugin/moongate",
   "vectie/moonclaw/oauth/codex",

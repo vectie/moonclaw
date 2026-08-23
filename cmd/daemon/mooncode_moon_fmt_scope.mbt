@@ -25,9 +25,9 @@ priv struct MoonCodeFmtScopeOutcome {
 ///|
 async fn mooncode_moon_fmt_git(
   book_root : String,
-  args : Array[String],
+  operation : @trusted_host_process.GitOperation,
 ) -> Json {
-  let process = @spawn.spawn("git", args.map(fn(arg) { arg }), cwd=book_root) catch {
+  let process = @trusted_host_process.run_git(book_root, operation) catch {
     error =>
       return {
         "ok": false,
@@ -36,9 +36,9 @@ async fn mooncode_moon_fmt_git(
       }
   }
   {
-    "ok": process.status == 0,
-    "output": process.stdout,
-    "message": (process.stdout + process.stderr).trim().to_owned(),
+    "ok": process.status() == 0,
+    "output": process.stdout(),
+    "message": (process.stdout() + process.stderr()).trim().to_owned(),
   }
 }
 
@@ -73,9 +73,10 @@ async fn mooncode_moon_fmt_path_state(
     None
   }
   let fingerprint = if tracked {
-    let result = mooncode_moon_fmt_git(book_root, [
-      "diff", "--binary", "--no-ext-diff", "HEAD", "--", path,
-    ])
+    let result = mooncode_moon_fmt_git(
+      book_root,
+      @trusted_host_process.FmtPathDiff(path),
+    )
     if !mooncode_json_bool(result, "ok", default=false) {
       raise Failure::Failure(
         mooncode_json_string(
@@ -96,12 +97,14 @@ async fn mooncode_moon_fmt_path_state(
 
 ///|
 async fn mooncode_moon_fmt_snapshot(book_root : String) -> MoonCodeFmtSnapshot {
-  let tracked = mooncode_moon_fmt_git(book_root, [
-    "diff", "--name-only", "-z", "--relative", "HEAD", "--", ".",
-  ])
-  let untracked = mooncode_moon_fmt_git(book_root, [
-    "ls-files", "--others", "--exclude-standard", "-z", "--", ".",
-  ])
+  let tracked = mooncode_moon_fmt_git(
+    book_root,
+    @trusted_host_process.FmtTrackedPaths,
+  )
+  let untracked = mooncode_moon_fmt_git(
+    book_root,
+    @trusted_host_process.FmtUntrackedPaths,
+  )
   for result in [tracked, untracked] {
     if !mooncode_json_bool(result, "ok", default=false) {
       return {
@@ -210,9 +213,10 @@ async fn mooncode_moon_fmt_restore_path(
       match after {
         Some({ tracked: true, .. }) =>
           ignore(
-            mooncode_moon_fmt_git(book_root, [
-              "restore", "--worktree", "--", path,
-            ]),
+            mooncode_moon_fmt_git(
+              book_root,
+              @trusted_host_process.FmtRestorePath(path),
+            ),
           )
         Some(_) =>
           if @moonclaw_fsx.exists(@pathx.join(book_root, path)) {

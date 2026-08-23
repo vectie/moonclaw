@@ -18,6 +18,7 @@ pub fn Counter::count_message(Self, @openai.ChatCompletionMessageParam) -> Int
 pub async fn Counter::count_param(Self, messages~ : Array[@openai.ChatCompletionMessageParam], tools? : Array[@openai.ChatCompletionToolParam]) -> Int
 pub fn Counter::count_string(Self, String) -> Int
 pub fn Counter::new(logger~ : @pino.Logger, calibration_alpha? : Double) -> Self raise
+pub fn Counter::truncate_string(Self, String, Int) -> String
 
 // Type aliases
 

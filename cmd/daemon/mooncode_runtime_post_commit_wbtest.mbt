@@ -3,17 +3,15 @@ async fn mooncode_post_commit_test_fixture() -> (String, Json) {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-XXXXXX"),
   )
-  let setup_args : Array[Array[StringView]] = [
-    ["init", "-q"],
-    ["config", "user.name", "MoonClaw Test"],
-    ["config", "user.email", "moonclaw-test@local"],
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [
+    @trusted_host_process.Init,
   ]
-  for args in setup_args {
+  for operation in setup_operations {
     assert_true(
       mooncode_json_bool(
         mooncode_runtime_turn_git(
           book_root,
-          args,
+          operation,
           timeout_ms=10000,
           max_output_chars=4000,
         ),
@@ -23,24 +21,27 @@ async fn mooncode_post_commit_test_fixture() -> (String, Json) {
     )
   }
   @fsx.write_to_file(@pathx.join(book_root, "tracked.txt"), "sealed\n")
-  let commit = mooncode_execute_tool_call(
-    "session-post-commit",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-post-commit",
-      "book_root": book_root,
-      "tool": "shell",
-      "command_id": "command-post-commit",
-      "arguments": {
-        "cmd": "git add tracked.txt && git commit -m 'sealed change'",
-        "timeout_ms": 10000,
+  mooncode_with_fixture_moonfort(book_root, async fn(config) {
+    let commit = mooncode_fixture_execute_tool_call(
+      config,
+      "session-post-commit",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-post-commit",
+        "book_root": book_root,
+        "tool": "shell",
+        "command_id": "command-post-commit",
+        "arguments": {
+          "cmd": "git add tracked.txt && git commit -m 'sealed change'",
+          "timeout_ms": 10000,
+        },
       },
-    },
-    now=@clock.Timestamp::from_ms(1L),
-  )
-  assert_true(mooncode_json_bool(commit, "accepted", default=false))
-  (book_root, commit)
+      now=@clock.Timestamp::from_ms(1L),
+    )
+    assert_true(mooncode_json_bool(commit, "accepted", default=false))
+    (book_root, commit)
+  })
 }
 
 ///|
@@ -48,17 +49,15 @@ async test "sealed raw shell commit retains multi-path checkpoint evidence" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-paths-XXXXXX"),
   )
-  let setup_args : Array[Array[StringView]] = [
-    ["init", "-q"],
-    ["config", "user.name", "MoonClaw Test"],
-    ["config", "user.email", "moonclaw-test@local"],
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [
+    @trusted_host_process.Init,
   ]
-  for args in setup_args {
+  for operation in setup_operations {
     assert_true(
       mooncode_json_bool(
         mooncode_runtime_turn_git(
           book_root,
-          args,
+          operation,
           timeout_ms=10000,
           max_output_chars=4000,
         ),
@@ -76,128 +75,137 @@ async test "sealed raw shell commit retains multi-path checkpoint evidence" {
   let plan_path = "docs/MOONDESK_PRODUCTIZATION_UPGRADE_PLAN.md"
   @fsx.write_to_file(@pathx.join(book_root, proof_path), "proof\n")
   @fsx.write_to_file(@pathx.join(book_root, plan_path), "plan\n")
-  let commit = mooncode_execute_tool_call(
-    "phase2-release-gate",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "phase2-release-gate",
-      "book_root": book_root,
-      "tool": "shell",
-      "command_id": "phase2-evidence-doc-closeout",
-      "arguments": {
-        "cmd": "set -o pipefail; git add -- \{proof_path} \{plan_path} && git commit -m \"docs: close release evidence\"",
-        "timeout_ms": 10000,
-        "verification_kind": "check",
-      },
-    },
-    now=@clock.Timestamp::from_ms(1L),
-  )
-  assert_true(mooncode_json_bool(commit, "accepted", default=false))
-  let result = mooncode_json_object_field_or_empty(commit, "result")
-  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
-  assert_true(
-    mooncode_json_bool(metadata, "post_commit_capture_valid", default=false),
-  )
-  let changed_paths = mooncode_json_array_string_items(
-    metadata, "changed_paths",
-  )
-  assert_eq(changed_paths.length(), 2)
-  assert_true(changed_paths.contains(proof_path))
-  assert_true(changed_paths.contains(plan_path))
-  let event = mooncode_json_object_field_or_empty(commit, "event")
-  assert_eq(
-    mooncode_json_array_string_items(event, "changed_paths"),
-    changed_paths,
-  )
-  let event_metadata = mooncode_json_object_field_or_empty(
-    mooncode_json_object_field_or_empty(event, "tool_result"),
-    "metadata",
-  )
-  assert_eq(
-    mooncode_json_array_string_items(event_metadata, "changed_paths"),
-    changed_paths,
-  )
-  assert_true(mooncode_runtime_turn_result_is_mutation(commit))
-  assert_true(mooncode_runtime_turn_result_is_mutation(event))
-  let verification = mooncode_execute_guarded_tool_call(
-    "phase2-release-gate",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "phase2-release-gate",
-      "book_root": book_root,
-      "tool": "shell",
-      "command_id": "phase2-evidence-doc-closeout",
-      "arguments": { "cmd": "git status --short", "verification_kind": "check" },
-    },
-    [commit],
-    now=@clock.Timestamp::from_ms(2L),
-  )
-  assert_true(mooncode_json_bool(verification, "accepted", default=false))
-  let milestones : Array[Json] = [
-    {
-      "id": "proof-document",
-      "title": "Retain exact hosted artifact evidence",
-      "evidence_kind": "path_changed",
-      "path": proof_path,
-      "context_paths": [],
-    },
-    {
-      "id": "phase-plan",
-      "title": "Record the exact release gate status",
-      "evidence_kind": "path_changed",
-      "path": plan_path,
-      "context_paths": [],
-    },
-    {
-      "id": "verification",
-      "title": "Pass release validation",
-      "evidence_kind": "check",
-      "path": "",
-      "context_paths": [],
-    },
-  ]
-  let command : Json = {
-    "command": "prompt",
-    "text": "Close the release evidence documentation.",
-    "payload": {
-      "horizon_id": "phase2-evidence-doc-closeout",
-      "task_contract": {
-        "horizon_id": "phase2-evidence-doc-closeout",
-        "objective": "Close release evidence",
-        "milestones": Json::array(milestones),
-      },
-    },
-  }
-  let all_done = milestones.map(milestone => {
-    let milestone = mooncode_json_object_with_field(
-      milestone,
-      "status",
-      "done".to_json(),
-    )
-    milestone
-  })
-  assert_eq(
-    mooncode_runtime_horizon_checkpoint_error(
-      command,
+  mooncode_with_fixture_moonfort(book_root, async fn(config) {
+    let commit = mooncode_fixture_execute_tool_call(
+      config,
+      "phase2-release-gate",
+      book_root,
       {
-        "horizon_id": "phase2-evidence-doc-closeout",
-        "milestones": Json::array(all_done),
-        "next_action": "Finish.",
+        "protocol": mooncode_protocol_version(),
+        "session_id": "phase2-release-gate",
+        "book_root": book_root,
+        "tool": "shell",
+        "command_id": "phase2-evidence-doc-closeout",
+        "arguments": {
+          "cmd": "set -o pipefail; git add -- \{proof_path} \{plan_path} && git commit -m \"docs: close release evidence\"",
+          "timeout_ms": 10000,
+          "verification_kind": "check",
+        },
       },
+      now=@clock.Timestamp::from_ms(1L),
+    )
+    assert_true(mooncode_json_bool(commit, "accepted", default=false))
+    let result = mooncode_json_object_field_or_empty(commit, "result")
+    let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+    assert_true(
+      mooncode_json_bool(metadata, "post_commit_capture_valid", default=false),
+    )
+    let changed_paths = mooncode_json_array_string_items(
+      metadata, "changed_paths",
+    )
+    assert_eq(changed_paths.length(), 2)
+    assert_true(changed_paths.contains(proof_path))
+    assert_true(changed_paths.contains(plan_path))
+    let event = mooncode_json_object_field_or_empty(commit, "event")
+    assert_eq(
+      mooncode_json_array_string_items(event, "changed_paths"),
+      changed_paths,
+    )
+    let event_metadata = mooncode_json_object_field_or_empty(
+      mooncode_json_object_field_or_empty(event, "tool_result"),
+      "metadata",
+    )
+    assert_eq(
+      mooncode_json_array_string_items(event_metadata, "changed_paths"),
+      changed_paths,
+    )
+    assert_true(mooncode_runtime_turn_result_is_mutation(commit))
+    assert_true(mooncode_runtime_turn_result_is_mutation(event))
+    let verification = mooncode_fixture_execute_guarded_tool_call(
+      config,
+      "phase2-release-gate",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "phase2-release-gate",
+        "book_root": book_root,
+        "tool": "shell",
+        "command_id": "phase2-evidence-doc-closeout",
+        "arguments": {
+          "cmd": "git status --short",
+          "verification_kind": "check",
+        },
+      },
+      [commit],
+      now=@clock.Timestamp::from_ms(2L),
+    )
+    assert_true(mooncode_json_bool(verification, "accepted", default=false))
+    let milestones : Array[Json] = [
+      {
+        "id": "proof-document",
+        "title": "Retain exact hosted artifact evidence",
+        "evidence_kind": "path_changed",
+        "path": proof_path,
+        "context_paths": [],
+      },
+      {
+        "id": "phase-plan",
+        "title": "Record the exact release gate status",
+        "evidence_kind": "path_changed",
+        "path": plan_path,
+        "context_paths": [],
+      },
+      {
+        "id": "verification",
+        "title": "Pass release validation",
+        "evidence_kind": "check",
+        "path": "",
+        "context_paths": [],
+      },
+    ]
+    let command : Json = {
+      "command": "prompt",
+      "text": "Close the release evidence documentation.",
+      "payload": {
+        "horizon_id": "phase2-evidence-doc-closeout",
+        "task_contract": {
+          "horizon_id": "phase2-evidence-doc-closeout",
+          "objective": "Close release evidence",
+          "milestones": Json::array(milestones),
+        },
+      },
+    }
+    let all_done = milestones.map(milestone => {
+      let milestone = mooncode_json_object_with_field(
+        milestone,
+        "status",
+        "done".to_json(),
+      )
+      milestone
+    })
+    assert_eq(
+      mooncode_runtime_horizon_checkpoint_error(
+        command,
+        {
+          "horizon_id": "phase2-evidence-doc-closeout",
+          "milestones": Json::array(all_done),
+          "next_action": "Finish.",
+        },
+        [commit, verification],
+      ),
+      "",
+    )
+    let boundary = mooncode_runtime_post_commit_boundary([commit])
+    assert_true(mooncode_json_bool(boundary, "capture_valid", default=false))
+    let seal_verdict = mooncode_runtime_post_commit_guard(
+      book_root,
+      mooncode_post_commit_test_tool("finish", arguments={
+        "answer": "complete",
+      }),
       [commit, verification],
-    ),
-    "",
-  )
-  let boundary = mooncode_runtime_post_commit_boundary([commit])
-  assert_true(mooncode_json_bool(boundary, "capture_valid", default=false))
-  let seal_verdict = mooncode_runtime_post_commit_guard(
-    book_root,
-    mooncode_post_commit_test_tool("finish", arguments={ "answer": "complete" }),
-    [commit, verification],
-  )
-  assert_true(mooncode_json_bool(seal_verdict, "allowed", default=false))
+    )
+    assert_true(mooncode_json_bool(seal_verdict, "allowed", default=false))
+  })
 }
 
 ///|
@@ -379,11 +387,20 @@ async test "post-commit seal rejects authored and shell mutations" {
 async test "post-commit verification rejects a changed exact HEAD" {
   let (book_root, commit) = mooncode_post_commit_test_fixture()
   let results = [commit]
+  @fsx.write_to_file(@pathx.join(book_root, "later.txt"), "later\n")
+  ignore(
+    mooncode_runtime_turn_git(
+      book_root,
+      @trusted_host_process.AddFiles(["later.txt"]),
+      timeout_ms=10000,
+      max_output_chars=4000,
+    ),
+  )
   assert_true(
     mooncode_json_bool(
       mooncode_runtime_turn_git(
         book_root,
-        ["commit", "--allow-empty", "-m", "unexpected later commit"],
+        @trusted_host_process.Commit("unexpected later commit"),
         timeout_ms=10000,
         max_output_chars=4000,
       ),
@@ -439,16 +456,14 @@ async test "shell cannot mutate after commit before the seal is captured" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-compound-XXXXXX"),
   )
-  let setup_args : Array[Array[StringView]] = [
-    ["init", "-q"],
-    ["config", "user.name", "MoonClaw Test"],
-    ["config", "user.email", "moonclaw-test@local"],
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [
+    @trusted_host_process.Init,
   ]
-  for args in setup_args {
+  for operation in setup_operations {
     ignore(
       mooncode_runtime_turn_git(
         book_root,
-        args,
+        operation,
         timeout_ms=10000,
         max_output_chars=4000,
       ),
@@ -471,7 +486,7 @@ async test "shell cannot mutate after commit before the seal is captured" {
   assert_false(@fsx.exists(@pathx.join(book_root, "later.txt")))
   let head = mooncode_runtime_turn_git(
     book_root,
-    ["rev-parse", "--verify", "HEAD"],
+    @trusted_host_process.Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -483,16 +498,14 @@ async test "wrapped shell cannot hide mutation after commit" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-wrapped-XXXXXX"),
   )
-  let setup_args : Array[Array[StringView]] = [
-    ["init", "-q"],
-    ["config", "user.name", "MoonClaw Test"],
-    ["config", "user.email", "moonclaw-test@local"],
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [
+    @trusted_host_process.Init,
   ]
-  for args in setup_args {
+  for operation in setup_operations {
     ignore(
       mooncode_runtime_turn_git(
         book_root,
-        args,
+        operation,
         timeout_ms=10000,
         max_output_chars=4000,
       ),
@@ -515,7 +528,7 @@ async test "wrapped shell cannot hide mutation after commit" {
   assert_false(@fsx.exists(@pathx.join(book_root, "later.txt")))
   let head = mooncode_runtime_turn_git(
     book_root,
-    ["rev-parse", "--verify", "HEAD"],
+    @trusted_host_process.Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )

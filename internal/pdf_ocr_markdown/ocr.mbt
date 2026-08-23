@@ -66,25 +66,10 @@ pub fn CommandExecutor::new(
 ///|
 pub fn default_command_executor() -> CommandExecutor {
   CommandExecutor::new(run=async fn(request) {
-    try {
-      let process = @spawn.spawn(
-        request.command,
-        request.arguments.map(arg => arg),
-        timeout?=request.timeout_ms,
-        cwd?=request.cwd.map(cwd => cwd),
-      )
-      Ok(CommandResult::{
-        command: process.exec,
-        arguments: process.args,
-        status: process.status,
-        stdout: process.stdout,
-        stderr: process.stderr,
-        elapsed_ms: process.elapsed,
-        timeout_ms: process.timeout,
-      })
-    } catch {
-      error => Err(error.to_string())
-    }
+    ignore(request)
+    Err(
+      "native PDF OCR refused: no configured ExecutionSandbox route is available",
+    )
   })
 }
 

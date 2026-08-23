@@ -1,4 +1,32 @@
 ///|
+fn mooncode_assert_execution_sandbox_refusal(result : Json) -> Unit raise {
+  assert_false(mooncode_json_bool(result, "ok", default=true))
+  assert_true(mooncode_json_bool(result, "is_error", default=false))
+  assert_true(
+    mooncode_json_string(result, "message", default="").contains(
+      "ExecutionSandbox",
+    ),
+  )
+  let metadata = mooncode_json_object_field_or_empty(result, "metadata")
+  assert_true(
+    mooncode_json_bool(metadata, "execution_sandbox_required", default=false),
+  )
+}
+
+///|
+/// Test-only hint. Production always reloads and validates the complete
+/// operator config at the execution boundary; presence is not authorization.
+fn mooncode_execution_sandbox_deployment_configured() -> Bool {
+  let configured = @os.getenv("MOONCLAW_MOONFORT_CONFIG") catch {
+    _ => return false
+  }
+  match configured {
+    Some(path) => !path.trim().is_blank()
+    None => false
+  }
+}
+
+///|
 async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
   ignore(t)
   let book_root = @fsx.mkdtemp(
@@ -18,6 +46,10 @@ async test "mooncode native shell tool runs inside book root" (t : @test.Test) {
     now=@clock.Timestamp::from_ms(45L),
   )
   let result = mooncode_json_object_field_or_empty(execution, "result")
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(result)
+    return
+  }
   assert_true(mooncode_json_bool(result, "ok", default=false))
   assert_true(
     mooncode_json_string(result, "output", default="").contains(book_root),
@@ -129,6 +161,10 @@ async test "mooncode shell retains complete and partial local file observations"
     "cmd": "sed -n '1,2p' observed.txt",
     "timeout_ms": 5000,
   })
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(partial)
+    return
+  }
   let partial_metadata = mooncode_json_object_field_or_empty(
     partial, "metadata",
   )
@@ -222,6 +258,10 @@ async test "mooncode shell timeout cancels children and permits cleanup traps" (
   )
   let result = mooncode_json_object_field_or_empty(execution, "result")
   assert_true(mooncode_json_bool(result, "is_error", default=false))
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(result)
+    return
+  }
   assert_eq(
     mooncode_json_string(result, "message", default=""),
     "shell timed out after 20ms",
@@ -303,6 +343,10 @@ async test "mooncode shell permits parent paths that remain inside typed cwd" (
     now=@clock.Timestamp::from_ms(45L),
   )
   let result = mooncode_json_object_field_or_empty(execution, "result")
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(result)
+    return
+  }
   assert_true(mooncode_json_bool(result, "ok", default=false))
 }
 
@@ -337,6 +381,10 @@ async test "mooncode shell resolves parent paths after a static leading cd" (
     now=@clock.Timestamp::from_ms(45L),
   )
   let result = mooncode_json_object_field_or_empty(execution, "result")
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(result)
+    return
+  }
   assert_true(mooncode_json_bool(result, "ok", default=false))
   assert_true(
     mooncode_json_string(result, "output", default="").contains("fixture"),
@@ -373,6 +421,10 @@ async test "mooncode native shell allows read-only inline interpreter inspection
     now=@clock.Timestamp::from_ms(45L),
   )
   let result = mooncode_json_object_field_or_empty(execution, "result")
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(result)
+    return
+  }
   assert_true(mooncode_json_bool(result, "ok", default=false))
   assert_true(
     mooncode_json_string(result, "output", default="").contains(
@@ -409,12 +461,11 @@ async test "mooncode native shell rejects inline interpreter authoring" (
   )
   assert_false(mooncode_json_bool(execution, "accepted", default=true))
   assert_eq(@fsx.read_file(target), "preserved\n")
+  let result = mooncode_json_object_field_or_empty(execution, "result")
   assert_true(
-    mooncode_json_string(
-      mooncode_json_object_field_or_empty(execution, "result"),
-      "message",
-      default="",
-    ).contains("use write, edit, or apply_patch"),
+    mooncode_json_string(result, "message", default="").contains(
+      "use write, edit, or apply_patch",
+    ),
   )
 }
 
@@ -510,6 +561,11 @@ async test "mooncode moon_check records reusable watcher state" (t : @test.Test)
     now=@clock.Timestamp::from_ms(61L),
   )
   let first_result = mooncode_json_object_field_or_empty(first, "result")
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(first_result)
+    assert_false(@fsx.exists(mooncode_moon_check_state_path(book_root)))
+    return
+  }
   assert_true(mooncode_json_bool(first_result, "ok", default=false))
   let first_metadata = mooncode_json_object_field_or_empty(
     first_result, "metadata",
@@ -635,8 +691,13 @@ async test "mooncode executes moon_ide and moon_cmd tools in book root" (
     },
     now=@clock.Timestamp::from_ms(71L),
   )
-  assert_true(mooncode_json_bool(ide_execution, "accepted", default=false))
   let ide_result = mooncode_json_object_field_or_empty(ide_execution, "result")
+  if !mooncode_execution_sandbox_deployment_configured() {
+    assert_false(mooncode_json_bool(ide_execution, "accepted", default=true))
+    mooncode_assert_execution_sandbox_refusal(ide_result)
+    return
+  }
+  assert_true(mooncode_json_bool(ide_execution, "accepted", default=false))
   assert_true(mooncode_json_bool(ide_result, "ok", default=false))
   assert_true(
     mooncode_json_string(ide_result, "output", default="").contains("answer"),
@@ -848,6 +909,14 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
   let nested_result = mooncode_json_object_field_or_empty(
     nested_outline, "result",
   )
+  assert_true(mooncode_moon_check_args("") == ["check"])
+  assert_true(
+    mooncode_moon_check_args("native") == ["check", "--target", "native"],
+  )
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(nested_result)
+    return
+  }
   assert_true(mooncode_json_bool(nested_result, "ok", default=false))
   assert_true(
     mooncode_json_string(nested_result, "output", default="").contains(
@@ -864,10 +933,6 @@ async test "mooncode validates moon_ide and moon_cmd arguments before process sp
   assert_eq(
     mooncode_json_string(nested_metadata, "command", default=""),
     "moon ide outline --target native src/main.mbt",
-  )
-  assert_true(mooncode_moon_check_args("") == ["check"])
-  assert_true(
-    mooncode_moon_check_args("native") == ["check", "--target", "native"],
   )
   let missing_ide_input = mooncode_execute_tool_call(
     "session-tool-validation",

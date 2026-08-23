@@ -299,6 +299,7 @@ pub fn runtime_tool_requires_authorization_snapshot(tool_name : String) -> Bool 
   tool_name == runtime_tool_edit() ||
   tool_name == runtime_tool_write() ||
   tool_name == runtime_tool_shell() ||
+  tool_name == runtime_tool_moon_cmd() ||
   tool_name == runtime_tool_moon_check() ||
   tool_name == runtime_tool_apply_patch() ||
   tool_name == runtime_tool_revert_patch() ||

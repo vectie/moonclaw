@@ -63,7 +63,7 @@ pub async fn Logger::log(
   }
   let object : Map[String, Json] = {
     "level": level,
-    "pid": @spawn.getpid(),
+    "pid": @trusted_host_process.current_process_id(),
     "msg": message,
   }
   try {

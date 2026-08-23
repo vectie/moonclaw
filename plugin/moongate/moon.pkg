@@ -8,3 +8,8 @@ import {
 }
 
 supported_targets = "native"
+
+import {
+  "moonbitlang/async",
+  "vectie/moonclaw/internal/httpx",
+} for "wbtest"

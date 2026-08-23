@@ -18,7 +18,7 @@ fn moondesk_test_promotion_request() -> MoonDeskPromotionRequest {
 }
 
 ///|
-test "promotion public request translates to MoonFort v3 without host paths" {
+test "promotion public request translates to MoonFort promotion v4 without host paths" {
   let request = moondesk_test_promotion_request()
   let encoded = moondesk_promotion_moonfort_request(request).stringify()
   assert_true(encoded.contains("artifact_path"))
@@ -34,18 +34,18 @@ test "promotion public request translates to MoonFort v3 without host paths" {
 test "promotion requires trusted MoonFort echo of every reviewed binding" {
   let request = moondesk_test_promotion_request()
   let response : MoonFortPromotionResponse = {
-    protocol_version: 3,
+    protocol_version: 4,
     retention_id: request.retention_id,
     workspace_id: request.workspace_id,
     approval_digest: request.approval_digest,
     command_digest: request.command_digest,
     promoted_paths: ["reviewed/result.txt"],
+    destination_outcome: "applied-durable",
+    uncertain_paths: [],
     completed: true,
     error: None,
   }
-  assert_eq(moondesk_promotion_validate_response(request, response), [
-    "reviewed/result.txt",
-  ])
+  assert_eq(moondesk_promotion_validate_response(request, response), response)
   try
     moondesk_promotion_validate_response(request, {
       ..response,
@@ -59,7 +59,7 @@ test "promotion requires trusted MoonFort echo of every reviewed binding" {
 }
 
 ///|
-test "promotion parser rejects traversal and duplicate destinations" {
+test "promotion parser requires exactly one safe mapping" {
   let base = moondesk_test_promotion_request().to_json()
   guard base is Object(fields) else { fail("expected object") }
   fields["items"] = [
@@ -75,9 +75,134 @@ test "promotion parser rejects traversal and duplicate destinations" {
     { "source_relative": "two", "destination_relative": "same" },
   ].to_json()
   try moondesk_promotion_parse_request(base) catch {
-    error => assert_true("\{error}".contains("duplicate"))
+    _ => ()
   } noraise {
-    _ => fail("duplicate promotion destination was accepted")
+    _ => fail("multiple promotion items were accepted")
+  }
+  fields["items"] = [].to_json()
+  try moondesk_promotion_parse_request(base) catch {
+    _ => ()
+  } noraise {
+    _ => fail("empty promotion was accepted")
+  }
+}
+
+///|
+fn moondesk_test_promotion_response(
+  request : MoonDeskPromotionRequest,
+) -> MoonFortPromotionResponse {
+  {
+    protocol_version: 4,
+    retention_id: request.retention_id,
+    workspace_id: request.workspace_id,
+    approval_digest: request.approval_digest,
+    command_digest: request.command_digest,
+    promoted_paths: [request.items[0].destination_relative],
+    destination_outcome: "applied-durable",
+    uncertain_paths: [],
+    completed: true,
+    error: None,
+  }
+}
+
+///|
+test "promotion preserves every truthful MoonFort destination outcome" {
+  let request = moondesk_test_promotion_request()
+  let applied = moondesk_test_promotion_response(request)
+  let cleanup_unverified : MoonFortPromotionResponse = {
+    ..applied,
+    completed: false,
+    error: Some({
+      code: "promotion-cleanup-unverified",
+      message: "private provider diagnostic",
+    }),
+  }
+  let not_applied : MoonFortPromotionResponse = {
+    ..applied,
+    workspace_id: "",
+    approval_digest: "",
+    command_digest: "",
+    promoted_paths: [],
+    destination_outcome: "not-applied",
+    completed: false,
+    error: Some({
+      code: "promotion-refused",
+      message: "private provider diagnostic",
+    }),
+  }
+  let claim_recovery : MoonFortPromotionResponse = {
+    ..applied,
+    promoted_paths: [],
+    destination_outcome: "not-applied",
+    completed: false,
+    error: Some({
+      code: "promotion-recovery-required",
+      message: "private provider diagnostic",
+    }),
+  }
+  let destination_recovery : MoonFortPromotionResponse = {
+    ..claim_recovery,
+    destination_outcome: "recovery-required",
+    uncertain_paths: [request.items[0].destination_relative],
+  }
+  for
+    response in [
+      applied, cleanup_unverified, not_applied, claim_recovery, destination_recovery,
+    ] {
+    assert_eq(moondesk_promotion_validate_response(request, response), response)
+    let public = moondesk_promotion_public_response(request, response).stringify()
+    assert_false(public.contains("private provider diagnostic"))
+    assert_false(public.contains("native status"))
+  }
+  let cleanup_json = moondesk_promotion_public_response(
+    request, cleanup_unverified,
+  ).stringify()
+  assert_true(cleanup_json.contains("applied-durable"))
+  assert_true(cleanup_json.contains("promotion-cleanup-unverified"))
+  let recovery_json = moondesk_promotion_public_response(
+    request, destination_recovery,
+  ).stringify()
+  assert_true(recovery_json.contains("\"recovery_required\":true"))
+  assert_true(recovery_json.contains("reviewed/result.txt"))
+}
+
+///|
+test "promotion rejects contradictory outcomes and unreviewed uncertainty" {
+  let request = moondesk_test_promotion_request()
+  let applied = moondesk_test_promotion_response(request)
+  let invalid : Array[MoonFortPromotionResponse] = [
+    { ..applied, destination_outcome: "not-applied" },
+    {
+      ..applied,
+      completed: false,
+      error: Some({ code: "promotion-refused", message: "wrong code" }),
+    },
+    {
+      ..applied,
+      promoted_paths: [],
+      destination_outcome: "recovery-required",
+      uncertain_paths: ["/private/host-secret"],
+      completed: false,
+      error: Some({
+        code: "promotion-recovery-required",
+        message: "native status 5",
+      }),
+    },
+    {
+      ..applied,
+      promoted_paths: [],
+      destination_outcome: "recovery-required",
+      uncertain_paths: ["other/result.txt"],
+      completed: false,
+      error: Some({ code: "promotion-recovery-required", message: "wrong path" }),
+    },
+  ]
+  for response in invalid {
+    try moondesk_promotion_validate_response(request, response) catch {
+      _ => ()
+    } noraise {
+      _ => fail("contradictory promotion outcome was accepted")
+    }
   }
 }
 

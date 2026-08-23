@@ -433,6 +433,13 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           )
         }
       }
+      ignore(
+        mooncode_export_planner_metrics_for_plan(
+          book_root,
+          plan,
+          self.clock.now().ms_since(plan_now).to_int().max(0),
+        ),
+      )
       if mooncode_runtime_turn_model_planning_allowed(command) &&
         mooncode_runtime_turn_explicit_tool_calls(command).length() == 0 &&
         mooncode_json_string(plan, "planner_mode", default="") !=
@@ -755,9 +762,11 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
           // For approved process capabilities, execute only the arguments
           // durably bound into the approval event. This prevents the planner's
           // in-memory call from substituting command text or argv after review.
-          let tool_call = mooncode_runtime_authorized_tool_call(
-            tool_call, approval,
-          )
+          let tool_call = if tool_requires_approval {
+            mooncode_runtime_authorized_tool_call(tool_call, approval)
+          } else {
+            mooncode_runtime_bind_sandbox_approval_plan(book_root, tool_call)
+          }
           let post_commit_guard = mooncode_runtime_post_commit_guard(
             book_root, tool_call, tool_results,
           )
@@ -837,6 +846,16 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             let candidate = if parallel_read_executions.length() ==
               tool_calls.length() {
               parallel_read_executions[tool_index]
+            } else if mooncode_json_string(tool_call, "tool", default="") ==
+              "tool_search" {
+              mooncode_runtime_turn_deferred_tool_search_execution(
+                command,
+                session_id,
+                book_root,
+                command_id,
+                tool_call,
+                now=self.clock.now(),
+              )
             } else {
               mooncode_execute_tool_call_in_runtime(
                 group.map(group => (self, group)),
@@ -1039,6 +1058,13 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             now=followup_now,
           )
         }
+        ignore(
+          mooncode_export_planner_metrics_for_plan(
+            book_root,
+            next_plan,
+            self.clock.now().ms_since(followup_now).to_int().max(0),
+          ),
+        )
         if mooncode_json_bool(
             next_plan,
             "transient_transport_close",
@@ -1571,7 +1597,7 @@ fn mooncode_runtime_turn_stops_tool_batch(
       default=false,
     ) &&
     !mooncode_json_bool(result, "ok", default=false)
-  if mooncode_json_string(execution, "tool", default="") == "finish" ||
+  if mooncode_runtime_tool_effect_is_batch_seal(execution) ||
     approval_state == "rejected" ||
     ambiguous_failed_verification {
     return true

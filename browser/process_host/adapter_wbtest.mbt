@@ -43,55 +43,23 @@ fn process_ready_command(
 }
 
 ///|
-async test "process host executes typed command and duplicate is deterministic" {
-  let cwd = @env.current_dir().unwrap_or(".")
-  let state_path = cwd + "/.tmp-browser-host-process-test.json"
-  @fs.remove(state_path) catch {
-    _ => ()
-  }
-  let host = ProcessBrowserHost::new(
-    executable="node",
-    arguments=["browser/process_host/deterministic_fixture.mjs", state_path],
-    cwd~,
-  )
+async test "process host refuses execution without an ExecutionSandbox grant" {
+  let host = ProcessBrowserHost::new()
   let worker = process_test_worker()
   let action = process_test_action(
     "process-action-1", "role=button[name='Run']",
   )
   let command = process_ready_command(worker.prepare(action))
-  let first = host.execute(command).unwrap()
-  let duplicate = host.execute(command).unwrap()
-  assert_eq(first.host_receipt_id, duplicate.host_receipt_id)
-  assert_eq(first.before_state_digest, duplicate.before_state_digest)
-  assert_eq(first.after_state_digest, duplicate.after_state_digest)
-  let receipt = worker.complete(action, command, first)
-  assert_true(receipt.accepted())
+  let error = host.execute(command).unwrap_err()
+  assert_true(error.contains("ExecutionSandbox grant required"))
+  let receipt = worker.complete_transport_error(action, command, error)
+  assert_true(receipt.outcome is Blocked(_))
   assert_eq(receipt.evidence_refs.length(), 0)
-  @fs.remove(state_path) catch {
-    _ => ()
-  }
 }
 
 ///|
-async test "process host crash and timeout never become accepted evidence" {
-  let cwd = @env.current_dir().unwrap_or(".")
-  let state_path = cwd + "/.tmp-browser-host-process-failure-test.json"
-  @fs.remove(state_path) catch {
-    _ => ()
-  }
-  let host = ProcessBrowserHost::new(
-    executable="node",
-    arguments=["browser/process_host/deterministic_fixture.mjs", state_path],
-    cwd~,
-  )
-  let crash_worker = process_test_worker()
-  let crash_action = process_test_action("process-crash", "fixture://crash")
-  let crash_command = process_ready_command(crash_worker.prepare(crash_action))
-  let crash_error = host.execute(crash_command).unwrap_err()
-  let crash_receipt = crash_worker.complete_transport_error(
-    crash_action, crash_command, crash_error,
-  )
-  assert_true(crash_receipt.outcome is Blocked(_))
+async test "refused process host execution cannot become accepted evidence" {
+  let host = ProcessBrowserHost::new()
   let timeout_worker = process_test_worker()
   let timeout_action = process_test_action("process-delay", "fixture://delay")
   let timeout_command = process_ready_command(
@@ -103,7 +71,5 @@ async test "process host crash and timeout never become accepted evidence" {
     timeout_action, timeout_command, timeout_error,
   )
   assert_true(timeout_receipt.outcome is Cancelled(_))
-  @fs.remove(state_path) catch {
-    _ => ()
-  }
+  assert_eq(timeout_receipt.evidence_refs.length(), 0)
 }

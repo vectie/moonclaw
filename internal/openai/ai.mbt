@@ -167,6 +167,100 @@ pub async fn chat_with_text_deltas(
 }
 
 ///|
+/// Execute an opt-in Responses API request while preserving the Chat
+/// Completions result shape used by existing MoonClaw callers. Provider-side
+/// response storage remains off; MoonClaw does not infer upstream retention
+/// authority from an agent transport experiment.
+pub async fn responses_chat(
+  model~ : @model.Model,
+  request : Request,
+  prompt_cache_key? : String,
+  prompt_cache_mode? : String,
+  prompt_cache_ttl? : String,
+  reasoning_context? : String = "current_turn",
+  timeout_ms? : Int? = None,
+) -> ChatCompletion {
+  responses_chat_with_text_deltas(
+    model~,
+    request,
+    prompt_cache_key?,
+    prompt_cache_mode?,
+    prompt_cache_ttl?,
+    reasoning_context~,
+    timeout_ms~,
+  )
+}
+
+///|
+pub async fn responses_chat_with_text_deltas(
+  model~ : @model.Model,
+  request : Request,
+  prompt_cache_key? : String,
+  prompt_cache_mode? : String,
+  prompt_cache_ttl? : String,
+  reasoning_context? : String = "current_turn",
+  on_text_delta? : (String) -> Unit = _ => (),
+  timeout_ms? : Int? = None,
+) -> ChatCompletion {
+  let run = async fn() {
+    let responses_request = openai_responses_request(
+      model,
+      request,
+      prompt_cache_key?,
+      prompt_cache_mode?,
+      prompt_cache_ttl?,
+      reasoning_context~,
+    )
+    let result = do_openai_responses_stream_request(
+      model,
+      responses_request,
+      on_text_delta~,
+    )
+    responses_stream_result_to_chat_completion(model.model_name, result)
+  }
+  match timeout_ms {
+    Some(timeout_ms) if timeout_ms > 0 =>
+      @async.with_timeout(timeout_ms, run) catch {
+        @async.TimeoutError =>
+          raise HttpError(
+            code=408,
+            body="Responses request timed out after \{timeout_ms}ms",
+          )
+        error => raise error
+      }
+    _ => run()
+  }
+}
+
+///|
+fn openai_responses_request(
+  model : @model.Model,
+  request : Request,
+  prompt_cache_key? : String,
+  prompt_cache_mode? : String,
+  prompt_cache_ttl? : String,
+  reasoning_context? : String = "current_turn",
+) -> @responses.ResponsesRequest {
+  @responses.ResponsesRequest::new(
+    model=model.model_name,
+    input=convert_messages_to_input(request.messages),
+    instructions=extract_system_instructions(request.messages),
+    tools=convert_tools_to_responses_api(request.tools),
+    reasoning_effort?=request.reasoning_effort.map(
+      chat_completion_reasoning_effort_text,
+    ),
+    reasoning_context~,
+    stream=true,
+    store=false,
+    prompt_cache_key?,
+    prompt_cache_mode?,
+    prompt_cache_ttl?,
+    max_output_tokens?=request.max_tokens,
+    parallel_tool_calls?=request.parallel_tool_calls,
+  )
+}
+
+///|
 /// Execute a chat completion request using the standard OpenAI API.
 async fn chat_openai(
   model~ : @model.Model,
@@ -440,7 +534,7 @@ async fn chat_codex(
         }
         err => raise err
       }
-      let chat_completion = codex_stream_result_to_chat_completion(
+      let chat_completion = responses_stream_result_to_chat_completion(
         model.model_name,
         result,
       )
@@ -619,9 +713,11 @@ fn convert_tools_to_responses_api(
 }
 
 ///|
-priv struct CodexStreamResult {
+priv struct ResponsesStreamResult {
+  response_id : String
   text_chunks : Array[String]
   output_items : Array[@responses.ResponseItem]
+  usage : Json?
 }
 
 ///|
@@ -630,7 +726,7 @@ async fn do_codex_stream_request(
   _account_id : String,
   request : @responses.ResponsesRequest,
   on_text_delta~ : (String) -> Unit,
-) -> CodexStreamResult raise Error {
+) -> ResponsesStreamResult raise Error {
   let client = @http.Client::new(
     "https://chatgpt.com",
     headers=codex_request_headers(access_token),
@@ -655,6 +751,9 @@ async fn do_codex_stream_request(
   let reader = ResponseStreamEventReader::new(client)
   let text_chunks : Array[String] = []
   let output_items : Array[@responses.ResponseItem] = []
+  let mut response_id = ""
+  let mut usage : Json? = None
+  let mut completed = false
   while reader.read() is Some(event) {
     match event {
       TextDelta(delta) => {
@@ -662,11 +761,22 @@ async fn do_codex_stream_request(
         on_text_delta(delta)
       }
       OutputItemDone(item) => output_items.push(item)
-      Completed => break
+      Completed(response) => {
+        response_id = response_json_string(response, "id")
+        usage = response_json_field(response, "usage")
+        completed = true
+        break
+      }
       Failed(message) => raise HttpError(code=502, body=message)
     }
   }
-  { text_chunks, output_items }
+  if !completed {
+    raise HttpError(
+      code=502,
+      body="Responses stream ended without a completed response",
+    )
+  }
+  { response_id, text_chunks, output_items, usage }
 }
 
 ///|
@@ -678,6 +788,118 @@ fn codex_request_headers(access_token : String) -> Map[String, String] {
     "originator": "moonclaw",
     "User-Agent": "moonclaw/0.1.0",
   }
+}
+
+///|
+priv struct MoonGateResponsesRoute {
+  url : String
+  headers : Map[String, String]
+}
+
+///|
+fn moongate_responses_route_for_model(
+  model : @model.Model,
+) -> MoonGateResponsesRoute? {
+  let trimmed = model.base_url.trim().to_owned()
+  let base_url = if trimmed.has_suffix("/") {
+    trimmed[:trimmed.length() - 1].to_owned()
+  } else {
+    trimmed
+  }
+  if !moongate_responses_loopback_base_url(base_url) {
+    return None
+  }
+  Some({
+    url: "\{base_url}/responses",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "text/event-stream",
+      "Connection": "close",
+      "User-Agent": "moonclaw",
+    },
+  })
+}
+
+///|
+/// Accept the narrow URL grammar emitted by local MoonGate discovery. String
+/// prefix checks alone are insufficient because an authority such as
+/// `127.0.0.1:123@remote.example` also begins with a loopback-looking prefix.
+fn moongate_responses_loopback_base_url(base_url : String) -> Bool {
+  let prefixes = ["http://127.0.0.1:", "http://localhost:", "http://[::1]:"]
+  let mut remainder = ""
+  for prefix in prefixes {
+    if base_url.has_prefix(prefix) {
+      remainder = base_url[prefix.length():].to_owned()
+      break
+    }
+  }
+  if remainder == "" {
+    return false
+  }
+  guard remainder.find("/") is Some(slash) else { return false }
+  let port = remainder[:slash].to_owned()
+  let path = remainder[slash:].to_owned()
+  if port == "" || port.length() > 5 || path != "/openclaw/v1" {
+    return false
+  }
+  port.all(character => character.is_ascii_digit())
+}
+
+///|
+async fn do_openai_responses_stream_request(
+  model : @model.Model,
+  request : @responses.ResponsesRequest,
+  on_text_delta~ : (String) -> Unit,
+) -> ResponsesStreamResult raise Error {
+  guard moongate_responses_route_for_model(model) is Some(route) else {
+    raise HttpError(
+      code=400,
+      body="Responses transport requires a loopback MoonGate /openclaw/v1 endpoint",
+    )
+  }
+  let uri = Uri::parse(route.url)
+  let client = @http.Client::new(
+    "\{uri.schema}://\{uri.host}",
+    headers=route.headers,
+  )
+  defer client.close()
+  let response = client.post(uri.path, request.to_json())
+  guard response.code is (200..=299) else {
+    raise HttpRetryError(
+      code=response.code,
+      body=client.read_all().text(),
+      retry_after_ms=response_retry_after_ms(response.headers),
+    )
+  }
+  let reader = ResponseStreamEventReader::new(client)
+  let text_chunks : Array[String] = []
+  let output_items : Array[@responses.ResponseItem] = []
+  let mut response_id = ""
+  let mut usage : Json? = None
+  let mut completed = false
+  while reader.read() is Some(event) {
+    match event {
+      TextDelta(delta) => {
+        text_chunks.push(delta)
+        on_text_delta(delta)
+      }
+      OutputItemDone(item) => output_items.push(item)
+      Completed(response) => {
+        response_id = response_json_string(response, "id")
+        usage = response_json_field(response, "usage")
+        completed = true
+        break
+      }
+      Failed(message) => raise HttpError(code=502, body=message)
+    }
+  }
+  if !completed {
+    raise HttpError(
+      code=502,
+      body="Responses stream ended without a completed response",
+    )
+  }
+  { response_id, text_chunks, output_items, usage }
 }
 
 ///|
@@ -697,7 +919,7 @@ fn emit_text_deltas_from_chunk(
 priv enum ResponseStreamEvent {
   TextDelta(String)
   OutputItemDone(@responses.ResponseItem)
-  Completed
+  Completed(Json)
   Failed(String)
 }
 
@@ -719,44 +941,72 @@ async fn ResponseStreamEventReader::read(
     guard self.0.read_until("\n") is Some(line) else { return None }
     guard line is [.. "data: ", .. rest] else { continue }
     let data = rest.trim().to_owned()
-    if data == "[DONE]" {
-      return Some(Completed)
-    }
-    try {
-      let json = @json.parse(data)
-      guard json is Object(obj) else { continue }
-      guard obj.get("type") is Some(String(event_type)) else { continue }
-      match event_type {
-        "response.output_text.delta" =>
-          if obj.get("delta") is Some(String(delta)) {
-            return Some(TextDelta(delta))
-          }
-        "response.content_part.delta" =>
-          if obj.get("delta") is Some(Object(delta_obj)) {
-            if delta_obj.get("text") is Some(String(text)) {
-              return Some(TextDelta(text))
-            }
-          }
-        "response.output_item.done" =>
-          if obj.get("item") is Some(item_json) {
-            try {
-              let item : @responses.ResponseItem = @json.from_json(item_json)
-              return Some(OutputItemDone(item))
-            } catch {
-              _ => continue
-            }
-          }
-        "response.completed" => return Some(Completed)
-        "response.failed" | "response.incomplete" | "error" =>
-          return Some(Failed(response_stream_error_message(obj)))
-        _ => continue
-      }
-      continue
-    } catch {
-      _ => continue
+    match response_stream_event_from_data(data) {
+      Some(event) => return Some(event)
+      None => continue
     }
   } nobreak {
     None
+  }
+}
+
+///|
+fn response_stream_event_from_data(data : String) -> ResponseStreamEvent? {
+  if data == "[DONE]" {
+    return Some(Failed("Responses stream ended without a completed response"))
+  }
+  let json = @json.parse(data) catch { _ => return None }
+  guard json is Object(obj) else { return None }
+  guard obj.get("type") is Some(String(event_type)) else { return None }
+  match event_type {
+    "response.output_text.delta" =>
+      match obj.get("delta") {
+        Some(String(delta)) => Some(TextDelta(delta))
+        _ => None
+      }
+    "response.content_part.delta" =>
+      match obj.get("delta") {
+        Some(Object(delta)) =>
+          match delta.get("text") {
+            Some(String(text)) => Some(TextDelta(text))
+            _ => None
+          }
+        _ => None
+      }
+    "response.output_item.done" =>
+      match obj.get("item") {
+        Some(item_json) => {
+          let item : @responses.ResponseItem = @json.from_json(item_json) catch {
+            _ => return None
+          }
+          Some(OutputItemDone(item))
+        }
+        None => None
+      }
+    "response.completed" => {
+      let response = obj.get("response").unwrap_or(Json::object({}))
+      if response_json_string(response, "status") == "incomplete" {
+        Some(Failed(response_incomplete_message(response)))
+      } else {
+        Some(Completed(response))
+      }
+    }
+    "response.failed" | "response.incomplete" | "error" =>
+      Some(Failed(response_stream_error_message(obj)))
+    _ => None
+  }
+}
+
+///|
+fn response_incomplete_message(response : Json) -> String {
+  match response_json_field(response, "incomplete_details") {
+    Some(Object(details)) =>
+      match details.get("reason") {
+        Some(String(reason)) if reason != "" =>
+          "Responses request incomplete: \{reason}"
+        _ => "Responses request ended incomplete"
+      }
+    _ => "Responses request ended incomplete"
   }
 }
 
@@ -778,6 +1028,53 @@ fn response_stream_error_message(event : Map[String, Json]) -> String {
     message
   } else {
     "Codex response stream ended without a completed response"
+  }
+}
+
+///|
+fn response_json_string(response : Json, key : String) -> String {
+  match response {
+    Object(fields) =>
+      match fields.get(key) {
+        Some(String(value)) => value
+        _ => ""
+      }
+    _ => ""
+  }
+}
+
+///|
+fn response_json_field(response : Json, key : String) -> Json? {
+  match response {
+    Object(fields) => fields.get(key)
+    _ => None
+  }
+}
+
+///|
+fn responses_usage_to_completion_usage(usage : Json?) -> CompletionUsage? {
+  guard usage is Some(Object(fields)) else { return None }
+  guard fields.get("input_tokens") is Some(Number(input_tokens, ..)) &&
+    fields.get("output_tokens") is Some(Number(output_tokens, ..)) else {
+    return None
+  }
+  let total_tokens = match fields.get("total_tokens") {
+    Some(Number(value, ..)) => value.to_int()
+    _ => input_tokens.to_int() + output_tokens.to_int()
+  }
+  let normalized : Map[String, Json] = {
+    "prompt_tokens": input_tokens.to_int(),
+    "completion_tokens": output_tokens.to_int(),
+    "total_tokens": total_tokens,
+  }
+  if fields.get("input_tokens_details") is Some(details) {
+    normalized["prompt_tokens_details"] = details
+  }
+  if fields.get("output_tokens_details") is Some(details) {
+    normalized["completion_tokens_details"] = details
+  }
+  Some(@json.from_json(Json::object(normalized))) catch {
+    _ => None
   }
 }
 
@@ -873,9 +1170,9 @@ fn chat_completion_reasoning_effort_text(
 }
 
 ///|
-fn codex_stream_result_to_chat_completion(
+fn responses_stream_result_to_chat_completion(
   model_name : String,
-  result : CodexStreamResult,
+  result : ResponsesStreamResult,
 ) -> ChatCompletion {
   let mut content : String? = None
   let tool_calls : Array[ChatCompletionMessageToolCall] = []
@@ -905,7 +1202,11 @@ fn codex_stream_result_to_chat_completion(
   }
   let finish_reason = if tool_calls.is_empty() { Stop } else { ToolCalls }
   ChatCompletion::new(
-    id="codex-response",
+    id=if result.response_id == "" {
+      "responses-response"
+    } else {
+      result.response_id
+    },
     choices=[
       ChatCompletionChoice::new(
         index=0,
@@ -915,6 +1216,7 @@ fn codex_stream_result_to_chat_completion(
     ],
     created=0,
     model=model_name,
+    usage?=responses_usage_to_completion_usage(result.usage),
   )
 }
 

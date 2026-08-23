@@ -43,9 +43,6 @@ pub struct Gateway {
   workspace_runtime : @workspace.WorkspaceRuntime
   plugin_runtime : @plugin.PluginRuntime
   acp_runtime : @acp.AcpRuntime
-  acp_process_manager : @spawn.Manager
-  active_acp_runs : Map[String, @spawn.Process]
-  active_acp_output : Map[String, AcpLiveOutput]
   cancelled_acp_runs : Map[String, Bool]
 }
 
@@ -203,12 +200,6 @@ struct DedupeEntry {
 }
 
 ///|
-struct AcpLiveOutput {
-  stdout : @spawn.Buffer
-  stderr : @spawn.Buffer
-}
-
-///|
 priv struct RemoteUiResolution {
   links : Array[@job.JobUiRemoteLink]
   handoffs : Array[@job.JobUiHandoff]
@@ -322,24 +313,6 @@ pub fn Gateway::acp_runtime(self : Gateway) -> @acp.AcpRuntime {
 }
 
 ///|
-fn Gateway::register_active_acp_run(
-  self : Gateway,
-  run_id : String,
-  process : @spawn.Process,
-  stdout : @spawn.Buffer,
-  stderr : @spawn.Buffer,
-) -> Unit {
-  self.active_acp_runs[run_id] = process
-  self.active_acp_output[run_id] = { stdout, stderr }
-}
-
-///|
-fn Gateway::clear_active_acp_run(self : Gateway, run_id : String) -> Unit {
-  self.active_acp_runs.remove(run_id) |> ignore()
-  self.active_acp_output.remove(run_id) |> ignore()
-}
-
-///|
 fn Gateway::mark_acp_run_cancel_requested(
   self : Gateway,
   run_id : String,
@@ -361,49 +334,25 @@ fn Gateway::consume_acp_run_cancel_requested(
 
 ///|
 fn Gateway::cancel_active_acp_run(
-  self : Gateway,
-  run_id : String,
+  _self : Gateway,
+  _run_id : String,
 ) -> Result[Bool, String] {
-  match self.active_acp_runs.get(run_id) {
-    Some(process) => {
-      self.mark_acp_run_cancel_requested(run_id)
-      process.kill(@signal.sigterm) catch {
-        error => return Err("Failed to cancel ACP run \{run_id}: \{error}")
-      }
-      Ok(true)
-    }
-    None => Ok(false)
-  }
+  // ACP host execution is fail-closed in execute_managed_acp_process, so this
+  // process can never own a live ACP child.
+  Ok(false)
 }
 
 ///|
 fn Gateway::active_acp_run_for_session(
-  self : Gateway,
-  session_id : String,
+  _self : Gateway,
+  _session_id : String,
 ) -> @acp.AcpRun? {
-  for run in self.acp_runtime().list_runs_for_session(session_id) {
-    if self.active_acp_runs.contains(run.id) &&
-      (run.status == "running" || run.status == "cancelling") {
-      return Some(run)
-    }
-  }
   None
 }
 
 ///|
-fn Gateway::active_acp_stdio(self : Gateway, run_id : String) -> Json? {
-  match self.active_acp_output.get(run_id) {
-    Some(output) => {
-      let stdout = output.stdout.to_string()
-      let stderr = output.stderr.to_string()
-      if stdout.trim().is_blank() && stderr.trim().is_blank() {
-        None
-      } else {
-        Some({ "stdout": stdout, "stderr": stderr })
-      }
-    }
-    None => None
-  }
+fn Gateway::active_acp_stdio(_self : Gateway, _run_id : String) -> Json? {
+  None
 }
 
 ///|

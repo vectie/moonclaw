@@ -51,6 +51,30 @@ test "provider task system prompt names fresh internal lanes" {
 }
 
 ///|
+async test "provider task command refuses host execution without sandbox grant" {
+  let command = ProviderTaskCommand::{
+    provider: @resource_providers.RegisteredResourceProvider::new(
+      name="wiki-main",
+      title="Wiki Main",
+      kind="task-provider",
+      capabilities=["provider.task"],
+      metadata={},
+    ),
+    command: "/bin/sh",
+    args: ["-c", "exit 0"],
+    cwd: Some("/tmp"),
+    workspace_root: "/tmp/provider-workspace",
+  }
+  inspect(
+    match run_provider_task_stdout(command, "tasks", [], "tasks") {
+      Ok(_) => "unexpected execution"
+      Err(error) => error
+    },
+    content="Provider task tasks execution is disabled for target wiki-main: a MoonFort ExecutionSandbox grant is required",
+  )
+}
+
+///|
 async fn write_provider_task_fixture(
   workspace : String,
   script_path : String,

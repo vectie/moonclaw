@@ -3,7 +3,7 @@ import {
   "vectie/moonlib/pathx",
   "vectie/moonlib/fsx",
   "vectie/moonlib/moonsuite",
-  "vectie/moonlib/spawn",
+  "vectie/moonclaw/internal/trusted_host_process",
   "moonbitlang/async/http",
   "moonbitlang/async",
   "moonbitlang/core/json",

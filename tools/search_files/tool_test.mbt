@@ -39,6 +39,25 @@ async test "search_files" (t : @test.Test) {
 }
 
 ///|
+async test "search_files MoonBit helpers fail closed without ExecutionSandbox" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    for kind in ["moonbit_definition", "moonbit_references"] {
+      let result = @search_files.new(mock.cwd.path()).call({
+        "path": ".",
+        "regex": "example",
+        "kind": kind,
+      })
+      match result {
+        Ok(_) => fail("expected ExecutionSandbox refusal for \{kind}")
+        Error(_, message) => assert_true(message.contains("ExecutionSandbox"))
+      }
+    }
+  })
+}
+
+///|
 /// FIXME: disabled due to bug in moon IDE find-references tool
 #cfg(false)
 async test "search_files-moon-definition" (t : @test.Test) {

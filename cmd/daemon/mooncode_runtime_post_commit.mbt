@@ -2,13 +2,13 @@
 async fn mooncode_runtime_post_commit_snapshot(book_root : String) -> Json {
   let head = mooncode_runtime_turn_git(
     book_root,
-    ["rev-parse", "--verify", "HEAD"],
+    @trusted_host_process.Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )
   let tree = mooncode_runtime_turn_git(
     book_root,
-    ["rev-parse", "--verify", "HEAD^{tree}"],
+    @trusted_host_process.HeadTree,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -20,9 +20,9 @@ async fn mooncode_runtime_post_commit_snapshot(book_root : String) -> Json {
     .to_owned()
   let status = mooncode_runtime_turn_git(
     book_root,
-    mooncode_runtime_turn_commit_status_args(),
+    @trusted_host_process.StatusProductPorcelain,
     timeout_ms=10000,
-    max_output_chars=12000,
+    max_output_chars=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
   let status_output = mooncode_json_string(status, "output", default="")
   let clean = mooncode_json_bool(status, "ok", default=false) &&

@@ -1,18 +1,17 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "vectie/moonclaw/internal/pdf_ocr"
 
-import {
-  "vectie/moonlib/spawn",
-}
-
 // Values
-pub async fn extract_text_from_pdf(String, String, String, async (String, Array[String], String?) -> Result[@spawn.CompletedProcess, String]) -> (String?, String?)
+pub async fn extract_text_from_pdf(String, String, String, async (String, Array[String], String?) -> Result[PdfOcrProcess, String]) -> (String?, String?)
 
-pub async fn run_process(String, Array[String], cwd? : String?) -> Result[@spawn.CompletedProcess, String]
+pub async fn run_process(String, Array[String], cwd? : String?) -> Result[PdfOcrProcess, String]
 
 // Errors
 
 // Types and methods
+pub(all) struct PdfOcrProcess {
+  status : Int
+}
 
 // Type aliases
 

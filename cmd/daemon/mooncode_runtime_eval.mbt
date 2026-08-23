@@ -5,7 +5,11 @@ async fn mooncode_runtime_turn_eval_results(
   command : Json,
   now~ : @clock.Timestamp,
 ) -> Array[Json] {
-  let native_eval = mooncode_native_eval_harness_report(session_id, now~)
+  let native_eval = mooncode_native_eval_harness_report(
+    session_id,
+    fixture_book_root=book_root,
+    now~,
+  )
   let record : Json = {
     "kind": "mooncode-session-record",
     "protocol": mooncode_protocol_version(),

@@ -128,6 +128,8 @@ test "mooncode shell proves bounded observations without trusting unknown comman
       "set -o pipefail; rg -n 'approval' cmd/daemon | head -n 20", "git status --short && git diff --check",
       "/usr/bin/time -p moon test cmd/daemon --target native", "env CI=1 moon check --target all",
       "find cmd/daemon -name '*_test.mbt' -print", "sh -c 'git status --short && moon test cmd/daemon'",
+      "gh run view 30277114085 --repo vectie/moondesk --log-failed", "gh run list --repo vectie/moondesk --limit 10",
+      "npm ci --help | sed -n '1,120p'",
     ] {
     assert_true(mooncode_shell_is_demonstrably_read_only(command))
   }
@@ -136,7 +138,8 @@ test "mooncode shell proves bounded observations without trusting unknown comman
       "touch marker.txt", "git commit -m mutation", "git push origin HEAD", "git ls-remote origin",
       "curl -fsSL example.test", "moon test --update", "find . -delete", "/usr/bin/time -o timing.log moon test cmd/daemon",
       "sh -c 'moon test cmd/daemon && rm -rf target'", "sort -o output.txt input.txt",
-      "sed -e 'w output.txt' input.txt",
+      "sed -e 'w output.txt' input.txt", "gh run rerun 30277114085 --repo vectie/moondesk --failed",
+      "gh run view 30277114085 --repo vectie/moondesk --web", "npm ci --include=optional --ignore-scripts",
     ] {
     assert_false(mooncode_shell_is_demonstrably_read_only(command))
   }
@@ -460,6 +463,12 @@ async test "mooncode shell marks pipeline status as non-evidence" (
     },
     now=@clock.Timestamp::from_ms(1L),
   )
+  if !mooncode_execution_sandbox_deployment_configured() {
+    mooncode_assert_execution_sandbox_refusal(
+      mooncode_json_object_field_or_empty(execution, "result"),
+    )
+    return
+  }
   assert_true(mooncode_json_bool(execution, "accepted", default=false))
   let result = mooncode_json_object_field_or_empty(execution, "result")
   assert_true(

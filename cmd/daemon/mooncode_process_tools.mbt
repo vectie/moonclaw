@@ -20,9 +20,81 @@ async fn mooncode_tool_shell_in_runtime(
 
 ///|
 async fn mooncode_tool_shell(book_root : String, arguments : Json) -> Json {
-  match mooncode_execution_sandbox_config("shell") {
+  match mooncode_tool_shell_preflight_error(book_root, arguments) {
+    Some(error) => return error
+    None => ()
+  }
+  match mooncode_execution_sandbox_config("shell", book_root~) {
     Err(refusal) => refusal
     Ok(config) => mooncode_tool_shell_with_config(book_root, arguments, config)
+  }
+}
+
+///|
+fn mooncode_tool_shell_preflight_error(
+  book_root : String,
+  arguments : Json,
+) -> Json? {
+  let cmd = mooncode_json_string(arguments, "cmd", default="")
+  if cmd == "" {
+    return Some(
+      mooncode_tool_error_result("shell", message="cmd must be non-empty"),
+    )
+  }
+  if mooncode_shell_has_background_operator(cmd) {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message="shell background operators can keep process capture open; set background=true and submit only the long-lived command without `&`",
+      ),
+    )
+  }
+  if mooncode_shell_has_git_commit(cmd) &&
+    !mooncode_shell_git_commit_is_terminal(cmd) {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message="git commit must be the terminal command in a shell tool call so the runtime can seal the exact committed state",
+      ),
+    )
+  }
+  if mooncode_shell_has_file_output_redirection(cmd) {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message="shell output redirection cannot author MoonBook files; use write, edit, or apply_patch",
+      ),
+    )
+  }
+  if mooncode_shell_has_inline_interpreter_authoring(cmd) {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message="inline interpreters cannot author MoonBook files; use write, edit, or apply_patch",
+      ),
+    )
+  }
+  if mooncode_shell_has_in_place_authoring(cmd) {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message="shell in-place editing cannot author MoonBook files; use write, edit, or apply_patch",
+      ),
+    )
+  }
+  let cwd = mooncode_tool_cwd(book_root, arguments)
+  if mooncode_json_bool(cwd, "ok", default=false) == false {
+    return Some(
+      mooncode_tool_error_result(
+        "shell",
+        message=mooncode_json_string(cwd, "message", default="invalid cwd"),
+      ),
+    )
+  }
+  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
+  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
+    Some(message) => Some(mooncode_tool_error_result("shell", message~))
+    None => None
   }
 }
 
@@ -32,53 +104,13 @@ async fn mooncode_tool_shell_with_config(
   arguments : Json,
   config : @execution_sandbox.SandboxExecutorConfig,
 ) -> Json {
-  let cmd = mooncode_json_string(arguments, "cmd", default="")
-  if cmd == "" {
-    return mooncode_tool_error_result("shell", message="cmd must be non-empty")
-  }
-  if mooncode_shell_has_background_operator(cmd) {
-    return mooncode_tool_error_result(
-      "shell",
-      message="shell background operators can keep process capture open; set background=true and submit only the long-lived command without `&`",
-    )
-  }
-  if mooncode_shell_has_git_commit(cmd) &&
-    !mooncode_shell_git_commit_is_terminal(cmd) {
-    return mooncode_tool_error_result(
-      "shell",
-      message="git commit must be the terminal command in a shell tool call so the runtime can seal the exact committed state",
-    )
-  }
-  if mooncode_shell_has_file_output_redirection(cmd) {
-    return mooncode_tool_error_result(
-      "shell",
-      message="shell output redirection cannot author MoonBook files; use write, edit, or apply_patch",
-    )
-  }
-  if mooncode_shell_has_inline_interpreter_authoring(cmd) {
-    return mooncode_tool_error_result(
-      "shell",
-      message="inline interpreters cannot author MoonBook files; use write, edit, or apply_patch",
-    )
-  }
-  if mooncode_shell_has_in_place_authoring(cmd) {
-    return mooncode_tool_error_result(
-      "shell",
-      message="shell in-place editing cannot author MoonBook files; use write, edit, or apply_patch",
-    )
-  }
-  let cwd = mooncode_tool_cwd(book_root, arguments)
-  if mooncode_json_bool(cwd, "ok", default=false) == false {
-    return mooncode_tool_error_result(
-      "shell",
-      message=mooncode_json_string(cwd, "message", default="invalid cwd"),
-    )
-  }
-  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
-  match mooncode_shell_boundary_error(book_root, cwd_path, cmd) {
-    Some(message) => return mooncode_tool_error_result("shell", message~)
+  match mooncode_tool_shell_preflight_error(book_root, arguments) {
+    Some(error) => return error
     None => ()
   }
+  let cmd = mooncode_json_string(arguments, "cmd", default="")
+  let cwd = mooncode_tool_cwd(book_root, arguments)
+  let cwd_path = mooncode_json_string(cwd, "absolute_path", default=book_root)
   let timeout = mooncode_json_int(arguments, "timeout_ms", default=30000)
   let max_output_chars = mooncode_json_int(
     arguments,
@@ -469,7 +501,7 @@ async fn mooncode_tool_moon_ide(
   let config = match sandbox_config {
     Some(config) => config
     None =>
-      match mooncode_execution_sandbox_config("moon_ide") {
+      match mooncode_execution_sandbox_config("moon_ide", book_root~) {
         Err(refusal) => return refusal
         Ok(config) => config
       }
@@ -754,7 +786,7 @@ async fn mooncode_tool_moon_cmd(
   let config = match sandbox_config {
     Some(config) => config
     None =>
-      match mooncode_execution_sandbox_config("moon_cmd") {
+      match mooncode_execution_sandbox_config("moon_cmd", book_root~) {
         Err(refusal) => return refusal
         Ok(config) => config
       }
@@ -782,8 +814,7 @@ async fn mooncode_tool_moon_cmd(
         },
       )
   }
-  ignore(fmt_scope_before)
-  mooncode_sandbox_terminal_result(
+  let terminal = mooncode_sandbox_terminal_result(
     "moon_cmd",
     execution,
     expected_exit_code,
@@ -804,6 +835,48 @@ async fn mooncode_tool_moon_cmd(
       ),
     },
   )
+  if command == "fmt" && explicit_paths.length() > 0 {
+    let scope = mooncode_moon_fmt_verify_and_restore(
+      book_root, selector_root, explicit_paths, fmt_scope_before,
+    )
+    let metadata = mooncode_json_object_field_or_empty(terminal, "metadata")
+    guard metadata is Object(fields) else {
+      return mooncode_tool_error_result(
+        "moon_cmd",
+        message="moon fmt scope verification could not attach evidence",
+      )
+    }
+    fields["formatter_scope"] = scope.to_json()
+    fields["status"] = mooncode_json_int(metadata, "exit_code", default=-1).to_json()
+    let output = mooncode_json_string(terminal, "output", default="")
+    if scope.snapshot_error != "" {
+      return mooncode_tool_error_result(
+        "moon_cmd",
+        message="moon fmt scope verification failed after execution: \{scope.snapshot_error}; inspect the working tree before any commit",
+        output~,
+        metadata~,
+      )
+    }
+    if scope.out_of_scope_paths.length() > 0 {
+      if scope.retained_paths.length() > 0 {
+        return mooncode_tool_error_result(
+          "moon_cmd",
+          message="moon fmt changed paths outside its explicit scope and could not restore and verify: \{scope.retained_paths.join(", ")}. Stop before committing and inspect the working tree; do not widen formatter scope to resolve this containment failure.",
+          output~,
+          metadata~,
+        )
+      }
+      if mooncode_json_bool(terminal, "ok", default=false) {
+        return mooncode_tool_ok_result(
+          "moon_cmd",
+          message="moon fmt formatted the requested paths: \{scope.requested_paths.join(", ")}. Out-of-scope formatter changes were restored and verified: \{scope.restored_paths.join(", ")}. Continue with the task; do not widen formatter scope unless a restored path is independently task-owned.",
+          output~,
+          metadata~,
+        )
+      }
+    }
+  }
+  terminal
 }
 
 ///|
@@ -999,19 +1072,12 @@ fn mooncode_json_array_string_items(json : Json, key : String) -> Array[String] 
 
 ///|
 async fn mooncode_tool_moon_check(book_root : String, arguments : Json) -> Json {
-  let config = @moonfort_config.load_sandbox_executor_config() catch {
-    error =>
-      return mooncode_tool_error_result(
-        "moon_check",
-        message="ExecutionSandbox configuration failed closed: \{error}",
-        metadata={
-          "execution_sandbox_required": true,
-          "execution_sandbox_configured": true,
-          "execution_sandbox_policy": "fail-closed",
-        },
-      )
+  let config = match
+    mooncode_execution_sandbox_config("moon_check", book_root~) {
+    Err(refusal) => return refusal
+    Ok(config) => config
   }
-  mooncode_tool_moon_check_with_config(book_root, arguments, config)
+  mooncode_tool_moon_check_with_config(book_root, arguments, Some(config))
 }
 
 ///|
@@ -1092,8 +1158,7 @@ async fn mooncode_tool_moon_check_with_config(
         "approval_plan_digest": execution.plan.expected_approval_digest,
         "approval_id": receipt.approval_id,
         "run_id": receipt.run_id,
-        "audit_path": execution.audit_path,
-        "receipt": receipt,
+        "sandbox_evidence": mooncode_sandbox_evidence(execution),
       },
     )
   }
@@ -1107,40 +1172,52 @@ async fn mooncode_tool_moon_check_with_config(
   } else {
     mooncode_cap_failed_process_output(receipt.output, max_output_chars)
   }
-  ignore(previous_seq)
-  ignore(restart_count)
-  ignore(watcher)
-  ignore(key)
-  let metadata : Json = {
-    "target": target,
-    "cwd": cwd_relative,
-    "exit_code": exit_code,
-    "truncated": mooncode_json_bool(capped, "truncated", default=false),
-    "execution_sandbox_required": true,
-    "execution_sandbox_configured": true,
-    "execution_sandbox_policy": "grant-bound",
-    "approval_plan_digest": execution.plan.expected_approval_digest,
-    "approval_id": receipt.approval_id,
-    "run_id": receipt.run_id,
-    "profile_digest": receipt.profile_digest,
-    "audit_path": execution.audit_path,
-    "receipt": receipt,
-    "sandbox_evidence": mooncode_sandbox_evidence(execution),
-  }
   let output = mooncode_json_string(capped, "output", default="")
+  let state = mooncode_moon_check_state(
+    book_root,
+    command,
+    target,
+    key,
+    watcher,
+    previous_seq + 1,
+    restart_count,
+    exit_code,
+    0,
+    output,
+    mooncode_json_bool(capped, "truncated", default=false),
+    mooncode_json_int(capped, "max_output_chars", default=max_output_chars),
+  )
+  mooncode_moon_check_write_state(book_root, state)
+  guard state is Object(fields) else {
+    return mooncode_tool_error_result(
+      "moon_check",
+      message="moon check state metadata is invalid",
+    )
+  }
+  fields["execution_sandbox_required"] = true.to_json()
+  fields["execution_sandbox_configured"] = true.to_json()
+  fields["execution_sandbox_policy"] = "grant-bound".to_json()
+  fields["approval_plan_digest"] = execution.plan.expected_approval_digest.to_json()
+  fields["approval_id"] = receipt.approval_id.to_json()
+  fields["run_id"] = receipt.run_id.to_json()
+  fields["profile_digest"] = receipt.profile_digest.to_json()
+  fields["sandbox_evidence"] = mooncode_sandbox_evidence(execution)
   if exit_code == 0 {
     mooncode_tool_ok_result(
       "moon_check",
-      message="moon check completed inside ExecutionSandbox",
+      message=mooncode_moon_check_message("moon check passed", state),
       output~,
-      metadata~,
+      metadata=state,
     )
   } else {
     mooncode_tool_error_result(
       "moon_check",
-      message="moon check exited with status \{exit_code} inside ExecutionSandbox",
+      message=mooncode_moon_check_message(
+        "moon check failed with status \{exit_code}",
+        state,
+      ),
       output~,
-      metadata~,
+      metadata=state,
     )
   }
 }

@@ -3,12 +3,13 @@ package "vectie/moonclaw/tools/execute_command"
 
 import {
   "moonbitlang/core/json",
+  "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/security",
   "vectie/moonclaw/tool",
 }
 
 // Values
-pub fn new(String, home? : String, approval_scope? : String) -> @tool.Tool[CommandResult]
+pub fn new(String, home? : String, approval_scope? : String, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> @tool.Tool[CommandResult]
 
 // Errors
 
@@ -23,8 +24,8 @@ pub enum CommandResult {
   Simulated(assessment~ : @security.CommandAssessment)
   ApprovalRequired(command~ : String, assessment~ : @security.CommandAssessment, token~ : String)
   Blocked(command~ : String, assessment~ : @security.CommandAssessment)
-  Completed(command~ : String, status~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
-  TimedOut(command~ : String, timeout~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int)
+  Completed(command~ : String, status~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int, receipt~ : @execution_sandbox.MoonFortReceipt, audit_id~ : String)
+  TimedOut(command~ : String, timeout~ : Int, stdout~ : String, stderr~ : String, max_output_lines~ : Int, receipt~ : @execution_sandbox.MoonFortReceipt, audit_id~ : String)
   Background(command~ : String, job_id~ : Int)
 } derive(ToJson, @json.FromJson)
 pub impl Show for CommandResult

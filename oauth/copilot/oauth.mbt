@@ -210,13 +210,5 @@ pub async fn start_oauth_flow_for_workspace_root(
 
 ///|
 async fn open_browser(url : String) -> Unit raise Error {
-  let result = @spawn.spawn("open", [url])
-  if result.status == 0 {
-    return
-  }
-  let result = @spawn.spawn("xdg-open", [url])
-  if result.status == 0 {
-    return
-  }
-  ()
+  @trusted_host_process.open_browser_url(url) |> ignore()
 }

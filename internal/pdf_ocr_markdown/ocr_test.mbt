@@ -115,3 +115,21 @@ async test "convert_pdf_to_markdown raises when input file is missing" {
   }
   inspect(result, content="missing:/tmp/does-not-exist.pdf")
 }
+
+///|
+async test "default PDF markdown OCR route fails closed" {
+  @fsx.with_temporary_directory("moonclaw-pdf-ocr-test-XXXXXX", async fn(
+    tmpdir,
+  ) {
+    let pdf_path = @pathx.join(tmpdir, "sandbox-required.pdf")
+    @fsx.write_to_file(pdf_path, "fake pdf bytes")
+    let result = try {
+      ignore(convert_pdf_to_markdown(pdf_path))
+      "completed"
+    } catch {
+      RasterizationFailed(detail) => detail
+      error => "unexpected:\{error}"
+    }
+    assert_true(result.contains("ExecutionSandbox"))
+  })
+}

@@ -1,13 +1,9 @@
 import {
-  "moonbitlang/core/json",
   "vectie/moonclaw/browser",
-  "vectie/moonlib/spawn",
 }
 
 supported_targets = "native"
 
 import {
   "moonbitlang/async",
-  "moonbitlang/async/fs",
-  "moonbitlang/core/env",
 } for "wbtest"

@@ -33,52 +33,42 @@ async fn Daemon::spawn_task(
   broadcast? : @broadcast.Broadcast[@server.ServerStreamEvent] = @broadcast.Broadcast::new(),
 ) -> Running {
   let id = self.uuid.v4()
-  let args = ["server"]
-  if model is Some(model) {
-    args.push("--model")
-    args.push(model.selector())
+  let registration_token = self.uuid.v4().to_string() +
+    self.uuid.v4().to_string()
+  let registration_expires_at_ms = self.clock.now().ms() + 300_000L
+  let rq = @aqueue.Queue::new(kind=Unbounded)
+  self.rqs[id.to_string()] = {
+    queue: rq,
+    instance_id: id.to_string(),
+    token: registration_token,
+    expires_at_ms: registration_expires_at_ms,
   }
-  if name is Some(name) {
-    args.push("--name")
-    args.push(name)
-  }
-  args.append([
-    "--port",
-    "0",
-    "--register-id",
-    id.to_string(),
-    "--register-host",
-    "127.0.0.1",
-    "--register-port",
-    self.port.to_string(),
-  ])
-  if resume_id is Some(resume_id) {
-    args.push("--resume")
-    args.push(resume_id.to_string())
-  }
-  if web_search {
-    args.push("--web-search")
-  }
+  defer self.rqs.remove(id.to_string())
   logger.info(
-    "Spawning task (\{self.exec_path}) process at \{cwd.to_json().stringify(indent=2)} with args: \{to_repr(args)}",
+    "Spawning governed MoonClaw server child at \{cwd.to_json().stringify(indent=2)}",
   )
-  let process = self.process.spawn(self.exec_path, args, cwd~, env={
-    "HOME": self.home,
-  }) catch {
+  let process = self.process.spawn_server(
+    cwd~,
+    name?,
+    model_selector?=model.map(model => model.selector()),
+    web_search~,
+    resume_id?=resume_id.map(id => id.to_string()),
+    register_id=id.to_string(),
+    register_port=self.port,
+    register_token=registration_token,
+  ) catch {
     error =>
       raise json_error(500, "Internal Server Error", {
         "error": {
           "code": -1,
           "message": "Failed to spawn task process: \{error}",
-          "metadata": { "cwd": cwd, "exec_path": self.exec_path, "args": args },
+          "metadata": { "cwd": cwd },
         },
       })
   }
   logger.info(
-    "Spawned task process with PID \{process.pid} and ID \{id} at '\{cwd}'",
+    "Spawned task process with PID \{process.pid_string()} and ID \{id} at '\{cwd}'",
   )
-  let rq = @aqueue.Queue::new(kind=Unbounded)
-  self.rqs[id.to_string()] = rq
   let reg : @server.RegisterRequest = @async.with_timeout(300_000, () => {
     rq.get()
   }) catch {

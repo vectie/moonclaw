@@ -2,9 +2,6 @@
 const MoonDeskPromotionRequestBytes : Int = 65_536
 
 ///|
-const MoonDeskPromotionMaxItems : Int = 256
-
-///|
 priv struct MoonDeskPromotionItem {
   source_relative : String
   destination_relative : String
@@ -36,6 +33,8 @@ priv struct MoonFortPromotionResponse {
   approval_digest : String
   command_digest : String
   promoted_paths : Array[String]
+  destination_outcome : String
+  uncertain_paths : Array[String]
   completed : Bool
   error : MoonFortPromotionError?
 } derive(Debug, Eq, @json.FromJson)
@@ -78,8 +77,7 @@ fn moondesk_promotion_parse_request(
     }) &&
     moondesk_promotion_safe_digest(request.approval_digest) &&
     moondesk_promotion_safe_digest(request.command_digest) &&
-    request.items.length() >= 1 &&
-    request.items.length() <= MoonDeskPromotionMaxItems &&
+    request.items.length() == 1 &&
     request.items.all(item => {
       moondesk_promotion_safe_relative_path(item.source_relative) &&
       moondesk_promotion_safe_relative_path(item.destination_relative)
@@ -104,7 +102,7 @@ fn moondesk_promotion_moonfort_request(
   request : MoonDeskPromotionRequest,
 ) -> Json {
   {
-    "protocol_version": 3,
+    "protocol_version": 4,
     "retention_id": request.retention_id,
     "workspace_id": request.workspace_id,
     "approval_digest": request.approval_digest,
@@ -120,20 +118,101 @@ fn moondesk_promotion_moonfort_request(
 fn moondesk_promotion_validate_response(
   request : MoonDeskPromotionRequest,
   response : MoonFortPromotionResponse,
-) -> Array[String] raise {
+) -> MoonFortPromotionResponse raise {
   let expected = request.items.map(item => item.destination_relative)
-  guard response.protocol_version == 3 &&
-    response.retention_id == request.retention_id &&
+  let exact_bindings = response.retention_id == request.retention_id &&
     response.workspace_id == request.workspace_id &&
     response.approval_digest == request.approval_digest &&
-    response.command_digest == request.command_digest &&
-    response.completed &&
-    response.error is None &&
-    response.promoted_paths == expected &&
-    response.promoted_paths.all(moondesk_promotion_safe_relative_path) else {
+    response.command_digest == request.command_digest
+  let error_code = match response.error {
+    Some(error) => error.code
+    None => ""
+  }
+  let outcome_valid = match response.destination_outcome {
+    "applied-durable" =>
+      exact_bindings &&
+      response.promoted_paths == expected &&
+      response.uncertain_paths.is_empty() &&
+      (if response.completed {
+        error_code == ""
+      } else {
+        error_code == "promotion-cleanup-unverified"
+      })
+    "not-applied" =>
+      !response.completed &&
+      response.promoted_paths.is_empty() &&
+      response.uncertain_paths.is_empty() &&
+      (if error_code == "promotion-recovery-required" {
+        // The destination is known not to have changed, but the durable claim
+        // is locked. This is still a recovery-required, non-retryable result.
+        exact_bindings
+      } else {
+        // MoonFort's proven pre-mutation refusal intentionally clears the
+        // workspace/digest echoes. The one-shot fixed adapter and exact
+        // retention echo still bind this safe, non-applied outcome.
+        error_code == "promotion-refused" &&
+        response.retention_id == request.retention_id &&
+        response.workspace_id == "" &&
+        response.approval_digest == "" &&
+        response.command_digest == ""
+      })
+    "recovery-required" =>
+      exact_bindings &&
+      !response.completed &&
+      response.promoted_paths.is_empty() &&
+      response.uncertain_paths == expected &&
+      error_code == "promotion-recovery-required"
+    _ => false
+  }
+  guard response.protocol_version == 4 &&
+    response.promoted_paths.all(moondesk_promotion_safe_relative_path) &&
+    response.uncertain_paths.all(moondesk_promotion_safe_relative_path) &&
+    outcome_valid else {
     fail("MoonFort promotion response did not match the reviewed request")
   }
-  response.promoted_paths
+  response
+}
+
+///|
+/// Project only the bounded, request-bound outcome. In particular, the
+/// provider's diagnostic message and native status never cross into MoonDesk.
+fn moondesk_promotion_public_response(
+  request : MoonDeskPromotionRequest,
+  response : MoonFortPromotionResponse,
+) -> Json {
+  let error_code = match response.error {
+    Some(error) => error.code
+    None => ""
+  }
+  let recovery_required = error_code == "promotion-recovery-required"
+  {
+    "protocol_version": 1,
+    "instance_id": request.instance_id,
+    "request_id": request.request_id,
+    "workspace_id": request.workspace_id,
+    "retention_id": request.retention_id,
+    "approval_digest": request.approval_digest,
+    "command_digest": request.command_digest,
+    "completed": response.completed,
+    "promoted_paths": response.promoted_paths,
+    "destination_outcome": response.destination_outcome,
+    "uncertain_paths": response.uncertain_paths,
+    "recovery_required": recovery_required,
+    "error_code": error_code,
+    "evidence": {
+      "moonfort_protocol_version": response.protocol_version,
+      "retention_id": response.retention_id,
+      "workspace_id": response.workspace_id,
+      "approval_digest": response.approval_digest,
+      "command_digest": response.command_digest,
+      "completed": response.completed,
+      "promoted_paths": response.promoted_paths,
+      "destination_outcome": response.destination_outcome,
+      "uncertain_paths": response.uncertain_paths,
+      "recovery_required": recovery_required,
+      "error_code": error_code,
+    },
+  }
 }
 
 ///|
@@ -163,27 +242,8 @@ async fn execute_moondesk_promotion(
   ) catch {
     _ => fail("MoonFort promotion response is invalid")
   }
-  let promoted_paths = moondesk_promotion_validate_response(request, response)
-  {
-    "protocol_version": 1,
-    "instance_id": request.instance_id,
-    "request_id": request.request_id,
-    "workspace_id": request.workspace_id,
-    "retention_id": request.retention_id,
-    "approval_digest": request.approval_digest,
-    "command_digest": request.command_digest,
-    "completed": true,
-    "promoted_paths": promoted_paths,
-    "evidence": {
-      "moonfort_protocol_version": response.protocol_version,
-      "retention_id": response.retention_id,
-      "workspace_id": response.workspace_id,
-      "approval_digest": response.approval_digest,
-      "command_digest": response.command_digest,
-      "completed": response.completed,
-      "promoted_paths": response.promoted_paths,
-    },
-  }
+  let response = moondesk_promotion_validate_response(request, response)
+  moondesk_promotion_public_response(request, response)
 }
 
 ///|

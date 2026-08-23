@@ -778,6 +778,18 @@ fn mooncode_shell_segment_is_read_only_git(segment : Array[String]) -> Bool {
 }
 
 ///|
+fn mooncode_shell_segment_is_read_only_gh(
+  segment : Array[String],
+  index : Int,
+) -> Bool {
+  if index + 2 >= segment.length() || segment.contains("--web") {
+    return false
+  }
+  segment[index + 1] == "run" &&
+  (segment[index + 2] == "view" || segment[index + 2] == "list")
+}
+
+///|
 fn mooncode_shell_segment_read_only_executable_index(
   segment : Array[String],
 ) -> Int {
@@ -822,6 +834,16 @@ fn mooncode_shell_segment_is_demonstrably_read_only(
   let executable = segment[index]
   if mooncode_shell_executable_is(executable, "git") {
     return mooncode_shell_segment_is_read_only_git(segment[index:].to_owned())
+  }
+  if mooncode_shell_executable_is(executable, "gh") {
+    return mooncode_shell_segment_is_read_only_gh(segment, index)
+  }
+  if mooncode_shell_executable_is(executable, "npm") ||
+    mooncode_shell_executable_is(executable, "pnpm") ||
+    mooncode_shell_executable_is(executable, "yarn") ||
+    mooncode_shell_executable_is(executable, "bun") {
+    return segment[index + 1:].contains("--help") ||
+      segment[index + 1:].contains("-h")
   }
   if mooncode_shell_executable_is(executable, "curl") {
     return mooncode_shell_segment_is_safe_loopback_curl(segment, index)

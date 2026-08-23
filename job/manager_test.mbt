@@ -1,33 +1,35 @@
 ///|
-async test "Manager::spawn" (t : @test.Test) {
+async test "Manager::spawn fails closed without an execution sandbox" (
+  t : @test.Test,
+) {
   @mock.run(t, mock => {
     let manager = @job.Manager::new(cwd=mock.cwd.path())
-    mock.group.spawn_bg(() => manager.start(), no_wait=true)
-    let job = manager.spawn(name="sleep", command="sleep 2")
-    json_inspect(job.status(), content=null)
-    json_inspect(job.id, content=0)
-    json_inspect(job.command, content="sleep 2")
-    json_inspect(mock.json(job.cwd), content="(mock:cwd)")
-    json_inspect(
-      mock.json(job.stdout),
-      content="(mock:cwd)/.moonsuite/products/moonclaw/jobs/processes/0/stdout",
+    let result : Result[String, Error] = Ok(
+      {
+        ignore(manager.spawn(name="sleep", command="sleep 2"))
+        "executed"
+      },
+    ) catch {
+      error => Err(error)
+    }
+    inspect(
+      match result {
+        Ok(value) => value
+        Err(@job.ExecutionSandboxRequired(command)) => "sandbox:\{command}"
+        Err(_) => "other"
+      },
+      content="sandbox:sleep 2",
     )
-    json_inspect(
-      mock.json(job.stderr),
-      content="(mock:cwd)/.moonsuite/products/moonclaw/jobs/processes/0/stderr",
-    )
+    json_inspect(manager.list().length(), content=0)
   })
 }
 
 ///|
-async test "Manager::wait" (t : @test.Test) {
+async test "Manager::start has no raw host-process runtime" (t : @test.Test) {
   @mock.run(t, mock => {
     let manager = @job.Manager::new(cwd=mock.cwd.path())
-    mock.group.spawn_bg(() => manager.start(), no_wait=true)
-    let job = manager.spawn(name="sleep", command="sleep 2")
-    json_inspect(job.status(), content=null)
-    let _ = job.wait()
-    json_inspect(job.status(), content=[0])
+    manager.start()
+    json_inspect(manager.list().length(), content=0)
   })
 }
 

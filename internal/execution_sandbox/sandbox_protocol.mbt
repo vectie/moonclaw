@@ -123,6 +123,22 @@ struct MoonFortGrantPublicationResponse {
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
+/// Opaque executor-owned reference to the complete merged command output.
+/// MoonClaw validates the public metadata but never interprets `artifact_id`
+/// as a path. Content and signature verification remain the responsibility of
+/// MoonFort's fixed artifact-reader capability.
+pub(all) struct MoonFortCommandOutputArtifactRef {
+  artifact_id : String
+  run_id : String
+  sha256 : String
+  size_bytes : Int64
+  media_type : String
+  expires_at_ms : Int64
+  key_id : String
+  signature : String
+} derive(Debug, Eq, ToJson, @json.FromJson)
+
+///|
 pub(all) struct MoonFortReceipt {
   run_id : String
   approval_id : String
@@ -135,6 +151,11 @@ pub(all) struct MoonFortReceipt {
   exit_code : Int?
   output : String
   output_truncated : Bool
+  /// Present whenever the approved hard output ceiling was reached, and also
+  /// when MoonFort projected otherwise complete output down to its configured
+  /// model-facing budget. Missing fields from older small-output receipts
+  /// decode as `None` for wire compatibility.
+  output_artifact : MoonFortCommandOutputArtifactRef?
   limit_reason : String?
   /// Limits the selected backend could not independently prove hard. An
   /// enforced backend returns an empty array; degraded local execution must
@@ -143,10 +164,6 @@ pub(all) struct MoonFortReceipt {
   changed_paths : Array[String]
   changes : Array[MoonFortScratchChange]
   artifacts : Array[String]
-  /// Optional MoonFort scratch-relative artifact containing the complete
-  /// merged command output when `output` is truncated. Its retention is bound
-  /// by `retention_id`; MoonClaw never accepts or exposes a host path here.
-  full_output_artifact : String?
   denial_reason : String?
   cleanup_verified : Bool
   retention_id : String?
@@ -295,25 +312,35 @@ fn canonical_absolute_path(path : String) -> Bool {
 }
 
 ///|
-fn safe_sandbox_artifact_path(path : String) -> Bool {
-  path != "" &&
-  !path.has_prefix("/") &&
-  !path.has_suffix("/") &&
-  !path.contains("//") &&
-  !path.contains("\u{0}") &&
-  !path.split("/").any(component => component == "." || component == "..")
-}
+const MoonFortCommandOutputMediaType : String = "text/plain; charset=utf-8"
 
 ///|
-pub fn moonfort_full_output_artifact_valid(receipt : MoonFortReceipt) -> Bool {
-  match receipt.full_output_artifact {
-    None => true
-    Some(path) =>
-      receipt.output_truncated &&
-      safe_sandbox_artifact_path(path) &&
-      receipt.artifacts.contains(path) &&
-      receipt.retention_id is Some(id) &&
-      id != ""
+/// Validate only the artifact properties available at the MoonClaw protocol
+/// boundary. MoonFort's trusted artifact reader must still authenticate the
+/// signature and recheck the manifest, file identity, size, and content hash
+/// before returning any bytes.
+pub fn moonfort_output_artifact_valid(
+  receipt : MoonFortReceipt,
+  output_limit : Int,
+  now_ms : Int64,
+) -> Bool {
+  let terminal_output = receipt.status is Exited || receipt.status is Killed
+  match receipt.output_artifact {
+    None => !receipt.output_truncated || !terminal_output
+    Some(reference) =>
+      terminal_output &&
+      output_limit > 0 &&
+      safe_identifier(reference.artifact_id) &&
+      safe_identifier(reference.run_id) &&
+      reference.run_id == receipt.run_id &&
+      canonical_digest(reference.sha256) &&
+      reference.size_bytes >= 0L &&
+      reference.size_bytes <= output_limit.to_int64() &&
+      reference.size_bytes >= @utf8.encode(receipt.output).length().to_int64() &&
+      reference.media_type == MoonFortCommandOutputMediaType &&
+      reference.expires_at_ms > now_ms &&
+      safe_identifier(reference.key_id) &&
+      canonical_digest(reference.signature)
   }
 }
 
@@ -788,6 +815,9 @@ pub async fn invoke_moonfort(
     canonical_digest(receipt.profile_digest) else {
     fail("MoonFort receipt does not match the approved grant")
   }
+  guard @utf8.encode(receipt.output).length() <= plan.grant.limits.output_bytes else {
+    fail("MoonFort inline output exceeds the approved output ceiling")
+  }
   guard !(receipt.enforcement is Refused) else {
     let reason = receipt.denial_reason.unwrap_or("unspecified refusal")
     fail("MoonFort refused execution: \{reason}")
@@ -809,8 +839,12 @@ pub async fn invoke_moonfort(
       fail("MoonFort degraded receipt omitted its unverified limits")
     }
   }
-  guard moonfort_full_output_artifact_valid(receipt) else {
-    fail("MoonFort full-output artifact is not a retained declared artifact")
+  guard moonfort_output_artifact_valid(
+    receipt,
+    plan.grant.limits.output_bytes,
+    @clock.epoch.now().ms(),
+  ) else {
+    fail("MoonFort output artifact metadata is invalid or incomplete")
   }
   receipt
 }

@@ -1307,6 +1307,8 @@ async fn mooncode_tool_apply_unified_patchset(
       "path": relative,
       "proof_path": proof_path,
       "absolute_path": absolute,
+      "existed": existed,
+      "original": content,
       "patched": patched,
       "delete_file": delete_file,
     })
@@ -1351,43 +1353,70 @@ async fn mooncode_tool_apply_unified_patchset(
       },
     )
   }
+  let mut commit_error : String? = None
   for plan in plans {
+    if commit_error is Some(_) {
+      break
+    }
     let absolute = mooncode_json_string(plan, "absolute_path", default="")
-    if mooncode_json_bool(plan, "delete_file", default=false) {
-      if @fsx.exists(absolute) {
-        @fsx.remove(absolute) catch {
-          error =>
-            return mooncode_tool_error_result(
-              tool,
-              message="error removing \{absolute}: \{error}",
-              metadata={
-                "path": mooncode_json_string(plan, "path", default=""),
-                "absolute_path": absolute,
-              },
+    try {
+      if mooncode_json_bool(plan, "delete_file", default=false) {
+        if @fsx.exists(absolute) {
+          @fsx.remove(absolute)
+        }
+      } else {
+        @fsx.make_directory(
+          @pathx.dirname(absolute),
+          recursive=true,
+          exists_ok=true,
+        )
+        @fsx.write_to_file(
+          absolute,
+          mooncode_json_string(plan, "patched", default=""),
+        )
+      }
+    } catch {
+      error => commit_error = Some("error committing \{absolute}: \{error}")
+    }
+  }
+  match commit_error {
+    Some(error) => {
+      let mut rollback_error : String? = None
+      for plan in plans {
+        let absolute = mooncode_json_string(plan, "absolute_path", default="")
+        try {
+          if mooncode_json_bool(plan, "existed", default=false) {
+            @fsx.make_directory(
+              @pathx.dirname(absolute),
+              recursive=true,
+              exists_ok=true,
+            )
+            @fsx.write_to_file(
+              absolute,
+              mooncode_json_string(plan, "original", default=""),
+            )
+          } else if @fsx.exists(absolute) {
+            @fsx.remove(absolute)
+          }
+        } catch {
+          rollback =>
+            rollback_error = Some(
+              "; rollback failed for \{absolute}: \{rollback}",
             )
         }
       }
-    } else {
-      @fsx.make_directory(
-        @pathx.dirname(absolute),
-        recursive=true,
-        exists_ok=true,
+      return mooncode_tool_error_result(
+        tool,
+        message=error + rollback_error.unwrap_or(""),
+        metadata={
+          "path": "patchset",
+          "atomic": true,
+          "rolled_back": rollback_error is None,
+          "patched_file_count": file_results.length(),
+        },
       )
-      @fsx.write_to_file(
-        absolute,
-        mooncode_json_string(plan, "patched", default=""),
-      ) catch {
-        error =>
-          return mooncode_tool_error_result(
-            tool,
-            message="error writing \{absolute}: \{error}",
-            metadata={
-              "path": mooncode_json_string(plan, "path", default=""),
-              "absolute_path": absolute,
-            },
-          )
-      }
     }
+    None => ()
   }
   mooncode_tool_patch_result(
     tool,
@@ -1717,9 +1746,78 @@ async fn mooncode_tool_run_patch_verification(
   book_root : String,
   arguments : Json,
 ) -> Json {
-  ignore(book_root)
-  ignore(arguments)
-  mooncode_patch_verification_sandbox_refusal()
+  let config = match
+    mooncode_execution_sandbox_config("patch_verification", book_root~) {
+    Err(_) => return mooncode_patch_verification_sandbox_refusal()
+    Ok(config) => config
+  }
+  let command = mooncode_tool_patch_verification_command(arguments)
+  let target = mooncode_json_string(arguments, "moon_check_target", default="")
+  let timeout = mooncode_json_int(arguments, "timeout_ms", default=60000)
+  let max_output_chars = mooncode_json_int(
+    arguments,
+    "max_output_chars",
+    default=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+  )
+  let execution = try {
+    if command != "" {
+      match mooncode_shell_boundary_error(book_root, book_root, command) {
+        Some(message) =>
+          return mooncode_tool_error_result(
+            "shell",
+            message="post-change verification rejected: \{message}",
+          )
+        None => ()
+      }
+      let plan = @execution_sandbox.make_sandbox_plan(
+        config, book_root, book_root, command, timeout,
+      )
+      @execution_sandbox.run_approved_shell(
+        config, book_root, book_root, command, plan,
+      )
+    } else if target != "" {
+      @execution_sandbox.run_moon_check(
+        config, book_root, book_root, target, timeout,
+      )
+    } else {
+      return mooncode_tool_error_result(
+        "execution_sandbox",
+        message="post-change verification requested without a command or moon_check_target",
+      )
+    }
+  } catch {
+    error =>
+      return mooncode_tool_error_result(
+        "execution_sandbox",
+        message="post-change verification failed closed in MoonFort: \{error}",
+      )
+  }
+  let receipt = execution.receipt
+  guard receipt.status is @execution_sandbox.Exited &&
+    receipt.exit_code is Some(status) else {
+    return mooncode_tool_error_result(
+      "execution_sandbox",
+      message="post-change verification did not return a terminal MoonFort receipt",
+      output=receipt.output,
+    )
+  }
+  mooncode_tool_patch_verification_result(
+    if command != "" {
+      "shell"
+    } else {
+      "moon_check"
+    },
+    if command != "" {
+      command
+    } else {
+      mooncode_moon_check_command(target)
+    },
+    status,
+    0,
+    receipt.output,
+    max_output_chars,
+    target~,
+  )
 }
 
 ///|
@@ -1927,7 +2025,7 @@ fn mooncode_cap_tool_output(
   let limit = mooncode_normalize_tool_output_chars(limit, maximum~)
   if text.length() > limit {
     {
-      "output": text[:limit].to_owned(),
+      "output": mooncode_utf8_prefix_within(text, limit),
       "truncated": true,
       "max_output_chars": limit,
       "char_count": text.length(),
@@ -1960,7 +2058,7 @@ fn mooncode_cap_failed_process_output(text : String, limit : Int) -> Json {
   let marker = "\n... output omitted; tail preserved ...\n"
   if marker.length() >= max_output_chars {
     return {
-      "output": text[text.length() - max_output_chars:].to_owned(),
+      "output": mooncode_utf8_suffix_within(text, max_output_chars),
       "truncated": true,
       "truncation_mode": "tail",
       "max_output_chars": max_output_chars,
@@ -1971,9 +2069,9 @@ fn mooncode_cap_failed_process_output(text : String, limit : Int) -> Json {
   let head_chars = available / 4
   let tail_chars = available - head_chars
   {
-    "output": text[:head_chars].to_owned() +
+    "output": mooncode_utf8_prefix_within(text, head_chars) +
     marker +
-    text[text.length() - tail_chars:].to_owned(),
+    mooncode_utf8_suffix_within(text, tail_chars),
     "truncated": true,
     "truncation_mode": "head_tail",
     "max_output_chars": max_output_chars,
@@ -2683,6 +2781,44 @@ async test "mooncode native patch tools apply and revert unified patchsets" (
 }
 
 ///|
+/// Validate every file before committing any member of a multi-file patchset.
+async test "mooncode patchset validation is atomic across files" (
+  t : @test.Test,
+) {
+  ignore(t)
+  let book_root = @fsx.mkdtemp(
+    @pathx.join(@os.tmpdir(), "moonclaw-mooncode-patchset-atomic-XXXXXX"),
+  )
+  @fsx.make_directory(
+    @pathx.join(book_root, "tools"),
+    recursive=true,
+    exists_ok=true,
+  )
+  let one = @pathx.join(book_root, "tools/one.txt")
+  let two = @pathx.join(book_root, "tools/two.txt")
+  @fsx.write_to_file(one, "one\nalpha\n")
+  @fsx.write_to_file(two, "two\nbeta\n")
+  let diff = "--- a/tools/one.txt\n+++ b/tools/one.txt\n@@\n one\n-alpha\n+Alpha\n--- a/tools/two.txt\n+++ b/tools/two.txt\n@@\n two\n-missing\n+Beta\n"
+  let execution = mooncode_execute_tool_call(
+    "session-patchset-atomic",
+    book_root,
+    {
+      "protocol": mooncode_protocol_version(),
+      "session_id": "session-patchset-atomic",
+      "book_root": book_root,
+      "tool": "apply_patch",
+      "command_id": "cmd-apply-patchset-atomic",
+      "arguments": { "diff": diff },
+    },
+    now=@clock.Timestamp::from_ms(52L),
+  )
+  let result = mooncode_json_object_field_or_empty(execution, "result")
+  assert_false(mooncode_json_bool(result, "ok", default=true))
+  assert_eq(@fsx.read_file(one), "one\nalpha\n")
+  assert_eq(@fsx.read_file(two), "two\nbeta\n")
+}
+
+///|
 async test "mooncode unified patch rejects apply-patch envelopes before reading path" (
   t : @test.Test,
 ) {
@@ -2795,38 +2931,40 @@ async test "mooncode native patch tools attach post-change verification" (
     @pathx.join(book_root, "tools/demo.txt"),
     "hello mooncode\n",
   )
-  let apply = mooncode_execute_tool_call(
-    "session-patch-verify",
-    book_root,
-    {
-      "protocol": mooncode_protocol_version(),
-      "session_id": "session-patch-verify",
-      "book_root": book_root,
-      "tool": "apply_patch",
-      "command_id": "cmd-apply-verify",
-      "arguments": {
-        "path": "tools/demo.txt",
-        "old_string": "hello mooncode",
-        "new_string": "hello MoonCode",
-        "verification_command": "grep 'hello MoonCode' tools/demo.txt",
+  mooncode_with_fixture_moonfort(book_root, async fn(_) {
+    let apply = mooncode_execute_tool_call(
+      "session-patch-verify",
+      book_root,
+      {
+        "protocol": mooncode_protocol_version(),
+        "session_id": "session-patch-verify",
+        "book_root": book_root,
+        "tool": "apply_patch",
+        "command_id": "cmd-apply-verify",
+        "arguments": {
+          "path": "tools/demo.txt",
+          "old_string": "hello mooncode",
+          "new_string": "hello MoonCode",
+          "verification_command": "grep 'hello MoonCode' tools/demo.txt",
+        },
       },
-    },
-    now=@clock.Timestamp::from_ms(52L),
-  )
-  let apply_result = mooncode_json_object_field_or_empty(apply, "result")
-  assert_true(mooncode_json_bool(apply_result, "ok", default=false))
-  let metadata = mooncode_json_object_field_or_empty(apply_result, "metadata")
-  let verification = mooncode_json_object_field_or_empty(
-    metadata, "verification",
-  )
-  assert_true(mooncode_json_bool(verification, "ok", default=false))
-  assert_eq(mooncode_json_string(verification, "tool", default=""), "shell")
-  assert_eq(mooncode_json_int(verification, "status", default=-1), 0)
-  assert_true(
-    mooncode_json_string(verification, "output", default="").contains(
-      "hello MoonCode",
-    ),
-  )
+      now=@clock.Timestamp::from_ms(52L),
+    )
+    let apply_result = mooncode_json_object_field_or_empty(apply, "result")
+    assert_true(mooncode_json_bool(apply_result, "ok", default=false))
+    let metadata = mooncode_json_object_field_or_empty(apply_result, "metadata")
+    let verification = mooncode_json_object_field_or_empty(
+      metadata, "verification",
+    )
+    assert_true(mooncode_json_bool(verification, "ok", default=false))
+    assert_eq(mooncode_json_string(verification, "tool", default=""), "shell")
+    assert_eq(mooncode_json_int(verification, "status", default=-1), 0)
+    assert_true(
+      mooncode_json_string(verification, "output", default="").contains(
+        "hello MoonCode",
+      ),
+    )
+  })
 }
 
 ///|

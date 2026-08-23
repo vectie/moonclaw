@@ -5,7 +5,6 @@ import {
   "moonbitlang/core/encoding/utf8",
   "moonbitlang/core/json",
   "moonbitlang/x/crypto",
-  "vectie/moonclaw/internal/spawn",
   "vectie/moonclaw/job",
   "vectie/moonclaw/mooncode/core" @mooncode_core,
   "vectie/moonlib/fsx",

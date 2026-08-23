@@ -6,20 +6,19 @@ pub async fn add_worktree(
   commit? : String,
   cwd? : StringView,
 ) -> Unit {
-  let arguments : Array[StringView] = ["worktree", "add"]
-  if new_branch is Some(branch) {
-    if force_new_branch {
-      arguments.push("-B")
-    } else {
-      arguments.push("-b")
-    }
-    arguments.push(branch)
+  let root = cwd.map(fn(value) { value.to_owned() }).unwrap_or(".")
+  let destination = if @pathx.is_absolute(path) {
+    path
+  } else {
+    @pathx.join(root, path)
   }
-  arguments.push(path)
-  if commit is Some(commit) {
-    arguments.push(commit)
+  let result = @trusted_host_process.run_git(
+    root,
+    WorktreeAdd(path=destination, branch=new_branch, commit~, force_new_branch~),
+  )
+  if result.status() != 0 {
+    fail("trusted git worktree add failed: \{result.stderr()}")
   }
-  @spawn.spawn("git", arguments, cwd?).check()
 }
 
 ///|
@@ -28,11 +27,19 @@ pub async fn remove_worktree(
   force? : Bool = false,
   cwd? : StringView,
 ) -> Unit {
-  let arguments : Array[StringView] = ["worktree", "remove", path]
-  if force {
-    arguments.push("--force")
+  let root = cwd.map(fn(value) { value.to_owned() }).unwrap_or(".")
+  let destination = if @pathx.is_absolute(path) {
+    path
+  } else {
+    @pathx.join(root, path)
   }
-  @spawn.spawn("git", arguments, cwd?).check()
+  let result = @trusted_host_process.run_git(
+    root,
+    WorktreeRemove(path=destination, force~),
+  )
+  if result.status() != 0 {
+    fail("trusted git worktree remove failed: \{result.stderr()}")
+  }
 }
 
 ///|
