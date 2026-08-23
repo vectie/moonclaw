@@ -98,13 +98,11 @@ pub async fn Daemon::new(
   if info_file is Some(info_file) {
     @fsx.truncate(info_file, 0)
     info_file.write(
-      DaemonInfo::{
+      @json.to_json(DaemonInfo::{
         version: @buildinfo.version,
         port,
         pid: @trusted_host_process.current_process_id(),
-      }
-      .to_json()
-      .stringify(),
+      }).stringify(),
     )
   }
   logger.info(

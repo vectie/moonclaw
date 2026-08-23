@@ -28,7 +28,7 @@ async fn Daemon::start_codex_auth(
   let response : StartCodexAuthResponse = { auth_url, state }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(response.to_json().stringify())
+  w.write(@json.to_json(response).stringify())
 }
 
 ///|

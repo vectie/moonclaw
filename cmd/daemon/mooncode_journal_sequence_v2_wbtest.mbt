@@ -10,9 +10,8 @@ fn mooncode_sequence_expect_corrupt(
   action : () -> Unit raise MoonCodeGoalRuntimeStoreError,
 ) -> Unit raise {
   try action() catch {
-    MoonCodeGoalRuntimeStoreError::CorruptStore(_) => ()
-    MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
-      fail("unexpected identity conflict")
+    CorruptStore(_) => ()
+    IdentityConflict(_, _, _) => fail("unexpected identity conflict")
   } noraise {
     _ => fail("expected corrupt journal data")
   }

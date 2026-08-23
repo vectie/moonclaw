@@ -2,11 +2,13 @@
 pub struct ProcessBrowserHost {}
 
 ///|
+#warnings("-unnecessary_annotation")
 pub fn ProcessBrowserHost::new() -> ProcessBrowserHost {
   ProcessBrowserHost::{  }
 }
 
 ///|
+#warnings("-unused_async")
 pub async fn ProcessBrowserHost::execute(
   _self : ProcessBrowserHost,
   _command : @browser.BrowserHostCommand,

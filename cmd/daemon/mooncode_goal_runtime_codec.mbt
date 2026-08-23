@@ -52,7 +52,7 @@ priv struct MoonCodeGoalRuntimeStoredEvent {
 fn[T] mooncode_goal_runtime_fail(
   message : String,
 ) -> T raise MoonCodeGoalRuntimeCodecError {
-  raise MoonCodeGoalRuntimeCodecError::Invalid(message)
+  raise Invalid(message)
 }
 
 ///|
@@ -171,12 +171,12 @@ fn mooncode_goal_runtime_decode_phase(
   json : Json,
 ) -> @mooncode_core.GoalRuntimePhase raise MoonCodeGoalRuntimeCodecError {
   match json {
-    String("queued") => @mooncode_core.Queued
-    String("running") => @mooncode_core.Running
-    String("waiting_approval") => @mooncode_core.WaitingApproval
-    String("retry_backoff") => @mooncode_core.RetryBackoff
-    String("paused_no_progress") => @mooncode_core.PausedNoProgress
-    String("paused_external") => @mooncode_core.PausedExternal
+    String("queued") => Queued
+    String("running") => Running
+    String("waiting_approval") => WaitingApproval
+    String("retry_backoff") => RetryBackoff
+    String("paused_no_progress") => PausedNoProgress
+    String("paused_external") => PausedExternal
     _ => mooncode_goal_runtime_fail("invalid phase")
   }
 }
@@ -323,7 +323,7 @@ fn mooncode_goal_runtime_decode_decision(
           mooncode_goal_runtime_decode_criterion_evidence(value)
         },
       )
-      @mooncode_core.Achieved(
+      Achieved(
         mooncode_goal_runtime_checked_string(object, "summary"),
         evidence,
       )
@@ -334,7 +334,7 @@ fn mooncode_goal_runtime_decode_decision(
         ["type", "reason", "attempted_alternatives", "required_event"],
         "blocked decision",
       )
-      @mooncode_core.Blocked(
+      Blocked(
         mooncode_goal_runtime_decode_blocked_reason(
           mooncode_goal_runtime_json_field(object, "reason"),
         ),
@@ -370,7 +370,7 @@ fn mooncode_goal_runtime_decode_event_payload(
         ["type", "decision"],
         "planner decision event",
       )
-      @mooncode_core.PlannerDecision(
+      PlannerDecision(
         event_id,
         mooncode_goal_runtime_decode_decision(
           mooncode_goal_runtime_json_field(object, "decision"),
@@ -383,7 +383,7 @@ fn mooncode_goal_runtime_decode_event_payload(
         ["type", "operation_id"],
         "operation accepted event",
       )
-      @mooncode_core.OperationAccepted(
+      OperationAccepted(
         event_id,
         mooncode_goal_runtime_checked_string(object, "operation_id"),
       )
@@ -394,7 +394,7 @@ fn mooncode_goal_runtime_decode_event_payload(
         ["type", "checkpoint_id"],
         "checkpoint accepted event",
       )
-      @mooncode_core.CheckpointAccepted(
+      CheckpointAccepted(
         event_id,
         mooncode_goal_runtime_checked_string(object, "checkpoint_id"),
       )
@@ -405,7 +405,7 @@ fn mooncode_goal_runtime_decode_event_payload(
         ["type", "phase"],
         "phase changed event",
       )
-      @mooncode_core.PhaseChanged(
+      PhaseChanged(
         event_id,
         mooncode_goal_runtime_decode_phase(
           mooncode_goal_runtime_json_field(object, "phase"),
@@ -418,7 +418,7 @@ fn mooncode_goal_runtime_decode_event_payload(
         ["type", "reason"],
         "cancelled event",
       )
-      @mooncode_core.Cancelled(
+      Cancelled(
         event_id,
         mooncode_goal_runtime_checked_string(object, "reason"),
       )
@@ -546,12 +546,12 @@ fn mooncode_goal_runtime_phase_json(
   phase : @mooncode_core.GoalRuntimePhase,
 ) -> String {
   match phase {
-    @mooncode_core.Queued => "\"queued\""
-    @mooncode_core.Running => "\"running\""
-    @mooncode_core.WaitingApproval => "\"waiting_approval\""
-    @mooncode_core.RetryBackoff => "\"retry_backoff\""
-    @mooncode_core.PausedNoProgress => "\"paused_no_progress\""
-    @mooncode_core.PausedExternal => "\"paused_external\""
+    Queued => "\"queued\""
+    Running => "\"running\""
+    WaitingApproval => "\"waiting_approval\""
+    RetryBackoff => "\"retry_backoff\""
+    PausedNoProgress => "\"paused_no_progress\""
+    PausedExternal => "\"paused_external\""
   }
 }
 
@@ -616,7 +616,7 @@ fn mooncode_goal_runtime_decision_json(
   decision : @mooncode_core.GoalPlannerDecision,
 ) -> String {
   match decision {
-    @mooncode_core.Continue(operations, expected_progress, rationale) =>
+    Continue(operations, expected_progress, rationale) =>
       "{\"type\":\"continue\",\"operations\":[" +
       operations.map(mooncode_goal_runtime_operation_json).join(",") +
       "],\"expected_progress\":" +
@@ -624,13 +624,13 @@ fn mooncode_goal_runtime_decision_json(
       ",\"rationale\":" +
       mooncode_goal_runtime_json_string(rationale) +
       "}"
-    @mooncode_core.Achieved(summary, evidence) =>
+    Achieved(summary, evidence) =>
       "{\"type\":\"achieved\",\"summary\":" +
       mooncode_goal_runtime_json_string(summary) +
       ",\"evidence\":[" +
       evidence.map(mooncode_goal_runtime_evidence_json).join(",") +
       "]}"
-    @mooncode_core.Blocked(reason, attempted_alternatives, required_event) =>
+    Blocked(reason, attempted_alternatives, required_event) =>
       "{\"type\":\"blocked\",\"reason\":" +
       mooncode_goal_runtime_blocked_reason_json(reason) +
       ",\"attempted_alternatives\":" +
@@ -646,11 +646,11 @@ fn mooncode_goal_runtime_event_id(
   event : @mooncode_core.GoalRuntimeEvent,
 ) -> String {
   match event {
-    @mooncode_core.PlannerDecision(id, _) => id
-    @mooncode_core.OperationAccepted(id, _) => id
-    @mooncode_core.CheckpointAccepted(id, _) => id
-    @mooncode_core.PhaseChanged(id, _) => id
-    @mooncode_core.Cancelled(id, _) => id
+    PlannerDecision(id, _) => id
+    OperationAccepted(id, _) => id
+    CheckpointAccepted(id, _) => id
+    PhaseChanged(id, _) => id
+    Cancelled(id, _) => id
   }
 }
 
@@ -659,23 +659,23 @@ fn mooncode_goal_runtime_event_json(
   event : @mooncode_core.GoalRuntimeEvent,
 ) -> String {
   match event {
-    @mooncode_core.PlannerDecision(_, decision) =>
+    PlannerDecision(_, decision) =>
       "{\"type\":\"planner_decision\",\"decision\":" +
       mooncode_goal_runtime_decision_json(decision) +
       "}"
-    @mooncode_core.OperationAccepted(_, operation_id) =>
+    OperationAccepted(_, operation_id) =>
       "{\"type\":\"operation_accepted\",\"operation_id\":" +
       mooncode_goal_runtime_json_string(operation_id) +
       "}"
-    @mooncode_core.CheckpointAccepted(_, checkpoint_id) =>
+    CheckpointAccepted(_, checkpoint_id) =>
       "{\"type\":\"checkpoint_accepted\",\"checkpoint_id\":" +
       mooncode_goal_runtime_json_string(checkpoint_id) +
       "}"
-    @mooncode_core.PhaseChanged(_, phase) =>
+    PhaseChanged(_, phase) =>
       "{\"type\":\"phase_changed\",\"phase\":" +
       mooncode_goal_runtime_phase_json(phase) +
       "}"
-    @mooncode_core.Cancelled(_, reason) =>
+    Cancelled(_, reason) =>
       "{\"type\":\"cancelled\",\"reason\":" +
       mooncode_goal_runtime_json_string(reason) +
       "}"
@@ -709,14 +709,14 @@ fn mooncode_goal_runtime_copy_decision(
   decision : @mooncode_core.GoalPlannerDecision,
 ) -> @mooncode_core.GoalPlannerDecision {
   match decision {
-    @mooncode_core.Continue(operations, progress, reason) =>
-      @mooncode_core.Continue(
+    Continue(operations, progress, reason) =>
+      Continue(
         operations.map(mooncode_goal_runtime_copy_operation),
         progress,
         reason,
       )
-    @mooncode_core.Achieved(summary, evidence) =>
-      @mooncode_core.Achieved(
+    Achieved(summary, evidence) =>
+      Achieved(
         summary,
         evidence.map(fn(item) {
           {
@@ -725,8 +725,8 @@ fn mooncode_goal_runtime_copy_decision(
           }
         }),
       )
-    @mooncode_core.Blocked(reason, attempted_alternatives, required_event) =>
-      @mooncode_core.Blocked(
+    Blocked(reason, attempted_alternatives, required_event) =>
+      Blocked(
         { code: reason.code, detail: reason.detail },
         attempted_alternatives.copy(),
         required_event,
@@ -739,18 +739,13 @@ fn mooncode_goal_runtime_copy_event(
   event : @mooncode_core.GoalRuntimeEvent,
 ) -> @mooncode_core.GoalRuntimeEvent {
   match event {
-    @mooncode_core.PlannerDecision(id, decision) =>
-      @mooncode_core.PlannerDecision(
-        id,
-        mooncode_goal_runtime_copy_decision(decision),
-      )
-    @mooncode_core.OperationAccepted(id, operation_id) =>
-      @mooncode_core.OperationAccepted(id, operation_id)
-    @mooncode_core.CheckpointAccepted(id, checkpoint_id) =>
-      @mooncode_core.CheckpointAccepted(id, checkpoint_id)
-    @mooncode_core.PhaseChanged(id, phase) =>
-      @mooncode_core.PhaseChanged(id, phase)
-    @mooncode_core.Cancelled(id, reason) => @mooncode_core.Cancelled(id, reason)
+    PlannerDecision(id, decision) =>
+      PlannerDecision(id, mooncode_goal_runtime_copy_decision(decision))
+    OperationAccepted(id, operation_id) => OperationAccepted(id, operation_id)
+    CheckpointAccepted(id, checkpoint_id) =>
+      CheckpointAccepted(id, checkpoint_id)
+    PhaseChanged(id, phase) => PhaseChanged(id, phase)
+    Cancelled(id, reason) => Cancelled(id, reason)
   }
 }
 
@@ -884,27 +879,27 @@ fn new_mooncode_goal_runtime_stored_event(
     "event identity",
   )
   match normalized_event {
-    @mooncode_core.PlannerDecision(_, decision) =>
+    PlannerDecision(_, decision) =>
       if !@mooncode_core.validate_goal_planner_decision(decision) {
         mooncode_goal_runtime_fail("invalid planner decision")
       }
-    @mooncode_core.OperationAccepted(_, operation_id) =>
+    OperationAccepted(_, operation_id) =>
       mooncode_goal_runtime_require_canonical_strings(
         [operation_id],
         "operation_id",
       )
-    @mooncode_core.CheckpointAccepted(_, checkpoint_id) =>
+    CheckpointAccepted(_, checkpoint_id) =>
       mooncode_goal_runtime_require_canonical_strings(
         [checkpoint_id],
         "checkpoint_id",
       )
-    @mooncode_core.PhaseChanged(_, @mooncode_core.Queued) => ()
-    @mooncode_core.PhaseChanged(_, @mooncode_core.Running) => ()
-    @mooncode_core.PhaseChanged(_, @mooncode_core.WaitingApproval) => ()
-    @mooncode_core.PhaseChanged(_, @mooncode_core.RetryBackoff) => ()
-    @mooncode_core.PhaseChanged(_, @mooncode_core.PausedNoProgress) => ()
-    @mooncode_core.PhaseChanged(_, @mooncode_core.PausedExternal) => ()
-    @mooncode_core.Cancelled(_, reason) =>
+    PhaseChanged(_, Queued) => ()
+    PhaseChanged(_, Running) => ()
+    PhaseChanged(_, WaitingApproval) => ()
+    PhaseChanged(_, RetryBackoff) => ()
+    PhaseChanged(_, PausedNoProgress) => ()
+    PhaseChanged(_, PausedExternal) => ()
+    Cancelled(_, reason) =>
       if reason.trim().is_empty() {
         mooncode_goal_runtime_fail("cancel reason must not be blank")
       }

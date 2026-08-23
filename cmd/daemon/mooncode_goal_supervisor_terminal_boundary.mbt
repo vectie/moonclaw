@@ -11,8 +11,8 @@ fn mooncode_goal_supervisor_terminal_boundary_matches(
   last_claim_id : String?,
   last_receipt_record_id : String?,
 ) -> Bool {
-  let commands : Map[String, Bool] = {}
-  let claims : Map[String, MooncodeGoalSupervisorClaim] = {}
+  let commands : Map[String, Bool] = Map([])
+  let claims : Map[String, MooncodeGoalSupervisorClaim] = Map([])
   let mut invalid = false
   let mut latest_command_id : String? = None
   let mut latest_claim_id : String? = None

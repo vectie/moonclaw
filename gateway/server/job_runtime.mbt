@@ -1,7 +1,7 @@
 ///|
 
 ///|
-let gateway_root_groups : Map[Int, @async.TaskGroup[Unit]] = {}
+let gateway_root_groups : Map[Int, @async.TaskGroup[Unit]] = Map([])
 
 ///|
 fn Gateway::root_group(self : Gateway) -> @async.TaskGroup[Unit]? {
@@ -36,118 +36,6 @@ fn gateway_child_acp_session_id(child_run_id : String) -> String {
 ///|
 fn gateway_child_acp_run_id(child_run_id : String) -> String {
   "acp-\{child_run_id}"
-}
-
-///|
-fn acp_execution_requested(config : @job.SubjobStepConfig) -> Bool {
-  match config.execution_mode {
-    Some(mode) => mode.trim().to_owned() == "acp"
-    None => false
-  }
-}
-
-///|
-fn acp_analysis_execution_requested(request : @job.AnalysisRequest) -> Bool {
-  match request.execution_mode {
-    Some(mode) => mode.trim().to_owned() == "acp"
-    None => false
-  }
-}
-
-///|
-async fn Gateway::execute_child_run_via_robot_e1(
-  self : Gateway,
-  request : @job.ChildRunExecutionRequest,
-) -> Result[@job.ChildRunExecutionResult, String] {
-  let target_id = match request.config.execution_target {
-    Some(target_id) if !target_id.trim().to_string().is_blank() => target_id
-    _ => return Err("robot.e1 child execution requires execution_target")
-  }
-  let workflow = request.compilation.workflow
-  guard workflow.steps.length() == 1 else {
-    return Err(
-      "robot.e1 child execution currently supports workflows with exactly one step",
-    )
-  }
-  let step = workflow.steps[0]
-  guard step.kind == "job.analysis" else {
-    return Err(
-      "robot.e1 child execution currently supports only single-step job.analysis workflows",
-    )
-  }
-  let config : @job.AnalysisStepConfig = @json.from_json(step.config) catch {
-    error => return Err("Invalid robot.e1 child analysis config: \{error}")
-  }
-  let now_ms = current_time_ms()
-  let started_run = match
-    self.job_runtime().mark_run_started(request.child_run.id, now_ms) {
-    Some(run) => run
-    None => return Err("Missing child run: \{request.child_run.id}")
-  }
-  let step_run = self.child_run_step_started(started_run, step, now_ms)
-  let context = @job.WorkflowStepContext::new(
-    run=started_run,
-    step~,
-    control=request.control,
-  )
-  let analysis_request = @job.build_analysis_request(
-    self.job_runtime().store(),
-    context,
-    config,
-  )
-  let execution = match self.execute_analysis_via_robot_e1(analysis_request) {
-    Ok(execution) => execution
-    Err(error) => {
-      self.finish_child_run_step(
-        step_run,
-        @job.RunStatus::Failed,
-        now_ms,
-        summary=Some("robot.e1 child execution failed"),
-        error=Some(error),
-        logs=["execution mode: robot.e1", "execution target: \{target_id}"],
-      )
-      ignore(
-        self
-        .job_runtime()
-        .mark_run_failed(
-          started_run.id,
-          now_ms,
-          error,
-          summary=Some("robot.e1 child execution failed"),
-        ),
-      )
-      return Err(error)
-    }
-  }
-  let finished_at = current_time_ms()
-  let output : Json = {
-    "status": "completed",
-    "model": execution.model_name,
-    "content": execution.content,
-    "execution_mode": "robot.e1",
-    "execution_target": target_id,
-    "metadata": execution.metadata,
-  }
-  self.finish_child_run_step(
-    step_run,
-    @job.RunStatus::Succeeded,
-    finished_at,
-    output=Some(output),
-    summary=Some("robot.e1 analysis completed"),
-    logs=["execution mode: robot.e1", "execution target: \{target_id}"],
-  )
-  ignore(
-    self
-    .job_runtime()
-    .mark_run_succeeded(
-      started_run.id,
-      finished_at,
-      summary=Some("robot.e1 child execution completed"),
-    ),
-  )
-  let outputs : Map[String, Json] = {}
-  outputs.set(step.id, output)
-  Ok(@job.ChildRunExecutionResult::{ outputs, })
 }
 
 ///|
@@ -592,7 +480,7 @@ async fn Gateway::execute_child_run_via_acp(
       summary=Some("ACP child execution completed"),
     ),
   )
-  let outputs : Map[String, Json] = {}
+  let outputs : Map[String, Json] = Map([])
   outputs.set(step.id, output)
   Ok({ outputs, })
 }

@@ -12,7 +12,7 @@ fn mooncode_goal_runtime_event_matches_genesis(
   genesis : MoonCodeGoalRuntimeStoredGenesis,
 ) -> Bool {
   match event {
-    @mooncode_core.PlannerDecision(_, @mooncode_core.Achieved(_, evidence)) => {
+    PlannerDecision(_, Achieved(_, evidence)) => {
       if evidence.length() != genesis.criteria.length() {
         return false
       }
@@ -25,22 +25,6 @@ fn mooncode_goal_runtime_event_matches_genesis(
     }
     _ => true
   }
-}
-
-///|
-async fn mooncode_goal_runtime_append_supervisor_event(
-  book_root : String,
-  session_id : String,
-  event : @mooncode_core.GoalRuntimeEvent,
-  recorded_at : Int64,
-) -> MoonCodeGoalRuntimeSupervisorAppendResult {
-  let session_lock = mooncode_open_session_lock(book_root, session_id)
-  defer session_lock.close()
-  session_lock.lock(Exclusive)
-  defer session_lock.unlock()
-  mooncode_goal_runtime_append_supervisor_event_locked(
-    book_root, session_id, event, recorded_at,
-  )
 }
 
 ///|
@@ -177,15 +161,15 @@ fn mooncode_goal_runtime_events_from_source(
   let kind = mooncode_json_string(source, "kind", default="")
   if kind == "runtime.turn_started" {
     return [
-      @mooncode_core.PhaseChanged(
+      PhaseChanged(
         mooncode_goal_runtime_event_id_from_source("phase-running", source_id),
-        @mooncode_core.Running,
+        Running,
       ),
     ]
   }
   if mooncode_goal_runtime_is_active_cancel_source(source) {
     return [
-      @mooncode_core.Cancelled(
+      Cancelled(
         mooncode_goal_runtime_event_id_from_source("cancelled", source_id),
         "operator cancelled active MoonCode request",
       ),
@@ -210,12 +194,12 @@ fn mooncode_goal_runtime_events_from_source(
     let decision = mooncode_goal_runtime_decode_decision(value) catch {
       _ => return [accepted]
     }
-    if decision is @mooncode_core.Continue(_, _, _) {
+    if decision is Continue(_, _, _) {
       return [accepted]
     }
     return [
       accepted,
-      @mooncode_core.PlannerDecision(
+      PlannerDecision(
         mooncode_goal_runtime_event_id_from_source("decision", source_id),
         decision,
       ),
@@ -225,24 +209,24 @@ fn mooncode_goal_runtime_events_from_source(
     match mooncode_json_string(source, "state", default="") {
       "awaiting-approval" =>
         return [
-          @mooncode_core.PhaseChanged(
+          PhaseChanged(
             mooncode_goal_runtime_event_id_from_source(
               "phase-waiting-approval", source_id,
             ),
-            @mooncode_core.WaitingApproval,
+            WaitingApproval,
           ),
         ]
       "planner-quantum-paused" =>
         return [
-          @mooncode_core.CheckpointAccepted(
+          CheckpointAccepted(
             mooncode_goal_runtime_event_id_from_source("checkpoint", source_id),
             source_id,
           ),
-          @mooncode_core.PhaseChanged(
+          PhaseChanged(
             mooncode_goal_runtime_event_id_from_source(
               "phase-paused-external", source_id,
             ),
-            @mooncode_core.PausedExternal,
+            PausedExternal,
           ),
         ]
       _ => ()
@@ -312,8 +296,8 @@ async fn mooncode_goal_runtime_reconcile_supervisor_events(
       spool_path,
       mode=ReadWrite,
       append=true,
-      create=0o600,
-      truncate=false,
+      create_mode=OpenOrCreate,
+      permission=0o600,
     )
     mooncode_goal_runtime_spool_sources_locked(book_root, session_id, writer)
     writer.close()
@@ -422,4 +406,21 @@ async fn mooncode_goal_runtime_attach_context(
     ),
     "status": Json::object(status),
   })
+}
+
+///|
+#warnings("-unused_value")
+async fn mooncode_goal_runtime_append_supervisor_event(
+  book_root : String,
+  session_id : String,
+  event : @mooncode_core.GoalRuntimeEvent,
+  recorded_at : Int64,
+) -> MoonCodeGoalRuntimeSupervisorAppendResult {
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Exclusive)
+  defer session_lock.unlock()
+  mooncode_goal_runtime_append_supervisor_event_locked(
+    book_root, session_id, event, recorded_at,
+  )
 }

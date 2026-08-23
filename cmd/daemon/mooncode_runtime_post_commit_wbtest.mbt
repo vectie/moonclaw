@@ -3,9 +3,7 @@ async fn mooncode_post_commit_test_fixture() -> (String, Json) {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-XXXXXX"),
   )
-  let setup_operations : Array[@trusted_host_process.GitOperation] = [
-    @trusted_host_process.Init,
-  ]
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [Init]
   for operation in setup_operations {
     assert_true(
       mooncode_json_bool(
@@ -49,9 +47,7 @@ async test "sealed raw shell commit retains multi-path checkpoint evidence" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-paths-XXXXXX"),
   )
-  let setup_operations : Array[@trusted_host_process.GitOperation] = [
-    @trusted_host_process.Init,
-  ]
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [Init]
   for operation in setup_operations {
     assert_true(
       mooncode_json_bool(
@@ -391,7 +387,7 @@ async test "post-commit verification rejects a changed exact HEAD" {
   ignore(
     mooncode_runtime_turn_git(
       book_root,
-      @trusted_host_process.AddFiles(["later.txt"]),
+      AddFiles(["later.txt"]),
       timeout_ms=10000,
       max_output_chars=4000,
     ),
@@ -400,7 +396,7 @@ async test "post-commit verification rejects a changed exact HEAD" {
     mooncode_json_bool(
       mooncode_runtime_turn_git(
         book_root,
-        @trusted_host_process.Commit("unexpected later commit"),
+        Commit("unexpected later commit"),
         timeout_ms=10000,
         max_output_chars=4000,
       ),
@@ -456,9 +452,7 @@ async test "shell cannot mutate after commit before the seal is captured" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-compound-XXXXXX"),
   )
-  let setup_operations : Array[@trusted_host_process.GitOperation] = [
-    @trusted_host_process.Init,
-  ]
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [Init]
   for operation in setup_operations {
     ignore(
       mooncode_runtime_turn_git(
@@ -486,7 +480,7 @@ async test "shell cannot mutate after commit before the seal is captured" {
   assert_false(@fsx.exists(@pathx.join(book_root, "later.txt")))
   let head = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.Head,
+    Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -498,9 +492,7 @@ async test "wrapped shell cannot hide mutation after commit" {
   let book_root = @fsx.mkdtemp(
     @pathx.join(@os.tmpdir(), "moonclaw-post-commit-wrapped-XXXXXX"),
   )
-  let setup_operations : Array[@trusted_host_process.GitOperation] = [
-    @trusted_host_process.Init,
-  ]
+  let setup_operations : Array[@trusted_host_process.GitOperation] = [Init]
   for operation in setup_operations {
     ignore(
       mooncode_runtime_turn_git(
@@ -528,7 +520,7 @@ async test "wrapped shell cannot hide mutation after commit" {
   assert_false(@fsx.exists(@pathx.join(book_root, "later.txt")))
   let head = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.Head,
+    Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )

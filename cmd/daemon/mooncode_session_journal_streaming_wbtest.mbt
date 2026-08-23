@@ -240,6 +240,7 @@ async test "streaming journal file scans mixed canonical versions" {
 }
 
 ///|
+#warnings("-unreachable_code")
 test "streaming journal normalizes malformed JSON to journal corruption" {
   let rejected = try {
     ignore(mooncode_journal_stream_record("{", MoonCodeJournalSequence::zero()))
@@ -252,6 +253,7 @@ test "streaming journal normalizes malformed JSON to journal corruption" {
 }
 
 ///|
+#warnings("-unreachable_code")
 test "journal writer boundary rejects noncanonical numeric repr" {
   let record = mooncode_journal_record_v2(
     session_id="session",
@@ -589,7 +591,7 @@ async test "production append cache preserves append semantics and invalidates s
     let external = streaming_test_append_record(
       "3", "external", "command", "client-external",
     )
-    @fs.write_file(path, external + "\n", append=true, truncate=false)
+    @fs.write_file(path, external + "\n", append=true, create_mode=OpenExisting)
     let fourth : Json = {
       "id": "fourth",
       "kind": "cache-test",

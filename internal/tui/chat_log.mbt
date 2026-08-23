@@ -80,8 +80,8 @@ pub fn ChatLog::with_max_components(max : Int) -> ChatLog {
 fn ChatLog::prune_overflow(self : ChatLog) -> Unit {
   while self.components.length() > self.max_components {
     ignore(self.components.remove(0))
-    let new_tool_by_id : Map[String, Int] = {}
-    let new_streaming_by_id : Map[String, Int] = {}
+    let new_tool_by_id : Map[String, Int] = Map([])
+    let new_streaming_by_id : Map[String, Int] = Map([])
     for id, idx in self.tool_by_id {
       if idx > 0 {
         new_tool_by_id[id] = idx - 1
@@ -224,7 +224,7 @@ pub fn ChatLog::drop_assistant(
       if i >= 0 && i < self.components.length() {
         ignore(self.components.remove(i))
         self.streaming_by_id.remove(run_id) |> ignore()
-        let new_streaming_by_id : Map[String, Int] = {}
+        let new_streaming_by_id : Map[String, Int] = Map([])
         for id, idx in self.streaming_by_id {
           if idx > i {
             new_streaming_by_id[id] = idx - 1

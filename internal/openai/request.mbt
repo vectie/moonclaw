@@ -405,7 +405,7 @@ pub impl ToJson for Request with fn to_json(self : Request) -> Json {
     json["tools"] = self.tools.to_json()
   }
   if self.usage is Some(usage) {
-    json["usage"] = usage.to_json()
+    json["usage"] = ToJson::to_json(usage)
   }
   if self.user is Some(user) {
     json["user"] = Json::string(user)
@@ -417,7 +417,7 @@ pub impl ToJson for Request with fn to_json(self : Request) -> Json {
     json["temperature"] = temperature.to_json()
   }
   if self.reasoning_effort is Some(reasoning_effort) {
-    json["reasoning_effort"] = reasoning_effort.to_json()
+    json["reasoning_effort"] = ToJson::to_json(reasoning_effort)
   }
   if self.response_format is Some(response_format) {
     json["response_format"] = response_format.to_json()

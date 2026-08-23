@@ -24,7 +24,7 @@ async test "execute_run_lifecycle runs workflow and invokes hooks" {
       output_bindings: [],
     })
     ignore(runtime.create_run("run-1", "job-1", Manual, 10))
-    let marks : Map[String, Int] = {}
+    let marks : Map[String, Int] = Map([])
     execute_run_lifecycle(
       runtime,
       "run-1",
@@ -192,7 +192,7 @@ async test "execute_run_lifecycle does not send stale start notification when re
       summary: Some("waiting"),
       error: Some("Analysis requires input: parcel size"),
     })
-    let marks : Map[String, Int] = {}
+    let marks : Map[String, Int] = Map([])
     execute_run_lifecycle(
       runtime,
       "run-1",

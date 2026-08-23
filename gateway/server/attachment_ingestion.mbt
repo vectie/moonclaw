@@ -52,7 +52,7 @@ fn merge_materialized_starter_attachments_into_input(
   workspace_dir : String,
   attachments : Array[@attachment_ingestion.MaterializedStarterAttachment],
 ) -> Json {
-  let merged : Map[String, Json] = {}
+  let merged : Map[String, Json] = Map([])
   match initial_input {
     Some(Object(obj)) =>
       for key, value in obj {
@@ -82,7 +82,7 @@ fn merge_starter_attachment_artifacts_into_input(
   digest_path : String?,
   digest_excerpt : String?,
 ) -> Json {
-  let merged : Map[String, Json] = {}
+  let merged : Map[String, Json] = Map([])
   match initial_input {
     Some(Object(obj)) =>
       for key, value in obj {
@@ -396,7 +396,7 @@ async fn Gateway::fetch_starter_attachment(
           resource_type,
         ) {
         Ok(result) => result
-        Err(error) => return Err("\{to_repr(error)}")
+        Err(error) => return Err("\{Repr(error)}")
       }
       Ok({ content, mime_type: fetched_mime_type, note: None })
     }
@@ -425,7 +425,7 @@ async fn materialize_starter_attachments_for_workspace(
     _ => ()
   }
   let materialized : Array[@attachment_ingestion.MaterializedStarterAttachment] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for attachment in materialized_starter_attachments_from_input(initial_input) {
     let key = if attachment.id.is_blank() {
       attachment.source_url
@@ -461,7 +461,7 @@ async fn materialize_starter_attachments_for_workspace(
           @fsx.write_bytes_to_file(saved_path, result.content)
           None
         } catch {
-          error => Some("\{to_repr(error)}")
+          error => Some("\{Repr(error)}")
         }
         match write_error {
           Some(error) => {

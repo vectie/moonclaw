@@ -101,6 +101,32 @@ test "changed file parser keeps path for raw and trimmed status lines" {
 }
 
 ///|
+fn acp_changed_file_from_status_line(line : String) -> String? {
+  let raw = line.to_string()
+  if raw.trim().to_owned().is_blank() {
+    return None
+  }
+  let chars = raw.to_array()
+  if chars.length() <= 2 {
+    return None
+  }
+  let path_start = if chars.length() > 2 && chars[2] == ' ' {
+    3
+  } else if chars.length() > 1 && chars[1] == ' ' {
+    2
+  } else if chars.length() > 3 {
+    3
+  } else {
+    return None
+  }
+  let builder = StringBuilder::new()
+  for index in path_start..<chars.length() {
+    builder.write_char(chars[index])
+  }
+  Some(builder.to_string().trim().to_owned())
+}
+
+///|
 async fn acp_test_git(
   cwd : String,
   operation : @trusted_host_process.GitOperation,
@@ -114,18 +140,115 @@ async fn acp_test_git(
 }
 
 ///|
+async fn acp_git_status(cwd : String) -> String {
+  let process = @trusted_host_process.run_git(cwd, StatusShort) catch {
+    _ => return ""
+  }
+  if process.status() == 0 {
+    process.stdout().trim().to_owned()
+  } else {
+    ""
+  }
+}
+
+///|
+fn acp_json_string_field(value : Json, key : String) -> String? {
+  match value {
+    Object(object) =>
+      match object.get(key) {
+        Some(String(text)) => Some(text)
+        _ => None
+      }
+    _ => None
+  }
+}
+
+///|
+fn acp_json_field_with_step_metadata(value : Json, key : String) -> Json? {
+  match value {
+    Object(object) =>
+      match object.get(key) {
+        Some(value) => Some(value)
+        None =>
+          match object.get("step_metadata") {
+            Some(nested) => acp_json_field_with_step_metadata(nested, key)
+            None =>
+              match object.get("metadata") {
+                Some(nested) => acp_json_field_with_step_metadata(nested, key)
+                None => None
+              }
+          }
+      }
+    _ => None
+  }
+}
+
+///|
+fn acp_json_array_field(value : Json, key : String) -> Json {
+  match acp_json_field_with_step_metadata(value, key) {
+    Some(value) =>
+      match value {
+        Array(_) => return value
+        _ => ()
+      }
+    None => ()
+  }
+  match value {
+    Object(object) =>
+      match object.get(key) {
+        Some(value) =>
+          match value {
+            Array(_) => value
+            _ => []
+          }
+        _ => []
+      }
+    _ => []
+  }
+}
+
+///|
 async fn acp_test_init_repo(cwd : String) -> Unit {
-  acp_test_git(cwd, @trusted_host_process.Init)
+  acp_test_git(cwd, Init)
   @fsx.write_to_file(
     @path.Path(cwd).join(Path("README.md")).to_string(),
     "# Test\n",
   )
-  acp_test_git(cwd, @trusted_host_process.AddFiles(["README.md"]))
-  acp_test_git(cwd, @trusted_host_process.Commit("Initial commit"))
+  acp_test_git(cwd, AddFiles(["README.md"]))
+  acp_test_git(cwd, Commit("Initial commit"))
 }
 
 ///|
-async test "execute_launch_plan records committed git patch receipt" {
+async fn acp_execute_fixture_launch_plan(
+  plan : AcpLaunchPlan,
+  request : AcpRunRequest,
+) -> Result[Json, String] {
+  let workspace = plan.workspace.unwrap_or(plan.cwd)
+  @execution_sandbox_fixture.with_fixture_moonfort(
+    workspace,
+    { "sh": "/bin/sh" },
+    async fn(config) {
+      let command = match prepare_launch_command(plan, request) {
+        Ok(command) => command
+        Err(error) => return Err(error)
+      }
+      let approved_plan = @execution_sandbox.make_exec_plan(
+        config,
+        workspace,
+        plan.cwd,
+        command.command,
+        command.args,
+        120_000,
+      )
+      execute_launch_plan_with_approved_sandbox(
+        config, approved_plan, plan, request,
+      )
+    },
+  )
+}
+
+///|
+async test "approved sandbox launch records committed git patch receipt" {
   @fsx.with_temporary_directory("acp-patch-receipt-XXXXXX", async fn(dir) {
     acp_test_init_repo(dir)
     let plan = AcpLaunchPlan::{
@@ -154,7 +277,7 @@ async test "execute_launch_plan records committed git patch receipt" {
         "required_validation_commands": ["moon check --no-render"],
       },
     )
-    let result = match execute_launch_plan(plan, request) {
+    let result = match acp_execute_fixture_launch_plan(plan, request) {
       Ok(result) => result
       Err(error) => fail(error)
     }
@@ -200,7 +323,7 @@ async test "execute_launch_plan records committed git patch receipt" {
 }
 
 ///|
-async test "execute_launch_plan commits repair owned files after validation" {
+async test "approved sandbox launch commits repair owned files after validation" {
   @fsx.with_temporary_directory("acp-runner-owned-commit-XXXXXX", async fn(
     dir,
   ) {
@@ -209,8 +332,8 @@ async test "execute_launch_plan commits repair owned files after validation" {
       @path.Path(dir).join(Path("generated.txt")).to_string(),
       "generated\n",
     )
-    acp_test_git(dir, @trusted_host_process.AddFiles(["generated.txt"]))
-    acp_test_git(dir, @trusted_host_process.Commit("Add generated baseline"))
+    acp_test_git(dir, AddFiles(["generated.txt"]))
+    acp_test_git(dir, Commit("Add generated baseline"))
     let target_path = @path.Path(dir).join(Path("source.txt")).to_string()
     let plan = AcpLaunchPlan::{
       backend: "codex",
@@ -229,7 +352,7 @@ async test "execute_launch_plan commits repair owned files after validation" {
       metadata: {},
     }
     let result = match
-      execute_launch_plan(
+      acp_execute_fixture_launch_plan(
         plan,
         new_run_request(message="repair", run_id="acp-run-1", cwd=dir, metadata={
           "criterion_id": "planbook-source-patch-loop",
@@ -271,7 +394,7 @@ async test "execute_launch_plan commits repair owned files after validation" {
 }
 
 ///|
-async test "execute_launch_plan keeps full changed file paths and blocks uncommitted patches" {
+async test "approved sandbox launch keeps paths and blocks uncommitted patches" {
   @fsx.with_temporary_directory("acp-uncommitted-receipt-XXXXXX", async fn(
     dir,
   ) {
@@ -296,7 +419,7 @@ async test "execute_launch_plan keeps full changed file paths and blocks uncommi
       metadata: {},
     }
     let result = match
-      execute_launch_plan(
+      acp_execute_fixture_launch_plan(
         plan,
         new_run_request(message="repair", run_id="acp-run-1", cwd=dir, metadata={
           "step_metadata": {
@@ -336,7 +459,7 @@ async test "execute_launch_plan keeps full changed file paths and blocks uncommi
 }
 
 ///|
-async test "execute_launch_plan records no-change patch receipt without fake success" {
+async test "approved sandbox launch records no-change without fake success" {
   @fsx.with_temporary_directory("acp-no-change-receipt-XXXXXX", async fn(dir) {
     acp_test_init_repo(dir)
     let plan = AcpLaunchPlan::{
@@ -353,7 +476,10 @@ async test "execute_launch_plan records no-change patch receipt without fake suc
       metadata: {},
     }
     let result = match
-      execute_launch_plan(plan, new_run_request(message="inspect", cwd=dir)) {
+      acp_execute_fixture_launch_plan(
+        plan,
+        new_run_request(message="inspect", cwd=dir),
+      ) {
       Ok(result) => result
       Err(error) => fail(error)
     }

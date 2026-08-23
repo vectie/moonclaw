@@ -1,7 +1,4 @@
 ///|
-const MOONCODE_RESPONSES_TRANSPORT_CONTRACT : String = "moonclaw.responses-transport.v1"
-
-///|
 fn mooncode_runtime_responses_transport_enabled(command : Json) -> Bool {
   mooncode_json_bool(
     mooncode_json_object_field_or_empty(command, "payload"),
@@ -61,15 +58,6 @@ fn mooncode_runtime_responses_prompt_cache_key(command : Json) -> String? {
 }
 
 ///|
-fn mooncode_runtime_responses_transport_name(command : Json) -> String {
-  if mooncode_runtime_responses_transport_enabled(command) {
-    "responses"
-  } else {
-    "chat_completions"
-  }
-}
-
-///|
 async fn mooncode_runtime_dispatch_model_request(
   model : @model.Model,
   request : @openai.Request,
@@ -117,5 +105,15 @@ async fn mooncode_runtime_dispatch_model_request(
         ),
         "chat_fallback",
       )
+  }
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_runtime_responses_transport_name(command : Json) -> String {
+  if mooncode_runtime_responses_transport_enabled(command) {
+    "responses"
+  } else {
+    "chat_completions"
   }
 }

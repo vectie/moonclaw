@@ -4,6 +4,7 @@ pub(all) struct PdfOcrProcess {
 }
 
 ///|
+#warnings("-unused_async")
 pub async fn run_process(
   command : String,
   arguments : Array[String],

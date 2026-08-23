@@ -161,9 +161,9 @@ async fn execute_moondesk_moon_diagnostics(
     MoonDeskSandboxTimeoutMs,
   )
   let receipt = execution.receipt
-  guard receipt.status is @execution_sandbox.Exited &&
+  guard receipt.status is Exited &&
     receipt.exit_code is Some(exit_code) &&
-    receipt.enforcement is @execution_sandbox.Enforced &&
+    receipt.enforcement is Enforced &&
     receipt.cleanup_verified else {
     fail("MoonFort did not return a verified terminal diagnostics receipt")
   }

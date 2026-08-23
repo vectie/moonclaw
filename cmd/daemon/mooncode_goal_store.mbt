@@ -12,6 +12,7 @@ fn mooncode_goal_require_canonical_identity(
 
 ///|
 /// Result of creating a daemon-local durable goal genesis.
+#warnings("-unused_field")
 priv enum MoonCodeGoalCreateResult {
   Created(@mooncode_core.Goal)
   Idempotent(@mooncode_core.Goal)
@@ -21,6 +22,7 @@ priv enum MoonCodeGoalCreateResult {
 
 ///|
 /// Result of atomically applying a daemon-local durable goal event.
+#warnings("-unused_constructor-unused_field")
 priv enum MoonCodeGoalMutationResult {
   GoalMutationApplied(@mooncode_core.Goal)
   GoalMutationIdempotent(@mooncode_core.Goal)
@@ -64,7 +66,7 @@ fn mooncode_goal_genesis(
   let requirements = requirements.map(fn(r) raise {
     mooncode_goal_require_canonical_identity("requirement id", r.id)
     mooncode_goal_require_canonical_identity("criterion", r.criterion)
-    { ..r, state: @mooncode_core.Unproven, evidence_refs: [] }
+    { ..r, state: Unproven, evidence_refs: [] }
   })
   let goal = @mooncode_core.new_goal(
     goal_id, session_id, objective, created_at, budget, requirements,
@@ -424,7 +426,7 @@ fn mooncode_replay_goal_records_detailed(
           requirements.push({
             id: requirement_id,
             criterion,
-            state: @mooncode_core.Unproven,
+            state: Unproven,
             evidence_refs: [],
           })
         }
@@ -473,16 +475,6 @@ async fn mooncode_replay_goal_detailed(
 }
 
 ///|
-async fn mooncode_replay_goal(
-  book_root : String,
-  session_id : String,
-) -> @mooncode_core.Goal? {
-  mooncode_replay_goal_detailed(book_root, session_id).map(fn(state) {
-    state.current
-  })
-}
-
-///|
 fn mooncode_same_creation_intent(
   winner : @mooncode_core.Goal,
   expected : @mooncode_core.Goal,
@@ -495,6 +487,71 @@ fn mooncode_same_creation_intent(
 }
 
 ///|
+async fn mooncode_create_goal(
+  book_root : String,
+  protocol : String,
+  session_id : String,
+  goal_id : String,
+  objective : String,
+  created_at : Int64,
+  budget : @mooncode_core.GoalBudget,
+  requirements : Array[@mooncode_core.GoalRequirement],
+) -> MoonCodeGoalCreateResult {
+  mooncode_goal_require_canonical_identity("session_id", session_id)
+  mooncode_goal_require_canonical_identity("goal_id", goal_id)
+  let genesis = mooncode_goal_genesis(
+    protocol, session_id, goal_id, objective, created_at, budget, requirements,
+  )
+  let envelope : Json = {
+    "record_kind": mooncode_journal_goal_event(),
+    "record_id": mooncode_journal_goal_event() +
+    ":" +
+    mooncode_goal_genesis_id(),
+    "session_id": session_id,
+    "recorded_at": goal_json_int64_value(created_at),
+    "payload": genesis,
+  }
+  guard mooncode_replay_goal_records(
+      [envelope],
+      session_id,
+      expected_goal_id=Some(goal_id),
+    )
+    is Some(expected) else {
+    raise InvalidGoalGenesis("invalid expected genesis")
+  }
+  mooncode_session_journal_transaction(book_root, session_id, fn(
+    records,
+  ) raise {
+    let authority = mooncode_goal_authority_snapshot(records, session_id)
+    if mooncode_goal_authority_is_dual(authority) ||
+      authority.runtime.genesis is Some(_) {
+      return NoAppend(AuthorityConflict)
+    }
+    match mooncode_replay_goal_records_detailed(records, session_id) {
+      Some(existing) =>
+        if mooncode_same_creation_intent(existing.genesis, expected) {
+          NoAppend(Idempotent(existing.current))
+        } else {
+          NoAppend(Conflict(existing.current))
+        }
+      None => Append(mooncode_journal_goal_event(), genesis, Created(expected))
+    }
+  })
+}
+
+///|
+#warnings("-unused_value")
+async fn mooncode_replay_goal(
+  book_root : String,
+  session_id : String,
+) -> @mooncode_core.Goal? {
+  mooncode_replay_goal_detailed(book_root, session_id).map(fn(state) {
+    state.current
+  })
+}
+
+///|
+#warnings("-unused_value")
 async fn mooncode_apply_goal_event(
   book_root : String,
   session_id : String,
@@ -550,59 +607,6 @@ async fn mooncode_apply_goal_event(
           )
         }
       }
-    }
-  })
-}
-
-///|
-async fn mooncode_create_goal(
-  book_root : String,
-  protocol : String,
-  session_id : String,
-  goal_id : String,
-  objective : String,
-  created_at : Int64,
-  budget : @mooncode_core.GoalBudget,
-  requirements : Array[@mooncode_core.GoalRequirement],
-) -> MoonCodeGoalCreateResult {
-  mooncode_goal_require_canonical_identity("session_id", session_id)
-  mooncode_goal_require_canonical_identity("goal_id", goal_id)
-  let genesis = mooncode_goal_genesis(
-    protocol, session_id, goal_id, objective, created_at, budget, requirements,
-  )
-  let envelope : Json = {
-    "record_kind": mooncode_journal_goal_event(),
-    "record_id": mooncode_journal_goal_event() +
-    ":" +
-    mooncode_goal_genesis_id(),
-    "session_id": session_id,
-    "recorded_at": goal_json_int64_value(created_at),
-    "payload": genesis,
-  }
-  guard mooncode_replay_goal_records(
-      [envelope],
-      session_id,
-      expected_goal_id=Some(goal_id),
-    )
-    is Some(expected) else {
-    raise InvalidGoalGenesis("invalid expected genesis")
-  }
-  mooncode_session_journal_transaction(book_root, session_id, fn(
-    records,
-  ) raise {
-    let authority = mooncode_goal_authority_snapshot(records, session_id)
-    if mooncode_goal_authority_is_dual(authority) ||
-      authority.runtime.genesis is Some(_) {
-      return NoAppend(AuthorityConflict)
-    }
-    match mooncode_replay_goal_records_detailed(records, session_id) {
-      Some(existing) =>
-        if mooncode_same_creation_intent(existing.genesis, expected) {
-          NoAppend(Idempotent(existing.current))
-        } else {
-          NoAppend(Conflict(existing.current))
-        }
-      None => Append(mooncode_journal_goal_event(), genesis, Created(expected))
     }
   })
 }

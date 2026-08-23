@@ -158,7 +158,7 @@ fn Counter::count_tool(
   guard tool is Function(function)
   count += self._count_string(function.name)
   count += 2 * self._count_string(function.description)
-  let parameters = function.parameters.to_json().stringify(indent=2)
+  let parameters = @json.to_json(function.parameters).stringify(indent=2)
   let parameters = self._count_string(parameters)
   count += (parameters.to_double() / 2.0.sqrt()).to_int()
   count

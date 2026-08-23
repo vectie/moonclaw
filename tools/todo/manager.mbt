@@ -222,7 +222,7 @@ test "remove_list_prefixes" {
     "2.   Second task", "- Bullet point", "* Another bullet", "No prefix here", "-  Indented bullet",
     "*\tTabbed bullet", "3.\tTabbed numbered",
   ]
-  let output = {}
+  let output : Map[String, StringView] = Map([])
   for d in data {
     output[d] = remove_list_prefixes(d)
   }

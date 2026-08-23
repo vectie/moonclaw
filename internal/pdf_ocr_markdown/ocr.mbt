@@ -1,4 +1,5 @@
 ///|
+#warnings("-deprecated-deprecated_syntax")
 pub struct OcrMarkdownOptions {
   language : String?
   dpi : Int
@@ -13,10 +14,11 @@ pub fn OcrMarkdownOptions::new(
   timeout_ms? : Int? = Some(120_000),
   page_segmentation_mode? : Int? = None,
 ) -> OcrMarkdownOptions {
-  OcrMarkdownOptions::{ language, dpi, timeout_ms, page_segmentation_mode }
+  { language, dpi, timeout_ms, page_segmentation_mode }
 }
 
 ///|
+#warnings("-deprecated-deprecated_syntax")
 pub struct OcrMarkdownPage {
   page_number : Int
   text : String
@@ -24,6 +26,7 @@ pub struct OcrMarkdownPage {
 } derive(Show, Eq)
 
 ///|
+#warnings("-deprecated-deprecated_syntax")
 pub struct OcrMarkdownDocument {
   source_path : String
   title : String
@@ -33,6 +36,7 @@ pub struct OcrMarkdownDocument {
 } derive(Show, Eq)
 
 ///|
+#warnings("-deprecated-deprecated_syntax")
 pub(all) struct CommandRequest {
   command : String
   arguments : Array[String]
@@ -41,6 +45,7 @@ pub(all) struct CommandRequest {
 } derive(Show, Eq)
 
 ///|
+#warnings("-deprecated-deprecated_syntax")
 pub(all) struct CommandResult {
   command : String
   arguments : Array[String]
@@ -60,12 +65,12 @@ pub(all) struct CommandExecutor {
 pub fn CommandExecutor::new(
   run~ : async (CommandRequest) -> Result[CommandResult, String],
 ) -> CommandExecutor {
-  CommandExecutor::{ run, }
+  { run, }
 }
 
 ///|
 pub fn default_command_executor() -> CommandExecutor {
-  CommandExecutor::new(run=async fn(request) {
+  CommandExecutor::new(run=request => {
     ignore(request)
     Err(
       "native PDF OCR refused: no configured ExecutionSandbox route is available",
@@ -74,6 +79,7 @@ pub fn default_command_executor() -> CommandExecutor {
 }
 
 ///|
+#warnings("-deprecated-deprecated_syntax")
 pub suberror PdfOcrMarkdownError {
   FileNotFound(String)
   RasterizationFailed(String)
@@ -91,7 +97,7 @@ priv struct RasterizedPage {
 fn parse_positive_int(text : StringView) -> Int? {
   guard !text.is_blank() else { return None }
   let mut value = 0
-  for ch in text.to_string().to_array() {
+  for ch in text.to_owned().to_array() {
     guard ch >= '0' && ch <= '9' else { return None }
     value = value * 10 + ch.to_int() - '0'.to_int()
   }
@@ -100,7 +106,7 @@ fn parse_positive_int(text : StringView) -> Int? {
 
 ///|
 fn parse_page_number(name : String) -> Int? {
-  let stem = @pathx.stem(name).to_string()
+  let stem = @pathx.stem(name).to_owned()
   guard stem.has_prefix("page-") else { return None }
   parse_positive_int(stem[5:])
 }
@@ -111,10 +117,10 @@ fn collect_rasterized_pages(
 ) -> Array[RasterizedPage] {
   let pages : Array[RasterizedPage] = []
   for entry in entries {
-    guard entry.kind is @fsx.FileKind::Regular else { continue }
+    guard entry.kind is Regular else { continue }
     guard entry.name.has_suffix(".png") else { continue }
     guard parse_page_number(entry.name) is Some(page_number) else { continue }
-    pages.push(RasterizedPage::{ page_number, path: entry.path })
+    pages.push({ page_number, path: entry.path })
   }
   pages.sort_by(fn(left, right) { left.page_number - right.page_number })
   pages
@@ -141,19 +147,19 @@ fn normalized_ocr_lines(text : String) -> Array[String] {
     .replace(old="\r\n", new="\n")
     .replace(old="\r", new="\n")
     .split("\n")
-    .map(fn(line) { line.trim().to_string() })
+    .map(fn(line) { line.trim().to_owned() })
     .to_array()
   compact_blank_lines(cleaned)
 }
 
 ///|
 fn bullet_content(line : String) -> String? {
-  let trimmed = line.trim().to_string()
+  let trimmed = line.trim().to_owned()
   if trimmed.has_prefix("- ") || trimmed.has_prefix("* ") {
-    return Some(trimmed[2:].trim().to_string())
+    return Some(trimmed[2:].trim().to_owned())
   }
   if trimmed.has_prefix("• ") {
-    return Some(trimmed[2:].trim().to_string())
+    return Some(trimmed[2:].trim().to_owned())
   }
   let chars = trimmed.to_array()
   let mut index = 0
@@ -164,7 +170,7 @@ fn bullet_content(line : String) -> String? {
     let marker = chars[index]
     let space = chars[index + 1]
     if (marker == '.' || marker == ')') && space == ' ' {
-      return Some(trimmed[index + 2:].trim().to_string())
+      return Some(trimmed[index + 2:].trim().to_owned())
     }
   }
   None
@@ -172,7 +178,7 @@ fn bullet_content(line : String) -> String? {
 
 ///|
 fn looks_like_heading(text : String) -> Bool {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   guard !trimmed.is_blank() else { return false }
   guard trimmed.length() <= 60 else { return false }
   let last = trimmed.to_array().last()
@@ -213,7 +219,7 @@ fn render_paragraph(lines : Array[String]) -> String {
     return bullets.join("\n")
   }
   if lines.length() == 1 {
-    let line = lines[0].trim().to_string()
+    let line = lines[0].trim().to_owned()
     if looks_like_heading(line) {
       return "### \{line}"
     }
@@ -253,14 +259,14 @@ fn render_page_markdown(page_number : Int, text : String) -> String {
 fn completed_process_detail(process : CommandResult) -> String {
   let joined_args = process.arguments.join(" ")
   let rendered_command = "Command: \{process.command} \{joined_args}"
-  let lines = [rendered_command.trim().to_string(), "Status: \{process.status}"]
+  let lines = [rendered_command.trim().to_owned(), "Status: \{process.status}"]
   if !process.stdout.trim().is_blank() {
     lines.push("STDOUT:")
-    lines.push(process.stdout.trim().to_string())
+    lines.push(process.stdout.trim().to_owned())
   }
   if !process.stderr.trim().is_blank() {
     lines.push("STDERR:")
-    lines.push(process.stderr.trim().to_string())
+    lines.push(process.stderr.trim().to_owned())
   }
   lines.join("\n")
 }
@@ -291,7 +297,7 @@ async fn run_command(
 
 ///|
 fn title_from_pdf_path(pdf_path : String) -> String {
-  let stem = @pathx.stem(@pathx.basename(pdf_path)).to_string()
+  let stem = @pathx.stem(@pathx.basename(pdf_path)).to_owned()
   if stem.is_blank() {
     "OCR Document"
   } else {
@@ -305,7 +311,7 @@ fn raster_command(
   prefix : String,
   options : OcrMarkdownOptions,
 ) -> CommandRequest {
-  CommandRequest::{
+  {
     command: "pdftoppm",
     arguments: [
       "-png",
@@ -327,18 +333,13 @@ fn ocr_command(
   let arguments = [image_path, "stdout"]
   if options.language is Some(language) && !language.trim().is_blank() {
     arguments.push("-l")
-    arguments.push(language.trim().to_string())
+    arguments.push(language.trim().to_owned())
   }
   if options.page_segmentation_mode is Some(psm) {
     arguments.push("--psm")
     arguments.push(psm.to_string())
   }
-  CommandRequest::{
-    command: "tesseract",
-    arguments,
-    cwd: None,
-    timeout_ms: options.timeout_ms,
-  }
+  { command: "tesseract", arguments, cwd: None, timeout_ms: options.timeout_ms }
 }
 
 ///|
@@ -368,8 +369,8 @@ pub async fn convert_pdf_to_markdown(
           "Page \{page.page_number}\n\{completed_process_detail(process)}",
         )
       }
-      let text = process.stdout.trim().to_string()
-      converted_pages.push(OcrMarkdownPage::{
+      let text = process.stdout.trim().to_owned()
+      converted_pages.push({
         page_number: page.page_number,
         text,
         markdown: render_page_markdown(page.page_number, text),
@@ -384,7 +385,7 @@ pub async fn convert_pdf_to_markdown(
       "",
       ..converted_pages.map(page => page.markdown),
     ]
-    OcrMarkdownDocument::{
+    {
       source_path: pdf_path,
       title,
       markdown: markdown_sections.join("\n\n"),

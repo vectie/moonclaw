@@ -76,7 +76,7 @@ fn require_workflow_declaration(
   if declaration.steps.is_empty() {
     fail("pack workflow must declare at least one tool step")
   }
-  let step_ids : Map[String, Unit] = {}
+  let step_ids : Map[String, Unit] = Map([])
   for step in declaration.steps {
     if !@pack.safe_identifier(step.id) {
       fail("unsafe pack workflow step id: " + step.id)
@@ -96,7 +96,7 @@ fn require_workflow_declaration(
       _ => ()
     }
   }
-  let outputs : Map[String, Unit] = {}
+  let outputs : Map[String, Unit] = Map([])
   for output in declaration.output_bindings {
     if output.trim().is_blank() {
       fail("pack workflow output binding cannot be blank")

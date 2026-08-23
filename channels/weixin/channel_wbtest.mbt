@@ -182,3 +182,8 @@ async test "weixin webhook POST handles plaintext text message and sends respons
     content="true",
   )
 }
+///|
+extend WeixinChannel with @channel.Channel::{configure, start}
+
+///|
+extend WeixinChannel with @channel.ChannelExtension::{handle_webhook}

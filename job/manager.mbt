@@ -1,4 +1,7 @@
 ///|
+// The fail-closed job facade remains a public result type while MoonFort owns
+// process creation, so this package intentionally does not construct it.
+#warnings("-struct_never_constructed")
 pub struct Job {
   id : Id
   name : String
@@ -16,6 +19,7 @@ pub fn Job::status(self : Job) -> Int? {
 }
 
 ///|
+#warnings("-unused_async")
 pub async fn Job::wait(self : Job) -> Int {
   match self.exit_status {
     Some(status) => status
@@ -92,6 +96,7 @@ pub suberror ExecutionSandboxRequired {
 }
 
 ///|
+#warnings("-unused_async")
 pub async fn Manager::spawn(
   self : Manager,
   name~ : String,
@@ -130,6 +135,7 @@ pub async fn Manager::wait(self : Manager, id : Id) -> Int {
 }
 
 ///|
+#warnings("-unused_async")
 pub async fn Manager::start(self : Manager) -> Unit {
   // Retained for source compatibility with list_jobs/wait_job wiring. There is
   // no host-process manager to start.

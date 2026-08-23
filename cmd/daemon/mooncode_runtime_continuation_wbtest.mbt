@@ -560,7 +560,7 @@ fn mooncode_runtime_patient_test_command(
 
 ///|
 async fn mooncode_runtime_quantum_test_daemon(book_root : String) -> Daemon {
-  Daemon::{
+  {
     clock: @clock.epoch,
     models: @model.Loader::new(home=book_root, cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),

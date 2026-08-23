@@ -523,7 +523,7 @@ pub(all) struct WebSocketClientRuntimeManager {
 
 ///|
 pub fn WebSocketClientRuntimeManager::new() -> WebSocketClientRuntimeManager {
-  { commands: @aqueue.Queue::new(kind=Unbounded) }
+  { commands: Queue(kind=Unbounded) }
 }
 
 ///|
@@ -628,7 +628,7 @@ async fn run_websocket_client(
 pub async fn WebSocketClientRuntimeManager::start(
   self : WebSocketClientRuntimeManager,
 ) -> Unit {
-  let active : Map[String, WebSocketClientRuntimeControl] = {}
+  let active : Map[String, WebSocketClientRuntimeControl] = Map([])
   @async.with_task_group(group => {
     while true {
       match self.commands.get() {

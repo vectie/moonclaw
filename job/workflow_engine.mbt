@@ -337,9 +337,9 @@ pub async fn WorkflowEngine::execute_run(
     data={ "workflow_id": workflow.id, "workflow_kind": workflow.kind },
   )
 
-  let outputs : Map[String, Json] = {}
+  let outputs : Map[String, Json] = Map([])
   let steps : Array[JobStepRun] = []
-  let prior_steps : Map[String, JobStepRun] = {}
+  let prior_steps : Map[String, JobStepRun] = Map([])
   if resuming_from_waiting {
     for prior_step in store.list_step_runs(run_id) {
       prior_steps.set(prior_step.step_id, prior_step)

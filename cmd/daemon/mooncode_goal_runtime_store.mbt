@@ -7,6 +7,7 @@ priv suberror MoonCodeGoalRuntimeStoreError {
 }
 
 ///|
+#warnings("-unused_field")
 priv struct MoonCodeGoalRuntimeIndexedEntry {
   sequence : MoonCodeJournalSequence
   semantic_digest : String
@@ -14,12 +15,14 @@ priv struct MoonCodeGoalRuntimeIndexedEntry {
 }
 
 ///|
+#warnings("-unused_field")
 priv struct MoonCodeGoalRuntimeIdIndexEntry {
   semantic_digest : String
   sequence : MoonCodeJournalSequence
 }
 
 ///|
+#warnings("-unused_field")
 priv struct MoonCodeGoalRuntimeScan {
   cursor : MoonCodeJournalSequence
   genesis : MoonCodeGoalRuntimeIndexedEntry?
@@ -31,7 +34,7 @@ priv struct MoonCodeGoalRuntimeScan {
 fn[T] mooncode_goal_runtime_store_corrupt(
   message : String,
 ) -> T raise MoonCodeGoalRuntimeStoreError {
-  raise MoonCodeGoalRuntimeStoreError::CorruptStore(message)
+  raise CorruptStore(message)
 }
 
 ///|
@@ -67,7 +70,7 @@ fn mooncode_goal_runtime_scan_records(
   let mut cursor = MoonCodeJournalSequence::zero()
   let mut genesis : MoonCodeGoalRuntimeIndexedEntry? = None
   let events : Array[MoonCodeGoalRuntimeIndexedEntry] = []
-  let id_index : Map[String, MoonCodeGoalRuntimeIdIndexEntry] = {}
+  let id_index : Map[String, MoonCodeGoalRuntimeIdIndexEntry] = Map([])
   for record_json in records {
     let envelope = mooncode_journal_validate_envelope(record_json)
     let record = envelope.fields
@@ -161,7 +164,7 @@ fn mooncode_goal_runtime_scan_records(
     }
     let carrier_json = Json::object(payload.copy())
     let carrier = decode_mooncode_goal_runtime_carrier(carrier_json) catch {
-      MoonCodeGoalRuntimeCodecError::Invalid(message) =>
+      Invalid(message) =>
         mooncode_goal_runtime_store_corrupt(
           "invalid runtime carrier: " + message,
         )
@@ -201,7 +204,7 @@ fn mooncode_goal_runtime_scan_records(
     match id_index.get(carrier.id) {
       Some(previous) => {
         if previous.semantic_digest != carrier.semantic_digest {
-          raise MoonCodeGoalRuntimeStoreError::IdentityConflict(
+          raise IdentityConflict(
             carrier.id,
             previous.semantic_digest,
             carrier.semantic_digest,
@@ -226,7 +229,7 @@ fn mooncode_goal_runtime_scan_records(
           None => genesis = Some(entry)
           Some(previous) => {
             if previous.carrier.semantic_digest != carrier.semantic_digest {
-              raise MoonCodeGoalRuntimeStoreError::IdentityConflict(
+              raise IdentityConflict(
                 carrier.id,
                 previous.carrier.semantic_digest,
                 carrier.semantic_digest,
@@ -254,7 +257,7 @@ fn mooncode_goal_runtime_scan_records(
         }
     }
   }
-  MoonCodeGoalRuntimeScan::{ cursor, genesis, events, id_index }
+  { cursor, genesis, events, id_index }
 }
 
 ///|
@@ -281,7 +284,7 @@ fn mooncode_goal_runtime_carrier_from_genesis(
   canonical_record : String,
 ) -> MoonCodeGoalRuntimeCarrier raise MoonCodeGoalRuntimeCodecError {
   let record = decode_mooncode_goal_runtime_genesis(canonical_record)
-  MoonCodeGoalRuntimeCarrier::{
+  {
     logical_kind: "genesis",
     id: record.id,
     semantic_digest: record.semantic_digest,
@@ -296,7 +299,7 @@ fn mooncode_goal_runtime_carrier_from_event(
   canonical_record : String,
 ) -> MoonCodeGoalRuntimeCarrier raise MoonCodeGoalRuntimeCodecError {
   let record = decode_mooncode_goal_runtime_stored_event(canonical_record)
-  MoonCodeGoalRuntimeCarrier::{
+  {
     logical_kind: "event",
     id: record.id,
     semantic_digest: record.semantic_digest,

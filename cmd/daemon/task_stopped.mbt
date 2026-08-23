@@ -20,7 +20,7 @@ priv struct Stopped {
 
 ///|
 impl ToJson for Stopped with fn to_json(self : Stopped) -> Json {
-  let object : Map[String, Json] = {}
+  let object : Map[String, Json] = Map([])
   if self.name is Some(name) {
     object["name"] = name.to_json()
   }

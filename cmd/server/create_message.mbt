@@ -112,7 +112,7 @@ async fn Server::create_message(
       })
   }
   let (id, queued) = {
-    let idq = @aqueue.new(kind=Unbounded)
+    let idq = @aqueue.Queue(kind=Unbounded)
     self.message_queue.put((request, idq))
     idq.get()
   }

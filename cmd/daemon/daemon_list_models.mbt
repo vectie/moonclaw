@@ -19,7 +19,7 @@ fn mooncode_model_listing_json(
   catalog : ArrayView[@model.Model],
 ) -> Json {
   let models : Array[Json] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   let default_name = match default_model {
     Some(model) => {
       let selector = model.selector()

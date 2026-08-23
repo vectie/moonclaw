@@ -617,7 +617,12 @@ async fn mooncode_stream_resume_create_spool(
 ) -> MoonCodeStreamResumeSpool {
   let directory = @fs.tmpdir(prefix="mooncode-resume-stream")
   let path = @pathx.join(directory, "events.spool")
-  let writer = @fs.open(path, mode=WriteOnly, create=0o600, truncate=true) catch {
+  let writer = @fs.open(
+    path,
+    mode=WriteOnly,
+    create_mode=CreateOrTruncate,
+    permission=0o600,
+  ) catch {
     error => {
       @fs.rmdir(directory, recursive=true) catch {
         _ => ()

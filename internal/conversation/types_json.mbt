@@ -31,7 +31,7 @@ test "Message to_json" {
 
 ///|
 impl ToJson for Message with fn to_json(self : Message) -> Json {
-  let object : Map[String, Json] = {}
+  let object : Map[String, Json] = Map([])
   object["timestamp"] = self.timestamp.to_json()
   if self.usage is Some(usage) {
     object["usage"] = usage.to_openai().to_json()

@@ -98,7 +98,13 @@ async fn Transport::write(self : Transport, content : Json) -> Unit {
             mkdir(dir)
           }
           let file = if @fs.exists(path) {
-            @fs.open(path, mode=WriteOnly, append=true, create=0o644)
+            @fs.open(
+              path,
+              mode=WriteOnly,
+              append=true,
+              create_mode=OpenOrCreate,
+              permission=0o644,
+            )
           } else {
             @fs.create(path, permission=0o644)
           }
@@ -106,7 +112,7 @@ async fn Transport::write(self : Transport, content : Json) -> Unit {
           file
         }
       }
-      let content = content.to_json().stringify()
+      let content = @json.to_json(content).stringify()
       let buffer = Buffer()
       buffer.write_bytes(@encoding/utf8.encode(content))
       buffer.write_byte(b'\n')

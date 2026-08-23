@@ -49,28 +49,23 @@ fn goal_store_replay_requirement_event(
   state : @mooncode_core.RequirementState,
   evidence_refs : Array[String],
 ) -> @mooncode_core.GoalEvent {
-  @mooncode_core.RequirementUpdated(
-    "event-1", timestamp, requirement_id, state, evidence_refs,
-  )
+  RequirementUpdated("event-1", timestamp, requirement_id, state, evidence_refs)
 }
 
 ///|
 test "mooncode_goal_store replay: mutation applies and compatibility returns current" {
-  let event = goal_store_replay_requirement_event(
-    124,
-    "r1",
-    @mooncode_core.Proven,
-    ["evidence:r1"],
-  )
+  let event = goal_store_replay_requirement_event(124, "r1", Proven, [
+    "evidence:r1",
+  ])
   let records = [
     goal_store_replay_genesis(),
     goal_store_replay_event_record(event),
   ]
   let detailed = mooncode_replay_goal_records_detailed(records, "session").unwrap()
   assert_eq(detailed.genesis.revision, 0)
-  assert_true(detailed.genesis.requirements[0].state == @mooncode_core.Unproven)
+  assert_true(detailed.genesis.requirements[0].state == Unproven)
   assert_eq(detailed.current.revision, 1)
-  assert_true(detailed.current.requirements[0].state == @mooncode_core.Proven)
+  assert_true(detailed.current.requirements[0].state == Proven)
   assert_true(detailed.events.get("event-1") == Some(event))
   assert_true(
     mooncode_replay_goal_records(records, "session") == Some(detailed.current),
@@ -79,12 +74,9 @@ test "mooncode_goal_store replay: mutation applies and compatibility returns cur
 
 ///|
 test "mooncode_goal_store replay: duplicate is idempotent and conflict fails closed" {
-  let event = goal_store_replay_requirement_event(
-    124,
-    "r1",
-    @mooncode_core.Proven,
-    ["evidence:r1"],
-  )
+  let event = goal_store_replay_requirement_event(124, "r1", Proven, [
+    "evidence:r1",
+  ])
   let record = goal_store_replay_event_record(event)
   let detailed = mooncode_replay_goal_records_detailed(
     [goal_store_replay_genesis(), record, record],
@@ -94,10 +86,8 @@ test "mooncode_goal_store replay: duplicate is idempotent and conflict fails clo
 
   for
     conflicting in [
-      goal_store_replay_requirement_event(125, "r1", @mooncode_core.Proven, [
-        "evidence:r1",
-      ]),
-      goal_store_replay_requirement_event(124, "r1", @mooncode_core.Proven, [
+      goal_store_replay_requirement_event(125, "r1", Proven, ["evidence:r1"]),
+      goal_store_replay_requirement_event(124, "r1", Proven, [
         "evidence:changed",
       ]),
     ] {
@@ -121,12 +111,9 @@ test "mooncode_goal_store replay: duplicate is idempotent and conflict fails clo
 
 ///|
 test "mooncode_goal_store replay: ordering malformed reserved and ordinary records" {
-  let event = goal_store_replay_requirement_event(
-    124,
-    "r1",
-    @mooncode_core.Proven,
-    ["evidence:r1"],
-  )
+  let event = goal_store_replay_requirement_event(124, "r1", Proven, [
+    "evidence:r1",
+  ])
   let ordinary : Json = {
     "record_kind": mooncode_journal_event(),
     "record_id": "ordinary",
@@ -165,12 +152,9 @@ test "mooncode_goal_store replay: ordering malformed reserved and ordinary recor
 
 ///|
 test "mooncode_goal_store replay: unseen reducer no-op fails closed" {
-  let event = goal_store_replay_requirement_event(
-    124,
-    "missing",
-    @mooncode_core.Proven,
-    ["evidence:missing"],
-  )
+  let event = goal_store_replay_requirement_event(124, "missing", Proven, [
+    "evidence:missing",
+  ])
   let mut rejected = false
   ignore(
     mooncode_replay_goal_records_detailed(
@@ -207,12 +191,9 @@ async test "mooncode_goal_store disk restart: create replay and idempotency" {
     }
     assert_eq(genesis.revision, 0)
     assert_eq(genesis.created_at, 123)
-    let event = goal_store_replay_requirement_event(
-      124,
-      "r1",
-      @mooncode_core.Proven,
-      ["evidence:r1"],
-    )
+    let event = goal_store_replay_requirement_event(124, "r1", Proven, [
+      "evidence:r1",
+    ])
     let mutation = mooncode_apply_goal_event(
       directory,
       "session",
@@ -231,7 +212,7 @@ async test "mooncode_goal_store disk restart: create replay and idempotency" {
     assert_eq(detailed.genesis.revision, 0)
     assert_eq(detailed.genesis.created_at, 123)
     assert_eq(detailed.current.revision, 1)
-    assert_true(detailed.current.requirements[0].state == @mooncode_core.Proven)
+    assert_true(detailed.current.requirements[0].state == Proven)
     assert_true(
       mooncode_replay_goal(directory, "session") == Some(detailed.current),
     )
@@ -415,12 +396,9 @@ test "mooncode_goal_store strict replay: rejects timestamps and outer recorded_a
     goal_strict_put(genesis, "payload", negative_payload),
   ])
   goal_strict_reject_records([goal_strict_put(genesis, "recorded_at", 124)])
-  let event = goal_store_replay_requirement_event(
-    124,
-    "r1",
-    @mooncode_core.Proven,
-    ["evidence:r1"],
-  )
+  let event = goal_store_replay_requirement_event(124, "r1", Proven, [
+    "evidence:r1",
+  ])
   goal_strict_reject_records([
     genesis,
     goal_strict_put(goal_store_replay_event_record(event), "recorded_at", 125),

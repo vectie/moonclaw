@@ -5,6 +5,8 @@ import {
   "moonbitlang/core/test",
 }
 
+supported_targets = "native"
+
 import {
   "moonbitlang/async",
 } for "test"

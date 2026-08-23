@@ -230,10 +230,7 @@ async test "MoonFort v3 invocation is opaque and grant-bound receipt is persiste
         fail("expected sandboxed completion, got \{result}")
       }
       inspect(status, content="0")
-      inspect(
-        receipt.enforcement is @execution_sandbox.Degraded,
-        content="true",
-      )
+      inspect(receipt.enforcement is Degraded, content="true")
       json_inspect(receipt.changed_paths, content=["generated.txt"])
       assert_eq(audit_id, receipt.run_id)
       let audit_path = @pathx.join(config.receipt_root, "\{audit_id}.json")
@@ -431,7 +428,7 @@ async test "wall-clock kill maps to timeout with a durable receipt" (
         fail("expected sandbox timeout, got \{result}")
       }
       inspect(timeout, content="1000")
-      inspect(receipt.limit_reason, content="Some(wall-clock-limit)")
+      debug_inspect(receipt.limit_reason, content="Some(\"wall-clock-limit\")")
       assert_eq(audit_id, receipt.run_id)
       inspect(
         @fsx.exists(@pathx.join(config.receipt_root, "\{audit_id}.json")),

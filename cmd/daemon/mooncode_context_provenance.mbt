@@ -5,6 +5,7 @@ const MOONCODE_CONTEXT_PROVENANCE_FIELD : String = "_moonclaw_context"
 const MOONCODE_CONTEXT_PROVENANCE_CONTRACT : String = "moonclaw.context-fragment.v1"
 
 ///|
+#warnings("-unused_value")
 priv enum MoonCodeContextKind {
   SystemContext
   SkillContext
@@ -197,15 +198,6 @@ fn mooncode_runtime_context_normalize_message(
 }
 
 ///|
-fn mooncode_runtime_context_kind(message : Json) -> MoonCodeContextKind {
-  let normalized = mooncode_runtime_context_normalize_message(message)
-  let metadata = mooncode_runtime_context_provenance(normalized)
-  mooncode_runtime_context_kind_from_key(
-    mooncode_json_string(metadata, "kind", default="environment"),
-  )
-}
-
-///|
 fn mooncode_runtime_context_copy_provenance(
   message : Json,
   source : Json,
@@ -304,4 +296,14 @@ fn mooncode_runtime_context_merge_messages(
     }
   }
   merged
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_runtime_context_kind(message : Json) -> MoonCodeContextKind {
+  let normalized = mooncode_runtime_context_normalize_message(message)
+  let metadata = mooncode_runtime_context_provenance(normalized)
+  mooncode_runtime_context_kind_from_key(
+    mooncode_json_string(metadata, "kind", default="environment"),
+  )
 }

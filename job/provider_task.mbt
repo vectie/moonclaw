@@ -1030,7 +1030,7 @@ fn provider_task_execution_step_metadata(
   metadata : Json,
   force_single_response : Bool,
 ) -> Json {
-  let merged : Map[String, Json] = {}
+  let merged : Map[String, Json] = Map([])
   match metadata {
     Object(obj) =>
       for key, value in obj {

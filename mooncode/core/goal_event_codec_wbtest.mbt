@@ -521,7 +521,7 @@ test "RequirementUpdated rejects mixed evidence array" {
 
 ///|
 test "AwaitingApproval empty refs encode decode equality" {
-  let event : GoalEvent = GoalEvent::AwaitingApproval("event-a0", 45, [])
+  let event : GoalEvent = AwaitingApproval("event-a0", 45, [])
   assert_true(goal_event_from_json(goal_event_to_json(event)) == event)
 }
 

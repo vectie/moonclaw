@@ -1,6 +1,7 @@
 // Daemon-private arbitrary-precision journal sequence and v2 envelope helpers.
 
 ///|
+#warnings("-unused_value")
 priv struct MoonCodeJournalSequence {
   text : String
 } derive(Eq)

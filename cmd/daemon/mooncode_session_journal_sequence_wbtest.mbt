@@ -97,7 +97,12 @@ async test "append wrapper reads mutable payload identity after waiting for lock
     let session_id = "wrapper-mutable"
     let path = mooncode_session_journal_path(root, session_id)
     @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-    let file = @fs.open(path, mode=ReadWrite, create=0o644)
+    let file = @fs.open(
+      path,
+      mode=ReadWrite,
+      create_mode=OpenOrCreate,
+      permission=0o644,
+    )
     file.lock(Exclusive)
     let payload : Json = {
       "id": "A",
@@ -303,7 +308,7 @@ fn journal_sequence_test_record(sequence : Json, id : String) -> Json {
     payload={},
   )
   match base {
-    Json::Object(fields) => {
+    Object(fields) => {
       let copied = fields.copy()
       copied["sequence"] = sequence
       Json::object(copied)
@@ -444,9 +449,7 @@ async test "journal transaction collision uses immutable pre-callback snapshot" 
     let before = @fsx.read_file(path)
     let rejected = try {
       ignore(
-        mooncode_session_journal_transaction(root, session_id, fn(
-          records,
-        ) raise {
+        mooncode_session_journal_transaction(root, session_id, fn(records) {
           records.clear()
           Append(mooncode_journal_event(), payload, ())
         }),

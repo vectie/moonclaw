@@ -75,6 +75,29 @@ async test "provider task command refuses host execution without sandbox grant" 
 }
 
 ///|
+test "provider task sandbox argv binds target capability without executable selector" {
+  let command = ProviderTaskCommand::{
+    provider: @resource_providers.RegisteredResourceProvider::new(
+      name="wiki-main",
+      title="Wiki Main",
+      kind="task-provider",
+      capabilities=["provider.task"],
+      metadata={ "task_args_prefix": ["--profile", "bounded"] },
+    ),
+    // This legacy manifest field is deliberately absent from the grant argv.
+    // MoonFort resolves `wiki-main` through its operator-owned registry.
+    command: "/tmp/untrusted-selector",
+    args: ["fixture-adapter"],
+    cwd: Some("/tmp/provider-workspace"),
+    workspace_root: "/tmp/provider-workspace",
+  }
+  assert_eq(provider_task_execution_args(command, "tasks", ["goal"]), [
+    "fixture-adapter", "--profile", "bounded", "provider", "task", "tasks", "/tmp/provider-workspace",
+    "goal",
+  ])
+}
+
+///|
 async fn write_provider_task_fixture(
   workspace : String,
   script_path : String,
@@ -93,6 +116,7 @@ async fn write_provider_task_fixture(
     recursive=true,
     exists_ok=true,
   )
+  install_provider_task_fixture_moonfort(workspace |> @pathx.join("book-space"))
   @fsx.write_to_file(
     manifest_path,
     (
@@ -209,6 +233,8 @@ async fn write_multi_provider_task_fixture(
   )
   @fsx.make_directory(coding_root, recursive=true, exists_ok=true)
   @fsx.make_directory(finance_root, recursive=true, exists_ok=true)
+  install_provider_task_fixture_moonfort(coding_root)
+  install_provider_task_fixture_moonfort(finance_root)
   @fsx.write_to_file(
     manifest_path,
     (

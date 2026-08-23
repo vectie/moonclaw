@@ -20,8 +20,8 @@ pub fn Task::is_idle(self : Task) -> Bool {
 ///|
 pub impl ToJson for Task with fn to_json(self : Task) -> Json {
   match self {
-    Running(running) => running.to_json()
-    Stopped(stopped) => stopped.to_json()
+    Running(running) => @json.to_json(running)
+    Stopped(stopped) => @json.to_json(stopped)
   }
 }
 
@@ -47,7 +47,7 @@ pub impl @json.FromJson for Task with fn from_json(
     }
     _ =>
       raise JsonDecodeError(
-        (json_path.add_key("status"), "Unknown Task status '\{to_repr(type_)}'"),
+        (json_path.add_key("status"), "Unknown Task status '\{Repr(type_)}'"),
       )
   }
 }

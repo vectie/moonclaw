@@ -18,7 +18,7 @@ fn mooncode_browser_action_supported(action : String) -> Bool {
 
 ///|
 fn mooncode_browser_loopback_url(url : String) -> Bool {
-  let lower = url.trim().to_lower().to_string()
+  let lower = url.trim().to_lower().to_owned()
   lower.has_prefix("http://127.0.0.1") ||
   lower.has_prefix("https://127.0.0.1") ||
   lower.has_prefix("http://localhost") ||
@@ -28,7 +28,7 @@ fn mooncode_browser_loopback_url(url : String) -> Bool {
 }
 
 ///|
-async fn mooncode_tool_browser(
+fn mooncode_tool_browser(
   session_id : String,
   book_root : String,
   arguments : Json,

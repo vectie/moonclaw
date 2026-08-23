@@ -22,14 +22,7 @@ fn goal_store_test_budget() -> @mooncode_core.GoalBudget {
 
 ///|
 fn goal_store_test_requirements() -> Array[@mooncode_core.GoalRequirement] {
-  [
-    {
-      id: "r1",
-      criterion: "done",
-      state: @mooncode_core.Unproven,
-      evidence_refs: [],
-    },
-  ]
+  [{ id: "r1", criterion: "done", state: Unproven, evidence_refs: [] }]
 }
 
 ///|
@@ -646,11 +639,11 @@ async test "mooncode_goal_store: focused atomic mutation succeeds" {
       Conflict(_) => fail("expected created")
       AuthorityConflict => fail("expected created")
     }
-    let event : @mooncode_core.GoalEvent = @mooncode_core.RequirementUpdated(
+    let event : @mooncode_core.GoalEvent = RequirementUpdated(
       "atomic-applied",
       124,
       "r1",
-      @mooncode_core.Proven,
+      Proven,
       ["evidence"],
     )
     let next = match
@@ -700,11 +693,11 @@ async test "mooncode_goal_store: focused atomic mutation duplicate is idempotent
       Conflict(_) => fail("expected created")
       AuthorityConflict => fail("expected created")
     }
-    let event : @mooncode_core.GoalEvent = @mooncode_core.RequirementUpdated(
+    let event : @mooncode_core.GoalEvent = RequirementUpdated(
       "atomic-idempotent",
       124,
       "r1",
-      @mooncode_core.Proven,
+      Proven,
       ["evidence"],
     )
     let canonical_event = @mooncode_core.goal_event_to_json(event)

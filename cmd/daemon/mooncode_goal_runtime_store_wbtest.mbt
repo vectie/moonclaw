@@ -27,7 +27,7 @@ fn carrier_assert_rejected(json : Json) -> Unit raise {
     ignore(decode_mooncode_goal_runtime_carrier(json))
     false
   } catch {
-    MoonCodeGoalRuntimeCodecError::Invalid(_) => true
+    Invalid(_) => true
   }
   assert_true(rejected)
 }
@@ -90,37 +90,28 @@ test "carrier event variants roundtrip exact canonical record" {
     detail: "等待",
   }
   let events : Array[@mooncode_core.GoalRuntimeEvent] = [
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "event-continue",
-      @mooncode_core.Continue([operation], "progress ✓", "理由"),
+      Continue([operation], "progress ✓", "理由"),
     ),
-    @mooncode_core.PlannerDecision(
-      "event-achieved",
-      @mooncode_core.Achieved("完成", [evidence]),
-    ),
-    @mooncode_core.PlannerDecision(
+    PlannerDecision("event-achieved", Achieved("完成", [evidence])),
+    PlannerDecision(
       "event-blocked-some",
-      @mooncode_core.Blocked(reason, ["alternative"], Some("批准")),
+      Blocked(reason, ["alternative"], Some("批准")),
     ),
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "event-blocked-none",
-      @mooncode_core.Blocked(reason, ["alternative"], None),
+      Blocked(reason, ["alternative"], None),
     ),
-    @mooncode_core.OperationAccepted("event-operation", "op-1"),
-    @mooncode_core.CheckpointAccepted("event-checkpoint", "checkpoint-1"),
-    @mooncode_core.PhaseChanged("event-queued", @mooncode_core.Queued),
-    @mooncode_core.PhaseChanged("event-running", @mooncode_core.Running),
-    @mooncode_core.PhaseChanged("event-waiting", @mooncode_core.WaitingApproval),
-    @mooncode_core.PhaseChanged("event-retry", @mooncode_core.RetryBackoff),
-    @mooncode_core.PhaseChanged(
-      "event-paused-progress",
-      @mooncode_core.PausedNoProgress,
-    ),
-    @mooncode_core.PhaseChanged(
-      "event-paused-external",
-      @mooncode_core.PausedExternal,
-    ),
-    @mooncode_core.Cancelled("event-cancelled", "停止"),
+    OperationAccepted("event-operation", "op-1"),
+    CheckpointAccepted("event-checkpoint", "checkpoint-1"),
+    PhaseChanged("event-queued", Queued),
+    PhaseChanged("event-running", Running),
+    PhaseChanged("event-waiting", WaitingApproval),
+    PhaseChanged("event-retry", RetryBackoff),
+    PhaseChanged("event-paused-progress", PausedNoProgress),
+    PhaseChanged("event-paused-external", PausedExternal),
+    Cancelled("event-cancelled", "停止"),
   ]
   for event in events {
     let canonical = encode_mooncode_goal_runtime_stored_event(
@@ -217,7 +208,7 @@ test "carrier rejects malformed and noncanonical embedded records" {
   carrier_assert_mutation_rejected(base, malformed)
   let noncanonical = carrier_object_copy(base)
   match noncanonical["canonical_record"] {
-    Json::String(record) =>
+    String(record) =>
       noncanonical["canonical_record"] = (" " + record).to_json()
     _ => abort("expected canonical record string")
   }

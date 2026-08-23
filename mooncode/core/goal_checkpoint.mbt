@@ -665,7 +665,7 @@ pub fn compare_goal_checkpoint_sequences(
           agreement_outcome: InsufficientEvidence,
           outcome: InsufficientEvidence,
           left_acceptance: checkpoint_acceptance(l),
-          right_acceptance: CheckpointAcceptanceOutcome::InsufficientEvidence,
+          right_acceptance: InsufficientEvidence,
           same_basis: false,
           deltas: [
             delta(MissingSequenceSide, key, l.identity.checkpoint_id, ""),
@@ -679,7 +679,7 @@ pub fn compare_goal_checkpoint_sequences(
           right_checkpoint_id: r.identity.checkpoint_id,
           agreement_outcome: InsufficientEvidence,
           outcome: InsufficientEvidence,
-          left_acceptance: CheckpointAcceptanceOutcome::InsufficientEvidence,
+          left_acceptance: InsufficientEvidence,
           right_acceptance: checkpoint_acceptance(r),
           same_basis: false,
           deltas: [

@@ -67,7 +67,7 @@ pub fn normalized_request_text(request_text : String) -> String {
 
 ///|
 fn merge_intake_metadata(base : Json, extra : Json) -> Json {
-  let merged : Map[String, Json] = {}
+  let merged : Map[String, Json] = Map([])
   match base {
     Object(obj) =>
       for key, value in obj {
@@ -92,7 +92,7 @@ pub fn merge_initial_input_for_resume(
 ) -> Json {
   match (base, resume_input) {
     (Some(Object(base_obj)), Object(resume_obj)) => {
-      let merged : Map[String, Json] = {}
+      let merged : Map[String, Json] = Map([])
       for key, value in base_obj {
         merged.set(key, value)
       }

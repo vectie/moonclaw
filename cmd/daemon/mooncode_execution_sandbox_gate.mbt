@@ -1,21 +1,11 @@
 ///|
-/// MoonCode process tools have a MoonFort-only implementation. Availability of
-/// a particular deployment is still checked by the operator-owned config
-/// loader at every call and never implies an unsandboxed fallback.
-fn mooncode_execution_sandbox_route_available() -> Bool {
-  true
-}
-
-///|
 let mooncode_fixture_sandbox_configs : Map[
   String,
   @execution_sandbox.SandboxExecutorConfig,
-] = {}
+] = Map([])
 
 ///|
-let mooncode_fixture_sandbox_configs_lock : @semaphore.Semaphore = @semaphore.Semaphore::new(
-  1,
-)
+let mooncode_fixture_sandbox_configs_lock : @semaphore.Semaphore = Semaphore(1)
 
 ///|
 async fn mooncode_install_fixture_sandbox_config(
@@ -136,8 +126,7 @@ fn mooncode_sandbox_terminal_result(
   metadata : Json,
 ) -> Json {
   let receipt = execution.receipt
-  guard receipt.status is @execution_sandbox.Exited &&
-    receipt.exit_code is Some(exit_code) else {
+  guard receipt.status is Exited && receipt.exit_code is Some(exit_code) else {
     return mooncode_tool_error_result(
       tool,
       message="MoonFort did not return a terminal exit receipt",
@@ -343,4 +332,13 @@ fn mooncode_patch_verification_sandbox_refusal() -> Json {
     "execution_sandbox_configured": false,
     "execution_sandbox_policy": "fail-closed",
   }
+}
+
+///|
+/// MoonCode process tools have a MoonFort-only implementation. Availability of
+/// a particular deployment is still checked by the operator-owned config
+/// loader at every call and never implies an unsandboxed fallback.
+#warnings("-unused_value")
+fn mooncode_execution_sandbox_route_available() -> Bool {
+  true
 }

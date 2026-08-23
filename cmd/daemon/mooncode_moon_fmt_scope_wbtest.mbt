@@ -13,12 +13,9 @@ async fn mooncode_moon_fmt_test_git(
 
 ///|
 async fn mooncode_moon_fmt_test_commit_baseline(book_root : String) -> Unit {
-  mooncode_moon_fmt_test_git(book_root, @trusted_host_process.Init)
-  mooncode_moon_fmt_test_git(book_root, @trusted_host_process.AddAll)
-  mooncode_moon_fmt_test_git(
-    book_root,
-    @trusted_host_process.Commit("baseline"),
-  )
+  mooncode_moon_fmt_test_git(book_root, Init)
+  mooncode_moon_fmt_test_git(book_root, AddAll)
+  mooncode_moon_fmt_test_git(book_root, Commit("baseline"))
 }
 
 ///|

@@ -225,6 +225,7 @@ async fn mooncode_fixture_authorized_tool_body(
 }
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_fixture_execute_tool_call(
   config : @execution_sandbox.SandboxExecutorConfig,
   session_id : String,
@@ -241,6 +242,7 @@ async fn mooncode_fixture_execute_tool_call(
 }
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_fixture_execute_guarded_tool_call(
   config : @execution_sandbox.SandboxExecutorConfig,
   session_id : String,
@@ -259,6 +261,7 @@ async fn mooncode_fixture_execute_guarded_tool_call(
 }
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_fixture_authorized_runtime_command(
   config : @execution_sandbox.SandboxExecutorConfig,
   book_root : String,
@@ -283,6 +286,7 @@ async fn mooncode_fixture_authorized_runtime_command(
 /// Record fixture-owned operator decisions for any runtime calls whose normal
 /// contract requires approval. The decision binds the exact MoonFort plan
 /// already installed by `mooncode_fixture_authorized_runtime_command`.
+#warnings("-unused_value")
 async fn mooncode_fixture_approve_runtime_commands(
   book_root : String,
   command : Json,

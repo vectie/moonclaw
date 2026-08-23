@@ -6,9 +6,9 @@ fn process_test_action(
   @browser.browser_action(
     action_id~,
     session_id="process-session",
-    actor=@browser.Agent,
+    actor=Agent,
     actor_id="agent-fixture",
-    operation=@browser.Click,
+    operation=Click,
     target~,
     expected_observation="fixture visible state changes",
     code_revision="code-fixture",

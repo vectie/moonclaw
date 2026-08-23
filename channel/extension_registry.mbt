@@ -27,7 +27,7 @@ pub fn ExtensionRegistry::register(
   self : ExtensionRegistry,
   extension : &ChannelExtension,
 ) -> Unit raise {
-  let channel_id = extension.id()
+  let channel_id = Channel::id(extension)
   let webhook_path = extension.webhook_path()
 
   match self.path_to_channel.get(webhook_path) {
@@ -56,7 +56,7 @@ pub fn ExtensionRegistry::register_with_context(
   extension : &ChannelExtension,
   context : ExtensionContext,
 ) -> Unit raise {
-  let channel_id = extension.id()
+  let channel_id = Channel::id(extension)
   let webhook_path = extension.webhook_path()
 
   match self.path_to_channel.get(webhook_path) {
@@ -138,7 +138,7 @@ pub fn ExtensionRegistry::list_extensions(
   .values()
   .map(fn(extension) {
     ExtensionInfo::{
-      channel_id: extension.id(),
+      channel_id: Channel::id(extension),
       webhook_path: extension.webhook_path(),
       supports_websocket: extension.supports_websocket(),
       allowed_methods: extension.allowed_methods(),
@@ -196,7 +196,7 @@ pub fn ExtensionRegistry::get_dock_config(
 pub fn ExtensionRegistry::list_dock_configs(
   self : ExtensionRegistry,
 ) -> Map[String, ChannelDockConfig] {
-  let result : Map[String, ChannelDockConfig] = {}
+  let result : Map[String, ChannelDockConfig] = Map([])
   for channel_id, extension in self.extensions {
     result[channel_id] = extension.dock_config()
   }

@@ -258,7 +258,7 @@ pub async fn SupervisorRuntime::delegate_intent(
     let worker_job_id = "moonclaw.supervisor-worker.\{suffix}"
     let child_principal = @capability.principal_ref_v1(
       "supervisor-worker-\{suffix}",
-      @capability.Agent,
+      Agent,
       "moonclaw",
       worker_run_id,
     )
@@ -307,7 +307,7 @@ pub async fn SupervisorRuntime::delegate_intent(
       request.envelope.request_digest,
     ) catch {
       error =>
-        return Err("invalid delegation metering evidence: \{to_repr(error)}")
+        return Err("invalid delegation metering evidence: \{Repr(error)}")
     }
     let consumption = child_delegation_consumption_v1(
       accumulated_cost_micro_usd=0L,
@@ -415,7 +415,7 @@ pub async fn SupervisorRuntime::delegate_intent(
     }
     let state = {
       ..previous,
-      lifecycle: SupervisorLifecycleV1::Running,
+      lifecycle: Running,
       cursor: previous.cursor + 1,
       updated_at: request.envelope.issued_at,
     }
@@ -939,7 +939,7 @@ pub fn SupervisorRuntime::worker_status(
     None => return Err("delegated worker run is missing")
   }
   let mut result_evidence : Json? = None
-  let mut authorization : Json = {}
+  let mut authorization : Json = Json::empty_object()
   let mut accounting_mode = "unresolved"
   let artifact_refs : Array[String] = []
   let artifact_evidence : Array[Json] = []

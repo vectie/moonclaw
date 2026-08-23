@@ -103,7 +103,7 @@ test "failed process output keeps the actionable tail when capped" {
     mooncode_json_string(capped, "truncation_mode", default=""),
     "head_tail",
   )
-  assert_true(output.starts_with("warning:"))
+  assert_true(output.has_prefix("warning:"))
   assert_true(output.contains(diagnostic_tail))
   assert_true(output.length() <= 96)
 }

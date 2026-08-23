@@ -275,7 +275,9 @@ async test "streaming_parallel_tool_call" (t : @test.Test) {
     )
     let tool_calls : Array[ChatCompletionMessageToolCall] = chat_completion.choices[0].message.tool_calls
     let tool_calls = tool_calls.map(tc => {
-      guard tc.to_json() is Object(tc_object)
+      guard tc.to_json() is Object(tc_object) else {
+        fail("Expected tool call object")
+      }
       tc_object.remove("id")
       if tc.function.arguments is Some(arguments) {
         let function = tc_object["function"]

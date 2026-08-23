@@ -73,7 +73,7 @@ pub async fn Client::connect(config : ClientConfig) -> Client {
     let conn = @asyncws.connect(config.url, headers=config.headers)
     {
       conn,
-      outbox: @aqueue.Queue::new(kind=Unbounded),
+      outbox: Queue(kind=Unbounded),
       on_message: None,
       on_close: None,
       closed: Ref(false),

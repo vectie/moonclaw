@@ -255,7 +255,7 @@ pub async fn Agent::start(agent : Agent) -> Unit {
       )
 
       // Enable web search plugin if configured
-      let extra_body : Map[String, Json] = {}
+      let extra_body : Map[String, Json] = Map([])
       if web_search {
         // OpenRouter supports a native web plugin. Other model backends rely on
         // the generic web_search tool when it is registered by the caller.

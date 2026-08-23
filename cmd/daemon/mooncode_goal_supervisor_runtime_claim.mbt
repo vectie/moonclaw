@@ -1,4 +1,5 @@
 ///|
+#warnings("-unused_constructor-unused_field")
 priv enum MoonCodeGoalSupervisorRuntimeClaimOutcome {
   Recorded(Json)
   Idempotent(Json)
@@ -111,6 +112,7 @@ fn mooncode_goal_supervisor_runtime_claim_request_matches(
 }
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_goal_supervisor_runtime_claim_record(
   book_root : String,
   session_id : String,
@@ -196,7 +198,7 @@ async fn mooncode_goal_supervisor_runtime_claim_record(
                   default=-1,
                 )
                 let claim_sequence = mooncode_journal_sequence(receipt)
-                let prefix : Array[Json] = records.filter(fn(record) {
+                let prefix : Array[Json] = records.filter(record => {
                   mooncode_journal_sequence(record) <= basis_sequence
                 })
                 if checkpoint.session_id != session_id ||

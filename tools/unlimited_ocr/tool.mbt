@@ -43,7 +43,7 @@ pub fn new(cwd : String) -> @tool.Tool[UnlimitedOcrResult] {
     name="unlimited_ocr",
     description="Run Unlimited-OCR as MoonClaw's default PDF OCR extractor. It renders/scans PDFs through Unlimited-OCR's infer.py entrypoint and writes extracted artifacts to the requested output directory.",
     schema~,
-    ToolFn(async fn(args) -> @tool.ToolResult[UnlimitedOcrResult] noraise {
+    ToolFn(args => {
       ignore(args)
       @tool.error(
         "Unlimited-OCR native execution refused: no configured ExecutionSandbox route is available",

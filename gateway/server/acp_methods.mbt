@@ -31,6 +31,9 @@ fn acp_session_run_payload_with_session_id(
 }
 
 ///|
+// Retained for the MoonFort transport boundary while this gateway exposes
+// only the fail-closed error path.
+#warnings("-struct_never_constructed")
 priv struct AcpProcessOutcome {
   status : String
   result : Json
@@ -286,7 +289,7 @@ async fn Gateway::request_acp_session_reset(
 }
 
 ///|
-async fn Gateway::execute_managed_acp_process(
+fn Gateway::execute_managed_acp_process(
   self : Gateway,
   run_id : String,
   launch : @acp.AcpLaunchPlan,

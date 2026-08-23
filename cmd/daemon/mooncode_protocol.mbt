@@ -48,16 +48,6 @@ fn mooncode_native_capability_tools() -> Array[String] {
 }
 
 ///|
-fn mooncode_native_command_body_required_fields() -> Array[String] {
-  @mooncode_core.native_command_body_required_fields()
-}
-
-///|
-fn mooncode_native_command_body_supported_fields() -> Array[String] {
-  @mooncode_core.native_command_body_supported_fields()
-}
-
-///|
 fn mooncode_native_command_body_field_is_supported(name : String) -> Bool {
   @mooncode_core.native_command_body_field_is_supported(name)
 }
@@ -65,11 +55,6 @@ fn mooncode_native_command_body_field_is_supported(name : String) -> Bool {
 ///|
 fn mooncode_native_capability_runtime_loop_options() -> Json {
   @mooncode_core.native_capability_runtime_loop_options()
-}
-
-///|
-fn mooncode_native_capability_stream_options() -> Json {
-  @mooncode_core.native_capability_stream_options()
 }
 
 ///|
@@ -155,4 +140,22 @@ fn mooncode_planner_mode_deterministic_fallback() -> String {
 ///|
 fn mooncode_planner_mode_runtime_control() -> String {
   "runtime-control"
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_native_command_body_required_fields() -> Array[String] {
+  @mooncode_core.native_command_body_required_fields()
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_native_command_body_supported_fields() -> Array[String] {
+  @mooncode_core.native_command_body_supported_fields()
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_native_capability_stream_options() -> Json {
+  @mooncode_core.native_capability_stream_options()
 }

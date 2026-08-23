@@ -68,65 +68,6 @@ fn mooncode_shell_words(command : String) -> Array[String] {
 }
 
 ///|
-/// Resolve ordinary shell arguments that name local files. The observation is
-/// intentionally derived from existing files under the selected book instead
-/// of from a command-name allowlist: successful analysis commands can then
-/// retain the files they actually exposed even when they use different viewers
-/// or filters.
-async fn mooncode_shell_file_observation(
-  book_root : String,
-  cwd_path : String,
-  command : String,
-  output : String,
-  truncated : Bool,
-) -> Json {
-  let root = @pathx.normalize(book_root)
-  let mut observed_path = ""
-  for word in mooncode_shell_words(command) {
-    if word == MOONCODE_SHELL_BOUNDARY_TOKEN ||
-      word == "" ||
-      word == "-" ||
-      word.has_prefix("-") ||
-      mooncode_shell_word_is_assignment(word) {
-      continue
-    }
-    let absolute = if @pathx.is_absolute(word) {
-      @pathx.normalize(word)
-    } else {
-      @pathx.join(cwd_path, word)
-    }
-    let exists_as_file = @fsx.exists_as_file(absolute) catch { _ => false }
-    if (absolute != root && !absolute.has_prefix(root + "/")) || !exists_as_file {
-      continue
-    }
-    let relative = if absolute == root {
-      "."
-    } else {
-      absolute[root.length() + 1:].to_owned()
-    }
-    if observed_path != "" && observed_path != relative {
-      return {}
-    }
-    observed_path = relative
-  }
-  if observed_path == "" {
-    return {}
-  }
-  let content = @fsx.read_file(@pathx.join(root, observed_path)) catch {
-    _ => return {}
-  }
-  {
-    "path": observed_path,
-    "scope": if !truncated && output == content {
-      "complete"
-    } else {
-      "partial"
-    },
-    "source": "shell",
-  }
-}
-
-///|
 fn mooncode_shell_word_is_assignment(word : String) -> Bool {
   word.contains("=") && !word.has_prefix("=")
 }
@@ -644,16 +585,16 @@ fn mooncode_shell_segment_is_safe_loopback_curl(
       if index + 1 >= segment.length() {
         return false
       }
-      let method = segment[index + 1].to_upper().to_string()
-      if method != "GET" && method != "HEAD" {
+      let method_ = segment[index + 1].to_upper()
+      if method_ != "GET" && method_ != "HEAD" {
         return false
       }
       index += 2
       continue
     }
     if word.has_prefix("--request=") {
-      let method = word[10:].to_upper().to_string()
-      if method != "GET" && method != "HEAD" {
+      let method_ = word[10:].to_upper()
+      if method_ != "GET" && method_ != "HEAD" {
         return false
       }
       index += 1
@@ -1405,4 +1346,64 @@ fn mooncode_shell_pipefail_enabled(command : String) -> Bool {
 fn mooncode_shell_pipeline_exit_ambiguous(command : String) -> Bool {
   mooncode_shell_has_pipeline(command) &&
   !mooncode_shell_pipefail_enabled(command)
+}
+
+///|
+/// Resolve ordinary shell arguments that name local files. The observation is
+/// intentionally derived from existing files under the selected book instead
+/// of from a command-name allowlist: successful analysis commands can then
+/// retain the files they actually exposed even when they use different viewers
+/// or filters.
+#warnings("-unused_value")
+async fn mooncode_shell_file_observation(
+  book_root : String,
+  cwd_path : String,
+  command : String,
+  output : String,
+  truncated : Bool,
+) -> Json {
+  let root = @pathx.normalize(book_root)
+  let mut observed_path = ""
+  for word in mooncode_shell_words(command) {
+    if word == MOONCODE_SHELL_BOUNDARY_TOKEN ||
+      word == "" ||
+      word == "-" ||
+      word.has_prefix("-") ||
+      mooncode_shell_word_is_assignment(word) {
+      continue
+    }
+    let absolute = if @pathx.is_absolute(word) {
+      @pathx.normalize(word)
+    } else {
+      @pathx.join(cwd_path, word)
+    }
+    let exists_as_file = @fsx.exists_as_file(absolute) catch { _ => false }
+    if (absolute != root && !absolute.has_prefix(root + "/")) || !exists_as_file {
+      continue
+    }
+    let relative = if absolute == root {
+      "."
+    } else {
+      absolute[root.length() + 1:].to_owned()
+    }
+    if observed_path != "" && observed_path != relative {
+      return {}
+    }
+    observed_path = relative
+  }
+  if observed_path == "" {
+    return {}
+  }
+  let content = @fsx.read_file(@pathx.join(root, observed_path)) catch {
+    _ => return {}
+  }
+  {
+    "path": observed_path,
+    "scope": if !truncated && output == content {
+      "complete"
+    } else {
+      "partial"
+    },
+    "source": "shell",
+  }
 }

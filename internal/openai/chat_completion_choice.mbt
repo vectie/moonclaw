@@ -24,7 +24,7 @@ impl ToJson for ChatCompletionChoice with fn to_json(
     "message": self.message,
   }
   if self.finish_reason is Some(finish_reason) {
-    json["finish_reason"] = finish_reason.to_json()
+    json["finish_reason"] = ToJson::to_json(finish_reason)
   }
   Json::object(json)
 }

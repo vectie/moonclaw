@@ -21,7 +21,7 @@ impl @httpx.FromEvent for DaemonEvent with fn from_event(event : @httpx.Event) -
       }
       TasksSynchronized(@json.from_json(tasks))
     }
-    _ => fail("unrecognized daemon event type: \{to_repr(event)}")
+    _ => fail("unrecognized daemon event type: \{Repr(event)}")
   }
 }
 
@@ -96,7 +96,7 @@ async test "GET /v1/tasks" (t : @test.Test) {
           "transfer-encoding": "chunked",
           ..
         } else {
-        fail("Unexpected response headers: \{to_repr(r.headers)}")
+        fail("Unexpected response headers: \{Repr(r.headers)}")
       }
       json_inspect(b.json(), content={ "tasks": [] })
       let _ = @httpx.post_json("http://localhost:\{daemon.port()}/v1/task", {
@@ -181,7 +181,7 @@ async test "GET /v1/models" (t : @test.Test) {
           "transfer-encoding": "chunked",
           ..
         } else {
-        fail("Unexpected response headers: \{to_repr(r.headers)}")
+        fail("Unexpected response headers: \{Repr(r.headers)}")
       }
       let b = b.json()
       guard b is { "models": Array(models), .. } else {

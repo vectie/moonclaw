@@ -64,9 +64,9 @@ priv struct Events {
 ///|
 fn Events::new() -> Events {
   {
-    line: @aqueue.Queue::new(kind=Unbounded),
-    keypress: @aqueue.Queue::new(kind=Unbounded),
-    key: @aqueue.Queue::new(kind=Unbounded),
+    line: Queue(kind=Unbounded),
+    keypress: Queue(kind=Unbounded),
+    key: Queue(kind=Unbounded),
   }
 }
 
@@ -596,6 +596,7 @@ async fn Interface::yank_pop(self : Interface) -> Unit {
 }
 
 ///|
+#warnings("-lexmatch_longest_match")
 fn word_size_left(string : BytesView, index : Int) -> Int {
   if index == 0 {
     return 0
@@ -612,6 +613,7 @@ fn word_size_left(string : BytesView, index : Int) -> Int {
 }
 
 ///|
+#warnings("-lexmatch_longest_match")
 fn word_right_left(string : BytesView, index : Int) -> Int {
   if index >= string.length() {
     return 0
@@ -627,6 +629,7 @@ fn word_right_left(string : BytesView, index : Int) -> Int {
 }
 
 ///|
+#warnings("-lexmatch_longest_match")
 async fn Interface::delete_word_left(self : Interface) -> Unit {
   if self.cursor > 0 {
     self.before_edit(self.line, self.cursor)
@@ -650,6 +653,7 @@ async fn Interface::delete_word_left(self : Interface) -> Unit {
 }
 
 ///|
+#warnings("-lexmatch_longest_match")
 async fn Interface::delete_word_right(self : Interface) -> Unit {
   if self.cursor < self.line.length() {
     self.before_edit(self.line, self.cursor)

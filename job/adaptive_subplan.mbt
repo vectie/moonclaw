@@ -65,7 +65,7 @@ fn adaptive_subplan_policy_metadata(
   request : AnalysisRequest,
   config : AnalysisStepConfig,
 ) -> Json {
-  let policy : Map[String, Json] = {}
+  let policy : Map[String, Json] = Map([])
   match
     metadata_int_with_step_metadata_option(request.step_metadata, "timeout_ms") {
     Some(value) => policy.set("timeout_ms", value.to_json())

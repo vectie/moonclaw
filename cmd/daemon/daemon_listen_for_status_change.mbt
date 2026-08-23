@@ -148,7 +148,7 @@ async fn Daemon::listen_for_status_change(
             let supervisors = self.supervisor_runtime()
             match
               supervisors.worker_status(supervisor_id, task.id.to_string()) {
-              Ok(status) if status.run_status is @job.Pending =>
+              Ok(status) if status.run_status is Pending =>
                 ignore(
                   supervisors.record_worker_provider_acceptance(
                     supervisor_id,

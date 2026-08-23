@@ -161,7 +161,7 @@ fn mooncode_runtime_turn_loaded_skill_messages(
   all_tool_results : Array[Json],
 ) -> Array[Json] {
   let messages : Array[Json] = []
-  let retained : Map[String, Bool] = {}
+  let retained : Map[String, Bool] = Map([])
   for execution in all_tool_results {
     if !mooncode_json_bool(execution, "accepted", default=false) ||
       mooncode_json_string(execution, "tool", default="") != "read_skill" {
@@ -198,7 +198,7 @@ fn mooncode_runtime_turn_loaded_skill_receipt_messages(
   all_tool_results : Array[Json],
 ) -> Array[Json] {
   let messages : Array[Json] = []
-  let retained : Map[String, Bool] = {}
+  let retained : Map[String, Bool] = Map([])
   for execution in all_tool_results {
     if !mooncode_json_bool(execution, "accepted", default=false) ||
       mooncode_json_string(execution, "tool", default="") != "read_skill" {

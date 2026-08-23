@@ -347,10 +347,10 @@ test "terminal boundary rejects forged terminal receipt payload kind" {
     claim_id, terminal_id,
   )
   let forged_terminal : Json = match valid_terminal {
-    Json::Object(envelope) => {
+    Object(envelope) => {
       let envelope_copy = envelope.copy()
       let forged_payload = match envelope_copy["payload"] {
-        Json::Object(payload) => {
+        Object(payload) => {
           let payload_copy = payload.copy()
           payload_copy["kind"] = ("forged-receipt" : Json)
           Json::object(payload_copy)

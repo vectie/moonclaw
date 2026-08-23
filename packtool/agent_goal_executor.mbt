@@ -35,7 +35,7 @@ fn agent_goal_int(
   default~ : Int,
 ) -> Int {
   match fields.get(key) {
-    Some(Number(value)) => value.to_int()
+    Some(Number(value, ..)) => value.to_int()
     _ => default
   }
 }
@@ -404,7 +404,6 @@ fn agent_goal_observation_fields(value : Json) -> Map[String, Json] raise {
 
 ///|
 async fn agent_goal_execution_result(
-  request : PackToolExecutionRequest,
   action : Json,
   observation : Json,
 ) -> PackToolExecutionResult {
@@ -496,8 +495,7 @@ pub fn moonclaw_agent_goal_executor(
     run=request => {
       let action = agent_goal_normalized_action(request, "submit")
       match (transport.submit)(action) {
-        Ok(observation) =>
-          Ok(agent_goal_execution_result(request, action, observation))
+        Ok(observation) => Ok(agent_goal_execution_result(action, observation))
         Err(error) => Err(error)
       }
     },
@@ -505,7 +503,7 @@ pub fn moonclaw_agent_goal_executor(
       let action = agent_goal_normalized_action(request, "reconcile")
       match (transport.reconcile)(action) {
         Ok(observation) => {
-          let result = agent_goal_execution_result(request, action, observation)
+          let result = agent_goal_execution_result(action, observation)
           Ok({ status: result.status, result: Some(result), error_kind: "" })
         }
         Err(error) => Err(error)
@@ -515,7 +513,7 @@ pub fn moonclaw_agent_goal_executor(
       let action = agent_goal_normalized_action(request, "cancel")
       match (transport.cancel)(action) {
         Ok(observation) => {
-          let result = agent_goal_execution_result(request, action, observation)
+          let result = agent_goal_execution_result(action, observation)
           Ok({ status: result.status, result: Some(result), error_kind: "" })
         }
         Err(error) => Err(error)

@@ -100,11 +100,11 @@ fn mooncode_journal_record_for_append(
     recorded_at~,
     payload~,
   ) catch {
-    MoonCodeGoalRuntimeStoreError::CorruptStore(message) =>
+    CorruptStore(message) =>
       raise InvalidJournal(
         "MoonCode journal record `\{record_id}` is invalid: \{message}",
       )
-    MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
+    IdentityConflict(_, _, _) =>
       raise InvalidJournal(
         "MoonCode journal record `\{record_id}` has an unexpected identity conflict",
       )
@@ -200,8 +200,8 @@ async fn[T] mooncode_session_journal_transaction(
     path,
     mode=ReadWrite,
     append=false,
-    create=0o644,
-    truncate=false,
+    create_mode=OpenOrCreate,
+    permission=0o644,
   )
   defer file.close()
   file.lock(Exclusive)
@@ -317,8 +317,8 @@ async fn mooncode_append_session_journal_once_locked(
     path,
     mode=ReadWrite,
     append=false,
-    create=0o644,
-    truncate=false,
+    create_mode=OpenOrCreate,
+    permission=0o644,
   )
   defer file.close()
   file.lock(Exclusive)
@@ -408,7 +408,7 @@ async fn mooncode_parse_journal_file(
 ) -> Array[Json] {
   let records : Array[Json] = []
   let mut cursor = MoonCodeJournalSequence::zero()
-  mooncode_journal_read_lines(file, async fn(line) {
+  mooncode_journal_read_lines(file, fn(line) raise {
     let (record, next) = mooncode_journal_stream_record(line, cursor) catch {
       InvalidJournal(message) =>
         raise InvalidJournal(
@@ -477,9 +477,8 @@ fn mooncode_journal_sequence_checked(
   context : String,
 ) -> MoonCodeJournalSequence raise MoonCodeJournalError {
   mooncode_journal_sequence_from_record(record) catch {
-    MoonCodeGoalRuntimeStoreError::CorruptStore(message) =>
-      raise InvalidJournal("\{context}: \{message}")
-    MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
+    CorruptStore(message) => raise InvalidJournal("\{context}: \{message}")
+    IdentityConflict(_, _, _) =>
       raise InvalidJournal("\{context}: unexpected journal identity conflict")
   }
 }
@@ -580,16 +579,6 @@ fn mooncode_journal_sequence(record : Json) -> Int raise MoonCodeJournalError {
     }
     _ => raise InvalidJournal("MoonCode journal record has invalid sequence")
   }
-}
-
-///|
-fn mooncode_journal_checked_next_sequence(
-  last_sequence : Int,
-) -> Int raise MoonCodeJournalError {
-  if last_sequence == 2147483647 {
-    raise InvalidJournal("MoonCode journal sequence is exhausted")
-  }
-  last_sequence + 1
 }
 
 ///|
@@ -777,8 +766,8 @@ async fn mooncode_write_locked_file(path : String, content : String) -> Unit {
     path,
     mode=ReadWrite,
     append=false,
-    create=0o644,
-    truncate=false,
+    create_mode=OpenOrCreate,
+    permission=0o644,
   )
   defer file.close()
   file.lock(Exclusive)
@@ -804,4 +793,15 @@ fn mooncode_session_journal_path_by_safe_id(
 ) -> String {
   mooncode_session_dir_by_safe_id(book_root, safe_session_id, archived~)
   |> @pathx.join("journal.jsonl")
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_journal_checked_next_sequence(
+  last_sequence : Int,
+) -> Int raise MoonCodeJournalError {
+  if last_sequence == 2147483647 {
+    raise InvalidJournal("MoonCode journal sequence is exhausted")
+  }
+  last_sequence + 1
 }

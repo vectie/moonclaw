@@ -52,7 +52,7 @@ async test "MoonDesk diagnostics reaches MoonFort with an enforced receipt" {
     mooncode_with_fake_moonfort(async fn(base_config, capture_path) {
       let executor_config = {
         ..base_config,
-        enforcement_requirement: @execution_sandbox.RequireEnforced,
+        enforcement_requirement: RequireEnforced,
       }
       let route_config = @moondesk_sandbox_config.Config::{
         protocol_version: 1,

@@ -48,7 +48,7 @@ async test "extract_text_from_pdf uses pdftotext output when available" {
           @fsx.write_to_file(extracted_path, "converted text") catch {
             _ => ()
           }
-          Ok(PdfOcrProcess::{ status: 0 })
+          Ok({ status: 0 })
         } else {
           Err("unexpected command")
         }
@@ -78,7 +78,7 @@ async test "extract_text_from_pdf uses pypdf when pdftotext is unavailable" {
           @fsx.write_to_file(extracted_path, "converted with pypdf") catch {
             _ => ()
           }
-          Ok(PdfOcrProcess::{ status: 0 })
+          Ok({ status: 0 })
         } else {
           Err("unexpected command")
         }

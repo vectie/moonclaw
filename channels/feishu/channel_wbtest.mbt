@@ -1265,3 +1265,13 @@ async test "Feishu websocket runtime refreshes resolved endpoint on reconnect" {
     group.return_immediately(())
   })
 }
+///|
+extend FeishuChannel with @channel.Channel::{configure, start}
+
+///|
+extend FeishuChannel with @channel.ChannelExtension::{
+  handle_webhook,
+  handle_websocket,
+  on_register,
+  on_unregister,
+}

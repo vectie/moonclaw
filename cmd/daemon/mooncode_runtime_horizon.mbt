@@ -283,7 +283,7 @@ fn mooncode_runtime_horizon_attach_checkpoint(
   }
   let mut latest = Json::object({})
   let retained_evidence : Array[Json] = []
-  let seen_commits : Map[String, Bool] = {}
+  let seen_commits : Map[String, Bool] = Map([])
   let mut horizon_started = false
   for event in events {
     if mooncode_json_string(event, "tool", default="") == "checkpoint" {
@@ -608,7 +608,7 @@ fn mooncode_runtime_horizon_checkpoint_error(
   }
   let mut active_count = 0
   let mut pending_count = 0
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for milestone in supplied {
     let id = mooncode_json_string(milestone, "id", default="")
     let status = mooncode_json_string(milestone, "status", default="")

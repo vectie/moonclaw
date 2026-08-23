@@ -38,7 +38,7 @@ pub impl ToJson for ChatCompletion with fn to_json(self : ChatCompletion) -> Jso
     json["system_fingerprint"] = Json::string(fingerprint)
   }
   if self.service_tier is Some(service_tier) {
-    json["service_tier"] = service_tier.to_json()
+    json["service_tier"] = ToJson::to_json(service_tier)
   }
   Json::object(json)
 }

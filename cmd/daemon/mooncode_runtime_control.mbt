@@ -95,7 +95,7 @@ fn mooncode_runtime_control_state_from_logs(
 fn mooncode_latest_receipts_by_command_id(
   receipts : Array[Json],
 ) -> Map[String, Json] {
-  let latest : Map[String, Json] = {}
+  let latest : Map[String, Json] = Map([])
   for receipt in receipts {
     let command_id = mooncode_json_string(receipt, "command_id", default="")
     if command_id != "" {

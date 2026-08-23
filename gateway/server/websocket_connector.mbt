@@ -39,7 +39,7 @@ fn gateway_websocket_connector() -> @channel.WebSocketClientConnector {
         headers=websocket_request_headers(request),
       ),
     ) catch {
-      error => return Err("\{to_repr(error)}")
+      error => return Err("\{Repr(error)}")
     }
     let mut message_handler : (async (Bytes) -> Unit)? = None
     let mut close_handler : (() -> Unit)? = None

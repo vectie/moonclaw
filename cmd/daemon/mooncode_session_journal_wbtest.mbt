@@ -32,25 +32,31 @@ test "goal journal record identity is timestamp independent" {
 
 ///|
 test "goal journal record identity rejects blank event_id" {
-  let result = try? mooncode_journal_record_id(mooncode_journal_goal_event(), {
-    "kind": "mooncode.goal.changed",
-    "event_id": "",
-    "timestamp": 1,
-  })
-  guard result is Err(InvalidJournal(_)) else {
-    fail("expected InvalidJournal")
+  try
+    mooncode_journal_record_id(mooncode_journal_goal_event(), {
+      "kind": "mooncode.goal.changed",
+      "event_id": "",
+      "timestamp": 1,
+    })
+  catch {
+    InvalidJournal(_) => ()
+  } noraise {
+    _ => fail("expected InvalidJournal")
   }
 }
 
 ///|
 test "goal journal record identity rejects padded event_id" {
-  let result = try? mooncode_journal_record_id(mooncode_journal_goal_event(), {
-    "kind": "mooncode.goal.changed",
-    "event_id": " padded ",
-    "timestamp": 1,
-  })
-  guard result is Err(InvalidJournal(_)) else {
-    fail("expected InvalidJournal")
+  try
+    mooncode_journal_record_id(mooncode_journal_goal_event(), {
+      "kind": "mooncode.goal.changed",
+      "event_id": " padded ",
+      "timestamp": 1,
+    })
+  catch {
+    InvalidJournal(_) => ()
+  } noraise {
+    _ => fail("expected InvalidJournal")
   }
 }
 

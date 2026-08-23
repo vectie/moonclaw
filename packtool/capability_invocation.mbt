@@ -6,7 +6,7 @@ priv struct CapabilityCatalogProductV1 {
   product_id : String
   pack_id : String
   pack_version : String
-} derive(Debug, FromJson)
+} derive(FromJson)
 
 ///|
 priv struct CapabilityCatalogOperationV1 {
@@ -29,15 +29,18 @@ priv struct CapabilityCatalogOperationV1 {
   health_valid_until : String
   health_evidence_ref : String
   health_evidence_digest : String
-} derive(Debug, FromJson)
+} derive(FromJson)
 
 ///|
+// Decoded for wire compatibility; producer diagnostics are not interpreted at
+// the invocation boundary.
+#warnings("-unused_field")
 priv struct CapabilityCatalogIssueV1 {
   code : String
   subject : String
   detail : String
   suggestions : Array[String]
-} derive(Debug, FromJson)
+} derive(FromJson)
 
 ///|
 priv struct CapabilityCatalogWireV1 {
@@ -48,7 +51,7 @@ priv struct CapabilityCatalogWireV1 {
   products : Array[CapabilityCatalogProductV1]
   operations : Array[CapabilityCatalogOperationV1]
   issues : Array[CapabilityCatalogIssueV1]
-} derive(Debug, FromJson)
+} derive(FromJson)
 
 ///|
 /// MoonFlow's durable adapter request, retained here as a wire-compatible
@@ -102,8 +105,6 @@ pub(all) struct CapabilityInvocationPolicyV1 {
 
 ///|
 priv struct InstalledPackCapabilityV1 {
-  pointer : @installer.ActivePackPointer
-  receipt : @installer.InstallationReceipt
   manifest : @pack.MoonPackManifest
   operation : CapabilityCatalogOperationV1
   binding : ToolBinding
@@ -351,6 +352,8 @@ async fn declared_artifact_digest(
 ///|
 fn decode_capability_catalog(value : Json) -> CapabilityCatalogWireV1 raise {
   let catalog : CapabilityCatalogWireV1 = @json.from_json(value)
+  ignore(catalog.conformant)
+  ignore(catalog.issues)
   if catalog.contract_id != "moonflow.capability-catalog.v1" {
     fail("unsupported capability catalog contract")
   }
@@ -465,9 +468,8 @@ async fn load_installed_capability_v1(
     fail("capability policy fields drift from the active pack manifest")
   }
   verify_health_evidence(workspace, operation)
+  ignore(installed_pack_receipt(pointer))
   {
-    pointer,
-    receipt: installed_pack_receipt(pointer),
     manifest,
     operation,
     binding: {
@@ -630,7 +632,12 @@ pub async fn inspect_installed_capability_v1(
   if !@fsx.exists_as_file(receipt_path) {
     return None
   }
-  let lock_file = @fs.open(receipt_path + ".lock", mode=WriteOnly, create=0o600)
+  let lock_file = @fs.open(
+    receipt_path + ".lock",
+    mode=WriteOnly,
+    create_mode=OpenOrCreate,
+    permission=0o600,
+  )
   defer lock_file.close()
   @fsx.lock_file(lock_file)
   guard existing_capability_receipt(receipt_path) is Some(receipt) else {
@@ -968,7 +975,12 @@ pub async fn execute_installed_capability_v1(
   let receipt_path = @pathx.join(workspace, receipt_ref)
   let receipt_dir = @pathx.dirname(receipt_path).to_owned()
   @fsx.make_directory(receipt_dir, recursive=true, exists_ok=true)
-  let lock_file = @fs.open(receipt_path + ".lock", mode=WriteOnly, create=0o600)
+  let lock_file = @fs.open(
+    receipt_path + ".lock",
+    mode=WriteOnly,
+    create_mode=OpenOrCreate,
+    permission=0o600,
+  )
   defer lock_file.close()
   @fsx.lock_file(lock_file)
   let execution_request = capability_execution_request(
@@ -1074,7 +1086,12 @@ pub async fn cancel_installed_capability_v1(
   }
   let receipt_ref = capability_receipt_ref(invocation.request.idempotency_key)
   let receipt_path = @pathx.join(workspace, receipt_ref)
-  let lock_file = @fs.open(receipt_path + ".lock", mode=WriteOnly, create=0o600)
+  let lock_file = @fs.open(
+    receipt_path + ".lock",
+    mode=WriteOnly,
+    create_mode=OpenOrCreate,
+    permission=0o600,
+  )
   defer lock_file.close()
   @fsx.lock_file(lock_file)
   guard existing_capability_receipt(receipt_path) is Some(existing) else {

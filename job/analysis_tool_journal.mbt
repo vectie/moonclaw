@@ -161,7 +161,7 @@ fn analysis_execution_metadata_with_tool_journal(
 fn compact_analysis_tool_journal_entry(entry : Json) -> Json {
   match entry {
     Object(obj) => {
-      let compact : Map[String, Json] = {}
+      let compact : Map[String, Json] = Map([])
       for key in ["phase", "tool", "call_id", "ok", "preview", "arguments"] {
         match obj.get(key) {
           Some(value) => compact.set(key, value)
@@ -182,7 +182,7 @@ fn compact_analysis_tool_journal_entry(entry : Json) -> Json {
 pub fn compact_analysis_result_metadata(metadata : Json) -> Json {
   match metadata {
     Object(obj) => {
-      let compact : Map[String, Json] = {}
+      let compact : Map[String, Json] = Map([])
       for key in obj.keys() {
         match obj.get(key) {
           Some(value) =>

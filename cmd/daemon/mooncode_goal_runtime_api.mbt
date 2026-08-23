@@ -108,7 +108,7 @@ fn mooncode_goal_runtime_state_from_scan(
       )
     }
     match value.event {
-      @mooncode_core.PlannerDecision(_, @mooncode_core.Achieved(_, evidence)) => {
+      PlannerDecision(_, Achieved(_, evidence)) => {
         if evidence.length() != criterion_ids.length() {
           mooncode_goal_runtime_store_corrupt(
             "achieved evidence does not cover every genesis criterion",
@@ -137,6 +137,7 @@ fn mooncode_goal_runtime_state_from_scan(
 }
 
 ///|
+#warnings("-unused_value")
 fn mooncode_goal_runtime_status_response(
   scan : MoonCodeGoalRuntimeScan,
   status_code? : Int = 200,

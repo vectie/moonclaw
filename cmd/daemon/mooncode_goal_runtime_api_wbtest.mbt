@@ -51,7 +51,7 @@ test "goal-runtime request is strict and rejects aggregate policy" {
       ignore(mooncode_goal_runtime_parse_put_request(body, "session"))
       false
     } catch {
-      MoonCodeGoalRuntimeCodecError::Invalid(_) => true
+      Invalid(_) => true
     }
     assert_true(rejected)
   }
@@ -314,9 +314,9 @@ test "runtime status rejects achieved evidence missing a genesis criterion" {
   let achieved = new_mooncode_goal_runtime_stored_event(
     "session-你好",
     "goal-1",
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "event-achieved",
-      @mooncode_core.Achieved("done", [
+      Achieved("done", [
         { criterion: "criterion-1", evidence_refs: ["proof-1"] },
       ]),
     ),
@@ -346,13 +346,13 @@ test "runtime status rejects a unique event after terminal settlement" {
   let cancelled = new_mooncode_goal_runtime_stored_event(
     "session-你好",
     "goal-1",
-    @mooncode_core.Cancelled("event-cancelled", "operator cancelled"),
+    Cancelled("event-cancelled", "operator cancelled"),
     2L,
   )
   let after = new_mooncode_goal_runtime_stored_event(
     "session-你好",
     "goal-1",
-    @mooncode_core.PhaseChanged("event-after", @mooncode_core.Running),
+    PhaseChanged("event-after", Running),
     3L,
   )
   assert_true(

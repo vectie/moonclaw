@@ -36,6 +36,7 @@ fn mooncode_goal_authority_is_dual(
 }
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_goal_authority_records_locked(
   book_root : String,
   session_id : String,

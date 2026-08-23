@@ -77,9 +77,8 @@ fn mooncode_journal_stream_record(
     raise InvalidJournal("non-canonical journal record")
   }
   let envelope = mooncode_journal_validate_envelope(parsed) catch {
-    MoonCodeGoalRuntimeStoreError::CorruptStore(message) =>
-      raise InvalidJournal(message)
-    MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
+    CorruptStore(message) => raise InvalidJournal(message)
+    IdentityConflict(_, _, _) =>
       raise InvalidJournal("unexpected journal identity conflict")
   }
   let next = cursor.next()
@@ -123,10 +122,11 @@ priv struct MoonCodeJournalAppendState {
 }
 
 ///|
-let mooncode_journal_append_states : Map[String, MoonCodeJournalAppendState] = {}
+let mooncode_journal_append_states : Map[String, MoonCodeJournalAppendState] = Map([],
+)
 
 ///|
-let mooncode_journal_append_scan_counts : Map[String, Int] = {}
+let mooncode_journal_append_scan_counts : Map[String, Int] = Map([])
 
 ///|
 async fn mooncode_journal_boundary_fingerprint(
@@ -166,16 +166,6 @@ fn mooncode_journal_identity_key(
 }
 
 ///|
-fn mooncode_journal_append_cache_clear() -> Unit {
-  mooncode_journal_append_states.clear()
-}
-
-///|
-fn mooncode_journal_append_scan_count_reset(path : String) -> Unit {
-  mooncode_journal_append_scan_counts[path] = 0
-}
-
-///|
 fn mooncode_journal_append_scan_count_get(path : String) -> Int {
   mooncode_journal_append_scan_counts.get_or_default(path, 0)
 }
@@ -206,8 +196,8 @@ async fn mooncode_journal_append_state_from_records(
   records : Array[Json],
   cursor : MoonCodeJournalSequence,
 ) -> MoonCodeJournalAppendState {
-  let identities : Map[String, Bool] = {}
-  let command_client_turn_ids : Map[String, String] = {}
+  let identities : Map[String, Bool] = Map([])
+  let command_client_turn_ids : Map[String, String] = Map([])
   for record in records {
     let record_kind = mooncode_json_string(record, "record_kind", default="")
     let record_id = mooncode_json_string(record, "record_id", default="")
@@ -263,9 +253,9 @@ async fn mooncode_journal_scan_append_state(
   expected_session_id : String,
 ) -> MoonCodeJournalAppendState {
   let mut cursor = MoonCodeJournalSequence::zero()
-  let identities : Map[String, Bool] = {}
-  let command_client_turn_ids : Map[String, String] = {}
-  mooncode_journal_read_lines(file, async fn(line) {
+  let identities : Map[String, Bool] = Map([])
+  let command_client_turn_ids : Map[String, String] = Map([])
+  mooncode_journal_read_lines(file, fn(line) raise {
     let (record, next) = mooncode_journal_stream_record(line, cursor)
     if mooncode_json_string(record, "session_id", default="") !=
       expected_session_id {
@@ -314,6 +304,19 @@ async fn mooncode_journal_scan_append_state(
 }
 
 ///|
+#warnings("-unused_value")
+fn mooncode_journal_append_cache_clear() -> Unit {
+  mooncode_journal_append_states.clear()
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_journal_append_scan_count_reset(path : String) -> Unit {
+  mooncode_journal_append_scan_counts[path] = 0
+}
+
+///|
+#warnings("-unused_value")
 async fn mooncode_journal_scan_for_append(
   file : @fs.File,
   expected_session_id : String,
@@ -324,7 +327,7 @@ async fn mooncode_journal_scan_for_append(
   let mut cursor = MoonCodeJournalSequence::zero()
   let mut duplicate_found = false
   let mut inherited_client_turn_id = ""
-  mooncode_journal_read_lines(file, async fn(line) {
+  mooncode_journal_read_lines(file, fn(line) raise {
     let (record, next) = mooncode_journal_stream_record(line, cursor)
     let current_session_id = mooncode_json_string(
       record,
@@ -369,12 +372,13 @@ async fn mooncode_journal_scan_for_append(
 }
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_journal_stream_file(
   file : @fs.File,
   cursor : MoonCodeJournalSequence,
 ) -> MoonCodeJournalSequence {
   let mut current = cursor
-  mooncode_journal_read_lines(file, async fn(line) {
+  mooncode_journal_read_lines(file, fn(line) raise {
     let (_, next) = mooncode_journal_stream_record(line, current)
     current = next
   })

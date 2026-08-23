@@ -328,11 +328,11 @@ fn mooncode_snapshot_journal_sequence(
         )
       }
       mooncode_journal_cursor_from_json(value) catch {
-        MoonCodeGoalRuntimeStoreError::CorruptStore(message) =>
+        CorruptStore(message) =>
           raise InvalidJournal(
             "Invalid session snapshot journal_sequence: \{message}",
           )
-        MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) =>
+        IdentityConflict(_, _, _) =>
           raise InvalidJournal(
             "Invalid session snapshot journal_sequence: unexpected identity conflict",
           )
@@ -431,42 +431,6 @@ async fn mooncode_session_listing_record_from_parts_locked(
       "durable"
     },
   }
-}
-
-///|
-async fn mooncode_session_listing_record_from_parts(
-  session_id : String,
-  book_root : String,
-  live_binding : MoonCodeSessionBinding?,
-  snapshot : Json,
-  source~ : String,
-  include_log_counts? : Bool = true,
-  archived? : Bool = false,
-) -> Json {
-  if book_root == "" {
-    return mooncode_session_listing_record_from_parts_locked(
-      session_id,
-      book_root,
-      live_binding,
-      snapshot,
-      source~,
-      include_log_counts~,
-      archived~,
-    )
-  }
-  let session_lock = mooncode_open_session_lock(book_root, session_id)
-  defer session_lock.close()
-  session_lock.lock(Shared)
-  defer session_lock.unlock()
-  mooncode_session_listing_record_from_parts_locked(
-    session_id,
-    book_root,
-    live_binding,
-    snapshot,
-    source~,
-    include_log_counts~,
-    archived~,
-  )
 }
 
 ///|
@@ -671,36 +635,6 @@ async fn mooncode_session_record_from_parts_locked(
 }
 
 ///|
-async fn mooncode_session_record_from_parts(
-  session_id : String,
-  book_root : String,
-  live_binding : MoonCodeSessionBinding?,
-  snapshot : Json?,
-  source~ : String,
-) -> Json {
-  if book_root == "" {
-    return mooncode_session_record_from_parts_locked(
-      session_id,
-      book_root,
-      live_binding,
-      snapshot,
-      source~,
-    )
-  }
-  let session_lock = mooncode_open_session_lock(book_root, session_id)
-  defer session_lock.close()
-  session_lock.lock(Shared)
-  defer session_lock.unlock()
-  mooncode_session_record_from_parts_locked(
-    session_id,
-    book_root,
-    live_binding,
-    snapshot,
-    source~,
-  )
-}
-
-///|
 fn mooncode_session_snapshot(
   binding : MoonCodeSessionBinding,
   journal_sequence? : MoonCodeJournalSequence = MoonCodeJournalSequence::zero(),
@@ -777,7 +711,7 @@ async fn mooncode_open_session_lock(
 ) -> @fs.File {
   let path = mooncode_session_lock_path(book_root, session_id)
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-  @fs.open(path, mode=ReadWrite, create=0o644, truncate=false)
+  @fs.open(path, mode=ReadWrite, create_mode=OpenOrCreate, permission=0o644)
 }
 
 ///|
@@ -801,7 +735,7 @@ async fn mooncode_open_session_lifecycle_gate(
 ) -> @fs.File {
   let path = mooncode_session_lifecycle_gate_path(book_root, session_id)
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-  @fs.open(path, mode=ReadWrite, create=0o644, truncate=false)
+  @fs.open(path, mode=ReadWrite, create_mode=OpenOrCreate, permission=0o644)
 }
 
 ///|
@@ -826,7 +760,7 @@ async fn mooncode_open_session_execution_lease(
 ) -> @fs.File {
   let path = mooncode_session_execution_lease_path(book_root, session_id)
   @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-  @fs.open(path, mode=ReadWrite, create=0o644, truncate=false)
+  @fs.open(path, mode=ReadWrite, create_mode=OpenOrCreate, permission=0o644)
 }
 
 ///|
@@ -953,8 +887,8 @@ async fn mooncode_write_session_state_locked(
     marker,
     mode=ReadWrite,
     append=false,
-    create=0o644,
-    truncate=false,
+    create_mode=OpenOrCreate,
+    permission=0o644,
   )
   defer file.close()
   file.lock(Exclusive)
@@ -1042,4 +976,72 @@ fn mooncode_safe_session_id(session_id : String) -> String {
   } else {
     safe
   }
+}
+
+///|
+#warnings("-unused_value")
+async fn mooncode_session_listing_record_from_parts(
+  session_id : String,
+  book_root : String,
+  live_binding : MoonCodeSessionBinding?,
+  snapshot : Json,
+  source~ : String,
+  include_log_counts? : Bool = true,
+  archived? : Bool = false,
+) -> Json {
+  if book_root == "" {
+    return mooncode_session_listing_record_from_parts_locked(
+      session_id,
+      book_root,
+      live_binding,
+      snapshot,
+      source~,
+      include_log_counts~,
+      archived~,
+    )
+  }
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Shared)
+  defer session_lock.unlock()
+  mooncode_session_listing_record_from_parts_locked(
+    session_id,
+    book_root,
+    live_binding,
+    snapshot,
+    source~,
+    include_log_counts~,
+    archived~,
+  )
+}
+
+///|
+#warnings("-unused_value")
+async fn mooncode_session_record_from_parts(
+  session_id : String,
+  book_root : String,
+  live_binding : MoonCodeSessionBinding?,
+  snapshot : Json?,
+  source~ : String,
+) -> Json {
+  if book_root == "" {
+    return mooncode_session_record_from_parts_locked(
+      session_id,
+      book_root,
+      live_binding,
+      snapshot,
+      source~,
+    )
+  }
+  let session_lock = mooncode_open_session_lock(book_root, session_id)
+  defer session_lock.close()
+  session_lock.lock(Shared)
+  defer session_lock.unlock()
+  mooncode_session_record_from_parts_locked(
+    session_id,
+    book_root,
+    live_binding,
+    snapshot,
+    source~,
+  )
 }

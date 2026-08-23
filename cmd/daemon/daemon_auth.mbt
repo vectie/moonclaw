@@ -40,7 +40,7 @@ async fn Daemon::get_auth_status(
   let status : AllAuthStatus = { codex: codex_status, copilot: copilot_status }
   w.header().set("Content-Type", "application/json")
   w.write_header(200)
-  w.write(status.to_json().stringify())
+  w.write(@json.to_json(status).stringify())
 }
 
 ///|

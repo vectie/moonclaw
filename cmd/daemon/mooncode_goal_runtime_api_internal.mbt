@@ -95,7 +95,7 @@ async fn mooncode_goal_runtime_api_put_internal(
   epoch_seconds : Int64,
 ) -> MoonCodeGoalRuntimeApiResponse {
   let request = mooncode_goal_runtime_parse_put_request(body, session_id) catch {
-    MoonCodeGoalRuntimeCodecError::Invalid(_) =>
+    Invalid(_) =>
       return mooncode_goal_runtime_api_error(
         400, "invalid_goal_runtime_request",
       )
@@ -126,7 +126,7 @@ async fn mooncode_goal_runtime_api_put_internal(
     request.criteria,
     epoch_seconds,
   ) catch {
-    MoonCodeGoalRuntimeCodecError::Invalid(_) =>
+    Invalid(_) =>
       return mooncode_goal_runtime_api_error(
         400, "invalid_goal_runtime_request",
       )

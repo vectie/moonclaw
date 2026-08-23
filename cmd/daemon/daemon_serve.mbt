@@ -66,7 +66,7 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
         let route_path = r.path.split("?").head().unwrap_or(r.path)
         let paths = route_path.split("/").collect()
         logger.info("Received request: \{r.method_} \{r.path}")
-        logger.info("Handling request paths: \{to_repr(paths)}")
+        logger.info("Handling request paths: \{Repr(paths)}")
         try {
           if moondesk_control_route_requires_auth(r.method_, paths) {
             self.require_moondesk_control_auth(r, w)
@@ -199,7 +199,7 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
             (Post, ["", "v1", "shutdown"]) => {
               w.header().set("Content-Type", "application/json")
               w.write_header(200)
-              let response : Json = {}
+              let response : Json = Json::empty_object()
               w.write(response.stringify())
               w.flush()
               // We need to close the writer before shutting down to ensure the

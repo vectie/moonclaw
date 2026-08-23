@@ -2,6 +2,7 @@ import {
   "vectie/moonclaw/internal/tiktoken",
   "vectie/moonclaw/internal/openai",
   "vectie/moonclaw/internal/pino",
+  "moonbitlang/core/json",
 }
 
 supported_targets = "native"

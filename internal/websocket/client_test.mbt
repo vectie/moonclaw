@@ -1,7 +1,7 @@
 ///|
 #cfg(target="native")
 async fn websocket_echo_server(addr : @socket.Addr) -> Unit {
-  let server = @http.Server::new(addr)
+  let server = @http.Server(addr)
   server.run_forever((request, _, conn) => {
     guard request.path is "/ws" else { conn.send_response(404, "NotFound") }
     let ws = @asyncws.from_http_server(request, conn)

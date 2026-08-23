@@ -60,7 +60,7 @@ test "promotion requires trusted MoonFort echo of every reviewed binding" {
 
 ///|
 test "promotion parser requires exactly one safe mapping" {
-  let base = moondesk_test_promotion_request().to_json()
+  let base = @json.to_json(moondesk_test_promotion_request())
   guard base is Object(fields) else { fail("expected object") }
   fields["items"] = [
     { "source_relative": "../escape", "destination_relative": "safe/a" },
@@ -79,7 +79,7 @@ test "promotion parser requires exactly one safe mapping" {
   } noraise {
     _ => fail("multiple promotion items were accepted")
   }
-  fields["items"] = [].to_json()
+  fields["items"] = Json::array([])
   try moondesk_promotion_parse_request(base) catch {
     _ => ()
   } noraise {

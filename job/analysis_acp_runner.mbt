@@ -32,7 +32,7 @@ fn analysis_acp_message(request : AnalysisRequest) -> String {
 
 ///|
 fn analysis_acp_linkage_metadata(request : AnalysisRequest) -> Json {
-  let fields : Map[String, Json] = {}
+  let fields : Map[String, Json] = Map([])
   fields["job_id"] = request.job_id.to_json()
   fields["job_run_id"] = request.run_id.to_json()
   fields["job_step_id"] = request.step_id.to_json()
@@ -106,6 +106,7 @@ fn current_analysis_time_ms() -> Int {
 ///|
 async fn run_acp_analysis_runner(
   request : AnalysisRequest,
+  fixture_sandbox_config? : @execution_sandbox.SandboxExecutorConfig? = None,
 ) -> Result[AnalysisExecution, String] {
   let target_id = match request.execution_target {
     Some(target_id) if !target_id.trim().to_owned().is_blank() =>
@@ -161,7 +162,30 @@ async fn run_acp_analysis_runner(
     ),
   )
   ignore(runtime.set_session_status(session.id, "running", now_ms))
-  let result = match @acp.execute_launch_plan(launch, run_request) {
+  let execution_result = match fixture_sandbox_config {
+    Some(config) => {
+      let command = match @acp.prepare_launch_command(launch, run_request) {
+        Ok(command) => command
+        Err(error) => return Err(error)
+      }
+      let workspace = launch.workspace.unwrap_or(launch.cwd)
+      let approved_plan = @execution_sandbox.make_exec_plan(
+        config,
+        workspace,
+        launch.cwd,
+        command.command,
+        command.args,
+        120_000,
+      ) catch {
+        error => return Err("ACP fixture approval plan failed: \{error}")
+      }
+      @acp.execute_launch_plan_with_fixture_sandbox(
+        config, approved_plan, launch, run_request,
+      )
+    }
+    None => @acp.execute_launch_plan(launch, run_request)
+  }
+  let result = match execution_result {
     Ok(result) => result
     Err(error) => {
       let failed_at = current_analysis_time_ms()

@@ -110,17 +110,14 @@ async test "mooncode goal supervisor lifecycle preflight preserves journal bytes
       1,
       "lease-1",
     )
-    mooncode_session_journal_transaction(directory, "session", fn(_) raise {
+    mooncode_session_journal_transaction(directory, "session", fn(_) {
       Append(mooncode_journal_goal_event(), renewal, ())
     })
     let path = mooncode_session_journal_path(directory, "session")
     let before = @fsx.read_file(path)
-    let event = goal_store_replay_requirement_event(
-      126,
-      "r1",
-      @mooncode_core.Proven,
-      ["evidence:r1"],
-    )
+    let event = goal_store_replay_requirement_event(126, "r1", Proven, [
+      "evidence:r1",
+    ])
     let mut rejected = false
     ignore(
       mooncode_apply_goal_event(
@@ -166,7 +163,7 @@ async test "mooncode goal supervisor lease conflicts preserve journal bytes" {
       21,
       1,
     )
-    mooncode_session_journal_transaction(directory, "session", fn(_) raise {
+    mooncode_session_journal_transaction(directory, "session", fn(_) {
       Append(mooncode_journal_goal_event(), lease, ())
     })
     let path = mooncode_session_journal_path(directory, "session")
@@ -177,13 +174,7 @@ async test "mooncode goal supervisor lease conflicts preserve journal bytes" {
         "session",
         "goal",
         @mooncode_core.goal_event_to_json(
-          @mooncode_core.RequirementUpdated(
-            "lease-1",
-            12,
-            "r1",
-            @mooncode_core.Proven,
-            ["evidence:r1"],
-          ),
+          RequirementUpdated("lease-1", 12, "r1", Proven, ["evidence:r1"]),
         ),
       ) {
       GoalMutationConflict(_) => ()

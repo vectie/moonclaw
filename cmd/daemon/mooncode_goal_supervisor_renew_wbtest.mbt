@@ -143,7 +143,7 @@ async test "mooncode_goal_supervisor_renew: ordinary goal event id conflicts wit
         "ordinary-event",
         12,
         "r1",
-        @mooncode_core.Proven,
+        Proven,
         ["evidence:r1"],
       )
       match

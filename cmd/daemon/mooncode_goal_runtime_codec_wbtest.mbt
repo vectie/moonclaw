@@ -31,13 +31,13 @@ test "decision decoder rejects malformed and semantically invalid variants" {
     "{\"type\":\"blocked\",\"reason\":{\"code\":\"external\",\"detail\":\"wait\"},\"attempted_alternatives\":[\"a\"],\"required_event\":1}",
     "{\"type\":\"blocked\",\"reason\":{\"code\":\"external\",\"detail\":\"wait\"},\"attempted_alternatives\":[1],\"required_event\":null}",
     "{\"type\":\"achieved\",\"summary\":1,\"evidence\":[],\"extra\":true}", "{\"type\":\"blocked\",\"reason\":{\"code\":\"external\",\"detail\":\"wait\"},\"attempted_alternatives\":[\"a\"]}",
-  ].map(fn(text) { @json.parse(text) })
+  ].map(text => @json.parse(text))
   for value in rejected {
     let did_reject = try {
       ignore(mooncode_goal_runtime_decode_decision(value))
       false
     } catch {
-      MoonCodeGoalRuntimeCodecError::Invalid(_) => true
+      Invalid(_) => true
     }
     assert_true(did_reject)
   }
@@ -78,43 +78,28 @@ test "event decoder roundtrips every canonical v1 variant" {
     detail: "等待 \"批准\" \\ 路径",
   }
   let events : Array[@mooncode_core.GoalRuntimeEvent] = [
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "event-continue",
-      @mooncode_core.Continue([operation], "继续-\"\\", "理由-世界"),
+      Continue([operation], "继续-\"\\", "理由-世界"),
     ),
-    @mooncode_core.PlannerDecision(
-      "event-achieved",
-      @mooncode_core.Achieved("完成-\"\\", [evidence]),
-    ),
-    @mooncode_core.PlannerDecision(
+    PlannerDecision("event-achieved", Achieved("完成-\"\\", [evidence])),
+    PlannerDecision(
       "event-blocked-some",
-      @mooncode_core.Blocked(reason, ["替代-\"\\"], Some("批准-\"\\")),
+      Blocked(reason, ["替代-\"\\"], Some("批准-\"\\")),
     ),
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "event-blocked-none",
-      @mooncode_core.Blocked(reason, ["另一路径"], None),
+      Blocked(reason, ["另一路径"], None),
     ),
-    @mooncode_core.OperationAccepted("event-operation", "操作编号-\"\\"),
-    @mooncode_core.CheckpointAccepted("event-checkpoint", "检查点-\"\\"),
-    @mooncode_core.PhaseChanged("event-queued", @mooncode_core.Queued),
-    @mooncode_core.PhaseChanged("event-running", @mooncode_core.Running),
-    @mooncode_core.PhaseChanged(
-      "event-waiting-approval",
-      @mooncode_core.WaitingApproval,
-    ),
-    @mooncode_core.PhaseChanged(
-      "event-retry-backoff",
-      @mooncode_core.RetryBackoff,
-    ),
-    @mooncode_core.PhaseChanged(
-      "event-paused-no-progress",
-      @mooncode_core.PausedNoProgress,
-    ),
-    @mooncode_core.PhaseChanged(
-      "event-paused-external",
-      @mooncode_core.PausedExternal,
-    ),
-    @mooncode_core.Cancelled("event-cancelled", "取消-\"\\世界"),
+    OperationAccepted("event-operation", "操作编号-\"\\"),
+    CheckpointAccepted("event-checkpoint", "检查点-\"\\"),
+    PhaseChanged("event-queued", Queued),
+    PhaseChanged("event-running", Running),
+    PhaseChanged("event-waiting-approval", WaitingApproval),
+    PhaseChanged("event-retry-backoff", RetryBackoff),
+    PhaseChanged("event-paused-no-progress", PausedNoProgress),
+    PhaseChanged("event-paused-external", PausedExternal),
+    Cancelled("event-cancelled", "取消-\"\\世界"),
   ]
   for i, event in events {
     let recorded_at = if i == events.length() - 1 {
@@ -133,7 +118,7 @@ test "event decoder roundtrips every canonical v1 variant" {
 ///|
 fn codec_assert_event_decode_rejects(text : String) -> Unit {
   ignore(decode_mooncode_goal_runtime_stored_event(text)) catch {
-    MoonCodeGoalRuntimeCodecError::Invalid(_) => return
+    Invalid(_) => return
   }
   abort("expected event decoder rejection")
 }
@@ -148,7 +133,7 @@ test "event decoder requires exact canonical encoder bytes" {
   }
   let event = @mooncode_core.PlannerDecision(
     "event-canonical",
-    @mooncode_core.Continue([operation], "progress", "reason"),
+    Continue([operation], "progress", "reason"),
   )
   let encoded = encode_mooncode_goal_runtime_stored_event(
     codec_test_event(event, 1L),
@@ -218,9 +203,9 @@ test "event decoder rejects schema constants digest and aggregate-bound injectio
   }
   let continue_encoded = encode_mooncode_goal_runtime_stored_event(
     codec_test_event(
-      @mooncode_core.PlannerDecision(
+      PlannerDecision(
         "event-schema",
-        @mooncode_core.Continue([continue_operation], "progress", "reason"),
+        Continue([continue_operation], "progress", "reason"),
       ),
       1L,
     ),
@@ -231,9 +216,9 @@ test "event decoder rejects schema constants digest and aggregate-bound injectio
   }
   let achieved_encoded = encode_mooncode_goal_runtime_stored_event(
     codec_test_event(
-      @mooncode_core.PlannerDecision(
+      PlannerDecision(
         "event-schema-achieved",
-        @mooncode_core.Achieved("done", [achieved_evidence]),
+        Achieved("done", [achieved_evidence]),
       ),
       1L,
     ),
@@ -244,9 +229,9 @@ test "event decoder rejects schema constants digest and aggregate-bound injectio
   }
   let blocked_encoded = encode_mooncode_goal_runtime_stored_event(
     codec_test_event(
-      @mooncode_core.PlannerDecision(
+      PlannerDecision(
         "event-schema-blocked",
-        @mooncode_core.Blocked(blocked_reason, ["retry"], Some("approval")),
+        Blocked(blocked_reason, ["retry"], Some("approval")),
       ),
       1L,
     ),
@@ -356,16 +341,16 @@ test "construct and encode genesis" {
 ///|
 test "encode all phases" {
   let phases : Array[@mooncode_core.GoalRuntimePhase] = [
-    @mooncode_core.Queued,
-    @mooncode_core.Running,
-    @mooncode_core.WaitingApproval,
-    @mooncode_core.RetryBackoff,
-    @mooncode_core.PausedNoProgress,
-    @mooncode_core.PausedExternal,
+    Queued,
+    Running,
+    WaitingApproval,
+    RetryBackoff,
+    PausedNoProgress,
+    PausedExternal,
   ]
   for i, phase in phases {
     let stored = codec_test_event(
-      @mooncode_core.PhaseChanged("phase-" + i.to_string(), phase),
+      PhaseChanged("phase-" + i.to_string(), phase),
       i.to_int64(),
     )
     assert_true(
@@ -379,11 +364,9 @@ test "encode all phases" {
 ///|
 test "encode all decisions" {
   let decisions : Array[@mooncode_core.GoalPlannerDecision] = [
-    @mooncode_core.Continue([codec_test_operation()], "progress", "reason"),
-    @mooncode_core.Achieved("done", [
-      { criterion: "criterion-1", evidence_refs: ["proof-1"] },
-    ]),
-    @mooncode_core.Blocked(
+    Continue([codec_test_operation()], "progress", "reason"),
+    Achieved("done", [{ criterion: "criterion-1", evidence_refs: ["proof-1"] }]),
+    Blocked(
       { code: "external", detail: "waiting" },
       ["alternative"],
       Some("approval"),
@@ -391,7 +374,7 @@ test "encode all decisions" {
   ]
   for i, decision in decisions {
     let stored = codec_test_event(
-      @mooncode_core.PlannerDecision("decision-" + i.to_string(), decision),
+      PlannerDecision("decision-" + i.to_string(), decision),
       1L,
     )
     assert_true(
@@ -405,14 +388,14 @@ test "encode all decisions" {
 ///|
 test "encode all five core events and preserve supplied id" {
   let events : Array[@mooncode_core.GoalRuntimeEvent] = [
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "stable-0",
-      @mooncode_core.Continue([codec_test_operation()], "progress", "reason"),
+      Continue([codec_test_operation()], "progress", "reason"),
     ),
-    @mooncode_core.OperationAccepted("stable-1", "op-1"),
-    @mooncode_core.CheckpointAccepted("stable-2", "checkpoint-1"),
-    @mooncode_core.PhaseChanged("stable-3", @mooncode_core.Running),
-    @mooncode_core.Cancelled("stable-4", "operator"),
+    OperationAccepted("stable-1", "op-1"),
+    CheckpointAccepted("stable-2", "checkpoint-1"),
+    PhaseChanged("stable-3", Running),
+    Cancelled("stable-4", "operator"),
   ]
   for event in events {
     let stored = codec_test_event(event, 1L)
@@ -426,10 +409,7 @@ test "digest ignores recorded_at but changes with semantics" {
   let event = @mooncode_core.OperationAccepted("event-1", "op-1")
   let first = codec_test_event(event, 1L)
   let later = codec_test_event(event, 999L)
-  let changed = codec_test_event(
-    @mooncode_core.OperationAccepted("event-1", "op-2"),
-    1L,
-  )
+  let changed = codec_test_event(OperationAccepted("event-1", "op-2"), 1L)
   assert_eq(first.semantic_digest, later.semantic_digest)
   assert_true(first.semantic_digest != changed.semantic_digest)
 }
@@ -438,9 +418,9 @@ test "digest ignores recorded_at but changes with semantics" {
 test "logical payload contains no aggregate completion names" {
   let text = encode_mooncode_goal_runtime_stored_event(
     codec_test_event(
-      @mooncode_core.PlannerDecision(
+      PlannerDecision(
         "event-1",
-        @mooncode_core.Achieved("done", [
+        Achieved("done", [
           { criterion: "criterion-1", evidence_refs: ["proof"] },
         ]),
       ),
@@ -514,10 +494,7 @@ test "invalid planner decision raises" {
     new_mooncode_goal_runtime_stored_event(
       "session",
       "goal",
-      @mooncode_core.PlannerDecision(
-        "event",
-        @mooncode_core.Continue([], "", "reason"),
-      ),
+      PlannerDecision("event", Continue([], "", "reason")),
       1L,
     )
   catch {
@@ -531,9 +508,9 @@ test "invalid planner decision raises" {
 test "logical payload omits aggregate bounds but retains local policy" {
   let text = encode_mooncode_goal_runtime_stored_event(
     codec_test_event(
-      @mooncode_core.PlannerDecision(
+      PlannerDecision(
         "event-1",
-        @mooncode_core.Continue([codec_test_operation()], "progress", "reason"),
+        Continue([codec_test_operation()], "progress", "reason"),
       ),
       1L,
     ),
@@ -563,7 +540,7 @@ test "session and goal identity may match" {
   let event = new_mooncode_goal_runtime_stored_event(
     "same",
     "same",
-    @mooncode_core.OperationAccepted("e", "op"),
+    OperationAccepted("e", "op"),
     1L,
   )
   assert_eq(event.session_id, event.goal_id)
@@ -572,11 +549,11 @@ test "session and goal identity may match" {
 ///|
 test "event detail identifiers and cancel reason reject blanks and padding" {
   let bad_events : Array[@mooncode_core.GoalRuntimeEvent] = [
-    @mooncode_core.OperationAccepted("e1", ""),
-    @mooncode_core.OperationAccepted("e2", " op"),
-    @mooncode_core.CheckpointAccepted("e3", ""),
-    @mooncode_core.CheckpointAccepted("e4", "checkpoint "),
-    @mooncode_core.Cancelled("e5", "   "),
+    OperationAccepted("e1", ""),
+    OperationAccepted("e2", " op"),
+    CheckpointAccepted("e3", ""),
+    CheckpointAccepted("e4", "checkpoint "),
+    Cancelled("e5", "   "),
   ]
   for event in bad_events {
     try codec_test_event(event, 1L) catch {
@@ -601,10 +578,7 @@ test "constructor copies mutable semantic inputs" {
 
   let operations = [codec_test_operation()]
   let continued = codec_test_event(
-    @mooncode_core.PlannerDecision(
-      "continue",
-      @mooncode_core.Continue(operations, "p", "r"),
-    ),
+    PlannerDecision("continue", Continue(operations, "p", "r")),
     1L,
   )
   let continued_encoding = encode_mooncode_goal_runtime_stored_event(continued)
@@ -618,9 +592,9 @@ test "constructor copies mutable semantic inputs" {
 
   let evidence_refs = ["proof"]
   let achieved = codec_test_event(
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "achieved",
-      @mooncode_core.Achieved("done", [{ criterion: "c", evidence_refs }]),
+      Achieved("done", [{ criterion: "c", evidence_refs }]),
     ),
     1L,
   )
@@ -635,13 +609,9 @@ test "constructor copies mutable semantic inputs" {
 
   let alternatives = ["alternative"]
   let blocked = codec_test_event(
-    @mooncode_core.PlannerDecision(
+    PlannerDecision(
       "blocked",
-      @mooncode_core.Blocked(
-        { code: "external", detail: "waiting" },
-        alternatives,
-        None,
-      ),
+      Blocked({ code: "external", detail: "waiting" }, alternatives, None),
     ),
     1L,
   )
@@ -657,18 +627,9 @@ test "constructor copies mutable semantic inputs" {
 
 ///|
 test "event digest ignores stable id and recorded_at but tracks payload" {
-  let first = codec_test_event(
-    @mooncode_core.OperationAccepted("stable-a", "op-1"),
-    1L,
-  )
-  let renamed = codec_test_event(
-    @mooncode_core.OperationAccepted("stable-b", "op-1"),
-    999L,
-  )
-  let changed = codec_test_event(
-    @mooncode_core.OperationAccepted("stable-c", "op-2"),
-    1L,
-  )
+  let first = codec_test_event(OperationAccepted("stable-a", "op-1"), 1L)
+  let renamed = codec_test_event(OperationAccepted("stable-b", "op-1"), 999L)
+  let changed = codec_test_event(OperationAccepted("stable-c", "op-2"), 1L)
   assert_eq(first.semantic_digest, renamed.semantic_digest)
   assert_true(first.semantic_digest != changed.semantic_digest)
 }
@@ -690,12 +651,7 @@ test "negative genesis and event recorded_at raise" {
     _ => true
   }
   let event_raised = try {
-    ignore(
-      codec_test_event(
-        @mooncode_core.OperationAccepted("stable-a", "op-1"),
-        -1L,
-      ),
-    )
+    ignore(codec_test_event(OperationAccepted("stable-a", "op-1"), -1L))
     false
   } catch {
     _ => true
@@ -707,7 +663,7 @@ test "negative genesis and event recorded_at raise" {
 ///|
 test "encoded event has exact kind protocol and contract" {
   let encoded = encode_mooncode_goal_runtime_stored_event(
-    codec_test_event(@mooncode_core.OperationAccepted("stable-a", "op-1"), 1L),
+    codec_test_event(OperationAccepted("stable-a", "op-1"), 1L),
   )
   assert_true(encoded.contains("\"kind\":\"mooncode.goal.runtime.event.v1\""))
   assert_true(encoded.contains("\"protocol\":\"mooncode.v1\""))
@@ -722,7 +678,7 @@ fn codec_assert_event_encode_rejects(
     ignore(encode_mooncode_goal_runtime_stored_event(value))
     false
   } catch {
-    MoonCodeGoalRuntimeCodecError::Invalid(_) => true
+    Invalid(_) => true
   }
   assert_true(rejected)
 }
@@ -761,14 +717,11 @@ test "encoders reject forged identity and digest and preserve valid bytes" {
       ignore(encode_mooncode_goal_runtime_genesis(bad))
       false
     } catch {
-      MoonCodeGoalRuntimeCodecError::Invalid(_) => true
+      Invalid(_) => true
     }
     assert_true(rejected)
   }
-  let event = codec_test_event(
-    @mooncode_core.OperationAccepted("event-1", "op-1"),
-    1L,
-  )
+  let event = codec_test_event(OperationAccepted("event-1", "op-1"), 1L)
   assert_eq(
     encode_mooncode_goal_runtime_stored_event(event),
     event_envelope_json(event),
@@ -789,20 +742,14 @@ test "encoders reject forged identity and digest and preserve valid bytes" {
   })
   let operations = [codec_test_operation()]
   let nested = codec_test_event(
-    @mooncode_core.PlannerDecision(
-      "event-2",
-      @mooncode_core.Continue(operations, "progress", "reason"),
-    ),
+    PlannerDecision("event-2", Continue(operations, "progress", "reason")),
     1L,
   )
   let unchanged = encode_mooncode_goal_runtime_stored_event(nested)
   operations[0] = { ..codec_test_operation(), operation_id: "mutated" }
   assert_eq(encode_mooncode_goal_runtime_stored_event(nested), unchanged)
   match nested.event {
-    @mooncode_core.PlannerDecision(
-      _,
-      @mooncode_core.Continue(stored_operations, _, _)
-    ) => {
+    PlannerDecision(_, Continue(stored_operations, _, _)) => {
       stored_operations[0] = {
         ..codec_test_operation(),
         operation_id: "mutated-stored",
@@ -819,7 +766,7 @@ fn codec_assert_genesis_decode_rejects(text : String) -> Unit raise {
     let _ = decode_mooncode_goal_runtime_genesis(text)
     false
   } catch {
-    MoonCodeGoalRuntimeCodecError::Invalid(_) => true
+    Invalid(_) => true
   }
   assert_true(rejected)
 }
@@ -1008,7 +955,7 @@ test "checked positive int enforces exact Int carrier range" {
       let _ = mooncode_goal_runtime_checked_positive_int(object, "value")
       false
     } catch {
-      MoonCodeGoalRuntimeCodecError::Invalid(_) => true
+      Invalid(_) => true
     }
     assert_true(did_reject)
   }
@@ -1026,7 +973,7 @@ fn codec_assert_leaf_rejects(
   thunk : () -> Unit raise MoonCodeGoalRuntimeCodecError,
 ) -> Unit {
   thunk() catch {
-    MoonCodeGoalRuntimeCodecError::Invalid(_) => return
+    Invalid(_) => return
   }
   abort("expected leaf decode rejection")
 }

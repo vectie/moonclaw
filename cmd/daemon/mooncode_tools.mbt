@@ -1,10 +1,10 @@
 ///|
-async fn Daemon::mooncode_tool_execute(
+fn Daemon::mooncode_tool_execute(
   self : Daemon,
   session_id~ : StringView,
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
-) -> Unit {
+) -> Unit raise {
   ignore(self)
   ignore(session_id)
   ignore(r)
@@ -20,25 +20,6 @@ async fn Daemon::mooncode_tool_execute(
       },
     },
   })
-}
-
-///|
-async fn mooncode_tool_prior_command_results(
-  book_root : String,
-  session_id : String,
-  command_id : String,
-) -> Array[Json] {
-  let prior_results : Array[Json] = []
-  for
-    event in mooncode_journal_entries(
-      mooncode_read_session_journal(book_root, session_id),
-      mooncode_journal_event(),
-    ) {
-    if mooncode_json_string(event, "command_id", default="") == command_id {
-      prior_results.push(event)
-    }
-  }
-  prior_results
 }
 
 ///|
@@ -377,7 +358,7 @@ async fn mooncode_tool_view_image(book_root : String, arguments : Json) -> Json 
   }
   let absolute = mooncode_json_string(path, "absolute_path", default="")
   let relative = mooncode_json_string(path, "relative_path", default="")
-  let lower = @pathx.basename(relative).to_lower().to_string()
+  let lower = @pathx.basename(relative).to_lower().to_owned()
   let mime_type = if lower.has_suffix(".png") {
     "image/png"
   } else if lower.has_suffix(".jpg") || lower.has_suffix(".jpeg") {
@@ -1793,8 +1774,7 @@ async fn mooncode_tool_run_patch_verification(
       )
   }
   let receipt = execution.receipt
-  guard receipt.status is @execution_sandbox.Exited &&
-    receipt.exit_code is Some(status) else {
+  guard receipt.status is Exited && receipt.exit_code is Some(status) else {
     return mooncode_tool_error_result(
       "execution_sandbox",
       message="post-change verification did not return a terminal MoonFort receipt",
@@ -1867,7 +1847,7 @@ fn mooncode_json_object_with_field(
   key : String,
   value : Json,
 ) -> Json {
-  let object : Map[String, Json] = {}
+  let object : Map[String, Json] = Map([])
   match json {
     Object(existing) =>
       for name, field in existing.iter2() {
@@ -1906,7 +1886,7 @@ async fn mooncode_tool_finish_for_session(
         message="goal_runtime must be an exact valid achieved or blocked decision",
       )
   }
-  if decision is @mooncode_core.Continue(_, _, _) {
+  if decision is Continue(_, _, _) {
     return mooncode_tool_error_result(
       "finish",
       message="finish goal_runtime decision must be achieved or blocked",
@@ -1934,7 +1914,7 @@ async fn mooncode_tool_finish_for_session(
     )
   }
   match decision {
-    @mooncode_core.Achieved(_, evidence) => {
+    Achieved(_, evidence) => {
       let criteria = mooncode_json_array_items(
         Json::object(genesis),
         "criteria",
@@ -1955,8 +1935,8 @@ async fn mooncode_tool_finish_for_session(
         }
       }
     }
-    @mooncode_core.Blocked(_, _, _) => ()
-    @mooncode_core.Continue(_, _, _) => abort("continue rejected above")
+    Blocked(_, _, _) => ()
+    Continue(_, _, _) => abort("continue rejected above")
   }
   let answer = mooncode_json_string(arguments, "answer", default="")
   mooncode_tool_ok_result("finish", message="finished", output=answer, metadata={
@@ -3019,4 +2999,24 @@ async test "mooncode native patch verification failure fails the tool result" (
     metadata, "verification",
   )
   assert_false(mooncode_json_bool(verification, "ok", default=true))
+}
+
+///|
+#warnings("-unused_value")
+async fn mooncode_tool_prior_command_results(
+  book_root : String,
+  session_id : String,
+  command_id : String,
+) -> Array[Json] {
+  let prior_results : Array[Json] = []
+  for
+    event in mooncode_journal_entries(
+      mooncode_read_session_journal(book_root, session_id),
+      mooncode_journal_event(),
+    ) {
+    if mooncode_json_string(event, "command_id", default="") == command_id {
+      prior_results.push(event)
+    }
+  }
+  prior_results
 }

@@ -32,7 +32,7 @@ async fn Daemon::ensure_supervisor_worker_task(
   )
   for task in self.by_id.values() {
     match task {
-      Task::Running(running) if running.name == Some(name) => {
+      Running(running) if running.name == Some(name) => {
         guard expected_id is None || expected_id == Some(running.id.to_string()) else {
           raise supervisor_http_failure(
             "durable worker provider identity changed",
@@ -40,7 +40,7 @@ async fn Daemon::ensure_supervisor_worker_task(
         }
         return running
       }
-      Task::Stopped(stopped) if stopped.name == Some(name) => {
+      Stopped(stopped) if stopped.name == Some(name) => {
         guard expected_id is None || expected_id == Some(stopped.id.to_string()) else {
           raise supervisor_http_failure(
             "durable worker provider identity changed",
@@ -177,7 +177,7 @@ fn supervisor_provider_receipt_json(
 }
 
 ///|
-async fn Daemon::enforce_supervisor_worker_deadline(
+fn Daemon::enforce_supervisor_worker_deadline(
   self : Daemon,
   group~ : @async.TaskGroup[Unit],
   supervisor_id : String,
@@ -194,7 +194,7 @@ async fn Daemon::enforce_supervisor_worker_deadline(
         Ok(value) => value
         Err(_) => return
       }
-      if status.attempt != attempt || !(status.run_status is @job.Running) {
+      if status.attempt != attempt || !(status.run_status is Running) {
         return
       }
       let task = match self.running_supervisor_worker_task(worker_run_id) {
@@ -281,7 +281,7 @@ async fn Daemon::supervisor_delegate_intent(
   }
   let provider_receipt : @job.SupervisorCommandReceiptV1? = match
     supervisors.worker_status(request.supervisor_id, prepared.worker_run_id) {
-    Ok(status) if status.run_status is @job.Pending => {
+    Ok(status) if status.run_status is Pending => {
       let evidence : Json = if task.status is Busy {
         {
           "provider_task_id": task.id.to_string(),
@@ -325,7 +325,7 @@ async fn Daemon::supervisor_delegate_intent(
     Ok(value) => value
     Err(error) => raise supervisor_http_failure(error)
   }
-  if provider_receipt is Some(_) && status.run_status is @job.Running {
+  if provider_receipt is Some(_) && status.run_status is Running {
     self.enforce_supervisor_worker_deadline(
       group~,
       request.supervisor_id,
@@ -349,7 +349,7 @@ fn Daemon::running_supervisor_worker_task(
 ) -> Running? {
   let id = @uuid.parse(worker_run_id) catch { _ => return None }
   match self.by_id.get(id) {
-    Some(Task::Running(task)) => Some(task)
+    Some(Running(task)) => Some(task)
     _ => None
   }
 }
@@ -431,7 +431,7 @@ async fn Daemon::supervisor_worker_command(
               Ok(value) => value
               Err(error) => raise supervisor_http_failure(error)
             }
-            let cancel_path = if worker_status.run_status is @job.Running {
+            let cancel_path = if worker_status.run_status is Running {
               "/v1/cancel"
             } else {
               "/v1/external-event/cancel"
@@ -567,8 +567,7 @@ async fn Daemon::restore_supervisor_workers(
   let supervisors = self.supervisor_runtime()
   for supervisor in supervisors.list_status() {
     for worker in supervisor.workers {
-      if !(worker.run_status is @job.Pending ||
-        worker.run_status is @job.Running) {
+      if !(worker.run_status is Pending || worker.run_status is Running) {
         continue
       }
       let intent = match
@@ -629,7 +628,7 @@ async fn Daemon::restore_supervisor_workers(
           continue
         }
       }
-      if worker.run_status is @job.Pending {
+      if worker.run_status is Pending {
         ignore(
           supervisors.record_worker_provider_acceptance(
             supervisor.state.supervisor_id,

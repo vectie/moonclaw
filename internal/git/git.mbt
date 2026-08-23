@@ -1,4 +1,5 @@
 ///|
+#warnings("-unused_async")
 pub async fn clone(
   url : String,
   to~ : StringView,

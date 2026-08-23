@@ -23,5 +23,5 @@ priv struct TaskLock {
 
 ///|
 fn TaskLock::new() -> TaskLock {
-  { spawn_mutex: @semaphore.Semaphore::new(1), running: None }
+  { spawn_mutex: Semaphore(1), running: None }
 }

@@ -1,5 +1,6 @@
 ///|
 /// Outcomes from attempting to durably record a goal-supervisor checkpoint.
+#warnings("-unused_value-unused_constructor-unused_field")
 priv enum MoonCodeGoalSupervisorCheckpointResult {
   CheckpointRecorded(MoonCodeGoalSupervisorCheckpointPayload)
   CheckpointIdempotent(MoonCodeGoalSupervisorCheckpointPayload)
@@ -49,6 +50,7 @@ fn mooncode_goal_supervisor_checkpoint_matches_request(
 
 ///|
 /// Atomically records a goal-supervisor checkpoint.
+#warnings("-unused_value")
 async fn mooncode_goal_supervisor_checkpoint_record(
   book_root : String,
   session_id : String,

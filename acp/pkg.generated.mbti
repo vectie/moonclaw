@@ -4,6 +4,7 @@ package "vectie/moonclaw/acp"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/json",
+  "vectie/moonclaw/internal/execution_sandbox",
 }
 
 // Values
@@ -12,6 +13,10 @@ pub fn build_acp_ui_snapshot(AcpRuntime) -> AcpUiSnapshot
 pub fn build_acp_ui_timeline(AcpRuntime) -> Array[AcpUiTimelineEntry]
 
 pub async fn execute_launch_plan(AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
+
+pub async fn execute_launch_plan_with_approved_sandbox(@execution_sandbox.SandboxExecutorConfig, @execution_sandbox.SandboxApprovalPlan, AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
+
+pub async fn execute_launch_plan_with_fixture_sandbox(@execution_sandbox.SandboxExecutorConfig, @execution_sandbox.SandboxApprovalPlan, AcpLaunchPlan, AcpRunRequest) -> Result[Json, String]
 
 pub fn new_run_request(message~ : String, run_id? : String, model? : String, cwd? : String, idempotency_key? : String, metadata? : Json) -> AcpRunRequest
 

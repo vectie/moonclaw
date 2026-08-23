@@ -7,13 +7,13 @@ fn child_delegation_test_digest(fill : String) -> String {
 test "child delegation requires an agent and enforces metered ceilings" {
   let parent = @capability.principal_ref_v1(
     "runtime-parent",
-    @capability.Service,
+    Service,
     "local",
     "runtime-parent",
   )
   let child = @capability.principal_ref_v1(
     "runtime-child",
-    @capability.Agent,
+    Agent,
     "local",
     "runtime-child",
   )
@@ -99,7 +99,7 @@ test "child delegation requires an agent and enforces metered ceilings" {
   )
   let human_child = @capability.principal_ref_v1(
     "human-child",
-    @capability.Human,
+    Human,
     "local",
     "human-child",
   )

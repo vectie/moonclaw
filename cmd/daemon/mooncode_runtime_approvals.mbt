@@ -102,7 +102,7 @@ async fn mooncode_runtime_bind_sandbox_approval_plan(
   match prepared {
     Ok(plan) => argument_fields["_execution_sandbox_plan"] = plan.to_json()
     Err(error) =>
-      argument_fields["_execution_sandbox_plan_error"] = error.to_json()
+      argument_fields["_execution_sandbox_plan_error"] = @json.to_json(error)
   }
   request
 }

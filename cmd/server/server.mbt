@@ -58,7 +58,7 @@ pub async fn Server::new(
   let broadcast = @broadcast.Broadcast::new()
   let uuid = @uuid.generator(@rand.chacha8())
   guard @model.load(home~, name?=model) is Some(model) else {
-    fail("Failed to load model '\{to_repr(model)}' from cwd '\{to_repr(cwd)}'")
+    fail("Failed to load model '\{Repr(model)}' from cwd '\{Repr(cwd)}'")
   }
   let moonclaw = if resume_id is Some(resume_id) {
     @moonclaw.Moonclaw::resume_(model~, resume_id, web_search~)
@@ -89,7 +89,7 @@ pub async fn Server::new(
     uuid,
     moonclaw,
     broadcast,
-    message_queue: @aqueue.new(kind=Unbounded),
+    message_queue: Queue(kind=Unbounded),
     task: None,
     serve,
     port,
@@ -285,7 +285,7 @@ pub impl @httpx.FromEvent for ServerStreamEvent with fn from_event(
     Some("moonclaw.queued_messages.synchronized") =>
       MoonclawQueuedMessagesSynchronized(@json.from_json(data))
     Some("moonclaw") => Moonclaw(@json.from_json(data))
-    _ => fail("unrecognized event type: \{to_repr(event)}")
+    _ => fail("unrecognized event type: \{Repr(event)}")
   }
 }
 
@@ -344,7 +344,7 @@ async fn Server::get_queued_messages(
 /// Lists the registered tools and whether each one is currently enabled.
 async fn Server::get_tools(self : Server, w : @httpx.ResponseWriter) -> Unit {
   let tools = self.moonclaw.agent.tools()
-  let tools_json : Map[String, Json] = {}
+  let tools_json : Map[String, Json] = Map([])
   for name, tool in tools {
     tools_json[name] = { "enabled": tool.enabled() }
   }

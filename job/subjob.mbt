@@ -55,7 +55,7 @@ fn proposal_with_execution_override(
     Some(Object(obj)) => obj
     _ => {}
   }
-  let merged_execution_metadata : Map[String, Json] = {}
+  let merged_execution_metadata : Map[String, Json] = Map([])
   for key, value in execution_metadata {
     merged_execution_metadata.set(key, value)
   }
@@ -69,7 +69,7 @@ fn proposal_with_execution_override(
       merged_execution_metadata.set("target", target.to_json())
     _ => ()
   }
-  let merged_profile_metadata : Map[String, Json] = {}
+  let merged_profile_metadata : Map[String, Json] = Map([])
   for key, value in base_metadata {
     merged_profile_metadata.set(key, value)
   }
@@ -122,7 +122,7 @@ fn proposal_with_isolation_policy(proposal : JobProposal) -> JobProposal {
     if isolation_metadata.stringify() == "{}" {
       step
     } else {
-      let merged_step_metadata : Map[String, Json] = {}
+      let merged_step_metadata : Map[String, Json] = Map([])
       match step.metadata {
         Object(obj) =>
           for key, value in obj {
@@ -182,7 +182,7 @@ fn proposal_with_missing_input_policy(
   if disable_waiting is None && best_effort_on_missing_input is None {
     return proposal
   }
-  let policy_metadata : Map[String, Json] = {}
+  let policy_metadata : Map[String, Json] = Map([])
   match disable_waiting {
     Some(value) =>
       policy_metadata.set("disable_waiting_for_input", value.to_json())

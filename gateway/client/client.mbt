@@ -177,7 +177,7 @@ pub async fn Client::new(config : ClientConfig) -> Client {
   {
     base_url: config.base_url,
     token: config.token,
-    http: @http.Client::new(config.base_url),
+    http: Client(config.base_url),
     uuid,
     logger: @pino.logger("gateway-client", @pino.Transport::console()),
     connected: false,

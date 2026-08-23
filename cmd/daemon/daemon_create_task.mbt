@@ -109,7 +109,7 @@ async fn Daemon::create_task(
     raise json_error(404, "Not Found", {
       "error": {
         "code": -1,
-        "message": "Model not found: \{to_repr(request.model)}",
+        "message": "Model not found: \{Repr(request.model)}",
       },
     })
   }
@@ -161,7 +161,7 @@ async fn Daemon::create_task(
   w.header().set("Content-Type", "application/json")
   w.write_header(201, reason="Created")
   let response = CreateTaskResponse::{ task, message }
-  w.write(response.to_json().stringify(indent=2))
+  w.write(@json.to_json(response).stringify(indent=2))
 }
 
 ///|
@@ -179,7 +179,7 @@ priv struct CreateTaskResponse {
 
 ///|
 impl ToJson for CreateTaskResponse with fn to_json(self : CreateTaskResponse) -> Json {
-  let object : Map[String, Json] = { "task": self.task.to_json() }
+  let object : Map[String, Json] = { "task": @json.to_json(self.task) }
   if self.message is Some(message) {
     object["message"] = message.to_json()
   }

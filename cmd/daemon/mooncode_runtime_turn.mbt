@@ -251,7 +251,7 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
     mooncode_runtime_horizon_retained_evidence(command)
   }
   let events : Array[Json] = []
-  let persisted_event_ids : Map[String, Bool] = {}
+  let persisted_event_ids : Map[String, Bool] = Map([])
   let mut waiting_approval = Json::object({})
   if !resuming_continuation {
     self.mooncode_runtime_turn_record_event(

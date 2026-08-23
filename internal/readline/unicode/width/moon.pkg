@@ -9,3 +9,5 @@ import {
 } for "test"
 
 supported_targets = "native"
+
+warnings = "-33"

@@ -249,7 +249,7 @@ async fn extracted_pdf_text(
       pdf_path,
       text_path,
       dir,
-      async fn(command, arguments, cwd) {
+      (command, arguments, cwd) => {
         @pdf_ocr.run_process(command, arguments, cwd~)
       },
     )
@@ -274,8 +274,8 @@ async fn extracted_pdf_text(
 
 ///|
 async fn perform_web_fetch(url : String, max_chars : Int) -> WebFetchResult {
-  let uri = parse_fetch_uri(url) catch { error => fail("\{to_repr(error)}") }
-  let client = @http.Client::new("\{uri.scheme}://\{uri.host}", headers={
+  let uri = parse_fetch_uri(url) catch { error => fail("\{Repr(error)}") }
+  let client = @http.Client("\{uri.scheme}://\{uri.host}", headers={
     "Accept": "text/html,application/xhtml+xml,application/json,text/plain;q=0.9,*/*;q=0.8",
     "Connection": "close",
     // Some authoritative public sites reject bot-shaped user agents even for

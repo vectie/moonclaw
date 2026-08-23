@@ -200,10 +200,7 @@ async test "prepare_run_workspace creates dedicated git-backed workspace with in
       checkpoint_run_workspace(store, prepared.id, "moonclaw: checkpoint"),
       content="true",
     )
-    let commits = @trusted_host_process.run_git(
-      workspace_dir,
-      @trusted_host_process.RevListCount,
-    )
+    let commits = @trusted_host_process.run_git(workspace_dir, RevListCount)
     inspect(commits.stdout().trim(), content="3")
     let workspace_status = render_run_workspace_status(
       store, definition, prepared,

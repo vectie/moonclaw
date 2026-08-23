@@ -20,7 +20,7 @@ pub fn agent_mailbox(
   }
   {
     agent_id,
-    queue: @aqueue.Queue::new(kind~),
+    queue: Queue(kind~),
     config,
     created_at: timestamp,
     last_read_at: None,

@@ -5,9 +5,10 @@ const MoonDeskPromotionRequestBytes : Int = 65_536
 priv struct MoonDeskPromotionItem {
   source_relative : String
   destination_relative : String
-} derive(Debug, Eq, ToJson, @json.FromJson)
+} derive(ToJson, @json.FromJson)
 
 ///|
+#warnings("-unused_value")
 priv struct MoonDeskPromotionRequest {
   protocol_version : Int
   instance_id : String
@@ -17,7 +18,7 @@ priv struct MoonDeskPromotionRequest {
   approval_digest : String
   command_digest : String
   items : Array[MoonDeskPromotionItem]
-} derive(Debug, Eq, ToJson, @json.FromJson)
+} derive(ToJson, @json.FromJson)
 
 ///|
 priv struct MoonFortPromotionError {
@@ -26,6 +27,7 @@ priv struct MoonFortPromotionError {
 } derive(Debug, Eq, @json.FromJson)
 
 ///|
+#warnings("-unused_value")
 priv struct MoonFortPromotionResponse {
   protocol_version : Int
   retention_id : String
@@ -84,8 +86,8 @@ fn moondesk_promotion_parse_request(
     }) else {
     fail("invalid typed promotion request")
   }
-  let sources : Map[String, Bool] = {}
-  let destinations : Map[String, Bool] = {}
+  let sources : Map[String, Bool] = Map([])
+  let destinations : Map[String, Bool] = Map([])
   for item in request.items {
     guard !sources.contains(item.source_relative) &&
       !destinations.contains(item.destination_relative) else {

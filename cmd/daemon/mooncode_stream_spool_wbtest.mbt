@@ -236,7 +236,12 @@ async test "stream scalar scan handles thousands of records without collection" 
     let session_id = "session-stream-large"
     let path = mooncode_session_journal_path(root, session_id)
     @fsx.make_directory(@pathx.dirname(path), recursive=true, exists_ok=true)
-    let writer = @fs.open(path, mode=WriteOnly, create=0o600, truncate=true)
+    let writer = @fs.open(
+      path,
+      mode=WriteOnly,
+      create_mode=CreateOrTruncate,
+      permission=0o600,
+    )
     for index = 0; index < 5000; index = index + 1 {
       let sequence = (index + 1).to_string()
       let record = mooncode_stream_test_v2_record(
@@ -264,7 +269,7 @@ async test "stream scalar scan handles thousands of records without collection" 
 async fn mooncode_stream_http_test_daemon(book_root : String) -> Daemon {
   let httpx = @httpx.Server::new("[::1]", 0, reuse_addr=true)
   let uuid = @uuid.generator(@rand.chacha8())
-  Daemon::{
+  {
     clock: @clock.epoch,
     models: @model.Loader::new(home=book_root, cwd=book_root),
     uuid,

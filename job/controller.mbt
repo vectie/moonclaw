@@ -136,7 +136,7 @@ fn controller_verdict_aliases(
 ) -> Map[String, String] {
   match controller_policy_metadata(definition) {
     Some({ "verdict_aliases": Object(aliases), .. }) => {
-      let normalized : Map[String, String] = {}
+      let normalized : Map[String, String] = Map([])
       for key, value in aliases {
         match value {
           String(target) =>

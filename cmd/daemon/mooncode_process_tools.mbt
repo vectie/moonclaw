@@ -763,7 +763,7 @@ async fn mooncode_tool_moon_cmd(
   let fmt_scope_before = if command == "fmt" && explicit_paths.length() > 0 {
     mooncode_moon_fmt_snapshot(book_root)
   } else {
-    MoonCodeFmtSnapshot::{ error: "", states: {} }
+    { error: "", states: {} }
   }
   if fmt_scope_before.error != "" {
     return mooncode_tool_error_result(
@@ -877,11 +877,6 @@ async fn mooncode_tool_moon_cmd(
     }
   }
   terminal
-}
-
-///|
-fn mooncode_moon_cmd_exit_expected(arguments : Json, status : Int) -> Bool {
-  status == mooncode_json_int(arguments, "expected_exit_code", default=0)
 }
 
 ///|
@@ -1145,8 +1140,7 @@ async fn mooncode_tool_moon_check_with_config(
       )
   }
   let receipt = execution.receipt
-  guard receipt.status is @execution_sandbox.Exited &&
-    receipt.exit_code is Some(exit_code) else {
+  guard receipt.status is Exited && receipt.exit_code is Some(exit_code) else {
     return mooncode_tool_error_result(
       "moon_check",
       message="MoonFort did not return a terminal moon check exit receipt",
@@ -1328,4 +1322,10 @@ fn mooncode_moon_check_message(prefix : String, state : Json) -> String {
   let status = mooncode_json_string(state, "status", default="stopped")
   let seq = mooncode_json_int(state, "seq", default=0)
   "\{prefix}; watcher=\{watcher}; status=\{status}; seq=\{seq}"
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_moon_cmd_exit_expected(arguments : Json, status : Int) -> Bool {
+  status == mooncode_json_int(arguments, "expected_exit_code", default=0)
 }

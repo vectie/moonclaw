@@ -63,7 +63,7 @@ impl Filterable for Json with fn filter(self : Filter, value : Json) -> Json {
     String(string) => Json::string(Filterable::filter(self, string))
     Array(array) => Json::array(array.map(e => Filterable::filter(self, e)))
     Object(old_object) => {
-      let new_object = {}
+      let new_object : Map[String, Json] = Map([])
       for k, v in old_object {
         new_object[Filterable::filter(self, k)] = Filterable::filter(self, v)
       }

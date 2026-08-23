@@ -24,7 +24,7 @@ fn mooncode_goal_runtime_empty_projection() -> MoonCodeGoalRuntimeProjection {
   {
     cursor: MoonCodeJournalSequence::zero(),
     genesis: None,
-    phase: @mooncode_core.Queued,
+    phase: Queued,
     terminal: false,
     outcome: "none",
     handled_count: MoonCodeJournalSequence::zero(),
@@ -74,8 +74,8 @@ async fn mooncode_goal_identity_check_and_add(
     path,
     mode=ReadWrite,
     append=true,
-    create=0o600,
-    truncate=false,
+    create_mode=OpenOrCreate,
+    permission=0o600,
   )
   defer writer.close()
   writer.write(
@@ -166,8 +166,8 @@ async fn mooncode_goal_runtime_apply_projected_event(
     handled_count: projection.handled_count.next(),
   }
   match value.event {
-    @mooncode_core.PlannerDecision(_, @mooncode_core.Continue(operations, _, _)) => {
-      next = { ..next, phase: @mooncode_core.Running }
+    PlannerDecision(_, Continue(operations, _, _)) => {
+      next = { ..next, phase: Running }
       for operation in operations {
         if mooncode_goal_identity_check_and_add(
             ledger_root,
@@ -180,7 +180,7 @@ async fn mooncode_goal_runtime_apply_projected_event(
         }
       }
     }
-    @mooncode_core.PlannerDecision(_, @mooncode_core.Achieved(_, evidence)) => {
+    PlannerDecision(_, Achieved(_, evidence)) => {
       if evidence.length() != genesis.criteria.length() {
         mooncode_goal_runtime_store_corrupt(
           "achieved evidence does not cover every genesis criterion",
@@ -195,25 +195,24 @@ async fn mooncode_goal_runtime_apply_projected_event(
       }
       next = { ..next, terminal: true, outcome: "achieved" }
     }
-    @mooncode_core.PlannerDecision(_, @mooncode_core.Blocked(_, _, _)) =>
+    PlannerDecision(_, Blocked(_, _, _)) =>
       next = { ..next, terminal: true, outcome: "blocked" }
-    @mooncode_core.OperationAccepted(_, operation_id) =>
+    OperationAccepted(_, operation_id) =>
       if mooncode_goal_identity_check_and_add(
           ledger_root, "operation", operation_id, "",
         )
         is IdentityNew {
         next = { ..next, operation_count: next.operation_count.next() }
       }
-    @mooncode_core.CheckpointAccepted(_, checkpoint_id) =>
+    CheckpointAccepted(_, checkpoint_id) =>
       if mooncode_goal_identity_check_and_add(
           ledger_root, "checkpoint", checkpoint_id, "",
         )
         is IdentityNew {
         next = { ..next, checkpoint_count: next.checkpoint_count.next() }
       }
-    @mooncode_core.PhaseChanged(_, phase) => next = { ..next, phase, }
-    @mooncode_core.Cancelled(_, _) =>
-      next = { ..next, terminal: true, outcome: "cancelled" }
+    PhaseChanged(_, phase) => next = { ..next, phase, }
+    Cancelled(_, _) => next = { ..next, terminal: true, outcome: "cancelled" }
   }
   next
 }
@@ -297,7 +296,7 @@ async fn mooncode_goal_authority_project_file(
         }
       }
     })
-    MoonCodeGoalAuthorityProjection::{ legacy, runtime }
+    { legacy, runtime }
   })
 }
 
@@ -353,12 +352,12 @@ fn mooncode_goal_runtime_projection_status_response(
     "status": {
       "contract": mooncode_goal_runtime_contract_v1,
       "phase": match projection.phase {
-        @mooncode_core.Queued => "queued"
-        @mooncode_core.Running => "running"
-        @mooncode_core.WaitingApproval => "waiting_approval"
-        @mooncode_core.RetryBackoff => "retry_backoff"
-        @mooncode_core.PausedNoProgress => "paused_no_progress"
-        @mooncode_core.PausedExternal => "paused_external"
+        Queued => "queued"
+        Running => "running"
+        WaitingApproval => "waiting_approval"
+        RetryBackoff => "retry_backoff"
+        PausedNoProgress => "paused_no_progress"
+        PausedExternal => "paused_external"
       },
       "terminal": projection.terminal,
       "outcome": projection.outcome,

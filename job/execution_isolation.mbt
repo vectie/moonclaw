@@ -291,7 +291,7 @@ pub async fn cleanup_run_execution_isolations(
   run : JobRun,
 ) -> Array[String] {
   let removed : Array[String] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for artifact in store.list_artifacts(run_id=run.id) {
     match artifact.metadata {
       {

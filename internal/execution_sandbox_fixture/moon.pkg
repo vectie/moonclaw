@@ -1,0 +1,8 @@
+import {
+  "moonbitlang/core/json",
+  "vectie/moonlib/fsx",
+  "vectie/moonlib/pathx",
+  "vectie/moonclaw/internal/execution_sandbox",
+}
+
+supported_targets = "native"

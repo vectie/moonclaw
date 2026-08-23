@@ -93,49 +93,6 @@ fn mooncode_runtime_turn_prompt_tool_calls(command : Json) -> Array[Json] {
 }
 
 ///|
-fn mooncode_runtime_turn_deterministic_preplan(command : Json) -> Array[Json] {
-  if mooncode_json_string(command, "command", default="prompt") != "prompt" {
-    return []
-  }
-  let request = mooncode_runtime_turn_prompt_text(command).trim().to_owned()
-  let lower = request.to_lower().to_string()
-  let path = mooncode_runtime_turn_prompt_path(request)
-  if mooncode_runtime_turn_is_explicit_read(lower, path) {
-    return [
-      {
-        "tool": "read",
-        "arguments": {
-          "path": path,
-          "max_output_chars": MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
-        },
-        "planner": "deterministic-explicit-read",
-      },
-      {
-        "tool": "finish",
-        "arguments": { "answer": "Read `\{path}` from the selected MoonBook." },
-        "planner": "deterministic-explicit-read",
-      },
-    ]
-  }
-  let exact_content = mooncode_runtime_turn_prompt_exact_content(request, lower)
-  if mooncode_runtime_turn_is_explicit_write(lower, path, exact_content) {
-    return [
-      {
-        "tool": "write",
-        "arguments": { "path": path, "content": exact_content },
-        "planner": "deterministic-explicit-write",
-      },
-      {
-        "tool": "finish",
-        "arguments": { "answer": "Wrote `\{path}` in the selected MoonBook." },
-        "planner": "deterministic-explicit-write",
-      },
-    ]
-  }
-  []
-}
-
-///|
 fn mooncode_runtime_turn_is_explicit_read(
   lower : String,
   path : String,
@@ -283,4 +240,48 @@ fn mooncode_runtime_turn_moon_cmd_arguments(command : Json) -> Json {
       "max_output_chars": 16000,
     }
   }
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_runtime_turn_deterministic_preplan(command : Json) -> Array[Json] {
+  if mooncode_json_string(command, "command", default="prompt") != "prompt" {
+    return []
+  }
+  let request = mooncode_runtime_turn_prompt_text(command).trim().to_owned()
+  let lower = request.to_lower().to_string()
+  let path = mooncode_runtime_turn_prompt_path(request)
+  if mooncode_runtime_turn_is_explicit_read(lower, path) {
+    return [
+      {
+        "tool": "read",
+        "arguments": {
+          "path": path,
+          "max_output_chars": MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
+        },
+        "planner": "deterministic-explicit-read",
+      },
+      {
+        "tool": "finish",
+        "arguments": { "answer": "Read `\{path}` from the selected MoonBook." },
+        "planner": "deterministic-explicit-read",
+      },
+    ]
+  }
+  let exact_content = mooncode_runtime_turn_prompt_exact_content(request, lower)
+  if mooncode_runtime_turn_is_explicit_write(lower, path, exact_content) {
+    return [
+      {
+        "tool": "write",
+        "arguments": { "path": path, "content": exact_content },
+        "planner": "deterministic-explicit-write",
+      },
+      {
+        "tool": "finish",
+        "arguments": { "answer": "Wrote `\{path}` in the selected MoonBook." },
+        "planner": "deterministic-explicit-write",
+      },
+    ]
+  }
+  []
 }

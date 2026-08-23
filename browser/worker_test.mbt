@@ -14,16 +14,16 @@ fn test_scope() -> @browser.BrowserSessionScope {
 fn test_action(
   id : String,
   actor : @browser.BrowserActor,
-  operation? : @browser.BrowserOperation = @browser.Click,
+  operation? : @browser.BrowserOperation = Click,
   target? : String = "role=button[name='Calculate']",
   code_revision? : String = "code-a91",
-  required_effect? : @browser.BrowserEffectClass = @browser.InteractLocalPage,
+  required_effect? : @browser.BrowserEffectClass = InteractLocalPage,
 ) -> @browser.BrowserAction {
   @browser.browser_action(
     action_id=id,
     session_id="browser-book-r7",
     actor~,
-    actor_id=if actor is @browser.User { "user-1" } else { "agent-1" },
+    actor_id=if actor is User { "user-1" } else { "agent-1" },
     operation~,
     target~,
     expected_observation="calculator result visible",
@@ -49,10 +49,10 @@ fn completed_result(
   before? : String = "state-before",
   after? : String = "state-after",
   target_resolved? : Bool = true,
-  page_trust? : @browser.BrowserPageTrust = @browser.TrustedLocalPage,
-  destination_class? : @browser.BrowserDestinationClass = @browser.DestinationNotApplicable,
+  page_trust? : @browser.BrowserPageTrust = TrustedLocalPage,
+  destination_class? : @browser.BrowserDestinationClass = DestinationNotApplicable,
   quarantine_ref? : String = "",
-  transfer_verdict? : @browser.BrowserTransferVerdict = @browser.TransferNotScanned,
+  transfer_verdict? : @browser.BrowserTransferVerdict = TransferNotScanned,
   fresh_authority_valid? : Bool = true,
 ) -> @browser.BrowserHostResult {
   @browser.browser_host_result(
@@ -69,7 +69,7 @@ fn completed_result(
     transfer_verdict~,
     idempotency_key=command.idempotency_key,
     fresh_authority_valid~,
-    status=@browser.Completed,
+    status=Completed,
     before_state_digest=before,
     after_state_digest=after,
     screenshot_before_ref="fixture://before/" + command.action_id,
@@ -83,7 +83,7 @@ fn completed_result(
 test "agent action becomes accepted only after host evidence" {
   let worker = @browser.BrowserWorker::new(test_scope(), action_budget=2)
   assert_true(worker.begin_agent_operation())
-  let action = test_action("action-1", @browser.Agent)
+  let action = test_action("action-1", Agent)
   let command = ready_command(worker.prepare(action))
   assert_eq(worker.receipts().length(), 0)
   assert_eq(worker.remaining_actions(), 2)
@@ -99,7 +99,7 @@ test "agent action becomes accepted only after host evidence" {
 test "pause stop and takeover cancel or redirect same visible session" {
   let worker = @browser.BrowserWorker::new(test_scope())
   assert_true(worker.begin_agent_operation())
-  let agent_action = test_action("action-agent", @browser.Agent)
+  let agent_action = test_action("action-agent", Agent)
   let command = ready_command(worker.prepare(agent_action))
   assert_true(worker.take_over())
   let cancelled = worker.complete(
@@ -108,7 +108,7 @@ test "pause stop and takeover cancel or redirect same visible session" {
     completed_result(command),
   )
   assert_true(cancelled.outcome is Cancelled("agent-control-revoked"))
-  let user_action = test_action("action-user", @browser.User)
+  let user_action = test_action("action-user", User)
   let user_command = ready_command(worker.prepare(user_action))
   assert_true(
     worker
@@ -117,7 +117,7 @@ test "pause stop and takeover cancel or redirect same visible session" {
   )
   assert_true(worker.stop())
   assert_true(
-    worker.prepare(test_action("action-stopped", @browser.User))
+    worker.prepare(test_action("action-stopped", User))
     is Rejected({ outcome: Blocked("session-stopped"), .. }),
   )
 }
@@ -130,24 +130,24 @@ test "authority revision secret and default workspace mutation fail closed" {
     worker.prepare(
       test_action(
         "action-save",
-        @browser.Agent,
-        operation=@browser.CaptureScreenshot,
-        required_effect=@browser.SaveWorkspaceEvidence,
+        Agent,
+        operation=CaptureScreenshot,
+        required_effect=SaveWorkspaceEvidence,
       ),
     )
     is Rejected({ outcome: Blocked("effect-not-authorized"), .. }),
   )
   assert_true(
     worker.prepare(
-      test_action("action-revision", @browser.Agent, code_revision="code-new"),
+      test_action("action-revision", Agent, code_revision="code-new"),
     )
     is Rejected({ outcome: Blocked("code-revision-mismatch"), .. }),
   )
   let secret = @browser.browser_action(
     action_id="action-secret",
     session_id="browser-book-r7",
-    actor=@browser.Agent,
-    operation=@browser.TypeText,
+    actor=Agent,
+    operation=TypeText,
     target="label=Password",
     value_redacted="actual-secret",
     code_revision="code-a91",
@@ -163,7 +163,7 @@ test "authority revision secret and default workspace mutation fail closed" {
 test "duplicate host terminal delivery is idempotent" {
   let worker = @browser.BrowserWorker::new(test_scope())
   assert_true(worker.begin_agent_operation())
-  let action = test_action("action-duplicate", @browser.Agent)
+  let action = test_action("action-duplicate", Agent)
   let command = ready_command(worker.prepare(action))
   let result = completed_result(command)
   let first = worker.complete(action, command, result)
@@ -177,7 +177,7 @@ test "duplicate host terminal delivery is idempotent" {
 test "accepted receipt and duplicate guard survive worker restart" {
   let worker = @browser.BrowserWorker::new(test_scope(), action_budget=2)
   assert_true(worker.begin_agent_operation())
-  let action = test_action("action-restart", @browser.Agent)
+  let action = test_action("action-restart", Agent)
   let command = ready_command(worker.prepare(action))
   let accepted = worker.complete(action, command, completed_result(command))
   assert_true(accepted.accepted())
@@ -193,7 +193,7 @@ test "accepted receipt and duplicate guard survive worker restart" {
 test "host crash and malformed result cannot create accepted evidence" {
   let worker = @browser.BrowserWorker::new(test_scope())
   assert_true(worker.begin_agent_operation())
-  let crashed_action = test_action("action-crash", @browser.Agent)
+  let crashed_action = test_action("action-crash", Agent)
   let crashed_command = ready_command(worker.prepare(crashed_action))
   let crashed = @browser.browser_host_result(
     host_receipt_id="fixture-crash",
@@ -203,7 +203,7 @@ test "host crash and malformed result cannot create accepted evidence" {
     code_revision=crashed_command.code_revision,
     authority_envelope_id=crashed_command.authority_envelope_id,
     capability_digest=crashed_command.capability_digest,
-    status=@browser.Crashed("exit-17"),
+    status=Crashed("exit-17"),
     before_state_digest="",
     after_state_digest="",
   )
@@ -211,7 +211,7 @@ test "host crash and malformed result cannot create accepted evidence" {
     worker.complete(crashed_action, crashed_command, crashed).outcome
     is Blocked("host-crashed:exit-17"),
   )
-  let malformed_action = test_action("action-malformed", @browser.Agent)
+  let malformed_action = test_action("action-malformed", Agent)
   let malformed_command = ready_command(worker.prepare(malformed_action))
   assert_true(
     worker.complete(
@@ -221,7 +221,7 @@ test "host crash and malformed result cannot create accepted evidence" {
     ).outcome
     is Blocked("host-state-digest-missing"),
   )
-  let capability_action = test_action("action-capability", @browser.Agent)
+  let capability_action = test_action("action-capability", Agent)
   let capability_command = ready_command(worker.prepare(capability_action))
   let wrong_capability = @browser.browser_host_result(
     host_receipt_id="fixture-wrong-capability",
@@ -231,7 +231,7 @@ test "host crash and malformed result cannot create accepted evidence" {
     code_revision=capability_command.code_revision,
     authority_envelope_id=capability_command.authority_envelope_id,
     capability_digest="wrong-capability",
-    status=@browser.Completed,
+    status=Completed,
     before_state_digest="before",
     after_state_digest="after",
   )
@@ -245,7 +245,7 @@ test "host crash and malformed result cannot create accepted evidence" {
 test "deterministic replay stops on state or semantic divergence" {
   let worker = @browser.BrowserWorker::new(test_scope(), action_budget=4)
   assert_true(worker.begin_agent_operation())
-  let source_action = test_action("action-source", @browser.Agent)
+  let source_action = test_action("action-source", Agent)
   let source_command = ready_command(worker.prepare(source_action))
   let source = worker.complete(
     source_action,
@@ -256,7 +256,7 @@ test "deterministic replay stops on state or semantic divergence" {
       after="fixture-after",
     ),
   )
-  let replay_action = test_action("action-replay", @browser.Replay)
+  let replay_action = test_action("action-replay", Replay)
   let replay_command = ready_command(
     worker.prepare_replay(source, replay_action),
   )
@@ -269,7 +269,7 @@ test "deterministic replay stops on state or semantic divergence" {
     ).outcome
     is Diverged("before-state-digest-mismatch"),
   )
-  let semantic_action = test_action("action-semantic", @browser.Replay)
+  let semantic_action = test_action("action-semantic", Replay)
   let semantic_command = ready_command(
     worker.prepare_replay(source, semantic_action),
   )
@@ -290,15 +290,14 @@ test "deterministic replay stops on state or semantic divergence" {
 ///|
 test "local verbs map to portable constitutional effect classes" {
   assert_true(
-    @browser.browser_operation_effect_class(@browser.Click) is InteractLocalPage,
+    @browser.browser_operation_effect_class(Click) is InteractLocalPage,
   )
   assert_true(
-    @browser.browser_operation_effect_class(@browser.CaptureDiagnostics)
+    @browser.browser_operation_effect_class(CaptureDiagnostics)
     is InspectVisiblePage,
   )
   assert_true(
-    @browser.browser_operation_effect_class(@browser.Navigate)
-    is NavigateExternalOrigin,
+    @browser.browser_operation_effect_class(Navigate) is NavigateExternalOrigin,
   )
 }
 
@@ -313,8 +312,8 @@ test "origin classes preserve explicit loopback and offline boundary" {
     code_revision="code-a91",
     run_id="run-7",
     authority_envelope_id="authority-loopback",
-    origin_class=@browser.IsolatedLoopback,
-    network_policy=@browser.Offline,
+    origin_class=IsolatedLoopback,
+    network_policy=Offline,
     allowed_origins=["http://127.0.0.1:4388"],
   )
   assert_true(@browser.browser_scope_policy_issue(loopback) is None)
@@ -340,7 +339,7 @@ test "origin classes preserve explicit loopback and offline boundary" {
     code_revision="code-a91",
     run_id="run-7",
     authority_envelope_id="authority-loopback",
-    origin_class=@browser.IsolatedLoopback,
+    origin_class=IsolatedLoopback,
     allowed_origins=["http://*.localhost:4388"],
   )
   assert_true(@browser.browser_scope_policy_issue(wildcard) is Some(_))
@@ -355,16 +354,16 @@ fn external_scope() -> @browser.BrowserSessionScope {
     code_revision="code-ext",
     run_id="run-ext",
     authority_envelope_id="authority-ext",
-    origin_class=@browser.ExternalOrigin,
-    network_policy=@browser.ApprovedOriginsOnly,
+    origin_class=ExternalOrigin,
+    network_policy=ApprovedOriginsOnly,
     allowed_origins=["https://robot.example"],
     permitted_effects=[
-      @browser.InspectVisiblePage,
-      @browser.InteractLocalPage,
-      @browser.NavigateExternalOrigin,
-      @browser.UploadFile,
-      @browser.DownloadFile,
-      @browser.SubmitExternalMutation,
+      InspectVisiblePage,
+      InteractLocalPage,
+      NavigateExternalOrigin,
+      UploadFile,
+      DownloadFile,
+      SubmitExternalMutation,
     ],
     upload_sources=["/Users/demo/moonsuite/books/robot/raw/design.glb"],
     download_root="/Users/demo/moonsuite/quarantine/browser",
@@ -387,7 +386,7 @@ fn external_action(
   id : String,
   effect : @browser.BrowserEffectClass,
   target? : String = "role=button[name='Continue']",
-  page_trust? : @browser.BrowserPageTrust = @browser.UntrustedExternalPage,
+  page_trust? : @browser.BrowserPageTrust = UntrustedExternalPage,
   transfer_path? : String = "",
   credential_handle? : String = "",
   idempotency_key? : String = "",
@@ -396,13 +395,9 @@ fn external_action(
   @browser.browser_action(
     action_id=id,
     session_id="external-session",
-    actor=@browser.Agent,
+    actor=Agent,
     actor_id="agent-external",
-    operation=if effect is @browser.NavigateExternalOrigin {
-      @browser.Navigate
-    } else {
-      @browser.Click
-    },
+    operation=if effect is NavigateExternalOrigin { Navigate } else { Click },
     target~,
     code_revision="code-ext",
     authority_envelope_id="authority-ext",
@@ -439,7 +434,7 @@ test "external navigation denies local private deceptive and unresolved destinat
     worker.prepare(
       external_action(
         "navigate-unapproved",
-        @browser.NavigateExternalOrigin,
+        NavigateExternalOrigin,
         target="https://evil.test/review",
       ),
     )
@@ -447,7 +442,7 @@ test "external navigation denies local private deceptive and unresolved destinat
   )
   let action = external_action(
     "navigate-public",
-    @browser.NavigateExternalOrigin,
+    NavigateExternalOrigin,
     target="https://robot.example/review",
   )
   let command = ready_command(worker.prepare(action))
@@ -457,8 +452,8 @@ test "external navigation denies local private deceptive and unresolved destinat
       command,
       completed_result(
         command,
-        page_trust=@browser.UntrustedExternalPage,
-        destination_class=@browser.PrivateNetworkDestination,
+        page_trust=UntrustedExternalPage,
+        destination_class=PrivateNetworkDestination,
       ),
     ).outcome
     is Blocked("private-or-unresolved-network-destination"),
@@ -472,8 +467,8 @@ test "prompt injection and credential boundary fail closed before dispatch" {
     worker.prepare(
       external_action(
         "prompt-click",
-        @browser.InteractLocalPage,
-        page_trust=@browser.PromptInjectionSuspected,
+        InteractLocalPage,
+        page_trust=PromptInjectionSuspected,
       ),
     )
     is Rejected(
@@ -487,7 +482,7 @@ test "prompt injection and credential boundary fail closed before dispatch" {
     worker.prepare(
       external_action(
         "credential-raw",
-        @browser.InteractLocalPage,
+        InteractLocalPage,
         credential_handle="secret-password",
       ),
     )
@@ -497,16 +492,13 @@ test "prompt injection and credential boundary fail closed before dispatch" {
     worker.prepare(
       external_action(
         "credential-handle",
-        @browser.InteractLocalPage,
+        InteractLocalPage,
         credential_handle="cred://robot-example/session",
       ),
     )
     is Ready(_),
   )
-  let detected = external_action(
-    "prompt-detected-by-host",
-    @browser.InteractLocalPage,
-  )
+  let detected = external_action("prompt-detected-by-host", InteractLocalPage)
   let detected_command = ready_command(worker.prepare(detected))
   assert_true(
     worker.complete(
@@ -514,8 +506,8 @@ test "prompt injection and credential boundary fail closed before dispatch" {
       detected_command,
       completed_result(
         detected_command,
-        page_trust=@browser.PromptInjectionSuspected,
-        destination_class=@browser.PublicInternetDestination,
+        page_trust=PromptInjectionSuspected,
+        destination_class=PublicInternetDestination,
       ),
     ).outcome
     is Blocked("host-detected-prompt-injection"),
@@ -529,7 +521,7 @@ test "uploads and downloads require scoped transfer fresh authority and quaranti
     worker.prepare(
       external_action(
         "upload-outside",
-        @browser.UploadFile,
+        UploadFile,
         transfer_path="/Users/demo/secret.txt",
         idempotency_key="upload-1",
         nonce="fresh-nonce-2",
@@ -541,7 +533,7 @@ test "uploads and downloads require scoped transfer fresh authority and quaranti
     worker.prepare(
       external_action(
         "download-no-authority",
-        @browser.DownloadFile,
+        DownloadFile,
         idempotency_key="download-1",
       ),
     )
@@ -549,14 +541,14 @@ test "uploads and downloads require scoped transfer fresh authority and quaranti
   )
   let download = external_action(
     "download-clean",
-    @browser.DownloadFile,
+    DownloadFile,
     idempotency_key="download-2",
     nonce="fresh-nonce-2",
   )
   let dirty_worker = external_worker()
   let dirty = external_action(
     "download-dirty",
-    @browser.DownloadFile,
+    DownloadFile,
     idempotency_key="download-dirty-1",
     nonce="fresh-nonce-2",
   )
@@ -567,10 +559,10 @@ test "uploads and downloads require scoped transfer fresh authority and quaranti
       dirty_command,
       completed_result(
         dirty_command,
-        page_trust=@browser.UntrustedExternalPage,
-        destination_class=@browser.PublicInternetDestination,
+        page_trust=UntrustedExternalPage,
+        destination_class=PublicInternetDestination,
         quarantine_ref="/Users/demo/moonsuite/quarantine/browser/suspicious.glb",
-        transfer_verdict=@browser.TransferRejected("malware-signature"),
+        transfer_verdict=TransferRejected("malware-signature"),
       ),
     ).outcome
     is Blocked("download-not-clean-in-quarantine"),
@@ -578,7 +570,7 @@ test "uploads and downloads require scoped transfer fresh authority and quaranti
   let expired_worker = external_worker()
   let expired = external_action(
     "submit-expired",
-    @browser.SubmitExternalMutation,
+    SubmitExternalMutation,
     idempotency_key="submit-expired-1",
     nonce="fresh-nonce-2",
   )
@@ -589,8 +581,8 @@ test "uploads and downloads require scoped transfer fresh authority and quaranti
       expired_command,
       completed_result(
         expired_command,
-        page_trust=@browser.UntrustedExternalPage,
-        destination_class=@browser.PublicInternetDestination,
+        page_trust=UntrustedExternalPage,
+        destination_class=PublicInternetDestination,
         fresh_authority_valid=false,
       ),
     ).outcome
@@ -604,10 +596,10 @@ test "uploads and downloads require scoped transfer fresh authority and quaranti
       command,
       completed_result(
         command,
-        page_trust=@browser.UntrustedExternalPage,
-        destination_class=@browser.PublicInternetDestination,
+        page_trust=UntrustedExternalPage,
+        destination_class=PublicInternetDestination,
         quarantine_ref="/Users/demo/moonsuite/quarantine/browser/robot.glb",
-        transfer_verdict=@browser.TransferClean,
+        transfer_verdict=TransferClean,
       ),
     )
     .accepted(),
@@ -619,7 +611,7 @@ test "mutating replay cannot reuse authority nonce or idempotency lineage" {
   let worker = external_worker()
   let source_action = external_action(
     "submit-source",
-    @browser.SubmitExternalMutation,
+    SubmitExternalMutation,
     idempotency_key="submit-1",
     nonce="fresh-nonce-2",
   )
@@ -629,21 +621,21 @@ test "mutating replay cannot reuse authority nonce or idempotency lineage" {
     source_command,
     completed_result(
       source_command,
-      page_trust=@browser.UntrustedExternalPage,
-      destination_class=@browser.PublicInternetDestination,
+      page_trust=UntrustedExternalPage,
+      destination_class=PublicInternetDestination,
     ),
   )
   let replay = @browser.browser_action(
     action_id="submit-replay",
     session_id="external-session",
-    actor=@browser.Replay,
+    actor=Replay,
     actor_id="agent-external",
-    operation=@browser.Click,
+    operation=Click,
     target="role=button[name='Submit']",
     code_revision="code-ext",
     authority_envelope_id="authority-ext",
-    required_effect=@browser.SubmitExternalMutation,
-    page_trust=@browser.UntrustedExternalPage,
+    required_effect=SubmitExternalMutation,
+    page_trust=UntrustedExternalPage,
     idempotency_key="submit-2",
     fresh_authority_nonce="fresh-nonce-2",
   )

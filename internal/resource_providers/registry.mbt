@@ -162,7 +162,7 @@ pub async fn load_resource_providers(
   home? : String?,
 ) -> Array[RegisteredResourceProvider] {
   let resolved_home = home.unwrap_or(None)
-  let providers_by_name : Map[String, RegisteredResourceProvider] = {}
+  let providers_by_name : Map[String, RegisteredResourceProvider] = Map([])
   let order : Array[String] = []
   for candidate in provider_manifest_candidates(cwd, resolved_home) {
     if !(@fsx.exists(candidate) catch { _ => false }) {

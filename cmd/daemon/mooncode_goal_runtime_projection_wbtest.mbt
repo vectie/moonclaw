@@ -19,17 +19,14 @@ async test "streaming goal projection keeps constant heap across a large journal
         path,
         mode=ReadWrite,
         append=true,
-        create=0o600,
-        truncate=false,
+        create_mode=OpenOrCreate,
+        permission=0o600,
       )
       goal_projection_write_record(writer, scan_test_carrier(), 1)
       let count = 20000
       for i in 0..<count {
         let stored = carrier_test_event(
-          @mooncode_core.PhaseChanged(
-            "large-event-" + i.to_string(),
-            @mooncode_core.Running,
-          ),
+          PhaseChanged("large-event-" + i.to_string(), Running),
           2L,
         )
         let canonical = encode_mooncode_goal_runtime_stored_event(stored)
@@ -40,7 +37,7 @@ async test "streaming goal projection keeps constant heap across a large journal
         )
       }
       let duplicate = carrier_test_event(
-        @mooncode_core.PhaseChanged("large-event-0", @mooncode_core.Running),
+        PhaseChanged("large-event-0", Running),
         99L,
       )
       goal_projection_write_record(
@@ -80,14 +77,11 @@ async test "streaming goal projection detects far semantic identity conflict" {
         path,
         mode=ReadWrite,
         append=true,
-        create=0o600,
-        truncate=false,
+        create_mode=OpenOrCreate,
+        permission=0o600,
       )
       goal_projection_write_record(writer, scan_test_carrier(), 1)
-      let first = carrier_test_event(
-        @mooncode_core.PhaseChanged("stable-id", @mooncode_core.Running),
-        2L,
-      )
+      let first = carrier_test_event(PhaseChanged("stable-id", Running), 2L)
       goal_projection_write_record(
         writer,
         mooncode_goal_runtime_carrier_from_event(
@@ -97,10 +91,7 @@ async test "streaming goal projection detects far semantic identity conflict" {
       )
       for i in 0..<1000 {
         let middle = carrier_test_event(
-          @mooncode_core.PhaseChanged(
-            "middle-" + i.to_string(),
-            @mooncode_core.Running,
-          ),
+          PhaseChanged("middle-" + i.to_string(), Running),
           3L,
         )
         goal_projection_write_record(
@@ -112,7 +103,7 @@ async test "streaming goal projection detects far semantic identity conflict" {
         )
       }
       let conflict = carrier_test_event(
-        @mooncode_core.PhaseChanged("stable-id", @mooncode_core.WaitingApproval),
+        PhaseChanged("stable-id", WaitingApproval),
         4L,
       )
       goal_projection_write_record(

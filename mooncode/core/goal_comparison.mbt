@@ -70,7 +70,7 @@ fn goal_comparison_normalize(text : String) -> String {
 fn goal_comparison_unique_tokens(normalized : String) -> Array[String] {
   let result : Array[String] = []
   for token_view in normalized.split(" ") {
-    let token = token_view.to_string()
+    let token = token_view.to_owned()
     if token != "" && !result.contains(token) {
       result.push(token)
     }

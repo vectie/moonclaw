@@ -37,7 +37,7 @@ pub fn json_input(
   path~ : String,
   separator? : String,
 ) -> Json {
-  params(content~, path~, separator?).to_json()
+  ToJson::to_json(params(content~, path~, separator?))
 }
 
 ///|

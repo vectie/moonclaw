@@ -85,7 +85,7 @@ fn unique_memory_hits(
   limit : Int,
 ) -> Array[MemorySearchHit] {
   let combined : Array[MemorySearchHit] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for hit in hits {
     if combined.length() >= limit {
       break

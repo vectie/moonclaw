@@ -69,8 +69,8 @@ fn scan_test_corrupt(records : Array[Json]) -> Bool {
     let _ = mooncode_goal_runtime_scan_records(records, "session-你好")
     false
   } catch {
-    MoonCodeGoalRuntimeStoreError::CorruptStore(_) => true
-    MoonCodeGoalRuntimeStoreError::IdentityConflict(_, _, _) => false
+    CorruptStore(_) => true
+    IdentityConflict(_, _, _) => false
   }
 }
 

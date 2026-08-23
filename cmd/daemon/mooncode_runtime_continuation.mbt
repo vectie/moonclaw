@@ -9,7 +9,7 @@ fn mooncode_runtime_continuation_kind() -> String {
 /// need only their selected calls and response metadata; duplicating the same
 /// accumulated transcript in every step makes checkpoint records quadratic.
 fn mooncode_runtime_compact_plan(plan : Json) -> Json {
-  let compact : Map[String, Json] = {}
+  let compact : Map[String, Json] = Map([])
   match plan {
     Object(fields) =>
       for key, value in fields.iter2() {
@@ -47,7 +47,7 @@ fn mooncode_runtime_compact_continuation_history(
       "tool_result" &&
       event_id != ""
     if journaled_result {
-      let compact_execution : Map[String, Json] = {}
+      let compact_execution : Map[String, Json] = Map([])
       match execution {
         Object(fields) =>
           for key, value in fields.iter2() {
@@ -284,7 +284,7 @@ fn mooncode_runtime_planner_replan_continuation_event(
 fn mooncode_runtime_unproject_journal_event(event : Json) -> Json {
   match event {
     Object(fields) => {
-      let normalized : Map[String, Json] = {}
+      let normalized : Map[String, Json] = Map([])
       for key, value in fields.iter2() {
         if key != "journal_sequence" {
           normalized[key] = value
@@ -327,7 +327,7 @@ fn mooncode_runtime_continuation_for_command(
   if references.length() != result_count {
     return Json::object({})
   }
-  let expected_digests : Map[String, String] = {}
+  let expected_digests : Map[String, String] = Map([])
   for reference in references {
     if mooncode_json_bool(reference, "journaled_result", default=false) {
       let event_id = mooncode_json_string(reference, "event_id", default="")
@@ -342,8 +342,8 @@ fn mooncode_runtime_continuation_for_command(
       expected_digests[event_id] = event_digest
     }
   }
-  let matched_events : Map[String, Json] = {}
-  let match_counts : Map[String, Int] = {}
+  let matched_events : Map[String, Json] = Map([])
+  let match_counts : Map[String, Int] = Map([])
   for projected_event in events {
     if mooncode_json_string(projected_event, "command_id", default="") !=
       command_id {

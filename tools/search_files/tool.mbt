@@ -110,7 +110,7 @@ async fn search_in_file(
 ) -> Array[SearchResult] raise SearchError {
   let content = @fsx.read_file(file_path) catch {
     @encoding/utf8.Malformed(_) => return []
-    error => raise FileReadError(path=file_path, error="\{to_repr(error)}")
+    error => raise FileReadError(path=file_path, error="\{Repr(error)}")
   }
   let lines = content.split("\n").collect() // Convert to Array
   let results = []

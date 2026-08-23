@@ -261,7 +261,7 @@ async fn authed_feishu_http_client(
     Err(error) => return Err(error)
   }
   let base_url = feishu_base_url(config.domain)
-  let client = @http.Client::new(base_url, headers={
+  let client = @http.Client(base_url, headers={
     "Authorization": "Bearer \{token}",
     "Content-Type": "application/json",
     "Connection": "close",
@@ -586,7 +586,7 @@ async fn parse_user_batch_lookup_response(
       ConnectionFailed(message="Feishu user batch lookup failed: \{parsed.msg}"),
     )
   }
-  let resolved : Map[String, String] = {}
+  let resolved : Map[String, String] = Map([])
   for user in parsed.data.map(fn(data) { data.items }).unwrap_or([]) {
     let open_id = user.open_id.unwrap_or("")
     let name = pick_feishu_user_name(user)
@@ -804,7 +804,7 @@ pub async fn FeishuClient::send_text_message(
     Err(error) => return Err(error)
   }
   let base_url = feishu_base_url(self.config.domain)
-  let client = @http.Client::new(base_url, headers={
+  let client = @http.Client(base_url, headers={
     "Authorization": "Bearer \{token}",
     "Content-Type": "application/json",
     "Connection": "close",
@@ -1133,7 +1133,7 @@ pub async fn FeishuClient::get_message(
     Err(error) => return Err(error)
   }
   let base_url = feishu_base_url(self.config.domain)
-  let client = @http.Client::new(base_url, headers={
+  let client = @http.Client(base_url, headers={
     "Authorization": "Bearer \{token}",
     "Connection": "close",
   }) catch {
@@ -1167,7 +1167,7 @@ pub async fn FeishuClient::get_message_items(
     Err(error) => return Err(error)
   }
   let base_url = feishu_base_url(self.config.domain)
-  let client = @http.Client::new(base_url, headers={
+  let client = @http.Client(base_url, headers={
     "Authorization": "Bearer \{token}",
     "Connection": "close",
   }) catch {
@@ -1203,7 +1203,7 @@ pub async fn FeishuClient::get_user_display_name(
     Err(error) => return Err(error)
   }
   let base_url = feishu_base_url(self.config.domain)
-  let client = @http.Client::new(base_url, headers={
+  let client = @http.Client(base_url, headers={
     "Authorization": "Bearer \{token}",
     "Connection": "close",
   }) catch {
@@ -1240,7 +1240,7 @@ pub async fn FeishuClient::get_user_display_names(
     Err(error) => return Err(error)
   }
   let base_url = feishu_base_url(self.config.domain)
-  let client = @http.Client::new(base_url, headers={
+  let client = @http.Client(base_url, headers={
     "Authorization": "Bearer \{token}",
     "Connection": "close",
   }) catch {
@@ -1253,7 +1253,7 @@ pub async fn FeishuClient::get_user_display_names(
   }
   defer client.close()
 
-  let resolved : Map[String, String] = {}
+  let resolved : Map[String, String] = Map([])
   let total = open_ids.length()
   let mut start = 0
   while start < total {

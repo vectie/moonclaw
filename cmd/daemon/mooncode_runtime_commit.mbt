@@ -9,7 +9,7 @@ async fn mooncode_runtime_turn_commit_results(
   let message = mooncode_runtime_turn_commit_message(command, command_id)
   let status = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.StatusProductPorcelain,
+    StatusProductPorcelain,
     timeout_ms=10000,
     max_output_chars=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
@@ -52,7 +52,7 @@ async fn mooncode_runtime_turn_commit_results(
   }
   let add = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.AddProductAll,
+    AddProductAll,
     timeout_ms=10000,
     max_output_chars=MOONCODE_DEFAULT_TOOL_OUTPUT_CHARS,
   )
@@ -74,7 +74,7 @@ async fn mooncode_runtime_turn_commit_results(
   }
   let commit = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.Commit(message),
+    Commit(message),
     timeout_ms=30000,
     max_output_chars=20000,
   )
@@ -100,7 +100,7 @@ async fn mooncode_runtime_turn_commit_results(
   }
   let head = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.Head,
+    Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -179,7 +179,7 @@ async fn mooncode_runtime_commit_changed_paths(
 ) -> Array[String] {
   let process = @trusted_host_process.run_git(
     book_root,
-    @trusted_host_process.DiffTree(commit_sha),
+    DiffTree(commit_sha),
     timeout_ms=10000,
   ) catch {
     _ => return []
@@ -194,7 +194,7 @@ async fn mooncode_runtime_commit_changed_paths(
 ///|
 fn mooncode_runtime_commit_nul_paths(output : String) -> Array[String] {
   let paths : Array[String] = []
-  for item in output.split("\x00") {
+  for item in output.split("\u0000") {
     let path = item.to_owned()
     if path != "" && !paths.contains(path) {
       paths.push(path)

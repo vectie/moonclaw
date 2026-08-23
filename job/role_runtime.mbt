@@ -156,7 +156,7 @@ fn merged_role_runtime_metadata(
     (Some(profile), None) => Some(profile)
     (None, Some(step)) => Some(step)
     (Some(Object(profile)), Some(Object(step))) => {
-      let merged : Map[String, Json] = {}
+      let merged : Map[String, Json] = Map([])
       for key, value in profile {
         merged.set(key, value)
       }

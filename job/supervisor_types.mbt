@@ -31,18 +31,15 @@ pub impl @json.FromJson for SupervisorEpochMsV1 with fn from_json(
     !text.is_blank() &&
     (text == "0" || !text.has_prefix("0")) &&
     text.iter().all(fn(c) { c >= '0' && c <= '9' }) else {
-    raise @json.JsonDecodeError(
+    raise JsonDecodeError(
       (path, "expected canonical epoch-millisecond decimal string"),
     )
   }
-  let value = @strconv.parse_int64(text) catch {
-    _ =>
-      raise @json.JsonDecodeError(
-        (path, "epoch-millisecond string exceeds Int64"),
-      )
+  let value = @string.parse_int64(text) catch {
+    _ => raise JsonDecodeError((path, "epoch-millisecond string exceeds Int64"))
   }
   supervisor_epoch_ms_v1(value) catch {
-    _ => raise @json.JsonDecodeError((path, "invalid epoch milliseconds"))
+    _ => raise JsonDecodeError((path, "invalid epoch milliseconds"))
   }
 }
 
@@ -229,6 +226,7 @@ pub(all) struct SupervisorWorkerLineageV1 {
 ///|
 /// Internal executor port for the existing `job.delegate` path. It cannot be
 /// decoded from the daemon HTTP surface.
+#warnings("-struct_never_constructed")
 pub struct SupervisorDelegateRequestV1 {
   envelope : SupervisorCommandEnvelopeV1
   supervisor_id : String

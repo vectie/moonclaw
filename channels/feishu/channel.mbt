@@ -310,7 +310,7 @@ impl @channel.Channel for FeishuChannel with fn send(
         Ok(result) => Ok(result)
         Err(error) => {
           self.log_warn(
-            "Feishu reply send failed for \{actual_account_id}, falling back to plain send: \{to_repr(error)}",
+            "Feishu reply send failed for \{actual_account_id}, falling back to plain send: \{Repr(error)}",
           )
           client.send_text_message(to, message.content)
         }
@@ -372,7 +372,7 @@ async fn FeishuChannel::ensure_progress_reaction(
               self.state.active_progress_reactions[stream_key] = updated
             Err(error) =>
               self.log_warn(
-                "Failed to add Feishu progress reaction for \{account_id}: \{to_repr(error)}",
+                "Failed to add Feishu progress reaction for \{account_id}: \{Repr(error)}",
               )
           }
         }
@@ -382,7 +382,7 @@ async fn FeishuChannel::ensure_progress_reaction(
               self.state.active_progress_reactions[stream_key] = state
             Err(error) =>
               self.log_warn(
-                "Failed to add Feishu progress reaction for \{account_id}: \{to_repr(error)}",
+                "Failed to add Feishu progress reaction for \{account_id}: \{Repr(error)}",
               )
           }
       }
@@ -404,7 +404,7 @@ async fn FeishuChannel::clear_progress_reaction(
         Ok(_) => ()
         Err(error) =>
           self.log_warn(
-            "Failed to remove Feishu progress reaction for \{account_id}: \{to_repr(error)}",
+            "Failed to remove Feishu progress reaction for \{account_id}: \{Repr(error)}",
           )
       }
     }
@@ -946,6 +946,17 @@ impl @channel.ChannelExtension for FeishuChannel with fn handle_websocket(
 }
 
 ///|
+extend FeishuChannel with @channel.Channel::{
+  is_running,
+  send,
+}
+
+///|
+extend FeishuChannel with @channel.ChannelExtension::{
+  supports_websocket,
+}
+
+///|
 impl @channel.ChannelExtension for FeishuChannel with fn allowed_methods(
   _self : FeishuChannel,
 ) -> Array[String] {
@@ -1107,7 +1118,7 @@ fn FeishuChannel::ensure_websocket_runtime_client(
                 let endpoint = match endpoint {
                   Ok(endpoint) => endpoint
                   Err(error) => {
-                    let message = "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{to_repr(error)}"
+                    let message = "Feishu websocket account \{account_id} failed to resolve websocket endpoint: \{Repr(error)}"
                     self.log_warn(message)
                     return Err(message)
                   }
@@ -1522,7 +1533,7 @@ fn format_merge_forward_items(
   items : Array[FeishuMessageLookupItem],
   sender_names? : Map[String, String] = {},
 ) -> String {
-  let children : Map[String, Array[FeishuMessageLookupItem]] = {}
+  let children : Map[String, Array[FeishuMessageLookupItem]] = Map([])
   for item in items {
     if item.message_id == root_message_id && item.upper_message_id is None {
       continue
@@ -1594,7 +1605,7 @@ async fn FeishuChannel::resolve_forward_sender_names(
   account_id : String,
   items : Array[FeishuMessageLookupItem],
 ) -> Map[String, String] {
-  let sender_names : Map[String, String] = {}
+  let sender_names : Map[String, String] = Map([])
   let sender_ids = collect_forward_sender_ids(items)
   let missing_sender_ids = []
   for sender_id in sender_ids {
@@ -1638,7 +1649,7 @@ fn collect_forward_sender_ids(
   items : Array[FeishuMessageLookupItem],
 ) -> Array[String] {
   let sender_ids = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for item in items {
     match item.sender {
       Some({ id: Some(sender_id), sender_type: Some("user") }) =>
@@ -2418,7 +2429,7 @@ async fn FeishuChannel::process_queued_messages(
         Ok(_) => last_response = @channel.ExtensionResponse::ok()
         Err(e) =>
           last_response = @channel.ExtensionResponse::internal_error(
-            message="Failed to send response: \{to_repr(e)}",
+            message="Failed to send response: \{Repr(e)}",
           )
       }
     } catch {
@@ -2460,7 +2471,7 @@ async fn FeishuChannel::send_cancel_acknowledgement(
         Ok(_) => ()
         Err(error) =>
           self.log_warn(
-            "Failed to send Feishu stop acknowledgement: \{to_repr(error)}",
+            "Failed to send Feishu stop acknowledgement: \{Repr(error)}",
           )
       }
     None => ()

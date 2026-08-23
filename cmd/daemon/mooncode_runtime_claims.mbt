@@ -129,7 +129,7 @@ fn mooncode_runtime_claim_state_from_logs(
   receipts : Array[Json],
   journal_path~ : String,
 ) -> Json {
-  let latest_receipts : Map[String, Json] = {}
+  let latest_receipts : Map[String, Json] = Map([])
   for receipt in receipts {
     let command_id = mooncode_json_string(receipt, "command_id", default="")
     if command_id != "" {

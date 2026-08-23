@@ -313,26 +313,6 @@ pub fn Gateway::acp_runtime(self : Gateway) -> @acp.AcpRuntime {
 }
 
 ///|
-fn Gateway::mark_acp_run_cancel_requested(
-  self : Gateway,
-  run_id : String,
-) -> Unit {
-  self.cancelled_acp_runs[run_id] = true
-}
-
-///|
-fn Gateway::consume_acp_run_cancel_requested(
-  self : Gateway,
-  run_id : String,
-) -> Bool {
-  let cancelled = self.cancelled_acp_runs.contains(run_id)
-  if cancelled {
-    self.cancelled_acp_runs.remove(run_id) |> ignore()
-  }
-  cancelled
-}
-
-///|
 fn Gateway::cancel_active_acp_run(
   _self : Gateway,
   _run_id : String,
@@ -390,7 +370,7 @@ fn run_linkage(run : @acp.AcpRun) -> Json? {
 
 ///|
 fn json_object_copy(raw : Json?) -> Map[String, Json] {
-  let copied : Map[String, Json] = {}
+  let copied : Map[String, Json] = Map([])
   match raw {
     Some(Object(obj)) =>
       for key in obj.keys().to_array() {

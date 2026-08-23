@@ -238,7 +238,7 @@ async test "search_files/gitignore" (t : @test.Test) {
     inspect(
       result,
       content=(
-        #|Search completed. Found 1 matches. Note: gitignore rules were not fully respected during the search as "git check-ignore" fails to execute properly.
+        #|Search completed. Found 1 matches. Note: Some files were not searched because they are ignored by git.
         #|
         #|not_ignored.txt:1
         #|1: This file should not be ignored by git.

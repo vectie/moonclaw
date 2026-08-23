@@ -11,7 +11,7 @@ test "extracted_fetch_text prefers html body over head content" {
 ///|
 test "parse_fetch_uri extracts scheme host and default path" {
   let uri = parse_fetch_uri("https://example.com") catch {
-    error => fail("\{to_repr(error)}")
+    error => fail("\{Repr(error)}")
   }
   inspect(uri.scheme, content="https")
   inspect(uri.host, content="example.com")

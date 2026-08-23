@@ -490,7 +490,7 @@ async fn Gateway::handle_get_extension(
       w.header().set("Content-Type", "application/json")
       w.write_header(200)
       let info : Json = {
-        "channel_id": extension.id().to_json(),
+        "channel_id": @channel.Channel::id(extension).to_json(),
         "webhook_path": extension.webhook_path().to_json(),
         "supports_websocket": extension.supports_websocket().to_json(),
         "allowed_methods": extension
@@ -531,8 +531,8 @@ async fn Gateway::handle_webhook(
 
   // Build extension request
   let body = r.body.read_all().binary()
-  let headers : Map[String, String] = {}
-  let query_params : Map[String, String] = {}
+  let headers : Map[String, String] = Map([])
+  let query_params : Map[String, String] = Map([])
 
   let request = @channel.ExtensionRequest::new(
     http_method=r.method_.to_string(),

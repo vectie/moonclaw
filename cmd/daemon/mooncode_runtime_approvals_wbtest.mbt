@@ -1,6 +1,6 @@
 ///|
 async fn mooncode_control_test_daemon(book_root : String) -> Daemon {
-  Daemon::{
+  {
     clock: @clock.epoch,
     models: @model.Loader::new(home=@os.home(), cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),

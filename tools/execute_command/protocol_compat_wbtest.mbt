@@ -5,9 +5,9 @@ test "MoonClaw canonical grant digest is stable for MoonFort v3" {
     approval_id: "approval-compat",
     request_id: "run-compat",
     workspace_id: "book",
-    backend: @execution_sandbox.LocalOs,
-    enforcement_requirement: @execution_sandbox.AllowDegraded,
-    network: @execution_sandbox.Deny,
+    backend: LocalOs,
+    enforcement_requirement: AllowDegraded,
+    network: Deny,
     allowed_egress: [],
     allowed_commands: ["shell-compat"],
     limits: {
@@ -19,7 +19,7 @@ test "MoonClaw canonical grant digest is stable for MoonFort v3" {
       output_bytes: 4_096,
     },
     working_directory: "packages/app",
-    command: @execution_sandbox.Shell(script="printf hello"),
+    command: Shell(script="printf hello"),
     backend_config_id: "local",
     expires_at_ms: 4_102_444_800_000L,
   }

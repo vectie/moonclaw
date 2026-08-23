@@ -10,7 +10,7 @@ test "Stopped::to_json" {
     broadcast: @broadcast.Broadcast::new(),
   }
   assert_true(
-    task.to_json() ==
+    @json.to_json(task) ==
     {
       "name": "example",
       "id": "123e4567-e89b-12d3-a456-426614174000",

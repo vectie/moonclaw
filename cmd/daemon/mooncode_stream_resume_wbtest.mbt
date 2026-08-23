@@ -8,7 +8,7 @@ fn mooncode_stream_resume_test_cursor_rejected(
     ignore(mooncode_stream_resume_cursor_parse(value, session_id, book_root))
     false
   } catch {
-    MoonCodeGoalRuntimeStoreError::CorruptStore(_) => true
+    CorruptStore(_) => true
     _ => false
   }
 }

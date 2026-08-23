@@ -8,7 +8,7 @@ pub struct ChatCompletionStreamOptionsParam {
 pub impl ToJson for ChatCompletionStreamOptionsParam with fn to_json(
   self : ChatCompletionStreamOptionsParam,
 ) -> Json {
-  let json : Map[String, Json] = {}
+  let json : Map[String, Json] = Map([])
   if self.include_obfuscation is Some(include_obfuscation) {
     json["include_obfuscation"] = include_obfuscation.to_json()
   }

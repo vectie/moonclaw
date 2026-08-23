@@ -116,7 +116,7 @@ async test "mooncode_goal_api_internal adversarial: sole unterminated genesis is
       1L,
     )
     assert_eq(recreated.status_code, 201)
-    assert_true(@fsx.read_file(journal).ends_with("\n"))
+    assert_true(@fsx.read_file(journal).has_suffix("\n"))
     let fetched = mooncode_goal_api_get_internal(root, id)
     assert_eq(fetched.status_code, 200)
     assert_eq(fetched.body, recreated.body)
@@ -147,7 +147,7 @@ async test "mooncode_goal_api_internal adversarial: torn suffix after committed 
     assert_eq(repeated.status_code, 200)
     assert_eq(repeated.body, status)
     let repaired = @fsx.read_file(journal)
-    assert_true(repaired.ends_with("\n"))
+    assert_true(repaired.has_suffix("\n"))
     assert_false(repaired.has_suffix("{\"kind\":"))
 
     let fetched_again = mooncode_goal_api_get_internal(root, id)

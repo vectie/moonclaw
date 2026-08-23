@@ -216,7 +216,7 @@ fn parse_duckduckgo_result(
     _ => None
   }
   let items : Array[WebSearchItem] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   match json {
     Object(map) => {
       add_result(
@@ -304,7 +304,7 @@ fn parse_bing_rss_result(
   max_results : Int,
 ) -> WebSearchResult {
   let items : Array[WebSearchItem] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   let mut remaining = body
   while items.length() < max_results {
     guard remaining.find("<item>") is Some(start) else { break }
@@ -377,7 +377,7 @@ async fn perform_bing_rss_search(
 ) -> WebSearchResult {
   let path = "/search?q=\{encoded}&format=rss"
   let search_url = "https://www.bing.com/search?q=\{encoded}"
-  let client = @http.Client::new("https://www.bing.com", headers={
+  let client = @http.Client("https://www.bing.com", headers={
     "Accept": "application/rss+xml,application/xml,text/xml",
     "Connection": "close",
     "User-Agent": "moonclaw-web-search/1.0",
@@ -403,7 +403,7 @@ async fn perform_web_search(
   let encoded = url_encode_component(query)
   let path = "/?q=\{encoded}&format=json&no_html=1&no_redirect=1&skip_disambig=0"
   let search_url = "https://duckduckgo.com/?q=\{encoded}"
-  let client = @http.Client::new("https://api.duckduckgo.com", headers={
+  let client = @http.Client("https://api.duckduckgo.com", headers={
     "Accept": "application/json",
     "Connection": "close",
     "User-Agent": "moonclaw-web-search/1.0",

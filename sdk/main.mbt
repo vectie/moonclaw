@@ -79,7 +79,7 @@ async fn execute(prompt~ : String, model? : String) -> Unit {
     @io.ReaderClosed => ()
     error => {
       let error : Json = {
-        "error": { "code": -1, "message": "\{to_repr(error)}" },
+        "error": { "code": -1, "message": "\{Repr(error)}" },
       }
       println(error.stringify())
     }
@@ -99,7 +99,7 @@ async fn main {
           let error : Json = {
             "error": {
               "code": -1,
-              "message": "\{to_repr(Failure::Failure("Expect <prompt> after -p/--prompt"))}",
+              "message": "\{Repr(Failure::Failure("Expect <prompt> after -p/--prompt"))}",
             },
           }
           println(error.stringify())
@@ -112,7 +112,7 @@ async fn main {
           let error : Json = {
             "error": {
               "code": -1,
-              "message": "\{to_repr(Failure::Failure("Expect <model> after -m/--model"))}",
+              "message": "\{Repr(Failure::Failure("Expect <model> after -m/--model"))}",
             },
           }
           println(error.stringify())
@@ -124,7 +124,7 @@ async fn main {
         let error : Json = {
           "error": {
             "code": -1,
-            "message": "\{to_repr(Failure::Failure("Unknown argument: \{unknown}"))}",
+            "message": "\{Repr(Failure::Failure("Unknown argument: \{unknown}"))}",
           },
         }
         println(error.stringify())
@@ -137,7 +137,7 @@ async fn main {
       "Missing required argument: -p/--prompt <prompt>",
     )
     let error : Json = {
-      "error": { "code": -1, "message": "\{to_repr(failure)}" },
+      "error": { "code": -1, "message": "\{Repr(failure)}" },
     }
     println(error.stringify())
     return

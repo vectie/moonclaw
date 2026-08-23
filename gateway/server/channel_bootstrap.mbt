@@ -201,7 +201,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
   let channel_enabled = json_bool_field(config, "enabled", "enabled").unwrap_or(
     true,
   )
-  let accounts : Map[String, Json] = {}
+  let accounts : Map[String, Json] = Map([])
   let runtimes : Array[PersistedChannelAccount] = []
 
   match json_value_field(config, "accounts", "accounts") {
@@ -250,7 +250,7 @@ fn bootstrap_feishu_channel_state(config : Json) -> PersistedChannelState? {
         None => return None
       }
   }
-  let global_settings_map : Map[String, Json] = {}
+  let global_settings_map : Map[String, Json] = Map([])
   set_string_field(
     global_settings_map,
     "group_policy",
@@ -315,7 +315,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
   let channel_enabled = json_bool_field(config, "enabled", "enabled").unwrap_or(
     true,
   )
-  let accounts : Map[String, Json] = {}
+  let accounts : Map[String, Json] = Map([])
   let runtimes : Array[PersistedChannelAccount] = []
 
   match json_value_field(config, "accounts", "accounts") {
@@ -364,7 +364,7 @@ fn bootstrap_weixin_channel_state(config : Json) -> PersistedChannelState? {
         None => return None
       }
   }
-  let global_settings_map : Map[String, Json] = {}
+  let global_settings_map : Map[String, Json] = Map([])
   set_json_field(
     global_settings_map,
     "allow_from",

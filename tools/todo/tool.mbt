@@ -7,8 +7,8 @@ enum TodoResult {
 ///|
 pub impl Show for TodoResult with fn output(self : TodoResult, logger : &Logger) -> Unit {
   match self {
-    Read(result) => result.output(logger)
-    Write(result) => result.output(logger)
+    Read(result) => Show::output(result, logger)
+    Write(result) => Show::output(result, logger)
   }
 }
 
@@ -194,7 +194,7 @@ pub fn parse_todo_args(args : Json) -> TodoArgs raise TodoArgsError {
         "low" => Low
         _ =>
           raise TodoArgsError(
-            "Error: Invalid priority '\{to_repr(p)}'. Must be 'high', 'medium', or 'low'.",
+            "Error: Invalid priority '\{Repr(p)}'. Must be 'high', 'medium', or 'low'.",
           )
       }
     _ => Medium
@@ -207,7 +207,7 @@ pub fn parse_todo_args(args : Json) -> TodoArgs raise TodoArgsError {
         "completed" => Completed
         _ =>
           raise TodoArgsError(
-            "Error: Invalid status '\{to_repr(s)}'. Must be 'pending', 'in_progress', or 'completed'.",
+            "Error: Invalid status '\{Repr(s)}'. Must be 'pending', 'in_progress', or 'completed'.",
           )
       }
     _ => Pending

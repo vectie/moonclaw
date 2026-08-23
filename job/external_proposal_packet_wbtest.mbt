@@ -28,6 +28,7 @@ async fn write_external_packet_provider_fixture(
   workspace : String,
   script_path : String,
 ) -> Unit {
+  install_provider_task_fixture_moonfort(workspace)
   let manifest_path = @moonsuite.product_artifact_for_workspace_root(
     workspace, "moonclaw", "providers.json",
   )

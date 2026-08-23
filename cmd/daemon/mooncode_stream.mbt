@@ -40,7 +40,7 @@ async fn mooncode_stream_scan_locked(
   let mut event_count = 0
   let mut eligible_event_count = 0
   let mut latest_event_sequence = MoonCodeJournalSequence::zero()
-  mooncode_journal_read_lines(file, async fn(line) {
+  mooncode_journal_read_lines(file, fn(line) raise {
     let (record, next) = mooncode_journal_stream_record(line, cursor)
     if mooncode_json_string(record, "session_id", default="") !=
       expected_session_id {
@@ -238,61 +238,6 @@ async fn mooncode_stream_journal_size(
   file.size() catch {
     _ => -1L
   }
-}
-
-///|
-fn mooncode_stream_jsonl_payload(
-  session_id : String,
-  book_root : String,
-  events : Array[Json],
-  since~ : MoonCodeJournalSequence,
-  wait_ms~ : Int,
-  poll_ms~ : Int,
-  wait_elapsed_ms~ : Int,
-  wait_attempt_count~ : Int,
-) -> String raise MoonCodeGoalRuntimeStoreError {
-  let records = mooncode_stream_records(
-    session_id,
-    book_root,
-    events,
-    since~,
-    wait_ms~,
-    poll_ms~,
-    wait_elapsed_ms~,
-    wait_attempt_count~,
-  )
-  records.map(record => record.stringify()).join("\n") + "\n"
-}
-
-///|
-fn mooncode_stream_sse_payload(
-  session_id : String,
-  book_root : String,
-  events : Array[Json],
-  since~ : MoonCodeJournalSequence,
-  wait_ms~ : Int,
-  poll_ms~ : Int,
-  wait_elapsed_ms~ : Int,
-  wait_attempt_count~ : Int,
-) -> String raise MoonCodeGoalRuntimeStoreError {
-  let chunks : Array[String] = []
-  for
-    record in mooncode_stream_records(
-      session_id,
-      book_root,
-      events,
-      since~,
-      wait_ms~,
-      poll_ms~,
-      wait_elapsed_ms~,
-      wait_attempt_count~,
-    ) {
-    chunks.push(
-      "event: \{mooncode_json_string(record, "type", default="message")}\n" +
-      "data: \{record.stringify()}\n",
-    )
-  }
-  chunks.join("\n") + "\n"
 }
 
 ///|
@@ -529,4 +474,61 @@ fn mooncode_stream_poll_ms_value(requested : Int) -> Int {
   } else {
     requested
   }
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_stream_jsonl_payload(
+  session_id : String,
+  book_root : String,
+  events : Array[Json],
+  since~ : MoonCodeJournalSequence,
+  wait_ms~ : Int,
+  poll_ms~ : Int,
+  wait_elapsed_ms~ : Int,
+  wait_attempt_count~ : Int,
+) -> String raise MoonCodeGoalRuntimeStoreError {
+  let records = mooncode_stream_records(
+    session_id,
+    book_root,
+    events,
+    since~,
+    wait_ms~,
+    poll_ms~,
+    wait_elapsed_ms~,
+    wait_attempt_count~,
+  )
+  records.map(record => record.stringify()).join("\n") + "\n"
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_stream_sse_payload(
+  session_id : String,
+  book_root : String,
+  events : Array[Json],
+  since~ : MoonCodeJournalSequence,
+  wait_ms~ : Int,
+  poll_ms~ : Int,
+  wait_elapsed_ms~ : Int,
+  wait_attempt_count~ : Int,
+) -> String raise MoonCodeGoalRuntimeStoreError {
+  let chunks : Array[String] = []
+  for
+    record in mooncode_stream_records(
+      session_id,
+      book_root,
+      events,
+      since~,
+      wait_ms~,
+      poll_ms~,
+      wait_elapsed_ms~,
+      wait_attempt_count~,
+    ) {
+    chunks.push(
+      "event: \{mooncode_json_string(record, "type", default="message")}\n" +
+      "data: \{record.stringify()}\n",
+    )
+  }
+  chunks.join("\n") + "\n"
 }

@@ -104,9 +104,7 @@ test "different checkpoint goals are not the same basis" {
   let right = { ..checkpoint("b", "b", 1, "k", "source"), goal_id: "other" }
   let report = compare_goal_checkpoints(left, right)
   assert_false(report.same_basis)
-  assert_true(
-    report.outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(report.outcome == InsufficientEvidence)
 }
 
 ///|
@@ -117,13 +115,9 @@ test "blank checkpoint subject is independently insufficient" {
     objective_digest: "   ",
   }
   let report = compare_goal_checkpoints(invalid, valid)
-  assert_true(
-    report.left_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(report.right_acceptance == CheckpointAcceptanceOutcome::Accepted)
-  assert_true(
-    report.outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(report.left_acceptance == InsufficientEvidence)
+  assert_true(report.right_acceptance == Accepted)
+  assert_true(report.outcome == InsufficientEvidence)
 }
 
 ///|
@@ -132,13 +126,9 @@ test "wrong producer contract is independently insufficient" {
   let base = checkpoint("b", "b", 1, "k", "source")
   let invalid = { ..base, producer: { ..base.producer, contract_version: 1 } }
   let report = compare_goal_checkpoints(valid, invalid)
-  assert_true(report.left_acceptance == CheckpointAcceptanceOutcome::Accepted)
-  assert_true(
-    report.right_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(
-    report.outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(report.left_acceptance == Accepted)
+  assert_true(report.right_acceptance == InsufficientEvidence)
+  assert_true(report.outcome == InsufficientEvidence)
 }
 
 ///|
@@ -153,15 +143,9 @@ test "empty required basis arrays are insufficient" {
   let invalid = { ..valid, basis: invalid_basis }
   let report = compare_goal_checkpoints(invalid, invalid)
   assert_false(report.same_basis)
-  assert_true(
-    report.left_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(
-    report.right_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(
-    report.outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(report.left_acceptance == InsufficientEvidence)
+  assert_true(report.right_acceptance == InsufficientEvidence)
+  assert_true(report.outcome == InsufficientEvidence)
 }
 
 ///|
@@ -170,15 +154,9 @@ test "blank basis digest is insufficient" {
   let invalid = { ..valid, basis: { ..valid.basis, basis_digest: "   " } }
   let report = compare_goal_checkpoints(invalid, invalid)
   assert_false(report.same_basis)
-  assert_true(
-    report.left_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(
-    report.right_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(
-    report.outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(report.left_acceptance == InsufficientEvidence)
+  assert_true(report.right_acceptance == InsufficientEvidence)
+  assert_true(report.outcome == InsufficientEvidence)
 }
 
 ///|
@@ -191,25 +169,16 @@ test "blank basis definition field is insufficient" {
   let invalid = { ..valid, basis: invalid_basis }
   let report = compare_goal_checkpoints(invalid, invalid)
   assert_false(report.same_basis)
-  assert_true(
-    report.left_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(
-    report.right_acceptance == CheckpointAcceptanceOutcome::InsufficientEvidence,
-  )
-  assert_true(
-    report.outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(report.left_acceptance == InsufficientEvidence)
+  assert_true(report.right_acceptance == InsufficientEvidence)
+  assert_true(report.outcome == InsufficientEvidence)
 }
 
 ///|
 test "empty manifests cannot converge" {
   let a = checkpoint("a", "a", 1, "k", "source")
   let b = { ..a, requirements: [], outputs: [], verification: { checks: [] } }
-  assert_true(
-    compare_goal_checkpoints(a, b).outcome ==
-    CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(compare_goal_checkpoints(a, b).outcome == InsufficientEvidence)
 }
 
 ///|
@@ -227,11 +196,9 @@ test "same incomplete result agrees but fails evaluator acceptance" {
     ],
   }
   let report = compare_goal_checkpoints(bad, bad)
-  assert_true(report.agreement_outcome == CheckpointComparisonOutcome::Exact)
-  assert_true(
-    report.outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
-  assert_true(report.left_acceptance == CheckpointAcceptanceOutcome::Rejected)
+  assert_true(report.agreement_outcome == Exact)
+  assert_true(report.outcome == InsufficientEvidence)
+  assert_true(report.left_acceptance == Rejected)
 }
 
 ///|
@@ -240,20 +207,14 @@ test "contradictory evidence disagrees" {
   let ev = a.evidence.copy()
   ev[0] = { ..ev[0], content_digest: "contradiction" }
   let b = { ..a, producer: { ..a.producer, producer_id: "b" }, evidence: ev }
-  assert_true(
-    compare_goal_checkpoints(a, b).outcome ==
-    CheckpointComparisonOutcome::Disagreed,
-  )
+  assert_true(compare_goal_checkpoints(a, b).outcome == Disagreed)
 }
 
 ///|
 test "missing output evidence is insufficient" {
   let a = checkpoint("a", "a", 1, "k", "source")
   let b = { ..a, outputs: [{ ..a.outputs[0], evidence_refs: [] }] }
-  assert_true(
-    compare_goal_checkpoints(a, b).outcome ==
-    CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(compare_goal_checkpoints(a, b).outcome == InsufficientEvidence)
 }
 
 ///|
@@ -274,19 +235,14 @@ test "producer ids budgets and local evidence ids are ignored" {
     },
     budget: { ..b0.budget, tokens_used: 999 },
   }
-  assert_true(
-    compare_goal_checkpoints(a, b).outcome == CheckpointComparisonOutcome::Exact,
-  )
+  assert_true(compare_goal_checkpoints(a, b).outcome == Exact)
 }
 
 ///|
 test "source difference after acceptance is functionally equivalent" {
   let a = checkpoint("a", "a", 1, "k", "source-a")
   let b = checkpoint("b", "b", 1, "k", "source-b")
-  assert_true(
-    compare_goal_checkpoints(a, b).outcome ==
-    CheckpointComparisonOutcome::FunctionallyEquivalent,
-  )
+  assert_true(compare_goal_checkpoints(a, b).outcome == FunctionallyEquivalent)
 }
 
 ///|
@@ -294,9 +250,7 @@ test "duplicate key is insufficient" {
   let a = checkpoint("a", "a", 1, "k", "source")
   let duplicate = { ..a, identity: { ..a.identity, checkpoint_id: "a2" } }
   let reports = compare_goal_checkpoint_sequences([a, duplicate], [a])
-  assert_true(
-    reports[0].outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(reports[0].outcome == InsufficientEvidence)
 }
 
 ///|
@@ -306,12 +260,10 @@ test "mismatched local cadence aligns shared epoch key" {
   let b = checkpoint("b", "b", 7, "shared", "source")
   let reports = compare_goal_checkpoint_sequences([a], [unrelated, b])
   assert_eq(reports.length(), 2)
-  assert_true(
-    reports[0].outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
+  assert_true(reports[0].outcome == InsufficientEvidence)
   assert_eq(reports[0].left_checkpoint_id, "")
   assert_eq(reports[0].right_checkpoint_id, "b0")
-  assert_true(reports[1].outcome == CheckpointComparisonOutcome::Exact)
+  assert_true(reports[1].outcome == Exact)
   assert_eq(reports[1].left_checkpoint_id, "a")
   assert_eq(reports[1].right_checkpoint_id, "b")
 }
@@ -331,9 +283,7 @@ test "convergence gap then disagreement is regression" {
   let reports = compare_goal_checkpoint_sequences([first, gap, last], [
     rfirst, rlast,
   ])
-  assert_true(
-    reports[1].outcome == CheckpointComparisonOutcome::InsufficientEvidence,
-  )
-  assert_true(reports[2].outcome == CheckpointComparisonOutcome::Disagreed)
+  assert_true(reports[1].outcome == InsufficientEvidence)
+  assert_true(reports[2].outcome == Disagreed)
   assert_true(reports[2].regression)
 }

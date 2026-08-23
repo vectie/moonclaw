@@ -68,7 +68,7 @@ async fn serve_static_file(
       "error": {
         "code": -1,
         "message": "Unknown endpoint: \{path}",
-        "metadata": { "method": @http.Get.to_string(), "path": path },
+        "metadata": { "method": "GET", "path": path },
       },
     })
   }

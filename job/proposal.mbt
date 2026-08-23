@@ -323,7 +323,7 @@ fn normalize_proposal_step_id(
 
 ///|
 fn merge_step_metadata(base : Json?, extras : Array[(String, Json?)]) -> Json {
-  let merged : Map[String, Json] = {}
+  let merged : Map[String, Json] = Map([])
   match base {
     Some(Object(obj)) =>
       for key, value in obj {
@@ -579,7 +579,7 @@ async fn maybe_apply_job_profile(
 
 ///|
 fn merge_json_metadata(base : Json, extra : Json) -> Json {
-  let merged : Map[String, Json] = {}
+  let merged : Map[String, Json] = Map([])
   match base {
     Object(obj) =>
       for key, value in obj {

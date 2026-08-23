@@ -122,7 +122,7 @@ async fn load_plugins_from_config(json : Json) -> Map[String, PluginRecord] {
       plugin_ids.push(id)
     }
   }
-  let loaded : Map[String, PluginRecord] = {}
+  let loaded : Map[String, PluginRecord] = Map([])
   for id in plugin_ids {
     let entry = entries.get(id)
     let install = installs.get(id)

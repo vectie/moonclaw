@@ -259,7 +259,7 @@ async test "mooncode lifecycle reader ignores and next writer repairs torn marke
         marker,
         mode=ReadWrite,
         append=false,
-        truncate=false,
+        create_mode=OpenExisting,
       )
       marker_file.lock(Exclusive)
       let position = marker_file.size()
@@ -302,8 +302,8 @@ async test "mooncode lifecycle reader streams committed history and ignores raw 
         marker,
         mode=ReadWrite,
         append=false,
-        create=0o644,
-        truncate=true,
+        create_mode=CreateOrTruncate,
+        permission=0o644,
       )
       let mut position = 0L
       for _ in 0..<8192 {

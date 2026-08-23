@@ -101,7 +101,7 @@ fn metadata_json_value(metadata : Json, key : String) -> Json? {
 
 ///|
 fn merge_json_objects(base : Json, extras : Array[(String, Json)]) -> Json {
-  let merged : Map[String, Json] = {}
+  let merged : Map[String, Json] = Map([])
   match base {
     Object(obj) =>
       for key, value in obj {

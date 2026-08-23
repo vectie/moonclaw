@@ -13,7 +13,6 @@ test "session snapshot dual reads numeric cursor and rejects malformed present c
     false
   } catch {
     InvalidJournal(_) => true
-    _ => false
   }
   assert_true(rejected)
   assert_eq(
@@ -33,7 +32,6 @@ test "session snapshot dual reads numeric cursor and rejects malformed present c
     false
   } catch {
     InvalidJournal(_) => true
-    _ => false
   }
   assert_true(labeled_numeric_rejected)
   let unknown_contract_rejected = try {
@@ -46,7 +44,6 @@ test "session snapshot dual reads numeric cursor and rejects malformed present c
     false
   } catch {
     InvalidJournal(_) => true
-    _ => false
   }
   assert_true(unknown_contract_rejected)
   let labeled_missing_with_status_rejected = try {
@@ -59,7 +56,6 @@ test "session snapshot dual reads numeric cursor and rejects malformed present c
     false
   } catch {
     InvalidJournal(_) => true
-    _ => false
   }
   assert_true(labeled_missing_with_status_rejected)
 }

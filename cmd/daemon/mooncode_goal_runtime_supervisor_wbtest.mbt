@@ -6,7 +6,7 @@ async test "goal runtime supervisor is a no-op without runtime authority" {
     let result = mooncode_goal_runtime_append_supervisor_event(
       root,
       "session",
-      @mooncode_core.PhaseChanged("phase-running", @mooncode_core.Running),
+      PhaseChanged("phase-running", Running),
       1L,
     )
     assert_true(result is NoRuntimeGoal)
@@ -38,7 +38,7 @@ async test "goal runtime supervisor append is durable and timestamp-idempotent" 
     let first = mooncode_goal_runtime_append_supervisor_event(
       root,
       session_id,
-      @mooncode_core.PhaseChanged("phase-running", @mooncode_core.Running),
+      PhaseChanged("phase-running", Running),
       2L,
     )
     assert_true(first is Appended)
@@ -47,7 +47,7 @@ async test "goal runtime supervisor append is durable and timestamp-idempotent" 
     let retry = mooncode_goal_runtime_append_supervisor_event(
       root,
       session_id,
-      @mooncode_core.PhaseChanged("phase-running", @mooncode_core.Running),
+      PhaseChanged("phase-running", Running),
       99L,
     )
     assert_true(retry is Idempotent)
@@ -86,7 +86,7 @@ async test "goal runtime supervisor rejects semantic reuse of one event id" {
       mooncode_goal_runtime_append_supervisor_event(
         root,
         session_id,
-        @mooncode_core.PhaseChanged("stable-event", @mooncode_core.Running),
+        PhaseChanged("stable-event", Running),
         2L,
       ),
     )
@@ -97,10 +97,7 @@ async test "goal runtime supervisor rejects semantic reuse of one event id" {
         mooncode_goal_runtime_append_supervisor_event(
           root,
           session_id,
-          @mooncode_core.PhaseChanged(
-            "stable-event",
-            @mooncode_core.WaitingApproval,
-          ),
+          PhaseChanged("stable-event", WaitingApproval),
           3L,
         ),
       )
@@ -137,7 +134,7 @@ async test "goal runtime supervisor permits terminal retry and suppresses fresh 
     let terminal = mooncode_goal_runtime_append_supervisor_event(
       root,
       session_id,
-      @mooncode_core.Cancelled("cancelled-event", "operator cancelled"),
+      Cancelled("cancelled-event", "operator cancelled"),
       2L,
     )
     assert_true(terminal is Appended)
@@ -146,14 +143,14 @@ async test "goal runtime supervisor permits terminal retry and suppresses fresh 
     let retry = mooncode_goal_runtime_append_supervisor_event(
       root,
       session_id,
-      @mooncode_core.Cancelled("cancelled-event", "operator cancelled"),
+      Cancelled("cancelled-event", "operator cancelled"),
       9L,
     )
     assert_true(retry is Idempotent)
     let suppressed = mooncode_goal_runtime_append_supervisor_event(
       root,
       session_id,
-      @mooncode_core.PhaseChanged("late-running", @mooncode_core.Running),
+      PhaseChanged("late-running", Running),
       10L,
     )
     assert_true(suppressed is Terminal)
@@ -188,7 +185,7 @@ async test "goal runtime supervisor fails closed on legacy authority" {
         mooncode_goal_runtime_append_supervisor_event(
           root,
           session_id,
-          @mooncode_core.PhaseChanged("phase-running", @mooncode_core.Running),
+          PhaseChanged("phase-running", Running),
           2L,
         ),
       )
@@ -215,9 +212,8 @@ test "goal runtime supervisor source mapping is stable and selective" {
   let second = mooncode_goal_runtime_events_from_source(started)
   assert_eq(first.length(), 1)
   assert_eq(second.length(), 1)
-  guard first[0]
-    is @mooncode_core.PhaseChanged(first_id, @mooncode_core.Running) &&
-    second[0] is @mooncode_core.PhaseChanged(second_id, @mooncode_core.Running) else {
+  guard first[0] is PhaseChanged(first_id, Running) &&
+    second[0] is PhaseChanged(second_id, Running) else {
     abort("running phase mapping")
   }
   assert_eq(first_id, second_id)
@@ -257,10 +253,7 @@ test "goal runtime supervisor source mapping is stable and selective" {
     },
   })
   assert_eq(blocked.length(), 2)
-  assert_true(
-    blocked[1]
-    is @mooncode_core.PlannerDecision(_, @mooncode_core.Blocked(_, _, _)),
-  )
+  assert_true(blocked[1] is PlannerDecision(_, Blocked(_, _, _)))
   let cancelled_source : Json = {
     "id": "active-cancel-source",
     "control_kind": "turn-cancellation",
@@ -276,7 +269,7 @@ test "goal runtime supervisor source mapping is stable and selective" {
   }
   let cancelled = mooncode_goal_runtime_events_from_source(cancelled_source)
   assert_eq(cancelled.length(), 1)
-  assert_true(cancelled[0] is @mooncode_core.Cancelled(_, _))
+  assert_true(cancelled[0] is Cancelled(_, _))
   guard cancelled_source is Object(wrong_source) else { abort("fixture") }
   wrong_source["source"] = "external".to_json()
   assert_eq(

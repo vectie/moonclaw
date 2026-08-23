@@ -159,7 +159,7 @@ fn url_decode(s : StringView) -> String {
 
 ///|
 pub fn parse_query_string(query : StringView) -> Map[String, String] {
-  let result : Map[String, String] = {}
+  let result : Map[String, String] = Map([])
   if query.is_empty() {
     return result
   }

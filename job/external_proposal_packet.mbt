@@ -414,7 +414,7 @@ fn external_packet_preferred_skills(
   existing~ : Array[String],
 ) -> Array[String] {
   let merged : Array[String] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for skill in existing {
     let trimmed = skill.trim().to_owned()
     if !trimmed.is_blank() && !seen.contains(trimmed) {
@@ -525,7 +525,7 @@ fn external_packet_job_intake(
     workspace_root,
     packet.related_pages,
   )
-  let intake : Map[String, Json] = {}
+  let intake : Map[String, Json] = Map([])
   intake.set("external_packet_source_path", packet_file_path.to_json())
   intake.set("context_pages", resolved_context_pages.to_json())
   intake.set("skill_paths", resolved_skill_paths.to_json())
@@ -571,7 +571,7 @@ fn external_proposal_packet_metadata(
   packet_file_path : String,
 ) -> Json {
   let workspace_root = external_packet_workspace_root(packet, packet_file_path)
-  let packet_metadata : Map[String, Json] = {}
+  let packet_metadata : Map[String, Json] = Map([])
   packet_metadata.set(
     "schema",
     "moonclaw.external_proposal_packet.v1".to_json(),
@@ -624,7 +624,7 @@ fn external_proposal_packet_metadata(
 fn external_packet_runtime_profile_metadata(
   packet : ExternalProposalPacket,
 ) -> Json {
-  let promoted : Map[String, Json] = {}
+  let promoted : Map[String, Json] = Map([])
   match packet.metadata {
     Object(fields) => {
       match fields.get("disable_waiting_for_input") {
@@ -652,7 +652,7 @@ fn external_packet_runtime_profile_metadata(
 fn external_packet_runtime_step_metadata(
   packet : ExternalProposalPacket,
 ) -> Json {
-  let promoted : Map[String, Json] = {}
+  let promoted : Map[String, Json] = Map([])
   match packet.metadata {
     Object(fields) =>
       match fields.get("step_metadata") {
@@ -721,7 +721,7 @@ fn external_packet_step_metadata(
       })
     _ => []
   }
-  let extra : Map[String, Json] = {}
+  let extra : Map[String, Json] = Map([])
   extra.set("external_packet_source_path", packet_file_path.to_json())
   extra.set(
     "context_pages",

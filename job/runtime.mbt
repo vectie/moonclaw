@@ -566,7 +566,7 @@ pub async fn RuntimeManager::trigger_due_definitions(
   next_run_id : () -> String,
 ) -> Array[JobRun] {
   let created : Array[JobRun] = []
-  let scheduled_job_ids : Map[String, Unit] = {}
+  let scheduled_job_ids : Map[String, Unit] = Map([])
   for checkpoint in self.checkpoints.list() {
     if scheduled_job_ids.contains(checkpoint.job_id) ||
       self.is_job_active(checkpoint.job_id) {

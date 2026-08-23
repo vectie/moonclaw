@@ -24,9 +24,8 @@ import {
   "vectie/moonlib/os",
   "vectie/moonclaw/internal/git",
   "vectie/moonclaw/internal/buildinfo",
-  "vectie/moonclaw/internal/signal",
+  "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/plugin/moongate",
-  "vectie/moonclaw/oauth/codex",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/ai",
   "vectie/moonclaw/model",
@@ -45,3 +44,7 @@ import {
 }
 
 supported_targets = "native"
+
+import {
+  "vectie/moonclaw/internal/execution_sandbox_fixture",
+} for "wbtest"

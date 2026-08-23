@@ -1,4 +1,5 @@
 ///|
+#warnings("-20-27")
 pub enum CommandRiskLevel {
   Low
   Medium
@@ -7,6 +8,7 @@ pub enum CommandRiskLevel {
 } derive(ToJson, @json.FromJson, Show, Eq)
 
 ///|
+#warnings("-20-27")
 pub enum CommandIntent {
   Binary
   Shell
@@ -16,6 +18,7 @@ pub enum CommandIntent {
 } derive(ToJson, @json.FromJson, Show, Eq)
 
 ///|
+#warnings("-20-27")
 pub struct CommandAssessment {
   command : String
   cwd : String
@@ -44,13 +47,13 @@ fn first_token(command : String) -> String {
   if trimmed.is_blank() {
     ""
   } else {
-    trimmed.split(" ").collect().get(0).unwrap_or("").trim().to_string()
+    trimmed.split(" ").collect().get(0).unwrap_or("").trim().to_owned()
   }
 }
 
 ///|
 fn classify_intent(command : String) -> CommandIntent {
-  let trimmed = command.trim().to_string()
+  let trimmed = command.trim().to_owned()
   if trimmed.is_blank() {
     return Unknown
   }
@@ -78,7 +81,7 @@ fn classify_intent(command : String) -> CommandIntent {
 
 ///|
 fn detect_reasons(command : String) -> Array[String] {
-  let normalized = command.trim().to_string().to_lower()
+  let normalized = command.trim().to_owned().to_lower()
   let reasons = []
   if normalized.is_blank() {
     reasons.push("Empty command.")
@@ -117,7 +120,7 @@ fn detect_reasons(command : String) -> Array[String] {
 
 ///|
 fn detect_effects(command : String) -> Array[String] {
-  let normalized = command.trim().to_string().to_lower()
+  let normalized = command.trim().to_owned().to_lower()
   let effects = []
   if contains_any(normalized, [
       "curl ", "wget ", "npm install", "pnpm add", "yarn add", "pip install", "uv pip install",
@@ -144,7 +147,7 @@ fn detect_effects(command : String) -> Array[String] {
 
 ///|
 fn classify_risk(command : String, reasons : Array[String]) -> CommandRiskLevel {
-  let normalized = command.trim().to_string().to_lower()
+  let normalized = command.trim().to_owned().to_lower()
   if normalized.is_blank() {
     return Blocked
   }
@@ -170,8 +173,8 @@ pub fn assess_shell_command(
 ) -> CommandAssessment {
   let reasons = detect_reasons(command)
   let risk_level = classify_risk(command, reasons)
-  CommandAssessment::{
-    command: command.trim().to_string(),
+  {
+    command: command.trim().to_owned(),
     cwd,
     workspace,
     intent: classify_intent(command),

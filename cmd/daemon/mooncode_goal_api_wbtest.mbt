@@ -31,7 +31,6 @@ fn goal_api_rejected(body : Json, path? : String = "session") -> Bool {
     false
   } catch {
     InvalidGoalRequest(_) => true
-    _ => abort("unexpected goal parser error")
   }
 }
 
@@ -54,7 +53,7 @@ test "mooncode_goal_api: valid limits preserve exact values" {
     assert_eq(request.budget.tokens_used, 0)
     assert_eq(request.budget.turns_used, 0)
     assert_eq(request.budget.wall_time_used, 0)
-    assert_true(request.requirements[0].state == @mooncode_core.Unproven)
+    assert_true(request.requirements[0].state == Unproven)
     assert_eq(request.requirements[0].evidence_refs.length(), 0)
   }
 }
@@ -393,8 +392,8 @@ async test "mooncode_goal_api: active session gate distinguishes corrupt snapsho
     assert_true(@fsx.read_file(fixture_path) == invalid)
     assert_true(@fsx.exists(dir))
     assert_true(@fsx.exists(fixture_path))
-    assert_true(@fs.kind(dir, follow_symlink=false) == @fs.Directory)
-    assert_true(@fs.kind(fixture_path, follow_symlink=false) == @fs.Regular)
+    assert_true(@fs.kind(dir, follow_symlink=false) == Directory)
+    assert_true(@fs.kind(fixture_path, follow_symlink=false) == Regular)
     try {
       ignore(mooncode_goal_require_active_session(id, root))
       abort("accepted corrupt snapshot")
@@ -455,7 +454,7 @@ async test "mooncode_goal_api: active directory and snapshot dangling symlinks a
       let missing_path = root + "/missing-" + id
       let link_path = if pair.1 { active } else { active + "/session.json" }
       @fs.symlink(target=missing_path, link_path)
-      assert_eq(@fs.kind(link_path, follow_symlink=false), @fs.SymLink)
+      assert_eq(@fs.kind(link_path, follow_symlink=false), SymLink)
       assert_false(@fsx.exists(missing_path))
       let count = @fsx.list_directory(container).length()
       try {
@@ -466,7 +465,7 @@ async test "mooncode_goal_api: active directory and snapshot dangling symlinks a
         _ => abort("unexpected dangling symlink error")
       }
       assert_eq(@fsx.list_directory(container).length(), count)
-      assert_eq(@fs.kind(link_path, follow_symlink=false), @fs.SymLink)
+      assert_eq(@fs.kind(link_path, follow_symlink=false), SymLink)
       assert_false(@fsx.exists(missing_path))
       assert_false(@fsx.exists(mooncode_session_journal_path(root, id)))
     }
@@ -490,7 +489,7 @@ async test "mooncode_goal_api: active session gate rejects snapshot and director
     @fsx.make_directory(active_dir, recursive=true, exists_ok=true)
     let active_snapshot_path = active_dir + "/session.json"
     @fs.symlink(target=archived_snapshot_path, active_snapshot_path)
-    assert_eq(@fs.kind(active_snapshot_path, follow_symlink=false), @fs.SymLink)
+    assert_eq(@fs.kind(active_snapshot_path, follow_symlink=false), SymLink)
     let active_snapshot_count = @fsx.list_directory(active_dir).length()
     let archived_snapshot_count = @fsx.list_directory(
       goal_gate_dir(root, snapshot_id, true),
@@ -509,7 +508,7 @@ async test "mooncode_goal_api: active session gate rejects snapshot and director
       @fsx.list_directory(goal_gate_dir(root, snapshot_id, true)).length(),
       archived_snapshot_count,
     )
-    assert_eq(@fs.kind(active_snapshot_path, follow_symlink=false), @fs.SymLink)
+    assert_eq(@fs.kind(active_snapshot_path, follow_symlink=false), SymLink)
     assert_false(@fsx.exists(mooncode_session_journal_path(root, snapshot_id)))
 
     let directory_id = "directory-link"
@@ -531,7 +530,7 @@ async test "mooncode_goal_api: active session gate rejects snapshot and director
       exists_ok=true,
     )
     @fs.symlink(target=archived_dir, active_directory)
-    assert_eq(@fs.kind(active_directory, follow_symlink=false), @fs.SymLink)
+    assert_eq(@fs.kind(active_directory, follow_symlink=false), SymLink)
     let active_parent = mooncode_sessions_root(root)
     let active_directory_count = @fsx.list_directory(active_parent).length()
     let archived_directory_count = @fsx.list_directory(archived_dir).length()
@@ -554,7 +553,7 @@ async test "mooncode_goal_api: active session gate rejects snapshot and director
       @fsx.list_directory(archived_dir).length(),
       archived_directory_count,
     )
-    assert_eq(@fs.kind(active_directory, follow_symlink=false), @fs.SymLink)
+    assert_eq(@fs.kind(active_directory, follow_symlink=false), SymLink)
     assert_false(@fsx.exists(mooncode_session_journal_path(root, directory_id)))
   })
 }

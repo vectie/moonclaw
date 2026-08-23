@@ -103,7 +103,7 @@ async fn load_config(home : String, cwd : String) -> (String, Json?) {
 
 ///|
 fn json_object_copy(value : Json?) -> Map[String, Json] {
-  let copied : Map[String, Json] = {}
+  let copied : Map[String, Json] = Map([])
   match value {
     Some(Object(obj)) =>
       for key, entry in obj {
@@ -175,7 +175,7 @@ fn json_set_path(json : Json, path : Array[String], value : Json) -> Json {
 fn merge_missing(existing : Json, defaults : Json) -> Json {
   match (existing, defaults) {
     (Object(existing_obj), Object(default_obj)) => {
-      let merged : Map[String, Json] = {}
+      let merged : Map[String, Json] = Map([])
       for key, value in default_obj {
         match existing_obj.get(key) {
           Some(existing_value) =>

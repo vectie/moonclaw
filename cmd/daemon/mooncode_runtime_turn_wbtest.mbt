@@ -2141,7 +2141,7 @@ async test "mooncode live steering settles once before later queue work" (
   assert_eq(first.length(), 1)
   assert_eq(mooncode_json_string(first[0], "command_id", default=""), steer_id)
   let events : Array[Json] = []
-  let persisted : Map[String, Bool] = {}
+  let persisted : Map[String, Bool] = Map([])
   daemon.mooncode_runtime_turn_record_event(
     binding,
     events,
@@ -2226,7 +2226,7 @@ async test "mooncode runtime turn records progress immediately and once" (
   let binding = daemon.mooncode_binding_for_session(session_id)
   assert_true(binding.bind_book_root(book_root))
   let events : Array[Json] = []
-  let persisted : Map[String, Bool] = {}
+  let persisted : Map[String, Bool] = Map([])
   let event : Json = {
     "id": "live-progress-1",
     "session_id": session_id,
@@ -3396,7 +3396,7 @@ test "mooncode implementation discovery bounds broad and total reads until mutat
     "payload": { "task_intent": "workspace_change" },
   }
   let discoveries : Array[Json] = []
-  for index in 0..<6 {
+  for _ in 0..<6 {
     discoveries.push({
       "accepted": true,
       "tool": "shell",

@@ -41,7 +41,7 @@ fn mooncode_runtime_turn_deferred_tool_words(value : String) -> Array[String] {
   normalized
   .to_string()
   .split(" ")
-  .filter_map(word => if word == "" { None } else { Some(word.to_string()) })
+  .filter_map(word => if word == "" { None } else { Some(word.to_owned()) })
   .collect()
 }
 

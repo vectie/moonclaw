@@ -13,7 +13,7 @@ test "CreateTaskRequest::from_json" {
     { "role": "user", "content": "Hello, world!" },
   ])
   json_inspect(request.cwd, content=["/tmp/task"])
-  let json : Json = {}
+  let json : Json = Json::empty_object()
   let request : CreateTaskRequest = @json.from_json(json)
   json_inspect(request.name, content=null)
   json_inspect(request.model, content=null)

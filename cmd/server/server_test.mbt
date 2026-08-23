@@ -70,12 +70,12 @@ async fn configure_server(
 async test "register" (t : @test.Test) {
   @mock.run(t, mock => {
     let addr = @socket.Addr::parse("0.0.0.0:0")
-    let daemon = @socket.TcpServer::new(addr, dual_stack=true, reuse_addr=true)
+    let daemon = @socket.TcpServer(addr, dual_stack=true, reuse_addr=true)
     defer daemon.close()
     let server_task = mock.group.spawn(() => {
       configure_server(mock, register={
         host: "localhost",
-        port: daemon.addr().port(),
+        port: daemon.addr.port(),
         id: "test-server",
         instance_id: "test-server",
         token: "a".repeat(72),
@@ -272,7 +272,7 @@ async test "CORS" (t : @test.Test) {
   @mock.run(t, mock => {
     let server = configure_server(mock)
     mock.group.spawn_bg(() => server.start(), no_wait=true)
-    let c = @http.Client::new("http://localhost:\{server.port()}")
+    let c = @http.Client("http://localhost:\{server.port()}")
     defer c.close()
     c.request(Options, "/v1/message")
     let r = c.end_request()

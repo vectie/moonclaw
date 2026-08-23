@@ -291,7 +291,12 @@ async fn[T] SystemStore::with_store_lock(
   f : async () -> T,
 ) -> T {
   self.ensure_directories()
-  let lock_file = @fs.open(self.store_lock_file(), mode=WriteOnly, create=0o644)
+  let lock_file = @fs.open(
+    self.store_lock_file(),
+    mode=WriteOnly,
+    create_mode=OpenOrCreate,
+    permission=0o644,
+  )
   defer lock_file.close()
   @fsx.lock_file(lock_file)
   f()
@@ -361,8 +366,8 @@ async fn SystemStore::load_runs_index_best_effort(
   let existing = try_load_runs_index_file(self.runs_index_file())
   match existing {
     Some(file) => {
-      let merged_runs : Map[String, JobRun] = {}
-      let merged_steps : Map[String, JobStepRun] = {}
+      let merged_runs : Map[String, JobRun] = Map([])
+      let merged_steps : Map[String, JobStepRun] = Map([])
       for run in file.runs {
         merged_runs.set(run.id, run)
       }
@@ -1067,8 +1072,8 @@ async fn SystemStore::save_definitions_index(self : SystemStore) -> Unit {
 
 ///|
 async fn SystemStore::save_runs_index_unlocked(self : SystemStore) -> Unit {
-  let merged_runs : Map[String, JobRun] = {}
-  let merged_steps : Map[String, JobStepRun] = {}
+  let merged_runs : Map[String, JobRun] = Map([])
+  let merged_steps : Map[String, JobStepRun] = Map([])
   let existing = self.runs_index_from_disk()
   for run in existing.runs {
     merged_runs.set(run.id, run)

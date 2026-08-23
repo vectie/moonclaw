@@ -31,7 +31,7 @@ async fn generate(
   )
   moonclaw.start() catch {
     error => {
-      logger.error("moonclawFailed", data={ "error": "\{to_repr(error)}" })
+      logger.error("moonclawFailed", data={ "error": "\{Repr(error)}" })
       raise error
     }
   }

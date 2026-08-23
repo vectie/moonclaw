@@ -1,34 +1,15 @@
 ///|
+#warnings("-unused_value-unused_constructor")
 priv enum MoonCodeGoalHttpRoute {
   GoalGet
   GoalPut
   GoalMethodNotAllowed
   NotGoalRoute
-} derive(Debug, Eq, Show)
+} derive(Debug, Eq)
 
 ///|
 fn mooncode_goal_http_allow() -> String {
   "GET, PUT"
-}
-
-///|
-fn mooncode_goal_http_route(
-  method : String,
-  segments : Array[String],
-) -> MoonCodeGoalHttpRoute {
-  match (method, segments) {
-    ("GET", ["", "v1", "code", "sessions", _, "goal"]) => GoalGet
-    ("PUT", ["", "v1", "code", "sessions", _, "goal"]) => GoalPut
-    (_, ["", "v1", "code", "sessions", _, "goal"]) => GoalMethodNotAllowed
-    _ => NotGoalRoute
-  }
-}
-
-///|
-fn mooncode_parse_goal_http_body(text : String) -> Result[Json, String] {
-  Ok(@json.parse(text)) catch {
-    _ => Err("invalid_json")
-  }
 }
 
 ///|
@@ -42,6 +23,29 @@ async fn mooncode_write_goal_http_response(
 }
 
 ///|
+#warnings("-unused_value")
+fn mooncode_goal_http_route(
+  method_ : String,
+  segments : Array[String],
+) -> MoonCodeGoalHttpRoute {
+  match (method_, segments) {
+    ("GET", ["", "v1", "code", "sessions", _, "goal"]) => GoalGet
+    ("PUT", ["", "v1", "code", "sessions", _, "goal"]) => GoalPut
+    (_, ["", "v1", "code", "sessions", _, "goal"]) => GoalMethodNotAllowed
+    _ => NotGoalRoute
+  }
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_parse_goal_http_body(text : String) -> Result[Json, String] {
+  Ok(@json.parse(text)) catch {
+    _ => Err("invalid_json")
+  }
+}
+
+///|
+#warnings("-unused_value")
 async fn Daemon::mooncode_goal_get(
   self : Daemon,
   session_id~ : StringView,
@@ -56,6 +60,7 @@ async fn Daemon::mooncode_goal_get(
 }
 
 ///|
+#warnings("-unused_value")
 async fn Daemon::mooncode_goal_put(
   self : Daemon,
   session_id~ : StringView,
@@ -80,6 +85,7 @@ async fn Daemon::mooncode_goal_put(
 }
 
 ///|
+#warnings("-unused_value")
 async fn Daemon::mooncode_goal_method_not_allowed(
   self : Daemon,
   w : @httpx.ResponseWriter,

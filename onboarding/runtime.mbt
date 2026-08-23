@@ -411,7 +411,7 @@ fn generate_gateway_token() -> String {
 
 ///|
 fn json_object_copy(raw : Json?) -> Map[String, Json] {
-  let copied : Map[String, Json] = {}
+  let copied : Map[String, Json] = Map([])
   match raw {
     Some(Object(obj)) =>
       for key, value in obj {
@@ -564,7 +564,7 @@ fn default_config(home : String, cwd : String) -> Json {
 fn merge_missing(existing : Json, defaults : Json) -> Json {
   match (existing, defaults) {
     (Object(existing_obj), Object(default_obj)) => {
-      let merged : Map[String, Json] = {}
+      let merged : Map[String, Json] = Map([])
       for key, value in default_obj {
         match existing_obj.get(key) {
           Some(existing_value) =>

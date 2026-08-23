@@ -198,8 +198,8 @@ fn validate_child_delegation_scope_v1(
     child_runtime_ref_is_canonical(child_run_id) &&
     parent_run_id != child_run_id &&
     parent_principal != child_principal &&
-    child_principal.kind() == @capability.Agent &&
-    parent_principal.kind() != @capability.Human &&
+    child_principal.kind() == Agent &&
+    parent_principal.kind() != Human &&
     !allowed_operations.is_empty() &&
     !artifact_prefixes.is_empty() &&
     @capability.wire_timestamp_is_canonical(issued_at) &&
@@ -336,7 +336,7 @@ fn build_child_delegation_v1(
     expires_at, parent_delegation,
   )
   let digest = @capability.sha256_digest_ref_v1(
-    @encoding/utf8.encode(payload.to_json().stringify()),
+    @encoding/utf8.encode(@json.to_json(payload).stringify()),
   )
   let reference = @capability.delegation_ref_v1(
     delegation_id,
@@ -539,7 +539,7 @@ pub fn authorize_child_delegation_use_v1(
   }
   let digest = @capability.sha256_digest_ref_v1(
     @encoding/utf8.encode(
-      "\{delegation.reference.digest().text()}|\{child_run_id}|\{operation.format()}|\{artifact_refs.join(",")}|\{requested_claim.id()}|\{consumption.accumulated_cost_micro_usd}|\{consumption.requested_cost_micro_usd}|\{consumption.accumulated_runtime_ms}|\{consumption.requested_runtime_ms}|\{consumption.accumulated_tokens}|\{consumption.requested_tokens}|\{consumption.accumulated_artifacts}|\{consumption.requested_artifacts}|\{consumption.evidence.evidence_digest()}|\{evaluated_at}",
+      "\{delegation.reference.digest().text()}|\{child_run_id}|\{operation.format()}|\{artifact_refs.join(",")}|\{requested_claim.id()}|\{Repr(consumption.accumulated_cost_micro_usd)}|\{Repr(consumption.requested_cost_micro_usd)}|\{Repr(consumption.accumulated_runtime_ms)}|\{Repr(consumption.requested_runtime_ms)}|\{Repr(consumption.accumulated_tokens)}|\{Repr(consumption.requested_tokens)}|\{Repr(consumption.accumulated_artifacts)}|\{Repr(consumption.requested_artifacts)}|\{consumption.evidence.evidence_digest()}|\{evaluated_at}",
     ),
   )
   Ok({
@@ -660,9 +660,10 @@ pub fn encode_child_delegation_v1(delegation : ChildDelegationV1) -> Json {
     delegation.parent_delegation,
   )
   ChildDelegationWireV1::{
-    payload: payload.to_json(),
+    payload: @json.to_json(payload),
     delegation_ref: @capability.encode_delegation_ref_v1(delegation.reference),
-  }.to_json()
+  }
+  |> @json.to_json
 }
 
 ///|

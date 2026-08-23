@@ -37,8 +37,8 @@ async fn mooncode_validate_spawn_workers(
 ) -> Json {
   let workers = mooncode_worker_specs(arguments)
   let errors : Array[Json] = []
-  let seen_ids : Map[String, Bool] = {}
-  let seen_roots : Map[String, Bool] = {}
+  let seen_ids : Map[String, Bool] = Map([])
+  let seen_roots : Map[String, Bool] = Map([])
   let normalized_parent_root = @pathx.normalize(parent_book_root)
   let parent_root = @fsx.resolve(normalized_parent_root) catch {
     _ => normalized_parent_root
@@ -331,7 +331,7 @@ async fn mooncode_wait_workers_projection(
   let requested = mooncode_json_array_items(arguments, "worker_ids")
   let records = mooncode_worker_records(parent_book_root, parent_session_id)
   let projected : Array[Json] = []
-  let found : Map[String, Bool] = {}
+  let found : Map[String, Bool] = Map([])
   for record in records {
     let worker_id = mooncode_json_string(record, "worker_id", default="")
     let selected = requested.length() == 0 ||

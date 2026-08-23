@@ -19,7 +19,7 @@ async test "event-stream" (t : @test.Test) {
         },
         no_wait=true,
       )
-      let c = @http.Client::new("http://localhost:\{s.port()}")
+      let c = @http.Client("http://localhost:\{s.port()}")
       defer c.close()
       c.request(Get, "/")
       let r = c.end_request()
@@ -68,7 +68,7 @@ async test "event-stream comments are protocol-valid heartbeats" (
         },
         no_wait=true,
       )
-      let c = @http.Client::new("http://localhost:\{s.port()}")
+      let c = @http.Client("http://localhost:\{s.port()}")
       defer c.close()
       c.request(Get, "/")
       let r = c.end_request()

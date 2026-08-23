@@ -5,7 +5,7 @@ struct Timestamp(Int64) derive(Eq)
 
 ///|
 pub impl Show for Timestamp with fn output(self : Timestamp, logger : &Logger) -> Unit {
-  self.0.output(logger)
+  logger.write_string(self.0.to_string())
 }
 
 ///|

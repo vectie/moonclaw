@@ -33,7 +33,7 @@ pub fn DaemonChildManager::new(
     executable,
     home: home.unwrap_or(cwd),
     cwd,
-    spawn_queue: @aqueue.Queue::new(kind=Unbounded),
+    spawn_queue: Queue(kind=Unbounded),
   }
 }
 
@@ -151,7 +151,9 @@ pub async fn DaemonChildManager::spawn_server(
   if web_search {
     args.push("--web-search")
   }
-  let response = @aqueue.Queue::new(kind=Unbounded)
+  let response : @aqueue.Queue[Result[DaemonChildProcess, Error]] = Queue(
+    kind=Unbounded,
+  )
   self.spawn_queue.put({
     executable,
     arguments: args,

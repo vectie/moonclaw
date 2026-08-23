@@ -1937,10 +1937,17 @@ async fn review(args : Array[String]) -> Unit {
 
 ///|
 fn retirement_message() -> String {
+  // Keep the retired command implementations typechecked while the white-box
+  // attestation seam and historical audit fixtures still depend on this file.
+  // Taking these function values cannot execute any retired product work.
+  ignore(attest)
+  ignore(execute)
+  ignore(review)
   "moonclaw flow-adapter is retired and cannot execute product work; use the exact installed-pack capability path documented in docs/CAPABILITY_INVOCATION.md"
 }
 
 ///|
+#warnings("-unused_async")
 pub async fn run(args : ArrayView[String]) -> Unit {
   ignore(args)
   fail(retirement_message())

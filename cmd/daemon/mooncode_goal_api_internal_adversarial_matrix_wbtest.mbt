@@ -33,7 +33,7 @@ async test "mooncode_goal_api_internal adversarial matrix: journal directory is 
       409,
       "goal_corrupt",
     )
-    assert_eq(@fs.kind(journal, follow_symlink=false), @fs.Directory)
+    assert_eq(@fs.kind(journal, follow_symlink=false), Directory)
     assert_eq(@fsx.read_file(sentinel), sentinel_bytes)
     assert_eq(@fsx.list_directory(root).length(), root_count)
     assert_eq(@fsx.list_directory(journal).length(), journal_count)
@@ -66,7 +66,7 @@ async test "mooncode_goal_api_internal adversarial matrix: journal symlink and t
       409,
       "goal_corrupt",
     )
-    assert_eq(@fs.kind(source, follow_symlink=false), @fs.SymLink)
+    assert_eq(@fs.kind(source, follow_symlink=false), SymLink)
     assert_eq(@fsx.read_file(target), sentinel)
     assert_eq(@fsx.list_directory(root).length(), source_count)
     assert_eq(@fsx.list_directory(target_dir).length(), target_count)

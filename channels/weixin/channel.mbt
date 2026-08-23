@@ -444,7 +444,7 @@ impl @channel.ChannelExtension for WeixinChannel with fn handle_webhook(
                   Ok(_) => @channel.ExtensionResponse::text("success")
                   Err(error) =>
                     @channel.ExtensionResponse::internal_error(
-                      message="Failed to send Weixin response: \{to_repr(error)}",
+                      message="Failed to send Weixin response: \{Repr(error)}",
                     )
                 }
               } catch {
@@ -489,6 +489,10 @@ impl @channel.ChannelExtension for WeixinChannel with fn handle_webhook(
   }
   account_id
 }
+
+///|
+extend WeixinChannel with @channel.Channel::{send}
+
 
 ///|
 impl @channel.ChannelExtension for WeixinChannel with fn supports_websocket(

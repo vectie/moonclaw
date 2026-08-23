@@ -79,7 +79,7 @@ test "Responses result preserves response id and cache write usage" {
     response_id: "resp_123",
     text_chunks: [],
     output_items: [
-      @responses.ResponseItem::FunctionCall(
+      FunctionCall(
         call_id="call_123",
         name="read",
         arguments="{\"path\":\"README.md\"}",

@@ -31,7 +31,7 @@ pub impl @json.FromJson for Uuid with fn from_json(json, json_path) -> Uuid rais
   }
   parse(string) catch {
     error =>
-      raise JsonDecodeError((json_path, "Uuid::from_json: \{to_repr(error)}"))
+      raise JsonDecodeError((json_path, "Uuid::from_json: \{Repr(error)}"))
   }
 }
 

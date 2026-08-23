@@ -16,7 +16,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
     mooncode_json_bool(
       mooncode_runtime_turn_git(
         book_root,
-        @trusted_host_process.Init,
+        Init,
         timeout_ms=10000,
         max_output_chars=4000,
       ),
@@ -136,7 +136,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   assert_true(events_log.contains(commit_sha))
   let git_head = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.Head,
+    Head,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -146,7 +146,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   )
   let git_status = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.StatusPorcelain,
+    StatusPorcelain,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -168,7 +168,7 @@ async test "mooncode native runtime turn creates commit proof" (t : @test.Test) 
   )
   let committed_files = mooncode_runtime_turn_git(
     book_root,
-    @trusted_host_process.ListHeadTree,
+    ListHeadTree,
     timeout_ms=10000,
     max_output_chars=4000,
   )
@@ -232,7 +232,7 @@ async test "trusted commit does not execute repository post-commit hooks" {
     mooncode_json_bool(
       mooncode_runtime_turn_git(
         book_root,
-        @trusted_host_process.Init,
+        Init,
         timeout_ms=10000,
         max_output_chars=4000,
       ),

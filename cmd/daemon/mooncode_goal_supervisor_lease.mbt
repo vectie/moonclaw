@@ -66,6 +66,7 @@ priv struct MoonCodeGoalSupervisorLeaseRenewal {
 /// Canonical event identities are shared by acquisitions and renewals. Replay
 /// keeps this tagged payload so nonadjacent exact duplicates can be ignored,
 /// while changed or cross-kind reuse of an event id is rejected.
+#warnings("-unused_value")
 priv enum MoonCodeGoalSupervisorLeaseReplayEvent {
   ReplayAcquisition(MoonCodeGoalSupervisorLease)
   ReplayRenewal(MoonCodeGoalSupervisorLeaseRenewal)
@@ -187,7 +188,7 @@ fn mooncode_goal_supervisor_lease_renewal_decode(
       lease_expires_at, fence_token, acquisition_event_id,
     ),
   )
-  MoonCodeGoalSupervisorLeaseRenewal::{
+  {
     session_id,
     goal_id,
     goal_run_id,
@@ -203,6 +204,7 @@ fn mooncode_goal_supervisor_lease_renewal_decode(
 
 ///|
 /// Store-level outcomes always carry the projection that made the decision.
+#warnings("-unused_value-unused_constructor-unused_field")
 priv enum MoonCodeGoalSupervisorLeaseResult {
   SupervisorLeaseAcquired(MoonCodeGoalSupervisorLease)
   SupervisorLeaseIdempotent(MoonCodeGoalSupervisorLease)
@@ -337,7 +339,7 @@ fn mooncode_goal_supervisor_lease_replay(
 ) -> (MoonCodeGoalSupervisorLease?, Int) raise {
   let mut genesis_seen = false
   let mut maximum_fence = 0
-  let seen : Map[String, MoonCodeGoalSupervisorLeaseReplayEvent] = {}
+  let seen : Map[String, MoonCodeGoalSupervisorLeaseReplayEvent] = Map([])
   let mut active : MoonCodeGoalSupervisorLease? = None
   for envelope in records {
     if mooncode_json_string(envelope, "record_kind", default="") !=
@@ -588,6 +590,7 @@ fn mooncode_goal_supervisor_lease_matches_request(
 }
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_goal_supervisor_lease_acquire(
   book_root : String,
   session_id : String,

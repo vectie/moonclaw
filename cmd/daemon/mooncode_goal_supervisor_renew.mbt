@@ -1,5 +1,6 @@
 ///|
 /// Outcome of an atomic durable supervisor-lease renewal attempt.
+#warnings("-unused_value-unused_constructor-unused_field")
 priv enum MoonCodeGoalSupervisorLeaseRenewalResult {
   Renewed(MoonCodeGoalSupervisorLeaseRenewal)
   RenewalIdempotent(MoonCodeGoalSupervisorLeaseRenewal)
@@ -7,6 +8,7 @@ priv enum MoonCodeGoalSupervisorLeaseRenewalResult {
 } derive(Eq, Debug)
 
 ///|
+#warnings("-unused_value")
 async fn mooncode_goal_supervisor_lease_renew(
   book_root : String,
   session_id : String,

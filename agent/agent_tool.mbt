@@ -100,7 +100,7 @@ async fn Agent::execute_tool(
     Some(arguments) =>
       @json.parse(arguments) catch {
         error => {
-          let result = Err(error.to_json())
+          let result = Err(@json.to_json(error))
           let rendered = "Error parsing tool arguments: \{error}, arguments: \{arguments}"
           agent.emit(PostToolCall(tool_call, result~, rendered~))
           return @ai.tool_message(content=rendered, tool_call_id=tool_call.id)

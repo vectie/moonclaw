@@ -62,7 +62,7 @@ async fn mooncode_runtime_steer_freshness_append(
 
 ///|
 async fn mooncode_runtime_steer_freshness_daemon(book_root : String) -> Daemon {
-  Daemon::{
+  {
     clock: @clock.epoch,
     models: @model.Loader::new(home=book_root, cwd=book_root),
     uuid: @uuid.generator(@rand.chacha8()),

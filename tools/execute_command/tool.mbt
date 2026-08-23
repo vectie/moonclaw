@@ -237,10 +237,10 @@ pub fn new(
           )
       }
       if simulate {
-        return @tool.ok(CommandResult::Simulated(assessment~))
+        return @tool.ok(Simulated(assessment~))
       }
       if !assessment.allowed_by_policy {
-        return @tool.ok(CommandResult::Blocked(command~, assessment~))
+        return @tool.ok(Blocked(command~, assessment~))
       }
       let mut consumed_approval : @security.ApprovalRecord? = None
       if assessment.requires_approval {
@@ -302,11 +302,7 @@ pub fn new(
             }
           }
           return @tool.ok(
-            CommandResult::ApprovalRequired(
-              command~,
-              assessment~,
-              token=record.token,
-            ),
+            ApprovalRequired(command~, assessment~, token=record.token),
           )
         }
       }
@@ -378,7 +374,7 @@ pub fn new(
       ignore(audit_path)
       let audit_id = receipt.run_id
       match receipt.status {
-        @execution_sandbox.Exited => {
+        Exited => {
           guard receipt.exit_code is Some(status) else {
             return @tool.error("MoonFort exited receipt omitted exit_code.")
           }
@@ -394,8 +390,7 @@ pub fn new(
             ),
           )
         }
-        @execution_sandbox.Killed if receipt.limit_reason
-          is Some("wall-clock-limit") =>
+        Killed if receipt.limit_reason is Some("wall-clock-limit") =>
           @tool.ok(
             TimedOut(
               command~,
@@ -407,17 +402,17 @@ pub fn new(
               audit_id~,
             ),
           )
-        @execution_sandbox.Killed => {
+        Killed => {
           let reason = receipt.limit_reason.unwrap_or("unspecified limit")
           @tool.error(
             "MoonFort killed the command at a resource boundary: \{reason}",
           )
         }
-        @execution_sandbox.Failed => {
+        Failed => {
           let reason = receipt.denial_reason.unwrap_or("unspecified failure")
           @tool.error("MoonFort reported execution failure: \{reason}")
         }
-        @execution_sandbox.Created | @execution_sandbox.Running =>
+        Created | Running =>
           @tool.error("MoonFort returned a non-terminal receipt.")
       }
     }),

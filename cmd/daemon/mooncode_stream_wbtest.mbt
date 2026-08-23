@@ -18,7 +18,7 @@ test "mooncode stream HTTP cursor boundary is exact and canonical" {
       ignore(mooncode_stream_query_cursor(bad))
       false
     } catch {
-      MoonCodeGoalRuntimeStoreError::CorruptStore(_) => true
+      CorruptStore(_) => true
       _ => false
     }
     assert_true(rejected)

@@ -129,7 +129,7 @@ fn mooncode_goal_supervisor_checkpoint_decode(
       recorded_at,
     ),
   )
-  MoonCodeGoalSupervisorCheckpointPayload::{
+  {
     id,
     kind,
     protocol,

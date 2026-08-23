@@ -85,7 +85,7 @@ async fn Daemon::mooncode_persist_session(
     journal_path,
     mode=ReadWrite,
     append=false,
-    truncate=false,
+    create_mode=OpenExisting,
   )
   defer journal_file.close()
   journal_file.lock(Exclusive)

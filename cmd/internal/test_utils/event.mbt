@@ -14,7 +14,7 @@ pub impl @httpx.FromEvent for ServerEvent with fn from_event(
     Some("moonclaw.queued_messages.synchronized") =>
       MoonclawQueuedMessagesSynchronized(@json.from_json(data))
     Some("moonclaw") => Moonclaw(@json.from_json(data))
-    _ => fail("unrecognized event type: \{to_repr(event)}")
+    _ => fail("unrecognized event type: \{Repr(event)}")
   }
 }
 

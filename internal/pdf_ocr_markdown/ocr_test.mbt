@@ -6,7 +6,7 @@ fn fake_process(
   stderr? : String = "",
   status? : Int = 0,
 ) -> CommandResult {
-  CommandResult::{
+  {
     command: exec,
     arguments: args,
     status,

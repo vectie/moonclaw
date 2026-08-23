@@ -66,7 +66,7 @@ async fn ExecOptions::run(self : ExecOptions, cwd~ : String) -> Unit {
   )
   moonclaw.start() catch {
     error => {
-      logger.error("ExecFailed", data={ "error": "\{to_repr(error)}" })
+      logger.error("ExecFailed", data={ "error": "\{Repr(error)}" })
       raise error
     }
   }

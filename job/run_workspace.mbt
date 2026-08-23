@@ -367,7 +367,7 @@ async fn run_workspace_git(
   operation : @trusted_host_process.GitOperation,
 ) -> Result[@trusted_host_process.GitResult, String] {
   let command = @trusted_host_process.run_git(workspace_dir, operation) catch {
-    error => return Err("\{to_repr(error)}")
+    error => return Err("\{Repr(error)}")
   }
   if command.status() == 0 {
     Ok(command)
@@ -394,15 +394,12 @@ async fn initialize_workspace_repo(workspace_dir : String) -> Unit {
   if exists {
     return
   }
-  ignore(run_workspace_git(workspace_dir, @trusted_host_process.Init))
+  ignore(run_workspace_git(workspace_dir, Init))
 }
 
 ///|
 async fn workspace_has_git_changes(workspace_dir : String) -> Bool {
-  let result = run_workspace_git(
-    workspace_dir,
-    @trusted_host_process.StatusPorcelain,
-  )
+  let result = run_workspace_git(workspace_dir, StatusPorcelain)
   match result {
     Ok(process) => !process.stdout().trim().is_blank()
     Err(_) => false
@@ -430,10 +427,8 @@ pub async fn checkpoint_run_workspace(
   if !workspace_has_git_changes(workspace_dir) {
     return false
   }
-  ignore(run_workspace_git(workspace_dir, @trusted_host_process.AddAll))
-  ignore(
-    run_workspace_git(workspace_dir, @trusted_host_process.Commit(message)),
-  )
+  ignore(run_workspace_git(workspace_dir, AddAll))
+  ignore(run_workspace_git(workspace_dir, Commit(message)))
   true
 }
 
@@ -448,14 +443,8 @@ pub async fn render_run_workspace_status(
     None =>
       return "Job workspace: unavailable for `\{definition.id}` (`\{run.id}`)."
   }
-  let status_output = git_stdout(
-    workspace_dir,
-    @trusted_host_process.StatusShort,
-  )
-  let commits_output = git_stdout(
-    workspace_dir,
-    @trusted_host_process.RecentLog(3),
-  )
+  let status_output = git_stdout(workspace_dir, StatusShort)
+  let commits_output = git_stdout(workspace_dir, RecentLog(3))
   let status_text = if status_output.is_blank() {
     "clean"
   } else {

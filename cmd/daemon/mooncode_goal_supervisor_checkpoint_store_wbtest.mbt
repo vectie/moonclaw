@@ -127,7 +127,7 @@ async test "checkpoint store rejects stale basis without changing journal" {
         None,
         12,
       )
-      guard result is CheckpointConflict else {
+      guard result is CheckpointConflict(_) else {
         abort("expected stale checkpoint basis conflict")
       }
       let after = @fsx.read_file(journal_path)
@@ -202,7 +202,7 @@ async test "checkpoint store rejects changed retry with same event id" {
         None,
         13,
       )
-      guard retry is CheckpointConflict else {
+      guard retry is CheckpointConflict(_) else {
         abort("expected changed checkpoint retry conflict")
       }
       let after = @fsx.read_file(journal_path)
@@ -256,7 +256,7 @@ async test "checkpoint store blocks ambiguous terminal-linked checkpoint" {
         Some("receipt-1"),
         12,
       )
-      guard result is CheckpointBlockedAmbiguous else {
+      guard result is CheckpointBlockedAmbiguous(_) else {
         abort("expected ambiguous terminal-linked checkpoint block")
       }
       let after = @fsx.read_file(journal_path)
@@ -295,16 +295,10 @@ async test "checkpoint store rejects ordinary event ID collision without changin
         session,
         "goal",
         @mooncode_core.goal_event_to_json(
-          @mooncode_core.RequirementUpdated(
-            "ordinary-event",
-            12,
-            "r1",
-            @mooncode_core.Proven,
-            ["evidence:r1"],
-          ),
+          RequirementUpdated("ordinary-event", 12, "r1", Proven, ["evidence:r1"]),
         ),
       )
-      guard applied is GoalMutationApplied else {
+      guard applied is GoalMutationApplied(_) else {
         abort("expected goal mutation applied")
       }
       let replayed = mooncode_replay_goal(root, session).unwrap()
@@ -328,7 +322,7 @@ async test "checkpoint store rejects ordinary event ID collision without changin
         None,
         13,
       )
-      guard result is CheckpointConflict else {
+      guard result is CheckpointConflict(_) else {
         abort("expected checkpoint conflict")
       }
       let after = @fsx.read_file(journal_path)
@@ -393,7 +387,7 @@ async test "checkpoint store concurrent unique checkpoint IDs at same basis line
         for task in tasks {
           match task.wait() {
             CheckpointRecorded(_) => recorded += 1
-            CheckpointConflict => conflicts += 1
+            CheckpointConflict(_) => conflicts += 1
             _ => abort("expected recorded or conflict")
           }
         }
@@ -581,7 +575,7 @@ async test "checkpoint store blocks null terminal while native claim is unresolv
         None,
         14,
       )
-      guard result is CheckpointBlockedAmbiguous else {
+      guard result is CheckpointBlockedAmbiguous(_) else {
         abort("expected unresolved native claim ambiguity")
       }
       let after = @fsx.read_file(journal_path)

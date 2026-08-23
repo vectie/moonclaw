@@ -85,7 +85,7 @@ fn daemon_supervisor_authority_verifier(
 }
 
 ///|
-let daemon_supervisor_runtimes : Map[String, @job.SupervisorRuntime] = {}
+let daemon_supervisor_runtimes : Map[String, @job.SupervisorRuntime] = Map([])
 
 ///|
 /// Process-retained registry keeps supervisor state out of the broad Daemon
@@ -97,7 +97,7 @@ async fn Daemon::supervisor_runtime(self : Daemon) -> @job.SupervisorRuntime {
     None => {
       let receiver = @capability.principal_ref_v1(
         "moonclaw-daemon",
-        @capability.Service,
+        Service,
         "moonclaw",
         "local-daemon",
       )
@@ -194,6 +194,7 @@ async fn Daemon::install_supervisor_profile(
   task : Running,
   profile : @job.SupervisorProfileActivationV1,
 ) -> Unit {
+  ignore(self)
   let exact_profile = profile.runtime_profile.stringify()
   let digest = @capability.sha256_digest_ref_v1(
     @encoding/utf8.encode(exact_profile),
@@ -238,7 +239,7 @@ async fn Daemon::ensure_supervisor_task(
   }
   for task in self.by_id.values() {
     match task {
-      Task::Running(running) if running.name == Some(name) => {
+      Running(running) if running.name == Some(name) => {
         guard running.model == model.name else {
           raise supervisor_http_failure(
             "running supervisor model does not match immutable binding",
@@ -246,7 +247,7 @@ async fn Daemon::ensure_supervisor_task(
         }
         return (running, false)
       }
-      Task::Stopped(stopped) if stopped.name == Some(name) => {
+      Stopped(stopped) if stopped.name == Some(name) => {
         let cwd = stopped.cwd
         guard @fsx.exists(cwd) else {
           raise supervisor_http_failure(
@@ -338,7 +339,7 @@ fn Daemon::running_supervisor_task(
   let name = Some("supervisor:\{supervisor_id}")
   for task in self.by_id.values() {
     match task {
-      Task::Running(running) if running.name == name => return Some(running)
+      Running(running) if running.name == name => return Some(running)
       _ => ()
     }
   }
@@ -383,8 +384,8 @@ async fn Daemon::restore_supervisors(
   let supervisors = self.supervisor_runtime()
   for status in supervisors.list_status() {
     match status.state.lifecycle {
-      @job.Stopped | @job.Failed => ()
-      @job.Dormant | @job.Running =>
+      Stopped | Failed => ()
+      Dormant | Running =>
         ignore(self.restore_one_supervisor(group~, status.state.supervisor_id)) catch {
           error =>
             logger.error(

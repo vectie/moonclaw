@@ -1,6 +1,7 @@
 import {
   "moonbitlang/async",
   "moonbitlang/async/fs",
+  "moonbitlang/async/semaphore",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/acp",
   "vectie/moonclaw/ai",
@@ -23,6 +24,7 @@ import {
   "vectie/moonclaw/security",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
   "moonbitlang/core/json",
+  "moonbitlang/core/string",
   "moonbitlang/core/strconv",
   "moonbitlang/core/test",
   "moonbitlang/x/time",
@@ -57,6 +59,7 @@ import {
 
 import {
   "moonbitlang/async",
+  "vectie/moonclaw/internal/execution_sandbox_fixture",
   "vectie/moonclaw/internal/git",
   "vectie/moonclaw/internal/trusted_host_process",
 } for "wbtest"

@@ -402,15 +402,6 @@ fn mooncode_runtime_turn_model_retries_until_cancelled(
 }
 
 ///|
-fn mooncode_runtime_turn_model_retries_transient_summary(
-  model_name : String,
-  summary : String,
-) -> Bool {
-  mooncode_runtime_turn_model_name_uses_patient_transport(model_name) &&
-  mooncode_runtime_turn_planner_error_summary_is_transient(summary)
-}
-
-///|
 fn mooncode_runtime_turn_model_retry_delay_ms(
   retry_count : Int,
   summary? : String = "",
@@ -462,19 +453,6 @@ fn mooncode_runtime_turn_model_max_steps(command : Json) -> Int {
   } else {
     requested
   }
-}
-
-///|
-fn mooncode_runtime_turn_model_plan_request(
-  model_name : String,
-  command : Json,
-) -> @openai.Request raise {
-  mooncode_runtime_turn_model_plan_request_from_messages(
-    model_name,
-    mooncode_runtime_turn_model_initial_messages(command),
-    tools=mooncode_runtime_turn_model_tools_for_command(command),
-    reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
-  )
 }
 
 ///|
@@ -1534,7 +1512,7 @@ fn mooncode_runtime_turn_compact_followup_transcript(
 fn mooncode_runtime_turn_compact_provider_tool_evidence(
   previous : Array[Json],
 ) -> Array[Json] {
-  let tool_names : Map[String, String] = {}
+  let tool_names : Map[String, String] = Map([])
   for message in previous {
     if mooncode_json_string(message, "role", default="") != "assistant" {
       continue
@@ -3148,6 +3126,43 @@ fn mooncode_runtime_turn_model_tool_result_content(execution : Json) -> String {
 }
 
 ///|
+fn mooncode_runtime_turn_tool_calls_include_finish(
+  tool_calls : Array[Json],
+) -> Bool {
+  for tool_call in tool_calls {
+    if mooncode_json_string(tool_call, "tool", default="") == "finish" {
+      return true
+    }
+  }
+  false
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_runtime_turn_model_retries_transient_summary(
+  model_name : String,
+  summary : String,
+) -> Bool {
+  mooncode_runtime_turn_model_name_uses_patient_transport(model_name) &&
+  mooncode_runtime_turn_planner_error_summary_is_transient(summary)
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_runtime_turn_model_plan_request(
+  model_name : String,
+  command : Json,
+) -> @openai.Request raise {
+  mooncode_runtime_turn_model_plan_request_from_messages(
+    model_name,
+    mooncode_runtime_turn_model_initial_messages(command),
+    tools=mooncode_runtime_turn_model_tools_for_command(command),
+    reasoning_effort=mooncode_runtime_turn_model_reasoning_effort(command),
+  )
+}
+
+///|
+#warnings("-unused_value")
 fn mooncode_runtime_turn_model_completed_steps(messages : Array[Json]) -> Int {
   let mut count = 0
   for message in messages {
@@ -3160,6 +3175,7 @@ fn mooncode_runtime_turn_model_completed_steps(messages : Array[Json]) -> Int {
 }
 
 ///|
+#warnings("-unused_value")
 fn mooncode_runtime_turn_model_transcript_has_mutation(
   messages : Array[Json],
 ) -> Bool {
@@ -3174,18 +3190,6 @@ fn mooncode_runtime_turn_model_transcript_has_mutation(
           return true
         }
       }
-    }
-  }
-  false
-}
-
-///|
-fn mooncode_runtime_turn_tool_calls_include_finish(
-  tool_calls : Array[Json],
-) -> Bool {
-  for tool_call in tool_calls {
-    if mooncode_json_string(tool_call, "tool", default="") == "finish" {
-      return true
     }
   }
   false

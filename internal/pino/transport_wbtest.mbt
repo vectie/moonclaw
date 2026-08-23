@@ -1,6 +1,6 @@
 ///|
 async test "Transport::Channel" {
-  let channel = @aqueue.new(kind=Unbounded)
+  let channel = @aqueue.Queue(kind=Unbounded)
   let transport = Transport::channel(channel)
   transport.write(Json::string("test message"))
   json_inspect(channel.try_get(), content=["test message"])

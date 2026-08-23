@@ -1,6 +1,7 @@
 import {
   "moonbitlang/core/json",
   "vectie/moonlib/fsx",
+  "vectie/moonclaw/internal/execution_sandbox",
   "vectie/moonclaw/internal/trusted_host_process",
   "vectie/moonlib/moonsuite",
 }
@@ -10,4 +11,5 @@ supported_targets = "native"
 import {
   "moonbitlang/async",
   "moonbitlang/x/path",
+  "vectie/moonclaw/internal/execution_sandbox_fixture",
 } for "wbtest"

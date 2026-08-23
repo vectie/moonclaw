@@ -23,14 +23,14 @@ fn ExternalExecutionBackend::new(
     String,
   ],
 ) -> ExternalExecutionBackend {
-  ExternalExecutionBackend::{ id, run_analysis, run_child }
+  { id, run_analysis, run_child }
 }
 
 ///|
 fn normalized_external_execution_mode(mode : String?) -> String? {
   match mode {
     Some(mode) => {
-      let trimmed = mode.trim().to_string()
+      let trimmed = mode.trim().to_owned()
       if trimmed.is_blank() {
         None
       } else {

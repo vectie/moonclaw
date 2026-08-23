@@ -168,7 +168,7 @@ fn target_label(target_id : String, target : Json?) -> String? {
 
 ///|
 fn load_targets_from_config(json : Json) -> Map[String, AcpTarget] {
-  let targets : Map[String, AcpTarget] = {}
+  let targets : Map[String, AcpTarget] = Map([])
   for target_id, raw in acp_targets_map(json) {
     let backend = match json_string(Some(raw), "backend") {
       Some(backend) => backend

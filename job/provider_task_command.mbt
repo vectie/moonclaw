@@ -181,7 +181,7 @@ async fn load_provider_task_providers(
   let providers_by_name : Map[
     String,
     @resource_providers.RegisteredResourceProvider,
-  ] = {}
+  ] = Map([])
   let order : Array[String] = []
   for
     source in [
@@ -283,11 +283,7 @@ async fn run_provider_task_stdout(
   extra_args : Array[String],
   context : String,
 ) -> Result[String, String] {
-  ignore(subcommand)
-  ignore(extra_args)
-  Err(
-    "Provider task \{context} execution is disabled for target \{command.provider.name}: a MoonFort ExecutionSandbox grant is required",
-  )
+  execute_provider_task_command(command, subcommand, extra_args, context)
 }
 
 ///|

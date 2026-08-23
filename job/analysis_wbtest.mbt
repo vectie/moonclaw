@@ -783,7 +783,7 @@ async test "analysis_step_handler passes execution routing hints into executor" 
 }
 
 ///|
-async test "default analysis runner launches acp target for cli execution" {
+async test "analysis runner launches ACP target through approved MoonFort fixture" {
   @fsx.with_temporary_directory("job-analysis-acp-runner-XXXXXX", dir => {
     let source_root = dir |> @pathx.join("source-root")
     let run_workspace = dir |> @pathx.join("run-workspace")
@@ -802,7 +802,7 @@ async test "default analysis runner launches acp target for cli execution" {
               "fake-acp": {
                 "backend": "codex",
                 "label": "Fake ACP",
-                "command": "/bin/echo",
+                "command": "echo",
                 "args": ["acp-executed"],
                 "cwd": source_root,
               },
@@ -838,10 +838,17 @@ async test "default analysis runner launches acp target for cli execution" {
       execution_isolation: None,
       role_runtime_contract: None,
     }
-    let execution = match run_default_analysis_runner(request) {
-      Ok(execution) => execution
-      Err(error) => fail(error)
-    }
+    let execution = @execution_sandbox_fixture.with_fixture_moonfort(
+      source_root,
+      { "echo": "/bin/echo" },
+      async fn(config) {
+        match
+          run_acp_analysis_runner(request, fixture_sandbox_config=Some(config)) {
+          Ok(execution) => execution
+          Err(error) => fail(error)
+        }
+      },
+    )
     inspect(execution.model_name, content="Fake ACP")
     inspect(execution.conversation_id.unwrap_or(""), content="acp-run-1-step-1")
     inspect(execution.content.contains("acp-executed"), content="true")

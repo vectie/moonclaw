@@ -60,7 +60,12 @@ async fn[T] SupervisorRuntime::with_lock(
   @fsx.make_directory(self.root(), recursive=true, exists_ok=true) catch {
     _ => ()
   }
-  let file = @fs.open(self.lock_file(), mode=WriteOnly, create=0o644)
+  let file = @fs.open(
+    self.lock_file(),
+    mode=WriteOnly,
+    create_mode=OpenOrCreate,
+    permission=0o644,
+  )
   defer file.close()
   @fsx.lock_file(file)
   f()
@@ -681,7 +686,7 @@ pub async fn SupervisorRuntime::send_message(
     }
     let state = {
       ..previous,
-      lifecycle: SupervisorLifecycleV1::Running,
+      lifecycle: Running,
       active_run_id: Some(bound),
       cursor: previous.cursor + 1,
       updated_at: request.envelope.issued_at,
@@ -777,9 +782,9 @@ fn SupervisorRuntime::mailbox_messages(
   now_ms : SupervisorEpochMsV1,
   claimable_only? : Bool = false,
 ) -> Array[SupervisorMessageV1] {
-  let messages : Map[String, SupervisorMessageV1] = {}
-  let acknowledged : Map[String, Bool] = {}
-  let claimed_until : Map[String, SupervisorEpochMsV1] = {}
+  let messages : Map[String, SupervisorMessageV1] = Map([])
+  let acknowledged : Map[String, Bool] = Map([])
+  let claimed_until : Map[String, SupervisorEpochMsV1] = Map([])
   for event in self.events {
     if event.supervisor_id != supervisor_id {
       continue
@@ -1081,7 +1086,7 @@ pub async fn SupervisorRuntime::retry_resume(
     }
     let state = {
       ..previous,
-      lifecycle: SupervisorLifecycleV1::Running,
+      lifecycle: Running,
       active_run_id: run_id,
       cursor: previous.cursor + 1,
       updated_at: request.envelope.issued_at,
@@ -1475,9 +1480,9 @@ fn SupervisorRuntime::outbox_unacknowledged(
   now_ms : SupervisorEpochMsV1,
   claimable_only? : Bool = false,
 ) -> Array[SupervisorBookkeeperOutcomeEvidenceV1] {
-  let items : Map[String, SupervisorBookkeeperOutcomeEvidenceV1] = {}
-  let acknowledged : Map[String, Bool] = {}
-  let claimed_until : Map[String, SupervisorEpochMsV1] = {}
+  let items : Map[String, SupervisorBookkeeperOutcomeEvidenceV1] = Map([])
+  let acknowledged : Map[String, Bool] = Map([])
+  let claimed_until : Map[String, SupervisorEpochMsV1] = Map([])
   for event in self.events {
     if event.supervisor_id != supervisor_id {
       continue
@@ -1814,7 +1819,7 @@ pub async fn SupervisorRuntime::record_assistant_response(
         "assistant response executor identity does not match active supervisor run",
       )
     }
-    let responded_sources : Map[String, Bool] = {}
+    let responded_sources : Map[String, Bool] = Map([])
     for event in self.events {
       if event.supervisor_id == supervisor_id &&
         event.event_type == "supervisor.assistant.responded" {

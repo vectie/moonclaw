@@ -1,4 +1,5 @@
 ///|
+#warnings("-unused_constructor")
 priv enum MoonCodeGoalRuntimeHttpRoute {
   GoalRuntimeGet
   GoalRuntimePut
@@ -9,20 +10,6 @@ priv enum MoonCodeGoalRuntimeHttpRoute {
 ///|
 fn mooncode_goal_runtime_http_allow() -> String {
   "GET, PUT"
-}
-
-///|
-fn mooncode_goal_runtime_http_route(
-  method_name : String,
-  segments : Array[String],
-) -> MoonCodeGoalRuntimeHttpRoute {
-  match (method_name, segments) {
-    ("GET", ["", "v1", "code", "sessions", _, "goal-runtime"]) => GoalRuntimeGet
-    ("PUT", ["", "v1", "code", "sessions", _, "goal-runtime"]) => GoalRuntimePut
-    (_, ["", "v1", "code", "sessions", _, "goal-runtime"]) =>
-      GoalRuntimeMethodNotAllowed
-    _ => NotGoalRuntimeRoute
-  }
 }
 
 ///|
@@ -42,6 +29,7 @@ async fn Daemon::mooncode_goal_runtime_get(
   r : @httpx.RequestReader,
   w : @httpx.ResponseWriter,
 ) -> Unit {
+  ignore(self)
   let response = mooncode_goal_runtime_api_get_internal(
     mooncode_request_book_root(r),
     session_id.to_owned(),
@@ -80,9 +68,25 @@ async fn Daemon::mooncode_goal_runtime_method_not_allowed(
   self : Daemon,
   w : @httpx.ResponseWriter,
 ) -> Unit {
+  ignore(self)
   w.header().set("Allow", mooncode_goal_runtime_http_allow())
   mooncode_write_goal_runtime_http_response(
     w,
     mooncode_goal_runtime_api_error(405, "method_not_allowed"),
   )
+}
+
+///|
+#warnings("-unused_value")
+fn mooncode_goal_runtime_http_route(
+  method_name : String,
+  segments : Array[String],
+) -> MoonCodeGoalRuntimeHttpRoute {
+  match (method_name, segments) {
+    ("GET", ["", "v1", "code", "sessions", _, "goal-runtime"]) => GoalRuntimeGet
+    ("PUT", ["", "v1", "code", "sessions", _, "goal-runtime"]) => GoalRuntimePut
+    (_, ["", "v1", "code", "sessions", _, "goal-runtime"]) =>
+      GoalRuntimeMethodNotAllowed
+    _ => NotGoalRuntimeRoute
+  }
 }

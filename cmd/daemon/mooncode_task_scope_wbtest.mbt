@@ -22,12 +22,9 @@ async fn mooncode_task_scope_test_git(
 
 ///|
 async fn mooncode_task_scope_test_commit_baseline(book_root : String) -> Unit {
-  mooncode_task_scope_test_git(book_root, @trusted_host_process.Init)
-  mooncode_task_scope_test_git(book_root, @trusted_host_process.AddAll)
-  mooncode_task_scope_test_git(
-    book_root,
-    @trusted_host_process.Commit("baseline"),
-  )
+  mooncode_task_scope_test_git(book_root, Init)
+  mooncode_task_scope_test_git(book_root, AddAll)
+  mooncode_task_scope_test_git(book_root, Commit("baseline"))
 }
 
 ///|

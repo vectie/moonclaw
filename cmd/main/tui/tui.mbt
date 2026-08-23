@@ -245,7 +245,7 @@ pub async fn tui_interactive(args : ArrayView[String]) -> Unit {
         Failed(err) => {
           flush_pending_stream(tui, state)
           tui.state().set_busy(false)
-          tui.state().set_activity_status("failed: \{to_repr(err)}")
+          tui.state().set_activity_status("failed: \{Repr(err)}")
           tui.request_render()
         }
         Cancelled => {

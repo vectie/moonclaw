@@ -36,7 +36,7 @@ async fn Daemon::spawn_task(
   let registration_token = self.uuid.v4().to_string() +
     self.uuid.v4().to_string()
   let registration_expires_at_ms = self.clock.now().ms() + 300_000L
-  let rq = @aqueue.Queue::new(kind=Unbounded)
+  let rq = @aqueue.Queue(kind=Unbounded)
   self.rqs[id.to_string()] = {
     queue: rq,
     instance_id: id.to_string(),

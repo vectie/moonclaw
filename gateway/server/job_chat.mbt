@@ -227,7 +227,7 @@ fn merge_starter_attachments(
   current : Array[@job.E2EStarterAttachment],
 ) -> Array[@job.E2EStarterAttachment] {
   let merged : Array[@job.E2EStarterAttachment] = []
-  let seen : Map[String, Bool] = {}
+  let seen : Map[String, Bool] = Map([])
   for attachment in earlier {
     let key = if attachment.id.is_blank() {
       attachment.url

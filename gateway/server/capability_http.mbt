@@ -13,7 +13,7 @@ priv struct CapabilityHttpRouteV1 {
   base_url : String?
   estimated_cost_micros : Int
   provider_route_ref : String?
-} derive(Debug, FromJson)
+} derive(FromJson)
 
 ///|
 /// Host-owned policy loaded from MoonClaw's product home in the served
@@ -28,7 +28,7 @@ priv struct CapabilityHttpPolicyV1 {
   remaining_budget_micros : Int
   approved_provider_route_refs : Array[String]
   routes : Array[CapabilityHttpRouteV1]
-} derive(Debug, FromJson)
+} derive(FromJson)
 
 ///|
 fn capability_http_policy_path(workspace : String) -> String {

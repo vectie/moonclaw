@@ -31,7 +31,7 @@ impl @json.FromJson for DaemonInfo with fn from_json(
       raise JsonDecodeError(
         (
           json_path.add_key("version"),
-          "Invalid version string in 'version' field: " + "\{to_repr(error)}",
+          "Invalid version string in 'version' field: " + "\{Repr(error)}",
         ),
       )
   }

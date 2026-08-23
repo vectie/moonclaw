@@ -290,7 +290,7 @@ async fn chat_openai(
         "request": request,
       })
       let uri = Uri::parse(route.url)
-      let client = @http.Client::new(
+      let client = @http.Client(
         "\{uri.schema}://\{uri.host}",
         headers=route.headers,
       )
@@ -407,7 +407,7 @@ async fn chat_anthropic(
       let anthropic_request = convert_to_anthropic_request(model~, request~)
       let url = "\{model.base_url}/v1/messages"
       let uri = Uri::parse(url)
-      let client = @http.Client::new("\{uri.schema}://\{uri.host}", headers={
+      let client = @http.Client("\{uri.schema}://\{uri.host}", headers={
         "x-api-key": model.api_key,
         "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
@@ -616,7 +616,7 @@ async fn chat_copilot(
             _ => false
           }
         })
-      let client = @http.Client::new("\{uri.schema}://\{uri.host}", headers={
+      let client = @http.Client("\{uri.schema}://\{uri.host}", headers={
         "Authorization": "Bearer \{current_token.val}",
         "Content-Type": "application/json",
         "Connection": "close",
@@ -727,7 +727,7 @@ async fn do_codex_stream_request(
   request : @responses.ResponsesRequest,
   on_text_delta~ : (String) -> Unit,
 ) -> ResponsesStreamResult raise Error {
-  let client = @http.Client::new(
+  let client = @http.Client(
     "https://chatgpt.com",
     headers=codex_request_headers(access_token),
   )
@@ -858,7 +858,7 @@ async fn do_openai_responses_stream_request(
     )
   }
   let uri = Uri::parse(route.url)
-  let client = @http.Client::new(
+  let client = @http.Client(
     "\{uri.schema}://\{uri.host}",
     headers=route.headers,
   )
