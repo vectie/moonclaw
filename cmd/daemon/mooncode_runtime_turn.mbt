@@ -643,6 +643,14 @@ async fn Daemon::mooncode_runtime_turn_execute_under_runtime_gates(
             continue
           }
           let occurrence = step_index * 1000 + tool_index
+          match
+            mooncode_guardian_trial_event(command, tool_call, self.clock.now()) {
+            Some(event) =>
+              self.mooncode_runtime_turn_record_event(
+                binding, events, persisted_event_ids, event,
+              )
+            None => ()
+          }
           let approval_id = mooncode_runtime_tool_approval_id(
             command_id,
             tool_call,
