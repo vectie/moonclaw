@@ -42,7 +42,11 @@ mkdir -p "$stage_dir"
 python3 "$repo_root/scripts/buildinfo.py"
 moon -C "$repo_root" clean
 moon -C "$repo_root" build cmd/main --target native --release
-binary_path="$repo_root/_build/native/release/build/vectie/moonclaw/cmd/main/main.exe"
+binary_path="$repo_root/_build/native/release/build/cmd/main/main.exe"
+legacy_binary_path="$repo_root/_build/native/release/build/vectie/moonclaw/cmd/main/main.exe"
+if [ ! -x "$binary_path" ] && [ -x "$legacy_binary_path" ]; then
+  binary_path="$legacy_binary_path"
+fi
 if [ ! -x "$binary_path" ]; then
   echo "MoonClaw release binary was not produced at $binary_path" >&2
   exit 1
