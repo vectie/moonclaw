@@ -16,6 +16,8 @@ priv struct CreateTaskRequest {
   /// Flag to enable web search capabilities for the
   /// task. Defaults to false if not specified.
   web_search : Bool?
+  source_kind : String?
+  workspace_trust : String?
 }
 
 ///|
@@ -61,7 +63,24 @@ impl @json.FromJson for CreateTaskRequest with fn from_json(
       )
     None => None
   }
-  { name, model, message, cwd, web_search }
+  let source_kind : String? = match json.get("source_kind") {
+    Some(String(value)) if @conversation.source_kind_valid(value) => Some(value)
+    Some(Null) | None => None
+    _ =>
+      raise JsonDecodeError(
+        (json_path.add_key("source_kind"), "Invalid task source kind"),
+      )
+  }
+  let workspace_trust : String? = match json.get("workspace_trust") {
+    Some(String(value)) if @conversation.workspace_trust_valid(value) =>
+      Some(value)
+    Some(Null) | None => None
+    _ =>
+      raise JsonDecodeError(
+        (json_path.add_key("workspace_trust"), "Invalid workspace trust state"),
+      )
+  }
+  { name, model, message, cwd, web_search, source_kind, workspace_trust }
 }
 
 ///|
@@ -140,6 +159,8 @@ async fn Daemon::create_task(
       model~,
       web_search=request.web_search is Some(true),
       cwd~,
+      source_kind=request.source_kind.unwrap_or("user"),
+      workspace_trust=request.workspace_trust.unwrap_or("trusted"),
     )
     // Register the task in the daemon's task lists.
     task_list.running = Some(task)

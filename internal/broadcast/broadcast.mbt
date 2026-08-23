@@ -263,3 +263,23 @@ pub async fn[T] Broadcast::listen_forever(
     i += 1
   }
 }
+
+///|
+/// Listens from an exact exclusive replay boundary.
+///
+/// `index` is the number of values the caller has already consumed. Values
+/// appended after the caller captured that boundary are therefore delivered
+/// without the replay/live race inherent in taking a snapshot and then using
+/// `include_history=false`.
+pub async fn[T] Broadcast::listen_from(
+  self : Broadcast[T],
+  index : Int,
+  f : async (T) -> Unit,
+) -> Unit {
+  let mut next = index.max(0)
+  while true {
+    let event = self.read(next)
+    f(event)
+    next += 1
+  }
+}

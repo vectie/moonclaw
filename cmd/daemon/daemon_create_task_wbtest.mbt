@@ -50,6 +50,8 @@ test "CreateTaskResponse::to_json" {
     web_search: true,
     model: "gpt-4",
     broadcast: @broadcast.Broadcast::new(),
+    source_kind: "user",
+    workspace_trust: "trusted",
   }
   let response = CreateTaskResponse::{
     task,
@@ -71,6 +73,8 @@ test "CreateTaskResponse::to_json" {
       "web_search": true,
       "queued_messages": [{ "id": "msg1", "message": { "text": "Hello" } }],
       "model": "gpt-4",
+      "source_kind": "user",
+      "workspace_trust": "trusted",
       "name": "example",
     },
     "message": { "id": "223e4567-e89b-12d3-a456-426614174000", "queued": true },

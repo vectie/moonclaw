@@ -8,6 +8,7 @@ import {
   "moonbitlang/async/aqueue",
   "vectie/moonclaw/agent",
   "vectie/moonclaw/internal/openai",
+  "vectie/moonclaw/internal/conversation",
   "vectie/moonlib/fsx",
   "vectie/moonlib/pathx",
   "moonbitlang/async/os_error",

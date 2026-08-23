@@ -1,4 +1,5 @@
 import {
+  "moonbitlang/async",
   "vectie/moonclaw/clock",
   "vectie/moonclaw/security",
   "vectie/moonclaw/internal/execution_sandbox_adapter" @sandbox_adapter,

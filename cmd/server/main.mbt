@@ -47,6 +47,8 @@ pub async fn start(args : ArrayView[String]) -> Unit {
   let mut web_search = false
   let mut resume_id = None
   let mut name = None
+  let mut source_kind = "user"
+  let mut workspace_trust = "trusted"
   let mut remaining = args
   while true {
     match remaining {
@@ -101,6 +103,20 @@ pub async fn start(args : ArrayView[String]) -> Unit {
         resume_id = Some(@uuid.parse(rid))
         remaining = rest
       }
+      ["--source-kind", value, .. rest] => {
+        guard @conversation.source_kind_valid(value) else {
+          fail("Invalid task source kind: \{value}")
+        }
+        source_kind = value
+        remaining = rest
+      }
+      ["--workspace-trust", value, .. rest] => {
+        guard @conversation.workspace_trust_valid(value) else {
+          fail("Invalid workspace trust state: \{value}")
+        }
+        workspace_trust = value
+        remaining = rest
+      }
       [unknown, ..] => {
         let error : Json = {
           "error": { "code": -1, "message": "Unknown argument: \{unknown}" },
@@ -129,5 +145,15 @@ pub async fn start(args : ArrayView[String]) -> Unit {
       )
   }
   @moongate_startup.print_status()
-  Server::new(name?, model?, register?, serve~, port~, resume_id?, web_search~).start()
+  Server::new(
+    name?,
+    model?,
+    register?,
+    serve~,
+    port~,
+    resume_id?,
+    web_search~,
+    source_kind~,
+    workspace_trust~,
+  ).start()
 }

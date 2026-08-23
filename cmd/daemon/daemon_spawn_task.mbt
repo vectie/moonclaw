@@ -31,6 +31,8 @@ async fn Daemon::spawn_task(
   resume_id? : @uuid.Uuid,
   cwd~ : String,
   broadcast? : @broadcast.Broadcast[@server.ServerStreamEvent] = @broadcast.Broadcast::new(),
+  source_kind? : String = "user",
+  workspace_trust? : String = "trusted",
 ) -> Running {
   let id = self.uuid.v4()
   let registration_token = self.uuid.v4().to_string() +
@@ -56,6 +58,8 @@ async fn Daemon::spawn_task(
     register_id=id.to_string(),
     register_port=self.port,
     register_token=registration_token,
+    source_kind~,
+    workspace_trust~,
   ) catch {
     error =>
       raise json_error(500, "Internal Server Error", {
@@ -96,6 +100,8 @@ async fn Daemon::spawn_task(
     web_search=reg.web_search,
     model=reg.model,
     broadcast~,
+    source_kind~,
+    workspace_trust~,
   )
   // FIXME: The daemon does not ends anyway, so this cleanup code is never run.
   group.spawn_bg(() => {

@@ -105,6 +105,8 @@ pub async fn DaemonChildManager::spawn_server(
   register_id~ : String,
   register_port~ : Int,
   register_token~ : String,
+  source_kind? : String = "user",
+  workspace_trust? : String = "trusted",
 ) -> DaemonChildProcess {
   guard self.executable is Some(executable) else {
     raise HostToolUnavailable(
@@ -122,6 +124,8 @@ pub async fn DaemonChildManager::spawn_server(
   if register_port < 1 || register_port > 65535 {
     raise InvalidParameter("invalid daemon child register port")
   }
+  validate_daemon_data("source kind", source_kind, 64)
+  validate_daemon_data("workspace trust", workspace_trust, 16)
   let args = ["server"]
   if model_selector is Some(model_selector) {
     validate_daemon_data("model selector", model_selector, 256)
@@ -143,6 +147,10 @@ pub async fn DaemonChildManager::spawn_server(
     "--register-port",
     register_port.to_string(),
   ])
+  args.push("--source-kind")
+  args.push(source_kind)
+  args.push("--workspace-trust")
+  args.push(workspace_trust)
   if resume_id is Some(resume_id) {
     validate_daemon_data("resume id", resume_id, 128)
     args.push("--resume")

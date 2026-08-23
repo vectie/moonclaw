@@ -40,6 +40,9 @@ fn setup_agent(
       home~,
       approval_scope?=command_approval_scope,
       sandbox_config?,
+      live_output_progress=(available_bytes, terminal) => {
+        agent.emit_ephemeral(SandboxOutputProgress(available_bytes~, terminal~))
+      },
     )
     agent.add_tools([
       execute_command_tool.to_agent_tool(),
@@ -107,6 +110,8 @@ pub async fn Moonclaw::new(
   web_search? : Bool = false,
   restricted_workspace? : Bool = false,
   command_approval_scope? : String,
+  source_kind? : String = "user",
+  workspace_trust? : String = "trusted",
 ) -> Moonclaw {
   let cwd = match cwd {
     Some(cwd) => cwd
@@ -129,6 +134,8 @@ pub async fn Moonclaw::new(
     system_message=system_prompt,
     user_message?,
     web_search~,
+    source_kind~,
+    workspace_trust~,
   )
   setup_agent(
     agent,

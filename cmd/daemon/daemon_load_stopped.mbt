@@ -34,6 +34,8 @@ async fn Daemon::load_stopped(self : Daemon) -> Unit {
       updated: conversation.updated(),
       web_search: conversation.web_search(),
       broadcast,
+      source_kind: conversation.source_kind(),
+      workspace_trust: conversation.workspace_trust(),
     }
     self.by_id[id] = Stopped(task)
   }

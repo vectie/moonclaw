@@ -39,6 +39,8 @@ async test "impl ToJson for Conversation" (t : @test.Test) {
         "updated_at": 3,
         "cwd": "(mock:cwd)/cwd",
         "web_search": false,
+        "source_kind": "user",
+        "workspace_trust": "trusted",
       },
     )
     json_inspect(conversation.system_prompt(), content=[
@@ -83,6 +85,8 @@ async test "Conversation::FromJson" (t : @test.Test) {
       "web_search": false,
     }
     let conversation : @conversation.Conversation = @json.from_json(json)
+    assert_eq(conversation.source_kind(), "user")
+    assert_eq(conversation.workspace_trust(), "trusted")
     json_inspect(conversation.messages().map(fn(m) { m.to_openai() }), content=[
       { "role": "system", "content": "This is a system prompt." },
       { "role": "user", "content": "Hello" },
@@ -94,6 +98,32 @@ async test "Conversation::FromJson" (t : @test.Test) {
     json_inspect(conversation.system_prompt(), content=[
       "This is a system prompt.",
     ])
+  })
+}
+
+///|
+async test "Conversation persists session source and workspace trust" (
+  t : @test.Test,
+) {
+  @mock.run(t, mock => {
+    let manager = @conversation.Manager::new(
+      uuid=mock.uuid,
+      clock=mock.clock,
+      home=mock.cwd.path(),
+    )
+    let conversation = manager.new_conversation(
+      name="MoonDesk general",
+      cwd=mock.cwd.path(),
+      source_kind="moondesk.general",
+      workspace_trust="unknown",
+    )
+    assert_eq(conversation.source_kind(), "moondesk.general")
+    assert_eq(conversation.workspace_trust(), "unknown")
+    let roundtrip : @conversation.Conversation = @json.from_json(
+      conversation.to_json(),
+    )
+    assert_eq(roundtrip.source_kind(), "moondesk.general")
+    assert_eq(roundtrip.workspace_trust(), "unknown")
   })
 }
 

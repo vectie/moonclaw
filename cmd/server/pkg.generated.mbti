@@ -46,7 +46,7 @@ pub(all) struct RegisterResponse {
 } derive(ToJson, @json.FromJson)
 
 type Server
-pub async fn Server::new(name? : String, model? : String, register? : RegisterInfo, serve~ : String, port~ : Int, home? : String, cwd? : String, web_search? : Bool, resume_id? : @uuid.Uuid) -> Self
+pub async fn Server::new(name? : String, model? : String, register? : RegisterInfo, serve~ : String, port~ : Int, home? : String, cwd? : String, web_search? : Bool, resume_id? : @uuid.Uuid, source_kind? : String, workspace_trust? : String) -> Self
 pub fn Server::port(Self) -> Int
 pub async fn Server::start(Self) -> Unit
 

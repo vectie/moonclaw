@@ -12,6 +12,8 @@ test "Task::to_json for Running variant" {
     web_search: false,
     model: "gpt-4",
     broadcast: @broadcast.Broadcast::new(),
+    source_kind: "user",
+    workspace_trust: "trusted",
   }
   let task = Task::Running(running)
   let json = task.to_json()
@@ -39,6 +41,8 @@ test "Task::to_json for Stopped variant" {
     updated: @clock.Timestamp::from_ms(2000),
     web_search: true,
     broadcast: @broadcast.Broadcast::new(),
+    source_kind: "user",
+    workspace_trust: "trusted",
   }
   let task = Task::Stopped(stopped)
   let json = task.to_json()
@@ -131,6 +135,8 @@ test "Task roundtrip: Running -> JSON -> Task" {
     web_search: true,
     model: "gpt-4",
     broadcast: @broadcast.Broadcast::new(),
+    source_kind: "worker",
+    workspace_trust: "untrusted",
   }
   let original = Task::Running(running)
   let json = original.to_json()
@@ -157,6 +163,8 @@ test "Task roundtrip: Stopped -> JSON -> Task" {
     updated: @clock.Timestamp::from_ms(6000),
     web_search: false,
     broadcast: @broadcast.Broadcast::new(),
+    source_kind: "validation",
+    workspace_trust: "unknown",
   }
   let original = Task::Stopped(stopped)
   let json = original.to_json()

@@ -9,7 +9,7 @@ import {
 }
 
 // Values
-pub fn new(String, home? : String, approval_scope? : String, sandbox_config? : @execution_sandbox.SandboxExecutorConfig) -> @tool.Tool[CommandResult]
+pub fn new(String, home? : String, approval_scope? : String, sandbox_config? : @execution_sandbox.SandboxExecutorConfig, live_output_progress? : async (Int64, Bool) -> Unit) -> @tool.Tool[CommandResult]
 
 // Errors
 

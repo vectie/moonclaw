@@ -10,7 +10,7 @@ import {
 // Values
 pub fn approved_plan(@security.ApprovalRecord) -> SandboxApprovalPlan raise
 
-pub async fn invoke_moonfort(SandboxExecutorConfig, SandboxApprovalPlan) -> MoonFortReceipt
+pub async fn invoke_moonfort(SandboxExecutorConfig, SandboxApprovalPlan, live_output_progress? : async (Int64, Bool) -> Unit) -> MoonFortReceipt
 
 pub fn local_sandbox_executor_config(String, String, String, String, String, allow_degraded? : Bool) -> SandboxExecutorConfig
 
@@ -23,6 +23,8 @@ pub async fn make_moon_diagnostics_plan(SandboxExecutorConfig, String, String, S
 pub async fn make_sandbox_plan(SandboxExecutorConfig, String, String, String, Int) -> SandboxApprovalPlan
 
 pub fn moonfort_grant_digest(MoonFortExecutionGrant) -> String
+
+pub fn moonfort_live_output_reference_valid(MoonFortLiveOutputReference, MoonFortReceipt, Int, Int64) -> Bool
 
 pub fn moonfort_output_artifact_valid(MoonFortReceipt, Int, Int64) -> Bool
 
@@ -116,6 +118,19 @@ pub(all) struct MoonFortLimits {
   output_bytes : Int
 } derive(Eq, ToJson, @debug.Debug, @json.FromJson)
 
+type MoonFortLiveOutputReadResponse derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
+pub(all) struct MoonFortLiveOutputReference {
+  stream_id : String
+  run_id : String
+  status : String
+  size_bytes : Int64
+  sha256 : String
+  expires_at_ms : Int64
+  key_id : String
+  signature : String
+} derive(Eq, ToJson, @debug.Debug, @json.FromJson)
+
 pub(all) enum MoonFortNetworkMode {
   Deny
   AllowList
@@ -200,6 +215,8 @@ pub(all) struct SandboxExecutorConfig {
   grant_publisher_args : Array[String]
   executor_path : String
   executor_args : Array[String]
+  live_output_reader_path : String?
+  live_output_reader_args : Array[String]?
   executor_config_path : String
   receipt_root : String
   workspace_id : String

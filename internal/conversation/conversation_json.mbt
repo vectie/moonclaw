@@ -9,6 +9,8 @@ pub impl ToJson for Conversation with fn to_json(self : Conversation) -> Json {
   }
   object["cwd"] = self.cwd.to_json()
   object["web_search"] = self.web_search.to_json()
+  object["source_kind"] = self.source_kind.to_json()
+  object["workspace_trust"] = self.workspace_trust.to_json()
   object.to_json()
 }
 
@@ -64,6 +66,14 @@ pub impl @json.FromJson for Conversation with fn from_json(
     None =>
       raise JsonDecodeError((json_path.add_key("web_search"), "Missing field"))
   }
+  let source_kind = match json.get("source_kind") {
+    Some(String(value)) if source_kind_valid(value) => value
+    _ => "user"
+  }
+  let workspace_trust = match json.get("workspace_trust") {
+    Some(String(value)) if workspace_trust_valid(value) => value
+    _ => "trusted"
+  }
   {
     clock: @clock.epoch,
     name,
@@ -74,6 +84,8 @@ pub impl @json.FromJson for Conversation with fn from_json(
     cwd,
     events,
     web_search,
+    source_kind,
+    workspace_trust,
   }
 }
 

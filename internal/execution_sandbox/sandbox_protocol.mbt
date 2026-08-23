@@ -181,6 +181,35 @@ struct MoonFortExecutorResponse {
   approval_id : String
   receipt : MoonFortReceipt?
   error : MoonFortProtocolError?
+  live_output : MoonFortLiveOutputReference?
+} derive(Debug, Eq, ToJson, @json.FromJson)
+
+///|
+pub(all) struct MoonFortLiveOutputReference {
+  stream_id : String
+  run_id : String
+  status : String
+  size_bytes : Int64
+  sha256 : String
+  expires_at_ms : Int64
+  key_id : String
+  signature : String
+} derive(Debug, Eq, ToJson, @json.FromJson)
+
+///|
+struct MoonFortLiveOutputReadResponse {
+  protocol_version : Int
+  approval_id : String
+  stream_id : String
+  run_id : String
+  offset : Int64
+  next_offset : Int64
+  available_bytes : Int64
+  content_base64 : String
+  status : String
+  terminal : Bool
+  retry_after_ms : Int
+  error : MoonFortProtocolError?
 } derive(Debug, Eq, ToJson, @json.FromJson)
 
 ///|
@@ -193,6 +222,8 @@ pub(all) struct SandboxExecutorConfig {
   executor_path : String
   /// Fixed operator-controlled arguments. Tool input can never add arguments.
   executor_args : Array[String]
+  live_output_reader_path : String?
+  live_output_reader_args : Array[String]?
   /// Canonical regular file loaded by MoonFort through its sole config env var.
   executor_config_path : String
   /// Canonical MoonClaw-owned directory for terminal audit records.
@@ -223,6 +254,8 @@ pub fn local_sandbox_executor_config(
     grant_publisher_args: [],
     executor_path,
     executor_args: [],
+    live_output_reader_path: None,
+    live_output_reader_args: None,
     executor_config_path,
     receipt_root,
     workspace_id,
@@ -288,6 +321,8 @@ fn runtime_binding_digest(config : SandboxExecutorConfig) -> String {
         "grant_publisher_args": config.grant_publisher_args,
         "executor_path": config.executor_path,
         "executor_args": config.executor_args,
+        "live_output_reader_path": config.live_output_reader_path,
+        "live_output_reader_args": config.live_output_reader_args,
         "executor_config_path": config.executor_config_path,
         "workspace_id": config.workspace_id,
         "backend_config_id": config.backend_config_id,
@@ -345,6 +380,38 @@ pub fn moonfort_output_artifact_valid(
 }
 
 ///|
+/// Validate the terminal live-output capability without interpreting its
+/// opaque stream identifier. MoonFort's fixed reader remains responsible for
+/// authenticating the signature and the executor-owned manifest on every
+/// read.
+pub fn moonfort_live_output_reference_valid(
+  reference : MoonFortLiveOutputReference,
+  receipt : MoonFortReceipt,
+  output_limit : Int,
+  now_ms : Int64,
+) -> Bool {
+  let expected_status = match receipt.status {
+    Exited => "exited"
+    Killed => "killed"
+    Failed => "failed"
+    Created => "created"
+    Running => "running"
+  }
+  output_limit > 0 &&
+  safe_identifier(reference.stream_id) &&
+  safe_identifier(reference.run_id) &&
+  reference.run_id == receipt.run_id &&
+  reference.status == expected_status &&
+  reference.size_bytes >= 0L &&
+  reference.size_bytes <= output_limit.to_int64() &&
+  reference.size_bytes >= @utf8.encode(receipt.output).length().to_int64() &&
+  canonical_digest(reference.sha256) &&
+  reference.expires_at_ms > now_ms &&
+  safe_identifier(reference.key_id) &&
+  canonical_digest(reference.signature)
+}
+
+///|
 fn safe_identifier(value : String) -> Bool {
   value.length() >= 1 &&
   value.length() <= 128 &&
@@ -388,6 +455,18 @@ async fn validate_operator_config(config : SandboxExecutorConfig) -> Unit {
   guard canonical_absolute_path(config.executor_path) &&
     @fsx.resolve(config.executor_path) == config.executor_path else {
     fail("MoonFort executor_path must be canonical and absolute")
+  }
+  match config.live_output_reader_path {
+    Some(path) => {
+      let valid = canonical_absolute_path(path) &&
+        @fsx.resolve(path) == path &&
+        @fsx.exists_as_file(path) &&
+        config.live_output_reader_args.unwrap_or([]).length() <= 16
+      guard valid else {
+        fail("MoonFort live output reader configuration is invalid")
+      }
+    }
+    None => ()
   }
   guard canonical_absolute_path(config.executor_config_path) &&
     @fsx.resolve(config.executor_config_path) == config.executor_config_path &&
@@ -768,6 +847,7 @@ fn canonical_digest(value : String) -> Bool {
 pub async fn invoke_moonfort(
   config : SandboxExecutorConfig,
   plan : SandboxApprovalPlan,
+  live_output_progress? : async (Int64, Bool) -> Unit,
 ) -> MoonFortReceipt {
   validate_operator_config(config)
   let client = @sandbox_adapter.Client::new(
@@ -777,6 +857,8 @@ pub async fn invoke_moonfort(
     config.executor_args,
     config.executor_config_path,
     config.receipt_root,
+    live_output_reader_path?=config.live_output_reader_path,
+    live_output_reader_args=config.live_output_reader_args.unwrap_or([]),
   )
   publish_pending_grant(client, plan)
   let invocation = MoonFortInvocation::{
@@ -784,10 +866,66 @@ pub async fn invoke_moonfort(
     approval_id: plan.grant.approval_id,
   }
   let transport_timeout = plan.grant.limits.wall_clock_ms + 5_000
-  let process = client.invoke_executor(
-    invocation.to_json().stringify() + "\n",
-    transport_timeout,
-  )
+  let process = if live_output_progress is Some(progress) &&
+    config.live_output_reader_path is Some(_) {
+    @async.with_task_group(group => {
+      let done = Ref(false)
+      let offset = Ref(0L)
+      let executor = group.spawn(
+        () => {
+          client.invoke_executor(
+            invocation.to_json().stringify() + "\n",
+            transport_timeout,
+          )
+        },
+        no_wait=true,
+      )
+      group.spawn_bg(
+        () => {
+          while !done.val {
+            match
+              client.read_live_output(
+                (
+                  {
+                    "protocol_version": 1,
+                    "approval_id": plan.grant.approval_id,
+                    "offset": offset.val,
+                    "max_bytes": 65536,
+                  } : Json).stringify() +
+                "\n",
+              ) {
+              Some(reader) if reader.status == 0 => {
+                let response : MoonFortLiveOutputReadResponse = @json.from_json(
+                  @json.parse(reader.stdout),
+                ) catch {
+                  _ => {
+                    @async.sleep(100)
+                    continue
+                  }
+                }
+                if response.error is None && response.next_offset >= offset.val {
+                  offset.val = response.next_offset
+                  progress(response.available_bytes, response.terminal)
+                }
+              }
+              _ => ()
+            }
+            @async.sleep(100)
+          }
+        },
+        no_wait=true,
+        allow_failure=true,
+      )
+      let result = executor.wait()
+      done.val = true
+      result
+    })
+  } else {
+    client.invoke_executor(
+      invocation.to_json().stringify() + "\n",
+      transport_timeout,
+    )
+  }
   guard process.status == 0 else {
     fail("MoonFort executor exited with status \{process.status}")
   }
@@ -845,6 +983,19 @@ pub async fn invoke_moonfort(
     @clock.epoch.now().ms(),
   ) else {
     fail("MoonFort output artifact metadata is invalid or incomplete")
+  }
+  match response.live_output {
+    Some(reference) => {
+      guard moonfort_live_output_reference_valid(
+        reference,
+        receipt,
+        plan.grant.limits.output_bytes,
+        @clock.epoch.now().ms(),
+      ) else {
+        fail("MoonFort live output metadata is invalid or mismatched")
+      }
+    }
+    None => ()
   }
   receipt
 }

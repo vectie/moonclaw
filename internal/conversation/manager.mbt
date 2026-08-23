@@ -100,7 +100,19 @@ pub fn Manager::new_conversation(
   description? : String,
   cwd~ : String,
   web_search? : Bool = false,
+  source_kind? : String = "user",
+  workspace_trust? : String = "trusted",
 ) -> Conversation {
+  let source_kind = if source_kind_valid(source_kind) {
+    source_kind
+  } else {
+    "user"
+  }
+  let workspace_trust = if workspace_trust_valid(workspace_trust) {
+    workspace_trust
+  } else {
+    "unknown"
+  }
   {
     clock: self.clock,
     name,
@@ -111,5 +123,7 @@ pub fn Manager::new_conversation(
     cwd,
     events: [],
     web_search,
+    source_kind,
+    workspace_trust,
   }
 }

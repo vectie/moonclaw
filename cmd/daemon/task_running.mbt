@@ -22,6 +22,8 @@ priv struct Running {
   /// The model being used by the task.
   model : String
   broadcast : @broadcast.Broadcast[@server.ServerStreamEvent]
+  source_kind : String
+  workspace_trust : String
 }
 
 ///|
@@ -60,6 +62,8 @@ fn Running::new(
   web_search~ : Bool,
   model~ : String,
   broadcast~ : @broadcast.Broadcast[@server.ServerStreamEvent],
+  source_kind? : String = "user",
+  workspace_trust? : String = "trusted",
 ) -> Running {
   {
     name,
@@ -73,6 +77,8 @@ fn Running::new(
     web_search,
     model,
     broadcast,
+    source_kind,
+    workspace_trust,
   }
 }
 
@@ -175,6 +181,14 @@ impl @json.FromJson for Running with fn from_json(
         (json_path.add_key("model"), "Task::from_json: expected model string"),
       )
   }
+  let source_kind = match map.get("source_kind") {
+    Some(String(value)) if @conversation.source_kind_valid(value) => value
+    _ => "user"
+  }
+  let workspace_trust = match map.get("workspace_trust") {
+    Some(String(value)) if @conversation.workspace_trust_valid(value) => value
+    _ => "trusted"
+  }
   {
     name,
     id,
@@ -187,6 +201,8 @@ impl @json.FromJson for Running with fn from_json(
     model,
     queued_messages,
     broadcast: @broadcast.Broadcast::new(),
+    source_kind,
+    workspace_trust,
   }
 }
 
@@ -202,6 +218,8 @@ impl ToJson for Running with fn to_json(self : Running) -> Json {
     "web_search": self.web_search,
     "queued_messages": self.queued_messages,
     "model": self.model,
+    "source_kind": self.source_kind,
+    "workspace_trust": self.workspace_trust,
   }
   if self.name is Some(name) {
     object["name"] = name.to_json()

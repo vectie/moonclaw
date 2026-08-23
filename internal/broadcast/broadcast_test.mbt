@@ -158,3 +158,23 @@ async test "Broadcast::listen_forever" {
   json_inspect(results1, content=[1, 2, 3, 4, 5, 6])
   assert_true(results2 is [.., 5, 6])
 }
+
+///|
+async test "Broadcast::listen_from closes the snapshot/live race" {
+  let broadcast : Broadcast[Int] = Broadcast::new()
+  broadcast.put(1)
+  broadcast.put(2)
+  let boundary = broadcast.values().length()
+  let results = []
+  @async.with_task_group(group => {
+    broadcast.put(3)
+    group.spawn_bg(
+      () => broadcast.listen_from(boundary, value => results.push(value)),
+      no_wait=true,
+    )
+    @async.pause()
+    broadcast.put(4)
+    @async.pause()
+  })
+  json_inspect(results, content=[3, 4])
+}

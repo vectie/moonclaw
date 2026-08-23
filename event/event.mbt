@@ -100,6 +100,8 @@ pub(all) enum EventDesc {
   ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
   /// Event triggered when a assistant message is received from the model.
   AssistantMessageDelta(String)
+  /// Ephemeral sandbox progress. Contains counts only, never command bytes.
+  SandboxOutputProgress(available_bytes~ : Int64, terminal~ : Bool)
   /// Event triggered when a assistant message is received from the model.
   AssistantMessage(
     usage~ : @ai.Usage?,
@@ -200,6 +202,12 @@ pub impl ToJson for EventDesc with fn to_json(self : EventDesc) -> Json {
       }
     AssistantMessageDelta(content) =>
       { "msg": "AssistantMessageDelta", "content": content }
+    SandboxOutputProgress(available_bytes~, terminal~) =>
+      {
+        "msg": "SandboxOutputProgress",
+        "available_bytes": available_bytes,
+        "terminal": terminal,
+      }
     AssistantMessage(usage~, tool_calls~, content) => {
       let json : Map[String, Json] = {
         "msg": "AssistantMessage",
@@ -411,6 +419,27 @@ pub impl @json.FromJson for EventDesc with fn from_json(
           @json.from_json(content_json, path=json_path.add_key("content"))
       }
       AssistantMessageDelta(content)
+    }
+    "SandboxOutputProgress" => {
+      let available_bytes : Int64 = match json_object.get("available_bytes") {
+        Some(value) =>
+          @json.from_json(value, path=json_path.add_key("available_bytes"))
+        None =>
+          raise JsonDecodeError(
+            (
+              json_path, "SandboxOutputProgress event missing 'available_bytes' field",
+            ),
+          )
+      }
+      let terminal : Bool = match json_object.get("terminal") {
+        Some(value) =>
+          @json.from_json(value, path=json_path.add_key("terminal"))
+        None =>
+          raise JsonDecodeError(
+            (json_path, "SandboxOutputProgress event missing 'terminal' field"),
+          )
+      }
+      SandboxOutputProgress(available_bytes~, terminal~)
     }
     "AssistantMessage" => {
       let usage : @ai.Usage? = match json_object.get("usage") {

@@ -9,6 +9,8 @@ pub struct Client {
   executor_args : Array[String]
   executor_config_path : String
   receipt_root : String
+  live_output_reader_path : String?
+  live_output_reader_args : Array[String]
 }
 
 ///|
@@ -54,10 +56,15 @@ pub async fn Client::new(
   executor_args : Array[String],
   executor_config_path : String,
   receipt_root : String,
+  live_output_reader_path? : String,
+  live_output_reader_args? : Array[String] = [],
 ) -> Client {
   validate_regular_file(publisher_path, "grant publisher")
   validate_regular_file(executor_path, "executor")
   validate_regular_file(executor_config_path, "executor config")
+  if live_output_reader_path is Some(path) {
+    validate_regular_file(path, "live output reader")
+  }
   guard canonical_absolute_path(receipt_root) &&
     @fsx.resolve(receipt_root) == receipt_root else {
     fail("MoonFort receipt root must be canonical and absolute")
@@ -69,7 +76,18 @@ pub async fn Client::new(
     executor_args: executor_args.copy(),
     executor_config_path,
     receipt_root,
+    live_output_reader_path,
+    live_output_reader_args: live_output_reader_args.copy(),
   }
+}
+
+///|
+pub async fn Client::read_live_output(
+  self : Client,
+  request : String,
+) -> ProcessResponse? {
+  guard self.live_output_reader_path is Some(path) else { return None }
+  Some(self.run(path, self.live_output_reader_args, request, 2_000))
 }
 
 ///|

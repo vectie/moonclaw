@@ -15,6 +15,16 @@ the executor-owned registry selected by `MOONFORT_EXECUTOR_CONFIG`. Legacy
 command text is encoded as MoonFort's explicit `Shell` command and requires the
 `shell-compat` capability.
 
+An operator may additionally configure the canonical fixed
+`cmd/read-live-output` executable and fixed arguments. While the one-shot
+executor is running, MoonClaw polls that reader with only the current approval
+ID and monotonic cursor. The sandbox adapter validates the reader path just as
+strictly as the executor path. The general event bus receives only
+`SandboxOutputProgress { available_bytes, terminal }`; command content,
+base64 chunks, signatures, stream IDs, and host paths are never copied into
+ordinary progress, metrics, or MoonDesk's typed resumable task stream. Reader
+failure simply disables progress for that run and never selects a host fallback.
+
 For high-risk commands MoonClaw constructs the exact v2 execution grant before
 requesting human approval. The security journal persists:
 
@@ -91,3 +101,13 @@ second artifact reader. Retrieval remains a MoonFort authority: a fixed,
 reviewed reader must revalidate the signed reference, run/approval/command
 binding, manifest, expiry, path/type/size, digest, and symlink protections
 before returning retained bytes.
+
+## Live-output capability
+
+MoonClaw accepts MoonFort's optional signed `live_output` terminal reference
+only when its opaque identifier, run binding, terminal status, size ceiling,
+digest, expiry, key ID, and signature shapes match the approved receipt. It
+does not authenticate the HMAC itself and never interprets the stream ID as a
+path; those checks remain in MoonFort's fixed reader. Capability absence is
+normal for backends without an attested live channel, including the current
+MicroVM adapter.

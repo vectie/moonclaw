@@ -50,6 +50,8 @@ pub async fn Server::new(
   cwd? : String,
   web_search? : Bool = false,
   resume_id? : @uuid.Uuid,
+  source_kind? : String = "user",
+  workspace_trust? : String = "trusted",
 ) -> Server {
   let home = match home {
     Some(home) => home
@@ -63,7 +65,14 @@ pub async fn Server::new(
   let moonclaw = if resume_id is Some(resume_id) {
     @moonclaw.Moonclaw::resume_(model~, resume_id, web_search~)
   } else {
-    @moonclaw.Moonclaw::new(name?, model~, cwd?, web_search~)
+    @moonclaw.Moonclaw::new(
+      name?,
+      model~,
+      cwd?,
+      web_search~,
+      source_kind~,
+      workspace_trust~,
+    )
   }
   moonclaw.agent.add_listener((event : @event.Event) => broadcast.put(event))
   let http_server = @httpx.Server::new("127.0.0.1", port, reuse_addr=true)

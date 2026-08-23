@@ -619,6 +619,22 @@ test "Event::Roundtrip/AssistantMessageDelta" {
 }
 
 ///|
+test "Event::Roundtrip/SandboxOutputProgress" {
+  let event : @event.EventDesc = SandboxOutputProgress(
+    available_bytes=65_536L,
+    terminal=false,
+  )
+  let json = event.to_json()
+  let encoded = json.stringify()
+  assert_true(encoded.contains("SandboxOutputProgress"))
+  assert_true(encoded.contains("65536"))
+  assert_false(encoded.contains("content"))
+  assert_false(encoded.contains("stream_id"))
+  let roundtripped : @event.EventDesc = @json.from_json(json)
+  assert_true(roundtripped == event)
+}
+
+///|
 test "Event::Roundtrip/AssistantMessage/NoUsage" {
   let tool_calls = []
   tool_calls.push(@ai.tool_call(id="tc1", name="tool1", arguments="{}"))

@@ -40,6 +40,35 @@ async fn Daemon::forward_to_task(
       "error": { "code": -1, "message": "Task not found: \{id}" },
     })
   }
+  if paths.length() == 2 && paths[0] == "events" && paths[1] == "resume" {
+    if method_ != Get {
+      raise json_error(405, "Method Not Allowed", {
+        "error": {
+          "code": -1,
+          "message": "The resumable task stream accepts GET requests only",
+        },
+      })
+    }
+    match task {
+      Running(running) =>
+        self.task_stream_resume(
+          task_id=id.to_owned(),
+          broadcast=running.broadcast,
+          live=true,
+          r,
+          w,
+        )
+      Stopped(stopped) =>
+        self.task_stream_resume(
+          task_id=id.to_owned(),
+          broadcast=stopped.broadcast,
+          live=false,
+          r,
+          w,
+        )
+    }
+    return
+  }
   let task : Running = match task {
     Running(task) => task
     Stopped(task) => {
@@ -86,6 +115,8 @@ async fn Daemon::forward_to_task(
           cwd=task.cwd,
           resume_id=task.id,
           broadcast=task.broadcast,
+          source_kind=task.source_kind,
+          workspace_trust=task.workspace_trust,
         )
         task_list.running = Some(task)
         task

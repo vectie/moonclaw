@@ -14,6 +14,7 @@ type Broadcast[T]
 pub fn[T] Broadcast::add_listener(Self[T], include_history? : Bool, async (T) -> Unit) -> Unit
 pub async fn[T] Broadcast::flush(Self[T]) -> Unit
 pub async fn[T] Broadcast::listen_forever(Self[T], include_history? : Bool, async (T) -> Unit) -> Unit
+pub async fn[T] Broadcast::listen_from(Self[T], Int, async (T) -> Unit) -> Unit
 pub fn[T] Broadcast::new() -> Self[T]
 pub fn[T] Broadcast::put(Self[T], T) -> Unit
 pub async fn[T] Broadcast::read(Self[T], Int) -> T

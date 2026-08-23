@@ -9,6 +9,8 @@ struct Conversation {
   mut updated_at : @clock.Timestamp
   cwd : String
   web_search : Bool
+  source_kind : String
+  workspace_trust : String
 }
 
 ///|
@@ -25,6 +27,29 @@ pub fn Conversation::cwd(self : Conversation) -> String {
 ///|
 pub fn Conversation::events(self : Conversation) -> ArrayView[@event.Event] {
   self.events
+}
+
+///|
+pub fn Conversation::source_kind(self : Conversation) -> String {
+  self.source_kind
+}
+
+///|
+pub fn source_kind_valid(value : String) -> Bool {
+  [
+    "user", "moondesk.general", "mooncode", "worker", "validation", "memory_consolidation",
+    "safety_review",
+  ].contains(value)
+}
+
+///|
+pub fn Conversation::workspace_trust(self : Conversation) -> String {
+  self.workspace_trust
+}
+
+///|
+pub fn workspace_trust_valid(value : String) -> Bool {
+  value == "unknown" || value == "untrusted" || value == "trusted"
 }
 
 ///|

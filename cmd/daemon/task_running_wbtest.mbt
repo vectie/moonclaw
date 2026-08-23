@@ -12,6 +12,8 @@ test "Running::ToJson" {
     web_search: true,
     model: "gpt-4",
     broadcast: @broadcast.Broadcast::new(),
+    source_kind: "user",
+    workspace_trust: "trusted",
   }
   assert_true(
     @json.to_json(task) ==
@@ -26,6 +28,8 @@ test "Running::ToJson" {
       "queued_messages": [{ "id": "msg1", "message": { "text": "Hello" } }],
       "model": "gpt-4",
       "name": "example",
+      "source_kind": "user",
+      "workspace_trust": "trusted",
     },
   )
 }

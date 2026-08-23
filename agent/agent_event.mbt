@@ -32,6 +32,13 @@ fn Agent::emit(
 }
 
 ///|
+/// Emits transport progress without adding it to durable conversation history.
+/// Progress events contain counts only and cannot become model context.
+pub fn Agent::emit_ephemeral(agent : Agent, event : @event.EventDesc) -> Unit {
+  agent.event_target.put(@event.Event::new(id=agent.uuid.v4(), event))
+}
+
+///|
 /// Registers an event listener for the specified event type on the agent.
 ///
 /// Parameters:

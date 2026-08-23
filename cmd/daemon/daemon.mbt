@@ -117,6 +117,10 @@ pub async fn Daemon::new(
     Some(cwd) => cwd.to_owned()
     None => @os.cwd()
   }
+  task_stream_install_cursor_secret(
+    home,
+    uuid.v4().to_string() + uuid.v4().to_string(),
+  )
   let daemon = Daemon::{
     clock: @clock.epoch,
     models: @model.Loader::new(home~, cwd~),

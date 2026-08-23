@@ -16,6 +16,8 @@ priv struct Stopped {
   web_search : Bool
   /// Broadcast channel for task events on disk.
   broadcast : @broadcast.Broadcast[@server.ServerStreamEvent]
+  source_kind : String
+  workspace_trust : String
 }
 
 ///|
@@ -31,6 +33,8 @@ impl ToJson for Stopped with fn to_json(self : Stopped) -> Json {
     "created": self.created.to_json(),
     "updated": self.updated.to_json(),
     "web_search": self.web_search,
+    "source_kind": self.source_kind,
+    "workspace_trust": self.workspace_trust,
   })
   Json::object(object)
 }
@@ -94,6 +98,14 @@ impl @json.FromJson for Stopped with fn from_json(
         ),
       )
   }
+  let source_kind = match map.get("source_kind") {
+    Some(String(value)) if @conversation.source_kind_valid(value) => value
+    _ => "user"
+  }
+  let workspace_trust = match map.get("workspace_trust") {
+    Some(String(value)) if @conversation.workspace_trust_valid(value) => value
+    _ => "trusted"
+  }
   {
     name,
     id,
@@ -102,5 +114,7 @@ impl @json.FromJson for Stopped with fn from_json(
     updated,
     web_search,
     broadcast: @broadcast.Broadcast::new(),
+    source_kind,
+    workspace_trust,
   }
 }

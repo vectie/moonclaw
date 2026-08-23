@@ -53,6 +53,25 @@ fn output_artifact_test_receipt(
 }
 
 ///|
+fn live_output_test_reference(
+  run_id? : String = "run-output-artifact",
+  status? : String = "exited",
+  size_bytes? : Int64 = 128L,
+  expires_at_ms? : Int64 = 4_102_444_800_000L,
+) -> @execution_sandbox.MoonFortLiveOutputReference {
+  {
+    stream_id: "0123456789abcdef0123456789abcdef",
+    run_id,
+    status,
+    size_bytes,
+    sha256: "a".repeat(64),
+    expires_at_ms,
+    key_id: "live-output-key-1",
+    signature: "b".repeat(64),
+  }
+}
+
+///|
 test "MoonFort output artifact accepts the signed opaque metadata shape" {
   assert_true(
     @execution_sandbox.moonfort_output_artifact_valid(
@@ -127,6 +146,33 @@ test "MoonFort output artifact metadata is adversarially bounded and run-bound" 
       1_000L,
     ),
   )
+}
+
+///|
+test "MoonFort live output metadata is terminal, bounded, and run-bound" {
+  let receipt = output_artifact_test_receipt()
+  assert_true(
+    @execution_sandbox.moonfort_live_output_reference_valid(
+      live_output_test_reference(),
+      receipt,
+      4_096,
+      1_000L,
+    ),
+  )
+  let invalid = [
+    live_output_test_reference(run_id="another-run"),
+    live_output_test_reference(status="running"),
+    live_output_test_reference(size_bytes=1L),
+    live_output_test_reference(size_bytes=4_097L),
+    live_output_test_reference(expires_at_ms=999L),
+  ]
+  for reference in invalid {
+    assert_false(
+      @execution_sandbox.moonfort_live_output_reference_valid(
+        reference, receipt, 4_096, 1_000L,
+      ),
+    )
+  }
 }
 
 ///|

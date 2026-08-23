@@ -17,10 +17,13 @@ pub struct Client {
   executor_args : Array[String]
   executor_config_path : String
   receipt_root : String
+  live_output_reader_path : String?
+  live_output_reader_args : Array[String]
 }
 pub async fn Client::invoke_executor(Self, String, Int) -> ProcessResponse
-pub async fn Client::new(String, Array[String], String, Array[String], String, String) -> Self
+pub async fn Client::new(String, Array[String], String, Array[String], String, String, live_output_reader_path? : String, live_output_reader_args? : Array[String]) -> Self
 pub async fn Client::publish_grant(Self, String) -> ProcessResponse
+pub async fn Client::read_live_output(Self, String) -> ProcessResponse?
 
 pub(all) struct ProcessResponse {
   status : Int

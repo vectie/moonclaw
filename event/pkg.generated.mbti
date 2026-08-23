@@ -40,6 +40,7 @@ pub(all) enum EventDesc {
   TokenCounted(Int)
   ContextPruned(origin_token_count~ : Int, pruned_token_count~ : Int)
   AssistantMessageDelta(String)
+  SandboxOutputProgress(available_bytes~ : Int64, terminal~ : Bool)
   AssistantMessage(usage~ : @ai.Usage?, tool_calls~ : Array[@ai.ToolCall], String)
   UserMessage(String)
   Cancelled

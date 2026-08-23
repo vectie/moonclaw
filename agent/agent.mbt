@@ -395,6 +395,8 @@ pub async fn new(
   external_events? : @event.ExternalEventQueue,
   history? : @conversation.Conversation,
   request_timeout_ms? : Int? = None,
+  source_kind? : String = "user",
+  workspace_trust? : String = "trusted",
 ) -> Agent {
   let home = match home {
     Some(home) => home.to_owned()
@@ -431,6 +433,8 @@ pub async fn new(
         name=name.unwrap_or("New Conversation"),
         cwd=cwd.to_owned(),
         web_search~,
+        source_kind~,
+        workspace_trust~,
       )
   }
   let external_events = match external_events {
@@ -460,8 +464,15 @@ pub async fn new(
     request_timeout_ms,
     external_events,
   }
-  rules.load()
-  skills.load()
+  if workspace_trust == "trusted" {
+    rules.load()
+    skills.load()
+  } else {
+    logger.info(
+      "Project-owned rules and skills are disabled for this workspace trust state.",
+      data={ "workspace_trust": workspace_trust },
+    )
+  }
   agent.set_system_prompt(system_message)
   match user_message {
     Some(message) => agent.external_events.send(UserMessage(message))
@@ -516,6 +527,8 @@ pub async fn load(
     history~,
     external_events?,
     request_timeout_ms~,
+    source_kind=history.source_kind(),
+    workspace_trust=history.workspace_trust(),
   )
 }
 

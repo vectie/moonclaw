@@ -8,6 +8,8 @@ test "Stopped::to_json" {
     updated: @clock.Timestamp::from_ms(100),
     web_search: true,
     broadcast: @broadcast.Broadcast::new(),
+    source_kind: "user",
+    workspace_trust: "trusted",
   }
   assert_true(
     @json.to_json(task) ==
@@ -19,6 +21,8 @@ test "Stopped::to_json" {
       "created": 0,
       "updated": 100,
       "web_search": true,
+      "source_kind": "user",
+      "workspace_trust": "trusted",
     },
   )
 }

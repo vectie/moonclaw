@@ -159,6 +159,7 @@ pub fn new(
   home? : String,
   approval_scope? : String,
   sandbox_config? : @execution_sandbox.SandboxExecutorConfig,
+  live_output_progress? : async (Int64, Bool) -> Unit,
 ) -> @tool.Tool[CommandResult] {
   let home = home.unwrap_or(cwd)
   @tool.new(
@@ -355,7 +356,11 @@ pub fn new(
             error~,
           )
       }
-      let receipt = @execution_sandbox.invoke_moonfort(config, plan) catch {
+      let receipt = @execution_sandbox.invoke_moonfort(
+        config,
+        plan,
+        live_output_progress?,
+      ) catch {
         error =>
           return @tool.error(
             "MoonFort execution failed closed: \{error}",
