@@ -103,7 +103,7 @@ test "mooncode injected context identifies environment warning tool and user con
 }
 
 ///|
-test "mooncode context provenance keeps future unknown kinds" {
+test "mooncode v2 context provenance closes unknown kinds but keeps v1 readable" {
   let message : Json = {
     "role": "user",
     "content": "future retrieval context",
@@ -115,15 +115,68 @@ test "mooncode context provenance keeps future unknown kinds" {
     },
   }
   let normalized = mooncode_runtime_context_normalize_message(message)
-  assert_eq(normalized, message)
+  assert_eq(mooncode_context_test_kind(normalized), "user")
+  assert_false(normalized == message)
+  let legacy : Json = {
+    "role": "user",
+    "content": "future retrieval context",
+    "_moonclaw_context": {
+      "contract": MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1,
+      "kind": "retrieval_v2",
+      "source": "extension.search",
+    },
+  }
+  let normalized_legacy = mooncode_runtime_context_normalize_message(legacy)
+  assert_eq(normalized_legacy, legacy)
   assert_true(
-    mooncode_runtime_context_kind(normalized) is UnknownContext("retrieval_v2"),
+    mooncode_runtime_context_kind(normalized_legacy)
+    is UnknownContext("retrieval_v2"),
   )
-  let durable = mooncode_runtime_turn_durable_model_message(normalized)
-  assert_eq(durable, message)
+  let durable = mooncode_runtime_turn_durable_model_message(normalized_legacy)
+  assert_eq(durable, legacy)
   assert_eq(
     mooncode_json_string(durable, "content", default=""),
     "future retrieval context",
+  )
+}
+
+///|
+test "mooncode v2 context provenance is cardinality checked per content item" {
+  let message = mooncode_runtime_context_message(
+    {
+      "role": "user",
+      "content": [
+        { "type": "text", "text": "Inspect this" },
+        {
+          "type": "image_url",
+          "image_url": { "url": "data:image/png;base64,eA==" },
+        },
+      ],
+    },
+    UserContext,
+    "user.multimodal",
+  )
+  assert_true(mooncode_runtime_context_message_provenance_valid(message))
+  let metadata = mooncode_runtime_context_provenance(message)
+  assert_eq(mooncode_json_array_items(metadata, "content_items").length(), 2)
+  let malformed = mooncode_json_object_with_field(
+    message,
+    MOONCODE_CONTEXT_PROVENANCE_FIELD,
+    mooncode_json_object_with_field(
+      metadata,
+      "content_items",
+      Json::array([{ "kind": "user", "source": "user.multimodal" }]),
+    ),
+  )
+  assert_false(mooncode_runtime_context_message_provenance_valid(malformed))
+  let repaired = mooncode_runtime_context_normalize_message(malformed)
+  assert_true(mooncode_runtime_context_message_provenance_valid(repaired))
+  assert_eq(
+    mooncode_json_array_items(
+      mooncode_runtime_context_provenance(repaired),
+      "content_items",
+    ).length(),
+    2,
   )
 }
 

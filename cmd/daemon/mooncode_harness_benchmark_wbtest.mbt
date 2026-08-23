@@ -462,7 +462,12 @@ test "mooncode long-context benchmark retains task and latest verification evide
   )
   assert_eq(compacted, repeated)
   let before_chars = Json::array(messages).stringify().length()
-  let after_text = Json::array(compacted).stringify()
+  // Provenance is durable harness evidence but is stripped before provider
+  // transport. Compare the model-facing projection so metadata growth cannot
+  // masquerade as context growth.
+  let after_text = Json::array(
+    mooncode_runtime_context_visible_messages(compacted),
+  ).stringify()
   assert_true(after_text.length() < before_chars)
   assert_true(after_text.contains(original_task))
   assert_true(after_text.contains("latest focused verifier passed"))

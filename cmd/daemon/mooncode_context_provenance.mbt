@@ -2,7 +2,10 @@
 const MOONCODE_CONTEXT_PROVENANCE_FIELD : String = "_moonclaw_context"
 
 ///|
-const MOONCODE_CONTEXT_PROVENANCE_CONTRACT : String = "moonclaw.context-fragment.v1"
+const MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1 : String = "moonclaw.context-fragment.v1"
+
+///|
+const MOONCODE_CONTEXT_PROVENANCE_CONTRACT : String = "moonclaw.context-fragment.v2"
 
 ///|
 #warnings("-unused_value")
@@ -16,6 +19,14 @@ priv enum MoonCodeContextKind {
   AssistantContext
   UnknownContext(String)
 } derive(Debug, Eq)
+
+///|
+priv struct MoonCodeContextFragment {
+  message : Json
+  kind : MoonCodeContextKind
+  source : String
+  requires_separate_message : Bool
+}
 
 ///|
 fn mooncode_runtime_context_kind_from_key(key : String) -> MoonCodeContextKind {
@@ -43,6 +54,43 @@ fn mooncode_runtime_context_kind_key(kind : MoonCodeContextKind) -> String {
     AssistantContext => "assistant"
     UnknownContext(key) => key
   }
+}
+
+///|
+fn mooncode_runtime_context_kind_is_closed(kind : MoonCodeContextKind) -> Bool {
+  match kind {
+    UnknownContext(_) => false
+    _ => true
+  }
+}
+
+///|
+fn mooncode_runtime_context_content_item_count(message : Json) -> Int {
+  match message {
+    Object(fields) =>
+      match fields.get("content") {
+        Some(Array(items)) => items.length()
+        None | Some(Null) => 0
+        Some(_) => 1
+      }
+    _ => 0
+  }
+}
+
+///|
+fn mooncode_runtime_context_item_metadata(
+  message : Json,
+  kind : MoonCodeContextKind,
+  source : String,
+) -> Array[Json] {
+  let items : Array[Json] = []
+  for _ in 0..<mooncode_runtime_context_content_item_count(message) {
+    items.push({
+      "kind": mooncode_runtime_context_kind_key(kind),
+      "source": source,
+    })
+  }
+  items
 }
 
 ///|
@@ -77,29 +125,88 @@ fn mooncode_runtime_context_provenance(message : Json) -> Json {
 
 ///|
 fn mooncode_runtime_context_provenance_valid(metadata : Json) -> Bool {
-  metadata is Object(_) &&
-  mooncode_json_string(metadata, "contract", default="") ==
-  MOONCODE_CONTEXT_PROVENANCE_CONTRACT &&
-  mooncode_runtime_context_token_valid(
-    mooncode_json_string(metadata, "kind", default=""),
-    64,
-  ) &&
-  mooncode_runtime_context_token_valid(
-    mooncode_json_string(metadata, "source", default=""),
-    160,
-  )
+  guard metadata is Object(_) else { return false }
+  let contract = mooncode_json_string(metadata, "contract", default="")
+  let kind_key = mooncode_json_string(metadata, "kind", default="")
+  let source = mooncode_json_string(metadata, "source", default="")
+  guard (
+      contract == MOONCODE_CONTEXT_PROVENANCE_CONTRACT ||
+      contract == MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1
+    ) &&
+    mooncode_runtime_context_token_valid(kind_key, 64) &&
+    mooncode_runtime_context_token_valid(source, 160) else {
+    return false
+  }
+  if contract == MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1 {
+    return true
+  }
+  let kind = mooncode_runtime_context_kind_from_key(kind_key)
+  guard mooncode_runtime_context_kind_is_closed(kind) else { return false }
+  guard metadata is Object(fields) &&
+    fields.get("requires_separate_message") is Some(True | False) else {
+    return false
+  }
+  let item_metadata = mooncode_json_array_items(metadata, "content_items")
+  item_metadata.all(item => {
+    let item_kind = mooncode_runtime_context_kind_from_key(
+      mooncode_json_string(item, "kind", default=""),
+    )
+    mooncode_runtime_context_kind_is_closed(item_kind) &&
+    mooncode_runtime_context_token_valid(
+      mooncode_json_string(item, "source", default=""),
+      160,
+    )
+  })
+}
+
+///|
+fn mooncode_runtime_context_message_provenance_valid(message : Json) -> Bool {
+  let metadata = mooncode_runtime_context_provenance(message)
+  guard mooncode_runtime_context_provenance_valid(metadata) else {
+    return false
+  }
+  if mooncode_json_string(metadata, "contract", default="") ==
+    MOONCODE_CONTEXT_PROVENANCE_CONTRACT_V1 {
+    return true
+  }
+  mooncode_json_array_items(metadata, "content_items").length() ==
+  mooncode_runtime_context_content_item_count(message)
 }
 
 ///|
 fn mooncode_runtime_context_metadata(
+  message : Json,
   kind : MoonCodeContextKind,
   source : String,
+  requires_separate_message? : Bool = false,
 ) -> Json {
   {
     "contract": MOONCODE_CONTEXT_PROVENANCE_CONTRACT,
     "kind": mooncode_runtime_context_kind_key(kind),
     "source": source,
+    "content_items": Json::array(
+      mooncode_runtime_context_item_metadata(message, kind, source),
+    ),
+    "requires_separate_message": requires_separate_message,
   }
+}
+
+///|
+fn MoonCodeContextFragment::render(self : MoonCodeContextFragment) -> Json {
+  guard mooncode_runtime_context_kind_is_closed(self.kind) &&
+    mooncode_runtime_context_token_valid(self.source, 160) else {
+    return mooncode_runtime_context_normalize_message(self.message)
+  }
+  mooncode_json_object_with_field(
+    self.message,
+    MOONCODE_CONTEXT_PROVENANCE_FIELD,
+    mooncode_runtime_context_metadata(
+      self.message,
+      self.kind,
+      self.source,
+      requires_separate_message=self.requires_separate_message,
+    ),
+  )
 }
 
 ///|
@@ -108,11 +215,12 @@ fn mooncode_runtime_context_message(
   kind : MoonCodeContextKind,
   source : String,
 ) -> Json {
-  mooncode_json_object_with_field(
+  MoonCodeContextFragment::{
     message,
-    MOONCODE_CONTEXT_PROVENANCE_FIELD,
-    mooncode_runtime_context_metadata(kind, source),
-  )
+    kind,
+    source,
+    requires_separate_message: false,
+  }.render()
 }
 
 ///|
@@ -181,8 +289,7 @@ fn mooncode_runtime_context_normalize_message(
   fallback_kind? : MoonCodeContextKind,
   fallback_source? : String = "legacy.inferred",
 ) -> Json {
-  let metadata = mooncode_runtime_context_provenance(message)
-  if mooncode_runtime_context_provenance_valid(metadata) {
+  if mooncode_runtime_context_message_provenance_valid(message) {
     return message
   }
   let kind = match fallback_kind {
