@@ -269,7 +269,7 @@ fn recover_diagnostics(content : String) -> String raise {
         recovered.push(line)
         // Matches
         // error[<code>]: <file>:<line>:<column>: ...
-        lexscan line with longest {
+        lexmatch line with longest {
           (
             re"^error\[[[:digit:]]{4}\]:[[:space:]]+[^:]*:" +
             (re"[[:digit:]]+" as line) +

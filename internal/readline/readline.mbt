@@ -377,7 +377,7 @@ fn display_position(
   }
   let cols = offset % col
   rows += offset / col
-  { cols, rows }
+  { cols, rows, }
 }
 
 ///|
@@ -428,7 +428,7 @@ fn Interface::push_to_undo_stack(
   text : BytesView,
   cursor : Int,
 ) -> Unit {
-  self.undo_stack.push_back({ text, cursor })
+  self.undo_stack.push_back({ text, cursor, })
   if self.undo_stack.length() > 2048 {
     self.undo_stack.pop_front() |> ignore()
   }
@@ -596,75 +596,71 @@ async fn Interface::yank_pop(self : Interface) -> Unit {
 }
 
 ///|
-#warnings("-lexmatch_longest_match")
+fn word_byte_class(byte : Byte) -> Int {
+  match byte {
+    b' ' | b'\t' | b'\n' | b'\r' | 11 | 12 => 0
+    b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'_' => 1
+    _ => 2
+  }
+}
+
+///|
 fn word_size_left(string : BytesView, index : Int) -> Int {
   if index == 0 {
     return 0
   }
-  let reversed = string[:index]
-    .to_owned()
-    .to_fixedarray()
-    .rev()
-    .unsafe_reinterpret_as_bytes()
-  lexmatch reversed with longest {
-    ("[[:space:]]*([^[:word:][:space:]]+|[[:word:]]+)", rest) => rest.length()
-    _ => 1
+  let mut cursor = index
+  while cursor > 0 && word_byte_class(string[cursor - 1]) == 0 {
+    cursor -= 1
   }
+  if cursor > 0 {
+    let kind = word_byte_class(string[cursor - 1])
+    while cursor > 0 && word_byte_class(string[cursor - 1]) == kind {
+      cursor -= 1
+    }
+  }
+  index - cursor
 }
 
 ///|
-#warnings("-lexmatch_longest_match")
 fn word_right_left(string : BytesView, index : Int) -> Int {
   if index >= string.length() {
     return 0
   }
-  let forward = string[index:]
-    .to_owned()
-    .to_fixedarray()
-    .unsafe_reinterpret_as_bytes()
-  lexmatch forward with longest {
-    ("([^[:word:][:space:]]+|[[:word:]]+)[[:space:]]*", rest) => rest.length()
-    _ => 1
+  let mut cursor = index
+  let kind = word_byte_class(string[cursor])
+  while cursor < string.length() && word_byte_class(string[cursor]) == kind {
+    cursor += 1
   }
+  while cursor < string.length() && word_byte_class(string[cursor]) == 0 {
+    cursor += 1
+  }
+  cursor - index
 }
 
 ///|
-#warnings("-lexmatch_longest_match")
 async fn Interface::delete_word_left(self : Interface) -> Unit {
   if self.cursor > 0 {
     self.before_edit(self.line, self.cursor)
-    let leading = self.line[:self.cursor]
-    let reversed = leading
-      .to_owned()
-      .to_fixedarray()
-      .rev()
-      .unsafe_reinterpret_as_bytes()
+    let previous_cursor = self.cursor
+    let next_cursor = self.cursor - word_size_left(self.line, self.cursor)
     let buffer = Buffer()
-    lexmatch reversed with longest {
-      ("[[:space:]]*([^[:word:][:space:]]+|[[:word:]]+)", rest) =>
-        buffer.write_bytesview(leading[:rest.length()])
-      _ => buffer.write_bytesview(leading[:leading.length() - 1])
-    }
-    self.cursor = buffer.length()
-    buffer.write_bytesview(self.line[self.cursor:])
+    buffer.write_bytesview(self.line[:next_cursor])
+    buffer.write_bytesview(self.line[previous_cursor:])
+    self.cursor = next_cursor
     self.line = buffer.to_bytes()
     self.refresh_line()
   }
 }
 
 ///|
-#warnings("-lexmatch_longest_match")
 async fn Interface::delete_word_right(self : Interface) -> Unit {
   if self.cursor < self.line.length() {
     self.before_edit(self.line, self.cursor)
-    let trailing = self.line[self.cursor:]
+    let next_cursor = self.cursor + word_right_left(self.line, self.cursor)
     let buffer = Buffer()
     buffer.write_bytesview(self.line[:self.cursor])
-    lexmatch trailing with longest {
-      ("([^[:word:][:space:]]+|[[:word:]]+)[[:space:]]*", rest) =>
-        buffer.write_bytesview(trailing[rest.length():])
-      _ => buffer.write_bytesview(trailing[1:])
-    }
+    buffer.write_bytesview(self.line[next_cursor:])
     self.line = buffer.to_bytes()
     self.refresh_line()
   }
@@ -1219,12 +1215,12 @@ async fn Interface::emit_keypress(self : Interface) -> Unit {
   key.sequence = s
   if s.length() != 0 && (!(key.name is Undefined) || escaped) {
     if escaped {
-      self.events.keypress.put({ sequence: None, key })
+      self.events.keypress.put({ sequence: None, key, })
     } else {
-      self.events.keypress.put({ sequence: Some(s), key })
+      self.events.keypress.put({ sequence: Some(s), key, })
     }
   } else if s.length() == 1 {
-    self.events.keypress.put({ sequence: Some(s), key })
+    self.events.keypress.put({ sequence: Some(s), key, })
   }
 }
 
