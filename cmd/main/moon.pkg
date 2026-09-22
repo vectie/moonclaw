@@ -23,4 +23,5 @@ pkgtype(kind: "executable")
 
 options(
   overrides: [ "vectie/moonclaw/internal/abort" ],
+  link: { "native": { "cc-link-flags": "-pthread -ldl" } },
 )
