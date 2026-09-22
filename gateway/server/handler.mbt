@@ -184,7 +184,7 @@ async fn Gateway::execute_agent(
     cwd~,
     logger=self.logger,
     uuid=self.uuid,
-    system_message=params.message,
+    user_message=params.message,
     home=self.home,
   )
 
