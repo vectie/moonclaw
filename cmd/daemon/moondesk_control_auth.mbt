@@ -6,6 +6,8 @@ fn moondesk_control_route_requires_auth(
   match (method_, paths) {
     (Get, ["", "v1", "events"]) => true
     (Get, ["", "v1", "models"]) => true
+    (Get, ["", "v1", "moongate-route"]) => true
+    (Post, ["", "v1", "provider-handoff"]) => true
     (Get, ["", "v1", "tasks"]) => true
     // Provider workers register back into the daemon on this process-internal
     // endpoint. It is not part of the MoonDesk control plane and remains

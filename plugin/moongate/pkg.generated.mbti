@@ -23,6 +23,7 @@ pub struct Client {
   base_url : String
 }
 pub fn Client::base_url(Self) -> String
+pub async fn Client::configure_workspace_provider(Self, String, String, String) -> Result[Unit, String]
 pub async fn Client::get(Self, String) -> Result[Json, String]
 pub async fn Client::get_text(Self, String) -> Result[String, String]
 pub async fn Client::health(Self) -> Result[Json, String]

@@ -50,6 +50,12 @@ test "MoonDesk control auth accepts only the bound private credential" {
 ///|
 test "MoonDesk control route policy protects runtime state but leaves public callbacks" {
   assert_true(moondesk_control_route_requires_auth(Get, ["", "v1", "models"]))
+  assert_true(
+    moondesk_control_route_requires_auth(Get, ["", "v1", "moongate-route"]),
+  )
+  assert_true(
+    moondesk_control_route_requires_auth(Post, ["", "v1", "provider-handoff"]),
+  )
   assert_true(moondesk_control_route_requires_auth(Post, ["", "v1", "task"]))
   assert_true(
     moondesk_control_route_requires_auth(Get, ["", "v1", "code", "sessions"]),

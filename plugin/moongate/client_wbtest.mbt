@@ -54,7 +54,7 @@ test "moongate client reads suite status from workspace moonsuite state" {
 
 ///|
 test "moongate client builds openclaw route url" {
-  let client = Client::{ base_url: "http://127.0.0.1:18081" }
+  let client = Client::{ base_url: "http://127.0.0.1:18081", }
   assert_true(
     client.route_openclaw_chat_url() ==
     "http://127.0.0.1:18081/openclaw/v1/chat/completions",
@@ -63,8 +63,30 @@ test "moongate client builds openclaw route url" {
 
 ///|
 test "moongate client uses the OpenClaw-scoped model catalog" {
-  let client = Client::{ base_url: "http://127.0.0.1:18081" }
+  let client = Client::{ base_url: "http://127.0.0.1:18081", }
   assert_eq(client.models_path(), "/openclaw/v1/models")
+}
+
+///|
+test "provider renewal recognizes both list and binding identifier shapes" {
+  assert_true(
+    provider_list_contains(
+      [{ "id": "lunanexa-lease", "appType": "openclaw" }],
+      "lunanexa-lease",
+    ),
+  )
+  assert_true(
+    provider_list_contains(
+      { "bindings": [{ "providerId": "lunanexa-lease" }] },
+      "lunanexa-lease",
+    ),
+  )
+  assert_false(
+    provider_list_contains(
+      [{ "id": "another-provider", "appType": "openclaw" }],
+      "lunanexa-lease",
+    ),
+  )
 }
 
 ///|
@@ -100,7 +122,7 @@ async test "moongate client posts planner metrics to the aggregate route" {
   @async.with_task_group(group => {
     group.spawn_bg(() => server.serve(router.handler()), no_wait=true)
     @async.pause()
-    let client = Client::{ base_url: "http://localhost:\{server.port()}" }
+    let client = Client::{ base_url: "http://localhost:\{server.port()}", }
     let result = client.record_planner_metrics({
       "contract": "moonclaw.planner.metrics.v1",
       "prompt_tokens": 42,

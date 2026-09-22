@@ -95,7 +95,7 @@ pub async fn discover() -> Client {
       return { base_url, }
     }
   }
-  { base_url: DEFAULT_BASE_URL }
+  { base_url: DEFAULT_BASE_URL, }
 }
 
 ///|
@@ -145,7 +145,7 @@ fn moongate_default_models_from_status(status : Json) -> Array[MoonGateModel] {
     id != "" else {
     return []
   }
-  [{ id, owner: None, context_window: Some(128_000) }]
+  [{ id, owner: None, context_window: Some(128_000), }]
 }
 
 ///|
@@ -315,6 +315,63 @@ pub async fn Client::post(
     Ok(parsed)
   } else {
     Err("HTTP \{response.code}")
+  }
+}
+
+///|
+fn provider_list_contains(value : Json, provider_id : String) -> Bool {
+  match value {
+    Array(rows) => rows.any(row => provider_list_contains(row, provider_id))
+    Object(fields) =>
+      match (fields.get("id"), fields.get("providerId")) {
+        (Some(String(value)), _) | (_, Some(String(value))) =>
+          value == provider_id
+        _ =>
+          fields
+          .values()
+          .any(value => provider_list_contains(value, provider_id))
+      }
+    _ => false
+  }
+}
+
+///|
+pub async fn Client::configure_workspace_provider(
+  self : Client,
+  api_base_url : String,
+  api_secret : String,
+  model : String,
+) -> Result[Unit, String] {
+  let provider_id = "lunanexa-lease"
+  let listed = match self.get("/providers?appType=openclaw") {
+    Ok(value) => value
+    Err(error) => return Err(error)
+  }
+  let provider : Json = {
+    "appType": "openclaw",
+    "id": provider_id,
+    "name": "LunaNexa leased workspace",
+    "enabled": true,
+    "providerType": "openai-compatible",
+    "apiFormat": "openai_chat",
+    "baseUrl": api_base_url,
+    "apiKey": api_secret,
+    "defaultModel": model,
+    "notes": "Lease-scoped credential installed by a one-time desktop handoff",
+  }
+  let provider_path = if provider_list_contains(listed, provider_id) {
+    "/providers/update"
+  } else {
+    "/providers"
+  }
+  match self.post(provider_path, provider) {
+    Err(error) => return Err(error)
+    Ok(_) => ()
+  }
+  match
+    self.post("/bindings", { "appType": "moonclaw", "providerId": provider_id }) {
+    Ok(_) => Ok(())
+    Err(error) => Err(error)
   }
 }
 

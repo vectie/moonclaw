@@ -8,6 +8,8 @@
 /// - GET  /v1/health     → lightweight daemon health
 /// - GET  /v1/events     → `get_events`
 /// - GET  /v1/models     → `list_models`
+/// - GET  /v1/moongate-route → live MoonGate routing status and catalog
+/// - POST /v1/provider-handoff → redeem and install a lease-scoped provider
 /// - POST /v1/task/register → `register_task`
 /// - GET  /v1/tasks      → `list_tasks`
 /// - POST /v1/task       → `create_task`
@@ -85,6 +87,9 @@ pub async fn Daemon::serve(self : Daemon) -> Unit {
             (Get, ["", "v1", "health"]) => self.health(w)
             (Get, ["", "v1", "events"]) => self.get_events(w)
             (Get, ["", "v1", "models"]) => self.list_models(w)
+            (Get, ["", "v1", "moongate-route"]) => self.moongate_route(w)
+            (Post, ["", "v1", "provider-handoff"]) =>
+              self.provider_handoff(r, w)
             (Post, ["", "v1", "supervisors", "activate"]) =>
               self.supervisor_activate(group~, r, w)
             (Post, ["", "v1", "supervisors", id, "commands", "message"]) =>
