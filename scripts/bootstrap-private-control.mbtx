@@ -1,0 +1,126 @@
+///|
+import {
+  "moonbitlang/async",
+  "moonbitlang/async/fs",
+  "moonbitlang/async/http",
+  "moonbitlang/core/env",
+  "moonbitlang/core/json",
+  "moonbitlang/x/crypto",
+}
+
+///|
+fn field(value : Json, key : String) -> String raise {
+  guard value is Object(fields) && fields.get(key) is Some(String(text)) else {
+    fail("private control configuration has an invalid field")
+  }
+  text
+}
+
+///|
+fn safe_hex(value : String, length : Int) -> Bool {
+  value.length() == length && value.all(c => c is ('0'..='9' | 'a'..='f'))
+}
+
+///|
+async fn main {
+  let args = @env.args()
+  guard args.length() >= 2 else {
+    fail(
+      "usage: bootstrap-private-control.mbtx init WORKSPACE APP_DATA WORKSPACE_ID | probe CONFIG LOOPBACK_BASE",
+    )
+  }
+  match args[1:] {
+    ["init", workspace, app_data, workspace_id] => {
+      guard workspace.has_prefix("/") &&
+        app_data.has_prefix("/") &&
+        !app_data.contains("\n") &&
+        !app_data.contains("\r") &&
+        workspace_id.length() > 0 &&
+        workspace_id.length() <= 128 &&
+        workspace_id.all(c => {
+          c.is_ascii_alphabetic() || c.is_ascii_digit() || c == '-' || c == '_'
+        }) else {
+        fail("absolute paths and a safe workspace identifier are required")
+      }
+      guard @fs.kind(workspace, follow_symlink=false) is Directory &&
+        @fs.realpath(workspace) == workspace else {
+        fail("workspace must already be a canonical directory")
+      }
+      let root = app_data + "/control/execution-sandbox"
+      if !@fs.exists(root) {
+        @fs.mkdir(root, permission=0o700, recursive=true)
+      }
+      guard @fs.kind(root, follow_symlink=false) is Directory &&
+        @fs.realpath(root) == root else {
+        fail("private control directory must not contain symlinks")
+      }
+      @fs.chmod(root, 0o700)
+      let filename = root + "/moonclaw.json"
+      if @fs.exists(filename) {
+        guard @fs.kind(filename, follow_symlink=false) is Regular &&
+          @fs.realpath(filename) == filename else {
+          fail("existing configuration is not a canonical regular file")
+        }
+        let existing = @json.parse(@fs.read_file(filename).text())
+        guard existing is { "protocol_version": 1, .. } &&
+          field(existing, "workspace_root") == workspace &&
+          field(existing, "workspace_id") == workspace_id &&
+          safe_hex(field(existing, "instance_id"), 32) &&
+          safe_hex(field(existing, "auth_token"), 64) else {
+          fail(
+            "existing configuration does not match; refusing rotation or overwrite",
+          )
+        }
+      } else {
+        guard @env.rand(16) is Some(instance) && @env.rand(32) is Some(token) else {
+          fail("secure entropy unavailable")
+        }
+        let payload : Json = {
+          "protocol_version": 1,
+          "instance_id": @crypto.bytes_to_hex_string(instance),
+          "auth_token": @crypto.bytes_to_hex_string(token),
+          "workspace_id": workspace_id,
+          "workspace_root": workspace,
+        }
+        @fs.write_file(
+          filename,
+          payload.stringify(),
+          create_mode=CreateNew,
+          permission=0o600,
+        )
+      }
+      @fs.chmod(filename, 0o600)
+      println("LEPUSA_APP_DATA_DIR=" + app_data)
+      println("MOONDESK_EXECUTION_SANDBOX_CONFIG=" + filename)
+      println("Private configuration ready; credential was not printed.")
+    }
+    ["probe", filename, base] => {
+      guard base.has_prefix("http://127.0.0.1:") &&
+        base[17:].length() > 0 &&
+        base[17:].all(c => c.is_ascii_digit()) else {
+        fail("probe target must be an explicit IPv4 loopback port")
+      }
+      let config = @json.parse(@fs.read_file(filename).text())
+      let token = field(config, "auth_token")
+      let instance = field(config, "instance_id")
+      let (response, body) = @http.get(base + "/v1/moongate-route", headers={
+        "X-MoonClaw-Execution-Token": token,
+        "X-MoonClaw-Instance-ID": instance,
+      })
+      guard response.code == 200 &&
+        response.headers.get("x-moonclaw-instance-id") == Some(instance) else {
+        fail(
+          "authenticated control probe failed status=" +
+          response.code.to_string(),
+        )
+      }
+      let text = body.text()
+      guard !text.contains(token) else {
+        fail("response contained a credential")
+      }
+      println("Authenticated and instance-bound MoonClaw control probe: PASS")
+      println(text)
+    }
+    _ => fail("invalid bootstrap-private-control arguments")
+  }
+}
