@@ -134,7 +134,7 @@ cohorts listed in the MoonGate metrics document.
   bundle, benchmark, and regression selection passes 16/16;
 - process-tool and shell-analysis suites pass 37/37 without weakening the
   missing-deployment refusal;
-- artifact adversarial tests pass 4/4, wire compatibility passes 2/2, and the
+- artifact adversarial tests pass 4/4, protocol compatibility passes 2/2, and the
   execute-command integration suite passes 8/8;
 - MoonGate's native suite passes 894/894 and MoonFort's native suite passes
   137/137;

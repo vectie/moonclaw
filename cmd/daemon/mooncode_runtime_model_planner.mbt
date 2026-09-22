@@ -312,7 +312,7 @@ async fn mooncode_runtime_turn_model_chat(
   let mut active_request = request
   while true {
     let completion = Some(
-      mooncode_runtime_dispatch_model_request(
+      mooncode_runtime_send_model_request(
         model,
         active_request,
         command,
@@ -985,7 +985,7 @@ fn mooncode_runtime_turn_completion_verdict(
   require_horizon? : Bool = false,
 ) -> MoonCodeCompletionVerdict {
   if results.is_empty() {
-    return { accepted: false, reason: "no MoonCode tool result was recorded" }
+    return { accepted: false, reason: "no MoonCode tool result was recorded", }
   }
   let final_result = results[results.length() - 1]
   if mooncode_json_string(final_result, "tool", default="") != "finish" ||

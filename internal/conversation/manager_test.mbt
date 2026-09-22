@@ -73,6 +73,8 @@ async test "Manager::load" (t : @test.Test) {
           "updated_at": 2,
           "cwd": "(mock:cwd)",
           "web_search": false,
+          "source_kind": "user",
+          "workspace_trust": "trusted",
         },
       ],
     )

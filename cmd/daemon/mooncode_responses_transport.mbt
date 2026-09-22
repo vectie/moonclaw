@@ -58,7 +58,7 @@ fn mooncode_runtime_responses_prompt_cache_key(command : Json) -> String? {
 }
 
 ///|
-async fn mooncode_runtime_dispatch_model_request(
+async fn mooncode_runtime_send_model_request(
   model : @model.Model,
   request : @openai.Request,
   command : Json,
